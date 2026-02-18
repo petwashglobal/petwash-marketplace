@@ -3,7 +3,7 @@
  * Israeli VAT Rate: 18% (effective January 1, 2025)
  * 
  * FLAT 15% commission on ALL third-party providers across ALL platforms.
- * This matches MadPaws (Australia) and industry standard marketplace commission.
+ * This matches industry standard marketplace commission.
  * 
  * Fee Model (all platforms):
  * - Provider sets base rate

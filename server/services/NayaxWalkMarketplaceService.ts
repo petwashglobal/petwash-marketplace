@@ -81,7 +81,7 @@ export class NayaxWalkMarketplaceService {
    * Platform receives: Total amount
    * Platform splits: 15% commission, 85% held for walker payout
    * 
-   * Like Rover/Wag model but with Israeli compliance ✨
+   * Pet Wash™ marketplace model with Israeli compliance ✨
    */
   static async processWalkPayment(params: WalkBookingPaymentParams): Promise<{
     success: boolean;

@@ -1,5 +1,5 @@
 /**
- * MADPAWS-STYLE BOOKING REQUESTS API
+ * PET WASH™ BOOKING REQUESTS API
  * 
  * Complete booking flow:
  * 1. Create request (owner → provider)
@@ -151,7 +151,7 @@ router.post('/', async (req, res) => {
       subtotalCents = 15000 * totalDays * data.petCount; // Default pricing
     }
     
-    const serviceFeePercent = 15; // 15% platform fee like MadPaws
+    const serviceFeePercent = 15; // 15% platform fee (industry standard)
     const serviceFeeCents = Math.round(subtotalCents * serviceFeePercent / 100);
     const totalCents = subtotalCents + serviceFeeCents;
     

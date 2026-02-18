@@ -1646,7 +1646,7 @@ export const insertLedgerTransactionSchema = createInsertSchema(ledgerTransactio
 export const insertInvoiceHeaderSchema = createInsertSchema(invoiceHeaders).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({ id: true, createdAt: true });
 
-// =================== PROVIDER APPLICATION SYSTEM (MadPaws-Style) ===================
+// =================== PROVIDER APPLICATION SYSTEM (Pet Wash™) ===================
 // Complete 7-stage verification workflow for marketplace providers
 
 // Application stage enum

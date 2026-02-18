@@ -8,7 +8,7 @@
  * - Dynamic pricing based on distance and loyalty tier
  * - Automatic GPS tracking activation post-confirmation
  * - Live session monitoring with vital data
- * - Wag-style bathroom markers
+ * - Pet Wash™ bathroom markers
  * 
  * Uses existing: GPSTrackingService, WalkSessionService
  */

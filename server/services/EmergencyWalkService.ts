@@ -1,7 +1,7 @@
 /**
  * EMERGENCY WALK SERVICE - ⁦Walk My Pet™⁩
  * 
- * ASAP booking system inspired by Rover's "Book Now" and Wag's "On-Demand Walks"
+ * ASAP booking system with Pet Wash™ "Book Now" and "On-Demand Walks"
  * 
  * Features:
  * - 90-minute arrival guarantee (or best effort)

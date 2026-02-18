@@ -276,7 +276,7 @@ export default function PlatformHub() {
           </div>
         </section>
 
-        {/* Luxury Hero Search - MadPaws Style */}
+        {/* Luxury Hero Search */}
         <section className="bg-gradient-to-b from-white to-gray-50/50 py-16 px-6">
           <LuxuryHeroSearch 
             variant="hero" 

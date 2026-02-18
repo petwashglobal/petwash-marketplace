@@ -413,9 +413,9 @@ export class WalkSessionService {
   }
 
   /**
-   * Record bathroom marker (Wag-style pee/poo flags)
+   * Record bathroom marker (Pet Wash™ pee/poo flags)
    * 
-   * USA Market Adoption: Inspired by Wag's GPS bathroom markers
+   * GPS bathroom markers for walk tracking
    * Allows walkers to flag when pet uses bathroom during walk
    */
   async addBathroomMarker(
@@ -626,7 +626,7 @@ export class WalkSessionService {
         totalDistanceMeters: walk.totalDistanceMeters || 0,
       },
       vitals: walk.vitalDataSummary || {},
-      bathroomMarkers: walk.bathroomMarkers || [], // Wag-style pee/poo flags
+      bathroomMarkers: walk.bathroomMarkers || [], // Pet Wash™ pee/poo flags
       tracking: {
         isLiveTrackingActive: walk.isLiveTrackingActive,
         isVideoStreamActive: walk.isVideoStreamActive,

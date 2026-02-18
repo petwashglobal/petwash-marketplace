@@ -9,7 +9,7 @@
  * - VAT (18%) applied on platform fee per Israeli law
  * - Withholding tax (ניכוי מס במקור) deducted from sitter payout at settlement
  * 
- * Payment Flow (Like MadPaws/Wolt Israel / Booking.com):
+ * Payment Flow (Pet Wash™ escrow model):
  * 1. Owner pays base + 15% platform fee + VAT to PetWash via Nayax
  * 2. Platform holds funds in 72-hour escrow
  * 3. Upon job completion:
@@ -50,7 +50,7 @@ export interface TransparentFeeCalculation {
 /**
  * Calculate transparent fees for ⁦The Sitter Suite™⁩ booking
  * Israeli law 2026 compliant - VAT included in customer total
- * FLAT 15% commission (matches MadPaws industry standard)
+ * FLAT 15% commission (industry standard)
  * 
  * @param pricePerDayCents - Sitter's daily rate in agorot (cents)
  * @param totalDays - Number of days for booking

@@ -1,7 +1,7 @@
 /**
  * Booking Payment & Confirmation Modal
  * 
- * MadPaws-style escrow payment flow:
+ * Pet Wash™ escrow payment flow:
  * - Owner pays after Meet & Greet
  * - Payment held in escrow until service completion
  * - Owner confirms completion to release payment

@@ -1,5 +1,5 @@
 /**
- * MadPaws-Style Booking Request Modal
+ * Pet Wash™ Booking Request Modal
  * 
  * Features:
  * - Service dates selection

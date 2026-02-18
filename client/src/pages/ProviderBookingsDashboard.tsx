@@ -1,7 +1,7 @@
 /**
  * Provider Bookings Dashboard
  * 
- * MadPaws-style dashboard for service providers to:
+ * Pet Wash™ dashboard for service providers to:
  * - View incoming booking requests
  * - Accept/decline requests
  * - Schedule Meet & Greet sessions

@@ -410,7 +410,7 @@ function GooglePlacesLocationInput({
       loadGoogleMapsScript('he', 'IL')
         .then(() => setScriptLoaded(true))
         .catch(() => {
-          console.warn('[MadPaws Search] Google Maps script failed to load - search will work without autocomplete');
+          console.warn('[Provider Search] Google Maps script failed to load - search will work without autocomplete');
         });
     });
   }, []);
@@ -501,7 +501,7 @@ function GooglePlacesLocationInput({
       
       setAutocompleteWorking(true);
     } catch (error) {
-      console.warn('[MadPaws Search] Google Places not available, using fallback city list');
+      console.warn('[Provider Search] Google Places not available, using fallback city list');
       setAutocompleteWorking(false);
     }
 
@@ -590,7 +590,7 @@ function GooglePlacesLocationInput({
   );
 }
 
-interface MadPawsSearchProps {
+interface ProviderSearchProps {
   onSearch?: (params: SearchParams, results?: BookingSearchResponse) => void;
   showResults?: boolean;
   platform?: 'sitter-suite' | 'walk-my-pet' | 'pettrek' | 'academy' | 'all';
@@ -636,7 +636,7 @@ export interface SearchParams {
   emergencyContactPhone: string;
 }
 
-export function MadPawsSearch({ 
+export function ProviderSearch({ 
   onSearch, 
   showResults = true, 
   platform = 'all', 
@@ -647,7 +647,7 @@ export function MadPawsSearch({
   initialPetType,
   initialStartDate,
   initialEndDate
-}: MadPawsSearchProps) {
+}: ProviderSearchProps) {
   const [, navigate] = useLocation();
   const { language } = useLanguage();
   const isHebrew = language === 'he';
@@ -1587,7 +1587,7 @@ interface ProviderCardProps {
   onClick: () => void;
 }
 
-export function MadPawsProviderCard({
+export function ProviderCard({
   id,
   name,
   photo,
@@ -1702,7 +1702,7 @@ export function MadPawsProviderCard({
   );
 }
 
-export function MadPawsEmptyState({ service }: { service: string }) {
+export function SearchEmptyState({ service }: { service: string }) {
   const { language } = useLanguage();
   const isHebrew = language === 'he';
 

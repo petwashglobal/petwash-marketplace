@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useLocation } from "wouter";
 import { useSEO, pageSEO } from "@/lib/seo";
 import { useLanguage } from "@/lib/languageStore";
-import { MadPawsSearch, MadPawsProviderCard, MadPawsEmptyState, type SearchParams } from "@/components/marketplace/MadPawsSearch";
+import { ProviderSearch, ProviderCard, SearchEmptyState, type SearchParams } from "@/components/marketplace/ProviderSearch";
 import ProviderRegistrationBanner from "@/components/ProviderRegistrationBanner";
 import { CompactWeatherWidget } from "@/components/weather/CompactWeatherWidget";
 import { format } from "date-fns";
@@ -304,7 +304,7 @@ export default function BrowseSitters() {
             </div>
 
             <div className="max-w-5xl mx-auto -mb-16 relative z-10">
-              <MadPawsSearch 
+              <ProviderSearch 
                 onSearch={handleSearch} 
                 platform="sitter-suite"
                 theme="pink"
@@ -567,7 +567,7 @@ export default function BrowseSitters() {
                 const pricePerNight = provider.pricing.perNight ? parseFloat(provider.pricing.perNight) : 0;
                 
                 return (
-                  <MadPawsProviderCard
+                  <ProviderCard
                     key={`${provider.id}-${provider.serviceType}-${index}`}
                     id={provider.id}
                     name={provider.displayName || 'Provider'}

@@ -10,7 +10,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useSEO, pageSEO } from "@/lib/seo";
 import { useLanguage } from "@/lib/languageStore";
-import { MadPawsSearch, MadPawsProviderCard, type SearchParams } from "@/components/marketplace/MadPawsSearch";
+import { ProviderSearch, ProviderCard, type SearchParams } from "@/components/marketplace/ProviderSearch";
 import ProviderRegistrationBanner from "@/components/ProviderRegistrationBanner";
 import { getApiUrl } from "@/lib/apiConfig";
 import { PetWalkWeatherAdvisor, CompactWeatherWidget } from "@/components/weather/CompactWeatherWidget";
@@ -234,7 +234,7 @@ export default function BrowseWalkers() {
             </div>
 
             <div className="max-w-5xl mx-auto -mb-16 relative z-10">
-              <MadPawsSearch 
+              <ProviderSearch 
                 onSearch={handleSearch} 
                 platform="walk-my-pet"
                 theme="emerald"
@@ -416,7 +416,7 @@ export default function BrowseWalkers() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {displayWalkers.map((walker) => (
-                <MadPawsProviderCard
+                <ProviderCard
                   key={walker.id}
                   id={walker.id}
                   name={walker.displayName}

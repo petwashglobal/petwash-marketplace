@@ -1,6 +1,6 @@
 /**
  * THE SITTER SUITE™ - Nayax Split Payment Service
- * Israeli Tax Law 2026 Compliant - Subcontractor Broker Model (like MadPaws/Wolt Israel)
+ * Israeli Tax Law 2026 Compliant - Subcontractor Broker Model (Pet Wash™ marketplace)
  * 
  * FLAT 15% commission on all platforms:
  * 1. Owner pays base + 15% platform fee + VAT via Nayax

@@ -24,7 +24,7 @@ interface VettingPartners {
 export class SitterGlobalConfig {
   private readonly supportedCountries = ["USA", "ISR", "UK", "AUS", "CAN"];
   private readonly defaultCurrency = "USD";
-  private readonly globalCommissionRate = 0.15; // 15% platform fee (MadPaws 2026 model)
+  private readonly globalCommissionRate = 0.15; // 15% platform fee (industry standard 15% commission)
   private readonly customerBookingFeeRate = 0.02; // 2% booking fee charged to customers
   private readonly nayaxProcessingFeeRate = 0.01; // 1% Nayax Israel payment processing
   

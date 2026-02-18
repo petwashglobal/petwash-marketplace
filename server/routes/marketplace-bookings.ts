@@ -687,7 +687,7 @@ function haversineDistanceKm(lat1: number, lng1: number, lat2: number, lng2: num
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// MadPaws-style provider search with proximity sorting
+// Pet Wash™ provider search with proximity sorting
 router.get('/search/providers', async (req, res) => {
   try {
     const {

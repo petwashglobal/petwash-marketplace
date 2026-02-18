@@ -9316,19 +9316,19 @@ self.addEventListener('notificationclick', (event) => {
   // Returns normalized discriminated-union types for frontend
   app.use('/api/marketplace', apiLimiter, marketplaceRoutes);
 
-  // MadPaws-style Booking Search (pet count, types, area, filters) - PUBLIC ACCESS
+  // Pet Wash™ Booking Search (pet count, types, area, filters) - PUBLIC ACCESS
   const bookingSearchRoutes = (await import('./routes/booking-search')).default;
   app.use('/api/booking-search', optionalFirebaseToken, apiLimiter, bookingSearchRoutes);
 
-  // MadPaws-style Booking Requests (complete flow: request → meet & greet → payment → service)
+  // Pet Wash™ Booking Requests (complete flow: request → meet & greet → payment → service)
   const bookingRequestsRoutes = (await import('./routes/booking-requests')).default;
   app.use('/api/booking-requests', optionalFirebaseToken, apiLimiter, bookingRequestsRoutes);
 
-  // MadPaws-style Marketplace Bookings (PostgreSQL - 12-status lifecycle, escrow, quotes)
+  // Pet Wash™ Marketplace Bookings (PostgreSQL - 12-status lifecycle, escrow, quotes)
   const marketplaceBookingsRoutes = (await import('./routes/marketplace-bookings')).default;
   app.use('/api/marketplace-bookings', optionalFirebaseToken, apiLimiter, marketplaceBookingsRoutes);
 
-  // Dynamic Pricing Engine - MadPaws-style quote calculation with multi-pet surcharges
+  // Dynamic Pricing Engine - Pet Wash™ quote calculation with multi-pet surcharges
   app.use('/api/pricing', apiLimiter, pricingApiRoutes);
 
   // Provider Intake Queue (Google Forms Integration - Management-Assisted Onboarding)

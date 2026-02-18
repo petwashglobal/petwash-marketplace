@@ -494,7 +494,7 @@ router.get('/bookings/provider-pending', requireAuth, async (req, res) => {
   }
 });
 
-// EMERGENCY/ASAP WALK REQUEST (Rover/Wag "Book Now" model) - LOYALTY MEMBERS ONLY
+// EMERGENCY/ASAP WALK REQUEST (Pet Wash™ "Book Now" model) - LOYALTY MEMBERS ONLY
 router.post('/api/walks/emergency-request', requireAuth, requireLoyaltyMember, async (req, res) => {
   try {
     const ownerId = req.body.ownerId || (req as any).user?.uid;

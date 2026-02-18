@@ -312,7 +312,7 @@ const PetTrekBooking = lazy(() => import("@/pages/pettrek/BookTrip")); // Alias
 const PetTrekTracking = lazy(() => import("@/pages/pettrek/TrackTrip")); // Alias
 const PetTrekProviderDashboard = lazy(() => import("@/pages/pettrek/ProviderDashboard")); // Alias
 
-// Unified Provider Dashboard (Uber/MadPaws style)
+// Unified Provider Dashboard (Pet Wash™ style)
 const UnifiedProviderDashboard = lazy(() => import("@/pages/ProviderDashboard"));
 
 // E-Signature System
@@ -653,7 +653,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* MADPAWS-STYLE BOOKING SEARCH - Pet filters, location, dates */}
+        {/* BOOKING SEARCH - Pet filters, location, dates */}
         <Route path="/search">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -865,7 +865,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* ⁦Walk My Pet™⁩ - Browse Alias (MadPaws-style) */}
+        {/* ⁦Walk My Pet™⁩ - Browse Alias */}
         <Route path="/walk-my-pet/browse">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -922,7 +922,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <PlatformComingSoon platformName="PetTrek™" platformNameHe="PetTrek™" icon={<Car className="h-12 w-12" />} accentColor="from-violet-500 to-purple-600" />}
         </Route>
         
-        {/* Unified Provider Dashboard (Uber/MadPaws style) */}
+        {/* Unified Provider Dashboard (Pet Wash™ style) */}
         <Route path="/provider/dashboard">
           {() => (
             <RoleProtectedRoute minRole="provider">
@@ -1014,7 +1014,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* ⁦The Sitter Suite™⁩ - Sitter Edit Profile (MadPaws-style with Photo Upload) */}
+        {/* ⁦The Sitter Suite™⁩ - Sitter Edit Profile (with Photo Upload) */}
         <Route path="/sitter-suite/sitter/edit-profile">
           {() => (
             <RequireAuth>
@@ -1043,7 +1043,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* ⁦The Sitter Suite™⁩ - Browse Alias (MadPaws-style) */}
+        {/* ⁦The Sitter Suite™⁩ - Browse Alias */}
         <Route path="/sitter-suite/browse">
           {() => (
             <Suspense fallback={<PageLoader />}>

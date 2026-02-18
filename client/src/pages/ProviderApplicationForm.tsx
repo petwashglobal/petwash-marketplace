@@ -1,8 +1,8 @@
 /**
- * ⁦Pet Wash™⁩ Provider Application Form - MadPaws-Style 2026 Edition
+ * ⁦Pet Wash™⁩ Provider Application Form - 2026 Edition
  * 
  * Premium marketplace application form with:
- * - Multi-platform selection (like MadPaws but for 9 platforms)
+ * - Multi-platform selection (9 platforms)
  * - Provider-defined pricing wizard
  * - Clean white/black high-contrast design
  * - Comprehensive legal acknowledgements
@@ -32,7 +32,7 @@ import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/goo
 import { PhoneInput } from '@/components/PhoneInput';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
-// MadPaws-style platforms with flexible pricing
+// Pet Wash™ platforms with flexible pricing
 const PLATFORMS = [
   { 
     id: 'sitter_suite', 

@@ -1,5 +1,5 @@
 /**
- * MADPAWS-STYLE BOOKING SEARCH API
+ * PET WASH™ BOOKING SEARCH API
  * 
  * Unified search across all pet service providers with comprehensive filters:
  * - Pet count, types, sizes, names
@@ -142,7 +142,7 @@ function validateSearchDates(startDate?: string, endDate?: string): string | nul
 }
 
 /**
- * POST /api/booking-search - MadPaws-style unified search
+ * POST /api/booking-search - Pet Wash™ unified search
  */
 router.post('/', async (req, res) => {
   try {

@@ -6,7 +6,7 @@ import { nanoid } from 'nanoid';
 import { feeConfigService } from './FeeConfigurationService';
 
 /**
- * Financial Payout Ledger Service (2026 MadPaws-Inspired Model)
+ * Financial Payout Ledger Service (2026 Pet Wash™ Model)
  * 
  * Fee Structure (effective Jan 2026):
  * - Provider Service Fee: 15% (deducted from provider earnings)
@@ -22,7 +22,7 @@ import { feeConfigService } from './FeeConfigurationService';
  * - Trainers: Charged by session
  * 
  * Features:
- * - 72-hour escrow hold (MadPaws model)
+ * - 72-hour escrow hold (Pet Wash™ model)
  * - ₪10M+ liability insurance coverage
  * - Automatic VAT calculation (18% Israeli compliance)
  * - Unified 15% platform fee across all provider types
@@ -154,7 +154,7 @@ export async function calculateSitterEarnings(
     // Calculate base amount
     const baseAmount = dayCount * dailyRate + hourCount * hourlyRate;
 
-    // Platform fee: 15% for all providers (MadPaws 2026 model)
+    // Platform fee: 15% for all providers (industry standard 15% commission)
     const feeRates = feeConfigService.getFeeRates();
     const platformFeePercent = feeRates.providerServiceFeePercent;
 
@@ -193,7 +193,7 @@ export async function calculateWalkerEarnings(
     const distanceComponent = walkDistanceKm * distanceRate;
     const baseAmount = timeComponent + distanceComponent;
 
-    // Platform fee: 15% for all providers (MadPaws 2026 model)
+    // Platform fee: 15% for all providers (industry standard 15% commission)
     const feeRates = feeConfigService.getFeeRates();
     const platformFeePercent = feeRates.providerServiceFeePercent;
 
@@ -230,7 +230,7 @@ export async function calculateDriverEarnings(
     const distanceAmount = tripDistanceKm * perKmRate;
     const baseAmount = distanceAmount + tollCharges;
 
-    // Platform fee: 15% for all providers (MadPaws 2026 model)
+    // Platform fee: 15% for all providers (industry standard 15% commission)
     const feeRates = feeConfigService.getFeeRates();
     const platformFeePercent = feeRates.providerServiceFeePercent;
 

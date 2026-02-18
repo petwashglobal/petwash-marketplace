@@ -4071,7 +4071,7 @@ export const walkBookings = pgTable("walk_bookings", {
   totalDistanceMeters: integer("total_distance_meters"), // Calculated from GPS points
   lastGPSUpdate: timestamp("last_gps_update"), // Last real-time GPS ping
   
-  // Bathroom Markers (Wag-style pee/poo flags)
+  // Bathroom Markers (Pet Wash™ pee/poo flags)
   bathroomMarkers: jsonb("bathroom_markers"), // [{type: 'pee'|'poo', latitude, longitude, timestamp, accuracy}]
   
   // Vital Data Summary (Aggregated from walkHealthData)
@@ -4098,7 +4098,7 @@ export const walkBookings = pgTable("walk_bookings", {
   cancelledAt: timestamp("cancelled_at"),
   refundAmount: decimal("refund_amount", { precision: 10, scale: 2 }),
   
-  // Emergency/ASAP Walk Features (Rover/Wag "Book Now" model)
+  // Emergency/ASAP Walk Features (Pet Wash™ "Book Now" model)
   isEmergencyWalk: boolean("is_emergency_walk").default(false), // ASAP booking with 90-min arrival
   emergencySurgeMultiplier: decimal("emergency_surge_multiplier", { precision: 3, scale: 2 }), // 1.0 = no surge, 1.5 = 50% increase, 2.0 = double
   emergencySurgeReason: text("emergency_surge_reason"), // High demand, Peak hours, etc.
@@ -4485,7 +4485,7 @@ export const providerIntakeQueue = pgTable("provider_intake_queue", {
   // Provider Type (legacy single type)
   providerType: varchar("provider_type").notNull(), // walker | sitter | station_operator | driver | groomer | trainer
   
-  // Multi-Platform Selection (MadPaws-style)
+  // Multi-Platform Selection (Pet Wash™ marketplace)
   selectedPlatforms: text("selected_platforms").array().default([]), // ["sitter_suite", "walk_my_pet", ...]
   
   // Intended Pricing (provider's desired rates)
@@ -9512,7 +9512,7 @@ export type InsertPinAuthLog = z.infer<typeof insertPinAuthLogSchema>;
 export type PinAuthLog = typeof pinAuthLogs.$inferSelect;
 
 // ============================================================================
-// USER REGISTRATION TRACKING SYSTEM - MadPaws-style stamping
+// USER REGISTRATION TRACKING SYSTEM - Pet Wash™ stamping
 // Comprehensive tracking of all user registrations with audit trail
 // ============================================================================
 
@@ -9597,7 +9597,7 @@ export type InsertUserRegistration = z.infer<typeof insertUserRegistrationSchema
 export type UserRegistration = typeof userRegistrations.$inferSelect;
 
 // ============================================================================
-// ENHANCED BOOKING SEARCH SYSTEM - MadPaws-style with pet filters
+// ENHANCED BOOKING SEARCH SYSTEM - Pet Wash™ with pet filters
 // ============================================================================
 
 export const bookingSearchFiltersSchema = z.object({
@@ -9650,7 +9650,7 @@ export const bookingSearchFiltersSchema = z.object({
 export type BookingSearchFilters = z.infer<typeof bookingSearchFiltersSchema>;
 
 // =============================================
-// MADPAWS-STYLE BOOKING REQUESTS TABLE
+// PET WASH™ BOOKING REQUESTS TABLE
 // Complete booking flow: request → meet & greet → payment → service → completion
 // =============================================
 
@@ -9816,7 +9816,7 @@ export interface BookingSearchResult {
   searchId: string; // For analytics tracking
 }
 
-// =================== MADPAWS-STYLE PROVIDER PRICING (2026) ===================
+// =================== PET WASH™ PROVIDER PRICING (2026) ===================
 // Provider-defined pricing with base rates, multi-pet surcharges, and add-ons
 
 // Platform enum for multi-platform providers
@@ -9846,7 +9846,7 @@ export const serviceTypeEnum = pgEnum("marketplace_service_type", [
   "avatar_creation"  // AI pet avatar
 ]);
 
-// Provider Rate Cards - MadPaws-style flexible pricing
+// Provider Rate Cards - Pet Wash™ flexible pricing
 export const providerRateCards = pgTable("provider_rate_cards", {
   id: serial("id").primaryKey(),
   rateCardId: varchar("rate_card_id").unique().notNull(), // RATE-UUID
@@ -10192,10 +10192,10 @@ export const PETWASH_PLATFORMS: Record<PetWashPlatform, {
   }
 };
 
-// Commission rate (15% like MadPaws for legacy providers)
+// Commission rate (industry standard 15% for legacy providers)
 export const PETWASH_COMMISSION_RATE = 0.15;
 
-// =================== MADPAWS 12-STATUS BOOKING LIFECYCLE ===================
+// =================== PET WASH™ 12-STATUS BOOKING LIFECYCLE ===================
 // Complete booking lifecycle with status history tracking
 
 export const bookingLifecycleStatusEnum = pgEnum("booking_lifecycle_status", [
@@ -10304,7 +10304,7 @@ export const insertEscrowHoldingSchema = createInsertSchema(escrowHoldings).omit
 export type InsertEscrowHolding = z.infer<typeof insertEscrowHoldingSchema>;
 export type EscrowHolding = typeof escrowHoldings.$inferSelect;
 
-// MadPaws-style booking lifecycle type
+// Pet Wash™ booking lifecycle type
 export type BookingLifecycleStatus = 
   | "inquiry"
   | "quote_sent"
