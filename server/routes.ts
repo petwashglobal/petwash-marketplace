@@ -8932,15 +8932,15 @@ self.addEventListener('notificationclick', (event) => {
   // Control Panel Registry - RBAC (Role-Based Access Control)
   app.use('/api/control-panel/registry', apiLimiter, controlPanelRegistryRoutes);
   
-  // Unified Control Panel - Metrics & Dashboard
-  app.use('/api/control-panel', apiLimiter, controlPanelRoutes);
+  // Unified Control Panel - Metrics & Dashboard (Admin only)
+  app.use('/api/control-panel', validateFirebaseToken, apiLimiter, controlPanelRoutes);
   
-  // Israeli Contractor Compliance - Documents, Onboarding, Invoices
+  // Israeli Contractor Compliance - Documents, Onboarding, Invoices (Authenticated providers)
   app.use('/api/contractor-documents', optionalFirebaseToken, apiLimiter, contractorDocumentsRoutes);
-  app.use('/api/contractor-onboarding', apiLimiter, contractorOnboardingRoutes);
-  app.use('/api/contractor-invoices', apiLimiter, contractorInvoicesRoutes);
+  app.use('/api/contractor-onboarding', validateFirebaseToken, apiLimiter, contractorOnboardingRoutes);
+  app.use('/api/contractor-invoices', validateFirebaseToken, apiLimiter, contractorInvoicesRoutes);
   // Israeli Subcontractor Agreement 2025 - FREE internal e-signature system (NO paid providers)
-  app.use('/api/subcontractors/agreements', apiLimiter, subcontractorAgreementsRoutes);
+  app.use('/api/subcontractors/agreements', validateFirebaseToken, apiLimiter, subcontractorAgreementsRoutes);
   
   // Provider Training - ⁦Pet Wash™⁩ professional training, quizzes, certificates
   app.use('/api/provider-training', apiLimiter, providerTrainingRoutes);
@@ -8951,9 +8951,9 @@ self.addEventListener('notificationclick', (event) => {
   // Admin Provider Review Queue - ⁦Pet Wash™⁩ approval workflow
   app.use('/api/provider-review', apiLimiter, adminProviderReviewRoutes);
   
-  // AI Payout Verification - Gemini 2.5 Flash work verification before payouts
-  app.use('/api/ai-verification', apiLimiter, aiPayoutVerificationRoutes);
-  app.use('/api/israeli-compliance', apiLimiter, israeliCompliance2025Routes);
+  // AI Payout Verification - Gemini 2.5 Flash work verification before payouts (Admin only)
+  app.use('/api/ai-verification', validateFirebaseToken, apiLimiter, aiPayoutVerificationRoutes);
+  app.use('/api/israeli-compliance', validateFirebaseToken, apiLimiter, israeliCompliance2025Routes);
   
   // Google Forms Configuration - Admin-managed embedded Google Forms
   const googleFormsRoutes = await import('./routes/google-forms');

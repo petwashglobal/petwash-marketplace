@@ -542,13 +542,25 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <Careers />}
         </Route>
         <Route path="/careers/my-applications">
-          {() => <MyApplications />}
+          {() => (
+            <RequireAuth>
+              <MyApplications />
+            </RequireAuth>
+          )}
         </Route>
         <Route path="/admin/hr">
-          {() => <HRAdminDashboard />}
+          {() => (
+            <RoleProtectedRoute minRole="management">
+              <HRAdminDashboard />
+            </RoleProtectedRoute>
+          )}
         </Route>
         <Route path="/admin/jobs">
-          {() => <JobManagement />}
+          {() => (
+            <RoleProtectedRoute minRole="management">
+              <JobManagement />
+            </RoleProtectedRoute>
+          )}
         </Route>
         
         {/* Support & Status */}
@@ -680,9 +692,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* PETWASH HQ - Octopus Control Panel (Admin Dashboard) */}
         <Route path="/hq">
           {() => (
-            <Suspense fallback={<PageLoader />}>
-              <OctopusControlPanel />
-            </Suspense>
+            <RoleProtectedRoute minRole="management">
+              <Suspense fallback={<PageLoader />}>
+                <OctopusControlPanel />
+              </Suspense>
+            </RoleProtectedRoute>
           )}
         </Route>
         
@@ -1175,9 +1189,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         
         <Route path="/grooming-feedback">
           {() => (
-            <Suspense fallback={<PageLoader />}>
-              <GroomingFeedback />
-            </Suspense>
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <GroomingFeedback />
+              </Suspense>
+            </RequireAuth>
           )}
         </Route>
         <Route path="/grooming-reviews">
@@ -1457,9 +1473,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         
         <Route path="/approve-expenses">
           {() => (
-            <RequireAuth>
+            <RoleProtectedRoute minRole="management">
               <ApproveExpenses />
-            </RequireAuth>
+            </RoleProtectedRoute>
           )}
         </Route>
         
@@ -1470,9 +1486,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         
         <Route path="/admin/staff-onboarding">
           {() => (
-            <RequireAuth>
+            <RoleProtectedRoute minRole="management">
               <StaffOnboarding />
-            </RequireAuth>
+            </RoleProtectedRoute>
           )}
         </Route>
         
@@ -1492,22 +1508,76 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/lost-pet">{() => <PawFinder language={language} />}</Route>
         <Route path="/franchise">{() => <Franchise language={language} onLanguageChange={handleLanguageChange} />}</Route>
         <Route path="/franchise-opportunities">{() => <Redirect to="/franchise" />}</Route>
-        <Route path="/backend-team">{() => <BackendTeam />}</Route>
+        <Route path="/backend-team">
+          {() => (
+            <RoleProtectedRoute minRole="management">
+              <BackendTeam />
+            </RoleProtectedRoute>
+          )}
+        </Route>
         <Route path="/locations">{() => <Locations />}</Route>
-        <Route path="/wallet/redeem">{() => <K9000Redeem />}</Route>
+        <Route path="/wallet/redeem">
+          {() => (
+            <RequireAuth>
+              <K9000Redeem />
+            </RequireAuth>
+          )}
+        </Route>
         <Route path="/wallet">{() => <WalletDownload />}</Route>
-        <Route path="/my-wallet">{() => <MyWallet />}</Route>
-        <Route path="/my-account">{() => <MyAccount />}</Route>
+        <Route path="/my-wallet">
+          {() => (
+            <RequireAuth>
+              <MyWallet />
+            </RequireAuth>
+          )}
+        </Route>
+        <Route path="/my-account">
+          {() => (
+            <RequireAuth>
+              <MyAccount />
+            </RequireAuth>
+          )}
+        </Route>
         <Route path="/packages">{() => <Packages />}</Route>
         
         {/* Hebrew routes - חבילות */}
         <Route path="/he/חבילות">{() => <Packages />}</Route>
         <Route path="/he/packages">{() => <Packages />}</Route>
-        <Route path="/company-reports">{() => <CompanyReports />}</Route>
-        <Route path="/reports">{() => <CompanyReports />}</Route>
-        <Route path="/investor-presentation">{() => <InvestorPresentation />}</Route>
-        <Route path="/pitch">{() => <InvestorPresentation />}</Route>
-        <Route path="/investors">{() => <InvestorPresentation />}</Route>
+        <Route path="/company-reports">
+          {() => (
+            <RoleProtectedRoute minRole="management">
+              <CompanyReports />
+            </RoleProtectedRoute>
+          )}
+        </Route>
+        <Route path="/reports">
+          {() => (
+            <RoleProtectedRoute minRole="management">
+              <CompanyReports />
+            </RoleProtectedRoute>
+          )}
+        </Route>
+        <Route path="/investor-presentation">
+          {() => (
+            <RoleProtectedRoute minRole="management">
+              <InvestorPresentation />
+            </RoleProtectedRoute>
+          )}
+        </Route>
+        <Route path="/pitch">
+          {() => (
+            <RoleProtectedRoute minRole="management">
+              <InvestorPresentation />
+            </RoleProtectedRoute>
+          )}
+        </Route>
+        <Route path="/investors">
+          {() => (
+            <RoleProtectedRoute minRole="management">
+              <InvestorPresentation />
+            </RoleProtectedRoute>
+          )}
+        </Route>
         <Route path="/our-service">{() => <OurService language={language} onLanguageChange={handleLanguageChange} />}</Route>
         <Route path="/contact">{() => <Contact language={language} />}</Route>
         <Route path="/gallery">{() => <Gallery language={language} onLanguageChange={handleLanguageChange} />}</Route>
@@ -1610,16 +1680,20 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/admin/dashboard">
           {() => (
-            <Suspense fallback={<PageLoader />}>
-              <MobileManagementDashboard />
-            </Suspense>
+            <RoleProtectedRoute minRole="management">
+              <Suspense fallback={<PageLoader />}>
+                <MobileManagementDashboard />
+              </Suspense>
+            </RoleProtectedRoute>
           )}
         </Route>
         <Route path="/octopus-brain">
           {() => (
-            <Suspense fallback={<PageLoader />}>
-              <MobileManagementDashboard />
-            </Suspense>
+            <RoleProtectedRoute minRole="management">
+              <Suspense fallback={<PageLoader />}>
+                <MobileManagementDashboard />
+              </Suspense>
+            </RoleProtectedRoute>
           )}
         </Route>
         <Route path="/accessibility" component={Accessibility} />
@@ -2041,7 +2115,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/claim">
           {() => <ClaimVoucher />}
         </Route>
-        <Route path="/ops-dashboard">{() => <OpsDashboard language={language} onLanguageChange={handleLanguageChange} />}</Route>
+        <Route path="/ops-dashboard">
+          {() => (
+            <RoleProtectedRoute minRole="management">
+              <OpsDashboard language={language} onLanguageChange={handleLanguageChange} />
+            </RoleProtectedRoute>
+          )}
+        </Route>
         <Route component={NotFound} />
       </Switch>
     </Suspense>
