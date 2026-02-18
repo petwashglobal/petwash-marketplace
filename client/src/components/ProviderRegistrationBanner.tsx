@@ -324,7 +324,7 @@ export default function ProviderRegistrationBanner({
         </div>
         
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700 text-white">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white border-gray-200 text-gray-900">
             <ApplicationForm
               t={t}
               isRTL={isRTL}
@@ -432,7 +432,7 @@ export default function ProviderRegistrationBanner({
         </div>
 
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700 text-white">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white border-gray-200 text-gray-900">
             <ApplicationForm
               t={t}
               isRTL={isRTL}
@@ -530,7 +530,7 @@ export default function ProviderRegistrationBanner({
       </div>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-700 text-white">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white border-gray-200 text-gray-900">
           <ApplicationForm
             t={t}
             isRTL={isRTL}
@@ -592,7 +592,7 @@ function ApplicationForm({
       <div className="space-y-6 mt-4" dir={isRTL ? "rtl" : "ltr"}>
         {platform === "all" && (
           <div>
-            <Label className="text-gray-300 mb-3 block">
+            <Label className="text-gray-700 mb-3 block">
               {t("providerBanner.serviceType")}
             </Label>
             <div className="grid grid-cols-2 gap-3">
@@ -604,17 +604,17 @@ function ApplicationForm({
                   onClick={() => { if (!type.comingSoon) setSelectedType(type.id); }}
                   className={`p-4 rounded-xl border-2 transition-all ${
                     type.comingSoon
-                      ? "border-gray-800 opacity-50 cursor-not-allowed"
+                      ? "border-gray-200 opacity-50 cursor-not-allowed"
                       : selectedType === type.id
-                        ? "border-cyan-500 bg-cyan-500/20"
-                        : "border-gray-700 hover:border-gray-600"
+                        ? "border-cyan-500 bg-cyan-50"
+                        : "border-gray-200 hover:border-gray-300"
                   }`}
                 >
                   <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${type.color} flex items-center justify-center mb-2 mx-auto`}>
                     <type.icon className="w-5 h-5 text-white" />
                   </div>
-                  <div className="text-white font-medium text-sm">{type.title}</div>
-                  {type.comingSoon && <div className="text-amber-400 text-[10px] font-semibold mt-1">{isRTL ? 'בקרוב' : 'Coming Soon'}</div>}
+                  <div className="text-gray-900 font-medium text-sm">{type.title}</div>
+                  {type.comingSoon && <div className="text-amber-600 text-[10px] font-semibold mt-1">{isRTL ? 'בקרוב' : 'Coming Soon'}</div>}
                 </button>
               ))}
             </div>
@@ -623,21 +623,21 @@ function ApplicationForm({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label className="text-gray-300">{t("providerBanner.firstName")}</Label>
+            <Label className="text-gray-700">{t("providerBanner.firstName")}</Label>
             <Input
               value={formData.firstName}
               onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-              className="bg-gray-800 border-gray-700 text-white mt-1"
+              className="bg-white border-gray-300 text-gray-900 mt-1"
               placeholder={t("providerBanner.firstNamePlaceholder")}
               required
             />
           </div>
           <div>
-            <Label className="text-gray-300">{t("providerBanner.lastName")}</Label>
+            <Label className="text-gray-700">{t("providerBanner.lastName")}</Label>
             <Input
               value={formData.lastName}
               onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-              className="bg-gray-800 border-gray-700 text-white mt-1"
+              className="bg-white border-gray-300 text-gray-900 mt-1"
               placeholder={t("providerBanner.lastNamePlaceholder")}
               required
             />
@@ -645,8 +645,8 @@ function ApplicationForm({
         </div>
 
         <div>
-          <Label className="text-gray-300 mb-2 block flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-cyan-400" />
+          <Label className="text-gray-700 mb-2 block flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-cyan-600" />
             {t("providerBanner.serviceArea")}
           </Label>
           <GooglePlacesAutocomplete
@@ -657,7 +657,7 @@ function ApplicationForm({
             }}
             placeholder={t("providerBanner.serviceAreaPlaceholder")}
             country={['il']}
-            className="[&_input]:bg-gray-800 [&_input]:border-gray-700 [&_input]:text-white [&_input]:placeholder:text-gray-500"
+            className="[&_input]:bg-white [&_input]:border-gray-300 [&_input]:text-gray-900 [&_input]:placeholder:text-gray-400"
           />
           <p className="text-xs text-gray-500 mt-1">
             {t("providerBanner.serviceAreaHint")}
@@ -666,16 +666,16 @@ function ApplicationForm({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label className="text-gray-300">{t("providerBanner.yearsExperience")}</Label>
+            <Label className="text-gray-700">{t("providerBanner.yearsExperience")}</Label>
             <Input
               value={formData.experience}
               onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
-              className="bg-gray-800 border-gray-700 text-white mt-1"
+              className="bg-white border-gray-300 text-gray-900 mt-1"
               placeholder={t("providerBanner.yearsExperiencePlaceholder")}
             />
           </div>
           <div className="flex items-end">
-            <p className="text-xs text-gray-400 pb-2">
+            <p className="text-xs text-gray-500 pb-2">
               {t("providerBanner.serviceAreaAffects")}
             </p>
           </div>
@@ -683,23 +683,23 @@ function ApplicationForm({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label className="text-gray-300">{t("providerBanner.email")}</Label>
+            <Label className="text-gray-700">{t("providerBanner.email")}</Label>
             <Input
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="bg-gray-800 border-gray-700 text-white mt-1"
+              className="bg-white border-gray-300 text-gray-900 mt-1"
               placeholder="email@example.com"
               required
             />
           </div>
           <div>
-            <Label className="text-gray-300">{t("providerBanner.phone")}</Label>
+            <Label className="text-gray-700">{t("providerBanner.phone")}</Label>
             <Input
               type="tel"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="bg-gray-800 border-gray-700 text-white mt-1"
+              className="bg-white border-gray-300 text-gray-900 mt-1"
               placeholder="05X-XXX-XXXX"
               required
             />
@@ -707,35 +707,35 @@ function ApplicationForm({
         </div>
 
         <div>
-          <Label className="text-gray-300">{t("providerBanner.aboutYourself")}</Label>
+          <Label className="text-gray-700">{t("providerBanner.aboutYourself")}</Label>
           <Textarea
             value={formData.aboutMe}
             onChange={(e) => setFormData({ ...formData, aboutMe: e.target.value })}
-            className="bg-gray-800 border-gray-700 text-white mt-1"
+            className="bg-white border-gray-300 text-gray-900 mt-1"
             placeholder={t("providerBanner.aboutYourselfPlaceholder")}
             rows={3}
           />
         </div>
 
         <div>
-          <Label className="text-gray-300">{t("providerBanner.whyJoin")}</Label>
+          <Label className="text-gray-700">{t("providerBanner.whyJoin")}</Label>
           <Textarea
             value={formData.whyJoinPetWash}
             onChange={(e) => setFormData({ ...formData, whyJoinPetWash: e.target.value })}
-            className="bg-gray-800 border-gray-700 text-white mt-1"
+            className="bg-white border-gray-300 text-gray-900 mt-1"
             placeholder={t("providerBanner.whyJoinPlaceholder")}
             rows={2}
           />
         </div>
 
         <div className="space-y-3">
-          <Label className="text-gray-300 block mb-2">{t("providerBanner.documentUpload")}</Label>
+          <Label className="text-gray-700 block mb-2">{t("providerBanner.documentUpload")}</Label>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="p-4 rounded-xl bg-gray-800 border border-dashed border-gray-600 hover:border-cyan-500 transition-colors">
+            <div className="p-4 rounded-xl bg-gray-50 border border-dashed border-gray-300 hover:border-cyan-500 transition-colors">
               <label className="cursor-pointer block text-center">
                 <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <span className="text-sm text-gray-400">
+                <span className="text-sm text-gray-500">
                   {t("providerBanner.idDocument")}
                 </span>
                 <input
@@ -745,7 +745,7 @@ function ApplicationForm({
                   onChange={(e) => handleFileChange("id", e.target.files?.[0] || null)}
                 />
                 {documents.id && (
-                  <div className="mt-2 text-xs text-cyan-400 flex items-center justify-center gap-1">
+                  <div className="mt-2 text-xs text-cyan-600 flex items-center justify-center gap-1">
                     <CheckCircle2 className="w-3 h-3" />
                     {documents.id.name.slice(0, 15)}...
                   </div>
@@ -753,10 +753,10 @@ function ApplicationForm({
               </label>
             </div>
 
-            <div className="p-4 rounded-xl bg-gray-800 border border-dashed border-gray-600 hover:border-cyan-500 transition-colors">
+            <div className="p-4 rounded-xl bg-gray-50 border border-dashed border-gray-300 hover:border-cyan-500 transition-colors">
               <label className="cursor-pointer block text-center">
                 <FileText className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <span className="text-sm text-gray-400">
+                <span className="text-sm text-gray-500">
                   {t("providerBanner.certificates")}
                 </span>
                 <input
@@ -766,7 +766,7 @@ function ApplicationForm({
                   onChange={(e) => handleFileChange("certificate", e.target.files?.[0] || null)}
                 />
                 {documents.certificate && (
-                  <div className="mt-2 text-xs text-cyan-400 flex items-center justify-center gap-1">
+                  <div className="mt-2 text-xs text-cyan-600 flex items-center justify-center gap-1">
                     <CheckCircle2 className="w-3 h-3" />
                     {documents.certificate.name.slice(0, 15)}...
                   </div>
@@ -774,10 +774,10 @@ function ApplicationForm({
               </label>
             </div>
 
-            <div className="p-4 rounded-xl bg-gray-800 border border-dashed border-gray-600 hover:border-cyan-500 transition-colors">
+            <div className="p-4 rounded-xl bg-gray-50 border border-dashed border-gray-300 hover:border-cyan-500 transition-colors">
               <label className="cursor-pointer block text-center">
                 <Shield className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <span className="text-sm text-gray-400">
+                <span className="text-sm text-gray-500">
                   {t("providerBanner.insuranceOptional")}
                 </span>
                 <input
@@ -787,7 +787,7 @@ function ApplicationForm({
                   onChange={(e) => handleFileChange("insurance", e.target.files?.[0] || null)}
                 />
                 {documents.insurance && (
-                  <div className="mt-2 text-xs text-cyan-400 flex items-center justify-center gap-1">
+                  <div className="mt-2 text-xs text-cyan-600 flex items-center justify-center gap-1">
                     <CheckCircle2 className="w-3 h-3" />
                     {documents.insurance.name.slice(0, 15)}...
                   </div>
@@ -797,17 +797,17 @@ function ApplicationForm({
           </div>
         </div>
 
-        <div className="space-y-3 p-4 rounded-xl bg-gray-800/50">
-          <Label className="text-gray-300 block">{t("providerBanner.additionalDetails")}</Label>
+        <div className="space-y-3 p-4 rounded-xl bg-gray-50">
+          <Label className="text-gray-700 block">{t("providerBanner.additionalDetails")}</Label>
           
           <div className="flex items-center gap-3">
             <Checkbox
               id="hasVehicle"
               checked={formData.hasVehicle}
               onCheckedChange={(checked) => setFormData({ ...formData, hasVehicle: checked })}
-              className="border-gray-600"
+              className="border-gray-300"
             />
-            <label htmlFor="hasVehicle" className="text-gray-300 text-sm cursor-pointer">
+            <label htmlFor="hasVehicle" className="text-gray-700 text-sm cursor-pointer">
               {t("providerBanner.hasVehicle")}
             </label>
           </div>
@@ -817,9 +817,9 @@ function ApplicationForm({
               id="hasPetExperience"
               checked={formData.hasPetExperience}
               onCheckedChange={(checked) => setFormData({ ...formData, hasPetExperience: checked })}
-              className="border-gray-600"
+              className="border-gray-300"
             />
-            <label htmlFor="hasPetExperience" className="text-gray-300 text-sm cursor-pointer">
+            <label htmlFor="hasPetExperience" className="text-gray-700 text-sm cursor-pointer">
               {t("providerBanner.hasPetExperience")}
             </label>
           </div>
@@ -829,37 +829,37 @@ function ApplicationForm({
               id="hasFirstAid"
               checked={formData.hasFirstAid}
               onCheckedChange={(checked) => setFormData({ ...formData, hasFirstAid: checked })}
-              className="border-gray-600"
+              className="border-gray-300"
             />
-            <label htmlFor="hasFirstAid" className="text-gray-300 text-sm cursor-pointer">
+            <label htmlFor="hasFirstAid" className="text-gray-700 text-sm cursor-pointer">
               {t("providerBanner.hasFirstAid")}
             </label>
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
-          <h4 className="font-bold text-cyan-400 mb-3 flex items-center gap-2">
+        <div className="p-4 rounded-xl bg-cyan-50 border border-cyan-200">
+          <h4 className="font-bold text-cyan-700 mb-3 flex items-center gap-2">
             <Star className="w-4 h-4" />
             {t("providerBanner.acceptanceRequirements")}
           </h4>
           <ul className="space-y-2">
             {requirements.map((req, idx) => (
-              <li key={idx} className="flex items-center gap-2 text-gray-300 text-sm">
-                <CheckCircle2 className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+              <li key={idx} className="flex items-center gap-2 text-gray-700 text-sm">
+                <CheckCircle2 className="w-4 h-4 text-cyan-600 flex-shrink-0" />
                 {req}
               </li>
             ))}
           </ul>
         </div>
 
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-purple-500/10 border border-purple-500/30">
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-purple-50 border border-purple-200">
           <Checkbox
             id="agreeToTerms"
             checked={formData.agreeToTerms && formData.agreeToPrivacy}
             onCheckedChange={(checked) => setFormData({ ...formData, agreeToTerms: !!checked, agreeToPrivacy: !!checked })}
-            className="border-purple-500 mt-1"
+            className="border-purple-400 mt-1"
           />
-          <label htmlFor="agreeToTerms" className="text-gray-300 text-sm cursor-pointer">
+          <label htmlFor="agreeToTerms" className="text-gray-700 text-sm cursor-pointer">
             {t("providerBanner.agreeToTerms")}
           </label>
         </div>
