@@ -347,6 +347,9 @@ if (isProduction) {
       // Mark server as ready in development mode
       serverReady = true;
       
+      // Process any pending Google Sheets retry queue items from previous sessions
+      import('./services/googleSheetsIntegration').then(m => m.processStartupRetries()).catch(() => {});
+      
       // Skip the rest of initialization in development mode
       // (Vite handles serving index.html and static assets)
       return;
@@ -391,6 +394,9 @@ if (isProduction) {
     } catch (error) {
       console.error('[Cron] Failed to initialize cron jobs (non-fatal):', error);
     }
+    
+    // 5b2. Process pending Google Sheets retry queue (production)
+    import('./services/googleSheetsIntegration').then(m => m.processStartupRetries()).catch(() => {});
     
     // 5c. Initialize Israeli CPI data - TRULY NON-BLOCKING (fire-and-forget)
     // CRITICAL: Do NOT await - these can be slow and should not delay serverReady
