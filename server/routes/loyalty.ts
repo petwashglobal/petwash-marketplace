@@ -36,6 +36,8 @@ import { requireAdmin } from '../middleware/rbac';
 import { adminAuth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { sendLoyaltyEnrollmentConfirmation, sendClubWelcomeEmail, sendTierUpgradeEmail, sendPurchaseRewardEmail, detectTierUpgrade } from '../email/luxury-email-service';
+import { logLoyaltyEnrollment } from '../services/googleSheetsIntegration';
+import { z } from 'zod';
 
 const router = Router();
 
@@ -221,6 +223,24 @@ router.post('/auto-enroll', async (req: AuthenticatedRequest, res: Response) => 
       }
     } catch (emailError) {
       logger.error('[Loyalty] Failed to send auto-enroll email', { emailError, userId });
+    }
+
+    try {
+      await logLoyaltyEnrollment({
+        memberId: userId,
+        firstName: (displayName || '').split(' ')[0] || '',
+        lastName: (displayName || '').split(' ').slice(1).join(' ') || '',
+        email: email || '',
+        phone: '',
+        enrollmentSource: `auto-enroll-${provider}`,
+        tier: 'bronze',
+        welcomePoints,
+        language: req.headers['accept-language']?.includes('he') ? 'he' : 'en',
+        country: 'IL',
+        memberType: userRole,
+      });
+    } catch (sheetErr) {
+      logger.warn('[Loyalty] Failed to log enrollment to Google Sheets', { sheetErr, userId });
     }
 
     logger.info(`[Loyalty] New user auto-enrolled via ${provider} as ${userRole}`, { userId, welcomePoints });

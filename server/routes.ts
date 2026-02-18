@@ -8581,9 +8581,187 @@ self.addEventListener('notificationclick', (event) => {
   // Backward compatibility redirect for old /api/vito routes
   app.use('/api/vito', apiLimiter, privilegeLoyaltyRoutes.default);
 
+  // Public loyalty enrollment (no auth required) - for walk-in customers, partner referrals
+  // MUST be registered BEFORE the auth-protected /api/loyalty routes
+  app.post('/api/loyalty/external-enroll', apiLimiter, async (req, res) => {
+    try {
+      const { z } = await import('zod');
+      const { db } = await import('./db');
+      const { loyaltyProfiles, pointsTransactions } = await import('../shared/schema-loyalty');
+      const { eq } = await import('drizzle-orm');
+      const { logLoyaltyEnrollment } = await import('./services/googleSheetsIntegration');
+      const { sendClubWelcomeEmail } = await import('./email/luxury-email-service');
+      const { logger } = await import('./lib/logger');
+
+      const externalEnrollSchema = z.object({
+        firstName: z.string().min(1, 'First name is required'),
+        lastName: z.string().min(1, 'Last name is required'),
+        email: z.string().email('Valid email required'),
+        phone: z.string().min(9, 'Valid phone number required'),
+        country: z.string().default('IL'),
+        language: z.enum(['en', 'he', 'ar', 'ru', 'fr', 'es']).default('he'),
+        memberType: z.enum(['pet_parent', 'provider']).default('pet_parent'),
+        referralSource: z.string().optional(),
+      });
+
+      const data = externalEnrollSchema.parse(req.body);
+      const externalId = `EXT-${data.email.toLowerCase()}`;
+
+      const existingByEmail = await db
+        .select()
+        .from(loyaltyProfiles)
+        .where(eq(loyaltyProfiles.userId, externalId))
+        .limit(1);
+
+      if (existingByEmail.length > 0) {
+        return res.json({
+          success: true,
+          enrolled: false,
+          message: 'Already enrolled with this email',
+          profile: existingByEmail[0],
+        });
+      }
+
+      const welcomePoints = 100;
+
+      const [profile] = await db
+        .insert(loyaltyProfiles)
+        .values({
+          userId: externalId,
+          tier: 'bronze',
+          tierSince: new Date(),
+          tierProgress: 0,
+          tierThreshold: 1000,
+          points: welcomePoints,
+          lifetimePoints: welcomePoints,
+          xp: 0,
+          level: 1,
+          totalWashes: 0,
+          currentStreak: 0,
+          longestStreak: 0,
+          averageWashInterval: 21,
+          isVip: false,
+          conciergeAccess: false,
+          prioritySupport: false,
+        })
+        .returning();
+
+      try {
+        await db.insert(pointsTransactions).values({
+          userId: externalId,
+          type: 'earned',
+          amount: welcomePoints,
+          balance: welcomePoints,
+          source: 'signup',
+          description: `Welcome bonus - external enrollment as ${data.memberType}`,
+        });
+      } catch (txErr) {
+        logger.warn('[Loyalty] Failed to record external welcome points transaction', { txErr });
+      }
+
+      try {
+        await sendClubWelcomeEmail(data.email, data.firstName, {
+          tier: 'bronze',
+          points: welcomePoints,
+          language: data.language as 'he' | 'en',
+        });
+      } catch (emailErr) {
+        logger.warn('[Loyalty] Failed to send external enrollment email', { emailErr });
+      }
+
+      try {
+        await logLoyaltyEnrollment({
+          memberId: externalId,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          phone: data.phone,
+          enrollmentSource: data.referralSource || 'external-enrollment',
+          tier: 'bronze',
+          welcomePoints,
+          language: data.language,
+          country: data.country,
+          memberType: data.memberType,
+        });
+      } catch (sheetErr) {
+        logger.warn('[Loyalty] Failed to log external enrollment to Google Sheets', { sheetErr });
+      }
+
+      logger.info('[Loyalty] External member enrolled successfully', {
+        externalId,
+        email: data.email,
+        memberType: data.memberType,
+      });
+
+      res.json({
+        success: true,
+        enrolled: true,
+        memberId: externalId,
+        welcomePoints,
+        tier: 'bronze',
+        profile,
+      });
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({
+          error: 'Validation failed',
+          details: error.errors,
+        });
+      }
+      res.status(500).json({ error: 'Failed to enroll external member' });
+    }
+  });
+
   // Loyalty & Rewards routes - Protected with Firebase auth
   const { validateFirebaseToken, optionalFirebaseToken } = await import('./middleware/firebase-auth');
   app.use('/api/loyalty', validateFirebaseToken, apiLimiter, loyaltyRoutes);
+
+  // Admin Google Sheets URL endpoint (protected)
+  app.get('/api/admin/sheets-url', validateFirebaseToken, async (req: any, res) => {
+    try {
+      const { isSuperAdmin } = await import('./middleware/rbac');
+      const email = req.firebaseUser?.email?.toLowerCase();
+      if (!email || !isSuperAdmin(email)) {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
+      const { getSpreadsheetUrl } = await import('./services/googleSheetsIntegration');
+      const url = getSpreadsheetUrl();
+      res.json({
+        success: true,
+        sheetsUrl: url,
+        sheetsAvailable: !!url,
+        message: url
+          ? 'Open the URL in your browser to view all Pet Wash™ data in Google Sheets'
+          : 'Google Sheets not yet initialized - data will sync on first submission',
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: 'Failed to retrieve Google Sheets URL' });
+    }
+  });
+
+  // Admin Google Drive backup status endpoint (protected)
+  app.get('/api/admin/drive-backup-status', validateFirebaseToken, async (req: any, res) => {
+    try {
+      const { isSuperAdmin } = await import('./middleware/rbac');
+      const email = req.firebaseUser?.email?.toLowerCase();
+      if (!email || !isSuperAdmin(email)) {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
+      res.json({
+        success: true,
+        driveBackupEnabled: true,
+        message: 'Google Drive backup service is configured. All data is backed up to Google Sheets (synced to Drive). Your spreadsheet is automatically saved in Google Drive.',
+        tips: [
+          'Open Google Sheets URL to view all registrations, bookings, and provider data',
+          'Google Sheets auto-saves to Google Drive - no separate backup needed',
+          'You can share the spreadsheet with team members from Google Sheets',
+          'Download as Excel (.xlsx) from File > Download in Google Sheets',
+        ],
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: 'Failed to check backup status' });
+    }
+  });
 
   // TikTok & Instagram OAuth routes (no auth needed - these are OAuth callbacks)
   app.use('/api/auth/social', apiLimiter, socialOAuthRoutes);

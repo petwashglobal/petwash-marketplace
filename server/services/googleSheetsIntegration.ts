@@ -28,6 +28,7 @@ const SHEETS = {
   STATEMENTS: 'E-Statements',
   RECEIPTS: 'Receipts & Transactions',
   IDENTITY_VERIFICATIONS: 'Identity Verifications (KYC)',
+  LOYALTY_ENROLLMENTS: 'Loyalty Enrollments',
 } as const;
 
 interface GoogleSheetsClient {
@@ -206,6 +207,11 @@ async function initializeSheetHeaders(sheets: any, spreadsheetId: string) {
       'Timestamp', 'Verification ID', 'User ID', 'First Name', 'Last Name', 'Email',
       'Document Type', 'Country', 'Selfie URL', 'ID Photo URL', 'Biometric Score',
       'Biometric Match Status', 'Verification Status', 'Manual Review Required'
+    ],
+    [SHEETS.LOYALTY_ENROLLMENTS]: [
+      'Timestamp', 'Member ID', 'First Name', 'Last Name', 'Email', 'Phone',
+      'Enrollment Source', 'Tier', 'Welcome Points', 'Language', 'Country',
+      'Member Type', 'Status'
     ],
   };
 
@@ -753,6 +759,30 @@ export async function logIdentityVerification(verification: {
 }
 
 /**
+ * Loyalty Enrollment Logging
+ */
+export async function logLoyaltyEnrollment(enrollment: {
+  memberId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  enrollmentSource: string;
+  tier: string;
+  welcomePoints: number;
+  language: string;
+  country: string;
+  memberType: string;
+  status?: string;
+}) {
+  return appendFormSubmission(SHEETS.LOYALTY_ENROLLMENTS, {
+    ...enrollment,
+    welcomePoints: String(enrollment.welcomePoints),
+    status: enrollment.status || 'Active',
+  });
+}
+
+/**
  * Get spreadsheet URL for admin dashboard
  */
 export function getSpreadsheetUrl(): string | null {
@@ -781,6 +811,7 @@ export const GoogleSheetsService = {
   logStatement,
   logReceipt,
   logIdentityVerification,
+  logLoyaltyEnrollment,
   getSpreadsheetUrl,
   getPendingRetryCount,
   processStartupRetries,
