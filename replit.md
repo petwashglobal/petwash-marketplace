@@ -1,7 +1,7 @@
 # Pet Wash™ - Premium Organic Pet Care Ecosystem
 
 ## Overview
-Pet Wash™ is an enterprise platform designed for the luxury pet care industry. It offers a global, scalable ecosystem for various services including IoT wash stations, pet sitting, walking, and AI-powered pet avatar creation. The platform centralizes critical functionalities such as authentication, payments, AI services, compliance, and franchise management, underpinned by a 7-Star Loyalty System and robust security. Its primary ambition is to become the leading global provider of luxury pet care, initially focusing on the Israeli market.
+Pet Wash™ is an enterprise platform for the luxury pet care industry, offering a global, scalable ecosystem for IoT wash stations, pet sitting, walking, and AI-powered pet avatar creation. It centralizes authentication, payments, AI services, compliance, and franchise management, supported by a 7-Star Loyalty System and robust security. The project aims to be the leading global luxury pet care provider, starting with the Israeli market.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -90,7 +90,8 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Enterprise Features**: Multi-country/currency, franchise management, IoT monitoring, secure document management, KYC, automated bookkeeping, Israeli Tax Compliance, bank reconciliation, invoicing, VAT reclaim.
 - **Payment Gateway Architecture**: Nayax Israel is the exclusive payment gateway, with 72-hour escrow.
 - **K9000 IoT Integration**: Cloud management, real-time status, remote control, AI predictive maintenance, 7-star luxury LED ecosystem.
-- **Security & Compliance**: Google reCAPTCHA v3, Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025, AI monitoring, GDPR consent, blockchain-style audit trail. Optional Two-Factor Authentication (2FA) via SMS + Email.
+- **Security & Compliance**: Google reCAPTCHA v3, Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025, AI monitoring, GDPR consent, blockchain-style audit trail. Optional Two-Factor Authentication (2FA) via SMS + Email. Transaction OTP verification for high-value operations.
+- **Transaction OTP System**: SMS + Email 6-digit OTP verification for sensitive transactions, server-side verified, 5-minute expiry, 5-attempt max, 30-second resend cooldown, rate limiting, Redis-backed with one-time-use tokens.
 - **Unified Luxury Booking System**: Enterprise-grade booking with loyalty tiers, policies, 72-hour escrow, GPS activation, multi-driver dispatch, IoT unlock tokens, dynamic surge pricing, and progressive provider payouts.
 - **Employee Expense Management System**: Israeli Tax Authority compliant with OCR receipt scanning and cryptographic audit trail.
 - **Document Management System**: RBAC, Google Cloud Storage integration, access audit logging, and DocuSeal e-signature.
@@ -100,11 +101,11 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Authentication & Authorization**: RBAC middleware with hardcoded super admins and database-driven role assignments. Optional 2FA (SMS + Email OTP) for management and providers.
 - **Registration Confirmation Emails**: Luxury confirmation emails from support@petwash.co.il for all registration types.
 - **Israeli Contractor Compliance System**: Marketplace broker model preventing employee misclassification, with tax verification, National Insurance tracking, commission calculation, independence scoring, compliance audits, risk monitoring, and SHA-256 audit trails.
-- **Unified Talent Marketplace System 2026**: All-in-one marketplace system (`src/marketplace/petwash_talent_marketplace_system_2026.tsx`) covering 7 platforms with backend API registration, frontend React components, route wrappers, and QA validation.
-- **Pet Sitter Profile Pages**: Airbnb-style luxury profile component (`src/modules/pet-sitter/PetSitterProfilePage.tsx`) with hero gallery, services toggle, reviews, and booking card.
-- **Multi-Platform Marketplace View**: Unified marketplace page (`src/modules/platforms/PetWashTalentMarketplacePage.tsx`) showing contractors across all 7 platforms with color-coded branding, responsive grid layout, and demo profiles.
-- **MadPaws-Style Provider Search**: API at `/api/marketplace-bookings/search/providers` with real-time availability filtering, profile enrichment, and pagination. Frontend at `/sitter-suite/browse` displays provider cards with Hebrew names, bios, locations, and pricing.
-- **Octopus Global Brain Engine**: Unified backend booking/financial engine at `/api/octopus/v1/*`. All financial writes flow through Octopus Brain. Features: unified booking creation with 15% flat platform fee, atomic wallet debit/credit with race-safe conditional updates, immutable financial ledger, invoice stub generation, provider search with KYC enforcement, idempotency protection on bookings and wallet ops, multi-platform separation.
+- **Unified Talent Marketplace System 2026**: All-in-one marketplace system covering 7 platforms with backend API registration, frontend React components, route wrappers, and QA validation.
+- **Pet Sitter Profile Pages**: Airbnb-style luxury profile component with hero gallery, services toggle, reviews, and booking card.
+- **Multi-Platform Marketplace View**: Unified marketplace page showing contractors across all 7 platforms with color-coded branding, responsive grid layout, and demo profiles.
+- **MadPaws-Style Provider Search**: API with real-time availability filtering, profile enrichment, and pagination. Frontend displays provider cards with Hebrew names, bios, locations, and pricing.
+- **Octopus Global Brain Engine**: Unified backend booking/financial engine. All financial writes flow through Octopus Brain. Features: unified booking creation with 15% flat platform fee, atomic wallet debit/credit with race-safe conditional updates, immutable financial ledger, invoice stub generation, provider search with KYC enforcement, idempotency protection on bookings and wallet ops, multi-platform separation.
 - **Financial Reconciliation Service**: Links escrow → payout → VAT → receipt with unified reconciliationId. Monthly cross-check reports, invoice sequence verification, B2B threshold compliance, blockchain-style report chaining with SHA-256 hashes.
 - **Data Retention Service**: GDPR/Israeli Privacy Law 2025 automated purge engine with defined retention policies and legal hold management.
 - **iOS PWA**: Progressive Web App with service worker, manifest.json with role-based shortcuts, iOS Safari install prompt, Android beforeinstallprompt native prompt.

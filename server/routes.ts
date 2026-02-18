@@ -8955,6 +8955,10 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/ai-verification', validateFirebaseToken, apiLimiter, aiPayoutVerificationRoutes);
   app.use('/api/israeli-compliance', validateFirebaseToken, apiLimiter, israeliCompliance2025Routes);
   
+  // Transaction OTP Verification - SMS/Email OTP for high-value transactions
+  const transactionOTPRoutes = await import('./routes/transaction-otp');
+  app.use('/api/transaction-otp', validateFirebaseToken, apiLimiter, transactionOTPRoutes.default);
+  
   // Google Forms Configuration - Admin-managed embedded Google Forms
   const googleFormsRoutes = await import('./routes/google-forms');
   app.use(apiLimiter, googleFormsRoutes.default);
