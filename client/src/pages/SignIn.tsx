@@ -64,6 +64,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyAvailable] = useState(isPasskeySupported());
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
+  const [webviewBlocked, setWebviewBlocked] = useState(false);
   const [phoneMode, setPhoneMode] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
@@ -612,21 +613,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       const isIOSDevice = isIOS();
       
       if (isReplitWebview) {
-        logger.info(`[Auth] Replit webview detected - social login not supported, showing browser prompt`);
-        const webviewMessages: Record<string, { title: string; desc: string }> = {
-          en: { title: 'Open in browser', desc: 'Social login requires a full browser. Tap "Open in browser" at the top right, or use phone number login below.' },
-          he: { title: 'פתחו בדפדפן', desc: 'התחברות עם רשתות חברתיות דורשת דפדפן מלא. לחצו על "Open in browser" בפינה הימנית העליונה, או השתמשו בהתחברות עם מספר טלפון.' },
-          ar: { title: 'افتح في المتصفح', desc: 'يتطلب تسجيل الدخول عبر الشبكات الاجتماعية متصفحًا كاملاً. انقر على "Open in browser" في الزاوية العلوية اليمنى، أو استخدم تسجيل الدخول برقم الهاتف.' },
-          es: { title: 'Abrir en navegador', desc: 'El inicio de sesión social requiere un navegador completo. Toque "Open in browser" en la esquina superior derecha, o use el inicio de sesión con número de teléfono.' },
-          fr: { title: 'Ouvrir dans le navigateur', desc: 'La connexion sociale nécessite un navigateur complet. Appuyez sur "Open in browser" en haut à droite, ou utilisez la connexion par téléphone.' },
-          ru: { title: 'Откройте в браузере', desc: 'Вход через соцсети требует полного браузера. Нажмите "Open in browser" в правом верхнем углу или используйте вход по номеру телефона.' },
-        };
-        const msg = webviewMessages[language] || webviewMessages.en;
-        toast({
-          title: msg.title,
-          description: msg.desc,
-          duration: 8000,
-        });
+        logger.info(`[Auth] Replit webview detected - social login not supported, switching to phone mode`);
+        setWebviewBlocked(true);
+        setPhoneMode(true);
         setSocialLoading(null);
         return;
       }
@@ -639,12 +628,15 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         return;
       }
       
+      if (isIOSDevice) {
+        logger.info(`[Auth] iOS device detected, using redirect for ${provider} (best for Safari)`);
+        sessionStorage.setItem('pw_auth_pending_redirect', 'true');
+        await signInWithBestMethod(auth, authProvider, 'redirect');
+        return;
+      }
+      
       try {
-        if (isIOSDevice) {
-          logger.info(`[Auth] iOS device detected, trying popup first for ${provider} (2026 best practice)`);
-        } else {
-          logger.info(`[Auth] Using popup auth for ${provider} (desktop browser)`);
-        }
+        logger.info(`[Auth] Using popup auth for ${provider} (desktop browser)`);
         userCredential = await signInWithPopup(auth, authProvider);
       } catch (popupErr: any) {
         const fallbackCodes = [
@@ -1383,6 +1375,23 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             </p>
             <div className="w-12 h-[1px] bg-neutral-300 mx-auto mt-3" />
           </motion.div>
+
+          {webviewBlocked && (
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-3"
+            >
+              <Alert className="border-amber-200 bg-amber-50">
+                <Info className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-sm text-amber-800">
+                  {language === 'he' 
+                    ? 'התחברות עם Gmail/Apple/Facebook דורשת דפדפן מלא (Safari/Chrome). השתמשו בהתחברות עם מספר טלפון למטה.'
+                    : 'Gmail/Apple/Facebook login requires a full browser (Safari/Chrome). Use phone number login below.'}
+                </AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
 
           <motion.div
             initial={{ opacity: 0, y: 10 }}
