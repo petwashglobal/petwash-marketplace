@@ -39,7 +39,7 @@ export interface PlaceDetails {
 
 let googleMapsLoadPromise: Promise<void> | null = null;
 
-function loadGoogleMapsScript(): Promise<void> {
+export function loadGoogleMapsScript(language?: string, region?: string): Promise<void> {
   if (window.google && window.google.maps && window.google.maps.places) {
     return Promise.resolve();
   }
@@ -47,6 +47,9 @@ function loadGoogleMapsScript(): Promise<void> {
   if (googleMapsLoadPromise) {
     return googleMapsLoadPromise;
   }
+
+  const lang = language || 'he';
+  const reg = region || 'IL';
 
   googleMapsLoadPromise = new Promise<void>(async (resolve, reject) => {
     let apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
@@ -63,7 +66,7 @@ function loadGoogleMapsScript(): Promise<void> {
     }
 
     if (!apiKey) {
-      console.error('[Google Places] No API key configured');
+      console.error('[Google Places] No API key configured - autocomplete will not work');
       googleMapsLoadPromise = null;
       reject(new Error('No API key'));
       return;
@@ -71,36 +74,67 @@ function loadGoogleMapsScript(): Promise<void> {
 
     const existingScript = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
     if (existingScript) {
-      const check = () => {
+      if (window.google && window.google.maps && window.google.maps.places) {
+        console.log('[Google Places] Script already loaded, Places API ready');
+        resolve();
+        return;
+      }
+
+      if (window.google && window.google.maps && !window.google.maps.places) {
+        console.warn('[Google Places] Existing script loaded without Places library - removing and reloading');
+        existingScript.remove();
+        loadFreshScript();
+        return;
+      }
+
+      const check = (attempts = 0) => {
         if (window.google && window.google.maps && window.google.maps.places) {
+          console.log('[Google Places] Existing script loaded, Places API ready');
           resolve();
+        } else if (attempts > 50) {
+          console.warn('[Google Places] Existing script timed out - removing and reloading');
+          existingScript.remove();
+          loadFreshScript();
         } else {
-          setTimeout(check, 100);
+          setTimeout(() => check(attempts + 1), 100);
         }
       };
       check();
       return;
     }
 
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      const check = () => {
-        if (window.google && window.google.maps && window.google.maps.places) {
-          resolve();
-        } else {
-          setTimeout(check, 50);
-        }
+    function loadFreshScript() {
+      const scriptUrl = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=weekly&language=${lang}&region=${reg}`;
+      console.log('[Google Places] Loading script with language=' + lang + ', region=' + reg);
+
+      const script = document.createElement('script');
+      script.src = scriptUrl;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        const check = (attempts = 0) => {
+          if (window.google && window.google.maps && window.google.maps.places) {
+            console.log('[Google Places] Script loaded successfully, Places API ready');
+            resolve();
+          } else if (attempts > 100) {
+            console.error('[Google Places] Script loaded but Places API not available after 5s');
+            googleMapsLoadPromise = null;
+            reject(new Error('Places API not available'));
+          } else {
+            setTimeout(() => check(attempts + 1), 50);
+          }
+        };
+        check();
       };
-      check();
-    };
-    script.onerror = () => {
-      googleMapsLoadPromise = null;
-      reject(new Error('Failed to load Google Maps'));
-    };
-    document.head.appendChild(script);
+      script.onerror = (e) => {
+        console.error('[Google Places] Script failed to load - check API key restrictions, billing, and CSP', e);
+        googleMapsLoadPromise = null;
+        reject(new Error('Failed to load Google Maps script'));
+      };
+      document.head.appendChild(script);
+    }
+
+    loadFreshScript();
   });
 
   return googleMapsLoadPromise;
@@ -201,6 +235,7 @@ export function GooglePlacesAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const isSelectingRef = useRef(false);
   const skipNextOnChangeRef = useRef(false);
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
@@ -209,9 +244,17 @@ export function GooglePlacesAutocomplete({
 
   useEffect(() => {
     injectPacStyles();
+    setLoadError(null);
     loadGoogleMapsScript()
-      .then(() => setIsReady(true))
-      .catch(() => {});
+      .then(() => {
+        setIsReady(true);
+        setLoadError(null);
+        console.log('[Google Places] Autocomplete component ready');
+      })
+      .catch((err) => {
+        console.error('[Google Places] Failed to initialize autocomplete:', err.message);
+        setLoadError(err.message);
+      });
   }, []);
 
   const emitUpdatedDetails = useCallback((base: PlaceDetails, apt: string, zip: string) => {
@@ -312,6 +355,7 @@ export function GooglePlacesAutocomplete({
 
       ac.addListener('place_changed', handlePlaceChanged);
       autocompleteRef.current = ac;
+      console.log('[Google Places] Autocomplete instance created', { countries: country, types: options.types });
 
       const form = inputRef.current.closest('form');
       if (form) {
@@ -480,6 +524,12 @@ export function GooglePlacesAutocomplete({
             </span>
           )}
         </div>
+      )}
+
+      {loadError && !error && (
+        <p className="text-xs text-amber-600 mt-1">
+          {loadError === 'No API key' ? 'Address autocomplete unavailable' : 'Address suggestions loading failed - you can still type manually'}
+        </p>
       )}
 
       {error && (

@@ -406,28 +406,13 @@ function GooglePlacesLocationInput({
       return;
     }
 
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-    if (!apiKey) {
-      console.warn('[MadPaws Search] VITE_GOOGLE_MAPS_API_KEY not configured');
-      return;
-    }
-
-    const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
-    if (existingScript) {
-      existingScript.addEventListener('load', () => setScriptLoaded(true));
-      if ((window as any).google?.maps) setScriptLoaded(true);
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&language=he`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => setScriptLoaded(true);
-    script.onerror = () => {
-      console.warn('[MadPaws Search] Google Maps script failed to load - search will work without autocomplete');
-    };
-    document.head.appendChild(script);
+    import('@/components/ui/google-places-autocomplete').then(({ loadGoogleMapsScript }) => {
+      loadGoogleMapsScript('he', 'IL')
+        .then(() => setScriptLoaded(true))
+        .catch(() => {
+          console.warn('[MadPaws Search] Google Maps script failed to load - search will work without autocomplete');
+        });
+    });
   }, []);
 
   useEffect(() => {
