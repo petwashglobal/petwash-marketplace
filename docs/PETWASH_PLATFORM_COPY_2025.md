@@ -1,5 +1,5 @@
 # Pet Wash™ Platform Marketing Copy 2025
-## Luxury Pet Care Ecosystem - Inspired by MadPaws, Rover, Wag & TrustedHousesitters
+## Pet Wash™ Luxury Pet Care Ecosystem
 
 ---
 
@@ -231,7 +231,7 @@ Book securely and get updates with photos
 **HE:** בהחלט! אנו ממליצים לקבוע פגישת היכרות חינם עם השמרטף הפוטנציאלי. זה מאפשר לך לראות איך הם מתקשרים עם חיית המחמד שלך.
 
 ### Q5: How does GPS tracking work for walks?
-**EN:** After each walk, you'll receive a Rover Card with a map showing the exact route, distance, duration, potty breaks, and cute photos of your pup!
+**EN:** After each walk, you'll receive a Pet Wash™ Walk Report with a map showing the exact route, distance, duration, potty breaks, and cute photos of your pup!
 
 **HE:** אחרי כל טיול, תקבל כרטיס דיווח עם מפה שמציגה את המסלול המדויק, המרחק, משך הזמן, הפסקות שירותים, ותמונות חמודות של הכלב שלך!
 
@@ -303,12 +303,12 @@ Tel Aviv | Jerusalem | Haifa | Herzliya | Ramat Gan | Netanya | Beer Sheva | Ash
 
 ---
 
-## COMPETITOR INSPIRATION SOURCES
+## INDUSTRY INSPIRATION SOURCES
 
-1. **MadPaws (Australia)** - Pet type selector, service grid, trust badges
-2. **Rover (USA)** - GPS tracking, Rover Card reports, $25K guarantee concept
-3. **Wag (USA)** - On-demand booking, AI matching, activity reports  
-4. **TrustedHousesitters (Global)** - Worldwide reach, 24/7 vet support, verified reviews
+1. **Industry leaders** - Pet type selector, service grid, trust badges
+2. **Industry leaders** - GPS tracking, walk report cards, $25K guarantee concept
+3. **Industry leaders** - On-demand booking, AI matching, activity reports  
+4. **Industry leaders** - Worldwide reach, 24/7 vet support, verified reviews
 
 ---
 

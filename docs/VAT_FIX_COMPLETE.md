@@ -30,7 +30,7 @@
 
 6. **client/src/components/EmergencyWalkBooking.tsx**
    - Display label: 'מע"מ (17%)' / 'VAT (17%)' → 'מע"מ (18%)' / 'VAT (18%)'
-   - **BONUS FIX:** Updated commission labels to match new Rover rates:
+   - **BONUS FIX:** Updated commission labels to match industry standard rates:
      - Owner Fee: 6% → 0% (simpler pricing!)
      - Walker Deduction: 18% → 20%
 
@@ -128,11 +128,11 @@
 
 ## Commission Rate Updates (Bonus Fix)
 
-While fixing VAT, also updated **Walk My Pet™** to match USA market leader Rover:
+While fixing VAT, also updated **Walk My Pet™** to match industry standards:
 
 | Item | Old Rate | New Rate | Status |
 |------|----------|----------|---------|
-| Platform Commission | 24% | **20%** | ✅ Matches Rover |
+| Platform Commission | 24% | **20%** | ✅ Industry standard |
 | Owner Service Fee | 6% | **0%** | ✅ Simpler pricing |
 | Walker Payout | 76% | **80%** | ✅ Industry-leading |
 | Israeli VAT | 17% | **18%** | ✅ Compliant |

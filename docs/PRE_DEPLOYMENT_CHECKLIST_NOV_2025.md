@@ -2,7 +2,7 @@
 
 ## 🎯 Industry Standards Comparison
 
-Based on research of top USA pet care companies: **Petco**, **PetSmart**, **Rover**, **Wag**, **MoeGo**
+Based on research of top USA pet care companies and industry leaders
 
 ---
 
@@ -13,8 +13,8 @@ Based on research of top USA pet care companies: **Petco**, **PetSmart**, **Rove
 | Division | Status | Industry Standard | Pet Wash™ Implementation |
 |----------|--------|-------------------|-------------------------|
 | **K9000 Wash Station** | ⚠️ TEST | Self-service booking (Evolution, iClean) | ✅ Has booking + IoT monitoring |
-| **Walk My Pet™** | ⚠️ TEST | Wag/Rover marketplace | ✅ GPS tracking, real-time updates |
-| **The Sitter Suite™** | ⚠️ TEST | Rover boarding/sitting | ✅ AI triage + Nayax split payment |
+| **Walk My Pet™** | ⚠️ TEST | Pet Wash™ marketplace | ✅ GPS tracking, real-time updates |
+| **The Sitter Suite™** | ⚠️ TEST | Pet Wash™ marketplace | ✅ AI triage + Nayax split payment |
 | **PetTrek™** | ⚠️ TEST | Uber for pets | ✅ Ride matching + live ETA |
 | **The Plush Lab™** | ⚠️ TEST | UNIQUE (no competitor) | ✅ AI avatar creator |
 | **Paw Finder™** | ⚠️ TEST | Lost pet databases | ✅ FREE service |
@@ -47,7 +47,7 @@ Based on research of top USA pet care companies: **Petco**, **PetSmart**, **Rove
 | **PWA Support** | ⚠️ Limited | ✅ YES (technician PWA) |
 | **Native-like UX** | ⚠️ Limited | ✅ Apple-style animations |
 | **Offline Capability** | ❌ Rare | ✅ E-sign works offline |
-| **GPS Tracking** | ✅ Wag, Rover | ✅ Real-time walk/ride tracking |
+| **GPS Tracking** | ✅ Industry standard | ✅ Real-time walk/ride tracking |
 
 **Status**: ✅ **SUPERIOR** - Full PWA with offline e-signatures
 
@@ -412,4 +412,4 @@ Based on research of top USA pet care companies: **Petco**, **PetSmart**, **Rove
 
 **Created**: November 5, 2025  
 **By**: Pet Wash™ Engineering Team  
-**Based on**: Petco, PetSmart, Rover, Wag, MoeGo best practices
+**Based on**: Industry best practices

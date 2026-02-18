@@ -2,20 +2,20 @@
 ## Adopting USA Market Leaders' Best Practices (2025-2026)
 
 **Date:** November 2, 2025  
-**Objective:** Transform Pet Wash™ into Israel's #1 pet services super-app by adopting proven features from Rover, Wag, and CitizenShipper, adapted for Israeli market + legal compliance
+**Objective:** Transform Pet Wash™ into Israel's #1 pet services super-app by adopting proven features from industry leaders, adapted for Israeli market + legal compliance
 
 ---
 
 ## I. COMPETITIVE ANALYSIS - USA MARKET LEADERS
 
-### **1. ROVER.COM** - Market Leader (80% Share)
+### **1. Industry Market Leaders** (80% Share)
 
 #### **Core Features to Adopt**
 
 **A. Booking System**
 ```typescript
-// Key Features from Rover
-interface RoverBookingSystem {
+// Key Features from Industry Leaders
+interface IndustryBookingSystem {
   // Walker Selection
   customWalkerBrowsing: boolean; // ✅ Browse profiles with bios, reviews
   freePreMeetings: boolean; // ✅ Meet & Greet before booking
@@ -31,7 +31,7 @@ interface RoverBookingSystem {
   };
   
   // Safety & Protection
-  roverGuarantee: {
+  platformGuarantee: {
     vetCareReimbursement: 25000; // Up to $25K USD
     deductible: 250;
     coveragePeriod: '30_days';
@@ -54,21 +54,21 @@ interface RoverBookingSystem {
 - **Payment:** Stripe Connect for marketplace escrow ✅ *Easy to integrate*
 - **Maps:** Google Maps SDK for GPS tracking ✅ *We already use this*
 
-**C. What Makes Rover #1:**
-- Lower commissions (20% vs Wag 40%) = More walkers join
+**C. Industry Best Practices:**
+- Lower commissions (20% vs 40%) = More walkers join
 - Long-term relationships (recurring bookings)
 - Full-featured website + app (we're web-first ✅)
 - **Adoption for Israel:** Keep 15% flat commission
 
 ---
 
-### **2. WAG!** - On-Demand Specialist (20% Share)
+### **2. On-Demand Specialist Model** (20% Share)
 
 #### **Core Features to Adopt**
 
 **A. ASAP/On-Demand Booking**
 ```typescript
-interface WagOnDemandFeatures {
+interface OnDemandFeatures {
   // Emergency Walks
   emergencyBooking: {
     arrivalTime: '90_minutes_or_less';
@@ -84,7 +84,7 @@ interface WagOnDemandFeatures {
     timeStamps: DateTime[];
   };
   
-  // Report Cards (Superior to Rover)
+  // Report Cards (Industry-leading)
   walkReport: {
     gpsMapWithFlags: string; // Visual route with bathroom markers
     writtenBehaviorReport: string;
@@ -123,13 +123,13 @@ interface WagOnDemandFeatures {
 
 ---
 
-### **3. CITIZENSHIPPER** - Transport Marketplace Leader
+### **3. Transport Marketplace Leader Model**
 
 #### **Core Features to Adopt**
 
 **A. Reverse Auction Bidding System**
 ```typescript
-interface CitizenShipperBiddingSystem {
+interface TransportBiddingSystem {
   // Job Posting
   transportRequest: {
     pickupLocation: GeoCoordinates;
@@ -190,7 +190,7 @@ interface CitizenShipperBiddingSystem {
 - **Notifications:** Multi-channel (email, SMS, push)
 - **Analytics:** Mixpanel + Customer.io
 
-**C. What Makes CitizenShipper #1:**
+**C. What Makes This Model #1:**
 - **No transaction fees** = Drivers love it
 - **Reverse auction** = Lowest prices for customers
 - **Route stacking** = Drivers optimize earnings
@@ -199,8 +199,8 @@ interface CitizenShipperBiddingSystem {
 **D. Adoption for PetTrek™:**
 - ✅ Keep our Uber-style instant matching (better UX)
 - ✅ Add optional "Request Bids" mode for non-urgent transport
-- ✅ Implement 15% commission (fair vs 0% CitizenShipper, sustainable)
-- ✅ Copy their $1K protection plan + 24/7 vet access
+- ✅ Implement 15% commission (fair vs 0% peer-to-peer model, sustainable)
+- ✅ Copy industry $1K protection plan + 24/7 vet access
 
 ---
 
@@ -555,22 +555,22 @@ interface PetWashMenuStructure {
 
 ## III. FEATURE ADOPTION MATRIX
 
-### **From ROVER → Walk My Pet™ & Sitter Suite™**
+### **Industry Features → Walk My Pet™ & Sitter Suite™**
 
-| Feature | Rover Implementation | Pet Wash™ Adaptation |
+| Feature | Industry Standard | Pet Wash™ Adaptation |
 |---------|---------------------|---------------------|
 | **Walker Profiles** | Bios, photos, reviews, experience | ✅ Add Israeli certifications (city permits) |
 | **Meet & Greets** | Free pre-booking meetings | ✅ Implement as optional step in booking flow |
 | **GPS Tracking** | Live location during walks | ✅ Already implemented with blockchain audit |
-| **Report Cards** | Walk summaries, distance, notes | ✅ Enhance with bathroom markers (from Wag) |
+| **Report Cards** | Walk summaries, distance, notes | ✅ Enhance with bathroom markers |
 | **In-App Messaging** | Direct owner-walker chat | ✅ Already have Firebase Cloud Messaging |
-| **Rover Guarantee** | $25K vet care reimbursement | ✅ Adopt as "Pet Wash™ Protection Plan" |
+| **Industry Guarantee Model** | $25K vet care reimbursement | ✅ Adopt as "Pet Wash™ Protection Plan" |
 | **24/7 Support** | Phone + live chat | ✅ Add WhatsApp Business integration (Hebrew) |
 | **Payment Escrow** | Stripe Connect | ✅ Integrate Stripe Connect alongside Nayax |
 
-### **From WAG → Walk My Pet™**
+### **On-Demand Features → Walk My Pet™**
 
-| Feature | Wag Implementation | Pet Wash™ Adaptation |
+| Feature | Industry Standard | Pet Wash™ Adaptation |
 |---------|-------------------|---------------------|
 | **ASAP Booking** | 90-min arrival guarantee | ✅ Implement "Emergency Walk" mode with surge pricing |
 | **GPS Bathroom Flags** | Mark exact pee/poo spots on map | ✅ ADD THIS - super impressive for owners! |
@@ -579,9 +579,9 @@ interface PetWashMenuStructure {
 | **In-App Tipping** | Tip walkers post-service | ✅ Add tipping feature (10-20% suggested) |
 | **Automated Matching** | AI assigns nearest walker | ✅ Implement as fallback if no manual selection |
 
-### **From CITIZENSHIPPER → PetTrek™**
+### **Transport Marketplace Features → PetTrek™**
 
-| Feature | CitizenShipper Implementation | Pet Wash™ Adaptation |
+| Feature | Industry Standard | Pet Wash™ Adaptation |
 |---------|------------------------------|---------------------|
 | **Reverse Auction** | Drivers bid on jobs | ✅ Add "Request Bids" mode for non-urgent transport |
 | **Multi-Channel Notifications** | Email, SMS, push | ✅ Already implemented via Firebase + Twilio |
@@ -590,6 +590,7 @@ interface PetWashMenuStructure {
 | **24/7 Vet Access** | FirstVet telehealth | ✅ Partner with Israeli vet telehealth (Vetted, Vet4Pet) |
 | **USDA Certification** | Automated via Jotform | ✅ Adapt for Israeli Ministry of Agriculture permits |
 | **Driver Subscriptions** | Revenue model (no transaction fees) | ❌ Skip - keep our 20% commission model (more sustainable) |
+
 
 ---
 
@@ -677,7 +678,7 @@ export class StripeConnectService {
 }
 ```
 
-#### **B. GPS Bathroom Markers (Wag-Style)**
+#### **B. GPS Bathroom Markers (Industry-Style)**
 ```typescript
 // client/src/components/WalkTrackingMap.tsx
 import { GoogleMap, Marker, Polyline } from '@react-google-maps/api';
@@ -1085,7 +1086,7 @@ export function WalkMyPetHowItWorks() {
 
 ### **KPIs to Track (Benchmarked Against USA Leaders)**
 
-| Metric | Rover Benchmark | Wag Benchmark | Pet Wash™ Target |
+| Metric | Industry Benchmark A | Industry Benchmark B | Pet Wash™ Target |
 |--------|----------------|---------------|------------------|
 | **Platform Commission** | 20% | 40% | 15% flat commission |
 | **Walker Retention** | 80% annual | 50% annual | 85% annual (better than both) |
@@ -1147,7 +1148,7 @@ export function WalkMyPetHowItWorks() {
 
 ## IX. CONCLUSION
 
-By adopting the best features from **Rover** (market dominance), **Wag** (on-demand innovation), and **CitizenShipper** (peer-to-peer efficiency), Pet Wash™ will become:
+By adopting the best features from industry leaders (market dominance, on-demand innovation, and peer-to-peer efficiency), Pet Wash™ will become:
 
 ✅ **Israel's First 7-Star Pet Services Super-App**  
 ✅ **Uber-Style Standalone Divisions** (clear hierarchy, luxury experience)  
