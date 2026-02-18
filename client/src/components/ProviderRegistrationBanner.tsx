@@ -349,8 +349,8 @@ export default function ProviderRegistrationBanner({
   if (variant === "hero") {
     return (
       <section className={`relative overflow-hidden ${className}`}>
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-black" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-500/20 via-transparent to-purple-500/20" />
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-black pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-500/20 via-transparent to-purple-500/20 pointer-events-none" />
         
         <div className="relative z-10 max-w-7xl mx-auto px-4 py-20">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -401,12 +401,20 @@ export default function ProviderRegistrationBanner({
                 {providerTypes.map((type, idx) => (
                   <div
                     key={type.id}
+                    role="button"
+                    tabIndex={type.comingSoon ? -1 : 0}
                     onClick={() => {
                       if (type.comingSoon) return;
                       setSelectedType(type.id);
                       setIsFormOpen(true);
                     }}
-                    className={`group p-6 rounded-2xl border transition-all duration-300 ${type.comingSoon ? 'cursor-default opacity-60 bg-white/3 border-white/5' : 'cursor-pointer bg-white/5 border-white/10 hover:border-cyan-500/50 hover:scale-105 hover:bg-white/10'}`}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !type.comingSoon) {
+                        setSelectedType(type.id);
+                        setIsFormOpen(true);
+                      }
+                    }}
+                    className={`group p-6 rounded-2xl border transition-all duration-300 ${type.comingSoon ? 'cursor-default opacity-60 bg-white/3 border-white/5' : 'cursor-pointer bg-white/5 border-white/10 hover:border-cyan-500/50 hover:scale-105 hover:bg-white/10 active:scale-95'}`}
                   >
                     <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${type.color} flex items-center justify-center mb-4 ${type.comingSoon ? '' : 'group-hover:scale-110'} transition-transform`}>
                       <type.icon className="w-7 h-7 text-white" />
@@ -448,8 +456,8 @@ export default function ProviderRegistrationBanner({
 
   return (
     <section className={`relative overflow-hidden py-16 ${className}`}>
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-900/95 via-gray-800/95 to-black/95 backdrop-blur-xl" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-cyan-500/10 via-transparent to-purple-500/10" />
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900/95 via-gray-800/95 to-black/95 backdrop-blur-xl pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-cyan-500/10 via-transparent to-purple-500/10 pointer-events-none" />
       
       <div className="relative z-10 max-w-6xl mx-auto px-4">
         <div className="text-center mb-12">
@@ -473,12 +481,20 @@ export default function ProviderRegistrationBanner({
           {providerTypes.map((type) => (
             <div
               key={type.id}
+              role="button"
+              tabIndex={type.comingSoon ? -1 : 0}
               onClick={() => {
                 if (type.comingSoon) return;
                 setSelectedType(type.id);
                 setIsFormOpen(true);
               }}
-              className={`group p-6 rounded-2xl border transition-all duration-300 ${type.comingSoon ? 'cursor-default opacity-60 bg-white/3 border-white/5' : 'cursor-pointer bg-white/5 border-white/10 hover:border-cyan-500/50 hover:scale-105'}`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !type.comingSoon) {
+                  setSelectedType(type.id);
+                  setIsFormOpen(true);
+                }
+              }}
+              className={`group p-6 rounded-2xl border transition-all duration-300 ${type.comingSoon ? 'cursor-default opacity-60 bg-white/3 border-white/5' : 'cursor-pointer bg-white/5 border-white/10 hover:border-cyan-500/50 hover:scale-105 active:scale-95'}`}
             >
               <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${type.color} flex items-center justify-center mb-4`}>
                 <type.icon className="w-6 h-6 text-white" />
