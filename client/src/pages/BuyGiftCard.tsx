@@ -243,7 +243,7 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
                     onPlaceSelected={handlePlaceSelected}
                     placeholder={t('giftCards.addressPlaceholder', language)}
                     className="w-full"
-                    country={['il']}
+                    country={['il', 'us', 'gb', 'au', 'ca']}
                     required
                   />
                   {formData.address && (

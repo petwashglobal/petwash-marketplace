@@ -260,7 +260,7 @@ export default function StationRegistryDashboard() {
                     }
                   }}
                   placeholder="Start typing address..."
-                  country={['il']}
+                  country={['il', 'us', 'gb', 'au', 'ca']}
                 />
               </div>
               <div>

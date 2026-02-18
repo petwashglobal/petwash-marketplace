@@ -1024,7 +1024,7 @@ export default function MyAccount() {
                           });
                         }}
                         placeholder={isHebrew ? 'הקלד כתובת...' : 'Start typing your address...'}
-                        country={['il']}
+                        country={['il', 'us', 'gb', 'au', 'ca']}
                         showExtraFields={true}
                         apartmentLabel={isHebrew ? 'דירה / קומה / כניסה' : 'Apt / Unit / Floor'}
                         postalCodeLabel={isHebrew ? 'מיקוד' : 'Postal Code'}
@@ -1213,7 +1213,7 @@ export default function MyAccount() {
                         }));
                       }}
                       placeholder={isHebrew ? 'הקלד כתובת...' : 'Start typing your address...'}
-                      country={['il']}
+                      country={['il', 'us', 'gb', 'au', 'ca']}
                       showExtraFields={true}
                       apartmentLabel={isHebrew ? 'דירה / קומה / כניסה' : 'Apt / Unit / Floor'}
                       postalCodeLabel={isHebrew ? 'מיקוד' : 'Postal Code'}

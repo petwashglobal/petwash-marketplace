@@ -89,70 +89,68 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
   const formatRating = (value: number) => value.toFixed(1);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
-      {/* Page background gradient */}
-      <div className="pointer-events-none fixed inset-0 bg-gradient-to-b from-slate-900 via-slate-950 to-black opacity-90" />
+    <div className="min-h-screen bg-white text-gray-900">
 
       <main className="relative mx-auto max-w-6xl px-4 pb-24 pt-8 sm:px-6 lg:px-8">
         {/* Top breadcrumb */}
-        <nav className="mb-4 text-xs text-slate-400">
-          <span className="cursor-pointer hover:text-slate-200">
+        <nav className="mb-4 text-xs text-gray-500">
+          <span className="cursor-pointer hover:text-gray-700">
             PetWash
           </span>
-          <span className="mx-1 text-slate-600">/</span>
-          <span className="cursor-pointer hover:text-slate-200">
+          <span className="mx-1 text-gray-300">/</span>
+          <span className="cursor-pointer hover:text-gray-700">
             Pet sitters
           </span>
-          <span className="mx-1 text-slate-600">/</span>
-          <span className="text-slate-200">{locationLabel}</span>
+          <span className="mx-1 text-gray-300">/</span>
+          <span className="text-gray-700">{locationLabel}</span>
         </nav>
 
         {/* Hero header */}
         <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">
+            <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">
               {sitterName}
             </h1>
-            <p className="mt-1 text-sm text-slate-300">
+            <p className="mt-1 text-sm text-gray-600">
               {sitterTagline}
             </p>
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-300">
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-600">
               <div className="flex items-center gap-1.5">
-                <span className="text-yellow-300">
+                <span className="text-yellow-500">
                   ★
                 </span>
                 <span className="font-medium">
                   {formatRating(ratingAverage)}
                 </span>
-                <span className="text-slate-500">
+                <span className="text-gray-400">
                   ({ratingCount} reviews)
                 </span>
               </div>
-              <span className="h-3 w-px bg-slate-700" />
-              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
+              <span className="h-3 w-px bg-gray-200" />
+              <span className="rounded-full border border-emerald-500/40 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
                 Trusted 7-star host
               </span>
-              <span className="h-3 w-px bg-slate-700" />
+              <span className="h-3 w-px bg-gray-200" />
               <span>{locationLabel}</span>
             </div>
           </div>
 
           {/* Price summary */}
-          <div className="mt-2 flex flex-col items-start gap-1 text-sm text-slate-200 sm:items-end">
+          <div className="mt-2 flex flex-col items-start gap-1 text-sm text-gray-700 sm:items-end">
             <div className="flex items-baseline gap-1">
               <span className="text-lg font-semibold">
                 {nightlyPriceFrom}
               </span>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-gray-500">
                 per night · pets stay at sitter home
               </span>
             </div>
             {dayVisitPriceFrom && (
-              <div className="flex items-baseline gap-1 text-xs text-slate-300">
-                <span className="text-slate-200">
+              <div className="flex items-baseline gap-1 text-xs text-gray-600">
+                <span className="text-gray-700">
                   {dayVisitPriceFrom}
                 </span>
-                <span className="text-slate-500">
+                <span className="text-gray-400">
                   day visit at your home
                 </span>
               </div>
@@ -164,16 +162,16 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
         <section className="mb-10 grid gap-3 sm:grid-cols-3 sm:grid-rows-2">
           {/* Main image */}
           <div className="relative sm:col-span-2 sm:row-span-2">
-            <div className="group h-64 overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 sm:h-full">
+            <div className="group h-64 overflow-hidden rounded-3xl border border-gray-200 bg-gray-100 sm:h-full">
               <img
                 src={heroImageUrl}
                 alt={`${sitterName} with pets`}
                 className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
               />
             </div>
-            <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-white/5" />
-            <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-black/60 px-3 py-1 text-xs text-slate-100 backdrop-blur">
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-xs font-semibold text-black">
+            <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-gray-200" />
+            <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs text-gray-800 backdrop-blur">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-xs font-semibold text-white">
                 PW
               </span>
               <span>Official ⁦Pet Wash™⁩ verified host</span>
@@ -184,7 +182,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
           {galleryImages.slice(0, 3).map((src, index) => (
             <div
               key={index}
-              className="group relative h-28 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 sm:h-full"
+              className="group relative h-28 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 sm:h-full"
             >
               <img
                 src={src}
@@ -202,10 +200,10 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
           <div className="space-y-10">
             {/* About host */}
             <section>
-              <h2 className="text-base font-semibold tracking-tight text-slate-50">
+              <h2 className="text-base font-semibold tracking-tight text-gray-900">
                 About this host
               </h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-200">
+              <p className="mt-3 text-sm leading-relaxed text-gray-700">
                 Welcome to a different level of pet care. {sitterName} offers
                 a private, boutique home environment with hotel style attention
                 to detail. With over{" "}
@@ -215,7 +213,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                 of hands-on experience, your pets are treated as honored guests,
                 not just bookings in a calendar.
               </p>
-              <p className="mt-3 text-sm leading-relaxed text-slate-200">
+              <p className="mt-3 text-sm leading-relaxed text-gray-700">
                 Whether your pet stays in the host home or your sitter moves
                 into your home while you travel, every stay includes
                 personalised routines, calm energy, and constant attention. The
@@ -224,31 +222,31 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                 feeling lived in while you are away.
               </p>
 
-              <dl className="mt-4 grid gap-4 text-xs text-slate-200 sm:grid-cols-3">
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3">
-                  <dt className="text-slate-400">Experience</dt>
+              <dl className="mt-4 grid gap-4 text-xs text-gray-700 sm:grid-cols-3">
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                  <dt className="text-gray-500">Experience</dt>
                   <dd className="mt-1 font-medium">
                     {yearsExperience}+ years
                   </dd>
-                  <dd className="mt-0.5 text-[11px] text-slate-400">
+                  <dd className="mt-0.5 text-[11px] text-gray-500">
                     Trusted by repeat families
                   </dd>
                 </div>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3">
-                  <dt className="text-slate-400">Accepted guests</dt>
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                  <dt className="text-gray-500">Accepted guests</dt>
                   <dd className="mt-1 font-medium">
                     {acceptedPetsSummary}
                   </dd>
-                  <dd className="mt-0.5 text-[11px] text-slate-400">
+                  <dd className="mt-0.5 text-[11px] text-gray-500">
                     Up to {maxPetsPerBooking} pets per booking
                   </dd>
                 </div>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3">
-                  <dt className="text-slate-400">Languages</dt>
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                  <dt className="text-gray-500">Languages</dt>
                   <dd className="mt-1 font-medium">
                     {languages.join(" · ")}
                   </dd>
-                  <dd className="mt-0.5 text-[11px] text-slate-400">
+                  <dd className="mt-0.5 text-[11px] text-gray-500">
                     {responseTimeLabel}
                   </dd>
                 </div>
@@ -257,27 +255,27 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
 
             {/* Why guests trust this sitter */}
             <section>
-              <h2 className="text-base font-semibold tracking-tight text-slate-50">
+              <h2 className="text-base font-semibold tracking-tight text-gray-900">
                 Why ⁦Pet Wash™⁩ guests book this sitter
               </h2>
-              <div className="mt-3 grid gap-3 text-sm text-slate-200 sm:grid-cols-2">
+              <div className="mt-3 grid gap-3 text-sm text-gray-700 sm:grid-cols-2">
                 {highlightBullets.map((item, index) => (
                   <div
                     key={index}
-                    className="flex gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-3"
+                    className="flex gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-3"
                   >
-                    <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 text-xs text-emerald-300">
+                    <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 text-xs text-emerald-600">
                       ✓
                     </div>
                     <p className="text-xs leading-relaxed">{item}</p>
                   </div>
                 ))}
               </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-300">
+              <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-gray-600">
                 {verifiedBadges.map((badge) => (
                   <span
                     key={badge}
-                    className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1"
+                    className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-3 py-1"
                   >
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                     {badge}
@@ -288,18 +286,18 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
 
             {/* Services selector */}
             <section>
-              <h2 className="text-base font-semibold tracking-tight text-slate-50">
+              <h2 className="text-base font-semibold tracking-tight text-gray-900">
                 Services and pricing
               </h2>
 
-              <div className="mt-3 inline-flex rounded-full bg-slate-900/80 p-1 text-xs text-slate-200">
+              <div className="mt-3 inline-flex rounded-full bg-gray-100 p-1 text-xs text-gray-700">
                 <button
                   type="button"
                   onClick={() => setStayType("sitterHome")}
                   className={`flex-1 rounded-full px-4 py-2 transition ${
                     stayType === "sitterHome"
-                      ? "bg-slate-50 text-slate-900 shadow-sm"
-                      : "text-slate-300 hover:text-slate-50"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500 hover:text-gray-900"
                   }`}
                 >
                   Pet stays at host home
@@ -309,30 +307,30 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                   onClick={() => setStayType("ownerHome")}
                   className={`flex-1 rounded-full px-4 py-2 transition ${
                     stayType === "ownerHome"
-                      ? "bg-slate-50 text-slate-900 shadow-sm"
-                      : "text-slate-300 hover:text-slate-50"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500 hover:text-gray-900"
                   }`}
                 >
                   Host stays at your home
                 </button>
               </div>
 
-              <div className="mt-4 grid gap-3 text-xs text-slate-100">
+              <div className="mt-4 grid gap-3 text-xs text-gray-800">
                 {activeServices.map((service) => (
                   <div
                     key={service.id}
-                    className="flex items-start justify-between rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3"
+                    className="flex items-start justify-between rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3"
                   >
                     <div className="max-w-[70%]">
                       <div className="font-medium">{service.label}</div>
                       {service.description && (
-                        <p className="mt-1 text-[11px] text-slate-400">
+                        <p className="mt-1 text-[11px] text-gray-500">
                           {service.description}
                         </p>
                       )}
                     </div>
                     <div className="text-right">
-                      <div className="text-xs text-slate-300">
+                      <div className="text-xs text-gray-500">
                         from
                       </div>
                       <div className="text-sm font-semibold">
@@ -345,18 +343,18 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
 
               {addOns.length > 0 && (
                 <div className="mt-5">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                     Optional add ons
                   </h3>
-                  <div className="mt-3 grid gap-3 text-xs text-slate-100 sm:grid-cols-2">
+                  <div className="mt-3 grid gap-3 text-xs text-gray-800 sm:grid-cols-2">
                     {addOns.map((addOn) => (
                       <label
                         key={addOn.id}
-                        className="flex cursor-pointer items-start gap-2 rounded-2xl border border-slate-800 bg-slate-900/70 px-3 py-3 hover:border-emerald-500/60"
+                        className="flex cursor-pointer items-start gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3 hover:border-emerald-500/60"
                       >
                         <input
                           type="checkbox"
-                          className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-950 text-emerald-500 focus:ring-emerald-500"
+                          className="mt-0.5 h-4 w-4 rounded border-gray-300 bg-white text-emerald-500 focus:ring-emerald-500"
                           disabled
                         />
                         <div className="flex-1">
@@ -365,13 +363,13 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                               {addOn.label}
                             </span>
                             {addOn.priceFrom && (
-                              <span className="text-[11px] text-slate-300">
+                              <span className="text-[11px] text-gray-500">
                                 from {addOn.priceFrom}
                               </span>
                             )}
                           </div>
                           {addOn.description && (
-                            <p className="mt-1 text-[11px] text-slate-400">
+                            <p className="mt-1 text-[11px] text-gray-500">
                               {addOn.description}
                             </p>
                           )}
@@ -385,13 +383,13 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
 
             {/* Home and safety */}
             <section>
-              <h2 className="text-base font-semibold tracking-tight text-slate-50">
+              <h2 className="text-base font-semibold tracking-tight text-gray-900">
                 Home environment and safety
               </h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-200">
+              <p className="mt-3 text-sm leading-relaxed text-gray-700">
                 {homeSummary}
               </p>
-              <ul className="mt-3 grid gap-2 text-xs text-slate-200 sm:grid-cols-2">
+              <ul className="mt-3 grid gap-2 text-xs text-gray-700 sm:grid-cols-2">
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400" />
                   Pets sleep indoors on premium beds or in your preferred setup.
@@ -413,16 +411,16 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
 
             {/* House sitting extras */}
             <section>
-              <h2 className="text-base font-semibold tracking-tight text-slate-50">
+              <h2 className="text-base font-semibold tracking-tight text-gray-900">
                 House sitting extras while you are away
               </h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-200">
+              <p className="mt-3 text-sm leading-relaxed text-gray-700">
                 When you choose house sitting, your sitter becomes your
                 in-residence guardian. They care for all pets in the home, keep
                 your space secure and lived in, and follow your instructions
                 with hotel level precision.
               </p>
-              <ul className="mt-3 grid gap-2 text-xs text-slate-200 sm:grid-cols-2">
+              <ul className="mt-3 grid gap-2 text-xs text-gray-700 sm:grid-cols-2">
                 <li className="flex items-start gap-2">
                   <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400" />
                   Water indoor and outdoor plants on your schedule.
@@ -444,38 +442,38 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
 
             {/* Reviews */}
             <section>
-              <h2 className="text-base font-semibold tracking-tight text-slate-50">
+              <h2 className="text-base font-semibold tracking-tight text-gray-900">
                 Guest reviews
               </h2>
-              <div className="mt-3 flex items-center gap-2 text-sm text-slate-100">
-                <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-300">
+              <div className="mt-3 flex items-center gap-2 text-sm text-gray-800">
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
                   ★ {formatRating(ratingAverage)} average
                 </span>
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-gray-500">
                   Based on {ratingCount} stays booked through PetWash
                 </span>
               </div>
-              <div className="mt-4 grid gap-3 text-xs text-slate-100 sm:grid-cols-2">
+              <div className="mt-4 grid gap-3 text-xs text-gray-800 sm:grid-cols-2">
                 {reviews.slice(0, 4).map((review) => (
                   <article
                     key={review.id}
-                    className="flex flex-col rounded-2xl border border-slate-800 bg-slate-900/70 p-3"
+                    className="flex flex-col rounded-2xl border border-gray-200 bg-gray-50 p-3"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div>
                         <h3 className="text-xs font-semibold">
                           {review.name}
                         </h3>
-                        <p className="text-[11px] text-slate-400">
+                        <p className="text-[11px] text-gray-500">
                           {review.date}
                         </p>
                       </div>
-                      <div className="flex items-center gap-1 text-[11px] text-yellow-300">
+                      <div className="flex items-center gap-1 text-[11px] text-yellow-500">
                         <span>★</span>
                         <span>{formatRating(review.rating)}</span>
                       </div>
                     </div>
-                    <p className="mt-2 line-clamp-5 text-[11px] leading-relaxed text-slate-200">
+                    <p className="mt-2 line-clamp-5 text-[11px] leading-relaxed text-gray-700">
                       {review.text}
                     </p>
                   </article>
@@ -486,27 +484,27 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
 
           {/* Right column - booking card */}
           <aside className="lg:sticky lg:top-20">
-            <div className="rounded-3xl border border-slate-800 bg-slate-950/90 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.7)] backdrop-blur-md">
+            <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-[0_18px_60px_rgba(0,0,0,0.08)] backdrop-blur-md">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-xs text-slate-400">
+                  <div className="text-xs text-gray-500">
                     From
                   </div>
-                  <div className="text-lg font-semibold text-slate-50">
+                  <div className="text-lg font-semibold text-gray-900">
                     {nightlyPriceFrom}
-                    <span className="ml-1 text-xs font-normal text-slate-400">
+                    <span className="ml-1 text-xs font-normal text-gray-500">
                       per night
                     </span>
                   </div>
                 </div>
-                <div className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">
+                <div className="rounded-full border border-emerald-500/40 bg-emerald-50 px-3 py-1 text-[11px] text-emerald-700">
                   7-star host · ⁦Pet Wash™⁩ verified
                 </div>
               </div>
 
               {/* Stay type selector */}
-              <div className="mt-4 text-xs text-slate-100">
-                <label className="mb-1 block text-[11px] uppercase tracking-wide text-slate-400">
+              <div className="mt-4 text-xs text-gray-800">
+                <label className="mb-1 block text-[11px] uppercase tracking-wide text-gray-500">
                   Stay style
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -515,14 +513,14 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                     onClick={() => setStayType("sitterHome")}
                     className={`rounded-2xl border px-3 py-2 text-left text-[11px] transition ${
                       stayType === "sitterHome"
-                        ? "border-emerald-500 bg-slate-900 text-slate-50 shadow-sm"
-                        : "border-slate-700 bg-slate-950 text-slate-300 hover:border-slate-500"
+                        ? "border-emerald-500 bg-white text-gray-900 shadow-sm"
+                        : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-400"
                     }`}
                   >
                     <div className="font-medium">
                       Pet at host home
                     </div>
-                    <div className="mt-0.5 text-[10px] text-slate-400">
+                    <div className="mt-0.5 text-[10px] text-gray-500">
                       Boutique stay at sitter property
                     </div>
                   </button>
@@ -531,14 +529,14 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                     onClick={() => setStayType("ownerHome")}
                     className={`rounded-2xl border px-3 py-2 text-left text-[11px] transition ${
                       stayType === "ownerHome"
-                        ? "border-emerald-500 bg-slate-900 text-slate-50 shadow-sm"
-                        : "border-slate-700 bg-slate-950 text-slate-300 hover:border-slate-500"
+                        ? "border-emerald-500 bg-white text-gray-900 shadow-sm"
+                        : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-400"
                     }`}
                   >
                     <div className="font-medium">
                       Host in your home
                     </div>
-                    <div className="mt-0.5 text-[10px] text-slate-400">
+                    <div className="mt-0.5 text-[10px] text-gray-500">
                       House sitting plus property care
                     </div>
                   </button>
@@ -546,28 +544,28 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
               </div>
 
               {/* Placeholder booking controls - dev can replace with real form/datepicker */}
-              <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-slate-800 text-xs text-slate-100">
-                <div className="flex flex-col gap-1 bg-slate-950 px-3 py-2.5">
-                  <span className="text-[10px] uppercase tracking-wide text-slate-500">
+              <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-gray-200 text-xs text-gray-800">
+                <div className="flex flex-col gap-1 bg-gray-50 px-3 py-2.5">
+                  <span className="text-[10px] uppercase tracking-wide text-gray-400">
                     Check in
                   </span>
-                  <span className="text-[11px] text-slate-300">
+                  <span className="text-[11px] text-gray-600">
                     Add date
                   </span>
                 </div>
-                <div className="flex flex-col gap-1 bg-slate-950 px-3 py-2.5">
-                  <span className="text-[10px] uppercase tracking-wide text-slate-500">
+                <div className="flex flex-col gap-1 bg-gray-50 px-3 py-2.5">
+                  <span className="text-[10px] uppercase tracking-wide text-gray-400">
                     Check out
                   </span>
-                  <span className="text-[11px] text-slate-300">
+                  <span className="text-[11px] text-gray-600">
                     Add date
                   </span>
                 </div>
-                <div className="col-span-2 flex flex-col gap-1 bg-slate-950 px-3 py-2.5">
-                  <span className="text-[10px] uppercase tracking-wide text-slate-500">
+                <div className="col-span-2 flex flex-col gap-1 bg-gray-50 px-3 py-2.5">
+                  <span className="text-[10px] uppercase tracking-wide text-gray-400">
                     Guests
                   </span>
-                  <span className="text-[11px] text-slate-300">
+                  <span className="text-[11px] text-gray-600">
                     Pets and home details
                   </span>
                 </div>
@@ -575,18 +573,18 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
 
               <button
                 type="button"
-                className="mt-4 flex w-full items-center justify-center rounded-2xl bg-emerald-400 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_12px_40px_rgba(16,185,129,0.5)] hover:bg-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-950"
+                className="mt-4 flex w-full items-center justify-center rounded-2xl bg-emerald-400 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_40px_rgba(16,185,129,0.3)] hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-white"
               >
                 Request luxury stay
               </button>
 
-              <p className="mt-2 text-center text-[11px] text-slate-400">
+              <p className="mt-2 text-center text-[11px] text-gray-500">
                 No commitment yet. Your request is only confirmed when
                 the sitter accepts in the ⁦Pet Wash™⁩ app.
               </p>
 
               {/* Price breakdown placeholder */}
-              <div className="mt-4 space-y-1 border-t border-slate-800 pt-3 text-[11px] text-slate-300">
+              <div className="mt-4 space-y-1 border-t border-gray-200 pt-3 text-[11px] text-gray-600">
                 <div className="flex items-center justify-between">
                   <span>Nightly rate (example)</span>
                   <span>{nightlyPriceFrom}</span>
@@ -595,7 +593,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                   <span>⁦Pet Wash™⁩ platform & protection fee</span>
                   <span>Calculated at booking</span>
                 </div>
-                <div className="flex items-center justify-between text-slate-50">
+                <div className="flex items-center justify-between text-gray-900">
                   <span className="font-semibold">
                     Total estimate
                   </span>
@@ -606,9 +604,9 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
               </div>
 
               {/* Safety copy */}
-              <div className="mt-4 rounded-2xl bg-slate-900/80 p-3 text-[11px] text-slate-300">
-                <div className="mb-1 flex items-center gap-1.5 text-slate-100">
-                  <span className="text-emerald-300">⛑</span>
+              <div className="mt-4 rounded-2xl bg-gray-50 p-3 text-[11px] text-gray-600">
+                <div className="mb-1 flex items-center gap-1.5 text-gray-800">
+                  <span className="text-emerald-500">⛑</span>
                   <span className="font-semibold">
                     Safety and peace of mind
                   </span>

@@ -361,7 +361,7 @@ export default function WalkerBooking() {
                         }
                       }}
                       placeholder={t('booking.location.enterAddress')}
-                      country={['il']}
+                      country={['il', 'us', 'gb', 'au', 'ca']}
                       className="flex-1"
                       showExtraFields={true}
                       apartmentLabel="דירה / קומה / כניסה"

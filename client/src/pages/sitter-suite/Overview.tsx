@@ -156,18 +156,18 @@ export default function SitterSuiteOverview() {
         </div>
 
         {/* Stats Section */}
-        <div className="py-16 bg-gradient-to-r from-purple-600 via-purple-700 to-purple-800">
+        <div className="py-16 bg-gradient-to-r from-fuchsia-50 via-purple-50 to-pink-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="luxury-grid-3">
               {stats.map((stat, index) => (
                 <div key={index} className={`text-center luxury-animate-fade-in luxury-delay-${index + 1}`}>
-                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
+                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-purple-100 flex items-center justify-center">
                     {stat.icon}
                   </div>
-                  <div className="luxury-heading-md text-white mb-2">
+                  <div className="luxury-heading-md text-gray-900 mb-2">
                     {stat.title}
                   </div>
-                  <div className="luxury-text-body text-purple-100">
+                  <div className="luxury-text-body text-gray-600">
                     {stat.description}
                   </div>
                 </div>
@@ -177,19 +177,19 @@ export default function SitterSuiteOverview() {
         </div>
 
         {/* VALUE PROPOSITION SECTION - All translations verified by Gemini AI */}
-        <div className="py-16 bg-gradient-to-br from-slate-900 via-purple-900/50 to-slate-900">
+        <div className="py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/20 backdrop-blur-sm rounded-full border border-amber-400/30 mb-4" data-testid="badge-first-in-israel">
-                <Plane className="h-4 w-4 text-amber-400" />
-                <span className="text-sm font-bold text-amber-300">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 rounded-full border border-amber-200 mb-4" data-testid="badge-first-in-israel">
+                <Plane className="h-4 w-4 text-amber-600" />
+                <span className="text-sm font-bold text-amber-700">
                   {t('marketplace.firstInIsrael')}
                 </span>
               </div>
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4" data-testid="heading-value-proposition">
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4" data-testid="heading-value-proposition">
                 {t('marketplace.valueProposition')}
               </h2>
-              <p className="text-lg text-gray-300 max-w-3xl mx-auto">
+              <p className="text-lg text-gray-600 max-w-3xl mx-auto">
                 {t('marketplace.valuePropositionSubtitle')}
               </p>
             </div>
@@ -241,26 +241,26 @@ export default function SitterSuiteOverview() {
               ].map((item, i) => (
                 <div 
                   key={i} 
-                  className="bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 p-6 hover:bg-white/15 transition-all duration-300"
+                  className="bg-gray-50 rounded-2xl border border-gray-200 p-6 hover:bg-gray-100 transition-all duration-300"
                   data-testid={`value-prop-card-${i}`}
                 >
                   <div className={`w-14 h-14 mb-4 bg-gradient-to-br ${item.color} rounded-xl flex items-center justify-center shadow-lg`}>
                     <item.icon className="w-7 h-7 text-white" />
                   </div>
-                  <h3 className="text-lg font-bold text-white mb-3">{t(item.titleKey)}</h3>
-                  <p className="text-sm text-gray-300">{t(item.descKey)}</p>
+                  <h3 className="text-lg font-bold text-gray-900 mb-3">{t(item.titleKey)}</h3>
+                  <p className="text-sm text-gray-600">{t(item.descKey)}</p>
                 </div>
               ))}
             </div>
 
             {/* Vacation CTA */}
-            <div className="mt-12 bg-gradient-to-r from-pink-600/30 via-purple-600/30 to-pink-600/30 rounded-2xl border-2 border-pink-400/30 p-8">
+            <div className="mt-12 bg-gradient-to-r from-pink-50 via-purple-50 to-pink-50 rounded-2xl border-2 border-pink-200 p-8">
               <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
                 <div className="text-center lg:text-right">
-                  <h3 className="text-2xl font-black text-white mb-2" data-testid="heading-vacation-cta">
+                  <h3 className="text-2xl font-black text-gray-900 mb-2" data-testid="heading-vacation-cta">
                     🏖️ {t('marketplace.vacationCta')}
                   </h3>
-                  <p className="text-lg text-pink-100">
+                  <p className="text-lg text-gray-600">
                     {t('marketplace.vacationCtaDesc')}
                   </p>
                 </div>

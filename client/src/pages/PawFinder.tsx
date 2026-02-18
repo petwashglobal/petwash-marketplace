@@ -357,7 +357,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                       onChange={(value) => setFormData({ ...formData, location: value })}
                       onPlaceSelected={(place: PlaceDetails) => setFormData({ ...formData, location: place.formattedAddress })}
                       placeholder={isHebrew ? "הקלד כתובת..." : "Start typing address..."}
-                      country={['il']}
+                      country={['il', 'us', 'gb', 'au', 'ca']}
                       required
                     />
                   </div>

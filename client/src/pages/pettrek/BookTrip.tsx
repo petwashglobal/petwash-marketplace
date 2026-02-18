@@ -386,7 +386,7 @@ export default function BookTrip() {
                           value={pickupAddress}
                           onChange={handlePickupSelect}
                           placeholder={isHebrew ? 'מאיפה לאסוף?' : 'Where to pick up?'}
-                          country={['il']}
+                          country={['il', 'us', 'gb', 'au', 'ca']}
                           className="w-full"
                         />
                       </div>
@@ -406,7 +406,7 @@ export default function BookTrip() {
                           value={dropoffAddress}
                           onChange={handleDropoffSelect}
                           placeholder={isHebrew ? 'לאן להגיע?' : 'Where to drop off?'}
-                          country={['il']}
+                          country={['il', 'us', 'gb', 'au', 'ca']}
                           className="w-full"
                         />
                       </div>

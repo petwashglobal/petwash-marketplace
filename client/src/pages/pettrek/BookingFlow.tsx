@@ -207,7 +207,7 @@ export default function PetTrekBookingFlow() {
                       setPickupAddress(value);
                     }}
                     placeholder="רחוב, מספר, עיר"
-                    country={['il']}
+                    country={['il', 'us', 'gb', 'au', 'ca']}
                     className="rounded-xl"
                   />
                 </div>
@@ -219,7 +219,7 @@ export default function PetTrekBookingFlow() {
                       setDropoffAddress(value);
                     }}
                     placeholder="רחוב, מספר, עיר"
-                    country={['il']}
+                    country={['il', 'us', 'gb', 'au', 'ca']}
                     className="rounded-xl"
                   />
                 </div>

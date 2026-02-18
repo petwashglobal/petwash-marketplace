@@ -260,7 +260,7 @@ export default function BecomeProvider() {
       <Layout>
         <div className="min-h-screen relative overflow-hidden">
           {/* Luxury Background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
+          <div className="absolute inset-0 bg-gray-50" />
           <div className="absolute inset-0 opacity-30" style={{
             backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(198, 166, 100, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(245, 158, 11, 0.15) 0%, transparent 50%)'
           }} />
@@ -271,9 +271,9 @@ export default function BecomeProvider() {
               <div 
                 className="p-8 sm:p-10 rounded-3xl text-center backdrop-blur-xl"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)'
+                  background: 'white',
+                  border: '1px solid rgba(0,0,0,0.1)',
+                  boxShadow: '0 25px 50px -12px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.5)'
                 }}
               >
                 {/* Icon */}
@@ -281,11 +281,11 @@ export default function BecomeProvider() {
                   <Sparkles className="w-10 h-10 text-white" />
                 </div>
                 
-                <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
                   {isHebrew ? 'הצטרף לצוות ⁦Pet Wash™⁩' : 'Join ⁦Pet Wash™⁩ Team'}
                 </h2>
                 
-                <p className="text-gray-300 text-lg mb-8 leading-relaxed">
+                <p className="text-gray-600 text-lg mb-8 leading-relaxed">
                   {isHebrew 
                     ? 'התחבר כדי להתחיל את מסע ההצטרפות לרשת הספקים המובילה בישראל'
                     : 'Sign in to start your journey with Israel\'s leading pet care provider network'}
@@ -294,22 +294,22 @@ export default function BecomeProvider() {
                 {/* Benefits Preview */}
                 <div className="grid grid-cols-3 gap-4 mb-8">
                   <div className="text-center">
-                    <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-white/10 flex items-center justify-center">
+                    <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-gray-100 flex items-center justify-center">
                       <Heart className="w-6 h-6 text-pink-400" />
                     </div>
-                    <p className="text-xs text-gray-400">{isHebrew ? 'גמישות' : 'Flexibility'}</p>
+                    <p className="text-xs text-gray-500">{isHebrew ? 'גמישות' : 'Flexibility'}</p>
                   </div>
                   <div className="text-center">
-                    <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-white/10 flex items-center justify-center">
+                    <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-gray-100 flex items-center justify-center">
                       <Award className="w-6 h-6 text-amber-400" />
                     </div>
-                    <p className="text-xs text-gray-400">{isHebrew ? 'הכנסה' : 'Income'}</p>
+                    <p className="text-xs text-gray-500">{isHebrew ? 'הכנסה' : 'Income'}</p>
                   </div>
                   <div className="text-center">
-                    <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-white/10 flex items-center justify-center">
+                    <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-gray-100 flex items-center justify-center">
                       <Shield className="w-6 h-6 text-emerald-400" />
                     </div>
-                    <p className="text-xs text-gray-400">{isHebrew ? 'ביטוח' : 'Insurance'}</p>
+                    <p className="text-xs text-gray-500">{isHebrew ? 'ביטוח' : 'Insurance'}</p>
                   </div>
                 </div>
                 
@@ -336,7 +336,7 @@ export default function BecomeProvider() {
       <Layout>
         <div className="min-h-screen relative overflow-hidden">
           {/* Luxury Background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-900 via-teal-900 to-slate-900" />
+          <div className="absolute inset-0 bg-emerald-50" />
           <div className="absolute inset-0 opacity-30" style={{
             backgroundImage: 'radial-gradient(circle at 30% 40%, rgba(52, 211, 153, 0.3) 0%, transparent 50%)'
           }} />
@@ -346,9 +346,9 @@ export default function BecomeProvider() {
               <div 
                 className="p-8 sm:p-10 rounded-3xl text-center backdrop-blur-xl"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
+                  background: 'white',
+                  border: '1px solid rgba(0,0,0,0.1)',
+                  boxShadow: '0 25px 50px -12px rgba(0,0,0,0.1)'
                 }}
               >
                 {/* Animated Success Icon */}
@@ -356,11 +356,11 @@ export default function BecomeProvider() {
                   <CheckCircle2 className="w-14 h-14 text-white" />
                 </div>
                 
-                <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
                   {isHebrew ? 'הבקשה נשלחה בהצלחה!' : 'Application Submitted!'}
                 </h2>
                 
-                <p className="text-gray-300 text-lg mb-8 leading-relaxed">
+                <p className="text-gray-600 text-lg mb-8 leading-relaxed">
                   {isHebrew 
                     ? 'תודה על הבקשה שלך להצטרף לצוות ⁦Pet Wash™⁩. נבדוק את הפרטים שלך ונחזור אליך תוך 2-3 ימי עסקים.'
                     : 'Thank you for applying to join the ⁦Pet Wash™⁩ team. We will review your details and get back to you within 2-3 business days.'}
@@ -378,7 +378,7 @@ export default function BecomeProvider() {
                   <Link href="/">
                     <Button 
                       variant="outline" 
-                      className="w-full py-5 text-lg rounded-2xl border-white/30 text-white hover:bg-white/10"
+                      className="w-full py-5 text-lg rounded-2xl border-gray-300 text-gray-700 hover:bg-gray-100"
                       data-testid="button-back-home"
                     >
                       {isHebrew ? 'חזרה לדף הבית' : 'Back to Home'}
@@ -397,7 +397,7 @@ export default function BecomeProvider() {
     <Layout>
       <div className="min-h-screen relative overflow-hidden">
         {/* Luxury Dark Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
+        <div className="absolute inset-0 bg-gray-50" />
         <div className="absolute inset-0 opacity-20" style={{
           backgroundImage: 'radial-gradient(circle at 10% 20%, rgba(168, 85, 247, 0.15) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.15) 0%, transparent 40%)'
         }} />
@@ -413,14 +413,14 @@ export default function BecomeProvider() {
                 </span>
               </div>
               
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-4">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-4">
                 {isHebrew ? 'הפוך לספק ' : 'Become a '}
                 <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 bg-clip-text text-transparent">
                   ⁦Pet Wash™⁩
                 </span>
               </h1>
               
-              <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+              <p className="text-gray-500 text-lg max-w-2xl mx-auto">
                 {isHebrew 
                   ? 'הצטרף לרשת ספקי השירות המובילה בישראל. הכנסה גמישה, ביטוח מלא, וקהילה תומכת.'
                   : 'Join Israel\'s leading pet care provider network. Flexible income, full insurance, and supportive community.'}
@@ -440,17 +440,17 @@ export default function BecomeProvider() {
                             ? 'bg-gradient-to-br from-emerald-400 to-green-600 shadow-lg shadow-emerald-500/30'
                             : step.id === currentStep 
                               ? 'bg-gradient-to-br from-amber-400 to-orange-600 shadow-lg shadow-amber-500/30'
-                              : 'bg-slate-700/50 border border-slate-600'
+                              : 'bg-gray-100 border border-gray-300'
                         }`}
                       >
                         {step.id < currentStep ? (
                           <CheckCircle2 className="w-6 h-6 text-white" />
                         ) : (
-                          <step.icon className={`w-6 h-6 ${step.id === currentStep ? 'text-white' : 'text-slate-400'}`} />
+                          <step.icon className={`w-6 h-6 ${step.id === currentStep ? 'text-white' : 'text-gray-400'}`} />
                         )}
                       </div>
                       <span className={`text-xs hidden sm:block font-medium ${
-                        step.id <= currentStep ? 'text-white' : 'text-slate-500'
+                        step.id <= currentStep ? 'text-gray-900' : 'text-gray-400'
                       }`}>
                         {isHebrew ? step.titleHe : step.title}
                       </span>
@@ -461,7 +461,7 @@ export default function BecomeProvider() {
                       <div className={`w-8 sm:w-16 lg:w-24 h-0.5 mx-2 sm:mx-4 ${
                         step.id < currentStep 
                           ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' 
-                          : 'bg-slate-700'
+                          : 'bg-gray-200'
                       }`} />
                     )}
                   </div>
@@ -478,9 +478,9 @@ export default function BecomeProvider() {
             <div 
               className="rounded-3xl p-6 sm:p-8 lg:p-10 backdrop-blur-xl"
               style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)'
+                background: 'white',
+                border: '1px solid rgba(0,0,0,0.1)',
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.08)'
               }}
             >
               <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -493,20 +493,20 @@ export default function BecomeProvider() {
                       <User className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-white">
+                      <h2 className="text-2xl font-bold text-gray-900">
                         {isHebrew ? 'פרטים אישיים' : 'Personal Information'}
                       </h2>
-                      <p className="text-gray-400 text-sm">{isHebrew ? 'ספר לנו קצת על עצמך' : 'Tell us a bit about yourself'}</p>
+                      <p className="text-gray-500 text-sm">{isHebrew ? 'ספר לנו קצת על עצמך' : 'Tell us a bit about yourself'}</p>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
-                      <Label className="text-gray-300 font-medium">{isHebrew ? 'שם פרטי' : 'First Name'} *</Label>
+                      <Label className="text-gray-600 font-medium">{isHebrew ? 'שם פרטי' : 'First Name'} *</Label>
                       <Input 
                         {...form.register('firstName')}
                         placeholder={isHebrew ? 'ישראל' : 'John'}
-                        className="mt-2 h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                        className="mt-2 h-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                         data-testid="input-first-name"
                       />
                       {form.formState.errors.firstName && (
@@ -514,11 +514,11 @@ export default function BecomeProvider() {
                       )}
                     </div>
                     <div>
-                      <Label className="text-gray-300 font-medium">{isHebrew ? 'שם משפחה' : 'Last Name'} *</Label>
+                      <Label className="text-gray-600 font-medium">{isHebrew ? 'שם משפחה' : 'Last Name'} *</Label>
                       <Input 
                         {...form.register('lastName')}
                         placeholder={isHebrew ? 'ישראלי' : 'Doe'}
-                        className="mt-2 h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                        className="mt-2 h-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                         data-testid="input-last-name"
                       />
                       {form.formState.errors.lastName && (
@@ -529,12 +529,12 @@ export default function BecomeProvider() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
-                      <Label className="text-gray-300 font-medium">{isHebrew ? 'אימייל' : 'Email'} *</Label>
+                      <Label className="text-gray-600 font-medium">{isHebrew ? 'אימייל' : 'Email'} *</Label>
                       <Input 
                         type="email"
                         {...form.register('email')}
                         placeholder="email@example.com"
-                        className="mt-2 h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                        className="mt-2 h-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                         data-testid="input-email"
                       />
                       {form.formState.errors.email && (
@@ -542,7 +542,7 @@ export default function BecomeProvider() {
                       )}
                     </div>
                     <div>
-                      <Label className="text-gray-300 font-medium">{isHebrew ? 'טלפון' : 'Phone'} *</Label>
+                      <Label className="text-gray-600 font-medium">{isHebrew ? 'טלפון' : 'Phone'} *</Label>
                       <PhoneInput
                         value={form.watch('phoneNumber')}
                         onChange={(value) => form.setValue('phoneNumber', value)}
@@ -568,11 +568,11 @@ export default function BecomeProvider() {
                       />
                     </div>
                     <div>
-                      <Label className="text-gray-300 font-medium">{isHebrew ? 'תעודת זהות / פספורט / רישיון נהיגה' : 'ID / Passport / Driver\'s License'} *</Label>
+                      <Label className="text-gray-600 font-medium">{isHebrew ? 'תעודת זהות / פספורט / רישיון נהיגה' : 'ID / Passport / Driver\'s License'} *</Label>
                       <Input 
                         {...form.register('nationalId')}
                         placeholder={isHebrew ? 'מספר תעודה מזהה' : '123456789'}
-                        className="mt-2 h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                        className="mt-2 h-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                         data-testid="input-national-id"
                       />
                     </div>
@@ -598,19 +598,19 @@ export default function BecomeProvider() {
                       label={isHebrew ? 'כתובת' : 'Street Address'}
                       placeholder={isHebrew ? 'הקלד כתובת...' : 'Start typing your address...'}
                       required
-                      country={['il']}
+                      country={['il', 'us', 'gb', 'au', 'ca']}
                       error={form.formState.errors.streetAddress?.message}
-                      className="[&_input]:bg-slate-800/50 [&_input]:border-slate-600 [&_input]:text-white [&_input]:placeholder:text-slate-500 [&_input]:focus:border-amber-500 [&_label]:text-gray-300"
+                      className="[&_input]:bg-white [&_input]:border-gray-300 [&_input]:text-gray-900 [&_input]:placeholder:text-gray-400 [&_input]:focus:border-amber-500 [&_label]:text-gray-600"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
-                      <Label className="text-gray-300 font-medium">{isHebrew ? 'עיר' : 'City'} *</Label>
+                      <Label className="text-gray-600 font-medium">{isHebrew ? 'עיר' : 'City'} *</Label>
                       <Input 
                         {...form.register('city')}
                         placeholder={isHebrew ? 'תל אביב' : 'Tel Aviv'}
-                        className="mt-2 h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                        className="mt-2 h-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                         data-testid="input-city"
                       />
                       {form.formState.errors.city && (
@@ -618,18 +618,18 @@ export default function BecomeProvider() {
                       )}
                     </div>
                     <div>
-                      <Label className="text-gray-300 font-medium">{isHebrew ? 'מיקוד' : 'Postal Code'}</Label>
+                      <Label className="text-gray-600 font-medium">{isHebrew ? 'מיקוד' : 'Postal Code'}</Label>
                       <Input 
                         {...form.register('postalCode')}
                         placeholder="6100000"
-                        className="mt-2 h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                        className="mt-2 h-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                         data-testid="input-postal"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <Label className="text-gray-300 font-medium mb-3 block">
+                    <Label className="text-gray-600 font-medium mb-3 block">
                       {isHebrew ? 'תמונת פרופיל' : 'Profile Photo'} *
                     </Label>
                     <p className="text-gray-500 text-xs mb-3">
@@ -682,15 +682,15 @@ export default function BecomeProvider() {
                       <button
                         type="button"
                         onClick={() => photoInputRef.current?.click()}
-                        className="w-full border-2 border-dashed border-slate-600 hover:border-amber-500/50 rounded-2xl p-8 transition-all hover:bg-slate-800/30 group"
+                        className="w-full border-2 border-dashed border-gray-300 hover:border-amber-500/50 rounded-2xl p-8 transition-all hover:bg-gray-50 group"
                         data-testid="button-upload-photo"
                       >
                         <div className="flex flex-col items-center gap-3">
-                          <div className="w-16 h-16 rounded-full bg-slate-700/50 group-hover:bg-amber-500/20 flex items-center justify-center transition-all">
-                            <Camera className="w-8 h-8 text-slate-400 group-hover:text-amber-400 transition-colors" />
+                          <div className="w-16 h-16 rounded-full bg-gray-100 group-hover:bg-amber-500/20 flex items-center justify-center transition-all">
+                            <Camera className="w-8 h-8 text-gray-400 group-hover:text-amber-400 transition-colors" />
                           </div>
                           <div className="text-center">
-                            <p className="text-gray-300 font-medium text-sm">
+                            <p className="text-gray-600 font-medium text-sm">
                               {isHebrew ? 'לחץ להעלאת תמונה' : 'Click to upload photo'}
                             </p>
                             <p className="text-gray-500 text-xs mt-1">
@@ -712,16 +712,16 @@ export default function BecomeProvider() {
                       <Briefcase className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-white">
+                      <h2 className="text-2xl font-bold text-gray-900">
                         {isHebrew ? 'פלטפורמות ושירותים' : 'Platforms & Services'}
                       </h2>
-                      <p className="text-gray-400 text-sm">{isHebrew ? 'בחר את הפלטפורמות והשירותים שלך' : 'Choose your platforms and service types'}</p>
+                      <p className="text-gray-500 text-sm">{isHebrew ? 'בחר את הפלטפורמות והשירותים שלך' : 'Choose your platforms and service types'}</p>
                     </div>
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <Label className="block text-gray-300 font-medium">{isHebrew ? 'בחר פלטפורמות' : 'Choose Platforms'} *</Label>
+                      <Label className="block text-gray-600 font-medium">{isHebrew ? 'בחר פלטפורמות' : 'Choose Platforms'} *</Label>
                       <div className="flex items-center gap-3">
                         <span className="text-purple-300 text-xs font-medium px-2 py-1 rounded-full bg-purple-500/15 border border-purple-400/30">
                           {isHebrew ? 'ניתן לבחור מספר פלטפורמות' : 'Select multiple'}
@@ -749,7 +749,7 @@ export default function BecomeProvider() {
                             className={`relative p-5 rounded-2xl cursor-pointer transition-all duration-300 ${
                               isSelected 
                                 ? 'bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-purple-500/50 shadow-lg shadow-purple-500/10'
-                                : 'bg-slate-800/50 border border-slate-600 hover:border-purple-500/30'
+                                : 'bg-gray-50 border border-gray-300 hover:border-purple-500/30'
                             }`}
                             data-testid={`platform-${platform.id}`}
                           >
@@ -757,12 +757,12 @@ export default function BecomeProvider() {
                               {isSelected ? (
                                 <CheckCircle2 className="w-6 h-6 text-purple-400" />
                               ) : (
-                                <div className="w-5 h-5 rounded border-2 border-slate-500" />
+                                <div className="w-5 h-5 rounded border-2 border-gray-300" />
                               )}
                             </div>
                             <div className="flex items-center gap-3 mb-2">
-                              {platform.icon && <platform.icon className={`w-7 h-7 ${isSelected ? 'text-purple-400' : 'text-slate-400'}`} />}
-                              <span className={`font-semibold ${isSelected ? 'text-purple-300' : 'text-gray-300'}`}>
+                              {platform.icon && <platform.icon className={`w-7 h-7 ${isSelected ? 'text-purple-400' : 'text-gray-400'}`} />}
+                              <span className={`font-semibold ${isSelected ? 'text-purple-300' : 'text-gray-600'}`}>
                                 {isHebrew ? platform.labelHe : platform.label}
                               </span>
                             </div>
@@ -780,7 +780,7 @@ export default function BecomeProvider() {
                   
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <Label className="block text-gray-300 font-medium">{isHebrew ? 'בחר שירותים' : 'Select Services'} *</Label>
+                      <Label className="block text-gray-600 font-medium">{isHebrew ? 'בחר שירותים' : 'Select Services'} *</Label>
                       <div className="flex items-center gap-3">
                         <span className="text-blue-300 text-xs font-medium px-2 py-1 rounded-full bg-blue-500/15 border border-blue-400/30">
                           {isHebrew ? 'ניתן לבחור מספר שירותים' : 'Select multiple'}
@@ -809,7 +809,7 @@ export default function BecomeProvider() {
                             className={`relative p-5 rounded-2xl cursor-pointer transition-all duration-300 ${
                               isSelected 
                                 ? 'bg-gradient-to-br from-amber-500/20 to-orange-500/20 border-2 border-amber-500/50 shadow-lg shadow-amber-500/10'
-                                : 'bg-slate-800/50 border border-slate-600 hover:border-amber-500/30'
+                                : 'bg-gray-50 border border-gray-300 hover:border-amber-500/30'
                             }`}
                             data-testid={`service-${service.id}`}
                           >
@@ -817,12 +817,12 @@ export default function BecomeProvider() {
                               {isSelected ? (
                                 <CheckCircle2 className="w-6 h-6 text-amber-400" />
                               ) : (
-                                <div className="w-5 h-5 rounded border-2 border-slate-500" />
+                                <div className="w-5 h-5 rounded border-2 border-gray-300" />
                               )}
                             </div>
                             <div className="flex items-center gap-3">
-                              {service.icon && <service.icon className={`w-7 h-7 ${isSelected ? 'text-amber-400' : 'text-slate-400'}`} />}
-                              <span className={`font-medium ${isSelected ? 'text-amber-300' : 'text-gray-300'}`}>
+                              {service.icon && <service.icon className={`w-7 h-7 ${isSelected ? 'text-amber-400' : 'text-gray-400'}`} />}
+                              <span className={`font-medium ${isSelected ? 'text-amber-300' : 'text-gray-600'}`}>
                                 {isHebrew ? service.labelHe : service.label}
                               </span>
                             </div>
@@ -836,7 +836,7 @@ export default function BecomeProvider() {
                   </div>
 
                   <div>
-                    <Label className="mb-4 block text-gray-300 font-medium">{isHebrew ? 'סוגי חיות מחמד' : 'Pet Types Accepted'} *</Label>
+                    <Label className="mb-4 block text-gray-600 font-medium">{isHebrew ? 'סוגי חיות מחמד' : 'Pet Types Accepted'} *</Label>
                     <div className="flex flex-wrap gap-3">
                       {petTypeOptions.map((pet) => {
                         const isSelected = form.watch('petTypesAccepted').includes(pet.id);
@@ -854,7 +854,7 @@ export default function BecomeProvider() {
                             className={`px-5 py-3 rounded-xl cursor-pointer transition-all font-medium ${
                               isSelected 
                                 ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
-                                : 'bg-slate-800/50 border border-slate-600 text-gray-400 hover:border-amber-500/30'
+                                : 'bg-gray-50 border border-gray-300 text-gray-400 hover:border-amber-500/30'
                             }`}
                             data-testid={`pet-${pet.id}`}
                           >
@@ -867,39 +867,39 @@ export default function BecomeProvider() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
-                      <Label className="text-gray-300 font-medium">{isHebrew ? 'רדיוס שירות (ק"מ)' : 'Service Radius (km)'}</Label>
+                      <Label className="text-gray-600 font-medium">{isHebrew ? 'רדיוס שירות (ק"מ)' : 'Service Radius (km)'}</Label>
                       <Input 
                         type="number"
                         {...form.register('serviceRadius', { valueAsNumber: true })}
                         min={1}
                         max={100}
-                        className="mt-2 h-12 bg-slate-800/50 border-slate-600 text-white focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                        className="mt-2 h-12 bg-white border-gray-300 text-gray-900 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                         data-testid="input-radius"
                       />
                     </div>
                     <div>
-                      <Label className="text-gray-300 font-medium">{isHebrew ? 'מקסימום חיות במקביל' : 'Max Pets at Once'}</Label>
+                      <Label className="text-gray-600 font-medium">{isHebrew ? 'מקסימום חיות במקביל' : 'Max Pets at Once'}</Label>
                       <Input 
                         type="number"
                         {...form.register('maxPetsAtOnce', { valueAsNumber: true })}
                         min={1}
                         max={20}
-                        className="mt-2 h-12 bg-slate-800/50 border-slate-600 text-white focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                        className="mt-2 h-12 bg-white border-gray-300 text-gray-900 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                         data-testid="input-max-pets"
                       />
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-4 p-5 rounded-2xl bg-slate-800/30 border border-slate-700">
+                  <div className="flex flex-col gap-4 p-5 rounded-2xl bg-gray-50 border border-gray-200">
                     <div className="flex items-center gap-3">
                       <Checkbox 
                         id="hasVehicle"
                         checked={form.watch('hasOwnVehicle')}
                         onCheckedChange={(checked) => form.setValue('hasOwnVehicle', !!checked)}
-                        className="border-slate-500 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+                        className="border-gray-300 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
                         data-testid="checkbox-vehicle"
                       />
-                      <Label htmlFor="hasVehicle" className="cursor-pointer text-gray-300">
+                      <Label htmlFor="hasVehicle" className="cursor-pointer text-gray-600">
                         {isHebrew ? 'יש לי רכב פרטי' : 'I have my own vehicle'}
                       </Label>
                     </div>
@@ -908,10 +908,10 @@ export default function BecomeProvider() {
                         id="hasHome"
                         checked={form.watch('hasHomeSpace')}
                         onCheckedChange={(checked) => form.setValue('hasHomeSpace', !!checked)}
-                        className="border-slate-500 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+                        className="border-gray-300 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
                         data-testid="checkbox-home"
                       />
-                      <Label htmlFor="hasHome" className="cursor-pointer text-gray-300">
+                      <Label htmlFor="hasHome" className="cursor-pointer text-gray-600">
                         {isHebrew ? 'יש לי מקום בבית לאירוח חיות' : 'I have space at home to host pets'}
                       </Label>
                     </div>
@@ -927,27 +927,27 @@ export default function BecomeProvider() {
                       <Award className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-white">
+                      <h2 className="text-2xl font-bold text-gray-900">
                         {isHebrew ? 'ניסיון וכישורים' : 'Experience & Qualifications'}
                       </h2>
-                      <p className="text-gray-400 text-sm">{isHebrew ? 'שתף את הניסיון שלך' : 'Share your expertise'}</p>
+                      <p className="text-gray-500 text-sm">{isHebrew ? 'שתף את הניסיון שלך' : 'Share your expertise'}</p>
                     </div>
                   </div>
 
                   <div>
-                    <Label className="text-gray-300 font-medium">{isHebrew ? 'שנות ניסיון עם חיות מחמד' : 'Years of Pet Experience'}</Label>
+                    <Label className="text-gray-600 font-medium">{isHebrew ? 'שנות ניסיון עם חיות מחמד' : 'Years of Pet Experience'}</Label>
                     <Input 
                       type="number"
                       {...form.register('yearsExperience', { valueAsNumber: true })}
                       min={0}
                       max={50}
-                      className="mt-2 h-12 bg-slate-800/50 border-slate-600 text-white focus:border-amber-500 focus:ring-amber-500/20 rounded-xl max-w-xs"
+                      className="mt-2 h-12 bg-white border-gray-300 text-gray-900 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl max-w-xs"
                       data-testid="input-experience"
                     />
                   </div>
 
                   <div>
-                    <Label className="mb-4 block text-gray-300 font-medium">{isHebrew ? 'שפות' : 'Languages'} *</Label>
+                    <Label className="mb-4 block text-gray-600 font-medium">{isHebrew ? 'שפות' : 'Languages'} *</Label>
                     <div className="flex flex-wrap gap-3">
                       {languageOptions.map((lang) => {
                         const isSelected = form.watch('languages').includes(lang.id);
@@ -965,7 +965,7 @@ export default function BecomeProvider() {
                             className={`px-5 py-3 rounded-xl cursor-pointer transition-all font-medium ${
                               isSelected 
                                 ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
-                                : 'bg-slate-800/50 border border-slate-600 text-gray-400 hover:border-amber-500/30'
+                                : 'bg-gray-50 border border-gray-300 text-gray-400 hover:border-amber-500/30'
                             }`}
                             data-testid={`lang-${lang.id}`}
                           >
@@ -977,7 +977,7 @@ export default function BecomeProvider() {
                   </div>
 
                   <div>
-                    <Label className="text-gray-300 font-medium">{isHebrew ? 'ספר לנו על עצמך' : 'Tell us about yourself'} *</Label>
+                    <Label className="text-gray-600 font-medium">{isHebrew ? 'ספר לנו על עצמך' : 'Tell us about yourself'} *</Label>
                     <p className="text-sm text-gray-500 mb-3">
                       {isHebrew 
                         ? 'שתף את הניסיון שלך עם חיות מחמד, למה אתה אוהב לעבוד איתם, ומה הופך אותך לספק שירות מצוין.'
@@ -989,7 +989,7 @@ export default function BecomeProvider() {
                       placeholder={isHebrew 
                         ? 'אני אוהב חיות מחמד מגיל צעיר...'
                         : 'I have loved pets since I was young...'}
-                      className="mt-2 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                      className="mt-2 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                       data-testid="input-biography"
                     />
                     {form.formState.errors.biography && (
@@ -1010,19 +1010,19 @@ export default function BecomeProvider() {
                       <Phone className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-white">
+                      <h2 className="text-2xl font-bold text-gray-900">
                         {isHebrew ? 'איש קשר לחירום' : 'Emergency Contact'}
                       </h2>
-                      <p className="text-gray-400 text-sm">{isHebrew ? 'למקרים בלתי צפויים' : 'For unexpected situations'}</p>
+                      <p className="text-gray-500 text-sm">{isHebrew ? 'למקרים בלתי צפויים' : 'For unexpected situations'}</p>
                     </div>
                   </div>
 
                   <div>
-                    <Label className="text-gray-300 font-medium">{isHebrew ? 'שם מלא' : 'Full Name'} *</Label>
+                    <Label className="text-gray-600 font-medium">{isHebrew ? 'שם מלא' : 'Full Name'} *</Label>
                     <Input 
                       {...form.register('emergencyContactName')}
                       placeholder={isHebrew ? 'שרה כהן' : 'Sarah Cohen'}
-                      className="mt-2 h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                      className="mt-2 h-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                       data-testid="input-emergency-name"
                     />
                     {form.formState.errors.emergencyContactName && (
@@ -1031,12 +1031,12 @@ export default function BecomeProvider() {
                   </div>
 
                   <div>
-                    <Label className="text-gray-300 font-medium">{isHebrew ? 'טלפון' : 'Phone'} *</Label>
+                    <Label className="text-gray-600 font-medium">{isHebrew ? 'טלפון' : 'Phone'} *</Label>
                     <Input 
                       type="tel"
                       {...form.register('emergencyContactPhone')}
                       placeholder="050-987-6543"
-                      className="mt-2 h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                      className="mt-2 h-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                       data-testid="input-emergency-phone"
                     />
                     {form.formState.errors.emergencyContactPhone && (
@@ -1045,11 +1045,11 @@ export default function BecomeProvider() {
                   </div>
 
                   <div>
-                    <Label className="text-gray-300 font-medium">{isHebrew ? 'קרבה משפחתית' : 'Relationship'} *</Label>
+                    <Label className="text-gray-600 font-medium">{isHebrew ? 'קרבה משפחתית' : 'Relationship'} *</Label>
                     <Input 
                       {...form.register('emergencyContactRelation')}
                       placeholder={isHebrew ? 'אח/אחות, הורה, בן/בת זוג' : 'Sibling, Parent, Spouse'}
-                      className="mt-2 h-12 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
+                      className="mt-2 h-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                       data-testid="input-emergency-relation"
                     />
                     {form.formState.errors.emergencyContactRelation && (
@@ -1067,10 +1067,10 @@ export default function BecomeProvider() {
                       <Shield className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-white">
+                      <h2 className="text-2xl font-bold text-gray-900">
                         {isHebrew ? 'הסכמות משפטיות' : 'Legal Consents'}
                       </h2>
-                      <p className="text-gray-400 text-sm">{isHebrew ? 'השלב האחרון!' : 'Final step!'}</p>
+                      <p className="text-gray-500 text-sm">{isHebrew ? 'השלב האחרון!' : 'Final step!'}</p>
                     </div>
                   </div>
 
@@ -1078,7 +1078,7 @@ export default function BecomeProvider() {
                     <div className="flex items-start gap-3">
                       <Shield className="w-6 h-6 text-emerald-400 flex-shrink-0 mt-1" />
                       <div>
-                        <h3 className="font-semibold text-white mb-1">
+                        <h3 className="font-semibold text-gray-900 mb-1">
                           {isHebrew ? 'חוק הפרטיות הישראלי 2025' : 'Israeli Privacy Law 2025'}
                         </h3>
                         <p className="text-sm text-gray-400">
@@ -1090,16 +1090,16 @@ export default function BecomeProvider() {
                     </div>
                   </div>
 
-                  <div className="space-y-5 p-5 rounded-2xl bg-slate-800/30 border border-slate-700">
+                  <div className="space-y-5 p-5 rounded-2xl bg-gray-50 border border-gray-200">
                     <div className="flex items-start gap-3">
                       <Checkbox 
                         id="privacyConsent"
                         checked={form.watch('privacyConsent')}
                         onCheckedChange={(checked) => form.setValue('privacyConsent', !!checked)}
-                        className="border-slate-500 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500 mt-1"
+                        className="border-gray-300 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500 mt-1"
                         data-testid="checkbox-privacy"
                       />
-                      <Label htmlFor="privacyConsent" className="cursor-pointer text-gray-300">
+                      <Label htmlFor="privacyConsent" className="cursor-pointer text-gray-600">
                         {isHebrew 
                           ? 'קראתי ואני מסכים/ה למדיניות הפרטיות ותנאי השימוש *'
                           : 'I have read and agree to the Privacy Policy and Terms of Service *'}
@@ -1114,10 +1114,10 @@ export default function BecomeProvider() {
                         id="dataRetention"
                         checked={form.watch('dataRetentionAcknowledged')}
                         onCheckedChange={(checked) => form.setValue('dataRetentionAcknowledged', !!checked)}
-                        className="border-slate-500 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500 mt-1"
+                        className="border-gray-300 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500 mt-1"
                         data-testid="checkbox-retention"
                       />
-                      <Label htmlFor="dataRetention" className="cursor-pointer text-gray-300">
+                      <Label htmlFor="dataRetention" className="cursor-pointer text-gray-600">
                         {isHebrew 
                           ? 'אני מאשר/ת שהנתונים שלי יישמרו לצורך עיבוד הבקשה ושיפור השירות *'
                           : 'I acknowledge that my data will be stored for application processing and service improvement *'}
@@ -1132,7 +1132,7 @@ export default function BecomeProvider() {
                         id="marketing"
                         checked={form.watch('marketingConsent')}
                         onCheckedChange={(checked) => form.setValue('marketingConsent', !!checked)}
-                        className="border-slate-500 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500 mt-1"
+                        className="border-gray-300 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500 mt-1"
                         data-testid="checkbox-marketing"
                       />
                       <Label htmlFor="marketing" className="cursor-pointer text-gray-500">
@@ -1147,7 +1147,7 @@ export default function BecomeProvider() {
                     <div className="flex items-start gap-3">
                       <FileCheck className="w-6 h-6 text-amber-400 flex-shrink-0 mt-1" />
                       <div>
-                        <h3 className="font-semibold text-white mb-2">
+                        <h3 className="font-semibold text-gray-900 mb-2">
                           {isHebrew ? 'מה קורה אחרי?' : 'What happens next?'}
                         </h3>
                         <ul className="text-sm text-gray-400 space-y-2">
@@ -1175,13 +1175,13 @@ export default function BecomeProvider() {
               )}
 
               {/* Navigation Buttons */}
-              <div className="flex justify-between mt-10 pt-8 border-t border-slate-700">
+              <div className="flex justify-between mt-10 pt-8 border-t border-gray-200">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={prevStep}
                   disabled={currentStep === 1}
-                  className="flex items-center gap-2 px-6 py-5 rounded-xl border-slate-600 text-gray-300 hover:bg-slate-800 disabled:opacity-30"
+                  className="flex items-center gap-2 px-6 py-5 rounded-xl border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-30"
                   data-testid="button-prev"
                 >
                   <ChevronLeft className="w-5 h-5" />
@@ -1228,8 +1228,8 @@ export default function BecomeProvider() {
                 <Shield className="w-6 h-6 text-emerald-400" />
               </div>
               <div>
-                <p className="font-semibold text-white">{isHebrew ? 'מאובטח' : 'Secure'}</p>
-                <p className="text-xs text-gray-400">{isHebrew ? 'הצפנה מקצה לקצה' : 'End-to-end encryption'}</p>
+                <p className="font-semibold text-gray-900">{isHebrew ? 'מאובטח' : 'Secure'}</p>
+                <p className="text-xs text-gray-500">{isHebrew ? 'הצפנה מקצה לקצה' : 'End-to-end encryption'}</p>
               </div>
             </div>
             <div 
@@ -1243,8 +1243,8 @@ export default function BecomeProvider() {
                 <Heart className="w-6 h-6 text-rose-400" />
               </div>
               <div>
-                <p className="font-semibold text-white">{isHebrew ? 'אוהבי חיות' : 'Pet Lovers'}</p>
-                <p className="text-xs text-gray-400">{isHebrew ? 'קהילה של מקצוענים' : 'Professional community'}</p>
+                <p className="font-semibold text-gray-900">{isHebrew ? 'אוהבי חיות' : 'Pet Lovers'}</p>
+                <p className="text-xs text-gray-500">{isHebrew ? 'קהילה של מקצוענים' : 'Professional community'}</p>
               </div>
             </div>
             <div 
@@ -1258,8 +1258,8 @@ export default function BecomeProvider() {
                 <Award className="w-6 h-6 text-amber-400" />
               </div>
               <div>
-                <p className="font-semibold text-white">{isHebrew ? 'מובילים בישראל' : 'Israel\'s #1'}</p>
-                <p className="text-xs text-gray-400">{isHebrew ? 'רשת טיפוח מובילה' : 'Leading pet care network'}</p>
+                <p className="font-semibold text-gray-900">{isHebrew ? 'מובילים בישראל' : 'Israel\'s #1'}</p>
+                <p className="text-xs text-gray-500">{isHebrew ? 'רשת טיפוח מובילה' : 'Leading pet care network'}</p>
               </div>
             </div>
           </div>

@@ -470,7 +470,7 @@ export default function SitterBookingFlow() {
                 onChange={(value) => setAddress(value)}
                 onPlaceSelected={(place: PlaceDetails) => setAddress(place.formattedAddress)}
                 placeholder="הקלידו כתובת..."
-                country={['il']}
+                country={['il', 'us', 'gb', 'au', 'ca']}
                 showExtraFields={true}
                 apartmentLabel="דירה / קומה / כניסה"
                 postalCodeLabel="מיקוד"

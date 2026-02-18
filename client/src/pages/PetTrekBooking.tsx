@@ -403,7 +403,7 @@ export default function PetTrekBooking() {
                         }
                       }}
                       placeholder={t('booking.location.enterAddress')}
-                      country={['il']}
+                      country={['il', 'us', 'gb', 'au', 'ca']}
                       className="flex-1"
                     />
                   </div>
@@ -440,7 +440,7 @@ export default function PetTrekBooking() {
                       }
                     }}
                     placeholder={t('booking.location.enterAddress')}
-                    country={['il']}
+                    country={['il', 'us', 'gb', 'au', 'ca']}
                     className="w-full"
                   />
                   <div className="grid grid-cols-2 gap-2">

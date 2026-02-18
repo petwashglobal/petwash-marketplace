@@ -187,7 +187,7 @@ export function GooglePlacesAutocomplete({
   label,
   error,
   required = false,
-  country = ['il'],
+  country = ['il', 'us', 'gb', 'au', 'ca'],
   className = '',
   inputClassName,
   showExtraFields = false,

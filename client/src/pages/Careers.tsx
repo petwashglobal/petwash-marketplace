@@ -904,7 +904,7 @@ export default function Careers() {
                     }));
                   }}
                   placeholder={isRTL ? 'הקלד כתובת...' : 'Start typing your address...'}
-                  country={['il']}
+                  country={['il', 'us', 'gb', 'au', 'ca']}
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">

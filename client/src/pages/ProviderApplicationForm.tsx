@@ -831,7 +831,7 @@ export default function ProviderApplicationForm() {
                                 label={t.streetAddress}
                                 placeholder={isHebrew ? 'הקלד כתובת מלאה...' : 'Start typing your full address...'}
                                 required
-                                country={['il']}
+                                country={['il', 'us', 'gb', 'au', 'ca']}
                                 darkMode={false}
                                 error={form.formState.errors.streetAddress?.message}
                                 className="[&_label]:text-black [&_label]:font-medium"

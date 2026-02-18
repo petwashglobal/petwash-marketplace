@@ -346,7 +346,7 @@ export default function Subscriptions() {
                                 if (place.postalCode) form.setValue('deliveryPostalCode', place.postalCode);
                               }}
                               placeholder="Start typing your address..."
-                              country={['il']}
+                              country={['il', 'us', 'gb', 'au', 'ca']}
                             />
                           </FormControl>
                           <FormMessage />

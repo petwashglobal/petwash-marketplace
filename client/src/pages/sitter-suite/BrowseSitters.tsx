@@ -608,19 +608,19 @@ export default function BrowseSitters() {
         </div>
 
         {/* Provider Recruitment Section */}
-        <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-black py-16 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto">
+        <div className="bg-white py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-10">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 rounded-full mb-4">
-                <Wallet className="h-4 w-4 text-cyan-400" />
-                <span className="text-sm font-medium text-cyan-400">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-fuchsia-50 border border-fuchsia-200 rounded-full mb-4">
+                <Wallet className="h-4 w-4 text-fuchsia-600" />
+                <span className="text-sm font-medium text-fuchsia-700">
                   {isHebrew ? 'הזדמנות הכנסה נוספת' : 'Extra Income Opportunity'}
                 </span>
               </div>
-              <h2 className="text-3xl font-bold text-white mb-3">
+              <h2 className="text-3xl font-bold text-gray-900 mb-3">
                 {isHebrew ? 'הפכו לשמרטפים ב-⁦Pet Wash™⁩' : 'Become a ⁦Pet Wash™⁩ Sitter'}
               </h2>
-              <p className="text-gray-300 max-w-2xl mx-auto">
+              <p className="text-gray-600 max-w-2xl mx-auto">
                 {isHebrew 
                   ? 'הרוויחו עד ₪200+ לשעה בזמנים שנוחים לכם. הצטרפו לקהילת השמרטפים המובילה בישראל.'
                   : 'Earn up to ₪200+/hour on your own schedule. Join Israel\'s leading pet sitter community.'
@@ -629,36 +629,36 @@ export default function BrowseSitters() {
             </div>
             
             <div className="grid md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
-                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-cyan-400/20 to-purple-400/20 flex items-center justify-center">
-                  <Wallet className="h-7 w-7 text-cyan-400" />
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 text-center">
+                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-fuchsia-100 flex items-center justify-center">
+                  <Wallet className="h-7 w-7 text-fuchsia-600" />
                 </div>
-                <h4 className="font-semibold text-white mb-2">
+                <h4 className="font-semibold text-gray-900 mb-2">
                   {isHebrew ? 'עד ₪200+/שעה' : 'Up to ₪200+/hour'}
                 </h4>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-gray-500">
                   {isHebrew ? 'קבעו את התעריפים שלכם' : 'Set your own rates'}
                 </p>
               </div>
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
-                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-teal-400/20 flex items-center justify-center">
-                  <Briefcase className="h-7 w-7 text-emerald-400" />
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 text-center">
+                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-fuchsia-100 flex items-center justify-center">
+                  <Briefcase className="h-7 w-7 text-fuchsia-600" />
                 </div>
-                <h4 className="font-semibold text-white mb-2">
+                <h4 className="font-semibold text-gray-900 mb-2">
                   {isHebrew ? 'גמישות מלאה' : 'Full Flexibility'}
                 </h4>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-gray-500">
                   {isHebrew ? 'עבדו מתי שנוח לכם' : 'Work when it suits you'}
                 </p>
               </div>
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
-                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-fuchsia-400/20 to-pink-400/20 flex items-center justify-center">
-                  <Heart className="h-7 w-7 text-fuchsia-400" />
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 text-center">
+                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-fuchsia-100 flex items-center justify-center">
+                  <Heart className="h-7 w-7 text-fuchsia-600" />
                 </div>
-                <h4 className="font-semibold text-white mb-2">
+                <h4 className="font-semibold text-gray-900 mb-2">
                   {isHebrew ? 'ביטוח מלא' : 'Full Insurance'}
                 </h4>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-gray-500">
                   {isHebrew ? 'כיסוי מלא בכל הזמנה' : 'Coverage for every booking'}
                 </p>
               </div>
