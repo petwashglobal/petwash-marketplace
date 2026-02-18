@@ -19,6 +19,7 @@ import {
   stations,
   bookings,
   bookingRequests,
+  providerAvailability,
   bookingSearchFiltersSchema,
   type BookingSearchFilters,
   type BookingSearchResult 
@@ -27,6 +28,7 @@ import { eq, and, gte, lte, sql, desc, asc, or, ilike, notInArray, inArray } fro
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 
+const ISRAEL_TIMEZONE = 'Asia/Jerusalem';
 const router = Router();
 
 /**
@@ -76,6 +78,31 @@ async function getBusyProviderIds(startDate: string, endDate: string, platformId
 
     busyFromRequests.forEach(b => { if (b.providerId) busyIds.add(b.providerId); });
 
+    const dates: string[] = [];
+    const current = new Date(start);
+    while (current <= end) {
+      dates.push(current.toISOString().split('T')[0]);
+      current.setDate(current.getDate() + 1);
+    }
+
+    if (dates.length > 0) {
+      const unavailableConditions = [
+        eq(providerAvailability.isAvailable, false),
+        sql`${providerAvailability.date} IN (${sql.join(dates.map(d => sql`${d}::date`), sql`, `)})`,
+      ];
+
+      if (platformId) {
+        unavailableConditions.push(eq(providerAvailability.platform, platformId));
+      }
+
+      const unavailableProviders = await db
+        .selectDistinct({ providerId: providerAvailability.providerId })
+        .from(providerAvailability)
+        .where(and(...unavailableConditions));
+
+      unavailableProviders.forEach(p => { if (p.providerId) busyIds.add(p.providerId); });
+    }
+
     return Array.from(busyIds);
   } catch (error) {
     logger.warn('[BookingSearch] Error checking provider availability', { error: (error as Error).message });
@@ -86,30 +113,29 @@ async function getBusyProviderIds(startDate: string, endDate: string, platformId
 /**
  * Validate that search dates are not in the past.
  */
+function todayIsrael(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: ISRAEL_TIMEZONE });
+}
+
 function validateSearchDates(startDate?: string, endDate?: string): string | null {
   if (!startDate && !endDate) return null;
   
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
+  const today = todayIsrael();
   
   if (startDate) {
     const start = new Date(startDate);
     if (isNaN(start.getTime())) return 'Invalid start date format';
-    start.setHours(0, 0, 0, 0);
-    if (start < now) return 'Start date cannot be in the past';
+    if (startDate < today) return 'Start date cannot be in the past';
   }
   
   if (endDate) {
     const end = new Date(endDate);
     if (isNaN(end.getTime())) return 'Invalid end date format';
-    end.setHours(0, 0, 0, 0);
-    if (end < now) return 'End date cannot be in the past';
+    if (endDate < today) return 'End date cannot be in the past';
   }
   
   if (startDate && endDate) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    if (end < start) return 'End date must be after start date';
+    if (endDate < startDate) return 'End date must be after start date';
   }
   
   return null;

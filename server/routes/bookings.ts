@@ -24,16 +24,14 @@ router.post("/create", requireAuth, async (req, res) => {
     const customerId = req.user!.uid;
     const booking: BookingRequest = req.body;
 
-    // Validate service date is not in the past
+    // Validate service date is not in the past (Israel timezone)
     const serviceDate = new Date(booking.serviceDate);
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
     if (isNaN(serviceDate.getTime())) {
       return res.status(400).json({ error: "Invalid service date format" });
     }
-    const serviceDateNorm = new Date(serviceDate);
-    serviceDateNorm.setHours(0, 0, 0, 0);
-    if (serviceDateNorm < now) {
+    const todayIsrael = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+    const serviceDateStr = serviceDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+    if (serviceDateStr < todayIsrael) {
       return res.status(400).json({ error: "Service date cannot be in the past" });
     }
 

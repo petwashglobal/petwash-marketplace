@@ -9222,6 +9222,10 @@ self.addEventListener('notificationclick', (event) => {
   const providerDashboardRoutes = (await import('./routes/provider-dashboard')).default;
   app.use('/api/provider-dashboard', apiLimiter, providerDashboardRoutes);
 
+  // Provider Availability Calendar (Uber-style online/offline per day, bulk block, calendar sync)
+  const providerAvailabilityRoutes = (await import('./routes/provider-availability')).default;
+  app.use('/api/provider-availability', apiLimiter, providerAvailabilityRoutes);
+
   app.use('/api/onboarding-verification', onboardingVerificationRoutes);
   app.use('/api/provider-applications', validateFirebaseToken, apiLimiter, providerApplicationsRoutes);
   

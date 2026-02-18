@@ -34,6 +34,9 @@ import NotificationService from '../services/NotificationService';
 import { logBookingEvent, type BookingEventPayload } from '../services/bookingEventLogger';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { EmailService } from '../emailService';
+import { calendarIntegrationService } from '../services/CalendarIntegrationService';
+
+const ISRAEL_TIMEZONE = 'Asia/Jerusalem';
 
 function buildEventPayload(booking: any): BookingEventPayload {
   return {
@@ -69,19 +72,17 @@ router.post('/', async (req, res) => {
     const data = createBookingRequestSchema.parse(req.body);
     const requestId = nanoid(12);
     
-    // Validate dates are not in the past
+    // Validate dates are not in the past (Israel timezone)
     const startDate = new Date(data.startDate);
     const endDate = new Date(data.endDate);
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
     
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       return res.status(400).json({ error: 'Invalid date format' });
     }
     
-    const startNorm = new Date(startDate);
-    startNorm.setHours(0, 0, 0, 0);
-    if (startNorm < now) {
+    const todayIsrael = new Date().toLocaleDateString('en-CA', { timeZone: ISRAEL_TIMEZONE });
+    const startDateStr = startDate.toLocaleDateString('en-CA', { timeZone: ISRAEL_TIMEZONE });
+    if (startDateStr < todayIsrael) {
       return res.status(400).json({ error: 'Start date cannot be in the past' });
     }
     
@@ -583,11 +584,26 @@ router.post('/:requestId/pay', async (req, res) => {
       customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
       paymentHeldAt: new Date().toISOString(),
     }).catch(() => {});
+
+    try {
+      await calendarIntegrationService.createBookingEvent({
+        platform: booking.providerType || 'pet-care',
+        bookingId: requestId,
+        title: `⁦Pet Wash™⁩ Booking - ${booking.serviceType || booking.providerType}`,
+        description: `Confirmed booking #${requestId}\nPets: ${booking.petCount}\nTotal: ₪${(booking.totalCents / 100).toFixed(2)}`,
+        startTime: new Date(booking.startDate),
+        endTime: new Date(booking.endDate),
+        providerName: booking.providerId,
+      });
+    } catch (calErr) {
+      logger.warn('[BookingRequests] Calendar sync non-blocking', { error: (calErr as Error).message });
+    }
     
     res.json({
       success: true,
       status: 'confirmed',
       escrowHoldHours: 72,
+      timezone: ISRAEL_TIMEZONE,
       message: 'Payment successful! Your booking is confirmed. Payment held in 72-hour escrow until service completion.',
     });
   } catch (error: any) {
