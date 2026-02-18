@@ -533,7 +533,7 @@ export default function BrowseWalkers() {
                 onClick={() => setLocation('/become-provider')}
                 data-testid="button-become-walker"
               >
-                <Users className="h-5 w-5 mr-2" />
+                <Users className="h-5 w-5 me-2" />
                 {isHebrew ? 'הפוך למטייל' : 'Become a Walker'}
               </Button>
             </div>

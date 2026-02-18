@@ -256,7 +256,7 @@ export default function SitterSuiteOverview() {
             {/* Vacation CTA */}
             <div className="mt-12 bg-gradient-to-r from-pink-50 via-purple-50 to-pink-50 rounded-2xl border-2 border-pink-200 p-8">
               <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
-                <div className="text-center lg:text-right">
+                <div className="text-center lg:text-end">
                   <h3 className="text-2xl font-black text-gray-900 mb-2" data-testid="heading-vacation-cta">
                     🏖️ {t('marketplace.vacationCta')}
                   </h3>

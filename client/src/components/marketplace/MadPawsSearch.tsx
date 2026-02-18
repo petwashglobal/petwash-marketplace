@@ -441,7 +441,7 @@ function GooglePlacesLocationInput({
       
       autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
         types: ['geocode'],
-        componentRestrictions: { country: 'il' },
+        componentRestrictions: { country: ['il', 'us', 'gb', 'au', 'ca'] },
         bounds: israelBounds,
         fields: ['address_components', 'formatted_address', 'geometry', 'name'],
         sessionToken: sessionTokenRef.current,
@@ -573,7 +573,7 @@ function GooglePlacesLocationInput({
             <button
               key={`${city}-${index}`}
               type="button"
-              className="w-full px-4 py-2.5 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+              className="w-full px-4 py-2.5 text-start hover:bg-gray-50 flex items-center gap-2 text-sm"
               onMouseDown={(e) => {
                 e.preventDefault();
                 onChange(city);
@@ -831,7 +831,7 @@ export function MadPawsSearch({
             <Popover open={serviceDropdownOpen} onOpenChange={setServiceDropdownOpen}>
               <PopoverTrigger asChild>
                 <button
-                  className="w-full h-12 px-4 flex items-center justify-between bg-white border border-gray-200 rounded-xl hover:border-gray-300 transition-colors text-left"
+                  className="w-full h-12 px-4 flex items-center justify-between bg-white border border-gray-200 rounded-xl hover:border-gray-300 transition-colors text-start"
                   data-testid="dropdown-service-type"
                 >
                   <div className="flex items-center gap-2">
@@ -855,7 +855,7 @@ export function MadPawsSearch({
                           setSelectedService(service.id);
                           setServiceDropdownOpen(false);
                         }}
-                        className={`w-full flex items-start gap-3 p-3 rounded-xl transition-colors text-left ${
+                        className={`w-full flex items-start gap-3 p-3 rounded-xl transition-colors text-start ${
                           isSelected 
                             ? `${t.selectedBg} border-2 ${t.selectedBorder}` 
                             : 'hover:bg-gray-50 border-2 border-transparent'
@@ -871,7 +871,7 @@ export function MadPawsSearch({
                             {isHebrew ? service.descriptionHe : service.description}
                           </div>
                         </div>
-                        {isSelected && <CheckCircle className={`h-5 w-5 ${t.iconColor} ml-auto`} />}
+                        {isSelected && <CheckCircle className={`h-5 w-5 ${t.iconColor} ms-auto`} />}
                       </button>
                     );
                   })}
@@ -911,7 +911,7 @@ export function MadPawsSearch({
                             setPetType(pet.id);
                             setPetTypeDropdownOpen(false);
                           }}
-                          className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-colors text-left ${
+                          className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-colors text-start ${
                             isSelected 
                               ? `${t.selectedBg} ${t.selectedText}` 
                               : 'hover:bg-gray-50'
@@ -1373,7 +1373,7 @@ export function MadPawsSearch({
                         <button
                           key={level.id}
                           onClick={() => setSocialWithDogs(level.id)}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
+                          className={`w-full text-start px-3 py-2 rounded-lg text-sm transition-all ${
                             socialWithDogs === level.id
                               ? `${t.selectedBg} ${t.selectedText}`
                               : 'hover:bg-gray-100 text-gray-600'
@@ -1394,7 +1394,7 @@ export function MadPawsSearch({
                         <button
                           key={level.id}
                           onClick={() => setSocialWithCats(level.id)}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
+                          className={`w-full text-start px-3 py-2 rounded-lg text-sm transition-all ${
                             socialWithCats === level.id
                               ? `${t.selectedBg} ${t.selectedText}`
                               : 'hover:bg-gray-100 text-gray-600'
@@ -1415,7 +1415,7 @@ export function MadPawsSearch({
                         <button
                           key={level.id}
                           onClick={() => setSocialWithChildren(level.id)}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
+                          className={`w-full text-start px-3 py-2 rounded-lg text-sm transition-all ${
                             socialWithChildren === level.id
                               ? `${t.selectedBg} ${t.selectedText}`
                               : 'hover:bg-gray-100 text-gray-600'
@@ -1630,7 +1630,7 @@ export function MadPawsProviderCard({
         )}
         
         {verified && (
-          <div className="absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 bg-white/95 backdrop-blur-sm rounded-full shadow-md">
+          <div className="absolute top-3 end-3 flex items-center gap-1 px-2.5 py-1 bg-white/95 backdrop-blur-sm rounded-full shadow-md">
             <Shield className="h-3.5 w-3.5 text-green-500" />
             <span className="text-xs font-medium text-gray-700">
               {isHebrew ? 'מאומת' : 'Verified'}
@@ -1638,14 +1638,14 @@ export function MadPawsProviderCard({
           </div>
         )}
 
-        <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2.5 py-1 bg-amber-500 rounded-full shadow-md">
+        <div className="absolute bottom-3 start-3 flex items-center gap-1 px-2.5 py-1 bg-amber-500 rounded-full shadow-md">
           <Star className="h-3.5 w-3.5 text-white fill-current" />
           <span className="text-sm font-bold text-white">{rating.toFixed(1)}</span>
           <span className="text-xs text-white/80">({reviewCount})</span>
         </div>
 
         {distance && (
-          <div className="absolute bottom-3 right-3 px-2.5 py-1 bg-white/95 backdrop-blur-sm rounded-full shadow-md">
+          <div className="absolute bottom-3 end-3 px-2.5 py-1 bg-white/95 backdrop-blur-sm rounded-full shadow-md">
             <span className="text-xs font-medium text-gray-600">{distance}</span>
           </div>
         )}
@@ -1681,7 +1681,7 @@ export function MadPawsProviderCard({
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
           <div>
             <span className="text-2xl font-bold text-gray-900">₪{price}</span>
-            <span className="text-sm text-gray-500 ml-1">
+            <span className="text-sm text-gray-500 ms-1">
               /{isHebrew ? priceUnitHe : priceUnit}
             </span>
           </div>
