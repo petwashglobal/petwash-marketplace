@@ -727,41 +727,49 @@ messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message:', payload);
 
   const notificationTitle = payload.notification?.title || '⁦Pet Wash™⁩';
+  const isJobOffer = payload.data?.type === 'job_offer';
   const notificationOptions = {
     body: payload.notification?.body || 'You have a new notification',
     icon: '/brand/petwash-logo-official.png',
     badge: '/brand/petwash-logo-official.png',
-    tag: payload.data?.tag || 'petwash-notification',
+    tag: isJobOffer ? ('job-offer-' + (payload.data?.jobOfferId || '')) : (payload.data?.tag || 'petwash-notification'),
     data: payload.data,
-    requireInteraction: false,
-    actions: payload.data?.actions ? JSON.parse(payload.data.actions) : [],
+    requireInteraction: isJobOffer,
+    vibrate: isJobOffer ? [200, 100, 200, 100, 200] : [200],
+    actions: isJobOffer
+      ? [{ action: 'accept', title: '✅ Accept Job' }, { action: 'dismiss', title: 'Dismiss' }]
+      : (payload.data?.actions ? JSON.parse(payload.data.actions) : []),
   };
 
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// Handle notification click
 self.addEventListener('notificationclick', (event) => {
-  console.log('[firebase-messaging-sw.js] Notification clicked:', event);
-  
   event.notification.close();
 
-  // Get the URL to open from notification data
-  const urlToOpen = event.notification.data?.url || '/dashboard';
+  const data = event.notification.data || {};
+  let targetUrl = '/dashboard';
 
-  // Focus existing window or open new one
+  if (data.type === 'job_offer' && data.jobOfferId) {
+    targetUrl = '/provider/dashboard?job=' + data.jobOfferId;
+  } else if (data.type === 'booking_update' && data.bookingId) {
+    targetUrl = '/provider/bookings?id=' + data.bookingId;
+  } else if (data.url) {
+    targetUrl = data.url;
+  }
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
-        // Check if there's already a window open
         for (const client of clientList) {
-          if (client.url.includes(urlToOpen) && 'focus' in client) {
-            return client.focus();
+          if (client.url.includes(self.location.origin) && 'focus' in client) {
+            client.focus();
+            client.navigate(targetUrl);
+            return;
           }
         }
-        // If no window found, open a new one
         if (clients.openWindow) {
-          return clients.openWindow(urlToOpen);
+          return clients.openWindow(targetUrl);
         }
       })
   );
