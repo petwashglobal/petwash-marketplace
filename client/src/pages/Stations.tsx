@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
+import { useLanguage } from "@/lib/languageStore";
+import { Layout } from "@/components/Layout";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -19,10 +20,274 @@ import {
   Accessibility,
   Camera,
   Coffee,
+  ArrowLeft,
+  ArrowRight,
   X
 } from "lucide-react";
 
-// Station data - will be loaded from database when stations are live
+const stText: Record<string, Record<string, string>> = {
+  back: {
+    en: 'Back',
+    he: 'חזרה',
+    ar: 'رجوع',
+    ru: 'Назад',
+    fr: 'Retour',
+    es: 'Volver',
+  },
+  smartWashHubs: {
+    en: '⁦K9000™⁩ SMART WASH HUBS',
+    he: '⁦K9000™⁩ מרכזי שטיפה חכמים',
+    ar: '⁦K9000™⁩ مراكز الغسيل الذكية',
+    ru: '⁦K9000™⁩ УМНЫЕ СТАНЦИИ МОЙКИ',
+    fr: '⁦K9000™⁩ CENTRES DE LAVAGE INTELLIGENTS',
+    es: '⁦K9000™⁩ CENTROS DE LAVADO INTELIGENTES',
+  },
+  premiumWashStations: {
+    en: 'Premium Wash Stations',
+    he: 'תחנות שטיפה פרמיום',
+    ar: 'محطات غسيل متميزة',
+    ru: 'Премиум станции мойки',
+    fr: 'Stations de lavage premium',
+    es: 'Estaciones de lavado premium',
+  },
+  heroDesc: {
+    en: 'Self-service ⁦K9000™⁩ organic wash locations. Professional-grade equipment, organic products, convenient locations.',
+    he: 'מיקומי שטיפה אורגנית ⁦K9000™⁩ בשירות עצמי. ציוד מקצועי, מוצרים אורגניים, מיקומים נוחים.',
+    ar: 'مواقع الغسيل العضوي ⁦K9000™⁩ بالخدمة الذاتية. معدات احترافية، منتجات عضوية، مواقع مريحة.',
+    ru: 'Органическая мойка ⁦K9000™⁩ самообслуживания. Профессиональное оборудование, органические продукты, удобные расположения.',
+    fr: 'Stations de lavage bio ⁦K9000™⁩ en libre-service. Équipement professionnel, produits bio, emplacements pratiques.',
+    es: 'Estaciones de lavado orgánico ⁦K9000™⁩ autoservicio. Equipo profesional, productos orgánicos, ubicaciones convenientes.',
+  },
+  searchPlaceholder: {
+    en: 'Search by location or station name...',
+    he: 'חפש לפי מיקום או שם תחנה...',
+    ar: 'ابحث حسب الموقع أو اسم المحطة...',
+    ru: 'Поиск по расположению или названию станции...',
+    fr: 'Rechercher par emplacement ou nom de station...',
+    es: 'Buscar por ubicación o nombre de estación...',
+  },
+  filters: {
+    en: 'Filters:',
+    he: 'סינון:',
+    ar: 'تصفية:',
+    ru: 'Фильтры:',
+    fr: 'Filtres:',
+    es: 'Filtros:',
+  },
+  availableNow: {
+    en: 'Available Now',
+    he: 'זמין עכשיו',
+    ar: 'متاح الآن',
+    ru: 'Доступно сейчас',
+    fr: 'Disponible maintenant',
+    es: 'Disponible ahora',
+  },
+  wheelchairAccessible: {
+    en: 'Wheelchair Accessible',
+    he: 'נגיש לכסאות גלגלים',
+    ar: 'متاح لذوي الاحتياجات الخاصة',
+    ru: 'Доступно для инвалидных колясок',
+    fr: 'Accessible aux fauteuils roulants',
+    es: 'Accesible para sillas de ruedas',
+  },
+  freeWifi: {
+    en: 'Free WiFi',
+    he: 'WiFi חינם',
+    ar: 'واي فاي مجاني',
+    ru: 'Бесплатный WiFi',
+    fr: 'WiFi gratuit',
+    es: 'WiFi gratis',
+  },
+  clearAll: {
+    en: 'Clear All',
+    he: 'נקה הכל',
+    ar: 'مسح الكل',
+    ru: 'Очистить всё',
+    fr: 'Tout effacer',
+    es: 'Limpiar todo',
+  },
+  interactiveMap: {
+    en: 'Interactive Map',
+    he: 'מפה אינטראקטיבית',
+    ar: 'خريطة تفاعلية',
+    ru: 'Интерактивная карта',
+    fr: 'Carte interactive',
+    es: 'Mapa interactivo',
+  },
+  viewAllStations: {
+    en: 'View all stations on an interactive map',
+    he: 'צפו בכל התחנות על מפה אינטראקטיבית',
+    ar: 'عرض جميع المحطات على خريطة تفاعلية',
+    ru: 'Смотрите все станции на интерактивной карте',
+    fr: 'Voir toutes les stations sur une carte interactive',
+    es: 'Ver todas las estaciones en un mapa interactivo',
+  },
+  openMapView: {
+    en: 'Open Map View',
+    he: 'פתח תצוגת מפה',
+    ar: 'فتح عرض الخريطة',
+    ru: 'Открыть карту',
+    fr: 'Ouvrir la vue carte',
+    es: 'Abrir vista de mapa',
+  },
+  stationsFound: {
+    en: 'Stations Found',
+    he: 'תחנות נמצאו',
+    ar: 'محطات تم العثور عليها',
+    ru: 'Станций найдено',
+    fr: 'Stations trouvées',
+    es: 'Estaciones encontradas',
+  },
+  open: {
+    en: 'Open',
+    he: 'פתוח',
+    ar: 'مفتوح',
+    ru: 'Открыто',
+    fr: 'Ouvert',
+    es: 'Abierto',
+  },
+  busy: {
+    en: 'Busy',
+    he: 'עמוס',
+    ar: 'مشغول',
+    ru: 'Занято',
+    fr: 'Occupé',
+    es: 'Ocupado',
+  },
+  closed: {
+    en: 'Closed',
+    he: 'סגור',
+    ar: 'مغلق',
+    ru: 'Закрыто',
+    fr: 'Fermé',
+    es: 'Cerrado',
+  },
+  away: {
+    en: 'away',
+    he: 'משם',
+    ar: 'بعيد',
+    ru: 'отсюда',
+    fr: 'de distance',
+    es: 'de distancia',
+  },
+  directions: {
+    en: 'Directions',
+    he: 'ניווט',
+    ar: 'اتجاهات',
+    ru: 'Маршрут',
+    fr: 'Itinéraire',
+    es: 'Direcciones',
+  },
+  bookNow: {
+    en: 'Book Now',
+    he: 'הזמן עכשיו',
+    ar: 'احجز الآن',
+    ru: 'Забронировать',
+    fr: 'Réserver maintenant',
+    es: 'Reservar ahora',
+  },
+  location: {
+    en: 'Location',
+    he: 'מיקום',
+    ar: 'الموقع',
+    ru: 'Расположение',
+    fr: 'Emplacement',
+    es: 'Ubicación',
+  },
+  fromYourLocation: {
+    en: 'from your location',
+    he: 'מהמיקום שלך',
+    ar: 'من موقعك',
+    ru: 'от вашей локации',
+    fr: 'de votre position',
+    es: 'desde tu ubicación',
+  },
+  operatingHours: {
+    en: 'Operating Hours',
+    he: 'שעות פעילות',
+    ar: 'ساعات العمل',
+    ru: 'Часы работы',
+    fr: 'Heures d\'ouverture',
+    es: 'Horario de operación',
+  },
+  currentStatus: {
+    en: 'Current Status',
+    he: 'סטטוס נוכחי',
+    ar: 'الحالة الحالية',
+    ru: 'Текущий статус',
+    fr: 'Statut actuel',
+    es: 'Estado actual',
+  },
+  openNow: {
+    en: 'Open Now',
+    he: 'פתוח עכשיו',
+    ar: 'مفتوح الآن',
+    ru: 'Открыто сейчас',
+    fr: 'Ouvert maintenant',
+    es: 'Abierto ahora',
+  },
+  temporarilyClosed: {
+    en: 'Temporarily Closed',
+    he: 'סגור זמנית',
+    ar: 'مغلق مؤقتاً',
+    ru: 'Временно закрыто',
+    fr: 'Temporairement fermé',
+    es: 'Cerrado temporalmente',
+  },
+  amenities: {
+    en: 'Amenities',
+    he: 'שירותים ומתקנים',
+    ar: 'المرافق',
+    ru: 'Удобства',
+    fr: 'Équipements',
+    es: 'Servicios',
+  },
+  getDirections: {
+    en: 'Get Directions',
+    he: 'קבל הוראות הגעה',
+    ar: 'الحصول على الاتجاهات',
+    ru: 'Проложить маршрут',
+    fr: 'Obtenir l\'itinéraire',
+    es: 'Obtener direcciones',
+  },
+  contactlessPayment: {
+    en: 'Contactless Payment',
+    he: 'תשלום ללא מגע',
+    ar: 'الدفع بدون تلامس',
+    ru: 'Бесконтактная оплата',
+    fr: 'Paiement sans contact',
+    es: 'Pago sin contacto',
+  },
+  securityCamera: {
+    en: 'Security Camera',
+    he: 'מצלמת אבטחה',
+    ar: 'كاميرا أمنية',
+    ru: 'Камера безопасности',
+    fr: 'Caméra de sécurité',
+    es: 'Cámara de seguridad',
+  },
+  nearbyCafe: {
+    en: 'Nearby Café',
+    he: 'בית קפה בקרבת מקום',
+    ar: 'مقهى قريب',
+    ru: 'Кафе поблизости',
+    fr: 'Café à proximité',
+    es: 'Cafetería cercana',
+  },
+  accessible: {
+    en: 'Accessible',
+    he: 'נגיש',
+    ar: 'متاح',
+    ru: 'Доступно',
+    fr: 'Accessible',
+    es: 'Accesible',
+  },
+};
+
+function tx(key: string, lang: string): string {
+  return stText[key]?.[lang] || stText[key]?.en || key;
+}
+
 const mockStations: Array<{
   id: number;
   name: string;
@@ -35,7 +300,6 @@ const mockStations: Array<{
   amenities: string[];
 }> = [];
 
-// Stats will show when stations are live
 const stats: Array<{ label: string; value: string; icon: any }> = [];
 
 const amenityIcons: Record<string, any> = {
@@ -46,17 +310,22 @@ const amenityIcons: Record<string, any> = {
   cafe: Coffee
 };
 
-const amenityLabels: Record<string, string> = {
-  wifi: "Free WiFi",
-  payment: "Contactless Payment",
-  camera: "Security Camera",
-  accessible: "Wheelchair Accessible",
-  cafe: "Nearby Café"
-};
+function getAmenityLabel(amenity: string, lang: string): string {
+  const map: Record<string, string> = {
+    wifi: tx('freeWifi', lang),
+    payment: tx('contactlessPayment', lang),
+    camera: tx('securityCamera', lang),
+    accessible: tx('wheelchairAccessible', lang),
+    cafe: tx('nearbyCafe', lang),
+  };
+  return map[amenity] || amenity;
+}
 
 export default function Stations() {
-  const { t } = useTranslation();
   const [, setLocation] = useLocation();
+  const { language } = useLanguage();
+  const isRtl = language === 'he' || language === 'ar';
+  const BackArrow = isRtl ? ArrowRight : ArrowLeft;
   const [selectedStation, setSelectedStation] = useState<typeof mockStations[0] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
@@ -76,14 +345,22 @@ export default function Stations() {
   });
 
   return (
+    <Layout>
     <div className="min-h-screen luxury-dark-mesh">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Hero Section - Ultra Luxury Dark Theme */}
+        
+        <button
+          onClick={() => { try { window.history.back(); } catch { setLocation('/dashboard'); } }}
+          className="flex items-center gap-2 mb-6 text-gray-300 hover:text-white transition-colors"
+        >
+          <BackArrow className="w-5 h-5" />
+          <span className="text-sm font-medium">{tx('back', language)}</span>
+        </button>
+
         <div className="text-center mb-12 luxury-animate-fade-in">
-          {/* Premium Badge */}
           <div className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-400/30">
             <Sparkles className="w-4 h-4 text-cyan-400" />
-            <span className="text-sm font-bold tracking-wider text-cyan-300">⁦K9000™⁩ SMART WASH HUBS</span>
+            <span className="text-sm font-bold tracking-wider text-cyan-300">{tx('smartWashHubs', language)}</span>
           </div>
           
           <div className="flex justify-center items-center gap-4 mb-6">
@@ -93,30 +370,27 @@ export default function Stations() {
           </div>
           
           <h1 className="luxury-dark-heading-xl mb-4">
-            Premium Wash Stations
+            {tx('premiumWashStations', language)}
           </h1>
           <p className="luxury-dark-text-body max-w-2xl mx-auto mb-8">
-            Self-service ⁦K9000™⁩ organic wash locations. Professional-grade equipment, organic products, convenient locations.
+            {tx('heroDesc', language)}
           </p>
 
-          {/* Luxury Dark Search Bar */}
           <div className="max-w-2xl mx-auto luxury-wallet-hero p-5">
             <div className="h-1 -mt-5 -mx-5 mb-5 rounded-t-[28px] bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-500" />
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-400" />
               <Input
                 type="text"
-                placeholder="Search by location or station name..."
+                placeholder={tx('searchPlaceholder', language)}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-12 pr-4 py-6 text-lg bg-[rgba(26,24,37,0.6)] border-[rgba(232,230,240,0.1)] text-[#e8e6f0] placeholder:text-[rgba(149,144,168,0.5)] focus:border-cyan-500/40 rounded-xl"
-                data-testid="input-search-stations"
               />
             </div>
           </div>
         </div>
 
-        {/* Quick Stats */}
         <div className="luxury-dark-grid-4 mb-12 luxury-animate-slide-up luxury-delay-1">
           {stats.map((stat, index) => {
             const Icon = stat.icon;
@@ -124,7 +398,6 @@ export default function Stations() {
               <div
                 key={index}
                 className="luxury-dark-card p-6 text-center transition-all duration-300 hover:scale-[1.02]"
-                data-testid={`stat-${stat.label.toLowerCase().replace(/\s+/g, '-')}`}
               >
                 <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br from-cyan-500/25 to-blue-500/15 flex items-center justify-center">
                   <Icon className="w-6 h-6 text-cyan-400" />
@@ -140,19 +413,17 @@ export default function Stations() {
           })}
         </div>
 
-        {/* Filter Panel - Dark Theme */}
         <div className="luxury-dark-panel p-6 mb-8 luxury-animate-fade-in luxury-delay-2">
           <div className="flex flex-wrap items-center gap-6">
-            <h3 className="luxury-dark-heading-sm text-[#e8e6f0]">Filters:</h3>
+            <h3 className="luxury-dark-heading-sm text-[#e8e6f0]">{tx('filters', language)}</h3>
             
             <label className="flex items-center gap-2 cursor-pointer group">
               <Checkbox
                 checked={filters.available}
                 onCheckedChange={(checked) => setFilters(prev => ({ ...prev, available: !!checked }))}
                 className="border-cyan-500/50 data-[state=checked]:bg-cyan-600"
-                data-testid="filter-available"
               />
-              <span className="luxury-dark-text-small group-hover:text-cyan-300 transition-colors">Available Now</span>
+              <span className="luxury-dark-text-small group-hover:text-cyan-300 transition-colors">{tx('availableNow', language)}</span>
             </label>
 
             <label className="flex items-center gap-2 cursor-pointer group">
@@ -160,9 +431,8 @@ export default function Stations() {
                 checked={filters.accessible}
                 onCheckedChange={(checked) => setFilters(prev => ({ ...prev, accessible: !!checked }))}
                 className="border-cyan-500/50 data-[state=checked]:bg-cyan-600"
-                data-testid="filter-accessible"
               />
-              <span className="luxury-dark-text-small group-hover:text-cyan-300 transition-colors">Wheelchair Accessible</span>
+              <span className="luxury-dark-text-small group-hover:text-cyan-300 transition-colors">{tx('wheelchairAccessible', language)}</span>
             </label>
 
             <label className="flex items-center gap-2 cursor-pointer group">
@@ -170,35 +440,32 @@ export default function Stations() {
                 checked={filters.wifi}
                 onCheckedChange={(checked) => setFilters(prev => ({ ...prev, wifi: !!checked }))}
                 className="border-cyan-500/50 data-[state=checked]:bg-cyan-600"
-                data-testid="filter-wifi"
               />
-              <span className="luxury-dark-text-small group-hover:text-cyan-300 transition-colors">Free WiFi</span>
+              <span className="luxury-dark-text-small group-hover:text-cyan-300 transition-colors">{tx('freeWifi', language)}</span>
             </label>
 
             {(filters.available || filters.accessible || filters.wifi) && (
               <button
                 onClick={() => setFilters({ available: false, accessible: false, wifi: false })}
                 className="luxury-dark-text-small text-cyan-400 hover:text-cyan-300 ml-auto transition-colors"
-                data-testid="button-clear-filters"
               >
-                Clear All
+                {tx('clearAll', language)}
               </button>
             )}
           </div>
 
-          {/* Active Filters */}
           {(filters.available || filters.accessible || filters.wifi) && (
             <div className="flex flex-wrap gap-2 mt-4">
               {filters.available && (
                 <span className="luxury-dark-badge luxury-dark-badge-success">
                   <CheckCircle2 className="w-4 h-4" />
-                  Available Now
+                  {tx('availableNow', language)}
                 </span>
               )}
               {filters.accessible && (
                 <span className="luxury-dark-badge">
                   <Accessibility className="w-4 h-4" />
-                  Accessible
+                  {tx('accessible', language)}
                 </span>
               )}
               {filters.wifi && (
@@ -211,10 +478,8 @@ export default function Stations() {
           )}
         </div>
 
-        {/* Station Map Preview - Dark Theme */}
         <div 
           className="luxury-wallet-hero overflow-hidden mb-12 luxury-animate-scale-in luxury-delay-3"
-          data-testid="map-container"
         >
           <div className="h-1 bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-500" />
           <div className="aspect-video bg-gradient-to-br from-cyan-900/30 via-[#1a1825] to-blue-900/30 flex items-center justify-center relative p-8">
@@ -222,24 +487,22 @@ export default function Stations() {
               <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-cyan-500/30 to-blue-500/20 flex items-center justify-center">
                 <MapPin className="w-10 h-10 text-cyan-400" />
               </div>
-              <h3 className="luxury-dark-heading-md mb-3">Interactive Map</h3>
-              <p className="luxury-dark-text-body mb-6">View all stations on an interactive map</p>
+              <h3 className="luxury-dark-heading-md mb-3">{tx('interactiveMap', language)}</h3>
+              <p className="luxury-dark-text-body mb-6">{tx('viewAllStations', language)}</p>
               <button
                 onClick={() => setLocation("/map")}
                 className="luxury-dark-btn-primary px-8 py-3"
-                data-testid="button-view-map"
               >
                 <Navigation className="w-5 h-5 mr-2 inline" />
-                Open Map View
+                {tx('openMapView', language)}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Station Grid - Dark Theme */}
         <div className="mb-12">
           <h2 className="luxury-dark-heading-lg text-[#e8e6f0] mb-6">
-            {filteredStations.length} Station{filteredStations.length !== 1 ? 's' : ''} Found
+            {filteredStations.length} {tx('stationsFound', language)}
           </h2>
           
           <div className="luxury-dark-grid-3">
@@ -249,12 +512,9 @@ export default function Stations() {
                 className="luxury-dark-card overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.02] luxury-animate-fade-in"
                 style={{ animationDelay: `${0.1 * (index + 1)}s` }}
                 onClick={() => setSelectedStation(station)}
-                data-testid={`station-card-${station.id}`}
               >
-                {/* Gradient Top Bar */}
                 <div className="h-1 bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-500" />
                 
-                {/* Station Photo */}
                 <div className="aspect-video overflow-hidden relative">
                   <img
                     src={station.image}
@@ -262,51 +522,45 @@ export default function Stations() {
                     className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                   />
                   
-                  {/* Status Badge */}
                   <div className="absolute top-4 right-4">
                     {station.status === "open" && (
                       <span className="luxury-dark-badge luxury-dark-badge-success">
                         <CheckCircle2 className="w-4 h-4" />
-                        Open
+                        {tx('open', language)}
                       </span>
                     )}
                     {station.status === "busy" && (
                       <span className="luxury-dark-badge-gold">
                         <Users className="w-4 h-4" />
-                        Busy
+                        {tx('busy', language)}
                       </span>
                     )}
                     {station.status === "closed" && (
                       <span className="luxury-dark-badge">
                         <XCircle className="w-4 h-4" />
-                        Closed
+                        {tx('closed', language)}
                       </span>
                     )}
                   </div>
                 </div>
 
                 <div className="p-6">
-                  {/* Station Name */}
                   <h3 className="luxury-dark-heading-md text-[#e8e6f0] mb-2">{station.name}</h3>
                   
-                  {/* Address */}
                   <p className="luxury-dark-text-small mb-3 flex items-start gap-2">
                     <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-cyan-400" />
                     {station.address}
                   </p>
 
-                  {/* Distance */}
                   <p className="luxury-dark-text-gradient font-semibold mb-3 text-cyan-300">
-                    {station.distance} away
+                    {station.distance} {tx('away', language)}
                   </p>
 
-                  {/* Availability */}
                   <p className="luxury-dark-text-small mb-4 flex items-center gap-2">
                     <Clock className="w-4 h-4 text-cyan-400" />
                     {station.availability} • {station.hours}
                   </p>
 
-                  {/* Amenities */}
                   <div className="flex gap-2 mb-4 flex-wrap">
                     {station.amenities.slice(0, 4).map((amenity) => {
                       const Icon = amenityIcons[amenity];
@@ -314,7 +568,7 @@ export default function Stations() {
                         <div
                           key={amenity}
                           className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/15 flex items-center justify-center"
-                          title={amenityLabels[amenity]}
+                          title={getAmenityLabel(amenity, language)}
                         >
                           <Icon className="w-4 h-4 text-cyan-400" />
                         </div>
@@ -322,7 +576,6 @@ export default function Stations() {
                     })}
                   </div>
 
-                  {/* Action Buttons */}
                   <div className="flex gap-3">
                     <button
                       onClick={(e) => {
@@ -330,10 +583,9 @@ export default function Stations() {
                         setLocation(`/map?station=${station.id}`);
                       }}
                       className="luxury-dark-btn-primary flex-1 py-2.5"
-                      data-testid={`button-directions-${station.id}`}
                     >
                       <Navigation className="w-4 h-4 mr-2" />
-                      Directions
+                      {tx('directions', language)}
                     </button>
                     <button
                       onClick={(e) => {
@@ -341,9 +593,8 @@ export default function Stations() {
                         setLocation(`/booking?station=${station.id}`);
                       }}
                       className="luxury-dark-btn-ghost flex-1 py-2.5 border border-[rgba(232,230,240,0.1)]"
-                      data-testid={`button-book-${station.id}`}
                     >
-                      Book Now
+                      {tx('bookNow', language)}
                     </button>
                   </div>
                 </div>
@@ -353,7 +604,6 @@ export default function Stations() {
         </div>
       </div>
 
-      {/* Station Details Modal - Dark Theme */}
       <Dialog open={!!selectedStation} onOpenChange={() => setSelectedStation(null)}>
         <DialogContent className="bg-[#1a1825] border border-[rgba(232,230,240,0.1)] text-[#e8e6f0] max-w-3xl max-h-[90vh] overflow-y-auto">
           {selectedStation && (
@@ -364,7 +614,6 @@ export default function Stations() {
                 </DialogTitle>
               </DialogHeader>
 
-              {/* Gallery */}
               <div className="aspect-video overflow-hidden rounded-2xl mb-6">
                 <img
                   src={selectedStation.image}
@@ -373,58 +622,53 @@ export default function Stations() {
                 />
               </div>
 
-              {/* Details */}
               <div className="space-y-6">
-                {/* Location */}
                 <div>
-                  <h4 className="luxury-dark-heading-sm text-[#e8e6f0] mb-2">Location</h4>
+                  <h4 className="luxury-dark-heading-sm text-[#e8e6f0] mb-2">{tx('location', language)}</h4>
                   <p className="luxury-dark-text-body flex items-start gap-2">
                     <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0 text-cyan-400" />
                     {selectedStation.address}
                   </p>
                   <p className="text-cyan-300 font-semibold mt-2 ml-7">
-                    {selectedStation.distance} from your location
+                    {selectedStation.distance} {tx('fromYourLocation', language)}
                   </p>
                 </div>
 
-                {/* Hours */}
                 <div className="luxury-dark-surface p-4 rounded-xl">
-                  <h4 className="luxury-dark-heading-sm text-[#e8e6f0] mb-2">Operating Hours</h4>
+                  <h4 className="luxury-dark-heading-sm text-[#e8e6f0] mb-2">{tx('operatingHours', language)}</h4>
                   <p className="luxury-dark-text-body flex items-center gap-2">
                     <Clock className="w-5 h-5 text-cyan-400" />
                     {selectedStation.hours}
                   </p>
                 </div>
 
-                {/* Status */}
                 <div className="luxury-dark-surface p-4 rounded-xl">
-                  <h4 className="luxury-dark-heading-sm text-[#e8e6f0] mb-2">Current Status</h4>
+                  <h4 className="luxury-dark-heading-sm text-[#e8e6f0] mb-2">{tx('currentStatus', language)}</h4>
                   <div className="flex items-center gap-3">
                     {selectedStation.status === "open" && (
                       <span className="luxury-dark-badge luxury-dark-badge-success">
                         <CheckCircle2 className="w-4 h-4" />
-                        Open Now
+                        {tx('openNow', language)}
                       </span>
                     )}
                     {selectedStation.status === "busy" && (
                       <span className="luxury-dark-badge-gold">
                         <Users className="w-4 h-4" />
-                        Busy
+                        {tx('busy', language)}
                       </span>
                     )}
                     {selectedStation.status === "closed" && (
                       <span className="luxury-dark-badge">
                         <XCircle className="w-4 h-4" />
-                        Temporarily Closed
+                        {tx('temporarilyClosed', language)}
                       </span>
                     )}
                     <span className="luxury-dark-text-small">{selectedStation.availability}</span>
                   </div>
                 </div>
 
-                {/* Amenities */}
                 <div>
-                  <h4 className="luxury-dark-heading-sm text-[#e8e6f0] mb-4">Amenities</h4>
+                  <h4 className="luxury-dark-heading-sm text-[#e8e6f0] mb-4">{tx('amenities', language)}</h4>
                   <div className="grid grid-cols-2 gap-3">
                     {selectedStation.amenities.map((amenity) => {
                       const Icon = amenityIcons[amenity];
@@ -436,14 +680,13 @@ export default function Stations() {
                           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/15 flex items-center justify-center flex-shrink-0">
                             <Icon className="w-5 h-5 text-cyan-400" />
                           </div>
-                          <span className="luxury-dark-text-small">{amenityLabels[amenity]}</span>
+                          <span className="luxury-dark-text-small">{getAmenityLabel(amenity, language)}</span>
                         </div>
                       );
                     })}
                   </div>
                 </div>
 
-                {/* Action Buttons */}
                 <div className="flex gap-4 pt-4">
                   <button
                     onClick={() => {
@@ -451,10 +694,9 @@ export default function Stations() {
                       setSelectedStation(null);
                     }}
                     className="luxury-dark-btn-primary flex-1 py-3"
-                    data-testid="modal-button-directions"
                   >
                     <Navigation className="w-5 h-5 mr-2" />
-                    Get Directions
+                    {tx('getDirections', language)}
                   </button>
                   <button
                     onClick={() => {
@@ -462,9 +704,8 @@ export default function Stations() {
                       setSelectedStation(null);
                     }}
                     className="luxury-dark-btn-ghost flex-1 py-3 border border-[rgba(232,230,240,0.15)]"
-                    data-testid="modal-button-book"
                   >
-                    Book Now
+                    {tx('bookNow', language)}
                   </button>
                 </div>
               </div>
@@ -473,5 +714,6 @@ export default function Stations() {
         </DialogContent>
       </Dialog>
     </div>
+    </Layout>
   );
 }

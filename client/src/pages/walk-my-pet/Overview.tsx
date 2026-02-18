@@ -12,13 +12,16 @@ import {
   HelpCircle,
   Sparkles,
   ArrowRight,
+  ArrowLeft,
   MapPin,
   CheckCircle
 } from "lucide-react";
 import { useLanguage } from "@/lib/languageStore";
 
 export default function WalkMyPetOverview() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const isRtl = language === 'he' || language === 'ar';
+  const BackArrow = isRtl ? ArrowRight : ArrowLeft;
 
   const features = [
     {
@@ -74,6 +77,15 @@ export default function WalkMyPetOverview() {
   return (
     <Layout>
       <div className="min-h-screen luxury-bg-mesh">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+          <button
+            onClick={() => { try { window.history.back(); } catch { window.location.href = '/dashboard'; } }}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <BackArrow className="w-5 h-5" />
+            <span className="text-sm font-medium">{isRtl ? 'חזרה' : 'Back'}</span>
+          </button>
+        </div>
         {/* Hero Section */}
         <div className="luxury-services-hero">
           <div className="luxury-services-hero-content">

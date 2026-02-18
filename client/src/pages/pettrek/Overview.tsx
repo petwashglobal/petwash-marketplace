@@ -8,6 +8,7 @@ import {
   Shield,
   Sparkles,
   ArrowRight,
+  ArrowLeft,
   MapPin,
   Clock,
   Heart,
@@ -27,7 +28,9 @@ import { useLanguage } from "@/lib/languageStore";
 
 export default function PetTrekOverview() {
   useSEO(pageSEO.petTrek);
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const isRtl = language === 'he' || language === 'ar';
+  const BackArrow = isRtl ? ArrowRight : ArrowLeft;
   
   const serviceTypes = [
     {
@@ -142,6 +145,15 @@ export default function PetTrekOverview() {
   return (
     <Layout>
       <div className="min-h-screen">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+          <button
+            onClick={() => { try { window.history.back(); } catch { window.location.href = '/dashboard'; } }}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <BackArrow className="w-5 h-5" />
+            <span className="text-sm font-medium">{isRtl ? 'חזרה' : 'Back'}</span>
+          </button>
+        </div>
         {/* 1. HERO SECTION */}
         <section className="luxury-bg-purple-fade py-20 sm:py-32 relative overflow-hidden">
           <div className="luxury-container">
