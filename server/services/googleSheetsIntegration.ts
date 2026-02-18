@@ -36,6 +36,23 @@ interface GoogleSheetsClient {
   sheets: any;
 }
 
+const SHEET_HEADERS: Record<string, string[]> = {
+  [SHEETS.LOYALTY_ENROLLMENTS]: [
+    'Timestamp', 'Member ID', 'First Name', 'Last Name', 'Email', 'Phone',
+    'Enrollment Source', 'Tier', 'Welcome Points', 'Language', 'Country',
+    'Member Type', 'Status'
+  ],
+  [SHEETS.REGISTRATIONS]: [
+    'Timestamp', 'User ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Country',
+    'Registration Source', 'Profile Photo URL', 'Language', 'Status'
+  ],
+  [SHEETS.PROVIDER_APPLICATIONS]: [
+    'Timestamp', 'Application ID', 'First Name', 'Last Name', 'Email', 'Phone',
+    'Provider Type', 'City', 'Country', 'Selfie Photo URL', 'Government ID URL',
+    'Biometric Status', 'Biometric Score', 'Application Status'
+  ],
+};
+
 let sheetsClient: GoogleSheetsClient | null = null;
 
 // Replit connector - Google Sheets OAuth token management
@@ -361,17 +378,67 @@ async function appendFormSubmissionDirect(
     const timestamp = new Date().toISOString();
     const values = [timestamp, ...Object.values(data)];
 
-    await sheets.spreadsheets.values.append({
-      spreadsheetId,
-      range: `${sheetName}!A:Z`,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: {
-        values: [values],
-      },
-    });
+    try {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: `${sheetName}!A:Z`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [values],
+        },
+      });
+      return true;
+    } catch (appendError: any) {
+      if (appendError?.message?.includes('Unable to parse range') || 
+          appendError?.code === 400 || 
+          appendError?.status === 400) {
+        logger.info(`[GoogleSheets] Sheet "${sheetName}" not found, creating it...`);
+        try {
+          try {
+            await sheets.spreadsheets.batchUpdate({
+              spreadsheetId,
+              requestBody: {
+                requests: [{
+                  addSheet: {
+                    properties: { title: sheetName }
+                  }
+                }]
+              }
+            });
+          } catch (addErr: any) {
+            if (!addErr?.message?.includes('already exists')) {
+              throw addErr;
+            }
+          }
+          
+          const headerConfig = SHEET_HEADERS[sheetName];
+          if (headerConfig) {
+            await sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `${sheetName}!A1`,
+              valueInputOption: 'USER_ENTERED',
+              requestBody: { values: [headerConfig] },
+            });
+          }
 
-    return true;
-  } catch (error) {
+          await sheets.spreadsheets.values.append({
+            spreadsheetId,
+            range: `${sheetName}!A:Z`,
+            valueInputOption: 'USER_ENTERED',
+            requestBody: { values: [values] },
+          });
+          logger.info(`[GoogleSheets] ✅ Created sheet "${sheetName}" and appended data`);
+          return true;
+        } catch (createErr: any) {
+          logger.error(`[GoogleSheets] Failed to create sheet "${sheetName}":`, createErr?.message);
+          return false;
+        }
+      }
+      logger.error(`[GoogleSheets] Append error for "${sheetName}":`, appendError?.message);
+      return false;
+    }
+  } catch (error: any) {
+    logger.error(`[GoogleSheets] Client error for "${sheetName}":`, error?.message);
     return false;
   }
 }

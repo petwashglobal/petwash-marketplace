@@ -8799,6 +8799,23 @@ self.addEventListener('notificationclick', (event) => {
         logger.warn('[CustomerRegister] Email service error', emailErr);
       }
 
+      try {
+        const { logRegistration } = await import('./services/googleSheetsIntegration');
+        await logRegistration({
+          userId: String(customer.id),
+          firstName, lastName, email,
+          phone,
+          country: country || 'Israel',
+          registrationSource: 'customer-signup-form',
+          profilePhotoUrl: '',
+          language: country === 'Israel' ? 'he' : 'en',
+          status: 'Active',
+        });
+        logger.info('[CustomerRegister] Logged to Google Sheets', { email });
+      } catch (sheetsErr) {
+        logger.warn('[CustomerRegister] Google Sheets logging failed (non-blocking)', sheetsErr);
+      }
+
       logger.info('[CustomerRegister] Customer registered successfully', { email, id: customer.id });
 
       res.status(201).json({
