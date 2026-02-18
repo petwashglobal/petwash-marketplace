@@ -541,19 +541,19 @@ export default function BrowseWalkers() {
         </div>
 
         {/* Provider Recruitment Section */}
-        <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-black py-16">
+        <div className="bg-white py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-10">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 rounded-full mb-4">
-                <Wallet className="h-4 w-4 text-cyan-400" />
-                <span className="text-sm font-medium text-cyan-400">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-full mb-4">
+                <Wallet className="h-4 w-4 text-emerald-600" />
+                <span className="text-sm font-medium text-emerald-700">
                   {isHebrew ? 'הזדמנות הכנסה נוספת' : 'Extra Income Opportunity'}
                 </span>
               </div>
-              <h2 className="text-3xl font-bold text-white mb-3">
+              <h2 className="text-3xl font-bold text-gray-900 mb-3">
                 {isHebrew ? 'הפכו למטיילי כלבים ב-⁦Pet Wash™⁩' : 'Become a ⁦Pet Wash™⁩ Dog Walker'}
               </h2>
-              <p className="text-gray-300 max-w-2xl mx-auto">
+              <p className="text-gray-600 max-w-2xl mx-auto">
                 {isHebrew 
                   ? 'הרוויחו עד ₪65 לשעה תוך כדי הליכה עם כלבים. גמישות מלאה, ביטוח מלא.'
                   : 'Earn up to ₪65/hour while walking dogs. Full flexibility, full insurance.'
@@ -562,36 +562,36 @@ export default function BrowseWalkers() {
             </div>
             
             <div className="grid md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
-                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-cyan-400/20 to-purple-400/20 flex items-center justify-center">
-                  <Wallet className="h-7 w-7 text-cyan-400" />
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 text-center">
+                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-emerald-100 flex items-center justify-center">
+                  <Wallet className="h-7 w-7 text-emerald-600" />
                 </div>
-                <h4 className="font-semibold text-white mb-2">
+                <h4 className="font-semibold text-gray-900 mb-2">
                   {isHebrew ? '₪40-65/שעה' : '₪40-65/hour'}
                 </h4>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-gray-500">
                   {isHebrew ? 'תעריפים תחרותיים' : 'Competitive rates'}
                 </p>
               </div>
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
-                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-teal-400/20 flex items-center justify-center">
-                  <Route className="h-7 w-7 text-emerald-400" />
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 text-center">
+                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-emerald-100 flex items-center justify-center">
+                  <Route className="h-7 w-7 text-emerald-600" />
                 </div>
-                <h4 className="font-semibold text-white mb-2">
+                <h4 className="font-semibold text-gray-900 mb-2">
                   {isHebrew ? 'טיולים בפארקים' : 'Park Walks'}
                 </h4>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-gray-500">
                   {isHebrew ? 'עבדו בחוץ עם כלבים' : 'Work outdoors with dogs'}
                 </p>
               </div>
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
-                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-teal-400/20 flex items-center justify-center">
-                  <Smartphone className="h-7 w-7 text-emerald-400" />
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 text-center">
+                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-emerald-100 flex items-center justify-center">
+                  <Smartphone className="h-7 w-7 text-emerald-600" />
                 </div>
-                <h4 className="font-semibold text-white mb-2">
+                <h4 className="font-semibold text-gray-900 mb-2">
                   {isHebrew ? 'אפליקציה חכמה' : 'Smart App'}
                 </h4>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-gray-500">
                   {isHebrew ? 'GPS מובנה, תשלום אוטומטי' : 'Built-in GPS, auto payments'}
                 </p>
               </div>

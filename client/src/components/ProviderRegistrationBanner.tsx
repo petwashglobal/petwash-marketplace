@@ -299,17 +299,17 @@ export default function ProviderRegistrationBanner({
 
   if (variant === "compact") {
     return (
-      <div className={`bg-gradient-to-r from-cyan-500/20 via-purple-500/20 to-pink-500/20 border border-cyan-500/30 rounded-2xl p-6 backdrop-blur-xl ${className}`}>
+      <div className={`bg-emerald-50 border border-emerald-200 rounded-2xl p-6 ${className}`}>
         <div className="flex flex-col md:flex-row items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
               <Briefcase className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h3 className="font-bold text-white text-lg">
+              <h3 className="font-bold text-gray-900 text-lg">
                 {t("providerBanner.joinFamily")}
               </h3>
-              <p className="text-gray-400 text-sm">
+              <p className="text-gray-600 text-sm">
                 {t("providerBanner.earnUpTo")}
               </p>
             </div>
