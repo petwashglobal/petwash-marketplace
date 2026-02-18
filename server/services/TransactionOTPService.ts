@@ -177,9 +177,9 @@ function buildSmsBody(
   const expiry = Math.floor(TX_OTP_TTL_SEC / 60);
 
   if (language === 'he') {
-    return `\u2066Pet Wash\u2122\u2069 - קוד אימות לפעולת ${label}${amountText}: ${code}\nתוקף: ${expiry} דקות. אל תשתפו קוד זה.\n@petwash.co.il #${code}`;
+    return `Pet Wash\u2122 - קוד אימות לפעולת ${label}${amountText}: ${code}\nתוקף: ${expiry} דקות. אל תשתפו קוד זה.\n@petwash.co.il #${code}`;
   }
-  return `\u2066Pet Wash\u2122\u2069 - Your ${label}${amountText} verification code: ${code}\nExpires in ${expiry} min. Never share this code.\n@petwash.co.il #${code}`;
+  return `Pet Wash\u2122 - Your ${label}${amountText} verification code: ${code}\nExpires in ${expiry} min. Never share this code.\n@petwash.co.il #${code}`;
 }
 
 class TransactionOTPService {
