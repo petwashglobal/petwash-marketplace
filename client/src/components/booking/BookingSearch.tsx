@@ -239,7 +239,15 @@ export function BookingSearch() {
                   data-testid="input-start-date"
                   type="date"
                   value={filters.startDate}
-                  onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => {
+                    const newStart = e.target.value;
+                    setFilters(prev => ({
+                      ...prev,
+                      startDate: newStart,
+                      endDate: prev.endDate && prev.endDate < newStart ? newStart : prev.endDate,
+                    }));
+                  }}
                   className="pl-10"
                 />
               </div>
@@ -255,6 +263,7 @@ export function BookingSearch() {
                   data-testid="input-end-date"
                   type="date"
                   value={filters.endDate}
+                  min={filters.startDate || new Date().toISOString().split('T')[0]}
                   onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
                   className="pl-10"
                 />

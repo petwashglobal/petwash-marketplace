@@ -24,6 +24,45 @@ router.post("/create", requireAuth, async (req, res) => {
     const customerId = req.user!.uid;
     const booking: BookingRequest = req.body;
 
+    // Validate service date is not in the past
+    const serviceDate = new Date(booking.serviceDate);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    if (isNaN(serviceDate.getTime())) {
+      return res.status(400).json({ error: "Invalid service date format" });
+    }
+    const serviceDateNorm = new Date(serviceDate);
+    serviceDateNorm.setHours(0, 0, 0, 0);
+    if (serviceDateNorm < now) {
+      return res.status(400).json({ error: "Service date cannot be in the past" });
+    }
+
+    // Calculate end date
+    const endDate = new Date(serviceDate);
+    if (booking.duration) {
+      endDate.setDate(endDate.getDate() + booking.duration);
+    }
+
+    // Check provider availability - look for conflicting confirmed bookings
+    const existingBookings = await db.collection("bookings")
+      .where("providerId", "==", booking.providerId)
+      .where("status", "in", ["confirmed", "in_progress"])
+      .get();
+
+    const hasConflict = existingBookings.docs.some((doc: any) => {
+      const b = doc.data();
+      const bStart = new Date(b.startDate || b.serviceDate);
+      const bEnd = new Date(b.endDate || b.startDate || b.serviceDate);
+      return serviceDate < bEnd && endDate > bStart;
+    });
+
+    if (hasConflict) {
+      return res.status(409).json({
+        error: "Provider is not available for the selected dates",
+        code: "PROVIDER_UNAVAILABLE",
+      });
+    }
+
     const vatCalc = VATCalculatorService.calculateVAT(booking.baseAmount);
 
     // Fetch provider details to enrich booking
@@ -31,13 +70,6 @@ router.post("/create", requireAuth, async (req, res) => {
     const providerData = providerDoc.exists ? providerDoc.data() : {};
     const providerName = providerData?.name || "Provider";
     const providerPhoto = providerData?.photo || null;
-
-    // Calculate dates
-    const serviceDate = new Date(booking.serviceDate);
-    const endDate = new Date(serviceDate);
-    if (booking.duration) {
-      endDate.setDate(endDate.getDate() + booking.duration);
-    }
 
     const bookingRef = db.collection("bookings").doc();
     const bookingData = {

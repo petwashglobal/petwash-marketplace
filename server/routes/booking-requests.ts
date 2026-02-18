@@ -69,6 +69,43 @@ router.post('/', async (req, res) => {
     const data = createBookingRequestSchema.parse(req.body);
     const requestId = nanoid(12);
     
+    // Validate dates are not in the past
+    const startDate = new Date(data.startDate);
+    const endDate = new Date(data.endDate);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid date format' });
+    }
+    
+    const startNorm = new Date(startDate);
+    startNorm.setHours(0, 0, 0, 0);
+    if (startNorm < now) {
+      return res.status(400).json({ error: 'Start date cannot be in the past' });
+    }
+    
+    if (endDate < startDate) {
+      return res.status(400).json({ error: 'End date must be after start date' });
+    }
+    
+    // Check for conflicting bookings with same provider
+    const existingRequests = await db.select()
+      .from(bookingRequests)
+      .where(and(
+        eq(bookingRequests.providerId, data.providerId),
+        sql`${bookingRequests.status} IN ('pending', 'accepted', 'confirmed', 'in_progress')`,
+        sql`${bookingRequests.startDate} < ${endDate.toISOString()}::timestamp`,
+        sql`${bookingRequests.endDate} > ${startDate.toISOString()}::timestamp`
+      ));
+    
+    if (existingRequests.length > 0) {
+      return res.status(409).json({
+        error: 'Provider already has a booking for the selected dates',
+        code: 'PROVIDER_UNAVAILABLE',
+      });
+    }
+    
     // Calculate pricing based on provider type
     let dailyRateCents = 0;
     let hourlyRateCents = 0;
@@ -101,8 +138,6 @@ router.post('/', async (req, res) => {
     }
     
     // Calculate totals
-    const startDate = new Date(data.startDate);
-    const endDate = new Date(data.endDate);
     const totalDays = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
     
     let subtotalCents: number;

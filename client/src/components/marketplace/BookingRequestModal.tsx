@@ -61,8 +61,10 @@ export function BookingRequestModal({
   const isHebrew = language === 'he';
   const { toast } = useToast();
 
-  const [startDate, setStartDate] = useState<Date>(initialDates?.start || new Date());
-  const [endDate, setEndDate] = useState<Date>(initialDates?.end || addDays(new Date(), 1));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const [startDate, setStartDate] = useState<Date>(initialDates?.start && initialDates.start >= today ? initialDates.start : today);
+  const [endDate, setEndDate] = useState<Date>(initialDates?.end && initialDates.end > today ? initialDates.end : addDays(today, 1));
   const [petCount, setPetCount] = useState(initialPetCount);
   const [message, setMessage] = useState('');
   const [specialRequirements, setSpecialRequirements] = useState('');
@@ -221,8 +223,19 @@ export function BookingRequestModal({
                           <Calendar
                             mode="single"
                             selected={startDate}
-                            onSelect={(date) => date && setStartDate(date)}
-                            disabled={(date) => date < new Date()}
+                            onSelect={(date) => {
+                              if (date) {
+                                setStartDate(date);
+                                if (date >= endDate) {
+                                  setEndDate(addDays(date, 1));
+                                }
+                              }
+                            }}
+                            disabled={(date) => {
+                              const now = new Date();
+                              now.setHours(0, 0, 0, 0);
+                              return date < now;
+                            }}
                           />
                         </PopoverContent>
                       </Popover>

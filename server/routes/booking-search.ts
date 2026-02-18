@@ -17,15 +17,103 @@ import {
   trainers,
   drivers,
   stations,
+  bookings,
+  bookingRequests,
   bookingSearchFiltersSchema,
   type BookingSearchFilters,
   type BookingSearchResult 
 } from '@shared/schema';
-import { eq, and, gte, lte, sql, desc, asc, or, ilike } from 'drizzle-orm';
+import { eq, and, gte, lte, sql, desc, asc, or, ilike, notInArray, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 
 const router = Router();
+
+/**
+ * Get provider IDs that have conflicting bookings for the given date range.
+ * Returns an array of providerIds that are busy (have confirmed/in-progress bookings).
+ */
+async function getBusyProviderIds(startDate: string, endDate: string, platformId?: string): Promise<string[]> {
+  try {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return [];
+    }
+
+    const busyIds = new Set<string>();
+
+    const bookingConditions = [
+      sql`${bookings.status} IN ('confirmed', 'in_progress')`,
+      sql`${bookings.startTime} < ${end.toISOString()}::timestamp`,
+      sql`${bookings.endTime} > ${start.toISOString()}::timestamp`,
+      sql`${bookings.providerId} IS NOT NULL`,
+    ];
+
+    if (platformId) {
+      bookingConditions.push(eq(bookings.platformId, platformId));
+    }
+
+    const busyFromBookings = await db
+      .selectDistinct({ providerId: bookings.providerId })
+      .from(bookings)
+      .where(and(...bookingConditions));
+
+    busyFromBookings.forEach(b => { if (b.providerId) busyIds.add(b.providerId); });
+
+    const requestConditions = [
+      sql`${bookingRequests.status} IN ('pending', 'accepted', 'confirmed', 'in_progress')`,
+      sql`${bookingRequests.startDate} < ${end.toISOString()}::timestamp`,
+      sql`${bookingRequests.endDate} > ${start.toISOString()}::timestamp`,
+      sql`${bookingRequests.providerId} IS NOT NULL`,
+    ];
+
+    const busyFromRequests = await db
+      .selectDistinct({ providerId: bookingRequests.providerId })
+      .from(bookingRequests)
+      .where(and(...requestConditions));
+
+    busyFromRequests.forEach(b => { if (b.providerId) busyIds.add(b.providerId); });
+
+    return Array.from(busyIds);
+  } catch (error) {
+    logger.warn('[BookingSearch] Error checking provider availability', { error: (error as Error).message });
+    return [];
+  }
+}
+
+/**
+ * Validate that search dates are not in the past.
+ */
+function validateSearchDates(startDate?: string, endDate?: string): string | null {
+  if (!startDate && !endDate) return null;
+  
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  
+  if (startDate) {
+    const start = new Date(startDate);
+    if (isNaN(start.getTime())) return 'Invalid start date format';
+    start.setHours(0, 0, 0, 0);
+    if (start < now) return 'Start date cannot be in the past';
+  }
+  
+  if (endDate) {
+    const end = new Date(endDate);
+    if (isNaN(end.getTime())) return 'Invalid end date format';
+    end.setHours(0, 0, 0, 0);
+    if (end < now) return 'End date cannot be in the past';
+  }
+  
+  if (startDate && endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (end < start) return 'End date must be after start date';
+  }
+  
+  return null;
+}
 
 /**
  * POST /api/booking-search - MadPaws-style unified search
@@ -35,12 +123,19 @@ router.post('/', async (req, res) => {
     const filters = bookingSearchFiltersSchema.parse(req.body);
     const searchId = nanoid(12);
     
+    const dateError = validateSearchDates(filters.startDate, filters.endDate);
+    if (dateError) {
+      return res.status(400).json({ error: dateError });
+    }
+    
     logger.info('[BookingSearch] Search request', {
       searchId,
       serviceType: filters.serviceType,
       petCount: filters.petCount,
       petTypes: filters.petTypes,
       city: filters.city,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
     });
 
     let result: BookingSearchResult;
@@ -188,6 +283,14 @@ async function searchSitters(filters: BookingSearchFilters, searchId: string): P
       conditions.push(eq(sitterProfiles.isVerified, true));
     }
 
+    if (filters.startDate && filters.endDate) {
+      const busyIds = await getBusyProviderIds(filters.startDate, filters.endDate, 'SITTER_SUITE');
+      if (busyIds.length > 0) {
+        conditions.push(sql`${sitterProfiles.userId} NOT IN (${sql.join(busyIds.map(id => sql`${id}`), sql`, `)})`);
+        logger.info('[BookingSearch] Excluding busy sitters', { searchId, busyCount: busyIds.length });
+      }
+    }
+
     const orderBy = filters.sortOrder === 'asc' 
       ? asc(sitterProfiles.rating)
       : desc(sitterProfiles.rating);
@@ -264,6 +367,14 @@ async function searchWalkers(filters: BookingSearchFilters, searchId: string): P
     conditions.push(eq(walkerProfiles.verificationStatus, 'verified'));
   }
 
+  if (filters.startDate && filters.endDate) {
+    const busyIds = await getBusyProviderIds(filters.startDate, filters.endDate, 'WALK_MY_PET');
+    if (busyIds.length > 0) {
+      conditions.push(sql`${walkerProfiles.userId} NOT IN (${sql.join(busyIds.map(id => sql`${id}`), sql`, `)})`);
+      logger.info('[BookingSearch] Excluding busy walkers', { searchId, busyCount: busyIds.length });
+    }
+  }
+
   const orderBy = filters.sortOrder === 'asc'
     ? asc(walkerProfiles.averageRating)
     : desc(walkerProfiles.averageRating);
@@ -336,6 +447,13 @@ async function searchGroomers(filters: BookingSearchFilters, searchId: string): 
 
     if (filters.verifiedOnly) {
       conditions.push(eq(trainers.verificationStatus, 'verified'));
+    }
+
+    if (filters.startDate && filters.endDate) {
+      const busyIds = await getBusyProviderIds(filters.startDate, filters.endDate, 'GROOMING');
+      if (busyIds.length > 0) {
+        conditions.push(sql`${trainers.trainerId} NOT IN (${sql.join(busyIds.map(id => sql`${id}`), sql`, `)})`);
+      }
     }
 
     const results = await db.select().from(trainers)
@@ -454,6 +572,13 @@ async function searchTrainers(filters: BookingSearchFilters, searchId: string): 
 
     if (filters.verifiedOnly) {
       conditions.push(eq(trainers.verificationStatus, 'verified'));
+    }
+
+    if (filters.startDate && filters.endDate) {
+      const busyIds = await getBusyProviderIds(filters.startDate, filters.endDate, 'TRAINING');
+      if (busyIds.length > 0) {
+        conditions.push(sql`${trainers.trainerId} NOT IN (${sql.join(busyIds.map(id => sql`${id}`), sql`, `)})`);
+      }
     }
 
     const results = await db.select().from(trainers)
