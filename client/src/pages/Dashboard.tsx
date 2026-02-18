@@ -361,7 +361,7 @@ export default function Dashboard() {
             transition={{ duration: 0.6 }}
             className="flex flex-col items-center mb-6"
           >
-            <div className="relative w-64 sm:w-72 md:w-80 lg:w-96 h-auto mb-4">
+            <div className="relative w-64 sm:w-72 md:w-80 lg:w-96 h-auto mb-1">
               <img
                 src={diamondLogo}
                 alt="PetWash™"
