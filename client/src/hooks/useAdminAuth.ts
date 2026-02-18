@@ -37,7 +37,7 @@ export function useAdminAuth() {
   });
 
   const admin = data?.ok && data.user ? data.user : null;
-  const allowedRoles = ['admin', 'ops'];
+  const allowedRoles = ['admin', 'ops', 'super_admin', 'management', 'staff'];
   const hasAdminRole = admin && allowedRoles.includes(admin.role);
 
   return {

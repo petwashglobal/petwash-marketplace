@@ -1,7 +1,10 @@
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
+import { useWhoami } from "@/auth/useWhoami";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
+
+const ADMIN_ALLOWED_ROLES = ['admin', 'ops', 'super_admin', 'management', 'staff'];
 
 interface AdminRouteGuardProps {
   children: React.ReactNode;
@@ -10,44 +13,50 @@ interface AdminRouteGuardProps {
 export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
   const { user: firebaseUser, loading: firebaseLoading, claims, claimsLoading } = useFirebaseAuth();
   const { admin, isLoading: adminLoading, isError } = useAdminAuth();
+  const { whoami, isLoading: whoamiLoading, isSuperAdmin, role: whoamiRole } = useWhoami();
   const [, setLocation] = useLocation();
 
+  const allLoading = firebaseLoading || claimsLoading || (adminLoading && whoamiLoading);
+
   useEffect(() => {
-    if (!firebaseLoading && !firebaseUser) {
+    if (allLoading) return;
+
+    if (!firebaseUser) {
       console.log('[AdminGuard] No Firebase user, redirecting to /admin/login');
       setLocation("/admin/login");
       return;
     }
 
-    if (!claimsLoading && firebaseUser && (claims.role === 'public' || claims.role === 'provider')) {
-      console.log('[AdminGuard] Public/provider user blocked from admin area, role:', claims.role);
+    if (isSuperAdmin) {
+      console.log('[AdminGuard] Super admin access granted via whoami');
+      return;
+    }
+
+    const whoamiHasAccess = whoami && ADMIN_ALLOWED_ROLES.includes(whoamiRole);
+    const adminHasAccess = admin && admin.isActive && ADMIN_ALLOWED_ROLES.includes(admin.role);
+    const claimsHasAccess = claims.role && ADMIN_ALLOWED_ROLES.includes(claims.role);
+
+    if (whoamiHasAccess || adminHasAccess || claimsHasAccess) {
+      console.log('[AdminGuard] Access granted:', { whoamiRole, adminRole: admin?.role, claimsRole: claims.role });
+      return;
+    }
+
+    if (claims.role === 'public' || claims.role === 'provider') {
+      console.log('[AdminGuard] Public/provider user blocked, role:', claims.role);
       setLocation("/admin/access-denied");
       return;
     }
 
-    if (!adminLoading && firebaseUser && (!admin || !admin.isActive || isError)) {
-      console.log('[AdminGuard] Admin check failed, redirecting to access denied', { 
-        hasAdmin: !!admin, 
-        isActive: admin?.isActive, 
-        isError 
+    if (!adminLoading && !whoamiLoading && !whoamiHasAccess && !adminHasAccess && !claimsHasAccess) {
+      console.log('[AdminGuard] No admin access found', {
+        whoamiRole, adminRole: admin?.role, claimsRole: claims.role, isError
       });
       setLocation("/admin/access-denied");
       return;
     }
+  }, [firebaseLoading, firebaseUser, adminLoading, admin, isError, setLocation, claims, claimsLoading, whoami, whoamiLoading, isSuperAdmin, whoamiRole, allLoading]);
 
-    const allowedRoles = ['admin', 'ops'];
-    if (!adminLoading && firebaseUser && admin && !allowedRoles.includes(admin.role)) {
-      console.log('[AdminGuard] Insufficient permissions, role:', admin.role);
-      setLocation("/admin/access-denied");
-      return;
-    }
-
-    if (!adminLoading && !firebaseLoading && admin && admin.isActive && allowedRoles.includes(admin.role)) {
-      console.log('[AdminGuard] Access granted:', admin.email, admin.role);
-    }
-  }, [firebaseLoading, firebaseUser, adminLoading, admin, isError, setLocation, claims, claimsLoading]);
-
-  if (firebaseLoading || adminLoading || claimsLoading) {
+  if (allLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
@@ -60,12 +69,17 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
     );
   }
 
-  // Don't render content until all checks pass
-  const allowedRoles = ['admin', 'ops'];
-  if (!firebaseUser || !admin || !admin.isActive || isError || !allowedRoles.includes(admin.role)) {
-    return null;
+  if (!firebaseUser) return null;
+
+  if (isSuperAdmin) return <>{children}</>;
+
+  const whoamiHasAccess = whoami && ADMIN_ALLOWED_ROLES.includes(whoamiRole);
+  const adminHasAccess = admin && admin.isActive && ADMIN_ALLOWED_ROLES.includes(admin.role);
+  const claimsHasAccess = claims.role && ADMIN_ALLOWED_ROLES.includes(claims.role);
+
+  if (whoamiHasAccess || adminHasAccess || claimsHasAccess) {
+    return <>{children}</>;
   }
 
-  // All checks passed → render admin content
-  return <>{children}</>;
+  return null;
 }
