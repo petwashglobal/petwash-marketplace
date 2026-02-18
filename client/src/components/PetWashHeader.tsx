@@ -33,6 +33,7 @@
 import React, { useEffect, useState } from "react";
 import { SiInstagram, SiFacebook, SiTiktok, SiSpotify } from "react-icons/si";
 import { useFirebaseAuth } from "../auth/AuthProvider";
+import goldUserIcon from "@assets/IMG_3329_1771419021263.jpeg";
 
 type LangDir = "ltr" | "rtl";
 
@@ -539,14 +540,18 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               className="pw-account-btn"
               onClick={() => handleNavigate("/dashboard")}
             >
-              <div className="pw-account-circle">👤</div>
+              <div className="pw-account-circle">
+                <img src={goldUserIcon} alt="" className="pw-account-gold-icon" />
+              </div>
             </button>
           ) : (
             <button
               className="pw-account-btn"
               onClick={() => handleNavigate("/signin")}
             >
-              <div className="pw-account-circle">👤</div>
+              <div className="pw-account-circle">
+                <img src={goldUserIcon} alt="" className="pw-account-gold-icon" />
+              </div>
             </button>
           )}
         </div>
