@@ -22,6 +22,22 @@ function todayIsrael(): string {
   return toIsraelDate(new Date());
 }
 
+function getIsraelOffset(dateStr: string): string {
+  const probe = new Date(`${dateStr}T12:00:00Z`);
+  const utcHour = probe.getUTCHours();
+  const israelHour = parseInt(
+    new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: ISRAEL_TIMEZONE }).format(probe),
+    10
+  );
+  const diff = ((israelHour - utcHour) + 24) % 24;
+  return diff === 3 ? '+03:00' : '+02:00';
+}
+
+function toIsraelDateTime(dateStr: string, time: string): Date {
+  const offset = getIsraelOffset(dateStr);
+  return new Date(`${dateStr}T${time}${offset}`);
+}
+
 router.get('/:providerId', async (req, res) => {
   try {
     const { providerId } = req.params;
@@ -151,8 +167,8 @@ router.post('/set', async (req, res) => {
     if (isAvailable === false) {
       try {
         for (const date of validDates) {
-          const startTime = new Date(`${date}T00:00:00+03:00`);
-          const endTime = new Date(`${date}T23:59:59+03:00`);
+          const startTime = toIsraelDateTime(date, '00:00:00');
+          const endTime = toIsraelDateTime(date, '23:59:59');
           await calendarIntegrationService.createBookingEvent({
             platform,
             bookingId: `unavail-${providerId}-${date}`,
@@ -340,8 +356,8 @@ router.post('/bulk-block', async (req, res) => {
     }
 
     try {
-      const startTime = new Date(`${startDate}T00:00:00+03:00`);
-      const endTime = new Date(`${endDate}T23:59:59+03:00`);
+      const startTime = toIsraelDateTime(startDate, '00:00:00');
+      const endTime = toIsraelDateTime(endDate, '23:59:59');
       await calendarIntegrationService.createBookingEvent({
         platform,
         bookingId: `block-${providerId}-${startDate}-${endDate}`,
