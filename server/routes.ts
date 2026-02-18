@@ -220,6 +220,7 @@ import {
   insertCustomerSubscriptionSchema,
   updateCustomerSubscriptionSchema,
   customers,
+  type InsertCustomer,
   nayaxTransactions,
   hrDocuments,
   washHistory,
@@ -8709,6 +8710,110 @@ self.addEventListener('notificationclick', (event) => {
         });
       }
       res.status(500).json({ error: 'Failed to enroll external member' });
+    }
+  });
+
+  // Customer registration endpoint (public - no auth required)
+  app.post('/api/customer/register', async (req, res) => {
+    try {
+      const {
+        firstName, lastName, email, phone, password,
+        dateOfBirth, country, gender, petType,
+        loyaltyProgram, reminders, marketing, termsAccepted,
+        captchaToken
+      } = req.body;
+
+      if (captchaToken) {
+        const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+        if (secretKey) {
+          try {
+            const params = new URLSearchParams({ secret: secretKey, response: captchaToken });
+            if (req.ip) params.append('remoteip', req.ip);
+            const captchaRes = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: params.toString(),
+            });
+            const captchaResult = await captchaRes.json();
+            if (!captchaResult.success || (captchaResult.score !== undefined && captchaResult.score < 0.3)) {
+              logger.warn('[CustomerRegister] reCAPTCHA failed', { score: captchaResult.score });
+              return res.status(403).json({ message: 'Security verification failed. Please try again.' });
+            }
+          } catch (captchaErr) {
+            logger.error('[CustomerRegister] reCAPTCHA verification error', captchaErr);
+          }
+        }
+      } else if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json({ message: 'Security verification required' });
+      }
+
+      if (!firstName || !lastName || !email || !phone || !password || !termsAccepted) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+
+      const existingCustomer = await storage.getCustomerByEmail(email);
+      if (existingCustomer) {
+        return res.status(400).json({ message: 'Customer with this email already exists' });
+      }
+
+      const { scrypt, randomBytes } = await import('crypto');
+      const { promisify } = await import('util');
+      const scryptAsync = promisify(scrypt);
+      const salt = randomBytes(16).toString('hex');
+      const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+      const hashedPassword = `${buf.toString('hex')}.${salt}`;
+
+      const customerData: InsertCustomer = {
+        firstName, lastName, email, phone,
+        password: hashedPassword,
+        dateOfBirth: dateOfBirth || null,
+        country: country || 'Israel',
+        gender,
+        petType,
+        loyaltyProgram: loyaltyProgram || false,
+        reminders: reminders || false,
+        marketing: marketing || false,
+        termsAccepted: termsAccepted || false,
+        isVerified: false,
+        loyaltyTier: 'new',
+        totalSpent: '0',
+        washBalance: 0
+      };
+
+      const customer = await storage.createCustomer(customerData);
+
+      try {
+        const { sendLuxuryEmail } = await import('./email/luxury-email-service');
+        const { generateCustomerWelcomeEmail } = await import('./email/templates/welcome-customer-signup-2026');
+        const welcomeEmail = generateCustomerWelcomeEmail({
+          firstName, lastName, email,
+          language: country === 'Israel' ? 'he' : 'en',
+          petType: petType || undefined,
+        });
+        sendLuxuryEmail({
+          to: email,
+          subject: welcomeEmail.subject,
+          html: welcomeEmail.html,
+        }).catch(err => logger.error('[CustomerRegister] Welcome email failed', err));
+      } catch (emailErr) {
+        logger.warn('[CustomerRegister] Email service error', emailErr);
+      }
+
+      logger.info('[CustomerRegister] Customer registered successfully', { email, id: customer.id });
+
+      res.status(201).json({
+        message: 'Registration successful',
+        customer: {
+          id: customer.id,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          email: customer.email,
+          loyaltyTier: customer.loyaltyTier
+        }
+      });
+    } catch (error: any) {
+      logger.error('[CustomerRegister] Registration error', error);
+      res.status(500).json({ message: 'Registration failed' });
     }
   });
 

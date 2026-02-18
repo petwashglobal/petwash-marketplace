@@ -54,7 +54,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const { toast } = useToast();
   const [location, navigate] = useLocation();
   const { trackUserAuth, trackEvent } = useAnalytics();
-  const { user, logout, enableDevMode } = useFirebaseAuth();
+  const { user, logout } = useFirebaseAuth();
   const [loading, setLoading] = useState(false);
   const [magicLinkMode, setMagicLinkMode] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
@@ -1529,23 +1529,6 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               <span>{language === 'he' ? 'התחבר עם טלפון' : 'Sign in with Phone'}</span>
             </Button>
 
-            {import.meta.env.DEV && (
-              <Button
-                onClick={() => {
-                  enableDevMode();
-                  toast({
-                    title: language === 'he' ? 'מצב פיתוח מופעל' : 'Dev Mode Enabled',
-                    description: language === 'he' ? 'משתמש בדיקה מחובר' : 'Test user logged in',
-                  });
-                  setTimeout(() => navigate("/dashboard"), 500);
-                }}
-                className="w-full h-13 text-sm font-medium bg-neutral-100 hover:bg-neutral-200 text-neutral-600 rounded-none border border-neutral-200 tracking-wider uppercase"
-                data-testid="button-dev-mode"
-              >
-                <User className="w-4 h-4 mr-3" />
-                {language === 'he' ? 'מצב פיתוח (ללא התחברות)' : 'Dev Mode (Skip Login)'}
-              </Button>
-            )}
           </motion.div>
 
           <motion.div
