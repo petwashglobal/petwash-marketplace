@@ -44,6 +44,33 @@ export function registerStaffOnboardingRoutes(app: Express) {
       const data = insertStaffApplicationSchema.parse(req.body);
       const application = await staffOnboardingService.createApplication(data);
       
+      try {
+        const { logStaffApplication } = await import('../services/googleSheetsIntegration');
+        await logStaffApplication({
+          applicationId: application.applicationId || String(application.id),
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          phone: data.phone,
+          dateOfBirth: data.dateOfBirth || '',
+          applicationType: data.applicationType,
+          positionId: data.positionId || '',
+          city: data.city,
+          country: data.country,
+          address: data.address || '',
+          taxId: data.taxId || '',
+          businessName: data.businessName || '',
+          hasDrivingLicense: data.hasDrivingLicense || false,
+          drivingLicenseType: data.drivingLicenseType || '',
+          yearsOfExperience: data.yearsOfExperience || 0,
+          referralSource: data.referralSource || '',
+          status: 'Pending',
+        });
+        logger.info('[Staff] Logged to Google Sheets', { applicationId: application.applicationId });
+      } catch (sheetsErr) {
+        logger.warn('[Staff] Google Sheets logging failed (non-blocking)', { sheetsErr });
+      }
+      
       res.json({
         success: true,
         application,

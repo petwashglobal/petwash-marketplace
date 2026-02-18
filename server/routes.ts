@@ -8603,6 +8603,10 @@ self.addEventListener('notificationclick', (event) => {
         language: z.enum(['en', 'he', 'ar', 'ru', 'fr', 'es']).default('he'),
         memberType: z.enum(['pet_parent', 'provider']).default('pet_parent'),
         referralSource: z.string().optional(),
+        petNames: z.string().optional(),
+        preferredStation: z.string().optional(),
+        birthday: z.string().optional(),
+        referralCode: z.string().optional(),
       });
 
       const data = externalEnrollSchema.parse(req.body);
@@ -8683,6 +8687,10 @@ self.addEventListener('notificationclick', (event) => {
           language: data.language,
           country: data.country,
           memberType: data.memberType,
+          petNames: data.petNames || '',
+          preferredStation: data.preferredStation || '',
+          birthday: data.birthday || '',
+          referralCode: data.referralCode || '',
         });
       } catch (sheetErr) {
         logger.warn('[Loyalty] Failed to log external enrollment to Google Sheets', { sheetErr });
@@ -8809,6 +8817,7 @@ self.addEventListener('notificationclick', (event) => {
           registrationSource: 'customer-signup-form',
           profilePhotoUrl: '',
           language: country === 'Israel' ? 'he' : 'en',
+          petType: petType || '',
           status: 'Active',
         });
         logger.info('[CustomerRegister] Logged to Google Sheets', { email });

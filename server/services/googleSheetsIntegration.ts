@@ -23,6 +23,7 @@ const SHEETS = {
   FRANCHISE_INQUIRIES: 'Franchise Inquiries',
   REGISTRATIONS: 'User Registrations',
   PROVIDER_APPLICATIONS: 'Provider Applications',
+  STAFF_APPLICATIONS: 'Staff Applications',
   E_SIGNATURES: 'E-Signatures & Contracts',
   INVOICES: 'E-Invoices',
   STATEMENTS: 'E-Statements',
@@ -40,16 +41,92 @@ const SHEET_HEADERS: Record<string, string[]> = {
   [SHEETS.LOYALTY_ENROLLMENTS]: [
     'Timestamp', 'Member ID', 'First Name', 'Last Name', 'Email', 'Phone',
     'Enrollment Source', 'Tier', 'Welcome Points', 'Language', 'Country',
-    'Member Type', 'Status'
+    'Member Type', 'Pet Names', 'Preferred Station', 'Birthday', 'Referral Code', 'Status'
   ],
   [SHEETS.REGISTRATIONS]: [
     'Timestamp', 'User ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Country',
-    'Registration Source', 'Profile Photo URL', 'Language', 'Status'
+    'City', 'Address', 'Registration Source', 'Profile Photo URL', 'Language',
+    'Pet Name', 'Pet Type', 'Referral Source', 'Status'
   ],
   [SHEETS.PROVIDER_APPLICATIONS]: [
     'Timestamp', 'Application ID', 'First Name', 'Last Name', 'Email', 'Phone',
-    'Provider Type', 'City', 'Country', 'Selfie Photo URL', 'Government ID URL',
+    'ID Number', 'Provider Type', 'Selected Platforms', 'City', 'Country',
+    'Languages', 'Years of Experience', 'Availability', 'Has Vehicle',
+    'Selfie Photo URL', 'Government ID URL',
     'Biometric Status', 'Biometric Score', 'Application Status'
+  ],
+  [SHEETS.STAFF_APPLICATIONS]: [
+    'Timestamp', 'Application ID', 'First Name', 'Last Name', 'Email', 'Phone',
+    'Date of Birth', 'Application Type', 'Position ID', 'City', 'Country',
+    'Address', 'Tax ID', 'Business Name', 'Has Driving License', 'License Type',
+    'Years of Experience', 'Referral Source', 'Fraud Risk Score',
+    'Shortlist Score', 'Shortlist Recommendation', 'Status'
+  ],
+  [SHEETS.K9000_BOOKINGS]: [
+    'Timestamp', 'Booking ID', 'Customer Name', 'Email', 'Phone',
+    'Pet Name', 'Station Location', 'Wash Type', 'Date/Time',
+    'Amount', 'Payment Status', 'Notes'
+  ],
+  [SHEETS.SITTER_BOOKINGS]: [
+    'Timestamp', 'Booking ID', 'Customer Name', 'Email', 'Phone',
+    'Pet Name', 'Pet Type', 'Sitter Name', 'Start Date', 'End Date',
+    'Duration (Days)', 'Total Amount', 'Status'
+  ],
+  [SHEETS.WALKER_BOOKINGS]: [
+    'Timestamp', 'Booking ID', 'Customer Name', 'Email', 'Phone',
+    'Dog Name', 'Breed', 'Walker Name', 'Walk Date',
+    'Duration (Mins)', 'Location', 'Amount', 'Status'
+  ],
+  [SHEETS.PETTREK_BOOKINGS]: [
+    'Timestamp', 'Trip ID', 'Customer Name', 'Email', 'Phone',
+    'Pet Name', 'Pet Type', 'Pickup Location', 'Dropoff Location',
+    'Driver Name', 'Trip Date', 'Amount', 'Status'
+  ],
+  [SHEETS.ACADEMY_BOOKINGS]: [
+    'Timestamp', 'Booking ID', 'Customer Name', 'Email', 'Phone',
+    'Pet Name', 'Pet Age', 'Trainer Name', 'Session Type',
+    'Session Date', 'Duration (Mins)', 'Amount', 'Status'
+  ],
+  [SHEETS.CONTACT_FORMS]: [
+    'Timestamp', 'Name', 'Email', 'Phone', 'Subject', 'Message',
+    'Platform', 'Status', 'Assigned To', 'Response Sent'
+  ],
+  [SHEETS.FEEDBACK_REVIEWS]: [
+    'Timestamp', 'Customer Name', 'Email', 'Platform', 'Service Type',
+    'Rating', 'Review Title', 'Review Text', 'Would Recommend',
+    'Status', 'Published'
+  ],
+  [SHEETS.NEWSLETTER_SIGNUPS]: [
+    'Timestamp', 'Email', 'Name', 'Language Preference',
+    'Source Platform', 'IP Address', 'Status', 'Confirmed'
+  ],
+  [SHEETS.FRANCHISE_INQUIRIES]: [
+    'Timestamp', 'Name', 'Company', 'Email', 'Phone', 'Country', 'City',
+    'Investment Budget', 'Timeline', 'Experience', 'Message',
+    'Status', 'Follow-Up Date'
+  ],
+  [SHEETS.E_SIGNATURES]: [
+    'Timestamp', 'Signature ID', 'Document Title', 'Signer Name', 'Signer Email',
+    'Document Type', 'Contract Reference', 'Signature Status', 'Signed At', 'IP Address'
+  ],
+  [SHEETS.INVOICES]: [
+    'Timestamp', 'Invoice ID', 'Invoice Number', 'Customer Name', 'Customer Email',
+    'Amount', 'VAT Amount', 'Total Amount', 'Currency', 'Due Date',
+    'Payment Status', 'Description', 'Platform'
+  ],
+  [SHEETS.STATEMENTS]: [
+    'Timestamp', 'Statement ID', 'Account Holder', 'Email',
+    'Period Start', 'Period End', 'Opening Balance', 'Closing Balance',
+    'Total Credits', 'Total Debits', 'Currency', 'Status'
+  ],
+  [SHEETS.RECEIPTS]: [
+    'Timestamp', 'Receipt ID', 'Transaction ID', 'Customer Name', 'Email',
+    'Amount', 'Payment Method', 'Platform', 'Service Type', 'Description', 'Status'
+  ],
+  [SHEETS.IDENTITY_VERIFICATIONS]: [
+    'Timestamp', 'Verification ID', 'User ID', 'First Name', 'Last Name', 'Email',
+    'Document Type', 'Country', 'Selfie URL', 'ID Photo URL',
+    'Biometric Score', 'Biometric Match Status', 'Verification Status', 'Manual Review Required'
   ],
 };
 
@@ -689,13 +766,23 @@ export async function logRegistration(registration: {
   email: string;
   phone: string;
   country: string;
+  city?: string;
+  address?: string;
   registrationSource: string;
   profilePhotoUrl: string;
   language: string;
+  petName?: string;
+  petType?: string;
+  referralSource?: string;
   status?: string;
 }) {
   return appendFormSubmission(SHEETS.REGISTRATIONS, {
     ...registration,
+    city: registration.city || '',
+    address: registration.address || '',
+    petName: registration.petName || '',
+    petType: registration.petType || '',
+    referralSource: registration.referralSource || '',
     status: registration.status || 'Active',
   });
 }
@@ -709,9 +796,15 @@ export async function logProviderApplication(application: {
   lastName: string;
   email: string;
   phone: string;
+  idNumber?: string;
   providerType: string;
+  selectedPlatforms?: string;
   city: string;
   country: string;
+  languages?: string;
+  yearsOfExperience?: string;
+  availability?: string;
+  hasVehicle?: string;
   selfiePhotoUrl: string;
   governmentIdUrl: string;
   biometricStatus: string;
@@ -720,6 +813,12 @@ export async function logProviderApplication(application: {
 }) {
   return appendFormSubmission(SHEETS.PROVIDER_APPLICATIONS, {
     ...application,
+    idNumber: application.idNumber || '',
+    selectedPlatforms: application.selectedPlatforms || '',
+    languages: application.languages || '',
+    yearsOfExperience: application.yearsOfExperience || '',
+    availability: application.availability || '',
+    hasVehicle: application.hasVehicle || '',
     applicationStatus: application.applicationStatus || 'Pending Review',
   });
 }
@@ -840,12 +939,64 @@ export async function logLoyaltyEnrollment(enrollment: {
   language: string;
   country: string;
   memberType: string;
+  petNames?: string;
+  preferredStation?: string;
+  birthday?: string;
+  referralCode?: string;
   status?: string;
 }) {
   return appendFormSubmission(SHEETS.LOYALTY_ENROLLMENTS, {
     ...enrollment,
     welcomePoints: String(enrollment.welcomePoints),
+    petNames: enrollment.petNames || '',
+    preferredStation: enrollment.preferredStation || '',
+    birthday: enrollment.birthday || '',
+    referralCode: enrollment.referralCode || '',
     status: enrollment.status || 'Active',
+  });
+}
+
+/**
+ * Staff Application Logging
+ */
+export async function logStaffApplication(application: {
+  applicationId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  dateOfBirth?: string;
+  applicationType: string;
+  positionId?: string;
+  city: string;
+  country: string;
+  address?: string;
+  taxId?: string;
+  businessName?: string;
+  hasDrivingLicense?: boolean;
+  drivingLicenseType?: string;
+  yearsOfExperience?: number;
+  referralSource?: string;
+  fraudRiskScore?: number;
+  shortlistScore?: number;
+  shortlistRecommendation?: string;
+  status?: string;
+}) {
+  return appendFormSubmission(SHEETS.STAFF_APPLICATIONS, {
+    ...application,
+    dateOfBirth: application.dateOfBirth || '',
+    positionId: application.positionId || '',
+    address: application.address || '',
+    taxId: application.taxId || '',
+    businessName: application.businessName || '',
+    hasDrivingLicense: application.hasDrivingLicense ? 'Yes' : 'No',
+    drivingLicenseType: application.drivingLicenseType || '',
+    yearsOfExperience: String(application.yearsOfExperience || 0),
+    referralSource: application.referralSource || '',
+    fraudRiskScore: String(application.fraudRiskScore || 0),
+    shortlistScore: String(application.shortlistScore || ''),
+    shortlistRecommendation: application.shortlistRecommendation || '',
+    status: application.status || 'Pending',
   });
 }
 
@@ -873,6 +1024,7 @@ export const GoogleSheetsService = {
   logFranchiseInquiry,
   logRegistration,
   logProviderApplication,
+  logStaffApplication,
   logESignature,
   logInvoice,
   logStatement,
