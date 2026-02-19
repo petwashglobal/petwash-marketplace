@@ -1,0 +1,66 @@
+Yes, but not for everyone at the same time.
+
+In 2026 you do progressive onboarding: collect only what’s needed to start, then require deeper profile only when the user tries to do a regulated action.
+
+What happens right after registration
+
+All new users (any method: Google, email, phone, passkey)
+	1.	Create minimal user record (UID, email/phone, createdAt, locale, IP, device).
+	2.	Send them to /complete-profile (first onboarding step).
+
+/complete-profile (Step 1 - required for everyone)
+	•	First name + last name
+	•	Mobile in E.164 with country selector
+	•	Address (Google Places) + city + postal code
+	•	Accept Terms + Privacy (with timestamp + version saved)
+	•	Marketing consent optional (also stamped)
+
+Only after Step 1 they can browse and do basic things.
+
+When to collect DOB, ID, passport, תעודת זהות
+
+Do not force this on every user at signup. It will kill conversions and it is not legally required for a customer just browsing.
+
+Collect it only when the user reaches a trigger:
+
+Trigger A: Provider onboarding (always required)
+If user chooses “Become a provider”:
+	•	Step P1: full profile (DOB, address, phone verified)
+	•	Step P2: ID upload (תעודת זהות or passport) + selfie + liveness
+	•	Step P3: background checks, certificates, bank payout details
+	•	Status becomes pending_review until approved
+
+Trigger B: Customer regulated actions
+For customers, require KYC only if they do something that needs it, for example:
+	•	High value wallet top up
+	•	Membership tier that includes financial benefits
+	•	Refund disputes, chargebacks, or suspicious activity
+	•	Corporate invoices or tax receipt requirements beyond normal
+
+Then route them to /kyc and block the action until done.
+
+What to save in the database (so it is “by law”)
+
+Every onboarding step should stamp:
+	•	termsAcceptedAt, termsVersion
+	•	privacyAcceptedAt, privacyVersion
+	•	kycConsentAt, kycConsentVersion
+	•	createdIp, lastIp, userAgent
+	•	profileCompletedAt
+	•	phoneVerifiedAt, emailVerifiedAt
+
+For KYC documents:
+	•	Store only what you must
+	•	Keep retention policy (for example 7 years for finance records, less for KYC images if allowed)
+	•	Strict access control (admin roles only) and full audit log on every view/download
+
+The simple routing rule
+
+After registration:
+	•	If user is new and profileCompletedAt is null -> /complete-profile
+	•	After that:
+	•	Customer -> /home
+	•	Provider -> /provider/onboarding
+	•	Staff/admin request -> /staff/pending until approved
+
+If you want, I can write the exact “profile completeness” function (server-side) and the step list fields for Israel specifically (תעודת זהות format, optional passport) so your developer can’t misunderstand it.

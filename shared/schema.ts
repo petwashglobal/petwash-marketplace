@@ -91,6 +91,17 @@ export const users = pgTable("users", {
   suppressionList: jsonb("suppression_list").default(sql`'{"email": false, "sms": false, "whatsapp": false, "push": false, "all": false}'::jsonb`), // Master suppression flags
   unsubscribedAt: timestamp("unsubscribed_at"), // When user unsubscribed from all marketing
   
+  role: varchar("role").default("customer"),
+  accessLevel: integer("access_level").default(1),
+  approvedBy: varchar("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  blocked: boolean("blocked").default(false),
+  profileCompletedAt: timestamp("profile_completed_at"),
+  termsAcceptedAt: timestamp("terms_accepted_at"),
+  termsVersion: varchar("terms_version"),
+  privacyAcceptedAt: timestamp("privacy_accepted_at"),
+  privacyVersion: varchar("privacy_version"),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -4431,7 +4442,10 @@ export const providerApplications = pgTable("provider_applications", {
   trustScoreLastUpdated: timestamp("trust_score_last_updated"),
   
   // Application Status
-  status: varchar("status").default("pending"), // pending | under_review | approved | rejected | withdrawn
+  status: varchar("status").default("draft"), // draft | pending_review | under_review | approved | rejected | withdrawn
+  onboardingStep: integer("onboarding_step").default(0),
+  onboardingComplete: boolean("onboarding_complete").default(false),
+  submittedAt: timestamp("submitted_at"),
   reviewedBy: varchar("reviewed_by"), // Admin user ID
   reviewedAt: timestamp("reviewed_at"),
   rejectionReason: text("rejection_reason"),
@@ -11041,3 +11055,24 @@ export const insertAuthEventSchema = createInsertSchema(authEvents).omit({
 });
 export type InsertAuthEvent = z.infer<typeof insertAuthEventSchema>;
 export type AuthEvent = typeof authEvents.$inferSelect;
+
+export const staffAccessRequests = pgTable("staff_access_requests", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  requestedRole: varchar("requested_role").notNull(),
+  status: varchar("status").notNull().default("pending"),
+  requestedAt: timestamp("requested_at").defaultNow().notNull(),
+  decidedAt: timestamp("decided_at"),
+  decidedBy: varchar("decided_by"),
+  reason: text("reason"),
+}, (table) => [
+  index("idx_staff_requests_user").on(table.userId),
+  index("idx_staff_requests_status").on(table.status),
+]);
+
+export const insertStaffAccessRequestSchema = createInsertSchema(staffAccessRequests).omit({
+  id: true,
+  requestedAt: true,
+});
+export type InsertStaffAccessRequest = z.infer<typeof insertStaffAccessRequestSchema>;
+export type StaffAccessRequest = typeof staffAccessRequests.$inferSelect;

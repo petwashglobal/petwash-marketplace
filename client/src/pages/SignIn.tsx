@@ -96,6 +96,19 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       setShowFallbackHint(true);
     }
   });
+
+  const navigatePostLogin = async (fallback = '/home') => {
+    try {
+      const res = await fetch(getApiUrl('/api/auth/post-login'), { method: 'POST', credentials: 'include' });
+      const data = await res.json();
+      const path = data.redirectTo || fallback;
+      window.scrollTo(0, 0);
+      navigate(path);
+    } catch {
+      window.scrollTo(0, 0);
+      navigate(fallback);
+    }
+  };
   
   useEffect(() => {
     const hadDarkClass = document.documentElement.classList.contains('dark');
@@ -124,13 +137,13 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   useEffect(() => {
     if (sessionStorage.getItem('pw_redirect_handled') === 'true') {
       sessionStorage.removeItem('pw_redirect_handled');
-      logger.info('[Auth] Redirect sign-in completed, navigating to dashboard');
-      navigate(customRedirect || '/dashboard');
+      logger.info('[Auth] Redirect sign-in completed, navigating via post-login');
+      if (customRedirect) { navigate(customRedirect); } else { navigatePostLogin(); }
       return;
     }
     if (user && !switchingAccount && !loading) {
       logger.info('[Auth] User already signed in, redirecting');
-      navigate(customRedirect || '/dashboard');
+      if (customRedirect) { navigate(customRedirect); } else { navigatePostLogin(); }
     }
   }, [user, loading]);
 
@@ -199,10 +212,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           description: t('signin.redirecting', language),
         });
         
-        const redirectPath = customRedirect || (isNew ? '/onboarding' : '/dashboard');
         setTimeout(() => {
-          window.scrollTo(0, 0);
-          navigate(redirectPath);
+          if (customRedirect) { window.scrollTo(0, 0); navigate(customRedirect); }
+          else { navigatePostLogin(); }
         }, 1000);
       } catch (error: any) {
         logger.error(`[Auth] ${oauthProvider} OAuth custom token sign-in failed:`, error);
@@ -269,10 +281,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             description: t('signin.redirecting', language),
           });
 
-          setTimeout(() => {
-            window.scrollTo(0, 0);
-            navigate("/dashboard");
-          }, 1000);
+          setTimeout(() => navigatePostLogin(), 1000);
         } catch (error: any) {
           logger.error("Magic link verification error:", error);
           toast({
@@ -327,7 +336,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           });
           
           window.scrollTo(0, 0);
-          navigate("/dashboard");
+          navigatePostLogin();
         }
       } catch (error) {
         logger.debug("Conditional UI: Passkey autofill not triggered (expected)", { error: error instanceof Error ? error.message : 'unknown' });
@@ -343,7 +352,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   useEffect(() => {
     if (user && !switchingAccount && !loading) {
       logger.info("User already logged in, auto-redirecting to homepage");
-      navigate("/dashboard");
+      navigatePostLogin();
     }
   }, [user, switchingAccount, loading, navigate]);
 
@@ -401,7 +410,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         trackPasskeyToDashboard(passkeyStartTime);
 
         window.scrollTo(0, 0);
-        navigate("/dashboard");
+        navigatePostLogin();
       } else {
         let errorDescription = result.error || t('signin.failed', language);
         
@@ -513,7 +522,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         });
 
         window.scrollTo(0, 0);
-        navigate("/dashboard");
+        navigatePostLogin();
       } else {
         setPinError(data.error || (language === 'he' ? 'קוד PIN שגוי' : 'Invalid PIN'));
         toast({
@@ -753,10 +762,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         description: t('signin.redirecting', language),
       });
 
-      const redirectPath = customRedirect || (isNewUser ? '/onboarding' : '/dashboard');
       setTimeout(() => {
-        window.scrollTo(0, 0);
-        navigate(redirectPath);
+        if (customRedirect) { window.scrollTo(0, 0); navigate(customRedirect); }
+        else { navigatePostLogin(); }
       }, 1000);
     } catch (error: any) {
       logger.error('[Auth Trace] Failed', { traceId, error: error?.code || error?.message });
@@ -1062,7 +1070,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       setTimeout(() => {
         window.scrollTo(0, 0);
-        navigate("/dashboard");
+        navigatePostLogin();
       }, 1200);
     } catch (error: any) {
       logger.error('[PhoneAuth] Verification failed:', error);
@@ -1130,7 +1138,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       setTimeout(() => {
         window.scrollTo(0, 0);
         // Force a small delay to ensure cookie is set before navigation
-        navigate("/dashboard");
+        navigatePostLogin();
       }, 1200);
     } catch (error: any) {
       logger.error("Email/password sign-in error:", error);
@@ -1308,7 +1316,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           </div>
           <div className="space-y-3">
             <Button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigatePostLogin()}
               className="bg-black hover:bg-gray-800 text-white rounded-full px-8"
               data-testid="button-go-to-dashboard"
             >
@@ -1340,7 +1348,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         >
           <div className="bg-white p-6 sm:p-10 lg:p-12 space-y-6 relative border border-neutral-200 rounded-sm shadow-[0_2px_20px_rgba(0,0,0,0.06)]">
           <button
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigatePostLogin()}
             className="absolute top-4 right-4 p-2 rounded-full hover:bg-neutral-100 transition-colors z-10"
             aria-label={t('common.close', language)}
             data-testid="button-close-signin"

@@ -103,6 +103,7 @@ import contractorInvoicesRoutes from "./routes/contractor-invoices";
 import subcontractorAgreementsRoutes from "./routes/subcontractor-agreements";
 import providerTrainingRoutes from "./routes/provider-training";
 import policeCheckRoutes from "./routes/police-check";
+import { postLoginDecider, chooseRole, approveAccess, completeProfile } from "./routes/post-login";
 import adminProviderReviewRoutes from "./routes/admin-provider-review";
 import aiPayoutVerificationRoutes from "./routes/ai-payout-verification";
 import israeliCompliance2025Routes from "./routes/israeli-compliance-2025";
@@ -937,6 +938,18 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ ok: true });
     }
   });
+
+  // POST /api/auth/post-login - Central role-based routing decider
+  app.post('/api/auth/post-login', requireAuth, postLoginDecider);
+  
+  // POST /api/auth/choose-role - User selects their intent (customer/provider/staff)
+  app.post('/api/auth/choose-role', requireAuth, chooseRole);
+  
+  // POST /api/admin/approve-access - Admin approves staff/admin access (only nir.h@petwash.co.il)
+  app.post('/api/admin/approve-access', requireAuth, approveAccess);
+  
+  // POST /api/auth/complete-profile - Complete user profile (first onboarding step)
+  app.post('/api/auth/complete-profile', requireAuth, completeProfile);
 
   // GET /api/auth/health - Health check for mobile auth system
   app.get('/api/auth/health', (_req, res) => {

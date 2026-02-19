@@ -133,6 +133,11 @@ import {
   type InsertHrTimeTracking,
   type HrPerformanceReview,
   type InsertHrPerformanceReview,
+  providerApplications,
+  staffAccessRequests,
+  type ProviderApplication,
+  type StaffAccessRequest,
+  type InsertStaffAccessRequest,
 } from "@shared/schema";
 import {
   opsTasksTable,
@@ -910,6 +915,16 @@ export interface IStorage {
   markChatEventPublished(eventId: string): Promise<ChatEventOutbox>;
   incrementChatEventRetry(eventId: string, error: string): Promise<ChatEventOutbox>;
   getFailedChatEvents(): Promise<ChatEventOutbox[]>;
+  
+  // Provider Applications (Role Routing)
+  getProviderApplicationByUser(userId: string): Promise<ProviderApplication | undefined>;
+  createProviderApplicationDraft(userId: string, data?: Partial<ProviderApplication>): Promise<ProviderApplication>;
+  updateProviderApplication(id: number, updates: Partial<ProviderApplication>): Promise<ProviderApplication>;
+  
+  // Staff Access Requests (Role Routing)
+  getStaffAccessRequestByUser(userId: string): Promise<StaffAccessRequest | undefined>;
+  createStaffAccessRequest(data: InsertStaffAccessRequest): Promise<StaffAccessRequest>;
+  updateStaffAccessRequest(id: number, updates: Partial<StaffAccessRequest>): Promise<StaffAccessRequest>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -5348,6 +5363,55 @@ export class DatabaseStorage implements IStorage {
       throw new NotFoundError(`Royalty payment with id ${id} not found`);
     }
     return result[0];
+  }
+
+  async getProviderApplicationByUser(userId: string): Promise<ProviderApplication | undefined> {
+    const [app] = await db.select().from(providerApplications).where(eq(providerApplications.userId, userId)).orderBy(desc(providerApplications.createdAt)).limit(1);
+    return app;
+  }
+
+  async createProviderApplicationDraft(userId: string, data?: Partial<ProviderApplication>): Promise<ProviderApplication> {
+    const existing = await this.getProviderApplicationByUser(userId);
+    if (existing) return existing;
+    
+    const appId = `APP-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`;
+    const [app] = await db.insert(providerApplications).values({
+      applicationId: appId,
+      userId,
+      email: data?.email || '',
+      firstName: data?.firstName || '',
+      lastName: data?.lastName || '',
+      phoneNumber: data?.phoneNumber || '',
+      providerType: data?.providerType || 'walker',
+      city: data?.city || '',
+      country: data?.country || 'IL',
+      status: 'draft',
+      onboardingStep: 0,
+      onboardingComplete: false,
+    }).returning();
+    return app;
+  }
+
+  async updateProviderApplication(id: number, updates: Partial<ProviderApplication>): Promise<ProviderApplication> {
+    const [app] = await db.update(providerApplications).set({ ...updates, updatedAt: new Date() }).where(eq(providerApplications.id, id)).returning();
+    if (!app) throw new NotFoundError(`Provider application ${id} not found`);
+    return app;
+  }
+
+  async getStaffAccessRequestByUser(userId: string): Promise<StaffAccessRequest | undefined> {
+    const [req] = await db.select().from(staffAccessRequests).where(eq(staffAccessRequests.userId, userId)).orderBy(desc(staffAccessRequests.requestedAt)).limit(1);
+    return req;
+  }
+
+  async createStaffAccessRequest(data: InsertStaffAccessRequest): Promise<StaffAccessRequest> {
+    const [req] = await db.insert(staffAccessRequests).values(data).returning();
+    return req;
+  }
+
+  async updateStaffAccessRequest(id: number, updates: Partial<StaffAccessRequest>): Promise<StaffAccessRequest> {
+    const [req] = await db.update(staffAccessRequests).set(updates).where(eq(staffAccessRequests.id, id)).returning();
+    if (!req) throw new NotFoundError(`Staff access request ${id} not found`);
+    return req;
   }
 }
 

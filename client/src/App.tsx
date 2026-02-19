@@ -45,6 +45,14 @@ import StaffApplication from "@/pages/StaffApplication";
 import StaffOnboarding from "@/pages/admin/StaffOnboarding";
 
 // LAZY LOAD: All other routes (code split for performance)
+const ChooseRole = lazy(() => import("@/pages/ChooseRole"));
+const CompleteProfile = lazy(() => import("@/pages/CompleteProfile"));
+const ProviderPending = lazy(() => import("@/pages/ProviderPending"));
+const ProviderRejected = lazy(() => import("@/pages/ProviderRejected"));
+const StaffPending = lazy(() => import("@/pages/StaffPending"));
+const StaffRejected = lazy(() => import("@/pages/StaffRejected"));
+const BlockedPage = lazy(() => import("@/pages/BlockedPage"));
+const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
 const SignIn = lazy(() => import("@/pages/SignIn"));
 const SignUp = lazy(() => import("@/pages/SignUp"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
@@ -391,6 +399,16 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <SignUp language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         
+        {/* Post-login role routing pages */}
+        <Route path="/choose-role">{() => <ChooseRole />}</Route>
+        <Route path="/complete-profile">{() => <CompleteProfile />}</Route>
+        <Route path="/provider/pending">{() => <ProviderPending />}</Route>
+        <Route path="/provider/rejected">{() => <ProviderRejected />}</Route>
+        <Route path="/staff/pending">{() => <StaffPending />}</Route>
+        <Route path="/staff/rejected">{() => <StaffRejected />}</Route>
+        <Route path="/blocked">{() => <BlockedPage />}</Route>
+        <Route path="/verify-email">{() => <VerifyEmail />}</Route>
+
         {/* Internal onboarding - STRICTLY for invited staff/contractors/franchisees ONLY */}
         {/* NOT accessible via public sign-up - requires valid invitation token */}
         <Route path="/internal/onboard">
