@@ -1,0 +1,74 @@
+Thanks. Now I need hard evidence and production validation. No summaries.
+
+A. Evidence pack (must provide)
+1. Commit hashes + PR links (or GitHub compare links) for:
+   - Mandatory admin MFA enforcement
+   - Email verification gate
+   - TOTP (RFC 6238) implementation
+   - Job expiry notifications
+
+2. DB migrations proof:
+   - The exact migration SQL files
+   - Output of production DB schema checks showing:
+     - mfa_enrollments table exists
+     - any MFA-related columns exist
+     - any job notification state fields exist (example: expired_notified_at / notify_status / notified boolean)
+   - Confirm migrations ran on the PRODUCTION Neon connection string, not dev.
+
+3. Endpoint proof (curl or Postman export):
+   - A blocked request example for each gate:
+     - non-MFA admin trying to hit an admin route → 403 with specific error code
+     - unverified email user trying to POST booking/wallet/provider/KYC → 403 with specific error code
+   - A success example after compliance:
+     - admin after MFA enrollment
+     - user after email verified
+
+4. MFA enforcement matrix:
+   - List all protected route groups and the exact middleware chain order.
+   - Confirm this is server-side enforcement, not UI only.
+
+5. TOTP security details:
+   - Where the TOTP secret is stored (DB column name)
+   - Confirm it is encrypted at rest (how, key source)
+   - Confirm backup codes exist or confirm they do not, and recovery policy
+   - Confirm replay protection and time window drift handling (step, window)
+   - Confirm rate limiting and lockout on MFA verify attempts
+
+6. Email verification edge cases:
+   - What happens for phone-only auth users (no emailVerified)
+   - What happens for Apple/Google sign-in where email can be private relay or missing
+   - Confirm we do not lock out legitimate phone-auth users by mistake
+   - Provide the exact allowlist rules (who must verify email vs who can pass via phone verification)
+
+7. Job expiry notifications reliability:
+   - Confirm idempotency: how do we avoid duplicate notifications
+   - Confirm retry logic: how many retries, backoff, and stop condition
+   - Confirm “notified” is written only after at least one channel succeeds
+   - Provide log samples for:
+     - expired detected
+     - push success/fail
+     - email success/fail
+     - audit record created
+
+8. Firestore and Storage rules proof:
+   - Export the Firestore security rules currently deployed
+   - Export the Storage rules currently deployed
+   - Confirm no public reads, and KYC documents are never readable by public users
+
+9. Observability:
+   - Add a unique traceId to every registration and KYC flow and show it in logs
+   - Provide the log query filters for Cloud Logging to find signup failures fast
+
+B. Production validation (must do now)
+1. Run a production smoke test checklist on:
+   - iOS Safari
+   - Android Chrome
+   - Desktop Chrome
+2. Provide a short written test report with:
+   - Test user IDs used
+   - Success/failure outcomes
+   - Any remaining blockers with screenshots
+
+C. Critical warning
+If any part of this was only tested on dev, it is NOT "complete".
+We go live only after production DB migrations + production console configs + real device testing are proven.
