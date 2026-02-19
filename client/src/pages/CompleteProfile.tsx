@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,66 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { PhoneInput } from "@/components/PhoneInput";
-import { Loader2, UserCircle } from "lucide-react";
+import { Loader2, UserCircle, Gift, Crown } from "lucide-react";
 import { getApiUrl } from "@/lib/apiConfig";
 import { useToast } from "@/hooks/use-toast";
+
+const ROLE_CONFIG: Record<string, {
+  titleHe: string;
+  titleEn: string;
+  subtitleHe: string;
+  subtitleEn: string;
+  icon: any;
+  iconBg: string;
+  iconColor: string;
+  requiresDob: boolean;
+  requiresPhone: boolean;
+}> = {
+  customer: {
+    titleHe: "השלמת פרופיל",
+    titleEn: "Complete Your Profile",
+    subtitleHe: "מלאו את הפרטים כדי להתחיל",
+    subtitleEn: "Fill in your details to get started",
+    icon: UserCircle,
+    iconBg: "bg-blue-100",
+    iconColor: "text-blue-600",
+    requiresDob: false,
+    requiresPhone: false,
+  },
+  loyalty: {
+    titleHe: "הצטרפות לתוכנית הנאמנות",
+    titleEn: "Join Our Loyalty Program",
+    subtitleHe: "מלאו את הפרטים לקבלת הטבות בלעדיות וברכת יום הולדת",
+    subtitleEn: "Fill in your details for exclusive perks and birthday rewards",
+    icon: Crown,
+    iconBg: "bg-amber-100",
+    iconColor: "text-amber-600",
+    requiresDob: true,
+    requiresPhone: false,
+  },
+  provider: {
+    titleHe: "השלמת פרטים אישיים",
+    titleEn: "Complete Personal Details",
+    subtitleHe: "פרטים בסיסיים לפני תחילת תהליך ההרשמה כספק",
+    subtitleEn: "Basic details before starting your provider application",
+    icon: UserCircle,
+    iconBg: "bg-green-100",
+    iconColor: "text-green-600",
+    requiresDob: false,
+    requiresPhone: true,
+  },
+  staff: {
+    titleHe: "השלמת פרופיל צוות",
+    titleEn: "Complete Staff Profile",
+    subtitleHe: "מלאו את הפרטים לבקשת גישה",
+    subtitleEn: "Fill in your details for access request",
+    icon: UserCircle,
+    iconBg: "bg-purple-100",
+    iconColor: "text-purple-600",
+    requiresDob: false,
+    requiresPhone: false,
+  },
+};
 
 export default function CompleteProfile() {
   const [, navigate] = useLocation();
@@ -17,10 +74,35 @@ export default function CompleteProfile() {
   const lang = localStorage.getItem("i18nextLng") || "he";
   const isHe = lang === "he";
   const [loading, setLoading] = useState(false);
+  const [role, setRole] = useState<string>("customer");
+
+  useEffect(() => {
+    const intent = localStorage.getItem("signup_intent");
+    if (intent && ROLE_CONFIG[intent]) {
+      setRole(intent);
+    }
+
+    (async () => {
+      try {
+        const res = await fetch(getApiUrl("/api/user/profile"), { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          const serverRole = data?.role || data?.user?.role;
+          if (serverRole && ROLE_CONFIG[serverRole]) {
+            setRole(serverRole);
+          }
+        }
+      } catch {}
+    })();
+  }, []);
+
+  const config = ROLE_CONFIG[role] || ROLE_CONFIG.customer;
+  const IconComp = config.icon;
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
@@ -43,8 +125,12 @@ export default function CompleteProfile() {
       toast({ variant: "destructive", title: isHe ? "שם פרטי ושם משפחה נדרשים" : "First and last name required" });
       return;
     }
-    if (!phone) {
-      toast({ variant: "destructive", title: isHe ? "מספר טלפון נדרש" : "Phone number required" });
+    if (config.requiresPhone && !phone) {
+      toast({ variant: "destructive", title: isHe ? "מספר טלפון נדרש לספקים" : "Phone number required for providers" });
+      return;
+    }
+    if (config.requiresDob && !dateOfBirth) {
+      toast({ variant: "destructive", title: isHe ? "תאריך לידה נדרש לתוכנית הנאמנות" : "Date of birth required for loyalty program" });
       return;
     }
     if (!termsAccepted || !privacyAccepted) {
@@ -54,22 +140,28 @@ export default function CompleteProfile() {
 
     setLoading(true);
     try {
+      const payload: Record<string, any> = {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone,
+        address,
+        city,
+        postalCode,
+        country,
+        termsAccepted,
+        privacyAccepted,
+        marketingConsent,
+      };
+
+      if (config.requiresDob && dateOfBirth) {
+        payload.dateOfBirth = dateOfBirth;
+      }
+
       const res = await fetch(getApiUrl("/api/auth/complete-profile"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          phone,
-          address,
-          city,
-          postalCode,
-          country,
-          termsAccepted,
-          privacyAccepted,
-          marketingConsent,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -95,14 +187,14 @@ export default function CompleteProfile() {
     <div className="min-h-screen bg-white flex items-center justify-center p-4" dir={isHe ? "rtl" : "ltr"}>
       <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
-          <div className="mx-auto bg-blue-100 p-3 rounded-full w-fit mb-4">
-            <UserCircle className="h-10 w-10 text-blue-600" />
+          <div className={`mx-auto ${config.iconBg} p-3 rounded-full w-fit mb-4`}>
+            <IconComp className={`h-10 w-10 ${config.iconColor}`} />
           </div>
           <CardTitle className="text-2xl">
-            {isHe ? "השלמת פרופיל" : "Complete Your Profile"}
+            {isHe ? config.titleHe : config.titleEn}
           </CardTitle>
           <p className="text-gray-500 text-sm mt-1">
-            {isHe ? "מלאו את הפרטים כדי להתחיל" : "Fill in your details to get started"}
+            {isHe ? config.subtitleHe : config.subtitleEn}
           </p>
         </CardHeader>
         <CardContent>
@@ -136,6 +228,29 @@ export default function CompleteProfile() {
                 defaultCountry="IL"
               />
             </div>
+
+            {config.requiresDob && (
+              <div>
+                <Label className="flex items-center gap-2">
+                  <Gift className="h-4 w-4 text-amber-500" />
+                  {isHe ? "תאריך לידה" : "Date of Birth"}
+                  <span className="text-red-500 text-xs">*</span>
+                </Label>
+                <Input
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  max={new Date().toISOString().split("T")[0]}
+                  required
+                  className="mt-1"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  {isHe
+                    ? "נדרש לקבלת ברכת יום הולדת והטבה מיוחדת"
+                    : "Required for birthday greeting and special reward"}
+                </p>
+              </div>
+            )}
 
             <div>
               <Label>{isHe ? "כתובת" : "Address"}</Label>

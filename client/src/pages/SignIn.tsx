@@ -84,6 +84,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const [pinMode, setPinMode] = useState(false);
   const [pinLoading, setPinLoading] = useState(false);
   const [pinError, setPinError] = useState("");
+  const [selectedIntent, setSelectedIntent] = useState<string | null>(
+    localStorage.getItem('signup_intent') || null
+  );
   
   const autoFaceID = useAutoFaceID({
     language,
@@ -97,9 +100,20 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     }
   });
 
+  const handleSelectIntent = (intent: string) => {
+    localStorage.setItem('signup_intent', intent);
+    setSelectedIntent(intent);
+  };
+
   const navigatePostLogin = async (fallback = '/home') => {
     try {
-      const res = await fetch(getApiUrl('/api/auth/post-login'), { method: 'POST', credentials: 'include' });
+      const intent = localStorage.getItem('signup_intent') || undefined;
+      const res = await fetch(getApiUrl('/api/auth/post-login'), {
+        method: 'POST',
+        headers: intent ? { 'Content-Type': 'application/json' } : {},
+        credentials: 'include',
+        body: intent ? JSON.stringify({ intent }) : undefined,
+      });
       const data = await res.json();
       const path = data.redirectTo || fallback;
       window.scrollTo(0, 0);
@@ -1372,7 +1386,95 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             <div className="w-12 h-[1px] bg-neutral-300 mx-auto mt-3" />
           </motion.div>
 
-          {webviewBlocked && (
+          {!selectedIntent && !user && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
+              className="space-y-3"
+            >
+              <p className="text-center text-xs text-neutral-500 tracking-wider uppercase mb-4">
+                {language === 'he' ? 'כיצד תרצו להשתמש בפלטפורמה?' : 'How would you like to use the platform?'}
+              </p>
+              <button
+                onClick={() => handleSelectIntent('customer')}
+                className="w-full text-left p-4 border border-neutral-200 hover:border-neutral-400 bg-white hover:shadow-sm transition-all flex items-center gap-4"
+                data-testid="intent-customer"
+              >
+                <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
+                  <User className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-neutral-900">{language === 'he' ? 'הזמנת שירותים' : 'Book Services'}</p>
+                  <p className="text-xs text-neutral-500">{language === 'he' ? 'שטיפה, טיפוח, שמרטפות, הולכת כלבים' : 'Washing, grooming, pet sitting, dog walking'}</p>
+                </div>
+              </button>
+              <button
+                onClick={() => handleSelectIntent('loyalty')}
+                className="w-full text-left p-4 border border-neutral-200 hover:border-neutral-400 bg-white hover:shadow-sm transition-all flex items-center gap-4"
+                data-testid="intent-loyalty"
+              >
+                <div className="w-10 h-10 bg-amber-50 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-neutral-900">{language === 'he' ? 'הצטרפות למועדון' : 'Join Rewards Club'}</p>
+                  <p className="text-xs text-neutral-500">{language === 'he' ? 'נקודות, הטבות, מתנות' : 'Points, perks, rewards'}</p>
+                </div>
+              </button>
+              <button
+                onClick={() => handleSelectIntent('provider')}
+                className="w-full text-left p-4 border border-neutral-200 hover:border-neutral-400 bg-white hover:shadow-sm transition-all flex items-center gap-4"
+                data-testid="intent-provider"
+              >
+                <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-neutral-900">{language === 'he' ? 'הפוך לנותן שירות' : 'Become a Provider'}</p>
+                  <p className="text-xs text-neutral-500">{language === 'he' ? 'הרוויחו כשמרטף/ית, מטייל/ת, מפעיל/ת' : 'Earn as sitter, walker, or operator'}</p>
+                </div>
+              </button>
+              <button
+                onClick={() => handleSelectIntent('staff')}
+                className="w-full text-left p-4 border border-neutral-200 hover:border-neutral-400 bg-white hover:shadow-sm transition-all flex items-center gap-4"
+                data-testid="intent-staff"
+              >
+                <div className="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Lock className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-neutral-900">{language === 'he' ? 'צוות / ניהול' : 'Staff / Admin Access'}</p>
+                  <p className="text-xs text-neutral-500">{language === 'he' ? 'גישת עובדים (דורש אישור)' : 'Employee access (requires approval)'}</p>
+                </div>
+              </button>
+            </motion.div>
+          )}
+
+          {selectedIntent && !user && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center justify-between"
+            >
+              <button
+                onClick={() => { setSelectedIntent(null); localStorage.removeItem('signup_intent'); }}
+                className="text-xs text-neutral-400 hover:text-neutral-700 tracking-wider uppercase transition-colors flex items-center gap-1"
+                data-testid="button-change-intent"
+              >
+                <ArrowLeft className="w-3 h-3" />
+                {language === 'he' ? 'שנה בחירה' : 'Change selection'}
+              </button>
+              <span className="text-xs text-neutral-400 tracking-wider uppercase">
+                {selectedIntent === 'customer' ? (language === 'he' ? 'הזמנת שירותים' : 'Book Services') :
+                 selectedIntent === 'loyalty' ? (language === 'he' ? 'מועדון לקוחות' : 'Rewards Club') :
+                 selectedIntent === 'provider' ? (language === 'he' ? 'נותן שירות' : 'Provider') :
+                 (language === 'he' ? 'צוות' : 'Staff')}
+              </span>
+            </motion.div>
+          )}
+
+          {selectedIntent && webviewBlocked && (
             <motion.div
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1389,7 +1491,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             </motion.div>
           )}
 
-          <motion.div
+          {selectedIntent && (<motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.4 }}
@@ -1525,9 +1627,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               <span>{language === 'he' ? 'התחבר עם טלפון' : 'Sign in with Phone'}</span>
             </Button>
 
-          </motion.div>
+          </motion.div>)}
 
-          <motion.div
+          {selectedIntent && (<motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3, duration: 0.4 }}
@@ -1541,9 +1643,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 {t('signin.or', language)}
               </span>
             </div>
-          </motion.div>
+          </motion.div>)}
 
-          {pinMode && (
+          {selectedIntent && pinMode && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1595,7 +1697,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             </motion.div>
           )}
 
-          {phoneMode && (
+          {selectedIntent && phoneMode && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1709,7 +1811,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             </motion.div>
           )}
 
-          {!magicLinkMode && !showPasswordReset && !pinMode && !phoneMode && (
+          {selectedIntent && !magicLinkMode && !showPasswordReset && !pinMode && !phoneMode && (
             <motion.form
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1788,7 +1890,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             </motion.form>
           )}
 
-          {magicLinkMode && !showPasswordReset && (
+          {selectedIntent && magicLinkMode && !showPasswordReset && (
             <motion.form
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1849,7 +1951,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             </motion.form>
           )}
 
-          {showPasswordReset && (
+          {selectedIntent && showPasswordReset && (
             <motion.form
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1900,7 +2002,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             </motion.form>
           )}
 
-          {!magicLinkMode && !showPasswordReset && (
+          {selectedIntent && !magicLinkMode && !showPasswordReset && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

@@ -33,22 +33,64 @@ export async function postLoginDecider(req: Request, res: Response) {
       return res.json({ redirectTo: "/verify-email", reason: "EMAIL_NOT_VERIFIED" });
     }
 
-    const profileComplete = !!(user.firstName && user.lastName && (user.phone || user.email));
+    const { intent } = req.body || {};
+
+    const userRole = (user as any).role || null;
+
+    const ALLOWED_INTENTS = ['customer', 'loyalty', 'provider', 'staff'];
+    const safeIntent = (intent && ALLOWED_INTENTS.includes(intent)) ? intent : null;
+
+    if (!userRole && safeIntent) {
+      if (safeIntent === 'customer' || safeIntent === 'loyalty') {
+        await storage.updateUser(userId, { role: safeIntent, accessLevel: 1 } as any);
+      } else if (safeIntent === 'provider') {
+        await storage.updateUser(userId, { role: 'provider', accessLevel: 1 } as any);
+        const existingApp = await storage.getProviderApplicationByUser(userId);
+        if (!existingApp) {
+          await storage.createProviderApplicationDraft(userId, {
+            email: user?.email || '',
+            firstName: user?.firstName || '',
+            lastName: user?.lastName || '',
+            phoneNumber: user?.phone || '',
+            city: user?.city || '',
+            country: user?.country || 'IL',
+          } as any);
+        }
+      } else if (safeIntent === 'staff') {
+        await storage.updateUser(userId, { role: 'staff', accessLevel: 0 } as any);
+        const existingReq = await storage.getStaffAccessRequestByUser(userId);
+        if (!existingReq) {
+          await storage.createStaffAccessRequest({
+            userId,
+            requestedRole: 'staff',
+            status: 'pending',
+          });
+        }
+      }
+    }
+
+    const refreshedUser = await storage.getUser(userId);
+    const effectiveRole = (refreshedUser as any)?.role || userRole || 'customer';
+
+    if (!effectiveRole || effectiveRole === 'new') {
+      return res.json({ redirectTo: "/choose-role", reason: "NO_ROLE_SELECTED" });
+    }
+
+    const u = refreshedUser || user;
+    const profileComplete = !!(u?.firstName && u?.lastName);
 
     if (!profileComplete) {
       return res.json({ redirectTo: "/complete-profile", reason: "PROFILE_INCOMPLETE" });
     }
 
-    const userRole = (user as any).role || 'customer';
-
-    if (userRole === 'provider') {
+    if (effectiveRole === 'provider') {
       const app = await storage.getProviderApplicationByUser(userId);
       const decision = routeProvider(app);
       logger.info(`[PostLogin] Provider routing for ${userId}: ${decision.reason}`);
       return res.json(decision);
     }
 
-    if (userRole === 'staff') {
+    if (effectiveRole === 'staff') {
       const staffReq = await storage.getStaffAccessRequestByUser(userId);
       if (!staffReq || staffReq.status !== 'approved') {
         if (staffReq?.status === 'rejected') {
@@ -59,12 +101,20 @@ export async function postLoginDecider(req: Request, res: Response) {
       return res.json({ redirectTo: "/admin/dashboard", reason: "STAFF_READY" });
     }
 
-    if (userRole === 'admin' || userRole === 'management' || userRole === 'super_admin') {
+    if (effectiveRole === 'admin' || effectiveRole === 'management' || effectiveRole === 'super_admin') {
       const isApproved = !!(user as any).approvedAt && !!(user as any).approvedBy;
       if (!isApproved) {
         return res.json({ redirectTo: "/staff/pending", reason: "ADMIN_NOT_APPROVED" });
       }
       return res.json({ redirectTo: "/admin/dashboard", reason: "ADMIN_READY" });
+    }
+
+    if (effectiveRole === 'loyalty') {
+      const hasDateOfBirth = !!(refreshedUser as any)?.dateOfBirth;
+      if (!hasDateOfBirth) {
+        return res.json({ redirectTo: "/complete-profile", reason: "LOYALTY_DOB_REQUIRED" });
+      }
+      return res.json({ redirectTo: "/home", reason: "LOYALTY_READY" });
     }
 
     const providerApp = await storage.getProviderApplicationByUser(userId);
@@ -227,6 +277,7 @@ export async function completeProfile(req: Request, res: Response) {
       firstName,
       lastName,
       phone,
+      dateOfBirth,
       address,
       city,
       postalCode,
@@ -239,15 +290,18 @@ export async function completeProfile(req: Request, res: Response) {
     if (!firstName || !lastName) {
       return res.status(400).json({ error: "NAME_REQUIRED" });
     }
-    if (!phone) {
-      return res.status(400).json({ error: "PHONE_REQUIRED" });
+
+    if (phone) {
+      const e164Regex = /^\+[1-9]\d{6,14}$/;
+      if (!e164Regex.test(phone)) {
+        return res.status(400).json({ error: "INVALID_PHONE_FORMAT", message: "Phone must be in E.164 format (e.g. +972501234567)" });
+      }
     }
 
     const now = new Date();
     const updates: Record<string, any> = {
       firstName,
       lastName,
-      phone,
       address: address || null,
       city: city || null,
       postalCode: postalCode || null,
@@ -255,6 +309,17 @@ export async function completeProfile(req: Request, res: Response) {
       profileCompletedAt: now,
       updatedAt: now,
     };
+
+    if (phone) {
+      updates.phone = phone;
+    }
+
+    if (dateOfBirth) {
+      const dob = new Date(dateOfBirth);
+      if (!isNaN(dob.getTime()) && dob < now) {
+        updates.dateOfBirth = dateOfBirth;
+      }
+    }
 
     if (termsAccepted) {
       updates.termsAcceptedAt = now;
