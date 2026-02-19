@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ChevronLeft, ChevronRight, ArrowRight, ArrowLeft, Gift, Check, ShieldCheck, Heart, Star, PartyPopper, Sparkles, Globe, Lock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowRight, ArrowLeft, Gift, Check, ShieldCheck, Heart, Star, PartyPopper, Sparkles, Globe, Lock, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import PaymentMethods from '@/components/PaymentMethods';
 import { getApiUrl } from '@/lib/apiConfig';
@@ -694,6 +694,7 @@ export default function EGift() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -750,9 +751,10 @@ export default function EGift() {
       return;
     }
 
-    if (!selectedOption) return;
+    if (!selectedOption || isProcessing) return;
 
     const finalPrice = selectedOption.value;
+    setIsProcessing(true);
 
     try {
       const response = await fetch(getApiUrl('/api/multi-service-gift'), {
@@ -798,6 +800,8 @@ export default function EGift() {
         description: tx('tryAgainLater', lang),
         variant: "destructive" 
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -1015,13 +1019,20 @@ export default function EGift() {
                 </div>
 
                 <button
-                  className="w-full py-4 mt-5 text-[11px] tracking-[0.18em] uppercase font-medium bg-[#1a1a1a] text-white hover:bg-[#333] transition-all duration-300 flex items-center justify-center gap-2 touch-manipulation"
+                  className="w-full py-4 mt-5 text-[11px] tracking-[0.18em] uppercase font-medium bg-[#1a1a1a] text-white hover:bg-[#333] transition-all duration-300 flex items-center justify-center gap-2 touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={handleCheckout}
+                  disabled={isProcessing}
                   data-testid="button-checkout"
                   style={{ borderRadius: '2px' }}
                 >
-                  {tx('payAndSend', lang)} {formattedValue}
-                  <ForwardIcon className="w-3.5 h-3.5" />
+                  {isProcessing ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      {tx('payAndSend', lang)} {formattedValue}
+                      <ForwardIcon className="w-3.5 h-3.5" />
+                    </>
+                  )}
                 </button>
 
                 <p className="text-[10px] text-[#aaa] text-center mt-3 tracking-wide">
