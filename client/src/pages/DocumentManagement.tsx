@@ -311,7 +311,7 @@ export default function DocumentManagement() {
                   </div>
                   
                   <div className="flex gap-2 pt-2">
-                    <button 
+                    <Button 
                       className="luxury-btn-primary flex-1 text-xs py-2"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -321,8 +321,8 @@ export default function DocumentManagement() {
                     >
                       <Eye className="w-3 h-3 mr-1" />
                       {isHebrew ? 'צפה' : 'View'}
-                    </button>
-                    <button 
+                    </Button>
+                    <Button 
                       className="luxury-btn-secondary text-xs py-2"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -332,7 +332,7 @@ export default function DocumentManagement() {
                     >
                       <Download className="w-3 h-3 mr-1" />
                       {isHebrew ? 'הורד' : 'Download'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>

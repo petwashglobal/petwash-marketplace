@@ -200,7 +200,7 @@ export default function SitterSuite() {
 
                 {/* Premium CTA Buttons */}
                 <div className="flex flex-wrap gap-4">
-                  <button 
+                  <Button 
                     className="luxury-btn-primary luxury-hover-glow flex items-center gap-3"
                     onClick={() => {
                       const resultsSection = document.getElementById('sitters-results');
@@ -211,17 +211,17 @@ export default function SitterSuite() {
                     <Search className="w-6 h-6" />
                     {isHebrew ? 'מצא שמרטף' : 'Find a Sitter'}
                     <Heart className="w-5 h-5" />
-                  </button>
+                  </Button>
                   
                   <Link href="/provider-onboarding?type=sitter">
-                    <button 
+                    <Button 
                       className="luxury-btn-secondary flex items-center gap-3"
                       data-testid="button-become-sitter"
                     >
                       <Sparkles className="w-6 h-6" />
                       {t.hero.becomeSitter}
                       <Award className="w-5 h-5" />
-                    </button>
+                    </Button>
                   </Link>
                 </div>
 
@@ -243,7 +243,7 @@ export default function SitterSuite() {
                   
                   <div className="space-y-4">
                     {/* Guided Booking Button - ⁦Pet Wash™⁩ Luxury Wizard */}
-                    <button
+                    <Button
                       onClick={() => setShowWizard(true)}
                       className="w-full h-16 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white font-bold text-lg flex items-center justify-center gap-3 hover:from-amber-600 hover:via-orange-600 hover:to-amber-700 transition-all shadow-xl shadow-amber-500/30 hover:shadow-2xl hover:scale-[1.02]"
                       data-testid="button-start-booking-wizard"
@@ -251,7 +251,7 @@ export default function SitterSuite() {
                       <Crown className="w-6 h-6" />
                       {isHebrew ? 'הזמן עכשיו' : 'Book Now'}
                       <Sparkles className="w-5 h-5" />
-                    </button>
+                    </Button>
 
                     <div className="text-center text-sm text-gray-500 dark:text-gray-400">
                       {isHebrew ? '— או חפש ישירות —' : '— or search directly —'}
@@ -298,7 +298,7 @@ export default function SitterSuite() {
                       </span>
                     </div>
 
-                    <button 
+                    <Button 
                       className="luxury-btn-primary w-full"
                       onClick={() => {
                         const resultsSection = document.getElementById('sitters-results');
@@ -307,7 +307,7 @@ export default function SitterSuite() {
                       data-testid="button-search"
                     >
                       {isHebrew ? 'חפש עכשיו' : 'Search Now'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -444,7 +444,7 @@ export default function SitterSuite() {
                       : 'Leave your pet at home with a professional sitter. They\'ll handle walks, food, water, and a perfect experience.'}
                   </p>
                 </div>
-                <button 
+                <Button 
                   className="luxury-btn-primary px-8 py-4 text-lg whitespace-nowrap"
                   onClick={() => {
                     const resultsSection = document.getElementById('sitters-results');
@@ -453,7 +453,7 @@ export default function SitterSuite() {
                   data-testid="button-vacation-cta"
                 >
                   {isHebrew ? 'מצא שמרטף עכשיו' : 'Find a Sitter Now'}
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -566,18 +566,18 @@ export default function SitterSuite() {
                       
                         {user ? (
                           <Link href={`/sitter-suite/book/${sitter.id}`}>
-                            <button 
+                            <Button 
                               className="luxury-btn-primary"
                               data-testid={`button-book-featured-${sitter.id}`}
                             >
                               {isHebrew ? 'הזמן עכשיו' : 'Book Now'}
-                            </button>
+                            </Button>
                           </Link>
                         ) : (
                           <Link href="/signin">
-                            <button className="luxury-btn-secondary">
+                            <Button className="luxury-btn-secondary">
                               {isHebrew ? 'התחבר להזמנה' : 'Sign in to book'}
-                            </button>
+                            </Button>
                           </Link>
                         )}
                       </div>
@@ -604,14 +604,14 @@ export default function SitterSuite() {
                   {filteredSitters?.length || 0} {isHebrew ? 'שמרטפים זמינים' : 'sitters available'}
                 </p>
               </div>
-              <button
+              <Button
                 className="luxury-btn-ghost flex items-center gap-2"
                 onClick={() => setShowFilters(!showFilters)}
                 data-testid="button-toggle-filters"
               >
                 <Filter className="w-4 h-4" />
                 {isHebrew ? 'סינון' : 'Filters'}
-              </button>
+              </Button>
             </div>
 
             {/* Filter Panel */}
@@ -663,7 +663,7 @@ export default function SitterSuite() {
                   </div>
                 </div>
 
-                <button
+                <Button
                   className="luxury-btn-ghost mt-4"
                   onClick={() => {
                     setPriceRange([0, 200]);
@@ -675,7 +675,7 @@ export default function SitterSuite() {
                   data-testid="button-clear-filters"
                 >
                   {t.filters.clear}
-                </button>
+                </Button>
               </div>
             )}
 
@@ -756,12 +756,12 @@ export default function SitterSuite() {
                       </div>
 
                       {/* Favorite Button */}
-                      <button 
+                      <Button 
                         className="absolute bottom-4 right-4 w-12 h-12 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-gray-600 hover:text-pink-500 hover:scale-110 transition-all shadow-xl luxury-hover-glow"
                         data-testid={`button-favorite-${sitter.id}`}
                       >
                         <Heart className="w-6 h-6" />
-                      </button>
+                      </Button>
                     </div>
 
                     <div className="p-6">
@@ -824,18 +824,18 @@ export default function SitterSuite() {
                         
                         {user ? (
                           <Link href={`/sitter-suite/book/${sitter.id}`}>
-                            <button 
+                            <Button 
                               className="luxury-btn-primary"
                               data-testid={`button-book-${sitter.id}`}
                             >
                               {isHebrew ? 'הזמן' : 'Book'}
-                            </button>
+                            </Button>
                           </Link>
                         ) : (
                           <Link href="/signin">
-                            <button className="luxury-btn-ghost">
+                            <Button className="luxury-btn-ghost">
                               {isHebrew ? 'התחבר' : 'Sign in'}
-                            </button>
+                            </Button>
                           </Link>
                         )}
                       </div>
@@ -857,9 +857,9 @@ export default function SitterSuite() {
                     : 'We are recruiting verified sitters to our platform. Want to be the first to know when we launch?'}
                 </p>
                 <Link href="/provider-onboarding?type=sitter">
-                  <button className="luxury-btn-primary" data-testid="button-become-sitter">
+                  <Button className="luxury-btn-primary" data-testid="button-become-sitter">
                     {isHebrew ? 'הפוך לשמרטף' : 'Become a Sitter'}
-                  </button>
+                  </Button>
                 </Link>
               </div>
             )}
@@ -984,19 +984,19 @@ export default function SitterSuite() {
                 : 'Join thousands of happy pet parents who found their perfect sitter'}
             </p>
             <div className="flex flex-wrap gap-4 justify-center">
-              <button 
+              <Button 
                 className="luxury-btn-primary luxury-hover-glow flex items-center gap-2"
               >
                 <Search className="w-6 h-6" />
                 {isHebrew ? 'מצא שמרטף עכשיו' : 'Find a Sitter Now'}
-              </button>
+              </Button>
               <Link href="/provider-onboarding?type=sitter">
-                <button 
+                <Button 
                   className="luxury-btn-secondary flex items-center gap-2"
                 >
                   <DollarSign className="w-6 h-6" />
                   {isHebrew ? 'הרווח כשמרטף' : 'Earn as a Sitter'}
-                </button>
+                </Button>
               </Link>
             </div>
           </div>

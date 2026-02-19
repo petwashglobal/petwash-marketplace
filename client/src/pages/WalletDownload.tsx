@@ -91,14 +91,14 @@ export default function WalletDownload() {
                   </p>
 
                   {/* View Loyalty Dashboard Link */}
-                  <button 
+                  <Button 
                     onClick={() => setLocation('/loyalty/dashboard')}
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-black text-white font-medium hover:bg-gray-900 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                     data-testid="link-loyalty-dashboard"
                   >
                     <CreditCard className="w-5 h-5" />
                     {isHebrew ? 'צפייה בכרטיס ה-VIP שלי' : 'View My VIP Card'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

@@ -3,6 +3,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Shield, PawPrint, MapPin, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { MobileDatePicker } from "@/components/ui/mobile-date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -270,7 +271,7 @@ export default function K9000BookingFlow() {
               <div className="mb-3 luxury-heading-sm">
                 הערות (אופציונלי)
               </div>
-              <textarea
+              <Textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 rows={3}

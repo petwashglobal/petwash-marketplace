@@ -41,13 +41,13 @@ export default function InvestorPresentation() {
                 <span className="text-white font-bold">Israel 🇮🇱 | Global 🌍</span>
               </div>
             </div>
-            <button 
+            <Button 
               className="luxury-btn-primary luxury-shadow-xl text-xl px-16 py-6"
               onClick={downloadPDF}
             >
               <Download className="mr-2 w-6 h-6" />
               Download Presentation
-            </button>
+            </Button>
           </div>
         </div>
       </div>

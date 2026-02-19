@@ -34,14 +34,14 @@ export default function StationMap() {
                 data-testid="input-search-location"
               />
             </div>
-            <button className="luxury-btn-primary" data-testid="button-current-location">
+            <Button className="luxury-btn-primary" data-testid="button-current-location">
               <Navigation className="w-5 h-5 mr-2" />
               Use My Location
-            </button>
-            <button className="luxury-btn-secondary" data-testid="button-filters">
+            </Button>
+            <Button className="luxury-btn-secondary" data-testid="button-filters">
               <Filter className="w-5 h-5 mr-2" />
               Filters
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -53,14 +53,14 @@ export default function StationMap() {
             <p className="luxury-text-body mb-8 max-w-md mx-auto">
               We're building a beautiful map experience with Google Maps integration
             </p>
-            <button
+            <Button
               className="luxury-btn-primary luxury-shadow-xl"
               data-testid="button-view-list"
               onClick={() => setLocation("/locations")}
             >
               <MapPin className="w-5 h-5 mr-2" />
               View Station List
-            </button>
+            </Button>
           </div>
         </div>
 

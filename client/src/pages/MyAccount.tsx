@@ -221,14 +221,14 @@ function WalletActionButton({
   const [, setLocation] = useLocation();
   
   return (
-    <button 
+    <Button 
       onClick={() => setLocation(href)}
       className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm text-center hover:shadow-md hover:border-gray-200 transition-all duration-300 group"
     >
       <Icon className="w-5 h-5 text-gray-400 mx-auto mb-3 group-hover:text-stone-700 transition-colors" />
       <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">{label}</p>
       <ChevronRight className="w-4 h-4 mx-auto mt-2 text-gray-300 group-hover:text-gray-500 transition-colors" />
-    </button>
+    </Button>
   );
 }
 
@@ -682,7 +682,7 @@ export default function MyAccount() {
                   }}
                 />
                 {verificationStatus?.canUploadPhoto ? (
-                  <button
+                  <Button
                     onClick={() => photoInputRef.current?.click()}
                     disabled={isUploadingPhoto}
                     className="absolute -bottom-2 -left-2 p-2.5 rounded-full shadow-md bg-gray-900 text-white border-2 border-white hover:bg-gray-800 transition-all duration-200 cursor-pointer"
@@ -693,7 +693,7 @@ export default function MyAccount() {
                     ) : (
                       <Camera className="w-4 h-4" />
                     )}
-                  </button>
+                  </Button>
                 ) : (
                   <div
                     className="absolute -bottom-2 -left-2 p-2.5 rounded-full shadow-md bg-gray-400 text-white border-2 border-white cursor-not-allowed"
@@ -703,14 +703,14 @@ export default function MyAccount() {
                   </div>
                 )}
                 {profile.photoURL && verificationStatus?.canUploadPhoto && (
-                  <button
+                  <Button
                     onClick={handlePhotoDelete}
                     disabled={isUploadingPhoto}
                     className="absolute -top-1 -left-1 p-1.5 rounded-full shadow-sm bg-white text-red-500 border border-gray-200 hover:bg-red-50 transition-all duration-200 opacity-0 group-hover:opacity-100"
                     title={isHebrew ? 'הסר תמונה' : 'Remove photo'}
                   >
                     <Trash2 className="w-3 h-3" />
-                  </button>
+                  </Button>
                 )}
                 <div className="absolute -bottom-2 -right-2 p-2 rounded-full shadow-sm bg-stone-100 border border-gray-200">
                   <TierIcon className="w-5 h-5 text-stone-700" />
@@ -1340,7 +1340,7 @@ export default function MyAccount() {
                     <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-600 transition-colors" />
                   </a>
 
-                  <button
+                  <Button
                     onClick={() => exportDataMutation.mutate()}
                     disabled={exportDataMutation.isPending}
                     className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group w-full"
@@ -1357,7 +1357,7 @@ export default function MyAccount() {
                     ) : (
                       <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-600 transition-colors" />
                     )}
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -1439,7 +1439,7 @@ export default function MyAccount() {
 
                 <div className="space-y-4">
                   {/* Freeze Account */}
-                  <button
+                  <Button
                     onClick={() => setShowFreezeDialog(true)}
                     disabled={accountStatus?.status === 'frozen' || accountStatus?.status === 'pending_deletion'}
                     className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-blue-50 transition-colors cursor-pointer group w-full disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1456,10 +1456,10 @@ export default function MyAccount() {
                       </div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-600 transition-colors" />
-                  </button>
+                  </Button>
 
                   {/* Delete Account */}
-                  <button
+                  <Button
                     onClick={() => setShowDeleteDialog(true)}
                     disabled={accountStatus?.status === 'pending_deletion'}
                     className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-red-50 transition-colors cursor-pointer group w-full disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1476,7 +1476,7 @@ export default function MyAccount() {
                       </div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-red-400 transition-colors" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             </TabsContent>

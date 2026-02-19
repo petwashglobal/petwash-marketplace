@@ -5,6 +5,7 @@ import { MobileDatePicker, QuickDateButtons } from '@/components/ui/mobile-date-
 import { MobileInput } from '@/components/ui/mobile-input';
 import { GooglePlacesAutocomplete, type PlaceDetails } from '@/components/ui/google-places-autocomplete';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Calendar, Clock, MapPin, Users, Mail, Phone, MessageSquare, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -315,7 +316,7 @@ export function MeetingScheduler({ language, meetingType = 'customer', prefilled
           {/* Description */}
           <div className="space-y-2">
             <label className="text-base font-medium text-gray-700">{t.description}</label>
-            <textarea
+            <Textarea
               value={formData.description || ''}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder={t.descriptionPlaceholder}

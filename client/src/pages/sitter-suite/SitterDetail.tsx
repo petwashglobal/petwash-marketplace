@@ -523,7 +523,7 @@ export default function SitterDetail() {
                   </div>
 
                   {/* Book Button */}
-                  <button
+                  <Button
                     className="luxury-btn-primary luxury-shadow-xl w-full h-16 text-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={handleBooking}
                     disabled={!selectedPetId || !startDate || !endDate || createBookingMutation.isPending}
@@ -540,7 +540,7 @@ export default function SitterDetail() {
                         <span>{isHebrew ? 'הזמן עכשיו' : 'Book Now'}</span>
                       </>
                     )}
-                  </button>
+                  </Button>
 
                   <div className="luxury-badge-success w-full text-center p-3">
                     {isHebrew 

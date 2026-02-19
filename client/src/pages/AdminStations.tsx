@@ -214,14 +214,14 @@ export default function AdminStations() {
             </div>
 
             <div className="flex items-center space-x-4">
-              <button className="luxury-btn-ghost" onClick={() => setLocation('/admin/dashboard')}>
+              <Button className="luxury-btn-ghost" onClick={() => setLocation('/admin/dashboard')}>
                 <Shield className="w-4 h-4 mr-2" />
                 Back to Dashboard
-              </button>
-              <button className="luxury-btn-ghost" onClick={handleLogout}>
+              </Button>
+              <Button className="luxury-btn-ghost" onClick={handleLogout}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -238,7 +238,7 @@ export default function AdminStations() {
             ].map((tab) => {
               const Icon = tab.icon;
               return (
-                <button
+                <Button
                   key={tab.id}
                   onClick={() => setSelectedTab(tab.id as TabType)}
                   className={`flex items-center space-x-2 py-4 px-2 border-b-2 font-semibold transition-all relative ${
@@ -255,7 +255,7 @@ export default function AdminStations() {
                       {tab.badge}
                     </span>
                   )}
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -313,10 +313,10 @@ export default function AdminStations() {
                   </SelectContent>
                 </Select>
 
-                <button className="luxury-btn-primary ml-auto" data-testid="button-add-station">
+                <Button className="luxury-btn-primary ml-auto" data-testid="button-add-station">
                   <Plus className="w-4 h-4 mr-2 inline" />
                   Add Station
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -418,7 +418,7 @@ export default function AdminStations() {
                     <div className="luxury-divider my-4" />
 
                     {/* Actions */}
-                    <button
+                    <Button
                       onClick={() => {
                         setSelectedStationId(station.id);
                         setSheetOpen(true);
@@ -428,7 +428,7 @@ export default function AdminStations() {
                     >
                       <Eye className="w-4 h-4 mr-2 inline" />
                       View Full Details
-                    </button>
+                    </Button>
                   </div>
                 ))
                 }
@@ -520,9 +520,9 @@ export default function AdminStations() {
                             </div>
                             <div className="flex items-center gap-3">
                               {getSeverityBadge(alert.severity)}
-                              <button className="luxury-btn-secondary">
+                              <Button className="luxury-btn-secondary">
                                 Resolve
-                              </button>
+                              </Button>
                             </div>
                           </div>
                         </div>
@@ -573,9 +573,9 @@ export default function AdminStations() {
                             </div>
                             <div className="flex items-center gap-3">
                               {getSeverityBadge(alert.severity)}
-                              <button className="luxury-btn-secondary">
+                              <Button className="luxury-btn-secondary">
                                 View Details
-                              </button>
+                              </Button>
                             </div>
                           </div>
                         </div>

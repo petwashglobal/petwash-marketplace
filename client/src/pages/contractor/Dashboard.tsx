@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -345,9 +346,9 @@ export default function ContractorDashboard() {
                   <p className="luxury-text-body mb-4">
                     View detailed earnings breakdown, tax summaries, and payout history.
                   </p>
-                  <button className="luxury-btn-primary">
+                  <Button className="luxury-btn-primary">
                     Download Full Report
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

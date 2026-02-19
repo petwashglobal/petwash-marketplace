@@ -609,30 +609,30 @@ export default function CommunicationCenter() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <button 
+                  <Button 
                     onClick={() => setIsBulkEmailDialogOpen(true)}
                     className="luxury-btn-primary h-16 flex flex-col items-center justify-center space-y-2"
                     data-testid="button-send-bulk-email"
                   >
                     <Send className="w-5 h-5" />
                     <span>{t('communication.quickActions.sendBulkEmail', 'Send Bulk Email')}</span>
-                  </button>
-                  <button 
+                  </Button>
+                  <Button 
                     onClick={() => setIsBulkSmsDialogOpen(true)}
                     className="luxury-btn-secondary h-16 flex flex-col items-center justify-center space-y-2"
                     data-testid="button-send-bulk-sms"
                   >
                     <MessageSquare className="w-5 h-5" />
                     <span>{t('communication.quickActions.sendBulkSms', 'Send Bulk SMS')}</span>
-                  </button>
-                  <button 
+                  </Button>
+                  <Button 
                     onClick={() => setIsCreateReminderDialogOpen(true)}
                     className="luxury-btn-secondary h-16 flex flex-col items-center justify-center space-y-2"
                     data-testid="button-create-reminder"
                   >
                     <Bell className="w-5 h-5" />
                     <span>{t('communication.quickActions.scheduleReminder', 'Schedule Reminder')}</span>
-                  </button>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -645,10 +645,10 @@ export default function CommunicationCenter() {
                 <h2 className="luxury-heading-md">{t('communication.emailTemplates.title', 'Email Templates')}</h2>
                 <p className="luxury-text-body">{t('communication.emailTemplates.subtitle', 'Manage email templates for different communication types')}</p>
               </div>
-              <button onClick={() => setIsCreateEmailDialogOpen(true)} className="luxury-btn-primary" data-testid="button-create-email-template">
+              <Button onClick={() => setIsCreateEmailDialogOpen(true)} className="luxury-btn-primary" data-testid="button-create-email-template">
                 <Plus className="w-4 h-4 mr-2 inline" />
                 {t('communication.emailTemplates.create', 'Create Template')}
-              </button>
+              </Button>
             </div>
 
             {/* Email Template Filters */}
@@ -792,10 +792,10 @@ export default function CommunicationCenter() {
                 <h2 className="luxury-heading-md">{t('communication.smsTemplates.title', 'SMS Templates')}</h2>
                 <p className="luxury-text-body">{t('communication.smsTemplates.subtitle', 'Manage SMS templates for different communication types')}</p>
               </div>
-              <button onClick={() => setIsCreateSmsDialogOpen(true)} className="luxury-btn-primary" data-testid="button-create-sms-template">
+              <Button onClick={() => setIsCreateSmsDialogOpen(true)} className="luxury-btn-primary" data-testid="button-create-sms-template">
                 <Plus className="w-4 h-4 mr-2 inline" />
                 {t('communication.smsTemplates.create', 'Create Template')}
-              </button>
+              </Button>
             </div>
 
             {/* SMS Template Filters */}
@@ -950,10 +950,10 @@ export default function CommunicationCenter() {
                 <h2 className="luxury-heading-md">{t('communication.reminders.title', 'Appointment Reminders')}</h2>
                 <p className="luxury-text-body">{t('communication.reminders.subtitle', 'Manage automated appointment reminders')}</p>
               </div>
-              <button onClick={() => setIsCreateReminderDialogOpen(true)} className="luxury-btn-primary" data-testid="button-create-reminder">
+              <Button onClick={() => setIsCreateReminderDialogOpen(true)} className="luxury-btn-primary" data-testid="button-create-reminder">
                 <Plus className="w-4 h-4 mr-2 inline" />
                 {t('communication.reminders.create', 'Schedule Reminder')}
-              </button>
+              </Button>
             </div>
 
             {/* Reminder Filters */}

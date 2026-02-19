@@ -127,7 +127,7 @@ export default function DriverDashboard() {
                 <p className="luxury-text-small text-blue-100">Status</p>
                 <p className="text-xl font-bold">{isOnline ? '🟢 Online' : '🔴 Offline'}</p>
               </div>
-              <button 
+              <Button 
                 className={`${
                   isOnline 
                     ? 'bg-red-600 hover:bg-red-700' 
@@ -137,7 +137,7 @@ export default function DriverDashboard() {
                 data-testid="button-toggle-online"
               >
                 {isOnline ? 'Go Offline' : 'Go Online'}
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -214,13 +214,13 @@ export default function DriverDashboard() {
               <Car className="w-20 h-20 text-gray-300 mx-auto mb-4" />
               <h3 className="luxury-heading-md mb-2">You're Offline</h3>
               <p className="luxury-text-body text-gray-500 mb-6">Go online to start receiving trip requests</p>
-              <button 
+              <Button 
                 className="luxury-btn-primary"
                 onClick={() => setIsOnline(true)}
                 data-testid="button-go-online"
               >
                 Go Online
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
@@ -318,20 +318,20 @@ export default function DriverDashboard() {
 
                         {/* Action Buttons */}
                         <div className="flex gap-2 pt-2">
-                          <button 
+                          <Button 
                             className="luxury-btn-primary flex-1"
                             data-testid={`button-accept-trip-${request.id}`}
                           >
                             <CheckCircle2 className="w-4 h-4 mr-2 inline" />
                             Accept Trip
-                          </button>
-                          <button 
+                          </Button>
+                          <Button 
                             className="luxury-btn-secondary flex-1"
                             data-testid={`button-decline-trip-${request.id}`}
                           >
                             <XCircle className="w-4 h-4 mr-2 inline" />
                             Decline
-                          </button>
+                          </Button>
                         </div>
 
                         {/* Earnings */}
@@ -403,35 +403,35 @@ export default function DriverDashboard() {
                         </div>
 
                         <div className="flex gap-2 pt-2">
-                          <button 
+                          <Button 
                             className="luxury-btn-primary flex-1"
                             data-testid={`button-navigate-trip-${trip.id}`}
                           >
                             <Navigation className="w-4 h-4 mr-2 inline" />
                             Navigate
-                          </button>
-                          <button 
+                          </Button>
+                          <Button 
                             className="luxury-btn-ghost px-4"
                             data-testid={`button-call-customer-${trip.id}`}
                           >
                             <Phone className="w-4 h-4" />
-                          </button>
-                          <button 
+                          </Button>
+                          <Button 
                             className="luxury-btn-ghost px-4"
                             data-testid={`button-message-customer-${trip.id}`}
                           >
                             <MessageCircle className="w-4 h-4" />
-                          </button>
+                          </Button>
                         </div>
 
                         {trip.status === 'in_progress' && (
-                          <button 
+                          <Button 
                             className="w-full luxury-btn-secondary py-3"
                             data-testid={`button-complete-trip-${trip.id}`}
                           >
                             <CheckCircle2 className="w-5 h-5 mr-2 inline" />
                             Complete Trip
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -468,9 +468,9 @@ export default function DriverDashboard() {
                     </div>
                   </div>
                   <div className="mt-6">
-                    <button className="luxury-btn-primary w-full md:w-auto">
+                    <Button className="luxury-btn-primary w-full md:w-auto">
                       Request Payout
-                    </button>
+                    </Button>
                   </div>
                 </div>
 

@@ -1,15 +1,16 @@
 import { ArrowLeft, MessageCircle, Zap, Sparkles } from 'lucide-react';
 import { Link } from 'wouter';
+import { Button } from "@/components/ui/button";
 
 export default function LiveChat() {
   return (
     <div className="min-h-screen luxury-bg-mesh">
       <div className="container max-w-6xl mx-auto p-6">
         <Link href="/">
-          <button className="luxury-btn-outline mb-8">
+          <Button className="luxury-btn-outline mb-8">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Home
-          </button>
+          </Button>
         </Link>
 
         <div className="luxury-glass-card luxury-shadow-xl p-12 mb-8 luxury-fade-in">

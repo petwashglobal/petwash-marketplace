@@ -35,10 +35,10 @@ export default function PlatformPlaceholder({
         <div className="max-w-4xl mx-auto">
           {/* Back Button */}
           <Link href="/">
-            <button className="luxury-btn-secondary mb-8" data-testid="btn-back-home">
+            <Button className="luxury-btn-secondary mb-8" data-testid="btn-back-home">
               <ArrowLeft className="w-4 h-4 mr-2 inline" />
               {isHebrew ? 'חזרה לדף הבית' : 'Back to Home'}
-            </button>
+            </Button>
           </Link>
 
           {/* Header Card - Luxury Glass */}
@@ -90,9 +90,9 @@ export default function PlatformPlaceholder({
               </p>
               <div className="mt-8">
                 <Link href="/">
-                  <button className="luxury-btn-primary luxury-shadow-xl px-8 py-4" data-testid="btn-explore-other">
+                  <Button className="luxury-btn-primary luxury-shadow-xl px-8 py-4" data-testid="btn-explore-other">
                     {isHebrew ? 'גלה פלטפורמות אחרות' : 'Explore Other Platforms'}
-                  </button>
+                  </Button>
                 </Link>
               </div>
             </div>

@@ -309,7 +309,7 @@ export default function BrowseDrivers() {
               />
             </div>
             <div className="mt-4 flex justify-center">
-              <button
+              <Button
                 onClick={() => setShowWizard(true)}
                 className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white font-bold shadow-xl shadow-amber-500/30 hover:from-amber-600 hover:via-orange-600 hover:to-amber-700 transition-all hover:scale-105"
                 data-testid="button-start-booking-wizard"
@@ -317,7 +317,7 @@ export default function BrowseDrivers() {
                 <Crown className="w-5 h-5" />
                 Book Now / הזמן עכשיו
                 <Sparkles className="w-5 h-5" />
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -358,23 +358,23 @@ export default function BrowseDrivers() {
         {/* Filters Panel */}
         <div className="mb-8 luxury-animate-slide-up luxury-delay-3">
           <div className="flex items-center justify-between mb-4">
-            <button
+            <Button
               onClick={() => setShowFilters(!showFilters)}
               className="luxury-btn-ghost flex items-center gap-2"
               data-testid="button-toggle-filters"
             >
               <SlidersHorizontal className="h-4 w-4" />
               {showFilters ? 'Hide Filters' : 'Show Filters'}
-            </button>
+            </Button>
             
             {activeFilters.length > 0 && (
-              <button
+              <Button
                 onClick={clearAllFilters}
                 className="luxury-text-small text-purple-600 hover:text-purple-700"
                 data-testid="button-clear-all-filters"
               >
                 Clear all
-              </button>
+              </Button>
             )}
           </div>
 
@@ -384,13 +384,13 @@ export default function BrowseDrivers() {
               {activeFilters.map((filter) => (
                 <div key={filter.key} className="luxury-badge flex items-center gap-2">
                   {filter.label}
-                  <button
+                  <Button
                     onClick={() => clearFilter(filter.key)}
                     className="hover:bg-purple-100 rounded-full p-0.5"
                     data-testid={`button-remove-filter-${filter.key}`}
                   >
                     <X className="h-3 w-3" />
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -418,14 +418,14 @@ export default function BrowseDrivers() {
                   <label className="luxury-text-small block mb-3 font-semibold">Vehicle Type</label>
                   <div className="flex flex-wrap gap-2">
                     {['sedan', 'suv', 'van'].map((type) => (
-                      <button
+                      <Button
                         key={type}
                         onClick={() => setFilters({ ...filters, vehicleType: filters.vehicleType === type ? '' : type })}
                         className={filters.vehicleType === type ? 'luxury-badge-gold' : 'luxury-badge'}
                         data-testid={`button-vehicle-${type}`}
                       >
                         {type.toUpperCase()}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -434,7 +434,7 @@ export default function BrowseDrivers() {
                   <label className="luxury-text-small block mb-3 font-semibold">Minimum Rating</label>
                   <div className="flex gap-2">
                     {[3, 4, 4.5].map((rating) => (
-                      <button
+                      <Button
                         key={rating}
                         onClick={() => setFilters({ ...filters, minRating: filters.minRating === rating ? 0 : rating })}
                         className={filters.minRating === rating ? 'luxury-badge-gold' : 'luxury-badge'}
@@ -442,7 +442,7 @@ export default function BrowseDrivers() {
                       >
                         <Star className="h-3 w-3 inline" />
                         {rating}+
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -463,16 +463,16 @@ export default function BrowseDrivers() {
               </div>
               
               <div className="flex gap-3 mt-6 pt-6 border-t border-purple-100">
-                <button className="luxury-btn-primary flex-1" data-testid="button-apply-filters">
+                <Button className="luxury-btn-primary flex-1" data-testid="button-apply-filters">
                   Apply Filters
-                </button>
-                <button 
+                </Button>
+                <Button 
                   onClick={clearAllFilters}
                   className="luxury-btn-secondary flex-1" 
                   data-testid="button-clear-filters"
                 >
                   Clear All
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -502,20 +502,20 @@ export default function BrowseDrivers() {
             </div>
             
             <div className="flex items-center gap-2 border-l border-purple-200 pl-4">
-              <button
+              <Button
                 onClick={() => setViewMode('grid')}
                 className={viewMode === 'grid' ? 'luxury-btn-primary p-2' : 'luxury-btn-ghost p-2'}
                 data-testid="button-view-grid"
               >
                 <Grid3x3 className="h-4 w-4" />
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => setViewMode('list')}
                 className={viewMode === 'list' ? 'luxury-btn-primary p-2' : 'luxury-btn-ghost p-2'}
                 data-testid="button-view-list"
               >
                 <List className="h-4 w-4" />
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -691,7 +691,7 @@ export default function BrowseDrivers() {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <button
+                        <Button
                           className="luxury-btn-secondary"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -700,8 +700,8 @@ export default function BrowseDrivers() {
                           data-testid={`button-view-profile-${driver.id}`}
                         >
                           View Profile
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           className="luxury-btn-primary"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -710,7 +710,7 @@ export default function BrowseDrivers() {
                           data-testid={`button-book-${driver.id}`}
                         >
                           Book Now
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -721,34 +721,34 @@ export default function BrowseDrivers() {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="luxury-glass-minimal p-4 mt-8 flex items-center justify-center gap-2">
-                <button
+                <Button
                   onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
                   className={currentPage === 1 ? 'luxury-btn-ghost opacity-50 cursor-not-allowed' : 'luxury-btn-ghost'}
                   data-testid="button-prev-page"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                </button>
+                </Button>
                 
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <button
+                  <Button
                     key={page}
                     onClick={() => setCurrentPage(page)}
                     className={page === currentPage ? 'luxury-badge-gold px-4 py-2' : 'luxury-btn-ghost px-4 py-2'}
                     data-testid={`button-page-${page}`}
                   >
                     {page}
-                  </button>
+                  </Button>
                 ))}
                 
-                <button
+                <Button
                   onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
                   className={currentPage === totalPages ? 'luxury-btn-ghost opacity-50 cursor-not-allowed' : 'luxury-btn-ghost'}
                   data-testid="button-next-page"
                 >
                   <ChevronRight className="h-4 w-4" />
-                </button>
+                </Button>
               </div>
             )}
           </>

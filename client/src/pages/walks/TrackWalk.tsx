@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { useParams } from "wouter";
 import { MapPin, Clock, Footprints, Camera, CheckCircle, Navigation } from "lucide-react";
 import { useLanguage } from "@/lib/languageStore";
@@ -83,10 +84,10 @@ export default function TrackWalk() {
               </div>
             </div>
 
-            <button className="luxury-btn-primary w-full flex items-center justify-center gap-2" data-testid="button-refresh">
+            <Button className="luxury-btn-primary w-full flex items-center justify-center gap-2" data-testid="button-refresh">
               <CheckCircle className="h-4 w-4" />
               {isHebrew ? 'רענן מיקום' : 'Refresh Location'}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

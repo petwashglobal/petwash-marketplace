@@ -81,13 +81,13 @@ export default function K9000Overview() {
     <Layout>
       <div className="min-h-screen luxury-bg-mesh">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-          <button
+          <Button
             onClick={() => { try { window.history.back(); } catch { window.location.href = '/dashboard'; } }}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <BackArrow className="w-5 h-5" />
             <span className="text-sm font-medium">{isRtl ? 'חזרה' : 'Back'}</span>
-          </button>
+          </Button>
         </div>
         {/* Hero Section */}
         <div className="relative overflow-hidden py-20 sm:py-28">
@@ -107,16 +107,16 @@ export default function K9000Overview() {
               </p>
               <div className="flex flex-col sm:flex-row gap-5 justify-center">
                 <Link href="/k9000/booking">
-                  <button className="luxury-btn-primary luxury-shadow-xl px-10" data-testid="button-book-wash">
+                  <Button className="luxury-btn-primary luxury-shadow-xl px-10" data-testid="button-book-wash">
                     <Waves className="h-5 w-5 mr-2" />
                     {t('k9000.bookWash')}
-                  </button>
+                  </Button>
                 </Link>
                 <Link href="/k9000/explore">
-                  <button className="luxury-btn-outline px-10" data-testid="button-find-station">
+                  <Button className="luxury-btn-outline px-10" data-testid="button-find-station">
                     <MapPin className="h-5 w-5 mr-2" />
                     {t('k9000.findStation')}
-                  </button>
+                  </Button>
                 </Link>
               </div>
             </div>
@@ -139,10 +139,10 @@ export default function K9000Overview() {
                     <p className="luxury-text-body mb-6">
                       {feature.description}
                     </p>
-                    <button className="luxury-btn-outline w-full" data-testid={`link-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                    <Button className="luxury-btn-outline w-full" data-testid={`link-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}>
                       {t('common.learnMore')}
                       <ArrowRight className="h-4 w-4 ml-2" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </Link>

@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { useParams } from "wouter";
 import { MapPin, Clock, Car, Phone, MessageCircle, Star, Navigation, User, CheckCircle, Circle, Share2, Headphones, Receipt, PawPrint } from "lucide-react";
 import { useLanguage } from "@/lib/languageStore";
@@ -291,15 +292,15 @@ export default function TrackTrip() {
               </div>
               
               <div className="space-y-3">
-                <button className="luxury-btn-primary w-full flex items-center justify-center gap-2" data-testid="button-call-driver">
+                <Button className="luxury-btn-primary w-full flex items-center justify-center gap-2" data-testid="button-call-driver">
                   <Phone className="h-5 w-5" />
                   {isHebrew ? 'התקשר לנהג' : 'Call Driver'}
-                </button>
+                </Button>
                 
-                <button className="luxury-btn-secondary w-full flex items-center justify-center gap-2" data-testid="button-message-driver">
+                <Button className="luxury-btn-secondary w-full flex items-center justify-center gap-2" data-testid="button-message-driver">
                   <MessageCircle className="h-5 w-5" />
                   {isHebrew ? 'שלח הודעה' : 'Send Message'}
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -310,32 +311,32 @@ export default function TrackTrip() {
               </h3>
               
               <div className="luxury-grid-3 gap-3">
-                <button className="luxury-btn-secondary p-4 flex flex-col items-center gap-2 text-center" data-testid="button-share-location">
+                <Button className="luxury-btn-secondary p-4 flex flex-col items-center gap-2 text-center" data-testid="button-share-location">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
                     <Share2 className="h-6 w-6 text-purple-600" />
                   </div>
                   <span className="luxury-text-small font-semibold">
                     {isHebrew ? 'שתף מיקום' : 'Share Location'}
                   </span>
-                </button>
+                </Button>
                 
-                <button className="luxury-btn-secondary p-4 flex flex-col items-center gap-2 text-center" data-testid="button-contact-support">
+                <Button className="luxury-btn-secondary p-4 flex flex-col items-center gap-2 text-center" data-testid="button-contact-support">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
                     <Headphones className="h-6 w-6 text-purple-600" />
                   </div>
                   <span className="luxury-text-small font-semibold">
                     {isHebrew ? 'תמיכה' : 'Support'}
                   </span>
-                </button>
+                </Button>
                 
-                <button className="luxury-btn-secondary p-4 flex flex-col items-center gap-2 text-center" data-testid="button-view-receipt">
+                <Button className="luxury-btn-secondary p-4 flex flex-col items-center gap-2 text-center" data-testid="button-view-receipt">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
                     <Receipt className="h-6 w-6 text-purple-600" />
                   </div>
                   <span className="luxury-text-small font-semibold">
                     {isHebrew ? 'קבלה' : 'Receipt'}
                   </span>
-                </button>
+                </Button>
               </div>
             </div>
 

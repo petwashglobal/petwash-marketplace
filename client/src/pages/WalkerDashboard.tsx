@@ -585,7 +585,7 @@ export default function WalkerDashboard() {
                     )}
 
                     <div className="flex gap-2">
-                      <button 
+                      <Button 
                         className="flex-1 luxury-btn-primary"
                         onClick={() => acceptMutation.mutate(request.id)}
                         disabled={acceptMutation.isPending}
@@ -596,15 +596,15 @@ export default function WalkerDashboard() {
                           <CheckCircle className="w-4 h-4 mr-2 inline" />
                         )}
                         {isHebrew ? 'קבל טיול' : 'Accept Walk'}
-                      </button>
-                      <button 
+                      </Button>
+                      <Button 
                         className="flex-1 luxury-btn-secondary"
                         onClick={() => rejectMutation.mutate(request.id)}
                         disabled={rejectMutation.isPending}
                       >
                         <XCircle className="w-4 h-4 mr-2 inline" />
                         {isHebrew ? 'דחה' : 'Decline'}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -664,7 +664,7 @@ export default function WalkerDashboard() {
                     
                     <div className="grid grid-cols-2 gap-2">
                       {walk.status === 'accepted' && (
-                        <button 
+                        <Button 
                           className="w-full luxury-btn-primary"
                           onClick={() => startWalkMutation.mutate(walk.id)}
                           disabled={startWalkMutation.isPending}
@@ -675,23 +675,23 @@ export default function WalkerDashboard() {
                             <Navigation className="w-4 h-4 mr-2 inline" />
                           )}
                           {isHebrew ? 'התחל טיול' : 'Start Walk'}
-                        </button>
+                        </Button>
                       )}
                       
                       {walk.status === 'active' && (
                         <Link href={`/walk-tracking/${walk.id}`}>
-                          <button className="w-full luxury-btn-primary">
+                          <Button className="w-full luxury-btn-primary">
                             <MapPin className="w-4 h-4 mr-2 inline" />
                             {isHebrew ? 'מעקב GPS' : 'GPS Tracking'}
-                          </button>
+                          </Button>
                         </Link>
                       )}
                       
                       <a href={`tel:${walk.ownerPhone}`}>
-                        <button className="w-full luxury-btn-secondary">
+                        <Button className="w-full luxury-btn-secondary">
                           <Phone className="w-4 h-4 mr-2 inline" />
                           {isHebrew ? 'התקשר' : 'Call Owner'}
-                        </button>
+                        </Button>
                       </a>
                     </div>
                   </div>
@@ -762,10 +762,10 @@ export default function WalkerDashboard() {
                     <p className="luxury-text-body">
                       {isHebrew ? 'סך כל הרווחים' : 'Total Lifetime Earnings'}
                     </p>
-                    <button className="luxury-btn-primary mt-4">
+                    <Button className="luxury-btn-primary mt-4">
                       <DollarSign className="w-4 h-4 mr-2 inline" />
                       {isHebrew ? 'משוך כסף' : 'Withdraw'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
 

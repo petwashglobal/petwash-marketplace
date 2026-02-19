@@ -3,6 +3,8 @@ import { Layout } from '@/components/Layout';
 import { useLanguage } from '@/lib/languageStore';
 import { Link } from 'wouter';
 import { Shield, Lock, Wallet, Fingerprint } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import '@/styles/luxury-system-2025.css';
 
 type Lang = 'he' | 'en';
@@ -403,7 +405,7 @@ export default function PrestigeClub() {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'flex-end', minWidth: 220 }}>
               <Link href="/privilege">
-                <button className="pc-btn pc-btnPrimary">{i('join_free')}</button>
+                <Button className="pc-btn pc-btnPrimary">{i('join_free')}</Button>
               </Link>
             </div>
           </div>
@@ -426,13 +428,13 @@ export default function PrestigeClub() {
 
                   <div className="pc-heroActions">
                     <Link href="/privilege">
-                      <button className="pc-btn pc-btnPrimary">{i('cta_open_app')}</button>
+                      <Button className="pc-btn pc-btnPrimary">{i('cta_open_app')}</Button>
                     </Link>
                     <Link href="/egift">
-                      <button className="pc-btn">{i('cta_gift')}</button>
+                      <Button className="pc-btn">{i('cta_gift')}</Button>
                     </Link>
                     <Link href="/sitter-suite">
-                      <button className="pc-btn">{i('cta_services')}</button>
+                      <Button className="pc-btn">{i('cta_services')}</Button>
                     </Link>
                   </div>
 
@@ -476,11 +478,11 @@ export default function PrestigeClub() {
 
                 <div className="pc-metalBottom">
                   <div className="pc-metalStat">
-                    <label>{i('metal_balance')}</label>
+                    <Label>{i('metal_balance')}</Label>
                     <strong>₪ 2,450</strong>
                   </div>
                   <div className="pc-metalStat">
-                    <label>{i('metal_washes')}</label>
+                    <Label>{i('metal_washes')}</Label>
                     <strong>34</strong>
                   </div>
                 </div>
@@ -744,7 +746,7 @@ export default function PrestigeClub() {
             <div className="pc-modalPanel">
               <div className="pc-modalTop">
                 <strong>{modalTier.name[lang]}</strong>
-                <button className="pc-xBtn" type="button" onClick={() => setModalTier(null)} aria-label="Close">✕</button>
+                <Button className="pc-xBtn" type="button" onClick={() => setModalTier(null)} aria-label="Close">✕</Button>
               </div>
               <div className="pc-modalBody">
                 <div className="pc-modalGrid">

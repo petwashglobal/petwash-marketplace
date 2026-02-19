@@ -92,27 +92,27 @@ export default function JvPartnersDashboard() {
     >
       <div className="container mx-auto" data-testid="jv-partners-dashboard">
       <div className="flex justify-end items-center mb-8 luxury-animate-fade-in">
-        <button className="luxury-btn-primary luxury-shadow-xl px-6 py-3" onClick={() => setShowCreateDialog(true)} data-testid="button-add-partner">
+        <Button className="luxury-btn-primary luxury-shadow-xl px-6 py-3" onClick={() => setShowCreateDialog(true)} data-testid="button-add-partner">
           <Plus className="w-4 h-4 mr-2 inline" />
           Add Partner
-        </button>
+        </Button>
       </div>
 
       <div className="flex gap-2 mb-6 luxury-animate-fade-in luxury-delay-1">
-        <button
+        <Button
           className={view === "active" ? "luxury-btn-primary px-6 py-2" : "luxury-btn-secondary px-6 py-2"}
           onClick={() => setView("active")}
           data-testid="button-view-active"
         >
           Active Partners
-        </button>
-        <button
+        </Button>
+        <Button
           className={view === "all" ? "luxury-btn-primary px-6 py-2" : "luxury-btn-secondary px-6 py-2"}
           onClick={() => setView("all")}
           data-testid="button-view-all"
         >
           All Partners
-        </button>
+        </Button>
       </div>
 
       {partners?.length === 0 ? (
@@ -170,14 +170,14 @@ export default function JvPartnersDashboard() {
                   </div>
                 )}
               </div>
-              <button 
+              <Button 
                 className="luxury-btn-secondary w-full py-2"
                 onClick={() => setSelectedPartner(partner)}
                 data-testid={`button-view-contracts-${partner.id}`}
               >
                 <FileText className="w-4 h-4 mr-2 inline" />
                 View Contracts ({partner.contractCount || 0})
-              </button>
+              </Button>
             </div>
           ))}
         </div>
@@ -221,12 +221,12 @@ export default function JvPartnersDashboard() {
               <Input id="country" name="country" className="luxury-glass-minimal" data-testid="input-country" />
             </div>
             <div className="flex justify-end gap-2">
-              <button type="button" className="luxury-btn-secondary px-6 py-2" onClick={() => setShowCreateDialog(false)} data-testid="button-cancel">
+              <Button type="button" className="luxury-btn-secondary px-6 py-2" onClick={() => setShowCreateDialog(false)} data-testid="button-cancel">
                 Cancel
-              </button>
-              <button type="submit" className="luxury-btn-primary luxury-shadow-lg px-6 py-2" disabled={createPartnerMutation.isPending} data-testid="button-submit-partner">
+              </Button>
+              <Button type="submit" className="luxury-btn-primary luxury-shadow-lg px-6 py-2" disabled={createPartnerMutation.isPending} data-testid="button-submit-partner">
                 {createPartnerMutation.isPending ? "Creating..." : "Create Partner"}
-              </button>
+              </Button>
             </div>
           </form>
         </DialogContent>

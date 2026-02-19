@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
 import {
   Shield,
   AlertTriangle,
@@ -180,22 +181,22 @@ export default function AdminSecurityMonitoring() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <button
+              <Button
                 className={`luxury-btn-secondary ${autoRefresh ? 'border-green-500 text-green-600' : ''}`}
                 onClick={() => setAutoRefresh(!autoRefresh)}
                 data-testid="button-toggle-auto-refresh"
               >
                 <Activity className={`h-4 w-4 mr-2 ${autoRefresh ? 'animate-pulse text-green-600' : ''}`} />
                 Auto-refresh {autoRefresh ? 'ON' : 'OFF'}
-              </button>
-              <button className="luxury-btn-primary" onClick={handleRefreshAll} data-testid="button-refresh-all">
+              </Button>
+              <Button className="luxury-btn-primary" onClick={handleRefreshAll} data-testid="button-refresh-all">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh All
-              </button>
+              </Button>
               <Link href="/admin">
-                <button className="luxury-btn-ghost" data-testid="link-back-to-admin">
+                <Button className="luxury-btn-ghost" data-testid="link-back-to-admin">
                   ← Back to Admin
-                </button>
+                </Button>
               </Link>
             </div>
           </div>
@@ -652,16 +653,16 @@ export default function AdminSecurityMonitoring() {
             <div>
               <label className="luxury-text-small font-semibold mb-2 block">Event Type</label>
               <div className="flex flex-wrap gap-2">
-                <button className="luxury-badge cursor-pointer hover:opacity-80 transition-opacity">All</button>
-                <button className="luxury-badge cursor-pointer hover:opacity-80 transition-opacity">Login</button>
-                <button className="luxury-badge cursor-pointer hover:opacity-80 transition-opacity">Access</button>
-                <button className="luxury-badge cursor-pointer hover:opacity-80 transition-opacity">Blocked</button>
-                <button className="luxury-badge cursor-pointer hover:opacity-80 transition-opacity">Error</button>
+                <Button className="luxury-badge cursor-pointer hover:opacity-80 transition-opacity">All</Button>
+                <Button className="luxury-badge cursor-pointer hover:opacity-80 transition-opacity">Login</Button>
+                <Button className="luxury-badge cursor-pointer hover:opacity-80 transition-opacity">Access</Button>
+                <Button className="luxury-badge cursor-pointer hover:opacity-80 transition-opacity">Blocked</Button>
+                <Button className="luxury-badge cursor-pointer hover:opacity-80 transition-opacity">Error</Button>
               </div>
             </div>
             <div>
               <label className="luxury-text-small font-semibold mb-2 block">Date Range</label>
-              <input 
+              <Input 
                 type="text" 
                 placeholder="Select date range..."
                 className="luxury-glass-minimal w-full p-3 luxury-text-body focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -669,7 +670,7 @@ export default function AdminSecurityMonitoring() {
             </div>
             <div>
               <label className="luxury-text-small font-semibold mb-2 block">Search</label>
-              <input 
+              <Input 
                 type="search" 
                 placeholder="Search logs, users, IPs..."
                 className="luxury-glass-minimal w-full p-3 luxury-text-body focus:outline-none focus:ring-2 focus:ring-blue-500"

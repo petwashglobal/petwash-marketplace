@@ -55,9 +55,9 @@ export default function MunicipalPartners() {
           <p className="luxury-text-body mb-6">
             Explore public-private partnership opportunities for your municipality
           </p>
-          <button className="luxury-btn-primary luxury-shadow-xl px-8 py-4" data-testid="button-council-enquiry">
+          <Button className="luxury-btn-primary luxury-shadow-xl px-8 py-4" data-testid="button-council-enquiry">
             Submit Council Enquiry
-          </button>
+          </Button>
         </div>
       </div>
     </div>

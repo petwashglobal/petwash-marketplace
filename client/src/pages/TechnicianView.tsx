@@ -141,14 +141,14 @@ export default function TechnicianView({ technicianId }: TechnicianViewProps) {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-3 luxury-animate-fade-in luxury-delay-2">
-          <button className="luxury-glass-card luxury-shadow-lg luxury-hover-lift h-20 flex flex-col items-center justify-center gap-2 rounded-2xl transition-all duration-300" data-testid="button-scan-qr">
+          <Button className="luxury-glass-card luxury-shadow-lg luxury-hover-lift h-20 flex flex-col items-center justify-center gap-2 rounded-2xl transition-all duration-300" data-testid="button-scan-qr">
             <QrCode className="h-6 w-6 text-purple-600" />
             <span className="text-sm font-semibold luxury-text-gradient">Scan QR</span>
-          </button>
-          <button className="luxury-glass-card luxury-shadow-lg luxury-hover-lift h-20 flex flex-col items-center justify-center gap-2 rounded-2xl transition-all duration-300" data-testid="button-upload-photo">
+          </Button>
+          <Button className="luxury-glass-card luxury-shadow-lg luxury-hover-lift h-20 flex flex-col items-center justify-center gap-2 rounded-2xl transition-all duration-300" data-testid="button-upload-photo">
             <Camera className="h-6 w-6 text-purple-600" />
             <span className="text-sm font-semibold luxury-text-gradient">Photo</span>
-          </button>
+          </Button>
         </div>
 
         {/* Active Work Orders */}
@@ -184,14 +184,14 @@ export default function TechnicianView({ technicianId }: TechnicianViewProps) {
                     </span>
                   </div>
                   <div className="flex gap-2">
-                    <button 
+                    <Button 
                       className="luxury-btn-secondary flex-1 text-sm"
                       onClick={() => setSelectedWorkOrder(order.id)}
                       data-testid={`button-update-${order.id}`}
                     >
                       Update
-                    </button>
-                    <button 
+                    </Button>
+                    <Button 
                       className="luxury-btn-primary flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-sm"
                       onClick={() => updateWorkOrderMutation.mutate({ 
                         id: order.id, 
@@ -202,7 +202,7 @@ export default function TechnicianView({ technicianId }: TechnicianViewProps) {
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
                       Complete
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -248,7 +248,7 @@ export default function TechnicianView({ technicianId }: TechnicianViewProps) {
                     }`}>
                       {order.priority}
                     </span>
-                    <button 
+                    <Button 
                       className="luxury-btn-primary text-sm px-4"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -260,7 +260,7 @@ export default function TechnicianView({ technicianId }: TechnicianViewProps) {
                       data-testid={`button-start-${order.id}`}
                     >
                       Start
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>

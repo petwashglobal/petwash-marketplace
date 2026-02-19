@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLanguage } from "@/lib/languageStore";
+import { Button } from "@/components/ui/button";
 import {
   Shield,
   AlertTriangle,
@@ -94,10 +95,10 @@ export default function ComplianceControlTower() {
         {/* Header */}
         <div className="mb-8 luxury-animate-fade-in">
           <Link href="/admin">
-            <button className="luxury-btn-secondary mb-4 px-4 py-2" data-testid="button-back-admin">
+            <Button className="luxury-btn-secondary mb-4 px-4 py-2" data-testid="button-back-admin">
               <ArrowLeft className="h-4 w-4 mr-2 inline" />
               {isHebrew ? "חזרה לניהול" : "Back to Admin"}
-            </button>
+            </Button>
           </Link>
 
           <div className="flex items-center gap-4 mb-2">

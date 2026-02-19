@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'wouter';
 import { Cake, Gift, Sparkles, Heart, PartyPopper, Star, ArrowLeft, Crown } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 
 export default function LoyaltyBirthday() {
   const [language] = useState(localStorage.getItem('petwash_lang') || 'he');
@@ -125,10 +126,10 @@ export default function LoyaltyBirthday() {
               </div>
             </div>
 
-            <button className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#C9A96E] to-[#d4af37] text-[#0A0A0F] font-semibold rounded-xl transition-all duration-300 hover:shadow-[0_0_25px_rgba(201,169,110,0.3)] hover:scale-105">
+            <Button className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#C9A96E] to-[#d4af37] text-[#0A0A0F] font-semibold rounded-xl transition-all duration-300 hover:shadow-[0_0_25px_rgba(201,169,110,0.3)] hover:scale-105">
               <Gift className="w-5 h-5" />
               <span>{isHebrew ? 'הגדירו הטבות יום הולדת' : 'Set Up Birthday Rewards'}</span>
-            </button>
+            </Button>
           </div>
         </div>
 

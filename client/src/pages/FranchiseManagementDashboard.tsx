@@ -120,14 +120,14 @@ export default function FranchiseManagementDashboard() {
       <div className="mb-8">
         <div className="flex items-center justify-end">
           <div className="flex gap-2">
-            <button className="luxury-btn-secondary flex items-center gap-2" data-testid="button-export">
+            <Button className="luxury-btn-secondary flex items-center gap-2" data-testid="button-export">
               <Download className="w-4 h-4" />
               Export
-            </button>
-            <button className="luxury-btn-primary flex items-center gap-2" data-testid="button-create-franchisee">
+            </Button>
+            <Button className="luxury-btn-primary flex items-center gap-2" data-testid="button-create-franchisee">
               <Plus className="w-4 h-4" />
               New Franchisee
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -229,10 +229,10 @@ export default function FranchiseManagementDashboard() {
             data-testid="input-search-franchisees"
           />
         </div>
-        <button className="luxury-btn-secondary flex items-center gap-2" data-testid="button-advanced-filter">
+        <Button className="luxury-btn-secondary flex items-center gap-2" data-testid="button-advanced-filter">
           <Filter className="w-4 h-4" />
           Filters
-        </button>
+        </Button>
       </div>
 
       {/* Main Content */}
@@ -261,22 +261,22 @@ export default function FranchiseManagementDashboard() {
 
           {/* Country Filter */}
           <div className="flex gap-2 mb-6 flex-wrap">
-            <button
+            <Button
               className={selectedCountry === 'all' ? 'luxury-btn-primary text-sm px-4 py-2' : 'luxury-btn-secondary text-sm px-4 py-2'}
               onClick={() => setSelectedCountry('all')}
               data-testid="filter-country-all"
             >
               All ({Array.isArray(allFranchisees) ? allFranchisees.length : 0})
-            </button>
+            </Button>
             {Object.entries(countries).map(([country, count]) => (
-              <button
+              <Button
                 key={country}
                 className={selectedCountry === country ? 'luxury-btn-primary text-sm px-4 py-2' : 'luxury-btn-secondary text-sm px-4 py-2'}
                 onClick={() => setSelectedCountry(country)}
                 data-testid={`filter-country-${country.toLowerCase()}`}
               >
                 {country} ({count})
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -332,12 +332,12 @@ export default function FranchiseManagementDashboard() {
                         <span className="font-medium">{franchisee.royaltyPercent || '0'}%</span>
                       </div>
                       <div className="flex gap-2 pt-2">
-                        <button className="luxury-btn-primary flex-1 text-sm px-4 py-2" data-testid={`button-view-franchisee-${franchisee.id}`}>
+                        <Button className="luxury-btn-primary flex-1 text-sm px-4 py-2" data-testid={`button-view-franchisee-${franchisee.id}`}>
                           View
-                        </button>
-                        <button className="luxury-btn-secondary text-sm px-4 py-2" data-testid={`button-edit-franchisee-${franchisee.id}`}>
+                        </Button>
+                        <Button className="luxury-btn-secondary text-sm px-4 py-2" data-testid={`button-edit-franchisee-${franchisee.id}`}>
                           Edit
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -426,14 +426,14 @@ export default function FranchiseManagementDashboard() {
                       </div>
                       <div className="flex gap-2">
                         {payment.paymentStatus === 'pending' && (
-                          <button className="luxury-btn-primary flex items-center gap-2 text-sm px-4 py-2" data-testid={`button-record-payment-${payment.id}`}>
+                          <Button className="luxury-btn-primary flex items-center gap-2 text-sm px-4 py-2" data-testid={`button-record-payment-${payment.id}`}>
                             <CreditCard className="w-4 h-4" />
                             Record Payment
-                          </button>
+                          </Button>
                         )}
-                        <button className="luxury-btn-secondary text-sm px-4 py-2" data-testid={`button-view-payment-${payment.id}`}>
+                        <Button className="luxury-btn-secondary text-sm px-4 py-2" data-testid={`button-view-payment-${payment.id}`}>
                           View
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>

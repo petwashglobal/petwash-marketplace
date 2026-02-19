@@ -3,6 +3,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Shield, PawPrint, Clock, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { vatCalculator } from "@/lib/vatCalculator";
@@ -484,7 +485,7 @@ export default function SitterBookingFlow() {
               <label className="block text-sm font-semibold text-slate-700 mb-2">
                 הערות (אופציונלי)
               </label>
-              <textarea
+              <Textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 rows={3}

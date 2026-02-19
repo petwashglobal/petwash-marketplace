@@ -1,6 +1,7 @@
 import { useLocation } from "wouter";
 import { MessageCircle, Phone, Mail, FileQuestion, Search, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/languageStore";
 
 export default function Support() {
@@ -57,9 +58,9 @@ export default function Support() {
             <p className="luxury-text-small mb-4">
               {t('supportPage.liveChatDesc')}
             </p>
-            <button className="luxury-btn-secondary w-full" data-testid="button-live-chat">
+            <Button className="luxury-btn-secondary w-full" data-testid="button-live-chat">
               {t('supportPage.startChat')}
-            </button>
+            </Button>
           </div>
 
           <div className="luxury-glass-card luxury-hover-glow luxury-shadow-md p-6 text-center luxury-animate-fade-in luxury-delay-5">
@@ -70,9 +71,9 @@ export default function Support() {
             <p className="luxury-text-small mb-4">
               {t('supportPage.whatsappDesc')}
             </p>
-            <button className="luxury-btn-secondary w-full" data-testid="button-whatsapp">
+            <Button className="luxury-btn-secondary w-full" data-testid="button-whatsapp">
               {t('supportPage.openWhatsapp')}
-            </button>
+            </Button>
           </div>
 
           <div className="luxury-glass-card luxury-hover-glow luxury-shadow-md p-6 text-center luxury-animate-fade-in luxury-delay-6">
@@ -83,9 +84,9 @@ export default function Support() {
             <p className="luxury-text-small mb-4">
               {t('supportPage.emailDesc')}
             </p>
-            <button className="luxury-btn-secondary w-full" data-testid="button-email" onClick={() => setLocation("/contact")}>
+            <Button className="luxury-btn-secondary w-full" data-testid="button-email" onClick={() => setLocation("/contact")}>
               {t('supportPage.contactUs')}
-            </button>
+            </Button>
           </div>
 
           <div className="luxury-glass-card luxury-hover-glow luxury-shadow-md p-6 text-center luxury-animate-fade-in luxury-delay-7">
@@ -96,9 +97,9 @@ export default function Support() {
             <p className="luxury-text-small mb-4">
               {t('supportPage.faqDesc')}
             </p>
-            <button className="luxury-btn-secondary w-full" data-testid="button-faq">
+            <Button className="luxury-btn-secondary w-full" data-testid="button-faq">
               {t('supportPage.viewFaq')}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -106,12 +107,12 @@ export default function Support() {
           <h2 className="luxury-heading-lg mb-6">{t('supportPage.popularTopics')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {topics.map((topicKey, index) => (
-              <button
+              <Button
                 key={topicKey}
                 className={`luxury-glass-panel luxury-shadow-sm text-left rtl:text-right p-4 rounded-lg transition-all hover:shadow-md luxury-animate-fade-in luxury-delay-${index + 9}`}
               >
                 <p className="luxury-text-body">{t(topicKey)}</p>
-              </button>
+              </Button>
             ))}
           </div>
         </div>

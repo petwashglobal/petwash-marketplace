@@ -92,13 +92,13 @@ export default function SitterSuiteOverview() {
     <Layout>
       <div className="min-h-screen luxury-bg-mesh">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-          <button
+          <Button
             onClick={() => { try { window.history.back(); } catch { window.location.href = '/dashboard'; } }}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <BackArrow className="w-5 h-5" />
             <span className="text-sm font-medium">{isRtl ? 'חזרה' : 'Back'}</span>
-          </button>
+          </Button>
         </div>
         {/* Hero Section */}
         <div className="luxury-services-hero">
@@ -115,16 +115,16 @@ export default function SitterSuiteOverview() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8 luxury-animate-fade-in luxury-delay-3">
               <Link href="/sitter-suite/browse">
-                <button className="luxury-btn-primary flex items-center gap-2 px-8" data-testid="button-find-sitter">
+                <Button className="luxury-btn-primary flex items-center gap-2 px-8" data-testid="button-find-sitter">
                   <Search className="h-5 w-5" />
                   {t('sitterSuite.findSitter')}
-                </button>
+                </Button>
               </Link>
               <Link href="/sitter-suite/hub">
-                <button className="luxury-btn-secondary flex items-center gap-2 px-8" data-testid="button-become-sitter">
+                <Button className="luxury-btn-secondary flex items-center gap-2 px-8" data-testid="button-become-sitter">
                   <Home className="h-5 w-5" />
                   {t('sitterSuite.becomeSitter')}
-                </button>
+                </Button>
               </Link>
             </div>
           </div>
@@ -145,10 +145,10 @@ export default function SitterSuiteOverview() {
                   <p className="luxury-text-small mb-4">
                     {feature.description}
                   </p>
-                  <button className="luxury-btn-ghost w-full flex items-center justify-between text-sm" data-testid={`link-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                  <Button className="luxury-btn-ghost w-full flex items-center justify-between text-sm" data-testid={`link-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}>
                     {t('sitterSuite.view')}
                     <ArrowRight className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               </Link>
             ))}
@@ -265,12 +265,12 @@ export default function SitterSuiteOverview() {
                   </p>
                 </div>
                 <Link href="/sitter-suite/browse">
-                  <button 
+                  <Button 
                     className="px-8 py-4 text-lg font-bold text-white bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl hover:from-pink-600 hover:to-purple-700 transition-all shadow-lg whitespace-nowrap"
                     data-testid="button-vacation-cta"
                   >
                     {t('marketplace.findSitterNow')}
-                  </button>
+                  </Button>
                 </Link>
               </div>
             </div>

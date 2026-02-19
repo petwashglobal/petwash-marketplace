@@ -402,9 +402,9 @@ export default function ProviderOnboarding() {
               </div>
 
               <Link href="/">
-                <button className="luxury-btn-primary luxury-shadow-xl w-full py-4" data-testid="button-back-home">
+                <Button className="luxury-btn-primary luxury-shadow-xl w-full py-4" data-testid="button-back-home">
                   {isHebrew ? 'חזרה לדף הבית' : 'Back to Home'}
-                </button>
+                </Button>
               </Link>
             </div>
           </div>
@@ -416,14 +416,14 @@ export default function ProviderOnboarding() {
   return (
     <div className={`min-h-screen luxury-bg-mesh py-12 px-4 ${isHebrew ? 'rtl' : 'ltr'}`}>
       {/* Close Button - Top Right */}
-      <button
+      <Button
         onClick={() => navigate('/')}
         className="fixed top-4 right-4 z-50 p-3 rounded-full bg-white/80 dark:bg-black/80 backdrop-blur-sm shadow-lg hover:bg-white dark:hover:bg-black transition-colors"
         aria-label={isHebrew ? 'סגור' : 'Close'}
         data-testid="button-close-onboarding"
       >
         <X className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-      </button>
+      </Button>
 
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8 luxury-animate-fade-in">
@@ -651,7 +651,7 @@ export default function ProviderOnboarding() {
                 </div>
 
                 <div className="flex gap-4">
-                  <button 
+                  <Button 
                     onClick={() => setStep(2)} 
                     className="luxury-btn-primary luxury-shadow-xl flex-1"
                     disabled={!firstName || !lastName || !phoneNumber || !idNumber || !city || providerTypes.length === 0}
@@ -659,7 +659,7 @@ export default function ProviderOnboarding() {
                   >
                     {t.next}
                     <ArrowRight className="h-5 w-5 ml-2 inline" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -869,10 +869,10 @@ export default function ProviderOnboarding() {
                 </div>
 
                 <div className="flex gap-4">
-                  <button onClick={() => setStep(1)} className="luxury-btn-secondary" data-testid="button-back-step1">
+                  <Button onClick={() => setStep(1)} className="luxury-btn-secondary" data-testid="button-back-step1">
                     {t.back}
-                  </button>
-                  <button 
+                  </Button>
+                  <Button 
                     onClick={() => setStep(3)} 
                     className="luxury-btn-primary luxury-shadow-xl flex-1"
                     disabled={!selfiePhoto || !governmentId}
@@ -880,7 +880,7 @@ export default function ProviderOnboarding() {
                   >
                     {t.next}
                     <ArrowRight className="h-5 w-5 ml-2 inline" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -1048,13 +1048,13 @@ export default function ProviderOnboarding() {
                       </div>
                     ))}
                     
-                    <button
+                    <Button
                       onClick={() => setResidentialHistory([...residentialHistory, ''])}
                       className="luxury-btn-secondary text-sm px-4 py-2 mt-2"
                       data-testid="button-add-address"
                     >
                       {t.addAddress}
-                    </button>
+                    </Button>
                   </div>
 
                   {/* Consent Checkbox */}
@@ -1078,10 +1078,10 @@ export default function ProviderOnboarding() {
                 </div>
 
                 <div className="flex gap-4">
-                  <button onClick={() => setStep(2)} className="luxury-btn-secondary" data-testid="button-back-step2">
+                  <Button onClick={() => setStep(2)} className="luxury-btn-secondary" data-testid="button-back-step2">
                     {t.back}
-                  </button>
-                  <button 
+                  </Button>
+                  <Button 
                     onClick={handleSubmit} 
                     className="luxury-btn-primary luxury-shadow-xl flex-1"
                     disabled={
@@ -1121,7 +1121,7 @@ export default function ProviderOnboarding() {
                     ) : (
                       t.submit
                     )}
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}

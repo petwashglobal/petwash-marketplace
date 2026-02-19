@@ -47,9 +47,9 @@ export default function SuppliersPartners() {
           <p className="luxury-text-body mb-6">
             Join our global supply chain and distribution network
           </p>
-          <button className="luxury-btn-primary luxury-shadow-xl px-8 py-4" data-testid="button-supplier-application">
+          <Button className="luxury-btn-primary luxury-shadow-xl px-8 py-4" data-testid="button-supplier-application">
             Apply as Supplier
-          </button>
+          </Button>
         </div>
       </div>
     </div>

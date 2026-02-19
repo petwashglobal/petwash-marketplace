@@ -175,10 +175,10 @@ export default function Contact({ language }: ContactProps) {
         <div className="luxury-container">
           <div className="mb-6 luxury-animate-fade-in">
             <Link href="/">
-              <button className="luxury-btn-ghost flex items-center gap-2" data-testid="button-back-home">
+              <Button className="luxury-btn-ghost flex items-center gap-2" data-testid="button-back-home">
                 <ArrowLeft className="h-4 w-4" />
                 {currentLanguage === 'en' ? 'Back to Home' : 'חזרה לעמוד הבית'}
-              </button>
+              </Button>
             </Link>
           </div>
 
@@ -238,14 +238,14 @@ export default function Contact({ language }: ContactProps) {
                   </div>
                 </div>
 
-                <button 
+                <Button 
                   onClick={openWhatsApp} 
                   className="luxury-btn-primary w-full flex items-center justify-center gap-2"
                   data-testid="button-whatsapp"
                 >
                   <MessageCircle className="h-5 w-5" />
                   {currentLanguage === 'en' ? 'Chat on WhatsApp' : 'צ\'אט בוואטסאפ'}
-                </button>
+                </Button>
               </div>
             </div>
 

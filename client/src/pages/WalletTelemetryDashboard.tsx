@@ -162,13 +162,13 @@ export default function WalletTelemetryDashboard() {
       <div className="luxury-container p-6 space-y-8" dir={isHebrew ? 'rtl' : 'ltr'}>
       {/* Header */}
       <div className="flex items-center justify-end gap-3 luxury-animate-fade-in">
-        <button onClick={() => refetch()} className="luxury-btn-secondary">
+        <Button onClick={() => refetch()} className="luxury-btn-secondary">
           <RefreshCw className="w-4 h-4 mr-2" />
           {t.refresh}
-        </button>
-        <button onClick={handleCleanup} className="luxury-btn-secondary">
+        </Button>
+        <Button onClick={handleCleanup} className="luxury-btn-secondary">
           {t.cleanup}
-        </button>
+        </Button>
       </div>
 
       {/* Time Range Selector */}

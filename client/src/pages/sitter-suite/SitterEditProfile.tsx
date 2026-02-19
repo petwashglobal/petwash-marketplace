@@ -157,12 +157,12 @@ export default function SitterEditProfile() {
       <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-purple-100 dark:border-purple-900/30">
         <div className="max-w-3xl mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
-            <button 
+            <Button 
               onClick={() => setLocation('/sitter-suite/sitter/dashboard')}
               className="p-2 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-xl transition-all"
             >
               <ArrowLeft className="h-6 w-6 text-purple-600" />
-            </button>
+            </Button>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
               {t.title}
             </h1>
@@ -196,13 +196,13 @@ export default function SitterEditProfile() {
                   )}
                 </div>
                 
-                <button
+                <Button
                   onClick={() => fileInputRef.current?.click()}
                   className="absolute bottom-0 right-0 p-3 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 border-2 border-purple-200"
                   disabled={isUploading}
                 >
                   <Camera className="h-5 w-5 text-purple-600" />
-                </button>
+                </Button>
                 
                 <input
                   ref={fileInputRef}

@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/languageStore";
 import { ArrowLeft, Shield, AlertTriangle } from "lucide-react";
 import { Link } from "wouter";
@@ -10,10 +11,10 @@ export default function Disclaimer() {
     <div className={`min-h-screen luxury-bg-mesh ${isHebrew ? 'rtl' : 'ltr'}`}>
       <div className="max-w-4xl mx-auto px-4 py-12">
         <Link href="/sitter-suite">
-          <button className="mb-6 flex items-center gap-2 luxury-btn-primary">
+          <Button className="mb-6 flex items-center gap-2 luxury-btn-primary">
             <ArrowLeft className="h-4 w-4" />
             {isHebrew ? 'חזרה ל-⁦The Sitter Suite™⁩' : 'Back to ⁦The Sitter Suite™⁩'}
-          </button>
+          </Button>
         </Link>
 
         <div className="luxury-glass-card luxury-shadow-xl p-8 md:p-12">

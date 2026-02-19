@@ -32,13 +32,13 @@ export default function NotFound() {
           </p>
 
           <Link href="/">
-            <button 
+            <Button 
               className="luxury-btn-primary w-full mt-6 flex items-center justify-center"
               data-testid="button-return-home"
             >
               <Home className={`h-4 w-4 ${isHebrew ? 'ml-2' : 'mr-2'}`} />
               {isHebrew ? 'חזרה לדף הבית' : 'Return to Home'}
-            </button>
+            </Button>
           </Link>
         </CardContent>
       </Card>

@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
 import {
   Calendar,
   Droplets,
@@ -92,13 +93,13 @@ export default function BookingUnified() {
                     <h3 className="luxury-heading-sm mb-2">{service.name}</h3>
                     <p className="luxury-text-small">{service.desc}</p>
                   </div>
-                  <button 
+                  <Button 
                     className={`${isComingSoon ? 'bg-gray-300 text-gray-500 cursor-not-allowed rounded-lg py-2 px-4' : 'luxury-btn-primary luxury-shadow-xl'} w-full`}
                     data-testid={`button-book-${service.name.toLowerCase().replace(' ', '-')}`}
                     disabled={isComingSoon}
                   >
                     {isComingSoon ? 'Coming Soon' : 'Book Now'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             );

@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { useState, useEffect, useCallback } from 'react';
 import { X, Share, Plus, Smartphone, Sparkles, Zap, Star, Download, ChevronDown, Chrome, Globe, ExternalLink } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
@@ -144,9 +145,9 @@ export default function PWAInstallPrompt() {
       </div>
 
       <div className="relative px-6 pt-6 pb-5">
-        <button onClick={handleDismiss} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center hover:bg-white/30 transition-colors">
+        <Button onClick={handleDismiss} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center hover:bg-white/30 transition-colors">
           <X className="w-4 h-4 text-white" />
-        </button>
+        </Button>
 
         <div className="flex items-center gap-4 mb-4">
           <div className="relative">
@@ -290,7 +291,7 @@ export default function PWAInstallPrompt() {
         </div>
       </div>
 
-      <button
+      <Button
         onClick={() => {
           const currentUrl = window.location.href;
           window.open(`x-web-search://?${currentUrl}`, '_blank');
@@ -300,7 +301,7 @@ export default function PWAInstallPrompt() {
       >
         <ExternalLink className="w-4 h-4" />
         {isHebrew ? 'העתיקו קישור' : 'Copy Link'}
-      </button>
+      </Button>
     </div>
   );
 
@@ -330,19 +331,19 @@ export default function PWAInstallPrompt() {
   const renderAndroidNativeButtons = () => (
     <div className="px-6 py-5 bg-white" style={{ animation: 'fadeUp 0.5s ease-out 0.8s both' }}>
       <div className="flex gap-3">
-        <button
+        <Button
           onClick={handleDismiss}
           className="flex-1 py-3.5 text-sm text-gray-600 font-semibold rounded-2xl border-2 border-gray-200 bg-white hover:bg-gray-50 transition-all"
         >
           {isHebrew ? 'לא עכשיו' : 'Not Now'}
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={handleNativeInstall}
           className="flex-1 py-3.5 text-sm text-white font-bold rounded-2xl bg-blue-600 hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2"
         >
           <Download className="w-4 h-4" />
           {isHebrew ? 'התקנה' : 'Install'}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -460,12 +461,12 @@ export default function PWAInstallPrompt() {
           {renderBody()}
 
           <div className="px-6 pb-5 bg-white">
-            <button
+            <Button
               onClick={handleDismiss}
               className="w-full text-center text-xs text-gray-400 hover:text-gray-600 transition-colors py-2"
             >
               {isHebrew ? 'לא עכשיו' : 'Not now'}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

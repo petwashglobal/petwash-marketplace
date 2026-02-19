@@ -285,7 +285,7 @@ export default function WalkMyPet() {
 
                 {/* Premium CTA Buttons */}
                 <div className="flex flex-wrap gap-4 luxury-animate-fade-in luxury-delay-3">
-                  <button 
+                  <Button 
                     className="luxury-btn-primary luxury-shadow-xl px-10 py-8 text-xl flex items-center gap-3"
                     onClick={() => {
                       const resultsSection = document.getElementById('walkers-results');
@@ -296,10 +296,10 @@ export default function WalkMyPet() {
                     <Search className="w-6 h-6" />
                     {isHebrew ? 'מצא ווקר' : 'Find a Walker'}
                     <Sparkles className="w-5 h-5" />
-                  </button>
+                  </Button>
                   
                   <Link href="/provider-onboarding?type=walker">
-                    <button 
+                    <Button 
                       className="luxury-btn-secondary px-10 py-8 text-xl flex items-center gap-3"
                       data-testid="button-become-walker"
                     >
@@ -311,7 +311,7 @@ export default function WalkMyPet() {
                         </div>
                         <div className="text-sm font-semibold opacity-90">{t.hero.earnMoney}</div>
                       </div>
-                    </button>
+                    </Button>
                   </Link>
                 </div>
               </div>
@@ -325,7 +325,7 @@ export default function WalkMyPet() {
                     </h3>
 
                     {/* Guided Booking Button - ⁦Pet Wash™⁩ Luxury Wizard */}
-                    <button
+                    <Button
                       onClick={() => setShowWizard(true)}
                       className="w-full h-16 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white font-bold text-lg flex items-center justify-center gap-3 hover:from-amber-600 hover:via-orange-600 hover:to-amber-700 transition-all shadow-xl shadow-amber-500/30 hover:shadow-2xl hover:scale-[1.02]"
                       data-testid="button-start-booking-wizard"
@@ -333,7 +333,7 @@ export default function WalkMyPet() {
                       <Crown className="w-6 h-6" />
                       {isHebrew ? 'הזמן עכשיו' : 'Book Now'}
                       <Sparkles className="w-5 h-5" />
-                    </button>
+                    </Button>
 
                     <div className="text-center text-sm text-gray-500 dark:text-gray-400">
                       {isHebrew ? '— או חפש ישירות —' : '— or search directly —'}
@@ -390,7 +390,7 @@ export default function WalkMyPet() {
                       </Badge>
                     </div>
 
-                    <button 
+                    <Button 
                       className="luxury-btn-primary luxury-shadow-lg w-full h-14 text-lg"
                       onClick={() => {
                         const resultsSection = document.getElementById('walkers-results');
@@ -399,7 +399,7 @@ export default function WalkMyPet() {
                       data-testid="button-search"
                     >
                       {t.hero.searchNow}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -614,9 +614,9 @@ export default function WalkMyPet() {
                       </div>
 
                       <Link href={`/walk-my-pet/book/${walker.id}`}>
-                        <button className="luxury-btn-primary w-full" data-testid={`button-book-${walker.id}`}>
+                        <Button className="luxury-btn-primary w-full" data-testid={`button-book-${walker.id}`}>
                           {t.featured.bookNow}
-                        </button>
+                        </Button>
                       </Link>
                     </div>
                   </div>
@@ -934,7 +934,7 @@ export default function WalkMyPet() {
                 : 'Join thousands of happy dog owners or start earning as a professional walker'}
             </p>
             <div className="flex flex-wrap gap-4 justify-center">
-              <button 
+              <Button 
                 className="luxury-btn-secondary luxury-shadow-xl text-lg px-8 py-6"
                 onClick={() => {
                   const resultsSection = document.getElementById('walkers-results');
@@ -943,15 +943,15 @@ export default function WalkMyPet() {
                 data-testid="button-final-find-walker"
               >
                 {isHebrew ? 'מצא ווקר עכשיו' : 'Find a Walker Now'}
-              </button>
+              </Button>
               
               <Link href="/provider-onboarding?type=walker">
-                <button 
+                <Button 
                   className="luxury-btn-primary luxury-shadow-xl text-lg px-8 py-6"
                   data-testid="button-final-become-walker"
                 >
                   {isHebrew ? 'הצטרף כווקר' : 'Join as Walker'}
-                </button>
+                </Button>
               </Link>
             </div>
           </div>
@@ -1137,15 +1137,15 @@ function WalkerCard({ walker, isHebrew }: { walker: WalkerProfile; isHebrew: boo
             ₪{walker.hourlyRateIls}
             <span className="text-sm luxury-text-body">/hr</span>
           </div>
-          <button className="luxury-btn-ghost p-2" data-testid={`button-favorite-${walker.id}`}>
+          <Button className="luxury-btn-ghost p-2" data-testid={`button-favorite-${walker.id}`}>
             <Heart className="w-5 h-5" />
-          </button>
+          </Button>
         </div>
 
         <Link href={`/walk-my-pet/book/${walker.id}`}>
-          <button className="luxury-btn-primary w-full" data-testid={`button-book-walker-${walker.id}`}>
+          <Button className="luxury-btn-primary w-full" data-testid={`button-book-walker-${walker.id}`}>
             {isHebrew ? 'הזמן עכשיו' : 'Book Now'}
-          </button>
+          </Button>
         </Link>
       </div>
     </div>

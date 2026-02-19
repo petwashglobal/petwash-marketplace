@@ -277,13 +277,13 @@ export default function AdminInbox() {
             
             <div className="flex gap-2 flex-wrap">
               {['all', 'unread', 'important', 'archived'].map((filter) => (
-                <button
+                <Button
                   key={filter}
                   onClick={() => setFilterStatus(filter as any)}
                   className={`luxury-badge ${filterStatus === filter ? 'luxury-badge-gold' : ''}`}
                 >
                   {filter.charAt(0).toUpperCase() + filter.slice(1)}
-                </button>
+                </Button>
               ))}
             </div>
 
@@ -305,27 +305,27 @@ export default function AdminInbox() {
                 {selectedMessages.length} selected
               </span>
               <div className="flex gap-2">
-                <button
+                <Button
                   onClick={() => handleBulkAction('read')}
                   className="luxury-btn-secondary flex items-center gap-2"
                 >
                   <CheckCheck className="w-4 h-4" />
                   Mark Read
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => handleBulkAction('archive')}
                   className="luxury-btn-secondary flex items-center gap-2"
                 >
                   <Archive className="w-4 h-4" />
                   Archive
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => handleBulkAction('delete')}
                   className="luxury-btn-secondary flex items-center gap-2 text-red-600 hover:bg-red-50"
                 >
                   <Trash2 className="w-4 h-4" />
                   Delete
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -425,9 +425,9 @@ export default function AdminInbox() {
                     ) : (
                       <Star className="w-5 h-5 text-gray-400" />
                     )}
-                    <button>
+                    <Button>
                       <MoreVertical className="w-5 h-5 text-gray-400" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -462,18 +462,18 @@ export default function AdminInbox() {
 
                 {/* Action Buttons */}
                 <div className="flex gap-3 pt-6 border-t border-gray-200">
-                  <button className="luxury-btn-primary flex items-center gap-2">
+                  <Button className="luxury-btn-primary flex items-center gap-2">
                     <Reply className="w-4 h-4" />
                     Reply
-                  </button>
-                  <button className="luxury-btn-secondary flex items-center gap-2">
+                  </Button>
+                  <Button className="luxury-btn-secondary flex items-center gap-2">
                     <Archive className="w-4 h-4" />
                     Archive
-                  </button>
-                  <button className="luxury-btn-secondary flex items-center gap-2 text-red-600 hover:bg-red-50 ml-auto">
+                  </Button>
+                  <Button className="luxury-btn-secondary flex items-center gap-2 text-red-600 hover:bg-red-50 ml-auto">
                     <Trash2 className="w-4 h-4" />
                     Delete
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -492,29 +492,29 @@ export default function AdminInbox() {
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="luxury-heading-md">Compose Message</h2>
-                  <button
+                  <Button
                     onClick={() => setShowCompose(false)}
                     className="luxury-btn-ghost p-2"
                   >
                     <X className="w-5 h-5" />
-                  </button>
+                  </Button>
                 </div>
 
                 <div className="space-y-4">
                   {/* Target Type Tabs */}
                   <div className="flex gap-2">
-                    <button
+                    <Button
                       onClick={() => setTargetType('users')}
                       className={`luxury-badge ${targetType === 'users' ? 'luxury-badge-gold' : ''}`}
                     >
                       Users
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => setTargetType('franchises')}
                       className={`luxury-badge ${targetType === 'franchises' ? 'luxury-badge-gold' : ''}`}
                     >
                       Franchises
-                    </button>
+                    </Button>
                   </div>
 
                   {/* Subject Field */}
@@ -590,24 +590,24 @@ export default function AdminInbox() {
 
                   {/* Action Buttons */}
                   <div className="flex gap-3 pt-4">
-                    <button
+                    <Button
                       onClick={handleSend}
                       disabled={!messageData.title || !messageData.bodyHtml || broadcastMutation.isPending}
                       className="luxury-btn-primary luxury-shadow-xl flex items-center gap-2"
                     >
                       <Send className="w-4 h-4" />
                       {broadcastMutation.isPending ? 'Sending...' : 'Send Message'}
-                    </button>
-                    <button className="luxury-btn-secondary flex items-center gap-2">
+                    </Button>
+                    <Button className="luxury-btn-secondary flex items-center gap-2">
                       <Paperclip className="w-4 h-4" />
                       Attach
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => setShowCompose(false)}
                       className="luxury-btn-ghost ml-auto"
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>

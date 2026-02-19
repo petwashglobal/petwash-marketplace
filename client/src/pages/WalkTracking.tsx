@@ -282,10 +282,10 @@ export default function WalkTracking() {
               {isHebrew ? 'לא ניתן למצוא את פרטי הליכה' : 'Unable to find walk details'}
             </p>
             <Link href="/walk-my-pet">
-              <button className="luxury-btn-primary">
+              <Button className="luxury-btn-primary">
                 <ArrowLeft className="w-4 h-4 mr-2 inline" />
                 {isHebrew ? 'חזרה' : 'Go Back'}
-              </button>
+              </Button>
             </Link>
           </div>
         </div>
@@ -306,10 +306,10 @@ export default function WalkTracking() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8 luxury-animate-fade-in">
           <Link href="/walk-my-pet">
-            <button className="luxury-btn-ghost">
+            <Button className="luxury-btn-ghost">
               <ArrowLeft className="w-4 h-4 mr-2 inline" />
               {isHebrew ? 'חזרה' : 'Back'}
-            </button>
+            </Button>
           </Link>
           
           <div className="flex items-center gap-3">
@@ -506,15 +506,15 @@ export default function WalkTracking() {
                   {/* Quick Actions */}
                   <div className="grid grid-cols-2 gap-3 mt-4">
                     <a href={`tel:${walk.walker.phoneNumber}`}>
-                      <button className="luxury-btn-primary w-full flex items-center justify-center gap-2">
+                      <Button className="luxury-btn-primary w-full flex items-center justify-center gap-2">
                         <Phone className="w-4 h-4" />
                         {isHebrew ? 'התקשר' : 'Call'}
-                      </button>
+                      </Button>
                     </a>
-                    <button className="luxury-btn-secondary w-full flex items-center justify-center gap-2">
+                    <Button className="luxury-btn-secondary w-full flex items-center justify-center gap-2">
                       <MessageSquare className="w-4 h-4" />
                       {isHebrew ? 'הודעה' : 'Message'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>

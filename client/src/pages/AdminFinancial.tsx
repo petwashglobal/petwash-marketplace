@@ -5,7 +5,9 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -43,6 +45,10 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [txSearch, setTxSearch] = useState('');
+  const [loyaltyTier, setLoyaltyTier] = useState('bronze');
+  const [loyaltyLang, setLoyaltyLang] = useState('he');
+  const [seasonalTheme, setSeasonalTheme] = useState('general');
+  const [giftLang, setGiftLang] = useState('he');
   const { toast } = useToast();
 
   const { data: dashboardData } = useQuery({
@@ -173,27 +179,29 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
             </div>
             
             <div className="flex gap-4">
-              <select 
-                value={selectedYear} 
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="luxury-glass-minimal px-4 py-3 rounded-xl luxury-text-body border-0 focus:outline-none focus:ring-2 focus:ring-purple-400"
-              >
-                {[2024, 2025, 2026].map(year => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
+              <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+                <SelectTrigger className="luxury-glass-minimal px-4 py-3 rounded-xl luxury-text-body border-0 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[2024, 2025, 2026].map(year => (
+                    <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-              <select 
-                value={selectedMonth} 
-                onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className="luxury-glass-minimal px-4 py-3 rounded-xl luxury-text-body border-0 focus:outline-none focus:ring-2 focus:ring-purple-400"
-              >
-                {Array.from({length: 12}, (_, i) => i + 1).map(month => (
-                  <option key={month} value={month}>
-                    {new Date(2025, month - 1).toLocaleString(isHebrew ? 'he-IL' : 'en-US', { month: 'long' })}
-                  </option>
-                ))}
-              </select>
+              <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
+                <SelectTrigger className="luxury-glass-minimal px-4 py-3 rounded-xl luxury-text-body border-0 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({length: 12}, (_, i) => i + 1).map(month => (
+                    <SelectItem key={month} value={String(month)}>
+                      {new Date(2025, month - 1).toLocaleString(isHebrew ? 'he-IL' : 'en-US', { month: 'long' })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -549,13 +557,13 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
               <div className="luxury-glass-card luxury-shadow-xl p-8">
                 <h2 className="luxury-heading-md mb-6">{isHebrew ? 'דוחות מע"מ' : 'VAT Declarations'}</h2>
                 
-                <button 
+                <Button 
                   onClick={() => generateReport('vat')}
                   className="luxury-btn-primary mb-6"
                   data-testid="button-generate-vat"
                 >
                   {isHebrew ? 'צור דוח מע"מ חודשי' : 'Generate Monthly VAT Report'}
-                </button>
+                </Button>
 
                 <div className="space-y-4">
                   {vatDeclarations?.map((decl: any, idx: number) => (
@@ -711,26 +719,38 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">{isHebrew ? 'דרגה' : 'Tier'}</label>
-                        <select name="loyaltyTier" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
-                          <option value="bronze">Bronze</option>
-                          <option value="silver">Silver</option>
-                          <option value="gold">Gold</option>
-                          <option value="platinum">Platinum</option>
-                          <option value="diamond">Diamond</option>
-                        </select>
+                        <input type="hidden" name="loyaltyTier" value={loyaltyTier} />
+                        <Select value={loyaltyTier} onValueChange={setLoyaltyTier}>
+                          <SelectTrigger className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="bronze">Bronze</SelectItem>
+                            <SelectItem value="silver">Silver</SelectItem>
+                            <SelectItem value="gold">Gold</SelectItem>
+                            <SelectItem value="platinum">Platinum</SelectItem>
+                            <SelectItem value="diamond">Diamond</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">{isHebrew ? 'שפה' : 'Language'}</label>
-                        <select name="loyaltyLang" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
-                          <option value="he">{isHebrew ? 'עברית' : 'Hebrew'}</option>
-                          <option value="en">{isHebrew ? 'אנגלית' : 'English'}</option>
-                        </select>
+                        <input type="hidden" name="loyaltyLang" value={loyaltyLang} />
+                        <Select value={loyaltyLang} onValueChange={setLoyaltyLang}>
+                          <SelectTrigger className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="he">{isHebrew ? 'עברית' : 'Hebrew'}</SelectItem>
+                            <SelectItem value="en">{isHebrew ? 'אנגלית' : 'English'}</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                    <button type="submit" disabled={sendLoyaltyEmail.isPending} className="luxury-btn-primary flex items-center gap-2">
+                    <Button type="submit" disabled={sendLoyaltyEmail.isPending} className="luxury-btn-primary flex items-center gap-2">
                       {sendLoyaltyEmail.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                       {isHebrew ? 'שלח אימייל הצטרפות' : 'Send Enrollment Email'}
-                    </button>
+                    </Button>
                   </form>
                 </div>
 
@@ -776,27 +796,39 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">{isHebrew ? 'עיצוב עונתי' : 'Seasonal Theme'}</label>
-                        <select name="seasonalTheme" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-400">
-                          <option value="general">{isHebrew ? 'כללי' : 'General'}</option>
-                          <option value="black_friday">Black Friday</option>
-                          <option value="valentines">{isHebrew ? 'יום האהבה' : "Valentine's"}</option>
-                          <option value="christmas">{isHebrew ? 'חג המולד' : 'Christmas'}</option>
-                          <option value="hannukah">{isHebrew ? 'חנוכה' : 'Hanukkah'}</option>
-                          <option value="purim">{isHebrew ? 'פורים' : 'Purim'}</option>
-                        </select>
+                        <input type="hidden" name="seasonalTheme" value={seasonalTheme} />
+                        <Select value={seasonalTheme} onValueChange={setSeasonalTheme}>
+                          <SelectTrigger className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-400">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="general">{isHebrew ? 'כללי' : 'General'}</SelectItem>
+                            <SelectItem value="black_friday">Black Friday</SelectItem>
+                            <SelectItem value="valentines">{isHebrew ? 'יום האהבה' : "Valentine's"}</SelectItem>
+                            <SelectItem value="christmas">{isHebrew ? 'חג המולד' : 'Christmas'}</SelectItem>
+                            <SelectItem value="hannukah">{isHebrew ? 'חנוכה' : 'Hanukkah'}</SelectItem>
+                            <SelectItem value="purim">{isHebrew ? 'פורים' : 'Purim'}</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">{isHebrew ? 'שפה' : 'Language'}</label>
-                        <select name="giftLang" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-400">
-                          <option value="he">{isHebrew ? 'עברית' : 'Hebrew'}</option>
-                          <option value="en">{isHebrew ? 'אנגלית' : 'English'}</option>
-                        </select>
+                        <input type="hidden" name="giftLang" value={giftLang} />
+                        <Select value={giftLang} onValueChange={setGiftLang}>
+                          <SelectTrigger className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-400">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="he">{isHebrew ? 'עברית' : 'Hebrew'}</SelectItem>
+                            <SelectItem value="en">{isHebrew ? 'אנגלית' : 'English'}</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                    <button type="submit" disabled={sendEGiftEmail.isPending} className="luxury-btn-primary flex items-center gap-2" style={{ background: 'linear-gradient(135deg, #ec4899, #8b5cf6)' }}>
+                    <Button type="submit" disabled={sendEGiftEmail.isPending} className="luxury-btn-primary flex items-center gap-2" style={{ background: 'linear-gradient(135deg, #ec4899, #8b5cf6)' }}>
                       {sendEGiftEmail.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gift className="h-4 w-4" />}
                       {isHebrew ? 'שלח אישור רכישת מתנה' : 'Send E-Gift Purchase Confirmation'}
-                    </button>
+                    </Button>
                   </form>
                 </div>
               </div>
@@ -816,10 +848,10 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
                         ? 'כולל מע"מ, מס הכנסה, ביטוח לאומי + קבצי Excel ו-PDF'
                         : 'Includes VAT, Income Tax, National Insurance + Excel & PDF files'}
                     </p>
-                    <button className="luxury-btn-secondary w-full flex items-center justify-center gap-2" data-testid="button-generate-package">
+                    <Button className="luxury-btn-secondary w-full flex items-center justify-center gap-2" data-testid="button-generate-package">
                       <Download className="h-5 w-5" />
                       {isHebrew ? 'צור חבילה מלאה' : 'Generate Complete Package'}
-                    </button>
+                    </Button>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="luxury-glass-minimal luxury-hover-lift p-6 rounded-2xl text-center">

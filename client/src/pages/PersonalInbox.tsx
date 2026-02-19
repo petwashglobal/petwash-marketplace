@@ -262,10 +262,10 @@ export default function PersonalInbox() {
               )}
               <Dialog open={isComposing} onOpenChange={setIsComposing}>
                 <DialogTrigger asChild>
-                  <button className="luxury-dark-btn-gold px-5 py-3 flex items-center gap-2" data-testid="button-compose-message">
+                  <Button className="luxury-dark-btn-gold px-5 py-3 flex items-center gap-2" data-testid="button-compose-message">
                     <Plus className="w-4 h-4" />
                     {isHebrew ? 'הודעה חדשה' : 'Compose'}
-                  </button>
+                  </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl !bg-[#12121a] !border-[rgba(232,230,240,0.1)] rounded-2xl">
                   <DialogHeader>
@@ -326,16 +326,16 @@ export default function PersonalInbox() {
                       <span>{isHebrew ? 'מאובטח בהצפנת SHA-256 ויומן ביקורת' : 'Secured with SHA-256 hashing and audit trail'}</span>
                     </div>
                     <div className="flex justify-end gap-3 pt-2">
-                      <button type="button" className="luxury-dark-btn-ghost px-5 py-3 border border-[rgba(232,230,240,0.1)]" onClick={() => setIsComposing(false)}>
+                      <Button type="button" className="luxury-dark-btn-ghost px-5 py-3 border border-[rgba(232,230,240,0.1)]" onClick={() => setIsComposing(false)}>
                         {isHebrew ? 'ביטול' : 'Cancel'}
-                      </button>
-                      <button type="submit" disabled={sendMessageMutation.isPending} className="luxury-dark-btn-gold px-5 py-3 flex items-center gap-2">
+                      </Button>
+                      <Button type="submit" disabled={sendMessageMutation.isPending} className="luxury-dark-btn-gold px-5 py-3 flex items-center gap-2">
                         {sendMessageMutation.isPending ? (
                           <><Loader2 className="w-4 h-4 animate-spin" /> {isHebrew ? 'שולח...' : 'Sending...'}</>
                         ) : (
                           <><Send className="w-4 h-4" /> {isHebrew ? 'שלח הודעה מאובטחת' : 'Send Secure Message'}</>
                         )}
-                      </button>
+                      </Button>
                     </div>
                   </form>
                 </DialogContent>
@@ -356,7 +356,7 @@ export default function PersonalInbox() {
               </div>
               <div className="flex gap-2">
                 {(['all', 'unread', 'starred'] as const).map((f) => (
-                  <button
+                  <Button
                     key={f}
                     onClick={() => setFilter(f)}
                     className={cn(
@@ -369,7 +369,7 @@ export default function PersonalInbox() {
                     {f === 'all' ? (isHebrew ? 'הכל' : 'All') :
                      f === 'unread' ? (isHebrew ? 'לא נקראו' : 'Unread') :
                      <Star className="w-4 h-4" />}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -405,7 +405,7 @@ export default function PersonalInbox() {
                         const pc = priorityConfig[msg.priority] || priorityConfig.normal;
 
                         return (
-                          <button
+                          <Button
                             key={msg.id}
                             onClick={() => handleSelectMessage(msg)}
                             className={cn(
@@ -450,7 +450,7 @@ export default function PersonalInbox() {
                                 </span>
                               )}
                             </div>
-                          </button>
+                          </Button>
                         );
                       })}
                     </div>
@@ -490,18 +490,18 @@ export default function PersonalInbox() {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <button
+                        <Button
                           onClick={() => toggleStarMutation.mutate(selectedMessage.id)}
                           className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-[rgba(232,230,240,0.05)] transition-colors"
                         >
                           <Star className={cn('w-4 h-4', selectedMessage.isStarred ? 'fill-[#C9A96E] text-[#C9A96E]' : 'text-[rgba(149,144,168,0.5)]')} />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={() => deleteMessageMutation.mutate(selectedMessage.id)}
                           className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-red-500/10 transition-colors text-[rgba(149,144,168,0.5)] hover:text-red-400"
                         >
                           <Trash2 className="w-4 h-4" />
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>

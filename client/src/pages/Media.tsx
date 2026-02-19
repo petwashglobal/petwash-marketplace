@@ -1,5 +1,6 @@
 import { useLocation } from "wouter";
 import { Camera, Video, FileText, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function Media() {
   const [, setLocation] = useLocation();
@@ -25,9 +26,9 @@ export default function Media() {
             <p className="luxury-text-body mb-6">
               High-resolution photos of our stations, services, and happy pets
             </p>
-            <button className="luxury-btn-outline w-full" data-testid="button-view-gallery">
+            <Button className="luxury-btn-outline w-full" data-testid="button-view-gallery">
               View Gallery
-            </button>
+            </Button>
           </div>
 
           <div className="luxury-glass-minimal luxury-hover-lift p-8" style={{ animationDelay: '0.2s' }}>
@@ -38,9 +39,9 @@ export default function Media() {
             <p className="luxury-text-body mb-6">
               Promotional videos, tutorials, and brand stories
             </p>
-            <button className="luxury-btn-outline w-full" data-testid="button-videos">
+            <Button className="luxury-btn-outline w-full" data-testid="button-videos">
               Coming Soon
-            </button>
+            </Button>
           </div>
 
           <div className="luxury-glass-minimal luxury-hover-lift p-8" style={{ animationDelay: '0.3s' }}>
@@ -51,10 +52,10 @@ export default function Media() {
             <p className="luxury-text-body mb-6">
               Logos, brand guidelines, and press releases
             </p>
-            <button className="luxury-btn-outline w-full" data-testid="button-press-kit">
+            <Button className="luxury-btn-outline w-full" data-testid="button-press-kit">
               <Download className="w-4 h-4 mr-2" />
               Download Kit
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -63,9 +64,9 @@ export default function Media() {
           <p className="text-white/90 text-lg mb-8">
             For press inquiries, interviews, or media partnerships
           </p>
-          <button className="luxury-btn-white luxury-shadow-xl" data-testid="button-media-contact">
+          <Button className="luxury-btn-white luxury-shadow-xl" data-testid="button-media-contact">
             Contact Media Team
-          </button>
+          </Button>
         </div>
       </div>
     </div>

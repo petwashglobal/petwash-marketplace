@@ -1,4 +1,5 @@
 // Luxury Reusable Widget Components - Based on User's Dashboard Template
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { X, ArrowLeft } from 'lucide-react';
@@ -122,12 +123,12 @@ export const DashboardWidget = ({
         <div className="flex items-center justify-between mb-4">
           <CardTitle className="text-lg font-semibold">{title}</CardTitle>
           {actionIcon && onActionPress && (
-            <button 
+            <Button 
               onClick={onActionPress}
               className="text-blue-600 hover:text-blue-700 transition-colors"
             >
               {actionIcon}
-            </button>
+            </Button>
           )}
         </div>
         {children}
@@ -209,13 +210,13 @@ export const NavigationButton = ({
   const Icon = type === 'back' ? ArrowLeft : X;
   
   return (
-    <button
+    <Button
       onClick={onClick}
       className={`fixed top-20 left-4 z-50 p-3 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 ${className}`}
       data-testid={`button-${type}`}
     >
       <Icon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-    </button>
+    </Button>
   );
 };
 

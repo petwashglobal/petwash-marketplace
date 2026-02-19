@@ -85,12 +85,12 @@ export default function Vouchers() {
           </div>
           <h2 className="luxury-heading-md mb-3">Authentication Required</h2>
           <p className="luxury-text-body mb-8">Please sign in to view your vouchers</p>
-          <button 
+          <Button 
             onClick={() => setLocation('/signin')} 
             className="luxury-btn-primary w-full"
           >
             Sign In
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -165,14 +165,14 @@ export default function Vouchers() {
               Premium luxury vouchers with enhanced security
             </p>
           </div>
-          <button
+          <Button
             onClick={() => setLocation('/egift')}
             className="luxury-btn-primary"
             data-testid="button-create-voucher"
           >
             <Plus className="w-5 h-5 mr-2" />
             Create New Voucher
-          </button>
+          </Button>
         </div>
 
         {/* Stats Cards */}
@@ -226,13 +226,13 @@ export default function Vouchers() {
             <p className="luxury-text-body mb-8 max-w-md mx-auto">
               Create your first luxury voucher to get started
             </p>
-            <button
+            <Button
               onClick={() => setLocation('/egift')}
               className="luxury-btn-primary"
             >
               <Plus className="w-5 h-5 mr-2" />
               Create Voucher
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="luxury-grid-3">

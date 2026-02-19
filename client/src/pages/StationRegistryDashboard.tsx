@@ -120,27 +120,27 @@ export default function StationRegistryDashboard() {
     >
       <div className="p-6 space-y-6">
       <div className="flex justify-end items-center luxury-animate-fade-in">
-        <button onClick={() => setShowCreateDialog(true)} className="luxury-btn-primary" data-testid="button-create-station">
+        <Button onClick={() => setShowCreateDialog(true)} className="luxury-btn-primary" data-testid="button-create-station">
           <Plus className="w-4 h-4 mr-2" />
           Register New Station
-        </button>
+        </Button>
       </div>
 
       <div className="flex gap-2 luxury-animate-slide-up luxury-delay-1">
-        <button
+        <Button
           className={view === "all" ? "luxury-btn-primary" : "luxury-btn-secondary"}
           onClick={() => setView("all")}
           data-testid="button-view-all"
         >
           All Stations ({stations?.length || 0})
-        </button>
-        <button
+        </Button>
+        <Button
           className={view === "active" ? "luxury-btn-primary" : "luxury-btn-secondary"}
           onClick={() => setView("active")}
           data-testid="button-view-active"
         >
           Active Only
-        </button>
+        </Button>
       </div>
 
       {isLoading ? (
@@ -156,10 +156,10 @@ export default function StationRegistryDashboard() {
           </div>
           <h3 className="luxury-heading-md mb-3">No stations registered</h3>
           <p className="luxury-text-body mb-6">Get started by registering your first Pet ⁦Wash Hub™⁩</p>
-          <button onClick={() => setShowCreateDialog(true)} className="luxury-btn-primary">
+          <Button onClick={() => setShowCreateDialog(true)} className="luxury-btn-primary">
             <Plus className="w-4 h-4 mr-2" />
             Register Station
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="luxury-grid-3">

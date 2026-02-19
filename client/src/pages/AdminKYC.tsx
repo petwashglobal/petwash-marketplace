@@ -394,16 +394,16 @@ export default function AdminKYC() {
 
                 {/* Action Buttons */}
                 <div className="flex flex-col gap-2 mt-4">
-                  <button
+                  <Button
                     onClick={() => handleViewDocuments(submission)}
                     className="luxury-btn-secondary text-sm py-2"
                     data-testid={`button-view-documents-${submission.uid}`}
                   >
                     <Eye className="h-4 w-4 mr-2 inline" />
                     {t('viewDocuments')}
-                  </button>
+                  </Button>
                   <div className="flex gap-2">
-                    <button
+                    <Button
                       onClick={() => {
                         setSelectedSubmission(submission);
                         setShowApproveDialog(true);
@@ -413,8 +413,8 @@ export default function AdminKYC() {
                     >
                       <CheckCircle className="h-4 w-4 mr-1 inline" />
                       {t('approve')}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => {
                         setSelectedSubmission(submission);
                         setShowRejectDialog(true);
@@ -424,7 +424,7 @@ export default function AdminKYC() {
                     >
                       <XCircle className="h-4 w-4 mr-1 inline" />
                       {t('reject')}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -463,13 +463,13 @@ export default function AdminKYC() {
               ))}
             </div>
             <DialogFooter className="mt-6">
-              <button
+              <Button
                 onClick={() => setDocumentUrls([])}
                 className="luxury-btn-secondary"
                 data-testid="button-close-documents"
               >
                 {t('closeDocuments')}
-              </button>
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -508,14 +508,14 @@ export default function AdminKYC() {
               </div>
             </div>
             <DialogFooter className="mt-6 flex gap-3">
-              <button
+              <Button
                 onClick={() => setShowApproveDialog(false)}
                 className="luxury-btn-secondary"
                 data-testid="button-cancel-approve"
               >
                 {t('cancel')}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => {
                   if (selectedSubmission) {
                     approveMutation.mutate({ uid: selectedSubmission.uid, expiryYears });
@@ -527,7 +527,7 @@ export default function AdminKYC() {
               >
                 {approveMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin inline" />}
                 {t('confirmApprove')}
-              </button>
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -553,7 +553,7 @@ export default function AdminKYC() {
                 <Label htmlFor="rejectionReason" className="luxury-text-small font-medium mb-2 block">
                   {t('rejectionReason')}
                 </Label>
-                <textarea
+                <Textarea
                   id="rejectionReason"
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
@@ -564,14 +564,14 @@ export default function AdminKYC() {
               </div>
             </div>
             <DialogFooter className="mt-6 flex gap-3">
-              <button
+              <Button
                 onClick={() => setShowRejectDialog(false)}
                 className="luxury-btn-secondary"
                 data-testid="button-cancel-reject"
               >
                 {t('cancel')}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => {
                   if (selectedSubmission && rejectionReason.trim()) {
                     rejectMutation.mutate({ uid: selectedSubmission.uid, reason: rejectionReason });
@@ -583,7 +583,7 @@ export default function AdminKYC() {
               >
                 {rejectMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin inline" />}
                 {t('confirmReject')}
-              </button>
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

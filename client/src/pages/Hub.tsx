@@ -1,6 +1,7 @@
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/lib/languageStore";
+import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/Layout";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import {
@@ -503,13 +504,13 @@ export default function Hub() {
     <div className="min-h-screen luxury-bg-purple-fade">
       <div className="luxury-container py-12">
         
-        <button
+        <Button
           onClick={() => { try { window.history.back(); } catch { setLocation('/dashboard'); } }}
           className="flex items-center gap-2 mb-6 text-gray-600 hover:text-gray-900 transition-colors"
         >
           <BackArrow className="w-5 h-5" />
           <span className="text-sm font-medium">{tx('back', language)}</span>
-        </button>
+        </Button>
 
         <div className="text-center mb-16 luxury-animate-fade-in">
           <h1 className="luxury-heading-xl mb-4">
@@ -581,9 +582,9 @@ export default function Hub() {
                       </p>
                     </div>
                     {!platform.comingSoon && platform.href !== "#" && (
-                      <button className="luxury-btn-primary w-full mt-2">
+                      <Button className="luxury-btn-primary w-full mt-2">
                         {tx('launch', language)}
-                      </button>
+                      </Button>
                     )}
                     {platform.comingSoon && (
                       <div className="w-full mt-2 py-2 rounded-lg bg-gray-200 text-gray-500 text-sm font-medium text-center cursor-default">
@@ -654,12 +655,12 @@ export default function Hub() {
                 ></div>
               </div>
               
-              <button 
+              <Button 
                 className="luxury-btn-primary w-full"
                 onClick={() => setLocation('/loyalty')}
               >
                 {tx('viewRewards', language)}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

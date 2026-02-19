@@ -258,7 +258,7 @@ export default function AdminDashboard() {
             ].map((section) => {
               const Icon = section.icon;
               return (
-                <button
+                <Button
                   key={section.id}
                   onClick={() => setSelectedSection(section.id as any)}
                   className={`flex items-center space-x-2 py-4 px-3 border-b-2 text-sm font-medium transition-all whitespace-nowrap ${
@@ -271,7 +271,7 @@ export default function AdminDashboard() {
                   <Icon className="w-4 h-4" />
                   <span>{section.label}</span>
                   {selectedSection === section.id && <Sparkles className="w-3 h-3 text-rose-400" />}
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -355,13 +355,13 @@ export default function AdminDashboard() {
                     <span className="text-gray-600">Offline: {overview?.stations.offline || 0}</span>
                   </div>
                   <Link href="/admin/stations">
-                    <button 
+                    <Button 
                       className="luxury-btn-secondary w-full text-sm"
                       data-testid="button-manage-stations"
                     >
                       <Settings className="w-4 h-4 mr-2 inline" />
                       Manage Stations
-                    </button>
+                    </Button>
                   </Link>
                 </div>
               </div>

@@ -41,9 +41,9 @@ export default function LocationPartners() {
           <p className="luxury-text-body mb-6">
             Add value to your property with premium pet care amenities
           </p>
-          <button className="luxury-btn-primary luxury-shadow-xl px-8 py-4" data-testid="button-submit-enquiry">
+          <Button className="luxury-btn-primary luxury-shadow-xl px-8 py-4" data-testid="button-submit-enquiry">
             Submit Partnership Enquiry
-          </button>
+          </Button>
         </div>
       </div>
     </div>

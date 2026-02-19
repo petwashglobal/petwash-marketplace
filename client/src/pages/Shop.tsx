@@ -1,5 +1,6 @@
 import { useLocation } from "wouter";
 import { ShoppingBag, Sparkles, Leaf, Package, Search, ShoppingCart, Filter } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function Shop() {
   const [, setLocation] = useLocation();
@@ -50,19 +51,19 @@ export default function Shop() {
               />
             </div>
             <div className="flex gap-2 flex-wrap justify-center">
-              <button className="luxury-badge cursor-pointer luxury-hover-lift" data-testid="filter-all">
+              <Button className="luxury-badge cursor-pointer luxury-hover-lift" data-testid="filter-all">
                 <Filter className="w-4 h-4" />
                 All Products
-              </button>
-              <button className="luxury-badge cursor-pointer luxury-hover-lift" data-testid="filter-shampoos">
+              </Button>
+              <Button className="luxury-badge cursor-pointer luxury-hover-lift" data-testid="filter-shampoos">
                 Shampoos
-              </button>
-              <button className="luxury-badge cursor-pointer luxury-hover-lift" data-testid="filter-accessories">
+              </Button>
+              <Button className="luxury-badge cursor-pointer luxury-hover-lift" data-testid="filter-accessories">
                 Accessories
-              </button>
-              <button className="luxury-badge cursor-pointer luxury-hover-lift" data-testid="filter-bundles">
+              </Button>
+              <Button className="luxury-badge cursor-pointer luxury-hover-lift" data-testid="filter-bundles">
                 Bundles
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -81,9 +82,9 @@ export default function Shop() {
             <div className="luxury-heading-lg luxury-text-gradient mb-4">
               $24.99
             </div>
-            <button className="luxury-btn-primary w-full opacity-50 cursor-not-allowed" disabled data-testid="button-add-shampoo">
+            <Button className="luxury-btn-primary w-full opacity-50 cursor-not-allowed" disabled data-testid="button-add-shampoo">
               Coming Soon
-            </button>
+            </Button>
           </div>
 
           <div className="luxury-glass-card luxury-shadow-xl p-8 text-center luxury-animate-slide-up luxury-delay-3 relative">
@@ -98,9 +99,9 @@ export default function Shop() {
             <div className="luxury-heading-lg luxury-text-gradient mb-4">
               $34.99
             </div>
-            <button className="luxury-btn-primary w-full opacity-50 cursor-not-allowed" disabled data-testid="button-add-accessories">
+            <Button className="luxury-btn-primary w-full opacity-50 cursor-not-allowed" disabled data-testid="button-add-accessories">
               Coming Soon
-            </button>
+            </Button>
           </div>
 
           <div className="luxury-glass-card luxury-shadow-xl p-8 text-center luxury-animate-slide-up luxury-delay-4 relative">
@@ -115,9 +116,9 @@ export default function Shop() {
             <div className="luxury-heading-lg luxury-text-gradient mb-4">
               $89.99
             </div>
-            <button className="luxury-btn-primary w-full opacity-50 cursor-not-allowed" disabled data-testid="button-add-bundle">
+            <Button className="luxury-btn-primary w-full opacity-50 cursor-not-allowed" disabled data-testid="button-add-bundle">
               Coming Soon
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -135,16 +136,16 @@ export default function Shop() {
               Sign up to be notified when we launch.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="luxury-btn-primary" data-testid="button-notify-launch">
+              <Button className="luxury-btn-primary" data-testid="button-notify-launch">
                 Notify Me at Launch
-              </button>
-              <button 
+              </Button>
+              <Button 
                 className="luxury-btn-secondary" 
                 data-testid="button-view-stations" 
                 onClick={() => setLocation("/stations")}
               >
                 Visit K9000 Stations
-              </button>
+              </Button>
             </div>
           </div>
         </div>

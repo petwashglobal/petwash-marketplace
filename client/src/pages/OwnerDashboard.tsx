@@ -1,6 +1,7 @@
 import { useLanguage } from "@/lib/languageStore";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
 import { MessageSquare, Calendar, Heart, Settings, LogOut, PawPrint, Shield, Bell, Star, Search, Sparkles, Gift, TrendingUp, Wallet, Award } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
@@ -63,10 +64,10 @@ export default function OwnerDashboard() {
             <div className="flex items-center luxury-gap-sm">
               <LanguageSwitcher compact={true} showFlag={true} />
               
-              <button className="relative p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all" data-testid="button-notifications">
+              <Button className="relative p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all" data-testid="button-notifications">
                 <Bell className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                 <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full"></span>
-              </button>
+              </Button>
               
               <div className="flex items-center gap-3 luxury-glass-minimal px-4 py-2">
                 <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#000000] to-[#333333] flex items-center justify-center text-white font-bold">
@@ -78,13 +79,13 @@ export default function OwnerDashboard() {
                 </div>
               </div>
 
-              <button 
+              <Button 
                 onClick={handleLogout}
                 className="p-3 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all text-red-600"
                 data-testid="button-logout"
               >
                 <LogOut className="h-5 w-5" />
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -139,14 +140,14 @@ export default function OwnerDashboard() {
           </p>
           <div className="flex flex-wrap luxury-gap-sm">
             <Link href="/sitter-suite">
-              <button className="luxury-btn-primary" data-testid="button-new-booking">
+              <Button className="luxury-btn-primary" data-testid="button-new-booking">
                 {isHebrew ? '+ הזמנה חדשה' : '+ New Booking'}
-              </button>
+              </Button>
             </Link>
             <Link href="/pets">
-              <button className="luxury-btn-secondary" data-testid="button-manage-pets">
+              <Button className="luxury-btn-secondary" data-testid="button-manage-pets">
                 {isHebrew ? 'נהל חיות מחמד' : 'Manage Pets'}
-              </button>
+              </Button>
             </Link>
           </div>
         </div>
@@ -226,9 +227,9 @@ export default function OwnerDashboard() {
                 {isHebrew ? 'ההזמנות שלי' : 'My Bookings'}
               </h2>
               <Link href="/sitter-suite">
-                <button className="luxury-btn-primary" data-testid="button-new-booking-inline">
+                <Button className="luxury-btn-primary" data-testid="button-new-booking-inline">
                   {isHebrew ? '+ הזמנה חדשה' : '+ New Booking'}
-                </button>
+                </Button>
               </Link>
             </div>
 
@@ -290,9 +291,9 @@ export default function OwnerDashboard() {
               <h2 className="luxury-heading-md">
                 {isHebrew ? 'חיות המחמד שלי' : 'My Pets'}
               </h2>
-              <button className="luxury-btn-primary" data-testid="button-add-pet">
+              <Button className="luxury-btn-primary" data-testid="button-add-pet">
                 {isHebrew ? '+ הוסף חיית מחמד' : '+ Add Pet'}
-              </button>
+              </Button>
             </div>
             
             <div className="luxury-grid-3">
@@ -364,7 +365,7 @@ export default function OwnerDashboard() {
 
             <div className="luxury-grid-2 mb-6">
               <Link href="/paw-finder">
-                <button className="w-full luxury-glass-card luxury-hover-lift luxury-shadow-md p-6 text-left">
+                <Button className="w-full luxury-glass-card luxury-hover-lift luxury-shadow-md p-6 text-left">
                   <div className="flex items-center gap-4">
                     <div className="p-4 rounded-2xl bg-gradient-to-br from-red-500 to-pink-600 luxury-shadow-md">
                       <Search className="h-8 w-8 text-white" />
@@ -380,11 +381,11 @@ export default function OwnerDashboard() {
                       </p>
                     </div>
                   </div>
-                </button>
+                </Button>
               </Link>
 
               <Link href="/paw-finder">
-                <button className="w-full luxury-glass-card luxury-hover-lift luxury-shadow-md p-6 text-left">
+                <Button className="w-full luxury-glass-card luxury-hover-lift luxury-shadow-md p-6 text-left">
                   <div className="flex items-center gap-4">
                     <div className="p-4 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 luxury-shadow-md">
                       <PawPrint className="h-8 w-8 text-white" />
@@ -400,7 +401,7 @@ export default function OwnerDashboard() {
                       </p>
                     </div>
                   </div>
-                </button>
+                </Button>
               </Link>
             </div>
 
@@ -441,7 +442,7 @@ export default function OwnerDashboard() {
 
 function TabButton({ active, onClick, icon, label, badge }: any) {
   return (
-    <button
+    <Button
       onClick={onClick}
       className={`flex items-center gap-2 px-6 py-3 border-b-2 transition-all ${
         active
@@ -458,7 +459,7 @@ function TabButton({ active, onClick, icon, label, badge }: any) {
         </span>
       )}
       {typeof badge !== 'number' && badge}
-    </button>
+    </Button>
   );
 }
 
@@ -525,9 +526,9 @@ function BookingCard({ booking, isHebrew }: any) {
           </span>
         </div>
         
-        <button className="w-full luxury-btn-ghost mt-2" data-testid={`button-view-details-${booking.id}`}>
+        <Button className="w-full luxury-btn-ghost mt-2" data-testid={`button-view-details-${booking.id}`}>
           {isHebrew ? 'צפה בפרטים' : 'View Details'}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -551,9 +552,9 @@ function PetProfileCard({ name, type, breed, age, isHebrew }: any) {
       
       <div className="luxury-divider"></div>
       
-      <button className="w-full luxury-btn-ghost" data-testid={`button-edit-pet-${name.toLowerCase()}`}>
+      <Button className="w-full luxury-btn-ghost" data-testid={`button-edit-pet-${name.toLowerCase()}`}>
         {isHebrew ? 'ערוך פרופיל' : 'Edit Profile'}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -589,9 +590,9 @@ function EmptyState({ icon, title, description, actionLabel, actionLink }: any) 
       <p className="luxury-text-body mb-6 max-w-md">{description}</p>
       {actionLabel && (
         <Link href={actionLink || '#'}>
-          <button className="luxury-btn-primary" data-testid="button-empty-state-action">
+          <Button className="luxury-btn-primary" data-testid="button-empty-state-action">
             {actionLabel}
-          </button>
+          </Button>
         </Link>
       )}
     </div>

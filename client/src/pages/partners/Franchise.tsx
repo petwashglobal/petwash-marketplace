@@ -145,13 +145,13 @@ export default function FranchisePartners() {
             <p className="luxury-text-body mb-4">
               {isHe ? 'בקשו חבילת מידע על זכיינות' : 'Request franchise information package'}
             </p>
-            <button 
+            <Button 
               className="w-full luxury-btn-primary" 
               data-testid="button-request-info"
               onClick={() => setShowForm(true)}
             >
               {isHe ? 'בקש מידע' : 'Request Information'}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -161,12 +161,12 @@ export default function FranchisePartners() {
               className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <button 
+              <Button 
                 onClick={() => setShowForm(false)} 
                 className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
               >
                 <X className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-              </button>
+              </Button>
               
               <div className="text-center mb-6">
                 <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-3">

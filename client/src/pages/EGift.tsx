@@ -577,7 +577,7 @@ function LuxuryGiftCard({
   const occasionLabel = occasion ? (occasion.labels[lang] || occasion.labels.en) : null;
 
   return (
-    <button 
+    <Button 
       type="button"
       className="relative w-full text-left transition-all duration-300 group"
       onClick={onClick}
@@ -660,7 +660,7 @@ function LuxuryGiftCard({
           </div>
         </div>
       </div>
-    </button>
+    </Button>
   );
 }
 
@@ -947,7 +947,7 @@ export default function EGift() {
                         <Globe className="w-3 h-3 text-[#aaa]" />
                         <div className="flex gap-0.5">
                           {messageLanguages.map((ml) => (
-                            <button
+                            <Button
                               key={ml.code}
                               type="button"
                               onClick={() => setMessageLang(ml)}
@@ -960,7 +960,7 @@ export default function EGift() {
                               data-testid={`msg-lang-${ml.code}`}
                             >
                               {ml.flag}
-                            </button>
+                            </Button>
                           ))}
                         </div>
                       </div>
@@ -971,7 +971,7 @@ export default function EGift() {
                         <p className="text-[9px] tracking-[0.1em] uppercase text-[#bbb] mb-1.5">{tx('suggestedMessages', lang)}</p>
                         <div className="flex flex-wrap gap-1.5">
                           {suggestions.map((msg, i) => (
-                            <button
+                            <Button
                               key={i}
                               type="button"
                               onClick={() => applySuggestedMessage(msg)}
@@ -980,7 +980,7 @@ export default function EGift() {
                               dir={messageLang.dir}
                             >
                               {msg.length > 50 ? msg.substring(0, 50) + '...' : msg}
-                            </button>
+                            </Button>
                           ))}
                         </div>
                       </div>
@@ -1018,7 +1018,7 @@ export default function EGift() {
                   </div>
                 </div>
 
-                <button
+                <Button
                   className="w-full py-4 mt-5 text-[11px] tracking-[0.18em] uppercase font-medium bg-[#1a1a1a] text-white hover:bg-[#333] transition-all duration-300 flex items-center justify-center gap-2 touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={handleCheckout}
                   disabled={isProcessing}
@@ -1033,7 +1033,7 @@ export default function EGift() {
                       <ForwardIcon className="w-3.5 h-3.5" />
                     </>
                   )}
-                </button>
+                </Button>
 
                 <p className="text-[10px] text-[#aaa] text-center mt-3 tracking-wide">
                   {tx('secureCheckout', lang)}
@@ -1138,7 +1138,7 @@ export default function EGift() {
                 const isSelected = selectedOccasion?.id === occasion.id;
                 const label = occasion.labels[lang] || occasion.labels.en;
                 return (
-                  <button
+                  <Button
                     key={occasion.id}
                     type="button"
                     onClick={() => {
@@ -1161,7 +1161,7 @@ export default function EGift() {
                   >
                     <OccIcon className="w-4 h-4" strokeWidth={isSelected ? 2.5 : 1.5} />
                     {label}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -1173,7 +1173,7 @@ export default function EGift() {
             </p>
             <div className="flex flex-wrap justify-center gap-2">
               {platformServices.map(service => (
-                <button
+                <Button
                   key={service.id}
                   type="button"
                   onClick={() => toggleService(service.id)}
@@ -1186,7 +1186,7 @@ export default function EGift() {
                   data-testid={`service-toggle-${service.id}`}
                 >
                   {service.name}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -1230,7 +1230,7 @@ export default function EGift() {
           </div>
 
           <div className="mt-6 sm:mt-8 max-w-md mx-auto">
-            <button
+            <Button
               type="button"
               onClick={() => {
                 setIsCustom(!isCustom);
@@ -1248,7 +1248,7 @@ export default function EGift() {
             >
               <Sparkles className="w-3.5 h-3.5" strokeWidth={1.5} />
               {tx('customAmount', lang)}
-            </button>
+            </Button>
             
             {isCustom && (
               <div className="mt-3 relative">
@@ -1275,7 +1275,7 @@ export default function EGift() {
 
           {selectedOption && (
             <div className="mt-10 sm:mt-12 text-center">
-              <button
+              <Button
                 className="px-10 sm:px-14 py-4 text-[11px] tracking-[0.18em] uppercase font-medium bg-[#1a1a1a] text-white hover:bg-[#333] transition-all duration-300 inline-flex items-center gap-2.5 touch-manipulation"
                 onClick={proceedToCheckout}
                 data-testid="button-proceed-checkout"
@@ -1283,7 +1283,7 @@ export default function EGift() {
               >
                 {tx('continueCheckout', lang)}
                 <ForwardIcon className="w-3.5 h-3.5" />
-              </button>
+              </Button>
             </div>
           )}
 

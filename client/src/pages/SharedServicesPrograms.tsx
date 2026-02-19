@@ -1,4 +1,5 @@
 import { Award, Heart, Users, GraduationCap, ShoppingBasket, Shield, Home, Sparkles } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 
 interface SharedServicesProgramsProps {
   language?: string;
@@ -127,10 +128,10 @@ export default function SharedServicesPrograms({ language = 'en' }: SharedServic
               ? 'יחד נוכל ליצור עתיד טוב יותר לחיות מחמד ולבעליהן'
               : 'Together we can create a better future for pets and their families'}
           </p>
-          <button className="luxury-btn-primary luxury-shadow-xl">
+          <Button className="luxury-btn-primary luxury-shadow-xl">
             <Heart className="w-5 h-5 mr-2" />
             {isHebrew ? 'למידע נוסף' : 'Learn More'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

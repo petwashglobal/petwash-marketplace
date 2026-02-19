@@ -90,7 +90,7 @@ export default function TrainerProfile() {
               {t('This trainer profile could not be found.')}
             </p>
             <Link href="/academy">
-              <button className="luxury-btn-primary">{t('Browse All Trainers')}</button>
+              <Button className="luxury-btn-primary">{t('Browse All Trainers')}</Button>
             </Link>
           </div>
         </div>
@@ -140,7 +140,7 @@ export default function TrainerProfile() {
           )}
 
           {/* Favorite Button */}
-          <button
+          <Button
             onClick={() => setIsFavorite(!isFavorite)}
             className="absolute top-4 right-4 p-3 rounded-full bg-white/90 hover:bg-white transition-colors shadow-lg"
             data-testid="button-favorite-trainer"
@@ -150,7 +150,7 @@ export default function TrainerProfile() {
                 isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600'
               }`}
             />
-          </button>
+          </Button>
         </div>
 
         <div className="container mx-auto px-4 -mt-20 pb-12">
@@ -386,14 +386,14 @@ export default function TrainerProfile() {
 
                   {trainer.isAcceptingBookings ? (
                     <>
-                      <button
+                      <Button
                         className="luxury-btn-primary w-full mb-3 gap-2 py-3 text-lg"
                         onClick={() => setLocation(`/academy/book/${trainer.id}`)}
                         data-testid="button-book-trainer"
                       >
                         <CalendarIcon className="h-5 w-5" />
                         {t('Book Training Session')}
-                      </button>
+                      </Button>
 
                       <Button
                         variant="outline"

@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { Cookie, Shield, Target, TrendingUp, Settings, Database, Clock, Mail } from "lucide-react";
 
 export default function CookiesPolicy() {
@@ -279,12 +280,12 @@ export default function CookiesPolicy() {
               </ul>
 
               <div className="flex flex-wrap gap-4">
-                <button className="luxury-btn-primary">
+                <Button className="luxury-btn-primary">
                   Update Cookie Preferences
-                </button>
-                <button className="luxury-btn-secondary">
+                </Button>
+                <Button className="luxury-btn-secondary">
                   Block All Optional Cookies
-                </button>
+                </Button>
               </div>
             </div>
           </div>

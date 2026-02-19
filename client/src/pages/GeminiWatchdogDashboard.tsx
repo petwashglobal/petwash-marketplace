@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLanguage } from "@/lib/languageStore";
+import { Button } from "@/components/ui/button";
 import {
   Bot,
   AlertTriangle,
@@ -175,10 +176,10 @@ export default function GeminiWatchdogDashboard() {
         {/* Header */}
         <div className="mb-8">
           <Link href="/admin">
-            <button className="mb-4 flex items-center gap-2 text-purple-600 hover:text-purple-700 dark:text-purple-400" data-testid="button-back-admin">
+            <Button className="mb-4 flex items-center gap-2 text-purple-600 hover:text-purple-700 dark:text-purple-400" data-testid="button-back-admin">
               <ArrowLeft className="h-4 w-4" />
               {isHebrew ? "חזרה לניהול" : "Back to Admin"}
-            </button>
+            </Button>
           </Link>
 
           <div className="flex items-center gap-4 mb-2">

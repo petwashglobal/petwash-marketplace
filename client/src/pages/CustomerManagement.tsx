@@ -339,13 +339,13 @@ export default function CustomerManagement() {
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Refresh
               </Button>
-              <button 
+              <Button 
                 className="luxury-btn-primary text-sm px-4 py-2"
                 data-testid="add-customer"
               >
                 <UserPlus className="w-4 h-4 mr-2 inline" />
                 Add Customer
-              </button>
+              </Button>
               <div className="flex items-center space-x-2 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-2 rounded-lg border border-green-200">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                 <span className="text-sm font-medium text-green-800">Live Data</span>

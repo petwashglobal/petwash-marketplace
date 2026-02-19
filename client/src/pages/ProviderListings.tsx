@@ -343,9 +343,9 @@ export default function ProviderListings() {
                         </div>
                       )}
                     </div>
-                    <button className="luxury-btn-primary luxury-shadow-md px-4 py-2 text-sm" data-testid={`button-book-${provider.id}`}>
+                    <Button className="luxury-btn-primary luxury-shadow-md px-4 py-2 text-sm" data-testid={`button-book-${provider.id}`}>
                       {t.book}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>

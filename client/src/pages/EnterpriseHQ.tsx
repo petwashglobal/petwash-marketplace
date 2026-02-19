@@ -140,13 +140,13 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm opacity-90">{user?.displayName || user?.email}</span>
-              <button
+              <Button
                 onClick={() => signOut()}
                 className="p-2 rounded-xl bg-white/20 hover:bg-white/30 transition-all hover:scale-105"
                 data-testid="button-logout"
               >
                 <LogOut className="h-4 w-4" />
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -359,9 +359,9 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
                       <div className={`luxury-badge ${station.operationalStatus === 'active' ? 'luxury-badge-success' : ''}`}>
                         {station.operationalStatus}
                       </div>
-                      <button className="luxury-btn-secondary text-sm px-4 py-2" data-testid={`button-view-station-${station.id}`}>
+                      <Button className="luxury-btn-secondary text-sm px-4 py-2" data-testid={`button-view-station-${station.id}`}>
                         View Details
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -397,9 +397,9 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
                       <div className={`luxury-badge ${franchisee.status === 'active' ? 'luxury-badge-success' : ''}`}>
                         {franchisee.status}
                       </div>
-                      <button className="luxury-btn-secondary text-sm px-4 py-2" data-testid={`button-view-franchisee-${franchisee.id}`}>
+                      <Button className="luxury-btn-secondary text-sm px-4 py-2" data-testid={`button-view-franchisee-${franchisee.id}`}>
                         View Details
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}

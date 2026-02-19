@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 import { 
   Activity, 
@@ -84,16 +85,17 @@ export default function OpsDashboard({ language, onLanguageChange }: OpsDashboar
           
           <div className="mt-4 flex gap-2 items-center">
             <label className="text-sm text-zinc-400">Refresh:</label>
-            <select 
-              value={refreshInterval} 
-              onChange={(e) => setRefreshInterval(Number(e.target.value))}
-              className="bg-zinc-800 border-zinc-700 text-white rounded px-2 py-1 text-sm"
-            >
-              <option value="5000">5s</option>
-              <option value="10000">10s</option>
-              <option value="30000">30s</option>
-              <option value="60000">1min</option>
-            </select>
+            <Select value={String(refreshInterval)} onValueChange={(v) => setRefreshInterval(Number(v))}>
+              <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white rounded px-2 py-1 text-sm w-[100px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5000">5s</SelectItem>
+                <SelectItem value="10000">10s</SelectItem>
+                <SelectItem value="30000">30s</SelectItem>
+                <SelectItem value="60000">1min</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

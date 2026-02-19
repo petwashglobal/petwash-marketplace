@@ -3,6 +3,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Shield, PawPrint, Clock, Check, Users, Handshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { MobileDatePicker } from "@/components/ui/mobile-date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -404,7 +405,7 @@ export default function WalkBookingFlow() {
               <div className="mb-2 text-sm font-semibold text-slate-700">
                 הערות (אופציונלי)
               </div>
-              <textarea
+              <Textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 rows={3}

@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { useParams, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Layout } from '@/components/Layout';
@@ -109,12 +110,12 @@ export default function GroomerDetail() {
             <h2 className="text-2xl font-light text-gray-900 mb-2">
               {isHebrew ? 'מטפח לא נמצא' : 'Groomer not found'}
             </h2>
-            <button 
+            <Button 
               onClick={() => navigate('/groomers')}
               className="mt-4 text-emerald-600 hover:underline"
             >
               {isHebrew ? 'חזור לרשימה' : 'Back to list'}
-            </button>
+            </Button>
           </div>
         </div>
       </Layout>

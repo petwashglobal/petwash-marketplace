@@ -518,7 +518,7 @@ export default function PlushLab() {
                 </div>
                 
                 <div className="mt-8">
-                  <button 
+                  <Button 
                     type="submit" 
                     className="luxury-btn-primary luxury-shadow-xl w-full py-6 text-lg"
                     disabled={createMutation.isPending}
@@ -535,7 +535,7 @@ export default function PlushLab() {
                           {t('plushlab.createAvatar', language)}
                         </span>
                       )}
-                    </button>
+                    </Button>
                   </div>
               </form>
             </TabsContent>
@@ -628,7 +628,7 @@ export default function PlushLab() {
                       
                       <div className="flex luxury-gap-sm">
                         {!avatar.isDefault && (
-                          <button
+                          <Button
                             onClick={() => setDefaultMutation.mutate(avatar.id)}
                             disabled={setDefaultMutation.isPending}
                             className="luxury-btn-secondary flex-1 py-2 text-sm"
@@ -636,9 +636,9 @@ export default function PlushLab() {
                           >
                             <Check className="w-4 h-4 mr-1 inline" />
                             {t('plushlab.setDefault', language)}
-                          </button>
+                          </Button>
                         )}
-                        <button
+                        <Button
                           onClick={() => {
                             const link = document.createElement('a');
                             link.href = avatar.photoUrl;
@@ -650,15 +650,15 @@ export default function PlushLab() {
                         >
                           <Download className="w-4 h-4 mr-1 inline" />
                           {t('plushlab.download', language)}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           onClick={() => handleDelete(avatar.id)}
                           disabled={deleteMutation.isPending}
                           className="luxury-btn-ghost text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 p-2"
                           data-testid={`button-delete-${avatar.id}`}
                         >
                           <Trash2 className="w-4 h-4" />
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -681,12 +681,12 @@ export default function PlushLab() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="luxury-gap-sm">
-            <button onClick={() => setDeleteDialogOpen(false)} className="luxury-btn-ghost">
+            <Button onClick={() => setDeleteDialogOpen(false)} className="luxury-btn-ghost">
               {t('plushlab.cancel', language)}
-            </button>
-            <button onClick={confirmDelete} className="luxury-btn-primary bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800">
+            </Button>
+            <Button onClick={confirmDelete} className="luxury-btn-primary bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800">
               {t('plushlab.delete', language)}
-            </button>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -272,26 +272,26 @@ export default function SitterDashboard() {
                           </div>
 
                           <div className="flex gap-2 pt-2">
-                            <button 
+                            <Button 
                               className="luxury-btn-primary flex-1"
                               data-testid={`button-accept-${request.id}`}
                             >
                               <CheckCircle2 className="w-4 h-4 mr-2" />
                               Accept
-                            </button>
-                            <button 
+                            </Button>
+                            <Button 
                               className="luxury-btn-secondary flex-1"
                               data-testid={`button-decline-${request.id}`}
                             >
                               <XCircle className="w-4 h-4 mr-2" />
                               Decline
-                            </button>
-                            <button 
+                            </Button>
+                            <Button 
                               className="luxury-btn-ghost"
                               data-testid={`button-message-owner-${request.id}`}
                             >
                               <MessageCircle className="w-4 h-4" />
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -363,13 +363,13 @@ export default function SitterDashboard() {
                           </div>
 
                           <div className="flex gap-2">
-                            <button className="luxury-btn-secondary flex-1 text-sm py-2" data-testid={`button-contact-${booking.id}`}>
+                            <Button className="luxury-btn-secondary flex-1 text-sm py-2" data-testid={`button-contact-${booking.id}`}>
                               <MessageCircle className="w-4 h-4 mr-2" />
                               Contact Owner
-                            </button>
-                            <button className="luxury-btn-ghost flex-1 text-sm py-2" data-testid={`button-details-${booking.id}`}>
+                            </Button>
+                            <Button className="luxury-btn-ghost flex-1 text-sm py-2" data-testid={`button-details-${booking.id}`}>
                               View Details
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       </div>

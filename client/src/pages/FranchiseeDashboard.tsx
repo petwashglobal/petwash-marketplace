@@ -172,9 +172,9 @@ export default function FranchiseeDashboard({ franchiseeId }: FranchiseeDashboar
                             {station.totalWashesCompleted || 0} total washes
                           </p>
                         </div>
-                        <button className="luxury-btn-primary text-sm px-4 py-2" data-testid={`button-view-station-${station.id}`}>
+                        <Button className="luxury-btn-primary text-sm px-4 py-2" data-testid={`button-view-station-${station.id}`}>
                           View
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ))}

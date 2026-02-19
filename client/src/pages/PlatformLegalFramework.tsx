@@ -1,6 +1,7 @@
 import { useLanguage } from "@/lib/languageStore";
 import { ArrowLeft, Shield, AlertTriangle, FileText, Scale, Lock, Eye, Check } from "lucide-react";
 import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
 
 export default function PlatformLegalFramework() {
   const { language } = useLanguage();
@@ -10,10 +11,10 @@ export default function PlatformLegalFramework() {
     <div className={`min-h-screen luxury-bg-mesh ${isHebrew ? 'rtl' : 'ltr'}`}>
       <div className="max-w-5xl mx-auto px-4 py-12">
         <Link href="/">
-          <button className="mb-6 luxury-btn-ghost flex items-center gap-2" data-testid="button-back-home">
+          <Button className="mb-6 luxury-btn-ghost flex items-center gap-2" data-testid="button-back-home">
             <ArrowLeft className="h-4 w-4" />
             {isHebrew ? 'חזרה לדף הבית' : 'Back to Home'}
-          </button>
+          </Button>
         </Link>
 
         <div className="luxury-glass-card luxury-shadow-xl p-8 md:p-12">
@@ -372,34 +373,34 @@ export default function PlatformLegalFramework() {
             </h3>
             <div className="grid md:grid-cols-3 gap-4">
               <Link href="/sitter-suite/terms-conditions">
-                <button className="w-full p-4 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg text-left transition-colors">
+                <Button className="w-full p-4 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg text-left transition-colors">
                   <p className="font-semibold text-blue-900 dark:text-blue-200">
                     {isHebrew ? 'תנאי Sitter Suite' : 'Sitter Suite Terms'}
                   </p>
                   <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
                     {isHebrew ? 'תנאים ספציפיים לשירות' : 'Service-specific terms'}
                   </p>
-                </button>
+                </Button>
               </Link>
               <Link href="/sitter-suite/privacy-policy">
-                <button className="w-full p-4 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg text-left transition-colors">
+                <Button className="w-full p-4 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg text-left transition-colors">
                   <p className="font-semibold text-purple-900 dark:text-purple-200">
                     {isHebrew ? 'מדיניות פרטיות' : 'Privacy Policy'}
                   </p>
                   <p className="text-sm text-purple-700 dark:text-purple-300 mt-1">
                     {isHebrew ? 'הגנת נתונים' : 'Data protection'}
                   </p>
-                </button>
+                </Button>
               </Link>
               <Link href="/sitter-suite/disclaimer">
-                <button className="w-full p-4 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg text-left transition-colors">
+                <Button className="w-full p-4 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg text-left transition-colors">
                   <p className="font-semibold text-red-900 dark:text-red-200">
                     {isHebrew ? 'כתב ויתור' : 'Disclaimer'}
                   </p>
                   <p className="text-sm text-red-700 dark:text-red-300 mt-1">
                     {isHebrew ? 'הודעות משפטיות' : 'Legal notices'}
                   </p>
-                </button>
+                </Button>
               </Link>
             </div>
           </div>

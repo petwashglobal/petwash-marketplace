@@ -99,22 +99,22 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                 
                 {/* Premium CTA Buttons */}
                 <div className="flex flex-col sm:flex-row luxury-gap-md justify-center items-center pt-8">
-                  <button 
+                  <Button 
                     className="luxury-btn-primary luxury-shadow-xl flex items-center gap-2"
                     data-testid="button-request-investment-package"
                   >
                     <DollarSign className="w-6 h-6" />
                     {t('franchise.requestPackage', language)}
-                  </button>
+                  </Button>
                   
-                  <button 
+                  <Button 
                     className="luxury-btn-secondary flex items-center gap-2"
                     data-testid="button-schedule-tour"
                     onClick={() => setCompletedSteps(prev => Math.max(prev, 5))}
                   >
                     <Calendar className="w-6 h-6" />
                     {t('franchise.scheduleTour', language)}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -304,7 +304,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                       { name: 'Emily Roberts', location: 'Sydney, Australia', revenue: '$19K AUD/mo', thumbnail: '🇦🇺' },
                       { name: 'David Williams', location: 'London, England', revenue: '£14K GBP/mo', thumbnail: '🇬🇧' }
                     ].filter(() => false).map((video, idx) => (
-                      <button
+                      <Button
                         key={idx}
                         onClick={() => {
                           setShowVideoPlayer(true);
@@ -325,7 +325,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                           <div className="luxury-text-small mb-2">{video.location}</div>
                           <div className="luxury-heading-sm luxury-text-gradient">{video.revenue}</div>
                         </div>
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -348,13 +348,13 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                     <p className="luxury-text-body mb-8">
                       {t('franchise.aiAdvisorDesc', language)}
                     </p>
-                    <button 
+                    <Button 
                       onClick={() => setCompletedSteps(prev => Math.max(prev, 4))}
                       className="luxury-btn-primary luxury-shadow-xl flex items-center gap-2 mx-auto"
                     >
                       <Headset className="w-6 h-6" />
                       {t('franchise.startChatAI', language)}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -400,7 +400,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                         </p>
                       </div>
                     </div>
-                    <button 
+                    <Button 
                       className="group relative px-10 py-5 text-lg font-semibold transition-all duration-300 hover:scale-105"
                     >
                       <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500 rounded-xl opacity-75 blur group-hover:blur-md group-hover:opacity-100 transition duration-300"></div>
@@ -408,7 +408,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                         <Eye className="w-6 h-6" />
                         {t('franchise.startVirtualTour', language)}
                       </div>
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -513,13 +513,13 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                     <p className="text-lg text-gray-700 dark:text-gray-300">
                       {language === 'he' ? 'צור קשר לקבלת פרטי השקעה מלאים והצעת מחיר מותאמת אישית.' : 'Contact us for complete investment details and a personalized quote.'}
                     </p>
-                    <button 
+                    <Button 
                       className="luxury-btn-primary luxury-shadow-xl flex items-center gap-2 mx-auto"
                       data-testid="button-contact-investment"
                     >
                       <DollarSign className="w-6 h-6" />
                       {language === 'he' ? 'בקש חבילת השקעה' : 'Request Investment Package'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -694,13 +694,13 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                     <p className="text-lg text-gray-700 dark:text-gray-300 mb-6 font-semibold">
                       {t('franchise.ensureAccuracy', language)}
                     </p>
-                    <button className="group relative px-12 py-5 text-lg font-semibold transition-all duration-300 hover:scale-105">
+                    <Button className="group relative px-12 py-5 text-lg font-semibold transition-all duration-300 hover:scale-105">
                       <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 rounded-xl opacity-75 blur group-hover:blur-md group-hover:opacity-100 transition duration-300"></div>
                       <div className="relative flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-500 via-purple-600 to-pink-600 text-white rounded-xl shadow-2xl">
                         <Briefcase className="w-6 h-6" />
                         {t('franchise.inquireJV', language)}
                       </div>
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -745,14 +745,14 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
                   {t('franchise.joinGlobalNetwork', language)}
                 </p>
                 <div className="flex flex-col sm:flex-row luxury-gap-md justify-center pt-4">
-                  <button 
+                  <Button 
                     className="luxury-btn-primary luxury-shadow-xl flex items-center gap-2 mx-auto"
                     onClick={() => setCompletedSteps(prev => Math.max(prev, 6))}
                     data-testid="button-apply-now"
                   >
                     <Phone className="w-6 h-6" />
                     {t('franchise.talkAdvisor', language)}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

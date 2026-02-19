@@ -131,20 +131,20 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                   </Button>
                 ) : (
                   <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-                    <button 
+                    <Button 
                       onClick={() => setLocation('/signup')}
                       className="gold-shimmer-btn text-white px-10 py-4 text-sm uppercase tracking-[0.2em] font-light w-full sm:w-auto rounded-none"
                       data-testid="button-signup-hero"
                     >
                       {t('hero.getStarted', language)}
-                    </button>
-                    <button 
+                    </Button>
+                    <Button 
                       onClick={() => setLocation('/signin')}
                       className="bg-transparent text-[#111] border-2 border-[#c6a664] px-10 py-4 text-sm uppercase tracking-[0.2em] font-light hover:bg-[#c6a664] hover:text-white transition-all duration-500 w-full sm:w-auto animate-gold-border"
                       data-testid="button-login-hero"
                     >
                       {t('landing.login', language)}
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>

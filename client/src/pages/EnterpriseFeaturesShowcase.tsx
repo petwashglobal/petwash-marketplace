@@ -755,16 +755,16 @@ export default function EnterpriseFeaturesShowcase() {
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link href="/weather-planner">
-              <button className="luxury-btn-primary luxury-shadow-xl flex items-center gap-2" data-testid="button-try-weather-planner">
+              <Button className="luxury-btn-primary luxury-shadow-xl flex items-center gap-2" data-testid="button-try-weather-planner">
                 <Calendar className="w-5 h-5" />
                 Try Weather Planner
-              </button>
+              </Button>
             </Link>
             <Link href="/pet-care-planner">
-              <button className="luxury-btn-secondary flex items-center gap-2" data-testid="button-try-pet-care">
+              <Button className="luxury-btn-secondary flex items-center gap-2" data-testid="button-try-pet-care">
                 <Sparkles className="w-5 h-5" />
                 Try Pet Care Planner
-              </button>
+              </Button>
             </Link>
           </div>
         </div>

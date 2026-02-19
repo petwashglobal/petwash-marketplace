@@ -260,30 +260,30 @@ export function SmartReceiptViewer() {
 
         {/* Action Buttons */}
         <div className="space-y-3 luxury-animate-slide-up luxury-delay-5">
-          <button 
+          <Button 
             className="luxury-btn-primary w-full"
             onClick={() => window.open(`/rate/${receipt.transactionId}`, '_blank')}
           >
             <Star className="h-4 w-4 mr-2" />
             Rate Your Experience
-          </button>
+          </Button>
 
-          <button 
+          <Button 
             className="luxury-btn-secondary w-full"
             onClick={() => window.open(`/?package=${receipt.packageId}`, '_blank')}
           >
             <Gift className="h-4 w-4 mr-2" />
             Book Next Wash
-          </button>
+          </Button>
 
           {receipt.userId && (
-            <button 
+            <Button 
               className="luxury-btn-secondary w-full"
               onClick={() => window.open(`/?ref=${receipt.userId}`, '_blank')}
             >
               <ExternalLink className="h-4 w-4 mr-2" />
               Share & Earn Rewards
-            </button>
+            </Button>
           )}
         </div>
 

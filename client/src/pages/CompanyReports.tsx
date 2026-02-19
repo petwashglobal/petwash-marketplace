@@ -231,10 +231,10 @@ export default function CompanyReports() {
                 />
               </div>
               
-              <button className="luxury-btn-primary luxury-shadow-xl" data-testid="button-generate-report">
+              <Button className="luxury-btn-primary luxury-shadow-xl" data-testid="button-generate-report">
                 <FileBarChart className="w-4 h-4 mr-2" />
                 Generate Report
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -277,10 +277,10 @@ export default function CompanyReports() {
                 </div>
                 <h3 className="luxury-heading-md mb-2">{category.name}</h3>
                 <p className="luxury-text-body mb-6">{category.description}</p>
-                <button className="luxury-btn-primary w-full" data-testid={`button-view-${index}`}>
+                <Button className="luxury-btn-primary w-full" data-testid={`button-view-${index}`}>
                   <Eye className="w-4 h-4 mr-2" />
                   View Reports
-                </button>
+                </Button>
               </div>
             ))}
           </div>
@@ -294,7 +294,7 @@ export default function CompanyReports() {
               <h3 className="luxury-heading-md">Revenue Trends</h3>
               <div className="flex gap-2">
                 {['Week', 'Month', 'Quarter', 'Year'].map((period) => (
-                  <button
+                  <Button
                     key={period}
                     onClick={() => setSelectedPeriod(period.toLowerCase())}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
@@ -305,7 +305,7 @@ export default function CompanyReports() {
                     data-testid={`button-period-${period.toLowerCase()}`}
                   >
                     {period}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -387,12 +387,12 @@ export default function CompanyReports() {
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex items-center justify-end gap-2">
-                        <button className="luxury-btn-ghost" data-testid={`button-view-report-${index}`}>
+                        <Button className="luxury-btn-ghost" data-testid={`button-view-report-${index}`}>
                           <Eye className="w-4 h-4" />
-                        </button>
-                        <button className="luxury-btn-ghost" data-testid={`button-download-report-${index}`}>
+                        </Button>
+                        <Button className="luxury-btn-ghost" data-testid={`button-download-report-${index}`}>
                           <Download className="w-4 h-4" />
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -456,10 +456,10 @@ export default function CompanyReports() {
               </div>
             </div>
 
-            <button className="luxury-btn-primary w-full" data-testid="button-export">
+            <Button className="luxury-btn-primary w-full" data-testid="button-export">
               <Download className="w-4 h-4 mr-2" />
               Export Report
-            </button>
+            </Button>
           </div>
 
           {/* Scheduled Reports */}
@@ -474,9 +474,9 @@ export default function CompanyReports() {
                 >
                   <div className="flex items-start justify-between mb-2">
                     <span className="luxury-heading-sm text-sm">{schedule.name}</span>
-                    <button className="luxury-btn-ghost p-1" data-testid={`button-edit-schedule-${index}`}>
+                    <Button className="luxury-btn-ghost p-1" data-testid={`button-edit-schedule-${index}`}>
                       <Settings className="w-4 h-4" />
-                    </button>
+                    </Button>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="luxury-badge text-xs">{schedule.frequency}</span>
@@ -499,14 +499,14 @@ export default function CompanyReports() {
               </div>
               <h3 className="luxury-heading-sm text-center mb-2">English Report</h3>
               <p className="luxury-text-small text-center mb-4">Complete company documentation</p>
-              <button
+              <Button
                 className="luxury-btn-primary w-full"
                 onClick={() => downloadReport('english')}
                 data-testid="button-download-english"
               >
                 <Download className="w-4 h-4 mr-2" />
                 Download English
-              </button>
+              </Button>
             </div>
 
             {/* Hebrew Report */}
@@ -516,14 +516,14 @@ export default function CompanyReports() {
               </div>
               <h3 className="luxury-heading-sm text-center mb-2">דוח בעברית</h3>
               <p className="luxury-text-small text-center mb-4">תיעוד מלא של החברה</p>
-              <button
+              <Button
                 className="luxury-btn-primary w-full"
                 onClick={() => downloadReport('hebrew')}
                 data-testid="button-download-hebrew"
               >
                 <Download className="w-4 h-4 mr-2" />
                 הורד דוח בעברית
-              </button>
+              </Button>
             </div>
           </div>
         </div>

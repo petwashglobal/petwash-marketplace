@@ -278,7 +278,7 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
                 {language === 'he' 
                   ? 'כבר יש לך חשבון? ' 
                   : 'Already have an account? '}
-                <button 
+                <Button 
                   className="text-blue-700 font-semibold hover:text-blue-800 transition-colors duration-200 relative z-10"
                   onClick={(e) => {
                     e.preventDefault();
@@ -292,7 +292,7 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
                   style={{ pointerEvents: 'auto' }}
                 >
                   {t('customerSignup.signInHere', language)}
-                </button>
+                </Button>
               </p>
             </div>
           </div>
@@ -443,13 +443,13 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
                       required
                       className="mt-2 h-12 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300 bg-white/70 backdrop-blur-sm pr-12"
                     />
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute inset-y-0 right-0 pr-4 flex items-center hover:bg-gray-100 rounded-lg transition-colors duration-200"
                     >
                       {showPassword ? <EyeOff className="h-5 w-5 text-gray-500" /> : <Eye className="h-5 w-5 text-gray-500" />}
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 <div>
@@ -465,13 +465,13 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
                       required
                       className="mt-2 h-12 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300 bg-white/70 backdrop-blur-sm pr-12"
                     />
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       className="absolute inset-y-0 right-0 pr-4 flex items-center hover:bg-gray-100 rounded-lg transition-colors duration-200"
                     >
                       {showConfirmPassword ? <EyeOff className="h-5 w-5 text-gray-500" /> : <Eye className="h-5 w-5 text-gray-500" />}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>

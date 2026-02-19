@@ -186,7 +186,7 @@ export default function Packages() {
                   </ul>
                 </div>
 
-                <button 
+                <Button 
                   className="w-full py-4 text-[11px] tracking-[0.18em] uppercase font-medium bg-[#1a1a1a] text-white hover:bg-[#333] transition-all duration-300 flex items-center justify-center gap-2"
                   onClick={handlePurchase}
                   data-testid="button-purchase"
@@ -194,7 +194,7 @@ export default function Packages() {
                 >
                   {isHe ? 'רכישה' : 'Buy Now'} — ₪{price}
                   <ForwardIcon className="w-3.5 h-3.5" />
-                </button>
+                </Button>
 
                 <p className="text-[10px] text-[#aaa] text-center mt-3 tracking-wide">
                   {isHe ? 'תשלום מאובטח · שמפו אורגני 100%' : 'Secure checkout · 100% organic pet care'}
@@ -271,7 +271,7 @@ export default function Packages() {
               const pricePerWash = Math.round(price / pkg.washes);
 
               return (
-                <button
+                <Button
                   key={pkg.washes}
                   type="button"
                   className="group text-start transition-all duration-300"
@@ -364,14 +364,14 @@ export default function Packages() {
                       </div>
                     </div>
                   </div>
-                </button>
+                </Button>
               );
             })}
           </div>
 
           {selectedPackage && (
             <div className="mt-10 sm:mt-12 text-center">
-              <button
+              <Button
                 className="px-10 sm:px-14 py-4 text-[11px] tracking-[0.18em] uppercase font-medium bg-[#1a1a1a] text-white hover:bg-[#333] transition-all duration-300 inline-flex items-center gap-2.5"
                 onClick={proceedToDetails}
                 data-testid="button-proceed-details"
@@ -379,7 +379,7 @@ export default function Packages() {
               >
                 {isHe ? 'צפה בפרטי החבילה' : 'View Package Details'}
                 <ForwardIcon className="w-3.5 h-3.5" />
-              </button>
+              </Button>
             </div>
           )}
 

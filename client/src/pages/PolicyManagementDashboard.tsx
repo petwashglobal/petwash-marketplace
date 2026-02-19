@@ -116,14 +116,14 @@ export default function PolicyManagementDashboard() {
       <div className="mb-8 luxury-animate-fade-in">
         <div className="flex items-center justify-end">
           <div className="flex gap-2">
-            <button className="luxury-btn-secondary px-4 py-2" data-testid="button-export">
+            <Button className="luxury-btn-secondary px-4 py-2" data-testid="button-export">
               <Download className="w-4 h-4 mr-2 inline" />
               Export
-            </button>
-            <button className="luxury-btn-primary luxury-shadow-xl px-4 py-2" data-testid="button-create-policy">
+            </Button>
+            <Button className="luxury-btn-primary luxury-shadow-xl px-4 py-2" data-testid="button-create-policy">
               <Plus className="w-4 h-4 mr-2 inline" />
               New Policy
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -200,10 +200,10 @@ export default function PolicyManagementDashboard() {
             data-testid="input-search-policies"
           />
         </div>
-        <button className="luxury-btn-secondary px-4 py-2" data-testid="button-advanced-filter">
+        <Button className="luxury-btn-secondary px-4 py-2" data-testid="button-advanced-filter">
           <Filter className="w-4 h-4 mr-2 inline" />
           Filters
-        </button>
+        </Button>
       </div>
 
       {/* Main Content */}
@@ -232,22 +232,22 @@ export default function PolicyManagementDashboard() {
 
           {/* Category Filter */}
           <div className="flex gap-2 mb-6 flex-wrap">
-            <button
+            <Button
               onClick={() => setSelectedCategory('all')}
               className={selectedCategory === 'all' ? 'luxury-badge-primary px-4 py-2' : 'luxury-badge-secondary px-4 py-2'}
               data-testid="filter-category-all"
             >
               All ({Array.isArray(allPolicies) ? allPolicies.length : 0})
-            </button>
+            </Button>
             {Object.entries(categories).map(([category, count]) => (
-              <button
+              <Button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
                 className={selectedCategory === category ? 'luxury-badge-primary px-4 py-2' : 'luxury-badge-secondary px-4 py-2'}
                 data-testid={`filter-category-${category.toLowerCase().replace(/\s+/g, '-')}`}
               >
                 {category} ({count})
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -301,12 +301,12 @@ export default function PolicyManagementDashboard() {
                       </div>
                     )}
                     <div className="flex gap-2 pt-2">
-                      <button className="luxury-btn-secondary flex-1 py-2" data-testid={`button-view-policy-${policy.id}`}>
+                      <Button className="luxury-btn-secondary flex-1 py-2" data-testid={`button-view-policy-${policy.id}`}>
                         View
-                      </button>
-                      <button className="luxury-btn-secondary py-2 px-4" data-testid={`button-edit-policy-${policy.id}`}>
+                      </Button>
+                      <Button className="luxury-btn-secondary py-2 px-4" data-testid={`button-edit-policy-${policy.id}`}>
                         Edit
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>

@@ -1,9 +1,11 @@
 import { useLanguage } from "@/lib/languageStore";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
 import { MessageSquare, Calendar, DollarSign, Settings, LogOut, PawPrint, Shield, Bell, Star, TrendingUp, Users } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { WorldClock } from "@/components/WorldClock";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
@@ -12,6 +14,7 @@ export default function SitterDashboard() {
   const { user, signOut } = useFirebaseAuth();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<'bookings' | 'inbox' | 'earnings' | 'profile'>('bookings');
+  const [bookingFilter, setBookingFilter] = useState('all');
   const isHebrew = language === 'he';
 
   // Fetch sitter's bookings
@@ -99,12 +102,12 @@ export default function SitterDashboard() {
               {/* Language Switcher */}
               <LanguageSwitcher compact={true} showFlag={true} />
               
-              <button className="relative p-3 luxury-glass-minimal luxury-hover-lift rounded-xl transition-all">
+              <Button className="relative p-3 luxury-glass-minimal luxury-hover-lift rounded-xl transition-all">
                 <Bell className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                 {unreadCount > 0 && (
                   <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full"></span>
                 )}
-              </button>
+              </Button>
               
               <div className="flex items-center gap-3 luxury-glass-minimal px-4 py-2 rounded-xl">
                 <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
@@ -123,12 +126,12 @@ export default function SitterDashboard() {
                 </div>
               </div>
 
-              <button 
+              <Button 
                 onClick={handleLogout}
                 className="p-3 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all text-red-600"
               >
                 <LogOut className="h-5 w-5" />
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -220,12 +223,17 @@ export default function SitterDashboard() {
                 {isHebrew ? 'ההזמנות שלי' : 'My Bookings'}
               </h2>
               <div className="flex items-center gap-3">
-                <select className="px-4 py-2 luxury-glass-minimal border border-purple-200 dark:border-purple-800 rounded-xl luxury-hover-lift transition-all focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium text-gray-700 dark:text-gray-300">
-                  <option>{isHebrew ? 'הכל' : 'All'}</option>
-                  <option>{isHebrew ? 'ממתינים' : 'Pending'}</option>
-                  <option>{isHebrew ? 'מאושרים' : 'Confirmed'}</option>
-                  <option>{isHebrew ? 'הושלמו' : 'Completed'}</option>
-                </select>
+                <Select value={bookingFilter} onValueChange={setBookingFilter}>
+                  <SelectTrigger className="px-4 py-2 luxury-glass-minimal border border-purple-200 dark:border-purple-800 rounded-xl luxury-hover-lift transition-all focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium text-gray-700 dark:text-gray-300">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{isHebrew ? 'הכל' : 'All'}</SelectItem>
+                    <SelectItem value="pending">{isHebrew ? 'ממתינים' : 'Pending'}</SelectItem>
+                    <SelectItem value="confirmed">{isHebrew ? 'מאושרים' : 'Confirmed'}</SelectItem>
+                    <SelectItem value="completed">{isHebrew ? 'הושלמו' : 'Completed'}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -387,24 +395,24 @@ export default function SitterDashboard() {
 
               <div className="space-y-4 luxury-animate-fade-in luxury-delay-2">
                 <Link href="/sitter-suite/sitter/edit-profile">
-                  <button className="w-full luxury-btn-primary">
+                  <Button className="w-full luxury-btn-primary">
                     <Settings className="h-5 w-5 inline-block mr-2" />
                     {isHebrew ? 'ערוך פרופיל' : 'Edit Profile'}
-                  </button>
+                  </Button>
                 </Link>
                 
                 <div className="luxury-grid-2 gap-3">
                   <Link href="/settings">
-                    <button className="w-full luxury-btn-secondary py-3">
+                    <Button className="w-full luxury-btn-secondary py-3">
                       <Shield className="h-5 w-5 inline-block mr-2" />
                       {isHebrew ? 'הגדרות אבטחה' : 'Security'}
-                    </button>
+                    </Button>
                   </Link>
                   <Link href="/notification-preferences">
-                    <button className="w-full luxury-btn-secondary py-3">
+                    <Button className="w-full luxury-btn-secondary py-3">
                       <Bell className="h-5 w-5 inline-block mr-2" />
                       {isHebrew ? 'התראות' : 'Notifications'}
-                    </button>
+                    </Button>
                   </Link>
                 </div>
               </div>
@@ -440,7 +448,7 @@ function StatCard({ icon, label, value, color }: any) {
 // Tab Button Component
 function TabButton({ active, onClick, icon, label, badge }: any) {
   return (
-    <button
+    <Button
       onClick={onClick}
       className={`flex items-center gap-2 px-6 py-3 border-b-2 transition-all ${
         active
@@ -455,7 +463,7 @@ function TabButton({ active, onClick, icon, label, badge }: any) {
           {badge}
         </span>
       )}
-    </button>
+    </Button>
   );
 }
 
@@ -518,12 +526,12 @@ function SitterBookingCard({ booking, isHebrew }: any) {
       </div>
 
       <div className="flex items-center gap-2 pt-4">
-        <button className="flex-1 luxury-btn-primary">
+        <Button className="flex-1 luxury-btn-primary">
           {isHebrew ? 'צפה בפרטים' : 'View Details'}
-        </button>
-        <button className="luxury-btn-secondary px-4 py-2">
+        </Button>
+        <Button className="luxury-btn-secondary px-4 py-2">
           <MessageSquare className="h-5 w-5" />
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -589,9 +597,9 @@ function EmptyState({ icon, title, description, actionLabel, actionLink }: any) 
       {actionLabel && (
         <div className="luxury-animate-fade-in luxury-delay-3">
           <Link href={actionLink || '#'}>
-            <button className="luxury-btn-primary">
+            <Button className="luxury-btn-primary">
               {actionLabel}
-            </button>
+            </Button>
           </Link>
         </div>
       )}

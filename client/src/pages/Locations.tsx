@@ -160,28 +160,28 @@ export default function Locations() {
                   </div>
 
                   <div className="flex flex-wrap gap-4">
-                    <button
+                    <Button
                       className="luxury-btn-primary luxury-shadow-xl"
                       onClick={() => setRouterLocation(`/k9000/booking/${station.id}`)}
                       data-testid={`button-book-${station.id}`}
                     >
                       <Calendar className="w-5 h-5 mr-2" />
                       Book Wash Now
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       className="luxury-btn-outline"
                       onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${station.coordinates.lat},${station.coordinates.lng}`, '_blank')}
                     >
                       <MapPin className="w-5 h-5 mr-2" />
                       Navigate with Google Maps
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       className="luxury-btn-outline"
                       onClick={() => window.open(`https://waze.com/ul?ll=${station.coordinates.lat},${station.coordinates.lng}&navigate=yes`, '_blank')}
                     >
                       <Navigation className="w-5 h-5 mr-2" />
                       Navigate with Waze
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -195,12 +195,12 @@ export default function Locations() {
           <p className="luxury-text-body text-lg mb-8">
             We're expanding across Israel in 2025. Want a ⁦Pet Wash™⁩ station in your neighborhood?
           </p>
-          <button 
+          <Button 
             className="luxury-btn-outline luxury-shadow-lg"
             onClick={() => window.location.href = 'mailto:Support@PetWash.co.il?subject=New Location Request'}
           >
             📧 Request a New Location
-          </button>
+          </Button>
         </div>
       </div>
     </div>

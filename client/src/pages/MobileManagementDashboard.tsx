@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -191,7 +192,7 @@ export default function MobileManagementDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               onClick={() => setActiveView(activeView === 'dashboard' ? 'providers' : 'dashboard')}
               className={cn(
                 'p-2.5 rounded-xl transition-colors',
@@ -202,14 +203,14 @@ export default function MobileManagementDashboard() {
               data-testid="toggle-providers-view"
             >
               <Users className="h-5 w-5" />
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2.5 rounded-xl bg-[rgba(232,230,240,0.05)] text-[rgba(149,144,168,0.6)] hover:text-white transition-colors"
               data-testid="button-mobile-menu"
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -228,13 +229,13 @@ export default function MobileManagementDashboard() {
 
         {activeView === 'providers' && (
           <div className="px-4 pb-3 flex items-center gap-2">
-            <button
+            <Button
               onClick={() => setActiveView('dashboard')}
               className="flex items-center gap-1 text-xs text-[#C9A96E] hover:text-[#d4af37] transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               {isHebrew ? 'חזרה' : 'Back'}
-            </button>
+            </Button>
             <span className="text-xs text-[rgba(149,144,168,0.3)]">|</span>
             <span className="text-xs text-[rgba(149,144,168,0.5)]">
               {isHebrew ? `${providers.length} ספקים` : `${providers.length} Providers`}
@@ -267,12 +268,12 @@ export default function MobileManagementDashboard() {
               <h3 className="text-xs font-semibold text-[rgba(149,144,168,0.5)] uppercase tracking-wider">
                 {isHebrew ? 'ספקים לפי פלטפורמה' : 'Providers by Platform'}
               </h3>
-              <button
+              <Button
                 onClick={() => setActiveView('providers')}
                 className="text-xs text-[#C9A96E] hover:text-[#d4af37] flex items-center gap-1 transition-colors"
               >
                 {isHebrew ? 'צפה בכולם' : 'View All'} <ChevronRight className="h-3 w-3" />
-              </button>
+              </Button>
             </div>
             <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
               {[
@@ -422,7 +423,7 @@ export default function MobileManagementDashboard() {
                       </div>
                       <div className="flex flex-col gap-2">
                         {provider.email ? (
-                          <button
+                          <Button
                             onClick={() => {
                               setSelectedProvider(provider);
                               setShowMessageDialog(true);
@@ -431,7 +432,7 @@ export default function MobileManagementDashboard() {
                             data-testid={`message-provider-${provider.id}`}
                           >
                             <MessageSquare className="h-4 w-4 text-[#C9A96E]" />
-                          </button>
+                          </Button>
                         ) : (
                           <div className="w-10 h-10 rounded-xl bg-[rgba(232,230,240,0.03)] flex items-center justify-center" title={isHebrew ? 'אין אימייל זמין' : 'No email available'}>
                             <MessageSquare className="h-4 w-4 text-[rgba(149,144,168,0.2)]" />
@@ -453,20 +454,20 @@ export default function MobileManagementDashboard() {
       )}
 
       <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-40">
-        <button
+        <Button
           onClick={() => setActiveView('providers')}
           className="w-14 h-14 bg-gradient-to-br from-[#C9A96E] to-[#d4af37] rounded-full shadow-2xl shadow-[#C9A96E]/30 flex items-center justify-center hover:scale-110 transition-transform"
           data-testid="fab-providers"
         >
           <Users className="h-6 w-6 text-[#0A0A0F]" />
-        </button>
+        </Button>
         <Link href="/">
-          <button
+          <Button
             className="w-14 h-14 bg-[rgba(232,230,240,0.1)] rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform border border-[rgba(232,230,240,0.1)]"
             data-testid="fab-home"
           >
             <Home className="h-6 w-6 text-white" />
-          </button>
+          </Button>
         </Link>
       </div>
 
@@ -531,14 +532,14 @@ export default function MobileManagementDashboard() {
               <span>{isHebrew ? 'מאובטח בהצפנת SHA-256 | נשלח לתיבת הדואר הפרטית של הספק' : 'SHA-256 encrypted | Delivered to provider\'s private inbox'}</span>
             </div>
             <div className="flex justify-end gap-3 pt-2">
-              <button
+              <Button
                 type="button"
                 className="luxury-dark-btn-ghost px-5 py-3 border border-[rgba(232,230,240,0.1)]"
                 onClick={() => setShowMessageDialog(false)}
               >
                 {isHebrew ? 'ביטול' : 'Cancel'}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleSendToProvider}
                 disabled={sendMessageMutation.isPending || !messageSubject || !messageBody}
                 className="luxury-dark-btn-gold px-5 py-3 flex items-center gap-2 disabled:opacity-50"
@@ -548,7 +549,7 @@ export default function MobileManagementDashboard() {
                 ) : (
                   <><Send className="w-4 h-4" /> {isHebrew ? 'שלח' : 'Send'}</>
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </DialogContent>
@@ -571,17 +572,17 @@ export default function MobileManagementDashboard() {
                     <p className="text-xs text-[rgba(149,144,168,0.5)]">{isHebrew ? 'מרכז ניהול' : 'Management'}</p>
                   </div>
                 </div>
-                <button
+                <Button
                   onClick={() => setMobileMenuOpen(false)}
                   className="p-2 rounded-lg hover:bg-[rgba(232,230,240,0.05)] text-[rgba(149,144,168,0.6)]"
                   data-testid="button-close-menu"
                 >
                   <X className="h-5 w-5" />
-                </button>
+                </Button>
               </div>
 
               <nav className="space-y-2">
-                <button
+                <Button
                   onClick={() => { setActiveView('providers'); setMobileMenuOpen(false); }}
                   className="w-full flex items-center gap-3 p-3 rounded-xl bg-[#C9A96E]/10 hover:bg-[#C9A96E]/15 transition-colors text-left"
                   data-testid="menu-providers"
@@ -594,7 +595,7 @@ export default function MobileManagementDashboard() {
                     <p className="text-xs text-[rgba(149,144,168,0.5)]">{isHebrew ? 'צפה בספקים ושלח הודעות' : 'View & message providers'}</p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-[#C9A96E]" />
-                </button>
+                </Button>
 
                 {dashboardSections.map((section) => {
                   const Icon = section.icon;

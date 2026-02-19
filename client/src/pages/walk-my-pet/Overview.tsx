@@ -78,13 +78,13 @@ export default function WalkMyPetOverview() {
     <Layout>
       <div className="min-h-screen luxury-bg-mesh">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-          <button
+          <Button
             onClick={() => { try { window.history.back(); } catch { window.location.href = '/dashboard'; } }}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <BackArrow className="w-5 h-5" />
             <span className="text-sm font-medium">{isRtl ? 'חזרה' : 'Back'}</span>
-          </button>
+          </Button>
         </div>
         {/* Hero Section */}
         <div className="luxury-services-hero">
@@ -101,16 +101,16 @@ export default function WalkMyPetOverview() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8 luxury-animate-fade-in luxury-delay-3">
               <Link href="/walk-my-pet/browse">
-                <button className="luxury-btn-primary flex items-center gap-2 px-8" data-testid="button-book-walker">
+                <Button className="luxury-btn-primary flex items-center gap-2 px-8" data-testid="button-book-walker">
                   <Dog className="h-5 w-5" />
                   {t('walkMyPet.findWalker')}
-                </button>
+                </Button>
               </Link>
               <Link href="/walk-my-pet/owner/dashboard">
-                <button className="luxury-btn-secondary flex items-center gap-2 px-8" data-testid="button-my-walks">
+                <Button className="luxury-btn-secondary flex items-center gap-2 px-8" data-testid="button-my-walks">
                   <Calendar className="h-5 w-5" />
                   {t('walkMyPet.myWalks')}
-                </button>
+                </Button>
               </Link>
             </div>
           </div>
@@ -131,10 +131,10 @@ export default function WalkMyPetOverview() {
                   <p className="luxury-text-small mb-4">
                     {feature.description}
                   </p>
-                  <button className="luxury-btn-ghost w-full flex items-center justify-between" data-testid={`link-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                  <Button className="luxury-btn-ghost w-full flex items-center justify-between" data-testid={`link-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}>
                     {t('walkMyPet.learnMore')}
                     <ArrowRight className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               </Link>
             ))}

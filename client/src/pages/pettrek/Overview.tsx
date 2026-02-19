@@ -151,13 +151,13 @@ export default function PetTrekOverview() {
     <Layout>
       <div className="min-h-screen">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-          <button
+          <Button
             onClick={() => { try { window.history.back(); } catch { window.location.href = '/dashboard'; } }}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <BackArrow className="w-5 h-5" />
             <span className="text-sm font-medium">{isRtl ? 'חזרה' : 'Back'}</span>
-          </button>
+          </Button>
         </div>
         {/* 1. HERO SECTION */}
         <section className="luxury-bg-purple-fade py-20 sm:py-32 relative overflow-hidden">
@@ -178,16 +178,16 @@ export default function PetTrekOverview() {
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12 luxury-animate-fade-in luxury-delay-1">
                 <Link href="/pettrek/book">
-                  <button className="luxury-btn-primary" data-testid="button-request-ride">
+                  <Button className="luxury-btn-primary" data-testid="button-request-ride">
                     <Car className="h-5 w-5 mr-2 inline" />
                     {t('pettrek.requestRide')}
-                  </button>
+                  </Button>
                 </Link>
                 <Link href="/pettrek/customer/dashboard">
-                  <button className="luxury-btn-secondary" data-testid="button-my-rides">
+                  <Button className="luxury-btn-secondary" data-testid="button-my-rides">
                     <Calendar className="h-5 w-5 mr-2 inline" />
                     {t('pettrek.myTrips')}
-                  </button>
+                  </Button>
                 </Link>
               </div>
 
@@ -229,10 +229,10 @@ export default function PetTrekOverview() {
                   </div>
                 </div>
                 <Link href="/pettrek/book">
-                  <button className="luxury-btn-primary w-full mt-6">
+                  <Button className="luxury-btn-primary w-full mt-6">
                     {t('pettrek.getPriceEstimate')}
                     <ArrowRight className="h-5 w-5 ml-2 inline" />
-                  </button>
+                  </Button>
                 </Link>
               </div>
             </div>
@@ -378,9 +378,9 @@ export default function PetTrekOverview() {
                   </div>
                   
                   <Link href={`/pettrek/book?driver=${driver.name.toLowerCase().replace(' ', '-')}`}>
-                    <button className="luxury-btn-primary w-full">
+                    <Button className="luxury-btn-primary w-full">
                       {t('pettrek.bookNow')}
-                    </button>
+                    </Button>
                   </Link>
                 </div>
               ))}
@@ -490,11 +490,11 @@ export default function PetTrekOverview() {
               {t('pettrek.readyToBookSubtitle')}
             </p>
             <Link href="/pettrek/book">
-              <button className="luxury-btn-primary luxury-shadow-xl bg-white text-purple-700 hover:bg-gray-50">
+              <Button className="luxury-btn-primary luxury-shadow-xl bg-white text-purple-700 hover:bg-gray-50">
                 <Car className="h-5 w-5 mr-2 inline" />
                 {t('pettrek.bookFirstRide')}
                 <ArrowRight className="h-5 w-5 ml-2 inline" />
-              </button>
+              </Button>
             </Link>
           </div>
         </section>
