@@ -54,14 +54,25 @@ export function loadGoogleMapsScript(language?: string, region?: string): Promis
   googleMapsLoadPromise = new Promise<void>(async (resolve, reject) => {
     let apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
     if (!apiKey) {
-      try {
-        const response = await fetch(getApiUrl('/api/config/google-maps'));
-        if (response.ok) {
-          const data = await response.json();
-          apiKey = data.apiKey || '';
+      const endpoints = [
+        '/api/config/google-maps',
+        getApiUrl('/api/config/google-maps'),
+      ].filter((v, i, a) => v && a.indexOf(v) === i);
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint, { credentials: 'include' });
+          if (response.ok) {
+            const data = await response.json();
+            if (data.apiKey) {
+              apiKey = data.apiKey;
+              console.log('[Google Places] API key loaded from server');
+              break;
+            }
+          }
+        } catch (e) {
+          console.warn('[Google Places] Failed to fetch API key from:', endpoint);
         }
-      } catch (e) {
-        console.error('[Google Places] Failed to fetch API key from server');
       }
     }
 
@@ -245,16 +256,26 @@ export function GooglePlacesAutocomplete({
   useEffect(() => {
     injectPacStyles();
     setLoadError(null);
-    loadGoogleMapsScript()
-      .then(() => {
-        setIsReady(true);
-        setLoadError(null);
-        console.log('[Google Places] Autocomplete component ready');
-      })
-      .catch((err) => {
-        console.error('[Google Places] Failed to initialize autocomplete:', err.message);
-        setLoadError(err.message);
-      });
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+    const initAutocomplete = () => {
+      loadGoogleMapsScript()
+        .then(() => {
+          setIsReady(true);
+          setLoadError(null);
+          console.log('[Google Places] Autocomplete component ready');
+        })
+        .catch((err) => {
+          console.error('[Google Places] Failed to initialize autocomplete:', err.message);
+          setLoadError(err.message);
+          googleMapsLoadPromise = null;
+          retryCount++;
+          if (retryCount < MAX_RETRIES) {
+            setTimeout(initAutocomplete, 3000 * retryCount);
+          }
+        });
+    };
+    initAutocomplete();
   }, []);
 
   const emitUpdatedDetails = useCallback((base: PlaceDetails, apt: string, zip: string) => {
