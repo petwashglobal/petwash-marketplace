@@ -9,6 +9,7 @@ import { useSEO, pageSEO } from "@/lib/seo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/PhoneInput";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { PinKeypad } from "@/components/PinKeypad";
@@ -908,7 +909,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
   // Phone Auth Handlers - Twilio SMS Verification
   const handleSendPhoneCode = async () => {
-    if (!phoneNumber || phoneNumber.length < 10) {
+    if (!phoneNumber || !phoneNumber.startsWith('+') || phoneNumber.length < 8) {
       toast({
         variant: "destructive",
         title: phoneErrTitle[language] || phoneErrTitle.en,
@@ -919,12 +920,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
     setPhoneLoading(true);
     try {
-      let formattedPhone = phoneNumber.trim();
-      if (!formattedPhone.startsWith('+')) {
-        formattedPhone = formattedPhone.startsWith('0') 
-          ? `+972${formattedPhone.substring(1)}` 
-          : `+972${formattedPhone}`;
-      }
+      const formattedPhone = phoneNumber.trim();
 
       logger.info('[PhoneAuth] Sending code to:', formattedPhone);
       
@@ -1617,18 +1613,12 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                       <Label className="text-xs text-neutral-500 uppercase tracking-wider">
                         {language === 'he' ? 'מספר טלפון' : 'Phone Number'}
                       </Label>
-                      <Input
-                        type="tel"
-                        placeholder="050-1234567"
+                      <PhoneInput
                         value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        className="h-12 text-sm rounded-none border border-neutral-200 bg-white focus:border-neutral-900 focus:ring-0 text-neutral-900 placeholder:text-neutral-400 transition-all"
-                        dir="ltr"
-                        data-testid="input-phone-number"
+                        onChange={setPhoneNumber}
+                        language={language}
+                        defaultCountry="IL"
                       />
-                      <p className="text-[11px] text-neutral-400 tracking-wide">
-                        {language === 'he' ? 'הזן מספר טלפון ישראלי (עם או בלי קידומת 972+)' : 'Enter Israeli phone number (with or without +972)'}
-                      </p>
                     </div>
 
                     <Button
