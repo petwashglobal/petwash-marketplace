@@ -217,7 +217,7 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
                     value={formData.recipientPhone}
                     onChange={(value) => setFormData(prev => ({ ...prev, recipientPhone: value }))}
                     language={language === 'he' ? 'he' : 'en'}
-                    defaultCountryCode="+972"
+                    defaultCountry="IL"
                   />
                 </div>
               </CardContent>

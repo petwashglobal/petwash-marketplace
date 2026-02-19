@@ -1,0 +1,153 @@
+/* =========================================================
+   GOAL UI:
+   [ 🇮🇱 ] [ +972 ] [ 50 123 4567 ]
+   - Default IL
+   - User can only pick approved countries
+   - Value stored/sent as E.164 (example +972501234567)
+   =========================================================
+
+   INSTALL:
+   npm i react-phone-number-input libphonenumber-js
+   Import CSS once in your app entry (or in this component)
+*/
+
+import React, { useMemo } from "react";
+import PhoneInput, {
+  getCountries,
+  getCountryCallingCode,
+  isValidPhoneNumber,
+  parsePhoneNumber
+} from "react-phone-number-input";
+import "react-phone-number-input/style.css";
+
+type Props = {
+  value: string;                    // E.164: "+61419773360"
+  onChange: (v: string) => void;    // receives E.164 or ""
+  defaultCountry?: string;          // "IL" default
+  approvedCountries?: string[];     // ISO-2: ["IL","AU","US","GB","FR","DE"...]
+  label?: string;
+  required?: boolean;
+  disabled?: boolean;
+};
+
+const DEFAULT_APPROVED = [
+  "IL", // Israel
+  "AU", // Australia
+  "US", // United States
+  "GB", // UK
+  "FR", // France
+  "DE", // Germany
+  "ES", // Spain
+  "IT", // Italy
+  "NL", // Netherlands
+  "BE", // Belgium
+  "CH", // Switzerland
+  "AT", // Austria
+  "SE", // Sweden
+  "NO", // Norway
+  "DK", // Denmark
+  "IE", // Ireland
+  "PT", // Portugal
+  "GR", // Greece
+  "PL", // Poland
+  "CZ", // Czechia
+  "HU", // Hungary
+  "RO", // Romania
+  "BG", // Bulgaria
+  "LT", // Lithuania
+  "LV", // Latvia
+  "EE", // Estonia
+  "FI", // Finland
+  "CA"  // Canada
+];
+
+export function IntlPhoneField({
+  value,
+  onChange,
+  defaultCountry = "IL",
+  approvedCountries = DEFAULT_APPROVED,
+  label = "Mobile number",
+  required = true,
+  disabled = false
+}: Props) {
+  // Ensure the allowlist is valid countries supported by the library
+  const allowed = useMemo(() => {
+    const supported = new Set(getCountries());
+    return approvedCountries.filter((c) => supported.has(c as any));
+  }, [approvedCountries]);
+
+  // Hard block: If defaultCountry is not in allowlist, fallback to first allowed
+  const safeDefault = useMemo(() => {
+    return allowed.includes(defaultCountry) ? defaultCountry : (allowed[0] || "IL");
+  }, [allowed, defaultCountry]);
+
+  // Validate / helper text
+  const isValid = useMemo(() => {
+    if (!value) return !required;
+    try {
+      return isValidPhoneNumber(value);
+    } catch {
+      return false;
+    }
+  }, [value, required]);
+
+  const helper = useMemo(() => {
+    if (!value) return `Example: +${getCountryCallingCode(safeDefault as any)}...`;
+    if (isValid) {
+      const pn = parsePhoneNumber(value);
+      const cc = pn?.country || safeDefault;
+      const code = pn?.countryCallingCode || getCountryCallingCode(safeDefault as any);
+      return `Saved as E.164: ${value} (${cc} +${code})`;
+    }
+    return "Please enter a valid number";
+  }, [value, isValid, safeDefault]);
+
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium">{label}</label>
+
+      <div className="rounded-xl border border-black/10 bg-white px-3 py-2">
+        <PhoneInput
+          international
+          withCountryCallingCode
+          countrySelectProps={{
+            "aria-label": "Country",
+          }}
+          // Default country shown first with flag on left
+          defaultCountry={safeDefault as any}
+          // ONLY allow your approved countries
+          countries={allowed as any}
+          // E.164 value in / out
+          value={value}
+          onChange={(v) => onChange(v || "")}
+          placeholder="Enter mobile number"
+          disabled={disabled}
+        />
+      </div>
+
+      <p className={`text-xs ${isValid ? "opacity-70" : "text-red-600"}`}>
+        {helper}
+      </p>
+    </div>
+  );
+}
+
+/* =========================================================
+   BACKEND RULE (recommended):
+   - accept ONLY E.164
+   - store phone_e164 + phone_country
+   Example validation:
+   ========================================================= */
+
+export function validatePhoneE164(phoneE164: string) {
+  const phone = (phoneE164 || "").trim();
+  if (!phone.startsWith("+")) throw new Error("PHONE_MUST_BE_E164");
+  if (!isValidPhoneNumber(phone)) throw new Error("INVALID_PHONE");
+  const pn = parsePhoneNumber(phone);
+  return {
+    phoneE164: pn?.number || phone,
+    phoneCountry: pn?.country || null,
+    phoneCallingCode: pn?.countryCallingCode || null,
+    nationalNumber: pn?.nationalNumber || null
+  };
+}

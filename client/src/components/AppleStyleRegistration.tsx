@@ -304,7 +304,7 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
                 value={formData.phone}
                 onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
                 language={language === 'he' ? 'he' : 'en'}
-                defaultCountryCode="+972"
+                defaultCountry="IL"
               />
             </div>
           </div>

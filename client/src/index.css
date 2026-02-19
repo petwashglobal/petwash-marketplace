@@ -4090,3 +4090,43 @@ html[style*="--a11y-font-scale"] body {
   filter: url('#tritanopia-filter');
 }
 
+/* International Phone Input Styling */
+.intl-phone-wrapper .PhoneInput {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.intl-phone-wrapper .PhoneInputCountry {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.intl-phone-wrapper .PhoneInputCountryIcon {
+  width: 24px;
+  height: 18px;
+}
+.intl-phone-wrapper .PhoneInputCountrySelect {
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+}
+.intl-phone-wrapper .PhoneInputInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  background: transparent;
+  color: #1a1a1a;
+  padding: 4px 0;
+}
+.intl-phone-wrapper .PhoneInputInput::placeholder {
+  color: #9ca3af;
+}
+.intl-phone-wrapper .PhoneInputCountrySelectArrow {
+  margin-left: 2px;
+  opacity: 0.5;
+}
+

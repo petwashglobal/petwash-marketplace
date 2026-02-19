@@ -966,7 +966,7 @@ export default function MyAccount() {
                         value={editedProfile.phone || ''}
                         onChange={(value) => setEditedProfile({ ...editedProfile, phone: value })}
                         language={isHebrew ? 'he' : 'en'}
-                        defaultCountryCode="+972"
+                        defaultCountry="IL"
                       />
                     ) : (
                       <p className="text-gray-900 text-lg">{profile.phone || '-'}</p>

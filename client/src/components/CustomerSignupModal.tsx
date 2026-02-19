@@ -424,7 +424,7 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
                     value={formData.phone}
                     onChange={(value) => updateFormData('phone', value)}
                     language={language === 'he' ? 'he' : 'en'}
-                    defaultCountryCode="+972"
+                    defaultCountry="IL"
                   />
                 </div>
               </div>

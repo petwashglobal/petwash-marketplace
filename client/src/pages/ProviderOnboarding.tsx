@@ -581,7 +581,7 @@ export default function ProviderOnboarding() {
                     value={phoneNumber}
                     onChange={setPhoneNumber}
                     language={isHebrew ? 'he' : 'en'}
-                    defaultCountryCode="+972"
+                    defaultCountry="IL"
                   />
                 </div>
 

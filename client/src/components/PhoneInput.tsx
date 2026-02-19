@@ -1,186 +1,193 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useMemo } from 'react';
+import PhoneInputLib, {
+  getCountries,
+  getCountryCallingCode,
+  isValidPhoneNumber,
+  parsePhoneNumber,
+} from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 import type { Language } from '@/lib/i18n';
 
-interface CountryCode {
-  code: string;
-  country: string;
-  flag: string;
-}
-
-const countryCodes: CountryCode[] = [
-  { code: '+972', country: 'Israel', flag: '🇮🇱' },
-  { code: '+1', country: 'USA/Canada', flag: '🇺🇸' },
-  { code: '+44', country: 'UK', flag: '🇬🇧' },
-  { code: '+61', country: 'Australia', flag: '🇦🇺' },
-  { code: '+49', country: 'Germany', flag: '🇩🇪' },
-  { code: '+33', country: 'France', flag: '🇫🇷' },
-  { code: '+39', country: 'Italy', flag: '🇮🇹' },
-  { code: '+34', country: 'Spain', flag: '🇪🇸' },
-  { code: '+31', country: 'Netherlands', flag: '🇳🇱' },
-  { code: '+46', country: 'Sweden', flag: '🇸🇪' },
-  { code: '+47', country: 'Norway', flag: '🇳🇴' },
-  { code: '+32', country: 'Belgium', flag: '🇧🇪' },
-  { code: '+41', country: 'Switzerland', flag: '🇨🇭' },
-  { code: '+43', country: 'Austria', flag: '🇦🇹' },
-  { code: '+45', country: 'Denmark', flag: '🇩🇰' },
-  { code: '+358', country: 'Finland', flag: '🇫🇮' },
-  { code: '+353', country: 'Ireland', flag: '🇮🇪' },
-  { code: '+351', country: 'Portugal', flag: '🇵🇹' },
-  { code: '+30', country: 'Greece', flag: '🇬🇷' },
-  { code: '+48', country: 'Poland', flag: '🇵🇱' },
-  { code: '+420', country: 'Czech Republic', flag: '🇨🇿' },
-  { code: '+36', country: 'Hungary', flag: '🇭🇺' },
-  { code: '+40', country: 'Romania', flag: '🇷🇴' },
-  { code: '+359', country: 'Bulgaria', flag: '🇧🇬' },
-  { code: '+385', country: 'Croatia', flag: '🇭🇷' },
-  { code: '+421', country: 'Slovakia', flag: '🇸🇰' },
-  { code: '+386', country: 'Slovenia', flag: '🇸🇮' },
-  { code: '+372', country: 'Estonia', flag: '🇪🇪' },
-  { code: '+371', country: 'Latvia', flag: '🇱🇻' },
-  { code: '+370', country: 'Lithuania', flag: '🇱🇹' },
-  { code: '+64', country: 'New Zealand', flag: '🇳🇿' },
-  { code: '+27', country: 'South Africa', flag: '🇿🇦' },
-  { code: '+65', country: 'Singapore', flag: '🇸🇬' },
-  { code: '+852', country: 'Hong Kong', flag: '🇭🇰' },
-  { code: '+81', country: 'Japan', flag: '🇯🇵' },
-  { code: '+82', country: 'South Korea', flag: '🇰🇷' },
-  { code: '+91', country: 'India', flag: '🇮🇳' },
-  { code: '+55', country: 'Brazil', flag: '🇧🇷' },
-  { code: '+52', country: 'Mexico', flag: '🇲🇽' },
-  { code: '+54', country: 'Argentina', flag: '🇦🇷' },
-  { code: '+56', country: 'Chile', flag: '🇨🇱' },
-  { code: '+57', country: 'Colombia', flag: '🇨🇴' },
-  { code: '+51', country: 'Peru', flag: '🇵🇪' },
-  { code: '+971', country: 'UAE', flag: '🇦🇪' },
-  { code: '+966', country: 'Saudi Arabia', flag: '🇸🇦' },
-  { code: '+974', country: 'Qatar', flag: '🇶🇦' },
-  { code: '+965', country: 'Kuwait', flag: '🇰🇼' },
-  { code: '+973', country: 'Bahrain', flag: '🇧🇭' },
-  { code: '+968', country: 'Oman', flag: '🇴🇲' },
-  { code: '+90', country: 'Turkey', flag: '🇹🇷' },
-  { code: '+7', country: 'Russia', flag: '🇷🇺' },
-  { code: '+380', country: 'Ukraine', flag: '🇺🇦' },
-  { code: '+66', country: 'Thailand', flag: '🇹🇭' },
-  { code: '+84', country: 'Vietnam', flag: '🇻🇳' },
-  { code: '+63', country: 'Philippines', flag: '🇵🇭' },
-  { code: '+60', country: 'Malaysia', flag: '🇲🇾' },
-  { code: '+62', country: 'Indonesia', flag: '🇮🇩' },
-  { code: '+86', country: 'China', flag: '🇨🇳' },
-  { code: '+886', country: 'Taiwan', flag: '🇹🇼' },
+const DEFAULT_APPROVED = [
+  "IL",
+  "AU",
+  "US",
+  "GB",
+  "FR",
+  "DE",
+  "ES",
+  "IT",
+  "NL",
+  "BE",
+  "CH",
+  "AT",
+  "SE",
+  "NO",
+  "DK",
+  "IE",
+  "PT",
+  "GR",
+  "PL",
+  "CZ",
+  "HU",
+  "RO",
+  "BG",
+  "LT",
+  "LV",
+  "EE",
+  "FI",
+  "CA",
+  "HR",
+  "SK",
+  "SI",
+  "NZ",
+  "ZA",
+  "SG",
+  "HK",
+  "JP",
+  "KR",
+  "IN",
+  "BR",
+  "MX",
+  "AR",
+  "CL",
+  "CO",
+  "PE",
+  "AE",
+  "SA",
+  "QA",
+  "KW",
+  "BH",
+  "OM",
+  "TR",
+  "RU",
+  "UA",
+  "TH",
+  "VN",
+  "PH",
+  "MY",
+  "ID",
+  "CN",
+  "TW",
 ];
-
-function parsePhoneValue(fullNumber: string, defaultCode: string): { code: string; number: string } {
-  if (!fullNumber) {
-    return { code: defaultCode, number: '' };
-  }
-  
-  const sortedCodes = [...countryCodes].sort((a, b) => b.code.length - a.code.length);
-  for (const cc of sortedCodes) {
-    if (fullNumber.startsWith(cc.code)) {
-      return { code: cc.code, number: fullNumber.slice(cc.code.length) };
-    }
-  }
-  
-  const match = fullNumber.match(/^\+(\d{1,4})/);
-  if (match) {
-    return { code: '+' + match[1], number: fullNumber.slice(match[0].length) };
-  }
-  
-  return { code: defaultCode, number: fullNumber.replace(/^\+/, '') };
-}
 
 interface PhoneInputProps {
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
-  language: Language;
+  language?: Language | string;
   error?: string;
   defaultCountryCode?: string;
+  defaultCountry?: string;
+  approvedCountries?: string[];
+  label?: string;
+  required?: boolean;
+  disabled?: boolean;
 }
 
-export function PhoneInput({ value, onChange, onBlur, language, error, defaultCountryCode = '+972' }: PhoneInputProps) {
-  const parsed = useMemo(() => parsePhoneValue(value, defaultCountryCode), [value, defaultCountryCode]);
-  
-  const [selectedCode, setSelectedCode] = useState(parsed.code);
-  const [localNumber, setLocalNumber] = useState(parsed.number);
+export function PhoneInput({
+  value,
+  onChange,
+  onBlur,
+  language,
+  error,
+  defaultCountry = "IL",
+  approvedCountries = DEFAULT_APPROVED,
+  disabled = false,
+}: PhoneInputProps) {
+  const allowed = useMemo(() => {
+    const supported = new Set(getCountries());
+    return approvedCountries.filter((c) => supported.has(c as any));
+  }, [approvedCountries]);
 
-  useEffect(() => {
-    const newParsed = parsePhoneValue(value, defaultCountryCode);
-    setSelectedCode(newParsed.code);
-    setLocalNumber(newParsed.number);
-  }, [value, defaultCountryCode]);
+  const safeDefault = useMemo(() => {
+    return allowed.includes(defaultCountry) ? defaultCountry : (allowed[0] || "IL");
+  }, [allowed, defaultCountry]);
 
-  const handleCodeChange = (newCode: string) => {
-    setSelectedCode(newCode);
-    if (localNumber) {
-      onChange(newCode + localNumber);
+  const isValid = useMemo(() => {
+    if (!value) return true;
+    try {
+      return isValidPhoneNumber(value);
+    } catch {
+      return false;
     }
-  };
+  }, [value]);
 
-  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const cleaned = e.target.value.replace(/[^\d]/g, '');
-    setLocalNumber(cleaned);
-    if (cleaned) {
-      onChange(selectedCode + cleaned);
-    } else {
-      onChange('');
+  const helper = useMemo(() => {
+    if (!value) {
+      const code = getCountryCallingCode(safeDefault as any);
+      return language === 'he'
+        ? `דוגמה: +${code}...`
+        : `Example: +${code}...`;
     }
-  };
-
-  const placeholder = language === 'he' ? '501234567' : '501234567';
-  const helpText = language === 'he' 
-    ? 'בחר קידומת מדינה והזן מספר טלפון'
-    : 'Select country code and enter phone number';
+    if (isValid) {
+      const pn = parsePhoneNumber(value);
+      const cc = pn?.country || safeDefault;
+      const code = pn?.countryCallingCode || getCountryCallingCode(safeDefault as any);
+      return `E.164: ${value} (${cc} +${code})`;
+    }
+    return language === 'he' ? 'אנא הזן מספר תקין' : 'Please enter a valid number';
+  }, [value, isValid, safeDefault, language]);
 
   return (
     <div className="space-y-1">
-      <div className="flex gap-2">
-        <Select value={selectedCode} onValueChange={handleCodeChange}>
-          <SelectTrigger className="w-[140px] bg-white !text-gray-900" data-testid="select-country-code">
-            <SelectValue placeholder={defaultCountryCode} />
-          </SelectTrigger>
-          <SelectContent className="max-h-[300px]">
-            {countryCodes.map((cc) => (
-              <SelectItem key={cc.code} value={cc.code}>
-                <span className="flex items-center gap-2">
-                  <span>{cc.flag}</span>
-                  <span>{cc.code}</span>
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Input
-          type="tel"
-          inputMode="tel"
-          placeholder={placeholder}
-          value={localNumber}
-          onChange={handleNumberChange}
+      <div className="intl-phone-wrapper rounded-xl border border-black/10 bg-white px-3 py-2">
+        <PhoneInputLib
+          international
+          withCountryCallingCode
+          countrySelectProps={{
+            "aria-label": "Country",
+          }}
+          defaultCountry={safeDefault as any}
+          countries={allowed as any}
+          value={value || undefined}
+          onChange={(v: string | undefined) => onChange(v || "")}
           onBlur={onBlur}
-          aria-describedby="phoneHelp"
-          aria-invalid={!!error}
-          data-testid="input-phone"
-          className={`flex-1 bg-white !text-gray-900 placeholder:text-gray-400 ${error ? 'border-red-500' : ''}`}
+          placeholder={language === 'he' ? 'הזן מספר נייד' : 'Enter mobile number'}
+          disabled={disabled}
         />
       </div>
+
       {error && (
         <p className="text-sm text-red-600" role="alert">{error}</p>
       )}
-      <p id="phoneHelp" className="text-xs text-gray-500">{helpText}</p>
+
+      <p className={`text-xs ${isValid ? 'opacity-70' : 'text-red-600'}`}>
+        {helper}
+      </p>
     </div>
   );
 }
 
+export function IntlPhoneField(props: PhoneInputProps) {
+  return <PhoneInput {...props} />;
+}
+
 export function isValidE164(phone: string): boolean {
-  const e164Regex = /^\+[1-9]\d{7,14}$/;
-  return e164Regex.test(phone);
+  if (!phone || !phone.startsWith('+')) return false;
+  try {
+    return isValidPhoneNumber(phone);
+  } catch {
+    return false;
+  }
+}
+
+export function validatePhoneE164(phoneE164: string) {
+  const phone = (phoneE164 || "").trim();
+  if (!phone.startsWith("+")) throw new Error("PHONE_MUST_BE_E164");
+  if (!isValidPhoneNumber(phone)) throw new Error("INVALID_PHONE");
+  const pn = parsePhoneNumber(phone);
+  return {
+    phoneE164: pn?.number || phone,
+    phoneCountry: pn?.country || null,
+    phoneCallingCode: pn?.countryCallingCode || null,
+    nationalNumber: pn?.nationalNumber || null,
+  };
 }
 
 export function normalizeToE164(phone: string, defaultCountryCode: string = '972'): string {
   let cleaned = phone.replace(/[^\d+]/g, '');
-  
+
   if (cleaned.includes('+')) {
     const firstPlus = cleaned.indexOf('+');
     if (firstPlus === 0) {
@@ -189,14 +196,14 @@ export function normalizeToE164(phone: string, defaultCountryCode: string = '972
       cleaned = cleaned.replace(/\+/g, '');
     }
   }
-  
+
   if (cleaned.startsWith('0')) {
     cleaned = '+' + defaultCountryCode + cleaned.slice(1);
   }
-  
+
   if (!cleaned.startsWith('+')) {
     cleaned = '+' + defaultCountryCode + cleaned;
   }
-  
+
   return cleaned;
 }

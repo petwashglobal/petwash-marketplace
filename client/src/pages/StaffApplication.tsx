@@ -322,7 +322,7 @@ export default function StaffApplication() {
                             value={field.value}
                             onChange={field.onChange}
                             language="en"
-                            defaultCountryCode="+972"
+                            defaultCountry="IL"
                           />
                         </FormControl>
                         <FormMessage />

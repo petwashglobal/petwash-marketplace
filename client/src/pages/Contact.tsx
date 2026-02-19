@@ -303,7 +303,7 @@ export default function Contact({ language }: ContactProps) {
                             value={formData.phone}
                             onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
                             language={currentLanguage === 'he' ? 'he' : 'en'}
-                            defaultCountryCode="+972"
+                            defaultCountry="IL"
                           />
                         </div>
                         

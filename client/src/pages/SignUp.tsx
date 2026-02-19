@@ -581,7 +581,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                 value={formData.phone}
                 onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
                 language={language}
-                defaultCountryCode="+972"
+                defaultCountry="IL"
               />
             </div>
 

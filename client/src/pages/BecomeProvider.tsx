@@ -547,7 +547,7 @@ export default function BecomeProvider() {
                         value={form.watch('phoneNumber')}
                         onChange={(value) => form.setValue('phoneNumber', value)}
                         language={isHebrew ? 'he' : 'en'}
-                        defaultCountryCode="+972"
+                        defaultCountry="IL"
                       />
                       {form.formState.errors.phoneNumber && (
                         <p className="text-red-400 text-sm mt-1">{form.formState.errors.phoneNumber.message}</p>

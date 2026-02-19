@@ -760,7 +760,7 @@ export default function ProviderApplicationForm() {
                               value={field.value}
                               onChange={field.onChange}
                               language={isHebrew ? 'he' : 'en'}
-                              defaultCountryCode="+972"
+                              defaultCountry="IL"
                             />
                           </FormControl>
                           <FormMessage className="text-red-600" />

@@ -630,7 +630,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                         </div>
                         <div>
                           <Label className="text-gray-600 font-medium">{t('privilege.phone', language)} <span className="text-red-500">*</span></Label>
-                          <PhoneInput value={phone} onChange={setPhone} language={language} defaultCountryCode="+972" />
+                          <PhoneInput value={phone} onChange={setPhone} language={language} defaultCountry="IL" />
                         </div>
                         <div>
                           <NativeDateSelect value={dob} onChange={setDob} label={`${t('privilege.dob', language)} *`} language={language} minYear={new Date().getFullYear() - 120} maxYear={new Date().getFullYear() - 13} />

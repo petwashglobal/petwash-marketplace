@@ -818,7 +818,7 @@ export default function Careers() {
                   value={formData.phone}
                   onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
                   language={isRTL ? 'he' : 'en'}
-                  defaultCountryCode="+972"
+                  defaultCountry="IL"
                 />
               </div>
               <div>
