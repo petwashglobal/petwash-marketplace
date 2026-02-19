@@ -1,5 +1,6 @@
 import express from "express";
 import crypto from 'crypto';
+import { z } from 'zod';
 import { getCurrentUser } from "../simpleAuth";
 import { logger } from "../lib/logger";
 import { twilioSMSService } from "../services/TwilioSMSService";
@@ -455,6 +456,96 @@ publicAuthRouter.get("/api/consents/status", async (req, res) => {
   } catch (err) {
     logger.error('[Consent] Error fetching status:', err);
     return res.status(500).json({ ok: false, error: 'Server error' });
+  }
+});
+
+// ===== ACCESSIBILITY ROUTES (WCAG 2.1 AA - Israeli Standard 5568) =====
+
+const accessibilityFeedbackSchema = z.object({
+  email: z.string().email().optional().or(z.literal("")),
+  message: z.string().min(5).max(4000),
+  pageUrl: z.string().max(2048).optional().or(z.literal("")),
+});
+
+const accessibilityAuditSchema = z.object({
+  action: z.string().min(2).max(128),
+  component: z.string().max(256).optional(),
+  details: z.any().optional(),
+});
+
+publicAuthRouter.get("/api/accessibility-statement", async (_req, res) => {
+  res.json({
+    complianceLevel: "WCAG 2.1 AA",
+    standardIsrael: "Israeli Standard 5568 (based on WCAG)",
+    lastAuditDate: "2026-02-19",
+    knownLimitations: [
+      "Some third-party embedded content may have partial accessibility support.",
+      "We are continuously improving form flows for keyboard and screen readers."
+    ],
+    contact: {
+      title: "Accessibility Coordinator",
+      email: "accessibility@petwash.co.il",
+      phone: "+972-3-000-0000",
+      responseTime: "Up to 3 business days"
+    }
+  });
+});
+
+publicAuthRouter.post("/api/accessibility-feedback", async (req, res) => {
+  const parsed = accessibilityFeedbackSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "INVALID_INPUT", details: parsed.error.flatten() });
+  }
+
+  const { email, message, pageUrl } = parsed.data;
+  const ip = req.ip || (req.headers['x-forwarded-for'] as string) || 'unknown';
+  const userAgent = String(req.headers['user-agent'] || '').slice(0, 512) || null;
+
+  try {
+    await pool.query(
+      `INSERT INTO accessibility_feedback(email, message, page_url, user_agent, ip_address)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        (email || '').trim() || null,
+        message.trim(),
+        (pageUrl || '').trim() || null,
+        userAgent,
+        ip
+      ]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('[Accessibility] Feedback save error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+publicAuthRouter.post("/api/accessibility-audit", async (req, res) => {
+  const parsed = accessibilityAuditSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "INVALID_INPUT", details: parsed.error.flatten() });
+  }
+
+  const { action, component, details } = parsed.data;
+  const ip = req.ip || (req.headers['x-forwarded-for'] as string) || 'unknown';
+  const userAgent = String(req.headers['user-agent'] || '').slice(0, 512) || null;
+
+  try {
+    await pool.query(
+      `INSERT INTO accessibility_audit_log(action, component, details, user_agent, ip_address)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        action,
+        component || null,
+        details ? JSON.stringify(details) : null,
+        userAgent,
+        ip
+      ]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('[Accessibility] Audit log error:', err);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 

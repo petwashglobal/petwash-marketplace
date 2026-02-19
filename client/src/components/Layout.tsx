@@ -30,6 +30,15 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
     localStorage.setItem('language', language);
   }, [language]);
 
+  useEffect(() => {
+    if (document.querySelector('script[data-acc-widget]')) return;
+    const script = document.createElement('script');
+    script.src = '/accessibility-widget.js';
+    script.defer = true;
+    script.setAttribute('data-acc-widget', 'true');
+    document.body.appendChild(script);
+  }, []);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Skip to Content for Accessibility */}
