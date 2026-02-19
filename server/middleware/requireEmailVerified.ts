@@ -18,6 +18,15 @@ const PROTECTED_ACTIONS = [
   '/api/payout',
 ];
 
+// Allowlist rules for email verification bypass:
+// 1. Phone-only auth: User authenticated via phone number with no email on record.
+//    Firebase sets `phone_number` for phone-auth users. These users have no email
+//    to verify, so they pass through.
+// 2. Email + phone: If the user has both an email AND a phone number, email
+//    verification is still required. The phone alone does not substitute for
+//    an unverified email.
+// 3. Email-only auth: Standard flow — email_verified must be true.
+
 export function requireEmailVerified(
   req: Request,
   res: Response,
@@ -29,6 +38,13 @@ export function requireEmailVerified(
     }
 
     if (req.firebaseUser.email_verified === true) {
+      return next();
+    }
+
+    const hasPhone = !!(req.firebaseUser as any).phone_number;
+    const hasEmail = !!req.firebaseUser.email;
+
+    if (hasPhone && !hasEmail) {
       return next();
     }
 

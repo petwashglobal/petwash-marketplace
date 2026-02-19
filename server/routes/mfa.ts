@@ -1,10 +1,58 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { totpService } from '../services/TOTPService';
 import { twoFactorAuth } from '../services/TwoFactorAuthService';
 import { logger } from '../lib/logger';
 
 const mfaRouter = Router();
+
+const MFA_RATE_LIMIT_MAX = 5;
+const MFA_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const MFA_RATE_LIMIT_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+
+const mfaRateLimitMap = new Map<string, { attempts: number; windowStart: number }>();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, entry] of mfaRateLimitMap) {
+    if (now - entry.windowStart > MFA_RATE_LIMIT_WINDOW_MS) {
+      mfaRateLimitMap.delete(userId);
+    }
+  }
+}, MFA_RATE_LIMIT_CLEANUP_INTERVAL_MS);
+
+function mfaRateLimiter(req: Request, res: Response, next: NextFunction) {
+  const uid = req.firebaseUser?.uid;
+  if (!uid) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  const now = Date.now();
+  const entry = mfaRateLimitMap.get(uid);
+
+  if (entry) {
+    if (now - entry.windowStart > MFA_RATE_LIMIT_WINDOW_MS) {
+      mfaRateLimitMap.set(uid, { attempts: 1, windowStart: now });
+      return next();
+    }
+
+    if (entry.attempts >= MFA_RATE_LIMIT_MAX) {
+      const retryAfterSec = Math.ceil((MFA_RATE_LIMIT_WINDOW_MS - (now - entry.windowStart)) / 1000);
+      logger.warn(`[MFA-RateLimit] User ${uid} exceeded MFA verify rate limit`);
+      return res.status(429).json({
+        error: 'MFA_RATE_LIMITED',
+        message: 'Too many verification attempts. Please try again later.',
+        retryAfterSeconds: retryAfterSec,
+      });
+    }
+
+    entry.attempts += 1;
+  } else {
+    mfaRateLimitMap.set(uid, { attempts: 1, windowStart: now });
+  }
+
+  return next();
+}
 
 mfaRouter.get('/status', validateFirebaseToken, async (req: Request, res: Response) => {
   try {
@@ -110,7 +158,7 @@ mfaRouter.post('/enroll/email', validateFirebaseToken, async (req: Request, res:
   }
 });
 
-mfaRouter.post('/verify-enrollment', validateFirebaseToken, async (req: Request, res: Response) => {
+mfaRouter.post('/verify-enrollment', validateFirebaseToken, mfaRateLimiter, async (req: Request, res: Response) => {
   try {
     const uid = req.firebaseUser!.uid;
     const { code } = req.body;
@@ -132,7 +180,7 @@ mfaRouter.post('/verify-enrollment', validateFirebaseToken, async (req: Request,
   }
 });
 
-mfaRouter.post('/verify', validateFirebaseToken, async (req: Request, res: Response) => {
+mfaRouter.post('/verify', validateFirebaseToken, mfaRateLimiter, async (req: Request, res: Response) => {
   try {
     const uid = req.firebaseUser!.uid;
     const { code, method } = req.body;

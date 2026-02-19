@@ -1,4 +1,5 @@
 import express from "express";
+import crypto from 'crypto';
 import { getCurrentUser } from "../simpleAuth";
 import { logger } from "../lib/logger";
 import { twilioSMSService } from "../services/TwilioSMSService";
@@ -185,6 +186,8 @@ publicAuthRouter.get("/api/consent", async (req, res) => {
  */
 publicAuthRouter.post("/api/auth/phone/send-code", async (req, res) => {
   try {
+    const traceId = (req as any).traceId || crypto.randomUUID();
+    logger.info('[Auth] Phone code send started', { traceId, phone: req.body.phone?.slice(-4) });
     const { phone, language = 'he' } = req.body;
     
     if (!phone) {
@@ -199,13 +202,16 @@ publicAuthRouter.post("/api/auth/phone/send-code", async (req, res) => {
     return res.status(result.success ? 200 : 400).json({
       ok: result.success,
       message: result.message,
-      expiresIn: result.expiresIn
+      expiresIn: result.expiresIn,
+      traceId
     });
   } catch (err) {
+    const traceId = (req as any).traceId || crypto.randomUUID();
     logger.error('[PublicAuth] Error sending phone verification:', err);
     return res.status(500).json({
       ok: false,
-      error: 'Server error'
+      error: 'Server error',
+      traceId
     });
   }
 });
@@ -216,6 +222,8 @@ publicAuthRouter.post("/api/auth/phone/send-code", async (req, res) => {
  */
 publicAuthRouter.post("/api/auth/phone/verify-code", async (req, res) => {
   try {
+    const traceId = (req as any).traceId || crypto.randomUUID();
+    logger.info('[Auth] Phone verify started', { traceId });
     const { phone, code, language = 'he' } = req.body;
     
     if (!phone || !code) {
@@ -230,7 +238,8 @@ publicAuthRouter.post("/api/auth/phone/verify-code", async (req, res) => {
     if (!result.success) {
       return res.status(400).json({
         ok: false,
-        error: result.message
+        error: result.message,
+        traceId
       });
     }
 
@@ -238,13 +247,16 @@ publicAuthRouter.post("/api/auth/phone/verify-code", async (req, res) => {
       ok: true,
       message: result.message,
       verified: true,
-      verificationToken: result.verificationToken
+      verificationToken: result.verificationToken,
+      traceId
     });
   } catch (err) {
+    const traceId = (req as any).traceId || crypto.randomUUID();
     logger.error('[PublicAuth] Error verifying phone code:', err);
     return res.status(500).json({
       ok: false,
-      error: 'Server error'
+      error: 'Server error',
+      traceId
     });
   }
 });

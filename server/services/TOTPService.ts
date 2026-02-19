@@ -65,16 +65,16 @@ function generateTOTP(secret: Buffer, timeStep: number = TOTP_PERIOD): string {
   return generateHOTP(secret, counter);
 }
 
-function verifyTOTP(secret: Buffer, token: string, window: number = TOTP_WINDOW): boolean {
+function verifyTOTP(secret: Buffer, token: string, window: number = TOTP_WINDOW): { valid: boolean; counter: number } {
   const now = Math.floor(Date.now() / 1000);
   for (let i = -window; i <= window; i++) {
-    const counter = BigInt(Math.floor(now / TOTP_PERIOD) + i);
-    const expected = generateHOTP(secret, counter);
+    const counter = Math.floor(now / TOTP_PERIOD) + i;
+    const expected = generateHOTP(secret, BigInt(counter));
     if (constantTimeEq(expected, token)) {
-      return true;
+      return { valid: true, counter };
     }
   }
-  return false;
+  return { valid: false, counter: 0 };
 }
 
 function constantTimeEq(a: string, b: string): boolean {
@@ -82,6 +82,11 @@ function constantTimeEq(a: string, b: string): boolean {
   const bb = Buffer.from(b);
   if (aa.length !== bb.length) return false;
   return crypto.timingSafeEqual(aa, bb);
+}
+
+function deriveCounterFromTimestamp(timestamp: Date | null): number {
+  if (!timestamp) return 0;
+  return Math.floor(timestamp.getTime() / 1000 / TOTP_PERIOD);
 }
 
 export class TOTPService {
@@ -103,13 +108,28 @@ export class TOTPService {
     return `otpauth://totp/${label}?${params.toString()}`;
   }
 
-  verifyCode(base32Secret: string, code: string): boolean {
+  verifyCode(base32Secret: string, code: string, lastUsedAt?: Date | null): { valid: boolean; counter: number } {
     try {
       const secretBytes = base32Decode(base32Secret);
-      return verifyTOTP(secretBytes, code.trim());
+      const result = verifyTOTP(secretBytes, code.trim());
+
+      if (!result.valid) {
+        return { valid: false, counter: 0 };
+      }
+
+      const lastUsedCounter = deriveCounterFromTimestamp(lastUsedAt ?? null);
+      if (result.counter <= lastUsedCounter) {
+        logger.warn('[TOTP] Replay detected: code counter <= lastUsedCounter', {
+          counter: result.counter,
+          lastUsedCounter,
+        });
+        return { valid: false, counter: 0 };
+      }
+
+      return result;
     } catch (error) {
       logger.error('[TOTP] Verification error:', error);
-      return false;
+      return { valid: false, counter: 0 };
     }
   }
 
@@ -210,14 +230,15 @@ export class TOTPService {
         return { ok: false, error: 'no_pending_enrollment' };
       }
 
-      const valid = this.verifyCode(enrollment.totpSecret, code);
-      if (!valid) {
+      const result = this.verifyCode(enrollment.totpSecret, code, enrollment.lastUsedAt);
+      if (!result.valid) {
         return { ok: false, error: 'invalid_code' };
       }
 
+      const now = new Date();
       await db
         .update(mfaEnrollments)
-        .set({ totpVerified: true, lastUsedAt: new Date() })
+        .set({ totpVerified: true, lastUsedAt: now })
         .where(eq(mfaEnrollments.id, enrollment.id));
 
       logger.info('[TOTP] Enrollment verified', { userId, enrollmentId: enrollment.id });
@@ -249,10 +270,12 @@ export class TOTPService {
         if (method && enrollment.method !== method) continue;
 
         if (enrollment.method === 'totp' && enrollment.totpSecret && enrollment.totpVerified) {
-          if (this.verifyCode(enrollment.totpSecret, code)) {
+          const result = this.verifyCode(enrollment.totpSecret, code, enrollment.lastUsedAt);
+          if (result.valid) {
+            const now = new Date();
             await db
               .update(mfaEnrollments)
-              .set({ lastUsedAt: new Date() })
+              .set({ lastUsedAt: now })
               .where(eq(mfaEnrollments.id, enrollment.id));
             return { ok: true };
           }

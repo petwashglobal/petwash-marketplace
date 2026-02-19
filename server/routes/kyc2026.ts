@@ -5,6 +5,7 @@
 
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
+import crypto from 'crypto';
 import { logger } from '../lib/logger';
 import {
   kycOrchestrator,
@@ -52,8 +53,10 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user?.uid || (req as any).userId;
+      const traceId = (req as any).traceId || crypto.randomUUID();
+      logger.info('[KYC] Verification started', { traceId, userId, ip: req.ip });
       if (!userId) {
-        return res.status(401).json({ error: 'Authentication required' });
+        return res.status(401).json({ error: 'Authentication required', traceId });
       }
 
       if (KYCIncidentResponse.isKYCSuspended()) {
@@ -109,6 +112,7 @@ router.post(
       const statusCode = result.status === 'blocked' ? 403 : result.success ? 200 : 202;
 
       res.status(statusCode).json({
+        traceId,
         verificationId: result.verificationId,
         status: result.status,
         message: result.message,
@@ -127,8 +131,10 @@ router.post(
         processingDurationMs: result.processingDurationMs,
       });
     } catch (error: any) {
+      const traceId = (req as any).traceId || crypto.randomUUID();
       logger.error('[KYC2026:Route] Verification error:', error.message);
       res.status(500).json({
+        traceId,
         error: 'Verification failed',
         message: 'An error occurred during verification. Please try again.',
       });

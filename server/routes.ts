@@ -8857,7 +8857,9 @@ self.addEventListener('notificationclick', (event) => {
   const { validateFirebaseToken, optionalFirebaseToken } = await import('./middleware/firebase-auth');
   const { requireEmailVerifiedForProtectedPaths } = await import('./middleware/requireEmailVerified');
   const { requireAdminMfa } = await import('./middleware/requireMfa');
+  const { traceIdMiddleware } = await import('./middleware/traceId');
 
+  app.use(traceIdMiddleware);
   app.use(requireEmailVerifiedForProtectedPaths);
 
   app.use('/api/loyalty', validateFirebaseToken, apiLimiter, loyaltyRoutes);
