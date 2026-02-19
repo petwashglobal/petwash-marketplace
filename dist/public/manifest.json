@@ -40,10 +40,10 @@
   "categories": ["lifestyle", "business", "utilities"],
   "shortcuts": [
     {
-      "name": "Book Service",
-      "short_name": "Book",
-      "description": "Book pet washing service",
-      "url": "/",
+      "name": "My Wallet",
+      "short_name": "Wallet",
+      "description": "View credits, wash packages, and redeem at stations",
+      "url": "/my-wallet",
       "icons": [
         {
           "src": "/brand/petwash-logo-official.png",
@@ -52,22 +52,10 @@
       ]
     },
     {
-      "name": "My Dashboard",
-      "short_name": "Dashboard",
-      "description": "View your bookings",
-      "url": "/dashboard",
-      "icons": [
-        {
-          "src": "/brand/petwash-logo-official.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "AI Chat",
-      "short_name": "Chat",
-      "description": "Chat with Kenzo AI assistant",
-      "url": "/ai-chat",
+      "name": "Redeem at Station",
+      "short_name": "Redeem",
+      "description": "Scan QR code to redeem at K9000 station",
+      "url": "/wallet/redeem",
       "icons": [
         {
           "src": "/brand/petwash-logo-official.png",
@@ -78,8 +66,68 @@
     {
       "name": "Loyalty Card",
       "short_name": "Loyalty",
-      "description": "View loyalty points and rewards",
+      "description": "View loyalty points, tier status, and rewards",
       "url": "/loyalty",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Book Service",
+      "short_name": "Book",
+      "description": "Book pet care services",
+      "url": "/booking",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "My Dashboard",
+      "short_name": "Dashboard",
+      "description": "View your bookings and account",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Provider Hub",
+      "short_name": "Provider",
+      "description": "Provider dashboard for staff and sitters",
+      "url": "/provider-dashboard",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "AI Chat",
+      "short_name": "Kenzo",
+      "description": "Chat with Kenzo AI assistant",
+      "url": "/ai-chat",
+      "icons": [
+        {
+          "src": "/brand/petwash-logo-official.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Find Sitter",
+      "short_name": "Sitters",
+      "description": "Browse pet sitters nearby",
+      "url": "/sitter-suite/browse",
       "icons": [
         {
           "src": "/brand/petwash-logo-official.png",
