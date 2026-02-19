@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { PhoneInput } from "@/components/PhoneInput";
 import { getApiUrl } from '@/lib/apiConfig';
 import { t } from "@/lib/i18n";
 import { useLocation } from "wouter";
@@ -1233,7 +1234,7 @@ export default function LeadManagement() {
                       <FormItem>
                         <FormLabel>{t('leads.form.phone')}</FormLabel>
                         <FormControl>
-                          <Input placeholder={t('leads.form.phone')} {...field} data-testid="lead-phone" />
+                          <PhoneInput value={field.value} onChange={field.onChange} defaultCountry="IL" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

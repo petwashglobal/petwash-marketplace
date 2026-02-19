@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { PhoneInput } from "@/components/PhoneInput";
 import { useLocation } from "wouter";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth } from "../../lib/firebase";
@@ -312,15 +313,7 @@ export default function InternalOnboard() {
                     <Phone className="h-4 w-4" />
                     מספר טלפון
                   </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="+972501234567"
-                    dir="ltr"
-                    data-testid="input-phone"
-                  />
+                  <PhoneInput value={formData.phone} onChange={(val) => setFormData(prev => ({ ...prev, phone: val || '' }))} defaultCountry="IL" />
                 </div>
                 
                 <div className="space-y-2">

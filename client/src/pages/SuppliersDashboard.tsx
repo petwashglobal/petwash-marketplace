@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Building2, FileText, CheckCircle, XCircle, Star, DollarSign, TrendingUp } from "lucide-react";
 import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
+import { PhoneInput } from "@/components/PhoneInput";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,6 +21,7 @@ export default function SuppliersDashboard() {
   const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
   const [detailView, setDetailView] = useState<"contracts" | "payments" | "quality">("contracts");
   const [supplierType, setSupplierType] = useState<string>("shampoo");
+  const [phoneValue, setPhoneValue] = useState('');
   const { toast } = useToast();
 
   const { data: suppliers, isLoading } = useQuery({
@@ -263,7 +265,8 @@ export default function SuppliersDashboard() {
             </div>
             <div>
               <Label htmlFor="phone">Phone</Label>
-              <Input id="phone" name="phone" data-testid="input-phone" />
+              <PhoneInput value={phoneValue} onChange={(val) => setPhoneValue(val || '')} defaultCountry="IL" />
+              <input type="hidden" name="phone" value={phoneValue} />
             </div>
             <div>
               <Label htmlFor="country">Country *</Label>

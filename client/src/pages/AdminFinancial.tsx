@@ -4,6 +4,7 @@ import { type Language } from "@/lib/i18n";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { 
   DollarSign, 
@@ -702,11 +703,11 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">{isHebrew ? 'אימייל' : 'Email'} *</label>
-                        <input name="loyaltyEmail" type="email" required placeholder="user@example.com" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                        <Input name="loyaltyEmail" type="email" required placeholder="user@example.com" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-400" />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">{isHebrew ? 'שם פרטי' : 'First Name'} *</label>
-                        <input name="loyaltyName" type="text" required placeholder={isHebrew ? 'שם' : 'Name'} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                        <Input name="loyaltyName" type="text" required placeholder={isHebrew ? 'שם' : 'Name'} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-400" />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">{isHebrew ? 'דרגה' : 'Tier'}</label>
@@ -759,19 +760,19 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">{isHebrew ? 'אימייל הקונה' : 'Buyer Email'} *</label>
-                        <input name="buyerEmail" type="email" required placeholder="buyer@example.com" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-400" />
+                        <Input name="buyerEmail" type="email" required placeholder="buyer@example.com" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-400" />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">{isHebrew ? 'שם הקונה' : 'Buyer Name'} *</label>
-                        <input name="buyerName" type="text" required placeholder={isHebrew ? 'שם הקונה' : 'Buyer name'} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-400" />
+                        <Input name="buyerName" type="text" required placeholder={isHebrew ? 'שם הקונה' : 'Buyer name'} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-400" />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">{isHebrew ? 'שם המקבל' : 'Recipient Name'} *</label>
-                        <input name="recipientName" type="text" required placeholder={isHebrew ? 'שם המקבל' : 'Recipient name'} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-400" />
+                        <Input name="recipientName" type="text" required placeholder={isHebrew ? 'שם המקבל' : 'Recipient name'} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-400" />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">{isHebrew ? 'סכום (₪)' : 'Gift Value (₪)'}</label>
-                        <input name="giftValue" type="number" defaultValue={200} min={50} max={5000} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-400" />
+                        <Input name="giftValue" type="number" defaultValue={200} min={50} max={5000} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-400" />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">{isHebrew ? 'עיצוב עונתי' : 'Seasonal Theme'}</label>

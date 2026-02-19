@@ -4,6 +4,7 @@ import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -625,37 +626,37 @@ export default function ProviderReview() {
                         
                         <div className="grid gap-2 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200">
                           <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
-                            <input type="checkbox" checked={checkIdVerified} onChange={(e) => setCheckIdVerified(e.target.checked)} className="w-4 h-4" data-testid="check-id-verified" />
+                            <Checkbox checked={checkIdVerified} onCheckedChange={(checked) => setCheckIdVerified(!!checked)} className="w-4 h-4" data-testid="check-id-verified" />
                             <span className="text-sm">{isHebrew ? '✅ זהות אומתה (ת.ז./דרכון)' : '✅ ID Verified (National ID/Passport)'}</span>
                           </label>
                           
                           <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
-                            <input type="checkbox" checked={checkDocumentsReviewed} onChange={(e) => setCheckDocumentsReviewed(e.target.checked)} className="w-4 h-4" data-testid="check-docs-reviewed" />
+                            <Checkbox checked={checkDocumentsReviewed} onCheckedChange={(checked) => setCheckDocumentsReviewed(!!checked)} className="w-4 h-4" data-testid="check-docs-reviewed" />
                             <span className="text-sm">{isHebrew ? '📄 מסמכים נבדקו וקבילים' : '📄 Documents Reviewed & Acceptable'}</span>
                           </label>
                           
                           <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
-                            <input type="checkbox" checked={checkDeclarationsComplete} onChange={(e) => setCheckDeclarationsComplete(e.target.checked)} className="w-4 h-4" data-testid="check-declarations" />
+                            <Checkbox checked={checkDeclarationsComplete} onCheckedChange={(checked) => setCheckDeclarationsComplete(!!checked)} className="w-4 h-4" data-testid="check-declarations" />
                             <span className="text-sm">{isHebrew ? '📋 הצהרות עצמיות הושלמו' : '📋 Self-Declarations Complete'}</span>
                           </label>
                           
                           <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
-                            <input type="checkbox" checked={checkInsuranceValid} onChange={(e) => setCheckInsuranceValid(e.target.checked)} className="w-4 h-4" data-testid="check-insurance" />
+                            <Checkbox checked={checkInsuranceValid} onCheckedChange={(checked) => setCheckInsuranceValid(!!checked)} className="w-4 h-4" data-testid="check-insurance" />
                             <span className="text-sm">{isHebrew ? '🛡️ ביטוח בתוקף (אם נדרש)' : '🛡️ Insurance Valid (if required)'}</span>
                           </label>
                           
                           <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
-                            <input type="checkbox" checked={checkLicenseValid} onChange={(e) => setCheckLicenseValid(e.target.checked)} className="w-4 h-4" data-testid="check-license" />
+                            <Checkbox checked={checkLicenseValid} onCheckedChange={(checked) => setCheckLicenseValid(!!checked)} className="w-4 h-4" data-testid="check-license" />
                             <span className="text-sm">{isHebrew ? '🚗 רישיון נהיגה בתוקף (לנהגים)' : '🚗 Driving License Valid (for drivers)'}</span>
                           </label>
                           
                           <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
-                            <input type="checkbox" checked={checkCertificationsValid} onChange={(e) => setCheckCertificationsValid(e.target.checked)} className="w-4 h-4" data-testid="check-certs" />
+                            <Checkbox checked={checkCertificationsValid} onCheckedChange={(checked) => setCheckCertificationsValid(!!checked)} className="w-4 h-4" data-testid="check-certs" />
                             <span className="text-sm">{isHebrew ? '🎓 תעודות הכשרה תקינות (למאמנים)' : '🎓 Training Certifications Valid (for trainers)'}</span>
                           </label>
                           
                           <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
-                            <input type="checkbox" checked={checkBackgroundClear} onChange={(e) => setCheckBackgroundClear(e.target.checked)} className="w-4 h-4" data-testid="check-background" />
+                            <Checkbox checked={checkBackgroundClear} onCheckedChange={(checked) => setCheckBackgroundClear(!!checked)} className="w-4 h-4" data-testid="check-background" />
                             <span className="text-sm">{isHebrew ? '🔍 בדיקת רקע תקינה/הצהרה מתאימה' : '🔍 Background Check Clear / Declaration Acceptable'}</span>
                           </label>
                         </div>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PhoneInput } from "@/components/PhoneInput";
 import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -413,14 +414,7 @@ export default function AdminTeamInvitations({ language, onLanguageChange }: Adm
 
             <div className="space-y-2">
               <Label htmlFor="phone">{t('common.phone', language)}</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="+972-50-1234567"
-                data-testid="input-phone"
-              />
+              <PhoneInput value={formData.phone || ''} onChange={(val) => setFormData({ ...formData, phone: val || '' })} defaultCountry="IL" />
             </div>
 
             <div className="space-y-2">

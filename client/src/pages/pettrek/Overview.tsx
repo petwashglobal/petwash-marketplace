@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import ProviderRegistrationBanner from "@/components/ProviderRegistrationBanner";
 import { GooglePlacesAutocomplete } from "@/components/ui/google-places-autocomplete";
 import { 
@@ -217,12 +218,12 @@ export default function PetTrekOverview() {
                   </div>
                   <div>
                     <label className="block text-sm font-semibold mb-2 text-gray-700">{t('pettrek.when')}</label>
-                    <div className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-200">
+                    <div className="flex items-center gap-2 px-3 py-3 bg-white rounded-lg border border-gray-200">
                       <Clock className="h-5 w-5 text-purple-600" />
-                      <input 
+                      <Input 
                         type="text" 
                         placeholder={t('pettrek.now')}
-                        className="flex-1 outline-none text-sm"
+                        className="flex-1 outline-none text-sm border-0 p-0 shadow-none"
                       />
                     </div>
                   </div>

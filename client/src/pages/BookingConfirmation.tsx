@@ -4,6 +4,9 @@ import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { GlassmorphismCard } from '@/components/luxury/GlassmorphismCard';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { PhoneInput } from '@/components/PhoneInput';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
@@ -279,11 +282,11 @@ export default function BookingConfirmation() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {t.review}
                     </label>
-                    <textarea
+                    <Textarea
                       value={reviewText}
                       onChange={e => setReviewText(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-xl resize-none h-20 text-sm"
                       placeholder="Great service! (optional)"
+                      className="resize-none h-20 text-sm"
                     />
                   </div>
 
@@ -291,25 +294,21 @@ export default function BookingConfirmation() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       <Phone className="w-4 h-4 inline mr-1" /> {t.phoneLabel}
                     </label>
-                    <input
-                      type="tel"
+                    <PhoneInput
                       value={phone}
-                      onChange={e => setPhone(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-xl text-sm"
-                      placeholder={t.phonePlaceholder}
+                      onChange={(val) => setPhone(val || '')}
+                      defaultCountry="IL"
                     />
-                    <p className="text-xs text-gray-400 mt-1">e.g. +61412345678 (Australia)</p>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       <Mail className="w-4 h-4 inline mr-1" /> {t.emailLabel}
                     </label>
-                    <input
+                    <Input
                       type="email"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-xl text-sm"
                       placeholder={t.emailPlaceholder}
                     />
                   </div>

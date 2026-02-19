@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Users, DollarSign, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
+import { PhoneInput } from "@/components/PhoneInput";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,6 +22,7 @@ export default function HRDashboard() {
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [department, setDepartment] = useState<string>("HR");
   const [employmentType, setEmploymentType] = useState<string>("full_time");
+  const [phoneValue, setPhoneValue] = useState('');
   const { toast } = useToast();
 
   const { data: employees, isLoading: loadingEmployees } = useQuery({
@@ -269,7 +271,8 @@ export default function HRDashboard() {
               </div>
               <div>
                 <Label htmlFor="phone">Phone</Label>
-                <Input id="phone" name="phone" data-testid="input-phone" />
+                <PhoneInput value={phoneValue} onChange={(val) => setPhoneValue(val || '')} defaultCountry="IL" />
+                <input type="hidden" name="phone" value={phoneValue} />
               </div>
               <div>
                 <Label htmlFor="department">Department</Label>

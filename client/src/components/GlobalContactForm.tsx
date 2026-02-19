@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { PhoneInput } from '@/components/PhoneInput';
 import {
   Form,
   FormControl,
@@ -185,11 +186,10 @@ export default function GlobalContactForm({
                     {i18n.language === 'he' ? 'טלפון (אופציונלי)' : 'Phone (Optional)'}
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      type="tel"
-                      placeholder="+972 50 123 4567"
-                      {...field}
-                      data-testid="input-contact-phone"
+                    <PhoneInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      defaultCountry="IL"
                     />
                   </FormControl>
                   <FormMessage />

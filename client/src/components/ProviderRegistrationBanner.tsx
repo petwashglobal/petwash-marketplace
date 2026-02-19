@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PhoneInput } from "@/components/PhoneInput";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -689,12 +690,10 @@ function ApplicationForm({
           </div>
           <div>
             <Label className="text-gray-700">{t("providerBanner.phone")}</Label>
-            <Input
-              type="tel"
+            <PhoneInput
               value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="bg-white border-gray-300 text-gray-900 mt-1"
-              placeholder="05X-XXX-XXXX"
+              onChange={(val) => setFormData({ ...formData, phone: val || '' })}
+              defaultCountry="IL"
               required
             />
           </div>

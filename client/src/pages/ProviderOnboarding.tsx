@@ -917,32 +917,32 @@ export default function ProviderOnboarding() {
                       </h4>
                       
                       <label className="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" checked={declarationValidLicense} onChange={(e) => setDeclarationValidLicense(e.target.checked)} className="mt-1" data-testid="checkbox-valid-license" />
+                        <Checkbox checked={declarationValidLicense} onCheckedChange={(checked) => setDeclarationValidLicense(!!checked)} className="mt-1" data-testid="checkbox-valid-license" />
                         <span className="text-sm">{isHebrew ? 'יש לי רישיון נהיגה ישראלי בתוקף' : 'I have a valid Israeli driving license'}</span>
                       </label>
                       
                       <label className="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" checked={declarationNoSuspension} onChange={(e) => setDeclarationNoSuspension(e.target.checked)} className="mt-1" data-testid="checkbox-no-suspension" />
+                        <Checkbox checked={declarationNoSuspension} onCheckedChange={(checked) => setDeclarationNoSuspension(!!checked)} className="mt-1" data-testid="checkbox-no-suspension" />
                         <span className="text-sm">{isHebrew ? 'רישיון הנהיגה שלי לא נשלל ולא מותלה' : 'My driving license has not been suspended or revoked'}</span>
                       </label>
                       
                       <label className="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" checked={declarationUnderPointsLimit} onChange={(e) => setDeclarationUnderPointsLimit(e.target.checked)} className="mt-1" data-testid="checkbox-points-limit" />
+                        <Checkbox checked={declarationUnderPointsLimit} onCheckedChange={(checked) => setDeclarationUnderPointsLimit(!!checked)} className="mt-1" data-testid="checkbox-points-limit" />
                         <span className="text-sm">{isHebrew ? 'יש לי פחות מ-12 נקודות ברישיון (לפי חוק)' : 'I have less than 12 points on my license (as per law)'}</span>
                       </label>
                       
                       <label className="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" checked={declarationNoDrugsAlcohol} onChange={(e) => setDeclarationNoDrugsAlcohol(e.target.checked)} className="mt-1" data-testid="checkbox-no-drugs" />
+                        <Checkbox checked={declarationNoDrugsAlcohol} onCheckedChange={(checked) => setDeclarationNoDrugsAlcohol(!!checked)} className="mt-1" data-testid="checkbox-no-drugs" />
                         <span className="text-sm">{isHebrew ? 'אני מתחייב לא לנהוג תחת השפעת סמים או אלכוהול' : 'I commit to never drive under influence of drugs or alcohol'}</span>
                       </label>
                       
                       <label className="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" checked={declarationValidVehicleInsurance} onChange={(e) => setDeclarationValidVehicleInsurance(e.target.checked)} className="mt-1" data-testid="checkbox-vehicle-insurance" />
+                        <Checkbox checked={declarationValidVehicleInsurance} onCheckedChange={(checked) => setDeclarationValidVehicleInsurance(!!checked)} className="mt-1" data-testid="checkbox-vehicle-insurance" />
                         <span className="text-sm">{isHebrew ? 'יש לי ביטוח רכב תקף (ביטוח חובה + מקיף)' : 'I have valid vehicle insurance (mandatory + comprehensive)'}</span>
                       </label>
                       
                       <label className="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" checked={declarationVehicleInspection} onChange={(e) => setDeclarationVehicleInspection(e.target.checked)} className="mt-1" data-testid="checkbox-vehicle-inspection" />
+                        <Checkbox checked={declarationVehicleInspection} onCheckedChange={(checked) => setDeclarationVehicleInspection(!!checked)} className="mt-1" data-testid="checkbox-vehicle-inspection" />
                         <span className="text-sm">{isHebrew ? 'לרכב שלי יש טסט שנתי בתוקף' : 'My vehicle has a valid annual inspection (טסט)'}</span>
                       </label>
                     </div>
@@ -956,17 +956,17 @@ export default function ProviderOnboarding() {
                       </h4>
                       
                       <label className="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" checked={declarationTrainingCertification} onChange={(e) => setDeclarationTrainingCertification(e.target.checked)} className="mt-1" data-testid="checkbox-training-cert" />
+                        <Checkbox checked={declarationTrainingCertification} onCheckedChange={(checked) => setDeclarationTrainingCertification(!!checked)} className="mt-1" data-testid="checkbox-training-cert" />
                         <span className="text-sm">{isHebrew ? 'יש לי תעודת אילוף כלבים מוכרת או ניסיון מוכח' : 'I have recognized pet training certification or proven experience'}</span>
                       </label>
                       
                       <label className="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" checked={declarationAccreditedCourses} onChange={(e) => setDeclarationAccreditedCourses(e.target.checked)} className="mt-1" data-testid="checkbox-accredited-courses" />
+                        <Checkbox checked={declarationAccreditedCourses} onCheckedChange={(checked) => setDeclarationAccreditedCourses(!!checked)} className="mt-1" data-testid="checkbox-accredited-courses" />
                         <span className="text-sm">{isHebrew ? 'סיימתי קורסי אילוף מוסמכים' : 'I have completed accredited training courses'}</span>
                       </label>
                       
                       <label className="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" checked={declarationLiabilityInsurance} onChange={(e) => setDeclarationLiabilityInsurance(e.target.checked)} className="mt-1" data-testid="checkbox-liability-insurance" />
+                        <Checkbox checked={declarationLiabilityInsurance} onCheckedChange={(checked) => setDeclarationLiabilityInsurance(!!checked)} className="mt-1" data-testid="checkbox-liability-insurance" />
                         <span className="text-sm">{isHebrew ? 'יש לי ביטוח אחריות מקצועית' : 'I carry professional liability insurance'}</span>
                       </label>
                     </div>
@@ -980,17 +980,17 @@ export default function ProviderOnboarding() {
                       </h4>
                       
                       <label className="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" checked={declarationPhysicallyFit} onChange={(e) => setDeclarationPhysicallyFit(e.target.checked)} className="mt-1" data-testid="checkbox-physically-fit" />
+                        <Checkbox checked={declarationPhysicallyFit} onCheckedChange={(checked) => setDeclarationPhysicallyFit(!!checked)} className="mt-1" data-testid="checkbox-physically-fit" />
                         <span className="text-sm">{isHebrew ? 'אני כשיר/ה פיזית לטיפול בחיות מחמד' : 'I am physically fit to handle pets'}</span>
                       </label>
                       
                       <label className="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" checked={declarationAnimalExperience} onChange={(e) => setDeclarationAnimalExperience(e.target.checked)} className="mt-1" data-testid="checkbox-animal-experience" />
+                        <Checkbox checked={declarationAnimalExperience} onCheckedChange={(checked) => setDeclarationAnimalExperience(!!checked)} className="mt-1" data-testid="checkbox-animal-experience" />
                         <span className="text-sm">{isHebrew ? 'יש לי ניסיון בטיפול בחיות מחמד' : 'I have experience caring for animals'}</span>
                       </label>
                       
                       <label className="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" checked={declarationFirstAidTraining} onChange={(e) => setDeclarationFirstAidTraining(e.target.checked)} className="mt-1" data-testid="checkbox-first-aid" />
+                        <Checkbox checked={declarationFirstAidTraining} onCheckedChange={(checked) => setDeclarationFirstAidTraining(!!checked)} className="mt-1" data-testid="checkbox-first-aid" />
                         <span className="text-sm">{isHebrew ? 'יש לי הכשרה בעזרה ראשונה לחיות מחמד (אופציונלי)' : 'I have pet first aid training (optional)'}</span>
                       </label>
                     </div>
@@ -1003,12 +1003,12 @@ export default function ProviderOnboarding() {
                     </h4>
                     
                     <label className="flex items-start gap-3 cursor-pointer">
-                      <input type="checkbox" checked={declarationAccurateInfo} onChange={(e) => setDeclarationAccurateInfo(e.target.checked)} className="mt-1" data-testid="checkbox-accurate-info" />
+                      <Checkbox checked={declarationAccurateInfo} onCheckedChange={(checked) => setDeclarationAccurateInfo(!!checked)} className="mt-1" data-testid="checkbox-accurate-info" />
                       <span className="text-sm">{isHebrew ? 'כל המידע שמסרתי נכון ומדויק' : 'All information I provided is true and accurate'}</span>
                     </label>
                     
                     <label className="flex items-start gap-3 cursor-pointer">
-                      <input type="checkbox" checked={declarationAcceptTerms} onChange={(e) => setDeclarationAcceptTerms(e.target.checked)} className="mt-1" data-testid="checkbox-accept-terms" />
+                      <Checkbox checked={declarationAcceptTerms} onCheckedChange={(checked) => setDeclarationAcceptTerms(!!checked)} className="mt-1" data-testid="checkbox-accept-terms" />
                       <span className="text-sm">{isHebrew ? 'אני מסכים/ה לתנאי השימוש ולהסכם קבלן עצמאי' : 'I agree to the Terms of Service and Independent Contractor Agreement'}</span>
                     </label>
                   </div>

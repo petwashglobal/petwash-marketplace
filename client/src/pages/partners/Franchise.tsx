@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PhoneInput } from "@/components/PhoneInput";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/lib/languageStore";
 import { Building2, Globe, DollarSign, Users, TrendingUp, Award, Send, CheckCircle2, Loader2, Mail, Phone, User, MapPin, X } from "lucide-react";
@@ -216,14 +217,11 @@ export default function FranchisePartners() {
                     <Phone className="w-4 h-4" />
                     {isHe ? 'טלפון' : 'Phone'} *
                   </Label>
-                  <Input
-                    type="tel"
+                  <PhoneInput
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="+1 555-000-0000"
-                    className="mt-1"
+                    onChange={(val) => setFormData({ ...formData, phone: val || '' })}
+                    defaultCountry="IL"
                     required
-                    data-testid="input-franchise-phone"
                   />
                 </div>
 

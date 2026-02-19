@@ -16,6 +16,7 @@ import { type Language } from '@/lib/i18n';
 import { kenzoAvatarService } from '@/services/KenzoAvatarChatService';
 import { AIChatAssistant } from '@/components/AIChatAssistant';
 import { GooglePlacesAutocomplete, PlaceDetails } from '@/components/ui/google-places-autocomplete';
+import { PhoneInput } from '@/components/PhoneInput';
 import {
   Search,
   Heart,
@@ -389,12 +390,11 @@ export default function PawFinder({ language }: PawFinderProps) {
                       <Phone className="w-4 h-4 inline mr-1" />
                       {content.contactPhone} *
                     </label>
-                    <Input
-                      required
-                      type="tel"
+                    <PhoneInput
                       value={formData.contactPhone}
-                      onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
-                      placeholder="+972-XX-XXX-XXXX"
+                      onChange={(val) => setFormData({ ...formData, contactPhone: val || '' })}
+                      defaultCountry="IL"
+                      required
                     />
                   </div>
 
