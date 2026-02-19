@@ -1,0 +1,91 @@
+That message in your screenshot is the smoking gun: the app is not getting a working Google Places service at runtime, so it falls back to “type manually”.
+
+Even if the code is “correct”, autocomplete will still fail if production configuration blocks it. In 90 percent of cases it is one of these:
+
+The real reasons it fails (most common)
+	1.	Wrong key in production build
+
+	•	Dev has a key, prod does not, or Vite env var not injected
+	•	Result: script never loads or loads without Places
+
+	2.	Places API not enabled
+
+	•	Maps JS can load, but Places calls fail
+	•	Result: no suggestions
+
+	3.	Billing not enabled on Google Cloud project
+
+	•	Google blocks Places even with a valid key
+	•	Result: silent failure or console error
+
+	4.	Referrer restrictions block your domain
+
+	•	Key restricted to referrers but missing:
+	•	https://petwash.co.il/*
+	•	https://www.petwash.co.il/*
+	•	Result: RefererNotAllowedMapError
+
+	5.	CSP blocks maps.googleapis.com
+
+	•	Your Content-Security-Policy blocks scripts/connect
+	•	Result: script request blocked
+
+	6.	iPad Safari quirks or blockers
+
+	•	Some extensions, private mode, or tracking settings block Google scripts
+	•	Result: script never executes
+
+Do these 4 checks and you will know exactly why
+
+Open the page on a desktop Chrome (or iPad if you can) and do this:
+
+Check 1: Console error
+
+Look for messages like:
+	•	Google Maps JavaScript API error: RefererNotAllowedMapError
+	•	ApiNotActivatedMapError
+	•	BillingNotEnabledMapError
+	•	InvalidKeyMapError
+
+Whatever you see there is the reason.
+
+Check 2: Does the script load
+
+In Network tab search maps/api/js
+	•	If it is blocked or 4xx, it is referrer, billing, CSP, or wrong key.
+	•	If it loads but still no suggestions, it is usually Places API disabled.
+
+Check 3: Verify Places library is included
+
+The script URL must include:
+	•	libraries=places
+If not, autocomplete will not work.
+
+Check 4: Verify prod key exists
+
+Hit your config endpoint in the browser:
+	•	/api/config/google-maps
+It should return something that clearly indicates the key exists, like enabled: true or keyPresent: true.
+If it shows false or empty, prod env is missing the key.
+
+What I would fix in the product so this never happens again
+
+Tell him to implement this exact behavior:
+	1.	Show a visible reason code in UI:
+
+	•	“Autocomplete unavailable (KEY_MISSING)”
+	•	“Autocomplete unavailable (REFERRER_BLOCKED)”
+	•	“Autocomplete unavailable (PLACES_DISABLED)”
+	•	“Autocomplete unavailable (BILLING_OFF)”
+
+	2.	Log the exact reason with traceId to server logs.
+	3.	Use backend proxy for suggestions (best practice) so Safari and blockers do not break you:
+
+	•	Client calls your server
+	•	Server calls Google with server key
+	•	Client never sees key and referrer rules stop being a problem
+
+Quick proof test you can ask him to do now
+
+Ask him to paste you the output of these two checks from production:
+	1.	In console:
