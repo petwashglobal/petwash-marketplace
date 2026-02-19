@@ -1,0 +1,163 @@
+SUBJECT: Stop Auditing - Ship 2026 Fixes With Proof (PetWash)
+
+I read your audit report. It is not a 2026 deliverable yet.
+I’m not asking for more documentation. I’m asking for production proof and fixes.
+
+If you reply with more narrative without proof, I will assume nothing is implemented.
+
+========================
+1) FIRST: PROVE THE SYSTEM IS ACTUALLY WORKING
+========================
+Deliver TODAY in one message:
+
+A) 3 screen recordings (max 2 min each)
+1. New Loyalty Member signup: email + phone + address + verify
+2. New Provider signup: multi-step form + upload + submit + record saved
+3. Google sign-in + reCAPTCHA pass on production domain
+
+B) Logs + trace IDs
+- For each of the 3 flows above: paste traceId, server log lines, and final DB row ID created.
+
+C) A “known good environment list”
+- Exact domains that work today for Google sign-in and reCAPTCHA:
+  - production
+  - staging
+  - dev
+- Firebase Authorized Domains screenshot
+- reCAPTCHA allowed domains screenshot
+- Google OAuth authorized origins + redirect URIs screenshot
+
+No screenshots = not confirmed.
+
+========================
+2) YOUR AUDIT HAS RED FLAGS (FIX THESE OR ADMIT THEY ARE NOT REAL)
+========================
+I need clear answers + code references:
+
+1) You claim “reCAPTCHA Enterprise v3”.
+- Show the exact implementation:
+  - which script is loaded
+  - which endpoint verifies it
+  - which Google product is used (reCAPTCHA v3 vs Enterprise)
+If it is normal v3, stop calling it Enterprise.
+
+2) You mention “liveness detection”.
+- Prove it. What vendor/SDK? What challenge? Where is the server verification token validated?
+If it is not real liveness, say “NO liveness implemented”.
+
+3) You claim “device fingerprinting”.
+- What method? If it is browser fingerprinting only, it is weak.
+Show the exact fields collected and where they are stored.
+
+4) You are using in-memory rate limiting and anomaly detection.
+- That is not production.
+Fix now:
+  - Use persistent storage for counters (Postgres tables is fine)
+  - Or Cloudflare WAF rate limits in front
+  - Or Firebase App Check + backend throttling
+Pick one and ship it.
+
+5) setTimeout for dispatch waves.
+- That is not reliable.
+Fix now without new infra:
+  - Store wave state in Postgres
+  - Use a cron/worker that resumes waves after restart
+  - Idempotent job runner with lease lock in DB
+Ship the DB-backed dispatcher.
+
+6) Dual auth systems.
+- This is dangerous.
+Fix now:
+  - One source of truth for identity (Firebase Auth)
+  - Remove /api/auth/register or make it internal only
+  - All user creation must go through one path
+Ship a cleanup PR.
+
+7) Score weights sum to 110%.
+- Fix it to 100% or justify mathematically with a cap.
+Ship the correction.
+
+========================
+3) REGISTRATION FAILURES - REAL FIX PLAN (NO GUESSING)
+========================
+Current symptoms:
+- provider/public signup failing
+- address suggestions not appearing
+- google sign-in and recaptcha both failing sometimes
+- data not saved / not visible in Sheets
+
+You will implement these concrete checks:
+
+A) Registration endpoint hardening
+- Server validates required fields
+- Server rejects if address missing / phone invalid
+- Server writes to Postgres in a single transaction
+- Server returns userId + profileId
+- Client shows exact error string (not “something went wrong”)
+
+B) Address autocomplete
+- Implement a backend proxy endpoint:
+  GET /api/places/autocomplete?input=
+  GET /api/places/details?placeId=
+- API key is server-side only
+- Key restrictions: no browser key needed
+This removes the “keys not working on some devices” problem.
+
+C) Google sign-in + reCAPTCHA
+- Must work only on production domain first
+- No Replit domains in production keys
+- signInWithRedirect for iOS Safari, popup for desktop
+- If reCAPTCHA fails, fallback to phone OTP only (optional)
+
+D) Sheets logging
+- Stop using OAuth “Replit connector” for production data.
+- Use a Google service account for Sheets append.
+- Implement:
+  - retry
+  - idempotency key
+  - reconciliation job: compare Postgres rows vs Sheets rows daily
+Sheets is a mirror, not source of truth.
+
+========================
+4) KYC - 2026 MINIMUM BAR (NO FINTECH CLAIMS WITHOUT THIS)
+========================
+I want a production-ready KYC architecture now. Not a roadmap.
+
+Answer YES/NO with proof:
+
+1) Zero storage processing available?
+- If YES: images never touch Storage, processed in memory, only hashes + score kept.
+- If NO: strict TTL + lifecycle rule + restricted signed URLs.
+
+2) Mandatory MFA for all admins?
+- If YES: show enforcement (block admin endpoints without MFA claim)
+- If NO: implement.
+
+3) Separate KYC-admin role?
+- If YES: show RBAC rules
+- If NO: implement.
+
+4) Audit trail for every KYC view/download/approve/reject?
+- If YES: show table schema and sample records.
+
+5) Lateral movement protection:
+- least privilege service accounts
+- separate buckets
+- separate env keys
+- no broad admin creds in app runtime
+Show the IAM roles list.
+
+========================
+5) WHAT I EXPECT NEXT
+========================
+You will reply with:
+1) PR link with actual code changes
+2) deployed staging URL
+3) 3 short screen recordings
+4) logs + trace IDs + DB record IDs
+5) screenshot proof of Firebase, OAuth, reCAPTCHA configs
+6) a bullet list “What changed vs before” (max 10 bullets)
+
+If you can’t provide proof, say “not done” clearly.
+
+END.

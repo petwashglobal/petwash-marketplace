@@ -527,17 +527,68 @@ async function appendFormSubmissionDirect(
  */
 export async function appendFormSubmission(
   sheetName: string,
-  data: Record<string, any>
+  data: Record<string, any>,
+  idempotencyKey?: string
 ): Promise<boolean> {
+  if (idempotencyKey) {
+    try {
+      const dbPool = await getDbPool();
+      const { rows } = await dbPool.query(
+        `SELECT id FROM google_sheets_idempotency WHERE idempotency_key = $1`,
+        [idempotencyKey]
+      );
+      if (rows.length > 0) {
+        logger.info(`[GoogleSheets] Skipping duplicate submission (idempotency: ${idempotencyKey})`);
+        return true;
+      }
+    } catch {
+    }
+  }
+
   const success = await appendFormSubmissionDirect(sheetName, data);
 
   if (success) {
-    logger.info(`[GoogleSheets] ✅ Appended to ${sheetName}`);
+    logger.info(`[GoogleSheets] Appended to ${sheetName}`);
+    if (idempotencyKey) {
+      try {
+        const dbPool = await getDbPool();
+        await dbPool.query(
+          `INSERT INTO google_sheets_idempotency (idempotency_key, sheet_name, created_at) VALUES ($1, $2, NOW()) ON CONFLICT DO NOTHING`,
+          [idempotencyKey, sheetName]
+        );
+      } catch {
+      }
+    }
     return true;
   }
 
   await queueFailedSubmission(sheetName, data, 'Initial append failed');
   return false;
+}
+
+export async function getReconciliationReport(): Promise<{
+  pending: number;
+  failed: number;
+  recentSuccesses: number;
+  oldestPending: string | null;
+}> {
+  try {
+    const dbPool = await getDbPool();
+    const [pendingRes, failedRes, recentRes, oldestRes] = await Promise.all([
+      dbPool.query(`SELECT COUNT(*) as cnt FROM google_sheets_retry_queue WHERE status = 'pending'`),
+      dbPool.query(`SELECT COUNT(*) as cnt FROM google_sheets_retry_queue WHERE status = 'failed' AND attempts >= 5`),
+      dbPool.query(`SELECT COUNT(*) as cnt FROM google_sheets_idempotency WHERE created_at > NOW() - INTERVAL '24 hours'`),
+      dbPool.query(`SELECT MIN(created_at) as oldest FROM google_sheets_retry_queue WHERE status = 'pending'`),
+    ]);
+    return {
+      pending: parseInt(pendingRes.rows[0]?.cnt || '0'),
+      failed: parseInt(failedRes.rows[0]?.cnt || '0'),
+      recentSuccesses: parseInt(recentRes.rows[0]?.cnt || '0'),
+      oldestPending: oldestRes.rows[0]?.oldest || null,
+    };
+  } catch {
+    return { pending: 0, failed: 0, recentSuccesses: 0, oldestPending: null };
+  }
 }
 
 /**
@@ -1034,4 +1085,5 @@ export const GoogleSheetsService = {
   getSpreadsheetUrl,
   getPendingRetryCount,
   processStartupRetries,
+  getReconciliationReport,
 };

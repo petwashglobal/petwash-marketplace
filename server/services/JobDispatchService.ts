@@ -44,7 +44,7 @@ const SCORE_WEIGHTS = {
   rating:      0.25,
   acceptance:  0.15,
   activity:    0.10,
-  premiumBoost: 0.10,
+  premiumMultiplier: 0.10,
 };
 
 // ==================== COOLDOWN SETTINGS ====================
@@ -221,18 +221,18 @@ export class JobDispatchService {
     }
   }
 
-  // ==================== CORE: BATCHED WAVE DISPATCH ====================
+  // ==================== CORE: BATCHED WAVE DISPATCH (DB-BACKED) ====================
 
   static async runDispatchWave(
     jobOfferId: string,
     waveNumber: number,
-    originalParams?: CreateJobOfferParams
+    _originalParams?: CreateJobOfferParams
   ): Promise<void> {
     const plan = WAVE_PLAN.find(w => w.wave === waveNumber);
     if (!plan) {
       logger.info("[JobDispatch] All waves exhausted", { jobOfferId });
       await db.update(jobOffers)
-        .set({ status: "expired", expiredAt: new Date(), updatedAt: new Date() })
+        .set({ status: "expired", expiredAt: new Date(), nextWaveAt: null, dispatchLeasedUntil: null, updatedAt: new Date() })
         .where(eq(jobOffers.id, jobOfferId));
       await this.writeAudit("JOB_EXPIRED", jobOfferId, undefined, { reason: "all_waves_exhausted" });
       return;
@@ -252,12 +252,15 @@ export class JobDispatchService {
     const alreadyOffered = (currentOffer.offeredOperatorIds as string[]) || [];
 
     const expiresAt = new Date(Date.now() + plan.ttlSec * 1000);
+    const nextWaveTime = new Date(Date.now() + plan.nextAfterSec * 1000);
 
     await db.update(jobOffers).set({
       status: "offered",
       dispatchWave: waveNumber,
       dispatchRadiusKm: plan.radiusKm,
       offerExpiresAt: expiresAt,
+      nextWaveAt: nextWaveTime,
+      dispatchLeasedUntil: null,
       offeredAt: new Date(),
       updatedAt: new Date(),
     }).where(eq(jobOffers.id, jobOfferId));
@@ -280,9 +283,13 @@ export class JobDispatchService {
     });
 
     if (rankedOperators.length === 0) {
-      logger.warn("[JobDispatch] No candidates in wave, advancing after configured delay", { jobOfferId, wave: waveNumber, nextAfterSec: plan.nextAfterSec });
+      logger.warn("[JobDispatch] No candidates in wave, scheduling next wave in DB", { jobOfferId, wave: waveNumber, nextAfterSec: plan.nextAfterSec });
       await this.writeAudit("WAVE_EMPTY", jobOfferId, undefined, { wave: waveNumber, radiusKm: plan.radiusKm });
-      setTimeout(() => this.runDispatchWave(jobOfferId, waveNumber + 1, originalParams), plan.nextAfterSec * 1000);
+      await db.update(jobOffers).set({
+        nextWaveAt: nextWaveTime,
+        dispatchLeasedUntil: null,
+        updatedAt: new Date(),
+      }).where(eq(jobOffers.id, jobOfferId));
       return;
     }
 
@@ -340,19 +347,73 @@ export class JobDispatchService {
         }
       })
     );
+  }
 
-    setTimeout(async () => {
-      try {
-        const [check] = await db.select().from(jobOffers).where(eq(jobOffers.id, jobOfferId)).limit(1);
-        if (check && check.status === "offered" && check.dispatchWave === waveNumber) {
-          logger.info("[JobDispatch] Wave expired, advancing", { jobOfferId, wave: waveNumber });
-          await this.writeAudit("WAVE_EXPIRED", jobOfferId, undefined, { wave: waveNumber });
-          await this.runDispatchWave(jobOfferId, waveNumber + 1, originalParams);
+  // ==================== DB-BACKED WAVE POLLER (replaces setTimeout) ====================
+
+  private static pollerInterval: ReturnType<typeof setInterval> | null = null;
+  private static readonly POLL_INTERVAL_MS = 5000;
+  private static readonly LEASE_DURATION_MS = 60000;
+
+  static startDispatchPoller(): void {
+    if (this.pollerInterval) return;
+    logger.info("[JobDispatch] Starting DB-backed dispatch poller (every 5s)");
+    this.pollerInterval = setInterval(() => this.pollPendingWaves(), this.POLL_INTERVAL_MS);
+  }
+
+  static stopDispatchPoller(): void {
+    if (this.pollerInterval) {
+      clearInterval(this.pollerInterval);
+      this.pollerInterval = null;
+      logger.info("[JobDispatch] Dispatch poller stopped");
+    }
+  }
+
+  static async pollPendingWaves(): Promise<void> {
+    try {
+      const now = new Date();
+      const leaseUntil = new Date(Date.now() + this.LEASE_DURATION_MS);
+
+      const result = await db.execute(sql`
+        UPDATE job_offers
+        SET dispatch_leased_until = ${leaseUntil}
+        WHERE id IN (
+          SELECT id FROM job_offers
+          WHERE status = 'offered'
+            AND next_wave_at IS NOT NULL
+            AND next_wave_at <= ${now}
+            AND (dispatch_leased_until IS NULL OR dispatch_leased_until < ${now})
+          ORDER BY next_wave_at ASC
+          LIMIT 5
+          FOR UPDATE SKIP LOCKED
+        )
+        RETURNING id, dispatch_wave
+      `);
+
+      const rows = (result as any).rows || result || [];
+      if (!Array.isArray(rows) || rows.length === 0) return;
+
+      for (const row of rows) {
+        const jobId = row.id;
+        const currentWave = row.dispatch_wave || 0;
+        const nextWave = currentWave + 1;
+
+        logger.info("[JobDispatch] Poller advancing wave", { jobId, from: currentWave, to: nextWave });
+
+        try {
+          await this.writeAudit("WAVE_EXPIRED", jobId, undefined, { wave: currentWave, advancedBy: "db_poller" });
+          await this.runDispatchWave(jobId, nextWave);
+        } catch (waveErr) {
+          logger.error("[JobDispatch] Poller wave error", waveErr, { jobId, wave: nextWave });
+          await db.update(jobOffers).set({
+            dispatchLeasedUntil: null,
+            updatedAt: new Date(),
+          }).where(eq(jobOffers.id, jobId));
         }
-      } catch (err) {
-        logger.error("[JobDispatch] Wave timeout check failed", err, { jobOfferId });
       }
-    }, plan.nextAfterSec * 1000);
+    } catch (err) {
+      logger.error("[JobDispatch] Poller cycle error", err);
+    }
   }
 
   // ==================== CORE: SMART RANKING ====================
@@ -455,14 +516,14 @@ export class JobDispatchService {
       activityScore * SCORE_WEIGHTS.activity;
 
     if (params.premium) {
-      s = s * (1 + SCORE_WEIGHTS.premiumBoost);
+      s = s * (1 + SCORE_WEIGHTS.premiumMultiplier);
     }
 
     if (params.recentIgnores >= COOLDOWN_SETTINGS.ignoresBeforePriorityDrop) {
       s = s * 0.7;
     }
 
-    return Number(s.toFixed(6));
+    return Number(Math.min(s, 1.0).toFixed(6));
   }
 
   // ==================== CORE: ACCEPT (FIRST WINS) ====================

@@ -10032,27 +10032,55 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(403).json({ success: false, error: 'Security verification required' });
       }
       
-      if (!firstName || !lastName || !email) {
-        return res.status(400).json({ success: false, error: 'First name, last name, and email required', errorCode: 'MISSING_FIELDS' });
+      const validationErrors: string[] = [];
+      if (!firstName || typeof firstName !== 'string' || firstName.trim().length < 1) validationErrors.push('firstName is required');
+      if (!lastName || typeof lastName !== 'string' || lastName.trim().length < 1) validationErrors.push('lastName is required');
+      if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) validationErrors.push('Valid email is required');
+      if (phone) {
+        const cleanPhone = phone.replace(/[\s\-()]/g, '');
+        if (!/^\+?[1-9]\d{1,14}$/.test(cleanPhone)) validationErrors.push('Phone must be international format (e.g. +972501234567)');
+      }
+      if (dob) {
+        const dobDate = new Date(dob);
+        if (isNaN(dobDate.getTime())) validationErrors.push('Date of birth is invalid');
+        else {
+          const age = Math.floor((Date.now() - dobDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+          if (age < 13) validationErrors.push('Must be at least 13 years old');
+        }
+      }
+
+      if (validationErrors.length > 0) {
+        logger.warn('[CreateProfile] Validation failed', { traceId, errors: validationErrors });
+        return res.status(400).json({ success: false, error: validationErrors.join('; '), errorCode: 'VALIDATION_FAILED', fields: validationErrors });
       }
       
       const now = new Date().toISOString();
       
-      // ===== PHASE 1: PostgreSQL write (MUST succeed - this is the source of truth) =====
       const { authService } = await import('./services/AuthService');
-      await authService.createUser({
-        id: uid,
-        email: email.trim(),
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phone: phone?.trim() || undefined,
-        country: country || 'IL',
-        language: language || 'he',
-        dateOfBirth: dob || undefined,
-        marketingConsent: marketing ?? true,
-      });
-      
-      logger.info(`[Phase1] ✅ PostgreSQL user created for ${uid}`, { traceId });
+      let userId: string;
+      try {
+        await authService.createUser({
+          id: uid,
+          email: email.trim(),
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          phone: phone?.trim() || undefined,
+          country: country || 'IL',
+          language: language || 'he',
+          dateOfBirth: dob || undefined,
+          marketingConsent: marketing ?? true,
+        });
+        userId = uid;
+        logger.info(`[Phase1] PostgreSQL user created`, { traceId, userId });
+      } catch (dbErr: any) {
+        if (dbErr?.code === '23505' || dbErr?.message?.includes('unique') || dbErr?.message?.includes('duplicate')) {
+          logger.info('[Phase1] User already exists in PostgreSQL, continuing', { traceId, uid });
+          userId = uid;
+        } else {
+          logger.error('[Phase1] PostgreSQL user creation failed', dbErr, { traceId, uid });
+          return res.status(500).json({ success: false, error: 'Registration failed - database error. Please try again.', errorCode: 'DB_WRITE_FAILED' });
+        }
+      }
 
       // ===== PHASE 2: Best-effort side effects (failures do NOT block registration) =====
       
@@ -10116,7 +10144,7 @@ self.addEventListener('notificationclick', (event) => {
         logger.error('[Phase2] Email generation error (non-blocking)', { traceId, error: emailErr.message });
       }
       
-      res.json({ success: true, uid });
+      res.json({ success: true, uid, userId: uid, profileId: uid });
       
     } catch (error: any) {
       logger.error('Create profile error', error, { traceId: req.body?.traceId });

@@ -63,6 +63,113 @@ router.get('/places/photo', async (req, res) => {
 });
 
 /**
+ * GET /api/places/autocomplete - Server-side Google Places Autocomplete proxy
+ * API key stays server-side. No browser key needed.
+ */
+router.get('/places-autocomplete', async (req, res) => {
+  try {
+    const { input, language, components, types } = req.query;
+
+    if (!input || typeof input !== 'string' || input.length < 2) {
+      return res.status(400).json({ error: 'Input query required (min 2 chars)' });
+    }
+
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+      logger.error('[Places Proxy] GOOGLE_MAPS_API_KEY not configured');
+      return res.status(503).json({ error: 'Address search unavailable' });
+    }
+
+    const params = new URLSearchParams({
+      input: input as string,
+      key: apiKey,
+      language: (language as string) || 'iw',
+    });
+    if (components) params.append('components', components as string);
+    if (types) params.append('types', types as string);
+
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/place/autocomplete/json?${params}`
+    );
+    const data = await response.json();
+
+    if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+      logger.warn('[Places Proxy] Google API error', { status: data.status, error: data.error_message });
+      return res.status(502).json({ error: 'Address search failed', googleStatus: data.status });
+    }
+
+    res.json({
+      predictions: (data.predictions || []).map((p: any) => ({
+        placeId: p.place_id,
+        description: p.description,
+        mainText: p.structured_formatting?.main_text,
+        secondaryText: p.structured_formatting?.secondary_text,
+      })),
+    });
+  } catch (error) {
+    logger.error('[Places Proxy] Autocomplete error:', error);
+    res.status(500).json({ error: 'Address search failed' });
+  }
+});
+
+/**
+ * GET /api/places/details - Server-side Google Place Details proxy
+ * Returns structured address components for form auto-fill.
+ */
+router.get('/places-details', async (req, res) => {
+  try {
+    const { placeId, language } = req.query;
+
+    if (!placeId || typeof placeId !== 'string') {
+      return res.status(400).json({ error: 'placeId required' });
+    }
+
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+      return res.status(503).json({ error: 'Address details unavailable' });
+    }
+
+    const params = new URLSearchParams({
+      place_id: placeId,
+      key: apiKey,
+      language: (language as string) || 'iw',
+      fields: 'address_components,formatted_address,geometry,name',
+    });
+
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/place/details/json?${params}`
+    );
+    const data = await response.json();
+
+    if (data.status !== 'OK') {
+      return res.status(502).json({ error: 'Failed to get address details', googleStatus: data.status });
+    }
+
+    const result = data.result;
+    const components = result.address_components || [];
+
+    const getComponent = (type: string) =>
+      components.find((c: any) => c.types.includes(type))?.long_name || '';
+
+    res.json({
+      formattedAddress: result.formatted_address,
+      streetNumber: getComponent('street_number'),
+      street: getComponent('route'),
+      city: getComponent('locality') || getComponent('administrative_area_level_2'),
+      state: getComponent('administrative_area_level_1'),
+      postalCode: getComponent('postal_code'),
+      country: getComponent('country'),
+      countryCode: components.find((c: any) => c.types.includes('country'))?.short_name || '',
+      lat: result.geometry?.location?.lat,
+      lng: result.geometry?.location?.lng,
+    });
+  } catch (error) {
+    logger.error('[Places Proxy] Details error:', error);
+    res.status(500).json({ error: 'Failed to get address details' });
+  }
+});
+
+/**
  * GET /api/google/reviews/summary - Get AI-generated review summary
  * Uses Gemini to summarize customer reviews
  */

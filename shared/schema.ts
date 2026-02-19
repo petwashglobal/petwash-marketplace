@@ -6836,10 +6836,12 @@ export const jobOffers = pgTable("job_offers", {
   // Payment Authorization
   paymentIntentId: varchar("payment_intent_id"),
 
-  // Dispatch Wave Tracking (Adaptive Radius)
+  // Dispatch Wave Tracking (Adaptive Radius - DB-backed)
   dispatchWave: integer("dispatch_wave").default(0),
   dispatchRadiusKm: integer("dispatch_radius_km"),
   offerExpiresAt: timestamp("offer_expires_at"),
+  nextWaveAt: timestamp("next_wave_at"),
+  dispatchLeasedUntil: timestamp("dispatch_leased_until"),
   offeredOperatorIds: jsonb("offered_operator_ids").$type<string[]>(),
 
   // Additional Metadata

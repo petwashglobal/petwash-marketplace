@@ -1,19 +1,20 @@
 /**
- * KYC 2026 Dedicated Rate Limiter
+ * KYC 2026 Dedicated Rate Limiter (Postgres-Backed)
  * 
- * Endpoint-specific rate limits for KYC operations:
+ * Persistent rate limits that survive server restarts:
  * - Document submission: 3 per hour per user, 15 per hour per IP
  * - Face match requests: 5 per hour per user
  * - OTP/MFA verification: 5 per 15 minutes
  * - Admin KYC review: 100 per hour per admin
  * - Liveness challenges: 10 per hour per user
  * 
- * Implements sliding window with exponential backoff on repeat violations.
+ * Uses Postgres for counter persistence with sliding window + exponential backoff.
  */
 
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../../lib/logger';
 import { kycAuditTrail } from './KYCAuditTrail';
+import { pool } from '../../db';
 
 interface RateLimitConfig {
   windowMs: number;
@@ -22,55 +23,98 @@ interface RateLimitConfig {
   name: string;
 }
 
-interface RateLimitEntry {
+async function checkRateLimit(bucketName: string, key: string, windowMs: number, maxRequests: number): Promise<{
+  allowed: boolean;
   count: number;
-  resetAt: number;
+  effectiveMax: number;
   violations: number;
-}
+  resetAt: Date;
+  retryAfterSeconds: number;
+}> {
+  const now = new Date();
+  const windowEnd = new Date(now.getTime() + windowMs);
 
-const buckets = new Map<string, Map<string, RateLimitEntry>>();
+  try {
+    const result = await pool.query(`
+      INSERT INTO kyc_rate_limits (bucket_name, rate_key, request_count, violations, window_start, window_end, updated_at)
+      VALUES ($1, $2, 1, 0, $3, $4, $3)
+      ON CONFLICT (bucket_name, rate_key, window_start) DO UPDATE
+        SET request_count = kyc_rate_limits.request_count + 1,
+            updated_at = $3
+      RETURNING request_count, violations, window_end
+    `, [bucketName, key, now, windowEnd]);
 
-function getRateLimitMiddleware(config: RateLimitConfig) {
-  const bucketName = config.name;
-  if (!buckets.has(bucketName)) {
-    buckets.set(bucketName, new Map());
-  }
-  const bucket = buckets.get(bucketName)!;
+    let row = result.rows[0];
 
-  return (req: Request, res: Response, next: NextFunction): void => {
-    const key = config.keyExtractor(req);
-    const now = Date.now();
+    const activeWindow = await pool.query(`
+      SELECT SUM(request_count) as total_count, MAX(violations) as max_violations, MAX(window_end) as max_window_end
+      FROM kyc_rate_limits
+      WHERE bucket_name = $1 AND rate_key = $2 AND window_end > $3
+    `, [bucketName, key, now]);
 
-    let entry = bucket.get(key);
+    const totalCount = parseInt(activeWindow.rows[0]?.total_count || '1');
+    const violations = parseInt(activeWindow.rows[0]?.max_violations || '0');
+    const resetAt = new Date(activeWindow.rows[0]?.max_window_end || windowEnd);
 
-    if (!entry || now > entry.resetAt) {
-      entry = {
-        count: 0,
-        resetAt: now + config.windowMs,
-        violations: entry?.violations || 0,
+    const backoffMultiplier = Math.pow(2, Math.min(violations, 4));
+    const effectiveMax = Math.max(1, Math.floor(maxRequests / backoffMultiplier));
+
+    if (totalCount > effectiveMax) {
+      await pool.query(`
+        UPDATE kyc_rate_limits
+        SET violations = violations + 1, updated_at = $1
+        WHERE bucket_name = $2 AND rate_key = $3 AND window_end > $1
+      `, [now, bucketName, key]);
+
+      const retryAfterSeconds = Math.ceil((resetAt.getTime() - now.getTime()) / 1000);
+      return {
+        allowed: false,
+        count: totalCount,
+        effectiveMax,
+        violations: violations + 1,
+        resetAt,
+        retryAfterSeconds: Math.max(1, retryAfterSeconds),
       };
-      bucket.set(key, entry);
     }
 
-    entry.count++;
+    return {
+      allowed: true,
+      count: totalCount,
+      effectiveMax,
+      violations,
+      resetAt,
+      retryAfterSeconds: 0,
+    };
+  } catch (dbErr) {
+    logger.error(`[KYC2026:RateLimit] DB error for ${bucketName}/${key}, allowing request`, dbErr);
+    return {
+      allowed: true,
+      count: 0,
+      effectiveMax: maxRequests,
+      violations: 0,
+      resetAt: windowEnd,
+      retryAfterSeconds: 0,
+    };
+  }
+}
 
-    const backoffMultiplier = Math.pow(2, Math.min(entry.violations, 4));
-    const effectiveMax = Math.max(1, Math.floor(config.maxRequests / backoffMultiplier));
+function getRateLimitMiddleware(config: RateLimitConfig) {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const key = config.keyExtractor(req);
 
-    res.setHeader('X-RateLimit-Limit', effectiveMax.toString());
-    res.setHeader('X-RateLimit-Remaining', Math.max(0, effectiveMax - entry.count).toString());
-    res.setHeader('X-RateLimit-Reset', new Date(entry.resetAt).toISOString());
+    const result = await checkRateLimit(config.name, key, config.windowMs, config.maxRequests);
 
-    if (entry.count > effectiveMax) {
-      entry.violations++;
+    res.setHeader('X-RateLimit-Limit', result.effectiveMax.toString());
+    res.setHeader('X-RateLimit-Remaining', Math.max(0, result.effectiveMax - result.count).toString());
+    res.setHeader('X-RateLimit-Reset', result.resetAt.toISOString());
 
-      const retryAfterSeconds = Math.ceil((entry.resetAt - now) / 1000);
-      res.setHeader('Retry-After', retryAfterSeconds.toString());
+    if (!result.allowed) {
+      res.setHeader('Retry-After', result.retryAfterSeconds.toString());
 
       logger.warn(`[KYC2026:RateLimit] ${config.name} exceeded by ${key}`, {
-        count: entry.count,
-        max: effectiveMax,
-        violations: entry.violations,
+        count: result.count,
+        max: result.effectiveMax,
+        violations: result.violations,
       });
 
       const userId = (req as any).user?.uid || (req as any).userId || 'unknown';
@@ -82,16 +126,17 @@ function getRateLimitMiddleware(config: RateLimitConfig) {
         userAgent: req.headers['user-agent'] || 'unknown',
         metadata: {
           rateLimitName: config.name,
-          count: entry.count,
-          max: effectiveMax,
-          violations: entry.violations,
+          count: result.count,
+          max: result.effectiveMax,
+          violations: result.violations,
+          storage: 'postgres',
         },
       });
 
       res.status(429).json({
         error: 'Too many requests',
         message: `KYC ${config.name} rate limit exceeded. Please try again later.`,
-        retryAfterSeconds,
+        retryAfterSeconds: result.retryAfterSeconds,
       });
       return;
     }
@@ -157,13 +202,20 @@ export const kycLivenessLimiter = getRateLimitMiddleware({
   },
 });
 
-setInterval(() => {
-  const now = Date.now();
-  for (const [, bucket] of buckets) {
-    for (const [key, entry] of bucket) {
-      if (now > entry.resetAt + 60000) {
-        bucket.delete(key);
-      }
+export async function cleanupExpiredRateLimits(): Promise<number> {
+  try {
+    const result = await pool.query(`
+      DELETE FROM kyc_rate_limits WHERE window_end < NOW() - INTERVAL '1 hour'
+    `);
+    const deleted = result.rowCount || 0;
+    if (deleted > 0) {
+      logger.info(`[KYC2026:RateLimit] Cleaned up ${deleted} expired rate limit entries`);
     }
+    return deleted;
+  } catch (err) {
+    logger.error('[KYC2026:RateLimit] Cleanup error', err);
+    return 0;
   }
-}, 10 * 60 * 1000);
+}
+
+setInterval(() => cleanupExpiredRateLimits(), 15 * 60 * 1000);

@@ -423,6 +423,12 @@ export class KYCMemoryProcessor {
     return { selfieQuality, idQuality, issues, selfieBlurred, selfieUnderexposed, idBlurred, idUnderexposed };
   }
 
+  /**
+   * Heuristic liveness check using Google Cloud Vision face annotations.
+   * NOT ISO 30107-3 certified. Checks: single face, face size, head pose,
+   * blur detection (screen capture defense), expression analysis.
+   * For certified passive liveness, integrate a dedicated SDK (e.g. FaceTec, iProov).
+   */
   private async performLivenessCheck(selfieBuffer: Buffer): Promise<LivenessResult> {
     const checks = {
       singleFaceDetected: false,

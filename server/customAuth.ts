@@ -7,34 +7,6 @@ import { storage } from './storage';
 import { insertCustomerSchema } from '@shared/schema';
 import { z } from 'zod';
 import { logger } from './lib/logger';
-import { sendLuxuryEmail } from './email/luxury-email-service';
-import { generateCustomerWelcomeEmail } from './email/templates/welcome-customer-signup-2026';
-
-async function verifyRecaptchaToken(token: string, action: string, ip?: string): Promise<{ success: boolean; score?: number }> {
-  const secretKey = process.env.RECAPTCHA_SECRET_KEY;
-  if (!secretKey) {
-    logger.warn('[ReCaptcha] No secret key - passing through in dev');
-    return { success: true, score: 1.0 };
-  }
-  try {
-    const params = new URLSearchParams({ secret: secretKey, response: token });
-    if (ip) params.append('remoteip', ip);
-    const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString(),
-    });
-    const result = await response.json();
-    if (!result.success || (result.score !== undefined && result.score < 0.3)) {
-      logger.warn('[ReCaptcha] Verification failed for registration', { success: result.success, score: result.score, ip });
-      return { success: false, score: result.score };
-    }
-    return { success: true, score: result.score };
-  } catch (err) {
-    logger.error('[ReCaptcha] Server error during verification', err);
-    return { success: true, score: 0.5 };
-  }
-}
 
 const PostgresStore = connectPgSimple(session);
 
@@ -88,122 +60,22 @@ export function setupCustomAuth(app: Express) {
 
   app.use(session(sessionConfig));
 
-  // Register endpoint
-  app.post('/api/auth/register', async (req: Request, res: Response) => {
-    try {
-      const { captchaToken } = req.body;
-      if (captchaToken) {
-        const captchaResult = await verifyRecaptchaToken(captchaToken, 'register', req.ip || undefined);
-        if (!captchaResult.success) {
-          return res.status(403).json({ message: "Security verification failed. Please try again." });
-        }
-      } else if (process.env.NODE_ENV === 'production') {
-        return res.status(403).json({ message: "Security verification required" });
-      }
-
-      const registerSchema = insertCustomerSchema.omit({ 
-        id: true, 
-        createdAt: true, 
-        updatedAt: true,
-        lastLogin: true,
-        authProvider: true,
-        authProviderId: true,
-        resetPasswordToken: true,
-        resetPasswordExpires: true,
-      }).extend({
-        password: z.string().min(8, 'Password must be at least 8 characters'),
-        confirmPassword: z.string(),
-      }).refine((data) => data.password === data.confirmPassword, {
-        message: "Passwords don't match",
-        path: ["confirmPassword"],
-      });
-
-      const validatedData = registerSchema.parse(req.body);
-      const { confirmPassword, ...customerData } = validatedData;
-
-      // Check if email already exists
-      const existingCustomer = await storage.getCustomerByEmail(customerData.email);
-      if (existingCustomer) {
-        return res.status(400).json({ message: 'Email already registered' });
-      }
-
-      // Hash password
-      const saltRounds = 12;
-      const hashedPassword = await bcrypt.hash(customerData.password, saltRounds);
-
-      // Create customer
-      const newCustomer = await storage.createCustomer({
-        ...customerData,
-        password: hashedPassword,
-        authProvider: 'email',
-      });
-
-      // Set session
-      (req.session as any).customerId = newCustomer.id;
-
-      const welcomeEmail = generateCustomerWelcomeEmail({
-        firstName: newCustomer.firstName || '',
-        lastName: newCustomer.lastName || '',
-        email: newCustomer.email,
-        language: (newCustomer.country === 'Israel' || newCustomer.country === 'IL') ? 'he' : 'en',
-        loyaltyTier: newCustomer.loyaltyTier || 'new',
-        petType: newCustomer.petType || undefined,
-      });
-      sendLuxuryEmail({
-        to: newCustomer.email,
-        subject: welcomeEmail.subject,
-        html: welcomeEmail.html,
-      }).catch(err => logger.error('[Auth Register] Welcome email failed', err));
-
-      // Return customer data (without password)
-      const { password, ...customerResponse } = newCustomer;
-      res.status(201).json(customerResponse);
-    } catch (error) {
-      logger.error('Registration error', error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: 'Validation error', 
-          errors: error.errors 
-        });
-      }
-      res.status(500).json({ message: 'Registration failed' });
-    }
+  app.post('/api/auth/register', (_req: Request, res: Response) => {
+    logger.warn('[DEPRECATED] /api/auth/register called - endpoint removed. Use Firebase Auth + /api/users/create-profile');
+    return res.status(410).json({
+      message: 'This endpoint is deprecated. Use Firebase Auth for registration.',
+      redirect: '/signup',
+      errorCode: 'ENDPOINT_DEPRECATED'
+    });
   });
 
-  // Login endpoint
-  app.post('/api/auth/login', async (req: Request, res: Response) => {
-    try {
-      const { email, password } = req.body;
-
-      if (!email || !password) {
-        return res.status(400).json({ message: 'Email and password are required' });
-      }
-
-      // Get customer by email
-      const customer = await storage.getCustomerByEmail(email);
-      if (!customer) {
-        return res.status(401).json({ message: 'Invalid email or password' });
-      }
-
-      // Verify password
-      const isValidPassword = await bcrypt.compare(password, customer.password);
-      if (!isValidPassword) {
-        return res.status(401).json({ message: 'Invalid email or password' });
-      }
-
-      // Update last login
-      await storage.updateCustomer(customer.id, { lastLogin: new Date() });
-
-      // Set session
-      (req.session as any).customerId = customer.id;
-
-      // Return customer data (without password)
-      const { password: _, ...customerResponse } = customer;
-      res.json(customerResponse);
-    } catch (error) {
-      logger.error('Login error', error);
-      res.status(500).json({ message: 'Login failed' });
-    }
+  app.post('/api/auth/login', (_req: Request, res: Response) => {
+    logger.warn('[DEPRECATED] /api/auth/login called - endpoint removed. Use Firebase Auth + /api/auth/session');
+    return res.status(410).json({
+      message: 'This endpoint is deprecated. Use Firebase Auth for sign-in.',
+      redirect: '/signin',
+      errorCode: 'ENDPOINT_DEPRECATED'
+    });
   });
 
   // Get current user endpoint
@@ -283,8 +155,9 @@ export function setupCustomAuth(app: Express) {
     }
   });
 
-  logger.info('CUSTOM AUTHENTICATION SYSTEM INITIALIZED');
-  logger.info('Auth endpoints: /api/auth/register, /api/auth/login, /api/auth/logout, /api/auth/user');
+  logger.info('AUTH SYSTEM INITIALIZED (Firebase Auth is source of truth)');
+  logger.info('Active endpoints: /api/auth/user, /api/auth/logout, /api/auth/profile');
+  logger.info('Deprecated endpoints: /api/auth/register (410), /api/auth/login (410)');
 }
 
 // Middleware to check authentication (Firebase-based)
