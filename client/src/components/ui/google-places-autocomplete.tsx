@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MapPin, Loader2 } from 'lucide-react';
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface GooglePlacesAutocompleteProps {
   value: string;
@@ -87,6 +88,7 @@ export function GooglePlacesAutocomplete({
   const [apartment, setApartment] = useState('');
   const [postalCode, setPostalCodeState] = useState('');
   const [proxyStatus, setProxyStatus] = useState<'ok' | 'degraded' | 'unknown'>('unknown');
+  const [degradedReason, setDegradedReason] = useState<string>('');
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -138,19 +140,22 @@ export function GooglePlacesAutocomplete({
       const lang = document.documentElement.lang === 'he' ? 'iw' : 'en';
       params.append('language', lang);
 
-      const response = await fetch(`/api/google/places-autocomplete?${params}`, {
+      const response = await fetch(getApiUrl(`/api/google/places-autocomplete?${params}`), {
         signal: abortRef.current.signal,
         credentials: 'include',
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        const reason = errorData.reasonCode || errorData.error || `HTTP_${response.status}`;
         console.warn('[Places Proxy] Autocomplete failed', {
           status: response.status,
           error: errorData.error,
+          reasonCode: reason,
           googleStatus: errorData.googleStatus,
         });
         setProxyStatus('degraded');
+        setDegradedReason(reason);
         setPredictions([]);
         setShowDropdown(false);
         return;
@@ -166,8 +171,10 @@ export function GooglePlacesAutocomplete({
       pruneCache();
     } catch (err: any) {
       if (err.name === 'AbortError') return;
-      console.warn('[Places Proxy] Network error', err.message);
+      const netReason = err.message?.includes('Failed to fetch') ? 'NETWORK_ERROR' : `CLIENT_ERROR: ${err.message}`;
+      console.warn('[Places Proxy] Network error', { reason: netReason, message: err.message });
       setProxyStatus('degraded');
+      setDegradedReason(netReason);
       setPredictions([]);
       setShowDropdown(false);
     } finally {
@@ -186,7 +193,7 @@ export function GooglePlacesAutocomplete({
         placeId: prediction.placeId,
         language: lang,
       });
-      const response = await fetch(`/api/google/places-details?${params}`, {
+      const response = await fetch(getApiUrl(`/api/google/places-details?${params}`), {
         credentials: 'include',
       });
 
@@ -442,6 +449,11 @@ export function GooglePlacesAutocomplete({
       {proxyStatus === 'degraded' && !error && (
         <p className="text-xs text-amber-600 mt-1">
           Address suggestions temporarily unavailable. You can type your address manually.
+          {degradedReason && (
+            <span className="block text-[10px] text-amber-500 mt-0.5">
+              ({degradedReason})
+            </span>
+          )}
         </p>
       )}
 
@@ -472,7 +484,7 @@ export function loadGoogleMapsScript(language?: string, region?: string): Promis
     let apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
     if (!apiKey) {
       try {
-        const resp = await fetch('/api/config/google-maps', { credentials: 'include' });
+        const resp = await fetch(getApiUrl('/api/config/google-maps'), { credentials: 'include' });
         if (resp.ok) {
           const data = await resp.json();
           if (data.apiKey) apiKey = data.apiKey;
