@@ -628,15 +628,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         return;
       }
       
-      if (isIOSDevice) {
-        logger.info(`[Auth] iOS device detected, using redirect for ${provider} (best for Safari)`);
-        sessionStorage.setItem('pw_auth_pending_redirect', 'true');
-        await signInWithBestMethod(auth, authProvider, 'redirect');
-        return;
-      }
-      
       try {
-        logger.info(`[Auth] Using popup auth for ${provider} (desktop browser)`);
+        logger.info(`[Auth] Using popup auth for ${provider} (${isIOSDevice ? 'iOS' : 'desktop'} browser)`);
         userCredential = await signInWithPopup(auth, authProvider);
       } catch (popupErr: any) {
         const fallbackCodes = [

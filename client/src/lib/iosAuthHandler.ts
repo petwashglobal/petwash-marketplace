@@ -59,20 +59,27 @@ export async function signInWithBestMethod(
   preferredMethod?: 'popup' | 'redirect'
 ): Promise<UserCredential | null> {
   try {
-    // Determine best method
-    const useRedirect = preferredMethod === 'redirect' || 
-                       (preferredMethod !== 'popup' && (isIOSSafari() || isIOS()));
-    
-    if (useRedirect) {
-      console.log('[iOS Auth] Using redirect-based sign-in for iOS Safari compatibility');
+    if (preferredMethod === 'redirect') {
+      console.log('[Auth] Using redirect-based sign-in (explicitly requested)');
       await signInWithRedirect(auth, provider);
-      // Redirect will navigate away, result handled by getRedirectResult
       return null;
-    } else {
-      console.log('[Auth] Using popup-based sign-in');
-      return await signInWithPopup(auth, provider);
     }
-  } catch (error) {
+
+    console.log(`[Auth] Using popup-based sign-in (${isIOS() ? 'iOS' : 'desktop'})`);
+    return await signInWithPopup(auth, provider);
+  } catch (error: any) {
+    const fallbackCodes = [
+      'auth/popup-blocked',
+      'auth/popup-closed-by-user',
+      'auth/cancelled-popup-request',
+      'auth/operation-not-supported-in-this-environment',
+      'auth/internal-error',
+    ];
+    if (fallbackCodes.includes(error.code)) {
+      console.log(`[Auth] Popup failed (${error.code}), falling back to redirect`);
+      await signInWithRedirect(auth, provider);
+      return null;
+    }
     console.error('[Auth] Sign-in failed:', error);
     throw error;
   }

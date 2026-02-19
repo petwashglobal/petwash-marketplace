@@ -57,13 +57,16 @@ export async function loginWithEmailPassword(email: string, password: string) {
 
 export async function loginWithGoogle() {
   await setPersistence(auth, browserLocalPersistence);
-  if (preferRedirect) {
-    console.log('[Auth] 🔄 Using redirect flow for iOS/Safari');
-    await signInWithRedirect(auth, googleProvider);
-    return; // result handled by handleRedirectResult()
-  } else {
-    console.log('[Auth] 🪟 Using popup flow for desktop');
-    return signInWithPopup(auth, googleProvider);
+  try {
+    console.log('[Auth] 🪟 Using popup flow for Google sign-in');
+    return await signInWithPopup(auth, googleProvider);
+  } catch (popupErr: any) {
+    if (['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/operation-not-supported-in-this-environment', 'auth/internal-error'].includes(popupErr.code)) {
+      console.log('[Auth] 🔄 Popup failed, falling back to redirect flow');
+      await signInWithRedirect(auth, googleProvider);
+      return;
+    }
+    throw popupErr;
   }
 }
 
