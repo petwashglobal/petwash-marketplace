@@ -1868,21 +1868,12 @@ export default function MyAccount() {
                         <Label className="text-gray-600 mb-2 block">
                           {isHebrew ? 'מספר טלפון' : 'Phone Number'}
                         </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            type="tel"
-                            value={phoneNumber}
-                            onChange={(e) => setPhoneNumber(e.target.value)}
-                            placeholder={isHebrew ? '050-123-4567' : '+972-50-123-4567'}
-                            className="bg-white border-gray-200 text-gray-900 flex-1"
-                            dir="ltr"
-                          />
-                        </div>
-                        <p className="text-gray-400 text-xs mt-2">
-                          {isHebrew 
-                            ? 'הזן מספר טלפון בפורמט ישראלי (לדוגמה: 0501234567)'
-                            : 'Enter phone number in Israeli format (e.g., 0501234567)'}
-                        </p>
+                        <PhoneInput
+                          value={phoneNumber}
+                          onChange={setPhoneNumber}
+                          language={isHebrew ? 'he' : 'en'}
+                          defaultCountry="IL"
+                        />
                       </div>
 
                       {phoneVerification.error && (
