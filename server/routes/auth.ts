@@ -72,93 +72,26 @@ async function saveRefreshToken(userId: string, token: string, deviceId?: string
   });
 }
 
-// POST /api/auth/login
-// Mobile app initial login with email/password
-router.post("/login", loginLimiter, async (req, res) => {
-  try {
-    const { email, password, deviceId, platform, osVersion, appVersion, pushToken } = req.body;
+// POST /api/auth/register - DEPRECATED (2026)
+// All registration goes through Firebase Auth + /api/users/create-profile
+router.post("/register", (_req, res) => {
+  console.warn('[DEPRECATED] /api/auth/register called - endpoint removed. Use Firebase Auth + /api/users/create-profile');
+  return res.status(410).json({
+    error: "ENDPOINT_DEPRECATED",
+    message: "This endpoint is deprecated. Use Firebase Auth for registration, then POST /api/users/create-profile.",
+    redirect: "/signup",
+  });
+});
 
-    if (!email || !password) {
-      return res.status(400).json({
-        error: "INVALID_REQUEST",
-        message: "Email and password are required",
-      });
-    }
-
-    // Find user by email
-    const user = await db.query.users.findFirst({
-      where: eq(users.email, email),
-    });
-
-    if (!user || !user.passwordHash) {
-      return res.status(401).json({
-        error: "INVALID_CREDENTIALS",
-        message: "Invalid email or password",
-      });
-    }
-
-    // Verify password
-    const isValidPassword = await compare(password, user.passwordHash);
-    if (!isValidPassword) {
-      return res.status(401).json({
-        error: "INVALID_CREDENTIALS",
-        message: "Invalid email or password",
-      });
-    }
-
-    // Update or create device record
-    if (deviceId && platform) {
-      await db
-        .insert(devices)
-        .values({
-          id: deviceId,
-          userId: user.id,
-          platform,
-          osVersion: osVersion || null,
-          appVersion: appVersion || null,
-          pushToken: pushToken || null,
-          isBlocked: false,
-          lastSeenAt: new Date(),
-        })
-        .onConflictDoUpdate({
-          target: devices.id,
-          set: {
-            userId: user.id,
-            platform,
-            osVersion: osVersion || null,
-            appVersion: appVersion || null,
-            pushToken: pushToken || null,
-            isBlocked: false,
-            lastSeenAt: new Date(),
-          },
-        });
-    }
-
-    // Generate tokens
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user, deviceId);
-    await saveRefreshToken(user.id, refreshToken, deviceId);
-
-    res.json({
-      accessToken,
-      refreshToken,
-      expiresIn: 1800, // 30 minutes in seconds
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName || undefined,
-        lastName: user.lastName || undefined,
-        roles: (user.roles as string[]) || [],
-        permissions: (user.permissions as string[]) || [],
-      },
-    });
-  } catch (error: any) {
-    console.error("[Mobile Auth] Login error:", error);
-    res.status(500).json({
-      error: "INTERNAL_ERROR",
-      message: "An error occurred during login",
-    });
-  }
+// POST /api/auth/login - DEPRECATED (2026)
+// All sign-in goes through Firebase Auth + /api/auth/session
+router.post("/login", (_req, res) => {
+  console.warn('[DEPRECATED] /api/auth/login called - endpoint removed. Use Firebase Auth + /api/auth/session');
+  return res.status(410).json({
+    error: "ENDPOINT_DEPRECATED",
+    message: "This endpoint is deprecated. Use Firebase Auth for sign-in.",
+    redirect: "/signin",
+  });
 });
 
 // POST /api/auth/refresh
