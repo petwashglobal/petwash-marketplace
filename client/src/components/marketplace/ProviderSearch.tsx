@@ -1510,7 +1510,7 @@ export function ProviderSearch({
                       📞 {isHebrew ? 'טלפון הווטרינר' : 'Vet Phone'}
                     </label>
                     <Input
-                      placeholder="050-000-0000"
+                      placeholder="+972 50 000 0000"
                       value={vetPhone}
                       onChange={(e) => setVetPhone(e.target.value)}
                       className={`h-10 border-gray-200 rounded-xl ${t.focusRing} ${t.focusBorder}`}
@@ -1537,7 +1537,7 @@ export function ProviderSearch({
                       📱 {isHebrew ? 'טלפון לחירום' : 'Emergency Phone'}
                     </label>
                     <Input
-                      placeholder="050-000-0000"
+                      placeholder="+972 50 000 0000"
                       value={emergencyContactPhone}
                       onChange={(e) => setEmergencyContactPhone(e.target.value)}
                       className={`h-10 border-gray-200 rounded-xl ${t.focusRing} ${t.focusBorder}`}

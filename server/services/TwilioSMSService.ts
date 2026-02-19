@@ -78,17 +78,9 @@ class TwilioSMSService {
   }
 
   private formatPhoneNumber(phone: string): string {
-    let cleaned = phone.replace(/\D/g, '');
-    
-    if (cleaned.startsWith('0') && cleaned.length === 10) {
-      cleaned = '972' + cleaned.substring(1);
-    }
-    
-    if (!cleaned.startsWith('+')) {
-      cleaned = '+' + cleaned;
-    }
-    
-    return cleaned;
+    const trimmed = (phone || '').trim();
+    if (trimmed.startsWith('+')) return trimmed;
+    return '+' + trimmed.replace(/[^\d]/g, '');
   }
 
   private t(key: string, language: string): string {

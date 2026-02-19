@@ -21,14 +21,9 @@ function constantTimeEq(a: string, b: string): boolean {
 }
 
 function normalizePhone(phone: string): string {
-  let cleaned = String(phone || '').trim().replace(/[^\d+]/g, '');
-  if (cleaned.startsWith('0') && cleaned.length === 10) {
-    cleaned = '+972' + cleaned.substring(1);
-  }
-  if (!cleaned.startsWith('+')) {
-    cleaned = '+' + cleaned;
-  }
-  return cleaned;
+  const trimmed = String(phone || '').trim();
+  if (trimmed.startsWith('+')) return trimmed;
+  return '+' + trimmed.replace(/[^\d]/g, '');
 }
 
 function normalizeEmail(email: string): string {

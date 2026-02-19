@@ -187,7 +187,7 @@ export default function GlobalContactForm({
                   <FormControl>
                     <Input
                       type="tel"
-                      placeholder={i18n.language === 'he' ? '050-1234567' : '050-1234567'}
+                      placeholder="+972 50 123 4567"
                       {...field}
                       data-testid="input-contact-phone"
                     />

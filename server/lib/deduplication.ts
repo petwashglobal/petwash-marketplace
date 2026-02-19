@@ -88,20 +88,12 @@ export async function checkUserDuplication(
  * Normalize phone number for comparison
  */
 export function normalizePhoneNumber(phone: string): string {
-  // Remove all non-digits
-  const digits = phone.replace(/\D/g, '');
-  
-  // Handle Israeli phone numbers (+972)
-  if (digits.startsWith('972')) {
-    return '+' + digits;
-  } else if (digits.startsWith('0')) {
-    return '+972' + digits.substring(1);
-  } else if (digits.length === 9 || digits.length === 10) {
-    return '+972' + digits;
+  const trimmed = (phone || '').trim();
+  if (trimmed.startsWith('+')) {
+    return trimmed.replace(/[^\d+]/g, '').replace(/(?!^\+)\+/g, '');
   }
-  
-  // Default: add + if missing
-  return digits.startsWith('+') ? digits : '+' + digits;
+  const digits = trimmed.replace(/\D/g, '');
+  return '+' + digits;
 }
 
 /**

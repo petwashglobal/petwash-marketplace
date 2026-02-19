@@ -1035,7 +1035,7 @@ export default function BecomeProvider() {
                     <Input 
                       type="tel"
                       {...form.register('emergencyContactPhone')}
-                      placeholder="050-987-6543"
+                      placeholder="+972 50 987 6543"
                       className="mt-2 h-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
                       data-testid="input-emergency-phone"
                     />

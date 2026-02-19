@@ -8,7 +8,7 @@ import PhoneInputLib, {
 import 'react-phone-number-input/style.css';
 import type { Language } from '@/lib/i18n';
 
-const DEFAULT_APPROVED = [
+export const APPROVED_COUNTRIES = [
   "IL",
   "AU",
   "US",
@@ -32,44 +32,11 @@ const DEFAULT_APPROVED = [
   "HU",
   "RO",
   "BG",
-  "LT",
-  "LV",
-  "EE",
   "FI",
-  "CA",
-  "HR",
-  "SK",
-  "SI",
-  "NZ",
-  "ZA",
-  "SG",
-  "HK",
-  "JP",
-  "KR",
-  "IN",
-  "BR",
-  "MX",
-  "AR",
-  "CL",
-  "CO",
-  "PE",
-  "AE",
-  "SA",
-  "QA",
-  "KW",
-  "BH",
-  "OM",
-  "TR",
-  "RU",
-  "UA",
-  "TH",
-  "VN",
-  "PH",
-  "MY",
-  "ID",
-  "CN",
-  "TW",
-];
+  "CA"
+] as const;
+
+export type ApprovedCountry = (typeof APPROVED_COUNTRIES)[number];
 
 interface PhoneInputProps {
   value: string;
@@ -92,7 +59,7 @@ export function PhoneInput({
   language,
   error,
   defaultCountry = "IL",
-  approvedCountries = DEFAULT_APPROVED,
+  approvedCountries = [...APPROVED_COUNTRIES],
   disabled = false,
 }: PhoneInputProps) {
   const allowed = useMemo(() => {
@@ -185,25 +152,9 @@ export function validatePhoneE164(phoneE164: string) {
   };
 }
 
-export function normalizeToE164(phone: string, defaultCountryCode: string = '972'): string {
-  let cleaned = phone.replace(/[^\d+]/g, '');
-
-  if (cleaned.includes('+')) {
-    const firstPlus = cleaned.indexOf('+');
-    if (firstPlus === 0) {
-      cleaned = '+' + cleaned.slice(1).replace(/\+/g, '');
-    } else {
-      cleaned = cleaned.replace(/\+/g, '');
-    }
+export function assertApprovedCountry(country: string | null) {
+  if (!country) throw new Error("COUNTRY_UNKNOWN");
+  if (!(APPROVED_COUNTRIES as readonly string[]).includes(country)) {
+    throw new Error("COUNTRY_NOT_APPROVED");
   }
-
-  if (cleaned.startsWith('0')) {
-    cleaned = '+' + defaultCountryCode + cleaned.slice(1);
-  }
-
-  if (!cleaned.startsWith('+')) {
-    cleaned = '+' + defaultCountryCode + cleaned;
-  }
-
-  return cleaned;
 }

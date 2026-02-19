@@ -1421,7 +1421,7 @@ export const translations: TranslationStrings = {
   'registration.emailAddress': { en: 'Email Address', he: 'כתובת אימייל', ar: 'عنوان البريد الإلكتروني', ru: 'Адрес электронной почты', fr: 'Adresse e-mail', es: 'Correo electrónico' },
   'registration.emailPlaceholder': { en: 'your@email.com', he: 'האימייל שלכם@example.com', ar: 'your@email.com', ru: 'ваш@email.com', fr: 'votre@email.com', es: 'tu@email.com' },
   'registration.phoneNumber': { en: 'Phone Number', he: 'מספר טלפון', ar: 'رقم الهاتف', ru: 'Номер телефона', fr: 'Numéro de téléphone', es: 'Número de teléfono' },
-  'registration.phonePlaceholder': { en: '+972-50-123-4567', he: '050-123-4567', ar: '+972-50-123-4567', ru: '+972-50-123-4567', fr: '+972-50-123-4567', es: '+972-50-123-4567' },
+  'registration.phonePlaceholder': { en: '+972 50 123 4567', he: '+972 50 123 4567', ar: '+972 50 123 4567', ru: '+972 50 123 4567', fr: '+972 50 123 4567', es: '+972 50 123 4567' },
   'registration.password': { en: 'Password', he: 'סיסמה', ar: 'كلمة المرور', ru: 'Пароль', fr: 'Mot de passe', es: 'Contraseña' },
   'registration.passwordPlaceholder': { en: 'Create password', he: 'צרו סיסמה', ar: 'إنشاء كلمة مرور', ru: 'Создать пароль', fr: 'Créer un mot de passe', es: 'Crear contraseña' },
   'registration.confirmPassword': { en: 'Confirm Password', he: 'אישור סיסמה', ar: 'تأكيد كلمة المرور', ru: 'Подтвердите пароль', fr: 'Confirmer le mot de passe', es: 'Confirmar contraseña' },

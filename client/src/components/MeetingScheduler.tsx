@@ -95,7 +95,7 @@ export function MeetingScheduler({ language, meetingType = 'customer', prefilled
       description: 'תיאור',
       descriptionPlaceholder: 'הוסף פרטים נוספים או סדר יום...',
       phone: 'טלפון ליצירת קשר',
-      phonePlaceholder: '050-XXX-XXXX',
+      phonePlaceholder: '+972 50 XXX XXXX',
       notificationMethod: 'שלח התראות דרך',
       whatsapp: 'וואטסאפ',
       email: 'אימייל',
