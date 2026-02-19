@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import type { Language } from '@/lib/i18n';
 import { Mail, Phone, CheckCircle2, ArrowRight, ArrowLeft, Shield, Loader2, RefreshCw } from 'lucide-react';
+import { PhoneInput } from '@/components/PhoneInput';
 
 interface OnboardingVerificationProps {
   isOpen: boolean;
@@ -427,14 +428,11 @@ export function OnboardingVerification({
               <StepIndicator icon={<Phone className="w-5 h-5 text-white" />} label={t.phoneStep} verified={false} />
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">{t.enterPhone}</label>
-                <Input
-                  type="tel"
+                <PhoneInput
                   value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  placeholder={t.phonePlaceholder}
-                  className="h-12 text-base border-2 focus:border-black"
-                  style={{ borderRadius: '2px' }}
-                  dir="ltr"
+                  onChange={(val) => setPhone(val || '')}
+                  defaultCountry="IL"
+                  language={language}
                 />
               </div>
               <Button

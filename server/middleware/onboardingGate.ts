@@ -14,7 +14,6 @@ const ONBOARDING_BYPASS_PATHS = [
   '/api/provider-onboarding',
   '/api/provider/application',
   '/api/staff/access-request',
-  '/api/kyc',
   '/api/biometric',
 ];
 
@@ -26,22 +25,22 @@ interface OnboardingRequirements {
 
 const ROLE_REQUIREMENTS: Record<string, OnboardingRequirements> = {
   customer: {
-    requiredFields: ['firstName', 'lastName'],
+    requiredFields: ['firstName', 'lastName', 'termsAcceptedAt'],
     redirectTo: '/complete-profile',
     reason: 'CUSTOMER_PROFILE_INCOMPLETE',
   },
   loyalty: {
-    requiredFields: ['firstName', 'lastName', 'dateOfBirth'],
+    requiredFields: ['firstName', 'lastName', 'dateOfBirth', 'termsAcceptedAt'],
     redirectTo: '/complete-profile',
     reason: 'LOYALTY_PROFILE_INCOMPLETE',
   },
   provider: {
-    requiredFields: ['firstName', 'lastName', 'phone'],
+    requiredFields: ['firstName', 'lastName', 'phone', 'termsAcceptedAt'],
     redirectTo: '/complete-profile',
     reason: 'PROVIDER_PROFILE_INCOMPLETE',
   },
   staff: {
-    requiredFields: ['firstName', 'lastName'],
+    requiredFields: ['firstName', 'lastName', 'termsAcceptedAt'],
     redirectTo: '/complete-profile',
     reason: 'STAFF_PROFILE_INCOMPLETE',
   },

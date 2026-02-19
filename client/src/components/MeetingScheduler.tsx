@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Calendar, Clock, MapPin, Users, Mail, Phone, MessageSquare, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Language } from '@/lib/i18n';
+import { PhoneInput } from '@/components/PhoneInput';
 
 /**
  * 🌟 PREMIUM MEETING SCHEDULER 🌟
@@ -303,15 +304,14 @@ export function MeetingScheduler({ language, meetingType = 'customer', prefilled
           </div>
 
           {/* Phone */}
-          <MobileInput
-            label={t.phone}
-            type="tel"
-            value={formData.phone || ''}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            placeholder={t.phonePlaceholder}
-            icon={<Phone className="w-5 h-5" />}
-            data-testid="input-meeting-phone"
-          />
+          <div className="space-y-2">
+            <label className="text-base font-medium text-gray-700">{t.phone}</label>
+            <PhoneInput
+              value={formData.phone || ''}
+              onChange={(val) => setFormData({ ...formData, phone: val || '' })}
+              defaultCountry="IL"
+            />
+          </div>
 
           {/* Description */}
           <div className="space-y-2">

@@ -4,11 +4,64 @@ import { logger } from "../lib/logger";
 
 const ADMIN_APPROVER_EMAIL = "nir.h@petwash.co.il";
 
-type PostLoginDecision = {
-  redirectTo: string;
-  reason: string;
-  toast?: string;
+type ProfileStatus = 'incomplete' | 'complete' | 'pending_review' | 'approved' | 'rejected' | 'blocked';
+
+type PostLoginResponse = {
+  nextUrl: string;
+  requiredStep?: string;
+  profileStatus: ProfileStatus;
+  role: string;
 };
+
+const REQUIRED_FIELDS_BY_ROLE: Record<string, string[]> = {
+  customer: ['firstName', 'lastName', 'termsAcceptedAt'],
+  loyalty: ['firstName', 'lastName', 'dateOfBirth', 'termsAcceptedAt'],
+  provider: ['firstName', 'lastName', 'phone', 'termsAcceptedAt'],
+  staff: ['firstName', 'lastName', 'termsAcceptedAt'],
+};
+
+function getMissingFields(user: any, role: string): string[] {
+  const required = REQUIRED_FIELDS_BY_ROLE[role] || REQUIRED_FIELDS_BY_ROLE['customer'];
+  return required.filter((field: string) => !user[field]);
+}
+
+function isProfileComplete(user: any, role: string): boolean {
+  return getMissingFields(user, role).length === 0;
+}
+
+function routeProvider(app: any, role: string): PostLoginResponse {
+  if (!app) {
+    return { nextUrl: "/choose-role", requiredStep: 'provider_onboarding', profileStatus: 'incomplete', role };
+  }
+
+  if (app.status === "draft") {
+    return { nextUrl: "/provider-onboarding", requiredStep: 'provider_onboarding', profileStatus: 'incomplete', role };
+  }
+  if (app.status === "pending" || app.status === "pending_review" || app.status === "under_review") {
+    return { nextUrl: "/provider/pending", requiredStep: 'access_pending', profileStatus: 'pending_review', role };
+  }
+  if (app.status === "rejected") {
+    return { nextUrl: "/provider/rejected", profileStatus: 'rejected', role };
+  }
+
+  if (!app.onboardingComplete) {
+    return { nextUrl: "/provider-onboarding", requiredStep: 'provider_onboarding', profileStatus: 'approved', role };
+  }
+  return { nextUrl: "/provider/dashboard", profileStatus: 'approved', role };
+}
+
+function routeStaffRequest(reqRow: any, role: string): PostLoginResponse {
+  if (!reqRow) {
+    return { nextUrl: "/choose-role", requiredStep: 'access_pending', profileStatus: 'incomplete', role };
+  }
+  if (reqRow.status === "pending") {
+    return { nextUrl: "/access-pending", requiredStep: 'access_pending', profileStatus: 'pending_review', role };
+  }
+  if (reqRow.status === "rejected") {
+    return { nextUrl: "/staff/rejected", profileStatus: 'rejected', role };
+  }
+  return { nextUrl: "/admin/dashboard", profileStatus: 'approved', role };
+}
 
 export async function postLoginDecider(req: Request, res: Response) {
   try {
@@ -23,28 +76,38 @@ export async function postLoginDecider(req: Request, res: Response) {
     }
 
     if (user.blocked) {
-      return res.json({ redirectTo: "/blocked", reason: "USER_BLOCKED" });
+      return res.json({ nextUrl: "/blocked", profileStatus: 'blocked', role: (user as any).role || 'customer' } as PostLoginResponse);
     }
 
     const emailVerified = !!(user as any).emailVerified;
     const hasEmail = !!user.email;
 
     if (hasEmail && !emailVerified && (user as any).authProvider === 'email') {
-      return res.json({ redirectTo: "/verify-email", reason: "EMAIL_NOT_VERIFIED" });
+      return res.json({
+        nextUrl: "/verify-email",
+        requiredStep: 'verify_email',
+        profileStatus: 'incomplete',
+        role: (user as any).role || 'customer',
+      } as PostLoginResponse);
     }
 
     const { intent } = req.body || {};
-
-    const userRole = (user as any).role || null;
+    let userRole = (user as any).role || null;
 
     const ALLOWED_INTENTS = ['customer', 'loyalty', 'provider', 'staff'];
     const safeIntent = (intent && ALLOWED_INTENTS.includes(intent)) ? intent : null;
 
+    if (intent === 'admin') {
+      return res.status(403).json({ error: "ADMIN_INTENT_REJECTED", message: "Admin role cannot be requested via public intent" });
+    }
+
     if (!userRole && safeIntent) {
       if (safeIntent === 'customer' || safeIntent === 'loyalty') {
         await storage.updateUser(userId, { role: safeIntent, accessLevel: 1 } as any);
+        userRole = safeIntent;
       } else if (safeIntent === 'provider') {
-        await storage.updateUser(userId, { role: 'provider', accessLevel: 1 } as any);
+        await storage.updateUser(userId, { role: 'customer', accessLevel: 1 } as any);
+        userRole = 'customer';
         const existingApp = await storage.getProviderApplicationByUser(userId);
         if (!existingApp) {
           await storage.createProviderApplicationDraft(userId, {
@@ -57,7 +120,8 @@ export async function postLoginDecider(req: Request, res: Response) {
           } as any);
         }
       } else if (safeIntent === 'staff') {
-        await storage.updateUser(userId, { role: 'staff', accessLevel: 0 } as any);
+        await storage.updateUser(userId, { role: 'customer', accessLevel: 1 } as any);
+        userRole = 'customer';
         const existingReq = await storage.getStaffAccessRequestByUser(userId);
         if (!existingReq) {
           await storage.createStaffAccessRequest({
@@ -71,22 +135,32 @@ export async function postLoginDecider(req: Request, res: Response) {
 
     const refreshedUser = await storage.getUser(userId);
     const effectiveRole = (refreshedUser as any)?.role || userRole || 'customer';
+    const u = refreshedUser || user;
 
     if (!effectiveRole || effectiveRole === 'new') {
-      return res.json({ redirectTo: "/choose-role", reason: "NO_ROLE_SELECTED" });
+      return res.json({
+        nextUrl: "/choose-role",
+        requiredStep: 'complete_profile',
+        profileStatus: 'incomplete',
+        role: 'customer',
+      } as PostLoginResponse);
     }
 
-    const u = refreshedUser || user;
     const profileComplete = !!(u?.firstName && u?.lastName);
 
     if (!profileComplete) {
-      return res.json({ redirectTo: "/complete-profile", reason: "PROFILE_INCOMPLETE" });
+      return res.json({
+        nextUrl: "/complete-profile",
+        requiredStep: 'complete_profile',
+        profileStatus: 'incomplete',
+        role: effectiveRole,
+      } as PostLoginResponse);
     }
 
     if (effectiveRole === 'provider') {
       const app = await storage.getProviderApplicationByUser(userId);
-      const decision = routeProvider(app);
-      logger.info(`[PostLogin] Provider routing for ${userId}: ${decision.reason}`);
+      const decision = routeProvider(app, effectiveRole);
+      logger.info(`[PostLogin] Provider routing for ${userId}: ${decision.profileStatus}`);
       return res.json(decision);
     }
 
@@ -94,44 +168,49 @@ export async function postLoginDecider(req: Request, res: Response) {
       const staffReq = await storage.getStaffAccessRequestByUser(userId);
       if (!staffReq || staffReq.status !== 'approved') {
         if (staffReq?.status === 'rejected') {
-          return res.json({ redirectTo: "/staff/rejected", reason: "STAFF_REJECTED" });
+          return res.json({ nextUrl: "/staff/rejected", profileStatus: 'rejected', role: effectiveRole } as PostLoginResponse);
         }
-        return res.json({ redirectTo: "/staff/pending", reason: "STAFF_NOT_APPROVED" });
+        return res.json({ nextUrl: "/access-pending", requiredStep: 'access_pending', profileStatus: 'pending_review', role: effectiveRole } as PostLoginResponse);
       }
-      return res.json({ redirectTo: "/admin/dashboard", reason: "STAFF_READY" });
+      return res.json({ nextUrl: "/admin/dashboard", profileStatus: 'approved', role: effectiveRole } as PostLoginResponse);
     }
 
     if (effectiveRole === 'admin' || effectiveRole === 'management' || effectiveRole === 'super_admin') {
-      const isApproved = !!(user as any).approvedAt && !!(user as any).approvedBy;
+      const isApproved = !!(u as any).approvedAt && !!(u as any).approvedBy;
       if (!isApproved) {
-        return res.json({ redirectTo: "/staff/pending", reason: "ADMIN_NOT_APPROVED" });
+        return res.json({ nextUrl: "/access-pending", requiredStep: 'access_pending', profileStatus: 'pending_review', role: effectiveRole } as PostLoginResponse);
       }
-      return res.json({ redirectTo: "/admin/dashboard", reason: "ADMIN_READY" });
+      return res.json({ nextUrl: "/admin/dashboard", profileStatus: 'approved', role: effectiveRole } as PostLoginResponse);
     }
 
     if (effectiveRole === 'loyalty') {
       const hasDateOfBirth = !!(refreshedUser as any)?.dateOfBirth;
       if (!hasDateOfBirth) {
-        return res.json({ redirectTo: "/complete-profile", reason: "LOYALTY_DOB_REQUIRED" });
+        return res.json({
+          nextUrl: "/complete-profile",
+          requiredStep: 'complete_profile',
+          profileStatus: 'incomplete',
+          role: effectiveRole,
+        } as PostLoginResponse);
       }
-      return res.json({ redirectTo: "/home", reason: "LOYALTY_READY" });
+      return res.json({ nextUrl: "/home", profileStatus: 'complete', role: effectiveRole } as PostLoginResponse);
     }
 
     const providerApp = await storage.getProviderApplicationByUser(userId);
     if (providerApp) {
-      const decision = routeProvider(providerApp);
-      logger.info(`[PostLogin] Customer with provider app for ${userId}: ${decision.reason}`);
+      const decision = routeProvider(providerApp, effectiveRole);
+      logger.info(`[PostLogin] Customer with provider app for ${userId}: ${decision.profileStatus}`);
       return res.json(decision);
     }
 
     const staffReq = await storage.getStaffAccessRequestByUser(userId);
     if (staffReq) {
-      const decision = routeStaffRequest(staffReq);
-      logger.info(`[PostLogin] Customer with staff request for ${userId}: ${decision.reason}`);
+      const decision = routeStaffRequest(staffReq, effectiveRole);
+      logger.info(`[PostLogin] Customer with staff request for ${userId}: ${decision.profileStatus}`);
       return res.json(decision);
     }
 
-    return res.json({ redirectTo: "/home", reason: "CUSTOMER_READY" });
+    return res.json({ nextUrl: "/home", profileStatus: 'complete', role: effectiveRole } as PostLoginResponse);
 
   } catch (error: any) {
     logger.error(`[PostLogin] Error: ${error.message}`, { error });
@@ -139,38 +218,40 @@ export async function postLoginDecider(req: Request, res: Response) {
   }
 }
 
-function routeProvider(app: any): PostLoginDecision {
-  if (!app) {
-    return { redirectTo: "/choose-role", reason: "PROVIDER_NO_APP" };
-  }
+export async function getWhoami(req: Request, res: Response) {
+  try {
+    const userId = (req as any).userId || (req as any).user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: "AUTH_REQUIRED" });
+    }
 
-  if (app.status === "draft") {
-    return { redirectTo: "/provider-onboarding", reason: "PROVIDER_DRAFT" };
-  }
-  if (app.status === "pending" || app.status === "pending_review" || app.status === "under_review") {
-    return { redirectTo: "/provider/pending", reason: "PROVIDER_PENDING_REVIEW" };
-  }
-  if (app.status === "rejected") {
-    return { redirectTo: "/provider/rejected", reason: "PROVIDER_REJECTED" };
-  }
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ error: "USER_NOT_FOUND" });
+    }
 
-  if (!app.onboardingComplete) {
-    return { redirectTo: "/provider-onboarding", reason: "PROVIDER_SETUP_REQUIRED" };
-  }
-  return { redirectTo: "/provider/dashboard", reason: "PROVIDER_APPROVED" };
-}
+    const role = (user as any).role || 'customer';
+    const missingFields = getMissingFields(user, role);
+    const profileStatus: ProfileStatus = missingFields.length === 0 ? 'complete' : 'incomplete';
 
-function routeStaffRequest(reqRow: any): PostLoginDecision {
-  if (!reqRow) {
-    return { redirectTo: "/choose-role", reason: "NO_STAFF_REQUEST" };
+    return res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        role,
+        profilePictureUrl: (user as any).profileImageUrl || null,
+      },
+      profileStatus,
+      requiredFields: missingFields,
+      role,
+    });
+  } catch (error: any) {
+    logger.error(`[Whoami] Error: ${error.message}`, { error });
+    return res.status(500).json({ error: "INTERNAL_ERROR" });
   }
-  if (reqRow.status === "pending") {
-    return { redirectTo: "/staff/pending", reason: "STAFF_REQUEST_PENDING" };
-  }
-  if (reqRow.status === "rejected") {
-    return { redirectTo: "/staff/rejected", reason: "STAFF_REQUEST_REJECTED" };
-  }
-  return { redirectTo: "/admin/dashboard", reason: "STAFF_REQUEST_APPROVED" };
 }
 
 export async function chooseRole(req: Request, res: Response) {
@@ -182,32 +263,43 @@ export async function chooseRole(req: Request, res: Response) {
 
     const { intent } = req.body || {};
 
-    if (intent === "customer") {
-      await storage.updateUser(userId, { role: "customer", accessLevel: 1 } as any);
-      return res.json({ ok: true, redirectTo: "/home" });
+    if (intent === 'admin') {
+      return res.status(403).json({ error: "ADMIN_INTENT_REJECTED", message: "Admin role cannot be requested via public intent" });
+    }
+
+    if (intent === "customer" || intent === "loyalty") {
+      await storage.updateUser(userId, { role: intent, accessLevel: 1 } as any);
+      return res.json({ ok: true, nextUrl: "/home", role: intent });
     }
 
     if (intent === "provider") {
-      await storage.updateUser(userId, { role: "provider", accessLevel: 2 } as any);
+      await storage.updateUser(userId, { role: "customer", accessLevel: 1 } as any);
       const user = await storage.getUser(userId);
-      await storage.createProviderApplicationDraft(userId, {
-        email: user?.email || '',
-        firstName: user?.firstName || '',
-        lastName: user?.lastName || '',
-        phoneNumber: user?.phone || '',
-        city: user?.city || '',
-        country: user?.country || 'IL',
-      } as any);
-      return res.json({ ok: true, redirectTo: "/provider-onboarding" });
+      const existingApp = await storage.getProviderApplicationByUser(userId);
+      if (!existingApp) {
+        await storage.createProviderApplicationDraft(userId, {
+          email: user?.email || '',
+          firstName: user?.firstName || '',
+          lastName: user?.lastName || '',
+          phoneNumber: user?.phone || '',
+          city: user?.city || '',
+          country: user?.country || 'IL',
+        } as any);
+      }
+      return res.json({ ok: true, nextUrl: "/provider-onboarding", role: "customer" });
     }
 
-    if (intent === "staff_request") {
-      await storage.createStaffAccessRequest({
-        userId,
-        requestedRole: "admin",
-        status: "pending",
-      });
-      return res.json({ ok: true, redirectTo: "/staff/pending" });
+    if (intent === "staff" || intent === "staff_request") {
+      await storage.updateUser(userId, { role: "customer", accessLevel: 1 } as any);
+      const existingReq = await storage.getStaffAccessRequestByUser(userId);
+      if (!existingReq) {
+        await storage.createStaffAccessRequest({
+          userId,
+          requestedRole: "staff",
+          status: "pending",
+        });
+      }
+      return res.json({ ok: true, nextUrl: "/access-pending", role: "customer" });
     }
 
     return res.status(400).json({ error: "INVALID_INTENT" });
@@ -296,6 +388,13 @@ export async function completeProfile(req: Request, res: Response) {
       if (!e164Regex.test(phone)) {
         return res.status(400).json({ error: "INVALID_PHONE_FORMAT", message: "Phone must be in E.164 format (e.g. +972501234567)" });
       }
+    }
+
+    const user = await storage.getUser(userId);
+    const role = (user as any)?.role || 'customer';
+
+    if (role === 'provider' && !phone) {
+      return res.status(400).json({ error: "PHONE_REQUIRED", message: "Phone number is required for provider accounts" });
     }
 
     const now = new Date();

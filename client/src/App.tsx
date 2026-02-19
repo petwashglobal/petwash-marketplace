@@ -51,6 +51,7 @@ const ProviderPending = lazy(() => import("@/pages/ProviderPending"));
 const ProviderRejected = lazy(() => import("@/pages/ProviderRejected"));
 const StaffPending = lazy(() => import("@/pages/StaffPending"));
 const StaffRejected = lazy(() => import("@/pages/StaffRejected"));
+const AccessPending = lazy(() => import("@/pages/AccessPending"));
 const BlockedPage = lazy(() => import("@/pages/BlockedPage"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
 const SignIn = lazy(() => import("@/pages/SignIn"));
@@ -406,6 +407,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/provider/rejected">{() => <ProviderRejected />}</Route>
         <Route path="/staff/pending">{() => <StaffPending />}</Route>
         <Route path="/staff/rejected">{() => <StaffRejected />}</Route>
+        <Route path="/access-pending">{() => <AccessPending />}</Route>
         <Route path="/blocked">{() => <BlockedPage />}</Route>
         <Route path="/verify-email">{() => <VerifyEmail />}</Route>
 

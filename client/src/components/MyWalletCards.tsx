@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/lib/languageStore";
 import { useAuth } from "@/hooks/useAuth";
 import { getApiUrl } from '@/lib/apiConfig';
+import { PhoneInput } from '@/components/PhoneInput';
 
 export default function MyWalletCards() {
   const { toast } = useToast();
@@ -237,26 +238,20 @@ export default function MyWalletCards() {
               <Label htmlFor="phone" className="text-sm">
                 {isHebrew ? 'טלפון (אופציונלי)' : 'Phone (Optional)'}
               </Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="+972 XX-XXXXXXX"
+              <PhoneInput
                 value={businessCardData.phone}
-                onChange={(e) => setBusinessCardData({ ...businessCardData, phone: e.target.value })}
-                data-testid="input-business-card-phone"
+                onChange={(val) => setBusinessCardData({ ...businessCardData, phone: val || '' })}
+                defaultCountry="IL"
               />
             </div>
             <div>
               <Label htmlFor="mobile" className="text-sm">
                 {isHebrew ? 'נייד (אופציונלי)' : 'Mobile (Optional)'}
               </Label>
-              <Input
-                id="mobile"
-                type="tel"
-                placeholder="+972 5X-XXXXXXX"
+              <PhoneInput
                 value={businessCardData.mobile}
-                onChange={(e) => setBusinessCardData({ ...businessCardData, mobile: e.target.value })}
-                data-testid="input-business-card-mobile"
+                onChange={(val) => setBusinessCardData({ ...businessCardData, mobile: val || '' })}
+                defaultCountry="IL"
               />
             </div>
           </div>

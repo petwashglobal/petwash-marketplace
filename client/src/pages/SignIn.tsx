@@ -115,7 +115,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         body: intent ? JSON.stringify({ intent }) : undefined,
       });
       const data = await res.json();
-      const path = data.redirectTo || fallback;
+      const path = data.nextUrl || data.redirectTo || fallback;
+      localStorage.removeItem('signup_intent');
       window.scrollTo(0, 0);
       navigate(path);
     } catch {

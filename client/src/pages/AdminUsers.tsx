@@ -23,6 +23,7 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/PhoneInput";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -742,7 +743,11 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
               </div>
               <div>
                 <label className="text-sm font-medium">Phone</label>
-                <Input value={editForm.phone} onChange={(e) => setEditForm(f => ({ ...f, phone: e.target.value }))} data-testid="input-edit-phone" />
+                <PhoneInput
+                  value={editForm.phone}
+                  onChange={(val) => setEditForm(f => ({ ...f, phone: val || '' }))}
+                  defaultCountry="IL"
+                />
               </div>
               <div>
                 <label className="text-sm font-medium">Status</label>

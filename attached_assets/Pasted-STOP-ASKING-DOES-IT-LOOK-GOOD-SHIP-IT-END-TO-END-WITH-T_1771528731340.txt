@@ -1,0 +1,103 @@
+STOP ASKING “DOES IT LOOK GOOD”.
+SHIP IT END TO END WITH TESTS + ROUTE GUARDFS + BUILD PASS.
+
+P0 - MUST FIX NOW (NO EXCUSES)
+
+1) INTENT FLOW - FINAL RULES
+- Allowed intents from public UI: customer, loyalty, provider, staff
+- REMOVE admin from public intents completely
+- intent is NOT trusted from localStorage alone
+  - backend must accept intent but validate it against allowlist
+  - staff intent creates access_request only, never grants role
+  - provider intent never grants provider role directly, only starts provider onboarding and sets status pending_review
+
+2) POST LOGIN DECIDER - SINGLE SOURCE OF TRUTH
+- After auth, call /api/auth/post-login with { intent }
+- Backend returns:
+  - nextUrl
+  - requiredStep (optional)
+  - profileStatus
+  - role (current server role)
+- Frontend must navigate ONLY to nextUrl returned by server
+- If user already has role/status, ignore intent and route by server truth
+
+3) ONBOARDING GATE - MUST BE WIRED SERVER SIDE
+- Your onboardingGate middleware exists, now APPLY it
+- Apply to all sensitive routes (non-GET):
+  - /api/bookings, /api/wallet, /api/provider, /api/kyc, /api/loyalty/redeem, /api/payout, /api/escrow, /api/gift-cards
+- Gate logic must be role aware:
+  - customer: name + verified contact + terms consent
+  - loyalty: customer + DOB + loyalty consent
+  - provider: full KYC + profile photo + provider application + pending_review or active rules
+  - staff: must be approved, otherwise block all staff endpoints
+
+4) COMPLETE PROFILE - SERVER DRIVEN, NOT LOCAL STORAGE
+- CompleteProfile page must fetch whoami / profile from server
+- It must not trust localStorage role/intent for required fields
+- Server returns requiredFields array, UI renders those dynamically
+
+5) PHONE INPUT - FIX IT GLOBAL, NOT JUST ONE PAGE
+- Replace every phone field across the app with ONE PhoneInput component
+- Must support:
+  - flag left
+  - country code next
+  - national number input
+  - default IL
+  - allowlisted countries only
+  - output E.164 always
+- Backend must validate E.164 when phone is provided
+- Do NOT hardcode Israel-only helper text anywhere
+
+6) STAFF ACCESS REQUEST - REQUIRED
+- Implement access_requests table + endpoints:
+  - POST /api/access-requests (intent=staff creates pending)
+  - GET /api/access-requests (admin only)
+  - POST /api/access-requests/:id/approve (super admin only)
+  - POST /api/access-requests/:id/deny
+- Approval assigns staff role and sets status active
+- Until approved:
+  - redirect user to /access-pending
+  - block any staff/admin routes server-side
+
+7) PROVIDER PIPELINE - REQUIRED
+- Provider signup must create provider_application record with:
+  - userId, services, coverage, status draft/pending_review/approved/rejected
+- Provider dashboard access only if:
+  - application exists AND required steps done
+- Accepting jobs only if approved and active
+
+8) BUILD MUST PASS + FIX THE JSX ERROR PROPERLY
+- You already had AdminUsers.tsx mismatch errors in production build
+- Run: npm run build locally and in CI
+- Do not merge until Vite build passes
+
+P1 - SECURITY + COMPLIANCE (NEXT, BUT START NOW)
+
+9) PASSKEYS (FACE ID / TOUCH ID)
+- Implement WebAuthn passkeys:
+  - enroll after first login
+  - sign in with passkey button shown first when available
+- For admin roles, require step-up auth for sensitive actions
+
+10) LEGAL AUDIT LOGS
+- Every auth and onboarding step must write audit events:
+  - eventType, actorId, ip, userAgent, traceId, timestamp, payload hash
+- Consent receipt:
+  - termsVersion, privacyVersion, marketing consents, timestamp, locale
+
+P0 - TESTS YOU MUST DELIVER BEFORE ANY CLAIMS
+- Playwright/Cypress smoke tests:
+  1) customer signup -> forced complete profile -> can browse -> can book
+  2) loyalty signup -> DOB required -> join -> redeem blocked until complete
+  3) provider signup -> application -> KYC -> pending_review -> blocked from accepting jobs
+  4) staff intent -> access-pending -> cannot access staff routes
+  5) staff approved -> access works
+  6) phone input accepts +61 and +1 and +44, outputs E.164
+
+FINAL ACCEPTANCE CRITERIA (WHAT I EXPECT YOU TO DELIVER)
+- No user can reach the wrong area after sign up
+- No booking/wallet/kyc action can happen with incomplete profile
+- Staff/admin cannot be created self-service
+- Phone input is global, flag selector, allowlisted countries, E.164
+- Production build passes
+- Logs show traceId and audit events for signup and onboarding

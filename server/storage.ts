@@ -923,6 +923,7 @@ export interface IStorage {
   
   // Staff Access Requests (Role Routing)
   getStaffAccessRequestByUser(userId: string): Promise<StaffAccessRequest | undefined>;
+  getAllStaffAccessRequests(): Promise<StaffAccessRequest[]>;
   createStaffAccessRequest(data: InsertStaffAccessRequest): Promise<StaffAccessRequest>;
   updateStaffAccessRequest(id: number, updates: Partial<StaffAccessRequest>): Promise<StaffAccessRequest>;
 }
@@ -5401,6 +5402,10 @@ export class DatabaseStorage implements IStorage {
   async getStaffAccessRequestByUser(userId: string): Promise<StaffAccessRequest | undefined> {
     const [req] = await db.select().from(staffAccessRequests).where(eq(staffAccessRequests.userId, userId)).orderBy(desc(staffAccessRequests.requestedAt)).limit(1);
     return req;
+  }
+
+  async getAllStaffAccessRequests(): Promise<StaffAccessRequest[]> {
+    return db.select().from(staffAccessRequests).orderBy(desc(staffAccessRequests.requestedAt));
   }
 
   async createStaffAccessRequest(data: InsertStaffAccessRequest): Promise<StaffAccessRequest> {

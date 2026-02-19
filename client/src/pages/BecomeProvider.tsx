@@ -1032,12 +1032,11 @@ export default function BecomeProvider() {
 
                   <div>
                     <Label className="text-gray-600 font-medium">{isHebrew ? 'טלפון' : 'Phone'} *</Label>
-                    <Input 
-                      type="tel"
-                      {...form.register('emergencyContactPhone')}
-                      placeholder="+972 50 987 6543"
-                      className="mt-2 h-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
-                      data-testid="input-emergency-phone"
+                    <PhoneInput
+                      value={form.watch('emergencyContactPhone')}
+                      onChange={(value) => form.setValue('emergencyContactPhone', value)}
+                      language={isHebrew ? 'he' : 'en'}
+                      defaultCountry="IL"
                     />
                     {form.formState.errors.emergencyContactPhone && (
                       <p className="text-red-400 text-sm mt-1">{form.formState.errors.emergencyContactPhone.message}</p>

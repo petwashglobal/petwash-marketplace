@@ -103,7 +103,8 @@ import contractorInvoicesRoutes from "./routes/contractor-invoices";
 import subcontractorAgreementsRoutes from "./routes/subcontractor-agreements";
 import providerTrainingRoutes from "./routes/provider-training";
 import policeCheckRoutes from "./routes/police-check";
-import { postLoginDecider, chooseRole, approveAccess, completeProfile } from "./routes/post-login";
+import { postLoginDecider, chooseRole, approveAccess, completeProfile, getWhoami } from "./routes/post-login";
+import accessRequestsRoutes from "./routes/access-requests";
 import adminProviderReviewRoutes from "./routes/admin-provider-review";
 import aiPayoutVerificationRoutes from "./routes/ai-payout-verification";
 import israeliCompliance2025Routes from "./routes/israeli-compliance-2025";
@@ -240,6 +241,7 @@ import { loginRateLimitMiddleware, recordFailedLogin, clearLoginAttempts } from 
 import { verifyAppCheckToken, verifyAppCheckTokenOptional } from './middleware/appCheckMiddleware';
 import { logger } from './lib/logger';
 import { applySecurityAndOneTap } from './security/productionHardeningAndOneTap';
+import { requireOnboardingComplete } from './middleware/onboardingGate';
 import { logSecurityEvent } from './services/securityEvents';
 import { checkFailedBurst, alertPasskeyRevoked, alertNewDeviceIfUnusual, getClientIP, getCityFromIP } from './services/alerts';
 import { hashPassword, verifyPassword } from './simpleAuth';
@@ -942,6 +944,9 @@ self.addEventListener('notificationclick', (event) => {
   // POST /api/auth/post-login - Central role-based routing decider
   app.post('/api/auth/post-login', requireAuth, postLoginDecider);
   
+  // GET /api/auth/whoami - Returns current user profile status and required fields
+  app.get('/api/auth/whoami', requireAuth, getWhoami);
+  
   // POST /api/auth/choose-role - User selects their intent (customer/provider/staff)
   app.post('/api/auth/choose-role', requireAuth, chooseRole);
   
@@ -950,6 +955,9 @@ self.addEventListener('notificationclick', (event) => {
   
   // POST /api/auth/complete-profile - Complete user profile (first onboarding step)
   app.post('/api/auth/complete-profile', requireAuth, completeProfile);
+
+  // Staff Access Requests CRUD
+  app.use('/api/access-requests', apiLimiter, accessRequestsRoutes);
 
   // GET /api/auth/health - Health check for mobile auth system
   app.get('/api/auth/health', (_req, res) => {
@@ -2982,7 +2990,7 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  app.post('/api/gift-cards/redeem', requireAuth, async (req: any, res) => {
+  app.post('/api/gift-cards/redeem', requireAuth, requireOnboardingComplete, async (req: any, res) => {
     try {
       const { code } = req.body;
       const customerId = (req.session as any)?.customerId;
@@ -8875,7 +8883,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use(traceIdMiddleware);
   app.use(requireEmailVerifiedForProtectedPaths);
 
-  app.use('/api/loyalty', validateFirebaseToken, apiLimiter, loyaltyRoutes);
+  app.use('/api/loyalty', validateFirebaseToken, apiLimiter, requireOnboardingComplete, loyaltyRoutes);
 
   // Admin Google Sheets URL endpoint (protected)
   app.get('/api/admin/sheets-url', validateFirebaseToken, async (req: any, res) => {
@@ -9053,7 +9061,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api', ledRouter);
   
   // Apple Wallet Pass Generation (VIP Cards & E-Vouchers)
-  app.use('/api/wallet', apiLimiter, walletRoutes);
+  app.use('/api/wallet', apiLimiter, requireOnboardingComplete, walletRoutes);
   app.use('/api/google-wallet', apiLimiter, googleWalletRoutes);
   
   // Credit Wallet & E-Gift Redemption (Unified credits across all platforms)
@@ -9256,7 +9264,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/calendar', apiLimiter, calendarRoutes);
   app.use('/api/gps', apiLimiter, gpsTrackingRoutes);
   app.use('/api/fcm', apiLimiter, fcmRoutes);
-  app.use('/api/gift-cards', giftCardsRoutes);
+  app.use('/api/gift-cards', requireOnboardingComplete, giftCardsRoutes);
   
   // PetWash Vouchers 2025 - 7-Star Luxury System
   app.use('/api/vouchers-2025', apiLimiter, vouchers2025Routes);
@@ -9327,10 +9335,10 @@ self.addEventListener('notificationclick', (event) => {
   });
   
   // Escrow Payment System (72-hour hold for Sitter Suite)
-  app.use('/api/escrow', apiLimiter, escrowRoutes);
+  app.use('/api/escrow', apiLimiter, requireOnboardingComplete, escrowRoutes);
   
   // Unified Booking System (Sitter Suite, Walk My Pet, PetTrek)
-  app.use('/api/bookings', apiLimiter, bookingsRoutes);
+  app.use('/api/bookings', apiLimiter, requireOnboardingComplete, bookingsRoutes);
   
   // UNIFIED BOOKING ENGINE 2025 - Reference implementation
   // Immutable transactions, event logging, admin audit trail
