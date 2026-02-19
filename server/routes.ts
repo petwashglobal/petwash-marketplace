@@ -10013,11 +10013,22 @@ self.addEventListener('notificationclick', (event) => {
         pushNotifications,
         acceptedTerms,
         consentTimestamp,
+        consentVersion,
+        consentTextHash,
         captchaToken,
         traceId
       } = req.body;
 
       logger.info('[CreateProfile] Processing', { traceId, uid, email });
+
+      if (!acceptedTerms || !consentVersion || !consentTextHash) {
+        logger.warn('[CreateProfile] Consent gate: missing consent data', { traceId, uid, acceptedTerms, consentVersion: !!consentVersion, consentTextHash: !!consentTextHash });
+        return res.status(400).json({
+          success: false,
+          error: 'Terms and privacy consent are required to create an account.',
+          errorCode: 'CONSENT_REQUIRED'
+        });
+      }
 
       if (captchaToken) {
         const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
@@ -10091,6 +10102,36 @@ self.addEventListener('notificationclick', (event) => {
           logger.error('[Phase1] PostgreSQL user creation failed', dbErr, { traceId, uid });
           return res.status(500).json({ success: false, error: 'Registration failed - database error. Please try again.', errorCode: 'DB_WRITE_FAILED' });
         }
+      }
+
+      // ===== CONSENT RECORDING (audit trail - enforced above) =====
+      try {
+        const consentIp = req.ip || req.headers['x-forwarded-for'] as string || 'unknown';
+        const consentUA = req.headers['user-agent'] || null;
+        const consentLocale = req.headers['accept-language'] || null;
+        
+        const { pool: dbPool } = await import('./db');
+        
+        await dbPool.query(
+          `INSERT INTO user_consents (user_id, consent_type, consent_version, consent_text_hash, accepted, ip, user_agent, locale, source, trace_id)
+           VALUES ($1, 'terms', $2, $3, true, $4, $5, $6, 'web', $7)`,
+          [userId, consentVersion, consentTextHash, consentIp, consentUA, consentLocale, traceId]
+        );
+        await dbPool.query(
+          `INSERT INTO user_consents (user_id, consent_type, consent_version, consent_text_hash, accepted, ip, user_agent, locale, source, trace_id)
+           VALUES ($1, 'privacy', $2, $3, true, $4, $5, $6, 'web', $7)`,
+          [userId, consentVersion, consentTextHash, consentIp, consentUA, consentLocale, traceId]
+        );
+        
+        await dbPool.query(
+          `INSERT INTO auth_events (user_id, event_type, success, ip, user_agent, trace_id)
+           VALUES ($1, 'REGISTRATION', true, $2, $3, $4)`,
+          [userId, consentIp, consentUA, traceId]
+        );
+        
+        logger.info('[CreateProfile] Consent recorded', { traceId, userId, consentVersion });
+      } catch (consentErr) {
+        logger.warn('[CreateProfile] Consent recording failed (non-blocking)', consentErr);
       }
 
       // ===== PHASE 2: Best-effort side effects (failures do NOT block registration) =====

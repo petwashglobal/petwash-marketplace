@@ -4,6 +4,8 @@ import { getCurrentUser } from "../simpleAuth";
 import { logger } from "../lib/logger";
 import { twilioSMSService } from "../services/TwilioSMSService";
 import { db as firestoreDb, auth as fbAdminAuth } from '../lib/firebase-admin';
+import { pool } from '../db';
+import { userConsents, authEvents } from '@shared/schema';
 
 async function getFirebaseUserFromRequest(req: express.Request): Promise<{uid: string; email?: string; displayName?: string} | null> {
   try {
@@ -352,6 +354,107 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
       ok: false,
       error: 'Server error'
     });
+  }
+});
+
+/**
+ * Record user consent (Terms, Privacy, etc.) with full audit trail
+ * POST /api/consents
+ */
+publicAuthRouter.post("/api/consents", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ ok: false, error: 'Authentication required' });
+    }
+    const token = authHeader.split('Bearer ')[1];
+    const { getAuth } = await import('firebase-admin/auth');
+    const decodedToken = await getAuth().verifyIdToken(token);
+    const userId = decodedToken.uid;
+
+    const traceId = req.headers['x-trace-id'] as string || crypto.randomUUID();
+    const { consents } = req.body;
+
+    if (!consents || !Array.isArray(consents) || consents.length === 0) {
+      return res.status(400).json({ ok: false, error: 'consents[] array is required' });
+    }
+
+    const ip = req.ip || req.headers['x-forwarded-for'] as string || 'unknown';
+    const userAgent = req.headers['user-agent'] || null;
+    const locale = req.headers['accept-language'] || null;
+    const source = (req.body.source || 'web') as string;
+
+    const insertedIds: number[] = [];
+
+    for (const consent of consents) {
+      const { consentType, consentVersion, consentTextHash, accepted } = consent;
+      if (!consentType || !consentVersion || !consentTextHash) {
+        return res.status(400).json({
+          ok: false,
+          error: `Each consent needs consentType, consentVersion, consentTextHash`,
+          traceId
+        });
+      }
+
+      const result = await pool.query(
+        `INSERT INTO user_consents (user_id, consent_type, consent_version, consent_text_hash, accepted, ip, user_agent, locale, source, trace_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+        [userId, consentType, consentVersion, consentTextHash, accepted !== false, ip, userAgent, locale, source, traceId]
+      );
+      insertedIds.push(result.rows[0].id);
+    }
+
+    logger.info('[Consent] Recorded', { traceId, userId, count: consents.length, ids: insertedIds });
+
+    return res.json({ ok: true, traceId, consentIds: insertedIds });
+  } catch (err: any) {
+    if (err.code === 'auth/id-token-expired' || err.code === 'auth/argument-error') {
+      return res.status(401).json({ ok: false, error: 'Invalid or expired token' });
+    }
+    logger.error('[Consent] Error recording consent:', err);
+    return res.status(500).json({ ok: false, error: 'Server error' });
+  }
+});
+
+/**
+ * Get consent status for a user
+ * GET /api/consents/status?userId=xxx
+ */
+publicAuthRouter.get("/api/consents/status", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ ok: false, error: 'Authentication required' });
+    }
+    const token = authHeader.split('Bearer ')[1];
+    const { getAuth } = await import('firebase-admin/auth');
+    const decodedToken = await getAuth().verifyIdToken(token);
+    const userId = decodedToken.uid;
+
+    const result = await pool.query(
+      `SELECT consent_type, consent_version, accepted, accepted_at
+       FROM user_consents
+       WHERE user_id = $1
+       ORDER BY accepted_at DESC`,
+      [userId]
+    );
+
+    const latestByType: Record<string, any> = {};
+    for (const row of result.rows) {
+      if (!latestByType[row.consent_type]) {
+        latestByType[row.consent_type] = row;
+      }
+    }
+
+    return res.json({
+      ok: true,
+      consents: latestByType,
+      hasTerms: !!latestByType['terms']?.accepted,
+      hasPrivacy: !!latestByType['privacy']?.accepted,
+    });
+  } catch (err) {
+    logger.error('[Consent] Error fetching status:', err);
+    return res.status(500).json({ ok: false, error: 'Server error' });
   }
 });
 

@@ -251,14 +251,16 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       });
 
       const consentTimestamp = new Date().toISOString();
+      const consentVersion = '2026-02-19-v1';
+      const consentText = `Pet Wash™ Terms of Service v${consentVersion} + Privacy Policy v${consentVersion}`;
+      const consentHashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(consentText));
+      const consentTextHash = Array.from(new Uint8Array(consentHashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
       const now = new Date().toISOString();
       
       logger.debug("Creating user profile via server API");
       
-      // Get Firebase ID token for authenticated API call
       const idToken = await user.getIdToken();
       
-      // Create user profile via server API (bypasses Firestore security rules)
       const profileResponse = await fetch(getApiUrl('/api/users/create-profile'), {
         method: 'POST',
         headers: {
@@ -279,6 +281,8 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
           pushNotifications: formData.pushNotifications,
           acceptedTerms: formData.acceptedTerms,
           consentTimestamp,
+          consentVersion,
+          consentTextHash,
           captchaToken,
           traceId
         })

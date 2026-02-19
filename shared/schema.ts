@@ -10993,3 +10993,51 @@ export const kycIncidents = pgTable("kyc_incidents", {
   index("idx_kyc_incidents_status").on(table.status),
   index("idx_kyc_incidents_severity").on(table.severity),
 ]);
+
+export const userConsents = pgTable("user_consents", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  consentType: varchar("consent_type", { length: 50 }).notNull(),
+  consentVersion: varchar("consent_version", { length: 50 }).notNull(),
+  consentTextHash: varchar("consent_text_hash", { length: 128 }).notNull(),
+  accepted: boolean("accepted").notNull(),
+  acceptedAt: timestamp("accepted_at").defaultNow().notNull(),
+  ip: varchar("ip", { length: 100 }),
+  userAgent: text("user_agent"),
+  locale: varchar("locale", { length: 50 }),
+  source: varchar("source", { length: 20 }),
+  traceId: varchar("trace_id", { length: 100 }),
+}, (table) => [
+  index("idx_user_consents_user_id").on(table.userId),
+  index("idx_user_consents_type_version").on(table.consentType, table.consentVersion),
+]);
+
+export const insertUserConsentSchema = createInsertSchema(userConsents).omit({
+  id: true,
+  acceptedAt: true,
+});
+export type InsertUserConsent = z.infer<typeof insertUserConsentSchema>;
+export type UserConsent = typeof userConsents.$inferSelect;
+
+export const authEvents = pgTable("auth_events", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id"),
+  eventType: varchar("event_type", { length: 50 }).notNull(),
+  success: boolean("success").notNull(),
+  reason: text("reason"),
+  ip: varchar("ip", { length: 100 }),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  traceId: varchar("trace_id", { length: 100 }),
+}, (table) => [
+  index("idx_auth_events_user_id").on(table.userId),
+  index("idx_auth_events_type").on(table.eventType),
+  index("idx_auth_events_created_at").on(table.createdAt),
+]);
+
+export const insertAuthEventSchema = createInsertSchema(authEvents).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertAuthEvent = z.infer<typeof insertAuthEventSchema>;
+export type AuthEvent = typeof authEvents.$inferSelect;

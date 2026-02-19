@@ -99,8 +99,25 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
   const { toast } = useToast();
   // CRITICAL: No RTL layout changes - Hebrew mode only changes text content
 
+  const computeConsentHash = async (): Promise<{ version: string; hash: string }> => {
+    const consentVersion = '2026-02-19-v1';
+    const consentText = `Pet Wash™ Terms of Service v${consentVersion} + Privacy Policy v${consentVersion}`;
+    const encoder = new TextEncoder();
+    const dataBuffer = encoder.encode(`${consentVersion}:${consentText}`);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return { version: consentVersion, hash };
+  };
+
   const registrationMutation = useMutation({
     mutationFn: async (data: RegistrationData) => {
+      if (!data.acceptsTerms || !data.acceptsPrivacy) {
+        throw new Error('Terms and privacy consent are required');
+      }
+
+      const { version: consentVersion, hash: consentTextHash } = await computeConsentHash();
+
       const formDataToSend = new FormData();
       
       Object.entries(data).forEach(([key, value]) => {
@@ -114,6 +131,10 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
           formDataToSend.append(key, String(value));
         }
       });
+
+      formDataToSend.append('consentVersion', consentVersion);
+      formDataToSend.append('consentTextHash', consentTextHash);
+      formDataToSend.append('acceptedTerms', String(data.acceptsTerms));
 
       if (captchaToken) {
         formDataToSend.append('captchaToken', captchaToken);
@@ -527,7 +548,7 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
           {/* Submit Button */}
           <Button
             type="submit"
-            disabled={registrationMutation.isPending || !captchaToken}
+            disabled={registrationMutation.isPending || !captchaToken || !formData.acceptsTerms || !formData.acceptsPrivacy}
             className="w-full bg-black text-white hover:bg-gray-800 py-4 text-xl font-semibold rounded-xl transition-colors shadow-lg"
           >
             {registrationMutation.isPending

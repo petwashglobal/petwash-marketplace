@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithCustomToken, RecaptchaVerifier, signInWithPhoneNumber, PhoneAuthProvider, signInWithCredential, getAdditionalUserInfo } from "firebase/auth";
+import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithCustomToken, getAdditionalUserInfo } from "firebase/auth";
 import { signInWithBestMethod, isIOS, createGoogleProvider, createAppleProvider, createFacebookProvider, getDeviceInfo } from "@/lib/iosAuthHandler";
 import { auth } from "../lib/firebase";
 import { getApiUrl } from "@/lib/apiConfig";
@@ -71,7 +71,6 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const [verificationCode, setVerificationCode] = useState("");
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
   const [phoneLoading, setPhoneLoading] = useState(false);
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -1698,10 +1697,6 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   setPhoneNumber('');
                   setVerificationCode('');
                   setConfirmationResult(null);
-                  if (recaptchaVerifierRef.current) {
-                    recaptchaVerifierRef.current.clear();
-                    recaptchaVerifierRef.current = null;
-                  }
                 }}
                 variant="ghost"
                 className="w-full h-11 text-sm text-neutral-500 hover:text-neutral-900 hover:bg-gray-50 rounded-none transition-all tracking-wider uppercase"
