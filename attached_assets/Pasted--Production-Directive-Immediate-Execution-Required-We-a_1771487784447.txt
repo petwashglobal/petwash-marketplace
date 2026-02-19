@@ -1,0 +1,202 @@
+🚨 Production Directive – Immediate Execution Required
+
+We are no longer in development mode.
+
+PetWash is operating in Israel in 2026 under real legal exposure.
+
+This platform handles:
+
+• Government ID documents
+• Biometric verification
+• Payments
+• Loyalty wallets
+• Provider onboarding
+• KYC
+• Dispatch
+• Multi-role access
+• Financial reconciliation
+
+This must operate at fintech-grade reliability, not startup tolerance.
+
+99% working is failure.
+
+⸻
+
+🔐 1. Authentication & Security – Mandatory
+
+Implement and enforce:
+
+✅ Mandatory
+	•	Production-only environment variables via Secret Manager
+	•	Firebase production domain verification
+	•	reCAPTCHA production enforcement (no fail-open)
+	•	Email verification required before activation
+	•	Strict server-side validation on all registration endpoints
+	•	Rate limiting per endpoint category
+	•	Role-based access enforced server-side only
+
+✅ Two-Factor Authentication
+
+Users must be able to enable:
+	•	SMS OTP
+	•	Email OTP
+	•	App-based OTP
+	•	Passkeys / Face ID / Touch ID
+
+Admins and KYC staff:
+	•	MFA mandatory
+	•	Cannot disable
+
+⸻
+
+📱 2. Mobile Login Must Work Perfectly
+
+Google Sign-In must:
+	•	Work on iOS Safari
+	•	Work on Android Chrome
+	•	Work in embedded webview
+	•	Have proper redirect fallback
+	•	Have domain whitelisting verified
+
+Mobile login failures are not acceptable.
+
+⸻
+
+🧾 3. KYC Must Be Bank-Level
+
+Required:
+	•	Server-side processing only
+	•	No temporary public storage
+	•	Strict TTL deletion
+	•	Audit trail for every view
+	•	KYC-admin role separation
+	•	DB-backed rate limiting
+	•	Anomaly detection
+	•	IP logging
+	•	Admin access logging
+	•	Incident response documentation
+
+If we store biometric data, we must be legally defensible.
+
+⸻
+
+💳 4. Payment & Wallet
+	•	Credit wallet cannot double-spend
+	•	Atomic booking confirmation
+	•	Escrow integrity
+	•	Government-compliant receipts
+	•	Immutable financial audit log
+	•	Reconciliation report
+	•	Fraud detection flags
+
+This must behave like Stripe, not a hobby system.
+
+⸻
+
+🐕 5. Provider & Host Execution Flow
+
+The provider lifecycle must be clean:
+	1.	Provider registers
+	2.	Identity verified
+	3.	Status = pending → approved
+	4.	Presence tracking
+	5.	Job offer received
+	6.	Accept / reject
+	7.	Atomic assignment
+	8.	Escrow confirmed
+	9.	Service executed
+	10.	Completion confirmed
+	11.	Receipt generated
+	12.	Funds released
+
+No silent failures.
+No race conditions.
+No in-memory dispatch state.
+Everything DB-backed.
+
+⸻
+
+🗂 6. Environment Discipline
+
+We must have:
+	•	Dev environment
+	•	Staging environment
+	•	Production environment
+
+Each separate:
+	•	DB
+	•	Firebase
+	•	reCAPTCHA
+	•	OAuth
+	•	Secrets
+
+No mixed configuration.
+
+⸻
+
+📊 7. Production Validation Checklist
+
+Before calling anything “live”:
+	•	DB migrations verified
+	•	Auth tested
+	•	Google login tested
+	•	reCAPTCHA tested
+	•	Address autocomplete tested
+	•	Provider registration tested
+	•	Booking tested
+	•	Dispatch tested
+	•	Wallet tested
+	•	KYC tested
+	•	Sheets sync verified
+	•	Logs verified
+
+Signed off.
+
+⸻
+
+⚖ Legal & Compliance Note
+
+We operate in Israel.
+
+If:
+	•	KYC fails
+	•	Payment fails
+	•	Data leaks
+	•	Admin access compromised
+	•	Dispatch misfires
+	•	Wallet miscalculates
+
+We can face:
+	•	Consumer claims
+	•	Regulatory investigation
+	•	Civil litigation
+	•	Insurance refusal
+	•	Business shutdown
+
+This is not theoretical.
+
+Therefore:
+
+Everything must function fully.
+
+Not partially.
+Not “almost.”
+Not “dev-ready.”
+Production-ready.
+
+⸻
+
+🎯 Final Instruction
+
+Do not respond with theory.
+
+Respond with:
+	1.	What is deployed.
+	2.	What is missing.
+	3.	Timeline for full production hardening.
+	4.	What is blocked by environment.
+	5.	What requires founder decision.
+
+We are executing.
+
+Not experimenting.
