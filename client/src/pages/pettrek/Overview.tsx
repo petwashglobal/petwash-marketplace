@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import ProviderRegistrationBanner from "@/components/ProviderRegistrationBanner";
+import { GooglePlacesAutocomplete } from "@/components/ui/google-places-autocomplete";
 import { 
   Car, 
   Calendar, 
@@ -31,6 +33,8 @@ export default function PetTrekOverview() {
   const { t, language } = useLanguage();
   const isRtl = language === 'he' || language === 'ar';
   const BackArrow = isRtl ? ArrowRight : ArrowLeft;
+  const [pickupLocation, setPickupLocation] = useState('');
+  const [destination, setDestination] = useState('');
   
   const serviceTypes = [
     {
@@ -191,25 +195,25 @@ export default function PetTrekOverview() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-semibold mb-2 text-gray-700">{t('pettrek.pickupLocation')}</label>
-                    <div className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-200">
-                      <MapPin className="h-5 w-5 text-purple-600" />
-                      <input 
-                        type="text" 
-                        placeholder={t('pettrek.enterAddress')}
-                        className="flex-1 outline-none text-sm"
-                      />
-                    </div>
+                    <GooglePlacesAutocomplete
+                      value={pickupLocation}
+                      onChange={(val) => setPickupLocation(val)}
+                      onPlaceSelected={(place) => setPickupLocation(place.formattedAddress)}
+                      placeholder={t('pettrek.enterAddress')}
+                      country={['il']}
+                      inputClassName="px-4 py-2 text-sm outline-none flex-1 border border-gray-200 rounded-lg focus:border-purple-600"
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold mb-2 text-gray-700">{t('pettrek.destination')}</label>
-                    <div className="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-200">
-                      <MapPin className="h-5 w-5 text-purple-600" />
-                      <input 
-                        type="text" 
-                        placeholder={t('pettrek.whereTo')}
-                        className="flex-1 outline-none text-sm"
-                      />
-                    </div>
+                    <GooglePlacesAutocomplete
+                      value={destination}
+                      onChange={(val) => setDestination(val)}
+                      onPlaceSelected={(place) => setDestination(place.formattedAddress)}
+                      placeholder={t('pettrek.whereTo')}
+                      country={['il']}
+                      inputClassName="px-4 py-2 text-sm outline-none flex-1 border border-gray-200 rounded-lg focus:border-purple-600"
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold mb-2 text-gray-700">{t('pettrek.when')}</label>

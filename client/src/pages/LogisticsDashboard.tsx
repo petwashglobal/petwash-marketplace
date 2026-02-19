@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
+import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import {
   Plus,
   Package,
@@ -29,6 +30,8 @@ export default function LogisticsDashboard() {
   const [fulfillmentOrderType, setFulfillmentOrderType] = useState("station_restock");
   const [fulfillmentPriority, setFulfillmentPriority] = useState("normal");
   const [inventoryCategory, setInventoryCategory] = useState("shampoo");
+  const [warehouseAddress, setWarehouseAddress] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
   const { toast } = useToast();
 
   const { data: warehouses, isLoading: warehousesLoading } = useQuery({
@@ -480,7 +483,22 @@ export default function LogisticsDashboard() {
               </div>
               <div className="col-span-2">
                 <Label htmlFor="address">Address *</Label>
-                <Input id="address" name="address" required data-testid="input-warehouse-address" />
+                <GooglePlacesAutocomplete
+                  value={warehouseAddress}
+                  onChange={(val) => setWarehouseAddress(val)}
+                  onPlaceSelected={(place) => {
+                    setWarehouseAddress(place.formattedAddress);
+                    const cityInput = document.getElementById('city') as HTMLInputElement;
+                    const countryInput = document.getElementById('country') as HTMLInputElement;
+                    if (cityInput && place.city) cityInput.value = place.city;
+                    if (countryInput && place.country) countryInput.value = place.country;
+                  }}
+                  placeholder="Start typing warehouse address..."
+                  country={['il']}
+                  required
+                  data-testid="input-warehouse-address"
+                />
+                <input type="hidden" name="address" value={warehouseAddress} />
               </div>
               <div>
                 <Label htmlFor="city">City *</Label>
@@ -652,7 +670,15 @@ export default function LogisticsDashboard() {
               </div>
               <div className="col-span-2">
                 <Label htmlFor="deliveryAddress">Delivery Address</Label>
-                <Input id="deliveryAddress" name="deliveryAddress" data-testid="input-delivery-address" />
+                <GooglePlacesAutocomplete
+                  value={deliveryAddress}
+                  onChange={(val) => setDeliveryAddress(val)}
+                  onPlaceSelected={(place) => setDeliveryAddress(place.formattedAddress)}
+                  placeholder="Start typing delivery address..."
+                  country={['il']}
+                  data-testid="input-delivery-address"
+                />
+                <input type="hidden" name="deliveryAddress" value={deliveryAddress} />
               </div>
               <div className="col-span-2">
                 <Label htmlFor="deliveryNotes">Delivery Notes</Label>

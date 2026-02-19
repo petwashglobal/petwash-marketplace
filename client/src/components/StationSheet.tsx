@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import {
   MapPin,
   Package,
@@ -546,14 +547,21 @@ export function StationSheet({ stationId, open, onOpenChange }: StationSheetProp
 
                   <div className="space-y-2">
                     <Label htmlFor="addressLine1">Address Line 1</Label>
-                    <Input
-                      id="addressLine1"
+                    <GooglePlacesAutocomplete
                       value={addressLine1}
-                      onChange={(e) => {
-                        setAddressLine1(e.target.value);
+                      onChange={(val) => {
+                        setAddressLine1(val);
                         setOverviewSaveState("unsaved");
                       }}
-                      placeholder="123 Main Street"
+                      onPlaceSelected={(place) => {
+                        setAddressLine1(place.formattedAddress);
+                        if (place.city) {
+                          setCity(place.city);
+                        }
+                        setOverviewSaveState("unsaved");
+                      }}
+                      placeholder="Start typing station address..."
+                      country={['il']}
                       data-testid="input-address-line1"
                     />
                   </div>
