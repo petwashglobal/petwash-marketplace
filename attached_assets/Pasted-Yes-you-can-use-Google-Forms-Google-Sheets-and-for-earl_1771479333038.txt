@@ -1,0 +1,60 @@
+Yes, you can use Google Forms + Google Sheets, and for early-stage onboarding it’s often the fastest way to stop “registration not saving” headaches.
+
+But it’s not always “best” for KYC and anything involving ID documents. Here’s the clean 2026 way to think about it:
+
+When Google Forms + Sheets is a good idea
+
+Use it for non-sensitive intake and operations:
+	•	Provider application (name, phone, service type, city, availability)
+	•	Loyalty club sign up (email, phone, address, pet details)
+	•	Booking inquiry requests (date, time window, service type)
+	•	Support tickets and feedback
+	•	Admin checklists and internal workflows
+
+Why it helps
+	•	Near zero bugs: Google handles form validation and saving
+	•	Instant audit trail: timestamp + edits history
+	•	Easy sharing with staff
+	•	Easy export to CRM later
+
+When Google Forms + Sheets is NOT the best idea
+
+Avoid it for anything that includes government IDs, disability certificates, passports, selfies, biometric images:
+	•	Forms can accept file uploads, but it stores files in Drive and links them in Sheets.
+	•	That creates more places for leaks if permissions are wrong.
+	•	Harder to enforce strict retention and deletion policies.
+	•	Harder to do strong access control (KYC-admin role, per-record access).
+
+For KYC, a safer pattern is:
+	•	Your app uploads to secure storage with strict rules and auto-delete TTL.
+	•	You store only verification result (pass/fail, score, timestamps, audit log) in your database.
+	•	If you need Sheets, you push a “summary row” only (no files, no ID numbers).
+
+Best “hybrid” setup for you
+
+Front end: your site/app
+Backend: your database + secure storage
+Google Sheets: for operations visibility only
+
+Examples:
+	•	Sheet row contains: userId, name, phone, city, role, status, createdAt, lastStep, approvalDecision
+	•	Sheet does not contain: passport number, ID number, file links, raw OCR text
+
+Why your dev “Sheets only” approach keeps failing sometimes
+
+Common causes:
+	•	Using a public Apps Script endpoint without proper CORS
+	•	Script not deployed as “Web App” correctly (permissions wrong)
+	•	Rate limits (Apps Script has quotas)
+	•	Field mismatch between frontend and Sheets columns
+	•	Retries without idempotency cause duplicates or errors
+
+What I recommend you tell him (simple rule)
+	1.	Use Google Forms + Sheets for “applications” and “leads” only
+	2.	Use the platform DB for accounts, authentication, roles, bookings, payments
+	3.	Use secure KYC flow separate from Sheets, and push only a summary row
+
+If you want, paste here what you are trying to collect in the onboarding (fields + which ones include documents), and I’ll tell you exactly:
+	•	which fields should go to Forms/Sheets
+	•	which must stay in the platform DB
+	•	and the safest way to connect them without breaking sign-up or Google Maps autocomplete
