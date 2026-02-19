@@ -184,6 +184,7 @@ import productionMonitorRoutes from "./routes/production-monitor";
 import octopusBrainRoutes from "./routes/octopus-brain";
 import octopusEngineRoutes from "./routes/octopus-engine";
 import kyc2026Routes from "./routes/kyc2026";
+import mfaRoutes from "./routes/mfa";
 import { publicAuthRouter } from "./routes/publicAuthRoutes";
 // SSL certificate endpoints removed - handled by Replit platform
 import { 
@@ -8854,6 +8855,11 @@ self.addEventListener('notificationclick', (event) => {
 
   // Loyalty & Rewards routes - Protected with Firebase auth
   const { validateFirebaseToken, optionalFirebaseToken } = await import('./middleware/firebase-auth');
+  const { requireEmailVerifiedForProtectedPaths } = await import('./middleware/requireEmailVerified');
+  const { requireAdminMfa } = await import('./middleware/requireMfa');
+
+  app.use(requireEmailVerifiedForProtectedPaths);
+
   app.use('/api/loyalty', validateFirebaseToken, apiLimiter, loyaltyRoutes);
 
   // Admin Google Sheets URL endpoint (protected)
@@ -8936,13 +8942,13 @@ self.addEventListener('notificationclick', (event) => {
 
   // Admin routes
   const adminRoutes = await import('./routes/admin');
-  app.use('/api/admin', adminLimiter, adminRoutes.default);
+  app.use('/api/admin', adminLimiter, requireAdminMfa, adminRoutes.default);
   
   // Control Panel Registry - RBAC (Role-Based Access Control)
   app.use('/api/control-panel/registry', apiLimiter, controlPanelRegistryRoutes);
   
   // Unified Control Panel - Metrics & Dashboard (Admin only)
-  app.use('/api/control-panel', validateFirebaseToken, apiLimiter, controlPanelRoutes);
+  app.use('/api/control-panel', validateFirebaseToken, apiLimiter, requireAdminMfa, controlPanelRoutes);
   
   // Israeli Contractor Compliance - Documents, Onboarding, Invoices (Authenticated providers)
   app.use('/api/contractor-documents', optionalFirebaseToken, apiLimiter, contractorDocumentsRoutes);
@@ -8958,7 +8964,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/police-check', apiLimiter, policeCheckRoutes);
   
   // Admin Provider Review Queue - ⁦Pet Wash™⁩ approval workflow
-  app.use('/api/provider-review', apiLimiter, adminProviderReviewRoutes);
+  app.use('/api/provider-review', apiLimiter, requireAdminMfa, adminProviderReviewRoutes);
   
   // AI Payout Verification - Gemini 2.5 Flash work verification before payouts (Admin only)
   app.use('/api/ai-verification', validateFirebaseToken, apiLimiter, aiPayoutVerificationRoutes);
@@ -8981,7 +8987,7 @@ self.addEventListener('notificationclick', (event) => {
   
   // Employee Management routes
   const employeeRoutes = await import('./routes/employees');
-  app.use('/api/employees', adminLimiter, employeeRoutes.default);
+  app.use('/api/employees', adminLimiter, requireAdminMfa, employeeRoutes.default);
   
   // Team Messaging routes (WhatsApp-style internal communication)
   const messagingRoutes = await import('./routes/messaging');
@@ -8992,21 +8998,21 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/audit', apiLimiter, auditRoutes.default);
   
   // Domain Events routes (Event-Driven Architecture)
-  app.use('/api/events', adminLimiter, eventsRoutes);
+  app.use('/api/events', adminLimiter, requireAdminMfa, eventsRoutes);
   
   // Stations Management routes
-  app.use('/api/admin/stations', adminLimiter, stationsRoutes);
-  app.use('/api/admin/alerts', adminLimiter, stationsRoutes);
-  app.use('/api/admin/sheets', adminLimiter, stationsRoutes);
-  app.use('/api/admin/health', adminLimiter, stationsRoutes);
+  app.use('/api/admin/stations', adminLimiter, requireAdminMfa, stationsRoutes);
+  app.use('/api/admin/alerts', adminLimiter, requireAdminMfa, stationsRoutes);
+  app.use('/api/admin/sheets', adminLimiter, requireAdminMfa, stationsRoutes);
+  app.use('/api/admin/health', adminLimiter, requireAdminMfa, stationsRoutes);
   
   // Enterprise Management routes (2026 Global Franchise System)
-  app.use('/api/enterprise', adminLimiter, enterpriseRoutes);
+  app.use('/api/enterprise', adminLimiter, requireAdminMfa, enterpriseRoutes);
   
   // Enterprise Corporate routes (Board, JV Partners, Suppliers, Station Registry - Nov 2025)
-  app.use('/api/enterprise/corporate', adminLimiter, enterpriseCorporateRoutes);
-  app.use('/api/enterprise/policy', adminLimiter, enterprisePolicyRoutes);
-  app.use('/api/enterprise/franchise', adminLimiter, enterpriseFranchiseRoutes);
+  app.use('/api/enterprise/corporate', adminLimiter, requireAdminMfa, enterpriseCorporateRoutes);
+  app.use('/api/enterprise/policy', adminLimiter, requireAdminMfa, enterprisePolicyRoutes);
+  app.use('/api/enterprise/franchise', adminLimiter, requireAdminMfa, enterpriseFranchiseRoutes);
   
   // Logistics & Fleet Management routes (Field Operations - Phase 2)
   app.use('/api/logistics', optionalFirebaseToken, apiLimiter, logisticsRoutes);
@@ -9097,6 +9103,9 @@ self.addEventListener('notificationclick', (event) => {
 
   // 🔐 Mobile App Authentication - Email/Password with JWT tokens, refresh token rotation, biometric unlock
   app.use('/api/auth', apiLimiter, authRoutes);
+
+  // 🔐 MFA Management - TOTP, SMS, Email enrollment + admin MFA enforcement
+  app.use('/api/mfa', apiLimiter, mfaRoutes);
 
   // 🔐 PIN Authentication - December 2025 Edition (4-6 digit PIN, device binding, rate limiting)
   app.use('/api/pin-auth', apiLimiter, pinAuthRoutes);

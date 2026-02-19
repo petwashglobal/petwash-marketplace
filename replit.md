@@ -1,7 +1,7 @@
 # Pet Wash™ - Premium Organic Pet Care Ecosystem
 
 ## Overview
-Pet Wash™ is an enterprise platform for the luxury pet care industry, offering a global, scalable ecosystem for IoT wash stations, pet sitting, walking, and AI-powered pet avatar creation. It centralizes authentication, payments, AI services, compliance, and franchise management, supported by a 7-Star Loyalty System and robust security. The project aims to be the leading global luxury pet care provider, starting with the Israeli market.
+Pet Wash™ is an enterprise platform aiming to be the leading global luxury pet care provider, starting in Israel. It offers a scalable ecosystem for IoT wash stations, pet sitting, walking, and AI-powered pet avatar creation. The platform centralizes authentication, payments, AI services, compliance, and franchise management, supported by a 7-Star Loyalty System and robust security.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -71,50 +71,34 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Source Control**: GitHub repository `petwashglobal/petwash-marketplace`.
 - **Firebase Project**: `signinpetwash`.
 - **CI/CD Pipeline**: Automated GitHub Actions deployment (`.github/workflows/petwash-ci.yml`) with a 5-guard protection system.
-
-**CRITICAL DEPLOYMENT RULE:**
-- We develop on Replit, push to GitHub, and deploy ONLY to Google Firebase.
-- Replit URLs are development-only and MUST NEVER be connected to DNS or production domains.
-- Production domains (petwash.co.il, www.petwash.co.il) always point to Firebase Hosting IP: 199.36.158.100.
-- NEVER use Replit Publishing "Domains" feature for production - it causes conflicts with Firebase.
-- The Replit "Publish" feature is for development preview only.
+- **CRITICAL DEPLOYMENT RULE**: Replit URLs are for development only and must not be connected to production domains. Production domains point to Firebase Hosting.
 
 ### Core Features & Design Decisions
-- **Frontend**: React 18, TypeScript, Wouter, TanStack Query, shadcn/ui (Radix UI), Tailwind CSS, Vite. Emphasizes responsive, mobile-first, luxury design with glassmorphism and Apple-style animations, supporting bilingual direction-aware layouts.
+- **Frontend**: React 18, TypeScript, Wouter, TanStack Query, shadcn/ui (Radix UI), Tailwind CSS, Vite. Focuses on responsive, mobile-first, luxury design with glassmorphism and Apple-style animations, supporting bilingual direction-aware layouts.
 - **Backend**: Node.js, Express.js, Neon serverless PostgreSQL with Drizzle ORM, Redis caching.
-- **Authentication & User Management**: Firebase Auth with Twilio SMS, WebAuthn/Passkey, RBAC, biometrics, GDPR compliance.
+- **Authentication & User Management**: Firebase Auth with Twilio SMS, WebAuthn/Passkey, RBAC, biometrics, GDPR compliance. Mandatory MFA for admin roles. Email verification required for critical actions.
 - **AI Chat Assistant**: Google Dialogflow CX with Gemini 2.5 Flash, bilingual (Hebrew/English), WCAG 2.1 AA compliant.
-- **Marketplaces**: The Sitter Suite™, Walk My Pet™, PetTrek™, The Plush Lab™ (AI avatar creator).
+- **Marketplaces**: Includes The Sitter Suite™, Walk My Pet™, PetTrek™, The Plush Lab™ (AI avatar creator), unified under a single system covering 7 platforms.
 - **Loyalty Program**: 7-tier system, e-gift cards, wash packages, Apple Wallet integration.
 - **E-Signature**: DocuSeal with Hebrew RTL support; custom system for Israeli subcontractor agreements.
 - **Enterprise Features**: Multi-country/currency, franchise management, IoT monitoring, secure document management, KYC, automated bookkeeping, Israeli Tax Compliance, bank reconciliation, invoicing, VAT reclaim.
-- **Payment Gateway Architecture**: Nayax Israel is the exclusive payment gateway, with 72-hour escrow.
+- **Payment Gateway Architecture**: Nayax Israel is the exclusive payment gateway with 72-hour escrow.
 - **K9000 IoT Integration**: Cloud management, real-time status, remote control, AI predictive maintenance, 7-star luxury LED ecosystem.
-- **Security & Compliance**: Google reCAPTCHA v3, Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025, AI monitoring, GDPR consent, blockchain-style audit trail. Optional Two-Factor Authentication (2FA) via SMS + Email. Transaction OTP verification for high-value operations.
-- **Transaction OTP System**: SMS + Email 6-digit OTP verification for sensitive transactions, server-side verified, 5-minute expiry, 5-attempt max, 30-second resend cooldown, rate limiting, Redis-backed with one-time-use tokens.
-- **Unified Luxury Booking System**: Enterprise-grade booking with loyalty tiers, policies, 72-hour escrow, GPS activation, multi-driver dispatch, IoT unlock tokens, dynamic surge pricing, and progressive provider payouts.
+- **Security & Compliance**: Google reCAPTCHA v3, Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025, AI monitoring, GDPR consent, blockchain-style audit trail. Optional/Mandatory 2FA (SMS + Email, TOTP authenticator). Transaction OTP verification for high-value operations.
+- **Unified Luxury Booking System**: Enterprise-grade booking with loyalty tiers, policies, 72-hour escrow, GPS activation, multi-driver dispatch, IoT unlock tokens, dynamic surge pricing, and progressive provider payouts. All financial writes flow through the "Octopus Global Brain Engine" with atomic wallet debit/credit, immutable financial ledger, and idempotency protection.
 - **Employee Expense Management System**: Israeli Tax Authority compliant with OCR receipt scanning and cryptographic audit trail.
 - **Document Management System**: RBAC, Google Cloud Storage integration, access audit logging, and DocuSeal e-signature.
 - **Legal & Compliance Systems**: Routes for privacy, data rights, GDPR, Israeli Privacy Law 2025, e-signature, contract management.
 - **HR & Employee Systems**: Routes for employee management, hierarchy, onboarding, auto-approval workflows, and WhatsApp notifications.
 - **Enterprise Route Infrastructure**: Extensive route files for franchise, finance, HR, operations, sales CRM, accounting, expenses, documents, compliance, audit, contracts, and signatures, organized into Head Office, Franchise, Customer, and Shared units.
-- **Authentication & Authorization**: RBAC middleware with hardcoded super admins and database-driven role assignments. Optional 2FA (SMS + Email OTP) for management and providers.
-- **Registration Confirmation Emails**: Luxury confirmation emails from support@petwash.co.il for all registration types.
 - **Israeli Contractor Compliance System**: Marketplace broker model preventing employee misclassification, with tax verification, National Insurance tracking, commission calculation, independence scoring, compliance audits, risk monitoring, and SHA-256 audit trails.
-- **Unified Talent Marketplace System 2026**: All-in-one marketplace system covering 7 platforms with backend API registration, frontend React components, route wrappers, and QA validation.
-- **Pet Sitter Profile Pages**: Airbnb-style luxury profile component with hero gallery, services toggle, reviews, and booking card.
-- **Multi-Platform Marketplace View**: Unified marketplace page showing contractors across all 7 platforms with color-coded branding, responsive grid layout, and demo profiles.
-- **Provider Search**: API with real-time availability filtering, profile enrichment, and pagination. Frontend displays provider cards with Hebrew names, bios, locations, and pricing.
-- **Octopus Global Brain Engine**: Unified backend booking/financial engine. All financial writes flow through Octopus Brain. Features: unified booking creation with 15% flat platform fee, atomic wallet debit/credit with race-safe conditional updates, immutable financial ledger, invoice stub generation, provider search with KYC enforcement, idempotency protection on bookings and wallet ops, multi-platform separation.
-- **Financial Reconciliation Service**: Links escrow → payout → VAT → receipt with unified reconciliationId. Monthly cross-check reports, invoice sequence verification, B2B threshold compliance, blockchain-style report chaining with SHA-256 hashes.
 - **Data Retention Service**: GDPR/Israeli Privacy Law 2025 automated purge engine with defined retention policies and legal hold management.
 - **iOS PWA**: Progressive Web App with service worker, manifest.json with role-based shortcuts, iOS Safari install prompt, Android beforeinstallprompt native prompt.
 
 ### File Storage & Admin Access
 - **Document Storage**: Google Cloud Storage bucket `petwash-secure-documents`.
 - **Biometric Storage**: Firebase Storage bucket `signinpetwash.firebasestorage.app`.
-- **Admin File Access**: Admin users with `view_documents` permission can view documents via `/api/documents`.
-- **RBAC Permissions**: Document access controlled by role-based permissions.
+- **Admin File Access**: Admin users with `view_documents` permission can view documents via `/api/documents`, controlled by RBAC.
 
 ## External Dependencies
 - **Database & ORM**: @neondatabase/serverless (PostgreSQL), drizzle-orm.

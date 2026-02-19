@@ -397,6 +397,7 @@ if (isProduction) {
     
     import('./services/googleSheetsIntegration').then(m => m.processStartupRetries()).catch(() => {});
     import('./services/JobDispatchService').then(m => m.JobDispatchService.startDispatchPoller()).catch(() => {});
+    import('./services/JobExpiryNotificationService').then(m => m.jobExpiryNotificationService.start()).catch(() => {});
     
     // 5c. Initialize Israeli CPI data - TRULY NON-BLOCKING (fire-and-forget)
     // CRITICAL: Do NOT await - these can be slow and should not delay serverReady

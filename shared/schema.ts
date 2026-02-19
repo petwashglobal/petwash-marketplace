@@ -10954,6 +10954,24 @@ export const kycRoleAssignments = pgTable("kyc_role_assignments", {
   index("idx_kyc_roles_active").on(table.isActive),
 ]);
 
+export const mfaEnrollments = pgTable("mfa_enrollments", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  userEmail: varchar("user_email", { length: 255 }).notNull(),
+  method: varchar("method", { length: 20 }).notNull(),
+  totpSecret: varchar("totp_secret", { length: 512 }),
+  totpVerified: boolean("totp_verified").default(false),
+  smsPhone: varchar("sms_phone", { length: 30 }),
+  emailAddress: varchar("email_address", { length: 255 }),
+  isActive: boolean("is_active").default(true).notNull(),
+  enrolledAt: timestamp("enrolled_at").defaultNow().notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_mfa_enrollments_user").on(table.userId),
+  index("idx_mfa_enrollments_email").on(table.userEmail),
+]);
+
 export const kycIncidents = pgTable("kyc_incidents", {
   id: serial("id").primaryKey(),
   incidentId: varchar("incident_id", { length: 64 }).notNull().unique(),
