@@ -721,7 +721,6 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
 
       {showEditModal && selectedUser && (
         <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
