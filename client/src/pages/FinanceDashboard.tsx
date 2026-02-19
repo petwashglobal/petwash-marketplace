@@ -672,7 +672,17 @@ export default function FinanceDashboard() {
                   })()}
 
                   <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => toast({ title: "Export feature coming soon", description: "PDF export will be available in the next iteration" })}>
+                    <Button variant="outline" onClick={() => {
+                      const trialBalanceTable = document.querySelector('[data-testid="balance-verification"]')?.closest('.space-y-6');
+                      const tableEl = trialBalanceTable?.querySelector('table');
+                      if (!tableEl) { toast({ title: "No report data to export", variant: "destructive" }); return; }
+                      const printWindow = window.open('', '_blank');
+                      if (printWindow) {
+                        printWindow.document.write(`<!DOCTYPE html><html><head><title>Pet Wash™ Trial Balance - ${fiscalYear}/${fiscalPeriod}</title><style>body{font-family:system-ui,sans-serif;padding:40px;color:#1a1a1a}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:8px;text-align:start}th{background:#f5f5f5}tfoot{font-weight:bold;border-top:2px solid #333}@media print{body{padding:20px}}</style></head><body><h1>Pet Wash™ Trial Balance Report</h1><p>Period: ${fiscalYear}/${fiscalPeriod} | Generated: ${new Date().toLocaleDateString()}</p>${tableEl.outerHTML}</body></html>`);
+                        printWindow.document.close();
+                        printWindow.print();
+                      }
+                    }}>
                       Export to PDF
                     </Button>
                     <Button variant="outline" onClick={() => window.print()}>

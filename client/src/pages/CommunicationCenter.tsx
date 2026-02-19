@@ -203,6 +203,8 @@ export default function CommunicationCenter() {
   const [isCreateReminderDialogOpen, setIsCreateReminderDialogOpen] = useState(false);
   const [isBulkEmailDialogOpen, setIsBulkEmailDialogOpen] = useState(false);
   const [isBulkSmsDialogOpen, setIsBulkSmsDialogOpen] = useState(false);
+  const [bulkSmsTemplateId, setBulkSmsTemplateId] = useState<number>(0);
+  const [bulkSmsRecipients, setBulkSmsRecipients] = useState('');
   
   // Filters
   const [emailFilter, setEmailFilter] = useState({ category: '', isActive: '', search: '' });
@@ -386,6 +388,29 @@ export default function CommunicationCenter() {
     onError: (error: any) => {
       toast({ title: "Error sending bulk emails", description: error.message, variant: "destructive" });
     },
+  });
+
+  const sendBulkSmsMutation = useMutation({
+    mutationFn: async (data: { templateId: number; recipients: { phone: string }[] }) => {
+      const response = await apiRequest('POST', '/api/crm/communications/bulk/send-sms', data);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Bulk SMS campaign completed",
+        description: `${data.totalSent || 0} messages sent, ${data.totalFailed || 0} failed`
+      });
+      setIsBulkSmsDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/communications/stats'] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error sending bulk SMS", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const { data: communicationHistory = [], isLoading: historyLoading } = useQuery<any[]>({
+    queryKey: ['/api/crm/communications/history'],
+    enabled: activeTab === 'history',
   });
 
   // Handler functions
@@ -1096,10 +1121,49 @@ export default function CommunicationCenter() {
 
             <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-2" data-testid="card-communication-history">
               <CardContent className="pt-6">
-                <div className="text-center py-8">
-                  <Activity className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                  <p className="text-slate-600">{t('communication.history.comingSoon', 'Communication history functionality coming soon')}</p>
-                </div>
+                {historyLoading ? (
+                  <div className="text-center py-8">
+                    <RefreshCw className="w-8 h-8 text-slate-400 mx-auto mb-4 animate-spin" />
+                    <p className="text-slate-600">{t('common.loading', 'Loading...')}</p>
+                  </div>
+                ) : communicationHistory.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Activity className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                    <p className="text-slate-600">{t('communication.history.empty', 'No communication history found')}</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t('common.type', 'Type')}</TableHead>
+                        <TableHead>{t('common.recipient', 'Recipient')}</TableHead>
+                        <TableHead>{t('common.subject', 'Subject')}</TableHead>
+                        <TableHead>{t('common.status', 'Status')}</TableHead>
+                        <TableHead>{t('common.date', 'Date')}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {communicationHistory.map((entry: any) => (
+                        <TableRow key={entry.id}>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {entry.type === 'email' ? <Mail className="w-3 h-3 me-1 inline" /> : <MessageSquare className="w-3 h-3 me-1 inline" />}
+                              {entry.type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{entry.recipient || entry.email || entry.phone || '-'}</TableCell>
+                          <TableCell>{entry.subject || entry.templateName || '-'}</TableCell>
+                          <TableCell>
+                            <Badge className={entry.status === 'delivered' ? 'bg-green-100 text-green-700' : entry.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}>
+                              {entry.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{entry.createdAt || entry.sentAt ? new Date(entry.createdAt || entry.sentAt).toLocaleString() : '-'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1494,32 +1558,112 @@ export default function CommunicationCenter() {
 
       {/* Bulk Email Dialog */}
       <Dialog open={isBulkEmailDialogOpen} onOpenChange={setIsBulkEmailDialogOpen}>
-        <DialogContent className="max-w-2xl" data-testid="dialog-bulk-email">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" data-testid="dialog-bulk-email">
           <DialogHeader>
             <DialogTitle>{t('communication.bulkEmail.title', 'Send Bulk Email Campaign')}</DialogTitle>
             <DialogDescription>
               Send emails to multiple recipients using a template.
             </DialogDescription>
           </DialogHeader>
-          <div className="text-center py-8">
-            <Send className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-            <p className="text-slate-600">{t('communication.bulkEmail.comingSoon', 'Bulk email functionality coming soon')}</p>
-          </div>
+          <Form {...bulkEmailForm}>
+            <form onSubmit={handleSendBulkEmail} className="space-y-4">
+              <FormField
+                control={bulkEmailForm.control}
+                name="templateId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('communication.bulkEmail.template', 'Email Template')}</FormLabel>
+                    <Select onValueChange={(v) => field.onChange(Number(v))} value={field.value ? String(field.value) : ''}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-bulk-email-template"><SelectValue placeholder="Select a template" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {emailTemplates.map((tmpl: EmailTemplate) => (
+                          <SelectItem key={tmpl.id} value={String(tmpl.id)}>{tmpl.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div>
+                <Label>{t('communication.bulkEmail.recipients', 'Recipients (one email per line)')}</Label>
+                <Textarea
+                  placeholder="user1@example.com&#10;user2@example.com"
+                  rows={5}
+                  data-testid="textarea-bulk-email-recipients"
+                  onChange={(e) => {
+                    const emails = e.target.value.split('\n').map(l => l.trim()).filter(Boolean);
+                    bulkEmailForm.setValue('recipients', emails.map(email => ({ email })));
+                  }}
+                />
+                <p className="text-xs text-slate-500 mt-1">{bulkEmailForm.watch('recipients')?.length || 0} recipients</p>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setIsBulkEmailDialogOpen(false)}>
+                  {t('common.cancel', 'Cancel')}
+                </Button>
+                <Button type="submit" disabled={sendBulkEmailMutation.isPending} data-testid="button-submit-bulk-email">
+                  {sendBulkEmailMutation.isPending ? t('common.sending', 'Sending...') : t('communication.bulkEmail.send', 'Send Campaign')}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
       {/* Bulk SMS Dialog */}
       <Dialog open={isBulkSmsDialogOpen} onOpenChange={setIsBulkSmsDialogOpen}>
-        <DialogContent className="max-w-2xl" data-testid="dialog-bulk-sms">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" data-testid="dialog-bulk-sms">
           <DialogHeader>
             <DialogTitle>{t('communication.bulkSms.title', 'Send Bulk SMS Campaign')}</DialogTitle>
             <DialogDescription>
               Send SMS messages to multiple recipients using a template.
             </DialogDescription>
           </DialogHeader>
-          <div className="text-center py-8">
-            <MessageSquare className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-            <p className="text-slate-600">{t('communication.bulkSms.comingSoon', 'Bulk SMS functionality coming soon')}</p>
+          <div className="space-y-4">
+            <div>
+              <Label>{t('communication.bulkSms.template', 'SMS Template')}</Label>
+              <Select value={bulkSmsTemplateId ? String(bulkSmsTemplateId) : ''} onValueChange={(v) => setBulkSmsTemplateId(Number(v))}>
+                <SelectTrigger data-testid="select-bulk-sms-template"><SelectValue placeholder="Select a template" /></SelectTrigger>
+                <SelectContent>
+                  {smsTemplates.map((tmpl: SmsTemplate) => (
+                    <SelectItem key={tmpl.id} value={String(tmpl.id)}>{tmpl.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>{t('communication.bulkSms.recipients', 'Recipients (one phone per line)')}</Label>
+              <Textarea
+                placeholder="+972501234567&#10;+972509876543"
+                rows={5}
+                data-testid="textarea-bulk-sms-recipients"
+                value={bulkSmsRecipients}
+                onChange={(e) => setBulkSmsRecipients(e.target.value)}
+              />
+              <p className="text-xs text-slate-500 mt-1">{bulkSmsRecipients.split('\n').filter(l => l.trim()).length} recipients</p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => { setIsBulkSmsDialogOpen(false); setBulkSmsRecipients(''); setBulkSmsTemplateId(0); }}>
+                {t('common.cancel', 'Cancel')}
+              </Button>
+              <Button
+                disabled={sendBulkSmsMutation.isPending || !bulkSmsTemplateId || !bulkSmsRecipients.trim()}
+                data-testid="button-submit-bulk-sms"
+                onClick={() => {
+                  const phones = bulkSmsRecipients.split('\n').map(l => l.trim()).filter(Boolean);
+                  if (!bulkSmsTemplateId || phones.length === 0) {
+                    toast({ title: "Please select a template and add recipients", variant: "destructive" });
+                    return;
+                  }
+                  sendBulkSmsMutation.mutate({ templateId: bulkSmsTemplateId, recipients: phones.map(phone => ({ phone })) });
+                }}
+              >
+                {sendBulkSmsMutation.isPending ? t('common.sending', 'Sending...') : t('communication.bulkSms.send', 'Send Campaign')}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

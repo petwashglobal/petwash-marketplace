@@ -2,13 +2,15 @@
  * Vouchers Page - Display User's 7-Star Luxury Vouchers
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { VoucherCard2025 } from '@/components/VoucherCard2025';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sparkles, TrendingUp, Wallet, Plus } from 'lucide-react';
 import { useLocation } from 'wouter';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 import type { PetWashVoucher2025 } from '@shared/petwashVoucher2025';
 
 interface VoucherWithHistory extends Omit<PetWashVoucher2025, 'rules' | 'visual' | 'owner' | 'security' | 'usage'> {
@@ -43,6 +45,7 @@ interface VoucherWithHistory extends Omit<PetWashVoucher2025, 'rules' | 'visual'
 export default function Vouchers() {
   const { user } = useFirebaseAuth();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
   const { data, isLoading } = useQuery({
     queryKey: ['/api/vouchers-2025/my-vouchers'],
@@ -52,6 +55,25 @@ export default function Vouchers() {
   const { data: stats } = useQuery({
     queryKey: ['/api/vouchers-2025/stats/summary'],
     enabled: !!user
+  });
+
+  const redeemMutation = useMutation({
+    mutationFn: async (publicCode: string) => {
+      const res = await apiRequest('POST', '/api/vouchers-2025/redeem', {
+        public_code: publicCode,
+        method: 'wash',
+        washes: 1,
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: 'Voucher redeemed!', description: data.message || 'Successfully redeemed' });
+      queryClient.invalidateQueries({ queryKey: ['/api/vouchers-2025/my-vouchers'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/vouchers-2025/stats/summary'] });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Redemption failed', description: err.message || 'Could not redeem voucher', variant: 'destructive' });
+    },
   });
 
   if (!user) {
@@ -225,8 +247,7 @@ export default function Vouchers() {
                   <VoucherCard2025
                     voucher={voucher}
                     onUse={() => {
-                      // TODO: Implement redemption flow
-                      console.log('Redeem voucher:', voucher.public_code);
+                      redeemMutation.mutate(voucher.public_code);
                     }}
                     showActions={true}
                   />

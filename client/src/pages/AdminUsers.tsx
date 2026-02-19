@@ -78,6 +78,8 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState<{ firstName: string; lastName: string; phone: string; status: string; loyaltyTier: string }>({ firstName: '', lastName: '', phone: '', status: 'active', loyaltyTier: 'bronze' });
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
@@ -699,10 +701,16 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
               </Button>
               <Button
                 onClick={() => {
-                  toast({
-                    title: "Edit mode",
-                    description: "User editing functionality coming soon",
-                  });
+                  if (selectedUser) {
+                    setEditForm({
+                      firstName: selectedUser.firstName || '',
+                      lastName: selectedUser.lastName || '',
+                      phone: selectedUser.phone || '',
+                      status: selectedUser.status,
+                      loyaltyTier: selectedUser.loyaltyTier,
+                    });
+                    setShowEditModal(true);
+                  }
                 }}
                 className="luxury-btn-primary"
                 data-testid="button-modal-edit"
@@ -713,6 +721,78 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      </div>
+
+      {showEditModal && selectedUser && (
+        <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+          <DialogContent className="max-w-md" data-testid="dialog-edit-user">
+            <DialogHeader>
+              <DialogTitle>Edit User</DialogTitle>
+              <DialogDescription>Update user information for {selectedUser.email}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">First Name</label>
+                  <Input value={editForm.firstName} onChange={(e) => setEditForm(f => ({ ...f, firstName: e.target.value }))} data-testid="input-edit-first-name" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Last Name</label>
+                  <Input value={editForm.lastName} onChange={(e) => setEditForm(f => ({ ...f, lastName: e.target.value }))} data-testid="input-edit-last-name" />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Phone</label>
+                <Input value={editForm.phone} onChange={(e) => setEditForm(f => ({ ...f, phone: e.target.value }))} data-testid="input-edit-phone" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Status</label>
+                <Select value={editForm.status} onValueChange={(v) => setEditForm(f => ({ ...f, status: v }))}>
+                  <SelectTrigger data-testid="select-edit-status"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="suspended">Suspended</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Loyalty Tier</label>
+                <Select value={editForm.loyaltyTier} onValueChange={(v) => setEditForm(f => ({ ...f, loyaltyTier: v }))}>
+                  <SelectTrigger data-testid="select-edit-tier"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bronze">Bronze</SelectItem>
+                    <SelectItem value="silver">Silver</SelectItem>
+                    <SelectItem value="gold">Gold</SelectItem>
+                    <SelectItem value="platinum">Platinum</SelectItem>
+                    <SelectItem value="diamond">Diamond</SelectItem>
+                    <SelectItem value="elite">Elite</SelectItem>
+                    <SelectItem value="crown">Crown</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
+              <Button
+                disabled={updateUserMutation.isPending}
+                onClick={() => {
+                  updateUserMutation.mutate({ userId: selectedUser.id, updates: editForm }, {
+                    onSuccess: () => {
+                      setShowEditModal(false);
+                      setShowUserModal(false);
+                    },
+                  });
+                }}
+                className="luxury-btn-primary"
+                data-testid="button-save-edit"
+              >
+                {updateUserMutation.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
       </div>
     </Layout>
   );
