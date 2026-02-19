@@ -1,0 +1,162 @@
+SUBJECT: Petwash Platform - 2026 Production Fix Pack (prove it, no narration)
+
+I need a clear update with proof. Not “I reviewed / I built / I fixed”.
+Everything below must be answered with links, screenshots, logs, and test results.
+
+========================
+A) CURRENT FAILURES - ROOT CAUSE + FIX
+========================
+1) New user registration fails (member + provider).
+   - Provide: exact failing endpoint(s), error codes, stack traces, and reproduction steps.
+   - Show: server logs for 3 failed attempts + 3 successful attempts.
+   - Confirm: data persists to DB after refresh (not only client state).
+
+2) Google Sign-In hangs (keeps loading).
+   - Provide: Firebase Auth settings screenshot:
+     - Authorized Domains list includes production domain and any staging/dev domains.
+   - Provide: OAuth Client settings screenshot:
+     - Authorized JavaScript origins
+     - Authorized redirect URIs
+   - Provide: iOS Safari + in-app WebView test results.
+   - Confirm: which sign-in method is used per platform:
+     - Web: popup then redirect fallback
+     - iOS: redirect recommended
+     - Android: popup ok if not webview
+   - Deliver: a “Known working matrix” table of platforms and methods.
+
+3) reCAPTCHA not working.
+   - Provide: exact reCAPTCHA version in use (v2 checkbox / v2 invisible / v3 score).
+   - Provide: reCAPTCHA Admin console screenshot showing allowed domains.
+   - Confirm: site key and secret key are loaded from ENV and never hardcoded.
+   - Provide: browser console errors + network trace.
+   - Provide: a hard fail and soft fail behavior:
+     - Hard fail: block registration if token missing/invalid
+     - Soft fail: allow but force email/phone verification fallback (if we choose)
+
+4) Google address autocomplete not showing suggestions.
+   - Confirm: which API is used:
+     - Places Autocomplete (web JS)
+     - Places HTTP API via backend proxy (preferred)
+   - Provide: Google Cloud console screenshot:
+     - Billing enabled
+     - Places API enabled
+     - Key restrictions correct (HTTP referrer for web OR server-side only)
+   - Provide: a test curl to backend proxy if implemented.
+   - Confirm: required libraries loaded (places) and field is not blocked by z-index, overlay, or disabled input.
+
+========================
+B) DATA STORAGE - MUST BE REAL AND AUDITABLE
+========================
+5) Where is registration data stored?
+   - Provide: schema/table names or Firestore collection names.
+   - Provide: example record for new member + provider (redact personal data).
+   - Confirm: server writes, not client direct writes for critical fields.
+
+6) Google Sheets / Drive logging (if requested).
+   - If we use Sheets:
+     - Provide: service account setup (no personal Gmail OAuth)
+     - Provide: sheet ID, tab name, column mapping
+     - Confirm: idempotency key (no duplicate rows)
+     - Confirm: retry strategy and dead letter queue on failure
+   - If we do NOT use Sheets:
+     - Provide: explanation why not, and where data lives instead.
+
+Important:
+Sheets is not a database. It can be a reporting sink only.
+Primary source of truth must be Postgres/Firestore with audit logs.
+
+========================
+C) ROLE SEPARATION - DASHBOARDS MUST BE CORRECT
+========================
+7) Confirm roles and routing:
+   - Loyalty Member dashboard
+   - Provider dashboard
+   - Staff dashboard
+   - Admin dashboard
+   - HR / Sales / SEO dashboards (only if real)
+   For each:
+   - Provide: route
+   - Provide: access guard (server-side)
+   - Provide: screenshot of badge + navigation.
+
+8) Prevent role escalation:
+   - Confirm: roles cannot be changed by client request.
+   - Provide: server-side admin-only endpoint for role changes.
+   - Provide: audit log entry when role changes.
+
+========================
+D) KYC SECURITY (2026 FINTECH LEVEL) - PROOF REQUIRED
+========================
+9) Storage policy for KYC images:
+   - Confirm: are raw images stored?
+     - Option 1: zero-storage (memory only)
+     - Option 2: short TTL storage (example: 24h)
+   - Provide: exact TTL rule screenshot (bucket lifecycle rules).
+   - Provide: proof no public read in Storage rules.
+   - Provide: proof of signed URL expiry time (minutes).
+
+10) Liveness and face match:
+   - Confirm: do we have real liveness challenge?
+     - If yes: vendor/SDK name + flow + server verification token
+     - If no: say clearly “NO”, and propose implementation
+   - Confirm: face match method:
+     - If using landmark geometry only, say clearly it is not fintech-grade.
+
+11) Admin security:
+   - Mandatory MFA for all admins (yes/no) with proof.
+   - IP logging for all KYC admin views.
+   - Audit trail for every KYC view/download/approve/reject.
+   - Rate limiting on KYC endpoints (numbers required).
+   - Anomaly detection:
+     - threshold and actions (block, cooldown, alert)
+
+========================
+E) BOOKING DISPATCH QUALITY (MADPAWS/ROVER/UBER STYLE)
+========================
+12) Batched offers + adaptive radius expansion:
+   - Implement:
+     - 0-30s: 3km
+     - 30-60s: 6km
+     - 60-90s: 10km
+   - First accept wins (transaction)
+   - Cooldown for provider spam (example: 30s per provider per booking)
+   - Priority boost scoring:
+     - premium badge, rating, acceptance rate
+
+Provide:
+- code location (files)
+- test scenario results (screenshots or logs)
+- latency measurements (p50/p95)
+
+========================
+F) DELIVERABLES - NO EXCUSES
+========================
+13) I need these deliverables:
+   1) A single “Fix Pack” PR link
+   2) Deployment link (staging + production)
+   3) Release notes (what changed)
+   4) A test checklist with green checks for:
+      - new member registration
+      - new provider registration
+      - google sign-in web
+      - google sign-in ios safari
+      - recaptcha success/fail
+      - address autocomplete
+      - data persists after refresh
+   5) A 5 minute screen recording showing all flows working end to end.
+
+If you cannot provide proof for any item, mark it as NOT DONE.
+
+========================
+G) DECISION: GOOGLE FORMS/SHEETS?
+========================
+14) Recommendation required:
+   - Should we use Google Forms + Sheets for onboarding?
+Answer:
+   - For internal quick intake: Google Forms is fine.
+   - For production onboarding: Forms is not suitable (limited validation, weak identity binding).
+   - Best approach: in-app onboarding -> DB as source of truth -> optional Sheets export for reporting.
+
+Confirm what we are choosing and why.
+
+END.
