@@ -62,22 +62,32 @@ router.get('/places/photo', async (req, res) => {
   }
 });
 
+import { randomUUID } from 'crypto';
+
+logger.info('[GoogleMaps] keyPresent=' + !!process.env.GOOGLE_MAPS_API_KEY);
+
 /**
- * GET /api/places/autocomplete - Server-side Google Places Autocomplete proxy
+ * GET /api/google/places-autocomplete - Server-side Google Places Autocomplete proxy
  * API key stays server-side. No browser key needed.
  */
 router.get('/places-autocomplete', async (req, res) => {
+  const traceId = randomUUID().slice(0, 12);
   try {
     const { input, language, components, types } = req.query;
 
     if (!input || typeof input !== 'string' || input.length < 2) {
-      return res.status(400).json({ error: 'Input query required (min 2 chars)' });
+      return res.status(400).json({ error: 'Input query required (min 2 chars)', traceId });
     }
 
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
     if (!apiKey) {
-      logger.error('[Places Proxy] GOOGLE_MAPS_API_KEY not configured');
-      return res.status(503).json({ error: 'Address search unavailable' });
+      logger.error('[Places Proxy] GOOGLE_MAPS_API_KEY not configured', {
+        traceId,
+        reasonCode: 'MAPS_KEY_MISSING',
+        path: req.path,
+        userAgent: req.headers['user-agent']?.substring(0, 100),
+      });
+      return res.status(503).json({ error: 'Address search unavailable', reasonCode: 'MAPS_KEY_MISSING', traceId });
     }
 
     const params = new URLSearchParams({
@@ -94,8 +104,18 @@ router.get('/places-autocomplete', async (req, res) => {
     const data = await response.json();
 
     if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-      logger.warn('[Places Proxy] Google API error', { status: data.status, error: data.error_message });
-      return res.status(502).json({ error: 'Address search failed', googleStatus: data.status });
+      const reasonCode = data.status === 'REQUEST_DENIED' ? 'API_KEY_DENIED'
+        : data.status === 'OVER_QUERY_LIMIT' ? 'QUOTA_EXCEEDED'
+        : 'GOOGLE_API_ERROR';
+      logger.warn('[Places Proxy] Google API error', {
+        traceId,
+        reasonCode,
+        googleStatus: data.status,
+        googleError: data.error_message,
+        path: req.path,
+        httpStatus: response.status,
+      });
+      return res.status(502).json({ error: 'Address search failed', googleStatus: data.status, reasonCode, traceId });
     }
 
     res.json({
@@ -106,27 +126,37 @@ router.get('/places-autocomplete', async (req, res) => {
         secondaryText: p.structured_formatting?.secondary_text,
       })),
     });
-  } catch (error) {
-    logger.error('[Places Proxy] Autocomplete error:', error);
-    res.status(500).json({ error: 'Address search failed' });
+  } catch (error: any) {
+    logger.error('[Places Proxy] Autocomplete error', {
+      traceId,
+      reasonCode: 'NETWORK_ERROR',
+      message: error.message,
+      path: req.path,
+    });
+    res.status(500).json({ error: 'Address search failed', reasonCode: 'NETWORK_ERROR', traceId });
   }
 });
 
 /**
- * GET /api/places/details - Server-side Google Place Details proxy
+ * GET /api/google/places-details - Server-side Google Place Details proxy
  * Returns structured address components for form auto-fill.
  */
 router.get('/places-details', async (req, res) => {
+  const traceId = randomUUID().slice(0, 12);
   try {
     const { placeId, language } = req.query;
 
     if (!placeId || typeof placeId !== 'string') {
-      return res.status(400).json({ error: 'placeId required' });
+      return res.status(400).json({ error: 'placeId required', traceId });
     }
 
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
     if (!apiKey) {
-      return res.status(503).json({ error: 'Address details unavailable' });
+      logger.error('[Places Proxy] GOOGLE_MAPS_API_KEY not configured for details', {
+        traceId,
+        reasonCode: 'MAPS_KEY_MISSING',
+      });
+      return res.status(503).json({ error: 'Address details unavailable', reasonCode: 'MAPS_KEY_MISSING', traceId });
     }
 
     const params = new URLSearchParams({
@@ -142,14 +172,23 @@ router.get('/places-details', async (req, res) => {
     const data = await response.json();
 
     if (data.status !== 'OK') {
-      return res.status(502).json({ error: 'Failed to get address details', googleStatus: data.status });
+      const reasonCode = data.status === 'REQUEST_DENIED' ? 'API_KEY_DENIED'
+        : data.status === 'NOT_FOUND' ? 'PLACE_NOT_FOUND'
+        : 'GOOGLE_API_ERROR';
+      logger.warn('[Places Proxy] Details API error', {
+        traceId,
+        reasonCode,
+        googleStatus: data.status,
+        googleError: data.error_message,
+      });
+      return res.status(502).json({ error: 'Failed to get address details', googleStatus: data.status, reasonCode, traceId });
     }
 
     const result = data.result;
-    const components = result.address_components || [];
+    const addressComponents = result.address_components || [];
 
     const getComponent = (type: string) =>
-      components.find((c: any) => c.types.includes(type))?.long_name || '';
+      addressComponents.find((c: any) => c.types.includes(type))?.long_name || '';
 
     res.json({
       formattedAddress: result.formatted_address,
@@ -159,13 +198,17 @@ router.get('/places-details', async (req, res) => {
       state: getComponent('administrative_area_level_1'),
       postalCode: getComponent('postal_code'),
       country: getComponent('country'),
-      countryCode: components.find((c: any) => c.types.includes('country'))?.short_name || '',
+      countryCode: addressComponents.find((c: any) => c.types.includes('country'))?.short_name || '',
       lat: result.geometry?.location?.lat,
       lng: result.geometry?.location?.lng,
     });
-  } catch (error) {
-    logger.error('[Places Proxy] Details error:', error);
-    res.status(500).json({ error: 'Failed to get address details' });
+  } catch (error: any) {
+    logger.error('[Places Proxy] Details error', {
+      traceId,
+      reasonCode: 'NETWORK_ERROR',
+      message: error.message,
+    });
+    res.status(500).json({ error: 'Failed to get address details', reasonCode: 'NETWORK_ERROR', traceId });
   }
 });
 

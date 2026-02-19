@@ -1,0 +1,146 @@
+GOOGLE PLACES AUTOCOMPLETE IS FAILING - FIX IT PROPERLY (NO EXCUSES)
+
+THE SYMPTOM
+- UI shows: "Address autocomplete unavailable"
+- That means one of these is true:
+  A) Google Maps JS SDK did not load
+  B) Places API is not enabled or key is blocked
+  C) Request is blocked by referrer restrictions, CSP, ad blocker, or billing
+  D) Wrong key is used in production build (env not injected)
+  E) Script loads once with wrong language and never reinitializes
+
+P0 - MAKE REGISTRATION NEVER BREAK
+1) Address field must always allow manual typing
+2) Autocomplete is optional enhancement only
+3) If autocomplete fails:
+   - show normal input fields: city, street, houseNumber, postalCode, country
+   - allow submission with manual address
+4) Save both:
+   - formattedAddress (string)
+   - addressParts { countryCode, city, street, streetNumber, postalCode, lat, lng }
+5) Log exact error code for every failure with traceId
+
+P1 - GET THE REAL ROOT CAUSE (DO THIS IN 10 MINUTES)
+Open production site in desktop Chrome and check DevTools Console + Network:
+A) Console check
+- Search for "Google Maps JavaScript API error"
+- Common fatal errors:
+  - MissingKeyMapError
+  - RefererNotAllowedMapError
+  - ApiNotActivatedMapError
+  - BillingNotEnabledMapError
+  - InvalidKeyMapError
+
+B) Network check
+- Look for requests to:
+  https://maps.googleapis.com/maps/api/js
+  https://places.googleapis.com/
+- If blocked or 4xx/5xx - capture the exact status and message
+
+C) Confirm key exists in PROD runtime
+- Print in server logs ONLY whether key is present (boolean), never print the key:
+  [GoogleMaps] keyPresent=true
+- If keyPresent=false in prod, you have a deployment env problem
+
+P2 - KEY AND GOOGLE CLOUD SETTINGS THAT MUST BE CORRECT
+In Google Cloud Console for the project that owns the key:
+1) Enable APIs:
+- Maps JavaScript API
+- Places API (new)
+- Geocoding API (optional but recommended)
+
+2) Billing:
+- Billing must be enabled on that project or Google will return BillingNotEnabledMapError
+
+3) Key restrictions (MOST COMMON BREAK)
+If using JS SDK in browser:
+- Application restriction: HTTP referrers (web sites)
+- Add these EXACT entries:
+  https://petwash.co.il/*
+  https://www.petwash.co.il/*
+  https://*.petwash.co.il/*
+If you have a staging domain add it too.
+
+API restrictions:
+- Restrict to:
+  Maps JavaScript API
+  Places API
+  Geocoding API (if used)
+If you restrict incorrectly, you will break autocomplete.
+
+4) If using backend proxy (recommended for reliability):
+- Use a server key (no referrer restriction)
+- Restrict by IP or service account if possible
+- Never expose this key to client
+
+P3 - ARCHITECTURE FIX (2026 WAY): USE BACKEND PROXY FOR AUTOCOMPLETE
+Stop relying only on the JS SDK autocomplete UI which breaks on iOS/Safari/webviews.
+Do this:
+- Client calls your server:
+  GET /api/google/places-autocomplete?input=...&language=he&components=country:il
+  GET /api/google/places-details?placeId=...&language=he
+- Server calls Google Places API with GOOGLE_MAPS_API_KEY
+- Client never sees the key
+
+If you already created these endpoints, then USE THEM in the form now.
+
+P4 - FRONTEND IMPLEMENTATION (DROP IN COMPONENT)
+Replace the current address field logic with this pattern:
+- Always render an input
+- Try autocomplete via server proxy
+- If it fails, keep manual mode
+
+Pseudo requirements:
+- Debounce input 250ms
+- Do not call Google for < 3 chars
+- Cache last 20 queries in memory
+- Show dropdown results
+- On selection: call details endpoint, fill addressParts, set lat/lng
+
+P5 - CRITICAL: LOGGING AND USER FEEDBACK
+When autocomplete fails:
+- Do not just say "unavailable"
+- Provide a reason code and keep form usable:
+  "Autocomplete unavailable (MAPS_KEY_MISSING). Please type address manually."
+  "Autocomplete unavailable (REFERRER_BLOCKED). Please type address manually."
+
+Log structure:
+- traceId
+- uid (if available)
+- path
+- reasonCode
+- httpStatus (if proxy)
+- userAgent
+- locale
+
+P6 - BACKEND VALIDATION AND SAVING
+- Provider registration endpoint must accept:
+  - addressText
+  - addressParts
+- Validate minimally:
+  - city required
+  - countryCode required
+  - if lat/lng provided, must be numbers
+- Never hard fail provider signup because Google failed.
+- Save provider draft even if address incomplete, mark step incomplete.
+
+P7 - WHY YOU SEE IT ON iPad
+Common causes on iOS Safari:
+- Third party script blocked by content settings, trackers, or extensions
+- Mixed content or CSP too strict
+- Script loads but Places library not included: &libraries=places missing
+Backend proxy avoids all these.
+
+DELIVERABLES YOU MUST SHIP TODAY
+1) Backend logs show exact failure code when autocomplete fails
+2) Address manual fallback always works
+3) Proxy endpoints used by the provider form
+4) Production config verified:
+   - billing on
+   - APIs enabled
+   - referrer allowlist correct
+   - env key present in Cloud Run/Firebase build
+5) A Playwright smoke test:
+   - open provider form
+   - type address "Ramat Gan"
+   - expect dropdown OR expect manual mode, but form submits successfully either way
