@@ -4090,6 +4090,50 @@ html[style*="--a11y-font-scale"] body {
   filter: url('#tritanopia-filter');
 }
 
+/* Grayscale mode */
+.a11y-grayscale body {
+  filter: grayscale(1) !important;
+}
+
+/* Composed: grayscale + color blindness */
+.a11y-grayscale.a11y-protanopia body {
+  filter: grayscale(1) url('#protanopia-filter') !important;
+}
+.a11y-grayscale.a11y-deuteranopia body {
+  filter: grayscale(1) url('#deuteranopia-filter') !important;
+}
+.a11y-grayscale.a11y-tritanopia body {
+  filter: grayscale(1) url('#tritanopia-filter') !important;
+}
+
+/* Composed: grayscale + high contrast */
+.a11y-grayscale.a11y-high-contrast body {
+  filter: grayscale(1) contrast(1.4) !important;
+}
+
+/* Dyslexia-friendly font (OpenDyslexic loaded from CDN) */
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/OpenDyslexic-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/OpenDyslexic-Bold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+.a11y-dyslexia-font body,
+.a11y-dyslexia-font body * {
+  font-family: 'OpenDyslexic', 'Comic Sans MS', 'Arial', sans-serif !important;
+  letter-spacing: 0.05em;
+  word-spacing: 0.1em;
+}
+
 /* International Phone Input Styling */
 .intl-phone-wrapper .PhoneInput {
   display: flex;
