@@ -44,6 +44,7 @@ import ceoWalletRoutes from "./routes/ceo-wallet";
 import testLuxuryLaunchRoutes from "./routes/test-luxury-launch";
 import sendInvestorEventEmailRoutes from "./routes/send-investor-event-email";
 import financeSettlementsRoutes from "./routes/finance/settlements";
+import transactionAuditRoutes from "./routes/finance/transaction-audit";
 import sitterSuiteRoutes from "./routes/sitter-suite";
 import seedDemoRoutes from "./routes/seed-demo";
 import academyRoutes from "./routes/academy";
@@ -9144,6 +9145,7 @@ self.addEventListener('notificationclick', (event) => {
   
   // Finance Settlements API (automated revenue sharing for partners/municipalities)
   app.use('/api/finance/settlements', apiLimiter, financeSettlementsRoutes);
+  app.use('/api/finance/transaction-audit', adminLimiter, transactionAuditRoutes);
   
   // Thank you email route (management use)
   app.use('/api', adminLimiter, thankYouRoutes);

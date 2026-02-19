@@ -187,7 +187,7 @@ router.post('/:bookingId/quote', requireAuth, async (req: Request, res: Response
 router.post('/:bookingId/confirm', requireAuth, async (req: Request, res: Response) => {
   try {
     const { bookingId } = req.params;
-    const { paymentProvider, paymentReference } = req.body;
+    const { paymentProvider, paymentReference, creditBreakdown, redemptionSessionId } = req.body;
     const userId = req.firebaseUser?.uid || req.user?.uid || '';
 
     const booking = await loadBookingFromDB(bookingId);
@@ -205,17 +205,63 @@ router.post('/:bookingId/confirm', requireAuth, async (req: Request, res: Respon
       });
     }
 
+    if (creditBreakdown && redemptionSessionId) {
+      const grossCents = Math.round(booking.priceSnapshot.gross * 100);
+      const creditsApplied = creditBreakdown.totalCreditsAppliedCents || 0;
+      const cashPaid = creditBreakdown.cashPaidCents || 0;
+      
+      if (creditsApplied < 0 || cashPaid < 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Credit breakdown values must be non-negative'
+        });
+      }
+
+      if (Math.abs((creditsApplied + cashPaid) - grossCents) > 1) {
+        return res.status(400).json({
+          success: false,
+          error: `Credit breakdown mismatch: credits (${creditsApplied}) + cash (${cashPaid}) != gross (${grossCents})`
+        });
+      }
+
+      if (cashPaid > 0 && !paymentReference) {
+        return res.status(400).json({
+          success: false,
+          error: 'Payment reference required when cash portion is due'
+        });
+      }
+    }
+
     const result = await unifiedBookingEngine.confirm({
       booking,
       paymentProvider: paymentProvider || 'NAYAX',
       paymentReference,
-      confirmedBy: userId
+      confirmedBy: userId,
+      creditBreakdown,
+      redemptionSessionId,
     });
+
+    if (creditBreakdown && redemptionSessionId) {
+      try {
+        const { walletService } = await import('../services/WalletService');
+        const cashRequired = creditBreakdown.cashPaidCents || 0;
+        const paymentConfirmed = cashRequired === 0 || !!paymentReference;
+        await walletService.confirmRedemption(redemptionSessionId, paymentConfirmed);
+        logger.info('[UnifiedBookingAPI] Wallet redemption confirmed after booking', { 
+          bookingId, redemptionSessionId, creditsApplied: creditBreakdown.totalCreditsAppliedCents 
+        });
+      } catch (walletError: any) {
+        logger.error('[UnifiedBookingAPI] Wallet redemption failed after booking confirm - manual intervention needed', { 
+          error: walletError.message, bookingId, redemptionSessionId 
+        });
+      }
+    }
 
     res.json({
       success: true,
       booking: result.booking,
-      transactionId: result.transactionId
+      transactionId: result.transactionId,
+      creditBreakdown: result.creditBreakdown,
     });
   } catch (error: any) {
     logger.error('[UnifiedBookingAPI] Failed to confirm', { error: error.message });
@@ -315,12 +361,27 @@ router.post('/:bookingId/complete', requireAuth, async (req: Request, res: Respo
       });
     }
 
-    const updatedBooking = await unifiedBookingEngine.complete(booking, completedBy);
+    const { customerEmail, customerName, customerPhone, serviceDescription, serviceDescriptionHe } = req.body;
+
+    const receiptData = {
+      customerEmail: customerEmail || booking.userId || '',
+      customerName: customerName || '',
+      customerPhone: customerPhone || '',
+      providerName: booking.resourceType === 'HUMAN' ? booking.resourceId : undefined,
+      providerId: booking.resourceType === 'HUMAN' ? booking.resourceId : undefined,
+      serviceDescription: serviceDescription || `Pet Wash™ service - ${booking.serviceId}`,
+      serviceDescriptionHe: serviceDescriptionHe || `שירות פט ווש™ - ${booking.serviceId}`,
+    };
+
+    const result = await unifiedBookingEngine.complete(booking, completedBy, receiptData);
 
     res.json({
       success: true,
-      booking: updatedBooking,
-      status: 'COMPLETED'
+      booking: result.booking,
+      status: 'COMPLETED',
+      receiptNumber: result.receiptNumber,
+      receiptId: result.receiptId,
+      reconciliationId: result.reconciliationId,
     });
   } catch (error: any) {
     logger.error('[UnifiedBookingAPI] Failed to complete', { error: error.message });

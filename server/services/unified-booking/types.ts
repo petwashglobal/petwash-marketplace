@@ -199,11 +199,34 @@ export interface QuoteParams {
   promoCode?: string;
 }
 
+export interface CreditBreakdown {
+  egiftCents: number;
+  washPackages: number;
+  loyaltyPointsCents: number;
+  promoCents: number;
+  referralCents: number;
+  totalCreditsAppliedCents: number;
+  cashPaidCents: number;
+  redemptionSessionId?: string;
+}
+
 export interface ConfirmParams {
   booking: UnifiedBooking;
   paymentProvider: string;
   paymentReference?: string;
   confirmedBy: string;
+  creditBreakdown?: CreditBreakdown;
+  redemptionSessionId?: string;
+}
+
+export interface CompletionReceiptData {
+  customerEmail: string;
+  customerName?: string;
+  customerPhone?: string;
+  providerName?: string;
+  providerId?: string;
+  serviceDescription: string;
+  serviceDescriptionHe: string;
 }
 
 export interface AdminFreeWashParams {

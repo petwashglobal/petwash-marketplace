@@ -61,6 +61,18 @@ export default function MarketplaceBookingFlow() {
   const [selectedSlotStart, setSelectedSlotStart] = useState<Date | null>(null);
   const [selectedSlotEnd, setSelectedSlotEnd] = useState<Date | null>(null);
 
+  // Credit wallet state
+  const [appliedCredits, setAppliedCredits] = useState<{
+    redemptionSessionId: string;
+    egiftCents: number;
+    washPackages: number;
+    loyaltyPointsCents: number;
+    promoCents: number;
+    referralCents: number;
+    totalCreditsAppliedCents: number;
+    cashPaidCents: number;
+  } | null>(null);
+
   // Quote state (fetched from backend)
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const [quoteData, setQuoteData] = useState<{
@@ -228,6 +240,18 @@ export default function MarketplaceBookingFlow() {
         lockToken,
         petIds: selectedPetId ? [selectedPetId] : [],
         specialInstructions,
+        ...(appliedCredits ? {
+          creditBreakdown: {
+            egiftCents: appliedCredits.egiftCents,
+            washPackages: appliedCredits.washPackages,
+            loyaltyPointsCents: appliedCredits.loyaltyPointsCents,
+            promoCents: appliedCredits.promoCents,
+            referralCents: appliedCredits.referralCents,
+            totalCreditsAppliedCents: appliedCredits.totalCreditsAppliedCents,
+            cashPaidCents: appliedCredits.cashPaidCents,
+          },
+          redemptionSessionId: appliedCredits.redemptionSessionId,
+        } : {}),
       });
       return response.json();
     },
@@ -695,7 +719,46 @@ export default function MarketplaceBookingFlow() {
                         platform={platform as 'walker' | 'sitter' | 'pettrek' | 'k9000' | 'plush_lab'}
                         transactionAmountCents={quoteData.totalCents}
                         compact={false}
+                        onRedeemCredits={(preview, redemption) => {
+                          setAppliedCredits({
+                            redemptionSessionId: redemption.sessionId,
+                            egiftCents: redemption.creditsApplied.egiftCents,
+                            washPackages: redemption.creditsApplied.washPackages,
+                            loyaltyPointsCents: redemption.creditsApplied.loyaltyPoints,
+                            promoCents: redemption.creditsApplied.promoCents,
+                            referralCents: 0,
+                            totalCreditsAppliedCents: preview.totalCreditsApplicableCents,
+                            cashPaidCents: redemption.cashDueCents,
+                          });
+                        }}
                       />
+                      {appliedCredits && appliedCredits.totalCreditsAppliedCents > 0 && (
+                        <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-green-800 dark:text-green-200 font-medium">
+                              {isHebrew ? 'זיכויים הופעלו' : 'Credits Applied'}
+                            </span>
+                            <span className="text-green-700 dark:text-green-300 font-bold">
+                              -₪{(appliedCredits.totalCreditsAppliedCents / 100).toFixed(2)}
+                            </span>
+                          </div>
+                          {appliedCredits.cashPaidCents > 0 && (
+                            <div className="flex items-center justify-between text-sm mt-1">
+                              <span className="text-gray-600 dark:text-gray-400">
+                                {isHebrew ? 'יתרה לתשלום במזומן' : 'Remaining cash payment'}
+                              </span>
+                              <span className="text-gray-800 dark:text-gray-200 font-semibold">
+                                ₪{(appliedCredits.cashPaidCents / 100).toFixed(2)}
+                              </span>
+                            </div>
+                          )}
+                          {appliedCredits.cashPaidCents === 0 && (
+                            <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                              {isHebrew ? 'מכוסה במלואו על ידי הזיכויים שלך!' : 'Fully covered by your credits!'}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -735,7 +798,12 @@ export default function MarketplaceBookingFlow() {
                         ) : (
                           <>
                             <CreditCard className="w-5 h-5 mr-2" />
-                            {isHebrew ? 'המשך לתשלום (Nayax)' : 'Proceed to Payment (Nayax)'}
+                            {appliedCredits && appliedCredits.cashPaidCents === 0
+                              ? (isHebrew ? 'אישור הזמנה (מכוסה בזיכויים)' : 'Confirm Booking (Covered by Credits)')
+                              : appliedCredits && appliedCredits.cashPaidCents > 0
+                                ? (isHebrew ? `המשך לתשלום ₪${(appliedCredits.cashPaidCents / 100).toFixed(2)}` : `Pay ₪${(appliedCredits.cashPaidCents / 100).toFixed(2)} via Nayax`)
+                                : (isHebrew ? 'המשך לתשלום (Nayax)' : 'Proceed to Payment (Nayax)')
+                            }
                           </>
                         )}
                       </Button>
@@ -743,7 +811,12 @@ export default function MarketplaceBookingFlow() {
 
                     <div className="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                       <Shield className="w-4 h-4 text-green-600" />
-                      <span>{isHebrew ? 'תשלום מאובטח דרך Nayax Israel' : 'Secure payment via Nayax Israel'}</span>
+                      <span>
+                        {appliedCredits && appliedCredits.cashPaidCents === 0
+                          ? (isHebrew ? 'מכוסה במלואו על ידי הזיכויים שלך' : 'Fully covered by your wallet credits')
+                          : (isHebrew ? 'תשלום מאובטח דרך Nayax Israel' : 'Secure payment via Nayax Israel')
+                        }
+                      </span>
                     </div>
                   </div>
                 </div>

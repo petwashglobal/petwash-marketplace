@@ -32,7 +32,9 @@ import type {
   AdminFreeWashParams,
   SERVICE_CONFIGS,
   Role,
-  Currency
+  Currency,
+  CreditBreakdown,
+  CompletionReceiptData
 } from './types';
 
 const ISRAEL_VAT_RATE = 0.17;
@@ -219,35 +221,73 @@ export class UnifiedBookingEngine {
   async confirm(params: ConfirmParams): Promise<{
     booking: UnifiedBooking;
     transactionId: string;
+    creditBreakdown?: CreditBreakdown;
   }> {
-    const { booking, paymentProvider, paymentReference, confirmedBy } = params;
+    const { booking, paymentProvider, paymentReference, confirmedBy, creditBreakdown, redemptionSessionId } = params;
 
     try {
+      const grossAmount = booking.priceSnapshot.gross;
+      const hasCreditPayment = creditBreakdown && creditBreakdown.totalCreditsAppliedCents > 0;
+      const cashPaidCents = creditBreakdown?.cashPaidCents ?? Math.round(grossAmount * 100);
+      const creditsAppliedCents = creditBreakdown?.totalCreditsAppliedCents ?? 0;
+
+      let transactionType: 'PAID' | 'COMPLIMENTARY' | 'PROMO' = 'PAID';
+      if (grossAmount === 0) {
+        transactionType = 'COMPLIMENTARY';
+      } else if (hasCreditPayment && cashPaidCents === 0) {
+        transactionType = 'PROMO';
+      }
+
+      const effectiveProvider = hasCreditPayment && cashPaidCents === 0 ? 'WALLET_CREDITS' : paymentProvider;
+
       const transaction = await transactionStampService.stamp({
         bookingId: booking.id,
-        amount: booking.priceSnapshot.gross,
-        type: booking.priceSnapshot.gross === 0 ? 'COMPLIMENTARY' : 'PAID',
-        provider: paymentProvider,
+        amount: grossAmount,
+        type: transactionType,
+        provider: effectiveProvider,
         providerRef: paymentReference,
-        stampedBy: confirmedBy
+        stampedBy: confirmedBy,
+        vatRate: booking.priceSnapshot.vatRate,
       });
 
       booking.status = 'CONFIRMED';
       booking.updatedAt = new Date();
 
+      const paymentMetadata: Record<string, any> = {
+        ...(booking.metadata || {}),
+        priceSnapshot: booking.priceSnapshot,
+        transactionId: transaction.id,
+        confirmedAt: new Date().toISOString(),
+      };
+
+      if (hasCreditPayment) {
+        paymentMetadata.creditBreakdown = {
+          egiftCents: creditBreakdown!.egiftCents,
+          washPackages: creditBreakdown!.washPackages,
+          loyaltyPointsCents: creditBreakdown!.loyaltyPointsCents,
+          promoCents: creditBreakdown!.promoCents,
+          referralCents: creditBreakdown!.referralCents,
+          totalCreditsAppliedCents: creditsAppliedCents,
+          cashPaidCents,
+          redemptionSessionId: redemptionSessionId || creditBreakdown!.redemptionSessionId,
+        };
+        paymentMetadata.paymentSplit = {
+          creditsILS: (creditsAppliedCents / 100).toFixed(2),
+          cashILS: (cashPaidCents / 100).toFixed(2),
+          totalILS: grossAmount.toFixed(2),
+        };
+      }
+
       await db.update(bookings)
         .set({
           status: 'confirmed',
           paymentStatus: 'paid',
-          paymentMethod: paymentProvider.toLowerCase(),
+          paymentMethod: hasCreditPayment 
+            ? (cashPaidCents > 0 ? `${effectiveProvider.toLowerCase()}+wallet` : 'wallet_credits')
+            : paymentProvider.toLowerCase(),
           paymentIntentId: paymentReference,
           confirmedAt: new Date(),
-          platformData: {
-            ...(booking.metadata || {}),
-            priceSnapshot: booking.priceSnapshot,
-            transactionId: transaction.id,
-            confirmedAt: new Date().toISOString()
-          },
+          platformData: paymentMetadata,
           updatedAt: new Date()
         })
         .where(eq(bookings.id, booking.id));
@@ -258,24 +298,42 @@ export class UnifiedBookingEngine {
         newStatus: 'CONFIRMED',
         changedBy: confirmedBy,
         changedByRole: 'USER',
-        reason: 'Payment confirmed'
+        reason: hasCreditPayment
+          ? `Payment confirmed: ₪${(creditsAppliedCents / 100).toFixed(2)} credits + ₪${(cashPaidCents / 100).toFixed(2)} cash`
+          : 'Payment confirmed'
       });
 
       await eventLogService.logPaymentReceived({
         bookingId: booking.id,
         transactionId: transaction.id,
         userId: confirmedBy,
-        amount: booking.priceSnapshot.gross,
-        provider: paymentProvider
+        amount: grossAmount,
+        provider: effectiveProvider
       });
+
+      if (hasCreditPayment) {
+        await eventLogService.log({
+          actorId: confirmedBy,
+          actorRole: 'USER',
+          action: 'CREDIT_APPLIED',
+          bookingId: booking.id,
+          transactionId: transaction.id,
+          description: `Credits applied: e-gift ₪${(creditBreakdown!.egiftCents / 100).toFixed(2)}, wash packages ${creditBreakdown!.washPackages}, loyalty ₪${(creditBreakdown!.loyaltyPointsCents / 100).toFixed(2)}, promo ₪${(creditBreakdown!.promoCents / 100).toFixed(2)}`,
+          meta: { creditBreakdown, redemptionSessionId },
+        });
+      }
 
       logger.info('[UnifiedBooking] Confirmed', {
         bookingId: booking.id,
         transactionId: transaction.id,
-        amount: booking.priceSnapshot.gross
+        amount: grossAmount,
+        creditBreakdown: hasCreditPayment ? {
+          creditsApplied: (creditsAppliedCents / 100).toFixed(2),
+          cashPaid: (cashPaidCents / 100).toFixed(2),
+        } : undefined,
       });
 
-      return { booking, transactionId: transaction.id };
+      return { booking, transactionId: transaction.id, creditBreakdown };
     } catch (error: any) {
       logger.error('[UnifiedBooking] Failed to confirm', {
         error: error.message,
@@ -329,7 +387,16 @@ export class UnifiedBookingEngine {
    * ================
    * Mark booking as completed
    */
-  async complete(booking: UnifiedBooking, completedBy: string): Promise<UnifiedBooking> {
+  async complete(
+    booking: UnifiedBooking, 
+    completedBy: string,
+    receiptData?: CompletionReceiptData
+  ): Promise<{
+    booking: UnifiedBooking;
+    receiptNumber?: string;
+    receiptId?: number;
+    reconciliationId?: string;
+  }> {
     booking.status = 'COMPLETED';
     booking.updatedAt = new Date();
 
@@ -351,9 +418,94 @@ export class UnifiedBookingEngine {
         reason: 'Service completed'
       });
 
-      logger.info('[UnifiedBooking] Completed', { bookingId: booking.id });
+      let receiptNumber: string | undefined;
+      let receiptId: number | undefined;
+      let reconciliationId: string | undefined;
 
-      return booking;
+      if (receiptData && booking.priceSnapshot.gross > 0) {
+        try {
+          const { IsraeliDigitalReceiptService } = await import('../IsraeliDigitalReceiptService');
+          
+          const platformData = booking.metadata || {};
+          const creditBreakdown = platformData.creditBreakdown;
+          const paymentMethod = creditBreakdown
+            ? (creditBreakdown.cashPaidCents > 0 ? 'nayax+wallet' : 'wallet_credits')
+            : 'nayax';
+
+          const receiptResult = await IsraeliDigitalReceiptService.generateReceipt({
+            platform: booking.serviceId.split('_')[0] || booking.platform,
+            bookingId: booking.id,
+            nayaxTransactionId: platformData.transactionId,
+            customerEmail: receiptData.customerEmail,
+            customerName: receiptData.customerName,
+            customerPhone: receiptData.customerPhone,
+            providerName: receiptData.providerName,
+            providerId: receiptData.providerId,
+            serviceDescription: receiptData.serviceDescription,
+            serviceDescriptionHe: receiptData.serviceDescriptionHe,
+            subtotalAmount: booking.priceSnapshot.net,
+            platformFeeAmount: booking.priceSnapshot.platformFee || 0,
+            totalAmount: booking.priceSnapshot.gross,
+            paymentMethod,
+            providerPayoutAmount: booking.priceSnapshot.providerPayout,
+            brokerCommissionAmount: booking.priceSnapshot.platformFee,
+          });
+
+          if (receiptResult.success) {
+            receiptNumber = receiptResult.receiptNumber;
+            receiptId = receiptResult.receiptId;
+
+            await db.update(bookings)
+              .set({
+                platformData: {
+                  ...platformData,
+                  receiptNumber,
+                  receiptId,
+                  receiptGeneratedAt: new Date().toISOString(),
+                }
+              })
+              .where(eq(bookings.id, booking.id));
+
+            await eventLogService.log({
+              actorId: 'system',
+              actorRole: 'ADMIN',
+              action: 'RECEIPT_GENERATED',
+              bookingId: booking.id,
+              description: `Israeli digital receipt ${receiptNumber} generated for booking ${booking.bookingNumber}`,
+              meta: {
+                receiptNumber,
+                receiptId,
+                totalAmount: booking.priceSnapshot.gross,
+                vatAmount: booking.priceSnapshot.vat,
+                creditBreakdown: creditBreakdown || null,
+              },
+            });
+
+            logger.info('[UnifiedBooking] Receipt generated on completion', {
+              bookingId: booking.id,
+              receiptNumber,
+              totalAmount: booking.priceSnapshot.gross,
+            });
+          } else {
+            logger.warn('[UnifiedBooking] Receipt generation failed but booking completed', {
+              bookingId: booking.id,
+              error: receiptResult.error,
+            });
+          }
+        } catch (receiptError: any) {
+          logger.error('[UnifiedBooking] Receipt generation error (non-blocking)', {
+            bookingId: booking.id,
+            error: receiptError.message,
+          });
+        }
+      }
+
+      logger.info('[UnifiedBooking] Completed', { 
+        bookingId: booking.id,
+        receiptNumber,
+      });
+
+      return { booking, receiptNumber, receiptId, reconciliationId };
     } catch (error: any) {
       logger.error('[UnifiedBooking] Failed to complete', {
         error: error.message,
