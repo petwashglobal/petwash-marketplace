@@ -479,9 +479,9 @@ video.lazy-loaded {
    BASE BACKGROUND - Light theme default
    ===================================================== */
 
-/* Default light background (not forced) */
+/* PURE WHITE background - NO cream, off-white, or warm tones */
 html, body, #root {
-  background-color: var(--background, #FFFFFF);
+  background-color: #FFFFFF !important;
 }
 
 /* TRANSPARENT BEHIND ALL IMAGES AND ICONS */
