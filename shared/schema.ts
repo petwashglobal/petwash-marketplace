@@ -92,11 +92,17 @@ export const users = pgTable("users", {
   unsubscribedAt: timestamp("unsubscribed_at"), // When user unsubscribed from all marketing
   
   role: varchar("role").default("customer"),
+  userStatus: varchar("user_status").default("new"),
+  signupIntent: varchar("signup_intent"),
   accessLevel: integer("access_level").default(1),
   approvedBy: varchar("approved_by"),
   approvedAt: timestamp("approved_at"),
   blocked: boolean("blocked").default(false),
   profileCompletedAt: timestamp("profile_completed_at"),
+  providerApprovedAt: timestamp("provider_approved_at"),
+  staffApprovedAt: timestamp("staff_approved_at"),
+  mfaRequired: boolean("mfa_required").default(false),
+  mfaEnrolled: boolean("mfa_enrolled").default(false),
   termsAcceptedAt: timestamp("terms_accepted_at"),
   termsVersion: varchar("terms_version"),
   privacyAcceptedAt: timestamp("privacy_accepted_at"),
@@ -11060,6 +11066,9 @@ export const staffAccessRequests = pgTable("staff_access_requests", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
   requestedRole: varchar("requested_role").notNull(),
+  department: varchar("department"),
+  justification: text("justification"),
+  managerName: varchar("manager_name"),
   status: varchar("status").notNull().default("pending"),
   requestedAt: timestamp("requested_at").defaultNow().notNull(),
   decidedAt: timestamp("decided_at"),
@@ -11076,3 +11085,82 @@ export const insertStaffAccessRequestSchema = createInsertSchema(staffAccessRequ
 });
 export type InsertStaffAccessRequest = z.infer<typeof insertStaffAccessRequestSchema>;
 export type StaffAccessRequest = typeof staffAccessRequests.$inferSelect;
+
+export const USER_STATUS_VALUES = [
+  'new', 'profile_incomplete', 'profile_complete',
+  'kyc_pending', 'kyc_approved', 'kyc_rejected',
+  'provider_pending_approval', 'provider_active',
+  'staff_pending_approval', 'staff_active',
+  'suspended'
+] as const;
+export type UserStatus = typeof USER_STATUS_VALUES[number];
+
+export const ALLOWED_INTENTS = ['customer', 'loyalty', 'provider', 'staff_request'] as const;
+export type SignupIntent = typeof ALLOWED_INTENTS[number];
+
+export const ALLOWED_ROLES = ['customer', 'loyalty', 'provider', 'staff', 'management', 'admin'] as const;
+export type UserRole = typeof ALLOWED_ROLES[number];
+
+export const auditEvents = pgTable("audit_events", {
+  id: serial("id").primaryKey(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  actorUserId: varchar("actor_user_id"),
+  actorRole: varchar("actor_role"),
+  actionType: varchar("action_type").notNull(),
+  targetType: varchar("target_type"),
+  targetId: varchar("target_id"),
+  ip: varchar("ip"),
+  userAgent: text("user_agent"),
+  traceId: varchar("trace_id"),
+  metadata: jsonb("metadata"),
+}, (table) => [
+  index("idx_audit_ev_actor").on(table.actorUserId),
+  index("idx_audit_ev_action").on(table.actionType),
+  index("idx_audit_ev_trace").on(table.traceId),
+  index("idx_audit_ev_target").on(table.targetType, table.targetId),
+  index("idx_audit_ev_created").on(table.createdAt),
+]);
+export type AuditEvent = typeof auditEvents.$inferSelect;
+
+export const kycCases = pgTable("kyc_cases", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  roleContext: varchar("role_context").notNull(),
+  status: varchar("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  decidedBy: varchar("decided_by"),
+  decidedAt: timestamp("decided_at"),
+  decisionReason: text("decision_reason"),
+}, (table) => [
+  index("idx_kyc_cases_user").on(table.userId),
+  index("idx_kyc_cases_status").on(table.status),
+]);
+export type KycCase = typeof kycCases.$inferSelect;
+
+export const kycDocuments = pgTable("kyc_documents", {
+  id: serial("id").primaryKey(),
+  kycCaseId: integer("kyc_case_id").notNull(),
+  docType: varchar("doc_type").notNull(),
+  storageRef: varchar("storage_ref"),
+  processingRef: varchar("processing_ref"),
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
+  fingerprintHash: varchar("fingerprint_hash"),
+  status: varchar("status").notNull().default("received"),
+}, (table) => [
+  index("idx_kyc_docs_case").on(table.kycCaseId),
+]);
+export type KycDocument = typeof kycDocuments.$inferSelect;
+
+export const kycChecks = pgTable("kyc_checks", {
+  id: serial("id").primaryKey(),
+  kycCaseId: integer("kyc_case_id").notNull(),
+  checkType: varchar("check_type").notNull(),
+  result: varchar("result").notNull(),
+  score: decimal("score", { precision: 5, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  metadata: jsonb("metadata"),
+}, (table) => [
+  index("idx_kyc_checks_case").on(table.kycCaseId),
+]);

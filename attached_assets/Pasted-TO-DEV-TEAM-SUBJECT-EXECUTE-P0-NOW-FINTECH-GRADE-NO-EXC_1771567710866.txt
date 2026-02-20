@@ -1,0 +1,258 @@
+TO: DEV TEAM
+SUBJECT: EXECUTE P0 NOW - FINTECH GRADE, NO EXCUSES
+
+This is not a design discussion anymore. This is production execution.
+PetWash can be sued and shut down if onboarding, KYC, roles, and audit are not 100% correct.
+Implement the P0 items below exactly. No partial. No "works on my machine". No regressions.
+
+------------------------------------------------------------
+P0 MUST BE DONE IN THIS ORDER
+------------------------------------------------------------
+
+1) DB STATE MACHINE (USER STATUS)
+Add and enforce a user_status state machine in Postgres.
+
+A) Schema
+- users.user_status enum:
+  NEW
+  PROFILE_INCOMPLETE
+  PROFILE_COMPLETE
+  KYC_PENDING
+  KYC_APPROVED
+  KYC_REJECTED
+  PROVIDER_PENDING_APPROVAL
+  PROVIDER_ACTIVE
+  STAFF_PENDING_APPROVAL
+  STAFF_ACTIVE
+  SUSPENDED
+
+- users.role enum remains:
+  customer
+  loyalty
+  provider
+  staff
+  management
+  admin
+
+- users.profile_completed_at timestamp
+- users.provider_approved_at timestamp nullable
+- users.staff_approved_at timestamp nullable
+- users.mfa_required boolean (true for privileged roles)
+- users.mfa_enrolled boolean
+
+B) Rules
+- Client can never set role or status.
+- Server computes and writes status on every onboarding step.
+- Any attempt to bypass status must be blocked server-side.
+
+Acceptance test:
+- New user logs in -> user_status becomes PROFILE_INCOMPLETE -> cannot book, redeem, or accept jobs.
+
+------------------------------------------------------------
+
+2) SERVER STORED INTENT (NO ESCALATION)
+Intent is a temporary onboarding hint only. It is not a role.
+
+A) Add table or column:
+- users.signup_intent (customer|loyalty|provider|staff_request)
+Store it server-side at first post-login.
+
+B) /api/auth/post-login must:
+- validate intent against allowed list
+- never allow "admin" or "management" as intent
+- if intent is staff_request -> create staff_access_request record, do NOT grant staff role
+- if user has existing role, ignore intent and route by role and status
+
+Acceptance test:
+- User cannot become provider by changing localStorage or query params.
+
+------------------------------------------------------------
+
+3) HARD GATES MIDDLEWARE (SERVER SIDE)
+Create and apply gates to all relevant routes.
+
+Required middleware functions:
+- requireAuth
+- requireRole(allowedRoles)
+- requireOnboardingComplete (user_status >= PROFILE_COMPLETE)
+- requireEmailVerified (only for email-based users, do not block phone-only)
+- requireProviderActive (user_status == PROVIDER_ACTIVE)
+- requireStaffApproved (user_status == STAFF_ACTIVE)
+- requireMfaForPrivileged (staff, management, admin)
+
+Apply gates:
+A) Customer operations (bookings, wallet, payments, redeem):
+- requireAuth
+- requireOnboardingComplete
+- requireEmailVerified (if email exists)
+
+B) Provider operations (offers, accept, payouts, provider dashboard):
+- requireAuth
+- requireProviderActive
+- requireOnboardingComplete
+- requireKycApproved (see item 5)
+
+C) Staff and admin panels:
+- requireAuth
+- requireStaffApproved or requireRole(staff/management/admin)
+- requireMfaForPrivileged (mandatory)
+- IP logging
+
+Acceptance test:
+- Provider cannot accept a job unless PROVIDER_ACTIVE + KYC_APPROVED.
+- Staff routes are inaccessible without approval and MFA.
+
+------------------------------------------------------------
+
+4) AUDIT EVENTS (LEGAL GRADE, ALWAYS ON)
+Add audit_events table and write logs for every sensitive action.
+
+A) Table: audit_events
+- id
+- created_at
+- actor_user_id
+- actor_role
+- action_type
+- target_type
+- target_id
+- ip
+- user_agent
+- trace_id
+- metadata jsonb
+
+B) Global middleware:
+- generate trace_id for each request
+- log auth attempts, onboarding updates, KYC submit, approval actions, payment actions, booking actions, redeem actions
+
+C) Must log:
+- staff approval decisions
+- provider approval decisions
+- KYC approve or reject
+- wallet debit credit
+- escrow hold release
+- redeem tokens
+- any admin view of KYC records
+
+Acceptance test:
+- Every approval action creates an audit row with IP, trace_id, actor.
+
+------------------------------------------------------------
+
+5) REAL KYC PIPELINE TABLES AND STATUS
+Stop using loose blobs only. Track documents and verification steps explicitly.
+
+A) Tables:
+- kyc_cases
+  - id
+  - user_id
+  - role_context (provider|loyalty)
+  - status (pending|approved|rejected|manual_review)
+  - created_at, updated_at
+  - decided_by, decided_at
+  - decision_reason
+
+- kyc_documents
+  - id
+  - kyc_case_id
+  - doc_type (passport|national_id|driver_license|disability_cert)
+  - storage_ref (if used) or processing_ref
+  - uploaded_at
+  - deleted_at (if zero storage mode)
+  - fingerprint_hash (sha256)
+  - status (received|processed|failed)
+
+- kyc_checks
+  - id
+  - kyc_case_id
+  - check_type (liveness|face_match|ocr|manual_review)
+  - result (pass|fail|warning)
+  - score
+  - created_at
+  - metadata
+
+B) Provider gating:
+- user_status cannot become PROVIDER_ACTIVE unless:
+  - kyc_cases.status == approved
+  - provider approval done
+
+Acceptance test:
+- Provider onboarding submit creates kyc_case, status pending.
+- Provider cannot operate until approved.
+
+------------------------------------------------------------
+
+6) STAFF ACCESS REQUEST CHAIN (APPROVAL + MFA)
+Staff cannot self activate.
+
+A) Table: staff_access_requests
+- id
+- requester_user_id
+- requested_role (staff|management)
+- department
+- reason
+- status (pending|approved|rejected)
+- decided_by
+- decided_at
+
+B) Flow
+- staff_request intent creates request and routes to /request-access/submitted
+- admin approves in /admin/approvals
+- on approval:
+  - set users.role to staff or management
+  - set users.user_status STAFF_ACTIVE
+  - set users.mfa_required true
+  - force MFA enrollment next login
+
+Acceptance test:
+- Staff cannot enter internal panels until approved and MFA enrolled.
+
+------------------------------------------------------------
+KNOWN FAILURES THAT MUST BE FIXED AS PART OF P0
+------------------------------------------------------------
+
+A) International phone input
+- Must support flags and E.164 for approved countries:
+  IL, AU, US, GB, FR, DE
+- Default IL +972, user can switch.
+- Backend must validate E.164 with libphonenumber.
+- Never hardcode Israel-only formats.
+
+B) Address field
+- Google Places may fail, manual entry must always work.
+- No form should fail because Places fails.
+- If Places fails, show message but allow submit.
+
+C) Role-specific routing
+- Customer -> /complete-profile -> /app
+- Loyalty -> /loyalty/onboarding -> /loyalty/dashboard
+- Provider -> /provider/onboarding -> submit -> pending -> after approval -> /provider/app
+- Staff request -> /request-access/submitted -> after approval -> /control-panel
+
+------------------------------------------------------------
+DELIVERABLES REQUIRED (NO DISCUSSION)
+------------------------------------------------------------
+
+1) Migration scripts and a clear list of new tables and columns.
+2) Middleware gates implemented and applied to all routes listed above.
+3) Audit events written for all sensitive endpoints.
+4) Provider KYC pipeline tables and status enforcement.
+5) Staff approval chain enforced with MFA requirement.
+6) International phone input with flags and country allowlist.
+7) End-to-end QA checklist results with screenshots or logs:
+   - customer signup and booking blocked until profile complete
+   - provider signup blocked until KYC and approval
+   - staff access requires approval and MFA
+   - audit_events populated for each flow
+
+------------------------------------------------------------
+DEFINITION OF DONE
+------------------------------------------------------------
+
+Done means:
+- All flows work on production domain.
+- No bypass possible via client-side tricks.
+- Logs prove enforcement.
+- It behaves like a regulated fintech marketplace.
+- 100% compliance behavior, not 99%.
+
+Start with P0 item 1 now and do not move to item 2 until item 1 is merged, migrated, and verified.

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { storage } from '../storage';
 import { logger } from '../lib/logger';
 import { requireAuth } from '../customAuth';
+import { logAuditEvent } from '../middleware/auditLog';
 
 const router = Router();
 
@@ -36,10 +37,10 @@ router.post('/', requireAuth, async (req, res) => {
     const userId = req.firebaseUser?.uid;
     if (!userId) return res.status(401).json({ error: 'Not authenticated' });
 
-    const { requestedRole } = req.body;
+    const { requestedRole, department, justification, managerName } = req.body;
 
-    if (requestedRole === 'admin') {
-      return res.status(403).json({ error: 'Cannot request admin role from public interface' });
+    if (requestedRole === 'admin' || requestedRole === 'management' || requestedRole === 'super_admin') {
+      return res.status(403).json({ error: 'Cannot request privileged role from public interface' });
     }
 
     if (requestedRole !== 'staff') {
@@ -54,10 +55,29 @@ router.post('/', requireAuth, async (req, res) => {
     const request = await storage.createStaffAccessRequest({
       userId,
       requestedRole,
+      department: department || null,
+      justification: justification || null,
+      managerName: managerName || null,
       status: 'pending',
     });
 
-    logger.info('[Access Requests] New staff access request created', { userId, requestedRole });
+    await storage.updateUser(userId, {
+      signupIntent: 'staff_request',
+      userStatus: 'staff_pending_approval',
+    } as any);
+
+    await logAuditEvent({
+      actorUserId: userId,
+      actionType: 'STAFF_ACCESS_REQUEST',
+      targetType: 'staff_access_request',
+      targetId: String(request.id),
+      ip: req.ip || req.headers['x-forwarded-for'] as string,
+      userAgent: req.headers['user-agent'],
+      traceId: (req as any).traceId,
+      metadata: { requestedRole, department },
+    });
+
+    logger.info('[Access Requests] New staff access request created', { userId, requestedRole, department });
     res.status(201).json({ request });
   } catch (error) {
     logger.error('[Access Requests] Error creating request', { error });
@@ -96,18 +116,34 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
       decidedBy: email!,
     });
 
+    const now = new Date();
     try {
       await storage.updateUser(updated.userId, {
         role: 'staff',
         accessLevel: 4,
         approvedBy: email!,
-        approvedAt: new Date(),
-      });
+        approvedAt: now,
+        userStatus: 'staff_active',
+        staffApprovedAt: now,
+        mfaRequired: true,
+      } as any);
     } catch (userErr) {
       logger.error('[Access Requests] Failed to update user role after approval', { userErr, userId: updated.userId });
     }
 
-    logger.info('[Access Requests] Request approved', { id, decidedBy: email });
+    await logAuditEvent({
+      actorUserId: req.firebaseUser?.uid,
+      actorRole: 'super_admin',
+      actionType: 'STAFF_APPROVE',
+      targetType: 'user',
+      targetId: updated.userId,
+      ip: req.ip || req.headers['x-forwarded-for'] as string,
+      userAgent: req.headers['user-agent'],
+      traceId: (req as any).traceId,
+      metadata: { requestId: id, approvedRole: 'staff', mfaRequired: true },
+    });
+
+    logger.info('[Access Requests] Request approved - user_status set to staff_active, mfa_required=true', { id, decidedBy: email, userId: updated.userId });
     res.json({ request: updated });
   } catch (error) {
     logger.error('[Access Requests] Error approving request', { error });
@@ -132,6 +168,18 @@ router.post('/:id/deny', requireAuth, async (req, res) => {
       decidedAt: new Date(),
       decidedBy: email!,
       reason: reason || null,
+    });
+
+    await logAuditEvent({
+      actorUserId: req.firebaseUser?.uid,
+      actorRole: 'super_admin',
+      actionType: 'STAFF_DENY',
+      targetType: 'user',
+      targetId: updated.userId,
+      ip: req.ip || req.headers['x-forwarded-for'] as string,
+      userAgent: req.headers['user-agent'],
+      traceId: (req as any).traceId,
+      metadata: { requestId: id, reason },
     });
 
     logger.info('[Access Requests] Request denied', { id, decidedBy: email, reason });

@@ -111,6 +111,8 @@ import israeliCompliance2025Routes from "./routes/israeli-compliance-2025";
 import platformApiRoutes from "./routes/platform-api";
 import { resolvePlatformMiddleware } from "./middleware/platformContext";
 import { auditMiddleware } from "./middleware/auditLogger";
+import { requireRole, requireStaffApproved, requireProviderActive, requireSuperAdmin, requireMfaEnrolled } from "./middleware/gates";
+import { logAuditEvent, auditMiddleware as auditLogMiddleware } from "./middleware/auditLog";
 import referralRoutes from "./routes/referral";
 import pricingApiRoutes from "./routes/pricing-api";
 import accountingRoutes from "./routes/accounting";
@@ -313,6 +315,10 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use('/api/admin/', adminRouteHardening());
   app.use('/api/kyc/', ipRiskScoring());
   app.use('/api/kyc/', sessionAgeGuard(14400));
+
+  // 🔐 P0 FINTECH GATES - Role + status enforcement on admin/staff/provider route groups
+  app.use('/api/admin/', requireRole('admin', 'management', 'staff'), requireStaffApproved, requireMfaEnrolled);
+  app.use('/api/provider/', requireProviderActive);
 
   // ========================================================================
   // PUBLIC USER ROLE GUARD - Blocks public/pet_parent users from internal routes
@@ -942,19 +948,19 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // POST /api/auth/post-login - Central role-based routing decider
-  app.post('/api/auth/post-login', requireAuth, postLoginDecider);
+  app.post('/api/auth/post-login', requireAuth, auditLogMiddleware('POST_LOGIN'), postLoginDecider);
   
   // GET /api/auth/whoami - Returns current user profile status and required fields
   app.get('/api/auth/whoami', requireAuth, getWhoami);
   
   // POST /api/auth/choose-role - User selects their intent (customer/provider/staff)
-  app.post('/api/auth/choose-role', requireAuth, chooseRole);
+  app.post('/api/auth/choose-role', requireAuth, auditLogMiddleware('CHOOSE_ROLE'), chooseRole);
   
-  // POST /api/admin/approve-access - Admin approves staff/admin access (only nir.h@petwash.co.il)
-  app.post('/api/admin/approve-access', requireAuth, approveAccess);
+  // POST /api/admin/approve-access - Admin approves staff/admin access (super admins only)
+  app.post('/api/admin/approve-access', requireAuth, requireSuperAdmin, auditLogMiddleware('APPROVE_ACCESS'), approveAccess);
   
   // POST /api/auth/complete-profile - Complete user profile (first onboarding step)
-  app.post('/api/auth/complete-profile', requireAuth, completeProfile);
+  app.post('/api/auth/complete-profile', requireAuth, auditLogMiddleware('PROFILE_UPDATE'), completeProfile);
 
   // Staff Access Requests CRUD
   app.use('/api/access-requests', apiLimiter, accessRequestsRoutes);
@@ -8986,8 +8992,8 @@ self.addEventListener('notificationclick', (event) => {
   // Police Check Badge System - Israeli תעודת יושר verification
   app.use('/api/police-check', apiLimiter, policeCheckRoutes);
   
-  // Admin Provider Review Queue - ⁦Pet Wash™⁩ approval workflow
-  app.use('/api/provider-review', apiLimiter, requireAdminMfa, adminProviderReviewRoutes);
+  // Admin Provider Review Queue - ⁦Pet Wash™⁩ approval workflow (P0 gates: role + status + MFA)
+  app.use('/api/provider-review', apiLimiter, requireAdminMfa, requireRole('admin', 'management', 'staff'), requireStaffApproved, requireMfaEnrolled, adminProviderReviewRoutes);
   
   // AI Payout Verification - Gemini 2.5 Flash work verification before payouts (Admin only)
   app.use('/api/ai-verification', validateFirebaseToken, apiLimiter, aiPayoutVerificationRoutes);

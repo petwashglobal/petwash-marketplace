@@ -320,6 +320,23 @@ router.post('/admin/approve/:id', requireAdmin, async (req: any, res) => {
       reviewNotes
     );
 
+    try {
+      const { logAuditEvent } = await import('../middleware/auditLog');
+      await logAuditEvent({
+        actorUserId: req.userId,
+        actorRole: 'admin',
+        actionType: 'PROVIDER_APPROVE',
+        targetType: 'provider_application',
+        targetId: String(applicationId),
+        ip: req.ip || req.headers?.['x-forwarded-for'],
+        userAgent: req.headers?.['user-agent'],
+        traceId: req.traceId,
+        metadata: { reviewNotes },
+      });
+    } catch (auditErr) {
+      logger.warn('[Admin Review] Audit log failed', auditErr);
+    }
+
     res.json(result);
   } catch (error: any) {
     logger.error('[Admin Review Routes] Error approving application', error);

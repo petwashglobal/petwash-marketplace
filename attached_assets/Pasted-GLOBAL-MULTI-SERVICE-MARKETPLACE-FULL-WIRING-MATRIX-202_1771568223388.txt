@@ -1,0 +1,582 @@
+GLOBAL MULTI-SERVICE MARKETPLACE - FULL WIRING MATRIX (2026)
+Purpose: One system. Multiple services. Fintech-grade security. Legal-grade records. Zero ambiguity.
+Rule: No competitor names anywhere in UI, DB, logs, emails, or copy. Use internal neutral terms only.
+
+====================================================================
+0) CORE PRINCIPLES (NON-NEGOTIABLE)
+====================================================================
+1. Server is the source of truth. Client cannot set role, status, approval, pricing, KYC result, payouts, or permissions.
+2. Every sensitive action is auditable with traceId + actor + IP + userAgent + before/after snapshots (when allowed).
+3. Consent is explicit, versioned, timestamped, and bound to userId + device + locale. No consent, no action.
+4. Compliance is enforced by gates at API level, not by frontend routing.
+5. Every user type has a state machine. Every state machine is enforced in DB and API.
+6. Any failure must degrade gracefully:
+   - Address autocomplete fails -> manual entry still works
+   - OTP fails -> alternative method (email or passkey) offered
+   - Payment preauth fails -> booking cannot dispatch
+   - Sheets or BI sync fails -> core DB still commits
+
+====================================================================
+1) ROLES, DEPARTMENTS, AND ACCESS LEVELS
+====================================================================
+
+A) User Types (external)
+- Public Visitor (unauthenticated)
+- Customer (standard user)
+- Loyalty Member (premium membership user)
+- Provider Applicant (not active yet)
+- Provider Active (can receive jobs)
+- Provider Suspended (cannot receive jobs)
+
+B) Internal Roles (back office)
+- Staff (department-based)
+- Team Lead (approves within department scope)
+- Manager (cross-department operational)
+- Finance (ledger, payouts)
+- Compliance (KYC, disputes, privacy)
+- Security Admin (MFA policy, incident tools)
+- Super Admin (break-glass, limited personnel)
+
+C) Department Codes (use these everywhere)
+- OPS (operations dispatch)
+- CS (customer support)
+- PRV (provider operations)
+- FIN (finance)
+- CMP (compliance)
+- SEC (security)
+- MKT (marketing)
+- HR (human resources)
+- ENG (engineering read-only dashboards only, no approvals)
+
+D) Access Model
+- RBAC: role grants baseline
+- ABAC: attributes refine access (department, region, service vertical, risk tier)
+- Permission Claims in token are read-only hints, server recalculates from DB each request for privileged actions
+
+====================================================================
+2) DATA MODEL - TABLES YOU MUST HAVE (MINIMUM)
+====================================================================
+
+1) users
+- id (uuid)
+- auth_provider (firebase|phone|email|passkey)
+- email, email_verified
+- phone_e164, phone_verified
+- role (customer|loyalty|provider|staff|manager|admin|super_admin)
+- user_status (state machine, see section 3)
+- locale, timezone, country_code
+- created_at, updated_at
+- last_login_at
+- risk_level (low|medium|high)
+- soft_delete_at (nullable)
+
+2) profiles
+- user_id
+- first_name, last_name
+- dob (date)
+- address_line1, address_line2, city, state, postal_code, country
+- geo_lat, geo_lng (nullable)
+- avatar_asset_id (nullable)
+- completed_at
+
+3) consents (versioned)
+- id
+- user_id
+- consent_type (terms|privacy|kyc|marketing|location|biometric|cookies|provider_terms|staff_policy)
+- version
+- accepted (bool)
+- accepted_at
+- method (checkbox|signature|otp|in_app)
+- ip, user_agent, device_id
+- locale
+- evidence_hash (sha256 of rendered consent text snapshot)
+
+4) consent_snapshots (immutable text)
+- id
+- consent_type, version
+- locale
+- content (stored snapshot, immutable)
+- content_hash
+
+5) onboarding_cases (one per user role context)
+- id
+- user_id
+- context (customer|loyalty|provider|staff)
+- status (started|profile_required|kyc_required|pending_review|approved|rejected|suspended)
+- current_step
+- created_at, updated_at
+- decided_by, decided_at, decision_reason
+
+6) kyc_cases
+- id
+- user_id
+- context (loyalty|provider|staff_if_required)
+- status (pending|approved|rejected|manual_review)
+- risk_score (0-100)
+- created_at, updated_at
+- decided_by, decided_at, decision_reason
+
+7) kyc_documents
+- id
+- kyc_case_id
+- doc_type (passport|national_id|driver_license|disability_cert|other)
+- country
+- fingerprint_hash (sha256)
+- storage_mode (zero_storage|ttl_storage)
+- storage_ref (nullable)
+- uploaded_at
+- deleted_at (nullable)
+- status (received|processed|failed)
+
+8) kyc_checks
+- id
+- kyc_case_id
+- check_type (ocr|face_match|liveness|doc_forgery|manual)
+- result (pass|fail|warning)
+- score
+- metadata (jsonb)
+- created_at
+
+9) staff_access_requests
+- id
+- requester_user_id
+- requested_role (staff|manager)
+- department_code
+- reason
+- status (pending|approved|rejected)
+- decided_by, decided_at
+- approval_scope (jsonb: which departments, which regions)
+
+10) services_catalog
+- id
+- service_code (example: WLK, SIT, GRM, TRN, EDU, etc)
+- name_public (do not use competitor terms)
+- enabled (bool)
+
+11) bookings
+- id
+- customer_id
+- provider_id (nullable until assigned)
+- service_code
+- status (draft|quoted|payment_authorized|dispatching|accepted|in_progress|completed|cancelled|expired|failed)
+- scheduled_start_at, scheduled_end_at
+- address fields + geo
+- price_quote_id
+- payment_intent_id
+- created_at, updated_at
+
+12) dispatch_jobs
+- id
+- booking_id
+- status (created|offering|assigned|expired|cancelled)
+- wave (int)
+- next_wave_at
+- leased_until
+- created_at, updated_at
+
+13) job_offers
+- id
+- dispatch_job_id
+- provider_id
+- offer_expires_at
+- status (sent|accepted|rejected|expired|cancelled)
+- created_at
+
+14) provider_profiles
+- user_id
+- bio
+- languages
+- service_coverage (jsonb)
+- rating_avg, rating_count
+- badges (jsonb)
+- availability_state (offline|online|busy|on_job)
+- last_presence_at
+- background_check_status (optional)
+- payout_account_status
+
+15) provider_assets
+- id
+- provider_id
+- asset_type (id_photo|profile_photo|certification|insurance)
+- storage_ref or zero_storage markers
+- status
+
+16) payments
+- id
+- booking_id
+- status (authorized|captured|voided|refunded_if_allowed)
+- method (card|wallet|voucher)
+- amount, currency
+- provider_fee, platform_fee, tax
+- created_at
+
+17) ledger_entries (append-only)
+- id
+- entity_type (user|provider|platform)
+- entity_id
+- entry_type (debit|credit)
+- reason_code (booking_hold|booking_release|payout|chargeback|adjustment)
+- amount, currency
+- related_id (booking_id or payment_id)
+- created_at
+- immutable_hash (hash chain)
+
+18) audit_events (mandatory)
+- id
+- created_at
+- trace_id
+- actor_user_id
+- actor_role
+- action_type
+- target_type, target_id
+- ip, user_agent
+- metadata (jsonb, redacted)
+- severity (info|warning|critical)
+
+19) notifications
+- id
+- user_id
+- channel (push|email|sms|whatsapp_if_allowed)
+- template_id
+- status (queued|sent|failed)
+- provider_response (jsonb)
+- created_at
+
+20) security_events
+- id
+- user_id (nullable)
+- event_type (mfa_enroll|mfa_fail|kyc_velocity|login_anomaly|token_reuse|rate_limited)
+- ip, user_agent
+- risk_score
+- created_at
+
+====================================================================
+3) STATE MACHINES - EXACT RULES
+====================================================================
+
+A) Customer / Loyalty user_status
+- NEW
+- PROFILE_INCOMPLETE
+- PROFILE_COMPLETE
+- (optional) KYC_PENDING (loyalty only if KYC required)
+- KYC_APPROVED (loyalty only)
+- SUSPENDED
+
+Transitions:
+- login first time -> NEW
+- if missing required profile fields -> PROFILE_INCOMPLETE
+- submit profile -> PROFILE_COMPLETE
+- if loyalty and KYC required -> KYC_PENDING
+- KYC approved -> KYC_APPROVED
+- fraud or policy -> SUSPENDED
+
+B) Provider user_status
+- NEW
+- PROFILE_INCOMPLETE
+- PROFILE_COMPLETE
+- KYC_PENDING
+- KYC_APPROVED
+- PROVIDER_PENDING_APPROVAL
+- PROVIDER_ACTIVE
+- SUSPENDED
+
+Transitions:
+- provider intent selected -> onboarding_case(context=provider)
+- profile complete -> PROFILE_COMPLETE
+- submit KYC -> KYC_PENDING
+- KYC approved -> KYC_APPROVED
+- ops review -> PROVIDER_PENDING_APPROVAL -> PROVIDER_ACTIVE
+- any risk -> SUSPENDED
+
+C) Staff user_status
+- NEW
+- STAFF_PENDING_APPROVAL
+- STAFF_ACTIVE
+- SUSPENDED
+
+Transitions:
+- staff request -> STAFF_PENDING_APPROVAL
+- admin approves -> STAFF_ACTIVE (and set MFA required)
+- policy violation -> SUSPENDED
+
+No direct transitions allowed from client. Only server.
+
+====================================================================
+4) FRONTEND INTENT-FIRST ENTRY (ONE SIGN-IN PAGE, MANY FLOWS)
+====================================================================
+
+A) Intent Cards (pre-auth)
+- "Book a Service" (customer)
+- "Join Premium Membership" (loyalty)
+- "Apply as a Provider" (provider)
+- "Request Staff Access" (staff_request)
+
+Client stores intent locally for UX only.
+Server stores intent in users.signup_intent after auth.
+
+B) Auth Methods
+- Passkey (WebAuthn) first if available
+- Phone OTP with country flags + allowlist
+- Email (magic link or passwordless)
+- Social login (only if configured)
+- Fallback to another method if blocked
+
+C) Post Login Decider (server)
+POST /api/auth/post-login { intent, deviceInfo }
+Server returns:
+- nextPath
+- requiredActions (array)
+- user_status
+- role
+- onboarding_case_id
+
+D) Required Actions UI (front end)
+- Complete Profile
+- Verify Email (if email method)
+- Enroll MFA (privileged roles)
+- Submit KYC (provider, loyalty if required)
+- Wait for Approval (provider and staff)
+- Accept Terms and Policies (versioned)
+
+Frontend must never guess. It renders what server returns.
+
+====================================================================
+5) INTERNATIONAL PHONE INPUT (FLAGS + ALLOWLIST) - REQUIRED
+====================================================================
+
+A) Country Allowlist (hard allow)
+- IL, AU, US, GB, FR, DE
+
+B) UI format
+[FLAG] [COUNTRY CODE] [NUMBER]
+- Default country: IL
+- User can switch to allowlist only
+- Output: E.164 only (example: +614xxxxxxxx)
+
+C) Server validation
+- Validate E.164
+- Store phone_e164
+- Store phone_country
+- Do not accept Israel-only patterns
+
+D) Edge Handling
+- If user enters number without + -> auto-parse using selected country
+- If parse fails -> show error + manual guidance
+
+====================================================================
+6) ADDRESS AUTOCOMPLETE WIRING (MUST NEVER BLOCK SUBMIT)
+====================================================================
+
+A) Preferred method (secure)
+- Client calls server proxy:
+  GET /api/places/autocomplete?input=...&country=...
+  GET /api/places/details?placeId=...
+
+B) Fallback
+- Manual address fields always visible or toggled by "Enter manually"
+- Submit accepts manual address even if Places fails
+
+C) Backend normalization
+- Convert to canonical form
+- Derive geo if provided, else leave null
+- Store both raw input and normalized fields
+
+====================================================================
+7) CONSENT AND LEGAL EVIDENCE (EVERYTHING VERSIONED)
+====================================================================
+
+A) What requires explicit consent
+- Terms of Service
+- Privacy Policy
+- Location usage (if any)
+- Marketing (optional, separate)
+- Biometric processing (if used)
+- KYC processing (if used)
+- Provider terms (provider only)
+- Staff policy and acceptable use (staff only)
+
+B) How to store
+- Render exact consent content from consent_snapshots by locale
+- On accept:
+  - store consent record with version
+  - store evidence_hash of content_hash + user_id + timestamp + device_id
+
+C) Enforcement gates
+- Any action requiring consent must check consents table:
+  - booking requires terms + privacy
+  - provider onboarding requires provider_terms + kyc consent
+  - staff access requires staff_policy + security policy
+
+====================================================================
+8) KYC ARCHITECTURE (BANK-GRADE BEHAVIOR)
+====================================================================
+
+A) Modes
+1) TTL storage mode
+- store raw docs in secure storage
+- strict TTL lifecycle delete (example 24h)
+- store only fingerprints and results long term
+
+2) Zero storage mode (ideal)
+- upload to server
+- process in memory
+- generate fingerprint_hash and extracted fields minimal
+- wipe buffers
+- do not persist raw files
+- persist only: kyc_checks, risk score, audit record, fingerprint hash
+
+B) Checks chain (example)
+- document intake validation (mime, size, type)
+- OCR extraction (minimal fields)
+- face detection
+- liveness (challenge or passive heuristic)
+- face match (embedding model preferred)
+- risk scoring
+- manual review queue if needed
+
+C) KYC outcomes
+- approved -> unlock provider activation
+- rejected -> block and allow resubmission after cooldown
+- manual_review -> hold until compliance team action
+
+D) Security requirements
+- rate limiting per user and per IP
+- anomaly detection (velocity, device, geo mismatch)
+- admin view logging for each document or case
+
+====================================================================
+9) MFA AND SECURE ACCESS (PRIVILEGED ROLES)
+====================================================================
+
+A) Required for privileged roles
+- staff, manager, admin, super_admin, finance, compliance
+
+B) Supported methods
+- passkey (preferred)
+- authenticator app TOTP
+- SMS OTP as backup only (policy-based)
+- email OTP as backup only
+
+C) Enforcement
+- privileged endpoints require MFA enrolled
+- break-glass account rules:
+  - extremely limited users
+  - mandatory hardware-backed passkey
+  - extra audit severity on actions
+
+====================================================================
+10) DISPATCH AND PROVIDER EXECUTION (THE OPERATIONAL BRAIN)
+====================================================================
+
+A) Provider Presence
+- provider sets availability: online|offline|busy|on_job
+- presence heartbeat updates last_presence_at
+- server considers stale if last_presence_at older than threshold
+
+B) Dispatch pipeline (DB-backed, restart safe)
+1) Booking confirmed with payment authorization
+2) dispatch_job created
+3) waves executed by poller using:
+   - FOR UPDATE SKIP LOCKED
+   - lease timeouts
+4) Offers created with expiry
+5) First accept wins:
+   - atomic update with WHERE status=sent AND booking not assigned
+6) On accept:
+   - booking status accepted
+   - provider status on_job
+7) On completion:
+   - capture payment or finalize ledger
+   - release escrow per policy
+   - generate receipt record
+   - award loyalty points if eligible
+
+C) Customer transparency
+- customer sees status timeline
+- if expired, customer receives notification and next-step CTA
+
+D) Provider app execution
+- provider sees:
+  - offer card, countdown, accept/reject
+  - route details
+  - job checklist
+  - completion proof capture
+  - support button
+
+====================================================================
+11) LOYALTY ENGINE (STUNNING UX, HARD BACKEND RULES)
+====================================================================
+
+A) Entities
+- loyalty_accounts (user_id, tier, points, status)
+- loyalty_transactions (earn, redeem, adjust)
+- vouchers or e-gifts (token, value, expiry, status)
+- redemption_events (station redeem, app redeem)
+
+B) Rules
+- points awarded only after completion + payment capture
+- redeems require:
+  - consent
+  - anti-fraud checks
+  - idempotency key
+- tier progression rule set is server-only
+- membership perks are read-only for client
+
+C) Station redemption (physical)
+- token signed server-side (short expiry)
+- station validates token server-side before allowing redeem
+- redemption writes:
+  - ledger entry
+  - audit event
+  - loyalty transaction
+  - notification receipt
+
+====================================================================
+12) INTERNAL CONTROL PANEL (DEPARTMENTS + WORKFLOWS)
+====================================================================
+
+A) OPS dashboard
+- live dispatch queue
+- job escalations
+- provider availability heatmap
+- SLA timers
+
+B) Compliance dashboard
+- KYC cases queue
+- manual review tools
+- audit search
+- export tools (policy controlled)
+
+C) Finance dashboard
+- ledger viewer
+- payout batches
+- reconciliation
+- anomaly flags
+
+D) CS dashboard
+- customer tickets
+- booking history
+- refund policy enforcement (if allowed)
+- escalation to compliance
+
+E) HR dashboard
+- staff access requests
+- policy acceptance
+- offboarding and access revocation
+
+F) Security dashboard
+- MFA compliance report
+- suspicious login attempts
+- rate limit events
+- incident mode toggles (read-only for most)
+
+====================================================================
+13) OBSERVABILITY, INCIDENTS, AND LEGAL READINESS
+====================================================================
+
+A) TraceId everywhere
+- request header X-Trace-Id
+- stored in audit_events and security_events
+
+B) Logs redaction
+- never log raw ID

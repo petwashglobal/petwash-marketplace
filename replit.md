@@ -120,3 +120,12 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **AI & Vision**: Google Cloud Vision API, Google Gemini AI, Google Cloud Translation API, Google Dialogflow CX.
 - **Business Management**: Google Business Profile API.
 - **Google Forms Integration**: Admin-configurable embedded Google Forms.
+
+## Recent Changes (Feb 2026)
+- **P0 Fintech Auth System**: Added `user_status`, `signup_intent`, `mfa_required`, `mfa_enrolled`, `provider_approved_at`, `staff_approved_at` columns to users table. User status state machine: new → profile_incomplete → profile_complete → (kyc_pending/provider_pending_approval/provider_active) or (staff_pending_approval/staff_active). Provider role auto-transitions from 'customer' to 'provider' when application is approved.
+- **Server-stored Intent**: Post-login validates intent server-side. Allowed intents: customer, loyalty, provider, staff_request. Admin/management intents REJECTED (403). Intent stored in `signup_intent` column.
+- **Authorization Gates**: `server/middleware/gates.ts` provides `requireRole`, `requireProviderActive`, `requireStaffApproved`, `requireMfaEnrolled`, `requireEmailVerified`, `requireSuperAdmin`. Applied to `/api/admin/` and `/api/provider/` route groups.
+- **Audit Trail**: `audit_events` table with `server/middleware/auditLog.ts`. `traceIdMiddleware` generates UUID per request. Audit logging on: POST_LOGIN, CHOOSE_ROLE, APPROVE_ACCESS, PROFILE_UPDATE, STAFF_APPROVE, STAFF_DENY, PROVIDER_APPROVE.
+- **KYC Pipeline**: `kyc_cases`, `kyc_documents`, `kyc_checks` tables for provider verification workflow.
+- **Staff Approval Chain**: Staff access requests store department/justification. On approval: role=staff, userStatus=staff_active, mfaRequired=true, staffApprovedAt set. Super admin gate on approve-access route.
+- **SUPER_ADMINS**: nirhadad1@gmail.com, nir.h@petwash.co.il, ido.s@petwash.co.il, idoshaka@gmail.com, idoshakarzi110@gmail.com
