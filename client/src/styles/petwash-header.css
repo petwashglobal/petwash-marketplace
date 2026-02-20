@@ -538,6 +538,54 @@
 }
 
 /* ===========================
+   HEADER PROFILE ICON (always visible in header)
+   =========================== */
+.pw-header-profile-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pw-header-profile-circle {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #c6a664 0%, #e8d5a3 50%, #c6a664 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(198, 166, 100, 0.3);
+  border: 1.5px solid rgba(198, 166, 100, 0.5);
+}
+
+.pw-header-profile-img {
+  width: 130%;
+  height: 130%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.pw-header-profile-btn:hover .pw-header-profile-circle {
+  transform: scale(1.15);
+  box-shadow: 0 4px 16px rgba(198, 166, 100, 0.5);
+  border-color: #c6a664;
+}
+
+@media (min-width: 768px) {
+  .pw-header-profile-circle {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+}
+
+/* ===========================
    ACCOUNT BUTTON
    =========================== */
 .pw-account-btn {

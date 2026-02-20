@@ -457,6 +457,18 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               </div>
             </nav>
 
+            {/* Gold profile icon - quick access to dashboard */}
+            <button
+              className="pw-header-profile-btn"
+              onClick={() => handleNavigate(user ? "/dashboard" : "/signin")}
+              aria-label={user ? t("mydashboard", currentLanguage) : t("signin", currentLanguage)}
+              data-testid="button-header-profile"
+            >
+              <div className="pw-header-profile-circle">
+                <img src={goldUserIcon} alt="" className="pw-header-profile-img" />
+              </div>
+            </button>
+
             {/* Right stack: Hamburger on top, Language toggle below */}
             <div className="pw-right-stack">
               {/* Burger menu - top right */}
