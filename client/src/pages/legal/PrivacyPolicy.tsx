@@ -11,7 +11,7 @@ export default function PrivacyPolicy() {
     <div className={`min-h-screen luxury-bg-mesh ${isHebrew ? 'rtl' : 'ltr'}`}>
       <div className="luxury-container luxury-section">
         <Link href="/sitter-suite">
-          <Button className="mb-8 flex items-center gap-2 luxury-btn-ghost luxury-animate-fade-in">
+          <Button variant="ghost" className="mb-8 flex items-center gap-2 luxury-btn-ghost luxury-animate-fade-in">
             <ArrowLeft className="h-4 w-4" />
             {isHebrew ? 'חזרה ל-⁦The Sitter Suite™⁩' : 'Back to ⁦The Sitter Suite™⁩'}
           </Button>

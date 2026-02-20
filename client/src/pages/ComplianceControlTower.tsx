@@ -95,7 +95,7 @@ export default function ComplianceControlTower() {
         {/* Header */}
         <div className="mb-8 luxury-animate-fade-in">
           <Link href="/admin">
-            <Button className="luxury-btn-secondary mb-4 px-4 py-2" data-testid="button-back-admin">
+            <Button variant="ghost" className="luxury-btn-secondary mb-4 px-4 py-2" data-testid="button-back-admin">
               <ArrowLeft className="h-4 w-4 mr-2 inline" />
               {isHebrew ? "חזרה לניהול" : "Back to Admin"}
             </Button>

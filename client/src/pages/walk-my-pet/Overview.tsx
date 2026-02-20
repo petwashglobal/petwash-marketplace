@@ -79,6 +79,7 @@ export default function WalkMyPetOverview() {
       <div className="min-h-screen luxury-bg-mesh">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
           <Button
+            variant="ghost"
             onClick={() => { try { window.history.back(); } catch { window.location.href = '/dashboard'; } }}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >

@@ -505,6 +505,7 @@ export default function Hub() {
       <div className="luxury-container py-12">
         
         <Button
+          variant="ghost"
           onClick={() => { try { window.history.back(); } catch { setLocation('/dashboard'); } }}
           className="flex items-center gap-2 mb-6 text-gray-600 hover:text-gray-900 transition-colors"
         >

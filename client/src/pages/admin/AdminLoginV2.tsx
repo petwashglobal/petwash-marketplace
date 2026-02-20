@@ -390,7 +390,7 @@ export default function AdminLoginV2() {
 
         {/* Footer */}
         <div className="mt-6 text-center">
-          <Button className="text-sm text-gray-600 hover:text-purple-600 transition-colors">
+          <Button variant="ghost" className="text-sm text-gray-600 hover:text-purple-600 transition-colors">
             Forgot password?
           </Button>
         </div>

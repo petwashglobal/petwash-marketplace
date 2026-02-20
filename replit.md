@@ -7,6 +7,7 @@ Pet Wash™ is an enterprise platform aiming to be the leading global luxury pet
 Preferred communication style: Simple, everyday language.
 
 CRITICAL RULE: Never make layout or styling changes without explicit user approval - user gets extremely upset when changes are made to working designs.
+BUTTON TEXT CONTRAST RULE: Dark/black background buttons MUST ALWAYS have white text. Never use text-gray-* on default variant shadcn Buttons (which have dark gradient backgrounds). If a button needs gray text on a light background, use variant="ghost" or variant="outline". This applies site-wide as an absolute rule.
 BACKGROUND COLOR RULE: User explicitly requires PURE WHITE backgrounds only - NO cream, off-white, warm tones, or gradients. Always use bg-white (#FFFFFF).
 VIOLATION WARNING: User explicitly said "don't ever touch the top part" referring to header layout. Any changes to header without permission will cause severe user frustration.
 USER EXPLICITLY FORBID: Touching header layout, logo positioning, social media icons, hamburger menu, or language toggle without explicit permission.

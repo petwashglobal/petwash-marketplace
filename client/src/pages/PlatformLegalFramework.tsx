@@ -11,7 +11,7 @@ export default function PlatformLegalFramework() {
     <div className={`min-h-screen luxury-bg-mesh ${isHebrew ? 'rtl' : 'ltr'}`}>
       <div className="max-w-5xl mx-auto px-4 py-12">
         <Link href="/">
-          <Button className="mb-6 luxury-btn-ghost flex items-center gap-2" data-testid="button-back-home">
+          <Button variant="ghost" className="mb-6 luxury-btn-ghost flex items-center gap-2" data-testid="button-back-home">
             <ArrowLeft className="h-4 w-4" />
             {isHebrew ? 'חזרה לדף הבית' : 'Back to Home'}
           </Button>
