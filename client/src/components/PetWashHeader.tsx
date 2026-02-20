@@ -333,7 +333,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
   return (
     <>
       {/* Main header */}
-      <header className="pw-header">
+      <header className="pw-header" role="banner">
         <div className="pw-header-inner">
           {/* Left: 4 social icons with official brand colors - Instagram, Facebook, TikTok, Spotify */}
           <div className="pw-header-left">
@@ -377,11 +377,16 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             >
               <SiSpotify size={18} />
             </a>
+          </div>
 
-            {/* Platforms nav - desktop only, left of logo */}
+          {/* Center: logo with Platforms nav positioned to its left */}
+          <div className="pw-header-center">
+            {/* Platforms nav - desktop only, just left of logo */}
             <div className="pw-nav-item pw-nav-item-platforms pw-platforms-left-nav">
               <button
                 className="pw-nav-link"
+                aria-expanded={isPlatformsOpen}
+                aria-haspopup="true"
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsPlatformsOpen((prev) => !prev);
@@ -390,18 +395,20 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                 {t("nav.platforms", currentLanguage)}
               </button>
               {isPlatformsOpen && (
-                <div className="pw-mega-menu">
+                <div className="pw-mega-menu" role="menu">
                   <div className="pw-mega-inner">
                     {PLATFORM_GROUPS.map((group) => (
-                      <div className="pw-mega-column" key={group.id}>
+                      <div className="pw-mega-column" key={group.id} role="group" aria-label={t(group.titleKey, currentLanguage)}>
                         <div className="pw-mega-title">{t(group.titleKey, currentLanguage)}</div>
                         {group.items.map((item) => (
                           <button
                             key={item.id}
+                            role="menuitem"
                             className={
                               "pw-mega-link" +
                               (item.frozen ? " pw-mega-link-frozen" : "")
                             }
+                            disabled={item.frozen}
                             onClick={() => {
                               if (item.frozen) return;
                               handleNavigate(item.href);
@@ -415,7 +422,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                                 style={{
                                   opacity: 0.6,
                                   fontSize: 11,
-                                  marginLeft: 8,
+                                  marginInlineStart: 8,
                                 }}
                               >
                                 {t(item.descKey, currentLanguage)}
@@ -429,10 +436,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Center: official logo - always visible on all screen sizes */}
-          <div className="pw-header-center">
             <button
               className="pw-logo-link"
               onClick={() => handleNavigate("/")}
@@ -514,10 +518,20 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
         </div>
       </header>
 
+      {/* Mobile drawer overlay backdrop */}
+      <div
+        className={`pw-drawer-overlay ${isMobileOpen ? "open" : ""}`}
+        onClick={() => setIsMobileOpen(false)}
+        aria-hidden="true"
+      />
+
       {/* Mobile drawer */}
       <div 
         className={`pw-mobile-drawer ${isMobileOpen ? "open" : ""}`}
         aria-hidden={!isMobileOpen}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation menu"
       >
         <div className="pw-mobile-top">
           <button

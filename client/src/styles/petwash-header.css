@@ -207,7 +207,8 @@
 }
 
 /* ===========================
-   CENTER SECTION - LOGO (VIEWPORT CENTERED)
+   CENTER SECTION - LOGO + PLATFORMS NAV (VIEWPORT CENTERED)
+   Platforms nav sits to the left of logo, both centered as a group
    =========================== */
 .pw-header-center {
   position: absolute;
@@ -216,6 +217,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0;
   height: 100%;
   z-index: 1;
 }
@@ -344,50 +346,56 @@
   }
 }
 
-/* Platforms nav moved to left of logo */
+/* ===========================
+   PLATFORMS NAV - LEFT OF LOGO (desktop only)
+   Sits inside pw-header-center, before the logo
+   Hidden below 1024px, shown on desktop+
+   =========================== */
 .pw-platforms-left-nav {
   display: none;
-  margin-left: 0.75rem;
+  margin-inline-end: 0.75rem;
 }
 
 @media (min-width: 1024px) {
   .pw-platforms-left-nav {
     display: block;
+    margin-inline-end: 0.75rem;
   }
 }
 
-[dir="rtl"] .pw-platforms-left-nav {
-  margin-left: 0;
-  margin-right: 0.75rem;
+@media (min-width: 1280px) {
+  .pw-platforms-left-nav {
+    margin-inline-end: 1rem;
+  }
+}
+
+@media (min-width: 1440px) {
+  .pw-platforms-left-nav {
+    margin-inline-end: 1.25rem;
+  }
 }
 
 .pw-platforms-left-nav .pw-mega-menu {
-  left: 0;
-  transform: none;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: fadeInDownLeft 0.2s ease;
 }
 
-.pw-platforms-left-nav .pw-mega-menu .pw-mega-inner {
-  animation: none;
+[dir="rtl"] .pw-platforms-left-nav .pw-mega-menu {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
 }
 
 @keyframes fadeInDownLeft {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateX(-50%) translateY(-10px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(-50%) translateY(0);
   }
-}
-
-.pw-platforms-left-nav .pw-mega-menu {
-  animation: fadeInDownLeft 0.2s ease;
-}
-
-[dir="rtl"] .pw-platforms-left-nav .pw-mega-menu {
-  left: auto;
-  right: 0;
 }
 
 .pw-nav-item {
@@ -585,6 +593,7 @@
 
 /* ===========================
    HEADER PROFILE ICON (always visible in header)
+   Pixel-perfect responsive sizing per breakpoint
    =========================== */
 .pw-header-profile-btn {
   background: none;
@@ -598,8 +607,8 @@
 }
 
 .pw-header-profile-circle {
-  width: 2rem;
-  height: 2rem;
+  width: 1.75rem;
+  height: 1.75rem;
   border-radius: 50%;
   background: linear-gradient(135deg, #c6a664 0%, #e8d5a3 50%, #c6a664 100%);
   display: flex;
@@ -619,15 +628,36 @@
 }
 
 .pw-header-profile-btn:hover .pw-header-profile-circle {
-  transform: scale(1.15);
+  transform: scale(1.12);
   box-shadow: 0 4px 16px rgba(198, 166, 100, 0.5);
   border-color: #c6a664;
 }
 
+@media (min-width: 640px) {
+  .pw-header-profile-circle {
+    width: 2rem;
+    height: 2rem;
+  }
+}
+
 @media (min-width: 768px) {
+  .pw-header-profile-circle {
+    width: 2.125rem;
+    height: 2.125rem;
+  }
+}
+
+@media (min-width: 1024px) {
   .pw-header-profile-circle {
     width: 2.25rem;
     height: 2.25rem;
+  }
+}
+
+@media (min-width: 1440px) {
+  .pw-header-profile-circle {
+    width: 2.5rem;
+    height: 2.5rem;
   }
 }
 
@@ -740,6 +770,23 @@
   .pw-burger-luxury {
     display: flex !important;
   }
+}
+
+/* ===========================
+   MOBILE DRAWER OVERLAY (dark backdrop)
+   =========================== */
+.pw-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  z-index: 10000;
+  pointer-events: none;
+  transition: background 0.3s ease;
+}
+
+.pw-drawer-overlay.open {
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
 }
 
 /* ===========================
@@ -936,64 +983,146 @@
    Logo must ALWAYS be larger than social icons
    =========================== */
 
-/* Small phones (320px - 375px) - logo 3x icon size */
+/* ===========================
+   RESPONSIVE FINE-TUNING PER BREAKPOINT
+   Pixel-perfect measurements for all elements
+   =========================== */
+
+/* XS: Small phones (320px - 375px) */
 @media (max-width: 375px) {
   .pw-header-inner {
-    padding: 0 0.5rem;
+    padding: 0 0.375rem;
     height: 4rem;
+  }
+  .pw-header-left {
+    gap: 0.1875rem;
+  }
+  .pw-social-link {
+    width: 1.125rem !important;
+    height: 1.125rem !important;
+    min-width: 1.125rem !important;
+    min-height: 1.125rem !important;
+  }
+  .pw-social-link svg {
+    width: 0.5625rem !important;
+    height: 0.5625rem !important;
+  }
+  .pw-header-logo-img {
+    height: 2.75rem !important;
+    max-width: 120px !important;
+  }
+  .pw-header-right {
+    gap: 0.25rem;
+  }
+  .pw-header-profile-circle {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+  }
+  .pw-right-stack {
+    gap: 0.125rem;
+  }
+  .pw-burger-luxury {
+    width: 1.625rem !important;
+    height: 1.625rem !important;
+    min-width: 1.625rem !important;
+    min-height: 1.625rem !important;
+  }
+  .pw-burger-luxury span {
+    width: 0.625rem !important;
+  }
+  .pw-language-luxury {
+    min-width: 2.75rem !important;
+    font-size: 0.5rem !important;
+    height: 1.25rem !important;
+    padding: 0.125rem 0.25rem !important;
+  }
+}
+
+/* SM: Regular phones (376px - 639px) */
+@media (min-width: 376px) and (max-width: 639px) {
+  .pw-header-inner {
+    padding: 0 0.5rem;
+    height: 4.5rem;
   }
   .pw-header-left {
     gap: 0.25rem;
   }
   .pw-social-link {
-    width: 1.25rem !important;
-    height: 1.25rem !important;
-    min-width: 1.25rem !important;
-    min-height: 1.25rem !important;
+    width: 1.375rem !important;
+    height: 1.375rem !important;
+    min-width: 1.375rem !important;
+    min-height: 1.375rem !important;
   }
   .pw-social-link svg {
-    width: 0.625rem !important;
-    height: 0.625rem !important;
+    width: 0.6875rem !important;
+    height: 0.6875rem !important;
   }
   .pw-header-logo-img {
-    height: 3rem !important;
-    max-width: 130px !important;
+    height: 3.25rem !important;
+    max-width: 145px !important;
   }
   .pw-header-right {
     gap: 0.375rem;
+  }
+  .pw-header-profile-circle {
+    width: 1.625rem !important;
+    height: 1.625rem !important;
+  }
+  .pw-right-stack {
+    gap: 0.1875rem;
+  }
+  .pw-burger-luxury {
+    width: 1.75rem !important;
+    height: 1.75rem !important;
+    min-width: 1.75rem !important;
+    min-height: 1.75rem !important;
+  }
+  .pw-language-luxury {
+    min-width: 3rem !important;
+    font-size: 0.5625rem !important;
+    height: 1.375rem !important;
   }
 }
 
-/* Regular phones (376px - 639px) - logo 2.5x icon size */
-@media (min-width: 376px) and (max-width: 639px) {
-  .pw-header-inner {
-    padding: 0 0.625rem;
-    height: 4.5rem;
-  }
-  .pw-header-left {
-    gap: 0.375rem;
-  }
-  .pw-social-link {
-    width: 1.5rem !important;
-    height: 1.5rem !important;
-    min-width: 1.5rem !important;
-    min-height: 1.5rem !important;
-  }
-  .pw-social-link svg {
-    width: 0.75rem !important;
-    height: 0.75rem !important;
-  }
-  .pw-header-logo-img {
-    height: 3.5rem !important;
-    max-width: 160px !important;
-  }
+/* MD: Large phones / small tablets (640px - 767px) */
+@media (min-width: 640px) and (max-width: 767px) {
   .pw-header-right {
     gap: 0.5rem;
+  }
+  .pw-right-stack {
+    gap: 0.1875rem;
+  }
+}
+
+/* LG: Tablets (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .pw-header-right {
+    gap: 0.625rem;
+  }
+}
+
+/* XL: Small desktops (1024px - 1279px) */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .pw-header-right {
+    gap: 0.75rem;
+  }
+}
+
+/* 2XL: Standard desktops (1280px - 1439px) */
+@media (min-width: 1280px) and (max-width: 1439px) {
+  .pw-header-right {
+    gap: 1rem;
+  }
+}
+
+/* 3XL: Large monitors (1440px+) */
+@media (min-width: 1440px) {
+  .pw-header-right {
+    gap: 1.25rem;
   }
 }
 
 /* LANDSCAPE MODE - All mobile devices with short height */
-/* Logo must remain 2-3x larger than social icons */
 @media (orientation: landscape) and (max-height: 500px) {
   .pw-header-inner {
     height: 3rem !important;
@@ -1010,19 +1139,36 @@
     height: 0.5rem !important;
   }
   .pw-header-logo-img {
-    height: 2.5rem !important;
-    max-width: 130px !important;
+    height: 2.25rem !important;
+    max-width: 110px !important;
   }
   .pw-header-right {
     gap: 0.25rem !important;
   }
-  .pw-language-select {
-    font-size: 0.625rem !important;
-    padding: 0.125rem 0.375rem !important;
+  .pw-header-profile-circle {
+    width: 1.375rem !important;
+    height: 1.375rem !important;
   }
-  .pw-burger-btn {
-    width: 1.75rem !important;
-    height: 1.75rem !important;
+  .pw-language-luxury {
+    font-size: 0.5rem !important;
+    padding: 0.0625rem 0.25rem !important;
+    height: 1.125rem !important;
+    min-width: 2.5rem !important;
+  }
+  .pw-burger-luxury {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+    min-width: 1.5rem !important;
+    min-height: 1.5rem !important;
+  }
+  .pw-burger-luxury span {
+    width: 0.5rem !important;
+  }
+  .pw-right-stack {
+    gap: 0.0625rem !important;
+  }
+  .pw-platforms-left-nav {
+    display: none !important;
   }
 }
 
