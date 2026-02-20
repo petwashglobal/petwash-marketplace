@@ -139,8 +139,9 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                       {t('hero.getStarted', language)}
                     </Button>
                     <Button 
+                      variant="ghost"
                       onClick={() => setLocation('/signin')}
-                      className="bg-transparent text-[#111] border-2 border-[#c6a664] px-10 py-4 text-sm uppercase tracking-[0.2em] font-light hover:bg-[#c6a664] hover:text-white transition-all duration-500 w-full sm:w-auto animate-gold-border"
+                      className="bg-transparent text-[#111] border-2 border-[#c6a664] px-10 py-4 text-sm uppercase tracking-[0.2em] font-light hover:bg-[#c6a664] hover:text-white transition-all duration-500 w-full sm:w-auto animate-gold-border rounded-none"
                       data-testid="button-login-hero"
                     >
                       {t('landing.login', language)}
