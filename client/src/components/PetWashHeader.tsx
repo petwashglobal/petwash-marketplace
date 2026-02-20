@@ -32,7 +32,7 @@
 
 import React, { useEffect, useState } from "react";
 import { SiInstagram, SiFacebook, SiTiktok, SiSpotify } from "react-icons/si";
-import { useFirebaseAuth } from "../auth/AuthProvider";
+import { useFirebaseAuth, type UserRole } from "../auth/AuthProvider";
 import goldUserIcon from "@assets/IMG_3329_1771419021263.jpeg";
 
 type LangDir = "ltr" | "rtl";
@@ -233,7 +233,20 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
   language: controlledLanguage, 
   onLanguageChange: controlledOnLanguageChange 
 }) => {
-  const { user, logout } = useFirebaseAuth();
+  const { user, logout, claims } = useFirebaseAuth();
+
+  const getDashboardPath = (): string => {
+    if (!user) return '/signin';
+    const role = claims?.role as UserRole;
+    switch (role) {
+      case 'provider': return '/provider/dashboard';
+      case 'staff': return '/dashboard';
+      case 'admin': return '/dashboard';
+      case 'management': return '/dashboard';
+      case 'super_admin': return '/dashboard';
+      default: return '/dashboard';
+    }
+  };
 
   const [internalLanguage, setInternalLanguage] = useState<string>(detectInitialLanguage);
   const [isPlatformsOpen, setIsPlatformsOpen] = useState(false);
@@ -460,7 +473,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             {/* Gold profile icon - quick access to dashboard */}
             <button
               className="pw-header-profile-btn"
-              onClick={() => handleNavigate(user ? "/dashboard" : "/signin")}
+              onClick={() => handleNavigate(getDashboardPath())}
               aria-label={user ? t("mydashboard", currentLanguage) : t("signin", currentLanguage)}
               data-testid="button-header-profile"
             >
@@ -547,25 +560,14 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               </option>
             ))}
           </select>
-          {user ? (
-            <button
-              className="pw-account-btn"
-              onClick={() => handleNavigate("/dashboard")}
-            >
-              <div className="pw-account-circle">
-                <img src={goldUserIcon} alt="" className="pw-account-gold-icon" />
-              </div>
-            </button>
-          ) : (
-            <button
-              className="pw-account-btn"
-              onClick={() => handleNavigate("/signin")}
-            >
-              <div className="pw-account-circle">
-                <img src={goldUserIcon} alt="" className="pw-account-gold-icon" />
-              </div>
-            </button>
-          )}
+          <button
+            className="pw-account-btn"
+            onClick={() => handleNavigate(getDashboardPath())}
+          >
+            <div className="pw-account-circle">
+              <img src={goldUserIcon} alt="" className="pw-account-gold-icon" />
+            </div>
+          </button>
         </div>
 
         {/* Scrollable menu content */}
@@ -681,7 +683,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               <>
                 <button
                   className="pw-mobile-link"
-                  onClick={() => handleNavigate("/dashboard")}
+                  onClick={() => handleNavigate(getDashboardPath())}
                 >
                   {t("mydashboard", currentLanguage)}
                 </button>

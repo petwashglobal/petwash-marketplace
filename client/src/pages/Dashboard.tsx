@@ -8,7 +8,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { LogOut, ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
-const diamondLogo = '/brand/petwash-logo-official.png';
+import diamondLogo from '@assets/IMG_3257_1771582024352.png';
 
 interface WalletSummary {
   walletId: string;
@@ -366,7 +366,6 @@ export default function Dashboard() {
                 src={diamondLogo}
                 alt="PetWash™"
                 className="w-full h-auto"
-                style={{ mixBlendMode: 'multiply', filter: 'contrast(1.15) brightness(1.1) saturate(1.1)' }}
               />
             </div>
             <p
