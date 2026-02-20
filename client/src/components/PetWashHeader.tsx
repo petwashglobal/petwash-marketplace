@@ -377,6 +377,58 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             >
               <SiSpotify size={18} />
             </a>
+
+            {/* Platforms nav - desktop only, left of logo */}
+            <div className="pw-nav-item pw-nav-item-platforms pw-platforms-left-nav">
+              <button
+                className="pw-nav-link"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsPlatformsOpen((prev) => !prev);
+                }}
+              >
+                {t("nav.platforms", currentLanguage)}
+              </button>
+              {isPlatformsOpen && (
+                <div className="pw-mega-menu">
+                  <div className="pw-mega-inner">
+                    {PLATFORM_GROUPS.map((group) => (
+                      <div className="pw-mega-column" key={group.id}>
+                        <div className="pw-mega-title">{t(group.titleKey, currentLanguage)}</div>
+                        {group.items.map((item) => (
+                          <button
+                            key={item.id}
+                            className={
+                              "pw-mega-link" +
+                              (item.frozen ? " pw-mega-link-frozen" : "")
+                            }
+                            onClick={() => {
+                              if (item.frozen) return;
+                              handleNavigate(item.href);
+                            }}
+                          >
+                            <span>{t(item.labelKey, currentLanguage)}</span>
+                            {item.frozen ? (
+                              <span className="pw-pill-frozen">{t("frozen", currentLanguage)}</span>
+                            ) : (
+                              <span
+                                style={{
+                                  opacity: 0.6,
+                                  fontSize: 11,
+                                  marginLeft: 8,
+                                }}
+                              >
+                                {t(item.descKey, currentLanguage)}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Center: official logo - always visible on all screen sizes */}
@@ -397,58 +449,6 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
           {/* Right: nav, language, account, burger */}
           <div className="pw-header-right">
             <nav className="pw-nav-desktop">
-              {/* Platforms mega menu */}
-              <div className="pw-nav-item pw-nav-item-platforms">
-                <button
-                  className="pw-nav-link"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsPlatformsOpen((prev) => !prev);
-                  }}
-                >
-                  {t("nav.platforms", currentLanguage)}
-                </button>
-                {isPlatformsOpen && (
-                  <div className="pw-mega-menu">
-                    <div className="pw-mega-inner">
-                      {PLATFORM_GROUPS.map((group) => (
-                        <div className="pw-mega-column" key={group.id}>
-                          <div className="pw-mega-title">{t(group.titleKey, currentLanguage)}</div>
-                          {group.items.map((item) => (
-                            <button
-                              key={item.id}
-                              className={
-                                "pw-mega-link" +
-                                (item.frozen ? " pw-mega-link-frozen" : "")
-                              }
-                              onClick={() => {
-                                if (item.frozen) return;
-                                handleNavigate(item.href);
-                              }}
-                            >
-                              <span>{t(item.labelKey, currentLanguage)}</span>
-                              {item.frozen ? (
-                                <span className="pw-pill-frozen">{t("frozen", currentLanguage)}</span>
-                              ) : (
-                                <span
-                                  style={{
-                                    opacity: 0.6,
-                                    fontSize: 11,
-                                    marginLeft: 8,
-                                  }}
-                                >
-                                  {t(item.descKey, currentLanguage)}
-                                </span>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
               {/* PetWash Privilege */}
               <div className="pw-nav-item">
                 <button

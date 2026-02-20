@@ -344,6 +344,52 @@
   }
 }
 
+/* Platforms nav moved to left of logo */
+.pw-platforms-left-nav {
+  display: none;
+  margin-left: 0.75rem;
+}
+
+@media (min-width: 1024px) {
+  .pw-platforms-left-nav {
+    display: block;
+  }
+}
+
+[dir="rtl"] .pw-platforms-left-nav {
+  margin-left: 0;
+  margin-right: 0.75rem;
+}
+
+.pw-platforms-left-nav .pw-mega-menu {
+  left: 0;
+  transform: none;
+}
+
+.pw-platforms-left-nav .pw-mega-menu .pw-mega-inner {
+  animation: none;
+}
+
+@keyframes fadeInDownLeft {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pw-platforms-left-nav .pw-mega-menu {
+  animation: fadeInDownLeft 0.2s ease;
+}
+
+[dir="rtl"] .pw-platforms-left-nav .pw-mega-menu {
+  left: auto;
+  right: 0;
+}
+
 .pw-nav-item {
   position: relative;
 }
