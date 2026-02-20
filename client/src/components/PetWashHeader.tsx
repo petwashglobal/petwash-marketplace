@@ -516,6 +516,32 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Mobile nav strip - shows below header on small screens only */}
+        <div className="pw-mobile-nav-strip">
+          <button
+            className="pw-mobile-nav-strip-link"
+            onClick={() => {
+              setIsPlatformsOpen((prev) => !prev);
+            }}
+          >
+            {t("nav.platforms", currentLanguage)}
+          </button>
+          <span className="pw-mobile-nav-strip-dot">·</span>
+          <button
+            className="pw-mobile-nav-strip-link"
+            onClick={() => handleNavigate("/loyalty")}
+          >
+            {t("nav.loyalty", currentLanguage)}
+          </button>
+          <span className="pw-mobile-nav-strip-dot">·</span>
+          <button
+            className="pw-mobile-nav-strip-link"
+            onClick={() => handleNavigate("/egift")}
+          >
+            {t("nav.giftCards", currentLanguage)}
+          </button>
+        </div>
       </header>
 
       {/* Mobile drawer overlay backdrop */}
