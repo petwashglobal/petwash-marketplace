@@ -207,13 +207,13 @@
 }
 
 /* ===========================
-   CENTER SECTION - LOGO + PLATFORMS NAV (VIEWPORT CENTERED)
-   Platforms nav sits to the left of logo, both centered as a group
+   CENTER SECTION - LOGO + PLATFORMS NAV
+   Flex-based: takes remaining space between left social icons and right nav.
+   Content aligns center but naturally shifts left since right section is wider.
    =========================== */
 .pw-header-center {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  flex: 1 1 0%;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -230,13 +230,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-top: -0.375rem;
 }
 
 /* Official PetWash™ logo image - ALWAYS DOMINANT, larger than any text/icons */
 .pw-header-logo-img {
-  height: 4rem;
+  height: 3.5rem;
   width: auto;
-  max-width: 180px;
+  max-width: 160px;
   object-fit: contain;
   display: block;
 }
@@ -244,32 +245,35 @@
 /* Tablet - larger logo */
 @media (min-width: 640px) {
   .pw-header-logo-img {
-    height: 4.5rem;
-    max-width: 220px;
+    height: 4rem;
+    max-width: 190px;
   }
 }
 
 /* Desktop - dominant logo */
 @media (min-width: 768px) {
   .pw-header-logo-img {
-    height: 5rem;
-    max-width: 260px;
+    height: 4.5rem;
+    max-width: 220px;
   }
 }
 
 /* Large screens - premium dominant logo */
 @media (min-width: 1024px) {
   .pw-header-logo-img {
-    height: 5.5rem;
-    max-width: 300px;
+    height: 5rem;
+    max-width: 260px;
+  }
+  .pw-logo-link {
+    margin-top: -0.5rem;
   }
 }
 
 /* Extra large screens */
 @media (min-width: 1440px) {
   .pw-header-logo-img {
-    height: 6rem;
-    max-width: 340px;
+    height: 5.5rem;
+    max-width: 300px;
   }
 }
 
@@ -321,11 +325,12 @@
   flex: 0 0 auto;
 }
 
-/* Desktop Navigation */
+/* Desktop Navigation - text nav items (PetWash Privilege, e-Gift) */
 .pw-nav-desktop {
   display: none;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 @media (min-width: 1024px) {
@@ -336,13 +341,13 @@
 
 @media (min-width: 1280px) {
   .pw-nav-desktop {
-    gap: 1.25rem;
+    gap: 0.75rem;
   }
 }
 
 @media (min-width: 1440px) {
   .pw-nav-desktop {
-    gap: 1.5rem;
+    gap: 1rem;
   }
 }
 
@@ -353,48 +358,48 @@
    =========================== */
 .pw-platforms-left-nav {
   display: none;
-  margin-inline-end: 0.75rem;
+  margin-inline-end: 0.5rem;
 }
 
 @media (min-width: 1024px) {
   .pw-platforms-left-nav {
     display: block;
-    margin-inline-end: 0.75rem;
+    margin-inline-end: 0.5rem;
   }
 }
 
 @media (min-width: 1280px) {
   .pw-platforms-left-nav {
-    margin-inline-end: 1rem;
+    margin-inline-end: 0.75rem;
   }
 }
 
 @media (min-width: 1440px) {
   .pw-platforms-left-nav {
-    margin-inline-end: 1.25rem;
+    margin-inline-end: 1rem;
   }
 }
 
 .pw-platforms-left-nav .pw-mega-menu {
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  transform: none;
   animation: fadeInDownLeft 0.2s ease;
 }
 
 [dir="rtl"] .pw-platforms-left-nav .pw-mega-menu {
-  left: 50%;
-  right: auto;
-  transform: translateX(-50%);
+  left: auto;
+  right: 0;
+  transform: none;
 }
 
 @keyframes fadeInDownLeft {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(-10px);
+    transform: translateY(-10px);
   }
   to {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translateY(0);
   }
 }
 
@@ -407,26 +412,28 @@
   border: none;
   cursor: pointer;
   color: #000000;
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 500;
-  padding: 0.5rem 0;
+  padding: 0.375rem 0;
   transition: color 0.2s ease;
   display: flex;
   align-items: center;
   height: 2rem;
-  line-height: 1;
+  line-height: 1.2;
   white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 @media (min-width: 1280px) {
   .pw-nav-link {
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
   }
 }
 
 @media (min-width: 1440px) {
   .pw-nav-link {
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
   }
 }
 
@@ -939,9 +946,14 @@
   justify-content: flex-start;
 }
 
-/* Logo stays centered */
+/* Logo+platforms group - keep LTR physical ordering so logo doesn't flip */
 [dir="rtl"] .pw-header-center {
   direction: ltr;
+}
+
+/* RTL text inside nav links */
+[dir="rtl"] .pw-nav-link {
+  direction: rtl;
 }
 
 /* Controls stay on right - reverse internal order so hamburger is rightmost */
@@ -1104,7 +1116,7 @@
 /* XL: Small desktops (1024px - 1279px) */
 @media (min-width: 1024px) and (max-width: 1279px) {
   .pw-header-right {
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 }
 
