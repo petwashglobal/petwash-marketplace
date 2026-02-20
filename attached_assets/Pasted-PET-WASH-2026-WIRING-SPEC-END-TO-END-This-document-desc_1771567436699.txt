@@ -1,0 +1,396 @@
+PET WASH 2026 – WIRING SPEC (END TO END)
+This document describes exactly how the platform must behave.
+No more guessing. Implement as written.
+
+------------------------------------------------------------
+0) GOLDEN RULES (NON NEGOTIABLE)
+------------------------------------------------------------
+
+R1. One source of truth: Postgres for business state.
+R2. Client cannot assign roles. Role can only be set server-side.
+R3. Every sensitive endpoint requires:
+    - valid auth
+    - correct role
+    - onboardingComplete where relevant
+    - audit log record
+R4. Every user is in exactly ONE of these: customer, loyalty, provider, staff, management/admin.
+R5. New users cannot access “real actions” until profile is complete.
+R6. Providers cannot accept jobs until KYC approved + admin approved (or automated rules approve).
+R7. Staff/admin cannot self-signup. Must request access and be approved.
+
+------------------------------------------------------------
+1) USER INTENT (THE MISSING PIECE)
+------------------------------------------------------------
+
+At sign-in, user must choose intent BEFORE authenticating:
+
+Intent enum:
+- customer (public marketplace user)
+- loyalty (prestige club member)
+- provider (sitter/walker)
+- staff_request (internal staff access request)
+
+Never include admin as an intent.
+Admin is only granted by approved staff request.
+
+Client stores chosen intent temporarily:
+- localStorage.signup_intent
+- pass as POST body to /api/auth/post-login
+
+Server validates intent:
+Allowed intents only: customer, loyalty, provider, staff_request
+
+------------------------------------------------------------
+2) AUTH METHODS (2026)
+------------------------------------------------------------
+
+Supported login methods:
+- Google OAuth
+- Apple OAuth
+- Email magic link or email+password
+- Phone OTP (international E.164)
+- Passkeys (WebAuthn) for biometric sign-in (Face ID/Touch ID)
+- Optional MFA (TOTP/SMS/email) for privileged roles
+
+Important:
+Passkeys are NOT "a button that logs in".
+Passkeys require WebAuthn registration:
+- first login with normal method
+- then enroll passkey in Settings > Security
+- next time: sign-in with passkey
+
+------------------------------------------------------------
+3) ROUTING AFTER LOGIN (SERVER DRIVEN)
+------------------------------------------------------------
+
+Client must not decide final destination.
+Client calls:
+
+POST /api/auth/post-login
+body:
+{
+  intent: "customer|loyalty|provider|staff_request",
+  deviceInfo: {...},
+  locale: "he|en|...",
+  returnUrl: optional
+}
+
+Server returns:
+{
+  nextPath: "/complete-profile" | "/provider/onboarding" | "/loyalty/onboarding" | "/app" | "/provider/app" | "/request-access/submitted" | "/blocked",
+  reason: "PROFILE_INCOMPLETE|KYC_REQUIRED|STAFF_APPROVAL_REQUIRED|OK",
+  profileStatus: {...}
+}
+
+Client must navigate only to nextPath.
+
+------------------------------------------------------------
+4) USER STATE MACHINE (THE HEART OF THE WIRING)
+------------------------------------------------------------
+
+Every user has a lifecycle state. Store in Postgres.
+
+users table fields (minimum):
+- id (firebase uid)
+- email
+- phone_e164
+- role (enum: customer, loyalty, provider, staff, management, admin)
+- status (enum below)
+- profile_completed_at
+- created_at, updated_at
+
+User status enum:
+- NEW (just created, minimal profile)
+- PROFILE_INCOMPLETE
+- PROFILE_COMPLETE
+- KYC_PENDING (provider only or loyalty if required)
+- KYC_APPROVED
+- KYC_REJECTED
+- PROVIDER_PENDING_APPROVAL
+- PROVIDER_ACTIVE
+- STAFF_PENDING_APPROVAL
+- STAFF_ACTIVE
+- SUSPENDED
+
+Rules:
+- customer: must reach PROFILE_COMPLETE to book or pay
+- loyalty: must reach PROFILE_COMPLETE, DOB required, may require KYC for high-value rewards or payment features
+- provider: must reach PROFILE_COMPLETE + KYC_APPROVED + PROVIDER_ACTIVE to accept jobs/payouts
+- staff: must reach STAFF_ACTIVE to access internal panels
+
+------------------------------------------------------------
+5) ONBOARDING PAGES (ROLE SPECIFIC)
+------------------------------------------------------------
+
+A) /complete-profile (customer default)
+Required:
+- firstName
+- lastName
+- email (if exists)
+Optional:
+- phone (recommended)
+
+B) /loyalty/onboarding
+Required:
+- firstName, lastName
+- dateOfBirth
+- address (manual allowed)
+Optional:
+- ID number if required by compliance tier
+
+C) /provider/onboarding (multi-step)
+Step 1 Identity:
+- full name
+- dob
+- phone E.164
+- email
+- profile photo (required)
+- address (manual + optional google)
+
+Step 2 Documents (KYC):
+- Israeli ID or passport (upload)
+- selfie/liveness (if implemented)
+- optional: police check (depends policy)
+- optional: insurance document
+
+Step 3 Service setup:
+- service types (walk, sit, etc.)
+- coverage radius / areas
+- availability calendar
+- pricing
+
+Step 4 Review & submit:
+- submit application -> status PROVIDER_PENDING_APPROVAL or auto-approve rules
+
+D) /request-access (staff)
+Required:
+- work email
+- department (support, finance, ops, KYC, etc.)
+- justification
+- phone
+- manager name (optional)
+Submit -> STAFF_PENDING_APPROVAL
+Notify admin approver email(s).
+
+------------------------------------------------------------
+6) ADMIN APPROVAL WORKFLOW (MANDATORY)
+------------------------------------------------------------
+
+There must be a single approval queue:
+
+/api/admin/approvals/list
+- provider applications
+- staff access requests
+- escalations
+
+Approver(s):
+Only specific emails (example):
+- nir.h@... (your chosen approver list)
+Do not allow public admin creation.
+
+Approval action:
+POST /api/admin/approvals/{id}/approve
+POST /api/admin/approvals/{id}/reject
+Always writes audit log.
+
+When staff approved:
+- role set server-side to staff or management
+- status STAFF_ACTIVE
+- enforce MFA enrollment for staff roles (optional for customers)
+
+When provider approved:
+- status PROVIDER_ACTIVE
+- provider appears in search results
+- provider can accept jobs
+- provider payout enabled
+
+------------------------------------------------------------
+7) API GATES (THE REAL SECURITY)
+------------------------------------------------------------
+
+Middleware stack needed:
+
+requireAuth:
+- validate Firebase token/session cookie
+
+requireRole(roles[]):
+- server checks user.role from DB, not from client
+
+requireOnboardingComplete:
+- server checks users.status >= PROFILE_COMPLETE
+
+requireProviderActive:
+- server checks provider status PROVIDER_ACTIVE
+
+requireEmailVerified (only if email exists and method is email-based):
+- do not block phone-only users
+
+requireMfaForPrivileged:
+- staff/management/admin must have MFA active
+- enforce for admin panels
+
+Every protected endpoint must use these gates.
+
+------------------------------------------------------------
+8) BOOKING ENGINE WIRING (CUSTOMER VS PROVIDER)
+------------------------------------------------------------
+
+Customer booking flow:
+- customer creates booking request
+- payment authorization
+- escrow hold
+- dispatch to providers (waves)
+- provider accepts
+- service performed
+- completion confirms
+- release escrow
+- receipt issued
+- loyalty points awarded
+- audit log appended
+
+Provider execution flow:
+- provider sees job offer
+- accept/decline
+- status updates (enroute, started, completed)
+- evidence uploads optional (photos, notes)
+- payout scheduled
+
+If provider not active:
+- cannot accept job
+- cannot receive offers
+
+------------------------------------------------------------
+9) ADDRESS AUTOCOMPLETE (WHY IT FAILS + REQUIRED DESIGN)
+------------------------------------------------------------
+
+Google Places will sometimes fail due to:
+- referrer restrictions
+- API not enabled
+- iOS Safari quirks
+- billing disabled
+- CSP issues
+- rate limiting
+
+So UX must always support manual entry.
+
+Required behavior:
+- show address field always editable
+- if Places available: show suggestions
+- if Places fails: show “Suggestions unavailable, type manually”
+- never block form submission due to Places failure
+
+Implementation approach (recommended):
+Option A (best):
+- server proxy endpoints for autocomplete and place details
+- do not expose API key to browser
+Option B:
+- JS SDK with key locked to domains + billing enabled
+
+In both options:
+- address is stored as structured fields:
+  - line1
+  - city
+  - state/region
+  - postalCode
+  - country
+  - lat/lng optional
+
+------------------------------------------------------------
+10) PHONE INPUT (INTERNATIONAL, FLAGS, APPROVED COUNTRIES)
+------------------------------------------------------------
+
+Phone must be E.164 always.
+UI must show:
+[flag] [+countrycode] [number]
+
+Default country: Israel (IL +972)
+
+Approved countries list:
+- IL, AU, US, GB, FR, DE (expandable)
+
+Rules:
+- user can pick only from approved list
+- store as E.164 in DB
+- validate server-side with libphonenumber
+
+No “Israel-only phone” hardcoding anywhere.
+
+------------------------------------------------------------
+11) DATA & AUDIT (LEGAL GRADE)
+------------------------------------------------------------
+
+For compliance and legal defense, log:
+
+audit_events table:
+- id
+- timestamp
+- actor_user_id
+- actor_role
+- action_type (SIGNUP, PROFILE_UPDATE, KYC_SUBMIT, APPROVE_PROVIDER, APPROVE_STAFF, BOOKING_CREATE, PAYMENT_HOLD, PAYOUT_RELEASE, etc.)
+- target_id (bookingId/providerId/etc)
+- ip
+- user_agent
+- trace_id
+- metadata JSON
+
+All approval actions must be auditable.
+
+------------------------------------------------------------
+12) WHAT TO IMPLEMENT NEXT (PRIORITY ORDER)
+------------------------------------------------------------
+
+P0 (must fix now):
+1) Server-driven post-login decider with intent
+2) Role/status state machine in DB
+3) Provider onboarding steps + provider approval queue
+4) Staff request access + admin approval queue
+5) Phone input international with flags + allowed countries
+6) Address manual fallback (do not block)
+
+P1:
+7) Passkeys enrollment + sign-in
+8) MFA enforcement for staff/admin
+9) Booking + escrow gating by onboarding status
+
+P2:
+10) Loyalty rewards + redeem integration with machines
+
+------------------------------------------------------------
+13) ACCEPTANCE TESTS (QA CHECKLIST)
+------------------------------------------------------------
+
+A) Customer:
+- sign up with Google -> forced to complete profile -> can browse -> can book -> can pay
+- cannot book if profile incomplete
+
+B) Loyalty:
+- sign up -> loyalty onboarding requires DOB -> points appear -> redeem works
+
+C) Provider:
+- sign up -> provider onboarding -> submit -> cannot accept jobs until approved
+- after approval -> appears in provider search -> can accept job -> payout created
+
+D) Staff:
+- cannot self-signup into staff role
+- request access -> admin approves -> staff can log in -> forced MFA enrollment -> access internal panel
+
+E) Address:
+- if Google fails, manual entry still works and saves correctly
+
+F) Phone:
+- can select AU flag and enter +61 number
+- stores correctly as E.164 in DB
+
+------------------------------------------------------------
+14) NON ACCEPTABLE BEHAVIOR
+------------------------------------------------------------
+
+- “Everyone goes to /onboarding” regardless of role
+- Client setting role via localStorage or query params
+- Provider can accept jobs without approval
+- Staff routes accessible without approval + MFA
+- Address autocomplete required to proceed
+- Israel-only phone input
+
+Build this like a regulated fintech marketplace.
+Not like a marketing website.

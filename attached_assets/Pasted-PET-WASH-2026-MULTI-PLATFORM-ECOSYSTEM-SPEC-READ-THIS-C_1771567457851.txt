@@ -1,0 +1,295 @@
+PET WASH 2026 – MULTI PLATFORM ECOSYSTEM SPEC
+
+READ THIS CAREFULLY BEFORE WRITING ANY MORE CODE.
+
+This is NOT a simple website.
+This is NOT a form project.
+This is NOT just a booking app.
+
+This is a multi-vertical pet services ecosystem with a centralized control brain.
+
+--------------------------------------------------
+1) WHAT WE ARE BUILDING
+--------------------------------------------------
+
+PetWash is a modular pet-services ecosystem similar in structure to:
+
+- Uber (rides model)
+- Rover / MadPaws (pet sitters & walkers)
+- Airbnb (host marketplace)
+- Stripe (compliance + payouts engine)
+- Shopify (multi-module SaaS backend)
+
+It has:
+
+A) Public marketplace
+B) Provider network
+C) Loyalty system
+D) PetWash Academy (training + certification)
+E) Octopus Brain – centralized SaaS control panel
+
+--------------------------------------------------
+2) THE MARKET POSITION
+--------------------------------------------------
+
+We are NOT just:
+- “Dog walkers”
+- “Pet sitters”
+- “Pet wash machines”
+
+We are building:
+
+The infrastructure layer for pet services.
+
+This means:
+- Marketplace
+- Payments
+- Escrow
+- Reviews
+- KYC
+- Insurance validation
+- Certification
+- Loyalty
+- Data intelligence
+
+--------------------------------------------------
+3) THE 4 MAIN PUBLIC PRODUCTS
+--------------------------------------------------
+
+A) WALK MY PET
+- On-demand pet walking
+- Scheduled walks
+- Location tracking
+- Reviews
+- Provider marketplace
+
+B) SITTER SUITE
+- Home sitting
+- Boarding
+- Long-term care
+- Availability calendar
+- Booking management
+
+C) PET WASH STATIONS
+- Physical self-serve machines
+- QR unlock
+- Loyalty integration
+- Machine telemetry
+- Station revenue tracking
+
+D) PETWASH ACADEMY
+- Online training
+- Certification
+- Badge system
+- Provider ranking boost
+- Internal compliance scoring
+
+Each of these is a separate vertical but connected through one user system.
+
+--------------------------------------------------
+4) OCTOPUS MAIN BRAIN (THE CORE)
+--------------------------------------------------
+
+This is the most important part.
+
+Octopus Brain is the centralized SaaS control system behind everything.
+
+It controls:
+
+- User roles
+- Provider approval
+- KYC verification
+- Staff permissions
+- Escrow logic
+- Payout management
+- Loyalty engine
+- Machine telemetry
+- Reviews moderation
+- Fraud detection
+- Analytics
+- Regional expansion
+
+It is NOT a page.
+It is NOT a dashboard.
+It is a system.
+
+--------------------------------------------------
+5) USER SEGMENTATION (CRITICAL)
+--------------------------------------------------
+
+There are 5 completely different user classes:
+
+1) Public Customer
+2) Loyalty Member
+3) Provider
+4) Staff
+5) Management / Admin
+
+Each has:
+- Separate onboarding
+- Separate dashboards
+- Separate permissions
+- Separate data access
+
+If you mix these, the architecture collapses.
+
+--------------------------------------------------
+6) PROVIDER MODEL (MADPAWS / ROVER STYLE)
+--------------------------------------------------
+
+Providers are NOT customers.
+
+They are contractors.
+
+They require:
+
+- Full profile
+- KYC
+- ID verification
+- Insurance declaration
+- Background checks (if required)
+- Admin approval
+
+They must NOT:
+- Accept jobs
+- Appear in marketplace
+- Receive payouts
+
+Until approved.
+
+--------------------------------------------------
+7) STAFF & MANAGEMENT MODEL
+--------------------------------------------------
+
+No public admin creation.
+No self-activation.
+No role escalation.
+
+Staff and management must:
+
+- Request access
+- Be approved
+- Use MFA or Passkeys
+- Have strict route protection
+
+All actions must be logged in audit logs.
+
+--------------------------------------------------
+8) PAYMENTS ARCHITECTURE
+--------------------------------------------------
+
+This must include:
+
+- Escrow model (hold funds until job completed)
+- Platform fee
+- Provider payout
+- Refund logic
+- Dispute system
+
+This is not optional.
+This is marketplace core.
+
+--------------------------------------------------
+9) LOYALTY SYSTEM
+--------------------------------------------------
+
+Prestige Club is NOT a simple points page.
+
+It must:
+
+- Track transactions
+- Award points
+- Support redeem
+- Integrate with PetWash machines
+- Integrate with bookings
+- Apply discount tiers
+
+--------------------------------------------------
+10) PETWASH MACHINES INTEGRATION
+--------------------------------------------------
+
+Each physical station must:
+
+- Connect to backend
+- Report usage
+- Validate QR tokens
+- Track revenue
+- Assign to region
+- Link to loyalty accounts
+
+This connects hardware + software.
+
+--------------------------------------------------
+11) TECH ARCHITECTURE EXPECTATION
+--------------------------------------------------
+
+Frontend:
+- Role-aware routing
+- Intent-first sign-in
+- Server-driven redirects
+- Strict state machine
+
+Backend:
+- Single source of truth
+- Role-based middleware
+- KYC pipeline
+- Escrow engine
+- Audit logs
+- Admin approval workflows
+
+Infrastructure:
+- Production build must pass
+- Logging must include traceId
+- No hardcoded country logic
+- International phone support
+- Address fallback when Google fails
+
+--------------------------------------------------
+12) WHAT IS BROKEN RIGHT NOW
+--------------------------------------------------
+
+The UI looks good.
+But:
+
+- Onboarding is not fully enforced
+- Roles are not cleanly separated
+- Google address unreliable
+- Intent routing fragile
+- Provider pipeline incomplete
+- Admin security not hardened
+- State machine not fully enforced
+
+Good design does NOT equal good architecture.
+
+--------------------------------------------------
+13) WHAT WE EXPECT FROM DEVELOPMENT
+--------------------------------------------------
+
+Stop patching individual pages.
+
+Start implementing:
+
+1) Role-based system architecture
+2) Onboarding state machine
+3) Provider KYC pipeline
+4) Admin approval workflow
+5) Escrow-ready payments model
+6) Loyalty engine integration
+7) Machine integration hooks
+8) Full audit logging
+9) Strict middleware enforcement
+
+--------------------------------------------------
+14) FINAL PRINCIPLE
+--------------------------------------------------
+
+This is not a website.
+This is a pet-services operating system.
+
+Every module must plug into Octopus Brain.
+Every role must be enforced.
+Every action must be logged.
+Every onboarding must be complete before access.
+
+Build it like a fintech platform.
+Not like a landing page with forms.
