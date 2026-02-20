@@ -8,7 +8,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { LogOut, ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
-import diamondLogo from '@assets/IMG_3257_1771242993173.png';
+const diamondLogo = '/brand/petwash-logo-official.png';
 
 interface WalletSummary {
   walletId: string;
