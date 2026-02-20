@@ -30,6 +30,9 @@ const SHEETS = {
   RECEIPTS: 'Receipts & Transactions',
   IDENTITY_VERIFICATIONS: 'Identity Verifications (KYC)',
   LOYALTY_ENROLLMENTS: 'Loyalty Enrollments',
+  SECURITY_EVENTS: 'Security Events',
+  CONSENT_AUDIT: 'Consent Audit Trail',
+  ONBOARDING_CASES: 'Onboarding Cases',
 } as const;
 
 interface GoogleSheetsClient {
@@ -61,6 +64,15 @@ const SHEET_HEADERS: Record<string, string[]> = {
     'Address', 'Tax ID', 'Business Name', 'Has Driving License', 'License Type',
     'Years of Experience', 'Referral Source', 'Fraud Risk Score',
     'Shortlist Score', 'Shortlist Recommendation', 'Status'
+  ],
+  [SHEETS.SECURITY_EVENTS]: [
+    'Timestamp', 'User ID', 'Event Type', 'IP Address', 'Risk Score', 'Metadata'
+  ],
+  [SHEETS.CONSENT_AUDIT]: [
+    'Timestamp', 'User ID', 'Consent Type', 'Version', 'Method', 'Evidence Hash'
+  ],
+  [SHEETS.ONBOARDING_CASES]: [
+    'Timestamp', 'User ID', 'Case Type', 'Status', 'Current Step'
   ],
   [SHEETS.K9000_BOOKINGS]: [
     'Timestamp', 'Booking ID', 'Customer Name', 'Email', 'Phone',
@@ -306,6 +318,15 @@ async function initializeSheetHeaders(sheets: any, spreadsheetId: string) {
       'Timestamp', 'Member ID', 'First Name', 'Last Name', 'Email', 'Phone',
       'Enrollment Source', 'Tier', 'Welcome Points', 'Language', 'Country',
       'Member Type', 'Status'
+    ],
+    [SHEETS.SECURITY_EVENTS]: [
+      'Timestamp', 'User ID', 'Event Type', 'IP Address', 'Risk Score', 'Metadata'
+    ],
+    [SHEETS.CONSENT_AUDIT]: [
+      'Timestamp', 'User ID', 'Consent Type', 'Version', 'Method', 'Evidence Hash'
+    ],
+    [SHEETS.ONBOARDING_CASES]: [
+      'Timestamp', 'User ID', 'Case Type', 'Status', 'Current Step'
     ],
   };
 
@@ -1052,6 +1073,64 @@ export async function logStaffApplication(application: {
 }
 
 /**
+ * Security Event Logging (Wiring Matrix)
+ */
+export async function logSecurityEventToSheet(event: {
+  userId: string;
+  eventType: string;
+  ip: string;
+  riskScore: number;
+  metadata?: string;
+}): Promise<void> {
+  await appendToSheet(SHEETS.SECURITY_EVENTS, {
+    timestamp: new Date().toISOString(),
+    userId: event.userId,
+    eventType: event.eventType,
+    ip: event.ip,
+    riskScore: event.riskScore?.toString() || '0',
+    metadata: event.metadata || '',
+  });
+}
+
+/**
+ * Consent Audit Trail Logging (Wiring Matrix)
+ */
+export async function logConsentEvent(consent: {
+  userId: string;
+  consentType: string;
+  version: string;
+  method: string;
+  evidenceHash: string;
+}): Promise<void> {
+  await appendToSheet(SHEETS.CONSENT_AUDIT, {
+    timestamp: new Date().toISOString(),
+    userId: consent.userId,
+    consentType: consent.consentType,
+    version: consent.version,
+    method: consent.method,
+    evidenceHash: consent.evidenceHash,
+  });
+}
+
+/**
+ * Onboarding Case Logging (Wiring Matrix)
+ */
+export async function logOnboardingCase(oCase: {
+  userId: string;
+  caseType: string;
+  status: string;
+  currentStep: string;
+}): Promise<void> {
+  await appendToSheet(SHEETS.ONBOARDING_CASES, {
+    timestamp: new Date().toISOString(),
+    userId: oCase.userId,
+    caseType: oCase.caseType,
+    status: oCase.status,
+    currentStep: oCase.currentStep,
+  });
+}
+
+/**
  * Get spreadsheet URL for admin dashboard
  */
 export function getSpreadsheetUrl(): string | null {
@@ -1082,6 +1161,9 @@ export const GoogleSheetsService = {
   logReceipt,
   logIdentityVerification,
   logLoyaltyEnrollment,
+  logSecurityEventToSheet,
+  logConsentEvent,
+  logOnboardingCase,
   getSpreadsheetUrl,
   getPendingRetryCount,
   processStartupRetries,

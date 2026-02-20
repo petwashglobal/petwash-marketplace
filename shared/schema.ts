@@ -107,6 +107,18 @@ export const users = pgTable("users", {
   termsVersion: varchar("terms_version"),
   privacyAcceptedAt: timestamp("privacy_accepted_at"),
   privacyVersion: varchar("privacy_version"),
+
+  authProvider: varchar("auth_provider"),
+  phoneE164: varchar("phone_e164"),
+  phoneCountry: varchar("phone_country", { length: 5 }),
+  emailVerified: boolean("email_verified").default(false),
+  phoneVerified: boolean("phone_verified").default(false),
+  timezone: varchar("timezone"),
+  locale: varchar("locale"),
+  riskLevel: varchar("risk_level").default("low"),
+  lastLoginAt: timestamp("last_login_at"),
+  softDeleteAt: timestamp("soft_delete_at"),
+  deviceId: varchar("device_id"),
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -11022,11 +11034,14 @@ export const userConsents = pgTable("user_consents", {
   consentTextHash: varchar("consent_text_hash", { length: 128 }).notNull(),
   accepted: boolean("accepted").notNull(),
   acceptedAt: timestamp("accepted_at").defaultNow().notNull(),
+  method: varchar("method", { length: 30 }),
   ip: varchar("ip", { length: 100 }),
   userAgent: text("user_agent"),
+  deviceId: varchar("device_id"),
   locale: varchar("locale", { length: 50 }),
   source: varchar("source", { length: 20 }),
   traceId: varchar("trace_id", { length: 100 }),
+  evidenceHash: varchar("evidence_hash", { length: 128 }),
 }, (table) => [
   index("idx_user_consents_user_id").on(table.userId),
   index("idx_user_consents_type_version").on(table.consentType, table.consentVersion),
@@ -11066,10 +11081,12 @@ export const staffAccessRequests = pgTable("staff_access_requests", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
   requestedRole: varchar("requested_role").notNull(),
+  departmentCode: varchar("department_code"),
   department: varchar("department"),
   justification: text("justification"),
   managerName: varchar("manager_name"),
   status: varchar("status").notNull().default("pending"),
+  approvalScope: jsonb("approval_scope"),
   requestedAt: timestamp("requested_at").defaultNow().notNull(),
   decidedAt: timestamp("decided_at"),
   decidedBy: varchar("decided_by"),
@@ -11113,6 +11130,7 @@ export const auditEvents = pgTable("audit_events", {
   userAgent: text("user_agent"),
   traceId: varchar("trace_id"),
   metadata: jsonb("metadata"),
+  severity: varchar("severity").default("info"),
 }, (table) => [
   index("idx_audit_ev_actor").on(table.actorUserId),
   index("idx_audit_ev_action").on(table.actionType),
@@ -11127,6 +11145,7 @@ export const kycCases = pgTable("kyc_cases", {
   userId: varchar("user_id").notNull(),
   roleContext: varchar("role_context").notNull(),
   status: varchar("status").notNull().default("pending"),
+  riskScore: integer("risk_score"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
   decidedBy: varchar("decided_by"),
@@ -11142,6 +11161,8 @@ export const kycDocuments = pgTable("kyc_documents", {
   id: serial("id").primaryKey(),
   kycCaseId: integer("kyc_case_id").notNull(),
   docType: varchar("doc_type").notNull(),
+  country: varchar("country", { length: 5 }),
+  storageMode: varchar("storage_mode").default("zero_storage"),
   storageRef: varchar("storage_ref"),
   processingRef: varchar("processing_ref"),
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
@@ -11164,3 +11185,155 @@ export const kycChecks = pgTable("kyc_checks", {
 }, (table) => [
   index("idx_kyc_checks_case").on(table.kycCaseId),
 ]);
+
+export const consentSnapshots = pgTable("consent_snapshots", {
+  id: serial("id").primaryKey(),
+  consentType: varchar("consent_type", { length: 50 }).notNull(),
+  version: varchar("version", { length: 50 }).notNull(),
+  locale: varchar("locale", { length: 50 }).notNull(),
+  content: text("content").notNull(),
+  contentHash: varchar("content_hash", { length: 128 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_consent_snap_type_ver").on(table.consentType, table.version),
+  index("idx_consent_snap_hash").on(table.contentHash),
+]);
+export type ConsentSnapshot = typeof consentSnapshots.$inferSelect;
+export const insertConsentSnapshotSchema = createInsertSchema(consentSnapshots).omit({ id: true, createdAt: true });
+export type InsertConsentSnapshot = z.infer<typeof insertConsentSnapshotSchema>;
+
+export const onboardingCases = pgTable("onboarding_cases", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  context: varchar("context", { length: 30 }).notNull(),
+  status: varchar("status").notNull().default("started"),
+  currentStep: varchar("current_step"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  decidedBy: varchar("decided_by"),
+  decidedAt: timestamp("decided_at"),
+  decisionReason: text("decision_reason"),
+}, (table) => [
+  index("idx_onboarding_user").on(table.userId),
+  index("idx_onboarding_context").on(table.context),
+  index("idx_onboarding_status").on(table.status),
+]);
+export type OnboardingCase = typeof onboardingCases.$inferSelect;
+export const insertOnboardingCaseSchema = createInsertSchema(onboardingCases).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertOnboardingCase = z.infer<typeof insertOnboardingCaseSchema>;
+
+export const servicesCatalog = pgTable("services_catalog", {
+  id: serial("id").primaryKey(),
+  serviceCode: varchar("service_code", { length: 10 }).notNull().unique(),
+  namePublic: varchar("name_public").notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type ServiceCatalogEntry = typeof servicesCatalog.$inferSelect;
+export const insertServicesCatalogSchema = createInsertSchema(servicesCatalog).omit({ id: true, createdAt: true });
+
+export const dispatchJobs = pgTable("dispatch_jobs", {
+  id: serial("id").primaryKey(),
+  bookingId: integer("booking_id").notNull(),
+  status: varchar("status").notNull().default("created"),
+  wave: integer("wave").default(1).notNull(),
+  nextWaveAt: timestamp("next_wave_at"),
+  leasedUntil: timestamp("leased_until"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_dispatch_booking").on(table.bookingId),
+  index("idx_dispatch_status").on(table.status),
+]);
+export type DispatchJob = typeof dispatchJobs.$inferSelect;
+export const insertDispatchJobSchema = createInsertSchema(dispatchJobs).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const providerProfiles = pgTable("provider_profiles", {
+  userId: varchar("user_id").primaryKey().notNull(),
+  bio: text("bio"),
+  languages: jsonb("languages").default(sql`'[]'::jsonb`),
+  serviceCoverage: jsonb("service_coverage").default(sql`'{}'::jsonb`),
+  ratingAvg: decimal("rating_avg", { precision: 3, scale: 2 }).default("0"),
+  ratingCount: integer("rating_count").default(0),
+  badges: jsonb("badges").default(sql`'[]'::jsonb`),
+  availabilityState: varchar("availability_state").default("offline"),
+  lastPresenceAt: timestamp("last_presence_at"),
+  backgroundCheckStatus: varchar("background_check_status"),
+  payoutAccountStatus: varchar("payout_account_status"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_provider_avail").on(table.availabilityState),
+]);
+export type ProviderProfile = typeof providerProfiles.$inferSelect;
+export const insertProviderProfileSchema = createInsertSchema(providerProfiles).omit({ createdAt: true, updatedAt: true });
+
+export const providerAssets = pgTable("provider_assets", {
+  id: serial("id").primaryKey(),
+  providerId: varchar("provider_id").notNull(),
+  assetType: varchar("asset_type").notNull(),
+  storageRef: varchar("storage_ref"),
+  zeroStorageMarker: boolean("zero_storage_marker").default(false),
+  status: varchar("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_provider_assets_pid").on(table.providerId),
+]);
+export type ProviderAsset = typeof providerAssets.$inferSelect;
+export const insertProviderAssetSchema = createInsertSchema(providerAssets).omit({ id: true, createdAt: true });
+
+export const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  bookingId: integer("booking_id"),
+  status: varchar("status").notNull().default("authorized"),
+  method: varchar("method"),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 5 }).default("ILS").notNull(),
+  providerFee: decimal("provider_fee", { precision: 12, scale: 2 }),
+  platformFee: decimal("platform_fee", { precision: 12, scale: 2 }),
+  tax: decimal("tax", { precision: 12, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_payments_booking").on(table.bookingId),
+  index("idx_payments_status").on(table.status),
+]);
+export type Payment = typeof payments.$inferSelect;
+export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true });
+
+export const ledgerEntries = pgTable("ledger_entries", {
+  id: serial("id").primaryKey(),
+  entityType: varchar("entity_type").notNull(),
+  entityId: varchar("entity_id").notNull(),
+  entryType: varchar("entry_type").notNull(),
+  reasonCode: varchar("reason_code").notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 5 }).default("ILS").notNull(),
+  relatedId: varchar("related_id"),
+  immutableHash: varchar("immutable_hash", { length: 128 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_ledger_entity").on(table.entityType, table.entityId),
+  index("idx_ledger_reason").on(table.reasonCode),
+  index("idx_ledger_related").on(table.relatedId),
+  index("idx_ledger_created").on(table.createdAt),
+]);
+export type LedgerEntry = typeof ledgerEntries.$inferSelect;
+export const insertLedgerEntrySchema = createInsertSchema(ledgerEntries).omit({ id: true, createdAt: true });
+
+export const securityEvents = pgTable("security_events", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id"),
+  eventType: varchar("event_type").notNull(),
+  ip: varchar("ip"),
+  userAgent: text("user_agent"),
+  riskScore: integer("risk_score"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_sec_events_user").on(table.userId),
+  index("idx_sec_events_type").on(table.eventType),
+  index("idx_sec_events_created").on(table.createdAt),
+]);
+export type SecurityEvent = typeof securityEvents.$inferSelect;
+export const insertSecurityEventSchema = createInsertSchema(securityEvents).omit({ id: true, createdAt: true });
+export type InsertSecurityEvent = z.infer<typeof insertSecurityEventSchema>;

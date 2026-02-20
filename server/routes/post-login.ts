@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { storage } from "../storage";
 import { logger } from "../lib/logger";
 import { ALLOWED_INTENTS, type UserStatus, type UserRole } from "@shared/schema";
+import { logAuditEvent } from "../middleware/auditLog";
 
 const ADMIN_APPROVER_EMAIL = "nir.h@petwash.co.il";
 
@@ -22,6 +23,8 @@ type PostLoginResponse = {
   role: string;
   userStatus: string;
   missingFields?: string[];
+  onboardingCaseId?: number | null;
+  requiredActions?: string[];
 };
 
 const REQUIRED_FIELDS_BY_ROLE: Record<string, string[]> = {
@@ -46,6 +49,18 @@ function intentToRole(intent: string): string {
     case 'staff_request': return 'customer';
     default: return 'customer';
   }
+}
+
+function buildRequiredActions(userStatus: string, role: string, user: any): string[] {
+  const actions: string[] = [];
+  if (userStatus === 'profile_incomplete') actions.push('COMPLETE_PROFILE');
+  if (user.email && !user.emailVerified && user.authProvider === 'email') actions.push('VERIFY_EMAIL');
+  if (['staff', 'management', 'admin', 'super_admin'].includes(role) && !user.mfaEnrolled) actions.push('ENROLL_MFA');
+  if (userStatus === 'kyc_pending') actions.push('SUBMIT_KYC');
+  if (userStatus === 'provider_pending_approval' || userStatus === 'staff_pending_approval') actions.push('WAIT_FOR_APPROVAL');
+  if (!user.termsAcceptedAt) actions.push('ACCEPT_TERMS');
+  if (!user.privacyAcceptedAt) actions.push('ACCEPT_PRIVACY');
+  return actions;
 }
 
 async function computeUserStatus(user: any, userId: string): Promise<UserStatus> {
@@ -274,7 +289,19 @@ export async function postLoginDecider(req: Request, res: Response) {
     }
 
     const userStatus = await computeUserStatus(u, userId);
-    const updates: Record<string, any> = { userStatus };
+    const updates: Record<string, any> = {
+      userStatus,
+      lastLoginAt: new Date(),
+    };
+
+    const { deviceInfo } = req.body || {};
+    const authProvider = (req as any).authProvider || (u as any).authProvider;
+    if (authProvider && !(u as any).authProvider) {
+      updates.authProvider = authProvider;
+    }
+    if (deviceInfo?.deviceId && !(u as any).deviceId) {
+      updates.deviceId = deviceInfo.deviceId;
+    }
 
     if (userStatus === 'provider_active' && effectiveRole !== 'provider') {
       updates.role = 'provider';
@@ -291,9 +318,66 @@ export async function postLoginDecider(req: Request, res: Response) {
 
     await storage.updateUser(userId, updates as any);
 
+    const onboardingContext = (u as any).signupIntent || effectiveRole;
+    const validContexts = ['customer', 'loyalty', 'provider', 'staff'];
+    const context = validContexts.includes(onboardingContext) ? onboardingContext : 'customer';
+    let onboardingCaseId: number | null = null;
+    const existingCase = await storage.getOnboardingCase(userId, context);
+    if (!existingCase) {
+      const newCase = await storage.createOnboardingCase({
+        userId,
+        context,
+        status: userStatus === 'profile_complete' || userStatus === 'provider_active' || userStatus === 'staff_active' ? 'approved' : 'started',
+        currentStep: userStatus === 'profile_incomplete' ? 'profile_required' : userStatus === 'kyc_pending' ? 'kyc_required' : userStatus,
+      });
+      onboardingCaseId = newCase?.id ?? null;
+    } else {
+      onboardingCaseId = existingCase.id;
+      if (existingCase.status !== 'approved' && (userStatus === 'profile_complete' || userStatus === 'provider_active' || userStatus === 'staff_active')) {
+        await storage.updateOnboardingCase(existingCase.id, {
+          status: 'approved',
+          currentStep: userStatus,
+        });
+      } else if (existingCase.currentStep !== userStatus) {
+        await storage.updateOnboardingCase(existingCase.id, {
+          currentStep: userStatus,
+          status: userStatus === 'kyc_pending' ? 'kyc_required' : userStatus === 'provider_pending_approval' ? 'pending_review' : existingCase.status,
+        });
+      }
+    }
+
+    const clientIp = req.ip || req.headers['x-forwarded-for']?.toString()?.split(',')[0] || '';
+    const userAgent = req.headers['user-agent'] || '';
+    const traceId = (req as any).traceId || '';
+
+    await storage.logSecurityEvent({
+      userId,
+      eventType: 'login_success',
+      ip: clientIp,
+      userAgent,
+      riskScore: 0,
+      metadata: { role: effectiveRole, status: userStatus, traceId },
+    });
+
+    logAuditEvent({
+      actorUserId: userId,
+      actorRole: effectiveRole,
+      actionType: 'POST_LOGIN',
+      targetType: 'user',
+      targetId: userId,
+      ip: clientIp,
+      userAgent,
+      traceId,
+      metadata: { userStatus, intent: (u as any).signupIntent, role: effectiveRole },
+    });
+
     const response = buildRoutingResponse(u, effectiveRole, userStatus, missingFields, providerApp, staffReq);
     logger.info(`[PostLogin] User ${userId} → ${response.nextUrl} (role=${effectiveRole}, status=${userStatus}, reason=${response.reason})`);
-    return res.json(response);
+    return res.json({
+      ...response,
+      onboardingCaseId,
+      requiredActions: buildRequiredActions(userStatus, effectiveRole, u),
+    });
 
   } catch (error: any) {
     logger.error(`[PostLogin] Error: ${error.message}`, { error });

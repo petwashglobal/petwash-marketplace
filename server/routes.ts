@@ -1265,6 +1265,68 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // ========================================================================
+  // 📋 CONSENT EVIDENCE ENGINE (Wiring Matrix Section 7 - Legal Evidence)
+  // ========================================================================
+  const { createConsentSnapshot, recordConsent, checkAllConsentsGiven } = await import('./services/consentEngine');
+
+  app.post('/api/consent/snapshot', requireAuth, requireRole('admin', 'super_admin'), async (req: any, res) => {
+    try {
+      const { consentType, version, locale, content } = req.body;
+      if (!consentType || !version || !locale || !content) {
+        return res.status(400).json({ error: 'Missing required fields: consentType, version, locale, content' });
+      }
+      const snapshot = await createConsentSnapshot({ consentType, version, locale, content });
+      res.json({ ok: true, snapshot });
+    } catch (error: any) {
+      logger.error('[ConsentEngine] Snapshot creation error:', error);
+      res.status(500).json({ error: 'Failed to create consent snapshot' });
+    }
+  });
+
+  app.post('/api/consent/accept', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId || req.user?.id;
+      if (!userId) return res.status(401).json({ error: 'AUTH_REQUIRED' });
+      const { consentType, version, locale, method } = req.body;
+      if (!consentType || !version) {
+        return res.status(400).json({ error: 'Missing required fields: consentType, version' });
+      }
+      const consent = await recordConsent({
+        userId,
+        consentType,
+        version,
+        locale: locale || 'he',
+        method: method || 'checkbox',
+        ip: getClientIP(req),
+        userAgent: req.headers['user-agent'] || '',
+        deviceId: req.body.deviceId || '',
+        traceId: req.traceId || '',
+      });
+      res.json({ ok: true, consent });
+    } catch (error: any) {
+      if (error.message?.startsWith('SNAPSHOT_NOT_FOUND')) {
+        return res.status(404).json({ error: 'SNAPSHOT_NOT_FOUND', message: error.message });
+      }
+      logger.error('[ConsentEngine] Consent accept error:', error);
+      res.status(500).json({ error: 'Failed to record consent' });
+    }
+  });
+
+  app.get('/api/consent/status', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.userId || req.user?.id;
+      if (!userId) return res.status(401).json({ error: 'AUTH_REQUIRED' });
+      const user = await storage.getUser(userId);
+      const role = (user as any)?.role || 'customer';
+      const result = await checkAllConsentsGiven(userId, role);
+      res.json({ ok: true, ...result });
+    } catch (error: any) {
+      logger.error('[ConsentEngine] Status check error:', error);
+      res.status(500).json({ error: 'Failed to check consent status' });
+    }
+  });
+
+  // ========================================================================
   // 🌐 OLD TRANSLATION API - DEPRECATED! Use /api/translate from translationRoutes instead
   // ========================================================================
   // Commented out - replaced by Gemini AI translation service (server/routes/translation.ts)

@@ -135,6 +135,15 @@ import {
   type InsertHrPerformanceReview,
   providerApplications,
   staffAccessRequests,
+  onboardingCases,
+  consentSnapshots,
+  securityEvents,
+  providerProfiles,
+  ledgerEntries,
+  providerAssets,
+  payments,
+  dispatchJobs,
+  servicesCatalog,
   type ProviderApplication,
   type StaffAccessRequest,
   type InsertStaffAccessRequest,
@@ -926,6 +935,27 @@ export interface IStorage {
   getAllStaffAccessRequests(): Promise<StaffAccessRequest[]>;
   createStaffAccessRequest(data: InsertStaffAccessRequest): Promise<StaffAccessRequest>;
   updateStaffAccessRequest(id: number, updates: Partial<StaffAccessRequest>): Promise<StaffAccessRequest>;
+
+  // =================== WIRING MATRIX OPERATIONS ===================
+
+  // Onboarding Cases
+  getOnboardingCase(userId: string, context: string): Promise<any | null>;
+  createOnboardingCase(data: { userId: string; context: string; status?: string; currentStep?: string }): Promise<any>;
+  updateOnboardingCase(id: number, updates: Record<string, any>): Promise<void>;
+
+  // Consent Snapshots
+  getConsentSnapshot(consentType: string, version: string, locale: string): Promise<any | null>;
+  createConsentSnapshot(data: { consentType: string; version: string; locale: string; content: string; contentHash: string }): Promise<any>;
+
+  // Security Events
+  logSecurityEvent(data: { userId?: string; eventType: string; ip?: string; userAgent?: string; riskScore?: number; metadata?: any }): Promise<void>;
+
+  // Provider Profiles
+  getProviderProfile(userId: string): Promise<any | null>;
+  upsertProviderProfile(userId: string, data: Record<string, any>): Promise<any>;
+
+  // Ledger Entries
+  createLedgerEntry(data: { entityType: string; entityId: string; entryType: string; reasonCode: string; amount: string; currency?: string; relatedId?: string; immutableHash?: string }): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -5417,6 +5447,59 @@ export class DatabaseStorage implements IStorage {
     const [req] = await db.update(staffAccessRequests).set(updates).where(eq(staffAccessRequests.id, id)).returning();
     if (!req) throw new NotFoundError(`Staff access request ${id} not found`);
     return req;
+  }
+
+  // =================== WIRING MATRIX OPERATIONS ===================
+
+  // Onboarding Cases
+  async getOnboardingCase(userId: string, context: string): Promise<any | null> {
+    const [result] = await db.select().from(onboardingCases).where(and(eq(onboardingCases.userId, userId), eq(onboardingCases.context, context))).limit(1);
+    return result || null;
+  }
+
+  async createOnboardingCase(data: { userId: string; context: string; status?: string; currentStep?: string }): Promise<any> {
+    const [result] = await db.insert(onboardingCases).values(data).returning();
+    return result;
+  }
+
+  async updateOnboardingCase(id: number, updates: Record<string, any>): Promise<void> {
+    await db.update(onboardingCases).set({ ...updates, updatedAt: new Date() }).where(eq(onboardingCases.id, id));
+  }
+
+  // Consent Snapshots
+  async getConsentSnapshot(consentType: string, version: string, locale: string): Promise<any | null> {
+    const [result] = await db.select().from(consentSnapshots).where(and(eq(consentSnapshots.consentType, consentType), eq(consentSnapshots.version, version), eq(consentSnapshots.locale, locale))).limit(1);
+    return result || null;
+  }
+
+  async createConsentSnapshot(data: { consentType: string; version: string; locale: string; content: string; contentHash: string }): Promise<any> {
+    const [result] = await db.insert(consentSnapshots).values(data).returning();
+    return result;
+  }
+
+  // Security Events
+  async logSecurityEvent(data: { userId?: string; eventType: string; ip?: string; userAgent?: string; riskScore?: number; metadata?: any }): Promise<void> {
+    await db.insert(securityEvents).values(data);
+  }
+
+  // Provider Profiles
+  async getProviderProfile(userId: string): Promise<any | null> {
+    const [result] = await db.select().from(providerProfiles).where(eq(providerProfiles.userId, userId)).limit(1);
+    return result || null;
+  }
+
+  async upsertProviderProfile(userId: string, data: Record<string, any>): Promise<any> {
+    const [result] = await db.insert(providerProfiles).values({ ...data, userId }).onConflictDoUpdate({
+      target: providerProfiles.userId,
+      set: { ...data, updatedAt: new Date() },
+    }).returning();
+    return result;
+  }
+
+  // Ledger Entries
+  async createLedgerEntry(data: { entityType: string; entityId: string; entryType: string; reasonCode: string; amount: string; currency?: string; relatedId?: string; immutableHash?: string }): Promise<any> {
+    const [result] = await db.insert(ledgerEntries).values(data).returning();
+    return result;
   }
 }
 
