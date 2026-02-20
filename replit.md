@@ -1,7 +1,7 @@
 # Pet Wash™ - Premium Organic Pet Care Ecosystem
 
 ## Overview
-Pet Wash™ is an enterprise platform aiming to be the leading global luxury pet care provider, starting in Israel. It offers a scalable ecosystem for IoT wash stations, pet sitting, walking, and AI-powered pet avatar creation. The platform centralizes authentication, payments, AI services, compliance, and franchise management, supported by a 7-Star Loyalty System and robust security.
+Pet Wash™ is an enterprise platform aiming to be the leading global luxury pet care provider, starting in Israel. It offers a scalable ecosystem for IoT wash stations, pet sitting, walking, and AI-powered pet avatar creation. The platform centralizes authentication, payments, AI services, compliance, and franchise management, supported by a 7-Star Loyalty System and robust security. The business vision is to be the global leader in luxury pet care, with initial market focus and operations in Israel.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -75,26 +75,24 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **CRITICAL DEPLOYMENT RULE**: Replit URLs are for development only and must not be connected to production domains. Production domains point to Firebase Hosting.
 
 ### Core Features & Design Decisions
-- **Frontend**: React 18, TypeScript, Wouter, TanStack Query, shadcn/ui (Radix UI), Tailwind CSS, Vite. Focuses on responsive, mobile-first, luxury design with glassmorphism and Apple-style animations, supporting bilingual direction-aware layouts.
+- **Frontend**: React 18, TypeScript, Wouter, TanStack Query, shadcn/ui (Radix UI), Tailwind CSS, Vite. Emphasizes responsive, mobile-first, luxury design with glassmorphism and Apple-style animations, supporting bilingual direction-aware layouts. iOS PWA support is included.
 - **Backend**: Node.js, Express.js, Neon serverless PostgreSQL with Drizzle ORM, Redis caching.
-- **Authentication & User Management**: Firebase Auth with Twilio SMS, WebAuthn/Passkey, RBAC, biometrics, GDPR compliance. Mandatory MFA for admin roles. Email verification required for critical actions.
+- **Authentication & User Management**: Firebase Auth with Twilio SMS, WebAuthn/Passkey, RBAC, biometrics, GDPR compliance. Includes mandatory MFA for admin roles and email verification for critical actions. Features a robust user status state machine, authorization gates for roles and MFA, and an audit trail for critical actions.
 - **AI Chat Assistant**: Google Dialogflow CX with Gemini 2.5 Flash, bilingual (Hebrew/English), WCAG 2.1 AA compliant.
-- **Marketplaces**: Includes The Sitter Suite™, Walk My Pet™, PetTrek™, The Plush Lab™ (AI avatar creator), unified under a single system covering 7 platforms.
+- **Marketplaces**: Unified system for The Sitter Suite™, Walk My Pet™, PetTrek™, and The Plush Lab™ (AI avatar creator).
 - **Loyalty Program**: 7-tier system, e-gift cards, wash packages, Apple Wallet integration.
 - **E-Signature**: DocuSeal with Hebrew RTL support; custom system for Israeli subcontractor agreements.
-- **Enterprise Features**: Multi-country/currency, franchise management, IoT monitoring, secure document management, KYC, automated bookkeeping, Israeli Tax Compliance, bank reconciliation, invoicing, VAT reclaim.
-- **Payment Gateway Architecture**: Nayax Israel is the exclusive payment gateway with 72-hour escrow.
-- **K9000 IoT Integration**: Cloud management, real-time status, remote control, AI predictive maintenance, 7-star luxury LED ecosystem.
-- **Security & Compliance**: Google reCAPTCHA v3, Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025, AI monitoring, GDPR consent, blockchain-style audit trail. Optional/Mandatory 2FA (SMS + Email, TOTP authenticator). Transaction OTP verification for high-value operations.
-- **Unified Luxury Booking System**: Enterprise-grade booking with loyalty tiers, policies, 72-hour escrow, GPS activation, multi-driver dispatch, IoT unlock tokens, dynamic surge pricing, and progressive provider payouts. All financial writes flow through the "Octopus Global Brain Engine" with atomic wallet debit/credit, immutable financial ledger, and idempotency protection.
+- **Enterprise Features**: Multi-country/currency support, franchise management, IoT monitoring (K9000 integration), secure document management, KYC workflow, automated bookkeeping, Israeli Tax Compliance, bank reconciliation, invoicing, and VAT reclaim.
+- **Payment Gateway Architecture**: Nayax Israel is the exclusive payment gateway with a 72-hour escrow period.
+- **Unified Luxury Booking System**: Enterprise-grade booking with loyalty tiers, policies, 72-hour escrow, GPS activation, multi-driver dispatch, IoT unlock tokens, dynamic surge pricing, and progressive provider payouts. All financial writes utilize the "Octopus Global Brain Engine" with atomic wallet debit/credit, immutable financial ledger, and idempotency protection.
 - **Employee Expense Management System**: Israeli Tax Authority compliant with OCR receipt scanning and cryptographic audit trail.
 - **Document Management System**: RBAC, Google Cloud Storage integration, access audit logging, and DocuSeal e-signature.
-- **Legal & Compliance Systems**: Routes for privacy, data rights, GDPR, Israeli Privacy Law 2025, e-signature, contract management.
+- **Legal & Compliance Systems**: Routes for privacy, data rights, GDPR, Israeli Privacy Law 2025, e-signature, contract management. Includes a GDPR/Israeli Privacy Law 2025 automated purge engine.
 - **HR & Employee Systems**: Routes for employee management, hierarchy, onboarding, auto-approval workflows, and WhatsApp notifications.
-- **Enterprise Route Infrastructure**: Extensive route files for franchise, finance, HR, operations, sales CRM, accounting, expenses, documents, compliance, audit, contracts, and signatures, organized into Head Office, Franchise, Customer, and Shared units.
-- **Israeli Contractor Compliance System**: Marketplace broker model preventing employee misclassification, with tax verification, National Insurance tracking, commission calculation, independence scoring, compliance audits, risk monitoring, and SHA-256 audit trails.
-- **Data Retention Service**: GDPR/Israeli Privacy Law 2025 automated purge engine with defined retention policies and legal hold management.
-- **iOS PWA**: Progressive Web App with service worker, manifest.json with role-based shortcuts, iOS Safari install prompt, Android beforeinstallprompt native prompt.
+- **Enterprise Route Infrastructure**: Extensive route files for various business units (franchise, finance, HR, operations, sales CRM, accounting, expenses, documents, compliance, audit, contracts, and signatures), organized into Head Office, Franchise, Customer, and Shared units.
+- **Israeli Contractor Compliance System**: Marketplace broker model designed to prevent employee misclassification, including tax verification, National Insurance tracking, commission calculation, independence scoring, compliance audits, risk monitoring, and SHA-256 audit trails.
+- **Security & Compliance**: Google reCAPTCHA v3, Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025, AI monitoring, GDPR consent, blockchain-style audit trail. Optional/Mandatory 2FA (SMS + Email, TOTP authenticator). Transaction OTP verification for high-value operations. A dedicated security events service logs various security-related incidents.
+- **Consent Engine**: Manages user consents with SHA-256 evidence hash generation, immutable snapshots, and role-based consent requirements.
 
 ### File Storage & Admin Access
 - **Document Storage**: Google Cloud Storage bucket `petwash-secure-documents`.
@@ -120,12 +118,3 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **AI & Vision**: Google Cloud Vision API, Google Gemini AI, Google Cloud Translation API, Google Dialogflow CX.
 - **Business Management**: Google Business Profile API.
 - **Google Forms Integration**: Admin-configurable embedded Google Forms.
-
-## Recent Changes (Feb 2026)
-- **P0 Fintech Auth System**: Added `user_status`, `signup_intent`, `mfa_required`, `mfa_enrolled`, `provider_approved_at`, `staff_approved_at` columns to users table. User status state machine: new → profile_incomplete → profile_complete → (kyc_pending/provider_pending_approval/provider_active) or (staff_pending_approval/staff_active). Provider role auto-transitions from 'customer' to 'provider' when application is approved.
-- **Server-stored Intent**: Post-login validates intent server-side. Allowed intents: customer, loyalty, provider, staff_request. Admin/management intents REJECTED (403). Intent stored in `signup_intent` column.
-- **Authorization Gates**: `server/middleware/gates.ts` provides `requireRole`, `requireProviderActive`, `requireStaffApproved`, `requireMfaEnrolled`, `requireEmailVerified`, `requireSuperAdmin`. Applied to `/api/admin/` and `/api/provider/` route groups.
-- **Audit Trail**: `audit_events` table with `server/middleware/auditLog.ts`. `traceIdMiddleware` generates UUID per request. Audit logging on: POST_LOGIN, CHOOSE_ROLE, APPROVE_ACCESS, PROFILE_UPDATE, STAFF_APPROVE, STAFF_DENY, PROVIDER_APPROVE.
-- **KYC Pipeline**: `kyc_cases`, `kyc_documents`, `kyc_checks` tables for provider verification workflow.
-- **Staff Approval Chain**: Staff access requests store department/justification. On approval: role=staff, userStatus=staff_active, mfaRequired=true, staffApprovedAt set. Super admin gate on approve-access route.
-- **SUPER_ADMINS**: nirhadad1@gmail.com, nir.h@petwash.co.il, ido.s@petwash.co.il, idoshaka@gmail.com, idoshakarzi110@gmail.com
