@@ -345,7 +345,7 @@ export default function TrackMyPet() {
               </div>
             )}
 
-            {/* Bathroom Markers (Wag-style) */}
+            {/* Bathroom Markers (industry-standard) */}
             {walk.bathroomMarkers && walk.bathroomMarkers.length > 0 && (
               <div className="bg-white dark:bg-amber-950/40 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
                 <div className="flex items-center gap-2 mb-2">

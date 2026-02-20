@@ -129,6 +129,133 @@ export const webauthnLimiter = rateLimit({
   }
 });
 
+// Authentication endpoint limiter - 10 requests per minute per IP
+// Protects login, register, and post-login endpoints from brute force
+export const authLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // 10 requests per minute
+  message: 'Too many authentication attempts',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => {
+    // Use IP-based limiting (IPv6-safe)
+    const ip = getClientIP(req);
+    return `auth:${ip}`;
+  },
+  handler: (req: Request, res: Response) => {
+    const retryAfter = Math.ceil(Date.now() / 1000) + 60; // 1 min from now
+    res.status(429).json({
+      error: 'Auth rate limit exceeded',
+      message: 'Too many authentication attempts. Please wait before trying again.',
+      retryAfter
+    });
+  }
+});
+
+// KYC submission endpoint limiter - 5 requests per hour per user UID
+// Protects KYC submission endpoints from spam
+export const kycLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // 5 requests per hour
+  message: 'Too many KYC submissions',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => {
+    // Use UID-based limiting like uploadLimiter
+    const user = (req as any).user;
+    if (user?.uid) {
+      return `kyc:${user.uid}`;
+    }
+    // Fallback for unauthenticated (should not happen for KYC)
+    return 'kyc:anonymous';
+  },
+  handler: (req: Request, res: Response) => {
+    const retryAfter = Math.ceil(Date.now() / 1000) + 3600; // 1 hour from now
+    res.status(429).json({
+      error: 'KYC rate limit exceeded',
+      message: 'Too many KYC submissions. Please wait before submitting again.',
+      retryAfter
+    });
+  }
+});
+
+// Booking creation endpoint limiter - 20 requests per 15 minutes per user
+// Protects booking creation endpoints from spam
+export const bookingLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 requests per window
+  message: 'Too many booking requests',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => {
+    // Use UID-based limiting
+    const user = (req as any).user;
+    if (user?.uid) {
+      return `booking:${user.uid}`;
+    }
+    // Fallback for unauthenticated
+    return 'booking:anonymous';
+  },
+  handler: (req: Request, res: Response) => {
+    const retryAfter = Math.ceil(Date.now() / 1000) + 900; // 15 min from now
+    res.status(429).json({
+      error: 'Booking rate limit exceeded',
+      message: 'Too many booking requests. Please wait before creating more bookings.',
+      retryAfter
+    });
+  }
+});
+
+// Dispatch/job endpoint limiter - 30 requests per 15 minutes per user
+// Protects dispatch and job-related endpoints from spam
+export const dispatchLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // 30 requests per window
+  message: 'Too many dispatch requests',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => {
+    // Use UID-based limiting
+    const user = (req as any).user;
+    if (user?.uid) {
+      return `dispatch:${user.uid}`;
+    }
+    // Fallback for unauthenticated
+    return 'dispatch:anonymous';
+  },
+  handler: (req: Request, res: Response) => {
+    const retryAfter = Math.ceil(Date.now() / 1000) + 900; // 15 min from now
+    res.status(429).json({
+      error: 'Dispatch rate limit exceeded',
+      message: 'Too many dispatch requests. Please wait before making more requests.',
+      retryAfter
+    });
+  }
+});
+
+// OTP/verification code endpoint limiter - 3 requests per 5 minutes per IP
+// Protects OTP and verification endpoints from brute force
+export const otpLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 3, // 3 requests per window
+  message: 'Too many verification code requests',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => {
+    // Use IP-based limiting (IPv6-safe)
+    const ip = getClientIP(req);
+    return `otp:${ip}`;
+  },
+  handler: (req: Request, res: Response) => {
+    const retryAfter = Math.ceil(Date.now() / 1000) + 300; // 5 min from now
+    res.status(429).json({
+      error: 'OTP rate limit exceeded',
+      message: 'Too many verification code requests. Please wait before requesting again.',
+      retryAfter
+    });
+  }
+});
+
 logger.info('Rate limiters initialized');
 logger.info('Rate limits:');
 logger.info(`   - General API: ${isDevelopment ? '1000' : '200'} req/15min per IP (${isDevelopment ? 'dev mode' : 'production'})`);
@@ -136,3 +263,8 @@ logger.info('   - Admin: 200 req/15min per IP');
 logger.info('   - Payments: 5 req/15min per email');
 logger.info('   - Uploads: 20 req/hour per user UID');
 logger.info('   - WebAuthn: 60 req/min per IP+UID (passkey security)');
+logger.info('   - Auth: 10 req/min per IP (login/register protection)');
+logger.info('   - KYC: 5 req/hour per user UID');
+logger.info('   - Booking: 20 req/15min per user UID');
+logger.info('   - Dispatch: 30 req/15min per user UID');
+logger.info('   - OTP: 3 req/5min per IP (verification code protection)');

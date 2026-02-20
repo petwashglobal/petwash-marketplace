@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { storage } from '../storage';
 import { logger } from '../lib/logger';
+import { logSecurityEvent } from '../services/securityEventsService';
 
 const SUPER_ADMINS = [
   'nirhadad1@gmail.com',
@@ -42,6 +43,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     const userId = getUserId(req);
     if (!userId) {
       logger.debug('[requireAuth] No userId found on request');
+      logSecurityEvent({ eventType: 'unauthorized_access_attempt', ip: req.ip || '', userAgent: req.headers['user-agent'] || '', riskScore: 30, metadata: { endpoint: req.originalUrl } });
       return res.status(401).json({ error: 'AUTH_REQUIRED' });
     }
     next();
@@ -73,6 +75,7 @@ export function requireRole(...roles: string[]) {
       const userRole = (user as any).role || 'customer';
       if (!roles.includes(userRole)) {
         logger.debug(`[requireRole] User ${userId} has role '${userRole}', required: ${roles.join(',')}`);
+        logSecurityEvent({ userId, eventType: 'role_escalation_attempt', ip: req.ip || '', userAgent: req.headers['user-agent'] || '', riskScore: 60, metadata: { attemptedRoles: roles, actualRole: userRole, endpoint: req.originalUrl } });
         return res.status(403).json({
           error: 'ROLE_REQUIRED',
           requiredRoles: roles,
@@ -110,6 +113,7 @@ export function requireUserStatus(...statuses: string[]) {
       const userStatus = (user as any).userStatus || 'new';
       if (!statuses.includes(userStatus)) {
         logger.debug(`[requireUserStatus] User ${userId} has status '${userStatus}', required: ${statuses.join(',')}`);
+        logSecurityEvent({ userId, eventType: 'status_gate_blocked', ip: req.ip || '', userAgent: req.headers['user-agent'] || '', riskScore: 40, metadata: { requiredStatuses: statuses, actualStatus: userStatus, endpoint: req.originalUrl } });
         return res.status(403).json({
           error: 'STATUS_REQUIRED',
           requiredStatuses: statuses,
@@ -150,6 +154,7 @@ export async function requireProviderActive(req: Request, res: Response, next: N
       logger.debug(
         `[requireProviderActive] User ${userId} is not provider_active (role: ${userRole}, status: ${userStatus})`
       );
+      logSecurityEvent({ userId, eventType: 'provider_gate_blocked', ip: req.ip || '', userAgent: req.headers['user-agent'] || '', riskScore: 50, metadata: { role: userRole, status: userStatus, endpoint: req.originalUrl } });
       return res.status(403).json({ error: 'PROVIDER_NOT_ACTIVE' });
     }
 
@@ -186,6 +191,7 @@ export async function requireStaffApproved(req: Request, res: Response, next: Ne
       logger.debug(
         `[requireStaffApproved] User ${userId} is not staff_active (role: ${userRole}, status: ${userStatus})`
       );
+      logSecurityEvent({ userId, eventType: 'staff_gate_blocked', ip: req.ip || '', userAgent: req.headers['user-agent'] || '', riskScore: 50, metadata: { role: userRole, status: userStatus, endpoint: req.originalUrl } });
       return res.status(403).json({ error: 'STAFF_NOT_APPROVED' });
     }
 
@@ -219,6 +225,7 @@ export async function requireMfaEnrolled(req: Request, res: Response, next: Next
 
     if (mfaRequired && !mfaEnrolled) {
       logger.debug(`[requireMfaEnrolled] User ${userId} has mfaRequired=true but mfaEnrolled=false`);
+      logSecurityEvent({ userId, eventType: 'mfa_gate_blocked', ip: req.ip || '', userAgent: req.headers['user-agent'] || '', riskScore: 40, metadata: { mfaRequired: true, mfaEnrolled: false, endpoint: req.originalUrl } });
       return res.status(403).json({ error: 'MFA_REQUIRED' });
     }
 
@@ -272,6 +279,7 @@ export async function requireSuperAdmin(req: Request, res: Response, next: NextF
     const userEmail = (user as any).email;
     if (!userEmail || !SUPER_ADMINS.includes(userEmail)) {
       logger.debug(`[requireSuperAdmin] User ${userId} (${userEmail}) is not a super admin`);
+      logSecurityEvent({ userId, eventType: 'super_admin_escalation_attempt', ip: req.ip || '', userAgent: req.headers['user-agent'] || '', riskScore: 90, metadata: { email: userEmail, endpoint: req.originalUrl } });
       return res.status(403).json({ error: 'SUPER_ADMIN_REQUIRED' });
     }
 

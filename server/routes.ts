@@ -112,7 +112,10 @@ import platformApiRoutes from "./routes/platform-api";
 import { resolvePlatformMiddleware } from "./middleware/platformContext";
 import { auditMiddleware } from "./middleware/auditLogger";
 import { requireRole, requireStaffApproved, requireProviderActive, requireSuperAdmin, requireMfaEnrolled } from "./middleware/gates";
+import { blockDuringIncident } from './middleware/incidentGuard';
+import { activateIncidentMode, deactivateIncidentMode, getIncidentStatus } from './services/incidentMode';
 import { logAuditEvent, auditMiddleware as auditLogMiddleware } from "./middleware/auditLog";
+import { requireOnboardingComplete as requireOnboardingCompleteV2, requireProviderCanAcceptBooking, requireProfileComplete } from './middleware/stateGuards';
 import referralRoutes from "./routes/referral";
 import pricingApiRoutes from "./routes/pricing-api";
 import accountingRoutes from "./routes/accounting";
@@ -238,7 +241,7 @@ import { generateGiftCardCode as utilsGenerateGiftCardCode, calculateDiscount as
 import { IsraeliTaxService } from "@shared/israeliTax";
 import multer from 'multer';
 import crypto from 'crypto';
-import { apiLimiter, paymentLimiter, adminLimiter, uploadLimiter, webauthnLimiter } from './middleware/rateLimiter';
+import { apiLimiter, paymentLimiter, adminLimiter, uploadLimiter, webauthnLimiter, authLimiter, kycLimiter, bookingLimiter, dispatchLimiter, otpLimiter } from './middleware/rateLimiter';
 import { loginRateLimitMiddleware, recordFailedLogin, clearLoginAttempts } from './middleware/loginRateLimiter';
 import { verifyAppCheckToken, verifyAppCheckTokenOptional } from './middleware/appCheckMiddleware';
 import { logger } from './lib/logger';
@@ -948,19 +951,19 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // POST /api/auth/post-login - Central role-based routing decider
-  app.post('/api/auth/post-login', requireAuth, auditLogMiddleware('POST_LOGIN'), postLoginDecider);
+  app.post('/api/auth/post-login', authLimiter, requireAuth, auditLogMiddleware('POST_LOGIN'), postLoginDecider);
   
   // GET /api/auth/whoami - Returns current user profile status and required fields
   app.get('/api/auth/whoami', requireAuth, getWhoami);
   
   // POST /api/auth/choose-role - User selects their intent (customer/provider/staff)
-  app.post('/api/auth/choose-role', requireAuth, auditLogMiddleware('CHOOSE_ROLE'), chooseRole);
+  app.post('/api/auth/choose-role', authLimiter, requireAuth, auditLogMiddleware('CHOOSE_ROLE'), chooseRole);
   
   // POST /api/admin/approve-access - Admin approves staff/admin access (super admins only)
   app.post('/api/admin/approve-access', requireAuth, requireSuperAdmin, auditLogMiddleware('APPROVE_ACCESS'), approveAccess);
   
   // POST /api/auth/complete-profile - Complete user profile (first onboarding step)
-  app.post('/api/auth/complete-profile', requireAuth, auditLogMiddleware('PROFILE_UPDATE'), completeProfile);
+  app.post('/api/auth/complete-profile', authLimiter, requireAuth, auditLogMiddleware('PROFILE_UPDATE'), completeProfile);
 
   // Staff Access Requests CRUD
   app.use('/api/access-requests', apiLimiter, accessRequestsRoutes);
@@ -1262,6 +1265,35 @@ self.addEventListener('notificationclick', (event) => {
       logger.error('[Wallet Consent] Failed to save wallet consent:', error);
       res.status(500).json({ ok: false, error: 'Failed to save wallet consent' });
     }
+  });
+
+  // ========================================================================
+  // 🚨 INCIDENT MODE CONTROL (Super Admin Only)
+  // ========================================================================
+  app.post('/api/admin/incident-mode/activate', requireAuth, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const { reason } = req.body;
+      if (!reason) return res.status(400).json({ error: 'Reason is required' });
+      const userId = req.userId || req.user?.id;
+      activateIncidentMode(reason, userId);
+      res.json({ ok: true, status: getIncidentStatus() });
+    } catch (error: any) {
+      res.status(500).json({ error: 'Failed to activate incident mode' });
+    }
+  });
+
+  app.post('/api/admin/incident-mode/deactivate', requireAuth, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const userId = req.userId || req.user?.id;
+      deactivateIncidentMode(userId);
+      res.json({ ok: true, status: getIncidentStatus() });
+    } catch (error: any) {
+      res.status(500).json({ error: 'Failed to deactivate incident mode' });
+    }
+  });
+
+  app.get('/api/admin/incident-mode/status', requireAuth, requireRole('admin', 'management', 'staff'), async (req: any, res) => {
+    res.json(getIncidentStatus());
   });
 
   // ========================================================================
@@ -4700,7 +4732,7 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Purchase/Checkout endpoint for wash packages (authenticated with discounts)
-  app.post('/api/checkout', requireAuth, async (req: any, res) => {
+  app.post('/api/checkout', requireAuth, requireOnboardingComplete, async (req: any, res) => {
     try {
       const { packageId, paymentMethod } = req.body;
       const userId = req.user.claims.sub;
@@ -5041,7 +5073,7 @@ self.addEventListener('notificationclick', (event) => {
 
   // Claim voucher (requires authentication)
   const voucherClaimLimiter = uploadLimiter;
-  app.post('/api/vouchers/claim', requireAuth, verifyAppCheckTokenOptional, voucherClaimLimiter, async (req: any, res) => {
+  app.post('/api/vouchers/claim', requireAuth, requireProfileComplete, verifyAppCheckTokenOptional, voucherClaimLimiter, async (req: any, res) => {
     const correlationId = crypto.randomUUID();
     try {
       const schema = z.object({
@@ -9443,7 +9475,7 @@ self.addEventListener('notificationclick', (event) => {
 
   // Provider Intake Queue (Google Forms Integration - Management-Assisted Onboarding)
   // MUST be before /api catch-all to allow public access to /stats and /submit endpoints
-  app.use('/api/provider-intake', apiLimiter, providerIntakeRoutes);
+  app.use('/api/provider-intake', apiLimiter, kycLimiter, blockDuringIncident('new_provider_registration'), providerIntakeRoutes);
 
   // Identity Service V2 - Modern OAuth 2.1/OIDC Authentication (P0 PRIORITY)
   app.use('/auth', identityServiceRoutes);

@@ -226,8 +226,9 @@ import {
   type ChatEventOutbox,
   type InsertChatEventOutbox,
 } from "@shared/schema-chat";
+import crypto from "crypto";
 import { db } from "./db";
-import { eq, desc, and, or, lt, gte, lte, like, sql } from "drizzle-orm";
+import { eq, desc, and, or, lt, gte, lte, like, sql, asc } from "drizzle-orm";
 import { NotFoundError } from "./errors";
 
 export interface IStorage {
@@ -956,6 +957,7 @@ export interface IStorage {
 
   // Ledger Entries
   createLedgerEntry(data: { entityType: string; entityId: string; entryType: string; reasonCode: string; amount: string; currency?: string; relatedId?: string; immutableHash?: string }): Promise<any>;
+  verifyLedgerChain(walletId: number): Promise<{ valid: boolean; brokenAt?: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -5498,8 +5500,39 @@ export class DatabaseStorage implements IStorage {
 
   // Ledger Entries
   async createLedgerEntry(data: { entityType: string; entityId: string; entryType: string; reasonCode: string; amount: string; currency?: string; relatedId?: string; immutableHash?: string }): Promise<any> {
-    const [result] = await db.insert(ledgerEntries).values(data).returning();
+    const [lastEntry] = await db
+      .select()
+      .from(ledgerEntries)
+      .where(and(eq(ledgerEntries.entityType, data.entityType), eq(ledgerEntries.entityId, data.entityId)))
+      .orderBy(desc(ledgerEntries.id))
+      .limit(1);
+
+    const previousHash = lastEntry?.immutableHash ?? 'GENESIS';
+    const hashPayload = { ...data, previousHash };
+    const immutableHash = crypto.createHash('sha256').update(JSON.stringify(hashPayload)).digest('hex');
+
+    const [result] = await db.insert(ledgerEntries).values({ ...data, immutableHash }).returning();
     return result;
+  }
+
+  async verifyLedgerChain(walletId: number): Promise<{ valid: boolean; brokenAt?: number }> {
+    const entries = await db
+      .select()
+      .from(ledgerEntries)
+      .where(eq(ledgerEntries.entityId, String(walletId)))
+      .orderBy(asc(ledgerEntries.id));
+
+    let previousHash = 'GENESIS';
+    for (const entry of entries) {
+      const { id, immutableHash, createdAt, ...entryData } = entry;
+      const hashPayload = { ...entryData, previousHash };
+      const expectedHash = crypto.createHash('sha256').update(JSON.stringify(hashPayload)).digest('hex');
+      if (immutableHash !== expectedHash) {
+        return { valid: false, brokenAt: id };
+      }
+      previousHash = immutableHash!;
+    }
+    return { valid: true };
   }
 }
 

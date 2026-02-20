@@ -116,6 +116,8 @@ export const users = pgTable("users", {
   timezone: varchar("timezone"),
   locale: varchar("locale"),
   riskLevel: varchar("risk_level").default("low"),
+  regionCode: text("region_code").default('IL'),
+  legalHold: boolean("legal_hold").default(false),
   lastLoginAt: timestamp("last_login_at"),
   softDeleteAt: timestamp("soft_delete_at"),
   deviceId: varchar("device_id"),
