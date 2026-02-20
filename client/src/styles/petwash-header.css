@@ -233,44 +233,45 @@
   flex-shrink: 0;
 }
 
-/* Official PetWash™ logo image - ALWAYS DOMINANT, larger than any text/icons */
+/* Official PetWash™ logo image - ALWAYS marginally taller than any other header item
+   Logo must visually dominate while staying vertically centered on the same line */
 .pw-header-logo-img {
-  height: 3.5rem;
+  height: 3.625rem;
   width: auto;
-  max-width: 160px;
+  max-width: 165px;
   object-fit: contain;
   display: block;
 }
 
-/* Tablet - larger logo */
+/* Tablet - logo taller than 1.75rem social icons */
 @media (min-width: 640px) {
   .pw-header-logo-img {
-    height: 4rem;
-    max-width: 190px;
+    height: 4.25rem;
+    max-width: 200px;
   }
 }
 
-/* Desktop - dominant logo */
+/* Desktop - logo taller than 2.125rem profile circle */
 @media (min-width: 768px) {
   .pw-header-logo-img {
-    height: 4.5rem;
-    max-width: 220px;
+    height: 4.75rem;
+    max-width: 230px;
   }
 }
 
-/* Large screens - premium dominant logo */
+/* Large screens - logo taller than 2.25rem profile + 2rem social icons */
 @media (min-width: 1024px) {
   .pw-header-logo-img {
-    height: 5rem;
-    max-width: 260px;
+    height: 5.25rem;
+    max-width: 270px;
   }
 }
 
-/* Extra large screens */
+/* Extra large screens - logo taller than 2.5rem profile circle */
 @media (min-width: 1440px) {
   .pw-header-logo-img {
-    height: 5.5rem;
-    max-width: 300px;
+    height: 5.75rem;
+    max-width: 310px;
   }
 }
 
