@@ -1,0 +1,122 @@
+2026 OTP AUTO-FILL SPEC (iOS + Android) + MULTI USER-TYPE FLOW
+
+A) SMS TEXT FORMAT (must follow this so iOS/Android detects it)
+
+1) Keep code on its own line:
+PetWash verification code: 123456
+Expires in 5 minutes. Do not share.
+
+2) Do NOT put too many numbers in the message.
+3) Keep it short. Avoid extra digits like phone or long references in the same SMS.
+4) Use the same sender consistently (same brand name).
+
+Optional but recommended:
+- Put the code at the end of the first line.
+- Avoid punctuation right next to the digits.
+
+B) FRONTEND OTP INPUT (this is what triggers iOS/Android “paste code” UI)
+
+For the OTP input element(s):
+
+- inputMode="numeric"
+- pattern="[0-9]*"
+- autoComplete="one-time-code"
+- type="text"   (not number, number breaks leading zeros and autofill on some browsers)
+- name="otp"
+- aria-label="Verification code"
+- maxLength={6}
+
+Example (React):
+
+<input
+  value={code}
+  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+  inputMode="numeric"
+  pattern="[0-9]*"
+  autoComplete="one-time-code"
+  name="otp"
+  type="text"
+  maxLength={6}
+/>
+
+If you use 6 separate boxes, ONLY the first box should include:
+autoComplete="one-time-code"
+and the rest should not.
+
+C) AUTO-SUBMIT (best UX)
+
+- If length == 6, automatically call verify endpoint.
+- Show loading state and disable inputs while verifying.
+- If verify fails, shake input + clear + show “Wrong code”.
+
+D) BACKEND OTP LIFECYCLE (must be exact)
+
+Endpoints:
+
+1) POST /api/auth/phone/otp/send
+Body: { phoneE164, channel: "sms" | "whatsapp", intent: "customer" | "provider" | "staff" }
+Response: { otpId, expiresAt }
+
+2) POST /api/auth/phone/otp/verify
+Body: { otpId, phoneE164, code, deviceId }
+Response: { sessionToken, userId, isNewUser, nextPath, requiredActions[] }
+
+Rules:
+- OTP TTL: 5 minutes
+- Max verify attempts per otpId: 5
+- Resend cooldown: 60 seconds
+- Rate limit per phone: 3/hour
+- Rate limit per IP: 15/hour
+- Store OTP hashed (never plaintext)
+- Mark OTP used_at on success, reject reuse
+
+E) USER TYPE ROUTING (this is what your developer is missing)
+
+The OTP verify response must decide routing server-side, not client guessing.
+
+Intent values:
+- customer (public user)
+- provider (service provider applicant)
+- staff (internal, requires approval)
+
+Routing rules:
+
+1) customer
+- if new user OR profile incomplete -> /onboarding/customer (collect full name, DOB if required, address)
+- else -> /app/home or /loyalty (depending membership)
+
+2) provider
+- always -> /onboarding/provider (full profile + address + photo + documents + bank details if needed)
+- provider status starts as: pending
+- cannot accept jobs until: approved
+
+3) staff
+- always -> /staff/request-access (creates staff_access_request)
+- show “Await approval”
+- only after approval + MFA -> /control-panel
+
+F) “MEMBERSHIP UNIQUE NUMBER” REQUIREMENT (backend)
+
+On first successful verification, backend must create:
+- membershipNumber: PW-IL-XXXXXX (or country variant)
+- store in users table as membership_number (unique)
+- return it in verify response:
+{ membershipNumber }
+- show it in UI welcome screen and emails
+
+G) WHY YOUR SMS TESTS FAIL SOMETIMES
+
+If Twilio is throwing empty errors or not delivering:
+- You may be hitting Twilio messaging limits
+- Sender is not verified for the destination country
+- Using unverified test numbers
+Fix: add a “DEV OTP MODE”:
+- In dev only, respond with { devCode: "123456" } and skip actual SMS send.
+- Never enable in production.
+
+H) CHECKLIST FOR YOU (fast)
+- Confirm OTP SMS text matches section A
+- Confirm OTP input uses autoComplete="one-time-code"
+- Confirm verify endpoint returns nextPath based on intent
+- Confirm membershipNumber created and saved
+- Confirm provider and staff cannot reach customer pages until onboarding + approval gates pass
