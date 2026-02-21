@@ -225,15 +225,43 @@ export default function BecomeProvider() {
       const token = firebaseUser ? await (firebaseUser as any).getIdToken?.() : null;
       const headers: Record<string, string> = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      const response = await fetch('/api/provider-applications', {
-        method: 'POST',
-        headers,
-        body: formData,
-        credentials: 'include',
-      });
+      const doFetch = async () => {
+        const response = await fetch('/api/provider-applications', {
+          method: 'POST',
+          headers,
+          body: formData,
+          credentials: 'include',
+        });
+        return response;
+      };
+      let response = await doFetch();
+      if (response.status === 503) {
+        await new Promise(r => setTimeout(r, 800));
+        response = await doFetch();
+      }
       if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Failed' }));
-        throw new Error(err.error || err.message || 'Failed to submit');
+        const traceId = response.headers.get('x-trace-id') || '';
+        let errBody: any = null;
+        try { errBody = await response.json(); } catch { errBody = {}; }
+        console.error('[ProviderApplication] Submit failed', { status: response.status, traceId, errBody });
+        const status = response.status;
+        let userMsg: string;
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          userMsg = isHebrew ? 'אין חיבור לאינטרנט. בדוק את החיבור ונסה שוב.' : 'No internet connection. Please check your connection and try again.';
+        } else if (status === 401) {
+          userMsg = isHebrew ? 'הפגישה פגה. אנא היכנס שוב.' : 'Session expired. Please sign in again.';
+        } else if (status === 403) {
+          userMsg = isHebrew ? 'אין הרשאה.' : 'Not authorized.';
+        } else if (status === 409) {
+          userMsg = errBody?.error || (isHebrew ? 'כבר קיימת בקשה פעילה.' : 'You already have an active application.');
+        } else if (status === 429) {
+          userMsg = isHebrew ? 'יותר מדי ניסיונות. אנא המתן ונסה שוב.' : 'Too many attempts. Please wait and try again.';
+        } else if (status === 503) {
+          userMsg = isHebrew ? 'השירות לא זמין כרגע. אנא נסה שוב בעוד רגע.' : 'Service temporarily unavailable. Please try again in a moment.';
+        } else {
+          userMsg = isHebrew ? 'משהו השתבש. אנא נסה שוב.' : 'Something went wrong. Please try again.';
+        }
+        throw new Error(userMsg);
       }
       return response.json();
     },

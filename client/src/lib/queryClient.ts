@@ -15,28 +15,93 @@ async function getFirebaseBearerToken(): Promise<string | null> {
   return null;
 }
 
+export class ApiError extends Error {
+  status: number;
+  traceId: string;
+  userMessage: string;
+  body: any;
+
+  constructor(status: number, body: any, traceId: string) {
+    const serverMsg = body?.message || body?.error || '';
+    super(`${status}: ${serverMsg || 'Request failed'}`);
+    this.status = status;
+    this.traceId = traceId;
+    this.body = body;
+    this.userMessage = getUserMessage(status, serverMsg);
+  }
+}
+
+function getUserMessage(status: number, serverMsg: string): string {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return 'No internet connection. Please check your connection and try again.';
+  }
+  switch (status) {
+    case 401:
+      return 'Session expired. Please sign in again.';
+    case 403:
+      return 'Not authorized.';
+    case 404:
+      return 'Not found.';
+    case 409:
+      return serverMsg || 'This action conflicts with existing data.';
+    case 429:
+      return 'Too many attempts. Please wait and try again.';
+    case 503:
+      return 'Service temporarily unavailable. Please try again in a moment.';
+    default:
+      if (status >= 500) return 'Something went wrong on our end. Please try again.';
+      return serverMsg || 'Something went wrong. Please try again.';
+  }
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    
-    // Handle PASSKEY_REQUIRED enforcement
+    const traceId = res.headers.get('x-trace-id') || '';
+    let body: any = null;
+    const text = await res.text().catch(() => '');
+
+    try {
+      body = text ? JSON.parse(text) : null;
+    } catch {
+      body = { message: text || res.statusText };
+    }
+
     if (res.status === 403 && text.includes('PASSKEY_REQUIRED')) {
-      // Show toast notification
       if (typeof window !== 'undefined') {
         const event = new CustomEvent('passkey-required', {
           detail: { message: 'Passkey authentication is required for your role' }
         });
         window.dispatchEvent(event);
-        
-        // Redirect to security settings after a short delay
         setTimeout(() => {
           window.location.href = '/settings/security';
         }, 1500);
       }
     }
-    
-    throw new Error(`${res.status}: ${text}`);
+
+    if (typeof window !== 'undefined') {
+      console.error('[API Error]', {
+        url: res.url,
+        status: res.status,
+        traceId,
+        body,
+      });
+    }
+
+    throw new ApiError(res.status, body, traceId);
   }
+}
+
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  retries = 1,
+): Promise<Response> {
+  const res = await fetch(url, options);
+  if (res.status === 503 && retries > 0) {
+    await new Promise(r => setTimeout(r, 800));
+    return fetchWithRetry(url, options, retries - 1);
+  }
+  return res;
 }
 
 export async function apiRequest(
@@ -94,7 +159,7 @@ export async function apiRequest(
     }
   }
 
-  const res = await fetch(getApiUrl(url), {
+  const res = await fetchWithRetry(getApiUrl(url), {
     method,
     headers,
     body,
@@ -128,7 +193,7 @@ export const getQueryFn: <T>(options: {
       headers["Authorization"] = `Bearer ${bearerToken}`;
     }
 
-    const res = await fetch(getApiUrl(queryKey[0] as string), {
+    const res = await fetchWithRetry(getApiUrl(queryKey[0] as string), {
       credentials: "include",
       headers,
     });
@@ -147,9 +212,13 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000, // 5 minutes (was Infinity - prevents unbounded memory growth)
-      gcTime: 10 * 60 * 1000, // 10 minutes garbage collection (cache pruning) - TanStack Query v5
-      retry: false,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      retry: (failureCount, error) => {
+        if (error instanceof ApiError && error.status === 503 && failureCount < 1) return true;
+        return false;
+      },
+      retryDelay: 800,
     },
     mutations: {
       retry: false,

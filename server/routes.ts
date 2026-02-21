@@ -13913,30 +13913,28 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   }
   // In development mode, Vite's middleware serves index.html automatically - no fallback needed
 
-  // Global error handler - MUST be last middleware
-  // Catches any unhandled errors and sends clean response to clients
   app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-    // Log error internally with full details
+    const traceId = (req as any).traceId || res.getHeader('x-trace-id') || '';
+    const status = err.statusCode || err.status || 500;
+
     logger.error('Unhandled error:', {
+      traceId,
       errorMessage: err?.message || 'Unknown error',
       errorName: err?.name || 'Error',
       errorStack: err?.stack || 'No stack trace',
       method: req.method,
       url: req.url,
       ip: req.ip,
-      body: req.body,
-      query: req.query,
-      params: req.params
+      status,
     });
-    
-    // Also log raw error for debugging
-    logger.error('[ERROR HANDLER] Full error object', err);
-    
-    // Send clean error to client (no stack traces or internal details)
+
     if (!res.headersSent) {
-      res.status(500).json({
-        error: 'Internal server error',
-        message: 'Something went wrong. Please try again later.'
+      res.status(status).json({
+        error: err.code || 'SERVER_ERROR',
+        message: status >= 500
+          ? 'Something went wrong. Please try again later.'
+          : (err.message || 'Request failed'),
+        traceId,
       });
     }
   });

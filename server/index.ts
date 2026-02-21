@@ -451,16 +451,20 @@ if (isProduction) {
     // 6. Global Error Handler (Prevents Server Crashes)
     // NOTE: This must be registered BEFORE the catchall route to catch API errors
     app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-      const status = err.status || 500;
-      const message = err.message || 'Internal Server Error';
+      const status = err.statusCode || err.status || 500;
+      const traceId = (req as any).traceId || res.getHeader('x-trace-id') || '';
       
       console.error(`[CRITICAL ERROR] ${new Date().toISOString()}:`, err);
 
-      // Don't leak stack traces to users in production
-      res.status(status).json({
-        error: true,
-        message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : message,
-      });
+      if (!res.headersSent) {
+        res.status(status).json({
+          error: err.code || 'SERVER_ERROR',
+          message: status >= 500
+            ? 'Something went wrong. Please try again later.'
+            : (err.message || 'Request failed'),
+          traceId,
+        });
+      }
     });
     
     // 7. SPA Catchall Route - Serve index.html for ALL non-API routes (UNIVERSAL - works in dev AND production)
