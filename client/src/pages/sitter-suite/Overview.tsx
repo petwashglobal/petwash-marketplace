@@ -121,7 +121,7 @@ export default function SitterSuiteOverview() {
                   {t('sitterSuite.findSitter')}
                 </Button>
               </Link>
-              <Link href="/sitter-suite/hub">
+              <Link href="/become-provider">
                 <Button className="luxury-btn-secondary flex items-center gap-2 px-8" data-testid="button-become-sitter">
                   <Home className="h-5 w-5" />
                   {t('sitterSuite.becomeSitter')}

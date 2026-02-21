@@ -105,6 +105,14 @@ export default function OwnerDashboard() {
     .filter(p => p.status === 'completed')
     .reduce((sum, p) => sum + p.amount, 0);
 
+  const statusLabels: Record<string, string> = {
+    pending: t('sitterHub.pending'),
+    confirmed: t('sitterHub.confirmed'),
+    completed: t('sitterHub.completed'),
+    cancelled: t('sitterHub.cancelled'),
+    refunded: t('sitterHub.refunded'),
+  };
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { bg: string; text: string; border: string; icon: any }> = {
       pending: { bg: 'bg-white', text: 'text-amber-700', border: 'border-amber-200', icon: Clock },
@@ -116,16 +124,16 @@ export default function OwnerDashboard() {
     return (
       <span className={`${v.bg} ${v.text} border ${v.border} inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold`}>
         <v.icon className="w-3 h-3" />
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {statusLabels[status] || status}
       </span>
     );
   };
 
   const statCards = [
-    { label: 'Confirmed', value: upcomingBookings.length, icon: CheckCircle2, gradient: 'from-pink-500 to-rose-500', shadow: 'shadow-pink-100' },
-    { label: 'Total Spent', value: `₪${totalSpent.toFixed(0)}`, icon: DollarSign, gradient: 'from-fuchsia-500 to-pink-500', shadow: 'shadow-fuchsia-100' },
-    { label: 'My Pets', value: pets.length, icon: PawPrint, gradient: 'from-rose-400 to-pink-500', shadow: 'shadow-rose-100' },
-    { label: 'Completed', value: pastBookings.length, icon: Calendar, gradient: 'from-pink-400 to-fuchsia-500', shadow: 'shadow-pink-100' },
+    { label: t('sitterHub.confirmed'), value: upcomingBookings.length, icon: CheckCircle2, gradient: 'from-pink-500 to-rose-500', shadow: 'shadow-pink-100' },
+    { label: t('sitterHub.totalSpent'), value: `₪${totalSpent.toFixed(0)}`, icon: DollarSign, gradient: 'from-fuchsia-500 to-pink-500', shadow: 'shadow-fuchsia-100' },
+    { label: t('sitterHub.myPets'), value: pets.length, icon: PawPrint, gradient: 'from-rose-400 to-pink-500', shadow: 'shadow-rose-100' },
+    { label: t('sitterHub.completed'), value: pastBookings.length, icon: Calendar, gradient: 'from-pink-400 to-fuchsia-500', shadow: 'shadow-pink-100' },
   ];
 
   return (
@@ -153,12 +161,12 @@ export default function OwnerDashboard() {
                 <div>
                   <span className="text-[11px] font-bold tracking-[0.2em] uppercase text-pink-500 block">The Sitter Suite™</span>
                   <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight leading-none">
-                    My Pet Stays
+                    {t('sitterHub.title')}
                   </h1>
                 </div>
               </div>
               <p className="text-gray-500 text-base max-w-md leading-relaxed">
-                Your luxury pet care command center — bookings, pets, payments, and conversations all in one premium dashboard.
+                {t('sitterHub.description')}
               </p>
             </div>
 
@@ -168,7 +176,7 @@ export default function OwnerDashboard() {
                 data-testid="button-book-new-stay"
               >
                 <Plus className="w-5 h-5 mr-2" />
-                Book New Stay
+                {t('sitterHub.bookNewStay')}
                 <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
@@ -201,11 +209,11 @@ export default function OwnerDashboard() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
           <TabsList className="bg-white border border-gray-200 rounded-2xl p-1.5 grid w-full grid-cols-5 lg:w-auto lg:inline-grid shadow-sm">
             {[
-              { value: 'overview', icon: TrendingUp, label: 'Overview' },
-              { value: 'messages', icon: MessageCircle, label: 'Messages' },
-              { value: 'bookings', icon: Calendar, label: 'Bookings' },
-              { value: 'pets', icon: PawPrint, label: 'My Pets' },
-              { value: 'payments', icon: CreditCard, label: 'Payments' },
+              { value: 'overview', icon: TrendingUp, label: t('sitterHub.overview') },
+              { value: 'messages', icon: MessageCircle, label: t('sitterHub.messages') },
+              { value: 'bookings', icon: Calendar, label: t('sitterHub.bookings') },
+              { value: 'pets', icon: PawPrint, label: t('sitterHub.myPets') },
+              { value: 'payments', icon: CreditCard, label: t('sitterHub.payments') },
             ].map((tab) => (
               <TabsTrigger
                 key={tab.value}
@@ -227,7 +235,7 @@ export default function OwnerDashboard() {
                     <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
                       <Clock className="w-4 h-4 text-white" />
                     </div>
-                    Pending Approval ({pendingBookings.length})
+                    {t('sitterHub.pendingApproval')} ({pendingBookings.length})
                   </h3>
                 </div>
                 <div className="p-5 space-y-3">
@@ -264,7 +272,7 @@ export default function OwnerDashboard() {
                   <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-pink-500 to-fuchsia-500 flex items-center justify-center shadow-md shadow-pink-200/50">
                     <Calendar className="w-4 h-4 text-white" />
                   </div>
-                  Upcoming Stays
+                  {t('sitterHub.upcomingStays')}
                   <span className="text-sm font-semibold text-gray-400">({upcomingBookings.length})</span>
                 </h2>
               </div>
@@ -277,14 +285,14 @@ export default function OwnerDashboard() {
                         <PawPrint className="w-10 h-10 text-pink-300" />
                       </div>
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">No upcoming stays</h3>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">{t('sitterHub.noUpcomingStays')}</h3>
                     <p className="text-gray-400 mb-8 text-sm max-w-xs mx-auto">
-                      Book your first stay and give your pet the luxury care they deserve
+                      {t('sitterHub.bookFirstStay')}
                     </p>
                     <Link href="/sitter-suite/browse">
                       <Button className="bg-gradient-to-r from-pink-500 to-fuchsia-500 hover:from-pink-600 hover:to-fuchsia-600 text-white rounded-2xl px-8 py-3 font-bold shadow-xl shadow-pink-200/50 transition-all hover:shadow-2xl hover:-translate-y-0.5">
                         <Sparkles className="w-4 h-4 mr-2" />
-                        Find a Sitter
+                        {t('sitterHub.findSitter')}
                       </Button>
                     </Link>
                   </div>
@@ -336,10 +344,10 @@ export default function OwnerDashboard() {
                             <div className="flex gap-3 pt-2">
                               <Button variant="outline" size="sm" className="flex-1 rounded-xl border-pink-200 text-pink-600 hover:bg-pink-50 hover:text-pink-700 hover:border-pink-300 font-semibold transition-all" data-testid={`button-message-${booking.id}`}>
                                 <MessageCircle className="w-4 h-4 mr-2" />
-                                Message
+                                {t('sitterHub.message')}
                               </Button>
                               <Button variant="outline" size="sm" className="flex-1 rounded-xl border-gray-200 text-gray-600 hover:bg-gray-50 font-semibold" data-testid={`button-view-${booking.id}`}>
-                                View Details
+                                {t('sitterHub.viewDetails')}
                                 <ChevronRight className="w-4 h-4 ml-1" />
                               </Button>
                             </div>
@@ -376,8 +384,8 @@ export default function OwnerDashboard() {
                       <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-50 to-fuchsia-50 flex items-center justify-center mx-auto mb-5 border border-pink-100">
                         <MessageCircle className="h-9 w-9 text-pink-300" />
                       </div>
-                      <p className="text-gray-900 font-bold text-lg mb-1">No conversation selected</p>
-                      <p className="text-gray-400 text-sm">Choose a conversation from the list to start messaging</p>
+                      <p className="text-gray-900 font-bold text-lg mb-1">{t('sitterHub.noConversation')}</p>
+                      <p className="text-gray-400 text-sm">{t('sitterHub.chooseConversation')}</p>
                     </div>
                   </div>
                 )}
@@ -393,8 +401,8 @@ export default function OwnerDashboard() {
                   <Calendar className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900">All Bookings</h2>
-                  <p className="text-xs text-gray-400">View and manage all your pet sitting bookings</p>
+                  <h2 className="text-lg font-bold text-gray-900">{t('sitterHub.allBookings')}</h2>
+                  <p className="text-xs text-gray-400">{t('sitterHub.allBookingsDesc')}</p>
                 </div>
               </div>
               <div className="p-5 space-y-3">
@@ -431,7 +439,7 @@ export default function OwnerDashboard() {
                               }}
                             >
                               <MessageSquare className="w-3.5 h-3.5" />
-                              Review
+                              {t('sitterHub.review')}
                             </Button>
                           )}
                         </div>
@@ -445,8 +453,8 @@ export default function OwnerDashboard() {
                     <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-50 to-fuchsia-50 flex items-center justify-center mx-auto mb-5 border border-pink-100">
                       <Calendar className="w-9 h-9 text-pink-300" />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">No bookings yet</h3>
-                    <p className="text-gray-400 text-sm">Your booking history will appear here</p>
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">{t('sitterHub.noBookings')}</h3>
+                    <p className="text-gray-400 text-sm">{t('sitterHub.bookingHistoryHere')}</p>
                   </div>
                 )}
               </div>
@@ -462,13 +470,13 @@ export default function OwnerDashboard() {
                     <PawPrint className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900">My Pets</h2>
-                    <p className="text-xs text-gray-400">Manage your pet profiles</p>
+                    <h2 className="text-lg font-bold text-gray-900">{t('sitterHub.myPets')}</h2>
+                    <p className="text-xs text-gray-400">{t('sitterHub.managePets')}</p>
                   </div>
                 </div>
                 <Button className="bg-gradient-to-r from-pink-500 to-fuchsia-500 hover:from-pink-600 hover:to-fuchsia-600 text-white rounded-xl font-bold shadow-lg shadow-pink-200/40 px-5" data-testid="button-add-pet">
                   <Plus className="w-4 h-4 mr-2" />
-                  Add Pet
+                  {t('sitterHub.addPet')}
                 </Button>
               </div>
               <div className="p-6">
@@ -488,10 +496,10 @@ export default function OwnerDashboard() {
                       <p className="text-sm text-gray-400 font-medium mb-3">{pet.breed}</p>
                       <div className="flex items-center justify-center gap-3 text-xs text-gray-400 font-medium">
                         <span className="px-2.5 py-1 bg-gray-50 rounded-full">{pet.petType}</span>
-                        <span className="px-2.5 py-1 bg-gray-50 rounded-full">{pet.age} years</span>
+                        <span className="px-2.5 py-1 bg-gray-50 rounded-full">{pet.age} {t('sitterHub.years')}</span>
                       </div>
                       <Button variant="outline" size="sm" className="mt-5 w-full rounded-xl border-pink-200 text-pink-600 hover:bg-pink-50 hover:text-pink-700 font-semibold" data-testid={`button-edit-pet-${pet.id}`}>
-                        Edit Profile
+                        {t('sitterHub.editProfile')}
                       </Button>
                     </div>
                   ))}
@@ -503,11 +511,11 @@ export default function OwnerDashboard() {
                           <PawPrint className="w-10 h-10 text-pink-300" />
                         </div>
                       </div>
-                      <h3 className="text-lg font-bold text-gray-900 mb-2">No pets added yet</h3>
-                      <p className="text-gray-400 text-sm mb-6">Add your furry friends to get started</p>
+                      <h3 className="text-lg font-bold text-gray-900 mb-2">{t('sitterHub.noPets')}</h3>
+                      <p className="text-gray-400 text-sm mb-6">{t('sitterHub.addFurryFriends')}</p>
                       <Button className="bg-gradient-to-r from-pink-500 to-fuchsia-500 hover:from-pink-600 hover:to-fuchsia-600 text-white rounded-2xl px-8 py-3 font-bold shadow-xl shadow-pink-200/50" data-testid="button-add-first-pet">
                         <Plus className="w-4 h-4 mr-2" />
-                        Add Your First Pet
+                        {t('sitterHub.addFirstPet')}
                       </Button>
                     </div>
                   )}
@@ -524,8 +532,8 @@ export default function OwnerDashboard() {
                   <CreditCard className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900">Payment History</h2>
-                  <p className="text-xs text-gray-400">View all your transactions</p>
+                  <h2 className="text-lg font-bold text-gray-900">{t('sitterHub.paymentHistory')}</h2>
+                  <p className="text-xs text-gray-400">{t('sitterHub.viewTransactions')}</p>
                 </div>
               </div>
               <div className="p-5 space-y-3">
@@ -555,7 +563,7 @@ export default function OwnerDashboard() {
                         payment.status === 'refunded' ? 'bg-red-50 text-red-700 border border-red-200' :
                         'bg-white text-amber-700 border border-amber-200'
                       }`}>
-                        {payment.status}
+                        {statusLabels[payment.status] || payment.status}
                       </span>
                     </div>
                   </div>
@@ -565,8 +573,8 @@ export default function OwnerDashboard() {
                     <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-50 to-fuchsia-50 flex items-center justify-center mx-auto mb-5 border border-pink-100">
                       <CreditCard className="w-9 h-9 text-pink-300" />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">No payment history</h3>
-                    <p className="text-gray-400 text-sm">Your transactions will appear here</p>
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">{t('sitterHub.noPayments')}</h3>
+                    <p className="text-gray-400 text-sm">{t('sitterHub.transactionsHere')}</p>
                   </div>
                 )}
               </div>
