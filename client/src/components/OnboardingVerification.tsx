@@ -20,7 +20,7 @@ interface OnboardingVerificationProps {
 
 type Step = 'email_input' | 'email_code' | 'phone_input' | 'phone_code' | 'complete';
 
-const texts = {
+const texts: Record<string, Record<string, string>> = {
   he: {
     title: 'אימות חשבון',
     subtitle: 'אנא אמתו את האימייל ומספר הטלפון שלכם',
@@ -52,6 +52,40 @@ const texts = {
     securityNote: 'פרטיכם מוגנים בהצפנה מקצה לקצה',
     codeSentTo: 'קוד נשלח אל',
     codeExpiry: 'הקוד תקף ל-5 דקות',
+    or: 'או',
+  },
+  ar: {
+    title: 'التحقق من الحساب',
+    subtitle: 'يرجى التحقق من بريدك الإلكتروني ورقم هاتفك',
+    emailStep: 'التحقق من البريد الإلكتروني',
+    phoneStep: 'التحقق من الهاتف',
+    complete: 'اكتمل التحقق',
+    enterEmail: 'أدخل بريدك الإلكتروني',
+    emailPlaceholder: 'your@email.com',
+    sendEmailCode: 'إرسال رمز التحقق',
+    enterEmailCode: 'أدخل الرمز المرسل إلى بريدك الإلكتروني',
+    orClickEmailLink: 'أو اضغط على الرابط في البريد الإلكتروني للتحقق الفوري',
+    waitingForLink: 'في انتظار الضغط على رابط البريد الإلكتروني...',
+    emailLinkVerified: 'تم التحقق من البريد الإلكتروني عبر الرابط!',
+    enterPhone: 'أدخل رقم هاتفك',
+    phonePlaceholder: '+972 50 123 4567',
+    sendSmsCode: 'إرسال رمز SMS',
+    enterSmsCode: 'أدخل الرمز المرسل عبر SMS',
+    verify: 'تحقق',
+    resend: 'إعادة الإرسال',
+    resendIn: 'إعادة الإرسال بعد',
+    seconds: 'ثوانٍ',
+    emailVerified: 'تم التحقق من البريد الإلكتروني بنجاح!',
+    phoneVerified: 'تم التحقق من الهاتف بنجاح!',
+    allVerified: 'تم إكمال جميع عمليات التحقق بنجاح!',
+    continue: 'متابعة',
+    back: 'رجوع',
+    step: 'خطوة',
+    of: 'من',
+    securityNote: 'بياناتك محمية بتشفير من طرف إلى طرف',
+    codeSentTo: 'تم إرسال الرمز إلى',
+    codeExpiry: 'الرمز صالح لمدة 5 دقائق',
+    or: 'أو',
   },
   en: {
     title: 'Account Verification',
@@ -84,12 +118,12 @@ const texts = {
     securityNote: 'Your details are protected with end-to-end encryption',
     codeSentTo: 'Code sent to',
     codeExpiry: 'Code valid for 5 minutes',
+    or: 'or',
   },
 };
 
 function getTexts(language: Language) {
-  if (language === 'he' || language === 'ar') return texts.he;
-  return texts.en;
+  return texts[language] || texts.en;
 }
 
 export function OnboardingVerification({
@@ -459,7 +493,7 @@ export function OnboardingVerification({
               <div className="flex items-center gap-3 py-2">
                 <div className="flex-1 h-px bg-gray-200" />
                 <span className="text-xs text-gray-400 whitespace-nowrap">
-                  {isRTL ? 'או' : 'or'}
+                  {t.or}
                 </span>
                 <div className="flex-1 h-px bg-gray-200" />
               </div>

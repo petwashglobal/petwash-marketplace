@@ -5,6 +5,8 @@ import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { generateMembershipId, assignCustomerMembership } from '../services/MembershipService';
 import { WelcomeEmailService } from '../services/WelcomeEmailService';
+import { peekEmailVerificationToken } from './onboarding-verification';
+import { twilioSMSService } from '../services/TwilioSMSService';
 import crypto from 'crypto';
 
 const router = Router();
@@ -72,6 +74,26 @@ router.post('/complete-registration', async (req: Request, res: Response) => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+
+    const { emailToken, smsToken } = req.body as CompleteRegistrationRequest;
+    if (emailToken) {
+      const emailCheck = peekEmailVerificationToken(emailToken);
+      if (!emailCheck.valid) {
+        logger.warn('[CompleteRegistration] Invalid email verification token', { traceId });
+        return res.status(400).json({ success: false, message: 'Email verification token is invalid or expired' });
+      }
+      if (emailCheck.email && emailCheck.email !== normalizedEmail) {
+        logger.warn('[CompleteRegistration] Email mismatch with token', { traceId });
+        return res.status(400).json({ success: false, message: 'Email does not match verified email' });
+      }
+    }
+    if (smsToken) {
+      const smsCheck = twilioSMSService.validateVerificationToken(smsToken);
+      if (!smsCheck.valid) {
+        logger.warn('[CompleteRegistration] Invalid SMS verification token', { traceId });
+        return res.status(400).json({ success: false, message: 'Phone verification token is invalid or expired' });
+      }
+    }
 
     const membershipNumber = await generateMembershipId(MEMBERSHIP_CLASS[userType]);
     const onboardingStatus = INITIAL_STATUS[userType];

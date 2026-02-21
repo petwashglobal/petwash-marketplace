@@ -76,7 +76,7 @@ class TwilioSMSService {
   }
 
   private generateCode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    return String(Math.floor(100000 + crypto.randomInt(900000)));
   }
 
   private formatPhoneNumber(phone: string): string {
@@ -339,7 +339,9 @@ class TwilioSMSService {
       };
     }
 
-    if (stored.code !== code) {
+    const codeMatch = stored.code.length === code.length &&
+      crypto.timingSafeEqual(Buffer.from(stored.code), Buffer.from(code));
+    if (!codeMatch) {
       stored.attempts++;
       return {
         success: false,

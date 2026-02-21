@@ -38,11 +38,22 @@ const verificationLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message: 'Too many verification requests. Please wait 5 minutes.' },
+  handler: (req: Request, res: Response) => {
+    const lang = req.body?.language || 'he';
+    const msgs: Record<string, string> = {
+      en: 'Too many verification requests. Please wait 5 minutes.',
+      he: 'יותר מדי בקשות אימות. אנא המתינו 5 דקות.',
+      ar: 'طلبات تحقق كثيرة جدًا. يرجى الانتظار 5 دقائق.',
+      es: 'Demasiadas solicitudes de verificación. Espere 5 minutos.',
+      fr: 'Trop de demandes de vérification. Veuillez patienter 5 minutes.',
+      ru: 'Слишком много запросов на проверку. Подождите 5 минут.',
+    };
+    res.status(429).json({ success: false, message: msgs[lang] || msgs.en });
+  },
 });
 
 function generateCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return String(Math.floor(100000 + crypto.randomInt(900000)));
 }
 
 function getBaseUrl(req: Request): string {
@@ -158,7 +169,7 @@ router.post('/send-email-code', verificationLimiter, async (req: Request, res: R
     const baseUrl = getBaseUrl(req);
     const verifyLinkUrl = `${baseUrl}/api/onboarding-verification/verify-email-link?token=${linkToken}&lang=${language}`;
 
-    const subject = isHebrew ? `⁦Pet Wash™⁩ - קוד אימות: ${code}` : `⁦Pet Wash™⁩ - Verification Code: ${code}`;
+    const subject = isHebrew ? `⁦Pet Wash™⁩ - קוד אימות` : `⁦Pet Wash™⁩ - Verification Code`;
 
     const sent = await EmailService.send({
       to: normalizedEmail,
@@ -324,7 +335,9 @@ router.post('/verify-email-code', async (req: Request, res: Response, next) => {
       });
     }
 
-    if (stored.code !== code) {
+    const codeMatch = stored.code.length === code.length &&
+      crypto.timingSafeEqual(Buffer.from(stored.code), Buffer.from(code));
+    if (!codeMatch) {
       stored.attempts++;
       const remaining = MAX_EMAIL_ATTEMPTS - stored.attempts;
       return res.status(400).json({
@@ -351,7 +364,16 @@ router.post('/verify-email-code', async (req: Request, res: Response, next) => {
   }
 });
 
-router.post('/send-sms-code', verificationLimiter, async (req: Request, res: Response) => {
+router.post('/send-sms-code', async (req: Request, res: Response, next) => {
+  const { phone, language = 'he' } = req.body;
+  if (phone) {
+    const lockResult = twilioSMSService.checkPhoneLockout(phone, language);
+    if (lockResult) {
+      return res.status(429).json(lockResult);
+    }
+  }
+  next();
+}, verificationLimiter, async (req: Request, res: Response) => {
   try {
     const { phone, language = 'he' } = req.body;
 
@@ -476,6 +498,13 @@ function renderLinkResultPage(success: boolean, message: string, isHebrew: boole
     </body>
     </html>
   `;
+}
+
+export function peekEmailVerificationToken(token: string): { valid: boolean; email?: string } {
+  if (!token) return { valid: false };
+  const stored = emailVerificationTokens.get(token);
+  if (!stored || stored.used || new Date() > stored.expiresAt) return { valid: false };
+  return { valid: true, email: stored.email };
 }
 
 export default router;
