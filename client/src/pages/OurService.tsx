@@ -85,7 +85,7 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
               <div className="luxury-tech-showcase">
                 <div className="luxury-tech-image">
                   <img 
-                    src="/brand/k9000-wash-station.jpg" 
+                    src="/brand/k9000-dual-station.png" 
                     alt={t('ourService.k9000SystemAlt', language)}
                     className="luxury-tech-photo"
                     style={{ objectFit: 'cover', width: '100%', height: '100%' }}
