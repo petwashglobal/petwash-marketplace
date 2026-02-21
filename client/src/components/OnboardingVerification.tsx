@@ -51,7 +51,7 @@ const texts = {
     of: 'מתוך',
     securityNote: 'פרטיכם מוגנים בהצפנה מקצה לקצה',
     codeSentTo: 'קוד נשלח אל',
-    codeExpiry: 'הקוד תקף ל-10 דקות',
+    codeExpiry: 'הקוד תקף ל-5 דקות',
   },
   en: {
     title: 'Account Verification',
@@ -83,7 +83,7 @@ const texts = {
     of: 'of',
     securityNote: 'Your details are protected with end-to-end encryption',
     codeSentTo: 'Code sent to',
-    codeExpiry: 'Code valid for 10 minutes',
+    codeExpiry: 'Code valid for 5 minutes',
   },
 };
 
@@ -299,6 +299,22 @@ export function OnboardingVerification({
     setLoading(false);
   };
 
+  const autoSubmittingRef = useRef(false);
+
+  useEffect(() => {
+    if (step === 'email_code' && emailCode.join('').length === 6 && !loading && !autoSubmittingRef.current) {
+      autoSubmittingRef.current = true;
+      verifyEmailCode().finally(() => { autoSubmittingRef.current = false; });
+    }
+  }, [emailCode, step, loading]);
+
+  useEffect(() => {
+    if (step === 'phone_code' && smsCode.join('').length === 6 && !loading && !autoSubmittingRef.current) {
+      autoSubmittingRef.current = true;
+      verifySmsCode().finally(() => { autoSubmittingRef.current = false; });
+    }
+  }, [smsCode, step, loading]);
+
   const handleComplete = () => {
     onVerified({ emailToken, smsToken, email, phone });
   };
@@ -309,7 +325,8 @@ export function OnboardingVerification({
   const renderCodeInputs = (
     codes: string[],
     setCodes: (c: string[]) => void,
-    refs: React.MutableRefObject<(HTMLInputElement | null)[]>
+    refs: React.MutableRefObject<(HTMLInputElement | null)[]>,
+    inputName: string = 'otp'
   ) => (
     <div className="flex gap-2 sm:gap-3 justify-center" dir="ltr">
       {codes.map((digit, i) => (
@@ -318,7 +335,11 @@ export function OnboardingVerification({
           ref={el => { refs.current[i] = el; }}
           type="text"
           inputMode="numeric"
+          pattern="[0-9]*"
           maxLength={1}
+          name={i === 0 ? inputName : `${inputName}-${i}`}
+          autoComplete={i === 0 ? 'one-time-code' : 'off'}
+          aria-label={`Verification code digit ${i + 1}`}
           value={digit}
           onChange={e => handleCodeInput(e.target.value, i, codes, setCodes, refs)}
           onKeyDown={e => handleCodeKeyDown(e, i, codes, setCodes, refs)}
@@ -424,7 +445,7 @@ export function OnboardingVerification({
                 <p className="text-sm text-gray-600 mb-1">{t.enterEmailCode}</p>
                 <p className="text-xs text-gray-400">{t.codeSentTo} <strong dir="ltr">{email}</strong></p>
               </div>
-              {renderCodeInputs(emailCode, setEmailCode, emailInputRefs)}
+              {renderCodeInputs(emailCode, setEmailCode, emailInputRefs, 'email-otp')}
               <p className="text-xs text-center text-gray-400">{t.codeExpiry}</p>
               <Button
                 onClick={verifyEmailCode}
@@ -527,7 +548,7 @@ export function OnboardingVerification({
                 <p className="text-sm text-gray-600 mb-1">{t.enterSmsCode}</p>
                 <p className="text-xs text-gray-400">{t.codeSentTo} <strong dir="ltr">{phone}</strong></p>
               </div>
-              {renderCodeInputs(smsCode, setSmsCode, smsInputRefs)}
+              {renderCodeInputs(smsCode, setSmsCode, smsInputRefs, 'otp')}
               <p className="text-xs text-center text-gray-400">{t.codeExpiry}</p>
               <Button
                 onClick={verifySmsCode}

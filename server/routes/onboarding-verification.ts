@@ -27,7 +27,7 @@ const emailVerificationCodes = new Map<string, EmailVerificationCode>();
 const emailVerificationTokens = new Map<string, EmailVerificationToken>();
 const linkTokenToEmail = new Map<string, string>();
 
-const EMAIL_CODE_EXPIRY_MINUTES = 10;
+const EMAIL_CODE_EXPIRY_MINUTES = 5;
 const MAX_EMAIL_ATTEMPTS = 3;
 const EMAIL_TOKEN_EXPIRY_MINUTES = 30;
 

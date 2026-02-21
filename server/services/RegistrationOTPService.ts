@@ -202,8 +202,8 @@ export class RegistrationOTPService {
 
       const isHebrew = opts.language === 'he' || countryCode === 'IL';
       const smsBody = isHebrew
-        ? `Pet Wash™ - קוד אימות\n\nקוד האימות שלך: ${code}\n\nתקף ל-5 דקות. אל תשתף קוד זה.\n\nPet Wash™`
-        : `Pet Wash™ - Verification Code\n\nYour code: ${code}\n\nValid for 5 minutes. Do not share this code.\n\nPet Wash™`;
+        ? `Pet Wash™ קוד אימות:\n${code}\nתקף ל-5 דקות. אל תשתפו.`
+        : `Pet Wash™ verification code:\n${code}\nExpires in 5 minutes. Do not share.`;
 
       const channel: OTPChannel = opts.channel || 'sms';
       let providerMessageId: string | undefined;
@@ -372,8 +372,8 @@ export class RegistrationOTPService {
 
       const isHebrew = opts.language === 'he' || extractCountryCode(phoneE164) === 'IL';
       const smsBody = isHebrew
-        ? `Pet Wash™ - קוד אימות\n\nקוד האימות שלך: ${code}\n\nתקף ל-5 דקות. אל תשתף קוד זה.\n\nPet Wash™`
-        : `Pet Wash™ - Verification Code\n\nYour code: ${code}\n\nValid for 5 minutes. Do not share this code.\n\nPet Wash™`;
+        ? `Pet Wash™ קוד אימות:\n${code}\nתקף ל-5 דקות. אל תשתפו.`
+        : `Pet Wash™ verification code:\n${code}\nExpires in 5 minutes. Do not share.`;
 
       let sendResult: { success: boolean; messageId?: string; error?: string };
       if (channel === 'whatsapp') {

@@ -19,7 +19,7 @@ interface VerificationToken {
 const verificationCodes = new Map<string, VerificationCode>();
 const verificationTokens = new Map<string, VerificationToken>();
 
-const VERIFICATION_CODE_EXPIRY_MINUTES = 10;
+const VERIFICATION_CODE_EXPIRY_MINUTES = 5;
 const MAX_VERIFICATION_ATTEMPTS = 3;
 const VERIFICATION_TOKEN_EXPIRY_MINUTES = 5;
 
@@ -148,12 +148,12 @@ class TwilioSMSService {
   private smsBody(code: string, language: string): string {
     const mins = VERIFICATION_CODE_EXPIRY_MINUTES;
     const bodies: Record<string, string> = {
-      en: `Your ⁦Pet Wash™⁩ verification code is: ${code}\nValid for ${mins} minutes`,
-      he: `קוד האימות שלך ל-⁦Pet Wash™⁩ הוא: ${code}\nתוקף: ${mins} דקות`,
-      ar: `رمز التحقق الخاص بك لـ ⁦Pet Wash™⁩ هو: ${code}\nصالح لمدة ${mins} دقائق`,
-      es: `Tu código de verificación de ⁦Pet Wash™⁩ es: ${code}\nVálido por ${mins} minutos`,
-      fr: `Votre code de vérification ⁦Pet Wash™⁩ est : ${code}\nValide pendant ${mins} minutes`,
-      ru: `Ваш код подтверждения ⁦Pet Wash™⁩: ${code}\nДействителен ${mins} минут`,
+      en: `Pet Wash™ verification code:\n${code}\nExpires in ${mins} minutes. Do not share.`,
+      he: `Pet Wash™ קוד אימות:\n${code}\nתקף ל-${mins} דקות. אל תשתפו.`,
+      ar: `Pet Wash™ رمز التحقق:\n${code}\nصالح لمدة ${mins} دقائق. لا تشاركه.`,
+      es: `Pet Wash™ código de verificación:\n${code}\nExpira en ${mins} minutos. No compartas.`,
+      fr: `Pet Wash™ code de vérification:\n${code}\nExpire dans ${mins} minutes. Ne partagez pas.`,
+      ru: `Pet Wash™ код подтверждения:\n${code}\nДействителен ${mins} минут. Не делитесь.`,
     };
     return bodies[language] || bodies.en;
   }
