@@ -1131,13 +1131,20 @@ self.addEventListener('notificationclick', (event) => {
   app.get('/api/consent/types', (req, res) => {
     res.json({
       types: [
-        { id: 'terms', label: 'Terms of Service', required: true },
-        { id: 'privacy', label: 'Privacy Policy', required: true },
-        { id: 'biometric', label: 'Biometric Processing', required: false },
-        { id: 'marketing', label: 'Marketing Communications', required: false },
-        { id: 'analytics', label: 'Analytics & Tracking', required: false },
-        { id: 'wallet', label: 'Digital Wallet Pass', required: false },
-        { id: 'oauth', label: 'OAuth Service Access', required: false },
+        { id: 'terms', label: 'Terms of Service', labelHe: 'תנאי שימוש', required: true, category: 'legal', description: 'Agreement to platform terms of service', legalBasis: 'contract' },
+        { id: 'privacy', label: 'Privacy Policy', labelHe: 'מדיניות פרטיות', required: true, category: 'legal', description: 'Acknowledgment of data processing practices', legalBasis: 'legal_obligation' },
+        { id: 'corporate_guidelines', label: 'Corporate Guidelines', labelHe: 'כללי התנהגות ארגוניים', required: true, category: 'legal', description: 'Agreement to corporate code of conduct', legalBasis: 'contract' },
+        { id: 'biometric', label: 'Biometric Processing', labelHe: 'עיבוד ביומטרי', required: false, category: 'sensitive', description: 'Consent for FaceID, fingerprint, and passkey authentication', legalBasis: 'explicit_consent' },
+        { id: 'sms_communications', label: 'SMS Communications', labelHe: 'תקשורת SMS', required: false, category: 'communication', description: 'Receive OTP codes, booking confirmations, and service updates via SMS', legalBasis: 'consent' },
+        { id: 'push_notifications', label: 'Push Notifications', labelHe: 'התראות דחיפה', required: false, category: 'communication', description: 'Receive push notifications for bookings, promotions, and alerts', legalBasis: 'consent' },
+        { id: 'email_communications', label: 'Email Communications', labelHe: 'תקשורת דוא"ל', required: false, category: 'communication', description: 'Receive email updates, newsletters, and promotional offers', legalBasis: 'consent' },
+        { id: 'marketing', label: 'Marketing Communications', labelHe: 'תקשורת שיווקית', required: false, category: 'marketing', description: 'Targeted advertising and personalized offers', legalBasis: 'consent' },
+        { id: 'analytics', label: 'Analytics & Tracking', labelHe: 'ניתוח ומעקב', required: false, category: 'analytics', description: 'Usage analytics to improve service quality', legalBasis: 'legitimate_interest' },
+        { id: 'location', label: 'Location Services', labelHe: 'שירותי מיקום', required: false, category: 'device', description: 'Find nearest Pet Wash stations and location-based services', legalBasis: 'consent' },
+        { id: 'camera', label: 'Camera Access', labelHe: 'גישה למצלמה', required: false, category: 'device', description: 'Scan QR codes and upload pet photos', legalBasis: 'consent' },
+        { id: 'wallet', label: 'Digital Wallet Pass', labelHe: 'כרטיס ארנק דיגיטלי', required: false, category: 'financial', description: 'Store loyalty cards and vouchers in Apple/Google Wallet', legalBasis: 'consent' },
+        { id: 'data_processing', label: 'Data Processing', labelHe: 'עיבוד נתונים', required: false, category: 'sensitive', description: 'Processing of personal data for service delivery and compliance', legalBasis: 'explicit_consent' },
+        { id: 'oauth', label: 'OAuth Service Access', labelHe: 'גישה לשירותי OAuth', required: false, category: 'integration', description: 'Connect third-party accounts (Gmail, Google Calendar)', legalBasis: 'consent' },
       ]
     });
   });
@@ -1196,6 +1203,92 @@ self.addEventListener('notificationclick', (event) => {
       }
       logger.error('[Consent] Failed to save consent preferences:', error);
       res.status(500).json({ ok: false, error: 'Failed to save consent' });
+    }
+  });
+
+  // POST /api/consent/onboarding - Save onboarding consent with SHA-256 audit trail
+  app.post('/api/consent/onboarding', async (req, res) => {
+    try {
+      const { termsOfService, privacyPolicy, corporateGuidelines, emailCommunication, gmailIntegration, timestamp, source } = req.body;
+
+      if (!termsOfService || !privacyPolicy || !corporateGuidelines) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Required consents missing: termsOfService, privacyPolicy, and corporateGuidelines are mandatory',
+        });
+      }
+
+      const ip = getClientIP(req);
+      const userAgent = req.headers['user-agent'] || 'unknown';
+      const firebaseUser = (req as any).firebaseUser;
+      const userId = firebaseUser?.uid || 'anonymous';
+
+      const evidencePayload = JSON.stringify({
+        userId,
+        termsOfService,
+        privacyPolicy,
+        corporateGuidelines,
+        emailCommunication,
+        gmailIntegration,
+        timestamp,
+        ip,
+        userAgent,
+      });
+      const evidenceHash = crypto.createHash('sha256').update(evidencePayload).digest('hex');
+
+      const consentRecord = {
+        userId,
+        email: firebaseUser?.email || null,
+        consentType: 'onboarding',
+        termsOfService: !!termsOfService,
+        privacyPolicy: !!privacyPolicy,
+        corporateGuidelines: !!corporateGuidelines,
+        emailCommunication: !!emailCommunication,
+        gmailIntegration: !!gmailIntegration,
+        timestamp: timestamp || new Date().toISOString(),
+        ip,
+        userAgent,
+        source: source || 'onboarding',
+        evidenceHash,
+      };
+
+      let stored = false;
+      try {
+        await firestoreDb.collection('onboarding_consent').add(consentRecord);
+        stored = true;
+      } catch (firestoreError) {
+        logger.warn('[Consent] Firestore unavailable, falling back to PostgreSQL', firestoreError);
+      }
+
+      if (!stored) {
+        try {
+          const { consentSnapshots } = await import('@shared/schema');
+          await db.insert(consentSnapshots).values({
+            consentType: 'onboarding',
+            version: '1.0',
+            locale: 'he',
+            content: JSON.stringify(consentRecord),
+            contentHash: evidenceHash,
+          });
+          stored = true;
+        } catch (pgError) {
+          logger.error('[Consent] PostgreSQL fallback also failed', pgError);
+        }
+      }
+
+      logger.info('[Consent] Saved onboarding consent with SHA-256 hash', {
+        userId,
+        evidenceHash,
+        termsOfService,
+        privacyPolicy,
+        corporateGuidelines,
+        storageBackend: stored ? 'success' : 'failed',
+      });
+
+      res.json({ ok: true, evidenceHash });
+    } catch (error) {
+      logger.error('[Consent] Failed to save onboarding consent:', error);
+      res.status(500).json({ ok: false, error: 'Failed to save onboarding consent' });
     }
   });
 
@@ -3866,16 +3959,17 @@ self.addEventListener('notificationclick', (event) => {
       const { getAllStations } = await import('./stationsService');
       const stations = await getAllStations({ statusFilter: ['online', 'idle', 'warning_low_activity'] });
       
-      // Transform stations data for location/map display
-      const locations = stations.map(station => ({
-        id: station.stationId,
-        name: station.label,
-        address: station.location.address,
-        lat: station.location.lat,
-        lng: station.location.lng,
-        status: station.status,
-        terminalId: station.terminalId
-      }));
+      const locations = stations
+        .filter(station => station.location && station.location.lat && station.location.lng)
+        .map(station => ({
+          id: station.stationId,
+          name: station.label,
+          address: station.location?.address || '',
+          lat: station.location.lat,
+          lng: station.location.lng,
+          status: station.status,
+          terminalId: station.terminalId
+        }));
 
       res.json(locations);
     } catch (error) {

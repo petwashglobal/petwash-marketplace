@@ -1136,15 +1136,34 @@ router.get('/api/walk-my-pet/walkers/:id', async (req, res) => {
   }
 });
 
-// List all active walkers (for BrowseWalkers.tsx)
 router.get('/api/walk-my-pet/walkers', async (req, res) => {
   try {
-    const walkers = await db
-      .select()
-      .from(walkerProfiles)
-      .where(eq(walkerProfiles.isActive, true))
-      .orderBy(desc(walkerProfiles.averageRating))
-      .limit(50);
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 12));
+    const offset = (page - 1) * limit;
+    const city = req.query.city as string | undefined;
+
+    const conditions = [eq(walkerProfiles.isActive, true)];
+    if (city && city !== 'all') {
+      conditions.push(eq(walkerProfiles.city, city));
+    }
+
+    const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
+
+    const [countResult, walkers] = await Promise.all([
+      db.select({ count: sql<number>`count(*)` })
+        .from(walkerProfiles)
+        .where(whereClause),
+      db.select()
+        .from(walkerProfiles)
+        .where(whereClause)
+        .orderBy(desc(walkerProfiles.averageRating))
+        .limit(limit)
+        .offset(offset),
+    ]);
+
+    const total = Number(countResult[0]?.count || 0);
+    const totalPages = Math.ceil(total / limit);
 
     const walkersForFrontend = walkers.map(w => ({
       id: w.id,
@@ -1162,7 +1181,16 @@ router.get('/api/walk-my-pet/walkers', async (req, res) => {
       isVerified: w.verificationStatus === 'verified',
     }));
 
-    res.json({ walkers: walkersForFrontend });
+    res.json({
+      providers: walkersForFrontend,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasMore: page < totalPages,
+      },
+    });
   } catch (error: any) {
     console.error('[Walk My Pet] List walkers error:', error);
     res.status(500).json({ error: 'Failed to fetch walkers' });

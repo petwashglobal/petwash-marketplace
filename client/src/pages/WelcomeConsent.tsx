@@ -58,14 +58,25 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
     setConsents(prev => ({ ...prev, gmailIntegration: true }));
   };
 
-  const handleContinue = () => {
-    // Save consent preferences
-    localStorage.setItem('petwash_consent_given', JSON.stringify({
+  const handleContinue = async () => {
+    const consentPayload = {
       ...consents,
-      timestamp: new Date().toISOString()
-    }));
-    
-    // Redirect to dashboard
+      timestamp: new Date().toISOString(),
+      source: 'onboarding',
+    };
+
+    localStorage.setItem('petwash_consent_given', JSON.stringify(consentPayload));
+
+    try {
+      await fetch('/api/consent/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(consentPayload),
+      });
+    } catch (err) {
+      // Continue even if backend save fails - localStorage is primary
+    }
+
     setLocation('/dashboard');
   };
 

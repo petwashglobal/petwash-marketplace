@@ -203,38 +203,70 @@ router.post('/upload/document', upload.single('document'), async (req: Request, 
 router.get('/sitters', async (req, res) => {
   try {
     const { city, specialization, minRating } = req.query;
-    
-    // SELECT only the columns that exist in our simplified schema
-    const sitters = await db.select({
-      id: sitterProfiles.id,
-      userId: sitterProfiles.userId,
-      firstName: sitterProfiles.firstName,
-      lastName: sitterProfiles.lastName,
-      email: sitterProfiles.email,
-      phone: sitterProfiles.phone,
-      city: sitterProfiles.city,
-      bio: sitterProfiles.bio,
-      yearsOfExperience: sitterProfiles.yearsOfExperience,
-      pricePerDayCents: sitterProfiles.pricePerDayCents,
-      profilePictureUrl: sitterProfiles.profilePictureUrl,
-      rating: sitterProfiles.rating,
-      totalBookings: sitterProfiles.totalBookings,
-      isActive: sitterProfiles.isActive,
-      isVerified: sitterProfiles.isVerified,
-      createdAt: sitterProfiles.createdAt,
-    })
-    .from(sitterProfiles)
-    .where(eq(sitterProfiles.isActive, true))
-    .orderBy(desc(sitterProfiles.rating))
-    .limit(50);
-    
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 12));
+    const offset = (page - 1) * limit;
+
+    const conditions = [eq(sitterProfiles.isActive, true)];
+    if (city && city !== 'all') {
+      conditions.push(eq(sitterProfiles.city, city as string));
+    }
+    if (minRating) {
+      conditions.push(gte(sitterProfiles.rating, minRating as string));
+    }
+
+    const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
+
+    const [countResult, sitters] = await Promise.all([
+      db.select({ count: sql<number>`count(*)` })
+        .from(sitterProfiles)
+        .where(whereClause),
+      db.select({
+        id: sitterProfiles.id,
+        userId: sitterProfiles.userId,
+        firstName: sitterProfiles.firstName,
+        lastName: sitterProfiles.lastName,
+        email: sitterProfiles.email,
+        phone: sitterProfiles.phone,
+        city: sitterProfiles.city,
+        bio: sitterProfiles.bio,
+        yearsOfExperience: sitterProfiles.yearsOfExperience,
+        pricePerDayCents: sitterProfiles.pricePerDayCents,
+        profilePictureUrl: sitterProfiles.profilePictureUrl,
+        rating: sitterProfiles.rating,
+        totalBookings: sitterProfiles.totalBookings,
+        isActive: sitterProfiles.isActive,
+        isVerified: sitterProfiles.isVerified,
+        createdAt: sitterProfiles.createdAt,
+      })
+      .from(sitterProfiles)
+      .where(whereClause)
+      .orderBy(desc(sitterProfiles.rating))
+      .limit(limit)
+      .offset(offset),
+    ]);
+
+    const total = Number(countResult[0]?.count || 0);
+    const totalPages = Math.ceil(total / limit);
+
     logger.info('[Sitter Suite] Sitters browsed', {
       count: sitters.length,
+      page,
+      total,
       city,
       specialization,
     });
-    
-    res.json(sitters);
+
+    res.json({
+      providers: sitters,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasMore: page < totalPages,
+      },
+    });
   } catch (error) {
     logger.error('[Sitter Suite] Error fetching sitters', error);
     res.status(500).json({ error: 'Failed to fetch sitters' });
