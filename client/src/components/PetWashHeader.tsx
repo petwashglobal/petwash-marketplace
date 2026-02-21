@@ -457,7 +457,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
           </div>
         </div>
 
-        {/* Mobile nav strip - shows below header on small screens only (<768px) */}
+        {/* Mobile nav strip - single tight row below header on small screens only (<768px) */}
         <div className="pw-mobile-nav-strip">
           <div className="pw-mobile-nav-strip-row">
             <button className="pw-mobile-nav-strip-link" onClick={() => handleNavigate("/egift")}>
@@ -467,8 +467,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             <button className="pw-mobile-nav-strip-link" onClick={() => handleNavigate("/loyalty")}>
               {t("nav.loyalty", currentLanguage)}
             </button>
-          </div>
-          <div className="pw-mobile-nav-strip-row">
+            <span className="pw-mobile-nav-strip-dot">·</span>
             <button className="pw-mobile-nav-strip-link" onClick={() => { setIsPlatformsOpen((prev) => !prev); }}>
               {t("nav.platforms", currentLanguage)}
             </button>

@@ -134,7 +134,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
   return (
     <section 
       ref={sectionRef}
-      className="relative py-8 sm:py-12 lg:py-16 overflow-hidden"
+      className="relative py-4 sm:py-6 lg:py-8 overflow-hidden"
       style={{ background: '#FFFFFF' }}
     >
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">

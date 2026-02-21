@@ -105,7 +105,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
               
               {/* Animated Description */}
               <p 
-                className={`text-base sm:text-lg text-[#444] font-light max-w-2xl lg:max-w-3xl mx-auto mb-10 sm:mb-14 leading-relaxed transition-all duration-700 ${
+                className={`text-base sm:text-lg text-[#444] font-light max-w-2xl lg:max-w-3xl mx-auto mb-6 sm:mb-8 leading-relaxed transition-all duration-700 ${
                   heroAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
                 }`}
                 style={{ transitionDelay: '450ms' }}
@@ -180,10 +180,9 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         </div>
 
         {/* Luxury Gold Divider */}
-        <div className="relative h-8 bg-gradient-to-b from-white via-[#fdfbf7] to-white overflow-hidden">
+        <div className="relative h-3 bg-white overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-32 h-px bg-gradient-to-r from-transparent via-[#c6a664] to-transparent" />
-            <div className="absolute w-2 h-2 rounded-full bg-[#c6a664]" />
           </div>
         </div>
 
@@ -258,11 +257,10 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
           </div>
         </section>
 
-        {/* Luxury Divider with Diamond */}
-        <div className="relative h-6 bg-white overflow-hidden">
+        {/* Luxury Divider */}
+        <div className="relative h-3 bg-white overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-48 h-px bg-gradient-to-r from-transparent via-[#c6a664]/60 to-transparent" />
-            <div className="absolute w-3 h-3 rotate-45 border border-[#c6a664] bg-white" />
           </div>
         </div>
 
@@ -333,7 +331,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
 {/* Digital Wallet Section - Removed: Feature not yet active */}
 
         {/* Loyalty Program Section */}
-        <section className="py-6 px-4 sm:py-10 sm:px-6 lg:px-8 bg-white">
+        <section className="py-4 px-4 sm:py-6 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-6xl mx-auto text-center">
             <h2 className="text-xl sm:text-2xl font-bold text-black mb-4 sm:mb-6">
               {t('loyalty.title', language)}
