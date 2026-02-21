@@ -1973,14 +1973,14 @@ html[lang="en"] *,
 .luxury-content-panel {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 4rem 1.5rem;
+  padding: 2rem 1.5rem;
   position: relative;
   z-index: 1;
 }
 
 .luxury-content-header {
   text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: 1.5rem;
 }
 
 .luxury-content-title {
@@ -2249,7 +2249,7 @@ html[lang="en"] *,
 
 @media (max-width: 768px) {
   .luxury-services-hero {
-    padding: 0.5rem 0 2rem;
+    padding: 0.5rem 0 1rem;
   }
   
   .luxury-services-title {
@@ -3623,18 +3623,18 @@ html[lang="en"] *,
 
 /* Spacing System - Consistent across all pages */
 .section-spacing {
-  padding-top: clamp(2rem, 5vw, 4rem);
-  padding-bottom: clamp(2rem, 5vw, 4rem);
+  padding-top: clamp(1.5rem, 3vw, 3rem);
+  padding-bottom: clamp(1.5rem, 3vw, 3rem);
 }
 
 .section-spacing-sm {
-  padding-top: clamp(1rem, 3vw, 2rem);
-  padding-bottom: clamp(1rem, 3vw, 2rem);
+  padding-top: clamp(0.75rem, 2vw, 1.5rem);
+  padding-bottom: clamp(0.75rem, 2vw, 1.5rem);
 }
 
 .section-spacing-lg {
-  padding-top: clamp(3rem, 7vw, 6rem);
-  padding-bottom: clamp(3rem, 7vw, 6rem);
+  padding-top: clamp(2rem, 5vw, 4rem);
+  padding-bottom: clamp(2rem, 5vw, 4rem);
 }
 
 /* RTL Support - Maintain layout consistency */

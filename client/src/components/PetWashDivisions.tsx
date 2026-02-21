@@ -134,13 +134,13 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
   return (
     <section 
       ref={sectionRef}
-      className="relative py-16 sm:py-24 lg:py-28 overflow-hidden"
+      className="relative py-8 sm:py-12 lg:py-16 overflow-hidden"
       style={{ background: '#FFFFFF' }}
     >
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <div 
-          className={`text-center mb-12 sm:mb-16 transition-all duration-1000 ${
+          className={`text-center mb-6 sm:mb-10 transition-all duration-1000 ${
             isRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
           }`}
         >

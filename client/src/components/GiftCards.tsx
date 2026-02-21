@@ -43,7 +43,7 @@ export function GiftCards({ language }: GiftCardsProps) {
   return (
     <section 
       id="gift-cards"
-      className="py-12 sm:py-20 lg:py-28 relative overflow-hidden"
+      className="py-6 sm:py-10 lg:py-14 relative overflow-hidden"
       style={{ background: '#FAFAF8' }}
     >
       <div className="absolute inset-0 opacity-[0.015]" style={{
@@ -52,8 +52,8 @@ export function GiftCards({ language }: GiftCardsProps) {
       }} />
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="text-center mb-14 sm:mb-20">
-          <div className="flex items-center justify-center gap-3 mb-6">
+        <div className="text-center mb-6 sm:mb-10">
+          <div className="flex items-center justify-center gap-3 mb-4">
             <div className="w-12 h-px bg-gradient-to-r from-transparent to-[#c9a96e]" />
             <Gift className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.2} />
             <div className="w-12 h-px bg-gradient-to-l from-transparent to-[#c9a96e]" />
@@ -168,7 +168,7 @@ export function GiftCards({ language }: GiftCardsProps) {
           </div>
         </div>
 
-        <div className="mt-16 sm:mt-24">
+        <div className="mt-8 sm:mt-12">
           <div className="flex items-center justify-center gap-4 mb-12">
             <div className="flex-1 max-w-[80px] h-px bg-gradient-to-r from-transparent to-[#ddd]" />
             <Leaf className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.2} />

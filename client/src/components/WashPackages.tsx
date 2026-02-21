@@ -146,7 +146,7 @@ export function WashPackages({ language }: WashPackagesProps) {
 
   if (isLoading) {
     return (
-      <section className="py-16 sm:py-20 bg-white">
+      <section className="py-6 sm:py-10 bg-white">
         <div className="container mx-auto px-4">
           <div className="text-center">
             <div className="animate-spin w-8 h-8 border-2 border-gray-300 border-t-black rounded-full mx-auto"></div>
@@ -164,7 +164,7 @@ export function WashPackages({ language }: WashPackagesProps) {
   return (
     <section 
       id="packages"
-      className="py-12 sm:py-20 lg:py-28 relative overflow-hidden"
+      className="py-6 sm:py-10 lg:py-14 relative overflow-hidden"
       style={{ background: '#FFFFFF' }}
     >
       <div className="absolute inset-0 opacity-[0.02]" style={{
@@ -173,8 +173,8 @@ export function WashPackages({ language }: WashPackagesProps) {
       }} />
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="text-center mb-14 sm:mb-20">
-          <div className="flex items-center justify-center gap-3 mb-6">
+        <div className="text-center mb-6 sm:mb-10">
+          <div className="flex items-center justify-center gap-3 mb-4">
             <div className="w-12 h-px bg-gradient-to-r from-transparent to-[#c9a96e]" />
             <Leaf className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.2} />
             <div className="w-12 h-px bg-gradient-to-l from-transparent to-[#c9a96e]" />

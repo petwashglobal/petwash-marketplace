@@ -180,7 +180,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         </div>
 
         {/* Luxury Gold Divider */}
-        <div className="relative h-16 bg-gradient-to-b from-white via-[#fdfbf7] to-white overflow-hidden">
+        <div className="relative h-8 bg-gradient-to-b from-white via-[#fdfbf7] to-white overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-32 h-px bg-gradient-to-r from-transparent via-[#c6a664] to-transparent" />
             <div className="absolute w-2 h-2 rounded-full bg-[#c6a664]" />
@@ -190,7 +190,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         {/* Technology Section - Compact with Luxury Background */}
         <section 
           ref={techRef}
-          className={`py-8 px-4 sm:py-12 sm:px-6 lg:px-8 bg-white relative overflow-hidden transition-all duration-1000 ${
+          className={`py-4 px-4 sm:py-8 sm:px-6 lg:px-8 bg-white relative overflow-hidden transition-all duration-1000 ${
             techRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
           }`}
         >
@@ -222,7 +222,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         {/* Features Section - Luxury Grid with Icons and Gold Effects */}
         <section 
           ref={featuresRef}
-          className="py-6 px-4 sm:py-12 sm:px-6 lg:px-8 bg-white relative"
+          className="py-4 px-4 sm:py-8 sm:px-6 lg:px-8 bg-white relative"
         >
           {/* Floating gold accents */}
           <div className="absolute top-8 left-8 w-20 h-20 border border-[#c6a664]/10 rotate-45 hidden lg:block" />
@@ -259,7 +259,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         </section>
 
         {/* Luxury Divider with Diamond */}
-        <div className="relative h-12 bg-white overflow-hidden">
+        <div className="relative h-6 bg-white overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-48 h-px bg-gradient-to-r from-transparent via-[#c6a664]/60 to-transparent" />
             <div className="absolute w-3 h-3 rotate-45 border border-[#c6a664] bg-white" />
@@ -269,7 +269,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         {/* Organic Promise Section - Compact Luxury with Rich Background */}
         <section 
           ref={organicRef}
-          className="py-6 px-4 sm:py-10 sm:px-6 lg:px-8 relative overflow-hidden"
+          className="py-4 px-4 sm:py-6 sm:px-6 lg:px-8 relative overflow-hidden"
           style={{ background: '#FFFFFF' }}
         >
           {/* Luxury corner ornaments */}
@@ -333,12 +333,12 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
 {/* Digital Wallet Section - Removed: Feature not yet active */}
 
         {/* Loyalty Program Section */}
-        <section className="py-12 px-4 sm:py-16 sm:px-6 lg:px-8 bg-white">
+        <section className="py-6 px-4 sm:py-10 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-6xl mx-auto text-center">
             <h2 className="text-xl sm:text-2xl font-bold text-black mb-4 sm:mb-6">
               {t('loyalty.title', language)}
             </h2>
-            <p className="text-base sm:text-lg text-black mb-8 sm:mb-12 max-w-2xl lg:max-w-3xl mx-auto">
+            <p className="text-base sm:text-lg text-black mb-4 sm:mb-6 max-w-2xl lg:max-w-3xl mx-auto">
               {t('loyalty.description', language)}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
