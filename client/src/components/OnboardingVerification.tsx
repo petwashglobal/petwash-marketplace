@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import type { Language } from '@/lib/i18n';
-import { Mail, Phone, CheckCircle2, ArrowRight, ArrowLeft, Shield, Loader2, RefreshCw } from 'lucide-react';
+import { Mail, Phone, CheckCircle2, ArrowRight, ArrowLeft, Shield, Loader2, RefreshCw, Link2 } from 'lucide-react';
 import { PhoneInput } from '@/components/PhoneInput';
 
 interface OnboardingVerificationProps {
@@ -31,6 +31,9 @@ const texts = {
     emailPlaceholder: 'your@email.com',
     sendEmailCode: 'שליחת קוד אימות',
     enterEmailCode: 'הזינו את הקוד שנשלח לאימייל שלכם',
+    orClickEmailLink: 'או לחצו על הקישור באימייל לאימות מיידי',
+    waitingForLink: 'ממתין ללחיצה על הקישור באימייל...',
+    emailLinkVerified: 'אימייל אומת דרך הקישור!',
     enterPhone: 'הזינו מספר טלפון',
     phonePlaceholder: '+972 50 123 4567',
     sendSmsCode: 'שליחת קוד SMS',
@@ -60,6 +63,9 @@ const texts = {
     emailPlaceholder: 'your@email.com',
     sendEmailCode: 'Send Verification Code',
     enterEmailCode: 'Enter the code sent to your email',
+    orClickEmailLink: 'Or click the link in the email for instant verification',
+    waitingForLink: 'Waiting for email link click...',
+    emailLinkVerified: 'Email verified via link!',
     enterPhone: 'Enter your phone number',
     phonePlaceholder: '+972 50 123 4567',
     sendSmsCode: 'Send SMS Code',
@@ -109,6 +115,7 @@ export function OnboardingVerification({
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
+  const [linkPolling, setLinkPolling] = useState(false);
   const emailInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const smsInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -118,6 +125,39 @@ export function OnboardingVerification({
       return () => clearTimeout(timer);
     }
   }, [countdown]);
+
+  useEffect(() => {
+    if (step !== 'email_code' || !email) {
+      setLinkPolling(false);
+      return;
+    }
+
+    setLinkPolling(true);
+    let cancelled = false;
+
+    const poll = async () => {
+      while (!cancelled) {
+        try {
+          const res = await apiRequest('POST', '/api/onboarding-verification/check-email-link-status', { email });
+          const data = await res.json();
+          if (data.verified && data.verificationToken) {
+            if (!cancelled) {
+              setEmailToken(data.verificationToken);
+              setLinkPolling(false);
+              setStep('phone_input');
+              toast({ title: t.emailLinkVerified });
+            }
+            return;
+          }
+        } catch {}
+        await new Promise(r => setTimeout(r, 3000));
+      }
+    };
+
+    poll();
+
+    return () => { cancelled = true; };
+  }, [step, email]);
 
   useEffect(() => {
     if (initialEmail) setEmail(initialEmail);
@@ -394,6 +434,29 @@ export function OnboardingVerification({
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t.verify}
               </Button>
+
+              <div className="flex items-center gap-3 py-2">
+                <div className="flex-1 h-px bg-gray-200" />
+                <span className="text-xs text-gray-400 whitespace-nowrap">
+                  {isRTL ? 'או' : 'or'}
+                </span>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+
+              <div className="text-center p-3 rounded-sm border border-gray-100 bg-gray-50">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  {linkPolling ? (
+                    <Loader2 className="w-4 h-4 text-gray-500 animate-spin" />
+                  ) : (
+                    <Link2 className="w-4 h-4 text-gray-500" />
+                  )}
+                  <p className="text-sm text-gray-600">{t.orClickEmailLink}</p>
+                </div>
+                {linkPolling && (
+                  <p className="text-xs text-gray-400 animate-pulse">{t.waitingForLink}</p>
+                )}
+              </div>
+
               <div className="text-center">
                 {countdown > 0 ? (
                   <p className="text-sm text-gray-400">{t.resendIn} {countdown} {t.seconds}</p>
