@@ -137,14 +137,14 @@ export function recommendPricingTier(monthlyUsage: number): {
 }
 
 /**
- * Smart retry logic for failed payments (Stripe-inspired)
+ * Smart retry logic for failed payments
  * Automatic retry with exponential backoff
  */
 export function getPaymentRetrySchedule(attemptNumber: number): {
   retryAt: Date;
   delayHours: number;
 } {
-  // Stripe's smart retry pattern: 1 day, 3 days, 5 days, 7 days
+  // Smart retry pattern: 1 day, 3 days, 5 days, 7 days
   const retryDelays = [24, 72, 120, 168]; // hours
   const delayHours = retryDelays[Math.min(attemptNumber, retryDelays.length - 1)];
 

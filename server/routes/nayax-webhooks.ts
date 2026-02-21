@@ -10,7 +10,7 @@
  * - Rate limiting
  * 
  * 2025 USA Competitor Standards:
- * - Stripe-style webhook signatures
+ * - HMAC webhook signatures
  * - Automatic retry with exponential backoff
  * - Comprehensive audit logging
  */

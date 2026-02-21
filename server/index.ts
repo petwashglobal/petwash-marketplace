@@ -85,12 +85,12 @@ app.use(helmet({
   contentSecurityPolicy: isProduction ? {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://www.google.com", "https://www.gstatic.com", "https://www.googletagmanager.com", "https://connect.facebook.net", "https://analytics.tiktok.com", "https://www.clarity.ms", "https://maps.googleapis.com", "https://js.stripe.com", "https://www.googleadservices.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://www.google.com", "https://www.gstatic.com", "https://www.googletagmanager.com", "https://connect.facebook.net", "https://analytics.tiktok.com", "https://www.clarity.ms", "https://maps.googleapis.com", "https://www.googleadservices.com"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
       fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-      connectSrc: ["'self'", "https://*.googleapis.com", "https://*.google.com", "https://*.firebaseio.com", "https://*.firebaseapp.com", "https://*.cloudfunctions.net", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com", "wss://*.firebaseio.com", "https://ipapi.co", "https://ip-api.com", "https://ipinfo.io", "https://www.google-analytics.com", "https://api.hubspot.com", "https://*.sentry.io", "https://api.stripe.com", "https://*.clarity.ms", "https://*.facebook.com", "https://*.tiktok.com"],
-      frameSrc: ["'self'", "https://www.google.com", "https://*.firebaseapp.com", "https://docs.google.com", "https://js.stripe.com", "https://hooks.stripe.com"],
+      connectSrc: ["'self'", "https://*.googleapis.com", "https://*.google.com", "https://*.firebaseio.com", "https://*.firebaseapp.com", "https://*.cloudfunctions.net", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com", "wss://*.firebaseio.com", "https://ipapi.co", "https://ip-api.com", "https://ipinfo.io", "https://www.google-analytics.com", "https://api.hubspot.com", "https://*.sentry.io", "https://*.clarity.ms", "https://*.facebook.com", "https://*.tiktok.com"],
+      frameSrc: ["'self'", "https://www.google.com", "https://*.firebaseapp.com", "https://docs.google.com"],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],

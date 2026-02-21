@@ -50,15 +50,6 @@ const EnvSchema = z.object({
   NAYAX_SECRET_KEY: z.string().optional()
     .describe("Nayax webhook signature secret"),
   
-  STRIPE_SECRET_KEY: z.string().optional()
-    .describe("Stripe API secret key (backup payment gateway)"),
-  
-  STRIPE_PUBLISHABLE_KEY: z.string().optional()
-    .describe("Stripe publishable key for client-side"),
-  
-  STRIPE_WEBHOOK_SECRET: z.string().optional()
-    .describe("Stripe webhook signature secret"),
-  
   // ===== TAX & COMPLIANCE (ISRAEL) =====
   ITA_CLIENT_ID: z.string().optional()
     .describe("Israeli Tax Authority OAuth2 client ID"),
@@ -142,9 +133,8 @@ export function validateEnv(): ValidatedEnv {
   console.log(`   → Firebase: ${env.VITE_FIREBASE_PROJECT_ID ? '✅ Configured' : '❌ Missing'}`);
   console.log(`   → JWT Secrets: ${env.JWT_SECRET && env.JWT_REFRESH_SECRET ? '✅ Configured' : '❌ Missing'}`);
   
-  console.log("\n💳 Payment Gateways:");
-  console.log(`   → Nayax (Israel): ${env.NAYAX_API_KEY ? '✅ Enabled' : '⚠️  Disabled'}`);
-  console.log(`   → Stripe (Backup): ${env.STRIPE_SECRET_KEY ? '✅ Enabled' : '⚠️  Disabled'}`);
+  console.log("\n💳 Payment Gateway:");
+  console.log(`   → Nayax Israel (Exclusive): ${env.NAYAX_API_KEY ? '✅ Enabled' : '⚠️  Disabled'}`);
   
   console.log("\n📝 Integrations:");
   console.log(`   → DocuSeal (E-Signature): ${env.DOCUSEAL_API_KEY ? '✅ Enabled' : '⚠️  Demo Mode'}`);

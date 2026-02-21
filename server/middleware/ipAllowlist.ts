@@ -18,9 +18,6 @@
  * const nayaxIPGuard = createIPAllowlist('NAYAX_ALLOWED_IPS', 'Nayax');
  * app.post('/webhooks/nayax', nayaxIPGuard, nayaxHandler);
  * 
- * // Multiple providers
- * const stripeIPGuard = createIPAllowlist('STRIPE_ALLOWED_IPS', 'Stripe');
- * app.post('/webhooks/stripe', stripeIPGuard, stripeHandler);
  * ```
  * 
  * Environment Variable Format:
@@ -134,7 +131,7 @@ function isIPAllowed(rawIP: string, allowedCIDRs: string[]): boolean {
  * Create IP allowlist middleware for a specific provider
  * 
  * @param envVarName - Name of environment variable containing allowed IPs/CIDRs
- * @param providerName - Name of provider for logging (e.g., 'Nayax', 'Stripe')
+ * @param providerName - Name of provider for logging (e.g., 'Nayax')
  * @returns Express middleware function
  * 
  * @example
