@@ -334,147 +334,94 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
     <>
       {/* Main header */}
       <header className="pw-header" role="banner">
-        <div className="pw-header-inner">
-          {/* Left: 4 social icons with official brand colors - Instagram, Facebook, TikTok, Spotify */}
+        {/* ROW 1: Logo centered at top - crown position */}
+        <div className="pw-header-row-logo">
+          <button
+            className="pw-logo-link"
+            onClick={() => handleNavigate("/")}
+            aria-label="Pet Wash home"
+          >
+            <img 
+              src="/brand/petwash-logo-official.png" 
+              alt="⁦PetWash™⁩" 
+              className="pw-header-logo-img"
+            />
+          </button>
+        </div>
+
+        {/* ROW 2: Social left | Nav center | Profile + Burger + Lang right */}
+        <div className="pw-header-row-controls">
           <div className="pw-header-left">
-            <a
-              className="pw-social-link pw-social-instagram"
-              href="https://www.instagram.com/petwashltd"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Pet Wash Instagram"
-              data-testid="link-social-instagram"
-            >
-              <SiInstagram size={18} />
-            </a>
-            <a
-              className="pw-social-link pw-social-facebook"
-              href="https://www.facebook.com/petwashltd"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Pet Wash Facebook"
-              data-testid="link-social-facebook"
-            >
-              <SiFacebook size={18} />
-            </a>
-            <a
-              className="pw-social-link pw-social-tiktok"
-              href="https://www.tiktok.com/@petwashltd"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Pet Wash TikTok"
-              data-testid="link-social-tiktok"
-            >
-              <SiTiktok size={18} />
-            </a>
-            <a
-              className="pw-social-link pw-social-spotify"
-              href="https://open.spotify.com/user/31ff52czgq4ezgui5ufyplo5mrbq"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Pet Wash Spotify"
-              data-testid="link-social-spotify"
-            >
+            <a className="pw-social-link pw-social-spotify" href="https://open.spotify.com/user/31ff52czgq4ezgui5ufyplo5mrbq" target="_blank" rel="noreferrer" aria-label="Pet Wash Spotify" data-testid="link-social-spotify">
               <SiSpotify size={18} />
             </a>
+            <a className="pw-social-link pw-social-tiktok" href="https://www.tiktok.com/@petwashltd" target="_blank" rel="noreferrer" aria-label="Pet Wash TikTok" data-testid="link-social-tiktok">
+              <SiTiktok size={18} />
+            </a>
+            <a className="pw-social-link pw-social-facebook" href="https://www.facebook.com/petwashltd" target="_blank" rel="noreferrer" aria-label="Pet Wash Facebook" data-testid="link-social-facebook">
+              <SiFacebook size={18} />
+            </a>
+            <a className="pw-social-link pw-social-instagram" href="https://www.instagram.com/petwashltd" target="_blank" rel="noreferrer" aria-label="Pet Wash Instagram" data-testid="link-social-instagram">
+              <SiInstagram size={18} />
+            </a>
           </div>
 
-          {/* Center: logo only */}
-          <div className="pw-header-center">
-            <button
-              className="pw-logo-link"
-              onClick={() => handleNavigate("/")}
-              aria-label="Pet Wash home"
-            >
-              <img 
-                src="/brand/petwash-logo-official.png" 
-                alt="⁦PetWash™⁩" 
-                className="pw-header-logo-img"
-              />
-            </button>
-          </div>
-
-          {/* Right: nav links, profile icon, hamburger, language */}
-          <div className="pw-header-right">
-            <nav className="pw-nav-desktop">
-              {/* Platforms - with mega menu */}
-              <div className="pw-nav-item pw-nav-item-platforms">
-                <button
-                  className="pw-nav-link"
-                  aria-expanded={isPlatformsOpen}
-                  aria-haspopup="true"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsPlatformsOpen((prev) => !prev);
-                  }}
-                >
-                  {t("nav.platforms", currentLanguage)}
-                </button>
-                {isPlatformsOpen && (
-                  <div className="pw-mega-menu" role="menu">
-                    <div className="pw-mega-inner">
-                      {PLATFORM_GROUPS.map((group) => (
-                        <div className="pw-mega-column" key={group.id} role="group" aria-label={t(group.titleKey, currentLanguage)}>
-                          <div className="pw-mega-title">{t(group.titleKey, currentLanguage)}</div>
-                          {group.items.map((item) => (
-                            <button
-                              key={item.id}
-                              role="menuitem"
-                              className={
-                                "pw-mega-link" +
-                                (item.frozen ? " pw-mega-link-frozen" : "")
-                              }
-                              disabled={item.frozen}
-                              onClick={() => {
-                                if (item.frozen) return;
-                                handleNavigate(item.href);
-                              }}
-                            >
-                              <span>{t(item.labelKey, currentLanguage)}</span>
-                              {item.frozen ? (
-                                <span className="pw-pill-frozen">{t("frozen", currentLanguage)}</span>
-                              ) : (
-                                <span
-                                  style={{
-                                    opacity: 0.6,
-                                    fontSize: 11,
-                                    marginInlineStart: 8,
-                                  }}
-                                >
-                                  {t(item.descKey, currentLanguage)}
-                                </span>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      ))}
-                    </div>
+          <nav className="pw-nav-desktop">
+            <div className="pw-nav-item pw-nav-item-platforms">
+              <button
+                className="pw-nav-link"
+                aria-expanded={isPlatformsOpen}
+                aria-haspopup="true"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsPlatformsOpen((prev) => !prev);
+                }}
+              >
+                {t("nav.platforms", currentLanguage)}
+              </button>
+              {isPlatformsOpen && (
+                <div className="pw-mega-menu" role="menu">
+                  <div className="pw-mega-inner">
+                    {PLATFORM_GROUPS.map((group) => (
+                      <div className="pw-mega-column" key={group.id} role="group" aria-label={t(group.titleKey, currentLanguage)}>
+                        <div className="pw-mega-title">{t(group.titleKey, currentLanguage)}</div>
+                        {group.items.map((item) => (
+                          <button
+                            key={item.id}
+                            role="menuitem"
+                            className={"pw-mega-link" + (item.frozen ? " pw-mega-link-frozen" : "")}
+                            disabled={item.frozen}
+                            onClick={() => { if (item.frozen) return; handleNavigate(item.href); }}
+                          >
+                            <span>{t(item.labelKey, currentLanguage)}</span>
+                            {item.frozen ? (
+                              <span className="pw-pill-frozen">{t("frozen", currentLanguage)}</span>
+                            ) : (
+                              <span style={{ opacity: 0.6, fontSize: 11, marginInlineStart: 8 }}>
+                                {t(item.descKey, currentLanguage)}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+            </div>
+            <div className="pw-nav-item">
+              <button className="pw-nav-link" onClick={() => handleNavigate("/loyalty")}>
+                {t("nav.loyalty", currentLanguage)}
+              </button>
+            </div>
+            <div className="pw-nav-item">
+              <button className="pw-nav-link" onClick={() => handleNavigate("/egift")}>
+                {t("nav.giftCards", currentLanguage)}
+              </button>
+            </div>
+          </nav>
 
-              {/* PetWash Privilege */}
-              <div className="pw-nav-item">
-                <button
-                  className="pw-nav-link"
-                  onClick={() => handleNavigate("/loyalty")}
-                >
-                  {t("nav.loyalty", currentLanguage)}
-                </button>
-              </div>
-
-              {/* e-Gift */}
-              <div className="pw-nav-item">
-                <button
-                  className="pw-nav-link"
-                  onClick={() => handleNavigate("/egift")}
-                >
-                  {t("nav.giftCards", currentLanguage)}
-                </button>
-              </div>
-            </nav>
-
-            {/* Gold profile icon - same level as hamburger */}
+          <div className="pw-header-right">
             <button
               className="pw-header-profile-btn"
               onClick={() => handleNavigate(getDashboardPath())}
@@ -485,8 +432,6 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                 <img src={goldUserIcon} alt="" className="pw-header-profile-img" />
               </div>
             </button>
-
-            {/* Hamburger menu */}
             <button
               className="pw-burger pw-burger-luxury"
               onClick={() => setIsMobileOpen(true)}
@@ -497,8 +442,6 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               <span />
               <span />
             </button>
-
-            {/* Language toggle */}
             <select
               className="pw-language-select pw-language-luxury"
               value={currentLanguage}
@@ -514,30 +457,19 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
           </div>
         </div>
 
-        {/* Mobile nav strip - shows below header on small screens only */}
+        {/* Mobile nav strip - shows below header on small screens only (<768px) */}
         <div className="pw-mobile-nav-strip">
           <div className="pw-mobile-nav-strip-row">
-            <button
-              className="pw-mobile-nav-strip-link"
-              onClick={() => handleNavigate("/egift")}
-            >
+            <button className="pw-mobile-nav-strip-link" onClick={() => handleNavigate("/egift")}>
               {t("nav.giftCards", currentLanguage)}
             </button>
             <span className="pw-mobile-nav-strip-dot">·</span>
-            <button
-              className="pw-mobile-nav-strip-link"
-              onClick={() => handleNavigate("/loyalty")}
-            >
+            <button className="pw-mobile-nav-strip-link" onClick={() => handleNavigate("/loyalty")}>
               {t("nav.loyalty", currentLanguage)}
             </button>
           </div>
           <div className="pw-mobile-nav-strip-row">
-            <button
-              className="pw-mobile-nav-strip-link"
-              onClick={() => {
-                setIsPlatformsOpen((prev) => !prev);
-              }}
-            >
+            <button className="pw-mobile-nav-strip-link" onClick={() => { setIsPlatformsOpen((prev) => !prev); }}>
               {t("nav.platforms", currentLanguage)}
             </button>
           </div>

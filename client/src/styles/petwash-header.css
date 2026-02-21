@@ -30,6 +30,59 @@
   box-sizing: border-box;
 }
 
+/* ROW 1: Logo centered at top like a crown - zero wasted space */
+.pw-header-row-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.25rem 0 0;
+}
+
+/* ROW 2: Controls bar - social left, nav center, profile+burger right */
+.pw-header-row-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 0.75rem 0.25rem;
+  box-sizing: border-box;
+}
+
+@media (min-width: 640px) {
+  .pw-header-row-logo {
+    padding: 0.25rem 0 0;
+  }
+  .pw-header-row-controls {
+    padding: 0 1rem 0.25rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .pw-header-row-logo {
+    padding: 0.375rem 0 0;
+  }
+  .pw-header-row-controls {
+    padding: 0 1.5rem 0.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .pw-header-row-logo {
+    padding: 0.375rem 0 0;
+  }
+  .pw-header-row-controls {
+    padding: 0 2rem 0.375rem;
+  }
+}
+
+@media (min-width: 1440px) {
+  .pw-header-row-controls {
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+}
+
 /* Tablet and up - more space */
 @media (min-width: 640px) {
   .pw-header-inner {
@@ -233,45 +286,40 @@
   flex-shrink: 0;
 }
 
-/* Official PetWash™ logo image - ALWAYS marginally taller than any other header item
-   Logo must visually dominate while staying vertically centered on the same line */
+/* Official PetWash™ logo image - Crown position at top, visually dominant */
 .pw-header-logo-img {
-  height: 3.625rem;
+  height: 3rem;
   width: auto;
-  max-width: 165px;
+  max-width: 150px;
   object-fit: contain;
   display: block;
 }
 
-/* Tablet - logo taller than 1.75rem social icons */
 @media (min-width: 640px) {
   .pw-header-logo-img {
-    height: 4.25rem;
+    height: 3.5rem;
+    max-width: 175px;
+  }
+}
+
+@media (min-width: 768px) {
+  .pw-header-logo-img {
+    height: 4rem;
     max-width: 200px;
   }
 }
 
-/* Desktop - logo taller than 2.125rem profile circle */
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .pw-header-logo-img {
-    height: 4.75rem;
+    height: 4.5rem;
     max-width: 230px;
   }
 }
 
-/* Large screens - logo taller than 2.25rem profile + 2rem social icons */
-@media (min-width: 1024px) {
-  .pw-header-logo-img {
-    height: 5.25rem;
-    max-width: 270px;
-  }
-}
-
-/* Extra large screens - logo taller than 2.5rem profile circle */
 @media (min-width: 1440px) {
   .pw-header-logo-img {
-    height: 5.75rem;
-    max-width: 310px;
+    height: 5rem;
+    max-width: 270px;
   }
 }
 
