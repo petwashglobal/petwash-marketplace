@@ -19,6 +19,7 @@ import { logger } from '../lib/logger';
 import { sendProviderEnrollmentConfirmation } from '../email/luxury-email-service';
 import { logProviderApplication } from '../services/googleSheetsIntegration';
 import { twilioSMSService } from '../services/TwilioSMSService';
+import { assignProviderMembership } from '../services/MembershipService';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -33,20 +34,6 @@ const uploadFields = upload.fields([
   { name: 'profilePhoto', maxCount: 1 },
   { name: 'galleryPhotos', maxCount: 5 },
 ]);
-
-async function generateMembershipNumber(): Promise<string> {
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const num = Math.floor(1000000 + Math.random() * 9000000);
-    const membershipNumber = `PW-${num}`;
-    const existing = await db.select({ id: providerApplicants.id })
-      .from(providerApplicants)
-      .where(eq(providerApplicants.membershipNumber, membershipNumber))
-      .limit(1);
-    if (existing.length === 0) return membershipNumber;
-  }
-  const ts = Date.now().toString(36).toUpperCase().slice(-7);
-  return `PW-${ts}`;
-}
 
 const router = Router();
 
@@ -251,10 +238,7 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
     // Get client IP for privacy compliance
     const clientIp = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';
     
-    // Generate unique membership number
-    const membershipNumber = await generateMembershipNumber();
-    
-    // Insert application
+    // Insert application first (membership assigned after insert)
     const [application] = await db.insert(providerApplicants).values({
       userId,
       email: formData.email,
@@ -264,7 +248,6 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
       dateOfBirth: formData.dateOfBirth,
       nationalId: formData.nationalId || null,
       gender: formData.gender || null,
-      membershipNumber,
       streetAddress: formData.streetAddress,
       city: formData.city,
       postalCode: formData.postalCode || null,
@@ -354,6 +337,8 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
       });
     }
 
+    const membershipNumber = await assignProviderMembership(application.id);
+    
     logger.info('[ProviderApplication] New application submitted', {
       applicationId: application.id,
       userId,

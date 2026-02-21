@@ -1,0 +1,85 @@
+Use a multi-layer OTP system that works everywhere (iOS, Android, desktop) and stays secure even if SMS is weak.
+
+2026 Best OTP stack (works on iOS/Android 100%)
+
+Layer 1 (default): SMS OTP
+	•	6 digits
+	•	TTL 5 minutes
+	•	resend cooldown 60 seconds
+	•	max attempts 5 (then lock 15 minutes)
+	•	per-IP + per-phone rate limits
+
+Layer 2 (upgrade): WhatsApp OTP
+	•	Same code and rules
+	•	Fallback if SMS delivery is slow or blocked
+	•	Great for international numbers
+
+Layer 3 (best): Passkeys + Device Biometrics
+	•	After first verification, prompt user to enable Passkey
+	•	Then next logins use Face ID/Touch ID (iOS) or fingerprint/face (Android)
+	•	This replaces OTP for most logins, but you still keep OTP for account recovery
+
+Layer 4 (security for admins/staff): TOTP Authenticator
+	•	Google Authenticator/Authy/Microsoft
+	•	Required for staff/admin
+	•	Backup codes (10 one-time codes)
+
+⸻
+
+Exact “most advanced OTP” rules (copy to dev)
+
+OTP Code
+	•	6 digits numeric (or 8 digits for staff/admin)
+	•	generated server-side only
+	•	store only hashed code (HMAC or bcrypt)
+
+Anti-fraud
+	•	Rate limit:
+	•	phone: 3 per hour
+	•	IP: 15 per hour
+	•	device fingerprint: 10 per hour
+	•	Block disposable VOIP ranges if you want (optional)
+
+Replay protection
+	•	Each OTP has otp_id
+	•	On success: mark used_at, reject any reuse
+
+Resend strategy
+	•	Try SMS first
+	•	If not delivered in 20-30 seconds, show “Send via WhatsApp”
+	•	If still failing, allow “Voice call code” (optional)
+
+Device binding
+	•	Save device_id after first successful verification
+	•	If new device + high risk -> require extra step (WhatsApp or TOTP)
+
+Localization
+	•	Send message in user language
+	•	Always include brand + expiry + “don’t share”
+
+⸻
+
+Best UX flow on iOS/Android
+	1.	User selects country + phone (E.164)
+	2.	Send OTP via SMS
+	3.	Countdown timer + resend button disabled until cooldown ends
+	4.	If not received: show WhatsApp button
+	5.	After verification: “Enable Face ID / Fingerprint (Passkey)” one-tap
+
+⸻
+
+Templates (safe, high deliverability)
+
+SMS
+“PetWash code: 123456. Expires in 5 min. Do not share. Ref: A1B2”
+
+WhatsApp
+“Your PetWash verification code is 123456 (5 min). Do not share.”
+
+⸻
+
+If you want, paste your current OTP endpoints (send + verify) and I will rewrite them to include:
+	•	SMS + WhatsApp fallback
+	•	rate limiting per phone/IP/device
+	•	hashed OTP storage
+	•	passkey enrollment prompt after verification

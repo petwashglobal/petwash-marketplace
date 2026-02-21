@@ -121,6 +121,7 @@ export const users = pgTable("users", {
   lastLoginAt: timestamp("last_login_at"),
   softDeleteAt: timestamp("soft_delete_at"),
   deviceId: varchar("device_id"),
+  membershipNumber: varchar("membership_number", { length: 20 }).unique(), // PWM-XXXXXXX
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -6618,6 +6619,7 @@ export const staffApplications = pgTable("staff_applications", {
   
   // Career Portal Fields (SEEK-inspired)
   applicationId: varchar("application_id", { length: 50 }).unique(), // APP-2025-XXXXX
+  membershipNumber: varchar("membership_number", { length: 20 }).unique(), // PWS-XXXXXXX
   positionId: varchar("position_id", { length: 50 }), // References career_positions.positionId
   reviewStage: varchar("review_stage", { length: 50 }), // initial, technical, hr, final
   reviewerNotes: text("reviewer_notes"),
@@ -11339,3 +11341,67 @@ export const securityEvents = pgTable("security_events", {
 export type SecurityEvent = typeof securityEvents.$inferSelect;
 export const insertSecurityEventSchema = createInsertSchema(securityEvents).omit({ id: true, createdAt: true });
 export type InsertSecurityEvent = z.infer<typeof insertSecurityEventSchema>;
+
+// OTP Events - Fintech-grade evidence tracking for phone verification
+export const otpEvents = pgTable("otp_events", {
+  id: serial("id").primaryKey(),
+  otpId: varchar("otp_id", { length: 50 }).unique().notNull(), // UUID
+  eventType: varchar("event_type", { length: 30 }).notNull(), // OTP_SENT, OTP_VERIFIED, OTP_FAILED, OTP_EXPIRED
+  phoneE164: varchar("phone_e164", { length: 20 }).notNull(),
+  userId: varchar("user_id"), // nullable for pre-auth
+  userTypeIntent: varchar("user_type_intent", { length: 20 }).notNull(), // PUBLIC, PROVIDER, STAFF_REQUEST
+  otpHash: varchar("otp_hash", { length: 128 }), // SHA-256 hash, never store raw code
+  expiresAt: timestamp("expires_at"),
+  attemptsCount: integer("attempts_count").default(0),
+  result: varchar("result", { length: 30 }), // success, expired, max_attempts, invalid_code
+  provider: varchar("provider", { length: 30 }).default("twilio"), // twilio, firebase
+  providerMessageId: varchar("provider_message_id", { length: 100 }),
+  ip: varchar("ip", { length: 45 }),
+  userAgent: text("user_agent"),
+  deviceId: varchar("device_id", { length: 100 }),
+  countryCode: varchar("country_code", { length: 5 }),
+  traceId: varchar("trace_id", { length: 50 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  verifiedAt: timestamp("verified_at"),
+}, (table) => [
+  index("idx_otp_events_phone").on(table.phoneE164),
+  index("idx_otp_events_user").on(table.userId),
+  index("idx_otp_events_type").on(table.eventType),
+  index("idx_otp_events_otp_id").on(table.otpId),
+  index("idx_otp_events_created").on(table.createdAt),
+]);
+export type OtpEvent = typeof otpEvents.$inferSelect;
+export const insertOtpEventSchema = createInsertSchema(otpEvents).omit({ id: true, createdAt: true });
+export type InsertOtpEvent = z.infer<typeof insertOtpEventSchema>;
+
+// SMS Evidence - Immutable audit trail for all outbound SMS
+export const smsEvidence = pgTable("sms_evidence", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id"),
+  membershipId: varchar("membership_id", { length: 20 }),
+  messageType: varchar("message_type", { length: 30 }).notNull(), // OTP, WELCOME, NOTIFICATION, TRANSACTIONAL
+  templateId: varchar("template_id", { length: 50 }),
+  templateVersion: varchar("template_version", { length: 10 }).default("1.0"),
+  toPhone: varchar("to_phone", { length: 20 }).notNull(),
+  renderedText: text("rendered_text").notNull(), // Exact text sent (for legal evidence)
+  contentHash: varchar("content_hash", { length: 128 }), // SHA-256 of rendered text
+  provider: varchar("provider", { length: 30 }).default("twilio"),
+  providerMessageId: varchar("provider_message_id", { length: 100 }),
+  status: varchar("status", { length: 30 }).default("sent"), // queued, sent, delivered, failed, undelivered
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+  deliveredAt: timestamp("delivered_at"),
+  failureReason: text("failure_reason"),
+  ip: varchar("ip", { length: 45 }),
+  userAgent: text("user_agent"),
+  traceId: varchar("trace_id", { length: 50 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_sms_evidence_user").on(table.userId),
+  index("idx_sms_evidence_phone").on(table.toPhone),
+  index("idx_sms_evidence_type").on(table.messageType),
+  index("idx_sms_evidence_sent").on(table.sentAt),
+  index("idx_sms_evidence_trace").on(table.traceId),
+]);
+export type SmsEvidence = typeof smsEvidence.$inferSelect;
+export const insertSmsEvidenceSchema = createInsertSchema(smsEvidence).omit({ id: true, createdAt: true });
+export type InsertSmsEvidence = z.infer<typeof insertSmsEvidenceSchema>;

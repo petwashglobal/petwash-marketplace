@@ -1690,7 +1690,7 @@ export const providerApplicants = pgTable("provider_applicants", {
   gender: varchar("gender", { length: 20 }), // male, female, other, prefer_not_to_say
   
   // Membership
-  membershipNumber: varchar("membership_number", { length: 20 }).unique(), // PW-XXXXXXX
+  membershipNumber: varchar("membership_number", { length: 20 }).unique(), // PWP-XXXXXXX (provider class)
   
   // Address
   streetAddress: text("street_address").notNull(),

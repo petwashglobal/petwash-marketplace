@@ -5,7 +5,7 @@ import { getCurrentUser } from "../simpleAuth";
 import { logger } from "../lib/logger";
 import { twilioSMSService } from "../services/TwilioSMSService";
 import { db as firestoreDb, auth as fbAdminAuth } from '../lib/firebase-admin';
-import { pool } from '../db';
+import { pool, db } from '../db';
 import { userConsents, authEvents } from '@shared/schema';
 
 async function getFirebaseUserFromRequest(req: express.Request): Promise<{uid: string; email?: string; displayName?: string} | null> {
@@ -546,6 +546,147 @@ publicAuthRouter.post("/api/accessibility-audit", async (req, res) => {
   } catch (err) {
     logger.error('[Accessibility] Audit log error:', err);
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ─── Phone OTP Verification (3-Class Membership System) ────────────────
+import { registrationOTPService } from '../services/RegistrationOTPService';
+import { assignCustomerMembership } from '../services/MembershipService';
+import { renderWelcomeSMS, getTemplateId } from '../sms/templates/welcome-sms-templates';
+import { smsEvidence } from '@shared/schema';
+
+const otpSendSchema = z.object({
+  phone: z.string().min(8).max(20),
+  userTypeIntent: z.enum(['PUBLIC', 'PROVIDER', 'STAFF_REQUEST']).default('PUBLIC'),
+});
+
+const otpVerifySchema = z.object({
+  otpId: z.string().uuid(),
+  code: z.string().length(6),
+});
+
+publicAuthRouter.post('/api/auth/phone/otp/send', async (req, res) => {
+  try {
+    const parsed = otpSendSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid phone number or intent', details: parsed.error.flatten() });
+    }
+
+    const { phone, userTypeIntent } = parsed.data;
+    const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
+
+    const result = await registrationOTPService.sendOTP(phone, userTypeIntent, {
+      ip: req.ip || req.headers['x-forwarded-for']?.toString(),
+      userAgent: req.headers['user-agent'],
+      traceId: (req as any).traceId,
+      language,
+    });
+
+    if (!result.success) {
+      return res.status(429).json({
+        error: result.error,
+        cooldownRemaining: result.cooldownRemaining,
+        message: result.error === 'COOLDOWN_ACTIVE'
+          ? (language === 'he' ? 'אנא המתינו לפני שליחת קוד חדש' : 'Please wait before requesting a new code')
+          : (language === 'he' ? 'יותר מדי ניסיונות, נסו שוב מאוחר יותר' : 'Too many attempts, please try again later'),
+      });
+    }
+
+    res.json({
+      success: true,
+      otpId: result.otpId,
+      expiresIn: result.expiresIn,
+      message: language === 'he' ? 'קוד אימות נשלח' : 'Verification code sent',
+    });
+  } catch (err) {
+    logger.error('[PublicAuth] Phone send-code error:', err);
+    res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to send verification code' });
+  }
+});
+
+publicAuthRouter.post('/api/auth/phone/otp/verify', async (req, res) => {
+  try {
+    const parsed = otpVerifySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid OTP ID or code' });
+    }
+
+    const { otpId, code } = parsed.data;
+    const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
+
+    const result = await registrationOTPService.verifyOTP(otpId, code, {
+      ip: req.ip || req.headers['x-forwarded-for']?.toString(),
+      userAgent: req.headers['user-agent'],
+      traceId: (req as any).traceId,
+    });
+
+    if (!result.success) {
+      const statusCode = result.error === 'MAX_ATTEMPTS_EXCEEDED' ? 429 : 400;
+      return res.status(statusCode).json({
+        error: result.error,
+        remainingAttempts: result.remainingAttempts,
+        message: result.error === 'INVALID_CODE'
+          ? (language === 'he' ? 'קוד שגוי, נסו שוב' : 'Invalid code, please try again')
+          : result.error === 'OTP_EXPIRED'
+          ? (language === 'he' ? 'הקוד פג תוקף, בקשו קוד חדש' : 'Code expired, please request a new one')
+          : (language === 'he' ? 'חריגה ממספר הניסיונות' : 'Too many failed attempts'),
+      });
+    }
+
+    const metadata = result.metadata;
+    let membershipId: string | null = null;
+
+    if (metadata) {
+      const firebaseUser = await getFirebaseUserFromRequest(req);
+      if (firebaseUser) {
+        if (metadata.userTypeIntent === 'PUBLIC') {
+          membershipId = await assignCustomerMembership(firebaseUser.uid);
+        }
+      }
+
+      try {
+        const firstName = firebaseUser?.displayName?.split(' ')[0] || '';
+        const smsType = metadata.userTypeIntent === 'PROVIDER' ? 'PROVIDER' as const
+          : metadata.userTypeIntent === 'STAFF_REQUEST' ? 'STAFF' as const
+          : 'CUSTOMER' as const;
+        const displayId = membershipId || 'pending';
+        if (firstName && metadata.phoneE164 && metadata.phoneE164 !== 'N/A') {
+          const smsBody = renderWelcomeSMS(smsType, { firstName, membershipId: displayId, language });
+          const templateId = getTemplateId(smsType);
+          const smsResult = await twilioSMSService.sendSMS(metadata.phoneE164, smsBody);
+
+          await db.insert(smsEvidence).values({
+            userId: firebaseUser?.uid || null,
+            membershipId: membershipId || null,
+            messageType: 'WELCOME',
+            templateId,
+            templateVersion: '1.0',
+            toPhone: metadata.phoneE164,
+            renderedText: smsBody,
+            contentHash: crypto.createHash('sha256').update(smsBody).digest('hex'),
+            provider: 'twilio',
+            providerMessageId: smsResult.messageId || null,
+            status: smsResult.success ? 'sent' : 'failed',
+            failureReason: smsResult.success ? null : (smsResult.error || 'Unknown'),
+            ip: req.ip || null,
+            userAgent: req.headers['user-agent'] || null,
+            traceId: (req as any).traceId,
+          });
+        }
+      } catch (welcomeErr) {
+        logger.error('[PublicAuth] Welcome SMS failed (non-blocking)', welcomeErr);
+      }
+    }
+
+    res.json({
+      success: true,
+      verified: true,
+      membershipId,
+      message: language === 'he' ? 'הטלפון אומת בהצלחה' : 'Phone verified successfully',
+    });
+  } catch (err) {
+    logger.error('[PublicAuth] Phone verify-code error:', err);
+    res.status(500).json({ error: 'SERVER_ERROR', message: 'Verification failed' });
   }
 });
 
