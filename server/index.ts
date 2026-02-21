@@ -3,6 +3,7 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
 }
 
 import path from "node:path";
+import crypto from "node:crypto";
 import express from "express";
 import helmet from "helmet";
 import compression from "compression";
@@ -224,10 +225,12 @@ app.use((req, res, next) => {
     if (req.path === '/' || req.method === 'HEAD') {
       return res.status(200).send('<!DOCTYPE html><html><head><title>Pet Wash™</title></head><body><p>Starting up...</p></body></html>');
     }
+    const traceId = req.traceId || crypto.randomUUID();
     return res.status(503).json({
-      error: 'Service Unavailable',
+      error: 'SERVICE_STARTING',
       message: 'Server is starting up, please retry in a moment',
-      retryAfter: 5
+      retryAfter: 5,
+      traceId
     });
   }
   
