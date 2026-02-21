@@ -685,7 +685,7 @@
   background: #FFFFFF;
   border: 1px solid #000000;
   border-radius: 0.25rem;
-  padding: 0.1rem 0.2rem;
+  padding: 0.1rem 0.15rem;
   font-size: 0.6rem;
   color: #000000;
   cursor: pointer;
@@ -713,7 +713,7 @@
   background: #FFFFFF !important;
   border: 1px solid #000000 !important;
   border-radius: 0.25rem !important;
-  padding: 0.1rem 0.2rem !important;
+  padding: 0.1rem 0.15rem !important;
   font-size: 0.55rem !important;
   font-weight: 600 !important;
   color: #000000 !important;
