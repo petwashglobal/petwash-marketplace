@@ -337,6 +337,41 @@ class TwilioSMSService {
     return { valid: true, phone: stored.phone };
   }
 
+  async sendWhatsApp(to: string, body: string): Promise<{
+    success: boolean;
+    messageId?: string;
+    error?: string;
+  }> {
+    if (!this.isReady()) {
+      return { success: false, error: 'WhatsApp service not configured' };
+    }
+
+    const formattedPhone = this.formatPhoneNumber(to);
+
+    try {
+      const message = await this.client!.messages.create({
+        body,
+        from: `whatsapp:${this.fromPhone!}`,
+        to: `whatsapp:${formattedPhone}`,
+      });
+
+      logger.info('[TwilioWhatsApp] Message sent', {
+        to: formattedPhone.slice(0, 6) + '****',
+        messageId: message.sid,
+      });
+
+      return { success: true, messageId: message.sid };
+    } catch (error: any) {
+      logger.error('[TwilioWhatsApp] Failed to send message', {
+        error: error.message,
+        code: error.code,
+        to: formattedPhone.slice(0, 6) + '****',
+      });
+
+      return { success: false, error: error.message };
+    }
+  }
+
   async sendSMS(to: string, body: string): Promise<{
     success: boolean;
     messageId?: string;
