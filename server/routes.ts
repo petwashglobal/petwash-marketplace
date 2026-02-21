@@ -1128,6 +1128,20 @@ self.addEventListener('notificationclick', (event) => {
   //   }
   // });
 
+  app.get('/api/consent/types', (req, res) => {
+    res.json({
+      types: [
+        { id: 'terms', label: 'Terms of Service', required: true },
+        { id: 'privacy', label: 'Privacy Policy', required: true },
+        { id: 'biometric', label: 'Biometric Processing', required: false },
+        { id: 'marketing', label: 'Marketing Communications', required: false },
+        { id: 'analytics', label: 'Analytics & Tracking', required: false },
+        { id: 'wallet', label: 'Digital Wallet Pass', required: false },
+        { id: 'oauth', label: 'OAuth Service Access', required: false },
+      ]
+    });
+  });
+
   // POST /api/consent - Save user consent preferences with audit trail
   app.post('/api/consent', async (req, res) => {
     try {
@@ -9356,6 +9370,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/unified', apiLimiter, unifiedPlatformRoutes);
   
   // ⁦Walk My Pet™⁩ - Premium dog walking marketplace
+  app.use('/api/walk-my-pet', apiLimiter, walkMyPetRoutes);
   app.use(apiLimiter, walkMyPetRoutes);
   
   // ⁦Walk My Pet™⁩ - Session Management (Check-in/Check-out, GPS, Vitals)

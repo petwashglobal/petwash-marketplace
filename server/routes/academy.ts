@@ -26,6 +26,16 @@ import { buildAllNavigationLinks } from '../utils/navigation';
 
 const router = Router();
 
+router.get('/', (req, res) => {
+  res.json({
+    platform: 'Pet Wash Academy',
+    status: 'active',
+    version: '2.0',
+    services: ['trainer-marketplace', 'certifications', 'courses'],
+    certified: true
+  });
+});
+
 // ==================== PUBLIC ENDPOINTS ====================
 
 /**

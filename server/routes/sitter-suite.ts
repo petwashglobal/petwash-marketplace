@@ -40,6 +40,16 @@ import { storage, auth } from '../lib/firebase-admin';
 
 const router = Router();
 
+router.get('/', (req, res) => {
+  res.json({
+    platform: 'Sitter Suite',
+    status: 'active',
+    version: '2.0',
+    services: ['pet-sitting', 'house-sitting', 'overnight-care'],
+    certified: true
+  });
+});
+
 // Configure multer for file uploads
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
