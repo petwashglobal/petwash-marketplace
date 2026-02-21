@@ -13,7 +13,24 @@
 
 import { db } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
-import useragent from 'useragent';
+function parseUserAgent(ua: string): { family: string; os: { family: string; toVersion: () => string } } {
+  let family = 'Other';
+  let osFamily = 'Other';
+  let osVersion = '';
+
+  if (/Chrome\/(\d+)/i.test(ua)) family = 'Chrome';
+  else if (/Firefox\/(\d+)/i.test(ua)) family = 'Firefox';
+  else if (/Safari\/(\d+)/i.test(ua) && !/Chrome/i.test(ua)) family = 'Safari';
+  else if (/Edge\/(\d+)/i.test(ua) || /Edg\/(\d+)/i.test(ua)) family = 'Edge';
+
+  if (/Windows NT (\d+\.\d+)/i.test(ua)) { osFamily = 'Windows'; osVersion = RegExp.$1; }
+  else if (/Mac OS X (\d+[._]\d+[._]?\d*)/i.test(ua)) { osFamily = 'Mac OS X'; osVersion = RegExp.$1.replace(/_/g, '.'); }
+  else if (/iPhone OS (\d+[._]\d+)/i.test(ua) || /CPU OS (\d+[._]\d+)/i.test(ua)) { osFamily = 'iOS'; osVersion = RegExp.$1.replace(/_/g, '.'); }
+  else if (/Android (\d+\.?\d*)/i.test(ua)) { osFamily = 'Android'; osVersion = RegExp.$1; }
+  else if (/Linux/i.test(ua)) { osFamily = 'Linux'; }
+
+  return { family, os: { family: osFamily, toVersion: () => osVersion } };
+}
 
 interface TelemetryBeacon {
   type: 'apple-click' | 'apple-post-2s' | 'google-click' | 'google-post-2s' | 'visibility-hidden' | 'popup-blocked';
@@ -155,7 +172,7 @@ export class WalletTelemetryService {
       const session = sessionDoc.data() as WalletSession;
 
       // Parse user agent to detect iOS Passbook installer
-      const agent = useragent.parse(event.userAgent);
+      const agent = parseUserAgent(event.userAgent);
       const isPassbookInstaller = this.isApplePassbookInstaller(event.userAgent);
 
       const downloadEvent: DownloadEvent = {

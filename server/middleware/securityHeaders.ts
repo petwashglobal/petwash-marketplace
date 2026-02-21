@@ -13,10 +13,6 @@ export function enhancedSecurityHeaders(req: Request, res: Response, next: NextF
     'max-age=31536000; includeSubDomains; preload'
   );
   
-  // X-Frame-Options
-  // Prevent clickjacking attacks
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  
   // X-Content-Type-Options
   // Prevent MIME sniffing
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -40,6 +36,8 @@ export function enhancedSecurityHeaders(req: Request, res: Response, next: NextF
   // Cross-Origin-Resource-Policy
   // RELAXED: Allow cross-origin for Replit domain verification and CDN assets
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(self), payment=(self)');
   
   next();
 }

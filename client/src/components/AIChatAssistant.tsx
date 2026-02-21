@@ -151,7 +151,10 @@ export function AIChatAssistant({ language, isOpen: externalIsOpen, onClose }: A
                   }`}
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
-                    e.currentTarget.parentElement!.innerHTML = '<div class="w-full h-full bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-2xl">🐕</div>';
+                    const fallback = document.createElement('div');
+                    fallback.className = 'w-full h-full bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-2xl';
+                    fallback.textContent = '🐕';
+                    e.currentTarget.parentElement!.appendChild(fallback);
                   }}
                 />
               </div>

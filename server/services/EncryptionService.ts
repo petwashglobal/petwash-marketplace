@@ -12,6 +12,7 @@
  */
 
 import crypto from 'crypto';
+import { logger } from '../lib/logger';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16; // For GCM mode
@@ -230,10 +231,7 @@ export const encryptionService = new EncryptionService();
 // Helper: Generate encryption key for .env file
 export function generateEncryptionKey(): string {
   const key = crypto.randomBytes(KEY_LENGTH);
-  console.log('\n=== ENCRYPTION KEY GENERATION ===');
-  console.log('Add this to your .env file:');
-  console.log(`PROPERTY_ACCESS_ENCRYPTION_KEY=${key.toString('hex')}`);
-  console.log('================================\n');
+  logger.info('[Encryption] New encryption key generated. Set PROPERTY_ACCESS_ENCRYPTION_KEY in your .env file.');
   return key.toString('hex');
 }
 

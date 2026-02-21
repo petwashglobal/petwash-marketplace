@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import sanitizeHtml from 'sanitize-html';
 import { Layout } from "@/components/Layout";
 import { type Language } from "@/lib/i18n";
 import { useLanguage } from '@/lib/languageStore';
@@ -141,7 +142,7 @@ export default function AdminGuide({ language, onLanguageChange }: AdminGuidePro
                       prose-strong:font-bold prose-strong:text-gray-900
                       prose-blockquote:border-l-4 prose-blockquote:border-blue-600 prose-blockquote:pl-4 prose-blockquote:italic
                     "
-                    dangerouslySetInnerHTML={{ __html: formatMarkdownToHTML(guideContent) }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(formatMarkdownToHTML(guideContent), { allowedTags: sanitizeHtml.defaults.allowedTags.concat(['h1','h2','h3','h4','img']), allowedAttributes: { ...sanitizeHtml.defaults.allowedAttributes, '*': ['class'] } }) }}
                   />
                 ) : (
                   <div className="flex items-center justify-center py-12">

@@ -7,7 +7,7 @@ import admin from '../lib/firebase-admin';
 import { db } from '../lib/firebase-admin';
 
 const SUPER_ADMIN_EMAIL = 'nirhadad1@gmail.com';
-const TEMP_PASSWORD = 'TempAdmin2025!';
+const TEMP_PASSWORD = process.env.SUPER_ADMIN_TEMP_PASSWORD || require('crypto').randomBytes(16).toString('base64url');
 
 async function createSuperAdmin() {
   try {
@@ -29,7 +29,7 @@ async function createSuperAdmin() {
         });
         console.log(`✅ Created Firebase Auth user: ${userRecord.uid}`);
         console.log(`   Email: ${SUPER_ADMIN_EMAIL}`);
-        console.log(`   Temp Password: ${TEMP_PASSWORD}`);
+        console.log(`   Temp Password: [REDACTED - set SUPER_ADMIN_TEMP_PASSWORD env var or check secure logs]`);
       } else {
         throw error;
       }
@@ -64,7 +64,7 @@ async function createSuperAdmin() {
     console.log('📋 Login Details:');
     console.log(`   URL: https://petwash.co.il/admin/login`);
     console.log(`   Email: ${SUPER_ADMIN_EMAIL}`);
-    console.log(`   Password: ${TEMP_PASSWORD}`);
+    console.log(`   Password: [SET VIA ENVIRONMENT OR AUTO-GENERATED - check server output at creation time only]`);
     console.log('');
     console.log('⚠️  IMPORTANT: Change password after first login!');
     

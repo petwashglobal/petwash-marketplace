@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import sanitizeHtml from 'sanitize-html';
 import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -147,7 +148,7 @@ export default function AdminHelpGuide({ language, onLanguageChange }: AdminHelp
               <ScrollArea className="h-[calc(100vh-680px)] rounded-b-lg">
                 <div 
                   className="prose prose-lg max-w-none p-8 dark:prose-invert"
-                  dangerouslySetInnerHTML={{ __html: formatMarkdownToHTML(guideContent) }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(formatMarkdownToHTML(guideContent), { allowedTags: sanitizeHtml.defaults.allowedTags.concat(['h1','h2','h3','h4','img']), allowedAttributes: { ...sanitizeHtml.defaults.allowedAttributes, '*': ['class'] } }) }}
                 />
               </ScrollArea>
             </CardContent>

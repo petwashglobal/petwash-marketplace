@@ -82,7 +82,22 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 // A. Security Headers (ENHANCED 2025 - Protects users from script injections, XSS, clickjacking)
 app.use(helmet({
-  contentSecurityPolicy: false, // Disabled for now - enable with proper policy in future
+  contentSecurityPolicy: isProduction ? {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://www.google.com", "https://www.gstatic.com", "https://www.googletagmanager.com", "https://connect.facebook.net", "https://analytics.tiktok.com", "https://www.clarity.ms", "https://maps.googleapis.com", "https://js.stripe.com", "https://www.googleadservices.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+      connectSrc: ["'self'", "https://*.googleapis.com", "https://*.google.com", "https://*.firebaseio.com", "https://*.firebaseapp.com", "https://*.cloudfunctions.net", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com", "wss://*.firebaseio.com", "https://ipapi.co", "https://ip-api.com", "https://ipinfo.io", "https://www.google-analytics.com", "https://api.hubspot.com", "https://*.sentry.io", "https://api.stripe.com", "https://*.clarity.ms", "https://*.facebook.com", "https://*.tiktok.com"],
+      frameSrc: ["'self'", "https://www.google.com", "https://*.firebaseapp.com", "https://docs.google.com", "https://js.stripe.com", "https://hooks.stripe.com"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'none'"],
+      upgradeInsecureRequests: []
+    }
+  } : false,
   crossOriginEmbedderPolicy: false,
   hsts: isProduction ? {
     maxAge: 31536000, // 1 year
@@ -148,7 +163,7 @@ app.use(cookieParser());
 app.use(
   session({
     name: 'pw.sid', // Custom session cookie name (obscure default)
-    secret: process.env.SESSION_SECRET || process.env.COOKIE_SECRET || "dev_secret_change_in_production",
+    secret: process.env.SESSION_SECRET || process.env.COOKIE_SECRET || (isProduction ? (() => { throw new Error('SESSION_SECRET or COOKIE_SECRET must be set in production'); })() : require('crypto').randomBytes(32).toString('hex')),
     resave: false,
     saveUninitialized: false,
     rolling: true, // Reset expiry on each request (keep active users logged in)

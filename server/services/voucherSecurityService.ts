@@ -12,6 +12,7 @@ import { eq, desc, and } from 'drizzle-orm';
 import { db } from '../db';
 import { voucherUsageLedger, petWashVouchers2025 } from '../../shared/schema';
 import type { PetWashVoucher2025 } from '../../shared/petwashVoucher2025Types';
+import { logger } from '../lib/logger';
 
 // Load keys from environment with comprehensive newline handling
 function loadPemKey(envVar: string | undefined): string {
@@ -493,30 +494,24 @@ export async function verifyAndRepairBalance(voucherId: string): Promise<LedgerV
 // Test function to verify keys are working
 export async function testKeyPair(): Promise<boolean> {
   try {
-    console.log('[VoucherSecurity] Testing ES256 key pair...');
-    console.log('[VoucherSecurity] Private key length:', PRIVATE_KEY_PEM.length);
-    console.log('[VoucherSecurity] Public key length:', PUBLIC_KEY_PEM.length);
+    logger.info('[VoucherSecurity] Testing ES256 key pair...');
+    logger.info('[VoucherSecurity] Private key configured:', PRIVATE_KEY_PEM.length > 0);
+    logger.info('[VoucherSecurity] Public key configured:', PUBLIC_KEY_PEM.length > 0);
     
     const privateKey = await getPrivateKey();
     const publicKey = await getPublicKey();
     
-    // Try signing a test payload
     const testPayload = { test: "data", timestamp: Date.now() };
     const testJwt = await new SignJWT(testPayload)
       .setProtectedHeader({ alg: "ES256" })
       .sign(privateKey);
     
-    console.log('[VoucherSecurity] Test signature created:', testJwt.substring(0, 50) + '...');
+    await jwtVerify(testJwt, publicKey);
     
-    // Try verifying it
-    const verified = await jwtVerify(testJwt, publicKey);
-    console.log('[VoucherSecurity] Test signature verified:', verified.payload);
-    
-    console.log('[VoucherSecurity] ✅ ES256 key pair test passed');
+    logger.info('[VoucherSecurity] ✅ ES256 key pair test passed');
     return true;
   } catch (error: any) {
-    console.error('[VoucherSecurity] ❌ ES256 key pair test failed:', error.message);
-    console.error('[VoucherSecurity] Error stack:', error.stack);
+    logger.error('[VoucherSecurity] ❌ ES256 key pair test failed:', error.message);
     return false;
   }
 }
