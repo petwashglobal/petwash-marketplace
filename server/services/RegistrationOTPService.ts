@@ -67,11 +67,13 @@ async function cacheIncr(key: string, ttlSec: number): Promise<number> {
 }
 
 export type UserTypeIntent = 'PUBLIC' | 'PROVIDER' | 'STAFF_REQUEST';
+export type OTPChannel = 'sms' | 'whatsapp';
 
 interface SendOTPResult {
   success: boolean;
   otpId: string;
   expiresIn: number;
+  channel?: OTPChannel;
   error?: string;
   cooldownRemaining?: number;
 }
@@ -154,7 +156,7 @@ export class RegistrationOTPService {
   async sendOTP(
     phone: string,
     userTypeIntent: UserTypeIntent,
-    opts: { userId?: string; ip?: string; userAgent?: string; deviceId?: string; traceId?: string; language?: 'he' | 'en' }
+    opts: { userId?: string; ip?: string; userAgent?: string; deviceId?: string; traceId?: string; language?: 'he' | 'en'; channel?: OTPChannel }
   ): Promise<SendOTPResult> {
     const phoneE164 = normalizePhone(phone);
     const otpId = crypto.randomUUID();
@@ -201,11 +203,20 @@ export class RegistrationOTPService {
         ? `Pet Wash™ - קוד אימות\n\nקוד האימות שלך: ${code}\n\nתקף ל-5 דקות. אל תשתף קוד זה.\n\nPet Wash™`
         : `Pet Wash™ - Verification Code\n\nYour code: ${code}\n\nValid for 5 minutes. Do not share this code.\n\nPet Wash™`;
 
+      const channel: OTPChannel = opts.channel || 'sms';
       let providerMessageId: string | undefined;
-      const smsResult = await twilioSMSService.sendSMS(phoneE164, smsBody);
-      if (smsResult.success && smsResult.messageId) {
-        providerMessageId = smsResult.messageId;
+      let sendResult: { success: boolean; messageId?: string; error?: string };
+
+      if (channel === 'whatsapp') {
+        sendResult = await twilioSMSService.sendWhatsApp(phoneE164, smsBody);
+      } else {
+        sendResult = await twilioSMSService.sendSMS(phoneE164, smsBody);
       }
+      if (sendResult.success && sendResult.messageId) {
+        providerMessageId = sendResult.messageId;
+      }
+
+      const providerLabel = channel === 'whatsapp' ? 'twilio_whatsapp' : 'twilio';
 
       await db.insert(otpEvents).values({
         otpId,
@@ -216,7 +227,7 @@ export class RegistrationOTPService {
         otpHash: codeHash,
         expiresAt,
         attemptsCount: 0,
-        provider: 'twilio',
+        provider: providerLabel,
         providerMessageId: providerMessageId || null,
         ip: opts.ip || null,
         userAgent: opts.userAgent || null,
@@ -228,15 +239,15 @@ export class RegistrationOTPService {
       await db.insert(smsEvidence).values({
         userId: opts.userId || null,
         messageType: 'OTP',
-        templateId: 'registration_otp_v1',
+        templateId: channel === 'whatsapp' ? 'registration_otp_whatsapp_v1' : 'registration_otp_v1',
         templateVersion: '1.0',
         toPhone: phoneE164,
         renderedText: smsBody,
         contentHash: sha256(smsBody),
-        provider: 'twilio',
+        provider: providerLabel,
         providerMessageId: providerMessageId || null,
-        status: smsResult.success ? 'sent' : 'failed',
-        failureReason: smsResult.success ? null : (smsResult.error || 'Unknown'),
+        status: sendResult.success ? 'sent' : 'failed',
+        failureReason: sendResult.success ? null : (sendResult.error || 'Unknown'),
         ip: opts.ip || null,
         userAgent: opts.userAgent || null,
         traceId,
@@ -246,12 +257,13 @@ export class RegistrationOTPService {
         otpId,
         phoneE164: phoneE164.slice(0, 6) + '****',
         userTypeIntent,
+        channel,
         countryCode,
         traceId,
-        smsSuccess: smsResult.success,
+        deliverySuccess: sendResult.success,
       });
 
-      return { success: true, otpId, expiresIn: OTP_TTL_SEC };
+      return { success: true, otpId, expiresIn: OTP_TTL_SEC, channel };
 
     } catch (error) {
       logger.error('[RegistrationOTP] Failed to send OTP', { error, otpId, traceId });
@@ -319,6 +331,100 @@ export class RegistrationOTPService {
     } catch (error) {
       logger.error('[RegistrationOTP] Verification error', { error, otpId, traceId });
       return { success: false, otpId, error: 'INTERNAL_ERROR' };
+    }
+  }
+
+  async resendOTP(
+    otpId: string,
+    channel: OTPChannel,
+    opts: { ip?: string; userAgent?: string; traceId?: string; language?: 'he' | 'en' }
+  ): Promise<SendOTPResult> {
+    const traceId = opts.traceId || crypto.randomUUID().slice(0, 8);
+
+    try {
+      const raw = await cacheGet(otpRedisKey(otpId));
+      if (!raw) {
+        return { success: false, otpId, expiresIn: 0, error: 'OTP_EXPIRED' };
+      }
+
+      const record = JSON.parse(raw);
+      const phoneE164 = record.phoneE164 as string;
+
+      const cooldown = await cacheTtl(cooldownKey(phoneE164));
+      if (cooldown > 0) {
+        return { success: false, otpId, expiresIn: 0, error: 'COOLDOWN_ACTIVE', cooldownRemaining: cooldown };
+      }
+
+      const code = generateSecureOTP();
+      const codeHash = sha256(code);
+      const ttlRemaining = await cacheTtl(otpRedisKey(otpId));
+      const newTtl = ttlRemaining > 0 ? ttlRemaining : OTP_TTL_SEC;
+
+      record.codeHash = codeHash;
+      record.attempts = 0;
+      await cacheSet(otpRedisKey(otpId), JSON.stringify(record), newTtl);
+      await cacheSet(cooldownKey(phoneE164), '1', OTP_COOLDOWN_SEC);
+
+      const isHebrew = opts.language === 'he' || extractCountryCode(phoneE164) === 'IL';
+      const smsBody = isHebrew
+        ? `Pet Wash™ - קוד אימות\n\nקוד האימות שלך: ${code}\n\nתקף ל-5 דקות. אל תשתף קוד זה.\n\nPet Wash™`
+        : `Pet Wash™ - Verification Code\n\nYour code: ${code}\n\nValid for 5 minutes. Do not share this code.\n\nPet Wash™`;
+
+      let sendResult: { success: boolean; messageId?: string; error?: string };
+      if (channel === 'whatsapp') {
+        sendResult = await twilioSMSService.sendWhatsApp(phoneE164, smsBody);
+      } else {
+        sendResult = await twilioSMSService.sendSMS(phoneE164, smsBody);
+      }
+
+      const providerLabel = channel === 'whatsapp' ? 'twilio_whatsapp' : 'twilio';
+
+      await db.insert(otpEvents).values({
+        otpId: `${otpId}_resend_${Date.now()}`,
+        eventType: 'OTP_RESENT',
+        phoneE164,
+        userId: record.userId || null,
+        userTypeIntent: record.userTypeIntent,
+        otpHash: codeHash,
+        expiresAt: new Date(Date.now() + newTtl * 1000),
+        attemptsCount: 0,
+        provider: providerLabel,
+        providerMessageId: sendResult.messageId || null,
+        ip: opts.ip || null,
+        userAgent: opts.userAgent || null,
+        countryCode: extractCountryCode(phoneE164),
+        traceId,
+      });
+
+      await db.insert(smsEvidence).values({
+        userId: record.userId || null,
+        messageType: 'OTP',
+        templateId: channel === 'whatsapp' ? 'registration_otp_whatsapp_v1' : 'registration_otp_v1',
+        templateVersion: '1.0',
+        toPhone: phoneE164,
+        renderedText: smsBody,
+        contentHash: sha256(smsBody),
+        provider: providerLabel,
+        providerMessageId: sendResult.messageId || null,
+        status: sendResult.success ? 'sent' : 'failed',
+        failureReason: sendResult.success ? null : (sendResult.error || 'Unknown'),
+        ip: opts.ip || null,
+        userAgent: opts.userAgent || null,
+        traceId,
+      });
+
+      logger.info('[RegistrationOTP] OTP resent', {
+        otpId,
+        channel,
+        phoneE164: phoneE164.slice(0, 6) + '****',
+        traceId,
+        deliverySuccess: sendResult.success,
+      });
+
+      return { success: true, otpId, expiresIn: newTtl, channel };
+    } catch (error) {
+      logger.error('[RegistrationOTP] Failed to resend OTP', { error, otpId, traceId });
+      return { success: false, otpId, expiresIn: 0, error: 'INTERNAL_ERROR' };
     }
   }
 
