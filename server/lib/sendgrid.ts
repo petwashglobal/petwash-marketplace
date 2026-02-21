@@ -6,8 +6,15 @@ const SENDGRID_API_KEY = rawKey.trim().replace(/[\x00-\x1F\x7F]/g, '');
 
 let initialized = false;
 
+console.log('[SendGrid] 🔍 API Key Diagnostics:');
+console.log(`  SENDGRID_API_KEY present: ${!!rawKey}`);
+console.log(`  startsWithSG: ${SENDGRID_API_KEY.startsWith('SG.')}`);
+console.log(`  rawLength: ${rawKey.length}`);
+console.log(`  cleanLength: ${SENDGRID_API_KEY.length}`);
+console.log(`  prefix: ${SENDGRID_API_KEY.slice(0, 5)}${'*'.repeat(Math.max(0, SENDGRID_API_KEY.length - 10))}${SENDGRID_API_KEY.slice(-5)}`);
+
 if (rawKey && rawKey !== SENDGRID_API_KEY) {
-  console.warn(`[SendGrid] API key sanitized: trimmed whitespace/control characters (original length: ${rawKey.length}, clean length: ${SENDGRID_API_KEY.length})`);
+  console.warn(`[SendGrid] ⚠️ API key sanitized: trimmed whitespace/control characters (original length: ${rawKey.length}, clean length: ${SENDGRID_API_KEY.length})`);
 }
 
 if (SENDGRID_API_KEY && SENDGRID_API_KEY.startsWith('SG.')) {
@@ -15,11 +22,11 @@ if (SENDGRID_API_KEY && SENDGRID_API_KEY.startsWith('SG.')) {
   initialized = true;
   console.log('[SendGrid] ✅ Configured and ready');
 } else if (SENDGRID_API_KEY) {
-  console.warn(`[SendGrid] API key present (${SENDGRID_API_KEY.length} chars) but does not start with "SG." - check the key format`);
+  console.warn(`[SendGrid] ❌ API key present (${SENDGRID_API_KEY.length} chars) but does NOT start with "SG." - key format is WRONG`);
 } else if (rawKey) {
-  console.warn(`[SendGrid] API key was set but sanitization reduced it to empty - key may contain only invalid characters. Re-enter the SENDGRID_API_KEY secret with a valid SendGrid key starting with "SG."`);
+  console.warn(`[SendGrid] ❌ API key was set but sanitization reduced it to empty - re-enter SENDGRID_API_KEY`);
 } else {
-  console.warn('[SendGrid] SENDGRID_API_KEY not configured - email functionality disabled');
+  console.warn('[SendGrid] ❌ SENDGRID_API_KEY not configured - email functionality disabled');
 }
 
 export function getSendGridClient(): typeof sgMail {

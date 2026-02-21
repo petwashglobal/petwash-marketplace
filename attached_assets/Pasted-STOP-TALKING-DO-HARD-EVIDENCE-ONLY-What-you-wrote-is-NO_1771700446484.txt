@@ -1,0 +1,64 @@
+STOP TALKING. DO HARD EVIDENCE ONLY.
+
+What you wrote is NOT acceptable proof unless you attach:
+1) The exact Cloud Run log lines for Twilio send (message SID, status) and OTP verify (traceId).
+2) The exact SendGrid 401 error payload + the env var name present in Cloud Run.
+3) A curl proof pack for each endpoint (request + response) using the production domain.
+
+RIGHT NOW FIX THESE 3 THINGS:
+
+A) SendGrid 401 (this is NOT “dev only” until proven)
+- Verify the API key in the running environment is correct.
+- The key must be full length and start with SG.
+- The backend must read process.env.SENDGRID_API_KEY.
+- If you are trimming or sanitizing, do not cut characters.
+- Add a startup assertion log (masking) that shows:
+  - SENDGRID_API_KEY present: true/false
+  - startsWithSG: true/false
+  - length: number
+  Never print the key itself.
+
+B) OTP must be “fintech grade” across iOS + Android
+- SMS content MUST include the code on its own line.
+- First OTP input MUST include:
+  - autoComplete="one-time-code"
+  - inputMode="numeric"
+  - pattern="[0-9]*"
+- Auto-submit when 6 digits filled.
+- Lock rules:
+  - TTL 5 minutes
+  - max attempts 5 then lock 15 minutes
+  - resend cooldown 60 seconds
+  - rate limit per phone + per IP + per deviceId
+
+C) Every signup must route correctly and store the correct user type
+- You must NOT guess role from client only.
+- On first login, the server must persist:
+  - userType: one of [public_customer, loyalty_member, provider_applicant, staff_request]
+  - onboardingStatus: one of [started, profile_required, kyc_required, pending_review, approved, rejected]
+  - membershipNumber: unique, generated server-side, stored and returned
+- Routing must be server-driven:
+  - public_customer -> /complete-profile (basic)
+  - loyalty_member -> /loyalty/complete-profile (includes DOB)
+  - provider_applicant -> /provider/onboarding (full profile + docs + review)
+  - staff_request -> /staff/request-access (requires admin approval before any staff routes)
+
+NOW DELIVER THESE OUTPUTS (NO EXCUSES):
+1) “Proof pack” for production:
+- curl POST /api/auth/otp/send
+- curl POST /api/auth/otp/verify
+- curl POST /api/email/welcome (or whatever endpoint sends welcome email)
+Include full responses and HTTP codes.
+
+2) SendGrid fix:
+- show env var validation log output from production
+- confirm SENDGRID_API_KEY is correct and SendGrid sends successfully
+
+3) Welcome email HTML (luxury) for 3 audiences:
+- public user
+- provider applicant
+- staff access request
+Each email must include the membershipNumber and must be saved server-side in an email_audit table:
+(emailType, userId, toEmail, membershipNumber, provider, messageId, sentAt, traceId)
+
+If any item above is not implemented, say “NOT DONE” and list the exact missing files and endpoints.

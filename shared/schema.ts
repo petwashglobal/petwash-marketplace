@@ -11405,3 +11405,27 @@ export const smsEvidence = pgTable("sms_evidence", {
 export type SmsEvidence = typeof smsEvidence.$inferSelect;
 export const insertSmsEvidenceSchema = createInsertSchema(smsEvidence).omit({ id: true, createdAt: true });
 export type InsertSmsEvidence = z.infer<typeof insertSmsEvidenceSchema>;
+
+export const emailAudit = pgTable("email_audit", {
+  id: serial("id").primaryKey(),
+  emailType: varchar("email_type", { length: 50 }).notNull(),
+  userId: varchar("user_id"),
+  toEmail: varchar("to_email", { length: 255 }).notNull(),
+  membershipNumber: varchar("membership_number", { length: 20 }),
+  provider: varchar("provider", { length: 30 }).default("sendgrid"),
+  messageId: varchar("message_id", { length: 200 }),
+  status: varchar("status", { length: 30 }).default("sent"),
+  failureReason: text("failure_reason"),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+  traceId: varchar("trace_id", { length: 50 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_email_audit_user").on(table.userId),
+  index("idx_email_audit_type").on(table.emailType),
+  index("idx_email_audit_email").on(table.toEmail),
+  index("idx_email_audit_sent").on(table.sentAt),
+  index("idx_email_audit_trace").on(table.traceId),
+]);
+export type EmailAuditRecord = typeof emailAudit.$inferSelect;
+export const insertEmailAuditSchema = createInsertSchema(emailAudit).omit({ id: true, createdAt: true });
+export type InsertEmailAudit = z.infer<typeof insertEmailAuditSchema>;

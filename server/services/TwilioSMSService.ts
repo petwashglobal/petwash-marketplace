@@ -20,8 +20,10 @@ const verificationCodes = new Map<string, VerificationCode>();
 const verificationTokens = new Map<string, VerificationToken>();
 
 const VERIFICATION_CODE_EXPIRY_MINUTES = 5;
-const MAX_VERIFICATION_ATTEMPTS = 3;
+const MAX_VERIFICATION_ATTEMPTS = 5;
 const VERIFICATION_TOKEN_EXPIRY_MINUTES = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+const phoneLockouts = new Map<string, number>();
 
 const ALPHA_SENDER_ID = 'PetWash';
 
@@ -248,12 +250,59 @@ class TwilioSMSService {
     }
   }
 
+  checkPhoneLockout(phone: string, language: string = 'he'): {
+    success: false;
+    message: string;
+    lockedUntil: number;
+  } | null {
+    const formattedPhone = this.formatPhoneNumber(phone);
+    const lockExpiry = phoneLockouts.get(formattedPhone);
+    if (lockExpiry && Date.now() < lockExpiry) {
+      const remainMin = Math.ceil((lockExpiry - Date.now()) / 60000);
+      const lockMsg: Record<string, string> = {
+        en: `Account locked. Try again in ${remainMin} minutes.`,
+        he: `החשבון נעול. נסו שוב בעוד ${remainMin} דקות.`,
+        ar: `الحساب مقفل. حاول مرة أخرى بعد ${remainMin} دقائق.`,
+        es: `Cuenta bloqueada. Intente de nuevo en ${remainMin} minutos.`,
+        fr: `Compte verrouillé. Réessayez dans ${remainMin} minutes.`,
+        ru: `Аккаунт заблокирован. Попробуйте через ${remainMin} минут.`,
+      };
+      return {
+        success: false,
+        message: lockMsg[language] || lockMsg.en,
+        lockedUntil: lockExpiry,
+      };
+    }
+    return null;
+  }
+
   verifyCode(phone: string, code: string, language: string = 'he'): {
     success: boolean;
     message: string;
     verificationToken?: string;
+    lockedUntil?: number;
   } {
     const formattedPhone = this.formatPhoneNumber(phone);
+
+    const lockExpiry = phoneLockouts.get(formattedPhone);
+    if (lockExpiry && Date.now() < lockExpiry) {
+      const remainMin = Math.ceil((lockExpiry - Date.now()) / 60000);
+      const lockMsg: Record<string, string> = {
+        en: `Account locked. Try again in ${remainMin} minutes.`,
+        he: `החשבון נעול. נסו שוב בעוד ${remainMin} דקות.`,
+        ar: `الحساب مقفل. حاول مرة أخرى بعد ${remainMin} دقائق.`,
+        es: `Cuenta bloqueada. Intente de nuevo en ${remainMin} minutos.`,
+        fr: `Compte verrouillé. Réessayez dans ${remainMin} minutes.`,
+        ru: `Аккаунт заблокирован. Попробуйте через ${remainMin} минут.`,
+      };
+      logger.warn('[TwilioSMS] Phone locked out', { phone: formattedPhone.slice(0, 6) + '****', remainMin });
+      return {
+        success: false,
+        message: lockMsg[language] || lockMsg.en,
+        lockedUntil: lockExpiry,
+      };
+    }
+
     const stored = verificationCodes.get(formattedPhone);
 
     if (!stored) {
@@ -273,9 +322,20 @@ class TwilioSMSService {
 
     if (stored.attempts >= MAX_VERIFICATION_ATTEMPTS) {
       verificationCodes.delete(formattedPhone);
+      phoneLockouts.set(formattedPhone, Date.now() + LOCKOUT_DURATION_MS);
+      logger.warn('[TwilioSMS] Max attempts reached, locking phone for 15min', { phone: formattedPhone.slice(0, 6) + '****' });
+      const lockMsg: Record<string, string> = {
+        en: 'Too many attempts. Locked for 15 minutes.',
+        he: 'חרגתם ממספר הניסיונות. נעול ל-15 דקות.',
+        ar: 'محاولات كثيرة. مقفل لمدة 15 دقيقة.',
+        es: 'Demasiados intentos. Bloqueado por 15 minutos.',
+        fr: 'Trop de tentatives. Verrouillé pour 15 minutes.',
+        ru: 'Слишком много попыток. Заблокировано на 15 минут.',
+      };
       return {
         success: false,
-        message: this.t('tooMany', language)
+        message: lockMsg[language] || lockMsg.en,
+        lockedUntil: Date.now() + LOCKOUT_DURATION_MS,
       };
     }
 

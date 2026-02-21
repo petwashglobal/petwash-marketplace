@@ -54,8 +54,26 @@ export class EmailService {
       logger.info(`System email sent to ${params.to}: ${params.subject}`);
       return true;
       
-    } catch (error) {
-      logger.error('Failed to send system email', error);
+    } catch (error: any) {
+      const errorPayload: Record<string, any> = {
+        errorName: error?.name || 'Error',
+        errorMessage: error?.message || 'Unknown',
+        errorCode: error?.code,
+      };
+      if (error?.response?.body) {
+        errorPayload.sendgridBody = error.response.body;
+      }
+      const sgErrors = error?.response?.body?.errors;
+      const sgErrorMsg = Array.isArray(sgErrors) ? sgErrors.map((e: any) => e.message).join('; ') : '';
+      if (sgErrorMsg.toLowerCase().includes('maximum credits exceeded')) {
+        errorPayload.diagnosis = 'SendGrid account quota exhausted (Maximum credits exceeded). Upgrade SendGrid plan or wait for credit reset.';
+      } else if (error?.code === 401 || error?.message?.includes('Unauthorized')) {
+        errorPayload.diagnosis = sgErrorMsg
+          ? `SendGrid 401: ${sgErrorMsg}`
+          : 'SendGrid API key is invalid, revoked, or does not have permissions for this sender address';
+      }
+      errorPayload.errorStack = error?.stack?.split('\n').slice(0, 3).join('\n');
+      logger.error('Failed to send system email', errorPayload);
       return false;
     }
   }

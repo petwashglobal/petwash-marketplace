@@ -28,8 +28,10 @@ const emailVerificationTokens = new Map<string, EmailVerificationToken>();
 const linkTokenToEmail = new Map<string, string>();
 
 const EMAIL_CODE_EXPIRY_MINUTES = 5;
-const MAX_EMAIL_ATTEMPTS = 3;
+const MAX_EMAIL_ATTEMPTS = 5;
 const EMAIL_TOKEN_EXPIRY_MINUTES = 30;
+const EMAIL_LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+const emailLockouts = new Map<string, number>();
 
 const verificationLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
@@ -119,12 +121,25 @@ function issueEmailVerificationToken(normalizedEmail: string): string {
 router.post('/send-email-code', verificationLimiter, async (req: Request, res: Response) => {
   try {
     const { email, language = 'he' } = req.body;
+    const isHebrew = language === 'he';
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ success: false, message: 'Invalid email address' });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+
+    const lockExpiry = emailLockouts.get(normalizedEmail);
+    if (lockExpiry && Date.now() < lockExpiry) {
+      const remainMin = Math.ceil((lockExpiry - Date.now()) / 60000);
+      return res.status(429).json({
+        success: false,
+        message: isHebrew
+          ? `האימייל נעול. נסו שוב בעוד ${remainMin} דקות.`
+          : `Email locked. Try again in ${remainMin} minutes.`,
+        lockedUntil: lockExpiry,
+      });
+    }
     const code = generateCode();
     const linkToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + EMAIL_CODE_EXPIRY_MINUTES * 60 * 1000);
@@ -143,7 +158,6 @@ router.post('/send-email-code', verificationLimiter, async (req: Request, res: R
     const baseUrl = getBaseUrl(req);
     const verifyLinkUrl = `${baseUrl}/api/onboarding-verification/verify-email-link?token=${linkToken}&lang=${language}`;
 
-    const isHebrew = language === 'he';
     const subject = isHebrew ? `⁦Pet Wash™⁩ - קוד אימות: ${code}` : `⁦Pet Wash™⁩ - Verification Code: ${code}`;
 
     const sent = await EmailService.send({
@@ -252,7 +266,25 @@ router.post('/check-email-link-status', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/verify-email-code', verificationLimiter, async (req: Request, res: Response) => {
+router.post('/verify-email-code', async (req: Request, res: Response, next) => {
+  const { email, language = 'he' } = req.body;
+  if (email) {
+    const normalizedEmail = email.toLowerCase().trim();
+    const lockExpiry = emailLockouts.get(normalizedEmail);
+    if (lockExpiry && Date.now() < lockExpiry) {
+      const remainMin = Math.ceil((lockExpiry - Date.now()) / 60000);
+      const isHebrew = language === 'he';
+      return res.status(429).json({
+        success: false,
+        message: isHebrew
+          ? `האימייל נעול. נסו שוב בעוד ${remainMin} דקות.`
+          : `Email locked. Try again in ${remainMin} minutes.`,
+        lockedUntil: lockExpiry,
+      });
+    }
+  }
+  next();
+}, verificationLimiter, async (req: Request, res: Response) => {
   try {
     const { email, code, language = 'he' } = req.body;
     const normalizedEmail = email?.toLowerCase().trim();
@@ -283,9 +315,12 @@ router.post('/verify-email-code', verificationLimiter, async (req: Request, res:
     if (stored.attempts >= MAX_EMAIL_ATTEMPTS) {
       emailVerificationCodes.delete(normalizedEmail);
       if (stored.linkToken) linkTokenToEmail.delete(stored.linkToken);
-      return res.status(400).json({
+      emailLockouts.set(normalizedEmail, Date.now() + EMAIL_LOCKOUT_DURATION_MS);
+      logger.warn('[Verification] Email max attempts reached, locking for 15min', { email: normalizedEmail.slice(0, 3) + '***' });
+      return res.status(429).json({
         success: false,
-        message: isHebrew ? 'חרגתם ממספר הניסיונות. בקשו קוד חדש.' : 'Too many attempts. Request a new code.',
+        message: isHebrew ? 'חרגתם ממספר הניסיונות. נעול ל-15 דקות.' : 'Too many attempts. Locked for 15 minutes.',
+        lockedUntil: Date.now() + EMAIL_LOCKOUT_DURATION_MS,
       });
     }
 
@@ -332,7 +367,16 @@ router.post('/send-sms-code', verificationLimiter, async (req: Request, res: Res
   }
 });
 
-router.post('/verify-sms-code', verificationLimiter, async (req: Request, res: Response) => {
+router.post('/verify-sms-code', async (req: Request, res: Response, next) => {
+  const { phone, language = 'he' } = req.body;
+  if (phone) {
+    const lockResult = twilioSMSService.checkPhoneLockout(phone, language);
+    if (lockResult) {
+      return res.status(429).json(lockResult);
+    }
+  }
+  next();
+}, verificationLimiter, async (req: Request, res: Response) => {
   try {
     const { phone, code, language = 'he' } = req.body;
 
@@ -341,6 +385,9 @@ router.post('/verify-sms-code', verificationLimiter, async (req: Request, res: R
     }
 
     const result = twilioSMSService.verifyCode(phone, code, language);
+    if (!result.success && result.lockedUntil) {
+      return res.status(429).json(result);
+    }
     return res.json(result);
   } catch (error: any) {
     logger.error('[Verification] SMS verify error', { error: error.message });
