@@ -248,7 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       try {
-        await fetch('/api/auth/signout', {
+        await fetch(getApiUrl('/api/auth/signout'), {
           method: 'POST',
           credentials: 'include',
         });

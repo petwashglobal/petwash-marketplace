@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getApiUrl } from '@/lib/apiConfig';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -118,7 +119,7 @@ export default function HRAdminDashboard() {
       const params = new URLSearchParams();
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (roleFilter !== 'all') params.append('roleType', roleFilter);
-      const response = await fetch(`/api/careers/admin/applications?${params}`);
+      const response = await fetch(getApiUrl(`/api/careers/admin/applications?${params}`));
       if (!response.ok) throw new Error('Failed to fetch applications');
       return response.json();
     },

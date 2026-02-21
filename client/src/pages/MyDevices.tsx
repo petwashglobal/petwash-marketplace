@@ -8,6 +8,7 @@ import { Smartphone, Trash2, Loader2, ShieldCheck, Info } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
+import { getApiUrl } from '@/lib/apiConfig';
 import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 
@@ -42,7 +43,7 @@ export default function MyDevices({ language, onLanguageChange }: MyDevicesProps
   const deleteMutation = useMutation({
     mutationFn: async (credentialId: string) => {
       setDeletingId(credentialId);
-      const response = await fetch(`/api/webauthn/credentials/${credentialId}`, {
+      const response = await fetch(getApiUrl(`/api/webauthn/credentials/${credentialId}`), {
         method: 'DELETE',
         credentials: 'include',
       });

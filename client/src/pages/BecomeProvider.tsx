@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/lib/languageStore';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { apiRequest } from '@/lib/queryClient';
+import { getApiUrl } from '@/lib/apiConfig';
 import {
   ChevronRight,
   ChevronLeft,
@@ -226,7 +227,7 @@ export default function BecomeProvider() {
       const headers: Record<string, string> = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
       const doFetch = async () => {
-        const response = await fetch('/api/provider-applications', {
+        const response = await fetch(getApiUrl('/api/provider-applications'), {
           method: 'POST',
           headers,
           body: formData,

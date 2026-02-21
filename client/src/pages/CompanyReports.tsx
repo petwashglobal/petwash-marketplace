@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getApiUrl } from '@/lib/apiConfig';
 import { Button } from "@/components/ui/button";
 import { 
   BarChart, Download, FileText, TrendingUp, TrendingDown, 
@@ -20,7 +21,7 @@ export default function CompanyReports() {
 
   const downloadReport = async (language: 'hebrew' | 'english') => {
     try {
-      const response = await fetch(`/api/company-reports/${language}`);
+      const response = await fetch(getApiUrl(`/api/company-reports/${language}`));
       if (!response.ok) throw new Error('Download failed');
       
       const blob = await response.blob();

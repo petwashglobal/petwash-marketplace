@@ -19,6 +19,7 @@ import {
   Upload,
   Loader2
 } from 'lucide-react';
+import { getApiUrl } from '@/lib/apiConfig';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -76,7 +77,7 @@ export default function MyApplications() {
   const { data: applications, isLoading, refetch, isRefetching } = useQuery<Application[]>({
     queryKey: ['/api/careers/my-applications', searchedEmail],
     queryFn: async () => {
-      const response = await fetch(`/api/careers/my-applications?email=${encodeURIComponent(searchedEmail)}`);
+      const response = await fetch(getApiUrl(`/api/careers/my-applications?email=${encodeURIComponent(searchedEmail)}`));
       if (!response.ok) {
         throw new Error('Failed to fetch applications');
       }

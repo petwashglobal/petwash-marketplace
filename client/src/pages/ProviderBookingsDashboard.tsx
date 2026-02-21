@@ -529,7 +529,7 @@ function UpcomingBookingCard({
 
   const completeMeetGreetMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/booking-requests/${booking.requestId}/meet-greet`, {
+      const res = await fetch(getApiUrl(`/api/booking-requests/${booking.requestId}/meet-greet`), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -547,7 +547,7 @@ function UpcomingBookingCard({
 
   const startServiceMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/booking-requests/${booking.requestId}/start`, {
+      const res = await fetch(getApiUrl(`/api/booking-requests/${booking.requestId}/start`), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -643,7 +643,7 @@ function ActiveBookingCard({
 
   const completeServiceMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/booking-requests/${booking.requestId}/complete`, {
+      const res = await fetch(getApiUrl(`/api/booking-requests/${booking.requestId}/complete`), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

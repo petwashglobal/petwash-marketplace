@@ -363,7 +363,7 @@ export default function Settings() {
     try {
       const token = await firebaseUser.getIdToken();
       
-      const response = await fetch(`/api/auth/webauthn/devices/${credentialId}/rename`, {
+      const response = await fetch(getApiUrl(`/api/auth/webauthn/devices/${credentialId}/rename`), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -409,7 +409,7 @@ export default function Settings() {
     try {
       const token = await firebaseUser.getIdToken();
       
-      const response = await fetch(`/api/auth/webauthn/devices/${credentialId}`, {
+      const response = await fetch(getApiUrl(`/api/auth/webauthn/devices/${credentialId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

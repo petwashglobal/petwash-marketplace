@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { getApiUrl } from '@/lib/apiConfig';
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,7 +31,7 @@ export default function SuppliersDashboard() {
       const endpoint = view === "active" 
         ? "/api/enterprise/corporate/suppliers/active"
         : "/api/enterprise/corporate/suppliers";
-      const response = await fetch(endpoint, { credentials: "include" });
+      const response = await fetch(getApiUrl(endpoint), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch suppliers");
       return response.json();
     },
@@ -40,7 +41,7 @@ export default function SuppliersDashboard() {
     queryKey: ["/api/enterprise/corporate/suppliers", selectedSupplier?.id, "contracts"],
     queryFn: async () => {
       if (!selectedSupplier) return null;
-      const response = await fetch(`/api/enterprise/corporate/suppliers/${selectedSupplier.id}/contracts`, { credentials: "include" });
+      const response = await fetch(getApiUrl(`/api/enterprise/corporate/suppliers/${selectedSupplier.id}/contracts`), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch contracts");
       return response.json();
     },
@@ -51,7 +52,7 @@ export default function SuppliersDashboard() {
     queryKey: ["/api/enterprise/corporate/suppliers", selectedSupplier?.id, "payments"],
     queryFn: async () => {
       if (!selectedSupplier) return null;
-      const response = await fetch(`/api/enterprise/corporate/suppliers/${selectedSupplier.id}/payments`, { credentials: "include" });
+      const response = await fetch(getApiUrl(`/api/enterprise/corporate/suppliers/${selectedSupplier.id}/payments`), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch payments");
       return response.json();
     },
@@ -62,7 +63,7 @@ export default function SuppliersDashboard() {
     queryKey: ["/api/enterprise/corporate/suppliers", selectedSupplier?.id, "quality-scores"],
     queryFn: async () => {
       if (!selectedSupplier) return null;
-      const response = await fetch(`/api/enterprise/corporate/suppliers/${selectedSupplier.id}/quality-scores`, { credentials: "include" });
+      const response = await fetch(getApiUrl(`/api/enterprise/corporate/suppliers/${selectedSupplier.id}/quality-scores`), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch quality scores");
       return response.json();
     },

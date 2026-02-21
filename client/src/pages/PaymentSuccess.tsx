@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getApiUrl } from '@/lib/apiConfig';
 import { useLocation } from 'wouter';
 import { CheckCircle, Download, Share2, Sparkles, Home, ArrowRight } from 'lucide-react';
 import { trackPaymentSuccess } from '@/lib/analytics';
@@ -47,7 +48,7 @@ export default function PaymentSuccess({ language }: PaymentSuccessProps) {
 
   const fetchVoucherDetails = async (transactionId: string) => {
     try {
-      const response = await fetch(`/api/payment-success/${transactionId}`);
+      const response = await fetch(getApiUrl(`/api/payment-success/${transactionId}`));
       if (response.ok) {
         const data = await response.json();
         setVoucherDetails(data);

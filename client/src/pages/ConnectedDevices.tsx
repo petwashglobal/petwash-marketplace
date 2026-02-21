@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getApiUrl } from '@/lib/apiConfig';
 import { auth } from '../lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,7 +61,7 @@ export default function ConnectedDevices() {
   const removeMutation = useMutation({
     mutationFn: async (deviceId: string) => {
       const idToken = await auth.currentUser!.getIdToken();
-      const response = await fetch(`/api/devices/${deviceId}`, {
+      const response = await fetch(getApiUrl(`/api/devices/${deviceId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${idToken}`,
@@ -95,7 +96,7 @@ export default function ConnectedDevices() {
   const renameMutation = useMutation({
     mutationFn: async ({ deviceId, label }: { deviceId: string; label: string }) => {
       const idToken = await auth.currentUser!.getIdToken();
-      const response = await fetch(`/api/devices/${deviceId}`, {
+      const response = await fetch(getApiUrl(`/api/devices/${deviceId}`), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

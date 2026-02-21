@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { getApiUrl } from '@/lib/apiConfig';
 import { useLocation } from 'wouter';
 import { Layout } from '@/components/Layout';
 import { type Language, t } from '@/lib/i18n';
@@ -68,7 +69,7 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
     localStorage.setItem('petwash_consent_given', JSON.stringify(consentPayload));
 
     try {
-      await fetch('/api/consent/onboarding', {
+      await fetch(getApiUrl('/api/consent/onboarding'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(consentPayload),

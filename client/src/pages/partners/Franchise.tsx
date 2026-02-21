@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { getApiUrl } from "@/lib/apiConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,7 +37,7 @@ export default function FranchisePartners() {
     }
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/franchise/inquiry', {
+      const res = await fetch(getApiUrl('/api/franchise/inquiry'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

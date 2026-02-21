@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { getApiUrl } from '@/lib/apiConfig';
 import { Kenzo3DRealistic } from '@/components/Kenzo3DRealistic';
 import { Send, ArrowLeft, Globe, Sparkles, Loader2 } from 'lucide-react';
 import { Link } from 'wouter';
@@ -91,7 +92,7 @@ export default function KenzoAI() {
     const newHistory = [...conversationHistory, { role: 'user' as const, text: text.trim() }];
 
     try {
-      const res = await fetch('/api/ai/chat', {
+      const res = await fetch(getApiUrl('/api/ai/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

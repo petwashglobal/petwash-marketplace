@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { X, Type, Palette, RotateCcw, Eye, MousePointer, ZoomIn, ZoomOut, Minus, Send, FileText, MessageSquare, ImageOff } from 'lucide-react';
 import type { Language } from '@/lib/i18n';
 import { apiRequest } from '@/lib/queryClient';
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface AccessibilityMenuProps {
   language: Language;
@@ -361,7 +362,7 @@ export function AccessibilityMenu({ language, isOpen, onClose }: AccessibilityMe
 
   const logAudit = useCallback((action: string, details?: string) => {
     try {
-      fetch('/api/accessibility-audit', {
+      fetch(getApiUrl('/api/accessibility-audit'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -399,7 +400,7 @@ export function AccessibilityMenu({ language, isOpen, onClose }: AccessibilityMe
     if (statement) return;
     setStatementLoading(true);
     try {
-      const res = await fetch('/api/accessibility-statement');
+      const res = await fetch(getApiUrl('/api/accessibility-statement'));
       if (res.ok) {
         const data = await res.json();
         setStatement(data);

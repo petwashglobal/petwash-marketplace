@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { getApiUrl } from '@/lib/apiConfig';
 import { MobileDatePicker } from "@/components/ui/mobile-date-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -73,7 +74,7 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
         from: fromDate.toISOString(),
         to: toDate.toISOString(),
       });
-      const res = await fetch(`/api/bookings/availability?${params}`);
+      const res = await fetch(getApiUrl(`/api/bookings/availability?${params}`));
       if (!res.ok) throw new Error('Failed to fetch availability');
       return res.json();
     },

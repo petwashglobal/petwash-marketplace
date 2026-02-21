@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useLanguage } from '@/lib/languageStore';
+import { getApiUrl } from '@/lib/apiConfig';
 
 interface Document {
   id: number;
@@ -153,7 +154,7 @@ export default function DocumentManagement() {
 
   const handleDownload = async (doc: Document) => {
     try {
-      const response = await fetch(`/api/documents/${doc.id}/download`);
+      const response = await fetch(getApiUrl(`/api/documents/${doc.id}/download`));
       const data = await response.json();
       if (data.downloadUrl) {
         window.open(data.downloadUrl, '_blank');

@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { getApiUrl } from '@/lib/apiConfig';
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +27,7 @@ export default function JvPartnersDashboard() {
       const endpoint = view === "active" 
         ? "/api/enterprise/corporate/jv-partners/active"
         : "/api/enterprise/corporate/jv-partners";
-      const response = await fetch(endpoint, { credentials: "include" });
+      const response = await fetch(getApiUrl(endpoint), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch JV partners");
       return response.json();
     },
@@ -36,7 +37,7 @@ export default function JvPartnersDashboard() {
     queryKey: ["/api/enterprise/corporate/jv-partners", selectedPartner?.id, "contracts"],
     queryFn: async () => {
       if (!selectedPartner) return null;
-      const response = await fetch(`/api/enterprise/corporate/jv-partners/${selectedPartner.id}/contracts`, { credentials: "include" });
+      const response = await fetch(getApiUrl(`/api/enterprise/corporate/jv-partners/${selectedPartner.id}/contracts`), { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch contracts");
       return response.json();
     },

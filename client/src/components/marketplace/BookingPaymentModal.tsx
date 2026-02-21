@@ -9,6 +9,7 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { getApiUrl } from '@/lib/apiConfig';
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -62,7 +63,7 @@ export function BookingPaymentModal({
   const paymentMutation = useMutation({
     mutationFn: async () => {
       if (!booking) throw new Error('No booking');
-      const res = await fetch(`/api/booking-requests/${booking.requestId}/pay`, {
+      const res = await fetch(getApiUrl(`/api/booking-requests/${booking.requestId}/pay`), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -94,7 +95,7 @@ export function BookingPaymentModal({
   const confirmMutation = useMutation({
     mutationFn: async () => {
       if (!booking) throw new Error('No booking');
-      const res = await fetch(`/api/booking-requests/${booking.requestId}/confirm`, {
+      const res = await fetch(getApiUrl(`/api/booking-requests/${booking.requestId}/confirm`), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

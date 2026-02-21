@@ -10,6 +10,7 @@ import { GlassmorphismCard, LuxuryButton } from '@/components/luxury/Glassmorphi
 import { useToast } from '@/hooks/use-toast';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
+import { getApiUrl } from '@/lib/apiConfig';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import {
   Star, MapPin, Shield, CheckCircle2, Award, Calendar as CalendarIcon,
@@ -45,7 +46,7 @@ export default function SitterDetail() {
     queryKey: ['/api/sitter-suite/pets', user?.uid],
     queryFn: () => {
       if (!user?.uid) throw new Error('User not authenticated');
-      return fetch(`/api/sitter-suite/pets?userId=${user.uid}`).then(res => {
+      return fetch(getApiUrl(`/api/sitter-suite/pets?userId=${user.uid}`)).then(res => {
         if (!res.ok) throw new Error('Failed to fetch pets');
         return res.json();
       });

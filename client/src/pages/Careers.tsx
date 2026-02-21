@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { getApiUrl } from '@/lib/apiConfig';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
@@ -166,7 +167,7 @@ export default function Careers() {
   // Load draft data when application is started (rehydration)
   const loadDraftProgress = useCallback(async (appId: number) => {
     try {
-      const response = await fetch(`/api/careers/applications/${appId}/progress`);
+      const response = await fetch(getApiUrl(`/api/careers/applications/${appId}/progress`));
       if (!response.ok) return;
       
       const data = await response.json();
@@ -368,7 +369,7 @@ export default function Careers() {
       formDataUpload.append('document', resumeFile);
       formDataUpload.append('documentType', 'resume');
       
-      const response = await fetch(`/api/careers/applications/${submittedApplicationId}/documents`, {
+      const response = await fetch(getApiUrl(`/api/careers/applications/${submittedApplicationId}/documents`), {
         method: 'POST',
         body: formDataUpload,
       });

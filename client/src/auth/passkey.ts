@@ -608,7 +608,7 @@ export async function removePasskeyDevice(
   credId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch(`/api/auth/webauthn/devices/${credId}`, {
+    const response = await fetch(getApiUrl(`/api/auth/webauthn/devices/${credId}`), {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${firebaseToken}`,
@@ -636,7 +636,7 @@ export async function renamePasskeyDevice(
   newName: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch(`/api/auth/webauthn/devices/${credId}/rename`, {
+    const response = await fetch(getApiUrl(`/api/auth/webauthn/devices/${credId}/rename`), {
       method: 'PATCH',
       headers: {
         'Authorization': `Bearer ${firebaseToken}`,

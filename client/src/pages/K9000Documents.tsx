@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { getApiUrl } from '@/lib/apiConfig';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -63,7 +64,7 @@ export default function K9000Documents() {
 
   const handleDownload = async (doc: Document) => {
     try {
-      const response = await fetch(`/api/documents/${doc.id}/download`, {
+      const response = await fetch(getApiUrl(`/api/documents/${doc.id}/download`), {
         credentials: 'include',
       });
 
@@ -97,7 +98,7 @@ export default function K9000Documents() {
   const handleView = async (doc: Document) => {
     setSelectedDocument(doc);
     try {
-      const response = await fetch(`/api/documents/${doc.id}/view`, {
+      const response = await fetch(getApiUrl(`/api/documents/${doc.id}/view`), {
         credentials: 'include',
       });
 

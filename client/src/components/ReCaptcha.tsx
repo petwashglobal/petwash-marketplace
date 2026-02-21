@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { getApiUrl } from '@/lib/apiConfig';
 import { logger } from '@/lib/logger';
 import { Shield, CheckCircle2, Loader2 } from 'lucide-react';
 
@@ -130,7 +131,7 @@ export async function executeReCaptcha(action: string = 'submit'): Promise<strin
 
 export async function verifyReCaptchaOnServer(token: string, action: string): Promise<{ success: boolean; score?: number }> {
   try {
-    const response = await fetch('/api/recaptcha/verify', {
+    const response = await fetch(getApiUrl('/api/recaptcha/verify'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, action }),

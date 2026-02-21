@@ -35,6 +35,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { getApiUrl } from '@/lib/apiConfig';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 
 interface Position {
@@ -133,7 +134,7 @@ export default function JobManagement() {
       const params = new URLSearchParams();
       if (roleFilter !== 'all') params.append('roleType', roleFilter);
       if (activeFilter !== 'all') params.append('isActive', activeFilter);
-      const response = await fetch(`/api/careers/admin/positions?${params}`);
+      const response = await fetch(getApiUrl(`/api/careers/admin/positions?${params}`));
       if (!response.ok) throw new Error('Failed to fetch positions');
       return response.json();
     },

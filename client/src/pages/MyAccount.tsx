@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
+import { getApiUrl } from '@/lib/apiConfig';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { useToast } from '@/hooks/use-toast';
@@ -286,7 +287,7 @@ export default function MyAccount() {
     queryFn: async () => {
       if (!user) return null;
       const token = await user.getIdToken();
-      const res = await fetch('/api/user/settings/verification-status', {
+      const res = await fetch(getApiUrl('/api/user/settings/verification-status'), {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Failed to fetch verification status');
@@ -302,7 +303,7 @@ export default function MyAccount() {
       const formData = new FormData();
       formData.append('photo', file);
 
-      const res = await fetch('/api/user/settings/profile/photo', {
+      const res = await fetch(getApiUrl('/api/user/settings/profile/photo'), {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
@@ -346,7 +347,7 @@ export default function MyAccount() {
     setIsUploadingPhoto(true);
     try {
       const token = await user.getIdToken();
-      const res = await fetch('/api/user/settings/profile/photo', {
+      const res = await fetch(getApiUrl('/api/user/settings/profile/photo'), {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
       });

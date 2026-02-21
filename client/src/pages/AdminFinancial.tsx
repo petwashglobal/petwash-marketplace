@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getApiUrl } from '@/lib/apiConfig';
 import { Layout } from "@/components/Layout";
 import { type Language } from "@/lib/i18n";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -58,7 +59,7 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
   const { data: vatDeclarations } = useQuery({
     queryKey: ['/api/accounting/vat/declarations', selectedYear],
     queryFn: async () => {
-      const res = await fetch(`/api/accounting/vat/declarations?year=${selectedYear}`, { credentials: 'include' });
+      const res = await fetch(getApiUrl(`/api/accounting/vat/declarations?year=${selectedYear}`), { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch VAT declarations');
       return res.json();
     },
@@ -67,7 +68,7 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
   const { data: expenses } = useQuery({
     queryKey: ['/api/accounting/expenses', selectedYear, selectedMonth],
     queryFn: async () => {
-      const res = await fetch(`/api/accounting/expenses?year=${selectedYear}&month=${selectedMonth}`, { credentials: 'include' });
+      const res = await fetch(getApiUrl(`/api/accounting/expenses?year=${selectedYear}&month=${selectedMonth}`), { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch expenses');
       return res.json();
     },
@@ -76,7 +77,7 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
   const { data: financialOverview, isLoading: overviewLoading } = useQuery({
     queryKey: ['/api/accounting/financial-overview', selectedYear],
     queryFn: async () => {
-      const res = await fetch(`/api/accounting/financial-overview?year=${selectedYear}`, { credentials: 'include' });
+      const res = await fetch(getApiUrl(`/api/accounting/financial-overview?year=${selectedYear}`), { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch financial overview');
       return res.json();
     },
@@ -106,7 +107,7 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
 
   const generateReport = async (type: string) => {
     try {
-      const response = await fetch(`/api/accounting/${type}/generate`, {
+      const response = await fetch(getApiUrl(`/api/accounting/${type}/generate`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ year: selectedYear, month: selectedMonth })

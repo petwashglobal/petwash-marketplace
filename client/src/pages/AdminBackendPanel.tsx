@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { getApiUrl } from '@/lib/apiConfig';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -156,7 +157,7 @@ export default function AdminBackendPanel() {
       const params = new URLSearchParams();
       if (memberSearch) params.set("search", memberSearch);
       params.set("page", String(memberPage));
-      const res = await fetch(`/api/admin-panel/members?${params}`);
+      const res = await fetch(getApiUrl(`/api/admin-panel/members?${params}`));
       return res.json();
     },
     enabled: activeTab === "members" || activeTab === "overview",
@@ -169,7 +170,7 @@ export default function AdminBackendPanel() {
       if (providerSearch) params.set("search", providerSearch);
       if (providerStatus) params.set("status", providerStatus);
       params.set("page", String(providerPage));
-      const res = await fetch(`/api/admin-panel/providers?${params}`);
+      const res = await fetch(getApiUrl(`/api/admin-panel/providers?${params}`));
       return res.json();
     },
     enabled: activeTab === "providers" || activeTab === "overview",
@@ -182,7 +183,7 @@ export default function AdminBackendPanel() {
       if (staffSearch) params.set("search", staffSearch);
       if (staffStatus) params.set("status", staffStatus);
       params.set("page", String(staffPage));
-      const res = await fetch(`/api/admin-panel/staff?${params}`);
+      const res = await fetch(getApiUrl(`/api/admin-panel/staff?${params}`));
       return res.json();
     },
     enabled: activeTab === "staff" || activeTab === "overview",

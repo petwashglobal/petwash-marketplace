@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getApiUrl } from '@/lib/apiConfig';
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { t } from "@/lib/i18n";
@@ -234,7 +235,7 @@ export default function CommunicationCenter() {
       if (emailFilter.category) params.append('category', emailFilter.category);
       if (emailFilter.isActive) params.append('isActive', emailFilter.isActive);
       
-      const response = await fetch(`/api/crm/communications/email-templates?${params}`, {
+      const response = await fetch(getApiUrl(`/api/crm/communications/email-templates?${params}`), {
         credentials: 'include',
       });
       
@@ -251,7 +252,7 @@ export default function CommunicationCenter() {
       if (smsFilter.category) params.append('category', smsFilter.category);
       if (smsFilter.isActive) params.append('isActive', smsFilter.isActive);
       
-      const response = await fetch(`/api/crm/communications/sms-templates?${params}`, {
+      const response = await fetch(getApiUrl(`/api/crm/communications/sms-templates?${params}`), {
         credentials: 'include',
       });
       
@@ -268,7 +269,7 @@ export default function CommunicationCenter() {
       if (reminderFilter.status) params.append('status', reminderFilter.status);
       if (reminderFilter.reminderType) params.append('reminderType', reminderFilter.reminderType);
       
-      const response = await fetch(`/api/crm/communications/appointment-reminders?${params}`, {
+      const response = await fetch(getApiUrl(`/api/crm/communications/appointment-reminders?${params}`), {
         credentials: 'include',
       });
       
