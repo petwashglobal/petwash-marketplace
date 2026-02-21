@@ -118,3 +118,9 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **AI & Vision**: Google Cloud Vision API, Google Gemini AI, Google Cloud Translation API, Google Dialogflow CX.
 - **Business Management**: Google Business Profile API.
 - **Google Forms Integration**: Admin-configurable embedded Google Forms.
+
+## Recent Changes (Feb 2026)
+- **3-Class Membership ID System**: Unified PWM-XXXXXXX (customers), PWP-XXXXXXX (providers), PWS-XXXXXXX (staff) with collision-safe generation via MembershipService. IDs assigned server-side only after OTP verification.
+- **OTP Phone Verification (Multi-Channel)**: RegistrationOTPService with SHA-256 hash storage, constant-time comparison, rate limiting (5/hr per phone, 10/10min per IP, 60sec cooldown), Redis with in-memory fallback. Multi-channel delivery: SMS (default) + WhatsApp fallback via Twilio. API endpoints: /api/auth/phone/otp/send, /api/auth/phone/otp/verify, /api/auth/phone/otp/resend (channel switching).
+- **SMS Evidence & Audit Trail**: otp_events and sms_evidence tables for legal compliance. Rendered SMS text, content hash, provider message ID, delivery status all logged. Provider field tracks twilio vs twilio_whatsapp.
+- **Welcome SMS Templates**: 3 user types x 2 languages (Hebrew/English) with membership ID injection.

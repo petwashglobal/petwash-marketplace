@@ -558,6 +558,12 @@ import { smsEvidence } from '@shared/schema';
 const otpSendSchema = z.object({
   phone: z.string().min(8).max(20),
   userTypeIntent: z.enum(['PUBLIC', 'PROVIDER', 'STAFF_REQUEST']).default('PUBLIC'),
+  channel: z.enum(['sms', 'whatsapp']).default('sms'),
+});
+
+const otpResendSchema = z.object({
+  otpId: z.string().uuid(),
+  channel: z.enum(['sms', 'whatsapp']).default('whatsapp'),
 });
 
 const otpVerifySchema = z.object({
@@ -572,7 +578,7 @@ publicAuthRouter.post('/api/auth/phone/otp/send', async (req, res) => {
       return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid phone number or intent', details: parsed.error.flatten() });
     }
 
-    const { phone, userTypeIntent } = parsed.data;
+    const { phone, userTypeIntent, channel } = parsed.data;
     const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
 
     const result = await registrationOTPService.sendOTP(phone, userTypeIntent, {
@@ -580,6 +586,7 @@ publicAuthRouter.post('/api/auth/phone/otp/send', async (req, res) => {
       userAgent: req.headers['user-agent'],
       traceId: (req as any).traceId,
       language,
+      channel,
     });
 
     if (!result.success) {
@@ -596,11 +603,57 @@ publicAuthRouter.post('/api/auth/phone/otp/send', async (req, res) => {
       success: true,
       otpId: result.otpId,
       expiresIn: result.expiresIn,
-      message: language === 'he' ? 'קוד אימות נשלח' : 'Verification code sent',
+      channel: result.channel,
+      message: language === 'he'
+        ? (channel === 'whatsapp' ? 'קוד אימות נשלח בוואטסאפ' : 'קוד אימות נשלח ב-SMS')
+        : (channel === 'whatsapp' ? 'Verification code sent via WhatsApp' : 'Verification code sent via SMS'),
     });
   } catch (err) {
     logger.error('[PublicAuth] Phone send-code error:', err);
     res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to send verification code' });
+  }
+});
+
+publicAuthRouter.post('/api/auth/phone/otp/resend', async (req, res) => {
+  try {
+    const parsed = otpResendSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid request' });
+    }
+
+    const { otpId, channel } = parsed.data;
+    const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
+
+    const result = await registrationOTPService.resendOTP(otpId, channel, {
+      ip: req.ip || req.headers['x-forwarded-for']?.toString(),
+      userAgent: req.headers['user-agent'],
+      traceId: (req as any).traceId,
+      language,
+    });
+
+    if (!result.success) {
+      const statusCode = result.error === 'OTP_EXPIRED' ? 410 : 429;
+      return res.status(statusCode).json({
+        error: result.error,
+        cooldownRemaining: result.cooldownRemaining,
+        message: result.error === 'OTP_EXPIRED'
+          ? (language === 'he' ? 'הקוד פג תוקף, בקשו קוד חדש' : 'Code expired, please request a new one')
+          : (language === 'he' ? 'אנא המתינו לפני שליחת קוד חדש' : 'Please wait before requesting a new code'),
+      });
+    }
+
+    res.json({
+      success: true,
+      otpId: result.otpId,
+      expiresIn: result.expiresIn,
+      channel: result.channel,
+      message: language === 'he'
+        ? (channel === 'whatsapp' ? 'קוד חדש נשלח בוואטסאפ' : 'קוד חדש נשלח ב-SMS')
+        : (channel === 'whatsapp' ? 'New code sent via WhatsApp' : 'New code sent via SMS'),
+    });
+  } catch (err) {
+    logger.error('[PublicAuth] Phone resend-code error:', err);
+    res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to resend verification code' });
   }
 });
 
