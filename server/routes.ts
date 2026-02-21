@@ -9370,6 +9370,15 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/unified', apiLimiter, unifiedPlatformRoutes);
   
   // ⁦Walk My Pet™⁩ - Premium dog walking marketplace
+  app.get('/api/walk-my-pet', (req, res) => {
+    res.json({
+      platform: 'Walk My Pet',
+      status: 'active',
+      version: '2.0',
+      services: ['dog-walking', 'group-walks', 'emergency-walks'],
+      certified: true
+    });
+  });
   app.use('/api/walk-my-pet', apiLimiter, walkMyPetRoutes);
   app.use(apiLimiter, walkMyPetRoutes);
   

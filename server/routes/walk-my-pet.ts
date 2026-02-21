@@ -27,16 +27,6 @@ import { calendarIntegrationService } from '../services/CalendarIntegrationServi
 
 const router = Router();
 
-router.get('/', (req, res) => {
-  res.json({
-    platform: 'Walk My Pet',
-    status: 'active',
-    version: '2.0',
-    services: ['dog-walking', 'group-walks', 'emergency-walks'],
-    certified: true
-  });
-});
-
 // =================== WALKER REGISTRATION & PROFILES ===================
 
 // Create walker profile (first step of registration)
