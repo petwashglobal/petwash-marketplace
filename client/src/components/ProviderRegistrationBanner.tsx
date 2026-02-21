@@ -1,47 +1,20 @@
-import { useState } from "react";
 import { useLocation } from "wouter";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { PhoneInput } from "@/components/PhoneInput";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Sparkles,
   DollarSign,
   Clock,
   Shield,
   Heart,
-  Upload,
   CheckCircle2,
-  Star,
-  Users,
   Briefcase,
   Car,
   GraduationCap,
   Dog,
   Home,
   ArrowRight,
-  FileText,
   Wallet,
-  MapPin,
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
-import { getApiUrl } from '@/lib/apiConfig';
 import { useLanguage } from "@/lib/languageStore";
 
 type ProviderType = "sitter" | "walker" | "driver" | "trainer";
@@ -59,34 +32,11 @@ export default function ProviderRegistrationBanner({
 }: ProviderRegistrationBannerProps) {
   const { t, dir, language } = useLanguage();
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
   const isRTL = dir === "rtl";
   
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<ProviderType | "">(
-    platform !== "all" ? platform : ""
-  );
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    city: "",
-    experience: "",
-    aboutMe: "",
-    whyJoinPetWash: "",
-    hasVehicle: false,
-    hasPetExperience: false,
-    hasFirstAid: false,
-    agreeToTerms: false,
-    agreeToPrivacy: false,
-  });
-  const [documents, setDocuments] = useState<{
-    id?: File;
-    certificate?: File;
-    insurance?: File;
-  }>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigateToOnboarding = () => {
+    setLocation("/become-provider");
+  };
 
   const providerTypes = [
     {
@@ -151,153 +101,6 @@ export default function ProviderRegistrationBanner({
     t("providerBanner.reqAvailability"),
   ];
 
-  const handleFileChange = (type: "id" | "certificate" | "insurance", file: File | null) => {
-    if (file) {
-      setDocuments((prev) => ({ ...prev, [type]: file }));
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!formData.firstName.trim() || !formData.lastName.trim()) {
-      toast({
-        title: t("providerBanner.fullNameRequired"),
-        description: t("providerBanner.enterFullName"),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      toast({
-        title: t("providerBanner.invalidEmail"),
-        description: t("providerBanner.enterValidEmail"),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.phone.trim() || formData.phone.replace(/\D/g, '').length < 9) {
-      toast({
-        title: t("providerBanner.invalidPhone"),
-        description: t("providerBanner.enterValidPhone"),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.city.trim()) {
-      toast({
-        title: t("providerBanner.cityRequired"),
-        description: t("providerBanner.enterCity"),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.aboutMe.trim() || formData.aboutMe.length < 20) {
-      toast({
-        title: t("providerBanner.tellAboutYourself"),
-        description: t("providerBanner.writeMinChars"),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.whyJoinPetWash.trim() || formData.whyJoinPetWash.length < 20) {
-      toast({
-        title: t("providerBanner.whyJoinTitle"),
-        description: t("providerBanner.writeMinChars"),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.agreeToTerms || !formData.agreeToPrivacy) {
-      toast({
-        title: t("providerBanner.agreementRequired"),
-        description: t("providerBanner.agreeToTermsDesc"),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!selectedType) {
-      toast({
-        title: t("providerBanner.selectServiceType"),
-        description: t("providerBanner.selectServiceDesc"),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const submitData = {
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
-        email: formData.email.trim().toLowerCase(),
-        phoneNumber: formData.phone.trim(),
-        city: formData.city.trim(),
-        providerType: selectedType,
-        selectedPlatforms: [selectedType],
-        yearsExperience: formData.experience || "0",
-        hasOwnTransport: formData.hasVehicle,
-        hasPetFirstAid: formData.hasFirstAid,
-        hasInsurance: false,
-        aboutMe: formData.aboutMe.trim(),
-        whyJoinPetWash: formData.whyJoinPetWash.trim(),
-        agreeToTerms: formData.agreeToTerms,
-        agreeToPrivacy: formData.agreeToPrivacy,
-        agreeToContractorStatus: true,
-      };
-
-      const response = await fetch(getApiUrl("/api/provider-intake/submit"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(submitData),
-      });
-
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        toast({
-          title: t("providerBanner.applicationSubmitted"),
-          description: t("providerBanner.contactWithin48"),
-        });
-        setIsFormOpen(false);
-        setFormData({
-          firstName: "",
-          lastName: "",
-          email: "",
-          phone: "",
-          city: "",
-          experience: "",
-          aboutMe: "",
-          whyJoinPetWash: "",
-          hasVehicle: false,
-          hasPetExperience: false,
-          hasFirstAid: false,
-          agreeToTerms: false,
-          agreeToPrivacy: false,
-        });
-        setDocuments({});
-      } else {
-        throw new Error(result.error || "Failed to submit");
-      }
-    } catch (error: any) {
-      toast({
-        title: t("providerBanner.submissionError"),
-        description: error.message || t("providerBanner.tryAgainLater"),
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   if (variant === "compact") {
     return (
       <div className={`bg-emerald-50 border border-emerald-200 rounded-2xl p-6 ${className}`}>
@@ -316,33 +119,13 @@ export default function ProviderRegistrationBanner({
             </div>
           </div>
           <Button
-            onClick={() => setIsFormOpen(true)}
+            onClick={navigateToOnboarding}
             className="bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white font-bold px-6 py-2 rounded-full shadow-lg shadow-cyan-500/25"
           >
             {t("providerBanner.applyNow")}
             <ArrowRight className={`w-4 h-4 ${isRTL ? "mr-2 rotate-180" : "ml-2"}`} />
           </Button>
         </div>
-        
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white border-gray-200 text-gray-900">
-            <ApplicationForm
-              t={t}
-              isRTL={isRTL}
-              selectedType={selectedType}
-              setSelectedType={setSelectedType}
-              formData={formData}
-              setFormData={setFormData}
-              documents={documents}
-              handleFileChange={handleFileChange}
-              handleSubmit={handleSubmit}
-              isSubmitting={isSubmitting}
-              providerTypes={providerTypes}
-              requirements={requirements}
-              platform={platform}
-            />
-          </DialogContent>
-        </Dialog>
       </div>
     );
   }
@@ -385,7 +168,7 @@ export default function ProviderRegistrationBanner({
               </div>
 
               <Button
-                onClick={() => setIsFormOpen(true)}
+                onClick={navigateToOnboarding}
                 size="lg"
                 className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold px-8 py-6 text-lg rounded-2xl shadow-2xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all duration-300 hover:scale-105"
               >
@@ -402,15 +185,10 @@ export default function ProviderRegistrationBanner({
                     role="button"
                     tabIndex={type.comingSoon ? -1 : 0}
                     onClick={() => {
-                      if (type.comingSoon) return;
-                      setSelectedType(type.id);
-                      setIsFormOpen(true);
+                      if (!type.comingSoon) navigateToOnboarding();
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !type.comingSoon) {
-                        setSelectedType(type.id);
-                        setIsFormOpen(true);
-                      }
+                      if (e.key === 'Enter' && !type.comingSoon) navigateToOnboarding();
                     }}
                     className={`group p-6 rounded-2xl border transition-all duration-300 ${type.comingSoon ? 'cursor-default opacity-60 bg-gray-50 border-gray-100' : 'cursor-pointer bg-gray-50 border-gray-200 hover:border-emerald-400 hover:scale-105 hover:bg-gray-100 active:scale-95'}`}
                   >
@@ -428,26 +206,6 @@ export default function ProviderRegistrationBanner({
             </div>
           </div>
         </div>
-
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white border-gray-200 text-gray-900">
-            <ApplicationForm
-              t={t}
-              isRTL={isRTL}
-              selectedType={selectedType}
-              setSelectedType={setSelectedType}
-              formData={formData}
-              setFormData={setFormData}
-              documents={documents}
-              handleFileChange={handleFileChange}
-              handleSubmit={handleSubmit}
-              isSubmitting={isSubmitting}
-              providerTypes={providerTypes}
-              requirements={requirements}
-              platform={platform}
-            />
-          </DialogContent>
-        </Dialog>
       </section>
     );
   }
@@ -479,15 +237,10 @@ export default function ProviderRegistrationBanner({
               role="button"
               tabIndex={type.comingSoon ? -1 : 0}
               onClick={() => {
-                if (type.comingSoon) return;
-                setSelectedType(type.id);
-                setIsFormOpen(true);
+                if (!type.comingSoon) navigateToOnboarding();
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !type.comingSoon) {
-                  setSelectedType(type.id);
-                  setIsFormOpen(true);
-                }
+                if (e.key === 'Enter' && !type.comingSoon) navigateToOnboarding();
               }}
               className={`group p-6 rounded-2xl border transition-all duration-300 ${type.comingSoon ? 'cursor-default opacity-60 bg-gray-50 border-gray-100' : 'cursor-pointer bg-gray-50 border-gray-200 hover:border-emerald-400 hover:scale-105 active:scale-95'}`}
             >
@@ -514,7 +267,7 @@ export default function ProviderRegistrationBanner({
           </div>
           
           <Button
-            onClick={() => setIsFormOpen(true)}
+            onClick={navigateToOnboarding}
             size="lg"
             className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold px-10 py-6 text-lg rounded-2xl shadow-2xl shadow-emerald-500/25"
           >
@@ -523,358 +276,7 @@ export default function ProviderRegistrationBanner({
           </Button>
         </div>
       </div>
-
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white border-gray-200 text-gray-900">
-          <ApplicationForm
-            t={t}
-            isRTL={isRTL}
-            selectedType={selectedType}
-            setSelectedType={setSelectedType}
-            formData={formData}
-            setFormData={setFormData}
-            documents={documents}
-            handleFileChange={handleFileChange}
-            handleSubmit={handleSubmit}
-            isSubmitting={isSubmitting}
-            providerTypes={providerTypes}
-            requirements={requirements}
-            platform={platform}
-          />
-        </DialogContent>
-      </Dialog>
     </section>
   );
 }
 
-function ApplicationForm({
-  t,
-  isRTL,
-  selectedType,
-  setSelectedType,
-  formData,
-  setFormData,
-  documents,
-  handleFileChange,
-  handleSubmit,
-  isSubmitting,
-  providerTypes,
-  requirements,
-  platform,
-}: {
-  t: (key: string) => string;
-  isRTL: boolean;
-  selectedType: ProviderType | "";
-  setSelectedType: (type: ProviderType | "") => void;
-  formData: any;
-  setFormData: any;
-  documents: any;
-  handleFileChange: (type: "id" | "certificate" | "insurance", file: File | null) => void;
-  handleSubmit: () => void;
-  isSubmitting: boolean;
-  providerTypes: any[];
-  requirements: string[];
-  platform: ProviderType | "all";
-}) {
-  return (
-    <>
-      <DialogHeader>
-        <DialogTitle className="text-2xl font-black text-center">
-          {t("providerBanner.partnerApplicationForm")}
-        </DialogTitle>
-      </DialogHeader>
-
-      <div className="space-y-6 mt-4" dir={isRTL ? "rtl" : "ltr"}>
-        {platform === "all" && (
-          <div>
-            <Label className="text-gray-700 mb-3 block">
-              {t("providerBanner.serviceType")}
-            </Label>
-            <div className="grid grid-cols-2 gap-3">
-              {providerTypes.map((type) => (
-                <button
-                  key={type.id}
-                  type="button"
-                  disabled={type.comingSoon}
-                  onClick={() => { if (!type.comingSoon) setSelectedType(type.id); }}
-                  className={`p-4 rounded-xl border-2 transition-all ${
-                    type.comingSoon
-                      ? "border-gray-200 opacity-50 cursor-not-allowed"
-                      : selectedType === type.id
-                        ? "border-cyan-500 bg-cyan-50"
-                        : "border-gray-200 hover:border-gray-300"
-                  }`}
-                >
-                  <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${type.color} flex items-center justify-center mb-2 mx-auto`}>
-                    <type.icon className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="text-gray-900 font-medium text-sm">{type.title}</div>
-                  {type.comingSoon && <div className="text-amber-600 text-[10px] font-semibold mt-1">{isRTL ? 'בקרוב' : 'Coming Soon'}</div>}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label className="text-gray-700">{t("providerBanner.firstName")}</Label>
-            <Input
-              value={formData.firstName}
-              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-              className="bg-white border-gray-300 text-gray-900 mt-1"
-              placeholder={t("providerBanner.firstNamePlaceholder")}
-              required
-            />
-          </div>
-          <div>
-            <Label className="text-gray-700">{t("providerBanner.lastName")}</Label>
-            <Input
-              value={formData.lastName}
-              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-              className="bg-white border-gray-300 text-gray-900 mt-1"
-              placeholder={t("providerBanner.lastNamePlaceholder")}
-              required
-            />
-          </div>
-        </div>
-
-        <div>
-          <Label className="text-gray-700 mb-2 block flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-cyan-600" />
-            {t("providerBanner.serviceArea")}
-          </Label>
-          <GooglePlacesAutocomplete
-            value={formData.city}
-            onChange={(value, details) => {
-              const cityName = details?.city || value;
-              setFormData({ ...formData, city: cityName });
-            }}
-            placeholder={t("providerBanner.serviceAreaPlaceholder")}
-            country={['il', 'us', 'gb', 'au', 'ca']}
-            className="[&_input]:bg-white [&_input]:border-gray-300 [&_input]:text-gray-900 [&_input]:placeholder:text-gray-400"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            {t("providerBanner.serviceAreaHint")}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label className="text-gray-700">{t("providerBanner.yearsExperience")}</Label>
-            <Input
-              value={formData.experience}
-              onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
-              className="bg-white border-gray-300 text-gray-900 mt-1"
-              placeholder={t("providerBanner.yearsExperiencePlaceholder")}
-            />
-          </div>
-          <div className="flex items-end">
-            <p className="text-xs text-gray-500 pb-2">
-              {t("providerBanner.serviceAreaAffects")}
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label className="text-gray-700">{t("providerBanner.email")}</Label>
-            <Input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="bg-white border-gray-300 text-gray-900 mt-1"
-              placeholder="email@example.com"
-              required
-            />
-          </div>
-          <div>
-            <Label className="text-gray-700">{t("providerBanner.phone")}</Label>
-            <PhoneInput
-              value={formData.phone}
-              onChange={(val) => setFormData({ ...formData, phone: val || '' })}
-              defaultCountry="IL"
-              required
-            />
-          </div>
-        </div>
-
-        <div>
-          <Label className="text-gray-700">{t("providerBanner.aboutYourself")}</Label>
-          <Textarea
-            value={formData.aboutMe}
-            onChange={(e) => setFormData({ ...formData, aboutMe: e.target.value })}
-            className="bg-white border-gray-300 text-gray-900 mt-1"
-            placeholder={t("providerBanner.aboutYourselfPlaceholder")}
-            rows={3}
-          />
-        </div>
-
-        <div>
-          <Label className="text-gray-700">{t("providerBanner.whyJoin")}</Label>
-          <Textarea
-            value={formData.whyJoinPetWash}
-            onChange={(e) => setFormData({ ...formData, whyJoinPetWash: e.target.value })}
-            className="bg-white border-gray-300 text-gray-900 mt-1"
-            placeholder={t("providerBanner.whyJoinPlaceholder")}
-            rows={2}
-          />
-        </div>
-
-        <div className="space-y-3">
-          <Label className="text-gray-700 block mb-2">{t("providerBanner.documentUpload")}</Label>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="p-4 rounded-xl bg-gray-50 border border-dashed border-gray-300 hover:border-cyan-500 transition-colors">
-              <label className="cursor-pointer block text-center">
-                <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <span className="text-sm text-gray-500">
-                  {t("providerBanner.idDocument")}
-                </span>
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*,.pdf"
-                  onChange={(e) => handleFileChange("id", e.target.files?.[0] || null)}
-                />
-                {documents.id && (
-                  <div className="mt-2 text-xs text-cyan-600 flex items-center justify-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    {documents.id.name.slice(0, 15)}...
-                  </div>
-                )}
-              </label>
-            </div>
-
-            <div className="p-4 rounded-xl bg-gray-50 border border-dashed border-gray-300 hover:border-cyan-500 transition-colors">
-              <label className="cursor-pointer block text-center">
-                <FileText className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <span className="text-sm text-gray-500">
-                  {t("providerBanner.certificates")}
-                </span>
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*,.pdf"
-                  onChange={(e) => handleFileChange("certificate", e.target.files?.[0] || null)}
-                />
-                {documents.certificate && (
-                  <div className="mt-2 text-xs text-cyan-600 flex items-center justify-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    {documents.certificate.name.slice(0, 15)}...
-                  </div>
-                )}
-              </label>
-            </div>
-
-            <div className="p-4 rounded-xl bg-gray-50 border border-dashed border-gray-300 hover:border-cyan-500 transition-colors">
-              <label className="cursor-pointer block text-center">
-                <Shield className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <span className="text-sm text-gray-500">
-                  {t("providerBanner.insuranceOptional")}
-                </span>
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*,.pdf"
-                  onChange={(e) => handleFileChange("insurance", e.target.files?.[0] || null)}
-                />
-                {documents.insurance && (
-                  <div className="mt-2 text-xs text-cyan-600 flex items-center justify-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    {documents.insurance.name.slice(0, 15)}...
-                  </div>
-                )}
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-3 p-4 rounded-xl bg-gray-50">
-          <Label className="text-gray-700 block">{t("providerBanner.additionalDetails")}</Label>
-          
-          <div className="flex items-center gap-3">
-            <Checkbox
-              id="hasVehicle"
-              checked={formData.hasVehicle}
-              onCheckedChange={(checked) => setFormData({ ...formData, hasVehicle: checked })}
-              className="border-gray-300"
-            />
-            <label htmlFor="hasVehicle" className="text-gray-700 text-sm cursor-pointer">
-              {t("providerBanner.hasVehicle")}
-            </label>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Checkbox
-              id="hasPetExperience"
-              checked={formData.hasPetExperience}
-              onCheckedChange={(checked) => setFormData({ ...formData, hasPetExperience: checked })}
-              className="border-gray-300"
-            />
-            <label htmlFor="hasPetExperience" className="text-gray-700 text-sm cursor-pointer">
-              {t("providerBanner.hasPetExperience")}
-            </label>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Checkbox
-              id="hasFirstAid"
-              checked={formData.hasFirstAid}
-              onCheckedChange={(checked) => setFormData({ ...formData, hasFirstAid: checked })}
-              className="border-gray-300"
-            />
-            <label htmlFor="hasFirstAid" className="text-gray-700 text-sm cursor-pointer">
-              {t("providerBanner.hasFirstAid")}
-            </label>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-cyan-50 border border-cyan-200">
-          <h4 className="font-bold text-cyan-700 mb-3 flex items-center gap-2">
-            <Star className="w-4 h-4" />
-            {t("providerBanner.acceptanceRequirements")}
-          </h4>
-          <ul className="space-y-2">
-            {requirements.map((req, idx) => (
-              <li key={idx} className="flex items-center gap-2 text-gray-700 text-sm">
-                <CheckCircle2 className="w-4 h-4 text-cyan-600 flex-shrink-0" />
-                {req}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-purple-50 border border-purple-200">
-          <Checkbox
-            id="agreeToTerms"
-            checked={formData.agreeToTerms && formData.agreeToPrivacy}
-            onCheckedChange={(checked) => setFormData({ ...formData, agreeToTerms: !!checked, agreeToPrivacy: !!checked })}
-            className="border-purple-400 mt-1"
-          />
-          <label htmlFor="agreeToTerms" className="text-gray-700 text-sm cursor-pointer">
-            {t("providerBanner.agreeToTerms")}
-          </label>
-        </div>
-
-        <Button
-          onClick={handleSubmit}
-          disabled={isSubmitting}
-          className="w-full bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white font-bold py-6 text-lg rounded-xl"
-        >
-          {isSubmitting ? (
-            <span className="flex items-center gap-2">
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              {t("providerBanner.submitting")}
-            </span>
-          ) : (
-            <>
-              {t("providerBanner.submitApplication")}
-              <ArrowRight className={`w-5 h-5 ${isRTL ? "mr-2 rotate-180" : "ml-2"}`} />
-            </>
-          )}
-        </Button>
-      </div>
-    </>
-  );
-}

@@ -1687,6 +1687,10 @@ export const providerApplicants = pgTable("provider_applicants", {
   phoneNumber: varchar("phone_number").notNull(),
   dateOfBirth: date("date_of_birth").notNull(),
   nationalId: varchar("national_id"), // Israeli Teudat Zehut or passport
+  gender: varchar("gender", { length: 20 }), // male, female, other, prefer_not_to_say
+  
+  // Membership
+  membershipNumber: varchar("membership_number", { length: 20 }).unique(), // PW-XXXXXXX
   
   // Address
   streetAddress: text("street_address").notNull(),
@@ -1771,6 +1775,7 @@ export const providerDocumentTypes = [
   'vehicle_insurance',     // Vehicle insurance
   'home_photos',           // For pet sitters - home environment
   'profile_photo',         // Professional headshot
+  'gallery_photo',         // Additional public-facing photos (home, pets, environment)
   'tax_registration',      // Israeli Osek Morshe / Osek Patur
   'bank_details',          // For payments
   'references'             // Professional references
@@ -1959,6 +1964,7 @@ export const providerApplicationFormSchema = z.object({
     return age >= 18;
   }, "You must be at least 18 years old"),
   nationalId: z.string().optional(),
+  gender: z.enum(["male", "female", "other", "prefer_not_to_say"]).optional(),
   
   // Address
   streetAddress: z.string().min(5, "Please enter your full address"),

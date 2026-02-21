@@ -18,6 +18,7 @@ import { z } from 'zod';
 import { logger } from '../lib/logger';
 import { sendProviderEnrollmentConfirmation } from '../email/luxury-email-service';
 import { logProviderApplication } from '../services/googleSheetsIntegration';
+import { twilioSMSService } from '../services/TwilioSMSService';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -27,6 +28,25 @@ const upload = multer({
     cb(null, allowed.includes(file.mimetype));
   },
 });
+
+const uploadFields = upload.fields([
+  { name: 'profilePhoto', maxCount: 1 },
+  { name: 'galleryPhotos', maxCount: 5 },
+]);
+
+async function generateMembershipNumber(): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const num = Math.floor(1000000 + Math.random() * 9000000);
+    const membershipNumber = `PW-${num}`;
+    const existing = await db.select({ id: providerApplicants.id })
+      .from(providerApplicants)
+      .where(eq(providerApplicants.membershipNumber, membershipNumber))
+      .limit(1);
+    if (existing.length === 0) return membershipNumber;
+  }
+  const ts = Date.now().toString(36).toUpperCase().slice(-7);
+  return `PW-${ts}`;
+}
 
 const router = Router();
 
@@ -172,7 +192,7 @@ async function recordStageTransition(
 // =================== PUBLIC ROUTES (Authenticated Users) ===================
 
 // POST /api/provider-applications - Submit new application
-router.post('/', upload.single('profilePhoto'), async (req: Request, res: Response) => {
+router.post('/', uploadFields, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).firebaseUser?.uid;
     if (!userId) {
@@ -188,7 +208,9 @@ router.post('/', upload.single('profilePhoto'), async (req: Request, res: Respon
       }
     }
 
-    const profilePhotoFile = req.file;
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+    const profilePhotoFile = files?.profilePhoto?.[0];
+    const galleryPhotoFiles = files?.galleryPhotos || [];
     
     // Validate form data
     const validationResult = providerApplicationFormSchema.safeParse(bodyData);
@@ -229,6 +251,9 @@ router.post('/', upload.single('profilePhoto'), async (req: Request, res: Respon
     // Get client IP for privacy compliance
     const clientIp = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';
     
+    // Generate unique membership number
+    const membershipNumber = await generateMembershipNumber();
+    
     // Insert application
     const [application] = await db.insert(providerApplicants).values({
       userId,
@@ -238,6 +263,8 @@ router.post('/', upload.single('profilePhoto'), async (req: Request, res: Respon
       phoneNumber: formData.phoneNumber,
       dateOfBirth: formData.dateOfBirth,
       nationalId: formData.nationalId || null,
+      gender: formData.gender || null,
+      membershipNumber,
       streetAddress: formData.streetAddress,
       city: formData.city,
       postalCode: formData.postalCode || null,
@@ -301,9 +328,36 @@ router.post('/', upload.single('profilePhoto'), async (req: Request, res: Respon
       }
     }
 
+    // Store gallery photos
+    if (galleryPhotoFiles.length > 0) {
+      for (let i = 0; i < galleryPhotoFiles.length; i++) {
+        const gFile = galleryPhotoFiles[i];
+        try {
+          const gBase64 = gFile.buffer.toString('base64');
+          await db.insert(providerDocuments).values({
+            applicantId: application.id,
+            documentType: 'gallery_photo',
+            fileName: gFile.originalname,
+            fileSize: gFile.size,
+            mimeType: gFile.mimetype,
+            status: 'approved',
+            uploadedBy: userId,
+            metadata: { sortOrder: i + 1, photoBase64Length: gBase64.length },
+          });
+        } catch (gError) {
+          logger.error('[ProviderApplication] Failed to store gallery photo', { gError, applicationId: application.id, index: i });
+        }
+      }
+      logger.info('[ProviderApplication] Gallery photos uploaded', {
+        applicationId: application.id,
+        count: galleryPhotoFiles.length,
+      });
+    }
+
     logger.info('[ProviderApplication] New application submitted', {
       applicationId: application.id,
       userId,
+      membershipNumber,
       serviceTypes: formData.serviceTypes
     });
     
@@ -343,12 +397,29 @@ router.post('/', upload.single('profilePhoto'), async (req: Request, res: Respon
       logger.info('[ProviderApplication] Confirmation email sent', { email: formData.email, applicationId: application.id });
     } catch (emailError) {
       logger.error('[ProviderApplication] Failed to send confirmation email', { emailError, applicationId: application.id });
-      // Don't fail the request if email fails
+    }
+    
+    // Send confirmation SMS with membership number
+    try {
+      const isHebrew = req.headers['accept-language']?.includes('he');
+      const smsBody = isHebrew
+        ? `Pet Wash™ - ברוכים הבאים! 🐾\n\nשלום ${formData.firstName},\nהבקשה שלך התקבלה בהצלחה.\n\nמספר חברות: ${membershipNumber}\n\nהצוות שלנו יבדוק את הבקשה ויחזור אליך תוך 48 שעות.\n\nPet Wash™ - Premium Pet Care`
+        : `Pet Wash™ - Welcome! 🐾\n\nHi ${formData.firstName},\nYour application has been received.\n\nMembership #: ${membershipNumber}\n\nOur team will review your application and get back to you within 48 hours.\n\nPet Wash™ - Premium Pet Care`;
+      
+      const smsResult = await twilioSMSService.sendSMS(formData.phoneNumber, smsBody);
+      if (smsResult.success) {
+        logger.info('[ProviderApplication] Confirmation SMS sent', { phone: formData.phoneNumber.slice(0, 6) + '****', applicationId: application.id });
+      } else {
+        logger.warn('[ProviderApplication] SMS send returned failure', { error: smsResult.error, applicationId: application.id });
+      }
+    } catch (smsError) {
+      logger.error('[ProviderApplication] Failed to send confirmation SMS', { smsError, applicationId: application.id });
     }
     
     res.status(201).json({
       success: true,
       applicationId: application.id,
+      membershipNumber,
       stage: 'documents_pending',
       message: 'Application submitted successfully. Please upload required documents.',
       requiredDocuments: getRequiredDocuments(formData.serviceTypes)

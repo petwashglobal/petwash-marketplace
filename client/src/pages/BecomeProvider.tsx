@@ -55,6 +55,7 @@ const applicationFormSchema = z.object({
     return age >= 18;
   }, "You must be at least 18 years old"),
   nationalId: z.string().optional(),
+  gender: z.enum(["male", "female", "other", "prefer_not_to_say"]).optional(),
   streetAddress: z.string().min(5, "Please enter your full address"),
   city: z.string().min(2, "City is required"),
   postalCode: z.string().optional(),
@@ -82,8 +83,6 @@ const platformOptions = [
   { id: 'sitter_suite', icon: Home, label: 'The Sitter Suite™', labelHe: 'שמרטפות', desc: 'Pet sitting & hosting', descHe: 'שמירה ואירוח חיות מחמד' },
   { id: 'walk_my_pet', icon: Dog, label: 'Walk My Pet™', labelHe: 'טיולי כלבים', desc: 'Dog walking services', descHe: 'שירותי טיולי כלבים' },
   { id: 'wash_academy', icon: Sparkles, label: 'Pet Wash Academy™', labelHe: 'אקדמיית שטיפה', desc: 'Grooming & wash training', descHe: 'הכשרה בטיפוח ושטיפה' },
-  { id: 'pet_trek', icon: Car, label: 'PetTrek™', labelHe: 'הסעות חיות מחמד', desc: 'Pet transport services', descHe: 'שירותי הסעות חיות מחמד' },
-  { id: 'plush_lab', icon: Camera, label: 'The Plush Lab™', labelHe: 'סטודיו לחיות מחמד', desc: 'AI pet avatar creation', descHe: 'יצירת אווטאר חיות מחמד' },
 ];
 
 const serviceTypeOptions = [
@@ -118,6 +117,7 @@ const steps = [
   { id: 3, title: 'Experience', titleHe: 'ניסיון', icon: Award },
   { id: 4, title: 'Emergency', titleHe: 'חירום', icon: Phone },
   { id: 5, title: 'Legal', titleHe: 'משפטי', icon: Shield },
+  { id: 6, title: 'Photos', titleHe: 'תמונות', icon: Camera },
 ];
 
 export default function BecomeProvider() {
@@ -134,6 +134,10 @@ export default function BecomeProvider() {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const [galleryPhotos, setGalleryPhotos] = useState<File[]>([]);
+  const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
+  const [membershipNumber, setMembershipNumber] = useState<string | null>(null);
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -159,6 +163,24 @@ export default function BecomeProvider() {
     if (photoInputRef.current) photoInputRef.current.value = '';
   };
 
+  const handleGallerySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const remaining = 5 - galleryPhotos.length;
+    const toAdd = files.slice(0, remaining).filter(f => f.size <= 10 * 1024 * 1024);
+    const newPhotos = [...galleryPhotos, ...toAdd];
+    setGalleryPhotos(newPhotos);
+    toAdd.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => setGalleryPreviews(prev => [...prev, ev.target?.result as string]);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeGalleryPhoto = (index: number) => {
+    setGalleryPhotos(prev => prev.filter((_, i) => i !== index));
+    setGalleryPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
   const form = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationFormSchema),
     mode: 'onChange',
@@ -169,6 +191,7 @@ export default function BecomeProvider() {
       phoneNumber: '',
       dateOfBirth: '',
       nationalId: '',
+      gender: '' as any,
       streetAddress: '',
       city: '',
       postalCode: '',
@@ -194,10 +217,11 @@ export default function BecomeProvider() {
   const submitMutation = useMutation({
     mutationFn: async (data: ApplicationFormData) => {
       const formData = new FormData();
-      formData.append('applicationData', JSON.stringify({ ...data, platforms: selectedPlatforms }));
+      formData.append('applicationData', JSON.stringify({ ...data, platforms: selectedPlatforms, gender: form.getValues('gender') || undefined }));
       if (profilePhoto) {
         formData.append('profilePhoto', profilePhoto);
       }
+      galleryPhotos.forEach((photo) => { formData.append('galleryPhotos', photo); });
       const token = firebaseUser ? await (firebaseUser as any).getIdToken?.() : null;
       const headers: Record<string, string> = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -215,6 +239,7 @@ export default function BecomeProvider() {
     },
     onSuccess: (data) => {
       setSubmitted(true);
+      setMembershipNumber(data.membershipNumber);
       toast({
         title: isHebrew ? 'הבקשה נשלחה בהצלחה!' : 'Application Submitted!',
         description: isHebrew 
@@ -232,7 +257,7 @@ export default function BecomeProvider() {
   });
 
   const nextStep = () => {
-    if (currentStep < 5) setCurrentStep(currentStep + 1);
+    if (currentStep < 6) setCurrentStep(currentStep + 1);
   };
 
   const prevStep = () => {
@@ -252,7 +277,7 @@ export default function BecomeProvider() {
     submitMutation.mutate(data);
   };
 
-  const progress = (currentStep / 5) * 100;
+  const progress = (currentStep / 6) * 100;
 
   // Redirect if not logged in
   if (!firebaseUser) {
@@ -360,11 +385,27 @@ export default function BecomeProvider() {
                   {isHebrew ? 'הבקשה נשלחה בהצלחה!' : 'Application Submitted!'}
                 </h2>
                 
-                <p className="text-gray-600 text-lg mb-8 leading-relaxed">
+                <p className="text-gray-600 text-lg mb-6 leading-relaxed">
                   {isHebrew 
                     ? 'תודה על הבקשה שלך להצטרף לצוות ⁦Pet Wash™⁩. נבדוק את הפרטים שלך ונחזור אליך תוך 2-3 ימי עסקים.'
                     : 'Thank you for applying to join the ⁦Pet Wash™⁩ team. We will review your details and get back to you within 2-3 business days.'}
                 </p>
+
+                {membershipNumber && (
+                  <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200">
+                    <p className="text-sm text-gray-500 mb-1">
+                      {isHebrew ? 'מספר חברות שלך' : 'Your Membership Number'}
+                    </p>
+                    <p className="text-2xl font-bold text-amber-600 tracking-wide">{membershipNumber}</p>
+                  </div>
+                )}
+
+                <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                  <p className="text-sm text-emerald-700">
+                    {isHebrew ? 'אישור נשלח לאימייל ולטלפון שלך' : 'Confirmation sent to your email and phone'}
+                  </p>
+                </div>
                 
                 <div className="space-y-4">
                   <Link href="/my-applications">
@@ -470,7 +511,7 @@ export default function BecomeProvider() {
               
               {/* Progress Text */}
               <p className="text-center text-amber-400 mt-6 font-medium">
-                {isHebrew ? `שלב ${currentStep} מתוך 5` : `Step ${currentStep} of 5`}
+                {isHebrew ? `שלב ${currentStep} מתוך 6` : `Step ${currentStep} of 6`}
               </p>
             </div>
 
@@ -579,6 +620,37 @@ export default function BecomeProvider() {
                   </div>
 
                   <div>
+                    <Label className="text-gray-600 font-medium mb-3 block">
+                      {isHebrew ? 'מגדר' : 'Gender'}
+                    </Label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {([
+                        { value: 'male', label: 'Male', labelHe: 'זכר' },
+                        { value: 'female', label: 'Female', labelHe: 'נקבה' },
+                        { value: 'other', label: 'Other', labelHe: 'אחר' },
+                        { value: 'prefer_not_to_say', label: 'Prefer not to say', labelHe: 'מעדיף לא לציין' },
+                      ] as const).map((option) => {
+                        const isSelected = form.watch('gender') === option.value;
+                        return (
+                          <div
+                            key={option.value}
+                            onClick={() => form.setValue('gender', option.value)}
+                            className={`p-3 rounded-xl cursor-pointer text-center transition-all duration-300 ${
+                              isSelected
+                                ? 'bg-gradient-to-br from-amber-500/20 to-orange-500/20 border-2 border-amber-500/50 shadow-lg shadow-amber-500/10'
+                                : 'bg-gray-50 border border-gray-300 hover:border-amber-500/30'
+                            }`}
+                          >
+                            <span className={`text-sm font-medium ${isSelected ? 'text-amber-600' : 'text-gray-600'}`}>
+                              {isHebrew ? option.labelHe : option.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
                     <GooglePlacesAutocomplete
                       value={form.watch('streetAddress')}
                       onChange={(value, details) => {
@@ -628,79 +700,6 @@ export default function BecomeProvider() {
                     </div>
                   </div>
 
-                  <div>
-                    <Label className="text-gray-600 font-medium mb-3 block">
-                      {isHebrew ? 'תמונת פרופיל' : 'Profile Photo'} *
-                    </Label>
-                    <p className="text-gray-500 text-xs mb-3">
-                      {isHebrew 
-                        ? 'תמונה ברורה שלך תעזור ללקוחות להכיר אותך. תמונת פנים מקצועית מומלצת.'
-                        : 'A clear photo helps clients recognize you. Professional headshot recommended.'}
-                    </p>
-                    <input
-                      ref={photoInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={handlePhotoSelect}
-                      className="hidden"
-                      data-testid="input-profile-photo"
-                    />
-
-                    {profilePhotoPreview ? (
-                      <div className="flex items-center gap-4">
-                        <div className="relative">
-                          <img
-                            src={profilePhotoPreview}
-                            alt="Profile preview"
-                            className="w-28 h-28 rounded-2xl object-cover border-2 border-amber-500/50 shadow-lg"
-                          />
-                          <button
-                            type="button"
-                            onClick={removePhoto}
-                            className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md hover:bg-red-600 transition-colors"
-                            data-testid="button-remove-photo"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-emerald-400 text-sm font-medium flex items-center gap-1">
-                            <CheckCircle2 className="w-4 h-4" />
-                            {isHebrew ? 'תמונה נבחרה' : 'Photo selected'}
-                          </p>
-                          <p className="text-gray-500 text-xs mt-1">{profilePhoto?.name}</p>
-                          <button
-                            type="button"
-                            onClick={() => photoInputRef.current?.click()}
-                            className="text-amber-400 text-xs mt-2 hover:underline"
-                          >
-                            {isHebrew ? 'החלף תמונה' : 'Change photo'}
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => photoInputRef.current?.click()}
-                        className="w-full border-2 border-dashed border-gray-300 hover:border-amber-500/50 rounded-2xl p-8 transition-all hover:bg-gray-50 group"
-                        data-testid="button-upload-photo"
-                      >
-                        <div className="flex flex-col items-center gap-3">
-                          <div className="w-16 h-16 rounded-full bg-gray-100 group-hover:bg-amber-500/20 flex items-center justify-center transition-all">
-                            <Camera className="w-8 h-8 text-gray-400 group-hover:text-amber-400 transition-colors" />
-                          </div>
-                          <div className="text-center">
-                            <p className="text-gray-600 font-medium text-sm">
-                              {isHebrew ? 'לחץ להעלאת תמונה' : 'Click to upload photo'}
-                            </p>
-                            <p className="text-gray-500 text-xs mt-1">
-                              JPG, PNG {isHebrew ? 'עד' : 'up to'} 10MB
-                            </p>
-                          </div>
-                        </div>
-                      </button>
-                    )}
-                  </div>
                 </div>
               )}
 
@@ -1069,7 +1068,7 @@ export default function BecomeProvider() {
                       <h2 className="text-2xl font-bold text-gray-900">
                         {isHebrew ? 'הסכמות משפטיות' : 'Legal Consents'}
                       </h2>
-                      <p className="text-gray-500 text-sm">{isHebrew ? 'השלב האחרון!' : 'Final step!'}</p>
+                      <p className="text-gray-500 text-sm">{isHebrew ? 'הסכמות והצהרות' : 'Agreements & declarations'}</p>
                     </div>
                   </div>
 
@@ -1173,6 +1172,160 @@ export default function BecomeProvider() {
                 </div>
               )}
 
+              {/* Step 6: Photos */}
+              {currentStep === 6 && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3 mb-8">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
+                      <Camera className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">
+                        {isHebrew ? 'תמונות' : 'Photos'}
+                      </h2>
+                      <p className="text-gray-500 text-sm">{isHebrew ? 'הוסף תמונות פרופיל וגלריה' : 'Add your profile and gallery photos'}</p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200">
+                    <p className="text-sm text-blue-700">
+                      {isHebrew
+                        ? 'הוסף תמונות של הבית שלך, חיות המחמד שלך וסביבת העבודה שלך. תמונות אלה עוזרות לבעלי חיות מחמד להרגיש בטוחים בבחירה שלך.'
+                        : 'Add photos of your home, your pets, and your working environment. These photos help pet owners feel confident choosing you.'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label className="text-gray-600 font-medium mb-3 block">
+                      {isHebrew ? 'תמונת פרופיל' : 'Profile Photo'} *
+                    </Label>
+                    <p className="text-gray-500 text-xs mb-3">
+                      {isHebrew 
+                        ? 'תמונה ברורה שלך תעזור ללקוחות להכיר אותך. תמונת פנים מקצועית מומלצת.'
+                        : 'A clear photo helps clients recognize you. Professional headshot recommended.'}
+                    </p>
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handlePhotoSelect}
+                      className="hidden"
+                      data-testid="input-profile-photo"
+                    />
+
+                    {profilePhotoPreview ? (
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <img
+                            src={profilePhotoPreview}
+                            alt="Profile preview"
+                            className="w-28 h-28 rounded-2xl object-cover border-2 border-amber-500/50 shadow-lg"
+                          />
+                          <button
+                            type="button"
+                            onClick={removePhoto}
+                            className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md hover:bg-red-600 transition-colors"
+                            data-testid="button-remove-photo"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-emerald-400 text-sm font-medium flex items-center gap-1">
+                            <CheckCircle2 className="w-4 h-4" />
+                            {isHebrew ? 'תמונה נבחרה' : 'Photo selected'}
+                          </p>
+                          <p className="text-gray-500 text-xs mt-1">{profilePhoto?.name}</p>
+                          <button
+                            type="button"
+                            onClick={() => photoInputRef.current?.click()}
+                            className="text-amber-400 text-xs mt-2 hover:underline"
+                          >
+                            {isHebrew ? 'החלף תמונה' : 'Change photo'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => photoInputRef.current?.click()}
+                        className="w-full border-2 border-dashed border-gray-300 hover:border-amber-500/50 rounded-2xl p-8 transition-all hover:bg-gray-50 group"
+                        data-testid="button-upload-photo"
+                      >
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="w-16 h-16 rounded-full bg-gray-100 group-hover:bg-amber-500/20 flex items-center justify-center transition-all">
+                            <Camera className="w-8 h-8 text-gray-400 group-hover:text-amber-400 transition-colors" />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-gray-600 font-medium text-sm">
+                              {isHebrew ? 'לחץ להעלאת תמונה' : 'Click to upload photo'}
+                            </p>
+                            <p className="text-gray-500 text-xs mt-1">
+                              JPG, PNG {isHebrew ? 'עד' : 'up to'} 10MB
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <Label className="text-gray-600 font-medium">
+                        {isHebrew ? 'תמונות גלריה' : 'Gallery Photos'}
+                      </Label>
+                      <span className="text-gray-400 text-xs">
+                        {galleryPreviews.length}/5 {isHebrew ? 'תמונות' : 'photos'}
+                      </span>
+                    </div>
+                    <input
+                      ref={galleryInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleGallerySelect}
+                      multiple
+                      className="hidden"
+                      data-testid="input-gallery-photos"
+                    />
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      {galleryPreviews.map((preview, index) => (
+                        <div key={index} className="relative aspect-square rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+                          <img
+                            src={preview}
+                            alt={`Gallery ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeGalleryPhoto(index)}
+                            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md hover:bg-red-600 transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+
+                      {galleryPhotos.length < 5 && (
+                        <button
+                          type="button"
+                          onClick={() => galleryInputRef.current?.click()}
+                          className="aspect-square border-2 border-dashed border-gray-300 hover:border-amber-500/50 rounded-2xl transition-all hover:bg-gray-50 group flex flex-col items-center justify-center gap-2"
+                          data-testid="button-add-gallery"
+                        >
+                          <div className="w-12 h-12 rounded-full bg-gray-100 group-hover:bg-amber-500/20 flex items-center justify-center transition-all">
+                            <Upload className="w-6 h-6 text-gray-400 group-hover:text-amber-400 transition-colors" />
+                          </div>
+                          <p className="text-gray-500 text-xs font-medium">
+                            {isHebrew ? 'הוסף תמונה' : 'Add photo'}
+                          </p>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Navigation Buttons */}
               <div className="flex justify-between mt-10 pt-8 border-t border-gray-200">
                 <Button
@@ -1187,7 +1340,7 @@ export default function BecomeProvider() {
                   {isHebrew ? 'הקודם' : 'Previous'}
                 </Button>
 
-                {currentStep < 5 ? (
+                {currentStep < 6 ? (
                   <Button
                     type="button"
                     onClick={nextStep}
