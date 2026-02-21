@@ -41,24 +41,26 @@ function memIncr(key: string, ttlSec: number): number {
   return entry.count;
 }
 
+function isRedisEnabled(): boolean {
+  return redis.getStatus().enabled;
+}
 async function cacheGet(key: string): Promise<string | null> {
-  if (redis) return redis.get(key);
+  if (isRedisEnabled()) return redis.getRaw(key);
   return memGet(key);
 }
 async function cacheSet(key: string, value: string, ttlSec: number): Promise<void> {
-  if (redis) { await redis.setex(key, ttlSec, value); return; }
+  if (isRedisEnabled()) { await redis.setRaw(key, value, ttlSec); return; }
   memSet(key, value, ttlSec);
 }
 async function cacheDel(key: string): Promise<void> {
-  if (redis) { await redis.del(key); return; }
+  if (isRedisEnabled()) { await redis.del(key); return; }
   memDel(key);
 }
 async function cacheTtl(key: string): Promise<number> {
-  if (redis) return redis.ttl(key);
   return memTtl(key);
 }
 async function cacheIncr(key: string, ttlSec: number): Promise<number> {
-  if (redis) {
+  if (isRedisEnabled()) {
     const val = await redis.incr(key);
     if (val === 1) await redis.expire(key, ttlSec);
     return val;
@@ -265,8 +267,11 @@ export class RegistrationOTPService {
 
       return { success: true, otpId, expiresIn: OTP_TTL_SEC, channel };
 
-    } catch (error) {
-      logger.error('[RegistrationOTP] Failed to send OTP', { error, otpId, traceId });
+    } catch (error: any) {
+      const errDetail = error instanceof Error
+        ? { message: error.message, stack: error.stack?.split('\n').slice(0, 3) }
+        : { raw: String(error) };
+      logger.error('[RegistrationOTP] Failed to send OTP', { ...errDetail, otpId, traceId });
       return { success: false, otpId, expiresIn: 0, error: 'INTERNAL_ERROR' };
     }
   }
@@ -422,8 +427,11 @@ export class RegistrationOTPService {
       });
 
       return { success: true, otpId, expiresIn: newTtl, channel };
-    } catch (error) {
-      logger.error('[RegistrationOTP] Failed to resend OTP', { error, otpId, traceId });
+    } catch (error: any) {
+      const errDetail = error instanceof Error
+        ? { message: error.message, stack: error.stack?.split('\n').slice(0, 3) }
+        : { raw: String(error) };
+      logger.error('[RegistrationOTP] Failed to resend OTP', { ...errDetail, otpId, traceId });
       return { success: false, otpId, expiresIn: 0, error: 'INTERNAL_ERROR' };
     }
   }

@@ -590,12 +590,17 @@ publicAuthRouter.post('/api/auth/phone/otp/send', async (req, res) => {
     });
 
     if (!result.success) {
-      return res.status(429).json({
+      const errorMessages: Record<string, { en: string; he: string; status: number }> = {
+        'COOLDOWN_ACTIVE': { en: 'Please wait before requesting a new code', he: 'אנא המתינו לפני שליחת קוד חדש', status: 429 },
+        'PHONE_RATE_LIMIT': { en: 'Too many attempts for this phone, try again later', he: 'יותר מדי ניסיונות לטלפון זה, נסו שוב מאוחר יותר', status: 429 },
+        'IP_RATE_LIMIT': { en: 'Too many attempts, try again later', he: 'יותר מדי ניסיונות, נסו שוב מאוחר יותר', status: 429 },
+        'INTERNAL_ERROR': { en: 'Failed to send verification code', he: 'שליחת קוד האימות נכשלה', status: 500 },
+      };
+      const errInfo = errorMessages[result.error || ''] || errorMessages['INTERNAL_ERROR'];
+      return res.status(errInfo.status).json({
         error: result.error,
         cooldownRemaining: result.cooldownRemaining,
-        message: result.error === 'COOLDOWN_ACTIVE'
-          ? (language === 'he' ? 'אנא המתינו לפני שליחת קוד חדש' : 'Please wait before requesting a new code')
-          : (language === 'he' ? 'יותר מדי ניסיונות, נסו שוב מאוחר יותר' : 'Too many attempts, please try again later'),
+        message: language === 'he' ? errInfo.he : errInfo.en,
       });
     }
 
