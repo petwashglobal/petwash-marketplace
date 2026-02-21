@@ -66,6 +66,63 @@ import { randomUUID } from 'crypto';
 
 logger.info('[GoogleMaps] keyPresent=' + !!process.env.GOOGLE_MAPS_API_KEY);
 
+router.get('/places-health', async (req, res) => {
+  const traceId = randomUUID().slice(0, 12);
+  const checks: Record<string, any> = {
+    traceId,
+    timestamp: new Date().toISOString(),
+    apiKeyConfigured: !!process.env.GOOGLE_MAPS_API_KEY,
+    apiKeyLength: process.env.GOOGLE_MAPS_API_KEY?.length || 0,
+  };
+
+  if (!process.env.GOOGLE_MAPS_API_KEY) {
+    checks.status = 'FAIL';
+    checks.reason = 'GOOGLE_MAPS_API_KEY not configured';
+    logger.error('[Places Health] API key missing', { traceId });
+    return res.status(503).json(checks);
+  }
+
+  try {
+    const testParams = new URLSearchParams({
+      input: 'Tel Aviv',
+      key: process.env.GOOGLE_MAPS_API_KEY,
+      language: 'en',
+      components: 'country:il',
+    });
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/place/autocomplete/json?${testParams}`
+    );
+    const data = await response.json();
+
+    checks.googleHttpStatus = response.status;
+    checks.googleApiStatus = data.status;
+    checks.predictionsCount = data.predictions?.length || 0;
+
+    if (data.status === 'OK' || data.status === 'ZERO_RESULTS') {
+      checks.status = 'OK';
+      logger.info('[Places Health] Google Places API is working', { traceId, googleStatus: data.status });
+    } else {
+      checks.status = 'FAIL';
+      checks.reason = data.error_message || data.status;
+      logger.error('[Places Health] Google Places API error', {
+        traceId,
+        googleStatus: data.status,
+        googleError: data.error_message,
+      });
+    }
+  } catch (error: any) {
+    checks.status = 'FAIL';
+    checks.reason = `Network error: ${error.message}`;
+    logger.error('[Places Health] Network error contacting Google', {
+      traceId,
+      message: error.message,
+    });
+  }
+
+  const httpStatus = checks.status === 'OK' ? 200 : 503;
+  res.status(httpStatus).json(checks);
+});
+
 /**
  * GET /api/google/places-autocomplete - Server-side Google Places Autocomplete proxy
  * API key stays server-side. No browser key needed.

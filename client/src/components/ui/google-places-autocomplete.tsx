@@ -87,10 +87,11 @@ export function GooglePlacesAutocomplete({
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
   const [apartment, setApartment] = useState('');
   const [postalCode, setPostalCodeState] = useState('');
-  const [proxyStatus, setProxyStatus] = useState<'ok' | 'degraded' | 'unknown'>('unknown');
-  const [degradedReason, setDegradedReason] = useState<string>('');
   const [highlightIndex, setHighlightIndex] = useState(-1);
+  const [showManualHint, setShowManualHint] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const consecutiveFailures = useRef(0);
+  const MAX_CONSECUTIVE_FAILURES = 5;
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -111,6 +112,10 @@ export function GooglePlacesAutocomplete({
     if (input.length < 3) {
       setPredictions([]);
       setShowDropdown(false);
+      return;
+    }
+
+    if (consecutiveFailures.current >= MAX_CONSECUTIVE_FAILURES) {
       return;
     }
 
@@ -147,15 +152,14 @@ export function GooglePlacesAutocomplete({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const reason = errorData.reasonCode || errorData.error || `HTTP_${response.status}`;
-        console.warn('[Places Proxy] Autocomplete failed', {
+        console.warn('[Places] Autocomplete error', {
           status: response.status,
-          error: errorData.error,
-          reasonCode: reason,
+          reasonCode: errorData.reasonCode,
           googleStatus: errorData.googleStatus,
+          traceId: errorData.traceId,
         });
-        setProxyStatus('degraded');
-        setDegradedReason(reason);
+        consecutiveFailures.current++;
+        if (consecutiveFailures.current >= MAX_CONSECUTIVE_FAILURES) setShowManualHint(true);
         setPredictions([]);
         setShowDropdown(false);
         return;
@@ -163,7 +167,8 @@ export function GooglePlacesAutocomplete({
 
       const data = await response.json();
       const preds: AutocompletePrediction[] = data.predictions || [];
-      setProxyStatus('ok');
+      consecutiveFailures.current = 0;
+      setShowManualHint(false);
       setPredictions(preds);
       setShowDropdown(preds.length > 0);
 
@@ -171,10 +176,9 @@ export function GooglePlacesAutocomplete({
       pruneCache();
     } catch (err: any) {
       if (err.name === 'AbortError') return;
-      const netReason = err.message?.includes('Failed to fetch') ? 'NETWORK_ERROR' : `CLIENT_ERROR: ${err.message}`;
-      console.warn('[Places Proxy] Network error', { reason: netReason, message: err.message });
-      setProxyStatus('degraded');
-      setDegradedReason(netReason);
+      console.warn('[Places] Network error:', err.message);
+      consecutiveFailures.current++;
+      if (consecutiveFailures.current >= MAX_CONSECUTIVE_FAILURES) setShowManualHint(true);
       setPredictions([]);
       setShowDropdown(false);
     } finally {
@@ -227,7 +231,7 @@ export function GooglePlacesAutocomplete({
       onChange(details.formattedAddress, details);
       onPlaceSelected?.(details);
     } catch (err: any) {
-      console.warn('[Places Proxy] Details error:', err.message);
+      console.warn('[Places] Details error:', err.message);
       const fallback: PlaceDetails = {
         formattedAddress: prediction.description,
         placeId: prediction.placeId,
@@ -252,12 +256,17 @@ export function GooglePlacesAutocomplete({
     }
     setHighlightIndex(-1);
 
+    if (consecutiveFailures.current >= MAX_CONSECUTIVE_FAILURES) {
+      consecutiveFailures.current = 0;
+      setShowManualHint(false);
+    }
+
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
     debounceRef.current = setTimeout(() => {
       fetchPredictions(val);
-    }, 250);
+    }, 300);
   }, [onChange, fetchPredictions]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -446,14 +455,13 @@ export function GooglePlacesAutocomplete({
         </div>
       )}
 
-      {proxyStatus === 'degraded' && !error && (
+      {showManualHint && value.length >= 3 ? (
         <p className="text-xs text-amber-600 mt-1">
-          Address suggestions temporarily unavailable. You can type your address manually.
-          {degradedReason && (
-            <span className="block text-[10px] text-amber-500 mt-0.5">
-              ({degradedReason})
-            </span>
-          )}
+          הצעות כתובת אינן זמינות כעת. ניתן להקליד את הכתובת ידנית.
+        </p>
+      ) : (
+        <p className="text-[10px] text-gray-400 mt-0.5">
+          הקלידו לקבלת הצעות אוטומטיות מ-Google
         </p>
       )}
 
