@@ -69,7 +69,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
     <Layout language={language} onLanguageChange={onLanguageChange}>
       <div className="min-h-screen bg-white">
         {/* Hero Section with Main Image - Luxury Design with Animations */}
-        <section className="luxury-services-hero pt-2 overflow-hidden">
+        <section className="luxury-services-hero overflow-hidden">
           <div className="max-w-6xl mx-auto">
             {/* Hero Text Content - ABOVE the image with cascading animations */}
             <div className="luxury-services-hero-content">

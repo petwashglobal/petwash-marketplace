@@ -379,64 +379,8 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             </a>
           </div>
 
-          {/* Center: logo with Platforms nav positioned to its left */}
+          {/* Center: logo only */}
           <div className="pw-header-center">
-            {/* Platforms nav - desktop only, just left of logo */}
-            <div className="pw-nav-item pw-nav-item-platforms pw-platforms-left-nav">
-              <button
-                className="pw-nav-link"
-                aria-expanded={isPlatformsOpen}
-                aria-haspopup="true"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsPlatformsOpen((prev) => !prev);
-                }}
-              >
-                {t("nav.platforms", currentLanguage)}
-              </button>
-              {isPlatformsOpen && (
-                <div className="pw-mega-menu" role="menu">
-                  <div className="pw-mega-inner">
-                    {PLATFORM_GROUPS.map((group) => (
-                      <div className="pw-mega-column" key={group.id} role="group" aria-label={t(group.titleKey, currentLanguage)}>
-                        <div className="pw-mega-title">{t(group.titleKey, currentLanguage)}</div>
-                        {group.items.map((item) => (
-                          <button
-                            key={item.id}
-                            role="menuitem"
-                            className={
-                              "pw-mega-link" +
-                              (item.frozen ? " pw-mega-link-frozen" : "")
-                            }
-                            disabled={item.frozen}
-                            onClick={() => {
-                              if (item.frozen) return;
-                              handleNavigate(item.href);
-                            }}
-                          >
-                            <span>{t(item.labelKey, currentLanguage)}</span>
-                            {item.frozen ? (
-                              <span className="pw-pill-frozen">{t("frozen", currentLanguage)}</span>
-                            ) : (
-                              <span
-                                style={{
-                                  opacity: 0.6,
-                                  fontSize: 11,
-                                  marginInlineStart: 8,
-                                }}
-                              >
-                                {t(item.descKey, currentLanguage)}
-                              </span>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
             <button
               className="pw-logo-link"
               onClick={() => handleNavigate("/")}
@@ -450,9 +394,65 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             </button>
           </div>
 
-          {/* Right: nav, language, account, burger */}
+          {/* Right: nav links, profile icon, hamburger, language */}
           <div className="pw-header-right">
             <nav className="pw-nav-desktop">
+              {/* Platforms - with mega menu */}
+              <div className="pw-nav-item pw-nav-item-platforms">
+                <button
+                  className="pw-nav-link"
+                  aria-expanded={isPlatformsOpen}
+                  aria-haspopup="true"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsPlatformsOpen((prev) => !prev);
+                  }}
+                >
+                  {t("nav.platforms", currentLanguage)}
+                </button>
+                {isPlatformsOpen && (
+                  <div className="pw-mega-menu" role="menu">
+                    <div className="pw-mega-inner">
+                      {PLATFORM_GROUPS.map((group) => (
+                        <div className="pw-mega-column" key={group.id} role="group" aria-label={t(group.titleKey, currentLanguage)}>
+                          <div className="pw-mega-title">{t(group.titleKey, currentLanguage)}</div>
+                          {group.items.map((item) => (
+                            <button
+                              key={item.id}
+                              role="menuitem"
+                              className={
+                                "pw-mega-link" +
+                                (item.frozen ? " pw-mega-link-frozen" : "")
+                              }
+                              disabled={item.frozen}
+                              onClick={() => {
+                                if (item.frozen) return;
+                                handleNavigate(item.href);
+                              }}
+                            >
+                              <span>{t(item.labelKey, currentLanguage)}</span>
+                              {item.frozen ? (
+                                <span className="pw-pill-frozen">{t("frozen", currentLanguage)}</span>
+                              ) : (
+                                <span
+                                  style={{
+                                    opacity: 0.6,
+                                    fontSize: 11,
+                                    marginInlineStart: 8,
+                                  }}
+                                >
+                                  {t(item.descKey, currentLanguage)}
+                                </span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* PetWash Privilege */}
               <div className="pw-nav-item">
                 <button
@@ -474,7 +474,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               </div>
             </nav>
 
-            {/* Gold profile icon - quick access to dashboard */}
+            {/* Gold profile icon - same level as hamburger */}
             <button
               className="pw-header-profile-btn"
               onClick={() => handleNavigate(getDashboardPath())}
@@ -486,34 +486,31 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               </div>
             </button>
 
-            {/* Right stack: Hamburger on top, Language toggle below */}
-            <div className="pw-right-stack">
-              {/* Burger menu - top right */}
-              <button
-                className="pw-burger pw-burger-luxury"
-                onClick={() => setIsMobileOpen(true)}
-                aria-label="Open menu"
-                data-testid="button-hamburger"
-              >
-                <span />
-                <span />
-                <span />
-              </button>
+            {/* Hamburger menu */}
+            <button
+              className="pw-burger pw-burger-luxury"
+              onClick={() => setIsMobileOpen(true)}
+              aria-label="Open menu"
+              data-testid="button-hamburger"
+            >
+              <span />
+              <span />
+              <span />
+            </button>
 
-              {/* Language toggle - below hamburger, not touching */}
-              <select
-                className="pw-language-select pw-language-luxury"
-                value={currentLanguage}
-                onChange={(e) => handleLanguageChange(e.target.value)}
-                data-testid="select-language"
-              >
-                {LANGUAGES.map((lang) => (
-                  <option key={lang.code} value={lang.code}>
-                    {lang.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Language toggle */}
+            <select
+              className="pw-language-select pw-language-luxury"
+              value={currentLanguage}
+              onChange={(e) => handleLanguageChange(e.target.value)}
+              data-testid="select-language"
+            >
+              {LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

@@ -2249,7 +2249,7 @@ html[lang="en"] *,
 
 @media (max-width: 768px) {
   .luxury-services-hero {
-    padding: 2rem 0;
+    padding: 0.5rem 0 2rem;
   }
   
   .luxury-services-title {
