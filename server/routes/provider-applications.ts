@@ -426,8 +426,9 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    logger.error('[ProviderApplication] Submit error', error);
-    res.status(500).json({ error: 'Failed to submit application' });
+    const traceId = req.traceId || '';
+    logger.error('[ProviderApplication] Submit error', { error, traceId });
+    res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to submit application', traceId });
   }
 });
 
@@ -503,8 +504,9 @@ router.get('/my', async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    logger.error('[ProviderApplication] Get my application error', error);
-    res.status(500).json({ error: 'Failed to fetch application' });
+    const traceId = req.traceId || '';
+    logger.error('[ProviderApplication] Get my application error', { error, traceId });
+    res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to fetch application', traceId });
   }
 });
 
@@ -625,8 +627,9 @@ router.post('/withdraw', async (req: Request, res: Response) => {
     res.json({ success: true, message: 'Application withdrawn' });
     
   } catch (error) {
-    logger.error('[ProviderApplication] Withdraw error', error);
-    res.status(500).json({ error: 'Failed to withdraw application' });
+    const traceId = req.traceId || '';
+    logger.error('[ProviderApplication] Withdraw error', { error, traceId });
+    res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to withdraw application', traceId });
   }
 });
 
@@ -692,8 +695,9 @@ router.get('/admin/list', async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    logger.error('[ProviderApplication] Admin list error', error);
-    res.status(500).json({ error: 'Failed to fetch applications' });
+    const traceId = req.traceId || '';
+    logger.error('[ProviderApplication] Admin list error', { error, traceId });
+    res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to fetch applications', traceId });
   }
 });
 
@@ -785,8 +789,9 @@ router.get('/admin/:id', async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    logger.error('[ProviderApplication] Admin get error', error);
-    res.status(500).json({ error: 'Failed to fetch application' });
+    const traceId = req.traceId || '';
+    logger.error('[ProviderApplication] Admin get error', { error, traceId });
+    res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to fetch application', traceId });
   }
 });
 
@@ -919,8 +924,9 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
     });
     
   } catch (error) {
-    logger.error('[ProviderApplication] Approve error', error);
-    res.status(500).json({ error: 'Failed to approve application' });
+    const traceId = req.traceId || '';
+    logger.error('[ProviderApplication] Approve error', { error, traceId });
+    res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to approve application', traceId });
   }
 });
 
@@ -986,8 +992,9 @@ router.post('/admin/:id/reject', async (req: Request, res: Response) => {
     res.json({ success: true, message: 'Application rejected' });
     
   } catch (error) {
-    logger.error('[ProviderApplication] Reject error', error);
-    res.status(500).json({ error: 'Failed to reject application' });
+    const traceId = req.traceId || '';
+    logger.error('[ProviderApplication] Reject error', { error, traceId });
+    res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to reject application', traceId });
   }
 });
 
@@ -1065,8 +1072,9 @@ router.post('/admin/:id/advance-stage', async (req: Request, res: Response) => {
     res.json({ success: true, message: `Application moved to ${nextStage}`, newStage: nextStage });
     
   } catch (error) {
-    logger.error('[ProviderApplication] Advance stage error', error);
-    res.status(500).json({ error: 'Failed to advance stage' });
+    const traceId = req.traceId || '';
+    logger.error('[ProviderApplication] Advance stage error', { error, traceId });
+    res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to advance stage', traceId });
   }
 });
 

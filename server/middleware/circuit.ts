@@ -8,10 +8,13 @@ export function circuit(threshold = 20, resetTimeMs = 15_000) {
   return (req: Request, res: Response, next: NextFunction) => {
     // Check if circuit is open
     if (Date.now() < openUntil) {
-      logger.warn({ failures, openUntil }, "circuit breaker: rejecting request");
+      const traceId = req.traceId || '';
+      logger.warn({ failures, openUntil, traceId }, "circuit breaker: rejecting request");
       return res.status(503).json({
-        error: "Service temporarily unavailable. Please try again in a moment.",
+        error: "CIRCUIT_OPEN",
+        message: "Service temporarily unavailable. Please try again in a moment.",
         retryAfter: Math.ceil((openUntil - Date.now()) / 1000),
+        traceId,
       });
     }
 
