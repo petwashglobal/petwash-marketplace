@@ -191,7 +191,7 @@ export default function BecomeProvider() {
       phoneNumber: '',
       dateOfBirth: '',
       nationalId: '',
-      gender: '' as any,
+      gender: undefined,
       streetAddress: '',
       city: '',
       postalCode: '',
@@ -256,7 +256,36 @@ export default function BecomeProvider() {
     },
   });
 
-  const nextStep = () => {
+  const stepFields: Record<number, (keyof ApplicationFormData)[]> = {
+    1: ['firstName', 'lastName', 'email', 'phoneNumber', 'dateOfBirth', 'streetAddress', 'city'],
+    2: ['serviceTypes'],
+    3: ['biography', 'yearsExperience', 'languages', 'serviceRadius', 'maxPetsAtOnce', 'petTypesAccepted'],
+    4: ['emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation'],
+    5: ['privacyConsent', 'dataRetentionAcknowledged'],
+    6: [],
+  };
+
+  const nextStep = async () => {
+    if (currentStep === 2 && selectedPlatforms.length === 0) {
+      toast({
+        title: isHebrew ? 'בחר פלטפורמה' : 'Select a Platform',
+        description: isHebrew ? 'אנא בחר לפחות פלטפורמה אחת' : 'Please select at least one platform',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const fields = stepFields[currentStep] || [];
+    if (fields.length > 0) {
+      const valid = await form.trigger(fields);
+      if (!valid) {
+        toast({
+          title: isHebrew ? 'נא למלא את כל השדות' : 'Please fill all required fields',
+          description: isHebrew ? 'יש שדות חסרים בשלב זה' : 'Some fields in this step need attention',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
     if (currentStep < 6) setCurrentStep(currentStep + 1);
   };
 
@@ -524,7 +553,26 @@ export default function BecomeProvider() {
                 boxShadow: '0 25px 50px -12px rgba(0,0,0,0.08)'
               }}
             >
-              <form onSubmit={form.handleSubmit(onSubmit)}>
+              <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+                const errorFields = Object.keys(errors);
+                if (errorFields.length > 0) {
+                  const fieldStepMap: Record<string, number> = {
+                    firstName: 1, lastName: 1, email: 1, phoneNumber: 1, dateOfBirth: 1, streetAddress: 1, city: 1, nationalId: 1, gender: 1, postalCode: 1,
+                    serviceTypes: 2,
+                    biography: 3, yearsExperience: 3, languages: 3, serviceRadius: 3, maxPetsAtOnce: 3, petTypesAccepted: 3, hasOwnVehicle: 3, hasHomeSpace: 3,
+                    emergencyContactName: 4, emergencyContactPhone: 4, emergencyContactRelation: 4,
+                    privacyConsent: 5, marketingConsent: 5, dataRetentionAcknowledged: 5,
+                  };
+                  const firstErrorStep = Math.min(...errorFields.map(f => fieldStepMap[f] || 6));
+                  if (firstErrorStep !== currentStep) setCurrentStep(firstErrorStep);
+                  const firstError = errors[errorFields[0] as keyof ApplicationFormData];
+                  toast({
+                    title: isHebrew ? 'נא לתקן שגיאות' : 'Please fix errors',
+                    description: (firstError?.message as string) || (isHebrew ? 'יש שדות חסרים' : 'Some fields need attention'),
+                    variant: 'destructive',
+                  });
+                }
+              })}>
               
               {/* Step 1: Personal Information */}
               {currentStep === 1 && (
