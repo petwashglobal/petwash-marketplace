@@ -41,12 +41,10 @@ import nayaxPaymentsRoutes from "./routes/nayax-payments";
 import thankYouRoutes from "./routes/send-thank-you";
 import platformCopyEmailRoutes from "./routes/platform-copy-email";
 import ceoWalletRoutes from "./routes/ceo-wallet";
-import testLuxuryLaunchRoutes from "./routes/test-luxury-launch";
 import sendInvestorEventEmailRoutes from "./routes/send-investor-event-email";
 import financeSettlementsRoutes from "./routes/finance/settlements";
 import transactionAuditRoutes from "./routes/finance/transaction-audit";
 import sitterSuiteRoutes from "./routes/sitter-suite";
-import seedDemoRoutes from "./routes/seed-demo";
 import academyRoutes from "./routes/academy";
 import walkMyPetRoutes from "./routes/walk-my-pet";
 import walkSessionRoutes from "./routes/walk-session";
@@ -55,7 +53,6 @@ import calendarRoutes from "./routes/calendar";
 import managementDashboardRoutes from "./routes/management-dashboard";
 import itaApiRoutes from "./routes/ita-api";
 import luxuryDocumentsRoutes from "./routes/luxury-documents";
-import qaTestingRoutes from "./routes/qa-testing";
 import launchEventRoutes from "./routes/launch-event";
 import socialCircleRoutes from "./routes/social-circle";
 import giftCardsRoutes from "./routes/gift-cards";
@@ -154,7 +151,6 @@ import franchiseMgmtRoutes from "./routes/franchise-mgmt";
 import geminiWatchdogRoutes from "./routes/gemini-watchdog";
 import globalFormsRoutes from "./routes/globalForms";
 import globalServicesRoutes from "./routes/globalServices";
-import gmailTestRoutes from "./routes/gmail-test";
 import inboxRoutes from "./routes/inbox";
 import integrationsRoutes from "./routes/integrations";
 import messagesRoutes from "./routes/messages";
@@ -186,7 +182,6 @@ import statusRoutes from "./routes/status";
 import syntheticRoutes from "./routes/synthetic";
 import walkPaymentFlowRoutes from "./routes/walk-payment-flow";
 import walletTelemetryRoutes from "./routes/wallet-telemetry";
-import weatherTestRoutes from "./routes/weather-test";
 import productionMonitorRoutes from "./routes/production-monitor";
 import octopusBrainRoutes from "./routes/octopus-brain";
 import octopusEngineRoutes from "./routes/octopus-engine";
@@ -9390,7 +9385,6 @@ self.addEventListener('notificationclick', (event) => {
   // Thank you email route (management use)
   app.use('/api', adminLimiter, thankYouRoutes);
   app.use('/api/admin', adminLimiter, platformCopyEmailRoutes);
-  app.use('/api', testLuxuryLaunchRoutes);
   app.use('/api', sendInvestorEventEmailRoutes);
 
   app.post('/api/send-membership-confirmation', async (req, res) => {
@@ -9454,8 +9448,6 @@ self.addEventListener('notificationclick', (event) => {
   // 💼 CAREERS PORTAL - SEEK-inspired HR application system with fraud prevention
   app.use('/api/careers', apiLimiter, careersRoutes);
   
-  // Seed demo data endpoint (for testing/demo purposes)
-  app.use('/api', seedDemoRoutes);
   
   // ⁦Pet Wash Academy™⁩ - Professional trainer marketplace (2025 unified ecosystem)
   app.use('/api/academy', apiLimiter, academyRoutes);
@@ -9502,8 +9494,6 @@ self.addEventListener('notificationclick', (event) => {
   // Luxury Documents (Invoices, Receipts, Statements)
   app.use('/api/luxury-documents', adminLimiter, luxuryDocumentsRoutes);
   
-  // QA Testing (Comprehensive endpoint testing and reporting)
-  app.use('/api/qa', adminLimiter, qaTestingRoutes);
   
   // Launch Event Notifications (WhatsApp notifications for Kfar Saba pilot launch)
   app.use(apiLimiter, launchEventRoutes);
@@ -9691,9 +9681,6 @@ self.addEventListener('notificationclick', (event) => {
   // Walk My Pet Payment Flow
   app.use('/api/walk-payment-flow', apiLimiter, walkPaymentFlowRoutes);
   
-  // Testing & Development
-  app.use('/api/gmail-test', adminLimiter, gmailTestRoutes);
-  app.use('/api/weather-test', adminLimiter, weatherTestRoutes);
   
   // Production Website Monitoring (Gemini AI-powered)
   app.use('/api/production-monitor', adminLimiter, productionMonitorRoutes);
