@@ -12,6 +12,7 @@ import { generatePartnerInvitationHebrew } from './templates/partner-invitation-
 import { generateWorkflowNotification } from './templates/workflow-notification-2025';
 import { generateLuxuryLaunchEmail } from './templates/luxury-launch-2025';
 import { generateInvestorLaunchEventEmail } from './templates/luxury-investor-launch-event-2025';
+import { generateLuxuryWelcomeEmail } from './templates/welcome-luxury-2026';
 import { createMailService, isSendGridConfigured } from '../lib/sendgrid';
 
 const FROM_EMAIL = 'Support@PetWash.co.il';
@@ -103,7 +104,47 @@ export async function sendBackendTeamInvitation(
 }
 
 /**
- * Send Welcome Email to New Customer
+ * Send Luxury Welcome Email (2026 Design)
+ * Unified template for both customer and provider signups
+ */
+export async function sendLuxuryWelcomeCustomer(
+  email: string,
+  firstName: string,
+  language: 'he' | 'en' = 'he'
+): Promise<boolean> {
+  const { subject, html } = generateLuxuryWelcomeEmail({
+    firstName,
+    variant: 'customer',
+    language,
+  });
+
+  logger.info('[Luxury Email] Sending customer welcome (2026)', { email, firstName });
+  return sendLuxuryEmail({ to: email, subject, html });
+}
+
+export async function sendLuxuryWelcomeProvider(
+  email: string,
+  firstName: string,
+  options?: {
+    language?: 'he' | 'en';
+    membershipNumber?: string;
+    serviceTypes?: string[];
+  }
+): Promise<boolean> {
+  const { subject, html } = generateLuxuryWelcomeEmail({
+    firstName,
+    variant: 'provider',
+    language: options?.language || 'he',
+    membershipNumber: options?.membershipNumber,
+    serviceTypes: options?.serviceTypes,
+  });
+
+  logger.info('[Luxury Email] Sending provider welcome (2026)', { email, firstName, membershipNumber: options?.membershipNumber });
+  return sendLuxuryEmail({ to: email, subject, html });
+}
+
+/**
+ * Send Welcome Email to New Customer (legacy 2025)
  */
 export async function sendWelcomeEmail(
   email: string,
