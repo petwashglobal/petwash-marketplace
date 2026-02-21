@@ -519,28 +519,31 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
 
         {/* Mobile nav strip - shows below header on small screens only */}
         <div className="pw-mobile-nav-strip">
-          <button
-            className="pw-mobile-nav-strip-link"
-            onClick={() => {
-              setIsPlatformsOpen((prev) => !prev);
-            }}
-          >
-            {t("nav.platforms", currentLanguage)}
-          </button>
-          <span className="pw-mobile-nav-strip-dot">·</span>
-          <button
-            className="pw-mobile-nav-strip-link"
-            onClick={() => handleNavigate("/loyalty")}
-          >
-            {t("nav.loyalty", currentLanguage)}
-          </button>
-          <span className="pw-mobile-nav-strip-dot">·</span>
-          <button
-            className="pw-mobile-nav-strip-link"
-            onClick={() => handleNavigate("/egift")}
-          >
-            {t("nav.giftCards", currentLanguage)}
-          </button>
+          <div className="pw-mobile-nav-strip-row">
+            <button
+              className="pw-mobile-nav-strip-link"
+              onClick={() => handleNavigate("/egift")}
+            >
+              {t("nav.giftCards", currentLanguage)}
+            </button>
+            <span className="pw-mobile-nav-strip-dot">·</span>
+            <button
+              className="pw-mobile-nav-strip-link"
+              onClick={() => handleNavigate("/loyalty")}
+            >
+              {t("nav.loyalty", currentLanguage)}
+            </button>
+          </div>
+          <div className="pw-mobile-nav-strip-row">
+            <button
+              className="pw-mobile-nav-strip-link"
+              onClick={() => {
+                setIsPlatformsOpen((prev) => !prev);
+              }}
+            >
+              {t("nav.platforms", currentLanguage)}
+            </button>
+          </div>
         </div>
       </header>
 
