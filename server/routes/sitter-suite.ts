@@ -16,6 +16,9 @@ import {
   insertPetProfileForSittingSchema,
   insertSitterBookingSchema,
   insertSitterReviewSchema,
+  octopusBookings,
+  octopusLedger,
+  octopusInvoices,
   type SitterProfile,
   type PetProfileForSitting,
   type SitterBooking,
@@ -35,6 +38,7 @@ import { advancedBookingEngine as sitterAdvancedBookingEngine } from '../service
 import { IsraeliDigitalReceiptService } from '../services/IsraeliDigitalReceiptService';
 import { IsraeliContractorComplianceService } from '../services/IsraeliContractorCompliance';
 import VATCalculatorService from '../services/VATCalculatorService';
+import { backupFinancialDocument } from '../services/gcsBackupService';
 import multer from 'multer';
 import { storage, auth } from '../lib/firebase-admin';
 
@@ -583,6 +587,36 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
       })
       .returning();
     
+    // Record in Octopus Brain ledger (financial audit trail)
+    const octopusId = `OB-SITTER-${nanoid(8)}`;
+    const priceCents = Math.round(pricing.totalPrice * 100);
+    const platformFeeCents = Math.round(pricing.platformFee * 100);
+    const providerShareCents = Math.round(pricing.providerPayout * 100);
+    try {
+      await db.insert(octopusBookings).values({
+        id: octopusId,
+        platform: 'PETSITTER',
+        status: 'DRAFT',
+        userId: ownerId,
+        providerId: sitterId.toString(),
+        price: priceCents,
+        platformFee: platformFeeCents,
+        providerShare: providerShareCents,
+        idempotencyKey: bookingId,
+      });
+      await db.insert(octopusLedger).values({
+        id: `OL-${nanoid(8)}`,
+        type: 'BOOKING_CREATED',
+        bookingId: octopusId,
+        amount: priceCents,
+        platform: 'PETSITTER',
+        metadata: { sitterBookingId: bookingId, totalDays, ownerId, sitterId },
+      });
+      logger.info('[Octopus Brain] Sitter booking recorded', { octopusId, bookingId });
+    } catch (octopusErr) {
+      logger.warn('[Octopus Brain] Failed to record sitter booking (non-blocking)', octopusErr);
+    }
+
     logger.info('[Sitter Suite] ✅ Booking request created - awaiting provider confirmation', {
       bookingId,
       ownerId,
@@ -737,6 +771,28 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         })
         .where(eq(sitterBookings.bookingId, bookingId));
       
+      // Update Octopus Brain: DRAFT → CONFIRMED + escrow ledger entry
+      try {
+        const [octopusRecord] = await db.select().from(octopusBookings)
+          .where(eq(octopusBookings.idempotencyKey, bookingId)).limit(1);
+        if (octopusRecord) {
+          await db.update(octopusBookings)
+            .set({ status: 'CONFIRMED', updatedAt: new Date() })
+            .where(eq(octopusBookings.id, octopusRecord.id));
+          await db.insert(octopusLedger).values({
+            id: `OL-${nanoid(8)}`,
+            type: 'PAYMENT_CAPTURED',
+            bookingId: octopusRecord.id,
+            amount: octopusRecord.price,
+            platform: 'PETSITTER',
+            metadata: { nayaxTransactionId: paymentResult.nayaxTransactionId, escrowHoldHours: 72 },
+          });
+          logger.info('[Octopus Brain] Sitter booking confirmed + payment captured', { octopusId: octopusRecord.id });
+        }
+      } catch (octopusErr) {
+        logger.warn('[Octopus Brain] Failed to update sitter booking status (non-blocking)', octopusErr);
+      }
+
       logger.info('[Sitter Suite] ✅ Provider ACCEPTED booking - payment captured', { bookingId, sitterId: sitter.id });
 
       calendarIntegrationService.createBookingEvent({
@@ -788,6 +844,34 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
       } catch (vatErr) {
         logger.warn('[Sitter Suite] VAT ledger recording after accept failed (non-blocking)', vatErr);
       }
+
+      // Backup financial records to Google Cloud Storage (non-blocking)
+      (async () => {
+        try {
+          await backupFinancialDocument({
+            documentType: 'escrow_record',
+            bookingId: booking.bookingId,
+            platform: 'PETSITTER',
+            content: JSON.stringify({
+              bookingId: booking.bookingId,
+              ownerId: booking.ownerId,
+              sitterId: booking.sitterId,
+              totalChargeCents: booking.totalChargeCents,
+              platformServiceFeeCents: booking.platformServiceFeeCents,
+              sitterPayoutCents: booking.sitterPayoutCents,
+              nayaxTransactionId: paymentResult.nayaxTransactionId,
+              confirmedAt: new Date().toISOString(),
+              escrowHoldHours: 72,
+            }, null, 2),
+            metadata: {
+              nayaxTransactionId: paymentResult.nayaxTransactionId || '',
+              totalDays: booking.totalDays.toString(),
+            },
+          });
+        } catch (gcsErr) {
+          logger.warn('[GCS] Sitter financial backup failed (non-blocking)', gcsErr);
+        }
+      })();
       
       res.json({
         success: true,

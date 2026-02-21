@@ -13,6 +13,8 @@ import {
 import { eq, and, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { egiftFinancialService } from "../services/EgiftFinancialService";
+import escrowService from "../services/EscrowService";
+import { backupFinancialDocument } from "../services/gcsBackupService";
 const router = Router();
 
 const PLATFORM_FEE_RATE = 0.15;
@@ -335,8 +337,48 @@ router.post("/v1/bookings/:id/complete", async (req: Request, res: Response) => 
         price: booking.price,
         platformFee: booking.platformFee,
         providerShare: booking.providerShare,
+        docNumber,
       });
     });
+
+    // Release escrow funds (non-blocking, outside transaction)
+    (async () => {
+      try {
+        await escrowService.releaseEscrowPayment(id, 'octopus_engine_completion');
+        logger.info("[Escrow] Released after booking completion", { bookingId: id });
+      } catch (escrowErr: any) {
+        logger.warn("[Escrow] Release failed (may not have escrow record)", { bookingId: id, error: escrowErr?.message });
+      }
+    })();
+
+    // Backup financial records to Google Cloud Storage (non-blocking)
+    (async () => {
+      try {
+        const [completedBooking] = await db.select().from(octopusBookings).where(eq(octopusBookings.id, id)).limit(1);
+        if (completedBooking) {
+          const ledgerEntries = await db.select().from(octopusLedger).where(eq(octopusLedger.bookingId, id));
+          const financialRecord = JSON.stringify({
+            booking: completedBooking,
+            ledgerEntries,
+            completedAt: new Date().toISOString(),
+            integrityHash: require('crypto').createHash('sha256').update(JSON.stringify(completedBooking)).digest('hex'),
+          }, null, 2);
+          await backupFinancialDocument({
+            documentType: 'ledger_export',
+            bookingId: id,
+            platform: completedBooking.platform,
+            content: financialRecord,
+            metadata: {
+              totalPrice: completedBooking.price.toString(),
+              platformFee: completedBooking.platformFee.toString(),
+              providerShare: completedBooking.providerShare.toString(),
+            },
+          });
+        }
+      } catch (gcsErr: any) {
+        logger.warn("[GCS] Financial backup failed (non-blocking)", { bookingId: id, error: gcsErr?.message });
+      }
+    })();
 
     return res.json({ success: true });
   } catch (err: any) {

@@ -715,3 +715,63 @@ async function sendBackupSummaryEmail(data: {
     logger.error('[GCS] Failed to send backup summary email:', error);
   }
 }
+
+const FINANCIAL_BUCKET = process.env.GCS_FINANCIAL_BUCKET || 'petwash-secure-documents';
+
+export async function backupFinancialDocument(params: {
+  documentType: 'invoice' | 'receipt' | 'ledger_export' | 'tax_report' | 'escrow_record';
+  bookingId: string;
+  platform: string;
+  content: Buffer | string;
+  contentType?: string;
+  metadata?: Record<string, string>;
+}): Promise<{ success: boolean; gcsUrl?: string; sha256?: string; error?: string }> {
+  try {
+    if (!isGcsConfigured()) {
+      logger.warn('[GCS Financial] GCS not configured - skipping financial document backup');
+      return { success: false, error: 'GCS not configured' };
+    }
+
+    const storageClient = getStorageClient();
+    const date = new Date().toISOString().split('T')[0];
+    const yearMonth = date.substring(0, 7);
+    const fileName = `financial/${params.platform}/${yearMonth}/${params.documentType}_${params.bookingId}_${Date.now()}.${params.contentType === 'application/pdf' ? 'pdf' : 'json'}`;
+
+    const contentBuffer = typeof params.content === 'string' ? Buffer.from(params.content) : params.content;
+    const sha256 = crypto.createHash('sha256').update(contentBuffer).digest('hex');
+
+    const bucket = storageClient.bucket(FINANCIAL_BUCKET);
+    const file = bucket.file(fileName);
+
+    await file.save(contentBuffer, {
+      metadata: {
+        contentType: params.contentType || 'application/json',
+        metadata: {
+          documentType: params.documentType,
+          bookingId: params.bookingId,
+          platform: params.platform,
+          sha256,
+          uploadedAt: new Date().toISOString(),
+          retentionYears: '7',
+          ...params.metadata,
+        },
+      },
+    });
+
+    const gcsUrl = `gs://${FINANCIAL_BUCKET}/${fileName}`;
+    logger.info(`[GCS Financial] ✅ ${params.documentType} backed up: ${gcsUrl}`, {
+      bookingId: params.bookingId,
+      platform: params.platform,
+      sha256,
+    });
+
+    return { success: true, gcsUrl, sha256 };
+  } catch (error: any) {
+    logger.error('[GCS Financial] Document backup failed', {
+      documentType: params.documentType,
+      bookingId: params.bookingId,
+      error: error.message,
+    });
+    return { success: false, error: error.message };
+  }
+}

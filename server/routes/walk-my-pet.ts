@@ -10,6 +10,9 @@ import {
   walkAlerts,
   walkVideos,
   users,
+  octopusBookings,
+  octopusLedger,
+  octopusInvoices,
   type InsertWalkerProfile,
   type InsertWalkBooking,
   type InsertWalkGpsTracking,
@@ -24,6 +27,10 @@ import { calculateDistance } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { walkEliteBookingEngine } from '../services/booking-engines/walk/WalkEliteBookingEngine';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
+import { IsraeliDigitalReceiptService } from '../services/IsraeliDigitalReceiptService';
+import VATCalculatorService from '../services/VATCalculatorService';
+import { logger } from '../lib/logger';
+import { backupFinancialDocument } from '../services/gcsBackupService';
 
 const router = Router();
 
@@ -305,6 +312,36 @@ router.post('/api/walks/book', requireAuth, requireLoyaltyMember, async (req, re
 
     const [newBooking] = await db.insert(walkBookings).values(bookingData).returning();
 
+    // Record in Octopus Brain ledger (financial audit trail)
+    const octopusId = `OB-WALK-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+    const priceCents = Math.round(pricing.totalPrice * 100);
+    const platformFeeCents = Math.round(pricing.platformFee * 100);
+    const providerShareCents = Math.round(pricing.providerPayout * 100);
+    try {
+      await db.insert(octopusBookings).values({
+        id: octopusId,
+        platform: 'PETTREK',
+        status: 'DRAFT',
+        userId: ownerId,
+        providerId: walkerId,
+        price: priceCents,
+        platformFee: platformFeeCents,
+        providerShare: providerShareCents,
+        idempotencyKey: bookingId,
+      });
+      await db.insert(octopusLedger).values({
+        id: `OL-${crypto.randomBytes(4).toString('hex')}`,
+        type: 'BOOKING_CREATED',
+        bookingId: octopusId,
+        amount: priceCents,
+        platform: 'PETTREK',
+        metadata: { walkBookingId: bookingId, durationMinutes, ownerId, walkerId },
+      });
+      console.log(`[Octopus Brain] Walk booking recorded: ${octopusId} for ${bookingId}`);
+    } catch (octopusErr) {
+      console.warn('[Octopus Brain] Failed to record walk booking (non-blocking)', octopusErr);
+    }
+
     // Create alert for walker (Uber-style notification)
     await db.insert(walkAlerts).values({
       alertId: `ALERT-${crypto.randomUUID()}`,
@@ -429,7 +466,108 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         })
         .where(eq(walkBookings.bookingId, bookingId));
       
-      console.log(`[Walk My Pet] Walker ACCEPTED booking ${bookingId}`);
+      logger.info(`[Walk My Pet] Walker ACCEPTED booking ${bookingId}`);
+
+      // Update Octopus Brain: DRAFT → CONFIRMED + payment captured ledger
+      try {
+        const [octopusRecord] = await db.select().from(octopusBookings)
+          .where(eq(octopusBookings.idempotencyKey, booking.bookingId)).limit(1);
+        if (octopusRecord) {
+          await db.update(octopusBookings)
+            .set({ status: 'CONFIRMED', updatedAt: new Date() })
+            .where(eq(octopusBookings.id, octopusRecord.id));
+          await db.insert(octopusLedger).values({
+            id: `OL-${crypto.randomBytes(4).toString('hex')}`,
+            type: 'PAYMENT_CAPTURED',
+            bookingId: octopusRecord.id,
+            amount: octopusRecord.price,
+            platform: 'PETTREK',
+            metadata: { walkBookingId: booking.bookingId, escrowHoldHours: 72 },
+          });
+          logger.info('[Octopus Brain] Walk booking confirmed + payment captured', { octopusId: octopusRecord.id });
+        }
+      } catch (octopusErr) {
+        logger.warn('[Octopus Brain] Failed to update walk booking status (non-blocking)', octopusErr);
+      }
+
+      // Generate Israeli digital receipt (non-blocking)
+      try {
+        const totalAmount = parseFloat(booking.totalCost || '0');
+        const platformFeeAmount = parseFloat(booking.platformFeeOwner || '0') + parseFloat(booking.platformFeeSitter || '0');
+        const walkerPayoutAmount = parseFloat(booking.walkerPayout || '0');
+        await IsraeliDigitalReceiptService.generateReceipt({
+          platform: 'walk-my-pet',
+          bookingId: booking.bookingId,
+          nayaxTransactionId: undefined,
+          customerEmail: '',
+          customerName: '',
+          providerName: walker.businessName || `Walker ${walker.walkerId}`,
+          providerId: walker.walkerId,
+          providerType: 'walker',
+          serviceDescription: `Dog walk - ${booking.durationMinutes} minutes`,
+          serviceDescriptionHe: `טיול כלבים - ${booking.durationMinutes} דקות`,
+          subtotalAmount: parseFloat(booking.walkerRate || '0'),
+          platformFeeAmount,
+          totalAmount,
+          paymentMethod: 'Nayax Card Payment',
+          providerPayoutAmount: walkerPayoutAmount,
+          brokerCommissionAmount: platformFeeAmount,
+        });
+      } catch (receiptErr) {
+        logger.warn('[Walk My Pet] Receipt generation after accept failed (non-blocking)', receiptErr);
+      }
+
+      // Record in P&L ledger for VAT accounting (non-blocking)
+      try {
+        await VATCalculatorService.recordTransaction(
+          'walk-my-pet',
+          booking.bookingId,
+          parseFloat(booking.walkerRate || '0'),
+          booking.bookingId,
+          {
+            walkerId: booking.walkerId,
+            durationMinutes: booking.durationMinutes,
+          }
+        );
+      } catch (vatErr) {
+        logger.warn('[Walk My Pet] VAT ledger recording after accept failed (non-blocking)', vatErr);
+      }
+
+      // Add calendar event (non-blocking)
+      calendarIntegrationService.createBookingEvent({
+        platform: 'walk-my-pet',
+        bookingId: booking.bookingId,
+        title: `⁦Walk My Pet™⁩ - Dog Walk (${booking.durationMinutes} min)`,
+        description: `Dog walking booking confirmed for ${booking.durationMinutes} minutes`,
+        startTime: new Date(booking.scheduledDate),
+        endTime: new Date(new Date(booking.scheduledDate).getTime() + (booking.durationMinutes || 60) * 60000),
+        providerName: walker.businessName || `Walker ${walker.walkerId}`,
+      }).catch(() => {});
+
+      // Backup financial records to Google Cloud Storage (non-blocking)
+      (async () => {
+        try {
+          await backupFinancialDocument({
+            documentType: 'escrow_record',
+            bookingId: booking.bookingId,
+            platform: 'PETTREK',
+            content: JSON.stringify({
+              bookingId: booking.bookingId,
+              ownerId: booking.ownerId,
+              walkerId: booking.walkerId,
+              totalCost: booking.totalCost,
+              walkerPayout: booking.walkerPayout,
+              platformFeeOwner: booking.platformFeeOwner,
+              platformFeeSitter: booking.platformFeeSitter,
+              confirmedAt: new Date().toISOString(),
+              escrowHoldHours: 72,
+              durationMinutes: booking.durationMinutes,
+            }, null, 2),
+          });
+        } catch (gcsErr) {
+          logger.warn('[GCS] Walk financial backup failed (non-blocking)', gcsErr);
+        }
+      })();
       
       res.json({
         success: true,
@@ -445,7 +583,7 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         })
         .where(eq(walkBookings.bookingId, bookingId));
       
-      console.log(`[Walk My Pet] Walker DECLINED booking ${bookingId}, reason: ${declineReason}`);
+      logger.info(`[Walk My Pet] Walker DECLINED booking ${bookingId}, reason: ${declineReason}`);
       
       res.json({
         success: true,
