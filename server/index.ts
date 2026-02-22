@@ -189,35 +189,110 @@ app.use((req, res, next) => {
   next();
 });
 
-// --- 2025 HEALTH MONITORING ENDPOINT ---
-// Track server readiness state
+// --- 2026 HEALTH MONITORING (Cloud Run Production Standard) ---
 let serverReady = false;
 
-// Health endpoint - always responds 200 for Cloud Run liveness check
-app.get('/health', (req, res) => {
-  const uptime = process.uptime();
-  
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let t: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(t!));
+}
+
+const healthState = {
+  bootTs: new Date().toISOString(),
+  db: { ok: false, lastOkAt: null as string | null, lastCheckAt: null as string | null, lastError: null as string | null, lastMs: null as number | null },
+  app: { ok: true, routesReady: false }
+};
+
+async function checkDbPing(): Promise<{ ok: boolean; ms: number; error?: string }> {
+  const { pool, isDatabaseAvailable } = await import('./db');
+  if (!isDatabaseAvailable) {
+    return { ok: false, ms: 0, error: 'DATABASE_URL not configured' };
+  }
+  const t0 = Date.now();
+  healthState.db.lastCheckAt = new Date().toISOString();
+  try {
+    await withTimeout(pool.query('SELECT 1'), 2000, 'DB ping');
+    healthState.db.ok = true;
+    healthState.db.lastError = null;
+    healthState.db.lastOkAt = new Date().toISOString();
+    healthState.db.lastMs = Date.now() - t0;
+    return { ok: true, ms: healthState.db.lastMs };
+  } catch (e: any) {
+    healthState.db.ok = false;
+    healthState.db.lastError = e?.message || String(e);
+    healthState.db.lastMs = Date.now() - t0;
+    return { ok: false, ms: healthState.db.lastMs, error: healthState.db.lastError! };
+  }
+}
+
+async function connectDbNonBlocking(): Promise<void> {
+  const { pool, isDatabaseAvailable } = await import('./db');
+  if (!isDatabaseAvailable) {
+    console.warn('[DB] DATABASE_URL not set - skipping connect');
+    return;
+  }
+  const t0 = Date.now();
+  console.log('[DB] connecting (non-blocking, 5s timeout)...');
+  try {
+    const client = await withTimeout(pool.connect(), 5000, 'DB connect');
+    client.release();
+    console.log(`[DB] connected in ${Date.now() - t0}ms`);
+    healthState.db.ok = true;
+    healthState.db.lastError = null;
+    healthState.db.lastOkAt = new Date().toISOString();
+  } catch (e: any) {
+    console.error(`[DB] connect failed in ${Date.now() - t0}ms:`, e?.message || e);
+    healthState.db.ok = false;
+    healthState.db.lastError = e?.message || String(e);
+  }
+}
+
+app.get('/health', (_req, res) => {
   res.set('X-Octopus-Source', 'petwash-backend-global');
   res.status(200).json({
-    status: serverReady ? 'ONLINE' : 'STARTING',
+    status: 'OK',
     system: 'Pet Wash System v2.0',
     timestamp: new Date().toISOString(),
     metrics: {
-      uptime_seconds: Math.floor(uptime),
+      uptime_seconds: Math.floor(process.uptime()),
       memory_usage: (process.memoryUsage().rss / 1024 / 1024).toFixed(2) + ' MB',
     },
     checks: {
-      database: serverReady ? 'Connected' : 'Initializing',
-      email_service: serverReady ? 'Ready' : 'Initializing',
-      port_config: `Port ${PORT}`
+      port_config: `Port ${PORT}`,
+      routes_ready: healthState.app.routesReady
     }
   });
 });
 
-// --- CRITICAL: Block all non-health requests until initialization is complete ---
-// This prevents 404s during startup when routes aren't registered yet
+app.get('/api/health', async (_req, res) => {
+  const dbCheck = await checkDbPing();
+  const status = dbCheck.ok && healthState.app.routesReady ? 'ONLINE' : 'DEGRADED';
+  res.status(200).json({
+    status,
+    system: 'Pet Wash System v2.0',
+    timestamp: new Date().toISOString(),
+    metrics: {
+      uptime_seconds: Math.floor(process.uptime()),
+      memory_usage: (process.memoryUsage().rss / 1024 / 1024).toFixed(2) + ' MB',
+    },
+    checks: {
+      db: dbCheck,
+      routes_ready: healthState.app.routesReady,
+      port_config: `Port ${PORT}`
+    },
+    state: {
+      bootTs: healthState.bootTs,
+      db: healthState.db
+    }
+  });
+});
+
+// --- Block non-health requests until routes are registered ---
 app.use((req, res, next) => {
-  if (req.path === '/health') {
+  if (req.path === '/health' || req.path === '/api/health') {
     return next();
   }
   
@@ -225,7 +300,7 @@ app.use((req, res, next) => {
     if (req.path === '/' || req.method === 'HEAD') {
       return res.status(200).send('<!DOCTYPE html><html><head><title>Pet Wash™</title></head><body><p>Starting up...</p></body></html>');
     }
-    const traceId = req.traceId || crypto.randomUUID();
+    const traceId = (req as any).traceId || crypto.randomUUID();
     return res.status(503).json({
       error: 'SERVICE_STARTING',
       message: 'Server is starting up, please retry in a moment',
@@ -362,8 +437,9 @@ if (isProduction) {
       await setupVite(app, server);
       console.log('✅ [Vite] Dev server initialized - source files will hot-reload');
       
-      // Mark server as ready in development mode
       serverReady = true;
+      healthState.app.routesReady = true;
+      connectDbNonBlocking().catch(() => {});
       
       import('./services/googleSheetsIntegration').then(m => m.processStartupRetries()).catch(() => {});
       import('./services/JobDispatchService').then(m => m.JobDispatchService.startDispatchPoller()).catch(() => {});
@@ -507,12 +583,14 @@ if (isProduction) {
       });
     });
     
-    // Mark server as fully ready
     serverReady = true;
+    healthState.app.routesReady = true;
+    connectDbNonBlocking().catch(() => {});
     
     console.log('--------------------------------------------------');
     console.log(`✅ [Server] Initialization complete - ${process.env.NODE_ENV || 'development'} mode`);
     console.log(`🏥 [Server] Health endpoint: /health`);
+    console.log(`🏥 [Server] API Health endpoint: /api/health`);
     console.log('--------------------------------------------------');
   } catch (error) {
     console.error('--------------------------------------------------');

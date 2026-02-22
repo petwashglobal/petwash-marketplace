@@ -1,0 +1,156 @@
+GOAL
+- /health (Cloud Run probe) must always return 200 fast (no DB blocking)
+- /api/health must never hang. It should return fast with DB status and last error.
+- DB connect must have hard timeouts and clear logs so we see exactly where it stalls.
+
+STEP 1 - FIND THE DB INIT AND HEALTH LOGIC
+Search your backend code for any of these:
+- "/api/health"
+- "/health"
+- prisma.$connect
+- new PrismaClient
+- pool.connect
+- pool.query
+- sequelize.authenticate
+- mongoose.connect
+- initDatabase
+- connectDatabase
+- DATABASE_URL
+
+STEP 2 - ADD A GENERIC TIMEOUT WRAPPER
+Add this helper once (anywhere common, for example utils/timeout.ts or utils/timeout.js):
+
+function withTimeout(promise, ms, label) {
+  let t;
+  const timeout = new Promise((_, reject) => {
+    t = setTimeout(() => reject(new Error(label + " timed out after " + ms + "ms")), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(t));
+}
+
+STEP 3 - TRACK DB STATE WITHOUT BLOCKING STARTUP
+Create a shared state object (module scope):
+
+const healthState = {
+  bootTs: new Date().toISOString(),
+  db: { ok: false, lastOkAt: null, lastCheckAt: null, lastError: null, lastMs: null },
+  app: { ok: true }
+};
+
+STEP 4 - NON-BLOCKING DB CONNECT WITH LOGS AND TIMEOUT
+Wherever you do DB connect, do NOT let it block forever.
+Wrap it like this (adjust dbConnect() for your library):
+
+async function connectDbNonBlocking(dbConnectFn) {
+  const t0 = Date.now();
+  console.log("[DB] connecting...");
+  try {
+    await withTimeout(dbConnectFn(), 5000, "DB connect");
+    console.log("[DB] connected in " + (Date.now() - t0) + "ms");
+    healthState.db.ok = true;
+    healthState.db.lastError = null;
+    healthState.db.lastOkAt = new Date().toISOString();
+  } catch (e) {
+    console.error("[DB] connect failed in " + (Date.now() - t0) + "ms:", e && e.message ? e.message : e);
+    healthState.db.ok = false;
+    healthState.db.lastError = e && e.message ? e.message : String(e);
+  }
+}
+
+Call it at startup but do not crash the process unless you want to:
+- connectDbNonBlocking(() => prisma.$connect())
+- connectDbNonBlocking(() => pool.connect())
+- connectDbNonBlocking(() => sequelize.authenticate())
+- connectDbNonBlocking(() => mongoose.connect(DATABASE_URL))
+
+STEP 5 - FAST DB PING FUNCTION (NEVER HANGS)
+Make a function that checks DB quickly with a short timeout.
+Replace dbPingFn() with your actual "SELECT 1" or equivalent.
+
+async function checkDbOnce(dbPingFn) {
+  const t0 = Date.now();
+  healthState.db.lastCheckAt = new Date().toISOString();
+  try {
+    await withTimeout(dbPingFn(), 2000, "DB ping");
+    healthState.db.ok = true;
+    healthState.db.lastError = null;
+    healthState.db.lastOkAt = new Date().toISOString();
+    healthState.db.lastMs = Date.now() - t0;
+    return { ok: true, ms: healthState.db.lastMs };
+  } catch (e) {
+    healthState.db.ok = false;
+    healthState.db.lastError = e && e.message ? e.message : String(e);
+    healthState.db.lastMs = Date.now() - t0;
+    return { ok: false, ms: healthState.db.lastMs, error: healthState.db.lastError };
+  }
+}
+
+STEP 6 - /health MUST ALWAYS BE 200 FOR CLOUD RUN PROBES
+This endpoint must not depend on DB.
+Return instantly:
+
+GET /health -> 200 JSON
+
+Example payload:
+{
+  "status":"OK",
+  "system":"YourSystemName",
+  "timestamp":"...",
+  "metrics":{"uptime_seconds":123,"memory_usage":"..."},
+  "checks":{"port_config":"Port 8080"}
+}
+
+STEP 7 - /api/health SHOULD RETURN FAST WITH DB DETAILS
+Do NOT block on long init. Do a quick ping with timeout and respond.
+Pick ONE behavior:
+
+Option A (recommended): always 200, show DEGRADED if DB down
+- better for debugging and avoids external systems thinking your service is dead
+
+Option B: return 503 when DB down
+- only if you need load balancers or monitoring to treat DB down as an outage
+
+Example for Option A:
+GET /api/health -> 200 always
+
+Response:
+{
+  "status":"OK" or "DEGRADED",
+  "timestamp":"...",
+  "checks":{
+    "db":{"ok":true/false,"ms":123,"error":"...optional"}
+  },
+  "state":{
+    "bootTs":"...",
+    "db":{
+      "ok":true/false,
+      "lastOkAt":"...or null",
+      "lastCheckAt":"...or null",
+      "lastError":"...or null",
+      "lastMs":123
+    }
+  }
+}
+
+STEP 8 - MOST COMMON CLOUD RUN DB STALL CAUSES (CHECKLIST)
+A) DATABASE_URL points to localhost or private host without routing
+- must be publicly reachable or via VPC connector or Cloud SQL connector
+B) SSL required but not configured
+- often needs sslmode=require (Postgres) or equivalent TLS settings
+C) Cloud SQL private IP without VPC connector
+- Cloud Run needs VPC connector + correct egress
+D) Too many DB connections due to scaling
+- reduce pool sizes (Cloud Run scales horizontally)
+- set small pool max (example 5) or Prisma connection_limit=5
+
+STEP 9 - WHAT TO PASTE HERE (NO SECRETS)
+Paste these 3 items and we will pinpoint the exact issue:
+1) Your /api/health handler code
+2) Which DB library you use (Prisma, pg, Sequelize, Mongoose, etc.)
+3) DATABASE_URL shape with secrets masked:
+   postgresql://USER:***@HOST:5432/DB?sslmode=require
+
+QUICK FIX IF YOU JUST WANT IT WORKING NOW
+- Make /api/health return 200 always and include db.ok + lastError
+- Add timeout to db connect and db ping
+- Add logs before and after connect and first query so we see if it is DNS, TCP, SSL, or auth
