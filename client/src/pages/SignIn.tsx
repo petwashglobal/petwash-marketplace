@@ -427,23 +427,33 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         window.scrollTo(0, 0);
         navigatePostLogin();
       } else {
-        let errorDescription = result.error || t('signin.failed', language);
-        
+        const noPasskeysFound = result.error?.toLowerCase().includes('no passkeys') || 
+          result.error?.toLowerCase().includes('no credentials') ||
+          result.error?.toLowerCase().includes('not found');
+
         if (result.error === 'NO_EMAIL') {
-          errorDescription = language === 'he'
-            ? 'הזינו את כתובת האימייל שלכם כדי להתחבר עם Face ID'
-            : 'Enter your email address to sign in with Face ID';
-        } else if (isChromeiOS()) {
-          errorDescription = language === 'he'
-            ? `${result.error || "נכשל להתחבר"}. טיפ: נסה Safari לחווית Face ID טובה יותר.`
-            : `${result.error || "Failed to sign in"}. Tip: Try Safari for better Face ID experience.`;
+          toast({
+            title: language === 'he' ? 'נדרש אימייל' : 'Email required',
+            description: language === 'he'
+              ? 'הזינו את כתובת האימייל שלכם כדי להתחבר עם Face ID'
+              : 'Enter your email address to sign in with Face ID',
+          });
+        } else if (noPasskeysFound) {
+          logger.info("Passkey sign-in: No passkeys registered for this account", { error: result.error });
+        } else {
+          let errorDescription = result.error || t('signin.failed', language);
+          if (isChromeiOS()) {
+            errorDescription = language === 'he'
+              ? `${result.error || "נכשל להתחבר"}. טיפ: נסה Safari לחווית Face ID טובה יותר.`
+              : `${result.error || "Failed to sign in"}. Tip: Try Safari for better Face ID experience.`;
+          }
+          
+          toast({
+            variant: "destructive",
+            title: language === 'he' ? 'שגיאה בהתחברות' : 'Sign-in error',
+            description: errorDescription,
+          });
         }
-        
-        toast({
-          variant: "destructive",
-          title: language === 'he' ? 'שגיאה בהתחברות' : 'Sign-in error',
-          description: errorDescription,
-        });
 
         trackEvent({
           action: 'auth_passkey_error',
@@ -1377,14 +1387,12 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             transition={{ delay: 0.1, duration: 0.4 }}
             className="text-center space-y-3 pt-2"
           >
-            <div className="w-[1px] h-8 bg-neutral-300 mx-auto mb-4" />
             <h1 className="text-2xl sm:text-3xl font-light tracking-wide text-neutral-900 uppercase" style={{ fontFamily: "'Cormorant Garamond', 'Playfair Display', serif", letterSpacing: '0.15em' }}>
               {t('signin.welcomeBack', language)}
             </h1>
             <p className="text-neutral-500 text-sm tracking-wider uppercase" style={{ letterSpacing: '0.12em' }}>
               {t('signin.signInContinue', language)}
             </p>
-            <div className="w-12 h-[1px] bg-neutral-300 mx-auto mt-3" />
           </motion.div>
 
           {!selectedIntent && !user && (
