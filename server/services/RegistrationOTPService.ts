@@ -105,10 +105,28 @@ function constantTimeEqual(a: string, b: string): boolean {
   return crypto.timingSafeEqual(bufA, bufB);
 }
 
+const APPROVED_CALLING_CODES = [
+  '+972', '+61', '+1', '+44', '+33', '+49', '+34', '+39', '+31', '+32',
+  '+41', '+43', '+46', '+47', '+45', '+353', '+351', '+30', '+48',
+  '+420', '+36', '+40', '+359', '+358',
+]; // +1 covers both US and CA
+const E164_REGEX = /^\+[1-9]\d{7,14}$/;
+
 function normalizePhone(phone: string): string {
   const trimmed = String(phone || '').trim();
   if (trimmed.startsWith('+')) return trimmed;
   return '+' + trimmed.replace(/[^\d]/g, '');
+}
+
+function validatePhoneForOTP(phoneE164: string): { valid: boolean; error?: string } {
+  if (!E164_REGEX.test(phoneE164)) {
+    return { valid: false, error: 'INVALID_PHONE_FORMAT' };
+  }
+  const isApproved = APPROVED_CALLING_CODES.some(code => phoneE164.startsWith(code));
+  if (!isApproved) {
+    return { valid: false, error: 'COUNTRY_NOT_SUPPORTED' };
+  }
+  return { valid: true };
 }
 
 function otpRedisKey(otpId: string): string {
@@ -174,6 +192,12 @@ export class RegistrationOTPService {
     const otpId = crypto.randomUUID();
     const traceId = opts.traceId || crypto.randomUUID().slice(0, 8);
 
+    const phoneValidation = validatePhoneForOTP(phoneE164);
+    if (!phoneValidation.valid) {
+      logger.warn('[RegistrationOTP] Phone validation failed', { error: phoneValidation.error, traceId });
+      return { success: false, otpId, expiresIn: 0, error: phoneValidation.error! };
+    }
+
     try {
       const locked = await cacheGet(lockoutKey(phoneE164));
       if (locked) {
@@ -227,8 +251,8 @@ export class RegistrationOTPService {
 
       const isHebrew = opts.language === 'he' || countryCode === 'IL';
       const smsBody = isHebrew
-        ? `PetWash קוד אימות:\n\n${code}\n\nתקף ל-5 דקות.\nאל תשתפו קוד זה.`
-        : `PetWash verification code:\n\n${code}\n\nExpires in 5 minutes.\nDo not share this code.`;
+        ? `PetWash: ${code}\nלא לשתף את הקוד.\nהקוד בתוקף ל-5 דקות.`
+        : `PetWash: ${code}\nDo not share this code.\nExpires in 5 minutes.`;
 
       const channel: OTPChannel = opts.channel || 'sms';
       let providerMessageId: string | undefined;

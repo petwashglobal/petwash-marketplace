@@ -163,12 +163,33 @@ export class WelcomeEmailService {
     const isHe = language === 'he';
 
     const subjectMap: Record<WelcomeAudience, string> = {
-      public_customer: isHe ? `⁦Pet Wash™⁩ - ברוכים הבאים! ${params.membershipNumber}` : `⁦Pet Wash™⁩ - Welcome! ${params.membershipNumber}`,
-      provider_applicant: isHe ? `⁦Pet Wash™⁩ - הרשמתך כנותן שירות התקבלה` : `⁦Pet Wash™⁩ - Provider Application Received`,
-      staff_request: isHe ? `⁦Pet Wash™⁩ - בקשת גישה לצוות` : `⁦Pet Wash™⁩ - Staff Access Request`,
+      public_customer: isHe ? `ברוכים הבאים ל-PetWash` : `Welcome to PetWash`,
+      provider_applicant: isHe ? `ברוכים הבאים ל-PetWash - הבקשה שלך כנותן שירות` : `Welcome to PetWash - Your Provider Application`,
+      staff_request: isHe ? `PetWash - בקשת גישה התקבלה` : `PetWash - Access Request Received`,
     };
 
     const html = getWelcomeHtml(params.audience, params.membershipNumber, language);
+
+    logger.info('[WelcomeEmail] WELCOME_EMAIL_QUEUED', {
+      audience: params.audience,
+      email: params.toEmail.slice(0, 3) + '***',
+      membershipNumber: params.membershipNumber,
+      traceId,
+    });
+
+    try {
+      await db.insert(emailAudit).values({
+        emailType: `welcome_${params.audience}`,
+        userId: params.userId || null,
+        toEmail: params.toEmail,
+        membershipNumber: params.membershipNumber,
+        provider: 'sendgrid',
+        status: 'queued',
+        traceId,
+      });
+    } catch (queueErr: any) {
+      logger.warn('[WelcomeEmail] Failed to log queued event', { error: queueErr.message, traceId });
+    }
 
     try {
       const sent = await EmailService.send({
@@ -189,14 +210,14 @@ export class WelcomeEmailService {
       });
 
       if (sent) {
-        logger.info('[WelcomeEmail] Sent', {
+        logger.info('[WelcomeEmail] WELCOME_EMAIL_SENT', {
           audience: params.audience,
           email: params.toEmail.slice(0, 3) + '***',
           membershipNumber: params.membershipNumber,
           traceId,
         });
       } else {
-        logger.warn('[WelcomeEmail] Failed to send', {
+        logger.warn('[WelcomeEmail] WELCOME_EMAIL_FAILED', {
           audience: params.audience,
           email: params.toEmail.slice(0, 3) + '***',
           traceId,

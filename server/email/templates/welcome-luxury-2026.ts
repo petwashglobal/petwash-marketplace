@@ -1,6 +1,6 @@
 import { PETWASH_LOGO_BASE64 } from './logo-base64';
 
-type EmailVariant = 'customer' | 'provider';
+type EmailVariant = 'customer' | 'provider' | 'staff';
 
 interface LuxuryWelcomeEmailData {
   firstName: string;
@@ -94,6 +94,40 @@ const CONTENT: Record<EmailVariant, Record<'en' | 'he', {
       subject: (name) => `\u05D1\u05E8\u05D5\u05DB\u05D9\u05DD \u05D4\u05D1\u05D0\u05D9\u05DD \u05DC\u05E6\u05D5\u05D5\u05EA Pet Wash\u2122, ${name} \u2014 \u05D7\u05E9\u05D1\u05D5\u05DF \u05E1\u05E4\u05E7 \u05E0\u05D5\u05E6\u05E8`,
     },
   },
+  staff: {
+    en: {
+      preheader: 'PetWash \u2014 your staff access request has been received. We will review it shortly.',
+      subtitle: 'PETWASH STAFF ACCESS',
+      intro: 'Your request for staff access has been received. An authorized manager will review your application.',
+      nextStep: 'Your request is pending approval. You will receive an email notification once a decision is made.',
+      ctaLabel: 'Check request status',
+      ctaUrl: 'https://petwash.co.il/access-pending',
+      accountLabel: 'Account:',
+      accountDesc: 'update details, security settings',
+      accountUrl: 'https://petwash.co.il/my-account',
+      helpLabel: 'Help:',
+      helpDesc: 'staff FAQs, policies, IT support',
+      helpUrl: 'https://petwash.co.il/help',
+      quickAccess: 'Quick access',
+      subject: (name) => `PetWash \u2014 Access Request Received, ${name}`,
+    },
+    he: {
+      preheader: 'PetWash \u2014 \u05D1\u05E7\u05E9\u05EA \u05D4\u05D2\u05D9\u05E9\u05D4 \u05E9\u05DC\u05DA \u05DC\u05E6\u05D5\u05D5\u05EA \u05D4\u05EA\u05E7\u05D1\u05DC\u05D4. \u05E0\u05D1\u05D3\u05D5\u05E7 \u05D1\u05D4\u05E7\u05D3\u05DD.',
+      subtitle: '\u05D2\u05D9\u05E9\u05EA \u05E6\u05D5\u05D5\u05EA PETWASH',
+      intro: '\u05D1\u05E7\u05E9\u05EA\u05DA \u05DC\u05D2\u05D9\u05E9\u05EA \u05E6\u05D5\u05D5\u05EA \u05D4\u05EA\u05E7\u05D1\u05DC\u05D4. \u05DE\u05E0\u05D4\u05DC \u05DE\u05D5\u05E8\u05E9\u05D4 \u05D9\u05D1\u05D3\u05D5\u05E7 \u05D0\u05EA \u05D4\u05D1\u05E7\u05E9\u05D4.',
+      nextStep: '\u05D4\u05D1\u05E7\u05E9\u05D4 \u05E9\u05DC\u05DA \u05DE\u05DE\u05EA\u05D9\u05E0\u05D4 \u05DC\u05D0\u05D9\u05E9\u05D5\u05E8. \u05EA\u05E7\u05D1\u05DC\u05D5 \u05D4\u05D5\u05D3\u05E2\u05D4 \u05D1\u05D0\u05D9\u05DE\u05D9\u05D9\u05DC \u05DC\u05D0\u05D7\u05E8 \u05E7\u05D1\u05DC\u05EA \u05D4\u05D7\u05DC\u05D8\u05D4.',
+      ctaLabel: '\u05D1\u05D3\u05E7\u05D5 \u05E1\u05D8\u05D8\u05D5\u05E1 \u05D1\u05E7\u05E9\u05D4',
+      ctaUrl: 'https://petwash.co.il/access-pending',
+      accountLabel: '\u05D7\u05E9\u05D1\u05D5\u05DF:',
+      accountDesc: '\u05E2\u05D3\u05DB\u05D5\u05DF \u05E4\u05E8\u05D8\u05D9\u05DD, \u05D0\u05D1\u05D8\u05D7\u05D4',
+      accountUrl: 'https://petwash.co.il/my-account',
+      helpLabel: '\u05E2\u05D6\u05E8\u05D4:',
+      helpDesc: '\u05E9\u05D0\u05DC\u05D5\u05EA \u05E0\u05E4\u05D5\u05E6\u05D5\u05EA, \u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA, \u05EA\u05DE\u05D9\u05DB\u05D4 \u05D8\u05DB\u05E0\u05D9\u05EA',
+      helpUrl: 'https://petwash.co.il/help',
+      quickAccess: '\u05D2\u05D9\u05E9\u05D4 \u05DE\u05D4\u05D9\u05E8\u05D4',
+      subject: (name) => `PetWash \u2014 \u05D1\u05E7\u05E9\u05EA \u05D2\u05D9\u05E9\u05D4 \u05D4\u05EA\u05E7\u05D1\u05DC\u05D4, ${name}`,
+    },
+  },
 };
 
 const SERVICE_TYPE_LABELS: Record<string, { en: string; he: string }> = {
@@ -143,7 +177,25 @@ export function generateLuxuryWelcomeEmail(data: LuxuryWelcomeEmailData): { subj
     ? `<div style="padding:8px 0 0 0;text-align:${align};">${buildServiceBadges(serviceTypes, language)}</div>`
     : '';
 
-  const providerChecklist = variant === 'provider' ? `
+  const providerChecklist = variant === 'staff' ? `
+                <tr>
+                  <td class="px" style="padding:6px 30px 0 30px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #fbbf24;border-radius:14px;background:#fffbeb;">
+                      <tr>
+                        <td style="padding:14px 16px;">
+                          <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-size:13px;line-height:22px;color:#92400e;text-align:${align};">
+                            <strong style="font-size:14px;">${isHebrew ? '\u05D7\u05E9\u05D5\u05D1:' : 'Important:'}</strong>
+                            <div style="margin-top:8px;">
+                              ${isHebrew
+                                ? '\u05D2\u05D9\u05E9\u05D4 \u05DC\u05DE\u05DE\u05E9\u05E7 \u05D4\u05E6\u05D5\u05D5\u05EA \u05D3\u05D5\u05E8\u05E9\u05EA \u05D0\u05D9\u05E9\u05D5\u05E8 \u05DE\u05E0\u05D4\u05DC \u05DE\u05D5\u05E8\u05E9\u05D4. \u05DC\u05D0\u05D7\u05E8 \u05D4\u05D0\u05D9\u05E9\u05D5\u05E8, \u05EA\u05D9\u05D3\u05E8\u05E9\u05D5 \u05DC\u05D4\u05E4\u05E2\u05D9\u05DC \u05D0\u05D9\u05DE\u05D5\u05EA \u05D3\u05D5-\u05E9\u05DC\u05D1\u05D9 (MFA).'
+                                : 'Staff dashboard access requires approval from an authorized manager. After approval, you will need to enable multi-factor authentication (MFA).'}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>` : variant === 'provider' ? `
                 <tr>
                   <td class="px" style="padding:6px 30px 0 30px;">
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc;">
