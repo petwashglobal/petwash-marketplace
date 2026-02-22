@@ -427,9 +427,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         window.scrollTo(0, 0);
         navigatePostLogin();
       } else {
-        const noPasskeysFound = result.error?.toLowerCase().includes('no passkeys') || 
-          result.error?.toLowerCase().includes('no credentials') ||
-          result.error?.toLowerCase().includes('not found');
+        const noPasskeysFound = result.error?.toLowerCase().includes('no passkeys found') || 
+          result.error?.toLowerCase().includes('no credentials found');
 
         if (result.error === 'NO_EMAIL') {
           toast({
