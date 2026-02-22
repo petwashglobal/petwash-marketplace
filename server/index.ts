@@ -5,6 +5,7 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
 import path from "node:path";
 import crypto from "node:crypto";
 import express from "express";
+import { pool, isDatabaseAvailable } from "./db";
 import helmet from "helmet";
 import compression from "compression";
 // CORS middleware - inline implementation due to ESM import issues
@@ -193,60 +194,76 @@ app.use((req, res, next) => {
 let serverReady = false;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  let t: ReturnType<typeof setTimeout>;
+  let t: NodeJS.Timeout | undefined;
   const timeout = new Promise<never>((_, reject) => {
     t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
   });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(t!));
+  return Promise.race([promise, timeout]).finally(() => {
+    if (t) clearTimeout(t);
+  });
 }
 
 const healthState = {
   bootTs: new Date().toISOString(),
-  db: { ok: false, lastOkAt: null as string | null, lastCheckAt: null as string | null, lastError: null as string | null, lastMs: null as number | null },
-  app: { ok: true, routesReady: false }
+  db: {
+    ok: false as boolean,
+    lastOkAt: null as string | null,
+    lastCheckAt: null as string | null,
+    lastError: null as string | null,
+    lastMs: null as number | null,
+  },
+  app: { ok: true, routesReady: false },
 };
 
-async function checkDbPing(): Promise<{ ok: boolean; ms: number; error?: string }> {
-  const { pool, isDatabaseAvailable } = await import('./db');
-  if (!isDatabaseAvailable) {
-    return { ok: false, ms: 0, error: 'DATABASE_URL not configured' };
-  }
+const dbConnectFn = async () => {
+  if (!isDatabaseAvailable) throw new Error('DATABASE_URL not configured');
+  const client = await pool.connect();
+  client.release();
+};
+const dbPingFn = async () => {
+  if (!isDatabaseAvailable) throw new Error('DATABASE_URL not configured');
+  await pool.query('SELECT 1');
+};
+
+async function connectDbNonBlocking(): Promise<void> {
   const t0 = Date.now();
-  healthState.db.lastCheckAt = new Date().toISOString();
+  console.log('[DB] connecting...');
   try {
-    await withTimeout(pool.query('SELECT 1'), 2000, 'DB ping');
+    await withTimeout(dbConnectFn(), 5000, 'DB connect');
+    const ms = Date.now() - t0;
+    console.log(`[DB] connected in ${ms}ms`);
     healthState.db.ok = true;
     healthState.db.lastError = null;
     healthState.db.lastOkAt = new Date().toISOString();
-    healthState.db.lastMs = Date.now() - t0;
-    return { ok: true, ms: healthState.db.lastMs };
+    healthState.db.lastMs = ms;
   } catch (e: any) {
+    const ms = Date.now() - t0;
+    const msg = e?.message ? e.message : String(e);
+    console.error(`[DB] connect failed in ${ms}ms: ${msg}`);
     healthState.db.ok = false;
-    healthState.db.lastError = e?.message || String(e);
-    healthState.db.lastMs = Date.now() - t0;
-    return { ok: false, ms: healthState.db.lastMs, error: healthState.db.lastError! };
+    healthState.db.lastError = msg;
+    healthState.db.lastMs = ms;
   }
 }
 
-async function connectDbNonBlocking(): Promise<void> {
-  const { pool, isDatabaseAvailable } = await import('./db');
-  if (!isDatabaseAvailable) {
-    console.warn('[DB] DATABASE_URL not set - skipping connect');
-    return;
-  }
+async function checkDbOnce(): Promise<{ ok: boolean; ms: number; error?: string }> {
   const t0 = Date.now();
-  console.log('[DB] connecting (non-blocking, 5s timeout)...');
+  healthState.db.lastCheckAt = new Date().toISOString();
   try {
-    const client = await withTimeout(pool.connect(), 5000, 'DB connect');
-    client.release();
-    console.log(`[DB] connected in ${Date.now() - t0}ms`);
+    await withTimeout(dbPingFn(), 2000, 'DB ping');
+    const ms = Date.now() - t0;
     healthState.db.ok = true;
     healthState.db.lastError = null;
     healthState.db.lastOkAt = new Date().toISOString();
+    healthState.db.lastMs = ms;
+    return { ok: true, ms };
   } catch (e: any) {
-    console.error(`[DB] connect failed in ${Date.now() - t0}ms:`, e?.message || e);
+    const ms = Date.now() - t0;
+    const msg = e?.message ? e.message : String(e);
     healthState.db.ok = false;
-    healthState.db.lastError = e?.message || String(e);
+    healthState.db.lastError = msg;
+    healthState.db.lastMs = ms;
+    return { ok: false, ms, error: msg };
   }
 }
 
@@ -254,45 +271,51 @@ app.get('/health', (_req, res) => {
   res.set('X-Octopus-Source', 'petwash-backend-global');
   res.status(200).json({
     status: 'OK',
-    system: 'Pet Wash System v2.0',
     timestamp: new Date().toISOString(),
-    metrics: {
-      uptime_seconds: Math.floor(process.uptime()),
-      memory_usage: (process.memoryUsage().rss / 1024 / 1024).toFixed(2) + ' MB',
-    },
+    bootTs: healthState.bootTs,
     checks: {
-      port_config: `Port ${PORT}`,
-      routes_ready: healthState.app.routesReady
-    }
+      process: true,
+      env: process.env.NODE_ENV || 'unknown',
+    },
+    metrics: {
+      uptimeSeconds: Math.floor(process.uptime()),
+      memoryRss: process.memoryUsage().rss,
+    },
   });
 });
 
 app.get('/api/health', async (_req, res) => {
-  const dbCheck = await checkDbPing();
-  const status = dbCheck.ok && healthState.app.routesReady ? 'ONLINE' : 'DEGRADED';
+  const db = await checkDbOnce();
+  const status = db.ok ? 'OK' : 'DEGRADED';
   res.status(200).json({
     status,
-    system: 'Pet Wash System v2.0',
     timestamp: new Date().toISOString(),
-    metrics: {
-      uptime_seconds: Math.floor(process.uptime()),
-      memory_usage: (process.memoryUsage().rss / 1024 / 1024).toFixed(2) + ' MB',
-    },
-    checks: {
-      db: dbCheck,
-      routes_ready: healthState.app.routesReady,
-      port_config: `Port ${PORT}`
-    },
-    state: {
-      bootTs: healthState.bootTs,
-      db: healthState.db
-    }
+    checks: { db },
+    state: healthState,
+  });
+});
+
+app.get('/api/health/strict', async (_req, res) => {
+  const db = await checkDbOnce();
+  if (!db.ok) {
+    return res.status(503).json({
+      status: 'DOWN',
+      timestamp: new Date().toISOString(),
+      checks: { db },
+      state: healthState,
+    });
+  }
+  return res.status(200).json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    checks: { db },
+    state: healthState,
   });
 });
 
 // --- Block non-health requests until routes are registered ---
 app.use((req, res, next) => {
-  if (req.path === '/health' || req.path === '/api/health') {
+  if (req.path === '/health' || req.path.startsWith('/api/health')) {
     return next();
   }
   
