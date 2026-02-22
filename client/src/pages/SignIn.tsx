@@ -1844,6 +1844,33 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   data-testid="input-password"
                 />
               </div>
+
+              {passkeyAvailable && (
+                <button
+                  type="button"
+                  onClick={handlePasskeySignIn}
+                  disabled={passkeyLoading}
+                  className="w-full flex items-center justify-center gap-3 py-3.5 text-sm text-neutral-600 hover:text-neutral-900 transition-colors group"
+                  data-testid="button-faceid-inline"
+                >
+                  {passkeyLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-neutral-400" />
+                  ) : (
+                    <>
+                      <div className="w-9 h-9 rounded-full border-2 border-neutral-300 group-hover:border-neutral-500 flex items-center justify-center transition-colors">
+                        {/Android/.test(navigator.userAgent) ? (
+                          <Fingerprint className="w-5 h-5" />
+                        ) : (
+                          <ScanFace className="w-5 h-5" />
+                        )}
+                      </div>
+                      <span className="tracking-wide">
+                        {language === 'he' ? 'כניסה חכמה באמצעות זיהוי פנים' : 'Smart login with Face ID'}
+                      </span>
+                    </>
+                  )}
+                </button>
+              )}
               
               <Button
                 type="submit"
