@@ -1,0 +1,319 @@
+ROOT CAUSE PLAYBOOK - Provider signup not creating records (petwash.co.il) - Deep production logic
+
+GOAL
+- Any new user can register (email, phone OTP, social, passkey)
+- User is routed to the correct onboarding flow (customer, provider, staff)
+- Provider onboarding always creates a provider record and a unique membership ID
+- Everything is logged (audit trail) and recoverable (Sheets + email backup)
+- No false "offline" UI errors - show real root cause codes
+
+MOST LIKELY CAUSE (based on your screenshots)
+- Frontend is calling /api/... on petwash.co.il, but production is not routing /api to Cloud Run backend
+- Firebase Hosting serves static files only - so /api returns 503 or HTML, UI labels it "offline"
+- Result: provider registration form cannot submit, cannot create provider records, cannot stamp IDs
+
+P0 - FAST TRIAGE (5 checks, each takes 20 seconds)
+1) API reachability from browser
+- Open:
+  https://petwash.co.il/api/health
+Expected:
+  - 200 OK from backend (text ok/json)
+Bad:
+  - 404/503 OR returns your website HTML (means API not routed)
+
+2) Whoami endpoint (auth layer check)
+- Open:
+  https://petwash.co.il/api/auth/whoami
+Expected:
+  - 401 (unauth) is OK, means backend answered
+Bad:
+  - 503/404/HTML = not reaching backend
+
+3) DevTools Network on iPad (if possible)
+- Submit provider form and look at failing request URL
+Expected:
+  - requests go to https://<cloud-run-domain>/api/...
+Bad:
+  - requests go to https://petwash.co.il/api/... and fail
+
+4) Check CORS symptoms
+If backend is on a different domain and you are calling it directly:
+Bad signs:
+  - CORS errors
+Fix:
+  - allow petwash.co.il origin in backend CORS
+Better:
+  - use Firebase Hosting rewrite so everything is same origin and no CORS
+
+5) Confirm backend is live
+- Open Cloud Run service URL directly:
+  https://<your-service>-<hash>.run.app/api/health
+Expected:
+  - 200 OK
+
+P0 - THE RIGHT FIX (choose 1 approach, do not mix)
+
+APPROACH A (BEST, MOST STABLE): Firebase Hosting rewrite /api -> Cloud Run
+Why:
+- Same origin, no CORS issues
+- Works on iOS Safari reliably
+- No VITE_PRODUCTION_API_URL mistakes
+- Cleanest long-term
+
+firebase.json
+- Replace serviceId + region with your real Cloud Run service name and region:
+{
+  "hosting": {
+    "public": "dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "run": {
+          "serviceId": "petwash-backend",
+          "region": "me-west1"
+        }
+      },
+      { "source": "**", "destination": "/index.html" }
+    ]
+  }
+}
+
+Then deploy Firebase Hosting again.
+
+APPROACH B (OK BUT MORE FRAGILE): Frontend uses VITE_PRODUCTION_API_URL
+Requirements:
+- VITE_PRODUCTION_API_URL must exist at build time
+- Backend must allow CORS from https://petwash.co.il
+- Cookies/session must be handled correctly if used
+
+Frontend rule:
+- Never call raw "/api/..." in production
+- Always call `${VITE_PRODUCTION_API_URL}/api/...`
+
+Backend CORS rule:
+- allow Origin: https://petwash.co.il
+- allow credentials only if needed
+
+P0 - STOP LYING "OFFLINE" UI ERROR (must fix)
+Current UI shows:
+"You are currently offline" on HTTP 503
+This is wrong and hides the real issue.
+
+Correct logic:
+- offline only if navigator.onLine === false OR fetch throws a network error
+- 503/502/504 -> "Service temporarily unavailable"
+- 401 -> "Please sign in"
+- 403 -> "Not authorized"
+- 400 -> show validation message
+- 409 -> "Already exists" / "duplicate"
+- 429 -> "Too many attempts"
+- 500 -> "Unexpected error"
+Always display:
+- traceId
+- endpoint name
+- status code
+
+Example message:
+"Service unavailable (503). Please try again. TraceId: X-Trace-Id"
+
+P0 - WHY PROVIDER RECORDS ARE NOT CREATED (failure matrix)
+Provider record creation can fail at 7 layers:
+
+LAYER 1: Frontend cannot reach backend
+Symptoms:
+- 503 on petwash.co.il/api/*
+Fix:
+- Hosting rewrite OR correct production API base
+
+LAYER 2: Backend rejects due to auth token missing/invalid
+Symptoms:
+- 401 on create provider application
+Fix:
+- ensure Firebase ID token is sent
+- ensure backend verifyFirebaseToken uses correct project keys
+- ensure Authorized Domains include petwash.co.il in Firebase Auth
+
+LAYER 3: Backend route not deployed or wrong path
+Symptoms:
+- 404 or unexpected HTML
+Fix:
+- deploy backend, verify route registration in routes.ts
+- verify Cloud Run service is receiving /api routes
+
+LAYER 4: Database missing migrations in production
+Symptoms:
+- backend returns 500 with "relation does not exist" or missing column
+Fix:
+- run migrations against PROD Neon (db:push)
+- confirm tables exist: providers/provider_profiles/provider_applications/mfa_enrollments etc.
+
+LAYER 5: Transaction fails (validation / constraints / duplicates)
+Symptoms:
+- 400/409
+Fix:
+- ensure idempotency keys on form submissions
+- enforce unique indexes safely (email, phone) with friendly error
+- do not create provider profile without user row existing
+
+LAYER 6: External service fails (SendGrid/Sheets/Places)
+Symptoms:
+- 500 if not isolated, or form stuck
+Fix:
+- provider creation must succeed even if email/sheets fail
+- external calls must be async or best-effort with retry queue
+- do not block onboarding on Google Places autocomplete (manual fallback must still save)
+
+LAYER 7: Routing/onboarding state machine broken
+Symptoms:
+- user created, but not redirected properly, or stuck in loop
+Fix:
+- server-driven post-login returns requiredActions and nextPath
+- store onboarding status in DB, not only localStorage
+- enforce onboarding gates server-side
+
+P0 - CRITICAL FIREBASE SETTINGS THAT BREAK SIGNUP
+1) Firebase Auth - Authorized Domains
+Must include:
+- petwash.co.il
+- www.petwash.co.il (if used)
+- any subdomain used for auth flows
+If missing:
+- OAuth popup/redirect fails
+- some browsers show silent failure
+
+2) Firebase OAuth redirect URIs (Google/Apple/Facebook)
+For each provider, ensure redirect URIs match your domain.
+If wrong:
+- sign-in works in dev but fails in prod
+
+3) Firebase App Check
+If enabled in "enforce" and client not configured:
+- backend calls may fail if you validate App Check
+If using fail-open:
+- security risk but not causing 503 usually
+Be consistent.
+
+4) Firebase Hosting + SPA routing
+If you accidentally rewrite /api/** to index.html:
+- backend never receives calls
+Ensure /api rewrite comes before SPA catch-all.
+
+5) Cloud Run authentication
+If Cloud Run requires auth and Firebase Hosting rewrite is not configured with service permissions:
+- 403/401 from Cloud Run
+Fix:
+- allow unauthenticated OR use proper service invoker settings for Hosting rewrite.
+
+P0 - GOOGLE PLACES AUTOCOMPLETE NOT WORKING (your screenshot)
+The message indicates Places suggestions unavailable.
+Common causes:
+- GOOGLE_MAPS_API_KEY missing in backend env
+- Places API not enabled in Google Cloud project
+- API key restricted incorrectly (HTTP referrer restrictions too strict)
+- backend proxy endpoints not deployed or wrong base URL
+- quota exceeded or billing disabled
+
+Correct architecture:
+- Frontend never calls Google directly
+- Frontend calls backend proxy:
+  /api/google/places-autocomplete
+  /api/google/places-details
+Backend uses server key and returns sanitized results
+If proxy fails:
+- UI must allow manual entry and still submit form successfully
+
+P0 - STAFF / ADMIN APPROVAL LOGIC (must be enforced server-side)
+- Provider: public can apply, but cannot operate until approved + KYC passed
+- Staff/admin: cannot self-assign role. Must request access and be approved by internal admin (nir.h@petwash.co.il)
+- This must be enforced in backend:
+  - role changes only via admin approval endpoint
+  - protected routes require staffApproved + adminMfa + emailVerified if required
+Never rely on "intent" from frontend only.
+Backend must validate intent and prevent escalation.
+
+P0 - UNIQUE MEMBERSHIP ID STAMPING (front + back)
+Principles:
+- ID must be generated server-side only
+- stored in DB with unique index
+- returned to frontend after successful creation
+- also logged to Google Sheets and emailed (best-effort)
+
+Flow:
+1) User authenticates (Firebase)
+2) Backend post-login creates/updates user row
+3) If provider intent -> create provider_application row (status: draft/pending)
+4) Assign membership ID at the moment the application is first created (or at approval stage if you prefer)
+5) Return membershipId to frontend immediately
+6) Frontend shows "Your membership number: PW-IL-XXXXXXXX"
+7) Backend logs to Sheets + sends welcome email (async)
+
+Idempotency:
+- Use idempotency key per signup to prevent double IDs
+- If duplicate submission, return existing membershipId.
+
+P0 - REQUIRED SERVER LOGGING (to stop guessing)
+Every request should log:
+- traceId
+- userId
+- route
+- status code
+- error class
+and for provider creation:
+- providerApplicationId
+- membershipId
+- DB transaction success/fail reason
+
+Expose to founder:
+- Admin page "Signup / Provider creation logs"
+- Google Sheets tab "Provider Applications"
+
+P0 - THE DEPLOYMENT PATH THAT MUST HAPPEN (or nothing changes)
+To make changes appear on petwash.co.il:
+1) Push to GitHub main
+2) CI builds client + deploys Firebase Hosting
+3) CI deploys backend to Cloud Run
+4) Run DB migrations on PROD Neon
+5) Verify Firebase Hosting rewrite OR VITE_PRODUCTION_API_URL
+6) Verify Firebase Authorized Domains
+7) Test on iPad Safari + Android Chrome
+
+If any one of these is missing:
+- dev looks perfect
+- prod still broken
+
+P1 - HARDENING AGAINST FUTURE CONFLICTS
+- Add a staging environment (separate Firebase project + separate Neon DB)
+- Add health checks and uptime monitoring
+- Add retry/backoff for Sheets and email
+- Encrypt TOTP secrets at application level (AES-256 + KMS) if you decide
+- Add backup codes for MFA
+- Add clear error taxonomy for UI
+
+WHAT I NEED FROM YOUR DEVELOPER (NON-NEGOTIABLE DELIVERABLES)
+1) Confirm which approach is used:
+- A: Firebase Hosting rewrite /api -> Cloud Run
+- B: VITE_PRODUCTION_API_URL + CORS
+2) Provide the production backend URL (Cloud Run)
+3) Provide proof screenshots:
+- /api/health returning 200 via petwash.co.il
+- Cloud Run logs showing the request arrived
+4) Provide DB proof:
+- provider tables exist in PROD
+- create provider application inserts rows in PROD
+5) Provide Firebase proof:
+- Authorized Domains include petwash.co.il
+- OAuth redirect URIs correct
+6) Provide final user test evidence:
+- New provider created
+- membership ID displayed
+- record exists in DB
+- optional: row appended to Sheets
+
+IMMEDIATE NEXT STEP FOR YOU (2 minutes)
+Open these and tell me the exact result:
+- https://petwash.co.il/api/health
+- https://petwash.co.il/api/auth/whoami
+If either does not clearly hit the backend, the fix is routing (rewrite or base URL), not the provider form.
+
+END
