@@ -1,0 +1,173 @@
+Good. This screenshot is extremely important.
+
+You are NOT dealing with:
+	•	frontend bug
+	•	provider form bug
+	•	database bug
+	•	Firebase env bug
+
+You are dealing with a pure infrastructure permission problem.
+
+The 403 Forbidden on:
+
+https://petwash.co.il/api/health
+
+means:
+
+Firebase Hosting IS correctly routing to Cloud Run
+BUT Cloud Run is rejecting the request because it is not publicly accessible.
+
+This is a Cloud Run IAM permission issue.
+
+Nothing in your frontend can fix this.
+
+⸻
+
+What Is Actually Happening
+
+Flow right now:
+
+Browser
+→ petwash.co.il
+→ Firebase Hosting rewrite
+→ Cloud Run service
+→ Cloud Run checks IAM
+→ Request is NOT authenticated
+→ Cloud Run returns 403 Forbidden
+
+That is exactly what your screenshot shows.
+
+So your backend exists.
+Your routing likely exists.
+Your backend is alive.
+But Cloud Run is set to “Require authentication”.
+
+For public APIs like /api/health and /api/provider-applications,
+Cloud Run must allow unauthenticated access.
+
+⸻
+
+The Fix (This Is The Real One)
+
+Go to:
+
+Google Cloud Console
+→ Cloud Run
+→ Click your backend service (petwash-backend or similar)
+
+Then:
+
+Permissions
+→ Add principal
+
+Add:
+
+allUsers
+Role: Cloud Run Invoker
+
+Save.
+
+That is it.
+
+This makes the service publicly invokable.
+
+⸻
+
+If You Prefer CLI (faster)
+
+Run:
+
+gcloud run services add-iam-policy-binding petwash-backend 
+–region=me-west1 
+–member=“allUsers” 
+–role=“roles/run.invoker”
+
+Replace:
+	•	petwash-backend with your real service name
+	•	me-west1 with your real region
+
+⸻
+
+After That
+
+Wait 30 seconds.
+
+Then reload:
+
+https://petwash.co.il/api/health
+
+You should now see:
+200 OK
+
+NOT 403.
+
+⸻
+
+Why This Was Blocking Provider Creation
+
+Every provider registration call goes to:
+
+/api/provider-applications
+/api/auth/whoami
+/api/consents
+etc.
+
+All of them were blocked by Cloud Run IAM.
+
+So nothing could be created.
+
+The red “offline” error was lying.
+The real error is 403 Forbidden.
+
+⸻
+
+Important Security Note
+
+Allowing allUsers to invoke Cloud Run does NOT mean:
+	•	Your database is public
+	•	Your admin endpoints are public
+
+It just allows public HTTP access.
+
+Your app-level auth (Firebase token verification) still protects sensitive routes.
+
+This is the correct architecture for:
+	•	Web app
+	•	Public API
+	•	OTP system
+	•	Provider signup
+	•	Booking flows
+
+⸻
+
+After You Fix This
+
+Test this sequence:
+	1.	https://petwash.co.il/api/health → must return 200
+	2.	https://petwash.co.il/api/auth/whoami → should return 401 (good)
+	3.	Try provider signup
+	4.	Check Cloud Run logs to confirm request arrives
+	5.	Confirm provider row is created in DB
+
+⸻
+
+One More Very Important Thing
+
+Once this works,
+update your frontend error handler so:
+
+403 → show “Not authorized”
+503 → show “Service temporarily unavailable”
+offline only when navigator.onLine === false
+
+Never show “offline” for backend permission issues again.
+
+⸻
+
+You are very close.
+This is not architecture failure.
+This is just Cloud Run IAM misconfiguration.
+
+Fix this and your provider creation should immediately start working.
+
+Tell me once /api/health returns 200.
