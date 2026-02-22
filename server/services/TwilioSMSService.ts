@@ -34,6 +34,7 @@ const ALPHA_SENDER_BLOCKED_COUNTRIES = new Set([
 class TwilioSMSService {
   private client: twilio.Twilio | null = null;
   private fromPhone: string | null = null;
+  private messagingServiceSid: string | null = null;
   private isConfigured = false;
 
   constructor() {
@@ -44,31 +45,45 @@ class TwilioSMSService {
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
     const fromPhone = process.env.TWILIO_PHONE_NUMBER;
+    const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
 
-    if (accountSid && authToken && fromPhone) {
+    if (accountSid && authToken && (fromPhone || messagingServiceSid)) {
       try {
         this.client = twilio(accountSid, authToken);
-        this.fromPhone = fromPhone;
+        this.fromPhone = fromPhone || null;
+        this.messagingServiceSid = messagingServiceSid || null;
         this.isConfigured = true;
-        logger.info('[TwilioSMS] ✅ Initialized successfully');
+        if (this.messagingServiceSid) {
+          logger.info('[TwilioSMS] ✅ Initialized with Messaging Service (branded sender)');
+        } else {
+          logger.info('[TwilioSMS] ✅ Initialized with phone number');
+        }
       } catch (error) {
         logger.error('[TwilioSMS] Failed to initialize', error);
         this.isConfigured = false;
       }
     } else {
-      logger.warn('[TwilioSMS] ⚠️ Not configured - TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, or TWILIO_PHONE_NUMBER missing');
+      logger.warn('[TwilioSMS] ⚠️ Not configured - TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, or TWILIO_PHONE_NUMBER/TWILIO_MESSAGING_SERVICE_SID missing');
       this.isConfigured = false;
     }
   }
 
-  private getSenderForDestination(toPhone: string): string {
+  private getSendParams(toPhone: string, body: string): { body: string; to: string; from?: string; messagingServiceSid?: string } {
+    if (this.messagingServiceSid) {
+      return { body, to: toPhone, messagingServiceSid: this.messagingServiceSid };
+    }
+    if (!this.fromPhone) {
+      throw new Error('No fromPhone or messagingServiceSid configured');
+    }
     const cleaned = toPhone.replace(/[^0-9]/g, '');
+    let sender = ALPHA_SENDER_ID;
     for (const prefix of ALPHA_SENDER_BLOCKED_COUNTRIES) {
       if (cleaned.startsWith(prefix)) {
-        return this.fromPhone!;
+        sender = this.fromPhone;
+        break;
       }
     }
-    return ALPHA_SENDER_ID;
+    return { body, to: toPhone, from: sender };
   }
 
   isReady(): boolean {
@@ -150,12 +165,12 @@ class TwilioSMSService {
   private smsBody(code: string, language: string): string {
     const mins = VERIFICATION_CODE_EXPIRY_MINUTES;
     const bodies: Record<string, string> = {
-      en: `Pet Wash™ verification code:\n${code}\nExpires in ${mins} minutes. Do not share.`,
-      he: `Pet Wash™ קוד אימות:\n${code}\nתקף ל-${mins} דקות. אל תשתפו.`,
-      ar: `Pet Wash™ رمز التحقق:\n${code}\nصالح لمدة ${mins} دقائق. لا تشاركه.`,
-      es: `Pet Wash™ código de verificación:\n${code}\nExpira en ${mins} minutos. No compartas.`,
-      fr: `Pet Wash™ code de vérification:\n${code}\nExpire dans ${mins} minutes. Ne partagez pas.`,
-      ru: `Pet Wash™ код подтверждения:\n${code}\nДействителен ${mins} минут. Не делитесь.`,
+      en: `🐾 Pet Wash™\n\nYour verification code is:\n${code}\n\nValid for ${mins} minutes.\nNever share this code with anyone.\n\npetwash.co.il`,
+      he: `🐾 Pet Wash™\n\nקוד האימות שלך:\n${code}\n\nתקף ל-${mins} דקות.\nלעולם אל תשתפו קוד זה.\n\npetwash.co.il`,
+      ar: `🐾 Pet Wash™\n\nرمز التحقق الخاص بك:\n${code}\n\nصالح لمدة ${mins} دقائق.\nلا تشارك هذا الرمز مع أي شخص.\n\npetwash.co.il`,
+      es: `🐾 Pet Wash™\n\nTu código de verificación es:\n${code}\n\nVálido por ${mins} minutos.\nNunca compartas este código.\n\npetwash.co.il`,
+      fr: `🐾 Pet Wash™\n\nVotre code de vérification :\n${code}\n\nValide ${mins} minutes.\nNe partagez jamais ce code.\n\npetwash.co.il`,
+      ru: `🐾 Pet Wash™\n\nВаш код подтверждения:\n${code}\n\nДействителен ${mins} минут.\nНикому не сообщайте этот код.\n\npetwash.co.il`,
     };
     return bodies[language] || bodies.en;
   }
@@ -198,21 +213,17 @@ class TwilioSMSService {
     const messageBody = this.smsBody(code, language);
 
     try {
-      const sender = this.getSenderForDestination(formattedPhone);
-      let usedSender = sender;
+      const params = this.getSendParams(formattedPhone, messageBody);
+      let usedSender = params.messagingServiceSid ? 'MessagingService' : (params.from || 'unknown');
       try {
-        await this.client!.messages.create({
-          body: messageBody,
-          from: sender,
-          to: formattedPhone
-        });
+        await this.client!.messages.create(params);
       } catch (alphaErr: any) {
-        if (sender !== this.fromPhone! && (alphaErr.code === 21612 || alphaErr.code === 21659)) {
+        if (!params.messagingServiceSid && this.fromPhone && params.from !== this.fromPhone && (alphaErr.code === 21612 || alphaErr.code === 21659)) {
           logger.warn('[TwilioSMS] Alphanumeric sender not supported, falling back to phone number');
-          usedSender = this.fromPhone!;
+          usedSender = this.fromPhone;
           await this.client!.messages.create({
             body: messageBody,
-            from: this.fromPhone!,
+            from: this.fromPhone,
             to: formattedPhone
           });
         } else {
@@ -449,21 +460,17 @@ class TwilioSMSService {
     const formattedPhone = this.formatPhoneNumber(to);
 
     try {
-      const sender = this.getSenderForDestination(formattedPhone);
+      const params = this.getSendParams(formattedPhone, body);
       let message;
-      let usedSender = sender;
+      let usedSender = params.messagingServiceSid ? 'MessagingService' : (params.from || 'unknown');
       try {
-        message = await this.client!.messages.create({
-          body,
-          from: sender,
-          to: formattedPhone
-        });
+        message = await this.client!.messages.create(params);
       } catch (alphaErr: any) {
-        if (sender !== this.fromPhone! && (alphaErr.code === 21612 || alphaErr.code === 21659)) {
-          usedSender = this.fromPhone!;
+        if (!params.messagingServiceSid && this.fromPhone && params.from !== this.fromPhone && (alphaErr.code === 21612 || alphaErr.code === 21659)) {
+          usedSender = this.fromPhone;
           message = await this.client!.messages.create({
             body,
-            from: this.fromPhone!,
+            from: this.fromPhone,
             to: formattedPhone
           });
         } else {
