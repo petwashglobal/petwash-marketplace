@@ -2450,7 +2450,15 @@ self.addEventListener('notificationclick', (event) => {
       const { email } = req.body;
 
       if (!email) {
-        return res.status(400).json({ error: 'Email is required' });
+        const { generateDiscoverableAuthenticationOptions } = await import('./webauthn/service');
+        const result = await generateDiscoverableAuthenticationOptions(req, res);
+
+        if (!result.success) {
+          return res.status(result.error?.status || 400).json({ error: result.error?.message || 'Failed to generate options' });
+        }
+
+        logger.info('[WebAuthn Login] Discoverable options generated (no email)');
+        return res.json({ options: result.options, challengeKey: result.challengeKey, discoverable: true });
       }
 
       const { generateAuthenticationOptionsForEmail } = await import('./webauthn/service');
@@ -2478,11 +2486,15 @@ self.addEventListener('notificationclick', (event) => {
     try {
       const { response } = req.body;
 
-      const { verifyAuthenticationAndGetUser } = await import('./webauthn/service');
-      const result = await verifyAuthenticationAndGetUser(response, req, res);
+      const { verifyAuthenticationAndGetUser, verifyDiscoverableAuthentication } = await import('./webauthn/service');
+      
+      const isDiscoverable = req.body.discoverable === true;
+      
+      const result = isDiscoverable 
+        ? await verifyDiscoverableAuthentication(response, req, res)
+        : await verifyAuthenticationAndGetUser(response, req, res);
       
       if (!result.verified) {
-        // Return proper status code from service instead of throwing
         return res.status(result.error?.status || 401).json({ 
           error: result.error?.message || 'Authentication failed' 
         });

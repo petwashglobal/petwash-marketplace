@@ -494,6 +494,210 @@ export async function generateAuthenticationOptionsForEmail(
 }
 
 /**
+ * Generate authentication options for discoverable credentials (no email required)
+ * Bank Hapoalim-style: Face ID triggers directly without email input
+ */
+export async function generateDiscoverableAuthenticationOptions(
+  req: any,
+  res: any
+): Promise<{ options: any; success: boolean; challengeKey?: string; error?: any }> {
+  try {
+    const lang = getLanguage(req);
+    const rpId = getRpId(req);
+    const origin = getExpectedOrigin(req);
+    const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
+    
+    if (!isOriginAllowed(origin)) {
+      logger.warn('[WebAuthn] Discoverable auth from unauthorized origin', { origin });
+      return {
+        success: false,
+        error: bilingualError(webauthnMessages.originMismatch, 403, lang),
+        options: null
+      };
+    }
+    
+    const options = await generateAuthenticationOptions({
+      rpID: rpId,
+      timeout: webauthnConfig.timeout,
+      allowCredentials: [],
+      userVerification: 'required',
+    });
+    
+    const challengeKey = `disc_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    
+    const challengeData: Omit<WebAuthnChallenge, 'csrfToken'> = {
+      challenge: options.challenge,
+      uid: '__discoverable__',
+      email: '__discoverable__',
+      type: 'authentication',
+      createdAt: Date.now(),
+      expiresAt: Date.now() + webauthnConfig.challengeExpiry,
+      rpId,
+      origin,
+      ipAddress,
+      userAgent: req.headers['user-agent']
+    };
+    
+    storeChallengeInCookie(res, challengeData, req);
+    
+    logger.info('[WebAuthn] Discoverable authentication options generated', { rpId, origin });
+    
+    return {
+      success: true,
+      options,
+      challengeKey
+    };
+  } catch (error) {
+    logger.error('[WebAuthn] Failed to generate discoverable authentication options', error);
+    return {
+      success: false,
+      error: bilingualError(webauthnMessages.authenticationFailed, 500, getLanguage(req)),
+      options: null
+    };
+  }
+}
+
+/**
+ * Verify discoverable credential authentication - finds user by credential ID
+ */
+export async function verifyDiscoverableAuthentication(
+  response: any,
+  req: any,
+  res: any
+): Promise<{ verified: boolean; uid?: string; email?: string; isAdmin?: boolean; error?: any }> {
+  try {
+    const lang = getLanguage(req);
+    const rpId = getRpId(req);
+    const origin = getExpectedOrigin(req);
+    const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    
+    const challengeData = retrieveChallengeFromCookie(req);
+    
+    if (!challengeData) {
+      return {
+        verified: false,
+        error: bilingualError(webauthnMessages.challengeNotFound, 400, lang)
+      };
+    }
+    
+    if (challengeData.type !== 'authentication') {
+      return {
+        verified: false,
+        error: bilingualError(webauthnMessages.challengeMismatch, 400, lang)
+      };
+    }
+    
+    const credentialId = isoBase64URL.fromBuffer(response.id);
+    
+    let uid: string | null = null;
+    let email: string | null = null;
+    let isAdmin = false;
+    let credential: WebAuthnCredential | null = null;
+    
+    const usersQuery = await db.collectionGroup('webauthnCredentials')
+      .where('credId', '==', credentialId)
+      .limit(1)
+      .get();
+    
+    if (!usersQuery.empty) {
+      const credDoc = usersQuery.docs[0];
+      credential = credDoc.data() as WebAuthnCredential;
+      
+      if (credential.isRevoked) {
+        logger.warn('[WebAuthn] Discoverable credential is revoked', { credentialId });
+        return {
+          verified: false,
+          error: bilingualError(webauthnMessages.deviceRevoked, 403, lang)
+        };
+      }
+      
+      const parentPath = credDoc.ref.parent.parent?.path || '';
+      const parentParts = parentPath.split('/');
+      const collection = parentParts[0];
+      uid = parentParts[1];
+      isAdmin = collection === 'employees';
+      
+      const userDoc = await db.collection(collection).doc(uid).get();
+      if (userDoc.exists) {
+        email = userDoc.data()?.email || '';
+      }
+    }
+    
+    if (!uid || !credential) {
+      logger.warn('[WebAuthn] Discoverable credential not found', { credentialId });
+      return {
+        verified: false,
+        error: bilingualError(webauthnMessages.credentialNotFound, 404, lang)
+      };
+    }
+    
+    if (credential.trustScore < webauthnConfig.deviceTrustThreshold) {
+      logger.warn('[WebAuthn] Low trust discoverable device', { uid, credId: credentialId });
+      return {
+        verified: false,
+        error: bilingualError(webauthnMessages.deviceLowTrust, 403, lang)
+      };
+    }
+    
+    const verification = await verifyAuthenticationResponse({
+      response,
+      expectedChallenge: challengeData.challenge,
+      expectedOrigin: origin,
+      expectedRPID: rpId,
+      credential: {
+        id: credential.credId,
+        publicKey: isoBase64URL.toBuffer(credential.publicKey),
+        counter: credential.counter,
+        transports: credential.transports as any[],
+      },
+    });
+    
+    if (!verification.verified) {
+      await recordAuthFailure(uid, isAdmin, credentialId, 'Verification failed');
+      return {
+        verified: false,
+        error: bilingualError(webauthnMessages.authenticationFailed, 401, lang)
+      };
+    }
+    
+    clearChallengeFromCookie(res);
+    
+    const collectionPath = isAdmin ? 'employees' : 'users';
+    await updateDeviceOnAuth(uid, credentialId, collectionPath, {
+      counter: verification.authenticationInfo.newCounter,
+      ipAddress,
+      userAgent,
+    });
+    
+    await logAuthEvent({
+      eventType: 'authentication_success',
+      uid,
+      timestamp: Timestamp.now(),
+      success: true,
+      metadata: {
+        credentialId,
+        isAdmin,
+        rpId,
+        origin,
+        ipAddress,
+        method: 'discoverable',
+      }
+    });
+    
+    logger.info('[WebAuthn] Discoverable authentication successful', { uid, email, isAdmin });
+    
+    return { verified: true, uid, email: email || undefined, isAdmin };
+  } catch (error) {
+    logger.error('[WebAuthn] Discoverable authentication verification failed', error);
+    return {
+      verified: false,
+      error: bilingualError(webauthnMessages.authenticationFailed, 500, getLanguage(req))
+    };
+  }
+}
+
+/**
  * Verify authentication response and return user info
  */
 export async function verifyAuthenticationAndGetUser(

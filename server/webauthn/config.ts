@@ -372,8 +372,8 @@ export function validateAndroidAttestation(attestationObject: any): boolean {
 export function getAuthenticatorSelection() {
   return {
     authenticatorAttachment: 'platform' as const, // Prefer platform authenticators (Face ID, Touch ID, Windows Hello)
-    requireResidentKey: false,
-    residentKey: 'preferred' as const,
+    requireResidentKey: true,
+    residentKey: 'required' as const,
     userVerification: webauthnConfig.requireUserVerification ? 'required' as const : 'preferred' as const,
   };
 }

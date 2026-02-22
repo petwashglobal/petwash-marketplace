@@ -271,11 +271,6 @@ export async function signInWithPasskey(
       } catch {}
     }
     
-    if (!email && !uid) {
-      return { success: false, error: 'NO_EMAIL' };
-    }
-    
-    // Basic email validation
     if (email && !email.includes('@')) {
       return { success: false, error: 'Please enter a valid email address' };
     }
@@ -294,15 +289,12 @@ export async function signInWithPasskey(
       return { success: false, error: error.error || 'Failed to get authentication options' };
     }
 
-    const { options, challengeKey } = await optionsResponse.json();
+    const { options, challengeKey, discoverable } = await optionsResponse.json();
     
-    // PRODUCTION: Use SimpleWebAuthn for standard flow (works reliably on all platforms)
-    // SimpleWebAuthn handles JSON to ArrayBuffer conversion automatically
     const credential = await startAuthentication({
       optionsJSON: options,
     });
 
-    // Verify authentication with server
     const verifyResponse = await fetch(getApiUrl('/api/webauthn/login/verify'), {
       method: 'POST',
       credentials: 'include',
@@ -312,6 +304,7 @@ export async function signInWithPasskey(
       body: JSON.stringify({
         challengeKey,
         response: credential,
+        discoverable: discoverable || false,
       }),
     });
 
@@ -322,17 +315,12 @@ export async function signInWithPasskey(
 
     const { customToken, user: userData } = await verifyResponse.json();
 
-    // Sign in to Firebase with custom token
-    const userCredential = await signInWithCustomToken(auth, customToken);
-    
-    // Session cookie is already set by the server
-    // No need to call /api/auth/session again
+    await signInWithCustomToken(auth, customToken);
 
     return { success: true, uid: userData.uid };
   } catch (error: any) {
     console.error('Passkey sign-in error:', error);
     
-    // Log failure to audit ledger (Protocol 3 compliance)
     await logBiometricFailure(error, getBiometricMethodName() as any);
     
     if (error.name === 'NotAllowedError') {

@@ -430,14 +430,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         const noPasskeysFound = result.error?.toLowerCase().includes('no passkeys found') || 
           result.error?.toLowerCase().includes('no credentials found');
 
-        if (result.error === 'NO_EMAIL') {
-          toast({
-            title: language === 'he' ? 'נדרש אימייל' : 'Email required',
-            description: language === 'he'
-              ? 'הזינו את כתובת האימייל שלכם כדי להתחבר עם Face ID'
-              : 'Enter your email address to sign in with Face ID',
-          });
-        } else if (noPasskeysFound) {
+        if (noPasskeysFound) {
           logger.info("Passkey sign-in: No passkeys registered for this account", { error: result.error });
         } else {
           let errorDescription = result.error || t('signin.failed', language);
