@@ -165,12 +165,12 @@ class TwilioSMSService {
   private smsBody(code: string, language: string): string {
     const mins = VERIFICATION_CODE_EXPIRY_MINUTES;
     const bodies: Record<string, string> = {
-      en: `🐾 Pet Wash™\n\nYour verification code is:\n${code}\n\nValid for ${mins} minutes.\nNever share this code with anyone.\n\npetwash.co.il`,
-      he: `🐾 Pet Wash™\n\nקוד האימות שלך:\n${code}\n\nתקף ל-${mins} דקות.\nלעולם אל תשתפו קוד זה.\n\npetwash.co.il`,
-      ar: `🐾 Pet Wash™\n\nرمز التحقق الخاص بك:\n${code}\n\nصالح لمدة ${mins} دقائق.\nلا تشارك هذا الرمز مع أي شخص.\n\npetwash.co.il`,
-      es: `🐾 Pet Wash™\n\nTu código de verificación es:\n${code}\n\nVálido por ${mins} minutos.\nNunca compartas este código.\n\npetwash.co.il`,
-      fr: `🐾 Pet Wash™\n\nVotre code de vérification :\n${code}\n\nValide ${mins} minutes.\nNe partagez jamais ce code.\n\npetwash.co.il`,
-      ru: `🐾 Pet Wash™\n\nВаш код подтверждения:\n${code}\n\nДействителен ${mins} минут.\nНикому не сообщайте этот код.\n\npetwash.co.il`,
+      en: `PetWash verification code:\n\n${code}\n\nExpires in ${mins} minutes.\nDo not share this code.`,
+      he: `PetWash קוד אימות:\n\n${code}\n\nתקף ל-${mins} דקות.\nאל תשתפו קוד זה.`,
+      ar: `PetWash رمز التحقق:\n\n${code}\n\nصالح لمدة ${mins} دقائق.\nلا تشارك هذا الرمز.`,
+      es: `PetWash codigo de verificacion:\n\n${code}\n\nExpira en ${mins} minutos.\nNo compartas este codigo.`,
+      fr: `PetWash code de verification:\n\n${code}\n\nExpire dans ${mins} minutes.\nNe partagez pas ce code.`,
+      ru: `PetWash код подтверждения:\n\n${code}\n\nДействителен ${mins} минут.\nНе сообщайте этот код.`,
     };
     return bodies[language] || bodies.en;
   }

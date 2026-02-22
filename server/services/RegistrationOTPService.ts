@@ -9,8 +9,10 @@ import { twilioSMSService } from './TwilioSMSService';
 const OTP_TTL_SEC = 300;
 const OTP_MAX_ATTEMPTS = 5;
 const OTP_COOLDOWN_SEC = 60;
-const OTP_PHONE_MAX_PER_HOUR = 5;
-const OTP_IP_MAX_PER_10MIN = 10;
+const OTP_LOCKOUT_SEC = 900;
+const OTP_PHONE_MAX_PER_HOUR = 3;
+const OTP_IP_MAX_PER_HOUR = 15;
+const OTP_DEVICE_MAX_PER_HOUR = 10;
 
 const memoryStore = new Map<string, { value: string; expiresAt: number }>();
 const memoryCounters = new Map<string, { count: number; expiresAt: number }>();
@@ -125,6 +127,14 @@ function ipRateKey(ip: string): string {
   return `reg_otp:ip_rate:${ip}`;
 }
 
+function deviceRateKey(deviceId: string): string {
+  return `reg_otp:device_rate:${deviceId}`;
+}
+
+function lockoutKey(phone: string): string {
+  return `reg_otp:lockout:${phone}`;
+}
+
 function extractCountryCode(phoneE164: string): string {
   if (phoneE164.startsWith('+972')) return 'IL';
   if (phoneE164.startsWith('+61')) return 'AU';
@@ -165,6 +175,13 @@ export class RegistrationOTPService {
     const traceId = opts.traceId || crypto.randomUUID().slice(0, 8);
 
     try {
+      const locked = await cacheGet(lockoutKey(phoneE164));
+      if (locked) {
+        const lockTtl = await cacheTtl(lockoutKey(phoneE164));
+        logger.warn('[RegistrationOTP] Phone locked out', { phoneE164: phoneE164.slice(0, 6) + '****', lockTtl, traceId });
+        return { success: false, otpId, expiresIn: 0, error: 'LOCKED_OUT', cooldownRemaining: lockTtl > 0 ? lockTtl : OTP_LOCKOUT_SEC };
+      }
+
       const cooldown = await cacheTtl(cooldownKey(phoneE164));
       if (cooldown > 0) {
         logger.warn('[RegistrationOTP] Cooldown active', { phoneE164: phoneE164.slice(0, 6) + '****', cooldown, traceId });
@@ -178,10 +195,18 @@ export class RegistrationOTPService {
       }
 
       if (opts.ip) {
-        const ipCount = await cacheIncr(ipRateKey(opts.ip), 600);
-        if (ipCount > OTP_IP_MAX_PER_10MIN) {
+        const ipCount = await cacheIncr(ipRateKey(opts.ip), 3600);
+        if (ipCount > OTP_IP_MAX_PER_HOUR) {
           logger.warn('[RegistrationOTP] IP rate limit exceeded', { ip: opts.ip, traceId });
           return { success: false, otpId, expiresIn: 0, error: 'IP_RATE_LIMIT' };
+        }
+      }
+
+      if (opts.deviceId) {
+        const deviceCount = await cacheIncr(deviceRateKey(opts.deviceId), 3600);
+        if (deviceCount > OTP_DEVICE_MAX_PER_HOUR) {
+          logger.warn('[RegistrationOTP] Device rate limit exceeded', { deviceId: opts.deviceId, traceId });
+          return { success: false, otpId, expiresIn: 0, error: 'DEVICE_RATE_LIMIT' };
         }
       }
 
@@ -202,8 +227,8 @@ export class RegistrationOTPService {
 
       const isHebrew = opts.language === 'he' || countryCode === 'IL';
       const smsBody = isHebrew
-        ? `🐾 Pet Wash™\n\nקוד האימות שלך:\n${code}\n\nתקף ל-5 דקות.\nלעולם אל תשתפו קוד זה.\n\npetwash.co.il`
-        : `🐾 Pet Wash™\n\nYour verification code is:\n${code}\n\nValid for 5 minutes.\nNever share this code with anyone.\n\npetwash.co.il`;
+        ? `PetWash קוד אימות:\n\n${code}\n\nתקף ל-5 דקות.\nאל תשתפו קוד זה.`
+        : `PetWash verification code:\n\n${code}\n\nExpires in 5 minutes.\nDo not share this code.`;
 
       const channel: OTPChannel = opts.channel || 'sms';
       let providerMessageId: string | undefined;
@@ -293,10 +318,16 @@ export class RegistrationOTPService {
       const record = JSON.parse(raw);
       record.attempts = (record.attempts || 0) + 1;
 
-      if (record.attempts > OTP_MAX_ATTEMPTS) {
+      if (record.attempts >= OTP_MAX_ATTEMPTS) {
         await cacheDel(otpRedisKey(otpId));
-        await this.logVerificationEvent(otpId, 'OTP_FAILED', 'max_attempts', traceId, opts);
-        return { success: false, otpId, error: 'MAX_ATTEMPTS_EXCEEDED', remainingAttempts: 0 };
+        if (record.phoneE164) {
+          await cacheSet(lockoutKey(record.phoneE164), '1', OTP_LOCKOUT_SEC);
+        }
+        await this.logVerificationEvent(otpId, 'OTP_LOCKED_OUT', 'max_attempts', traceId, opts);
+        logger.warn('[RegistrationOTP] Phone locked out for 15 minutes', {
+          otpId, phoneE164: record.phoneE164?.slice(0, 6) + '****', traceId
+        });
+        return { success: false, otpId, error: 'LOCKED_OUT', remainingAttempts: 0 };
       }
 
       await cacheSet(otpRedisKey(otpId), JSON.stringify(record), OTP_TTL_SEC);
@@ -372,8 +403,8 @@ export class RegistrationOTPService {
 
       const isHebrew = opts.language === 'he' || extractCountryCode(phoneE164) === 'IL';
       const smsBody = isHebrew
-        ? `🐾 Pet Wash™\n\nקוד האימות שלך:\n${code}\n\nתקף ל-5 דקות.\nלעולם אל תשתפו קוד זה.\n\npetwash.co.il`
-        : `🐾 Pet Wash™\n\nYour verification code is:\n${code}\n\nValid for 5 minutes.\nNever share this code with anyone.\n\npetwash.co.il`;
+        ? `PetWash קוד אימות:\n\n${code}\n\nתקף ל-5 דקות.\nאל תשתפו קוד זה.`
+        : `PetWash verification code:\n\n${code}\n\nExpires in 5 minutes.\nDo not share this code.`;
 
       let sendResult: { success: boolean; messageId?: string; error?: string };
       if (channel === 'whatsapp') {

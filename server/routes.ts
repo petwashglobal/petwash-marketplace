@@ -166,6 +166,7 @@ import pricingRoutes from "./routes/pricing";
 import providerOnboardingRoutes from "./routes/provider-onboarding";
 import onboardingVerificationRoutes from "./routes/onboarding-verification";
 import completeRegistrationRoutes from "./routes/complete-registration";
+import smsStatusRoutes from "./routes/sms-status";
 import providerApplicationsRoutes from "./routes/provider-applications";
 import providerIntakeRoutes from "./routes/provider-intake";
 import pushNotificationsRoutes from "./routes/push-notifications";
@@ -9614,6 +9615,7 @@ self.addEventListener('notificationclick', (event) => {
 
   app.use('/api/onboarding-verification', onboardingVerificationRoutes);
   app.use('/api/registration', completeRegistrationRoutes);
+  app.use('/api/sms', smsStatusRoutes);
   app.use('/api/provider-applications', validateFirebaseToken, apiLimiter, providerApplicationsRoutes);
   
   // DocuSeal E-Signature (FREE - Hebrew RTL Support)
