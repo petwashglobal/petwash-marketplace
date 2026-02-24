@@ -1,0 +1,175 @@
+Team,
+
+I have been accepted to Apple Developer Program, and I want us to ship TWO native mobile apps:
+1) Apple App Store (iOS)
+2) Google Play (Android)
+
+Goal
+Build a production-grade mobile app that connects to our existing platform and supports:
+- Loyalty club membership and profile
+- QR code redemption (scan and redeem)
+- QR code display (user shows QR to be scanned)
+- Offers, coupons, campaigns, tiers, points
+- Receipts and history
+- Push notifications
+- Multi-language support (English, Hebrew, plus more later)
+- High reliability, fast startup, and clean monitoring
+
+I need your clear answer:
+Can you build the complete mobile solution end to end for both iOS and Android, including app store submission, signing, CI/CD, and ongoing maintenance? If yes, reply with your recommended approach, timeline, cost range, and exact dependencies from me.
+
+Important ownership and store listing
+- I prefer the apps to be published under the company (Pet Wash Ltd) as the developer name, not my personal name.
+- Confirm what is required to show the company as the developer in App Store and Google Play.
+- If there is any blocker (legal entity verification, D-U-N-S, Apple org enrollment, etc) tell me exactly what and how we solve it.
+
+Technical scope
+A. App type and framework (tell me what you recommend and why)
+Option 1: React Native + Expo (recommended if we already use React)
+Option 2: Flutter
+Option 3: Native (Swift + Kotlin) only if you strongly justify cost and speed
+We must support:
+- iOS 16+ (tell me the minimum you want)
+- Android 10+ (tell me the minimum you want)
+
+B. Backend integration
+- App must connect to our existing API (Cloud Run) and database.
+- Authentication must be secure and scalable:
+  - Prefer Firebase Auth (email, phone, social if needed) OR our current auth if already implemented.
+  - Secure token storage on device (Keychain on iOS, Keystore on Android).
+- API health and monitoring:
+  - Add app-side health checks and graceful degraded mode if backend is slow.
+  - Log important events to a central place (Crashlytics/Sentry).
+
+C. Core features (MVP)
+1) Onboarding
+- Create account / Sign in
+- Verify email or phone
+- Accept Terms and Privacy policy
+- Select language
+
+2) Loyalty profile
+- Show membership ID
+- Show QR code for identification
+- Points / credits / tier level
+- Personal details (name, phone, email)
+- Manage marketing preferences
+
+3) QR redemption
+- In-app QR scanner (camera)
+- Validate QR via API
+- Confirm redemption result
+- Prevent abuse:
+  - Single-use tokens where relevant
+  - Time-limited QR codes where relevant
+  - Server-side checks and rate limits
+
+4) Offers and rewards
+- Available rewards list
+- Redeem reward
+- History: redeemed, expired, pending
+
+5) Notifications
+- Push notifications for campaigns, receipts, status
+- Notification preferences in settings
+
+6) Support
+- In-app contact form and email
+- FAQ page
+- Report a problem with logs attached (basic)
+
+D. Phase 2 features (after MVP)
+- Wallet passes:
+  - Apple Wallet pass for membership QR
+  - Google Wallet pass for membership QR
+- Location-based discovery (optional)
+- In-app referrals
+- Offline mode for showing membership QR even without internet
+- Admin or staff mode (only if needed)
+
+Design requirements
+- Premium, modern UI.
+- Clean white base with luxury gold accents.
+- Smooth animations, but not heavy.
+- Accessibility compliance:
+  - Font scaling
+  - Color contrast
+  - Screen reader labels
+
+Security and compliance requirements
+- Privacy policy and data handling must match Apple and Google requirements.
+- Minimal data collection.
+- Clear consent for notifications and marketing.
+- Protect against common issues:
+  - Token leaks
+  - Insecure storage
+  - Weak session handling
+  - API abuse
+- Rate limiting and anti-fraud on QR redemption.
+- If we use analytics, it must be disclosed and configurable.
+
+App Store and Google Play requirements (you must handle or guide me precisely)
+iOS
+- Bundle ID, App Store Connect setup
+- Certificates and profiles (or modern automatic signing)
+- TestFlight builds for QA
+- App privacy labels
+- App review notes
+- Screenshots (all required device sizes)
+- App icon set and splash screens
+
+Android
+- ApplicationId, Play Console setup
+- Keystore signing key management
+- Internal testing track, closed testing, production
+- Data safety form
+- Screenshots, feature graphics, icons
+
+CI/CD and deployment
+- Repo structure: separate mobile repo OR monorepo (recommend one).
+- Automated builds:
+  - iOS: EAS Build / Fastlane / Xcode Cloud (recommend)
+  - Android: Gradle + CI (recommend)
+- Environment management:
+  - Dev, staging, production
+  - Separate API URLs and Firebase projects if needed
+- Versioning:
+  - Semantic versioning and build numbers
+- Release process checklist
+
+Testing requirements
+- Unit tests for QR redemption logic
+- Basic integration tests
+- Manual QA plan
+- Crash reporting enabled before production
+
+Deliverables I expect
+1) Full source code for iOS and Android app
+2) Documented setup:
+   - How to run locally
+   - How to build for test
+   - How to release
+3) App Store and Play Store submissions completed
+4) Monitoring dashboard (crashes, performance, key events)
+5) Security review checklist completed
+
+Questions you must answer in your reply
+1) Can you do this end to end for both stores? Yes or No.
+2) Your recommended tech stack and why.
+3) What you will reuse from the existing web platform and what must be built new.
+4) Timeline for MVP and Phase 2 (with milestones).
+5) Exact info you need from me (accounts, access, keys, assets).
+6) Risks and how you will mitigate them.
+7) Cost estimate range and what it includes (dev, design, QA, store submission, maintenance).
+
+Access I can provide
+- GitHub repo access
+- Google Cloud access (Cloud Run, logs)
+- Firebase access if needed
+- Apple Developer access and App Store Connect access
+- Google Play Console access
+
+Please reply with a clear plan and a commitment level. If you cannot do any part (store submission, signing, UI design, QR security, backend changes), say it now and propose an alternative.
+
+Thanks,
+Nir
