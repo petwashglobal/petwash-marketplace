@@ -1395,7 +1395,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               className="space-y-3"
             >
               <p className="text-center text-xs text-neutral-500 tracking-wider uppercase mb-4">
-                {language === 'he' ? 'כיצד תרצו להשתמש בפלטפורמה?' : 'How would you like to use the platform?'}
+                {language === 'he' ? 'משתמשים חדשים — בחרו כיצד תרצו להשתמש בפלטפורמה' : 'New users — choose how you\'d like to use the platform'}
               </p>
               <button
                 onClick={() => handleSelectIntent('customer')}
@@ -1448,6 +1448,21 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   <p className="text-sm font-medium text-neutral-900">{language === 'he' ? 'צוות / ניהול' : 'Staff / Admin Access'}</p>
                   <p className="text-xs text-neutral-500">{language === 'he' ? 'גישת עובדים (דורש אישור)' : 'Employee access (requires approval)'}</p>
                 </div>
+              </button>
+
+              <div className="relative flex items-center py-2">
+                <div className="flex-1 border-t border-neutral-200" />
+                <span className="px-3 text-xs text-neutral-400 tracking-wider uppercase">
+                  {language === 'he' ? 'או' : 'or'}
+                </span>
+                <div className="flex-1 border-t border-neutral-200" />
+              </div>
+              <button
+                onClick={() => handleSelectIntent('customer')}
+                className="w-full text-center py-3 text-sm text-neutral-600 hover:text-neutral-900 tracking-wide transition-colors underline underline-offset-4"
+                data-testid="intent-existing-user"
+              >
+                {language === 'he' ? 'כבר רשום? התחבר לחשבון קיים' : 'Already have an account? Sign in'}
               </button>
             </motion.div>
           )}
