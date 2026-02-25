@@ -59,6 +59,7 @@ import giftCardsRoutes from "./routes/gift-cards";
 import campaignsRoutes from "./routes/campaigns";
 import meetingsRoutes from "./routes/meetings";
 import vouchers2025Routes from "./routes/vouchers-2025";
+import unifiedVouchersRoutes from "./routes/unified-vouchers";
 import esignRoutes from "./routes/esign";
 import israeli2025EsignRoutes from "./routes/israeli-2025-esign";
 import notificationsRoutes from "./routes/notifications";
@@ -9490,8 +9491,11 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/fcm', apiLimiter, fcmRoutes);
   app.use('/api/gift-cards', requireOnboardingComplete, giftCardsRoutes);
   
-  // PetWash Vouchers 2025 - 7-Star Luxury System
+  // PetWash Vouchers 2025 - 7-Star Luxury System (legacy)
   app.use('/api/vouchers-2025', apiLimiter, vouchers2025Routes);
+
+  // Unified Voucher System 2026 - WASH_PACKAGE + PLATFORM_CREDIT with full ledger
+  app.use('/api/v2/vouchers', apiLimiter, unifiedVouchersRoutes);
   
   // Email/SMS Campaigns (Marketing - Template Personalization)
   app.use('/api/campaigns', adminLimiter, campaignsRoutes);

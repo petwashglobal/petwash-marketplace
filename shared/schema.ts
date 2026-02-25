@@ -11429,3 +11429,181 @@ export const emailAudit = pgTable("email_audit", {
 export type EmailAuditRecord = typeof emailAudit.$inferSelect;
 export const insertEmailAuditSchema = createInsertSchema(emailAudit).omit({ id: true, createdAt: true });
 export type InsertEmailAudit = z.infer<typeof insertEmailAuditSchema>;
+
+// ============================================================
+// UNIFIED VOUCHER SYSTEM 2026
+// Financial instrument with full audit trail, dual redemption
+// channels (STATION + WEB/APP), partial redemption, and
+// short-lived signed QR tokens for fraud prevention.
+// ============================================================
+
+/**
+ * Voucher Classification:
+ *   WASH_PACKAGE  – redeems washes at physical K9000 stations
+ *   PLATFORM_CREDIT – redeems ILS credit on web/app (sitter, walker, academy, etc.)
+ *
+ * Status Machine:
+ *   ISSUED → ACTIVE (on first view/claim)
+ *         → PARTIALLY_REDEEMED (partial use)
+ *         → REDEEMED (fully consumed)
+ *         → EXPIRED (past expires_at)
+ *         → CANCELLED (admin action)
+ */
+export const unifiedVouchers = pgTable("unified_vouchers", {
+  id: varchar("id").primaryKey(), // UV-YYYYMMDD-XXXXXXXX
+
+  // --- Classification ---
+  voucherType: varchar("voucher_type", { length: 32 }).notNull(), // WASH_PACKAGE | PLATFORM_CREDIT
+  designTheme: varchar("design_theme", { length: 32 }).notNull().default("pink"), // pink | green | black | gold
+  status: varchar("status", { length: 32 }).notNull().default("ISSUED"), // ISSUED | ACTIVE | PARTIALLY_REDEEMED | REDEEMED | EXPIRED | CANCELLED
+
+  // --- Stored Value ---
+  // For WASH_PACKAGE: washesOriginal / washesRemaining are used; value fields = null
+  // For PLATFORM_CREDIT: value fields are used; washes fields = null
+  currency: varchar("currency", { length: 8 }).notNull().default("ILS"),
+  valueOriginal: decimal("value_original", { precision: 12, scale: 2 }),   // ILS amount (PLATFORM_CREDIT)
+  valueRemaining: decimal("value_remaining", { precision: 12, scale: 2 }), // ILS remaining
+  washesOriginal: integer("washes_original"),   // wash count (WASH_PACKAGE)
+  washesRemaining: integer("washes_remaining"), // washes remaining
+
+  // --- Recipient (supports RTL/LTR locales) ---
+  recipientDisplayName: varchar("recipient_display_name", { length: 200 }).notNull(),
+  recipientLocale: varchar("recipient_locale", { length: 8 }).notNull().default("he"), // he, en, ar, fr, ru, es
+  recipientEmail: varchar("recipient_email", { length: 255 }),
+  recipientPhone: varchar("recipient_phone", { length: 30 }),
+
+  // --- Ownership ---
+  purchasedByUserId: varchar("purchased_by_user_id"), // Firebase UID of buyer
+  purchasedByEmail: varchar("purchased_by_email", { length: 255 }),
+  ownerUserId: varchar("owner_user_id"), // Assigned after claim (may differ from buyer)
+
+  // --- Human-readable serial number for UI display ---
+  serialNumber: varchar("serial_number", { length: 32 }).notNull().unique(), // e.g. PWV-2026-A3B7C2D1
+
+  // --- Cryptographic security ---
+  // The long-lived JWS covers immutable fields (originalValues + type + serial)
+  // It is verified on every redemption to detect DB tampering
+  immutableHash: text("immutable_hash").notNull(), // SHA256 of immutable canonical fields
+  signedJws: text("signed_jws").notNull(),         // ES256 JWS over immutableHash
+
+  // --- Apple / Google Wallet readiness ---
+  walletPassId: varchar("wallet_pass_id", { length: 100 }), // PassKit / Google Wallet object ID
+  svgTemplateKey: varchar("svg_template_key", { length: 64 }), // for renderer in Step 2
+
+  // --- Purchase reference ---
+  purchaseOrderId: varchar("purchase_order_id", { length: 100 }), // Nayax / Stripe / manual order
+  nayaxTxId: varchar("nayax_tx_id", { length: 100 }),
+
+  // --- Lifecycle ---
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  activatedAt: timestamp("activated_at", { withTimezone: true }),
+  fullyRedeemedAt: timestamp("fully_redeemed_at", { withTimezone: true }),
+  lastRedeemedAt: timestamp("last_redeemed_at", { withTimezone: true }),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+  cancelReason: text("cancel_reason"),
+
+  // --- Metadata ---
+  personalMessage: text("personal_message"), // Optional gift message from buyer
+  metadata: jsonb("metadata"), // Future extensibility (Apple Wallet pass fields, etc.)
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("idx_uv_owner").on(table.ownerUserId),
+  index("idx_uv_purchaser").on(table.purchasedByUserId),
+  index("idx_uv_status").on(table.status),
+  index("idx_uv_type").on(table.voucherType),
+  index("idx_uv_serial").on(table.serialNumber),
+  index("idx_uv_expires").on(table.expiresAt),
+]);
+
+export type UnifiedVoucher = typeof unifiedVouchers.$inferSelect;
+export const insertUnifiedVoucherSchema = createInsertSchema(unifiedVouchers).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertUnifiedVoucher = z.infer<typeof insertUnifiedVoucherSchema>;
+
+/**
+ * Unified Voucher Ledger — APPEND-ONLY, IMMUTABLE
+ *
+ * Every event (issue, redeem, refund, adjust, cancel) writes one row.
+ * Hash chaining: entryHash = SHA256(canonical | prevEntryHash)
+ * This makes any ledger tampering immediately detectable.
+ *
+ * Channel:
+ *   STATION – physical K9000 terminal scanned the QR
+ *   WEB     – user redeemed via browser checkout
+ *   APP     – user redeemed via mobile app
+ *   ADMIN   – manual adjustment by staff
+ */
+export const unifiedVoucherLedger = pgTable("unified_voucher_ledger", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  voucherId: varchar("voucher_id").notNull().references(() => unifiedVouchers.id, { onDelete: 'restrict' }),
+
+  // --- Sequence & hash chain ---
+  seqNo: integer("seq_no").notNull(),           // 0 = genesis (ISSUE event)
+  prevEntryHash: text("prev_entry_hash"),        // null only for genesis
+  entryHash: text("entry_hash").notNull(),       // SHA256 of canonical entry data
+  signedJws: text("signed_jws").notNull(),       // ES256 over entryHash
+
+  // --- Event type ---
+  event: varchar("event", { length: 32 }).notNull(), // ISSUE | REDEEM | REFUND | ADJUST | CANCEL | EXPIRE
+
+  // --- Delta values (positive = consumed/removed, negative = restored/refunded) ---
+  deltaValue: decimal("delta_value", { precision: 12, scale: 2 }).notNull().default("0"),
+  deltaWashes: integer("delta_washes").notNull().default(0),
+
+  // --- Running totals AFTER this entry (snapshot for fast reconciliation) ---
+  balanceValueAfter: decimal("balance_value_after", { precision: 12, scale: 2 }),
+  balanceWashesAfter: integer("balance_washes_after"),
+
+  // --- Channel & external references ---
+  channel: varchar("channel", { length: 16 }).notNull(), // STATION | WEB | APP | ADMIN
+  stationId: varchar("station_id", { length: 100 }),
+  locationLabel: text("location_label"),
+  externalRef: varchar("external_ref", { length: 200 }), // station tx id / order id / booking id
+
+  // --- Actor ---
+  actorUserId: varchar("actor_user_id", { length: 128 }), // UID who triggered this (may be system/admin)
+  actorRole: varchar("actor_role", { length: 32 }),        // customer | staff | station | system
+
+  // --- Short-lived QR token reference (for station redemptions) ---
+  qrTokenNonce: varchar("qr_token_nonce", { length: 64 }), // links to the QR token that was presented
+  qrTokenJti: varchar("qr_token_jti", { length: 64 }),     // JWT ID from the QR token (anti-replay)
+
+  // --- Notes ---
+  notes: text("notes"),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("idx_uvl_seq").on(table.voucherId, table.seqNo),
+  index("idx_uvl_voucher").on(table.voucherId),
+  index("idx_uvl_event").on(table.event),
+  index("idx_uvl_channel").on(table.channel),
+  index("idx_uvl_jti").on(table.qrTokenJti),
+]);
+
+export type UnifiedVoucherLedgerEntry = typeof unifiedVoucherLedger.$inferSelect;
+
+/**
+ * Redeemed QR Token Registry — anti-replay store
+ * Every short-lived QR token that has been successfully redeemed is stored here.
+ * Before accepting any QR token, the backend checks this table (jti must not exist).
+ */
+export const redeemedQrTokens = pgTable("redeemed_qr_tokens", {
+  jti: varchar("jti", { length: 64 }).primaryKey(), // JWT ID — unique per token
+  voucherId: varchar("voucher_id").notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }).notNull().defaultNow(),
+  channel: varchar("channel", { length: 16 }).notNull(),
+  stationId: varchar("station_id", { length: 100 }),
+  actorUserId: varchar("actor_user_id", { length: 128 }),
+  externalRef: varchar("external_ref", { length: 200 }),
+  // Store token exp so cleanup jobs can prune old entries safely
+  tokenExp: timestamp("token_exp", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("idx_rqt_voucher").on(table.voucherId),
+  index("idx_rqt_used").on(table.usedAt),
+]);
+
+export type RedeemedQrToken = typeof redeemedQrTokens.$inferSelect;
