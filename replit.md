@@ -70,7 +70,6 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Development Environment**: Replit workspace (DEV ONLY).
 - **Production Pipeline**: GitHub → Google Cloud (Firebase Hosting / Cloud Run).
 - **Source Control**: GitHub repository `petwashglobal/petwash-marketplace`.
-- **Firebase Project**: `signinpetwash`.
 - **CI/CD Pipeline**: Automated GitHub Actions deployment (`.github/workflows/petwash-ci.yml`) with a 5-guard protection system.
 - **CRITICAL DEPLOYMENT RULE**: Replit URLs are for development only and must not be connected to production domains. Production domains point to Firebase Hosting.
 
@@ -83,7 +82,7 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Loyalty Program**: 7-tier system, e-gift cards, wash packages, Apple Wallet integration.
 - **E-Signature**: DocuSeal with Hebrew RTL support; custom system for Israeli subcontractor agreements.
 - **Enterprise Features**: Multi-country/currency support, franchise management, IoT monitoring (K9000 integration), secure document management, KYC workflow, automated bookkeeping, Israeli Tax Compliance, bank reconciliation, invoicing, and VAT reclaim.
-- **Payment Gateway Architecture**: Nayax Israel is the exclusive payment gateway with a 72-hour escrow period.
+- **Payment Gateway Architecture**: Nayax Israel is the exclusive payment gateway with a 72-hour escrow period. Includes a prepaid wallet model where K9000 terminal payments credit the in-app wallet.
 - **Unified Luxury Booking System**: Enterprise-grade booking with loyalty tiers, policies, 72-hour escrow, GPS activation, multi-driver dispatch, IoT unlock tokens, dynamic surge pricing, and progressive provider payouts. All financial writes utilize the "Octopus Global Brain Engine" with atomic wallet debit/credit, immutable financial ledger, and idempotency protection.
 - **Employee Expense Management System**: Israeli Tax Authority compliant with OCR receipt scanning and cryptographic audit trail.
 - **Document Management System**: RBAC, Google Cloud Storage integration, access audit logging, and DocuSeal e-signature.
@@ -93,11 +92,11 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Israeli Contractor Compliance System**: Marketplace broker model designed to prevent employee misclassification, including tax verification, National Insurance tracking, commission calculation, independence scoring, compliance audits, risk monitoring, and SHA-256 audit trails.
 - **Security & Compliance**: Google reCAPTCHA v3, Firebase App Check, performance monitoring, GA4, rate limiting, daily backups, admin logs, WebAuthn Level 2, Israeli Privacy Law 2025, AI monitoring, GDPR consent, blockchain-style audit trail. Optional/Mandatory 2FA (SMS + Email, TOTP authenticator). Transaction OTP verification for high-value operations. A dedicated security events service logs various security-related incidents.
 - **Consent Engine**: Manages user consents with SHA-256 evidence hash generation, immutable snapshots, and role-based consent requirements.
-
-### File Storage & Admin Access
-- **Document Storage**: Google Cloud Storage bucket `petwash-secure-documents`.
-- **Biometric Storage**: Firebase Storage bucket `signinpetwash.firebasestorage.app`.
-- **Admin File Access**: Admin users with `view_documents` permission can view documents via `/api/documents`, controlled by RBAC.
+- **File Storage**: Google Cloud Storage bucket `petwash-secure-documents` for documents, Firebase Storage bucket `signinpetwash.firebasestorage.app` for biometrics. Admin users with `view_documents` permission can access documents via `/api/documents`.
+- **Membership ID System**: 3-Class Membership ID (PWM, PWP, PWS) with collision-safe generation.
+- **OTP Phone Verification**: Multi-channel (SMS/WhatsApp) with SHA-256 hash storage, rate limiting, Redis caching.
+- **Google Places Backend Proxy**: All Places API calls proxied through backend endpoints to restrict Google Maps JS SDK usage on the frontend.
+- **Unified Voucher System**: Production-grade fintech engine for WASH_PACKAGE and PLATFORM_CREDIT instruments, using ES256 JWS signatures, 3-minute QR tokens with anti-replay, and a hash-chained append-only ledger.
 
 ## External Dependencies
 - **Database & ORM**: @neondatabase/serverless (PostgreSQL), drizzle-orm.
@@ -110,7 +109,7 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Email**: SendGrid.
 - **Cloud Storage**: @google-cloud/storage.
 - **Utilities**: qrcode, PassKit, googleapis.
-- **Messaging**: Meta WhatsApp Business API, Google Firebase Cloud Messaging (FCM).
+- **Messaging**: Meta WhatsApp Business API, Google Firebase Cloud Messaging (FCM), Twilio (for SMS/WhatsApp).
 - **Banking Integration**: Mizrahi-Tefahot Bank (via aggregator API).
 - **Weather & Environmental Data**: Open-Meteo API, Google Weather API, CurrentUVIndex.com API, Open-Meteo Air Quality API.
 - **E-Signature**: DocuSeal (@docuseal/api).

@@ -26,6 +26,7 @@ import {
   type UnifiedVoucherLedgerEntry,
 } from "../../shared/schema";
 import { logger } from "../lib/logger";
+import { walletService } from "./WalletService";
 
 // ─────────────────────────────────────────────
 // Key loading
@@ -671,6 +672,42 @@ export async function redeemVoucher(params: RedeemParams): Promise<RedeemResult>
       updatedAt: new Date(),
     })
     .where(eq(unifiedVouchers.id, voucher.id));
+
+  // ── 9. Wallet bridge: credit egift balance for PLATFORM_CREDIT vouchers ──
+  if (
+    voucher.voucherType === "PLATFORM_CREDIT" &&
+    deltaValue > 0 &&
+    (params.channel === "WEB" || params.channel === "APP")
+  ) {
+    const userId = voucher.ownerUserId ?? voucher.purchasedByUserId;
+    if (userId) {
+      const amountCents = Math.round(deltaValue * 100);
+      try {
+        await walletService.addCredits(
+          userId,
+          "egift",
+          amountCents,
+          "unified_voucher",
+          voucher.id,
+          "Voucher PLATFORM_CREDIT redeemed"
+        );
+        logger.info("[UnifiedVoucher] Wallet bridge: egift credited", {
+          traceId,
+          userId,
+          amountCents,
+          voucherId: voucher.id,
+        });
+      } catch (walletErr: any) {
+        logger.error("[UnifiedVoucher] Wallet bridge FAILED (non-fatal)", {
+          traceId,
+          userId,
+          amountCents,
+          voucherId: voucher.id,
+          error: walletErr?.message,
+        });
+      }
+    }
+  }
 
   logger.info("[UnifiedVoucher] Redeemed", {
     traceId,

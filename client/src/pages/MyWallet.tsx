@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Wallet,
   CreditCard,
@@ -18,12 +21,15 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Plus,
+  Ticket,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 import { Layout } from '@/components/Layout';
 import { useLocation } from 'wouter';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
-import { queryClient } from '@/lib/queryClient';
+import { queryClient, apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 interface WalletSummary {
   walletId: string;
@@ -36,17 +42,24 @@ interface WalletSummary {
   totalCreditsValueCents: number;
   loyaltyTier: string;
   tierPointsThisYear: number;
+  unifiedVouchers?: {
+    totalPlatformCreditRemainingCents: number;
+    totalWashPackagesRemaining: number;
+    activeVoucherCount: number;
+  };
 }
 
-interface CreditTransaction {
-  transactionId: string;
-  creditType: string;
-  transactionType: string;
-  amountCents: number | null;
-  amountUnits: number | null;
+interface ActivityItem {
+  id: string;
+  type: 'wallet_credit' | 'voucher_ledger';
+  event: string;
   description: string;
-  platform: string;
+  amountCents: number | null;
+  amountWashes: number | null;
+  channel: string | null;
+  platform: string | null;
   createdAt: string;
+  referenceId: string | null;
 }
 
 const formatCurrency = (cents: number) =>
@@ -69,12 +82,10 @@ const TX_TYPE_ICONS: Record<string, { icon: typeof ArrowUpRight; color: string }
   expire: { icon: Clock, color: 'text-gray-400' },
 };
 
-const CREDIT_TYPE_LABELS: Record<string, { en: string; he: string }> = {
-  egift: { en: 'E-Gift', he: 'מתנה דיגיטלית' },
-  wash_package: { en: 'Wash Package', he: 'חבילת שטיפה' },
-  loyalty_points: { en: 'Loyalty Points', he: 'נקודות נאמנות' },
-  promo_credit: { en: 'Promo Credit', he: 'קרדיט מבצע' },
-  referral: { en: 'Referral', he: 'הפניה' },
+const CHANNEL_COLORS: Record<string, string> = {
+  STATION: 'bg-blue-500',
+  WEB: 'bg-purple-500',
+  APP: 'bg-green-500',
 };
 
 function WalletSkeleton() {
@@ -102,34 +113,75 @@ export default function MyWallet() {
   const isHebrew = language === 'he';
   const [, setLocation] = useLocation();
   const { user } = useFirebaseAuth();
-  const [showTransactions, setShowTransactions] = useState(false);
+  const { toast } = useToast();
+  const [showActivity, setShowActivity] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showTopUp, setShowTopUp] = useState(false);
+  const [nayaxTxId, setNayaxTxId] = useState('');
+  const [topUpAmountIls, setTopUpAmountIls] = useState('');
 
   const { data: walletData, isLoading } = useQuery<{ success: boolean; wallet: WalletSummary }>({
     queryKey: ['/api/credit-wallet/summary'],
   });
 
-  const { data: txData, isLoading: txLoading } = useQuery<{ success: boolean; transactions: CreditTransaction[] }>({
-    queryKey: ['/api/credit-wallet/transactions'],
-    enabled: showTransactions,
+  const { data: activityData, isLoading: activityLoading } = useQuery<{ success: boolean; activities: ActivityItem[]; total: number }>({
+    queryKey: ['/api/credit-wallet/activity'],
+    enabled: showActivity,
+  });
+
+  const topUpMutation = useMutation({
+    mutationFn: async (body: { amountCents: number; nayaxTxId?: string }) =>
+      apiRequest('POST', '/api/credit-wallet/topup', body),
+    onSuccess: () => {
+      toast({
+        title: isHebrew ? 'הארנק נטען בהצלחה!' : 'Wallet topped up!',
+        description: isHebrew ? 'היתרה עודכנה' : 'Your balance has been updated',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/credit-wallet/summary'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/credit-wallet/activity'] });
+      setShowTopUp(false);
+      setNayaxTxId('');
+      setTopUpAmountIls('');
+    },
+    onError: (err: any) => {
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'שגיאה' : 'Error',
+        description: err?.message || (isHebrew ? 'אירעה שגיאה' : 'An error occurred'),
+      });
+    },
   });
 
   const wallet = walletData?.wallet;
-  const transactions = txData?.transactions || [];
+  const activities = activityData?.activities || [];
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await queryClient.invalidateQueries({ queryKey: ['/api/credit-wallet/summary'] });
-    if (showTransactions) {
-      await queryClient.invalidateQueries({ queryKey: ['/api/credit-wallet/transactions'] });
+    if (showActivity) {
+      await queryClient.invalidateQueries({ queryKey: ['/api/credit-wallet/activity'] });
     }
     setTimeout(() => setIsRefreshing(false), 800);
+  };
+
+  const handleTopUpSubmit = () => {
+    const amountCents = Math.round(parseFloat(topUpAmountIls) * 100);
+    if (!topUpAmountIls || isNaN(amountCents) || amountCents < 100) {
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'סכום לא תקין' : 'Invalid amount',
+        description: isHebrew ? 'הסכום המינימלי הוא ₪1' : 'Minimum amount is ₪1',
+      });
+      return;
+    }
+    topUpMutation.mutate({ amountCents, nayaxTxId: nayaxTxId || undefined });
   };
 
   if (isLoading) return <WalletSkeleton />;
 
   const tier = wallet?.loyaltyTier || 'bronze';
   const tierInfo = TIER_LABELS[tier] || TIER_LABELS.bronze;
+  const uv = wallet?.unifiedVouchers;
 
   return (
     <Layout>
@@ -249,6 +301,56 @@ export default function MyWallet() {
             </Card>
           </div>
 
+          {uv && uv.activeVoucherCount > 0 && (
+            <Card className="luxury-glass-card mb-5 luxury-animate-slide-up border border-amber-100">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Ticket className="w-4 h-4 text-amber-600" />
+                    <span className="text-sm font-semibold text-gray-800">
+                      {isHebrew ? 'שוברים פעילים' : 'Active Vouchers'}
+                    </span>
+                  </div>
+                  <Badge className="bg-amber-100 text-amber-700 border-0 text-xs font-bold">
+                    {uv.activeVoucherCount}
+                  </Badge>
+                </div>
+                <div className="space-y-1.5 mb-3">
+                  {uv.totalPlatformCreditRemainingCents > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500 flex items-center gap-1">
+                        <CreditCard className="w-3.5 h-3.5 text-purple-500" />
+                        {isHebrew ? 'קרדיט פלטפורמה' : 'Platform Credit'}
+                      </span>
+                      <span className="font-semibold text-gray-800">
+                        {formatCurrency(uv.totalPlatformCreditRemainingCents)}
+                      </span>
+                    </div>
+                  )}
+                  {uv.totalWashPackagesRemaining > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500 flex items-center gap-1">
+                        <Droplets className="w-3.5 h-3.5 text-blue-500" />
+                        {isHebrew ? 'חבילות שטיפה' : 'Wash Packages'}
+                      </span>
+                      <span className="font-semibold text-gray-800">
+                        {uv.totalWashPackagesRemaining} {isHebrew ? 'שטיפות' : 'washes'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLocation('/vouchers')}
+                  className="w-full text-amber-700 border-amber-200 hover:bg-amber-50 text-xs h-8"
+                >
+                  {isHebrew ? 'צפייה בכל השוברים' : 'View All Vouchers'}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="space-y-3 mb-6 luxury-animate-slide-up">
             <Button
               onClick={() => setLocation('/wallet/redeem')}
@@ -260,62 +362,84 @@ export default function MyWallet() {
 
             <Button
               variant="outline"
-              onClick={() => setShowTransactions(!showTransactions)}
+              onClick={() => setShowTopUp(true)}
+              className="w-full h-12 rounded-xl border-2 border-green-300 text-green-700 hover:bg-green-50 font-semibold gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              {isHebrew ? 'טעינת ארנק' : 'Top Up Wallet'}
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => setShowActivity(!showActivity)}
               className="w-full h-12 rounded-xl border-2 border-gray-200 text-gray-700 font-semibold gap-2"
             >
               <Clock className="w-4 h-4" />
               {isHebrew ? 'היסטוריית פעולות' : 'Transaction History'}
-              {showTransactions ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              {showActivity ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </Button>
           </div>
 
-          {showTransactions && (
+          {showActivity && (
             <div className="luxury-animate-slide-up">
               <Card className="luxury-glass-card luxury-shadow-lg">
                 <CardContent className="p-4">
                   <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                    {isHebrew ? 'פעולות אחרונות' : 'Recent Transactions'}
+                    {isHebrew ? 'פעולות אחרונות' : 'Recent Activity'}
                   </h3>
-                  {txLoading ? (
+                  {activityLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
                     </div>
-                  ) : transactions.length === 0 ? (
+                  ) : activities.length === 0 ? (
                     <div className="text-center py-8 text-gray-400">
                       <Clock className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                      <p className="text-sm">{isHebrew ? 'אין פעולות עדיין' : 'No transactions yet'}</p>
+                      <p className="text-sm">{isHebrew ? 'אין פעולות עדיין' : 'No activity yet'}</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {transactions.slice(0, 20).map((tx) => {
-                        const txType = TX_TYPE_ICONS[tx.transactionType] || TX_TYPE_ICONS.issue;
+                      {activities.slice(0, 30).map((item) => {
+                        const isPositive = ['issue', 'refund', 'ISSUED', 'LOAD'].includes(item.event);
+                        const txTypeKey = item.event?.toLowerCase();
+                        const txType = TX_TYPE_ICONS[txTypeKey] || (isPositive ? TX_TYPE_ICONS.issue : TX_TYPE_ICONS.redeem);
                         const TxIcon = txType.icon;
-                        const creditLabel = CREDIT_TYPE_LABELS[tx.creditType] || { en: tx.creditType, he: tx.creditType };
-                        const isPositive = tx.transactionType === 'issue' || tx.transactionType === 'refund';
-                        const amount = tx.amountCents != null
-                          ? `${isPositive ? '+' : '-'}${formatCurrency(Math.abs(tx.amountCents))}`
-                          : tx.amountUnits != null
-                            ? `${isPositive ? '+' : '-'}${Math.abs(tx.amountUnits)} ${isHebrew ? 'יחידות' : 'units'}`
-                            : '';
+                        const channelKey = (item.channel || '').toUpperCase();
+                        const channelDotColor = CHANNEL_COLORS[channelKey] || 'bg-gray-400';
 
                         return (
-                          <div key={tx.transactionId} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                          <div key={item.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                             <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center`}>
+                              <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
                                 <TxIcon className={`w-4 h-4 ${txType.color}`} />
                               </div>
                               <div>
-                                <p className="text-sm font-medium text-gray-900">
-                                  {isHebrew ? creditLabel.he : creditLabel.en}
-                                </p>
+                                <div className="flex items-center gap-1.5">
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {item.description || item.event}
+                                  </p>
+                                  {item.channel && (
+                                    <span className={`inline-block w-2 h-2 rounded-full ${channelDotColor}`} title={item.channel} />
+                                  )}
+                                </div>
                                 <p className="text-[11px] text-gray-400">
-                                  {tx.description || tx.platform} • {new Date(tx.createdAt).toLocaleDateString(isHebrew ? 'he-IL' : 'en-IL')}
+                                  {item.type === 'voucher_ledger' ? (isHebrew ? 'שובר' : 'Voucher') : (isHebrew ? 'ארנק' : 'Wallet')}
+                                  {' • '}
+                                  {new Date(item.createdAt).toLocaleDateString(isHebrew ? 'he-IL' : 'en-IL')}
                                 </p>
                               </div>
                             </div>
-                            <span className={`text-sm font-semibold ${isPositive ? 'text-green-600' : 'text-red-500'}`}>
-                              {amount}
-                            </span>
+                            <div className="text-right">
+                              {item.amountCents != null && (
+                                <span className={`text-sm font-semibold block ${isPositive ? 'text-green-600' : 'text-red-500'}`}>
+                                  {isPositive ? '+' : '-'}{formatCurrency(Math.abs(item.amountCents))}
+                                </span>
+                              )}
+                              {item.amountWashes != null && item.amountWashes !== 0 && (
+                                <span className="text-xs text-gray-400 block">
+                                  {item.amountWashes > 0 ? '+' : ''}{item.amountWashes} {isHebrew ? 'שטיפות' : 'washes'}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
@@ -331,6 +455,64 @@ export default function MyWallet() {
           </div>
         </div>
       </div>
+
+      <Dialog open={showTopUp} onOpenChange={setShowTopUp}>
+        <DialogContent className="max-w-sm mx-auto">
+          <DialogHeader>
+            <DialogTitle className="text-center">
+              {isHebrew ? 'טעינת ארנק' : 'Top Up Wallet'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="bg-blue-50 rounded-xl p-3 text-xs text-blue-800 leading-relaxed">
+              <p className="font-semibold mb-1">{isHebrew ? 'להטענה באמצעות Nayax:' : 'To top up via Nayax:'}</p>
+              <p>{isHebrew
+                ? 'גשו לתחנת K9000, בחרו "טעינת ארנק", שלמו והזינו את קוד האישור'
+                : 'Visit a K9000 station, select "Wallet Top-Up", pay, then enter the confirmation code below'
+              }</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="nayax-tx-id" className="text-sm font-medium text-gray-700">
+                {isHebrew ? 'קוד אישור Nayax' : 'Nayax Confirmation Code'}
+              </Label>
+              <Input
+                id="nayax-tx-id"
+                value={nayaxTxId}
+                onChange={(e) => setNayaxTxId(e.target.value)}
+                placeholder={isHebrew ? 'הזן קוד אישור' : 'Enter confirmation code'}
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="topup-amount" className="text-sm font-medium text-gray-700">
+                {isHebrew ? 'סכום לטעינה ₪' : 'Top-Up Amount ₪'}
+              </Label>
+              <Input
+                id="topup-amount"
+                type="number"
+                min="1"
+                step="0.01"
+                value={topUpAmountIls}
+                onChange={(e) => setTopUpAmountIls(e.target.value)}
+                placeholder={isHebrew ? 'לדוגמה: 50' : 'e.g. 50'}
+                className="h-11"
+              />
+            </div>
+            <Button
+              onClick={handleTopUpSubmit}
+              disabled={topUpMutation.isPending}
+              className="w-full h-12 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl gap-2"
+            >
+              {topUpMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+              {isHebrew ? 'טען ארנק' : 'Top Up'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

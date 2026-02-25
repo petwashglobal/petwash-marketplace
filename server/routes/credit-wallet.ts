@@ -3,6 +3,9 @@ import { walletService } from '../services/WalletService';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
+import { db } from '../db';
+import { creditTransactions, walletAccounts, unifiedVouchers, unifiedVoucherLedger } from '@shared/schema';
+import { eq, or, inArray, and, desc, sql } from 'drizzle-orm';
 
 const router = Router();
 
@@ -47,6 +50,167 @@ const addCreditsSchema = z.object({
   description: z.string().optional(),
 });
 
+const topupRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // max 5 top-ups per hour per user
+  message: { success: false, error: 'Too many top-up requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => (req as any).user?.uid || (req as any).firebaseUser?.uid || 'anonymous',
+  validate: { xForwardedForHeader: false, ip: false, default: false },
+});
+
+const topupSchema = z.object({
+  amountCents: z.number().int().min(100).max(100000),
+  nayaxTxId: z.string().optional(),
+  description: z.string().optional(),
+});
+
+router.post('/topup', topupRateLimiter, async (req, res) => {
+  try {
+    const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Authentication required' });
+    }
+
+    const parsed = topupSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, error: parsed.error.message });
+    }
+
+    const { amountCents, nayaxTxId, description } = parsed.data;
+
+    const isAdmin = !!(req.headers['x-admin-id'] || (req.user as any)?.role === 'admin');
+
+    if (!nayaxTxId && !isAdmin) {
+      return res.status(403).json({ success: false, error: 'Top-up requires Nayax transaction ID' });
+    }
+
+    await walletService.addCredits(
+      userId,
+      'egift',
+      amountCents,
+      'nayax_topup',
+      nayaxTxId,
+      description || 'Wallet top-up via Nayax'
+    );
+
+    const walletSummary = await walletService.getWalletSummary(userId);
+
+    logger.info('[Credit Wallet] Top-up processed', { userId, amountCents, nayaxTxId });
+    res.json({ success: true, amountCents, walletSummary });
+  } catch (error: any) {
+    logger.error('[Credit Wallet] Top-up error', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/activity', async (req, res) => {
+  try {
+    const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Authentication required' });
+    }
+
+    const limit = Math.min(parseInt(req.query.limit as string) || 30, 100);
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    // Get user's wallet
+    const [wallet] = await db.select({ walletId: walletAccounts.walletId })
+      .from(walletAccounts)
+      .where(eq(walletAccounts.userId, userId))
+      .limit(1);
+
+    // Get user's unified voucher IDs
+    const userVouchers = await db.select({ id: unifiedVouchers.id })
+      .from(unifiedVouchers)
+      .where(
+        or(
+          eq(unifiedVouchers.ownerUserId, userId),
+          eq(unifiedVouchers.purchasedByUserId, userId)
+        )
+      );
+
+    const voucherIds = userVouchers.map(v => v.id);
+
+    // Fetch wallet credit transactions
+    const walletActivities: any[] = [];
+    if (wallet) {
+      const txns = await db.select()
+        .from(creditTransactions)
+        .where(eq(creditTransactions.walletId, wallet.walletId))
+        .orderBy(desc(creditTransactions.createdAt));
+
+      for (const txn of txns) {
+        walletActivities.push({
+          id: txn.transactionId,
+          type: 'wallet_credit',
+          event: txn.transactionType,
+          description: txn.description || txn.transactionType,
+          amountCents: txn.amountCents ?? null,
+          amountWashes: txn.amountUnits ?? null,
+          channel: txn.platform || null,
+          platform: txn.platform || null,
+          createdAt: txn.createdAt,
+          referenceId: txn.sourceId || txn.redemptionSessionId || null,
+        });
+      }
+    }
+
+    // Fetch unified voucher ledger entries
+    const ledgerActivities: any[] = [];
+    if (voucherIds.length > 0) {
+      const ledgerEntries = await db.select({
+        id: unifiedVoucherLedger.id,
+        voucherId: unifiedVoucherLedger.voucherId,
+        event: unifiedVoucherLedger.event,
+        deltaValue: unifiedVoucherLedger.deltaValue,
+        deltaWashes: unifiedVoucherLedger.deltaWashes,
+        channel: unifiedVoucherLedger.channel,
+        notes: unifiedVoucherLedger.notes,
+        externalRef: unifiedVoucherLedger.externalRef,
+        createdAt: unifiedVoucherLedger.createdAt,
+      })
+        .from(unifiedVoucherLedger)
+        .where(inArray(unifiedVoucherLedger.voucherId, voucherIds))
+        .orderBy(desc(unifiedVoucherLedger.createdAt));
+
+      for (const entry of ledgerEntries) {
+        const deltaValueCents = entry.deltaValue
+          ? Math.round(parseFloat(entry.deltaValue as string) * 100)
+          : null;
+        ledgerActivities.push({
+          id: entry.id,
+          type: 'voucher_ledger',
+          event: entry.event,
+          description: entry.notes || `Voucher ${entry.event} (${entry.voucherId})`,
+          amountCents: deltaValueCents !== 0 ? deltaValueCents : null,
+          amountWashes: entry.deltaWashes !== 0 ? entry.deltaWashes : null,
+          channel: entry.channel || null,
+          platform: entry.channel || null,
+          createdAt: entry.createdAt,
+          referenceId: entry.externalRef || entry.voucherId,
+        });
+      }
+    }
+
+    // Merge and sort all activities by createdAt DESC
+    const combined = [...walletActivities, ...ledgerActivities].sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    const total = combined.length;
+    const activities = combined.slice(offset, offset + limit);
+
+    res.json({ success: true, activities, total });
+  } catch (error: any) {
+    logger.error('[Credit Wallet] Activity error', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.get('/summary', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
@@ -55,7 +219,49 @@ router.get('/summary', async (req, res) => {
     }
 
     const summary = await walletService.getWalletSummary(userId);
-    res.json({ success: true, wallet: summary });
+
+    // Fetch unified voucher aggregates
+    const activeStatuses = ['ISSUED', 'ACTIVE', 'PARTIALLY_REDEEMED'];
+    const userActiveVouchers = await db.select({
+      voucherType: unifiedVouchers.voucherType,
+      valueRemaining: unifiedVouchers.valueRemaining,
+      washesRemaining: unifiedVouchers.washesRemaining,
+      status: unifiedVouchers.status,
+    })
+      .from(unifiedVouchers)
+      .where(
+        and(
+          or(
+            eq(unifiedVouchers.ownerUserId, userId),
+            eq(unifiedVouchers.purchasedByUserId, userId)
+          ),
+          inArray(unifiedVouchers.status, activeStatuses)
+        )
+      );
+
+    let totalPlatformCreditRemainingCents = 0;
+    let totalWashPackagesRemaining = 0;
+    const activeVoucherCount = userActiveVouchers.length;
+
+    for (const v of userActiveVouchers) {
+      if (v.voucherType === 'PLATFORM_CREDIT' && v.valueRemaining) {
+        totalPlatformCreditRemainingCents += Math.round(parseFloat(v.valueRemaining as string) * 100);
+      } else if (v.voucherType === 'WASH_PACKAGE' && v.washesRemaining) {
+        totalWashPackagesRemaining += v.washesRemaining;
+      }
+    }
+
+    res.json({
+      success: true,
+      wallet: {
+        ...summary,
+        unifiedVouchers: {
+          totalPlatformCreditRemainingCents,
+          totalWashPackagesRemaining,
+          activeVoucherCount,
+        },
+      },
+    });
   } catch (error: any) {
     logger.error('[Credit Wallet] Summary error', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
