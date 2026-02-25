@@ -67,32 +67,90 @@ import { randomUUID } from 'crypto';
 
 logger.info('[GoogleMaps] keyPresent=' + !!process.env.GOOGLE_MAPS_API_KEY);
 
+// ── Fix 1: Per-IP rate limiter with spike logging on limit hit ────────────────
 const placesAutocompleteLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 100,
-  message: { error: 'Too many address searches, please slow down', reasonCode: 'RATE_LIMITED' },
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => req.ip || 'unknown',
   validate: { xForwardedForHeader: false, ip: false, default: false },
+  handler: (req, res) => {
+    logger.warn('[Places Proxy] IP rate limit HIT - possible abuse or fast typist', {
+      ip: req.ip,
+      origin: req.headers['origin'],
+      userAgent: (req.headers['user-agent'] as string)?.substring(0, 80),
+    });
+    res.status(429).json({ error: 'Too many address searches, please slow down', reasonCode: 'RATE_LIMITED' });
+  },
 });
 
-// Allowed origins for the Places proxy - prevents external sites from burning your API quota.
-// Origin and auth checks are independent: this allows unauthenticated users from your own domains.
+// ── Fix 4: Per-session rate limiter (second limiter keyed by session UUID) ────
+// Limits one browser session to 50 req/min regardless of IP rotation.
+const placesSessionLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 50,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const session = req.headers['x-places-session'] as string | undefined;
+    return session && /^[0-9a-f-]{36}$/.test(session)
+      ? `session:${session}`
+      : `ip-fallback:${req.ip || 'unknown'}`;
+  },
+  validate: { xForwardedForHeader: false, ip: false, default: false },
+  handler: (req, res) => {
+    logger.warn('[Places Proxy] SESSION rate limit HIT - possible scraper', {
+      session: (req.headers['x-places-session'] as string)?.substring(0, 12) + '...',
+      ip: req.ip,
+      origin: req.headers['origin'],
+    });
+    res.status(429).json({ error: 'Too many searches from this session', reasonCode: 'SESSION_RATE_LIMITED' });
+  },
+});
+
+// ── Fix 2: Strict hostname matching ──────────────────────────────────────────
+// Accepts exact domain match OR subdomain (e.g. app.petwash.co.il ✓, petwash.co.il.evil.com ✗)
+function isAllowedHostname(hostname: string, allowedDomains: string[]): boolean {
+  const h = hostname.toLowerCase();
+  return allowedDomains.some(domain => {
+    const d = domain.toLowerCase();
+    return h === d || h.endsWith('.' + d);
+  });
+}
+
+// ── Fix 3: Internal service auth uses INTERNAL_SERVICE_SECRET env var ─────────
+// x-internal-service header is spoofable from any browser. Instead, server-to-server
+// calls must send x-internal-secret matching the env var (never exposed to frontend).
+// Allowed origins for the Places proxy - prevents external sites burning your API quota.
 function isAllowedPlacesOrigin(req: any): boolean {
   const origin = req.headers['origin'] as string | undefined;
   const referer = req.headers['referer'] as string | undefined;
   const source = origin || referer || '';
 
-  // Internal server-to-server calls (no origin header)
+  // Internal server-to-server calls (no browser origin/referer present)
   if (!source) {
-    const internalKey = req.headers['x-internal-service'] as string | undefined;
-    return internalKey === 'petwash-backend';
+    const secret = process.env.INTERNAL_SERVICE_SECRET;
+    if (!secret) {
+      logger.warn('[Places Proxy] No-origin request blocked: INTERNAL_SERVICE_SECRET not configured');
+      return false;
+    }
+    const provided = req.headers['x-internal-secret'] as string | undefined;
+    return !!provided && provided === secret;
   }
 
-  // Build allowed origins list from env or defaults
+  // Parse the URL — extract only the hostname to prevent path/query bypass attacks.
+  // e.g. evil.com/?x=petwash.co.il or petwash.co.il.evil.com would NOT match.
+  let hostname: string;
+  try {
+    hostname = new URL(source).hostname;
+  } catch {
+    logger.warn('[Places Proxy] Unparseable origin rejected', { source: source.substring(0, 80) });
+    return false;
+  }
+
   const envAllowed = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
+    ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
     : [];
 
   const defaultAllowed = [
@@ -106,8 +164,7 @@ function isAllowedPlacesOrigin(req: any): boolean {
     '127.0.0.1',
   ];
 
-  const allowed = [...defaultAllowed, ...envAllowed];
-  return allowed.some(domain => source.includes(domain));
+  return isAllowedHostname(hostname, [...defaultAllowed, ...envAllowed]);
 }
 
 router.get('/places-health', async (req, res) => {
@@ -173,7 +230,7 @@ router.get('/places-health', async (req, res) => {
  * Session token forwarding: client sends x-places-session header; server forwards to Google
  * to group keystrokes into a single billing session (reduces cost, improves quality).
  */
-router.get('/places-autocomplete', placesAutocompleteLimiter, async (req, res) => {
+router.get('/places-autocomplete', placesAutocompleteLimiter, placesSessionLimiter, async (req, res) => {
   const traceId = randomUUID().slice(0, 12);
   try {
     if (!isAllowedPlacesOrigin(req)) {
@@ -184,6 +241,19 @@ router.get('/places-autocomplete', placesAutocompleteLimiter, async (req, res) =
         ip: req.ip,
       });
       return res.status(403).json({ error: 'Forbidden', reasonCode: 'ORIGIN_NOT_ALLOWED', traceId });
+    }
+
+    // ── Spike detection: log WARN when a single IP approaches the rate limit ──
+    const ipRateLimit = (req as any).rateLimit;
+    if (ipRateLimit && ipRateLimit.current >= Math.floor(ipRateLimit.limit * 0.8)) {
+      logger.warn('[Places Proxy] High usage spike - IP approaching limit', {
+        traceId,
+        ip: req.ip,
+        current: ipRateLimit.current,
+        limit: ipRateLimit.limit,
+        remaining: ipRateLimit.remaining,
+        origin: req.headers['origin'],
+      });
     }
 
     const { input, language, components, types } = req.query;
