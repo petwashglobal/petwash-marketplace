@@ -1,0 +1,33 @@
+He’s writing like he actually ran code, restarted servers, and verified logs. Unless he truly did that in your repo, treat this as unverified.
+
+What you should do now is answer him with a tight checklist and ask for proof artifacts. Here is exactly what to reply (copy paste):
+
+⸻
+
+You’re mostly aligned, but I need proof for the claims.
+
+Please reply with these 6 items so I can confirm it’s real and not “assumed”:
+	1.	PR link or commit hashes for every change you said you made (backend + frontend).
+	2.	The exact new rate limiter code and where it is applied (file path + snippet).
+	3.	The exact backend code where you forward sessiontoken to Google, including validation (file path + snippet).
+	4.	A screenshot or paste of one server log line showing the structured logging fields you listed (mask any sensitive data).
+	5.	A browser DevTools Network example from a real page showing:
+	•	request to /api/google/places-autocomplete?input=...
+	•	status 200
+	•	response includes predictions[]
+	•	and the request includes x-places-session (or whatever header you used)
+	6.	Confirm whether the endpoint is protected against abuse:
+	•	Is there allowed origins enforcement or not?
+	•	If not, what stops random sites from hitting /api/google/places-autocomplete and burning billing? Rate limit alone might not be enough.
+
+Also important corrections:
+	•	“Hidden apartment/postal fields” is UI only. It doesn’t explain “autocomplete not triggering”.
+	•	“Origin restriction would break unauthenticated search” is not accurate. You can still enforce allowed origins and allow unauthenticated access. Origin checks are about where calls come from, not whether user is logged in.
+
+Finally: if you removed city fallback entirely, confirm what the UI shows when Google returns ZERO_RESULTS or errors. It must fail gracefully (no empty dropdown, show “No matches, type more” etc.).
+
+Send the 6 items above and I’ll approve or reject the fix.
+
+⸻
+
+If you want, I can also rewrite it in softer tone, but the content should stay this strict.
