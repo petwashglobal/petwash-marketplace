@@ -70,7 +70,7 @@ export function GooglePlacesAutocomplete({
   country = ['il'],
   className = '',
   inputClassName,
-  showExtraFields = false,
+  showExtraFields = true,
   apartmentLabel,
   postalCodeLabel,
   apartmentPlaceholder,
@@ -247,8 +247,8 @@ export function GooglePlacesAutocomplete({
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     onChange(val);
+    setSelectedPlace(null);
     if (!val) {
-      setSelectedPlace(null);
       setApartment('');
       setPostalCodeState('');
       setPredictions([]);
@@ -403,55 +403,56 @@ export function GooglePlacesAutocomplete({
       </div>
 
       {showExtraFields && selectedPlace && (
-        <div className="grid grid-cols-2 gap-3 mt-2">
-          <div>
-            <Label className="text-sm font-medium text-gray-600 mb-1 block">
-              {apartmentLabel || 'Apt / Unit / Floor'}
-            </Label>
-            <Input
-              type="text"
-              value={apartment}
-              onChange={handleApartmentChange}
-              placeholder={apartmentPlaceholder || 'e.g. Apt 4, Floor 2'}
-              className="px-3 py-3 text-sm rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation"
-              style={{ fontSize: '16px' }}
-              autoComplete="off"
-            />
+        <div className="mt-2 space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {selectedPlace.street && (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                🏠 {selectedPlace.street}
+              </span>
+            )}
+            {selectedPlace.city && (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-100">
+                🏙️ {selectedPlace.city}
+              </span>
+            )}
+            {(postalCode || selectedPlace.postalCode) && (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-100">
+                📮 {postalCode || selectedPlace.postalCode}
+              </span>
+            )}
           </div>
-          <div>
-            <Label className="text-sm font-medium text-gray-600 mb-1 block">
-              {postalCodeLabel || 'Postal Code'}
-            </Label>
-            <Input
-              type="text"
-              value={postalCode}
-              onChange={handlePostalCodeChange}
-              placeholder={postalCodePlaceholder || 'e.g. 6100000'}
-              className="px-3 py-3 text-sm rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation"
-              style={{ fontSize: '16px' }}
-              autoComplete="off"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-sm font-medium text-gray-600 mb-1 block">
+                {apartmentLabel || 'דירה / קומה / יחידה'}
+              </Label>
+              <Input
+                type="text"
+                value={apartment}
+                onChange={handleApartmentChange}
+                placeholder={apartmentPlaceholder || 'לדוג׳ דירה 3, קומה 2, כניסה א׳'}
+                className="px-3 py-3 text-sm rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation"
+                style={{ fontSize: '16px' }}
+                autoComplete="off"
+                dir="rtl"
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-gray-600 mb-1 block">
+                {postalCodeLabel || 'מיקוד'}
+              </Label>
+              <Input
+                type="text"
+                value={postalCode}
+                onChange={handlePostalCodeChange}
+                placeholder={postalCodePlaceholder || 'לדוג׳ 6291302'}
+                className="px-3 py-3 text-sm rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation"
+                style={{ fontSize: '16px' }}
+                autoComplete="off"
+                dir="ltr"
+              />
+            </div>
           </div>
-        </div>
-      )}
-
-      {showExtraFields && selectedPlace && (
-        <div className="flex flex-wrap gap-2 mt-1">
-          {selectedPlace.street && (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-              {selectedPlace.street}
-            </span>
-          )}
-          {selectedPlace.city && (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
-              {selectedPlace.city}
-            </span>
-          )}
-          {selectedPlace.country && (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
-              {selectedPlace.country}
-            </span>
-          )}
         </div>
       )}
 
@@ -459,11 +460,11 @@ export function GooglePlacesAutocomplete({
         <p className="text-xs text-amber-600 mt-1">
           הצעות כתובת אינן זמינות כעת. ניתן להקליד את הכתובת ידנית.
         </p>
-      ) : (
+      ) : !selectedPlace ? (
         <p className="text-[10px] text-gray-400 mt-0.5">
           הקלידו לקבלת הצעות אוטומטיות מ-Google
         </p>
-      )}
+      ) : null}
 
       {error && (
         <p className="text-sm text-red-600 mt-1">{error}</p>
