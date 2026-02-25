@@ -77,6 +77,39 @@ const placesAutocompleteLimiter = rateLimit({
   validate: { xForwardedForHeader: false, ip: false, default: false },
 });
 
+// Allowed origins for the Places proxy - prevents external sites from burning your API quota.
+// Origin and auth checks are independent: this allows unauthenticated users from your own domains.
+function isAllowedPlacesOrigin(req: any): boolean {
+  const origin = req.headers['origin'] as string | undefined;
+  const referer = req.headers['referer'] as string | undefined;
+  const source = origin || referer || '';
+
+  // Internal server-to-server calls (no origin header)
+  if (!source) {
+    const internalKey = req.headers['x-internal-service'] as string | undefined;
+    return internalKey === 'petwash-backend';
+  }
+
+  // Build allowed origins list from env or defaults
+  const envAllowed = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
+    : [];
+
+  const defaultAllowed = [
+    'petwash.co.il',
+    'petwashglobal.com',
+    'signinpetwash.web.app',
+    'signinpetwash.firebaseapp.com',
+    'replit.dev',
+    'repl.co',
+    'localhost',
+    '127.0.0.1',
+  ];
+
+  const allowed = [...defaultAllowed, ...envAllowed];
+  return allowed.some(domain => source.includes(domain));
+}
+
 router.get('/places-health', async (req, res) => {
   const traceId = randomUUID().slice(0, 12);
   const checks: Record<string, any> = {
@@ -143,6 +176,16 @@ router.get('/places-health', async (req, res) => {
 router.get('/places-autocomplete', placesAutocompleteLimiter, async (req, res) => {
   const traceId = randomUUID().slice(0, 12);
   try {
+    if (!isAllowedPlacesOrigin(req)) {
+      logger.warn('[Places Proxy] Rejected - origin not in allowlist', {
+        traceId,
+        origin: req.headers['origin'],
+        referer: req.headers['referer'],
+        ip: req.ip,
+      });
+      return res.status(403).json({ error: 'Forbidden', reasonCode: 'ORIGIN_NOT_ALLOWED', traceId });
+    }
+
     const { input, language, components, types } = req.query;
 
     if (!input || typeof input !== 'string' || input.length < 2) {
