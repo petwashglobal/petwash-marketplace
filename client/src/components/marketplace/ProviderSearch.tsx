@@ -293,15 +293,6 @@ export interface BookingSearchResponse {
   searchId: string;
 }
 
-const ISRAELI_CITIES = [
-  'תל אביב', 'Tel Aviv', 'ירושלים', 'Jerusalem', 'חיפה', 'Haifa', 
-  'ראשון לציון', 'Rishon LeZion', 'פתח תקווה', 'Petah Tikva',
-  'אשדוד', 'Ashdod', 'נתניה', 'Netanya', 'באר שבע', 'Beer Sheva',
-  'הרצליה', 'Herzliya', 'רעננה', 'Raanana', 'כפר סבא', 'Kfar Saba',
-  'רמת גן', 'Ramat Gan', 'גבעתיים', 'Givatayim', 'הוד השרון', 'Hod HaSharon',
-  'מודיעין', 'Modiin', 'רחובות', 'Rehovot', 'אילת', 'Eilat',
-];
-
 function GooglePlacesLocationInput({
   value,
   onChange,
@@ -320,6 +311,7 @@ function GooglePlacesLocationInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const sessionTokenRef = useRef<string>(() => crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
@@ -346,6 +338,7 @@ function GooglePlacesLocationInput({
       const res = await fetch(`/api/google/places-autocomplete?${params}`, {
         signal: abortRef.current.signal,
         credentials: 'include',
+        headers: { 'x-places-session': sessionTokenRef.current },
       });
       if (res.ok) {
         const data = await res.json();
@@ -374,7 +367,12 @@ function GooglePlacesLocationInput({
         placeId: pred.placeId,
         language: document.documentElement.lang === 'he' ? 'iw' : 'en',
       });
-      const res = await fetch(`/api/google/places-details?${params}`, { credentials: 'include' });
+      const currentToken = sessionTokenRef.current;
+      const res = await fetch(`/api/google/places-details?${params}`, {
+        credentials: 'include',
+        headers: { 'x-places-session': currentToken },
+      });
+      sessionTokenRef.current = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
       if (res.ok) {
         const data = await res.json();
         if (data.lat && data.lng) onCoordsChange?.(data.lat, data.lng);
@@ -431,12 +429,6 @@ function GooglePlacesLocationInput({
       if (abortRef.current) abortRef.current.abort();
     };
   }, []);
-
-  const filteredCities = predictions.length === 0 && value.length > 0
-    ? ISRAELI_CITIES.filter(city => city.toLowerCase().includes(value.toLowerCase())).slice(0, 5)
-    : [];
-
-  const showFallbackCities = filteredCities.length > 0 && showCitySuggestions && predictions.length === 0;
 
   return (
     <div className="relative">
@@ -522,25 +514,6 @@ function GooglePlacesLocationInput({
         </div>
       )}
 
-      {showFallbackCities && (
-        <div className="absolute top-full start-0 end-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto">
-          {filteredCities.map((city, index) => (
-            <button
-              key={`${city}-${index}`}
-              type="button"
-              className="w-full px-4 py-2.5 text-start hover:bg-gray-50 flex items-center gap-2 text-sm"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                onChange(city);
-                setShowCitySuggestions(false);
-              }}
-            >
-              <MapPin className="h-4 w-4 text-gray-400" />
-              {city}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

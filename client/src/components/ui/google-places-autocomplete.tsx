@@ -4,6 +4,16 @@ import { Label } from '@/components/ui/label';
 import { MapPin, Loader2 } from 'lucide-react';
 import { getApiUrl } from '@/lib/apiConfig';
 
+function generateSessionToken(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 interface GooglePlacesAutocompleteProps {
   value: string;
   onChange: (value: string, details?: PlaceDetails) => void;
@@ -92,6 +102,7 @@ export function GooglePlacesAutocomplete({
   const abortRef = useRef<AbortController | null>(null);
   const consecutiveFailures = useRef(0);
   const MAX_CONSECUTIVE_FAILURES = 5;
+  const sessionTokenRef = useRef<string>(generateSessionToken());
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -148,6 +159,7 @@ export function GooglePlacesAutocomplete({
       const response = await fetch(getApiUrl(`/api/google/places-autocomplete?${params}`), {
         signal: abortRef.current.signal,
         credentials: 'include',
+        headers: { 'x-places-session': sessionTokenRef.current },
       });
 
       if (!response.ok) {
@@ -197,9 +209,12 @@ export function GooglePlacesAutocomplete({
         placeId: prediction.placeId,
         language: lang,
       });
+      const currentSessionToken = sessionTokenRef.current;
       const response = await fetch(getApiUrl(`/api/google/places-details?${params}`), {
         credentials: 'include',
+        headers: { 'x-places-session': currentSessionToken },
       });
+      sessionTokenRef.current = generateSessionToken();
 
       if (!response.ok) {
         throw new Error(`Details fetch failed: ${response.status}`);
@@ -475,59 +490,4 @@ export function GooglePlacesAutocomplete({
 
 export function useGooglePlaces() {
   return { isLoaded: true };
-}
-
-let googleMapsLoadPromise: Promise<void> | null = null;
-
-export function loadGoogleMapsScript(language?: string, region?: string): Promise<void> {
-  if (typeof window !== 'undefined' && window.google?.maps?.places) {
-    return Promise.resolve();
-  }
-
-  if (googleMapsLoadPromise) return googleMapsLoadPromise;
-
-  const lang = language || 'he';
-  const reg = region || 'IL';
-
-  googleMapsLoadPromise = new Promise<void>(async (resolve, reject) => {
-    let apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-    if (!apiKey) {
-      try {
-        const resp = await fetch(getApiUrl('/api/config/google-maps'), { credentials: 'include' });
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data.apiKey) apiKey = data.apiKey;
-        }
-      } catch { /* ignore */ }
-    }
-    if (!apiKey) {
-      googleMapsLoadPromise = null;
-      reject(new Error('No API key'));
-      return;
-    }
-
-    const existing = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
-    if (existing && window.google?.maps?.places) {
-      resolve();
-      return;
-    }
-    if (existing) existing.remove();
-
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=weekly&language=${lang}&region=${reg}`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      const check = (attempts = 0) => {
-        if (window.google?.maps?.places) resolve();
-        else if (attempts > 100) { googleMapsLoadPromise = null; reject(new Error('Places API not available')); }
-        else setTimeout(() => check(attempts + 1), 50);
-      };
-      check();
-    };
-    script.onerror = () => { googleMapsLoadPromise = null; reject(new Error('Failed to load Google Maps script')); };
-    document.head.appendChild(script);
-  });
-
-  return googleMapsLoadPromise;
 }

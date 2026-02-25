@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { logger } from '../lib/logger';
 import { db as firestore } from '../lib/firebase-admin';
+import rateLimit from 'express-rate-limit';
 
 const router = Router();
 
@@ -65,6 +66,16 @@ router.get('/places/photo', async (req, res) => {
 import { randomUUID } from 'crypto';
 
 logger.info('[GoogleMaps] keyPresent=' + !!process.env.GOOGLE_MAPS_API_KEY);
+
+const placesAutocompleteLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  message: { error: 'Too many address searches, please slow down', reasonCode: 'RATE_LIMITED' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.ip || 'unknown',
+  validate: { xForwardedForHeader: false, ip: false, default: false },
+});
 
 router.get('/places-health', async (req, res) => {
   const traceId = randomUUID().slice(0, 12);
@@ -126,8 +137,10 @@ router.get('/places-health', async (req, res) => {
 /**
  * GET /api/google/places-autocomplete - Server-side Google Places Autocomplete proxy
  * API key stays server-side. No browser key needed.
+ * Session token forwarding: client sends x-places-session header; server forwards to Google
+ * to group keystrokes into a single billing session (reduces cost, improves quality).
  */
-router.get('/places-autocomplete', async (req, res) => {
+router.get('/places-autocomplete', placesAutocompleteLimiter, async (req, res) => {
   const traceId = randomUUID().slice(0, 12);
   try {
     const { input, language, components, types } = req.query;
@@ -155,6 +168,11 @@ router.get('/places-autocomplete', async (req, res) => {
     if (components) params.append('components', components as string);
     if (types) params.append('types', types as string);
 
+    const sessionToken = req.headers['x-places-session'] as string | undefined;
+    if (sessionToken && /^[0-9a-f-]{36}$/.test(sessionToken)) {
+      params.append('sessiontoken', sessionToken);
+    }
+
     const response = await fetch(
       `https://maps.googleapis.com/maps/api/place/autocomplete/json?${params}`
     );
@@ -174,6 +192,14 @@ router.get('/places-autocomplete', async (req, res) => {
       });
       return res.status(502).json({ error: 'Address search failed', googleStatus: data.status, reasonCode, traceId });
     }
+
+    logger.info('[Places Proxy] Autocomplete OK', {
+      traceId,
+      inputLength: input.length,
+      resultCount: (data.predictions || []).length,
+      hasSessionToken: !!sessionToken,
+      googleStatus: data.status,
+    });
 
     res.json({
       predictions: (data.predictions || []).map((p: any) => ({
@@ -223,6 +249,11 @@ router.get('/places-details', async (req, res) => {
       fields: 'address_components,formatted_address,geometry,name',
     });
 
+    const sessionToken = req.headers['x-places-session'] as string | undefined;
+    if (sessionToken && /^[0-9a-f-]{36}$/.test(sessionToken)) {
+      params.append('sessiontoken', sessionToken);
+    }
+
     const response = await fetch(
       `https://maps.googleapis.com/maps/api/place/details/json?${params}`
     );
@@ -247,7 +278,7 @@ router.get('/places-details', async (req, res) => {
     const getComponent = (type: string) =>
       addressComponents.find((c: any) => c.types.includes(type))?.long_name || '';
 
-    res.json({
+    const parsed = {
       formattedAddress: result.formatted_address,
       streetNumber: getComponent('street_number'),
       street: getComponent('route'),
@@ -258,7 +289,24 @@ router.get('/places-details', async (req, res) => {
       countryCode: addressComponents.find((c: any) => c.types.includes('country'))?.short_name || '',
       lat: result.geometry?.location?.lat,
       lng: result.geometry?.location?.lng,
+    };
+
+    logger.info('[Places Proxy] Details parsed', {
+      traceId,
+      placeId,
+      formattedAddress: parsed.formattedAddress,
+      street: parsed.street,
+      streetNumber: parsed.streetNumber,
+      city: parsed.city,
+      postalCode: parsed.postalCode,
+      countryCode: parsed.countryCode,
+      hasCoords: !!(parsed.lat && parsed.lng),
+      hasSessionToken: !!sessionToken,
+      addressComponentCount: addressComponents.length,
+      rawPostalCodeFound: !!addressComponents.find((c: any) => c.types.includes('postal_code')),
     });
+
+    res.json(parsed);
   } catch (error: any) {
     logger.error('[Places Proxy] Details error', {
       traceId,
