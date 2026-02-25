@@ -21,12 +21,6 @@ const cardImagesByWashCount: Record<number, string> = {
   10: goldCardFront,
 };
 
-const demoNamesByWashCount: Record<number, string> = {
-  1: '',
-  3: 'Tiffany.P',
-  5: 'Jack.P',
-  10: 'נועה.ט',
-};
 
 interface WashPackagesProps {
   language: Language;
@@ -222,7 +216,6 @@ export function WashPackages({ language }: WashPackagesProps) {
             const isPopular = badge === 'POPULAR';
             const isElite = badge === 'ELITE';
             const cardImage = cardImagesByWashCount[pkg.washCount] || pinkCardFront;
-            const demoName = demoNamesByWashCount[pkg.washCount] ?? '';
             
             return (
               <div
@@ -252,23 +245,6 @@ export function WashPackages({ language }: WashPackagesProps) {
                       style={{ display: 'block' }}
                       loading="lazy"
                     />
-                    {demoName && (
-                      <span
-                        className="absolute text-white font-semibold tracking-wide select-none"
-                        style={{
-                          bottom: '13%',
-                          right: '6%',
-                          fontSize: 'clamp(9px, 1.8vw, 13px)',
-                          textShadow: '0 1px 4px rgba(0,0,0,0.9)',
-                          background: 'rgba(0,0,0,0.55)',
-                          padding: '1px 5px',
-                          borderRadius: '2px',
-                          letterSpacing: '0.06em',
-                        }}
-                      >
-                        {demoName}
-                      </span>
-                    )}
                   </div>
 
                   <div className="px-3 sm:px-4 py-3 sm:py-4">
