@@ -318,14 +318,71 @@ function GooglePlacesLocationInput({
   focusBorder: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-  const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [scriptLoaded, setScriptLoaded] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
-  const [autocompleteWorking, setAutocompleteWorking] = useState(true);
+  const [predictions, setPredictions] = useState<Array<{ placeId: string; description: string; mainText?: string; secondaryText?: string }>>([]);
+  const [isLoadingPredictions, setIsLoadingPredictions] = useState(false);
+
+  const fetchPredictions = async (input: string) => {
+    if (input.length < 3) {
+      setPredictions([]);
+      setShowCitySuggestions(false);
+      return;
+    }
+
+    if (abortRef.current) abortRef.current.abort();
+    abortRef.current = new AbortController();
+    setIsLoadingPredictions(true);
+
+    try {
+      const params = new URLSearchParams({
+        input,
+        components: 'country:il',
+        language: document.documentElement.lang === 'he' ? 'iw' : 'en',
+      });
+      const res = await fetch(`/api/google/places-autocomplete?${params}`, {
+        signal: abortRef.current.signal,
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPredictions(data.predictions || []);
+        setShowCitySuggestions((data.predictions || []).length > 0);
+      } else {
+        setPredictions([]);
+        setShowCitySuggestions(false);
+      }
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
+      setPredictions([]);
+      setShowCitySuggestions(false);
+    } finally {
+      setIsLoadingPredictions(false);
+    }
+  };
+
+  const selectPrediction = async (pred: { placeId: string; description: string }) => {
+    onChange(pred.description);
+    setShowCitySuggestions(false);
+    setPredictions([]);
+
+    try {
+      const params = new URLSearchParams({
+        placeId: pred.placeId,
+        language: document.documentElement.lang === 'he' ? 'iw' : 'en',
+      });
+      const res = await fetch(`/api/google/places-details?${params}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.lat && data.lng) onCoordsChange?.(data.lat, data.lng);
+        if (data.formattedAddress) onChange(data.formattedAddress);
+      }
+    } catch {
+    }
+  };
 
   const handleUseMyLocation = async () => {
     if (!navigator.geolocation) {
@@ -341,40 +398,8 @@ function GooglePlacesLocationInput({
         try {
           const { latitude, longitude } = position.coords;
           onCoordsChange?.(latitude, longitude);
-          const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-          
-          if (apiKey && scriptLoaded && window.google?.maps) {
-            const geocoder = new google.maps.Geocoder();
-            const response = await geocoder.geocode({ 
-              location: { lat: latitude, lng: longitude } 
-            });
-            
-            if (response.results[0]) {
-              let cityName = '';
-              let neighborhood = '';
-              for (const component of response.results[0].address_components) {
-                if (component.types.includes('locality')) {
-                  cityName = component.long_name;
-                }
-                if (component.types.includes('sublocality') || component.types.includes('neighborhood')) {
-                  neighborhood = component.long_name;
-                }
-                if (component.types.includes('administrative_area_level_1') && !cityName) {
-                  cityName = component.long_name;
-                }
-              }
-              const displayName = neighborhood ? `${neighborhood}, ${cityName}` : cityName;
-              if (displayName) {
-                onChange(displayName);
-              } else {
-                onChange(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-              }
-            }
-          } else {
-            onChange('Tel Aviv');
-          }
-        } catch (error) {
-          console.error('Geocoding error:', error);
+          onChange('Tel Aviv');
+        } catch {
           onChange('Tel Aviv');
         } finally {
           setIsGettingLocation(false);
@@ -401,120 +426,17 @@ function GooglePlacesLocationInput({
   };
 
   useEffect(() => {
-    if (window.google && window.google.maps) {
-      setScriptLoaded(true);
-      return;
-    }
-
-    import('@/components/ui/google-places-autocomplete').then(({ loadGoogleMapsScript }) => {
-      loadGoogleMapsScript('he', 'IL')
-        .then(() => setScriptLoaded(true))
-        .catch(() => {
-          console.warn('[Provider Search] Google Maps script failed to load - search will work without autocomplete');
-        });
-    });
-  }, []);
-
-  useEffect(() => {
-    if (scriptLoaded && window.google?.maps?.places) {
-      sessionTokenRef.current = new google.maps.places.AutocompleteSessionToken();
-    }
-  }, [scriptLoaded]);
-
-  useEffect(() => {
     return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      if (abortRef.current) abortRef.current.abort();
     };
   }, []);
 
-  useEffect(() => {
-    if (!scriptLoaded || !inputRef.current || autocompleteRef.current) return;
+  const filteredCities = predictions.length === 0 && value.length > 0
+    ? ISRAELI_CITIES.filter(city => city.toLowerCase().includes(value.toLowerCase())).slice(0, 5)
+    : [];
 
-    try {
-      sessionTokenRef.current = new google.maps.places.AutocompleteSessionToken();
-      const israelBounds = new google.maps.LatLngBounds(
-        { lat: 29.5, lng: 34.2 },
-        { lat: 33.3, lng: 35.9 }
-      );
-      
-      autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
-        types: ['geocode'],
-        componentRestrictions: { country: ['il', 'us', 'gb', 'au', 'ca'] },
-        bounds: israelBounds,
-        fields: ['address_components', 'formatted_address', 'geometry', 'name'],
-        sessionToken: sessionTokenRef.current,
-      });
-
-      autocompleteRef.current.addListener('place_changed', () => {
-        const place = autocompleteRef.current?.getPlace();
-        if (!place) return;
-        
-        let streetNumber = '';
-        let route = '';
-        let cityName = '';
-        let neighborhood = '';
-        let postalCode = '';
-        let country = '';
-        
-        place.address_components?.forEach((component) => {
-          if (component.types.includes('street_number')) {
-            streetNumber = component.long_name;
-          }
-          if (component.types.includes('route')) {
-            route = component.long_name;
-          }
-          if (component.types.includes('locality')) {
-            cityName = component.long_name;
-          }
-          if (component.types.includes('sublocality') || component.types.includes('neighborhood')) {
-            neighborhood = component.long_name;
-          }
-          if (component.types.includes('postal_code')) {
-            postalCode = component.long_name;
-          }
-          if (component.types.includes('country')) {
-            country = component.long_name;
-          }
-        });
-        
-        const displayName = neighborhood && cityName 
-          ? `${neighborhood}, ${cityName}` 
-          : cityName || place.name || '';
-        onChange(displayName);
-
-        if (place.geometry?.location) {
-          onCoordsChange?.(
-            place.geometry.location.lat(),
-            place.geometry.location.lng()
-          );
-        }
-        
-        sessionTokenRef.current = new google.maps.places.AutocompleteSessionToken();
-        if (autocompleteRef.current) {
-          autocompleteRef.current.setOptions({ sessionToken: sessionTokenRef.current });
-        }
-        
-        setShowCitySuggestions(false);
-      });
-      
-      setAutocompleteWorking(true);
-    } catch (error) {
-      console.warn('[Provider Search] Google Places not available, using fallback city list');
-      setAutocompleteWorking(false);
-    }
-
-    return () => {
-      if (autocompleteRef.current) {
-        google.maps.event.clearInstanceListeners(autocompleteRef.current);
-      }
-    };
-  }, [scriptLoaded, onChange]);
-
-  const filteredCities = value.length > 0 
-    ? ISRAELI_CITIES.filter(city => city.toLowerCase().includes(value.toLowerCase())).slice(0, 6)
-    : ISRAELI_CITIES.slice(0, 8);
+  const showFallbackCities = filteredCities.length > 0 && showCitySuggestions && predictions.length === 0;
 
   return (
     <div className="relative">
@@ -527,14 +449,18 @@ function GooglePlacesLocationInput({
         onChange={(e) => {
           const newValue = e.target.value;
           onChange(newValue);
-          if (!autocompleteWorking || !scriptLoaded) {
-            setShowCitySuggestions(true);
+          if (!newValue) {
+            setPredictions([]);
+            setShowCitySuggestions(false);
+            return;
           }
+          setShowCitySuggestions(true);
+          if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+          debounceTimerRef.current = setTimeout(() => fetchPredictions(newValue), 300);
         }}
         onFocus={() => {
-          if (!autocompleteWorking || !scriptLoaded) {
-            setShowCitySuggestions(true);
-          }
+          if (value.length >= 3 && predictions.length > 0) setShowCitySuggestions(true);
+          else if (value.length > 0 && predictions.length === 0) setShowCitySuggestions(true);
         }}
         onBlur={() => {
           setTimeout(() => setShowCitySuggestions(false), 200);
@@ -543,6 +469,11 @@ function GooglePlacesLocationInput({
         data-testid="input-search-location"
         autoComplete="off"
       />
+      {isLoadingPredictions && (
+        <div className="absolute end-12 top-1/2 -translate-y-1/2">
+          <Loader2 className="h-4 w-4 text-gray-400 animate-spin" />
+        </div>
+      )}
       <button
         type="button"
         onClick={handleUseMyLocation}
@@ -567,7 +498,31 @@ function GooglePlacesLocationInput({
         </div>
       )}
       
-      {showCitySuggestions && filteredCities.length > 0 && (
+      {showCitySuggestions && predictions.length > 0 && (
+        <div className="absolute top-full start-0 end-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto">
+          {predictions.map((pred) => (
+            <button
+              key={pred.placeId}
+              type="button"
+              className="w-full px-4 py-3 text-start hover:bg-gray-50 flex items-start gap-3 text-sm border-b border-gray-50 last:border-b-0"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                selectPrediction(pred);
+              }}
+            >
+              <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0">
+                <div className="font-medium text-gray-900 truncate">{pred.mainText || pred.description}</div>
+                {pred.secondaryText && (
+                  <div className="text-xs text-gray-500 truncate">{pred.secondaryText}</div>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showFallbackCities && (
         <div className="absolute top-full start-0 end-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto">
           {filteredCities.map((city, index) => (
             <button

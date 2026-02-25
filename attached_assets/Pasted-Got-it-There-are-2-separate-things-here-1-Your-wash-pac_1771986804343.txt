@@ -1,0 +1,127 @@
+Got it. There are 2 separate things here:
+	1.	Your wash packages (1, 3, 5, 10) that must redeem at physical stations
+	2.	Your platform credit (services like sitter, academy, etc.) that redeems inside the web/app platform
+
+To make it “perfect 100% like the card image” on every device, you need to treat the gift as a voucher + renderer, not just a static picture.
+
+⸻
+
+A. Backend design (so everything stays consistent)
+
+1) One unified “Voucher” object for everything
+
+Create a single table (or collection) for all vouchers, regardless of what they redeem.
+
+Voucher
+	•	id (UUID)
+	•	type = WASH_PACKAGE | PLATFORM_CREDIT
+	•	value (ex: 100 ILS or 5 washes)
+	•	currency (ILS) or unit (WASH)
+	•	recipient_display_name (string, supports Hebrew, Arabic, etc.)
+	•	recipient_locale (he, en, ar, fr, ru, es)
+	•	design_theme (pink, green, black, gold)
+	•	serial_number (like PWL123…)
+	•	status = ISSUED | ACTIVE | PARTIALLY_REDEEMED | REDEEMED | EXPIRED | CANCELLED
+	•	expires_at (optional)
+	•	created_by_user_id
+	•	purchased_by_user_id
+	•	metadata (JSON for future fields)
+
+VoucherLedger (important)
+	•	voucher_id
+	•	event = ISSUE | REDEEM | REFUND | ADJUST
+	•	amount (money or wash count)
+	•	channel = STATION | WEB | APP | ADMIN
+	•	external_ref (station transaction id / payment terminal id / order id)
+	•	created_at
+
+This ledger makes your Octopus control panel accurate forever.
+
+2) Voucher token for redemption (do not trust the QR text alone)
+
+When you show a QR code or code to redeem, it should contain a signed token:
+	•	voucher_id
+	•	nonce
+	•	exp (short expiry for QR, like 2-5 minutes)
+	•	scope = station only, web only, or both
+
+Use JWT (signed) or JWS so stations and web cannot be fooled by a fake code.
+
+3) Two redemption flows
+
+A) Station redemption
+	•	Station scans QR or user enters code
+	•	Station calls your API: /v1/vouchers/redeem/station
+	•	Your backend validates signature, checks remaining balance, writes to ledger
+	•	Returns “approved” + remaining value
+
+B) Platform redemption
+	•	User clicks “Redeem” in app/web
+	•	Your backend applies credit to the correct wallet (sitter, academy, etc.)
+	•	Writes to ledger
+
+⸻
+
+B. Front end design (how to make it look exactly like your example on any device)
+
+1) Stop using a single PNG for the card
+
+Use a vector template (SVG) as the master design.
+	•	Chip, logo, gradients, shadows all in SVG
+	•	The name, value, serial injected as text layers
+
+SVG scales perfectly on iOS, Android, desktop, and prints clean.
+
+2) Render 2 outputs from the same template
+
+From the same SVG template, generate:
+	1.	Live responsive card in the browser/app (SVG in UI)
+	2.	Static image for email, sharing, WhatsApp previews (server renders PNG/WebP)
+
+Server-side rendering options:
+	•	Use a headless renderer to convert SVG to PNG/WebP at multiple sizes (1x, 2x, 3x)
+	•	Store in CDN with cache keys: voucherId + theme + locale
+
+3) Font and language rules (this is where most “looks different” bugs happen)
+	•	Use one approved font family that supports Hebrew, Arabic, Latin (or per-locale font mapping)
+	•	Force RTL layout for Hebrew and Arabic
+	•	Use text fitting rules:
+	•	max font size
+	•	min font size
+	•	clamp and ellipsis
+	•	no wrapping for the name (or allow 2 lines only)
+
+4) Your Octopus control panel must preview exactly what the user gets
+
+In Octopus admin:
+	•	show the SVG preview
+	•	show the final rendered PNG preview
+	•	show the exact “share link” result
+
+That way support never argues about what was sent.
+
+⸻
+
+C. What to send to the user (delivery formats)
+
+When someone buys a gift:
+	•	Email with a share page link
+	•	The share page shows:
+	•	the perfect card (SVG)
+	•	“Add to Apple Wallet” and “Add to Google Wallet” (optional but very powerful)
+	•	QR code (time-limited) or “Reveal code” (rate limited)
+
+For Apple Wallet / Google Wallet: great for “wow factor” and consistent display.
+
+⸻
+
+D. Your Google address autocomplete not triggering
+
+If the input does not show suggestions, it’s usually one of these:
+	•	wrong API enabled (needs Places)
+	•	API key restrictions block your domain
+	•	billing not active
+	•	missing correct JS library load for Places Autocomplete
+	•	using new Places endpoints but not sending required headers / fields mask
+
+Official docs:
