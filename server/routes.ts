@@ -2045,7 +2045,7 @@ self.addEventListener('notificationclick', (event) => {
       // Phone number validation (basic E.164 format)
       if (updates.phone && !updates.phone.match(/^\+?[1-9]\d{1,14}$/)) {
         return res.status(400).json({ 
-          error: 'Invalid phone number format. Use international format (+972...)',
+          error: 'Invalid phone number format. Use international format (+1 for USA, +972 for Israel, etc.)',
           field: 'phone'
         });
       }
@@ -2239,7 +2239,7 @@ self.addEventListener('notificationclick', (event) => {
       // Phone number validation (basic E.164 format)
       if (updates.phone && !updates.phone.match(/^\+?[1-9]\d{1,14}$/)) {
         return res.status(400).json({ 
-          error: 'Invalid phone number format. Use international format (+972...)',
+          error: 'Invalid phone number format. Use international format (+1 for USA, +972 for Israel, etc.)',
           field: 'phone'
         });
       }
