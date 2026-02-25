@@ -14,6 +14,13 @@ const cardImages: Record<string, string> = {
   ELITE: goldCard,
 };
 
+const demoNamesByTier: Record<string, string> = {
+  CLASSIC: '',
+  PLUS: 'Tiffany.P',
+  PREMIUM: 'Jack.P',
+  ELITE: 'נועה.ט',
+};
+
 interface GiftCardsProps {
   language: Language;
 }
@@ -83,6 +90,7 @@ export function GiftCards({ language }: GiftCardsProps) {
             const isPremium = voucher.tier === 'PREMIUM';
             const tierLabel = tierLabels[voucher.tier]?.[language] || tierLabels[voucher.tier]?.en || voucher.tier;
             const cardImg = cardImages[voucher.tier] || cardImages.CLASSIC;
+            const demoName = demoNamesByTier[voucher.tier] ?? '';
 
             return (
               <Link
@@ -112,6 +120,23 @@ export function GiftCards({ language }: GiftCardsProps) {
                       className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                       loading="lazy"
                     />
+                    {demoName && (
+                      <span
+                        className="absolute text-white font-semibold tracking-wide select-none"
+                        style={{
+                          bottom: '13%',
+                          right: '6%',
+                          fontSize: 'clamp(8px, 1.6vw, 12px)',
+                          textShadow: '0 1px 4px rgba(0,0,0,0.9)',
+                          background: 'rgba(0,0,0,0.55)',
+                          padding: '1px 5px',
+                          borderRadius: '2px',
+                          letterSpacing: '0.06em',
+                        }}
+                      >
+                        {demoName}
+                      </span>
+                    )}
                   </div>
 
                   <div className="px-3 sm:px-5 py-3 sm:py-5">
