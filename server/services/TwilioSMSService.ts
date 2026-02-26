@@ -1,4 +1,5 @@
 import twilio from 'twilio';
+import jwt from 'jsonwebtoken';
 import { logger } from '../lib/logger';
 import crypto from 'crypto';
 
@@ -361,18 +362,15 @@ class TwilioSMSService {
     }
 
     verificationCodes.delete(formattedPhone);
-    
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + VERIFICATION_TOKEN_EXPIRY_MINUTES * 60 * 1000);
-    
-    verificationTokens.set(verificationToken, {
-      phone: formattedPhone,
-      token: verificationToken,
-      expiresAt,
-      used: false
-    });
-    
-    logger.info('[TwilioSMS] Phone verified successfully, token issued', { 
+
+    const secret = process.env.JWT_SECRET || process.env.COOKIE_SECRET || 'petwash-sms-verify-fallback';
+    const verificationToken = jwt.sign(
+      { phone: formattedPhone, type: 'sms-verified', nonce: crypto.randomBytes(8).toString('hex') },
+      secret,
+      { expiresIn: `${VERIFICATION_TOKEN_EXPIRY_MINUTES}m` }
+    );
+
+    logger.info('[TwilioSMS] Phone verified successfully, JWT token issued', {
       phone: formattedPhone.slice(0, 6) + '****'
     });
 
@@ -384,30 +382,18 @@ class TwilioSMSService {
   }
 
   validateVerificationToken(token: string): { valid: boolean; phone?: string } {
-    const stored = verificationTokens.get(token);
-    
-    if (!stored) {
+    if (!token) return { valid: false };
+    try {
+      const secret = process.env.JWT_SECRET || process.env.COOKIE_SECRET || 'petwash-sms-verify-fallback';
+      const decoded = jwt.verify(token, secret) as { phone?: string; type?: string };
+      if (decoded.type !== 'sms-verified' || !decoded.phone) return { valid: false };
+      logger.info('[TwilioSMS] JWT verification token validated', {
+        phone: decoded.phone.slice(0, 6) + '****'
+      });
+      return { valid: true, phone: decoded.phone };
+    } catch {
       return { valid: false };
     }
-
-    if (stored.used) {
-      verificationTokens.delete(token);
-      return { valid: false };
-    }
-
-    if (new Date() > stored.expiresAt) {
-      verificationTokens.delete(token);
-      return { valid: false };
-    }
-
-    stored.used = true;
-    verificationTokens.delete(token);
-    
-    logger.info('[TwilioSMS] Verification token validated and consumed', { 
-      phone: stored.phone.slice(0, 6) + '****'
-    });
-
-    return { valid: true, phone: stored.phone };
   }
 
   async sendWhatsApp(to: string, body: string): Promise<{

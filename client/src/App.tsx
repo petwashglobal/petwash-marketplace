@@ -242,6 +242,9 @@ const PlatformHub = lazy(() => import("@/pages/PlatformHub"));
 // PetWash HQ - Octopus Control Panel (Luxury 2025 Admin)
 const OctopusControlPanel = lazy(() => import("@/modules/octopus/PetWashOctopusControlPanel"));
 
+// PetWash HQ - Management Control System 2026
+const HQManagementPortal = lazy(() => import("@/pages/HQManagementPortal"));
+
 // Mobile Management Dashboard - Executive Suite 2026
 const MobileManagementDashboard = lazy(() => import("@/pages/MobileManagementDashboard"));
 
@@ -709,8 +712,19 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* PETWASH HQ - Octopus Control Panel (Admin Dashboard) */}
+        {/* PETWASH HQ - Management Control System 2026 */}
         <Route path="/hq">
+          {() => (
+            <RoleProtectedRoute minRole="management">
+              <Suspense fallback={<PageLoader />}>
+                <HQManagementPortal />
+              </Suspense>
+            </RoleProtectedRoute>
+          )}
+        </Route>
+
+        {/* PETWASH HQ - Classic Octopus Panel (legacy) */}
+        <Route path="/hq/classic">
           {() => (
             <RoleProtectedRoute minRole="management">
               <Suspense fallback={<PageLoader />}>

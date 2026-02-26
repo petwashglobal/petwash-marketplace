@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
+import jwt from 'jsonwebtoken';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { EmailService } from '../emailService';
 import { logger } from '../lib/logger';
@@ -116,17 +117,13 @@ function getEmailHtml(code: string, language: string, verifyLinkUrl: string): st
 }
 
 function issueEmailVerificationToken(normalizedEmail: string): string {
-  const verificationToken = crypto.randomBytes(32).toString('hex');
-  const tokenExpiry = new Date(Date.now() + EMAIL_TOKEN_EXPIRY_MINUTES * 60 * 1000);
-
-  emailVerificationTokens.set(verificationToken, {
-    email: normalizedEmail,
-    token: verificationToken,
-    expiresAt: tokenExpiry,
-    used: false,
-  });
-
-  return verificationToken;
+  const secret = process.env.JWT_SECRET || process.env.COOKIE_SECRET || 'petwash-email-verify-fallback';
+  const token = jwt.sign(
+    { email: normalizedEmail, type: 'email-verified', nonce: crypto.randomBytes(8).toString('hex') },
+    secret,
+    { expiresIn: `${EMAIL_TOKEN_EXPIRY_MINUTES}m` }
+  );
+  return token;
 }
 
 router.post('/send-email-code', verificationLimiter, async (req: Request, res: Response) => {
@@ -427,12 +424,10 @@ router.post('/validate-tokens', async (req: Request, res: Response) => {
     let phoneNumber: string | undefined;
 
     if (emailToken) {
-      const stored = emailVerificationTokens.get(emailToken);
-      if (stored && !stored.used && new Date() <= stored.expiresAt) {
+      const check = peekEmailVerificationToken(emailToken);
+      if (check.valid && check.email) {
         emailValid = true;
-        emailAddress = stored.email;
-        stored.used = true;
-        emailVerificationTokens.delete(emailToken);
+        emailAddress = check.email;
       }
     }
 
@@ -502,9 +497,14 @@ function renderLinkResultPage(success: boolean, message: string, isHebrew: boole
 
 export function peekEmailVerificationToken(token: string): { valid: boolean; email?: string } {
   if (!token) return { valid: false };
-  const stored = emailVerificationTokens.get(token);
-  if (!stored || stored.used || new Date() > stored.expiresAt) return { valid: false };
-  return { valid: true, email: stored.email };
+  try {
+    const secret = process.env.JWT_SECRET || process.env.COOKIE_SECRET || 'petwash-email-verify-fallback';
+    const decoded = jwt.verify(token, secret) as { email?: string; type?: string };
+    if (decoded.type !== 'email-verified' || !decoded.email) return { valid: false };
+    return { valid: true, email: decoded.email };
+  } catch {
+    return { valid: false };
+  }
 }
 
 export default router;

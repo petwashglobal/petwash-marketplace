@@ -240,7 +240,7 @@ export default function ProviderOnboarding() {
     setLoading(true);
 
     try {
-      const idToken = await user.getIdToken();
+      const idToken = await user.getIdToken(true);
       const formData = new FormData();
       
       formData.append('firstName', firstName);
