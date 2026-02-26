@@ -477,9 +477,19 @@ export async function registerRoutes(app: Express): Promise<void> {
   // This endpoint must be accessible immediately on page load for Firebase to initialize
   app.get('/api/config/firebase', (req, res) => {
     try {
+      // In production, use petwash.co.il as the authDomain.
+      // This ensures Google OAuth redirects back to the same origin (petwash.co.il/__/auth/handler)
+      // instead of signinpetwash.firebaseapp.com, which requires cross-origin iframe communication
+      // that Safari/iOS blocks — causing getRedirectResult to never resolve and keeping the app
+      // in a permanent loading state on mobile devices.
+      const isProduction = process.env.NODE_ENV === 'production';
+      const authDomain = isProduction
+        ? 'petwash.co.il'
+        : (process.env.VITE_FIREBASE_AUTH_DOMAIN || 'signinpetwash.firebaseapp.com');
+
       const config = {
         apiKey: process.env.VITE_FIREBASE_API_KEY,
-        authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+        authDomain,
         projectId: process.env.VITE_FIREBASE_PROJECT_ID,
         storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
         messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
@@ -494,10 +504,10 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
       
       // Log in production to verify env vars are loaded
-      if (process.env.NODE_ENV === 'production') {
+      if (isProduction) {
         logger.info('[Firebase Config] Serving production config', {
           hasApiKey: !!process.env.VITE_FIREBASE_API_KEY,
-          hasAuthDomain: !!process.env.VITE_FIREBASE_AUTH_DOMAIN,
+          authDomain: config.authDomain,
           projectId: config.projectId
         });
       }

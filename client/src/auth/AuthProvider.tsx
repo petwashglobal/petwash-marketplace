@@ -163,42 +163,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (async () => {
       await setPersistenceWithFallback();
 
-      try {
-        const pendingRedirect = sessionStorage.getItem('pw_auth_pending_redirect') === 'true';
-        const REDIRECT_TIMEOUT = pendingRedirect ? 15_000 : 10_000;
-        
-        if (pendingRedirect) {
-          logger.info('[AuthProvider] Pending redirect detected, waiting up to 15s for result');
-        }
-        
-        const redirectResult = await Promise.race([
-          getRedirectResult(auth),
-          new Promise<null>((resolve) => setTimeout(() => {
-            logger.warn(`[AuthProvider] getRedirectResult timed out after ${REDIRECT_TIMEOUT / 1000}s`);
-            resolve(null);
-          }, REDIRECT_TIMEOUT)),
-        ]);
-        
-        sessionStorage.removeItem('pw_auth_pending_redirect');
-        
-        if (redirectResult?.user) {
-          logger.info('[AuthProvider] Redirect sign-in completed', {
-            email: redirectResult.user.email,
-            uid: redirectResult.user.uid,
-          });
-          await ensureServerSession(redirectResult.user);
-          sessionCreatedForUid.current = redirectResult.user.uid;
-          sessionStorage.setItem('pw_redirect_handled', 'true');
-        } else if (pendingRedirect) {
-          logger.warn('[AuthProvider] Pending redirect returned no user - auth may have failed');
-        }
-      } catch (err: any) {
-        sessionStorage.removeItem('pw_auth_pending_redirect');
-        if (err?.code !== 'auth/popup-closed-by-user') {
-          logger.error('[AuthProvider] Redirect result error', { code: err?.code, message: err?.message });
-        }
-      }
-
+      // Set up onAuthStateChanged IMMEDIATELY — do NOT block on getRedirectResult.
+      // On mobile Safari, signInWithPopup falls back to signInWithRedirect, and
+      // getRedirectResult requires cross-origin iframe communication that iOS/Safari
+      // blocks, causing a 10-15s freeze before onAuthStateChanged is ever registered.
+      // Instead we handle the redirect result in the background.
       unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
         setUser(firebaseUser);
         setLoading(false);
@@ -231,6 +200,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setClaimsLoading(false);
         }
       });
+
+      // Handle redirect result in the background — never blocks onAuthStateChanged.
+      // Uses a short 8s timeout; on success onAuthStateChanged fires naturally.
+      const pendingRedirect = sessionStorage.getItem('pw_auth_pending_redirect') === 'true';
+      if (pendingRedirect) {
+        logger.info('[AuthProvider] Pending redirect detected, checking result in background');
+        Promise.race([
+          getRedirectResult(auth),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 8_000)),
+        ])
+          .then((redirectResult) => {
+            sessionStorage.removeItem('pw_auth_pending_redirect');
+            if (redirectResult?.user) {
+              logger.info('[AuthProvider] Redirect sign-in completed', {
+                email: redirectResult.user.email,
+                uid: redirectResult.user.uid,
+              });
+            } else {
+              logger.warn('[AuthProvider] Pending redirect returned no user — auth may have failed or timed out');
+            }
+          })
+          .catch((err: any) => {
+            sessionStorage.removeItem('pw_auth_pending_redirect');
+            if (err?.code !== 'auth/popup-closed-by-user') {
+              logger.error('[AuthProvider] Redirect result error', { code: err?.code, message: err?.message });
+            }
+          });
+      }
     })();
 
     return () => {
