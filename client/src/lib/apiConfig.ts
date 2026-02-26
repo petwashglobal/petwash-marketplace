@@ -1,50 +1,48 @@
 /**
  * Production API Configuration - Industry Best Practice 2025
- * 
+ *
  * Architecture:
  * - Frontend: Firebase Hosting (petwash.co.il) - static files only
- * - Backend: Replit Autoscale Deployment (*.replit.app) - stable URL
- * 
- * How big brands do it:
- * 1. Use environment variables for API URLs (never hardcode)
- * 2. Use stable deployment URLs (not dev URLs)
- * 3. Configure CORS properly for cross-origin requests
+ * - Backend: Cloud Run (petwash-api, me-west1) via Firebase Hosting rewrites
+ *
+ * Firebase Hosting rewrites /api/** → Cloud Run automatically.
+ * Therefore on petwash.co.il, ALL /api/** calls use RELATIVE URLs.
+ * No VITE_PRODUCTION_API_URL needed — Firebase handles the routing.
  */
 
 const getApiBaseUrl = (): string => {
-  // Priority 1: Explicit VITE_API_URL (set in .env or build-time)
+  // Priority 1: Explicit VITE_API_URL override (rarely needed)
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
-  
-  // Priority 2: Check if running in production (Firebase Hosting)
+
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
-    
-    // Production Firebase Hosting domains
-    const isFirebaseHosting = 
-      hostname === 'petwash.co.il' || 
+
+    // Production: Firebase Hosting domains — use relative URLs.
+    // firebase.json rewrites /api/** → Cloud Run service (petwash-api, me-west1).
+    // No base URL needed; relative paths like /api/... get routed automatically.
+    const isFirebaseHosting =
+      hostname === 'petwash.co.il' ||
       hostname === 'www.petwash.co.il' ||
       hostname.endsWith('.web.app') ||
       hostname.endsWith('.firebaseapp.com');
-    
+
     if (isFirebaseHosting) {
-      const prodUrl = import.meta.env.VITE_PRODUCTION_API_URL;
-      if (!prodUrl) {
-        console.error('[API Config] CRITICAL: VITE_PRODUCTION_API_URL not set for Firebase Hosting build. API calls will fail.');
-      }
-      return prodUrl || '';
+      return ''; // Relative URLs → Firebase rewrites → Cloud Run
     }
-    
-    // If on Replit preview (dev), use same origin
-    if (hostname.endsWith('.replit.dev') || 
-        hostname.endsWith('.repl.co') || 
-        hostname.endsWith('.replit.app')) {
-      return ''; // Same origin - relative URLs work
+
+    // Replit preview or deployed Replit URL — same origin, relative URLs work
+    if (
+      hostname.endsWith('.replit.dev') ||
+      hostname.endsWith('.repl.co') ||
+      hostname.endsWith('.replit.app')
+    ) {
+      return '';
     }
   }
-  
-  // Priority 3: Development mode - use relative URLs (same origin)
+
+  // Development / localhost — same origin
   return '';
 };
 
@@ -53,33 +51,26 @@ export const API_BASE_URL = getApiBaseUrl();
 /**
  * Get the full API URL for a given path
  * @param path - The API path (e.g., '/api/users')
- * @returns Full URL with base (e.g., 'https://api.example.com/api/users')
+ * @returns Full URL or relative path
  */
 export const getApiUrl = (path: string): string => {
-  // Guard against undefined/null path
   if (!path || typeof path !== 'string') {
     console.warn('[API Config] getApiUrl called with invalid path:', path);
     return API_BASE_URL || '';
   }
-  
-  // If already a full URL, return as-is
+
+  // Already a full URL — return as-is
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path;
   }
-  
-  // Combine base URL with path
+
   return `${API_BASE_URL}${path}`;
 };
 
-/**
- * Debug: Log current API configuration (only in dev)
- */
 if (import.meta.env.DEV) {
   console.log('[API Config]', {
-    baseUrl: API_BASE_URL || '(relative)',
+    baseUrl: API_BASE_URL || '(relative — Firebase rewrite active)',
     isProduction: import.meta.env.PROD,
     hostname: typeof window !== 'undefined' ? window.location.hostname : 'server',
-    envApiUrl: import.meta.env.VITE_API_URL || 'not set',
-    envProdApiUrl: import.meta.env.VITE_PRODUCTION_API_URL || 'not set',
   });
 }
