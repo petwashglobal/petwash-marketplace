@@ -66,8 +66,6 @@ import {
   Video,
   FileText,
   Settings,
-  BarChart,
-  LineChart,
   Copy,
   ExternalLink
 } from "lucide-react";

@@ -7,7 +7,7 @@ import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { WorldClock } from "@/components/WorldClock";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
 
 export default function SitterDashboard() {
   const { language } = useLanguage();

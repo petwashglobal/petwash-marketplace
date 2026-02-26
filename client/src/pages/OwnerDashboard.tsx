@@ -6,7 +6,7 @@ import { MessageSquare, Calendar, Heart, Settings, LogOut, PawPrint, Shield, Bel
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { WorldClock } from "@/components/WorldClock";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
 
 export default function OwnerDashboard() {
   const { language } = useLanguage();

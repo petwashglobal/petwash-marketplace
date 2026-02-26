@@ -1,7 +1,7 @@
 // PetSitterProfilePage - ⁦Pet Wash™⁩ luxury sitter profile
 // Integrated from src/modules/pet-sitter/
 import { useState, type FC } from "react";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/lib/languageStore";
 
 type StayType = "sitterHome" | "ownerHome";
 
