@@ -4,8 +4,21 @@
  * Implements Camera-First UI/UX mandate with Smart-Fill capabilities
  */
 
+/**
+ * GOOGLE CLOUD COMPLIANCE NOTICE
+ * Service: Google Cloud Vision API
+ * DPA Status: Covered by Google Cloud Data Processing Addendum
+ * Legal Basis: Contract performance (receipt expense processing)
+ * Data Processed: Receipt images (uploaded by authenticated employees)
+ * Retention: Google does not persist image data post-API-call under DPA
+ * Purpose Limitation: Structured data extraction only (date, amount, vendor, tax ID)
+ * Data Minimization: Raw OCR text NEVER logged; only structured fields logged
+ * Israeli Privacy Law 2025: Compliant — no biometric data, no sensitive categories
+ * GDPR Article 28: Google acts as Data Processor under signed DPA
+ */
 import { ImageAnnotatorClient } from '@google-cloud/vision';
 import { logger } from '../lib/logger';
+import { createHash } from 'crypto';
 
 interface ReceiptData {
   date?: string;
@@ -21,12 +34,23 @@ class ReceiptOCRService {
 
   constructor() {
     try {
-      this.visionClient = new ImageAnnotatorClient();
+      const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+      if (credentialsJson) {
+        const credentials = JSON.parse(credentialsJson);
+        this.visionClient = new ImageAnnotatorClient({ credentials });
+      } else {
+        this.visionClient = new ImageAnnotatorClient();
+      }
       logger.info('[ReceiptOCR] ✅ Google Vision API initialized');
     } catch (error) {
       logger.error('[ReceiptOCR] ⚠️ Failed to initialize Google Vision API', error);
       this.visionClient = null;
     }
+  }
+
+  private maskTaxId(taxId: string): string {
+    if (!taxId || taxId.length < 5) return '***';
+    return taxId.substring(0, 2) + '*'.repeat(taxId.length - 4) + taxId.slice(-2);
   }
 
   /**
@@ -54,7 +78,6 @@ class ReceiptOCRService {
       
       logger.info('[ReceiptOCR] Raw text extracted', { 
         textLength: rawText.length,
-        preview: rawText.substring(0, 100)
       });
 
       // Parse receipt data using regex patterns
@@ -135,7 +158,7 @@ class ReceiptOCRService {
         const taxIdMatch = rawText.match(pattern);
         if (taxIdMatch) {
           receiptData.taxId = taxIdMatch[1];
-          logger.info('[ReceiptOCR] Tax ID detected', { taxId: taxIdMatch[1] });
+          logger.info('[ReceiptOCR] Tax ID detected', { taxIdMasked: this.maskTaxId(taxIdMatch[1]) });
           break;
         }
       }

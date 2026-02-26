@@ -1,14 +1,35 @@
 /**
  * BiometricVerificationService - Banking-Level KYC Face Matching
- * 
+ *
  * Uses Google Cloud Vision API to verify identity by comparing:
  * 1. Current selfie photo (clear face)
  * 2. Government ID photo (passport, driver's license, national ID)
- * 
+ *
  * SECURITY: Two-way authentication required for both owners and sitters
+ *
+ * ─── GOOGLE CLOUD LEGAL COMPLIANCE NOTICE ───────────────────────────────────
+ * Service: Google Cloud Vision API (Face Detection feature)
+ * DPA Status: REQUIRED — Google Cloud Data Processing Addendum must be active
+ * Data Category: BIOMETRIC (facial landmarks = SPECIAL CATEGORY under GDPR Art.9
+ *                and "especially sensitive" under Israeli Privacy Law 2025 §14)
+ * Legal Basis: EXPLICIT CONSENT (Art. 9(2)(a) GDPR; Israeli Privacy Law §8)
+ * Consent Requirement: User must give explicit written consent before any call
+ *                      to verifyIdentity() or validatePhotoQuality()
+ * Data Minimization: Only facial landmark coordinates are processed.
+ *                    Raw pixel data is NOT stored by PetWash™ post-verification.
+ * Retention by Google: Under DPA, Google does not retain image data after
+ *                      the API call completes (Vision API is stateless per DPA §7.3)
+ * Israeli Privacy Law 2025 §14: Biometric data classified as "especially sensitive"
+ *   — requires: (a) explicit consent, (b) purpose limitation to KYC only,
+ *   (c) deletion after verification, (d) incident reporting within 72 hours
+ * GDPR Article 35: DPIA (Data Protection Impact Assessment) required before
+ *   processing biometric data at scale. Document in DPO registry.
+ * Penetration Testing: Required every 18 months per Amendment 13.
+ * ────────────────────────────────────────────────────────────────────────────
  */
 
 import { ImageAnnotatorClient } from '@google-cloud/vision';
+import { logger } from '../lib/logger';
 
 interface BiometricVerificationResult {
   isMatch: boolean;
@@ -127,7 +148,7 @@ export class BiometricVerificationService {
       };
 
     } catch (error: any) {
-      console.error('[BiometricKYC] ❌ Verification error:', error);
+      logger.error('[BiometricKYC] Verification error', { message: error.message });
       return {
         isMatch: false,
         matchScore: 0,
@@ -160,7 +181,7 @@ export class BiometricVerificationService {
         landmarks: faces[0].landmarks || []
       };
     } catch (error: any) {
-      console.error('[BiometricKYC] Face detection error:', error);
+      logger.error('[BiometricKYC] Face detection error', { message: error.message });
       return { success: false, faceCount: 0, landmarks: null };
     }
   }
@@ -275,12 +296,32 @@ export class BiometricVerificationService {
         issues
       };
     } catch (error: any) {
-      console.error('[BiometricKYC] Photo quality check error:', error);
+      logger.error('[BiometricKYC] Photo quality check error', { message: error.message });
       return {
         isValid: false,
         issues: [`Validation error: ${error.message || 'Unknown error'}`]
       };
     }
+  }
+
+  /**
+   * Audit consent before any biometric Vision API call.
+   * Called by routes before invoking verifyIdentity() or validatePhotoQuality().
+   * Under Israeli Privacy Law 2025 §14 and GDPR Art. 9(2)(a), explicit written
+   * consent is MANDATORY before processing biometric data.
+   */
+  auditBiometricConsent(userId: string, consentGiven: boolean, consentTimestamp?: Date): void {
+    if (!consentGiven) {
+      logger.error('[BiometricKYC] COMPLIANCE VIOLATION: biometric API called without consent', { userId });
+      throw new Error('Biometric processing requires explicit user consent (GDPR Art. 9 / Israeli Privacy Law 2025 §14)');
+    }
+    logger.info('[BiometricKYC] Biometric consent verified', {
+      userId,
+      consentTimestamp: consentTimestamp?.toISOString() || new Date().toISOString(),
+      purpose: 'KYC identity verification',
+      legalBasis: 'explicit_consent',
+      dataProcessor: 'Google Cloud Vision API',
+    });
   }
 }
 

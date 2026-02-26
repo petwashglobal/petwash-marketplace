@@ -343,6 +343,11 @@ import("./infra/biometricStorage").then(({ ensureBiometricStorage }) => {
     .catch((err) => console.error("[BiometricStorage] init failed", err));
 }).catch((err) => console.error("[BiometricStorage] module load failed", err));
 
+// 2b. Google Cloud legal compliance validation (non-blocking)
+import("./compliance/google-cloud-dpa-registry").then(({ validateGCPCompliance }) => {
+  validateGCPCompliance();
+}).catch((err) => console.error("[GCP Compliance] registry load failed", err));
+
 // --- CRITICAL FIX: Start server IMMEDIATELY in production (Cloud Run requires fast port binding) ---
 // In production, start listening BEFORE route registration to satisfy Cloud Run health checks
 if (isProduction) {

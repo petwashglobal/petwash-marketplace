@@ -35,7 +35,7 @@ try {
   storage = new Storage();
 }
 
-const GCS_BUCKET = 'petwash-secure-documents';
+const GCS_BUCKET = process.env.GCS_DOCUMENTS_BUCKET || 'petwash-secure-documents';
 
 // Configure multer for file uploads (memory storage)
 const upload = multer({

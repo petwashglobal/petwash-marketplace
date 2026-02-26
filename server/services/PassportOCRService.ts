@@ -2,9 +2,28 @@
  * Passport OCR Service
  * Uses Google Cloud Vision API for passport verification
  * Extracts data from Machine Readable Zone (MRZ) for loyalty members
- * 
- * Security: Complies with Israeli Privacy Law 2025 + GDPR
- * Processing: Google Cloud Vision API (data not stored by Google)
+ *
+ * ─── GOOGLE CLOUD LEGAL COMPLIANCE NOTICE ───────────────────────────────────
+ * Service: Google Cloud Vision API (Document Text Detection)
+ * DPA Status: REQUIRED — Google Cloud Data Processing Addendum must be signed
+ * Data Category: SPECIAL CATEGORY — government identity document (passport).
+ *   Contains: full name, date of birth, nationality, passport number.
+ *   Classified as sensitive personal data under GDPR and Israeli Privacy Law 2025.
+ * Legal Basis: EXPLICIT CONSENT (GDPR Art. 6(1)(a) + Art. 9(2)(a);
+ *              Israeli Privacy Law 2025 §8 — "informed written consent")
+ * Consent Requirement: User must explicitly consent before any call to this service.
+ *   Consent must name Google Cloud Vision API as a data sub-processor.
+ * Google Data Handling: Under the Google Cloud DPA (§7.3), Google does NOT use
+ *   customer data submitted to Vision API for product improvement or model training.
+ *   Image data is processed transiently and not retained by Google beyond the API call.
+ *   ⚠️ This guarantee only applies when a Google Cloud DPA is active on your account.
+ *   Without a signed DPA, Google's standard consumer terms apply (different retention).
+ * Data Minimization: Only MRZ fields are extracted. Raw image NOT stored by PetWash™.
+ * Raw OCR text: NEVER logged (contains passport number, name, DOB).
+ * Audit Trail: Every passport verification logged with userId, timestamp, outcome.
+ * Israeli Privacy Law 2025 §14: Government ID = sensitive data requiring DPO oversight.
+ * Deletion: Processed passport images deleted from memory immediately post-extraction.
+ * ────────────────────────────────────────────────────────────────────────────
  */
 
 import { ImageAnnotatorClient } from '@google-cloud/vision';

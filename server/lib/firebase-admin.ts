@@ -1,6 +1,10 @@
 // Firebase Admin SDK initialization for server-side operations
 import admin from 'firebase-admin';
 
+// Read project config from environment — never hardcode
+const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'signinpetwash';
+const FIREBASE_STORAGE_BUCKET = process.env.FIREBASE_STORAGE_BUCKET || `${FIREBASE_PROJECT_ID}.firebasestorage.app`;
+
 // Initialize Firebase Admin SDK
 let firebaseApp: admin.app.App;
 
@@ -12,23 +16,22 @@ if (!admin.apps.length) {
       const serviceAccount = JSON.parse(serviceAccountKey);
       firebaseApp = admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
-        projectId: 'signinpetwash',
-        storageBucket: 'signinpetwash.firebasestorage.app'
+        projectId: FIREBASE_PROJECT_ID,
+        storageBucket: FIREBASE_STORAGE_BUCKET,
       });
       console.log('✅ Firebase Admin SDK initialized with service account');
     } catch (error) {
       console.error('❌ Failed to parse Firebase service account key:', error);
-      // Fallback to default initialization
       firebaseApp = admin.initializeApp({
-        projectId: 'signinpetwash',
-        storageBucket: 'signinpetwash.firebasestorage.app'
+        projectId: FIREBASE_PROJECT_ID,
+        storageBucket: FIREBASE_STORAGE_BUCKET,
       });
       console.log('⚠️ Firebase Admin SDK initialized without credentials');
     }
   } else {
     firebaseApp = admin.initializeApp({
-      projectId: 'signinpetwash',
-      storageBucket: 'signinpetwash.firebasestorage.app'
+      projectId: FIREBASE_PROJECT_ID,
+      storageBucket: FIREBASE_STORAGE_BUCKET,
     });
     console.log('⚠️ Firebase Admin SDK initialized without service account key');
   }
