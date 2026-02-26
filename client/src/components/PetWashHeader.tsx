@@ -194,7 +194,7 @@ const USER_MENU_ITEMS = [
 ];
 
 const PARTNER_MENU_ITEMS = [
-  { id: "franchise", labelKey: "franchise.label", href: "/partners/franchise" },
+  { id: "franchise", labelKey: "franchise.label", href: "/franchise" },
   { id: "business-locations", labelKey: "business-locations.label", href: "/partners/locations" },
   { id: "suppliers", labelKey: "suppliers.label", href: "/partners/suppliers" },
   { id: "municipal", labelKey: "municipal.label", href: "/partners/municipal" },
