@@ -500,10 +500,11 @@ Respond in JSON format:
 // Export singleton instance
 export const octopusBrain = new OctopusBrainService();
 
-// Auto-start orchestration (runs in background)
-// Start after server initialization with delay to avoid startup conflicts
-setTimeout(() => {
-  octopusBrain.start();
-}, 8000); // Slightly longer delay than production monitor
+// Auto-start orchestration only in production (dev mode skips to avoid Vite warm-up crashes)
+if (process.env.NODE_ENV === 'production') {
+  setTimeout(() => {
+    octopusBrain.start();
+  }, 8000);
+}
 
 export default octopusBrain;

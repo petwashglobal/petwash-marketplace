@@ -357,10 +357,11 @@ Respond in a structured format. Be concise but thorough.`;
 // Export singleton instance
 export const productionMonitor = new ProductionWebsiteMonitorService();
 
-// Auto-start monitoring (runs in background)
-// Start after a short delay to ensure server is fully initialized
-setTimeout(() => {
-  productionMonitor.start();
-}, 5000);
+// Auto-start monitoring only in production (dev mode skips to avoid Vite warm-up crashes)
+if (process.env.NODE_ENV === 'production') {
+  setTimeout(() => {
+    productionMonitor.start();
+  }, 5000);
+}
 
 export default productionMonitor;
