@@ -94,6 +94,11 @@ class TwilioSMSService {
     return this.isConfigured && this.client !== null;
   }
 
+  isEmergencyDisabled(): boolean {
+    const flag = (process.env.SMS_EMERGENCY_DISABLED || '').toLowerCase();
+    return flag === 'true' || flag === '1';
+  }
+
   private generateCode(): string {
     return String(Math.floor(100000 + crypto.randomInt(900000)));
   }
@@ -196,6 +201,10 @@ class TwilioSMSService {
     message: string;
     expiresIn?: number;
   }> {
+    if (this.isEmergencyDisabled()) {
+      logger.warn('[TwilioSMS] 🚨 SMS_EMERGENCY_DISABLED=true — all SMS blocked', { phone: phone.slice(-4) });
+      return { success: false, message: this.t('smsUnavailable', language) };
+    }
     if (!this.isReady()) {
       return {
         success: false,
@@ -441,6 +450,10 @@ class TwilioSMSService {
     messageId?: string;
     error?: string;
   }> {
+    if (this.isEmergencyDisabled()) {
+      logger.warn('[TwilioSMS] 🚨 SMS_EMERGENCY_DISABLED=true — WhatsApp blocked', { to: to.slice(-4) });
+      return { success: false, error: 'SMS service temporarily suspended' };
+    }
     if (!this.isReady()) {
       return { success: false, error: 'WhatsApp service not configured' };
     }
@@ -476,6 +489,10 @@ class TwilioSMSService {
     messageId?: string;
     error?: string;
   }> {
+    if (this.isEmergencyDisabled()) {
+      logger.warn('[TwilioSMS] 🚨 SMS_EMERGENCY_DISABLED=true — sendSMS blocked', { to: to.slice(-4) });
+      return { success: false, error: 'SMS service temporarily suspended' };
+    }
     if (!this.isReady()) {
       return {
         success: false,
