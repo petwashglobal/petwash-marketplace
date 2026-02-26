@@ -39,7 +39,7 @@ const MOBILE_CONFIG = {
   maxDevicesPerUser: 10,
   falseMatchRate: 0.0001, // 1 in 10,000 (NIST requirement)
   userVerification: 'required' as const, // ✅ CRITICAL: Enforce biometric/PIN (NIST SP 800-63B AAL2)
-  attestationType: 'none' as const, // For consumer apps (use 'direct' for enterprise)
+  attestationType: 'direct' as const, // Hardware attestation: Secure Enclave (iOS) / StrongBox (Android)
 };
 
 /**

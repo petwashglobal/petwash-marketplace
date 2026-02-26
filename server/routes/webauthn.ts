@@ -32,8 +32,10 @@ const db = admin.firestore();
 
 // WebAuthn Configuration
 const RP_NAME = "Pet Wash Group";
-const RP_ID = process.env.BASE_URL?.replace(/^https?:\/\//, "") || "localhost";
-const ORIGIN = process.env.BASE_URL || "http://localhost:5000";
+const RP_ID = process.env.NODE_ENV === "production" ? "petwash.co.il" : "localhost";
+const ORIGIN = process.env.NODE_ENV === "production"
+  ? "https://petwash.co.il"
+  : (process.env.BASE_URL || "http://localhost:5000");
 
 /**
  * POST /webauthn/register/options
@@ -62,16 +64,16 @@ router.post("/register/options", requireAuth, setWebAuthnCsrfToken, async (req, 
       rpID: RP_ID,
       userID: userId,
       userName: userEmail,
-      attestationType: "none",
+      attestationType: "direct", // Request hardware attestation proof (Secure Enclave / StrongBox)
       excludeCredentials: existingAuthenticators.map((auth) => ({
         id: auth.id,
         type: "public-key",
         transports: auth.transports,
       })),
       authenticatorSelection: {
-        residentKey: "preferred",
-        userVerification: "preferred",
-        authenticatorAttachment: "platform", // Prefer platform authenticators (Touch ID/Face ID)
+        residentKey: "required",        // Key must stay on this device (non-syncable)
+        userVerification: "required",   // Enforce Face ID / Touch ID / biometric (NIST AAL2)
+        authenticatorAttachment: "platform",
       },
     });
 
@@ -108,14 +110,23 @@ router.post("/register/verify", requireAuth, verifyWebAuthnCsrfToken, async (req
       return res.status(400).json({ error: "Challenge not found or expired" });
     }
 
-    const { challenge } = challengeDoc.data()!;
+    const challengeData = challengeDoc.data()!;
 
-    // Verify registration
+    // Check challenge expiry
+    if (challengeData.expiresAt?.toDate?.() < new Date() || (challengeData.expiresAt instanceof Date && challengeData.expiresAt < new Date())) {
+      await challengeDoc.ref.delete();
+      return res.status(400).json({ error: "Challenge expired" });
+    }
+
+    const { challenge } = challengeData;
+
+    // Verify registration — requireUserVerification enforces Face ID / Touch ID (NIST AAL2)
     const verification = await verifyRegistrationResponse({
       response,
       expectedChallenge: challenge,
       expectedOrigin: ORIGIN,
       expectedRPID: RP_ID,
+      requireUserVerification: true,
     });
 
     if (!verification.verified || !verification.registrationInfo) {
@@ -124,7 +135,9 @@ router.post("/register/verify", requireAuth, verifyWebAuthnCsrfToken, async (req
 
     const { credentialPublicKey, credentialID, counter } = verification.registrationInfo;
 
-    // Store authenticator
+    const { aaguid } = verification.registrationInfo;
+
+    // Store authenticator — include attestation metadata for hardware-bound audit trail
     await db.collection("authenticators").add({
       userId,
       credentialID: Buffer.from(credentialID).toString("base64"),
@@ -132,7 +145,11 @@ router.post("/register/verify", requireAuth, verifyWebAuthnCsrfToken, async (req
       counter,
       deviceName: deviceName || "Unknown Device",
       transports: response.response.transports || [],
+      aaguid: aaguid || null,                    // Hardware identifier (Secure Enclave / StrongBox AAGUID)
+      attestationType: "direct",
       createdAt: new Date(),
+      isRevoked: false,
+      lastUsed: null,
     });
 
     // Clean up challenge
@@ -188,7 +205,7 @@ router.post("/authenticate/options", async (req, res) => {
     const options = await generateAuthenticationOptions({
       rpID: RP_ID,
       allowCredentials,
-      userVerification: "preferred",
+      userVerification: "required", // Enforce Face ID / Touch ID (NIST AAL2)
     });
 
     // Store challenge
@@ -227,7 +244,15 @@ router.post("/authenticate/verify", async (req, res) => {
       return res.status(400).json({ error: "Challenge not found or expired" });
     }
 
-    const { challenge } = challengeDoc.data()!;
+    const authChallengeData = challengeDoc.data()!;
+
+    // Check challenge expiry
+    if (authChallengeData.expiresAt?.toDate?.() < new Date() || (authChallengeData.expiresAt instanceof Date && authChallengeData.expiresAt < new Date())) {
+      await challengeDoc.ref.delete();
+      return res.status(400).json({ error: "Challenge expired" });
+    }
+
+    const { challenge } = authChallengeData;
 
     // Get authenticator (credential ID is base64url from client)
     const credentialID = Buffer.from(response.id, "base64url").toString("base64");
@@ -260,12 +285,13 @@ router.post("/authenticate/verify", async (req, res) => {
       },
     };
 
-    // Verify authentication
+    // Verify authentication — requireUserVerification confirms biometric was presented (NIST AAL2)
     const verification = await verifyAuthenticationResponse({
       response: decodedResponse as any,
       expectedChallenge: challenge,
       expectedOrigin: ORIGIN,
       expectedRPID: RP_ID,
+      requireUserVerification: true,
       authenticator: {
         credentialID: Buffer.from(authenticator.credentialID, "base64"),
         credentialPublicKey: Buffer.from(authenticator.credentialPublicKey, "base64"),
