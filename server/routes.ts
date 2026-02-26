@@ -849,7 +849,7 @@ self.addEventListener('notificationclick', (event) => {
       
       (async () => {
         try {
-          const decoded = await firebaseAdminModule.auth.verifyIdToken(idToken);
+          const decoded = await firebaseAdminModule.auth.verifyIdToken(idToken, true);
           const { authService } = await import('./services/AuthService');
           
           let firstName: string | undefined;
@@ -2181,7 +2181,7 @@ self.addEventListener('notificationclick', (event) => {
       }
 
       // Verify Firebase ID token
-      const decoded = await firebaseAdmin.auth().verifyIdToken(token);
+      const decoded = await firebaseAdmin.auth().verifyIdToken(token, true);
       const { uid } = req.body;
 
       // Security check: user can only delete their own account
@@ -10247,7 +10247,7 @@ self.addEventListener('notificationclick', (event) => {
       
       let decoded;
       try {
-        decoded = await fbAuth.verifyIdToken(token);
+        decoded = await fbAuth.verifyIdToken(token, true);
       } catch (authErr: any) {
         logger.error('[CreateProfile] Token verification failed', authErr, { code: authErr?.code, traceId: req.body?.traceId });
         return res.status(401).json({ success: false, error: 'Invalid or expired token', errorCode: 'INVALID_TOKEN' });
@@ -10666,7 +10666,7 @@ self.addEventListener('notificationclick', (event) => {
       const { adminAuth, db: firestoreDb } = await import('./lib/firebase-admin');
       
       // Verify Firebase token
-      const decoded = await adminAuth.verifyIdToken(tokenAuth);
+      const decoded = await adminAuth.verifyIdToken(tokenAuth, true);
       const uid = decoded.uid;
       const userEmail = decoded.email?.toLowerCase();
       
@@ -11016,7 +11016,7 @@ self.addEventListener('notificationclick', (event) => {
       
       let decodedToken;
       try {
-        decodedToken = await admin.auth().verifyIdToken(idToken);
+        decodedToken = await admin.auth().verifyIdToken(idToken, true);
       } catch (error) {
         return res.status(401).json({ success: false, error: 'Unauthorized: Invalid token' });
       }
@@ -11080,7 +11080,7 @@ self.addEventListener('notificationclick', (event) => {
       
       let decodedToken;
       try {
-        decodedToken = await admin.auth().verifyIdToken(idToken);
+        decodedToken = await admin.auth().verifyIdToken(idToken, true);
       } catch (error) {
         return res.status(401).json({ success: false, error: 'Unauthorized: Invalid token' });
       }
@@ -11139,7 +11139,7 @@ self.addEventListener('notificationclick', (event) => {
       
       let decodedToken;
       try {
-        decodedToken = await admin.auth().verifyIdToken(idToken);
+        decodedToken = await admin.auth().verifyIdToken(idToken, true);
       } catch (error) {
         return res.status(401).json({ success: false, error: 'Unauthorized: Invalid token' });
       }
@@ -13787,7 +13787,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       }
       const token = authHeader.split('Bearer ')[1];
       const { adminAuth } = await import('./lib/firebase-admin');
-      const decoded = await adminAuth.verifyIdToken(token);
+      const decoded = await adminAuth.verifyIdToken(token, true);
       const uid = decoded.uid;
       
       const { method, phone, email, firstName, language, deviceId, meta } = req.body;
@@ -13820,7 +13820,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       }
       const token = authHeader.split('Bearer ')[1];
       const { adminAuth } = await import('./lib/firebase-admin');
-      const decoded = await adminAuth.verifyIdToken(token);
+      const decoded = await adminAuth.verifyIdToken(token, true);
       const uid = decoded.uid;
 
       const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
@@ -13858,7 +13858,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       }
       const token = authHeader.split('Bearer ')[1];
       const { adminAuth } = await import('./lib/firebase-admin');
-      const decoded = await adminAuth.verifyIdToken(token);
+      const decoded = await adminAuth.verifyIdToken(token, true);
       const uid = decoded.uid;
 
       const { code, channel, phone, language, sessionId, trustThisDevice, deviceId } = req.body;
@@ -13906,7 +13906,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       }
       const token = authHeader.split('Bearer ')[1];
       const { adminAuth } = await import('./lib/firebase-admin');
-      const decoded = await adminAuth.verifyIdToken(token);
+      const decoded = await adminAuth.verifyIdToken(token, true);
       const uid = decoded.uid;
 
       const sessionId = req.query.sessionId as string;

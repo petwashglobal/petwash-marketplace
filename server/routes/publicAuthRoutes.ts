@@ -17,7 +17,7 @@ async function getFirebaseUserFromRequest(req: express.Request): Promise<{uid: s
     const { auth: fbAdmin } = await import('../lib/firebase-admin');
     let decoded: any;
     if (authHeader?.startsWith('Bearer ')) {
-      decoded = await fbAdmin.verifyIdToken(authHeader.split('Bearer ')[1], true);
+      decoded = await fbAdmin.verifyIdToken(authHeader.split('Bearer ', true)[1], true);
     } else if (sessionCookie) {
       decoded = await fbAdmin.verifySessionCookie(sessionCookie, true);
     }
@@ -370,7 +370,7 @@ publicAuthRouter.post("/api/consents", async (req, res) => {
     }
     const token = authHeader.split('Bearer ')[1];
     const { getAuth } = await import('firebase-admin/auth');
-    const decodedToken = await getAuth().verifyIdToken(token);
+    const decodedToken = await getAuth().verifyIdToken(token, true);
     const userId = decodedToken.uid;
 
     const traceId = req.headers['x-trace-id'] as string || crypto.randomUUID();
@@ -429,7 +429,7 @@ publicAuthRouter.get("/api/consents/status", async (req, res) => {
     }
     const token = authHeader.split('Bearer ')[1];
     const { getAuth } = await import('firebase-admin/auth');
-    const decodedToken = await getAuth().verifyIdToken(token);
+    const decodedToken = await getAuth().verifyIdToken(token, true);
     const userId = decodedToken.uid;
 
     const result = await pool.query(

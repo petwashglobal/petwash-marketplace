@@ -330,7 +330,7 @@ router.post("/login/google", async (req, res) => {
 
     // Verify Google ID token with Firebase Admin
     try {
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const decodedToken = await admin.auth().verifyIdToken(idToken, true);
       const { uid, email, name, picture } = decodedToken;
 
       if (!email) {

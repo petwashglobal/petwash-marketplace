@@ -8,8 +8,16 @@ service cloud.firestore {
       return request.auth != null;
     }
     
+    // Admin check uses Firebase custom claims, not hardcoded emails.
+    // Set { role: 'admin' } or { role: 'super_admin' } custom claim on admin user records
+    // via Firebase Admin SDK (server/adminAuth.ts setCustomClaims).
+    // No personal emails are embedded in security rules.
     function isAdmin() {
-      return isAuthenticated() && request.auth.token.email == 'nirhadad1@gmail.com';
+      return isAuthenticated() && (
+        request.auth.token.role == 'admin' ||
+        request.auth.token.role == 'super_admin' ||
+        request.auth.token.admin == true
+      );
     }
     
     function isOwner(userId) {

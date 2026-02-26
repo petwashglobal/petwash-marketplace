@@ -59,7 +59,7 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     let authenticatedUid: string;
     
     try {
-      const decodedToken = await auth.verifyIdToken(token);
+      const decodedToken = await auth.verifyIdToken(token, true);
       authenticatedUid = decodedToken.uid;
     } catch (authError) {
       logger.error('KYC upload auth error', authError);

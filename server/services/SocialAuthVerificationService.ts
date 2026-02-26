@@ -54,7 +54,7 @@ export class SocialAuthVerificationService {
       logger.info('[Social Auth] Verifying social login', { provider });
 
       // Verify Firebase ID token (this validates the OAuth token chain)
-      const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
+      const decodedToken = await admin.auth().verifyIdToken(firebaseToken, true);
       const { uid, email, picture, name, firebase } = decodedToken;
 
       if (!email) {
@@ -211,7 +211,7 @@ export class SocialAuthVerificationService {
       // This is handled by Firebase Authentication automatically
       // We just need to decode the token to get user info
       
-      const decodedToken = await admin.auth().verifyIdToken(identityToken);
+      const decodedToken = await admin.auth().verifyIdToken(identityToken, true);
       
       return {
         email: decodedToken.email!,

@@ -39,7 +39,7 @@ router.post('/delete-request', async (req, res) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     const uid = decodedToken.uid;
 
     const parseResult = deleteAccountSchema.safeParse(req.body);
@@ -150,7 +150,7 @@ router.post('/cancel-deletion', async (req, res) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     const uid = decodedToken.uid;
 
     const firestore = admin.firestore();
@@ -216,7 +216,7 @@ router.post('/freeze', async (req, res) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     const uid = decodedToken.uid;
 
     const parseResult = freezeAccountSchema.safeParse(req.body);
@@ -305,7 +305,7 @@ router.post('/unfreeze', async (req, res) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     const uid = decodedToken.uid;
 
     const firestore = admin.firestore();
@@ -363,7 +363,7 @@ router.get('/status', async (req, res) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     const uid = decodedToken.uid;
 
     const firestore = admin.firestore();
@@ -447,7 +447,7 @@ router.get('/export', async (req, res) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     const uid = decodedToken.uid;
 
     // Fetch all user data for export

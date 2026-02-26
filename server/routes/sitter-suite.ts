@@ -84,7 +84,7 @@ router.post('/upload/profile-photo', upload.single('photo'), async (req: Request
     const token = authHeader.split('Bearer ')[1];
     let user;
     try {
-      user = await auth.verifyIdToken(token);
+      user = await auth.verifyIdToken(token, true);
     } catch (authError) {
       return res.status(401).json({ error: 'Invalid token' });
     }
@@ -160,7 +160,7 @@ router.post('/upload/document', upload.single('document'), async (req: Request, 
     const token = authHeader.split('Bearer ')[1];
     let user;
     try {
-      user = await auth.verifyIdToken(token);
+      user = await auth.verifyIdToken(token, true);
     } catch (authError) {
       return res.status(401).json({ error: 'Invalid token' });
     }

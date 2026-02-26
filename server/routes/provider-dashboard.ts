@@ -15,7 +15,7 @@ async function getAuthenticatedUser(req: Request, res: Response) {
   }
   try {
     const token = authHeader.split('Bearer ')[1];
-    return await auth.verifyIdToken(token);
+    return await auth.verifyIdToken(token, true);
   } catch {
     res.status(401).json({ error: 'Invalid token' });
     return null;

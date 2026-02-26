@@ -14,7 +14,7 @@ async function optionalAuth(req: Request, res: Response, next: Function) {
     const authHeader = req.headers.authorization;
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.split('Bearer ')[1];
-      const decodedToken = await auth.verifyIdToken(token);
+      const decodedToken = await auth.verifyIdToken(token, true);
       (req as any).userId = decodedToken.uid;
       (req as any).userEmail = decodedToken.email;
       (req as any).userName = decodedToken.name || decodedToken.email || 'Anonymous';
@@ -32,7 +32,7 @@ async function requireAuth(req: Request, res: Response, next: Function) {
       return res.status(401).json({ error: 'Authentication required' });
     }
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await auth.verifyIdToken(token);
+    const decodedToken = await auth.verifyIdToken(token, true);
     (req as any).userId = decodedToken.uid;
     (req as any).userEmail = decodedToken.email;
     (req as any).userName = decodedToken.name || decodedToken.email || 'Anonymous';

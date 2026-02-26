@@ -69,7 +69,7 @@ async function requireAdmin(req: Request, res: Response, next: Function) {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await auth.verifyIdToken(token);
+    const decodedToken = await auth.verifyIdToken(token, true);
     const userEmail = decodedToken.email?.toLowerCase();
     
     if (!userEmail) {
@@ -252,7 +252,7 @@ router.post('/apply', upload.fields([
     let authenticatedUser: any;
     
     try {
-      authenticatedUser = await auth.verifyIdToken(token);
+      authenticatedUser = await auth.verifyIdToken(token, true);
     } catch (authError: any) {
       logger.error('[Provider Onboarding] Auth error', authError, { code: authError?.code, traceId: req.body?.traceId });
       return res.status(401).json({ error: 'Unauthorized - Invalid token', errorCode: 'INVALID_TOKEN' });
@@ -476,6 +476,7 @@ router.post('/apply', upload.fields([
           expires: Date.now() + 15 * 60 * 1000,
         });
 
+        biometricVerification.auditBiometricConsent(authenticatedUser.uid, true);
         const verificationResult = await biometricVerification.verifyIdentity(
           selfieSignedUrl,
           idSignedUrl
@@ -649,7 +650,7 @@ router.get('/application/status', async (req: Request, res: Response) => {
     const token = authHeader.split('Bearer ')[1];
     let decodedToken;
     try {
-      decodedToken = await auth.verifyIdToken(token);
+      decodedToken = await auth.verifyIdToken(token, true);
     } catch (authErr: any) {
       return res.status(401).json({ error: 'Invalid token', errorCode: 'INVALID_TOKEN' });
     }

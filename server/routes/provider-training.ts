@@ -21,7 +21,7 @@ async function requireAuth(req: any, res: any, next: any) {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await auth.verifyIdToken(token);
+    const decodedToken = await auth.verifyIdToken(token, true);
     req.userId = decodedToken.uid;
     req.userEmail = decodedToken.email;
     next();

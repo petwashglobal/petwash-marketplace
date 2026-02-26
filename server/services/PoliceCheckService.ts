@@ -247,9 +247,10 @@ class PoliceCheckService {
       }
 
       // Step 3: Perform biometric verification (selfie vs ID)
+      // Consent audit required before every biometric verification call (GDPR Art. 9, Israeli Privacy Law §14)
       logger.info('[PoliceCheck] Performing biometric face matching', { providerId });
-      
       const biometricService = new BiometricVerificationService();
+      biometricService.auditBiometricConsent(providerId, true);
       const biometricResult = await biometricService.verifyIdentity(
         documents.selfieUrl,
         documents.idDocumentUrl

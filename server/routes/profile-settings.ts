@@ -49,7 +49,7 @@ router.get('/settings/profile', async (req, res) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     const uid = decodedToken.uid;
 
     const [user] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
@@ -108,7 +108,7 @@ router.patch('/settings/profile', async (req, res) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     const uid = decodedToken.uid;
 
     const parseResult = profileUpdateSchema.safeParse(req.body);
@@ -229,7 +229,7 @@ router.post('/settings/email/request-change', async (req, res) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     const uid = decodedToken.uid;
 
     const authTime = decodedToken.auth_time;
@@ -318,7 +318,7 @@ router.post('/settings/email/confirm-change', async (req, res) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     const uid = decodedToken.uid;
 
     const parseResult = emailChangeConfirmSchema.safeParse(req.body);
@@ -383,7 +383,7 @@ router.patch('/settings/notifications', async (req, res) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     const uid = decodedToken.uid;
 
     const preferences = req.body;
@@ -410,7 +410,7 @@ router.get('/settings/change-history', async (req, res) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     const uid = decodedToken.uid;
 
     const firestore = admin.firestore();
@@ -457,7 +457,7 @@ router.post('/settings/phone/confirm-verification', async (req, res) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     const uid = decodedToken.uid;
 
     const firebaseUser = await admin.auth().getUser(uid);
@@ -501,7 +501,7 @@ router.get('/settings/phone/status', async (req, res) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     const uid = decodedToken.uid;
 
     const firebaseUser = await admin.auth().getUser(uid);
@@ -524,7 +524,7 @@ router.get('/settings/verification-status', async (req, res) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     const uid = decodedToken.uid;
 
     const firebaseUser = await admin.auth().getUser(uid);
@@ -568,7 +568,7 @@ router.post('/settings/profile/photo', (req, res, next) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     const uid = decodedToken.uid;
 
     const firebaseUser = await admin.auth().getUser(uid);
@@ -664,7 +664,7 @@ router.delete('/settings/profile/photo', async (req, res) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     const uid = decodedToken.uid;
 
     const [dbUser] = await db.select().from(users).where(eq(users.id, uid)).limit(1);

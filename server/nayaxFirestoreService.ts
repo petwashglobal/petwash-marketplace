@@ -3,6 +3,11 @@ import crypto from 'crypto';
 import { logger } from './lib/logger';
 import { nanoid } from 'nanoid';
 import { redactPaymentPayload } from './lib/redaction';
+import {
+  syncTransactionToPostgres,
+  syncTransactionStatusToPostgres,
+  syncTerminalToPostgres,
+} from './services/nayaxSyncBridge';
 
 // =====================================
 // TYPES & INTERFACES
@@ -199,6 +204,18 @@ export async function createNayaxTransaction(data: {
       updatedAt: transaction.updatedAt.toISOString()
     });
 
+    // Sync to PostgreSQL non-blocking (Firestore is primary for IoT path)
+    syncTransactionToPostgres({
+      id: transactionId,
+      uid: data.uid,
+      packageId: data.packageId,
+      amount: data.amount,
+      currency: data.currency,
+      status: 'initiated',
+      customerEmail: data.customerEmail,
+      createdAt: transaction.createdAt,
+    }).catch(() => {});
+
     // Mock Nayax API call (replace with real API when credentials available)
     const paymentUrl = `${NAYAX_BASE_URL}/payment?merchantId=${NAYAX_MERCHANT_ID}&transactionId=${transactionId}&amount=${data.amount}&currency=${data.currency}`;
 
@@ -297,6 +314,18 @@ export async function updateTransactionStatus(
     }
 
     await db.collection('nayax_transactions').doc(transactionId).update(updates);
+
+    // Sync status update to PostgreSQL non-blocking
+    syncTransactionStatusToPostgres(
+      transactionId,
+      status,
+      nayaxTransactionId,
+      {
+        merchantFee: updates.merchantFee,
+        vatAmount: updates.vatAmount,
+        netAfterFees: updates.netAfterFees,
+      }
+    ).catch(() => {});
     
     logger.info('Transaction status updated', { transactionId, status, ratesPreserved: hasAnyRateMetadata });
   } catch (error) {
@@ -586,12 +615,26 @@ export async function validateStationKey(apiKey: string): Promise<NayaxTerminal 
       return null;
     }
 
-    const data = snapshot.docs[0].data();
-    return {
+    const doc = snapshot.docs[0];
+    const data = doc.data();
+    const terminal = {
       ...data,
       createdAt: new Date(data.createdAt),
       lastPingAt: data.lastPingAt ? new Date(data.lastPingAt) : undefined
     } as NayaxTerminal;
+
+    // Sync terminal to PostgreSQL non-blocking (Firestore is primary)
+    syncTerminalToPostgres({
+      id: doc.id,
+      name: data.name,
+      serialNumber: data.serialNumber,
+      apiKey: data.apiKey,
+      stationId: data.stationId || data.location,
+      status: data.isActive ? 'online' : 'offline',
+      lastPingAt: data.lastPingAt,
+    }).catch(() => {});
+
+    return terminal;
   } catch (error) {
     logger.error('Error validating station key', error);
     return null;

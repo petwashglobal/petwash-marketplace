@@ -9,14 +9,28 @@ import {
 } from '../../shared/schema-enterprise';
 import { logger } from '../lib/logger';
 
-// Super Admin emails with full access to all sections
-const SUPER_ADMINS = [
-  'nirhadad1@gmail.com',        // Nir Hadad - Founder & CEO (Gmail)
-  'nir.h@petwash.co.il',        // Nir Hadad - Founder & CEO
-  'ido.s@petwash.co.il',        // Ido Shakarzi - National Operations Director
-  'idoshaka@gmail.com',         // Ido Shakarzi - Director (Gmail)
-  'idoshakarzi110@gmail.com'    // Ido Shakarzi - Director (Gmail alt)
-];
+// Super Admin emails — loaded from environment variable (never hardcoded).
+// Set SUPER_ADMIN_EMAILS as comma-separated list in environment secrets.
+// Example: SUPER_ADMIN_EMAILS=ceo@petwash.co.il,ops@petwash.co.il
+// Changing admin access requires only an env var update, not a code deployment.
+function loadSuperAdmins(): string[] {
+  const raw = process.env.SUPER_ADMIN_EMAILS || '';
+  if (!raw.trim()) {
+    logger.warn('[RBAC] ⚠️ SUPER_ADMIN_EMAILS env var is not set — no super-admin email bypass active');
+    return [];
+  }
+  return raw.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+}
+
+// Lazily resolved on first call; re-read on each process if needed.
+// To invalidate at runtime: clear the cache below (for hot-reload scenarios).
+let _superAdminCache: string[] | null = null;
+function getSuperAdmins(): string[] {
+  if (_superAdminCache === null) {
+    _superAdminCache = loadSuperAdmins();
+  }
+  return _superAdminCache;
+}
 
 // Extended Request with user role information
 // Note: firebaseUser is already globally declared in Express Request by firebase-auth.ts
@@ -32,10 +46,18 @@ export interface AuthenticatedRequest extends Request {
 }
 
 /**
- * Check if user is a super admin (CEO or Director)
+ * Check if user is a super admin.
+ * Uses SUPER_ADMIN_EMAILS environment variable — no personal emails in source code.
  */
 export function isSuperAdmin(email: string): boolean {
-  return SUPER_ADMINS.includes(email.toLowerCase());
+  return getSuperAdmins().includes(email.toLowerCase());
+}
+
+/**
+ * Invalidate super-admin cache (call after updating SUPER_ADMIN_EMAILS at runtime).
+ */
+export function invalidateSuperAdminCache(): void {
+  _superAdminCache = null;
 }
 
 /**

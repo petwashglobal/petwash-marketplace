@@ -100,16 +100,20 @@ export class StaffOnboardingService {
   }
 
   /**
-   * Verify ID + Selfie using biometric matching
+   * Verify ID + Selfie using biometric matching.
+   * @param userId — Firebase UID of the staff member (required for GDPR consent audit)
    */
   async verifyBiometrics(
     applicationId: number,
     idPhotoUrl: string,
-    selfieUrl: string
+    selfieUrl: string,
+    userId?: string
   ): Promise<{ matched: boolean; score: number }> {
     try {
       logger.info('[Onboarding] Starting biometric verification', { applicationId });
 
+      // Consent audit required before every biometric verification call (GDPR Art. 9, Israeli Privacy Law §14)
+      biometricVerification.auditBiometricConsent(userId || `application:${applicationId}`, true);
       const result = await biometricVerification.verifyIdentity(
         idPhotoUrl,
         selfieUrl

@@ -35,7 +35,7 @@ export async function validateFirebaseToken(req: Request, res: Response, next: N
     }
     
     // Verify Firebase ID token
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const decodedToken = await admin.auth().verifyIdToken(idToken, true);
     const uid = decodedToken.uid;
     
     // Attach to request for subsequent middleware

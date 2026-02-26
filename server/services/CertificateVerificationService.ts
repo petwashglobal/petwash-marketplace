@@ -106,6 +106,8 @@ export class CertificateVerificationService {
       const ocrResult = await this.scanDocument(uploadedFiles.frontUrl);
       
       // Step 2: Biometric face matching (selfie vs ID photo)
+      // Consent audit required before every biometric verification call (GDPR Art. 9, Israeli Privacy Law §14)
+      biometricVerification.auditBiometricConsent(userId, true);
       const biometricResult = await biometricVerification.verifyIdentity(
         uploadedFiles.selfieUrl,
         uploadedFiles.frontUrl

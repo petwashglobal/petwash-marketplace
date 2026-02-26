@@ -45,7 +45,7 @@ router.get('/profile', async (req, res) => {
     if (authHeader?.startsWith('Bearer ')) {
       try {
         const token = authHeader.split('Bearer ')[1];
-        const decodedToken = await admin.auth().verifyIdToken(token);
+        const decodedToken = await admin.auth().verifyIdToken(token, true);
         uid = decodedToken.uid;
       } catch (tokenError) {
         if (!uid) {
@@ -141,7 +141,7 @@ router.patch('/profile', async (req, res) => {
     if (authHeader?.startsWith('Bearer ')) {
       try {
         const token = authHeader.split('Bearer ')[1];
-        const decodedToken = await admin.auth().verifyIdToken(token);
+        const decodedToken = await admin.auth().verifyIdToken(token, true);
         uid = decodedToken.uid;
       } catch (tokenError) {
         if (!uid) {

@@ -22,7 +22,7 @@ export class AuthService {
     }
 
     try {
-      const decodedToken = await firebaseAdmin.verifyIdToken(token);
+      const decodedToken = await firebaseAdmin.verifyIdToken(token, true);
       await redis.set(cacheKey, decodedToken, 300);
       return decodedToken;
     } catch (error) {

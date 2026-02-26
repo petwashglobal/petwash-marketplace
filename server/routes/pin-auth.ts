@@ -233,7 +233,7 @@ router.post('/verify', async (req: Request, res: Response) => {
     const idToken = authHeader.substring(7);
     let decodedToken;
     try {
-      decodedToken = await firebaseAdminAuth.verifyIdToken(idToken);
+      decodedToken = await firebaseAdminAuth.verifyIdToken(idToken, true);
     } catch (verifyError) {
       return res.status(401).json({
         success: false,
@@ -937,7 +937,7 @@ router.post('/generate-device-trust', async (req: Request, res: Response) => {
     // Verify Firebase ID token
     let decodedToken;
     try {
-      decodedToken = await firebaseAdminAuth.verifyIdToken(idToken);
+      decodedToken = await firebaseAdminAuth.verifyIdToken(idToken, true);
     } catch (verifyError) {
       return res.status(401).json({
         success: false,
