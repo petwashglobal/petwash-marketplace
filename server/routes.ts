@@ -333,7 +333,6 @@ export async function registerRoutes(app: Express): Promise<void> {
     '/api/franchise-mgmt',
     '/api/control-panel',
     '/api/employees',
-    '/api/staff',
     '/api/management',
     '/api/ceo',
     '/api/hr',

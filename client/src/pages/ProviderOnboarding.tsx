@@ -228,6 +228,15 @@ export default function ProviderOnboarding() {
       return;
     }
 
+    if (providerTypes.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: t.error,
+        description: isHebrew ? 'יש לבחור לפחות סוג שותף אחד' : 'Please select at least one provider type'
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
