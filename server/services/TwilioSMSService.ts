@@ -26,6 +26,9 @@ const VERIFICATION_TOKEN_EXPIRY_MINUTES = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 const phoneLockouts = new Map<string, number>();
 
+const MAX_SMS_PER_PHONE_PER_DAY = 5;
+const phoneDailySendCount = new Map<string, { count: number; resetAt: number }>();
+
 const ALPHA_SENDER_ID = 'PetWash';
 
 const ALPHA_SENDER_BLOCKED_COUNTRIES = new Set([
@@ -238,6 +241,8 @@ class TwilioSMSService {
         expiresAt 
       });
 
+      this.incrementDailyPhoneCount(phone);
+
       return {
         success: true,
         message: this.t('codeSent', language),
@@ -286,6 +291,41 @@ class TwilioSMSService {
       };
     }
     return null;
+  }
+
+  checkDailyPhoneCap(phone: string, language: string = 'he'): { success: false; message: string } | null {
+    const formattedPhone = this.formatPhoneNumber(phone);
+    const now = Date.now();
+    const entry = phoneDailySendCount.get(formattedPhone);
+    if (entry && now < entry.resetAt) {
+      if (entry.count >= MAX_SMS_PER_PHONE_PER_DAY) {
+        const capMsg: Record<string, string> = {
+          en: `Daily SMS limit reached for this number. Try again tomorrow.`,
+          he: `הגעתם למגבלת ה-SMS היומית. נסו שוב מחר.`,
+          ar: `تم الوصول إلى الحد اليومي لرسائل SMS. حاول مرة أخرى غدًا.`,
+          es: `Límite diario de SMS alcanzado. Intente mañana.`,
+          fr: `Limite quotidienne de SMS atteinte. Réessayez demain.`,
+          ru: `Достигнут дневной лимит SMS. Попробуйте завтра.`,
+        };
+        logger.warn('[TwilioSMS] Daily SMS cap reached', { phone: formattedPhone.slice(0, 6) + '****', count: entry.count });
+        return { success: false, message: capMsg[language] || capMsg.en };
+      }
+    }
+    return null;
+  }
+
+  incrementDailyPhoneCount(phone: string): void {
+    const formattedPhone = this.formatPhoneNumber(phone);
+    const now = Date.now();
+    const midnight = new Date();
+    midnight.setHours(24, 0, 0, 0);
+    const resetAt = midnight.getTime();
+    const entry = phoneDailySendCount.get(formattedPhone);
+    if (!entry || now >= entry.resetAt) {
+      phoneDailySendCount.set(formattedPhone, { count: 1, resetAt });
+    } else {
+      entry.count++;
+    }
   }
 
   verifyCode(phone: string, code: string, language: string = 'he'): {

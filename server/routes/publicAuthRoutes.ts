@@ -1,12 +1,44 @@
 import express from "express";
 import crypto from 'crypto';
 import { z } from 'zod';
+import rateLimit from 'express-rate-limit';
 import { getCurrentUser } from "../simpleAuth";
 import { logger } from "../lib/logger";
 import { twilioSMSService } from "../services/TwilioSMSService";
 import { db as firestoreDb, auth as fbAdminAuth } from '../lib/firebase-admin';
 import { pool, db } from '../db';
 import { userConsents, authEvents } from '@shared/schema';
+
+// Rate limiter: max 3 SMS send attempts per IP per 10 minutes
+const phoneSendRateLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false, ip: false, default: false },
+  handler: (_req, res) => {
+    logger.warn('[PublicAuth] SMS rate limit hit', { ip: _req.ip });
+    return res.status(429).json({
+      ok: false,
+      error: 'יותר מדי בקשות. המתינו 10 דקות.'
+    });
+  }
+});
+
+// Rate limiter: max 10 verify attempts per IP per 5 minutes
+const phoneVerifyRateLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false, ip: false, default: false },
+  handler: (_req, res) => {
+    return res.status(429).json({
+      ok: false,
+      error: 'יותר מדי ניסיונות. המתינו 5 דקות.'
+    });
+  }
+});
 
 async function getFirebaseUserFromRequest(req: express.Request): Promise<{uid: string; email?: string; displayName?: string} | null> {
   try {
@@ -186,8 +218,9 @@ publicAuthRouter.get("/api/consent", async (req, res) => {
 /**
  * Send phone verification code via Twilio SMS
  * POST /api/auth/phone/send-code
+ * SECURITY: Rate limited (3/10min per IP) + per-phone lockout + per-phone daily cap
  */
-publicAuthRouter.post("/api/auth/phone/send-code", async (req, res) => {
+publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (req, res) => {
   try {
     const traceId = (req as any).traceId || crypto.randomUUID();
     logger.info('[Auth] Phone code send started', { traceId, phone: req.body.phone?.slice(-4) });
@@ -198,6 +231,20 @@ publicAuthRouter.post("/api/auth/phone/send-code", async (req, res) => {
         ok: false,
         error: language === 'he' ? 'נדרש מספר טלפון' : 'Phone number is required'
       });
+    }
+
+    // Check per-phone lockout (too many failed verify attempts)
+    const lockout = twilioSMSService.checkPhoneLockout(phone, language);
+    if (lockout) {
+      logger.warn('[PublicAuth] Phone locked out, rejecting send', { phone: phone.slice(-4), ip: req.ip });
+      return res.status(429).json({ ok: false, error: lockout.message, lockedUntil: lockout.lockedUntil });
+    }
+
+    // Check per-phone daily send cap (blocks SMS bombing to one number from multiple IPs)
+    const dailyCheck = twilioSMSService.checkDailyPhoneCap(phone, language);
+    if (dailyCheck) {
+      logger.warn('[PublicAuth] Phone daily SMS cap reached', { phone: phone.slice(-4), ip: req.ip });
+      return res.status(429).json({ ok: false, error: dailyCheck.message });
     }
 
     const result = await twilioSMSService.sendVerificationCode(phone, language);
@@ -223,7 +270,7 @@ publicAuthRouter.post("/api/auth/phone/send-code", async (req, res) => {
  * Verify phone code and create session
  * POST /api/auth/phone/verify-code
  */
-publicAuthRouter.post("/api/auth/phone/verify-code", async (req, res) => {
+publicAuthRouter.post("/api/auth/phone/verify-code", phoneVerifyRateLimiter, async (req, res) => {
   try {
     const traceId = (req as any).traceId || crypto.randomUUID();
     logger.info('[Auth] Phone verify started', { traceId });
