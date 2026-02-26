@@ -22,16 +22,18 @@ import { desc } from 'drizzle-orm';
 
 const router = Router();
 
-const ADMIN_EMAILS = [
-  'nirhadad1@gmail.com',
-  'nir.h@petwash.co.il',
-  'admin@petwash.co.il',
-  'Support@PetWash.co.il'
-];
+const getSuperAdminEmails = (): string[] => {
+  const envEmails = process.env.SUPER_ADMIN_EMAILS;
+  if (envEmails) {
+    return envEmails.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+  }
+  return [];
+};
 
 const requireBackupAdmin = (req: any, res: any, next: any) => {
-  const userEmail = req.firebaseUser?.email;
-  if (!ADMIN_EMAILS.includes(userEmail || '')) {
+  const userEmail = (req.firebaseUser?.email || '').toLowerCase();
+  const admins = getSuperAdminEmails();
+  if (!admins.includes(userEmail)) {
     return res.status(403).json({ error: 'Admin access required for backup operations' });
   }
   next();
