@@ -368,6 +368,9 @@ export async function registerRoutes(app: Express): Promise<void> {
     '/api/israeli-compliance',
     '/api/provider-dashboard',
     '/api/provider-applications',
+    '/api/analytics',
+    '/api/wallet-telemetry',
+    '/api/platform-api',
   ];
 
   app.use(async (req, res, next) => {
@@ -378,8 +381,13 @@ export async function registerRoutes(app: Express): Promise<void> {
       return next();
     }
 
+    // 🔐 SECURITY: Unauthenticated requests MUST NOT reach internal routes
     if (!req.firebaseUser?.uid) {
-      return next();
+      logger.warn(`[RBAC Guard] Unauthenticated request blocked to internal route: ${path}`, { ip: req.ip });
+      return res.status(401).json({
+        error: 'Authentication required',
+        message: 'You must be logged in to access this area.',
+      });
     }
 
     const userEmail = (req.firebaseUser.email || '').toLowerCase();
@@ -9687,7 +9695,7 @@ self.addEventListener('notificationclick', (event) => {
   
   // Operations & Logistics
   app.use('/api/operations', adminLimiter, operationsRoutes);
-  app.use('/api/deployment', adminLimiter, deploymentRoutes);
+  app.use('/api/deployment', adminLimiter, requireAdminMfa, deploymentRoutes);
   app.use('/api/metrics', adminLimiter, metricsRoutes);
   app.use('/api/security-status', adminLimiter, securityStatusRoutes);
   app.use('/api/send-report', adminLimiter, sendReportRoutes);

@@ -7,11 +7,12 @@ import express from 'express';
 import { getUserBehaviorInsights, getProblematicFAQs } from '../ai-learning-system';
 import { logger } from '../lib/logger';
 import { db as adminDb } from '../lib/firebase-admin';
+import { requireAdmin } from '../adminAuth';
 
 const router = express.Router();
 
-// Note: Admin limiter is applied in routes.ts before mounting this router
-// So these routes are already protected
+// 🔐 All AI insights routes are admin-only (session cookie auth required)
+router.use(requireAdmin);
 
 /**
  * GET /api/ai-insights/overview
