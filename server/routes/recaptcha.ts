@@ -19,20 +19,23 @@ const GCP_API_KEY = (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || '').trim
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'signinpetwash';
 
 function detectAuthMethod(): string {
+  const sa = (process.env.GOOGLE_SERVICE_ACCOUNT_JSON || '').trim();
+  if (sa.startsWith('{')) return 'service_account';
   const raw = (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || '').trim();
   if (raw.startsWith('AIza')) return 'gcp_api_key';
-  if (raw.startsWith('{')) return 'service_account';
   if (RECAPTCHA_SECRET_KEY) return 'recaptcha_secret_key';
   return 'none';
 }
 
 async function getEnterpriseAuthHeaders(): Promise<{ Authorization?: string; 'x-goog-api-key'?: string } | null> {
-  const raw = (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || '').trim();
+  const saJson = (process.env.GOOGLE_SERVICE_ACCOUNT_JSON || '').trim();
+  const credsJson = (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || '').trim();
 
-  if (raw.startsWith('{')) {
+  const jsonToTry = saJson.startsWith('{') ? saJson : credsJson.startsWith('{') ? credsJson : '';
+  if (jsonToTry) {
     try {
       const { GoogleAuth } = await import('google-auth-library');
-      const creds = JSON.parse(raw);
+      const creds = JSON.parse(jsonToTry);
       const auth = new GoogleAuth({
         credentials: creds,
         scopes: ['https://www.googleapis.com/auth/cloud-platform'],
