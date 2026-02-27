@@ -12,19 +12,27 @@ function sanitizeKey(raw: string): string {
 }
 
 const RECAPTCHA_SITE_KEY = sanitizeKey(process.env.VITE_RECAPTCHA_SITE_KEY || '');
-const RECAPTCHA_API_KEY = (process.env.RECAPTCHA_SECRET_KEY || '').trim();
+const RECAPTCHA_SECRET_KEY = sanitizeKey(process.env.RECAPTCHA_SECRET_KEY || '');
+const GCP_API_KEY = (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || '').trim().startsWith('AIza')
+  ? (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || '').trim()
+  : '';
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'signinpetwash';
 
-// ── Auth: prefer service account Bearer token, fall back to API key ───────────
-// Uses the GOOGLE_APPLICATION_CREDENTIALS_JSON already configured in this project.
-// This avoids needing a separate RECAPTCHA_SECRET_KEY / GCP API key.
-async function getAssessmentAuthHeaders(): Promise<{ Authorization?: string; 'x-goog-api-key'?: string } | null> {
-  const credsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+function detectAuthMethod(): string {
+  const raw = (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || '').trim();
+  if (raw.startsWith('AIza')) return 'gcp_api_key';
+  if (raw.startsWith('{')) return 'service_account';
+  if (RECAPTCHA_SECRET_KEY) return 'recaptcha_secret_key';
+  return 'none';
+}
 
-  if (credsJson) {
+async function getEnterpriseAuthHeaders(): Promise<{ Authorization?: string; 'x-goog-api-key'?: string } | null> {
+  const raw = (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || '').trim();
+
+  if (raw.startsWith('{')) {
     try {
       const { GoogleAuth } = await import('google-auth-library');
-      const creds = JSON.parse(credsJson);
+      const creds = JSON.parse(raw);
       const auth = new GoogleAuth({
         credentials: creds,
         scopes: ['https://www.googleapis.com/auth/cloud-platform'],
@@ -36,17 +44,109 @@ async function getAssessmentAuthHeaders(): Promise<{ Authorization?: string; 'x-
         return { Authorization: `Bearer ${accessToken}` };
       }
     } catch (err: any) {
-      logger.warn('[ReCaptcha] Service account auth failed, trying API key fallback', {
-        error: err.message,
-      });
+      logger.warn('[ReCaptcha] Service account auth failed', { error: err.message });
     }
   }
 
-  if (RECAPTCHA_API_KEY) {
-    return { 'x-goog-api-key': RECAPTCHA_API_KEY };
+  if (GCP_API_KEY) {
+    return { 'x-goog-api-key': GCP_API_KEY };
   }
 
   return null;
+}
+
+async function verifyWithEnterprise(
+  token: string,
+  action: string,
+  authHeaders: Record<string, string>
+): Promise<{ success: boolean; score?: number; reason?: string; source: 'enterprise' } | null> {
+  try {
+    const assessmentUrl = `https://recaptchaenterprise.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/assessments`;
+    const response = await fetch(assessmentUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
+      body: JSON.stringify({
+        event: { token, expectedAction: action, siteKey: RECAPTCHA_SITE_KEY },
+      }),
+    });
+
+    const result = await response.json();
+
+    if (result.error) {
+      logger.warn('[ReCaptcha Enterprise] API error', {
+        code: result.error.code,
+        status: result.error.status,
+        message: result.error.message,
+      });
+      return null;
+    }
+
+    const tokenProperties = result.tokenProperties || {};
+    const riskAnalysis = result.riskAnalysis || {};
+    const score: number = riskAnalysis.score ?? 0.5;
+
+    logger.info('[ReCaptcha Enterprise] Assessment result', {
+      valid: tokenProperties.valid,
+      action: tokenProperties.action,
+      score,
+      reasons: riskAnalysis.reasons,
+    });
+
+    if (!tokenProperties.valid) {
+      return { success: false, score, reason: tokenProperties.invalidReason, source: 'enterprise' };
+    }
+
+    if (score < 0.3) {
+      return { success: false, score, reason: 'low_score', source: 'enterprise' };
+    }
+
+    return { success: true, score, source: 'enterprise' };
+  } catch (err: any) {
+    logger.warn('[ReCaptcha Enterprise] Request failed', { error: err.message });
+    return null;
+  }
+}
+
+async function verifyWithStandard(
+  token: string
+): Promise<{ success: boolean; score?: number; source: 'standard' } | null> {
+  if (!RECAPTCHA_SECRET_KEY) return null;
+
+  try {
+    const params = new URLSearchParams({ secret: RECAPTCHA_SECRET_KEY, response: token });
+    const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+
+    const result = await response.json();
+
+    logger.info('[ReCaptcha Standard] Verification result', {
+      success: result.success,
+      score: result.score,
+      action: result.action,
+      errorCodes: result['error-codes'],
+    });
+
+    if (!result.success) {
+      const codes: string[] = result['error-codes'] || [];
+      if (codes.includes('timeout-or-duplicate') || codes.includes('invalid-input-response')) {
+        return { success: false, score: 0, source: 'standard' };
+      }
+      return null;
+    }
+
+    const score: number = result.score ?? 0.5;
+    if (score < 0.3) {
+      return { success: false, score, source: 'standard' };
+    }
+
+    return { success: true, score, source: 'standard' };
+  } catch (err: any) {
+    logger.warn('[ReCaptcha Standard] Request failed', { error: err.message });
+    return null;
+  }
 }
 
 const verifySchema = z.object({
@@ -69,108 +169,64 @@ router.post('/verify', async (req, res) => {
 
     if (!RECAPTCHA_SITE_KEY) {
       logger.warn('[ReCaptcha] Site key not configured - passing through');
-      return res.json({ success: true, score: 1.0, action });
+      return res.json({ success: true, score: 1.0, action, source: 'bypass' });
     }
 
-    const authHeaders = await getAssessmentAuthHeaders();
-    if (!authHeaders) {
-      logger.warn('[ReCaptcha] No auth available (no service account or API key) - passing through');
-      return res.json({ success: true, score: 1.0, action });
+    const enterpriseAuth = await getEnterpriseAuthHeaders();
+
+    if (enterpriseAuth) {
+      const enterpriseResult = await verifyWithEnterprise(token, action, enterpriseAuth as Record<string, string>);
+      if (enterpriseResult) {
+        if (!enterpriseResult.success) {
+          logger.warn('[ReCaptcha] Rejected by Enterprise', {
+            score: enterpriseResult.score,
+            reason: enterpriseResult.reason,
+          });
+          return res.status(400).json({
+            success: false,
+            error: enterpriseResult.reason === 'low_score'
+              ? 'Suspicious activity detected'
+              : 'reCAPTCHA token invalid',
+            score: enterpriseResult.score,
+            source: 'enterprise',
+          });
+        }
+        return res.json({ success: true, score: enterpriseResult.score, action, source: 'enterprise' });
+      }
+      logger.info('[ReCaptcha] Enterprise auth configured but API unavailable, trying standard fallback');
     }
 
-    // Build URL - use API key in query only for x-goog-api-key fallback path
-    const assessmentUrl = `https://recaptchaenterprise.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/assessments`;
-
-    const response = await fetch(assessmentUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeaders,
-      },
-      body: JSON.stringify({
-        event: {
-          token,
-          expectedAction: action,
-          siteKey: RECAPTCHA_SITE_KEY,
-        },
-      }),
-    });
-
-    const result = await response.json();
-
-    if (result.error) {
-      logger.warn('[ReCaptcha Enterprise] API error:', {
-        code: result.error.code,
-        message: result.error.message,
-        status: result.error.status,
-      });
-      logger.info('[ReCaptcha] Enterprise API error - allowing through to avoid blocking users');
-      return res.json({ success: true, score: 0.5, action, fallback: true });
+    const standardResult = await verifyWithStandard(token);
+    if (standardResult) {
+      if (!standardResult.success) {
+        logger.warn('[ReCaptcha] Rejected by standard API', { score: standardResult.score });
+        return res.status(400).json({
+          success: false,
+          error: 'reCAPTCHA verification failed',
+          score: standardResult.score,
+          source: 'standard',
+        });
+      }
+      return res.json({ success: true, score: standardResult.score, action, source: 'standard' });
     }
 
-    const tokenProperties = result.tokenProperties || {};
-    const riskAnalysis = result.riskAnalysis || {};
-    const score = riskAnalysis.score ?? 0.5;
-
-    logger.info('[ReCaptcha Enterprise] Assessment result:', {
-      valid: tokenProperties.valid,
-      action: tokenProperties.action,
-      score,
-      reasons: riskAnalysis.reasons,
-      ip: req.ip,
-    });
-
-    if (!tokenProperties.valid) {
-      logger.warn('[ReCaptcha Enterprise] Invalid token:', {
-        invalidReason: tokenProperties.invalidReason,
-        ip: req.ip,
-      });
-      return res.status(400).json({
-        success: false,
-        error: 'reCAPTCHA token invalid',
-        reason: tokenProperties.invalidReason,
-      });
-    }
-
-    if (tokenProperties.action && tokenProperties.action !== action) {
-      logger.warn('[ReCaptcha Enterprise] Action mismatch:', {
-        expected: action,
-        received: tokenProperties.action,
-        ip: req.ip,
-      });
-    }
-
-    const minimumScore = 0.3;
-    if (score < minimumScore) {
-      logger.warn('[ReCaptcha Enterprise] Low score - possible bot:', { score, ip: req.ip });
-      return res.status(400).json({
-        success: false,
-        error: 'Suspicious activity detected',
-        score,
-      });
-    }
-
-    res.json({
-      success: true,
-      score,
-      action: tokenProperties.action,
-    });
+    logger.warn('[ReCaptcha] Both Enterprise and standard verification unavailable - allowing through');
+    return res.json({ success: true, score: 0.5, action, source: 'fallback' });
   } catch (error) {
-    logger.error('[ReCaptcha Enterprise] Verification error:', error);
-    res.json({
-      success: true,
-      score: 0.5,
-      error: 'Verification service unavailable - allowing through',
-    });
+    logger.error('[ReCaptcha] Verification error:', error);
+    return res.json({ success: true, score: 0.5, source: 'error-fallback' });
   }
 });
 
 router.get('/config', (_req, res) => {
+  const authMethod = detectAuthMethod();
   res.json({
     success: true,
     siteKey: RECAPTCHA_SITE_KEY,
-    type: 'enterprise',
-    authMethod: process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ? 'service_account' : 'api_key',
+    type: 'enterprise+standard',
+    authMethod,
+    hasGcpApiKey: !!GCP_API_KEY,
+    hasRecaptchaSecret: !!RECAPTCHA_SECRET_KEY,
   });
 });
 
