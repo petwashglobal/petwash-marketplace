@@ -244,10 +244,14 @@ publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (
     const dailyCheck = twilioSMSService.checkDailyPhoneCap(phone, language);
     if (dailyCheck) {
       logger.warn('[PublicAuth] Phone daily SMS cap reached', { phone: phone.slice(-4), ip: req.ip });
+      // Track cap hit for bot rotation detection (many phones hitting cap = rotating bot)
+      const { smsAbuseDetector } = await import('../services/SmsAbuseDetector');
+      smsAbuseDetector.trackCapHit(phone);
       return res.status(429).json({ ok: false, error: dailyCheck.message });
     }
 
-    const result = await twilioSMSService.sendVerificationCode(phone, language);
+    const callerIp = req.ip || (req.headers['x-forwarded-for'] as string) || 'unknown';
+    const result = await twilioSMSService.sendVerificationCode(phone, language, callerIp);
     
     return res.status(result.success ? 200 : 400).json({
       ok: result.success,

@@ -2,6 +2,7 @@ import twilio from 'twilio';
 import jwt from 'jsonwebtoken';
 import { logger } from '../lib/logger';
 import crypto from 'crypto';
+import { smsAbuseDetector } from './SmsAbuseDetector';
 
 interface VerificationCode {
   code: string;
@@ -196,7 +197,7 @@ class TwilioSMSService {
     return msgs[language] || msgs.en;
   }
 
-  async sendVerificationCode(phone: string, language: string = 'he'): Promise<{
+  async sendVerificationCode(phone: string, language: string = 'he', callerIp?: string): Promise<{
     success: boolean;
     message: string;
     expiresIn?: number;
@@ -213,6 +214,11 @@ class TwilioSMSService {
     }
 
     const formattedPhone = this.formatPhoneNumber(phone);
+
+    // Track IP→phone mapping for enumeration attack detection
+    if (callerIp) {
+      smsAbuseDetector.trackIpPhoneCombo(callerIp, formattedPhone);
+    }
     const code = this.generateCode();
     const expiresAt = new Date(Date.now() + VERIFICATION_CODE_EXPIRY_MINUTES * 60 * 1000);
 
@@ -251,6 +257,10 @@ class TwilioSMSService {
       });
 
       this.incrementDailyPhoneCount(phone);
+      // Global circuit breaker: track this SMS against global hourly/daily limits
+      smsAbuseDetector.recordSent().catch(err =>
+        logger.error('[TwilioSMS] AbuseDetector.recordSent failed', { error: err?.message })
+      );
 
       return {
         success: true,

@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import { db } from '../db';
 import { creditTransactions, walletAccounts, unifiedVouchers, unifiedVoucherLedger } from '@shared/schema';
 import { eq, or, inArray, and, desc, sql } from 'drizzle-orm';
+import { isSuperAdmin } from '../middleware/rbac';
 
 const router = Router();
 
@@ -80,10 +81,22 @@ router.post('/topup', topupRateLimiter, async (req, res) => {
 
     const { amountCents, nayaxTxId, description } = parsed.data;
 
-    const isAdmin = !!(req.headers['x-admin-id'] || (req.user as any)?.role === 'admin');
+    // SECURITY: Admin status derived ONLY from the server-side Firebase-verified email.
+    // The x-admin-id header was removed — clients can set arbitrary headers, making it
+    // trivially exploitable for unlimited self-crediting.
+    const userEmail = (req.firebaseUser as any)?.email || (req.user as any)?.email || '';
+    const isAdminUser = isSuperAdmin(userEmail);
 
-    if (!nayaxTxId && !isAdmin) {
+    if (!nayaxTxId && !isAdminUser) {
       return res.status(403).json({ success: false, error: 'Top-up requires Nayax transaction ID' });
+    }
+
+    if (isAdminUser && !nayaxTxId) {
+      logger.warn('[Credit Wallet] Super-admin manual top-up (no Nayax txId)', {
+        adminEmail: userEmail,
+        userId,
+        amountCents,
+      });
     }
 
     await walletService.addCredits(
@@ -342,16 +355,17 @@ router.post('/redemptions/:sessionId/confirm', async (req, res) => {
 
 router.post('/redemptions/:sessionId/refund', async (req, res) => {
   try {
-    const adminId = req.headers['x-admin-id'] as string;
+    const adminEmail = (req.firebaseUser as any)?.email || (req.user as any)?.email || '';
     const isInternalRequest = req.headers['x-internal-service'] === 'petwash-backend';
-    
-    if (!adminId && !isInternalRequest) {
-      logger.warn('[Credit Wallet] Unauthorized refund attempt', { ip: req.ip });
+
+    if (!isSuperAdmin(adminEmail) && !isInternalRequest) {
+      logger.warn('[Credit Wallet] Unauthorized refund attempt', { ip: req.ip, email: adminEmail });
       return res.status(403).json({ 
         success: false, 
         error: 'Admin authorization required for refunds' 
       });
     }
+    const adminId = adminEmail || 'internal-service';
 
     const { sessionId } = req.params;
     const { reason } = req.body;
@@ -407,20 +421,18 @@ router.get('/transactions', async (req, res) => {
 
 router.post('/credits/add', async (req, res) => {
   try {
-    // SECURITY: Only admin can add credits to wallets
-    const adminId = req.headers['x-admin-id'] as string;
+    // SECURITY: Only super admins (verified server-side via Firebase email) can add credits.
+    const adminEmail = (req.firebaseUser as any)?.email || (req.user as any)?.email || '';
     const isInternalRequest = req.headers['x-internal-service'] === 'petwash-backend';
-    
-    if (!adminId && !isInternalRequest) {
-      logger.warn('[Credit Wallet] Unauthorized credit add attempt', { 
-        ip: req.ip, 
-        body: req.body 
-      });
+
+    if (!isSuperAdmin(adminEmail) && !isInternalRequest) {
+      logger.warn('[Credit Wallet] Unauthorized credit add attempt', { ip: req.ip, email: adminEmail });
       return res.status(403).json({ 
         success: false, 
         error: 'Admin authorization required to add credits' 
       });
     }
+    const adminId = adminEmail || 'internal-service';
 
     const parsed = addCreditsSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -530,20 +542,17 @@ const adminInjectSchema = z.object({
 
 router.post('/admin/inject', async (req, res) => {
   try {
-    const adminUserId = req.headers['x-admin-id'] as string;
-    const adminEmail = req.headers['x-admin-email'] as string;
-    const adminRole = req.headers['x-admin-role'] as string;
+    // SECURITY: Admin identity derived from server-verified Firebase token only.
+    // All x-admin-* headers were removed — they are client-controllable and exploitable.
+    const adminEmail = (req.firebaseUser as any)?.email || (req.user as any)?.email || '';
+    const adminUserId = (req.firebaseUser as any)?.uid || (req.user as any)?.uid || '';
 
-    if (!adminUserId || !adminEmail) {
+    if (!adminEmail || !adminUserId) {
       return res.status(401).json({ success: false, error: 'Admin authentication required' });
     }
 
-    if (!['super_admin', 'head_office_admin', 'finance_admin'].includes(adminRole || '')) {
-      logger.warn('[Credit Wallet] Unauthorized admin injection attempt', { 
-        adminUserId, 
-        adminEmail, 
-        adminRole 
-      });
+    if (!isSuperAdmin(adminEmail)) {
+      logger.warn('[Credit Wallet] Unauthorized admin injection attempt', { adminUserId, adminEmail, ip: req.ip });
       return res.status(403).json({ success: false, error: 'Insufficient permissions for credit injection' });
     }
 
@@ -582,14 +591,11 @@ router.post('/admin/inject', async (req, res) => {
 
 router.get('/admin/injection-history/:userId', async (req, res) => {
   try {
-    const adminUserId = req.headers['x-admin-id'] as string;
-    const adminRole = req.headers['x-admin-role'] as string;
-
-    if (!adminUserId) {
+    const adminEmail = (req.firebaseUser as any)?.email || (req.user as any)?.email || '';
+    if (!adminEmail) {
       return res.status(401).json({ success: false, error: 'Admin authentication required' });
     }
-
-    if (!['super_admin', 'head_office_admin', 'finance_admin'].includes(adminRole || '')) {
+    if (!isSuperAdmin(adminEmail)) {
       return res.status(403).json({ success: false, error: 'Insufficient permissions' });
     }
 
@@ -628,20 +634,18 @@ router.get('/expiring-credits', async (req, res) => {
 router.post('/admin/process-expired-credits', async (req, res) => {
   try {
     const cronSecret = req.headers['x-cron-secret'] as string;
-    const adminUserId = req.headers['x-admin-id'] as string;
-    const adminRole = req.headers['x-admin-role'] as string;
-
     const expectedCronSecret = process.env.CRON_SECRET || 'petwash-cron-2025';
-    
-    if (cronSecret !== expectedCronSecret && 
-        !['super_admin', 'head_office_admin'].includes(adminRole || '')) {
+    const adminEmail = (req.firebaseUser as any)?.email || (req.user as any)?.email || '';
+
+    if (cronSecret !== expectedCronSecret && !isSuperAdmin(adminEmail)) {
+      logger.warn('[Credit Wallet] Unauthorized expired-credits trigger', { ip: req.ip, email: adminEmail });
       return res.status(403).json({ success: false, error: 'Unauthorized' });
     }
 
     const result = await walletService.processExpiredCredits();
 
     logger.info('[Credit Wallet] Expired credits processed', { 
-      triggeredBy: adminUserId || 'cron',
+      triggeredBy: isSuperAdmin(adminEmail) ? adminEmail : 'cron',
       ...result 
     });
 
@@ -658,14 +662,11 @@ router.post('/admin/process-expired-credits', async (req, res) => {
 
 router.get('/admin/dormant-wallets', async (req, res) => {
   try {
-    const adminUserId = req.headers['x-admin-id'] as string;
-    const adminRole = req.headers['x-admin-role'] as string;
-
-    if (!adminUserId) {
+    const adminEmail = (req.firebaseUser as any)?.email || (req.user as any)?.email || '';
+    if (!adminEmail) {
       return res.status(401).json({ success: false, error: 'Admin authentication required' });
     }
-
-    if (!['super_admin', 'head_office_admin', 'finance_admin'].includes(adminRole || '')) {
+    if (!isSuperAdmin(adminEmail)) {
       return res.status(403).json({ success: false, error: 'Insufficient permissions' });
     }
 
