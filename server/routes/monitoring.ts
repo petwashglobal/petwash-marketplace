@@ -4,6 +4,7 @@
  */
 
 import { Router } from 'express';
+import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 
@@ -82,7 +83,7 @@ router.get('/performance', async (req, res) => {
 
     try {
       // Get real connection count from PostgreSQL
-      const connResult = await db.execute(`
+      const connResult = await db.execute(sql`
         SELECT count(*) as active_connections
         FROM pg_stat_activity
         WHERE datname = current_database()
@@ -134,7 +135,7 @@ router.get('/database/connections', async (req, res) => {
   try {
     // Query database for connection stats
     // Note: This requires pg_stat_database access
-    const result = await db.execute(`
+    const result = await db.execute(sql`
       SELECT 
         numbackends as active_connections,
         xact_commit as transactions_committed,

@@ -676,11 +676,26 @@ export default function FinanceDashboard() {
                       const trialBalanceTable = document.querySelector('[data-testid="balance-verification"]')?.closest('.space-y-6');
                       const tableEl = trialBalanceTable?.querySelector('table');
                       if (!tableEl) { toast({ title: "No report data to export", variant: "destructive" }); return; }
-                      const printWindow = window.open('', '_blank');
+                      const safeYear = Number(fiscalYear);
+                      const safePeriod = Number(fiscalPeriod);
+                      const html = [
+                        '<!DOCTYPE html><html><head>',
+                        `<title>Pet Wash Trial Balance - ${safeYear}/${safePeriod}</title>`,
+                        '<style>body{font-family:system-ui,sans-serif;padding:40px;color:#1a1a1a}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:8px;text-align:start}th{background:#f5f5f5}tfoot{font-weight:bold;border-top:2px solid #333}@media print{body{padding:20px}}</style>',
+                        '</head><body>',
+                        '<h1>Pet Wash Trial Balance Report</h1>',
+                        `<p>Period: ${safeYear}/${safePeriod} | Generated: ${new Date().toLocaleDateString()}</p>`,
+                        tableEl.outerHTML,
+                        '</body></html>'
+                      ].join('');
+                      const blob = new Blob([html], { type: 'text/html' });
+                      const url = URL.createObjectURL(blob);
+                      const printWindow = window.open(url, '_blank');
                       if (printWindow) {
-                        printWindow.document.write(`<!DOCTYPE html><html><head><title>Pet Wash™ Trial Balance - ${fiscalYear}/${fiscalPeriod}</title><style>body{font-family:system-ui,sans-serif;padding:40px;color:#1a1a1a}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:8px;text-align:start}th{background:#f5f5f5}tfoot{font-weight:bold;border-top:2px solid #333}@media print{body{padding:20px}}</style></head><body><h1>Pet Wash™ Trial Balance Report</h1><p>Period: ${fiscalYear}/${fiscalPeriod} | Generated: ${new Date().toLocaleDateString()}</p>${tableEl.outerHTML}</body></html>`);
-                        printWindow.document.close();
-                        printWindow.print();
+                        printWindow.addEventListener('load', () => {
+                          printWindow.print();
+                          URL.revokeObjectURL(url);
+                        });
                       }
                     }}>
                       Export to PDF

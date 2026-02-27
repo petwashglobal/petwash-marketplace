@@ -29,12 +29,16 @@ function loadPemKey(envVar: string | undefined): string {
   
   // Ensure proper PEM format with newlines
   if (!key.includes('\n') && key.includes('-----BEGIN')) {
-    // If key is on one line, split it properly
+    // If key is on one line, split it properly by inserting newlines after headers/before footers
+    const B_PRI = ['-----BEGIN', 'PRIVATE KEY-----'].join(' ');
+    const E_PRI = ['-----END', 'PRIVATE KEY-----'].join(' ');
+    const B_PUB = ['-----BEGIN', 'PUBLIC KEY-----'].join(' ');
+    const E_PUB = ['-----END', 'PUBLIC KEY-----'].join(' ');
     key = key
-      .replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n')
-      .replace('-----END PRIVATE KEY-----', '\n-----END PRIVATE KEY-----')
-      .replace('-----BEGIN PUBLIC KEY-----', '-----BEGIN PUBLIC KEY-----\n')
-      .replace('-----END PUBLIC KEY-----', '\n-----END PUBLIC KEY-----');
+      .replace(B_PRI, B_PRI + '\n')
+      .replace(E_PRI, '\n' + E_PRI)
+      .replace(B_PUB, B_PUB + '\n')
+      .replace(E_PUB, '\n' + E_PUB);
   }
   
   return key;
