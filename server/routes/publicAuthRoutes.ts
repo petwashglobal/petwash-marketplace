@@ -6,6 +6,7 @@ import { getCurrentUser } from "../simpleAuth";
 import { logger } from "../lib/logger";
 import { twilioSMSService } from "../services/TwilioSMSService";
 import { db as firestoreDb, auth as fbAdminAuth } from '../lib/firebase-admin';
+import { sql } from 'drizzle-orm';
 import { pool, db } from '../db';
 import { userConsents, authEvents } from '@shared/schema';
 
@@ -448,12 +449,12 @@ publicAuthRouter.post("/api/consents", async (req, res) => {
         });
       }
 
-      const result = await pool.query(
-        `INSERT INTO user_consents (user_id, consent_type, consent_version, consent_text_hash, accepted, ip, user_agent, locale, source, trace_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-        [userId, consentType, consentVersion, consentTextHash, accepted !== false, ip, userAgent, locale, source, traceId]
-      );
-      insertedIds.push(result.rows[0].id);
+      const result = await db.execute(sql`
+        INSERT INTO user_consents (user_id, consent_type, consent_version, consent_text_hash, accepted, ip, user_agent, locale, source, trace_id)
+        VALUES (${userId}, ${consentType}, ${consentVersion}, ${consentTextHash}, ${accepted !== false}, ${ip}, ${userAgent}, ${locale}, ${source}, ${traceId})
+        RETURNING id
+      `);
+      insertedIds.push((result.rows[0] as any).id);
     }
 
     logger.info('[Consent] Recorded', { traceId, userId, count: consents.length, ids: insertedIds });
@@ -483,16 +484,15 @@ publicAuthRouter.get("/api/consents/status", async (req, res) => {
     const decodedToken = await getAuth().verifyIdToken(token, true);
     const userId = decodedToken.uid;
 
-    const result = await pool.query(
-      `SELECT consent_type, consent_version, accepted, accepted_at
-       FROM user_consents
-       WHERE user_id = $1
-       ORDER BY accepted_at DESC`,
-      [userId]
-    );
+    const result = await db.execute(sql`
+      SELECT consent_type, consent_version, accepted, accepted_at
+      FROM user_consents
+      WHERE user_id = ${userId}
+      ORDER BY accepted_at DESC
+    `);
 
     const latestByType: Record<string, any> = {};
-    for (const row of result.rows) {
+    for (const row of result.rows as any[]) {
       if (!latestByType[row.consent_type]) {
         latestByType[row.consent_type] = row;
       }
@@ -553,17 +553,10 @@ publicAuthRouter.post("/api/accessibility-feedback", async (req, res) => {
   const userAgent = String(req.headers['user-agent'] || '').slice(0, 512) || null;
 
   try {
-    await pool.query(
-      `INSERT INTO accessibility_feedback(email, message, page_url, user_agent, ip_address)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [
-        (email || '').trim() || null,
-        message.trim(),
-        (pageUrl || '').trim() || null,
-        userAgent,
-        ip
-      ]
-    );
+    await db.execute(sql`
+      INSERT INTO accessibility_feedback(email, message, page_url, user_agent, ip_address)
+      VALUES (${(email || '').trim() || null}, ${message.trim()}, ${(pageUrl || '').trim() || null}, ${userAgent}, ${ip})
+    `);
     res.json({ success: true });
   } catch (err) {
     logger.error('[Accessibility] Feedback save error:', err);
@@ -582,17 +575,10 @@ publicAuthRouter.post("/api/accessibility-audit", async (req, res) => {
   const userAgent = String(req.headers['user-agent'] || '').slice(0, 512) || null;
 
   try {
-    await pool.query(
-      `INSERT INTO accessibility_audit_log(action, component, details, user_agent, ip_address)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [
-        action,
-        component || null,
-        details ? JSON.stringify(details) : null,
-        userAgent,
-        ip
-      ]
-    );
+    await db.execute(sql`
+      INSERT INTO accessibility_audit_log(action, component, details, user_agent, ip_address)
+      VALUES (${action}, ${component || null}, ${details ? JSON.stringify(details) : null}, ${userAgent}, ${ip})
+    `);
     res.json({ success: true });
   } catch (err) {
     logger.error('[Accessibility] Audit log error:', err);

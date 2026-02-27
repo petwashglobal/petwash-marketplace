@@ -5,7 +5,8 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
 import path from "node:path";
 import crypto from "node:crypto";
 import express from "express";
-import { pool, isDatabaseAvailable } from "./db";
+import { pool, db, isDatabaseAvailable } from "./db";
+import { sql } from "drizzle-orm";
 import helmet from "helmet";
 import compression from "compression";
 // CORS middleware - inline implementation due to ESM import issues
@@ -222,7 +223,7 @@ const dbConnectFn = async () => {
 };
 const dbPingFn = async () => {
   if (!isDatabaseAvailable) throw new Error('DATABASE_URL not configured');
-  await pool.query('SELECT 1');
+  await db.execute(sql`SELECT 1`);
 };
 
 async function connectDbNonBlocking(): Promise<void> {

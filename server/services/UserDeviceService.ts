@@ -147,7 +147,9 @@ export class UserDeviceService {
       const iv = Buffer.from(ivHex, 'hex');
       const authTag = Buffer.from(authTagHex, 'hex');
       
-      // Create decipher
+      // Security: GCM auth tag is set before any decryption, ensuring ciphertext
+      // integrity is verified by Node.js during decipher.final() — if the tag
+      // does not match the decrypted content, final() throws and decryption fails.
       const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
       decipher.setAuthTag(authTag);
       

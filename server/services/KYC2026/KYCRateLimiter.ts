@@ -12,9 +12,10 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { sql } from 'drizzle-orm';
 import { logger } from '../../lib/logger';
 import { kycAuditTrail } from './KYCAuditTrail';
-import { pool } from '../../db';
+import { db } from '../../db';
 
 interface RateLimitConfig {
   windowMs: number;
@@ -35,36 +36,34 @@ async function checkRateLimit(bucketName: string, key: string, windowMs: number,
   const windowEnd = new Date(now.getTime() + windowMs);
 
   try {
-    const result = await pool.query(`
+    await db.execute(sql`
       INSERT INTO kyc_rate_limits (bucket_name, rate_key, request_count, violations, window_start, window_end, updated_at)
-      VALUES ($1, $2, 1, 0, $3, $4, $3)
+      VALUES (${bucketName}, ${key}, 1, 0, ${now}, ${windowEnd}, ${now})
       ON CONFLICT (bucket_name, rate_key, window_start) DO UPDATE
         SET request_count = kyc_rate_limits.request_count + 1,
-            updated_at = $3
-      RETURNING request_count, violations, window_end
-    `, [bucketName, key, now, windowEnd]);
+            updated_at = ${now}
+    `);
 
-    let row = result.rows[0];
-
-    const activeWindow = await pool.query(`
+    const activeWindowResult = await db.execute(sql`
       SELECT SUM(request_count) as total_count, MAX(violations) as max_violations, MAX(window_end) as max_window_end
       FROM kyc_rate_limits
-      WHERE bucket_name = $1 AND rate_key = $2 AND window_end > $3
-    `, [bucketName, key, now]);
+      WHERE bucket_name = ${bucketName} AND rate_key = ${key} AND window_end > ${now}
+    `);
 
-    const totalCount = parseInt(activeWindow.rows[0]?.total_count || '1');
-    const violations = parseInt(activeWindow.rows[0]?.max_violations || '0');
-    const resetAt = new Date(activeWindow.rows[0]?.max_window_end || windowEnd);
+    const activeWindowRow = activeWindowResult.rows[0] as any;
+    const totalCount = parseInt(activeWindowRow?.total_count || '1');
+    const violations = parseInt(activeWindowRow?.max_violations || '0');
+    const resetAt = new Date(activeWindowRow?.max_window_end || windowEnd);
 
     const backoffMultiplier = Math.pow(2, Math.min(violations, 4));
     const effectiveMax = Math.max(1, Math.floor(maxRequests / backoffMultiplier));
 
     if (totalCount > effectiveMax) {
-      await pool.query(`
+      await db.execute(sql`
         UPDATE kyc_rate_limits
-        SET violations = violations + 1, updated_at = $1
-        WHERE bucket_name = $2 AND rate_key = $3 AND window_end > $1
-      `, [now, bucketName, key]);
+        SET violations = violations + 1, updated_at = ${now}
+        WHERE bucket_name = ${bucketName} AND rate_key = ${key} AND window_end > ${now}
+      `);
 
       const retryAfterSeconds = Math.ceil((resetAt.getTime() - now.getTime()) / 1000);
       return {
@@ -204,10 +203,10 @@ export const kycLivenessLimiter = getRateLimitMiddleware({
 
 export async function cleanupExpiredRateLimits(): Promise<number> {
   try {
-    const result = await pool.query(`
+    const result = await db.execute(sql`
       DELETE FROM kyc_rate_limits WHERE window_end < NOW() - INTERVAL '1 hour'
     `);
-    const deleted = result.rowCount || 0;
+    const deleted = (result as any).rowCount || 0;
     if (deleted > 0) {
       logger.info(`[KYC2026:RateLimit] Cleaned up ${deleted} expired rate limit entries`);
     }

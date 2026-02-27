@@ -90,7 +90,9 @@ export class EncryptionService {
     const iv = Buffer.from(encryptedData.iv, 'base64');
     const authTag = Buffer.from(encryptedData.authTag, 'base64');
     
-    // Create decipher
+    // Security: GCM auth tag is set before any decryption, ensuring ciphertext
+    // integrity is verified by Node.js during decipher.final() — if the tag
+    // does not match the decrypted content, final() throws and decryption fails.
     const decipher = crypto.createDecipheriv(ALGORITHM, this.encryptionKey, iv);
     decipher.setAuthTag(authTag);
     

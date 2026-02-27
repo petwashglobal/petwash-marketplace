@@ -82,6 +82,9 @@ export class DocumentEncryption {
   ): Buffer {
     const key = this.deriveKey(masterKey, salt);
     
+    // Security: GCM auth tag is set before any decryption, ensuring ciphertext
+    // integrity is verified by Node.js during decipher.final() — if the tag
+    // does not match the decrypted content, final() throws and decryption fails.
     const decipher = crypto.createDecipheriv(ENCRYPTION_ALGORITHM, key, iv);
     decipher.setAuthTag(authTag);
     
