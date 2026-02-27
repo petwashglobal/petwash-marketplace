@@ -23,13 +23,18 @@ declare global {
  */
 export function initGoogleTagManager(containerId: string = 'GTM-XXXXXXX') {
   if (typeof window === 'undefined' || import.meta.env.DEV) return;
-  
+
+  if (!/^GTM-[A-Z0-9]+$/.test(containerId)) {
+    console.error('[Marketing] Invalid GTM container ID format:', containerId);
+    return;
+  }
+
   // GTM data layer
   window.dataLayer = window.dataLayer || [];
   
   // GTM script
   const script = document.createElement('script');
-  script.innerHTML = `
+  script.textContent = `
     (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
     new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
     j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
@@ -80,9 +85,14 @@ export function initFacebookPixel(pixelId: string = '123456789') {
  */
 export function initTikTokPixel(pixelId: string = 'XXXXXXXXX') {
   if (typeof window === 'undefined' || import.meta.env.DEV) return;
-  
+
+  if (!/^[A-Z0-9]+$/.test(pixelId)) {
+    console.error('[Marketing] Invalid TikTok pixel ID format:', pixelId);
+    return;
+  }
+
   const script = document.createElement('script');
-  script.innerHTML = `
+  script.textContent = `
     !function (w, d, t) {
       w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];
       ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"],
@@ -108,10 +118,15 @@ export function initTikTokPixel(pixelId: string = 'XXXXXXXXX') {
  */
 export function initMicrosoftClarity(projectId: string = 'XXXXXXXXX') {
   if (typeof window === 'undefined' || import.meta.env.DEV) return;
-  
+
+  if (!/^[a-z0-9]+$/.test(projectId)) {
+    console.error('[Marketing] Invalid Microsoft Clarity project ID format:', projectId);
+    return;
+  }
+
   const script = document.createElement('script');
   script.type = 'text/javascript';
-  script.innerHTML = `
+  script.textContent = `
     (function(c,l,a,r,i,t,y){
       c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
       t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
