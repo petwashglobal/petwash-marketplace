@@ -23,7 +23,7 @@ import { logger } from "@/lib/logger";
 import { signInWithPasskey, signInWithPasskeyConditional, isPasskeySupported, getBiometricMethodName, isChromeiOS, getBrowserName } from "@/auth/passkey";
 import { useAutoFaceID, storePasskeyEmail, clearPasskeyEmail, storeLastAuthMethod, getConsecutiveFailures } from "@/hooks/useAutoFaceID";
 import { FaceIDLoadingState } from "@/components/FaceIDLoadingState";
-import { ReCaptcha } from "@/components/ReCaptcha";
+import { ReCaptcha, SecurityCheckpoint } from "@/components/ReCaptcha";
 import { trackAuthError } from "@/lib/authErrorTracker";
 import { trustDevice, isDeviceTrusted } from "@/lib/deviceTrust";
 import { motion, AnimatePresence } from "framer-motion";
@@ -57,6 +57,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const { trackUserAuth, trackEvent } = useAnalytics();
   const { user, logout } = useFirebaseAuth();
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [magicLinkMode, setMagicLinkMode] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
@@ -1111,6 +1112,15 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
   const handleEmailPasswordSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!captchaToken) {
+      toast({
+        variant: 'destructive',
+        title: language === 'he' ? 'אימות נדרש' : 'Verification required',
+        description: language === 'he' ? 'אנא השלם את אימות האבטחה' : 'Please complete the security verification',
+      });
+      return;
+    }
     
     try {
       setLoading(true);
@@ -1887,10 +1897,17 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 </button>
               )}
               
+              <SecurityCheckpoint
+                onVerified={(token) => setCaptchaToken(token)}
+                onFailed={() => setCaptchaToken(null)}
+                language={language}
+                action="login"
+              />
+
               <Button
                 type="submit"
-                disabled={loading}
-                className="w-full h-12 text-sm font-medium bg-neutral-900 hover:bg-neutral-800 text-white rounded-none tracking-wider uppercase transition-all border-0"
+                disabled={loading || !captchaToken}
+                className="w-full h-12 text-sm font-medium bg-neutral-900 hover:bg-neutral-800 text-white rounded-none tracking-wider uppercase transition-all border-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 data-testid="button-email-signin"
               >
                 {loading ? (
@@ -2062,9 +2079,6 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             </motion.div>
           )}
 
-          <div className="pt-2 flex items-center justify-center">
-            <ReCaptcha language={language} />
-          </div>
           </div>
         </motion.div>
       </div>
