@@ -946,7 +946,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ phone: formattedPhone, language }),
+        body: JSON.stringify({ phone: formattedPhone, language, captchaToken }),
       });
 
       const result = await response.json();

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { getCurrentUser } from "../simpleAuth";
 import { logger } from "../lib/logger";
+import { verifyCaptchaToken } from "../lib/verifyCaptcha";
 import { twilioSMSService } from "../services/TwilioSMSService";
 import { db as firestoreDb, auth as fbAdminAuth } from '../lib/firebase-admin';
 import { sql } from 'drizzle-orm';
@@ -225,13 +226,23 @@ publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (
   try {
     const traceId = (req as any).traceId || crypto.randomUUID();
     logger.info('[Auth] Phone code send started', { traceId, phone: req.body.phone?.slice(-4) });
-    const { phone, language = 'he' } = req.body;
+    const { phone, language = 'he', captchaToken } = req.body;
     
     if (!phone) {
       return res.status(400).json({
         ok: false,
         error: language === 'he' ? 'נדרש מספר טלפון' : 'Phone number is required'
       });
+    }
+
+    if (!captchaToken) {
+      logger.warn('[PublicAuth] Phone send-code blocked — no captchaToken', { phone: phone.slice(-4) });
+      return res.status(400).json({ ok: false, error: language === 'he' ? 'נדרש אימות אבטחה' : 'Security verification required' });
+    }
+    const captchaResult = await verifyCaptchaToken(captchaToken, 'phone_login');
+    if (!captchaResult.valid) {
+      logger.warn('[PublicAuth] Phone send-code blocked by reCAPTCHA', { phone: phone.slice(-4), reason: captchaResult.reason });
+      return res.status(403).json({ ok: false, error: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed. Please refresh and try again.' });
     }
 
     // Check per-phone lockout (too many failed verify attempts)
@@ -596,6 +607,7 @@ const otpSendSchema = z.object({
   phone: z.string().min(8).max(20),
   userTypeIntent: z.enum(['PUBLIC', 'PROVIDER', 'STAFF_REQUEST']).default('PUBLIC'),
   channel: z.enum(['sms', 'whatsapp']).default('sms'),
+  captchaToken: z.string().optional(),
 });
 
 const otpResendSchema = z.object({
@@ -615,8 +627,18 @@ publicAuthRouter.post('/api/auth/phone/otp/send', async (req, res) => {
       return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid phone number or intent', details: parsed.error.flatten() });
     }
 
-    const { phone, userTypeIntent, channel } = parsed.data;
+    const { phone, userTypeIntent, channel, captchaToken } = parsed.data;
     const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
+
+    if (!captchaToken) {
+      logger.warn('[PublicAuth] OTP send blocked — no captchaToken', { phone: phone.slice(-4) });
+      return res.status(400).json({ error: 'CAPTCHA_REQUIRED', message: language === 'he' ? 'נדרש אימות אבטחה' : 'Security verification required' });
+    }
+    const captchaResult = await verifyCaptchaToken(captchaToken, 'phone_otp');
+    if (!captchaResult.valid) {
+      logger.warn('[PublicAuth] OTP send blocked by reCAPTCHA', { phone: phone.slice(-4), reason: captchaResult.reason });
+      return res.status(403).json({ error: 'CAPTCHA_FAILED', message: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed. Please refresh and try again.' });
+    }
 
     const result = await registrationOTPService.sendOTP(phone, userTypeIntent, {
       ip: req.ip || req.headers['x-forwarded-for']?.toString(),

@@ -7,6 +7,7 @@ import { apiRequest } from '@/lib/queryClient';
 import type { Language } from '@/lib/i18n';
 import { Mail, Phone, CheckCircle2, ArrowRight, ArrowLeft, Shield, Loader2, RefreshCw, Link2 } from 'lucide-react';
 import { PhoneInput } from '@/components/PhoneInput';
+import { SecurityCheckpoint } from '@/components/ReCaptcha';
 
 interface OnboardingVerificationProps {
   isOpen: boolean;
@@ -148,6 +149,7 @@ export function OnboardingVerification({
   const [smsToken, setSmsToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [smsCaptchaToken, setSmsCaptchaToken] = useState<string | null>(null);
 
   const [linkPolling, setLinkPolling] = useState(false);
   const emailInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -293,9 +295,13 @@ export function OnboardingVerification({
       toast({ title: isRTL ? 'אנא הזינו מספר טלפון תקין' : 'Please enter a valid phone number', variant: 'destructive' });
       return;
     }
+    if (!smsCaptchaToken) {
+      toast({ title: isRTL ? 'נדרש אימות אבטחה' : 'Security verification required', variant: 'destructive' });
+      return;
+    }
     setLoading(true);
     try {
-      const res = await apiRequest('POST', '/api/onboarding-verification/send-sms-code', { phone, language });
+      const res = await apiRequest('POST', '/api/onboarding-verification/send-sms-code', { phone, language, captchaToken: smsCaptchaToken });
       const data = await res.json();
       if (data.success) {
         setStep('phone_code');
@@ -553,9 +559,14 @@ export function OnboardingVerification({
                   language={language}
                 />
               </div>
+              <SecurityCheckpoint
+                onVerified={(token) => setSmsCaptchaToken(token)}
+                language={language}
+                action="send_sms"
+              />
               <Button
                 onClick={sendSmsCode}
-                disabled={loading || !phone}
+                disabled={loading || !phone || !smsCaptchaToken}
                 className="w-full h-12 text-base font-semibold text-white"
                 style={{ background: 'linear-gradient(135deg, #1a1a1a, #374151)', borderRadius: '2px' }}
               >

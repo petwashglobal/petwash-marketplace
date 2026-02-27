@@ -4,7 +4,23 @@ import jwt from 'jsonwebtoken';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { EmailService } from '../emailService';
 import { logger } from '../lib/logger';
+import { verifyCaptchaToken } from '../lib/verifyCaptcha';
 import crypto from 'crypto';
+
+const phoneSmsSentAt = new Map<string, number[]>();
+const SMS_PER_PHONE_MAX = 3;
+const SMS_PER_PHONE_WINDOW_MS = 60 * 60 * 1000;
+
+function checkPhoneSmsCooldown(phone: string): { blocked: boolean; message: string } {
+  const now = Date.now();
+  const timestamps = (phoneSmsSentAt.get(phone) || []).filter(t => now - t < SMS_PER_PHONE_WINDOW_MS);
+  if (timestamps.length >= SMS_PER_PHONE_MAX) {
+    return { blocked: true, message: 'Too many SMS sent to this number. Please wait before requesting again.' };
+  }
+  timestamps.push(now);
+  phoneSmsSentAt.set(phone, timestamps);
+  return { blocked: false, message: '' };
+}
 
 const router = Router();
 
@@ -361,21 +377,34 @@ router.post('/verify-email-code', async (req: Request, res: Response, next) => {
   }
 });
 
-router.post('/send-sms-code', async (req: Request, res: Response, next) => {
-  const { phone, language = 'he' } = req.body;
-  if (phone) {
-    const lockResult = twilioSMSService.checkPhoneLockout(phone, language);
-    if (lockResult) {
-      return res.status(429).json(lockResult);
-    }
-  }
-  next();
-}, verificationLimiter, async (req: Request, res: Response) => {
+router.post('/send-sms-code', verificationLimiter, async (req: Request, res: Response) => {
   try {
-    const { phone, language = 'he' } = req.body;
+    const { phone, language = 'he', captchaToken } = req.body;
 
     if (!phone) {
       return res.status(400).json({ success: false, message: 'Phone number required' });
+    }
+
+    if (!captchaToken) {
+      logger.warn('[Verification] SMS send blocked — no captchaToken', { phone: phone.slice(0, 6) });
+      return res.status(400).json({ success: false, message: 'Security verification required' });
+    }
+
+    const captchaResult = await verifyCaptchaToken(captchaToken, 'send_sms');
+    if (!captchaResult.valid) {
+      logger.warn('[Verification] SMS send blocked by reCAPTCHA', { phone: phone.slice(0, 6), reason: captchaResult.reason });
+      return res.status(403).json({ success: false, message: 'Security check failed. Please refresh and try again.' });
+    }
+
+    const phoneCooldown = checkPhoneSmsCooldown(phone);
+    if (phoneCooldown.blocked) {
+      logger.warn('[Verification] SMS blocked — per-phone rate limit', { phone: phone.slice(0, 6) });
+      return res.status(429).json({ success: false, message: phoneCooldown.message });
+    }
+
+    const lockResult = twilioSMSService.checkPhoneLockout(phone, language);
+    if (lockResult) {
+      return res.status(429).json(lockResult);
     }
 
     const result = await twilioSMSService.sendVerificationCode(phone, language);
