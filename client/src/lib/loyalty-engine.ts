@@ -522,7 +522,7 @@ export function getTierColorClass(tier: string): string {
   const colorMap: Record<string, string> = {
     new: 'text-slate-500',
     silver: 'text-gray-400',
-    gold: 'text-amber-500',
+    gold: 'text-cyan-500',
     platinum: 'text-gray-300',
     diamond: 'text-blue-500',
   };
@@ -537,7 +537,7 @@ export function getTierGradientClass(tier: string): string {
   const gradientMap: Record<string, string> = {
     new: 'from-slate-500 to-slate-700',
     silver: 'from-gray-300 to-gray-500',
-    gold: 'from-amber-400 to-amber-600',
+    gold: 'from-cyan-400 to-teal-600',
     platinum: 'from-gray-200 to-gray-400',
     diamond: 'from-blue-400 to-blue-600',
   };

@@ -55,13 +55,13 @@ const COUNTRIES = [
 const TOTAL_STEPS = 5;
 
 const TIER_DATA = [
-  { id: 'bronze', label: 'Bronze', points: '0', color: '#CD7F32', bg: 'from-amber-700/10 to-amber-600/5' },
-  { id: 'silver', label: 'Silver', points: '1,000', color: '#94A3B8', bg: 'from-slate-400/10 to-slate-300/5' },
-  { id: 'gold', label: 'Gold', points: '5,000', color: '#D4AF37', bg: 'from-yellow-500/10 to-yellow-400/5' },
-  { id: 'platinum', label: 'Platinum', points: '15,000', color: '#94A3B8', bg: 'from-gray-300/10 to-gray-200/5' },
-  { id: 'diamond', label: 'Diamond', points: '30,000', color: '#60A5FA', bg: 'from-blue-400/10 to-blue-300/5' },
-  { id: 'royal_black', label: 'Royal Black', points: '50,000', color: '#1a1a2e', bg: 'from-gray-800/10 to-gray-700/5' },
-  { id: 'crown', label: 'Crown', points: '100,000', color: '#C9A96E', bg: 'from-amber-500/10 to-amber-400/5' },
+  { id: 'bronze', label: 'Bronze', points: '0', color: '#8E9EA8', bg: 'from-slate-400/10 to-slate-300/5' },
+  { id: 'silver', label: 'Silver', points: '1,000', color: '#B0BEC5', bg: 'from-slate-300/10 to-slate-200/5' },
+  { id: 'gold', label: 'Gold', points: '5,000', color: '#C5BFA0', bg: 'from-stone-300/10 to-stone-200/5' },
+  { id: 'platinum', label: 'Platinum', points: '15,000', color: '#A8C0CC', bg: 'from-cyan-200/10 to-sky-200/5' },
+  { id: 'diamond', label: 'Diamond', points: '30,000', color: '#7BC4D4', bg: 'from-cyan-400/10 to-teal-300/5' },
+  { id: 'royal_black', label: 'Royal Black', points: '50,000', color: '#2E3A4A', bg: 'from-gray-800/10 to-gray-700/5' },
+  { id: 'crown', label: 'Crown', points: '100,000', color: '#85C4CE', bg: 'from-teal-300/10 to-cyan-200/5' },
 ];
 
 const PLATFORMS = [
@@ -74,7 +74,7 @@ const PLATFORMS = [
   { name: '⁦Wash Hub™⁩', icon: '💎' },
 ];
 
-const gold = '#C9A96E';
+const gold = '#85C4CE';
 
 export default function PrivilegeSignup({ language, onLanguageChange }: PrivilegeSignupProps) {
   const { toast } = useToast();
@@ -327,7 +327,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                 whileHover={{ y: -5, scale: 1.02 }}
                 className="relative mx-auto max-w-sm p-6 text-white overflow-hidden"
                 style={{
-                  background: 'radial-gradient(circle at 10% -10%, rgba(255,255,255,0.24), transparent 55%), radial-gradient(circle at 95% 110%, rgba(201,169,110,0.15), transparent 55%), linear-gradient(135deg, #05070a, #121b2a 60%, #1a2e3a 100%)',
+                  background: 'radial-gradient(circle at 10% -10%, rgba(255,255,255,0.24), transparent 55%), radial-gradient(circle at 95% 110%, rgba(133,196,206,0.15), transparent 55%), linear-gradient(135deg, #05070a, #121b2a 60%, #1a2e3a 100%)',
                   borderRadius: '2px',
                   border: '1px solid rgba(255,255,255,0.08)',
                   boxShadow: '0 25px 60px rgba(0,0,0,0.25), 0 10px 20px rgba(0,0,0,0.12)'

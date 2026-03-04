@@ -23,7 +23,7 @@ import { useLocation, Link } from "wouter";
 import diamondLogo from "@assets/IMG_3257_1771244654511.png";
 import diamondLogoBlack from "@assets/IMG_3269_1771249415226.png";
 
-const gold = '#C9A96E';
+const gold = '#85C4CE';
 
 const PRESTIGE_TIERS = [
   {
@@ -42,12 +42,12 @@ const PRESTIGE_TIERS = [
     key: 'signature',
     nameKey: 'privilege.tierSignature',
     descKey: 'privilege.tierSignatureDesc',
-    cardBg: 'linear-gradient(145deg, #C9A96E 0%, #B8963E 20%, #A6842F 45%, #937225 70%, #7D611C 100%)',
-    shine: 'linear-gradient(125deg, transparent 15%, rgba(255,255,255,0.18) 35%, rgba(255,255,255,0.28) 42%, transparent 55%)',
-    labelColor: '#FFF3D6',
+    cardBg: 'linear-gradient(145deg, #85C4CE 0%, #6AADB8 20%, #4F8FA0 45%, #3A7085 70%, #2A5568 100%)',
+    shine: 'linear-gradient(125deg, transparent 15%, rgba(255,255,255,0.22) 35%, rgba(255,255,255,0.32) 42%, transparent 55%)',
+    labelColor: '#D4EFF3',
     tierNameColor: '#ffffff',
-    borderColor: 'rgba(230,200,130,0.25)',
-    shadowMain: '0 25px 60px rgba(147,114,37,0.40), 0 10px 25px rgba(147,114,37,0.25)',
+    borderColor: 'rgba(133,196,206,0.30)',
+    shadowMain: '0 25px 60px rgba(42,85,104,0.45), 0 10px 25px rgba(42,85,104,0.28)',
     benefits: ['privilege.tierSignatureBenefit1', 'privilege.tierSignatureBenefit2'],
   },
   {
@@ -79,10 +79,10 @@ const PRESTIGE_TIERS = [
     nameKey: 'privilege.tierBlackReserve',
     descKey: 'privilege.tierBlackReserveDesc',
     cardBg: 'linear-gradient(145deg, #2a2a2a 0%, #1a1a1a 20%, #111111 45%, #080808 70%, #000000 100%)',
-    shine: 'linear-gradient(125deg, transparent 15%, rgba(201,169,110,0.08) 35%, rgba(255,255,255,0.06) 42%, transparent 55%)',
+    shine: 'linear-gradient(125deg, transparent 15%, rgba(133,196,206,0.08) 35%, rgba(255,255,255,0.06) 42%, transparent 55%)',
     labelColor: gold,
     tierNameColor: '#ffffff',
-    borderColor: `rgba(201,169,110,0.25)`,
+    borderColor: `rgba(133,196,206,0.25)`,
     shadowMain: '0 25px 60px rgba(0,0,0,0.50), 0 10px 25px rgba(0,0,0,0.35)',
     isInviteOnly: true,
     benefits: ['privilege.tierBlackReserveBenefit1', 'privilege.tierBlackReserveBenefit2'],
@@ -131,7 +131,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
               className="relative overflow-hidden w-full"
               style={{
                 borderRadius: 'clamp(12px, 3.5vw, 18px)',
-                border: '1px solid rgba(201,169,110,0.22)',
+                border: '1px solid rgba(133,196,206,0.22)',
                 boxShadow: '0 60px 120px rgba(0,0,0,0.40), 0 25px 50px rgba(0,0,0,0.30)',
                 aspectRatio: '1.586 / 1',
               }}
@@ -170,8 +170,8 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                     style={{
                       width: 'clamp(32px, 8.5%, 42px)',
                       height: 'clamp(24px, 6.5%, 32px)',
-                      background: 'linear-gradient(145deg, #e8d5a8 0%, #d4b87a 25%, #c9a96e 50%, #b8963e 75%, #d4b87a 100%)',
-                      border: '1px solid rgba(201,169,110,0.5)',
+                      background: 'linear-gradient(145deg, #D4EFF3 0%, #A8C4CE 25%, #85C4CE 50%, #6AADB8 75%, #A8C4CE 100%)',
+                      border: '1px solid rgba(133,196,206,0.5)',
                       boxShadow: 'inset 0 1px 3px rgba(255,255,255,0.4), inset 0 -1px 2px rgba(0,0,0,0.15), 0 3px 8px rgba(0,0,0,0.4)',
                     }}
                   >
@@ -748,7 +748,7 @@ export default function Loyalty() {
               <div
                 className="relative p-7 sm:p-8 text-white overflow-hidden"
                 style={{
-                  background: 'radial-gradient(circle at 10% -10%, rgba(255,255,255,0.24), transparent 55%), radial-gradient(circle at 95% 110%, rgba(201,169,110,0.15), transparent 55%), linear-gradient(135deg, #05070a, #121b2a 60%, #1a2e3a 100%)',
+                  background: 'radial-gradient(circle at 10% -10%, rgba(255,255,255,0.24), transparent 55%), radial-gradient(circle at 95% 110%, rgba(133,196,206,0.15), transparent 55%), linear-gradient(135deg, #05070a, #121b2a 60%, #1a2e3a 100%)',
                   borderRadius: '2px',
                   border: '1px solid rgba(255,255,255,0.08)',
                   boxShadow: '0 25px 60px rgba(0,0,0,0.2), 0 10px 20px rgba(0,0,0,0.1)'
@@ -964,9 +964,9 @@ export default function Loyalty() {
                     const config = getTierConfig(tier);
                     const isCurrent = tier === tierProgress.currentTier;
                     const tierColors: Record<LoyaltyTier, { accent: string }> = {
-                      bronze: { accent: '#CD7F32' },
+                      bronze: { accent: '#8E9EA8' },
                       silver: { accent: '#94A3B8' },
-                      gold: { accent: '#D4AF37' },
+                      gold: { accent: '#85C4CE' },
                       platinum: { accent: '#9CA3AF' },
                       diamond: { accent: '#3B82F6' },
                       emerald: { accent: '#10B981' },
