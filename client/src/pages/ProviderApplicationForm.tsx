@@ -9,12 +9,16 @@
  * - Mobile-first responsive design
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SecurityCheckpoint } from '@/components/ReCaptcha';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link } from "wouter";
+import { signInWithPopup } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { createGoogleProvider } from "@/lib/iosAuthHandler";
+import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,8 +30,9 @@ import {
   Car, Home, Dog, Scissors, GraduationCap,
   ArrowRight, ArrowLeft, Sparkles, Crown, Send,
   Camera, User, X, Sun,
-  Check, DollarSign, Info, MapPin
+  Check, DollarSign, Info, MapPin, Mail
 } from "lucide-react";
+import { SiGoogle } from "react-icons/si";
 import { useLanguage } from "@/lib/languageStore";
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { PhoneInput } from '@/components/PhoneInput';
@@ -156,7 +161,9 @@ export default function ProviderApplicationForm() {
   const { toast } = useToast();
   const { language } = useLanguage();
   const isHebrew = language === 'he';
-  const [step, setStep] = useState(1);
+  const { user } = useFirebaseAuth();
+  const [step, setStep] = useState(user ? 1 : 0);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [pricing, setPricing] = useState<Record<string, { baseRate: number; additionalPet: number }>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -208,6 +215,42 @@ export default function ProviderApplicationForm() {
       agreeToContractorStatus: false,
     },
   });
+
+  useEffect(() => {
+    if (user) {
+      const displayName = user.displayName || '';
+      const nameParts = displayName.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      if (firstName) form.setValue('firstName', firstName);
+      if (lastName) form.setValue('lastName', lastName);
+      if (user.email) form.setValue('email', user.email);
+      if (user.photoURL) setProfilePhoto(user.photoURL);
+      if (step === 0) setStep(1);
+    }
+  }, [user]);
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      const provider = createGoogleProvider();
+      await signInWithPopup(auth, provider);
+      toast({
+        title: isHebrew ? 'התחברת בהצלחה!' : 'Signed in successfully!',
+        description: isHebrew ? 'פרטיך מולאו אוטומטית' : 'Your details have been pre-filled',
+      });
+    } catch (err: any) {
+      if (err?.code !== 'auth/popup-closed-by-user') {
+        toast({
+          variant: 'destructive',
+          title: isHebrew ? 'שגיאת התחברות' : 'Sign-in failed',
+          description: err?.message || (isHebrew ? 'אנא נסה שוב' : 'Please try again'),
+        });
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const t = {
     title: isHebrew ? 'הפוך לספק שירות' : 'Become a Provider',
@@ -444,7 +487,54 @@ export default function ProviderApplicationForm() {
             </p>
           </div>
 
+          {/* Step 0: Google / Gmail Sign-In Gate */}
+          {step === 0 && (
+            <div className="rounded-3xl p-8 md:p-12 bg-white border border-gray-200 shadow-sm mb-10 max-w-lg mx-auto text-center">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-amber-500/30">
+                <Mail className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-black mb-2">
+                {isHebrew ? 'התחבר כדי להמשיך' : 'Sign in to continue'}
+              </h2>
+              <p className="text-gray-500 mb-8 text-sm leading-relaxed">
+                {isHebrew
+                  ? 'התחבר עם Gmail כדי שנוכל למלא את הפרטים שלך אוטומטית ולשמור את ההתקדמות שלך'
+                  : 'Sign in with Gmail so we can pre-fill your details automatically and save your progress'}
+              </p>
+
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={googleLoading}
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl border-2 border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 font-semibold text-gray-700 shadow-sm hover:shadow-md disabled:opacity-60 disabled:cursor-not-allowed mb-4"
+              >
+                {googleLoading
+                  ? <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                  : <SiGoogle className="w-5 h-5 text-[#4285F4]" />}
+                {isHebrew ? 'המשך עם Gmail' : 'Continue with Gmail'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="w-full text-sm text-gray-400 hover:text-gray-600 transition-colors py-2"
+              >
+                {isHebrew ? 'המשך ללא התחברות' : 'Continue without signing in'}
+              </button>
+
+              <div className="mt-8 pt-6 border-t border-gray-100 flex items-start gap-3 text-left">
+                <Shield className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  {isHebrew
+                    ? 'רק שמך, כתובת האימייל ותמונת הפרופיל שלך ישמשו למילוי מראש. לעולם לא נשתף את פרטיך עם גורמים שלישיים.'
+                    : 'Only your name, email, and profile picture will be used to pre-fill the form. We never share your details with third parties.'}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Luxury Progress Steps */}
+          {step > 0 && (
           <div className="mb-10">
             <div className="flex items-center justify-between max-w-3xl mx-auto px-4">
               {[1, 2, 3, 4, 5].map((s, index) => (
@@ -480,7 +570,9 @@ export default function ProviderApplicationForm() {
               {isHebrew ? `שלב ${step} מתוך 5` : `Step ${step} of 5`}
             </p>
           </div>
+          )}
 
+          {step > 0 && (
           <div 
             className="rounded-3xl p-6 md:p-10 bg-white border border-gray-200 shadow-sm"
           >
@@ -1384,6 +1476,7 @@ export default function ProviderApplicationForm() {
             </form>
           </Form>
         </div>
+          )}
 
         {/* Luxury Trust Badges */}
         <div className="mt-10 text-center">
