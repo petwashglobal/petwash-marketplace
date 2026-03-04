@@ -649,37 +649,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       let userCredential: import('firebase/auth').UserCredential | null = null;
       
-      if (isGenericWebview) {
-        logger.info(`[Auth] Generic webview detected, using redirect auth for ${provider}`);
-        await signInWithBestMethod(auth, authProvider, 'redirect');
-        return;
-      }
-      
-      try {
-        logger.info(`[Auth] Using popup auth for ${provider} (${isIOSDevice ? 'iOS' : 'desktop'} browser)`);
-        userCredential = await signInWithPopup(auth, authProvider);
-      } catch (popupErr: any) {
-        const fallbackCodes = [
-          'auth/popup-blocked',
-          'auth/popup-closed-by-user',
-          'auth/cancelled-popup-request',
-          'auth/operation-not-supported-in-this-environment',
-          'auth/internal-error',
-        ];
-        if (fallbackCodes.includes(popupErr.code)) {
-          logger.info(`[Auth] Popup failed (${popupErr.code}) for ${provider}, falling back to redirect`, { traceId });
-          sessionStorage.setItem('pw_auth_pending_redirect', 'true');
-          await signInWithBestMethod(auth, authProvider, 'redirect');
-          return;
-        } else {
-          throw popupErr;
-        }
-      }
-      
-      if (!userCredential) {
-        logger.info('[Auth] Redirect initiated, waiting for return...');
-        return;
-      }
+      logger.info(`[Auth] Using popup auth for ${provider} (${isIOSDevice ? 'iOS' : 'desktop'} browser, webview=${isGenericWebview})`);
+      userCredential = await signInWithPopup(auth, authProvider);
 
       const additionalInfo = getAdditionalUserInfo(userCredential);
       const isNewUser = additionalInfo?.isNewUser || false;

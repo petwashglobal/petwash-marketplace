@@ -8,7 +8,6 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
   indexedDBLocalPersistence,
-  getRedirectResult,
 } from "firebase/auth";
 import { trackLogout } from "@/lib/analytics";
 import { logger } from "@/lib/logger";
@@ -163,11 +162,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (async () => {
       await setPersistenceWithFallback();
 
-      // Set up onAuthStateChanged IMMEDIATELY — do NOT block on getRedirectResult.
-      // On mobile Safari, signInWithPopup falls back to signInWithRedirect, and
-      // getRedirectResult requires cross-origin iframe communication that iOS/Safari
-      // blocks, causing a 10-15s freeze before onAuthStateChanged is ever registered.
-      // Instead we handle the redirect result in the background.
+      // Popup-only auth — no redirect fallback. Redirect fails on iOS/Safari because
+      // sessionStorage is partitioned between origins, breaking Firebase's state handshake.
       unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
         setUser(firebaseUser);
         setLoading(false);
@@ -201,33 +197,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       });
 
-      // Handle redirect result in the background — never blocks onAuthStateChanged.
-      // Uses a short 8s timeout; on success onAuthStateChanged fires naturally.
-      const pendingRedirect = sessionStorage.getItem('pw_auth_pending_redirect') === 'true';
-      if (pendingRedirect) {
-        logger.info('[AuthProvider] Pending redirect detected, checking result in background');
-        Promise.race([
-          getRedirectResult(auth),
-          new Promise<null>((resolve) => setTimeout(() => resolve(null), 8_000)),
-        ])
-          .then((redirectResult) => {
-            sessionStorage.removeItem('pw_auth_pending_redirect');
-            if (redirectResult?.user) {
-              logger.info('[AuthProvider] Redirect sign-in completed', {
-                email: redirectResult.user.email,
-                uid: redirectResult.user.uid,
-              });
-            } else {
-              logger.warn('[AuthProvider] Pending redirect returned no user — auth may have failed or timed out');
-            }
-          })
-          .catch((err: any) => {
-            sessionStorage.removeItem('pw_auth_pending_redirect');
-            if (err?.code !== 'auth/popup-closed-by-user') {
-              logger.error('[AuthProvider] Redirect result error', { code: err?.code, message: err?.message });
-            }
-          });
-      }
     })();
 
     return () => {

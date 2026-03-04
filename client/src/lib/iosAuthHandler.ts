@@ -8,9 +8,7 @@
  */
 
 import { 
-  signInWithRedirect, 
   signInWithPopup,
-  getRedirectResult,
   GoogleAuthProvider,
   FacebookAuthProvider,
   OAuthProvider,
@@ -56,33 +54,10 @@ export function isIOS(): boolean {
 export async function signInWithBestMethod(
   auth: Auth,
   provider: AuthProvider,
-  preferredMethod?: 'popup' | 'redirect'
+  _preferredMethod?: 'popup' | 'redirect'
 ): Promise<UserCredential | null> {
-  try {
-    if (preferredMethod === 'redirect') {
-      console.log('[Auth] Using redirect-based sign-in (explicitly requested)');
-      await signInWithRedirect(auth, provider);
-      return null;
-    }
-
-    console.log(`[Auth] Using popup-based sign-in (${isIOS() ? 'iOS' : 'desktop'})`);
-    return await signInWithPopup(auth, provider);
-  } catch (error: any) {
-    const fallbackCodes = [
-      'auth/popup-blocked',
-      'auth/popup-closed-by-user',
-      'auth/cancelled-popup-request',
-      'auth/operation-not-supported-in-this-environment',
-      'auth/internal-error',
-    ];
-    if (fallbackCodes.includes(error.code)) {
-      console.log(`[Auth] Popup failed (${error.code}), falling back to redirect`);
-      await signInWithRedirect(auth, provider);
-      return null;
-    }
-    console.error('[Auth] Sign-in failed:', error);
-    throw error;
-  }
+  console.log(`[Auth] Using popup-based sign-in (${isIOS() ? 'iOS' : 'desktop'})`);
+  return await signInWithPopup(auth, provider);
 }
 
 /**

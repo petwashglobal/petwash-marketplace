@@ -15,7 +15,6 @@
 import { auth, app } from '@/lib/firebase';
 import { 
   signInWithPopup, 
-  signInWithRedirect, 
   GoogleAuthProvider,
 } from 'firebase/auth';
 import { logger } from '@/lib/logger';
@@ -145,32 +144,10 @@ export async function signInWithGoogle(): Promise<void> {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
     
-    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const isSafariBrowser = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    
-    if (isIOSDevice || isSafariBrowser) {
-      logger.info('[Auth Guardian] iOS/Safari detected, using redirect flow for Google sign-in');
-      beacon('auth.signin_google_redirect_ios', { isIOS: isIOSDevice, isSafari: isSafariBrowser });
-      await signInWithRedirect(auth, provider);
-      return;
-    }
-    
-    try {
-      const result = await signInWithPopup(auth, provider);
-      await refreshClaims();
-      beacon('auth.signin_google_popup_ok', { uid: result.user.uid });
-      logger.info('[Auth Guardian] Google sign-in successful (popup)', { uid: result.user.uid });
-    } catch (popupError: any) {
-      const errorCode = popupError?.code || '';
-      if (/popup|blocked|by-user|cancelled|operation-not-supported/i.test(errorCode)) {
-        logger.info('[Auth Guardian] Popup blocked, falling back to redirect', { reason: errorCode });
-        beacon('auth.signin_google_popup_fallback_redirect', { reason: errorCode });
-        await signInWithRedirect(auth, provider);
-        return;
-      }
-      throw popupError;
-    }
+    const result = await signInWithPopup(auth, provider);
+    await refreshClaims();
+    beacon('auth.signin_google_popup_ok', { uid: result.user.uid });
+    logger.info('[Auth Guardian] Google sign-in successful (popup)', { uid: result.user.uid });
   } catch (error: any) {
     const errorMsg = friendlyAuthError(String(error?.code || error?.message || error));
     banner.show(errorMsg);
