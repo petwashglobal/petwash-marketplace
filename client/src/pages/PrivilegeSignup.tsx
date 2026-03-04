@@ -1,4 +1,8 @@
 import { useState, useRef, useEffect } from "react";
+import { signInWithPopup } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { createGoogleProvider } from "@/lib/iosAuthHandler";
+import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -14,11 +18,12 @@ import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/goo
 import { motion, AnimatePresence } from "framer-motion";
 import { getApiUrl } from '@/lib/apiConfig';
 import { Link } from "wouter";
+import { SiGoogle } from "react-icons/si";
 import {
   Crown, Shield, Star, Sparkles, Upload, FileCheck, ArrowRight, ArrowLeft,
   Plus, X, Check, Lock, Users, Gift, Calendar, Heart, Zap, TrendingUp,
   Award, Diamond, Globe, Clock, MapPin, Briefcase, ChevronDown, Activity,
-  Dog, Cat, Gem, Trophy, Wallet, CreditCard, QrCode
+  Dog, Cat, Gem, Trophy, Wallet, CreditCard, QrCode, Loader2
 } from "lucide-react";
 
 interface PrivilegeSignupProps {
@@ -77,7 +82,9 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
+  const { user } = useFirebaseAuth();
   const [showForm, setShowForm] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -103,6 +110,42 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
   const [marketingConsent, setMarketingConsent] = useState(true);
   const [smsConsent, setSmsConsent] = useState(true);
   const [termsConsent, setTermsConsent] = useState(true);
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      const provider = createGoogleProvider();
+      await signInWithPopup(auth, provider);
+    } catch (err: any) {
+      if (err?.code !== 'auth/popup-closed-by-user') {
+        toast({
+          variant: 'destructive',
+          title: language === 'he' ? 'שגיאת התחברות' : 'Sign-in failed',
+          description: err?.message || (language === 'he' ? 'אנא נסה שוב' : 'Please try again'),
+        });
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      const displayName = user.displayName || '';
+      const nameParts = displayName.trim().split(' ');
+      if (nameParts[0]) setFirstName(nameParts[0]);
+      if (nameParts.slice(1).join(' ')) setLastName(nameParts.slice(1).join(' '));
+      if (user.email) setEmail(user.email);
+      setShowForm(true);
+      if (formRef.current) formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      toast({
+        title: language === 'he' ? 'ברוך הבא!' : 'Welcome!',
+        description: language === 'he'
+          ? `שלום ${nameParts[0] || ''}, פרטיך מולאו אוטומטית`
+          : `Hi ${nameParts[0] || ''}, your details have been pre-filled`,
+      });
+    }
+  }, [user]);
 
   useEffect(() => {
     const duration = 2000;
@@ -569,20 +612,52 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
           <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
             {!showForm ? (
               <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center space-y-6">
+                <div className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-full text-xs text-gray-500 tracking-widest uppercase mb-2">
+                  <Crown className="w-3 h-3" style={{ color: gold }} />
+                  {language === 'he' ? 'הצטרפות חינם' : 'Free Membership'}
+                </div>
                 <h2 className="text-3xl sm:text-4xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
                   {t('privilege.joinFormTitle', language)}
                 </h2>
-                <p className="text-gray-400 max-w-md mx-auto">{t('privilege.joinFormSubtitle', language)}</p>
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => setShowForm(true)}
-                  className="inline-flex items-center gap-3 px-10 py-4 text-lg font-bold text-white"
-                  style={{ background: '#0a0a0a', borderRadius: '2px' }}
-                >
-                  <Crown className="w-5 h-5" style={{ color: gold }} />
-                  {t('privilege.submitApplication', language)}
-                </motion.button>
+                <p className="text-gray-400 max-w-md mx-auto text-sm">{t('privilege.joinFormSubtitle', language)}</p>
+
+                <div className="max-w-sm mx-auto space-y-3 pt-2">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={handleGoogleSignIn}
+                    disabled={googleLoading}
+                    className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-200 font-semibold text-gray-700 shadow-sm"
+                    style={{ borderRadius: '2px' }}
+                  >
+                    {googleLoading
+                      ? <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                      : <SiGoogle className="w-5 h-5 text-[#4285F4]" />}
+                    {language === 'he' ? 'הצטרף עם Gmail' : 'Join with Gmail'}
+                  </motion.button>
+
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-px bg-gray-100" />
+                    <span className="text-xs text-gray-400">{language === 'he' ? 'או' : 'or'}</span>
+                    <div className="flex-1 h-px bg-gray-100" />
+                  </div>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setShowForm(true)}
+                    className="w-full flex items-center justify-center gap-3 px-6 py-3 text-sm font-medium text-white"
+                    style={{ background: '#0a0a0a', borderRadius: '2px' }}
+                  >
+                    {language === 'he' ? 'המשך עם טופס' : 'Continue with form'}
+                    <ArrowRight className="w-4 h-4" />
+                  </motion.button>
+                </div>
+
+                <p className="text-xs text-gray-400 pt-2 flex items-center justify-center gap-2">
+                  <Shield className="w-3 h-3 text-emerald-500" />
+                  {language === 'he' ? 'הצטרפות חינם · ביטול בכל עת · ללא כרטיס אשראי' : 'Free to join · Cancel anytime · No credit card'}
+                </p>
               </motion.div>
             ) : (
               <motion.div

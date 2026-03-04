@@ -490,8 +490,8 @@ export default function ProviderApplicationForm() {
           {/* Step 0: Google / Gmail Sign-In Gate */}
           {step === 0 && (
             <div className="rounded-3xl p-8 md:p-12 bg-white border border-gray-200 shadow-sm mb-10 max-w-lg mx-auto text-center">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-amber-500/30">
-                <Mail className="w-8 h-8 text-white" />
+              <div className="w-16 h-16 rounded-2xl bg-black flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <SiGoogle className="w-7 h-7 text-white" />
               </div>
               <h2 className="text-2xl font-bold text-black mb-2">
                 {isHebrew ? 'התחבר כדי להמשיך' : 'Sign in to continue'}
