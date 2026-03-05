@@ -258,8 +258,7 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
     // Create content hash for integrity
     const contentHash = sha256(JSON.stringify(formData));
     
-    // Get client IP for privacy compliance
-    const clientIp = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';
+    // Get client IP for privacy compliance (reuse clientIp from rate limit check above)
     
     // Insert application first (membership assigned after insert)
     const [application] = await db.insert(providerApplicants).values({
