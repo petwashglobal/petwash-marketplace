@@ -810,16 +810,20 @@ router.post('/:requestId/confirm', async (req, res) => {
       logger.warn('[BookingRequests] Notification failed', { error: notifError.message });
     }
 
-    // ENTERPRISE: Send SMS confirmation to owner's phone
+    // ENTERPRISE: Send SMS confirmation — phone must come from the authenticated user, not req.body
+    const callerUserId = req.user?.uid || req.firebaseUser?.uid || '';
+    if (booking.ownerId !== callerUserId) {
+      logger.warn('[BookingRequests] Caller is not the booking owner — skipping confirmation SMS', { requestId, callerUserId, ownerId: booking.ownerId });
+    }
     const { ownerPhone, ownerEmail } = req.body;
     const phoneRegex = /^\+?[1-9]\d{6,14}$/;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const validPhone = ownerPhone && phoneRegex.test(ownerPhone.replace(/[\s-]/g, ''));
     const validEmail = ownerEmail && emailRegex.test(ownerEmail);
-    if (validPhone) {
+    if (validPhone && booking.ownerId === callerUserId) {
       try {
         const smsBody = `Pet Wash™ Booking Confirmed!\n\nBooking: ${requestId}\nService: ${booking.serviceType}\nDates: ${booking.startDate ? new Date(booking.startDate).toLocaleDateString('en-AU') : 'N/A'} - ${booking.endDate ? new Date(booking.endDate).toLocaleDateString('en-AU') : 'N/A'}\nTotal: ₪${(booking.totalCents / 100).toFixed(2)}\nStatus: Completed & Confirmed\nPayout ETA: 72 hours\n\nThank you for choosing Pet Wash™!`;
-        await twilioSMSService.sendSMS(ownerPhone, smsBody);
+        await twilioSMSService.sendSMS(ownerPhone, smsBody, { userId: callerUserId, ip: req.ip, ua: req.headers['user-agent'] });
         logger.info('[BookingRequests] Confirmation SMS sent', { requestId, phone: ownerPhone.slice(0, 6) + '****' });
       } catch (smsErr: any) {
         logger.warn('[BookingRequests] SMS send failed', { error: smsErr.message });

@@ -24,14 +24,12 @@ async function requireAdmin(req: any, res: any, next: any) {
     const token = authHeader.split('Bearer ')[1];
     const decodedToken = await auth.verifyIdToken(token, true);
     
-    const adminEmails = [
-      'admin@petwash.co.il',
-      'hr@petwash.co.il',
-      'compliance@petwash.co.il',
-      'operations@petwash.co.il',
-    ];
+    const adminEmails = (process.env.SUPER_ADMIN_EMAILS || '')
+      .split(',')
+      .map(e => e.trim().toLowerCase())
+      .filter(Boolean);
     
-    if (!adminEmails.includes(decodedToken.email || '')) {
+    if (!adminEmails.includes((decodedToken.email || '').toLowerCase())) {
       return res.status(403).json({ error: 'הרשאות מנהל נדרשות' });
     }
 

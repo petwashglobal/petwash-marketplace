@@ -34,6 +34,41 @@ const MAX_GLOBAL_SMS_PER_DAY = 150;
 let globalDailySmsCount = 0;
 let globalDailyResetAt = Date.now() + 24 * 60 * 60 * 1000;
 
+const ALLOWED_COUNTRY_PREFIXES = [
+  '972',  // Israel
+  '61',   // Australia
+  '1',    // US / Canada
+  '44',   // UK
+  '33',   // France
+  '49',   // Germany
+  '34',   // Spain
+  '39',   // Italy
+  '31',   // Netherlands
+  '32',   // Belgium
+  '41',   // Switzerland
+  '43',   // Austria
+  '46',   // Sweden
+  '47',   // Norway
+  '45',   // Denmark
+  '353',  // Ireland
+  '351',  // Portugal
+  '30',   // Greece
+  '48',   // Poland
+  '420',  // Czech Republic
+  '36',   // Hungary
+  '40',   // Romania
+  '359',  // Bulgaria
+  '358',  // Finland
+];
+
+function isAllowedCountry(phone: string): boolean {
+  const digits = phone.replace(/[^0-9]/g, '');
+  for (const prefix of ALLOWED_COUNTRY_PREFIXES) {
+    if (digits.startsWith(prefix)) return true;
+  }
+  return false;
+}
+
 function checkGlobalDailyCap(): boolean {
   const now = Date.now();
   if (now > globalDailyResetAt) {
@@ -519,16 +554,26 @@ class TwilioSMSService {
     }
   }
 
-  async sendSMS(to: string, body: string): Promise<{
+  async sendSMS(to: string, body: string, meta?: { userId?: string; ip?: string; ua?: string }): Promise<{
     success: boolean;
     messageId?: string;
     error?: string;
   }> {
+    const auditCtx = { to: to.slice(0, 6) + '****', userId: meta?.userId, ip: meta?.ip, ua: meta?.ua?.slice(0, 80) };
+
     if (this.isEmergencyDisabled()) {
-      logger.warn('[TwilioSMS] 🚨 SMS_EMERGENCY_DISABLED=true — sendSMS blocked', { to: to.slice(-4) });
+      logger.warn('[TwilioSMS] 🚨 SMS_EMERGENCY_DISABLED=true — sendSMS blocked', auditCtx);
       return { success: false, error: 'SMS service temporarily suspended' };
     }
+
+    const formattedPhone = this.formatPhoneNumber(to);
+    if (!isAllowedCountry(formattedPhone)) {
+      logger.error('[TwilioSMS] 🚫 BLOCKED: destination country not in allowlist', { ...auditCtx, formattedPhone: formattedPhone.slice(0, 6) + '****' });
+      return { success: false, error: 'Destination country not permitted' };
+    }
+
     if (!checkGlobalDailyCap()) {
+      logger.error('[TwilioSMS] 🚨 Global daily cap reached — sendSMS blocked', auditCtx);
       return { success: false, error: 'Daily SMS limit reached — service suspended until midnight' };
     }
     if (!this.isReady()) {
@@ -538,7 +583,7 @@ class TwilioSMSService {
       };
     }
 
-    const formattedPhone = this.formatPhoneNumber(to);
+    logger.info('[TwilioSMS] sendSMS attempt', auditCtx);
 
     try {
       const params = this.getSendParams(formattedPhone, body);

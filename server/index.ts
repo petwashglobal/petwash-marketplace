@@ -2,6 +2,28 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
   delete process.env.GEMINI_API_KEY;
 }
 
+// ── Startup secrets validation (fail fast with clear errors) ──────────────────
+(function validateSecrets() {
+  const REQUIRED = [
+    { key: 'TWILIO_ACCOUNT_SID',  pattern: /^AC[a-f0-9]{32}$/,         hint: 'Must start with AC and be 34 chars (found in Twilio Console)' },
+    { key: 'TWILIO_AUTH_TOKEN',   pattern: /^[a-f0-9]{32}$/,           hint: 'Must be 32 hex chars (rotate at console.twilio.com)' },
+    { key: 'RECAPTCHA_SECRET_KEY',pattern: /^6[A-Za-z0-9_-]{39,}$/,    hint: 'Must start with 6 — get from Google reCAPTCHA console' },
+    { key: 'SUPER_ADMIN_EMAILS',  pattern: /.+@.+/,                    hint: 'Must be at least one valid email address' },
+  ];
+  const warnings: string[] = [];
+  for (const { key, pattern, hint } of REQUIRED) {
+    const val = (process.env[key] || '').trim();
+    if (!val) {
+      warnings.push(`[startup] ⚠️  ${key} is missing — ${hint}`);
+    } else if (!pattern.test(val)) {
+      warnings.push(`[startup] ⚠️  ${key} has unexpected format — ${hint}`);
+    }
+  }
+  if (warnings.length > 0) {
+    console.warn('\n' + warnings.join('\n') + '\n');
+  }
+})();
+
 import path from "node:path";
 import crypto from "node:crypto";
 import express from "express";
