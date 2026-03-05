@@ -30,6 +30,24 @@ const phoneLockouts = new Map<string, number>();
 const MAX_SMS_PER_PHONE_PER_DAY = 5;
 const phoneDailySendCount = new Map<string, { count: number; resetAt: number }>();
 
+const MAX_GLOBAL_SMS_PER_DAY = 150;
+let globalDailySmsCount = 0;
+let globalDailyResetAt = Date.now() + 24 * 60 * 60 * 1000;
+
+function checkGlobalDailyCap(): boolean {
+  const now = Date.now();
+  if (now > globalDailyResetAt) {
+    globalDailySmsCount = 0;
+    globalDailyResetAt = now + 24 * 60 * 60 * 1000;
+  }
+  if (globalDailySmsCount >= MAX_GLOBAL_SMS_PER_DAY) {
+    logger.error(`[TwilioSMS] 🚨 GLOBAL DAILY CAP REACHED (${MAX_GLOBAL_SMS_PER_DAY}/day) - blocking SMS to prevent fraud`);
+    return false;
+  }
+  globalDailySmsCount++;
+  return true;
+}
+
 const ALPHA_SENDER_ID = 'PetWash';
 
 const ALPHA_SENDER_BLOCKED_COUNTRIES = new Set([
@@ -204,6 +222,10 @@ class TwilioSMSService {
   }> {
     if (this.isEmergencyDisabled()) {
       logger.warn('[TwilioSMS] 🚨 SMS_EMERGENCY_DISABLED=true — all SMS blocked', { phone: phone.slice(-4) });
+      return { success: false, message: this.t('smsUnavailable', language) };
+    }
+    if (!checkGlobalDailyCap()) {
+      logger.error('[TwilioSMS] 🚨 Global daily cap reached — blocking verification SMS');
       return { success: false, message: this.t('smsUnavailable', language) };
     }
     if (!this.isReady()) {
@@ -464,6 +486,9 @@ class TwilioSMSService {
       logger.warn('[TwilioSMS] 🚨 SMS_EMERGENCY_DISABLED=true — WhatsApp blocked', { to: to.slice(-4) });
       return { success: false, error: 'SMS service temporarily suspended' };
     }
+    if (!checkGlobalDailyCap()) {
+      return { success: false, error: 'Daily SMS limit reached — service suspended until midnight' };
+    }
     if (!this.isReady()) {
       return { success: false, error: 'WhatsApp service not configured' };
     }
@@ -502,6 +527,9 @@ class TwilioSMSService {
     if (this.isEmergencyDisabled()) {
       logger.warn('[TwilioSMS] 🚨 SMS_EMERGENCY_DISABLED=true — sendSMS blocked', { to: to.slice(-4) });
       return { success: false, error: 'SMS service temporarily suspended' };
+    }
+    if (!checkGlobalDailyCap()) {
+      return { success: false, error: 'Daily SMS limit reached — service suspended until midnight' };
     }
     if (!this.isReady()) {
       return {

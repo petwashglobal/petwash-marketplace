@@ -37,10 +37,14 @@ export interface CaptchaResult {
 export async function verifyCaptchaToken(token: string, action: string): Promise<CaptchaResult> {
   if (!token) return { valid: false, score: 0, source: 'missing', reason: 'No token provided' };
 
-  const siteKey = sanitizeKey(process.env.VITE_RECAPTCHA_SITE_KEY || '');
+  const siteKey = sanitizeKey(
+    process.env.RECAPTCHA_SITE_KEY ||
+    process.env.VITE_RECAPTCHA_SITE_KEY ||
+    ''
+  );
   if (!siteKey) {
-    logger.warn('[verifyCaptcha] No site key configured - bypassing');
-    return { valid: true, score: 1.0, source: 'bypass' };
+    logger.error('[verifyCaptcha] CRITICAL: No reCAPTCHA site key configured - blocking request (fail-closed)');
+    return { valid: false, score: 0, source: 'misconfigured', reason: 'reCAPTCHA not configured on server' };
   }
 
   const enterpriseAuth = await getEnterpriseAuth();

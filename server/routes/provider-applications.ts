@@ -21,6 +21,24 @@ import { logProviderApplication } from '../services/googleSheetsIntegration';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { assignProviderMembership } from '../services/MembershipService';
 
+const submissionRateMap = new Map<string, { count: number; resetAt: number }>();
+const MAX_SUBMISSIONS_PER_IP_PER_HOUR = 3;
+
+function checkSubmissionRate(ip: string): boolean {
+  const now = Date.now();
+  const entry = submissionRateMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    submissionRateMap.set(ip, { count: 1, resetAt: now + 60 * 60 * 1000 });
+    return true;
+  }
+  if (entry.count >= MAX_SUBMISSIONS_PER_IP_PER_HOUR) {
+    logger.warn('[ProviderApplication] Rate limit hit', { ip: ip.slice(0, 8) + '***' });
+    return false;
+  }
+  entry.count++;
+  return true;
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
@@ -184,6 +202,11 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
     const userId = (req as any).firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+    if (!checkSubmissionRate(clientIp)) {
+      return res.status(429).json({ error: 'TOO_MANY_REQUESTS', message: 'Too many applications submitted. Please wait an hour before trying again.' });
     }
     
     let bodyData = req.body;
