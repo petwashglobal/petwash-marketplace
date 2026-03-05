@@ -1,0 +1,39 @@
+## In replies all text above this line is added to the ticket ##
+	
+Natalia (Twilio)
+Feb 26, 2026, 2:35 PM PST
+
+Hello Nir,
+ 
+We’re reaching out because we detected an unusual increase in call activity on your account ACd21e697c18973a5ccf504ac2ee170b6e to Israel  that could indicate a potential compromise of your account.
+ 
+We’ve temporarily suspended your account as a precaution and restricted outbound calling to specific phone number prefixes: 972568280.
+ 
+To reactivate your account, please complete these steps and reply to this email to confirm you’ve completed them:
+Please follow these steps to secure your account and reply to this email to confirm you’ve completed them:
+Change the password for all users.
+Delete all existing auth tokens, including those for any sub-accounts.
+Delete all existing API keys.
+Enable two-factor authentication (2FA).
+ 
+For detailed instructions, please review Proactive Steps for Customers Experiencing Account Takeover.
+ 
+Please provide as much detail as possible in your RCA. Any information you can provide will assist us in assessing the situation and determining whether we can safely re-enable your account. Your RCA should include the following:
+ 
+Incident Description: What happened? What exact dates did the fraudulent activity start and end? When did you discover it?
+Root Cause: How did it happen?
+Resolution: What measures have you taken to fix the problem?
+Corrective / Preventive Actions: What measures have you taken to stop the activity and prevent it in the future?
+ 
+If you require any additional information or assistance with these steps, you may contact us by calling +1 (833) 633-0092. Please note that while your call request will be recorded, we are unable to reactivate suspended accounts over the phone. For the best service, please have your ticket number (ticket.id) ready for reference.
+ 
+If you require any further assistance or have any additional concerns, please don't hesitate to reach out to us.
+Sincerely,
+
+Natalia
+Fraud Operations – Onboarding & Compliance
+
+This is in reference to ticket # 25297239
+
+This email is a service from Twilio. Delivered by Zendesk.
+[216GX6-50LLR]
