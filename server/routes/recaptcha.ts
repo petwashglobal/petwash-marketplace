@@ -233,4 +233,43 @@ router.get('/config', (_req, res) => {
   });
 });
 
+router.get('/health', async (_req, res) => {
+  const authMethod = detectAuthMethod();
+  const status: Record<string, any> = {
+    siteKey: RECAPTCHA_SITE_KEY ? '✅ set' : '❌ missing',
+    secretKey: RECAPTCHA_SECRET_KEY ? '✅ set' : '❌ missing',
+    gcpApiKey: GCP_API_KEY ? '✅ set' : '❌ missing',
+    authMethod,
+    enterpriseProject: FIREBASE_PROJECT_ID,
+  };
+
+  if (GCP_API_KEY && RECAPTCHA_SITE_KEY) {
+    try {
+      const testUrl = `https://recaptchaenterprise.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/assessments?key=${GCP_API_KEY}`;
+      const resp = await fetch(testUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event: { token: 'health-check', siteKey: RECAPTCHA_SITE_KEY, expectedAction: 'health' } }),
+      });
+      const data: any = await resp.json().catch(() => ({}));
+      if (resp.status === 200) {
+        status.enterpriseApiReachable = '✅ fully working (assessment created successfully)';
+      } else if (resp.status === 400 || data?.error?.code === 400) {
+        status.enterpriseApiReachable = '✅ reachable (400 = API key works, token invalid as expected)';
+      } else if (resp.status === 403) {
+        status.enterpriseApiReachable = '❌ 403 PERMISSION_DENIED — enable reCAPTCHA Enterprise API in GCP Console';
+      } else {
+        status.enterpriseApiReachable = `⚠️ HTTP ${resp.status}`;
+      }
+      status.enterpriseApiStatus = resp.status;
+    } catch (err: any) {
+      status.enterpriseApiReachable = `❌ network error: ${err.message}`;
+    }
+  } else {
+    status.enterpriseApiReachable = '⏭️ skipped (missing API key or site key)';
+  }
+
+  res.json(status);
+});
+
 export default router;
