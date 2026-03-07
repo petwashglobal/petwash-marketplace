@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MapPin, Loader2 } from 'lucide-react';
@@ -69,6 +70,12 @@ function pruneCache() {
   }
 }
 
+interface DropdownRect {
+  top: number;
+  left: number;
+  width: number;
+}
+
 export function GooglePlacesAutocomplete({
   value,
   onChange,
@@ -89,11 +96,11 @@ export function GooglePlacesAutocomplete({
   darkMode = false,
 }: GooglePlacesAutocompleteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [predictions, setPredictions] = useState<AutocompletePrediction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [dropdownRect, setDropdownRect] = useState<DropdownRect | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
   const [apartment, setApartment] = useState('');
   const [postalCode, setPostalCodeState] = useState('');
@@ -103,20 +110,40 @@ export function GooglePlacesAutocomplete({
   const consecutiveFailures = useRef(0);
   const MAX_CONSECUTIVE_FAILURES = 5;
   const sessionTokenRef = useRef<string>(generateSessionToken());
+  // Prevents the click-outside handler from firing during a selection
+  const selectingRef = useRef(false);
+
+  // Update the fixed dropdown position whenever it opens or the window resizes/scrolls
+  const updateDropdownPosition = useCallback(() => {
+    if (!inputRef.current) return;
+    const rect = inputRef.current.getBoundingClientRect();
+    setDropdownRect({
+      top: rect.bottom + window.scrollY,
+      left: rect.left + window.scrollX,
+      width: rect.width,
+    });
+  }, []);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node) &&
-        inputRef.current &&
-        !inputRef.current.contains(e.target as Node)
-      ) {
-        setShowDropdown(false);
-      }
+    if (!showDropdown) return;
+    updateDropdownPosition();
+    window.addEventListener('resize', updateDropdownPosition);
+    window.addEventListener('scroll', updateDropdownPosition, true);
+    return () => {
+      window.removeEventListener('resize', updateDropdownPosition);
+      window.removeEventListener('scroll', updateDropdownPosition, true);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showDropdown, updateDropdownPosition]);
+
+  useEffect(() => {
+    // Use pointerdown — fires for both mouse clicks and touch taps on all devices
+    const handlePointerOutside = (e: PointerEvent) => {
+      if (selectingRef.current) return;
+      if (inputRef.current && inputRef.current.contains(e.target as Node)) return;
+      setShowDropdown(false);
+    };
+    document.addEventListener('pointerdown', handlePointerOutside);
+    return () => document.removeEventListener('pointerdown', handlePointerOutside);
   }, []);
 
   const fetchPredictions = useCallback(async (input: string) => {
@@ -182,7 +209,12 @@ export function GooglePlacesAutocomplete({
       consecutiveFailures.current = 0;
       setShowManualHint(false);
       setPredictions(preds);
-      setShowDropdown(preds.length > 0);
+      if (preds.length > 0) {
+        setShowDropdown(true);
+        updateDropdownPosition();
+      } else {
+        setShowDropdown(false);
+      }
 
       queryCache.set(cacheKey, { predictions: preds, ts: Date.now() });
       pruneCache();
@@ -196,7 +228,7 @@ export function GooglePlacesAutocomplete({
     } finally {
       setIsLoading(false);
     }
-  }, [country, types]);
+  }, [country, types, updateDropdownPosition]);
 
   const selectPrediction = useCallback(async (prediction: AutocompletePrediction) => {
     setShowDropdown(false);
@@ -256,6 +288,7 @@ export function GooglePlacesAutocomplete({
       onPlaceSelected?.(fallback);
     } finally {
       setIsLoading(false);
+      selectingRef.current = false;
     }
   }, [onChange, onPlaceSelected]);
 
@@ -328,6 +361,63 @@ export function GooglePlacesAutocomplete({
     if (selectedPlace) emitUpdatedDetails(selectedPlace, apartment, val);
   }, [selectedPlace, apartment, emitUpdatedDetails]);
 
+  // Dropdown rendered via portal so it escapes any overflow:hidden parent container
+  const dropdownPortal = showDropdown && predictions.length > 0 && dropdownRect
+    ? createPortal(
+        <div
+          style={{
+            position: 'absolute',
+            top: dropdownRect.top + 4,
+            left: dropdownRect.left,
+            width: dropdownRect.width,
+            zIndex: 999999,
+          }}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden"
+            style={{ WebkitOverflowScrolling: 'touch', maxHeight: '260px', overflowY: 'auto' }}
+          >
+            {predictions.map((pred, idx) => (
+              <button
+                key={pred.placeId}
+                type="button"
+                className={`w-full text-left px-4 py-3 flex items-start gap-3 border-b border-gray-50 last:border-b-0 ${
+                  idx === highlightIndex ? 'bg-blue-50' : 'active:bg-blue-50'
+                }`}
+                onPointerDown={(e) => {
+                  // Fire on first contact — before document pointerdown can close dropdown.
+                  // Prevents virtual keyboard from dismissing before selection registers.
+                  e.preventDefault();
+                  selectingRef.current = true;
+                  selectPrediction(pred);
+                }}
+                onMouseEnter={() => setHighlightIndex(idx)}
+                style={{
+                  minHeight: '52px',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent',
+                  cursor: 'pointer',
+                }}
+              >
+                <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div className="min-w-0">
+                  <div className="font-medium text-gray-900 text-sm">
+                    {pred.mainText || pred.description}
+                  </div>
+                  {pred.secondaryText && (
+                    <div className="text-xs text-gray-500">
+                      {pred.secondaryText}
+                    </div>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>,
+        document.body
+      )
+    : null;
+
   return (
     <div className={`space-y-2 ${className}`}>
       {label && (
@@ -344,7 +434,10 @@ export function GooglePlacesAutocomplete({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={() => {
-            if (predictions.length > 0) setShowDropdown(true);
+            if (predictions.length > 0) {
+              setShowDropdown(true);
+              updateDropdownPosition();
+            }
           }}
           placeholder={placeholder}
           className={inputClassName || `
@@ -380,42 +473,9 @@ export function GooglePlacesAutocomplete({
             <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
           </div>
         )}
-
-        {showDropdown && predictions.length > 0 && (
-          <div
-            ref={dropdownRef}
-            className="absolute z-[99999] left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-gray-200 max-h-[260px] overflow-y-auto"
-            style={{ WebkitOverflowScrolling: 'touch' }}
-          >
-            {predictions.map((pred, idx) => (
-              <button
-                key={pred.placeId}
-                type="button"
-                className={`w-full text-left px-4 py-3 flex items-start gap-3 transition-colors border-b border-gray-50 last:border-b-0 ${
-                  idx === highlightIndex
-                    ? 'bg-blue-50'
-                    : 'hover:bg-gray-50'
-                }`}
-                onClick={() => selectPrediction(pred)}
-                onMouseEnter={() => setHighlightIndex(idx)}
-                style={{ minHeight: '48px', touchAction: 'manipulation' }}
-              >
-                <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                <div className="min-w-0">
-                  <div className="font-medium text-gray-900 text-sm truncate">
-                    {pred.mainText || pred.description}
-                  </div>
-                  {pred.secondaryText && (
-                    <div className="text-xs text-gray-500 truncate">
-                      {pred.secondaryText}
-                    </div>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
+
+      {dropdownPortal}
 
       {showExtraFields && selectedPlace && (
         <div className="mt-2 space-y-3">
@@ -446,7 +506,7 @@ export function GooglePlacesAutocomplete({
                 value={apartment}
                 onChange={handleApartmentChange}
                 placeholder={apartmentPlaceholder || 'לדוג׳ דירה 3, קומה 2, כניסה א׳'}
-                className="px-3 py-3 text-sm rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation"
+                className="px-3 py-3 text-sm rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 min-h-[48px] touch-manipulation"
                 style={{ fontSize: '16px' }}
                 autoComplete="off"
                 dir="rtl"
@@ -461,7 +521,7 @@ export function GooglePlacesAutocomplete({
                 value={postalCode}
                 onChange={handlePostalCodeChange}
                 placeholder={postalCodePlaceholder || 'לדוג׳ 6291302'}
-                className="px-3 py-3 text-sm rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation"
+                className="px-3 py-3 text-sm rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 min-h-[48px] touch-manipulation"
                 style={{ fontSize: '16px' }}
                 autoComplete="off"
                 dir="ltr"
