@@ -402,6 +402,8 @@ router.post('/:bookingId/send', async (req, res) => {
       isFlagged,
       flaggedReason: flagReason,
       createdAt: new Date(),
+      // §6 Idempotency: store clientMessageId in metadata so duplicate sends can be detected
+      metadata: clientMessageId ? { clientMessageId } : null,
     };
 
     const [insertedMessage] = await db.insert(bookingMessages).values(newMessage).returning();

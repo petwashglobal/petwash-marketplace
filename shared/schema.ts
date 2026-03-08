@@ -7886,6 +7886,7 @@ export const bookingMessages = pgTable("booking_messages", {
   readByCustomerAt: timestamp("read_by_customer_at"),
   readByProviderAt: timestamp("read_by_provider_at"),
   createdAt: timestamp("created_at").defaultNow(),
+  metadata: jsonb("metadata"), // { clientMessageId?: string, ... }
 }, (table) => ({
   conversationIdx: index("bm_conversation_idx").on(table.conversationId),
   createdAtIdx: index("bm_created_idx").on(table.conversationId, table.createdAt),
