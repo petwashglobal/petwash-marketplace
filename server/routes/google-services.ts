@@ -431,6 +431,57 @@ router.get('/places-details', async (req, res) => {
 });
 
 /**
+ * GET /api/google/reverse-geocode - Convert GPS coordinates to a human-readable location name
+ * Used by the "Use my location" button to show real address instead of hardcoded text
+ */
+router.get('/reverse-geocode', async (req, res) => {
+  const traceId = randomUUID().slice(0, 12);
+  try {
+    const { lat, lng, language } = req.query;
+
+    if (!lat || !lng) {
+      return res.status(400).json({ error: 'lat and lng are required', traceId });
+    }
+
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+      return res.status(503).json({ error: 'Maps unavailable', traceId });
+    }
+
+    const lang = (language as string) || 'iw';
+    const params = new URLSearchParams({
+      latlng: `${lat},${lng}`,
+      key: apiKey,
+      language: lang,
+      result_type: 'sublocality|locality|administrative_area_level_2',
+    });
+
+    const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?${params}`);
+    if (!response.ok) {
+      return res.status(502).json({ error: 'Geocoding failed', traceId });
+    }
+
+    const data = await response.json() as any;
+    if (data.status !== 'OK' || !data.results?.length) {
+      return res.status(404).json({ error: 'No results', status: data.status, traceId });
+    }
+
+    // Extract the most useful name: sublocality > locality > admin_area_level_2
+    const result = data.results[0];
+    const components: any[] = result.address_components || [];
+    const sublocality = components.find((c: any) => c.types.includes('sublocality') || c.types.includes('sublocality_level_1'));
+    const locality = components.find((c: any) => c.types.includes('locality'));
+    const area2 = components.find((c: any) => c.types.includes('administrative_area_level_2'));
+    const bestName = sublocality?.long_name || locality?.long_name || area2?.long_name || result.formatted_address;
+
+    return res.json({ name: bestName, formattedAddress: result.formatted_address, traceId });
+  } catch (error: any) {
+    logger.error('[ReverseGeocode] Error', { error: error.message, traceId });
+    return res.status(500).json({ error: 'Internal error', traceId });
+  }
+});
+
+/**
  * GET /api/google/reviews/summary - Get AI-generated review summary
  * Uses Gemini to summarize customer reviews
  */

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/Layout";
@@ -142,6 +142,39 @@ export default function BrowseWalkers() {
   const [sortBy, setSortBy] = useState<string>('bestMatch');
   const [maxPrice, setMaxPrice] = useState<number>(300);
   const [minRating, setMinRating] = useState<number>(0);
+  const [isAutoLocating, setIsAutoLocating] = useState(false);
+  const autoLocateDoneRef = useRef(false);
+
+  useEffect(() => {
+    if (autoLocateDoneRef.current || searchParams !== null || !navigator.geolocation) return;
+    autoLocateDoneRef.current = true;
+    setIsAutoLocating(true);
+
+    const langCode = document.documentElement.lang;
+    const mapsLang = langCode === 'he' ? 'iw' : langCode === 'ar' ? 'ar' : langCode === 'ru' ? 'ru' : 'en';
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          try {
+            const params = new URLSearchParams({ lat: latitude.toString(), lng: longitude.toString(), language: mapsLang });
+            const res = await fetch(`/api/google/reverse-geocode?${params}`, { credentials: 'include' });
+            if (res.ok) {
+              const data = await res.json();
+              if (data.name) {
+                setSearchParams({ location: data.name, lat: latitude, lng: longitude, petType: undefined, startDate: undefined, endDate: undefined, service: undefined } as SearchParams);
+              }
+            }
+          } catch {}
+        } finally {
+          setIsAutoLocating(false);
+        }
+      },
+      () => { setIsAutoLocating(false); },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+    );
+  }, []);
 
   const [activeFilters, setActiveFilters] = useState(0);
 
@@ -233,6 +266,16 @@ export default function BrowseWalkers() {
               </p>
             </div>
 
+            {isAutoLocating && (
+              <div className="max-w-5xl mx-auto mb-3 px-4 relative z-20">
+                <div className="flex items-center justify-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 w-fit mx-auto">
+                  <div className="w-2 h-2 rounded-full bg-white animate-ping" />
+                  <span className="text-white/90 text-sm font-medium">
+                    {isHebrew ? 'מאתר מטיילים קרובים אליך...' : 'Finding walkers near you...'}
+                  </span>
+                </div>
+              </div>
+            )}
             <div className="max-w-5xl mx-auto -mb-16 relative z-10">
               <ProviderSearch 
                 onSearch={handleSearch} 

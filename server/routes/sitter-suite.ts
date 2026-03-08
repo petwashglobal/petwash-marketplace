@@ -425,6 +425,37 @@ router.patch('/sitters/:id', async (req, res) => {
   }
 });
 
+/**
+ * PATCH /api/sitter-suite/sitters/location - Update sitter's live GPS location
+ * Called by the sitter dashboard to keep their position current for proximity matching
+ */
+router.patch('/sitters/location', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.uid;
+    const { latitude, longitude } = req.body;
+
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      return res.status(400).json({ error: 'latitude and longitude (numbers) are required' });
+    }
+
+    const [updated] = await db
+      .update(sitterProfiles)
+      .set({ latitude: latitude.toString(), longitude: longitude.toString() })
+      .where(eq(sitterProfiles.userId, userId))
+      .returning({ id: sitterProfiles.id });
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Sitter profile not found' });
+    }
+
+    logger.info('[Sitter Suite] Location updated', { userId, latitude, longitude });
+    return res.json({ success: true });
+  } catch (error) {
+    logger.error('[Sitter Suite] Error updating location', error);
+    return res.status(500).json({ error: 'Failed to update location' });
+  }
+});
+
 // ==================== PET PROFILES ====================
 
 /**

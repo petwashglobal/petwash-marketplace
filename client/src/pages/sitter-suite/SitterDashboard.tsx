@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,9 +56,42 @@ interface Stats {
   totalReviews: number;
 }
 
+function useProviderLocationBeacon() {
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    const sendLocation = (position: GeolocationPosition) => {
+      const { latitude, longitude } = position.coords;
+      fetch('/api/sitter-suite/sitters/location', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ latitude, longitude }),
+      }).catch(() => {});
+    };
+
+    navigator.geolocation.getCurrentPosition(sendLocation, () => {}, {
+      enableHighAccuracy: false,
+      timeout: 10000,
+      maximumAge: 300000,
+    });
+
+    const intervalId = setInterval(() => {
+      navigator.geolocation.getCurrentPosition(sendLocation, () => {}, {
+        enableHighAccuracy: false,
+        timeout: 10000,
+        maximumAge: 60000,
+      });
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(intervalId);
+  }, []);
+}
+
 export default function SitterDashboard() {
   const { language } = useLanguage();
   const t = (key: string) => ti18n(key, language);
+  useProviderLocationBeacon();
   const [activeTab, setActiveTab] = useState('requests');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 

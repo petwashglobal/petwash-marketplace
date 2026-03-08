@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,8 +6,47 @@ import { Calendar, Clock, MapPin, DollarSign } from "lucide-react";
 import { useLocation } from "wouter";
 import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 
+function useProviderLocationBeacon(platform: 'walk-my-pet' | 'sitter-suite') {
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    const endpoint = platform === 'walk-my-pet'
+      ? '/api/walk-my-pet/walkers/location'
+      : '/api/sitter-suite/sitters/location';
+
+    const sendLocation = (position: GeolocationPosition) => {
+      const { latitude, longitude } = position.coords;
+      fetch(endpoint, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ latitude, longitude }),
+      }).catch(() => {});
+    };
+
+    const onError = () => {};
+
+    navigator.geolocation.getCurrentPosition(sendLocation, onError, {
+      enableHighAccuracy: false,
+      timeout: 10000,
+      maximumAge: 300000,
+    });
+
+    const intervalId = setInterval(() => {
+      navigator.geolocation.getCurrentPosition(sendLocation, onError, {
+        enableHighAccuracy: false,
+        timeout: 10000,
+        maximumAge: 60000,
+      });
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(intervalId);
+  }, [platform]);
+}
+
 export default function WalkerDashboard() {
   const [, setLocation] = useLocation();
+  useProviderLocationBeacon('walk-my-pet');
 
   const { data: bookings = [], isLoading } = useQuery({
     queryKey: ['/api/platforms/walk_my_pet/provider/bookings'],

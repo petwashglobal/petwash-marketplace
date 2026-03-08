@@ -72,6 +72,36 @@ router.post('/walkers/register', async (req, res) => {
   }
 });
 
+/**
+ * PATCH /api/walk-my-pet/walkers/location - Update walker's live GPS location
+ * Called by the walker dashboard to keep their position current for proximity matching
+ */
+router.patch('/walkers/location', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.uid;
+    const { latitude, longitude } = req.body;
+
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      return res.status(400).json({ error: 'latitude and longitude (numbers) are required' });
+    }
+
+    const [updated] = await db
+      .update(walkerProfiles)
+      .set({ currentLatitude: latitude.toString(), currentLongitude: longitude.toString() })
+      .where(eq(walkerProfiles.userId, userId))
+      .returning({ walkerId: walkerProfiles.walkerId });
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Walker profile not found' });
+    }
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('[Walk My Pet] Error updating walker location:', error);
+    return res.status(500).json({ error: 'Failed to update location' });
+  }
+});
+
 // Get walker profile
 router.get('/api/walkers/:walkerId', async (req, res) => {
   try {

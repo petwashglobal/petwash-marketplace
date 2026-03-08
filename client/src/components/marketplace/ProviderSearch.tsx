@@ -391,14 +391,32 @@ function GooglePlacesLocationInput({
     setIsGettingLocation(true);
     setLocationError(null);
 
+    const langCode = document.documentElement.lang;
+    const mapsLang = langCode === 'he' ? 'iw' : langCode === 'ar' ? 'ar' : langCode === 'ru' ? 'ru' : langCode === 'fr' ? 'fr' : langCode === 'es' ? 'es' : 'en';
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
           onCoordsChange?.(latitude, longitude);
-          onChange('Tel Aviv');
-        } catch {
-          onChange('Tel Aviv');
+
+          // Reverse geocode to get real suburb/neighborhood name
+          try {
+            const params = new URLSearchParams({ lat: latitude.toString(), lng: longitude.toString(), language: mapsLang });
+            const res = await fetch(`/api/google/reverse-geocode?${params}`, { credentials: 'include' });
+            if (res.ok) {
+              const data = await res.json();
+              if (data.name) {
+                onChange(data.name);
+                return;
+              }
+            }
+          } catch {
+            // Reverse geocode failed — fall through to coordinate display
+          }
+
+          // Fallback: show coordinates as a readable label
+          onChange(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
         } finally {
           setIsGettingLocation(false);
         }
@@ -407,19 +425,19 @@ function GooglePlacesLocationInput({
         setIsGettingLocation(false);
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            setLocationError('Location permission denied');
+            setLocationError(mapsLang === 'iw' ? 'הגישה למיקום נדחתה' : 'Location permission denied');
             break;
           case error.POSITION_UNAVAILABLE:
-            setLocationError('Location unavailable');
+            setLocationError(mapsLang === 'iw' ? 'המיקום אינו זמין' : 'Location unavailable');
             break;
           case error.TIMEOUT:
-            setLocationError('Location request timed out');
+            setLocationError(mapsLang === 'iw' ? 'בקשת המיקום פגה' : 'Location request timed out');
             break;
           default:
-            setLocationError('Unable to get location');
+            setLocationError(mapsLang === 'iw' ? 'לא ניתן לקבל מיקום' : 'Unable to get location');
         }
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
   };
 
