@@ -7850,6 +7850,7 @@ export const bookingConversations = pgTable("booking_conversations", {
   providerUnread: integer("provider_unread").notNull().default(0),
   lastMessageAt: timestamp("last_message_at"),
   lastMessagePreview: varchar("last_message_preview", { length: 120 }),
+  reviewNotes: text("review_notes"),
   createdAt: timestamp("created_at").defaultNow(),
   closedAt: timestamp("closed_at"),
 }, (table) => ({

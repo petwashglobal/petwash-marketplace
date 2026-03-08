@@ -172,6 +172,16 @@ export async function syncChatToBookingStatus(
       await injectChatSystemMessage(conversationId, msg.type, msg.content, participantUids);
     }
 
+    // §5: Inject chat_closed system message whenever chat transitions from active to read_only
+    if (newChatStatus === 'read_only' && conversation?.chatStatus === 'active') {
+      await injectChatSystemMessage(
+        conversationId,
+        'chat_closed',
+        'This conversation has been closed. Messages are preserved for reference.',
+        participantUids
+      );
+    }
+
     // 6. Broadcast status change
     broadcastBookingChatStatus(conversationId, newChatStatus, participantUids);
 
