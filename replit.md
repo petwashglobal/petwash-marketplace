@@ -150,6 +150,11 @@ The following composite indexes were created via REST API and may still be build
 - Calendar (Google Calendar connected) ✅
 - Notifications ✅
 
+## Critical Bugs Fixed (March 2026 Session 3)
+- **Loyalty gate removed from first-time booking**: `requireLoyaltyMember` removed from `POST /api/sitter-suite/bookings`, `POST /api/academy/bookings`, `POST /api/walks/book`, `POST /api/walks/emergency-request` — new users on all 3 platforms can now make their first booking without a prior loyalty record
+- **Walker Dashboard 9 missing API endpoints added** to `server/routes/walk-my-pet.ts`: `GET /walker/requests`, `/walker/active`, `/walker/completed`, `/walker/earnings`, `/walker/reviews`, `/walker/achievements`, `POST /walker/accept/:walkId`, `/walker/reject/:walkId`, `/walker/start/:walkId` — all query `bookingRequests` table with `providerType='walker'`, returns formatted Walk objects
+- **SitterDashboard 3 missing API endpoints added** to `server/routes/sitter-suite.ts`: `GET /sitter/requests`, `/sitter/earnings`, `/sitter/stats` — query `sitterBookings` + `sitterReviews` for the authenticated sitter provider
+
 ## Critical Bugs Fixed (March 2026)
 - **Firestore pets path**: Fixed from invalid 2-segment `pets/{uid}` to valid 3-segment `users/{uid}/pets`
 - **Booking create undefined metadata**: Fixed with conditional spread (`booking.metadata` could be undefined, Firestore rejects undefined values)

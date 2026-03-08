@@ -13,12 +13,13 @@ import {
   octopusBookings,
   octopusLedger,
   octopusInvoices,
+  bookingRequests,
   type InsertWalkerProfile,
   type InsertWalkBooking,
   type InsertWalkGpsTracking,
   type InsertWalkerReview
 } from '../../shared/schema';
-import { eq, and, gte, lte, sql, desc, asc } from 'drizzle-orm';
+import { eq, and, gte, lte, sql, desc, asc, isNotNull } from 'drizzle-orm';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { requireLoyaltyMember } from '../middleware/loyalty';
@@ -192,8 +193,8 @@ router.post('/api/walkers/search', async (req, res) => {
 
 // =================== WALK BOOKING ===================
 
-// Create walk booking (LOYALTY MEMBERS ONLY) - USING LUXURY ENGINE
-router.post('/api/walks/book', requireAuth, requireLoyaltyMember, async (req, res) => {
+// Create walk booking - USING LUXURY ENGINE
+router.post('/api/walks/book', requireAuth, async (req, res) => {
   try {
     const ownerId = req.body.ownerId || (req as any).user?.uid;
     if (!ownerId) {
@@ -632,8 +633,8 @@ router.get('/bookings/provider-pending', requireAuth, async (req, res) => {
   }
 });
 
-// EMERGENCY/ASAP WALK REQUEST (Pet Wash™ "Book Now" model) - LOYALTY MEMBERS ONLY
-router.post('/api/walks/emergency-request', requireAuth, requireLoyaltyMember, async (req, res) => {
+// EMERGENCY/ASAP WALK REQUEST (Pet Wash™ "Book Now" model)
+router.post('/api/walks/emergency-request', requireAuth, async (req, res) => {
   try {
     const ownerId = req.body.ownerId || (req as any).user?.uid;
     if (!ownerId) {
@@ -1332,6 +1333,396 @@ router.get('/api/walk-my-pet/walkers', async (req, res) => {
   } catch (error: any) {
     console.error('[Walk My Pet] List walkers error:', error);
     res.status(500).json({ error: 'Failed to fetch walkers' });
+  }
+});
+
+// =================== WALKER DASHBOARD ENDPOINTS ===================
+
+// GET /api/walk-my-pet/walker/requests — pending walk requests for the authenticated walker
+router.get('/walker/requests', requireAuth, async (req, res) => {
+  try {
+    const walkerId = (req as any).user?.uid;
+    if (!walkerId) return res.status(401).json({ error: 'Authentication required' });
+
+    const requests = await db.select()
+      .from(bookingRequests)
+      .where(and(
+        eq(bookingRequests.providerId, walkerId),
+        eq(bookingRequests.providerType, 'walker'),
+        sql`${bookingRequests.status} = 'pending'`
+      ))
+      .orderBy(desc(bookingRequests.createdAt))
+      .limit(50);
+
+    const formatted = requests.map(r => ({
+      id: r.requestId,
+      dbId: r.id,
+      ownerName: (r.petDetails as any)?.ownerName || 'Pet Owner',
+      ownerPhoto: null,
+      ownerPhone: '',
+      petName: (r.petDetails as any)?.petName || 'Pet',
+      petType: (r.petDetails as any)?.petType || 'dog',
+      petBreed: (r.petDetails as any)?.petBreed || '',
+      scheduledTime: r.startDate,
+      duration: Math.round(Number(r.totalHours || 1) * 60),
+      pickupAddress: (r.petDetails as any)?.address || '',
+      dropoffAddress: (r.petDetails as any)?.address || '',
+      status: 'scheduled',
+      earnings: (r.subtotalCents || 0) / 100,
+      currency: r.currency || 'ILS',
+      specialInstructions: r.ownerMessage || null,
+      distance: 0,
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    logger.error('[Walker Dashboard] Error fetching requests', error);
+    res.status(500).json({ error: 'Failed to fetch walk requests' });
+  }
+});
+
+// GET /api/walk-my-pet/walker/active — currently active walk
+router.get('/walker/active', requireAuth, async (req, res) => {
+  try {
+    const walkerId = (req as any).user?.uid;
+    if (!walkerId) return res.status(401).json({ error: 'Authentication required' });
+
+    const [active] = await db.select()
+      .from(bookingRequests)
+      .where(and(
+        eq(bookingRequests.providerId, walkerId),
+        eq(bookingRequests.providerType, 'walker'),
+        sql`${bookingRequests.status} IN ('accepted', 'in_progress')`
+      ))
+      .orderBy(desc(bookingRequests.serviceStartedAt))
+      .limit(1);
+
+    if (!active) return res.json(null);
+
+    res.json({
+      id: active.requestId,
+      dbId: active.id,
+      ownerName: (active.petDetails as any)?.ownerName || 'Pet Owner',
+      ownerPhoto: null,
+      ownerPhone: '',
+      petName: (active.petDetails as any)?.petName || 'Pet',
+      petType: (active.petDetails as any)?.petType || 'dog',
+      petBreed: (active.petDetails as any)?.petBreed || '',
+      scheduledTime: active.startDate,
+      duration: Math.round(Number(active.totalHours || 1) * 60),
+      pickupAddress: (active.petDetails as any)?.address || '',
+      dropoffAddress: (active.petDetails as any)?.address || '',
+      status: active.status === 'in_progress' ? 'in_progress' : 'scheduled',
+      earnings: (active.subtotalCents || 0) / 100,
+      currency: active.currency || 'ILS',
+      specialInstructions: active.ownerMessage || null,
+      distance: 0,
+    });
+  } catch (error) {
+    logger.error('[Walker Dashboard] Error fetching active walk', error);
+    res.status(500).json({ error: 'Failed to fetch active walk' });
+  }
+});
+
+// GET /api/walk-my-pet/walker/completed — completed walks history
+router.get('/walker/completed', requireAuth, async (req, res) => {
+  try {
+    const walkerId = (req as any).user?.uid;
+    if (!walkerId) return res.status(401).json({ error: 'Authentication required' });
+
+    const completed = await db.select()
+      .from(bookingRequests)
+      .where(and(
+        eq(bookingRequests.providerId, walkerId),
+        eq(bookingRequests.providerType, 'walker'),
+        sql`${bookingRequests.status} = 'completed'`
+      ))
+      .orderBy(desc(bookingRequests.serviceCompletedAt))
+      .limit(100);
+
+    const formatted = completed.map(r => ({
+      id: r.requestId,
+      dbId: r.id,
+      ownerName: (r.petDetails as any)?.ownerName || 'Pet Owner',
+      ownerPhoto: null,
+      ownerPhone: '',
+      petName: (r.petDetails as any)?.petName || 'Pet',
+      petType: (r.petDetails as any)?.petType || 'dog',
+      petBreed: (r.petDetails as any)?.petBreed || '',
+      scheduledTime: r.startDate,
+      completedAt: r.serviceCompletedAt,
+      duration: Math.round(Number(r.totalHours || 1) * 60),
+      pickupAddress: (r.petDetails as any)?.address || '',
+      dropoffAddress: (r.petDetails as any)?.address || '',
+      status: 'completed',
+      earnings: (r.subtotalCents || 0) / 100,
+      currency: r.currency || 'ILS',
+      specialInstructions: null,
+      distance: 0,
+      rating: r.ownerRating ? Number(r.ownerRating) : null,
+      review: r.ownerReview || null,
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    logger.error('[Walker Dashboard] Error fetching completed walks', error);
+    res.status(500).json({ error: 'Failed to fetch completed walks' });
+  }
+});
+
+// GET /api/walk-my-pet/walker/earnings — earnings summary
+router.get('/walker/earnings', requireAuth, async (req, res) => {
+  try {
+    const walkerId = (req as any).user?.uid;
+    if (!walkerId) return res.status(401).json({ error: 'Authentication required' });
+
+    const allCompleted = await db.select()
+      .from(bookingRequests)
+      .where(and(
+        eq(bookingRequests.providerId, walkerId),
+        eq(bookingRequests.providerType, 'walker'),
+        sql`${bookingRequests.status} = 'completed'`
+      ));
+
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const totalCents = allCompleted.reduce((sum, r) => sum + (r.subtotalCents || 0), 0);
+    const weeklyCents = allCompleted
+      .filter(r => r.serviceCompletedAt && new Date(r.serviceCompletedAt) >= startOfWeek)
+      .reduce((sum, r) => sum + (r.subtotalCents || 0), 0);
+    const monthlyCents = allCompleted
+      .filter(r => r.serviceCompletedAt && new Date(r.serviceCompletedAt) >= startOfMonth)
+      .reduce((sum, r) => sum + (r.subtotalCents || 0), 0);
+
+    const pending = await db.select()
+      .from(bookingRequests)
+      .where(and(
+        eq(bookingRequests.providerId, walkerId),
+        eq(bookingRequests.providerType, 'walker'),
+        sql`${bookingRequests.status} IN ('accepted', 'in_progress')`
+      ));
+
+    const pendingCents = pending.reduce((sum, r) => sum + (r.subtotalCents || 0), 0);
+
+    res.json({
+      total: totalCents / 100,
+      weekly: weeklyCents / 100,
+      monthly: monthlyCents / 100,
+      pending: pendingCents / 100,
+      currency: 'ILS',
+      totalWalks: allCompleted.length,
+    });
+  } catch (error) {
+    logger.error('[Walker Dashboard] Error fetching earnings', error);
+    res.status(500).json({ error: 'Failed to fetch earnings' });
+  }
+});
+
+// GET /api/walk-my-pet/walker/reviews — reviews received by the walker
+router.get('/walker/reviews', requireAuth, async (req, res) => {
+  try {
+    const walkerId = (req as any).user?.uid;
+    if (!walkerId) return res.status(401).json({ error: 'Authentication required' });
+
+    const reviewed = await db.select()
+      .from(bookingRequests)
+      .where(and(
+        eq(bookingRequests.providerId, walkerId),
+        eq(bookingRequests.providerType, 'walker'),
+        isNotNull(bookingRequests.ownerRating)
+      ))
+      .orderBy(desc(bookingRequests.serviceCompletedAt))
+      .limit(50);
+
+    const formatted = reviewed.map(r => ({
+      id: r.requestId,
+      ownerName: (r.petDetails as any)?.ownerName || 'Pet Owner',
+      ownerPhoto: null,
+      rating: r.ownerRating ? Number(r.ownerRating) : 5,
+      comment: r.ownerReview || '',
+      petName: (r.petDetails as any)?.petName || 'Pet',
+      date: r.serviceCompletedAt || r.updatedAt,
+    }));
+
+    const avgRating = formatted.length > 0
+      ? formatted.reduce((sum, r) => sum + r.rating, 0) / formatted.length
+      : 5.0;
+
+    res.json({
+      reviews: formatted,
+      averageRating: Math.round(avgRating * 10) / 10,
+      totalReviews: formatted.length,
+    });
+  } catch (error) {
+    logger.error('[Walker Dashboard] Error fetching reviews', error);
+    res.status(500).json({ error: 'Failed to fetch reviews' });
+  }
+});
+
+// GET /api/walk-my-pet/walker/achievements — walker achievements
+router.get('/walker/achievements', requireAuth, async (req, res) => {
+  try {
+    const walkerId = (req as any).user?.uid;
+    if (!walkerId) return res.status(401).json({ error: 'Authentication required' });
+
+    const allCompleted = await db.select()
+      .from(bookingRequests)
+      .where(and(
+        eq(bookingRequests.providerId, walkerId),
+        eq(bookingRequests.providerType, 'walker'),
+        sql`${bookingRequests.status} = 'completed'`
+      ));
+
+    const totalWalks = allCompleted.length;
+    const reviewed = allCompleted.filter(r => r.ownerRating);
+    const avgRating = reviewed.length > 0
+      ? reviewed.reduce((sum, r) => sum + Number(r.ownerRating || 0), 0) / reviewed.length
+      : 5.0;
+
+    res.json([
+      {
+        id: 'first_walk',
+        title: 'First Walk',
+        description: 'Complete your first dog walk',
+        icon: 'paw',
+        progress: Math.min(totalWalks, 1),
+        target: 1,
+        earned: totalWalks >= 1,
+      },
+      {
+        id: 'ten_walks',
+        title: 'Pack Leader',
+        description: 'Complete 10 walks',
+        icon: 'star',
+        progress: Math.min(totalWalks, 10),
+        target: 10,
+        earned: totalWalks >= 10,
+      },
+      {
+        id: 'fifty_walks',
+        title: 'Marathon Walker',
+        description: 'Complete 50 walks',
+        icon: 'trophy',
+        progress: Math.min(totalWalks, 50),
+        target: 50,
+        earned: totalWalks >= 50,
+      },
+      {
+        id: 'top_rated',
+        title: 'Top Rated',
+        description: 'Maintain a 4.9+ rating with 5+ reviews',
+        icon: 'award',
+        progress: reviewed.length >= 5 && avgRating >= 4.9 ? 1 : 0,
+        target: 1,
+        earned: reviewed.length >= 5 && avgRating >= 4.9,
+      },
+    ]);
+  } catch (error) {
+    logger.error('[Walker Dashboard] Error fetching achievements', error);
+    res.status(500).json({ error: 'Failed to fetch achievements' });
+  }
+});
+
+// POST /api/walk-my-pet/walker/accept/:walkId — accept a pending walk request
+router.post('/walker/accept/:walkId', requireAuth, async (req, res) => {
+  try {
+    const walkerId = (req as any).user?.uid;
+    if (!walkerId) return res.status(401).json({ error: 'Authentication required' });
+
+    const { walkId } = req.params;
+
+    const [updated] = await db.update(bookingRequests)
+      .set({
+        status: 'accepted',
+        providerResponse: req.body.message || 'Walk accepted',
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(bookingRequests.requestId, walkId),
+        eq(bookingRequests.providerId, walkerId),
+        sql`${bookingRequests.status} = 'pending'`
+      ))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Walk request not found or cannot be accepted' });
+    }
+
+    res.json({ success: true, walk: updated });
+  } catch (error) {
+    logger.error('[Walker Dashboard] Error accepting walk', error);
+    res.status(500).json({ error: 'Failed to accept walk' });
+  }
+});
+
+// POST /api/walk-my-pet/walker/reject/:walkId — reject a pending walk request
+router.post('/walker/reject/:walkId', requireAuth, async (req, res) => {
+  try {
+    const walkerId = (req as any).user?.uid;
+    if (!walkerId) return res.status(401).json({ error: 'Authentication required' });
+
+    const { walkId } = req.params;
+
+    const [updated] = await db.update(bookingRequests)
+      .set({
+        status: 'cancelled',
+        cancelledBy: 'provider',
+        cancellationReason: req.body.reason || 'Walker unavailable',
+        cancelledAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(bookingRequests.requestId, walkId),
+        eq(bookingRequests.providerId, walkerId),
+        sql`${bookingRequests.status} = 'pending'`
+      ))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Walk request not found or cannot be rejected' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('[Walker Dashboard] Error rejecting walk', error);
+    res.status(500).json({ error: 'Failed to reject walk' });
+  }
+});
+
+// POST /api/walk-my-pet/walker/start/:walkId — start an accepted walk
+router.post('/walker/start/:walkId', requireAuth, async (req, res) => {
+  try {
+    const walkerId = (req as any).user?.uid;
+    if (!walkerId) return res.status(401).json({ error: 'Authentication required' });
+
+    const { walkId } = req.params;
+
+    const [updated] = await db.update(bookingRequests)
+      .set({
+        status: 'in_progress',
+        serviceStartedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(bookingRequests.requestId, walkId),
+        eq(bookingRequests.providerId, walkerId),
+        sql`${bookingRequests.status} = 'accepted'`
+      ))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Walk not found or not in accepted state' });
+    }
+
+    res.json({ success: true, walk: updated });
+  } catch (error) {
+    logger.error('[Walker Dashboard] Error starting walk', error);
+    res.status(500).json({ error: 'Failed to start walk' });
   }
 });
 

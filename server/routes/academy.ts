@@ -187,10 +187,10 @@ router.get('/specialties', async (req, res) => {
 // ==================== AUTHENTICATED ENDPOINTS (USER) ====================
 
 /**
- * POST /api/academy/bookings - Create trainer booking (LOYALTY MEMBERS ONLY)
- * Authenticated endpoint - requires valid Firebase user + loyalty membership
+ * POST /api/academy/bookings - Create trainer booking
+ * Authenticated endpoint - requires valid Firebase user
  */
-router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => {
+router.post('/bookings', requireAuth, async (req, res) => {
   try {
     // Check authentication (middleware should set req.user)
     if (!req.user) {

@@ -478,9 +478,9 @@ router.post('/pets', async (req, res) => {
 // ==================== BOOKINGS ====================
 
 /**
- * POST /api/sitter-suite/bookings - Create new booking with AI triage (LOYALTY MEMBERS ONLY) - USING LUXURY ENGINE
+ * POST /api/sitter-suite/bookings - Create new booking with AI triage - USING LUXURY ENGINE
  */
-router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => {
+router.post('/bookings', requireAuth, async (req, res) => {
   try {
     const {
       sitterId,
@@ -1222,6 +1222,113 @@ router.get('/sitters/:id/reviews', async (req, res) => {
   } catch (error) {
     logger.error('[Sitter Suite] Error fetching reviews', error);
     res.status(500).json({ error: 'Failed to fetch reviews' });
+  }
+});
+
+// =================== SITTER DASHBOARD ENDPOINTS ===================
+
+// GET /api/sitter-suite/sitter/requests — pending/active bookings for authenticated sitter
+router.get('/sitter/requests', requireAuth, async (req, res) => {
+  try {
+    const providerUid = (req as any).user?.uid;
+    if (!providerUid) return res.status(401).json({ error: 'Authentication required' });
+
+    const [sitter] = await db.select().from(sitterProfiles).where(eq(sitterProfiles.userId, providerUid));
+    if (!sitter) return res.json({ bookings: [], total: 0 });
+
+    const bookings = await db.select()
+      .from(sitterBookings)
+      .where(and(
+        eq(sitterBookings.sitterId, sitter.id),
+        sql`${sitterBookings.status} IN ('pending', 'pending_provider', 'confirmed', 'in_progress')`
+      ))
+      .orderBy(desc(sitterBookings.createdAt))
+      .limit(50);
+
+    res.json({ bookings, total: bookings.length });
+  } catch (error) {
+    logger.error('[Sitter Dashboard] Error fetching requests', error);
+    res.status(500).json({ error: 'Failed to fetch sitter requests' });
+  }
+});
+
+// GET /api/sitter-suite/sitter/earnings — earnings summary for authenticated sitter
+router.get('/sitter/earnings', requireAuth, async (req, res) => {
+  try {
+    const providerUid = (req as any).user?.uid;
+    if (!providerUid) return res.status(401).json({ error: 'Authentication required' });
+
+    const [sitter] = await db.select().from(sitterProfiles).where(eq(sitterProfiles.userId, providerUid));
+    if (!sitter) return res.json({ total: 0, weekly: 0, monthly: 0, pending: 0, currency: 'ILS' });
+
+    const allBookings = await db.select()
+      .from(sitterBookings)
+      .where(eq(sitterBookings.sitterId, sitter.id));
+
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const completed = allBookings.filter(b => b.status === 'completed');
+    const pending = allBookings.filter(b => ['confirmed', 'in_progress'].includes(b.status || ''));
+
+    const totalCents = completed.reduce((sum, b) => sum + (b.sitterPayoutCents || 0), 0);
+    const weeklyCents = completed
+      .filter(b => b.completedAt && new Date(b.completedAt) >= startOfWeek)
+      .reduce((sum, b) => sum + (b.sitterPayoutCents || 0), 0);
+    const monthlyCents = completed
+      .filter(b => b.completedAt && new Date(b.completedAt) >= startOfMonth)
+      .reduce((sum, b) => sum + (b.sitterPayoutCents || 0), 0);
+    const pendingCents = pending.reduce((sum, b) => sum + (b.sitterPayoutCents || 0), 0);
+
+    res.json({
+      total: totalCents / 100,
+      weekly: weeklyCents / 100,
+      monthly: monthlyCents / 100,
+      pending: pendingCents / 100,
+      currency: 'ILS',
+      totalBookings: completed.length,
+    });
+  } catch (error) {
+    logger.error('[Sitter Dashboard] Error fetching earnings', error);
+    res.status(500).json({ error: 'Failed to fetch sitter earnings' });
+  }
+});
+
+// GET /api/sitter-suite/sitter/stats — performance stats for authenticated sitter
+router.get('/sitter/stats', requireAuth, async (req, res) => {
+  try {
+    const providerUid = (req as any).user?.uid;
+    if (!providerUid) return res.status(401).json({ error: 'Authentication required' });
+
+    const [sitter] = await db.select().from(sitterProfiles).where(eq(sitterProfiles.userId, providerUid));
+    if (!sitter) return res.json({ totalBookings: 0, completedBookings: 0, averageRating: 5.0, totalReviews: 0, acceptanceRate: 100, profileViews: 0 });
+
+    const allBookings = await db.select().from(sitterBookings).where(eq(sitterBookings.sitterId, sitter.id));
+    const reviews = await db.select().from(sitterReviews).where(eq(sitterReviews.sitterId, sitter.id));
+
+    const completed = allBookings.filter(b => b.status === 'completed').length;
+    const cancelled = allBookings.filter(b => b.status === 'cancelled').length;
+    const total = allBookings.length;
+    const acceptanceRate = total > 0 ? Math.round(((total - cancelled) / total) * 100) : 100;
+
+    const avgRating = reviews.length > 0
+      ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+      : Number(sitter.rating) || 5.0;
+
+    res.json({
+      totalBookings: total,
+      completedBookings: completed,
+      averageRating: Math.round(avgRating * 10) / 10,
+      totalReviews: reviews.length,
+      acceptanceRate,
+      profileViews: 0,
+    });
+  } catch (error) {
+    logger.error('[Sitter Dashboard] Error fetching stats', error);
+    res.status(500).json({ error: 'Failed to fetch sitter stats' });
   }
 });
 
