@@ -19,8 +19,21 @@ interface LandingProps {
 }
 
 export default function Landing({ language, onLanguageChange }: LandingProps) {
-  const { user } = useFirebaseAuth();
+  const { user, claims } = useFirebaseAuth();
   const [, setLocation] = useLocation();
+
+  const getDashboardPath = (): string => {
+    if (!user) return '/signin';
+    const role = claims?.role;
+    switch (role) {
+      case 'provider': return '/provider/dashboard';
+      case 'staff':
+      case 'admin':
+      case 'management':
+      case 'super_admin': return '/dashboard';
+      default: return '/home';
+    }
+  };
   const [heroAnimated, setHeroAnimated] = useState(false);
   
   const { ref: techRef, isRevealed: techRevealed } = useScrollReveal<HTMLElement>();
@@ -122,9 +135,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
               >
                 {user ? (
                   <Button 
-                    onClick={() => {
-                      document.getElementById('packages')?.scrollIntoView({ behavior: 'smooth' });
-                    }}
+                    onClick={() => setLocation(getDashboardPath())}
                     className="gold-shimmer-btn text-white px-8 py-4 text-sm uppercase tracking-[0.15em] font-light rounded-none"
                   >
                     {`${t('nav.welcome', language)} ${user.displayName?.split(' ')[0] || ''}!`}
@@ -367,14 +378,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
             </div>
             <div className="mt-8">
               <Button 
-                onClick={() => {
-                  if (user) {
-                    // If already logged in, show they're a member
-                    alert(`${t('nav.welcome', language)} ${user.displayName?.split(' ')[0] || ''}! You're already a loyalty member.`);
-                  } else {
-                    setLocation('/signin');
-                  }
-                }}
+                onClick={() => setLocation(user ? getDashboardPath() : '/signin')}
                 className="bg-black text-white hover:bg-black hover:shadow-2xl hover:scale-105 transition-all duration-300 px-6 py-3 text-base font-medium shadow-lg"
               >
                 {user 
