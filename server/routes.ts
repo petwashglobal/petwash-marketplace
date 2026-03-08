@@ -10766,10 +10766,20 @@ self.addEventListener('notificationclick', (event) => {
         .where(eq(internalInvites.id, invitation.id));
       
       // Set custom claims on Firebase user
+      // Map internal roleCode to Firebase role claim
+      const ADMIN_ROLE_CODES = ['ADMIN', 'SUPER_ADMIN', 'HQ_ADMIN'];
+      const OPS_ROLE_CODES = ['OPS', 'MANAGER', 'FRANCHISEE'];
+      const roleCode = invitation.roleCode?.toUpperCase() || '';
+      const internalRole = ADMIN_ROLE_CODES.includes(roleCode) ? 'admin'
+        : OPS_ROLE_CODES.includes(roleCode) ? 'ops'
+        : 'staff';
+      const existingClaims = (await adminAuth.getUser(uid)).customClaims || {};
       await adminAuth.setCustomUserClaims(uid, {
+        ...existingClaims,
+        role: internalRole,
         accountType: 'internal',
         roleCode: invitation.roleCode,
-        department: invitation.department
+        department: invitation.department,
       });
       
       logger.info(`Internal invitation accepted by ${userEmail} as ${invitation.roleCode}`);

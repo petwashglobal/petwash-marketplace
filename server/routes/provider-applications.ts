@@ -851,7 +851,9 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
     // Set Firebase custom claims so the provider can access /provider/dashboard
     if (application.userId) {
       try {
+        const existingClaims = (await firebaseAuth.getUser(application.userId)).customClaims || {};
         await firebaseAuth.setCustomUserClaims(application.userId, {
+          ...existingClaims,
           role: 'provider',
           accountType: 'provider',
           providerApprovedAt: new Date().toISOString(),

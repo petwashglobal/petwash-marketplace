@@ -3,15 +3,11 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    // Admin check uses Firebase custom claims, not hardcoded emails.
-    // Set { role: 'admin' } or { role: 'super_admin' } custom claim on admin user records
-    // via Firebase Admin SDK (server/adminAuth.ts setCustomClaims).
-    // No personal emails are embedded in security rules.
+    // Admin check uses Firebase custom claims — no hardcoded emails
     function isAdmin() {
       return isAuthenticated() && (
         request.auth.token.role == 'admin' ||
@@ -24,14 +20,25 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
-    // App Check enforcement (optional - graceful degradation if not configured)
+    function isProvider() {
+      return isAuthenticated() && request.auth.token.role == 'provider';
+    }
+    
+    function isStaff() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'staff' ||
+        request.auth.token.role == 'ops' ||
+        request.auth.token.accountType == 'internal'
+      );
+    }
+    
+    // App Check helper — graceful degradation when App Check not configured
     function isAppCheckVerified() {
       return request.app != null;
     }
     
-    // Employee role helpers
+    // Employee helpers based on Firestore profile (legacy path)
     function getEmployeeProfile() {
-      // Safe get that returns null if document doesn't exist
       let path = /databases/$(database)/documents/users/$(request.auth.uid)/employee/profile;
       return exists(path) ? get(path).data : null;
     }
@@ -54,192 +61,309 @@ service cloud.firestore {
       return hasActiveRole('ops');
     }
     
-    // User profiles - users can read/write their own data (App Check enforced)
+    // ============================================
+    // USER PROFILES
+    // ============================================
     match /users/{userId} {
-      allow read: if isAppCheckVerified() && isAuthenticated() && (isOwner(userId) || isAdmin());
-      allow write: if isAppCheckVerified() && isAuthenticated() && isOwner(userId);
-      allow create: if isAppCheckVerified() && isAuthenticated() && isOwner(userId);
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin() || isStaff());
+      allow write: if isAuthenticated() && isOwner(userId);
+      allow create: if isAuthenticated() && isOwner(userId);
       
-      // Employee profiles - role-based access control
+      // Employee profiles — role-based access control
       match /employee/profile {
-        // ACTIVE admin and ops employees can read all employee profiles
-        // ACTIVE regular employees can only read their own profile
-        // Suspended/inactive employees cannot read anything
-        allow read: if isAppCheckVerified() && (
-          (isActiveEmployee() && isOwner(userId)) ||  // Active employee can read own profile
-          isAdmin() ||                                 // Super admin (nirhadad1@gmail.com)
-          isActiveAdminEmployee() ||                   // Active admin employee can read all
-          isActiveOpsEmployee()                        // Active ops employee can read all
-        );
-        
-        // Only ACTIVE admin employees or super admin can create employee profiles
-        allow create: if isAppCheckVerified() && (isAdmin() || isActiveAdminEmployee());
-        
-        // Only ACTIVE admin employees or super admin can update employee profiles (except lastLoginAt)
-        // Active employees can update their own lastLoginAt timestamp only
-        allow update: if isAppCheckVerified() && (
+        allow read: if isAuthenticated() && (
+          (isActiveEmployee() && isOwner(userId)) ||
           isAdmin() ||
           isActiveAdminEmployee() ||
-          (isActiveEmployee() && isOwner(userId) && 
-           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastLoginAt']))
+          isActiveOpsEmployee()
         );
-        
-        // Only ACTIVE admin employees or super admin can delete employee profiles
-        allow delete: if isAppCheckVerified() && (isAdmin() || isActiveAdminEmployee());
+        allow create: if isAdmin() || isActiveAdminEmployee();
+        allow update: if isAdmin() || isActiveAdminEmployee() ||
+          (isActiveEmployee() && isOwner(userId) && 
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastLoginAt']));
+        allow delete: if isAdmin() || isActiveAdminEmployee();
+      }
+      
+      // Pet profiles — owner reads/writes their own pets
+      match /pets/{petId} {
+        allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+        allow write: if isAuthenticated() && isOwner(userId);
+        allow delete: if isAuthenticated() && isOwner(userId);
+      }
+      
+      // User profile data subcollection
+      match /profile/{doc} {
+        allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+        allow write: if isAuthenticated() && isOwner(userId);
       }
     }
     
-    // KYC documents - strict access control (App Check enforced)
+    // ============================================
+    // EMPLOYEES COLLECTION (new flat path)
+    // ============================================
+    match /employees/{uid} {
+      allow read: if isAuthenticated() && (
+        isOwner(uid) || isAdmin() || isActiveAdminEmployee() || isActiveOpsEmployee()
+      );
+      allow create: if isAdmin() || isActiveAdminEmployee();
+      allow update: if isAdmin() || isActiveAdminEmployee() ||
+        (isActiveEmployee() && isOwner(uid) &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastLoginAt']));
+      allow delete: if isAdmin() || isActiveAdminEmployee();
+    }
+    
+    // ============================================
+    // PET PROFILES (top-level collection)
+    // ============================================
+    match /pets/{petId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.uid || isAdmin()
+      );
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.uid;
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.uid;
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.uid || isAdmin());
+    }
+    
+    // ============================================
+    // KYC DOCUMENTS
+    // ============================================
     match /kyc/{kycId} {
-      allow read: if isAppCheckVerified() && isAuthenticated() && (
-        request.auth.uid == resource.data.userId || 
-        isAdmin()
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId || isAdmin()
       );
-      allow create: if isAppCheckVerified() && isAuthenticated() && request.auth.uid == request.resource.data.userId;
-      allow update: if isAppCheckVerified() && isAdmin(); // Only admin can approve/reject
-      allow delete: if isAppCheckVerified() && isAdmin();
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
     
-    // Birthday vouchers - users can read their own vouchers (App Check enforced)
+    // ============================================
+    // VOUCHERS & BIRTHDAY VOUCHERS
+    // ============================================
     match /birthday_vouchers/{voucherId} {
-      allow read: if isAppCheckVerified() && isAuthenticated() && (
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId || isAdmin()
+      );
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    match /vouchers/{voucherId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.issuedToUid || isAdmin()
+      );
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // BOOKINGS
+    // ============================================
+    match /bookings/{bookingId} {
+      allow read: if isAuthenticated() && (
         request.auth.uid == resource.data.userId ||
+        request.auth.uid == resource.data.providerId ||
         isAdmin()
       );
-      allow create: if isAppCheckVerified() && isAdmin(); // Only server/admin can create vouchers
-      allow update: if isAppCheckVerified() && isAdmin(); // Only admin can mark as used
-      allow delete: if isAppCheckVerified() && isAdmin();
-    }
-    
-    // CRM Email Templates - admin only (App Check enforced for writes, read requires server token)
-    match /crm_email_templates/{templateId} {
-      allow read: if isAppCheckVerified(); // Server with App Check can read templates
-      allow write: if isAppCheckVerified() && isAdmin();
-    }
-    
-    // CRM Communications - admin only for management (App Check enforced)
-    match /crm_communications/{commId} {
-      allow read: if isAppCheckVerified() && isAdmin();
-      allow write: if isAppCheckVerified() && isAdmin();
-    }
-    
-    // Analytics/Logs - admin read only, system write (App Check enforced)
-    match /analytics_events/{eventId} {
-      allow read: if isAppCheckVerified() && isAdmin();
-      allow create: if isAppCheckVerified() && isAuthenticated(); // Users can log events
-    }
-    
-    // System logs - admin only (App Check enforced for reads)
-    match /system_logs/{logId} {
-      allow read: if isAppCheckVerified() && isAdmin();
-      allow create: if isAppCheckVerified(); // Server with App Check can create logs
-    }
-    
-    // Transactions - users can read their own, admin can read all (App Check enforced)
-    match /transactions/{transactionId} {
-      allow read: if isAppCheckVerified() && isAuthenticated() && (
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
         request.auth.uid == resource.data.userId ||
+        request.auth.uid == resource.data.providerId ||
         isAdmin()
       );
-      allow create: if isAppCheckVerified() && isAuthenticated(); // Server creates after payment
-      allow update: if isAppCheckVerified() && isAdmin(); // Admin can update status
+      allow delete: if isAdmin();
     }
     
-    // System backups - admin read only, server-side only writes (no client access)
-    match /system_backups/{backupId} {
-      allow read: if isAdmin(); // Only admin can view backup metadata
-      allow write: if false; // No client writes - backups created via Admin SDK only
-      allow delete: if isAdmin(); // Only admin can delete backups
+    // ============================================
+    // CONVERSATIONS & MESSAGES
+    // ============================================
+    match /conversations/{conversationId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid in resource.data.participants || isAdmin()
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        request.auth.uid in resource.data.participants || isAdmin()
+      );
+      allow delete: if isAdmin();
       
-      // Backup subcollections - same restrictions
-      match /collections/{collectionDoc} {
-        allow read: if isAdmin();
-        allow write: if false; // Admin SDK only
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && (
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants || isAdmin()
+        );
+        allow create: if isAuthenticated();
+        allow update: if isAdmin();
         allow delete: if isAdmin();
       }
     }
     
     // ============================================
-    // ENTERPRISE: FRANCHISE ACCESS CONTROL
+    // FCM TOKENS (push notifications)
     // ============================================
+    match /fcmTokens/{userId}/devices/{deviceId} {
+      allow read: if isAuthenticated() && isOwner(userId);
+      allow write: if isAuthenticated() && isOwner(userId);
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
     
-    // Main franchise documents - Admin can view/update ANY, Owner can only access THEIR franchise
-    match /franchises/{franchiseId} {
-      // HQ/Admin can view and update ANY franchise
-      allow read, update: if isAdmin();
+    // ============================================
+    // PERFORMANCE METRICS (RUM)
+    // ============================================
+    match /performance_metrics/{metricId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+    }
+    
+    // ============================================
+    // CRM
+    // ============================================
+    match /crm_email_templates/{templateId} {
+      allow read: if isAuthenticated() && (isAdmin() || isStaff());
+      allow write: if isAdmin();
+    }
+    
+    match /crm_communications/{commId} {
+      allow read: if isAdmin() || isStaff();
+      allow write: if isAdmin();
+    }
+    
+    // ============================================
+    // ANALYTICS & LOGS
+    // ============================================
+    match /analytics_events/{eventId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+    }
+    
+    match /system_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+    }
+    
+    match /adminLogs/{logId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+    
+    match /alerts/{alertId} {
+      allow read: if isAdmin() || isStaff();
+      allow write: if isAdmin();
+    }
+    
+    // ============================================
+    // TRANSACTIONS
+    // ============================================
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId || isAdmin()
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+    }
+    
+    // ============================================
+    // STATIONS
+    // ============================================
+    match /stations/{stationId} {
+      allow read: if isAdmin() || isStaff() || (isAuthenticated() && request.auth.token.role == 'owner');
+      allow write: if isAdmin();
       
-      // Franchise Owner can only read and update THEIR OWN specific franchise document
+      match /inventory/{sku} {
+        allow read: if isAdmin() || isStaff() || (isAuthenticated() && request.auth.token.role == 'owner');
+        allow write: if isAdmin();
+      }
+    }
+    
+    match /station_events/{eventId} {
+      allow read: if isAdmin() || isStaff() || (isAuthenticated() && request.auth.token.role == 'owner');
+      allow write: if isAdmin();
+    }
+    
+    match /station_alerts/{alertId} {
+      allow read: if isAdmin() || isStaff() || (isAuthenticated() && request.auth.token.role == 'owner');
+      allow write: if isAdmin();
+    }
+    
+    match /station_usage_daily/{docId} {
+      allow read: if isAdmin() || isStaff();
+      allow write: if isAdmin();
+    }
+    
+    match /reconciliation_daily/{docId} {
+      allow read: if isAdmin() || isStaff();
+      allow write: if isAdmin();
+    }
+    
+    match /station_inventory/{stationId} {
+      allow read: if isAdmin() || isStaff();
+      allow write: if isAdmin();
+    }
+    
+    // ============================================
+    // SYSTEM BACKUPS
+    // ============================================
+    match /system_backups/{backupId} {
+      allow read: if isAdmin();
+      allow write: if false;
+      allow delete: if isAdmin();
+      
+      match /collections/{collectionDoc} {
+        allow read: if isAdmin();
+        allow write: if false;
+        allow delete: if isAdmin();
+      }
+    }
+    
+    // ============================================
+    // ENTERPRISE: FRANCHISE
+    // ============================================
+    match /franchises/{franchiseId} {
+      allow read, update: if isAdmin();
       allow read, update: if isAuthenticated() && 
                             request.auth.token.role == 'owner' && 
                             request.auth.token.franchise_id == franchiseId;
-      
-      // General Staff cannot create/delete
       allow create, delete: if isAdmin();
     }
     
-    // ============================================
-    // ENTERPRISE: INVENTORY ACCESS CONTROL
-    // ============================================
-    
-    // Franchise-specific inventory access
     match /inventory/{franchiseId} {
-      // Allow read/write ONLY IF the user's assigned franchise_id claim matches the document ID
       allow read, write: if isAuthenticated() && request.auth.token.franchise_id == franchiseId;
     }
     
-    // Inventory items sub-collection
     match /inventory/{franchiseId}/items/{itemId} {
       allow read, write: if isAuthenticated() && request.auth.token.franchise_id == franchiseId;
     }
     
-    // ============================================
-    // ENTERPRISE: DEPARTMENT-BASED PROJECT ACCESS
-    // ============================================
-    
-    // Projects - Users can only access projects in their departments
     match /projects/{projectId} {
-      // Admin can access all projects
       allow read: if isAdmin();
-      
-      // Users can read if project is in their departments array
       allow read: if isAuthenticated() && 
                     request.auth.token.departments != null && 
                     projectId in request.auth.token.departments;
-      
-      // Only the Project Manager can update the main project data
       allow update: if isAuthenticated() && request.auth.token.manager_id == request.auth.uid;
-      
-      // Only admins can create/delete projects
       allow create, delete: if isAdmin();
     }
     
     // ============================================
     // ENTERPRISE: INBOX & MESSAGING
     // ============================================
-    
-    // Staff inbox - only assigned staff can access their inbox
     match /inboxes/{staffUid}/messages/{messageId} {
       allow read, write: if isAuthenticated() && request.auth.uid == staffUid;
-      allow write: if isAdmin(); // Admin can write to any inbox
+      allow write: if isAdmin();
     }
     
     // ============================================
     // ENTERPRISE: FINANCIAL DATA
     // ============================================
-    
-    // Invoices - restricted to admin and finance roles
     match /invoices/{invoiceId} {
       allow read, write: if isAdmin() || 
                            (isAuthenticated() && request.auth.token.role == 'finance');
     }
     
-    // Bank transactions - admin and finance only
     match /bank_transactions/{transactionId} {
       allow read, write: if isAdmin() || 
                            (isAuthenticated() && request.auth.token.role == 'finance');
     }
     
-    // Expenses - franchise-specific access
     match /expenses/{expenseId} {
       allow read: if isAdmin() || 
                     (isAuthenticated() && resource.data.franchiseId == request.auth.token.franchise_id);
@@ -247,7 +371,6 @@ service cloud.firestore {
                      (isAuthenticated() && request.resource.data.franchiseId == request.auth.token.franchise_id);
     }
     
-    // Receipts for OCR processing
     match /receipts_raw/{receiptId} {
       allow read: if isAdmin() || 
                     (isAuthenticated() && resource.data.franchiseId == request.auth.token.franchise_id);
@@ -257,39 +380,54 @@ service cloud.firestore {
     // ============================================
     // ENTERPRISE: COMPLIANCE & SECURITY
     // ============================================
-    
-    // DPO appointments - admin only
     match /dpo_appointments/{dpoId} {
       allow read, write: if isAdmin();
     }
     
-    // Penetration tests - admin only
     match /penetration_tests/{testId} {
       allow read, write: if isAdmin();
     }
     
-    // Security incidents - admin only
     match /security_incidents/{incidentId} {
       allow read, write: if isAdmin();
     }
     
     // ============================================
-    // ENTERPRISE: STATION MANAGEMENT
+    // GOOGLE WALLET / PASSES
     // ============================================
+    match /google_wallet_passes/{passId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId || isAdmin()
+      );
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
     
-    // Stations - admin can manage all, franchise owners can view their stations
-    match /stations/{stationId} {
-      allow read: if isAdmin() || (isAuthenticated() && request.auth.token.role == 'owner');
+    // ============================================
+    // MARKETING ASSETS
+    // ============================================
+    match /marketingAssets/{assetId} {
+      allow read: if isAuthenticated() && (isAdmin() || isStaff());
       allow write: if isAdmin();
     }
     
-    // Station alerts
-    match /station_alerts/{alertId} {
-      allow read: if isAdmin() || (isAuthenticated() && request.auth.token.role == 'owner');
+    match /serviceTickets/{franchiseId}/{ticketId} {
+      allow read: if isAuthenticated() && (
+        request.auth.token.franchise_id == franchiseId || isAdmin()
+      );
+      allow write: if isAdmin() || 
+                     (isAuthenticated() && request.auth.token.franchise_id == franchiseId);
+    }
+    
+    match /observances/{locale} {
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
     
-    // Default deny all other collections
+    // ============================================
+    // DEFAULT DENY ALL OTHER COLLECTIONS
+    // ============================================
     match /{document=**} {
       allow read, write: if false;
     }

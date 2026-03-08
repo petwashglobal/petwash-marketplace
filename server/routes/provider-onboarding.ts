@@ -738,10 +738,12 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
         const existingClaims = (await auth.getUser(application.userId)).customClaims || {};
         await auth.setCustomUserClaims(application.userId, {
           ...existingClaims,
+          role: 'provider',
           accountType: 'provider',
           providerType: application.providerType,
           providerId,
           providerVerified: true,
+          providerApprovedAt: new Date().toISOString(),
         });
         logger.info(`[Provider Onboarding] Custom claims set for approved provider`, { userId: application.userId, providerType: application.providerType });
       } catch (claimsErr) {

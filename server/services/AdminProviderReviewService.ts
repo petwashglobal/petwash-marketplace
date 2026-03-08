@@ -405,7 +405,9 @@ class AdminProviderReviewService {
         }
 
         if (firebaseUid) {
+          const existingClaims = (await firebaseAuth.getUser(firebaseUid)).customClaims || {};
           await firebaseAuth.setCustomUserClaims(firebaseUid, {
+            ...existingClaims,
             role: 'provider',
             accountType: 'provider',
             providerApprovedAt: new Date().toISOString(),
