@@ -9,7 +9,7 @@ import { logger } from '../lib/logger';
 import { countFailedAttempts } from './securityEvents';
 
 const FROM = process.env.ALERT_EMAIL_FROM || 'noreply@petwash.co.il';
-const TO = process.env.ALERT_EMAIL_TO || 'Support@PetWash.co.il';
+const TO = process.env.ALERT_EMAIL_TO || 'nir.h@petwash.co.il';
 
 /**
  * Send security alert email

@@ -364,6 +364,12 @@ router.post('/submit', async (req, res) => {
       platformCount: data.selectedPlatforms?.length || 0,
       contentHash: contentHash.substring(0, 16) + '...'
     });
+
+    try {
+      const { geminiPlatformMonitor } = await import('../services/GeminiPlatformSecurityMonitor');
+      geminiPlatformMonitor.recordRegistration('provider');
+    } catch {}
+
     
     try {
       const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';

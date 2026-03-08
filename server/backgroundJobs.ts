@@ -17,6 +17,9 @@ import { startAutoVoidCron } from './cron/auto-void-expired-payments';
 import ProviderPayoutService from './services/ProviderPayoutService';
 import DataRetentionService from './services/DataRetentionService';
 import FinancialReconciliationService from './services/FinancialReconciliationService';
+import { emailSpendGuard } from './services/EmailSpendGuard';
+import { geminiPlatformMonitor } from './services/GeminiPlatformSecurityMonitor';
+import { sendSecurityAlert } from './services/alerts';
 
 export class BackgroundJobProcessor {
   private static jobLocks = new Map<string, boolean>(); // Per-task locking
@@ -46,6 +49,13 @@ export class BackgroundJobProcessor {
    */
   static start(): void {
     logger.info('Starting background job processor...');
+
+    // Wire EmailSpendGuard alarm callback (uses sendSecurityAlert → nir.h@petwash.co.il)
+    emailSpendGuard.setAlarmCallback(sendSecurityAlert);
+    logger.info('[EmailSpendGuard] ✅ Alarm callback wired — alerts go to nir.h@petwash.co.il');
+
+    // Start Gemini Platform Security Monitor (every 15 min, Gemini 2.5 Flash)
+    geminiPlatformMonitor.start();
 
     // Start auto-void cron for expired payment authorizations (every 5 minutes)
     startAutoVoidCron();

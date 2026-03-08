@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import { logger } from './lib/logger';
 import { replaceTemplates, validateTemplate, type TemplateContext } from './lib/template-engine';
 import { createMailService, isSendGridConfigured } from './lib/sendgrid';
+import { emailSpendGuard } from './services/EmailSpendGuard';
 
 const mailService = createMailService();
 
@@ -50,7 +51,13 @@ export class EmailService {
         html: params.html,
       };
       
+      const guard = emailSpendGuard.check('EmailService', params.to);
+      if (!guard.allowed) {
+        logger.error(`[EmailService] 🔴 Send BLOCKED by EmailSpendGuard`, { reason: guard.reason, to: params.to });
+        return false;
+      }
       await mailService.send(msg);
+      await emailSpendGuard.record('EmailService', params.to, params.subject);
       logger.info(`System email sent to ${params.to}: ${params.subject}`);
       return true;
       

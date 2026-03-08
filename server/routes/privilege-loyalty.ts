@@ -179,6 +179,12 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
     });
 
     try {
+      const { geminiPlatformMonitor } = await import('../services/GeminiPlatformSecurityMonitor');
+      geminiPlatformMonitor.recordRegistration('prestige');
+    } catch {}
+
+
+    try {
       const memberLang = (language === 'he' ? 'he' : 'en') as 'he' | 'en';
       await sendClubWelcomeEmail(email.trim().toLowerCase(), firstName.trim(), {
         tier: 'bronze',

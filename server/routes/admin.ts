@@ -1145,4 +1145,45 @@ router.post('/ceo/issue-free-voucher', validateFirebaseToken, requireCEO, async 
   }
 });
 
+/**
+ * GET /api/admin/security/email-guard
+ * Email spend guard stats — hourly/daily counters, circuit state, recent sends
+ */
+router.get('/security/email-guard', async (_req, res) => {
+  try {
+    const { emailSpendGuard } = await import('../services/EmailSpendGuard');
+    res.json({ ok: true, ...emailSpendGuard.getStats() });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get email guard stats' });
+  }
+});
+
+/**
+ * GET /api/admin/security/platform-monitor
+ * Gemini Platform Security Monitor status + last assessment
+ */
+router.get('/security/platform-monitor', async (_req, res) => {
+  try {
+    const { geminiPlatformMonitor } = await import('../services/GeminiPlatformSecurityMonitor');
+    res.json({ ok: true, ...geminiPlatformMonitor.getStatus() });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get platform monitor status' });
+  }
+});
+
+/**
+ * POST /api/admin/security/platform-monitor/scan
+ * Force an immediate Gemini security scan
+ */
+router.post('/security/platform-monitor/scan', async (_req, res) => {
+  try {
+    const { geminiPlatformMonitor } = await import('../services/GeminiPlatformSecurityMonitor');
+    const assessment = await geminiPlatformMonitor.forceScan();
+    res.json({ ok: true, assessment });
+  } catch (error) {
+    res.status(500).json({ error: 'Scan failed', details: error instanceof Error ? error.message : 'Unknown' });
+  }
+});
+
 export default router;
+

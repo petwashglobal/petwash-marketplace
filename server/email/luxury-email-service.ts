@@ -14,6 +14,7 @@ import { generateLuxuryLaunchEmail } from './templates/luxury-launch-2025';
 import { generateInvestorLaunchEventEmail } from './templates/luxury-investor-launch-event-2025';
 import { generateLuxuryWelcomeEmail } from './templates/welcome-luxury-2026';
 import { createMailService, isSendGridConfigured } from '../lib/sendgrid';
+import { emailSpendGuard } from '../services/EmailSpendGuard';
 
 const FROM_EMAIL = 'noreply@petwash.co.il';
 const FROM_NAME = '⁦Pet Wash™⁩ Team';
@@ -45,6 +46,12 @@ export async function sendLuxuryEmail(options: EmailOptions): Promise<boolean> {
     return false;
   }
 
+  const guard = emailSpendGuard.check('LuxuryEmail', options.to);
+  if (!guard.allowed) {
+    logger.error('[Luxury Email] 🔴 Send BLOCKED by EmailSpendGuard', { reason: guard.reason, to: options.to });
+    return false;
+  }
+
   try {
     const msg = {
       to: options.to,
@@ -58,6 +65,7 @@ export async function sendLuxuryEmail(options: EmailOptions): Promise<boolean> {
     };
 
     await sgMail.send(msg);
+    await emailSpendGuard.record('LuxuryEmail', options.to, options.subject);
     
     logger.info('[Luxury Email] Sent successfully', {
       to: options.to,

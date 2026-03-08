@@ -543,6 +543,18 @@ if (isProduction) {
     import('./services/googleSheetsIntegration').then(m => m.processStartupRetries()).catch(() => {});
     import('./services/JobDispatchService').then(m => m.JobDispatchService.startDispatchPoller()).catch(() => {});
     import('./services/JobExpiryNotificationService').then(m => m.jobExpiryNotificationService.start()).catch(() => {});
+
+    // Email Spend Guard — wire alarm callback so budget alerts reach nir.h@petwash.co.il
+    import('./services/EmailSpendGuard').then(async ({ emailSpendGuard }) => {
+      const { sendSecurityAlert } = await import('./services/alerts');
+      emailSpendGuard.setAlarmCallback(sendSecurityAlert);
+      console.log('[EmailSpendGuard] ✅ Active — hourly/daily budget alarms wired');
+    }).catch(e => console.error('[EmailSpendGuard] Failed to initialize:', e));
+
+    // Gemini Platform Security Monitor — scans all platforms every 15 min
+    import('./services/GeminiPlatformSecurityMonitor').then(({ geminiPlatformMonitor }) => {
+      geminiPlatformMonitor.start();
+    }).catch(e => console.error('[PlatformMonitor] Failed to start:', e));
     
     // 5c. Initialize Israeli CPI data - TRULY NON-BLOCKING (fire-and-forget)
     // CRITICAL: Do NOT await - these can be slow and should not delay serverReady
