@@ -34,8 +34,21 @@ export default function ProviderRegistrationBanner({
   const [, setLocation] = useLocation();
   const isRTL = dir === "rtl";
   
-  const navigateToOnboarding = () => {
-    setLocation("/become-provider");
+  const dedicatedJoinRoutes: Record<string, string> = {
+    sitter: '/join/sitter',
+    walker: '/join/walker',
+    trainer: '/join/trainer',
+    driver: '/become-provider?type=pet_trek',
+    sitter_suite: '/join/sitter',
+    walk_my_pet: '/join/walker',
+    training_academy: '/join/trainer',
+    pet_trek: '/become-provider?type=pet_trek',
+  };
+
+  const navigateToOnboarding = (specificType?: string) => {
+    const type = specificType || (platform !== 'all' ? platform : null);
+    const route = type ? (dedicatedJoinRoutes[type] || '/become-provider') : '/become-provider';
+    setLocation(route);
   };
 
   const providerTypes = [
@@ -185,10 +198,10 @@ export default function ProviderRegistrationBanner({
                     role="button"
                     tabIndex={type.comingSoon ? -1 : 0}
                     onClick={() => {
-                      if (!type.comingSoon) navigateToOnboarding();
+                      if (!type.comingSoon) navigateToOnboarding(type.id);
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !type.comingSoon) navigateToOnboarding();
+                      if (e.key === 'Enter' && !type.comingSoon) navigateToOnboarding(type.id);
                     }}
                     className={`group p-6 rounded-2xl border transition-all duration-300 ${type.comingSoon ? 'cursor-default opacity-60 bg-gray-50 border-gray-100' : 'cursor-pointer bg-gray-50 border-gray-200 hover:border-emerald-400 hover:scale-105 hover:bg-gray-100 active:scale-95'}`}
                   >
@@ -237,10 +250,10 @@ export default function ProviderRegistrationBanner({
               role="button"
               tabIndex={type.comingSoon ? -1 : 0}
               onClick={() => {
-                if (!type.comingSoon) navigateToOnboarding();
+                if (!type.comingSoon) navigateToOnboarding(type.id);
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !type.comingSoon) navigateToOnboarding();
+                if (e.key === 'Enter' && !type.comingSoon) navigateToOnboarding(type.id);
               }}
               className={`group p-6 rounded-2xl border transition-all duration-300 ${type.comingSoon ? 'cursor-default opacity-60 bg-gray-50 border-gray-100' : 'cursor-pointer bg-gray-50 border-gray-200 hover:border-emerald-400 hover:scale-105 active:scale-95'}`}
             >

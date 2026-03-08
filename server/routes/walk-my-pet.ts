@@ -38,7 +38,7 @@ const router = Router();
 // =================== WALKER REGISTRATION & PROFILES ===================
 
 // Create walker profile (first step of registration)
-router.post('/api/walkers/register', async (req, res) => {
+router.post('/walkers/register', async (req, res) => {
   try {
     const userId = req.body.userId || (req as any).user?.uid;
     if (!userId) {

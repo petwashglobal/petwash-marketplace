@@ -162,9 +162,16 @@ export default function ProviderApplicationForm() {
   const { language } = useLanguage();
   const isHebrew = language === 'he';
   const { user } = useFirebaseAuth();
+
+  // Read ?type= URL param to pre-select a platform
+  const preselectedType = new URLSearchParams(window.location.search).get('type');
+  const initialPlatforms = preselectedType && PLATFORMS.some(p => p.id === preselectedType)
+    ? [preselectedType]
+    : [];
+
   const [step, setStep] = useState(user ? 1 : 0);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(initialPlatforms);
   const [pricing, setPricing] = useState<Record<string, { baseRate: number; additionalPet: number }>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -201,7 +208,7 @@ export default function ProviderApplicationForm() {
       city: "",
       postalCode: "",
       country: "Israel",
-      selectedPlatforms: [],
+      selectedPlatforms: initialPlatforms,
       yearsExperience: "",
       hasOwnTransport: false,
       hasPetFirstAid: false,

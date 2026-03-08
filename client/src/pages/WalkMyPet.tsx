@@ -298,7 +298,7 @@ export default function WalkMyPet() {
                     <Sparkles className="w-5 h-5" />
                   </Button>
                   
-                  <Link href="/become-provider">
+                  <Link href="/join/walker">
                     <Button 
                       className="luxury-btn-secondary px-10 py-8 text-xl flex items-center gap-3"
                       data-testid="button-become-walker"
@@ -945,7 +945,7 @@ export default function WalkMyPet() {
                 {isHebrew ? 'מצא ווקר עכשיו' : 'Find a Walker Now'}
               </Button>
               
-              <Link href="/become-provider">
+              <Link href="/join/walker">
                 <Button 
                   className="luxury-btn-primary luxury-shadow-xl text-lg px-8 py-6"
                   data-testid="button-final-become-walker"

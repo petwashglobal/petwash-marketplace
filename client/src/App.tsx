@@ -203,6 +203,11 @@ const TrainerProfile = lazy(() => import("@/pages/academy/TrainerProfile"));
 const TrainerDetail = lazy(() => import("@/pages/academy/TrainerDetail"));
 const AcademyBookingFlow = lazy(() => import("@/pages/academy/BookingFlow"));
 
+// Provider Join Flows — platform-specific application forms
+const JoinAsWalker = lazy(() => import("@/pages/join/JoinAsWalker"));
+const JoinAsSitter = lazy(() => import("@/pages/join/JoinAsSitter"));
+const JoinAsTrainer = lazy(() => import("@/pages/join/JoinAsTrainer"));
+
 // Contractor Dashboard - 2026 Lifecycle Management
 const ContractorDashboard = lazy(() => import("@/pages/contractor/Dashboard"));
 
@@ -832,6 +837,29 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
+        {/* Provider Join Flows — dedicated platform-specific application forms */}
+        <Route path="/join/walker">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <JoinAsWalker />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/join/sitter">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <JoinAsSitter />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/join/trainer">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <JoinAsTrainer />
+            </Suspense>
+          )}
+        </Route>
+
         {/* ⁦Walk My Pet™⁩ - Specific routes BEFORE general routes to avoid catch-all */}
         {/* ⁦Walk My Pet™⁩ - Walker Booking Page */}
         <Route path="/walk-my-pet/book/:walkerId">

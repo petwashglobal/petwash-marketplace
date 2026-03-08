@@ -408,6 +408,55 @@ router.post('/bookings/:id/cancel', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/academy/trainers/register - Trainer self-registration
+ * Public endpoint - trainer applies to join the platform, starts as pending
+ */
+router.post('/trainers/register', async (req, res) => {
+  try {
+    const userId = req.body.userId || (req as any).user?.uid;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { firstName, lastName, email, phone, bio, specialties, yearsOfExperience, hourlyRate, serviceTypes, serviceArea, languages } = req.body;
+
+    if (!firstName || !lastName || !email || !phone || !hourlyRate) {
+      return res.status(400).json({ error: 'Missing required fields: firstName, lastName, email, phone, hourlyRate' });
+    }
+
+    const existing = await db.select({ id: trainers.id }).from(trainers).where(eq(trainers.userId, userId)).limit(1);
+    if (existing.length > 0) {
+      return res.status(409).json({ error: 'A trainer profile already exists for this account' });
+    }
+
+    const [newTrainer] = await db.insert(trainers).values({
+      trainerId: `TR-${new Date().getFullYear()}-${nanoid(8)}`,
+      userId,
+      firstName,
+      lastName,
+      email,
+      phone,
+      bio: bio || null,
+      specialties: Array.isArray(specialties) ? specialties : [],
+      yearsOfExperience: yearsOfExperience ? parseInt(yearsOfExperience) : 0,
+      hourlyRate: String(parseFloat(hourlyRate)),
+      serviceTypes: Array.isArray(serviceTypes) ? serviceTypes : [],
+      serviceArea: serviceArea || null,
+      languages: Array.isArray(languages) ? languages : ['he', 'en'],
+      verificationStatus: 'pending',
+      isActive: false,
+      isCertified: false,
+    }).returning();
+
+    logger.info('[Academy] Trainer self-registered', { trainerId: newTrainer.trainerId, email: newTrainer.email });
+    res.status(201).json({ success: true, trainer: newTrainer, message: 'Application submitted. You will be notified once verified.' });
+  } catch (error) {
+    logger.error('[Academy] Trainer registration error', error);
+    res.status(500).json({ error: 'Failed to submit trainer application' });
+  }
+});
+
 // ==================== ADMIN ENDPOINTS ====================
 
 /**
