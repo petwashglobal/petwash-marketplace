@@ -125,28 +125,53 @@ router.post('/:bookingId/open', async (req, res) => {
     const uid = req.firebaseUser!.uid;
     const { bookingId } = req.params;
 
-    // 1. Verify booking exists
-    const [booking] = await db
-      .select()
-      .from(bookings)
-      .where(eq(bookings.id, bookingId))
-      .limit(1);
+    // 1. Find booking — check generic table first, then platform-specific tables
+    let customerId: string | null = null;
+    let providerId: string | null = null;
+    let bookingStatus: string | null = null;
+    let platform = 'walk_my_pet';
 
-    if (!booking) {
+    const [genericBooking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+    if (genericBooking) {
+      customerId = genericBooking.userId;
+      providerId = genericBooking.providerId;
+      bookingStatus = genericBooking.status;
+      platform = (genericBooking as any).platformId || 'walk_my_pet';
+    } else {
+      // Fall back to walk_bookings
+      const [walkB] = await db.select().from(walkBookings).where(eq(walkBookings.bookingId, bookingId)).limit(1);
+      if (walkB) {
+        customerId = walkB.ownerId;
+        providerId = walkB.walkerId;
+        bookingStatus = walkB.status;
+        platform = 'walk_my_pet';
+      } else {
+        // Fall back to sitter_bookings
+        const [sitterB] = await db.select().from(sitterBookings).where(eq(sitterBookings.bookingId, bookingId)).limit(1);
+        if (sitterB) {
+          customerId = sitterB.ownerId;
+          providerId = sitterB.sitterId?.toString() ?? null;
+          bookingStatus = sitterB.status;
+          platform = 'sitter_suite';
+        }
+      }
+    }
+
+    if (!customerId || !providerId) {
       return res.status(404).json({ error: 'Booking not found' });
     }
 
     // 2. Verify participant
-    if (booking.userId !== uid && booking.providerId !== uid) {
+    if (customerId !== uid && providerId !== uid) {
       return res.status(403).json({ error: 'Not a participant in this booking' });
     }
 
-    // 3. Verify status
-    if (booking.status !== 'confirmed' && booking.status !== 'in_progress') {
+    // 3. Verify status — only confirmed or in_progress may open chat
+    if (bookingStatus !== 'confirmed' && bookingStatus !== 'in_progress') {
       return res.status(400).json({ error: 'Chat can only be opened for confirmed or in-progress bookings' });
     }
 
-    // 4. Check if conversation exists
+    // 4. Check if conversation already exists
     const [existingConv] = await db
       .select()
       .from(bookingConversations)
@@ -157,14 +182,14 @@ router.post('/:bookingId/open', async (req, res) => {
       return res.json({ conversationId: existingConv.conversationId });
     }
 
-    // 5. Create conversation
+    // 5. Create conversation (exactly one per booking — UNIQUE INDEX enforces this)
     const conversationId = `BC-${nanoid()}`;
     const newConv = {
       conversationId,
       bookingId,
-      platform: booking.platformId || 'walk_my_pet',
-      customerId: booking.userId,
-      providerId: booking.providerId,
+      platform,
+      customerId,
+      providerId,
       chatStatus: 'active',
       customerUnread: 0,
       providerUnread: 0,

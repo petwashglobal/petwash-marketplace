@@ -9,6 +9,7 @@ declare global {
         uid: string;
         email?: string;
         email_verified?: boolean;
+        claims?: Record<string, any>;
       };
       user?: {
         uid?: string;
@@ -20,18 +21,37 @@ declare global {
   }
 }
 
-async function extractFirebaseUser(req: Request): Promise<{ uid: string; email?: string; email_verified?: boolean } | null> {
+// Dev-only test auth bypass. Disabled entirely in production.
+// Activated by sending headers: X-Dev-Test-Uid + X-Dev-Test-Secret matching DEV_TEST_SECRET env var.
+function extractDevTestUser(req: Request): { uid: string; email?: string; email_verified?: boolean; claims?: Record<string, any> } | null {
+  if (process.env.NODE_ENV === 'production') return null;
+  const testUid = req.headers['x-dev-test-uid'] as string | undefined;
+  const testSecret = req.headers['x-dev-test-secret'] as string | undefined;
+  const expectedSecret = process.env.DEV_TEST_SECRET;
+  if (!testUid || !testSecret || !expectedSecret) return null;
+  if (testSecret !== expectedSecret) return null;
+  const role = (req.headers['x-dev-test-role'] as string) || 'customer';
+  return { uid: testUid, email: `${testUid}@test.local`, email_verified: true, claims: { role } };
+}
+
+async function extractFirebaseUser(req: Request): Promise<{ uid: string; email?: string; email_verified?: boolean; claims?: Record<string, any> } | null> {
+  // Dev test bypass — only valid outside production
+  const devUser = extractDevTestUser(req);
+  if (devUser) return devUser;
+
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.split('Bearer ')[1];
     const decoded = await firebaseAdmin.verifyIdToken(token, true);
-    return { uid: decoded.uid, email: decoded.email, email_verified: decoded.email_verified };
+    const { uid, email, email_verified, role, ...rest } = decoded as any;
+    return { uid, email, email_verified, claims: { role, ...rest } };
   }
 
   const sessionCookie = req.cookies?.pw_session;
   if (sessionCookie) {
     const decoded = await firebaseAdmin.verifySessionCookie(sessionCookie, true);
-    return { uid: decoded.uid, email: decoded.email, email_verified: decoded.email_verified };
+    const { uid, email, email_verified, role, ...rest } = decoded as any;
+    return { uid, email, email_verified, claims: { role, ...rest } };
   }
 
   return null;

@@ -3724,6 +3724,11 @@ export const sitterBookings = pgTable("sitter_bookings", {
   completedAt: timestamp("completed_at"),
   cancelledAt: timestamp("cancelled_at"),
   updatedAt: timestamp("updated_at").defaultNow(),
+
+  // Provider Reassignment (booking-expiry poller)
+  reassignmentCount: integer("reassignment_count").default(0),
+  previousProviders: text("previous_providers").array(),
+  lastReassignedAt: timestamp("last_reassigned_at"),
 });
 
 // Sitter Reviews (Uber-style)
@@ -4136,7 +4141,12 @@ export const walkBookings = pgTable("walk_bookings", {
   isEmergencyWalk: boolean("is_emergency_walk").default(false), // ASAP booking with 90-min arrival
   emergencySurgeMultiplier: decimal("emergency_surge_multiplier", { precision: 3, scale: 2 }), // 1.0 = no surge, 1.5 = 50% increase, 2.0 = double
   emergencySurgeReason: text("emergency_surge_reason"), // High demand, Peak hours, etc.
-  
+
+  // Provider Reassignment (booking-expiry poller)
+  reassignmentCount: integer("reassignment_count").default(0),     // How many times reassigned
+  previousProviders: text("previous_providers").array(),           // walkerId[] already attempted
+  lastReassignedAt: timestamp("last_reassigned_at"),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -65,6 +65,9 @@ GOOGLE_FORMS_SPREADSHEET_ID = "14mRX4qJSABg-EcfONomk-fksegYrcIF_sFaEi3Bm2ss"
 SMS_EMERGENCY_DISABLED = "true"
 VITE_RECAPTCHA_SITE_KEY = "6LfPr3ksAAAAAAk-gDoRZk6T3bA_t9UNavopPTDJ"
 
+[userenv.development]
+DEV_TEST_SECRET = "petwash-dev-test-2026-secret-internal"
+
 [[ports]]
 localPort = 5000
 externalPort = 80
