@@ -31,11 +31,11 @@ const nayaxValidationRateLimiter = rateLimit({
 
 const previewSchema = z.object({
   requestedAmountCents: z.number().min(0),
-  platform: z.enum(['walker', 'sitter', 'pettrek', 'k9000', 'plush_lab']),
+  platform: z.enum(['walker', 'sitter', 'pettrek', 'k9000', 'plush_lab', 'academy']),
 });
 
 const createRedemptionSchema = z.object({
-  platform: z.enum(['walker', 'sitter', 'pettrek', 'k9000', 'plush_lab']),
+  platform: z.enum(['walker', 'sitter', 'pettrek', 'k9000', 'plush_lab', 'academy']),
   requestedAmountCents: z.number().min(0),
   serviceType: z.string().optional(),
   bookingId: z.string().optional(),

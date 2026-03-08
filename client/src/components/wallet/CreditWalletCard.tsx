@@ -119,7 +119,7 @@ function formatCurrency(cents: number): string {
 interface CreditWalletCardProps {
   userId: string;
   onRedeemCredits?: (preview: CreditPreview, redemption: RedemptionResult) => void;
-  platform?: 'walker' | 'sitter' | 'pettrek' | 'k9000' | 'plush_lab';
+  platform?: 'walker' | 'sitter' | 'pettrek' | 'k9000' | 'plush_lab' | 'academy';
   transactionAmountCents?: number;
   compact?: boolean;
 }

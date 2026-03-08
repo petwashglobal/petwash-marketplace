@@ -11,6 +11,8 @@ import { vatCalculator } from "@/lib/vatCalculator";
 import { getActivePaymentMethod } from "@/lib/paymentConfig";
 import { WeatherConsentDialog, useWeatherConsent } from "@/components/weather/WeatherConsentDialog";
 import { OwnerInstructionsForm, useOwnerInstructions } from "@/components/booking/OwnerInstructionsForm";
+import { CreditWalletCard } from "@/components/wallet/CreditWalletCard";
+import { useFirebaseAuth } from "@/auth/AuthProvider";
 
 type BookingStep = "details" | "summary" | "weather_consent" | "pending_match" | "confirmation";
 
@@ -18,6 +20,7 @@ export default function WalkBookingFlow() {
   const { walkerId } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useFirebaseAuth();
 
   const walkerIdNumber = walkerId ? parseInt(walkerId) : undefined;
 
@@ -28,6 +31,7 @@ export default function WalkBookingFlow() {
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
+  const [appliedCredits, setAppliedCredits] = useState<{ redemptionSessionId: string; totalCreditsAppliedCents: number; cashDueCents: number } | null>(null);
   const [showWeatherConsent, setShowWeatherConsent] = useState(false);
   const [weatherConsentAccepted, setWeatherConsentAccepted] = useState(false);
   const [weatherConditions, setWeatherConditions] = useState<string[]>([]);
@@ -181,7 +185,12 @@ export default function WalkBookingFlow() {
           emergencyContact: ownerInstructions.emergencyContact,
           vetContact: ownerInstructions.vetContact,
           additionalNotes: ownerInstructions.additionalNotes,
-        } : null
+        } : null,
+        ...(appliedCredits ? {
+          redemptionSessionId: appliedCredits.redemptionSessionId,
+          creditsAppliedCents: appliedCredits.totalCreditsAppliedCents,
+          cashDueCents: appliedCredits.cashDueCents,
+        } : {})
       };
 
       const response = await apiRequest('POST', '/api/walks/book', payload);
@@ -494,10 +503,37 @@ export default function WalkBookingFlow() {
                 <span className="luxury-heading-sm">סה״כ</span>
                 <span className="luxury-heading-lg luxury-text-gradient">₪{pricing.totalCharged.toFixed(2)}</span>
               </div>
+              {appliedCredits && (
+                <div className="mt-3 pt-3 border-t border-purple-100 space-y-1">
+                  <div className="flex items-center justify-between luxury-text-small text-emerald-600">
+                    <span>קרדיטים שהופעלו</span>
+                    <span>-₪{(appliedCredits.totalCreditsAppliedCents / 100).toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between luxury-heading-sm">
+                    <span>לתשלום במזומן</span>
+                    <span className="luxury-text-gradient">₪{(appliedCredits.cashDueCents / 100).toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
               <div className="mt-4 luxury-text-small opacity-80">
                 התשלום יתואם לאחר ההזמנה.
               </div>
             </div>
+
+            {user && (
+              <CreditWalletCard
+                userId={user.uid}
+                platform="walker"
+                transactionAmountCents={Math.round(pricing.totalCharged * 100)}
+                onRedeemCredits={(preview, redemption) => {
+                  setAppliedCredits({
+                    redemptionSessionId: redemption.sessionId,
+                    totalCreditsAppliedCents: preview.totalCreditsApplicableCents,
+                    cashDueCents: redemption.cashDueCents,
+                  });
+                }}
+              />
+            )}
 
             <div className="flex gap-4 luxury-stagger-item">
               <Button

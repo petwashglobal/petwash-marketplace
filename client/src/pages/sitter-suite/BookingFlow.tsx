@@ -10,6 +10,8 @@ import { vatCalculator } from "@/lib/vatCalculator";
 import { getActivePaymentMethod } from "@/lib/paymentConfig";
 import { GooglePlacesAutocomplete, PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { OwnerInstructionsForm, useOwnerInstructions, type OwnerInstructions } from "@/components/booking/OwnerInstructionsForm";
+import { CreditWalletCard } from "@/components/wallet/CreditWalletCard";
+import { useFirebaseAuth } from "@/auth/AuthProvider";
 
 type BookingStep = "details" | "summary" | "confirmation";
 
@@ -40,6 +42,7 @@ export default function SitterBookingFlow() {
   const { sitterId } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useFirebaseAuth();
 
   const [step, setStep] = useState<BookingStep>("details");
   const [selectedPetIds, setSelectedPetIds] = useState<number[]>([]);
@@ -51,6 +54,7 @@ export default function SitterBookingFlow() {
   const [address, setAddress] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
+  const [appliedCredits, setAppliedCredits] = useState<{ redemptionSessionId: string; totalCreditsAppliedCents: number; cashDueCents: number } | null>(null);
   const { instructions: ownerInstructions, setInstructions: setOwnerInstructions } = useOwnerInstructions();
 
   const { data: sitterData, isLoading: sitterLoading, error: sitterError } = useQuery({
@@ -185,7 +189,12 @@ export default function SitterBookingFlow() {
           totalDays,
           paymentMethod: getActivePaymentMethod(),
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-        }
+        },
+        ...(appliedCredits ? {
+          redemptionSessionId: appliedCredits.redemptionSessionId,
+          creditsAppliedCents: appliedCredits.totalCreditsAppliedCents,
+          cashDueCents: appliedCredits.cashDueCents,
+        } : {})
       };
 
       const response = await apiRequest('POST', '/api/sitter-suite/bookings', payload);
@@ -591,9 +600,36 @@ export default function SitterBookingFlow() {
                   <span className="font-semibold text-slate-900">סה״כ</span>
                   <span className="font-bold text-lg text-emerald-600">₪{pricing.totalCharged.toFixed(2)}</span>
                 </div>
+                {appliedCredits && (
+                  <>
+                    <div className="flex justify-between text-emerald-600 text-sm">
+                      <span>קרדיטים שהופעלו</span>
+                      <span>-₪{(appliedCredits.totalCreditsAppliedCents / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-slate-900 border-t border-slate-100 pt-2 mt-1">
+                      <span>לתשלום במזומן</span>
+                      <span className="text-emerald-600">₪{(appliedCredits.cashDueCents / 100).toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
               </div>
               <p className="text-xs text-slate-400 mt-3">התשלום יתואם לאחר ההזמנה.</p>
             </section>
+
+            {user && (
+              <CreditWalletCard
+                userId={user.uid}
+                platform="sitter"
+                transactionAmountCents={Math.round(pricing.totalCharged * 100)}
+                onRedeemCredits={(preview, redemption) => {
+                  setAppliedCredits({
+                    redemptionSessionId: redemption.sessionId,
+                    totalCreditsAppliedCents: preview.totalCreditsApplicableCents,
+                    cashDueCents: redemption.cashDueCents,
+                  });
+                }}
+              />
+            )}
 
             <div className="flex gap-3">
               <Button
