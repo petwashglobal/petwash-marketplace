@@ -544,6 +544,15 @@ export function getActiveConnectionsCount(): number {
   return clients.size;
 }
 
+export function isUserConnected(uid: string): boolean {
+  for (const client of clients.values()) {
+    if (client.userId === uid && client.ws.readyState === WebSocket.OPEN) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function broadcastBookingChatMessage(conversationId: string, message: any, participantUids: string[]) {
   clients.forEach(client => {
     if (

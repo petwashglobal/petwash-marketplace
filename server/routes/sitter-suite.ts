@@ -39,6 +39,7 @@ import { advancedBookingEngine as sitterAdvancedBookingEngine } from '../service
 import { IsraeliDigitalReceiptService } from '../services/IsraeliDigitalReceiptService';
 import { IsraeliContractorComplianceService } from '../services/IsraeliContractorCompliance';
 import VATCalculatorService from '../services/VATCalculatorService';
+import { syncChatToBookingStatus, checkCancellationWindow } from '../lib/booking-chat-sync';
 import { backupFinancialDocument } from '../services/gcsBackupService';
 import multer from 'multer';
 import { storage, auth } from '../lib/firebase-admin';
@@ -815,6 +816,8 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         })
         .where(eq(sitterBookings.bookingId, bookingId));
       
+      await syncChatToBookingStatus(bookingId, 'confirmed', 'sitter_suite');
+      
       // Update Octopus Brain: DRAFT → CONFIRMED + escrow ledger entry
       try {
         const [octopusRecord] = await db.select().from(octopusBookings)
@@ -935,6 +938,8 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
           updatedAt: new Date(),
         })
         .where(eq(sitterBookings.bookingId, bookingId));
+      
+      await syncChatToBookingStatus(bookingId, 'cancelled', 'sitter_suite');
       
       logger.info('[Sitter Suite] ❌ Provider DECLINED booking', { bookingId, reason: declineReason });
       
@@ -1104,6 +1109,8 @@ router.patch('/bookings/:id/complete', async (req, res) => {
       })
       .where(eq(sitterBookings.id, bookingId))
       .returning();
+    
+    await syncChatToBookingStatus(booking.bookingId, 'completed', 'sitter_suite');
     
     logger.info('[Sitter Suite] ✅ Booking completed - Israeli law 2026 compliant', {
       bookingId: booking.bookingId,

@@ -4,6 +4,9 @@ import {
   bookingConversations, 
   bookingMessages, 
   bookings,
+  walkBookings,
+  sitterBookings,
+  userBlocks,
   insertBookingConversationSchema,
   insertBookingMessageSchema 
 } from '@shared/schema';
@@ -15,8 +18,12 @@ import { z } from 'zod';
 import { 
   broadcastBookingChatMessage, 
   broadcastBookingChatRead, 
-  broadcastBookingChatUnread 
+  broadcastBookingChatUnread,
+  isUserConnected
 } from '../websocket';
+import { syncChatToBookingStatus } from '../lib/booking-chat-sync';
+import { auth as firebaseAuth } from '../lib/firebase-admin';
+import sgMail from '../lib/sendgrid';
 
 const router = Router();
 
@@ -330,7 +337,29 @@ router.post('/:bookingId/send', async (req, res) => {
     );
 
     // 8. Recipient offline notification fallback
-    // (To be implemented or handled by a separate notification service)
+    try {
+      const recipientUid = isCustomer ? conv.providerId : conv.customerId;
+      if (!isUserConnected(recipientUid)) {
+        // Rate limit: 1 email per conversation per hour
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        if (!conv.lastMessageAt || conv.lastMessageAt < oneHourAgo) {
+          const recipient = await firebaseAuth.getUser(recipientUid);
+          if (recipient.email) {
+            await sgMail.send({
+              to: recipient.email,
+              from: 'noreply@petwash.co.il', // Ensure this is a verified sender
+              subject: 'New message about your booking',
+              text: `You have a new message about booking ${bookingId}. Log in to reply.`,
+              html: `<p>You have a new message about booking <strong>${bookingId}</strong>.</p><p><a href="https://petwash.co.il/booking-chat/${bookingId}">Log in to reply</a>.</p>`,
+            });
+            logger.info('[ChatNotification] Offline email notification sent', { recipientUid, bookingId });
+          }
+        }
+      }
+    } catch (notifErr) {
+      logger.warn('[ChatNotification] Failed to send offline notification', notifErr);
+    }
+
     logger.info(`[BookingChat] Message sent in ${conv.conversationId}`);
 
     res.json(insertedMessage);
@@ -410,7 +439,7 @@ router.post('/:bookingId/report', async (req, res) => {
   try {
     const uid = req.firebaseUser!.uid;
     const { bookingId } = req.params;
-    const { messageId, reason } = req.body;
+    const { messageId, reason, blockUser } = req.body;
 
     const [conv] = await db
       .select()
@@ -422,14 +451,139 @@ router.post('/:bookingId/report', async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    await db.update(bookingMessages)
-      .set({ isFlagged: true, flaggedReason: reason })
-      .where(eq(bookingMessages.messageId, messageId));
+    if (messageId) {
+      await db.update(bookingMessages)
+        .set({ isFlagged: true, flaggedReason: reason })
+        .where(eq(bookingMessages.messageId, messageId));
+    }
+
+    if (blockUser) {
+      const blockedUid = uid === conv.customerId ? conv.providerId : conv.customerId;
+      await db.insert(userBlocks).values({
+        blockerUid: uid,
+        blockedUid,
+        reason: reason || 'Blocked from chat report',
+      });
+      logger.info(`[ChatReport] User ${uid} blocked ${blockedUid}`);
+    }
 
     res.json({ success: true });
   } catch (error) {
     logger.error('Error reporting booking chat message', error);
     res.status(500).json({ error: 'Failed to report message' });
+  }
+});
+
+/**
+ * POST /api/booking-chat/:bookingId/no-show
+ * Report a no-show for a booking
+ */
+router.post('/:bookingId/no-show', async (req, res) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const { bookingId } = req.params;
+    const { reportedBy, reason } = req.body;
+
+    // 1. Find booking
+    let platform = '';
+    let booking: any = null;
+
+    const [walkBooking] = await db.select().from(walkBookings).where(eq(walkBookings.bookingId, bookingId)).limit(1);
+    if (walkBooking) {
+      booking = walkBooking;
+      platform = 'walk_my_pet';
+    } else {
+      const [sitterBooking] = await db.select().from(sitterBookings).where(eq(sitterBookings.bookingId, bookingId)).limit(1);
+      if (sitterBooking) {
+        booking = sitterBooking;
+        platform = 'sitter_suite';
+      }
+    }
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // 2. Auth check
+    const isCustomer = (platform === 'walk_my_pet' ? booking.ownerId : booking.ownerId) === uid;
+    const isProvider = (platform === 'walk_my_pet' ? booking.walkerId : booking.sitterId?.toString()) === uid;
+
+    if (!isCustomer && !isProvider) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // 3. Update status
+    if (platform === 'walk_my_pet') {
+      await db.update(walkBookings).set({ status: 'no_show', updatedAt: new Date() }).where(eq(walkBookings.bookingId, bookingId));
+    } else {
+      await db.update(sitterBookings).set({ status: 'no_show', updatedAt: new Date() }).where(eq(sitterBookings.bookingId, bookingId));
+    }
+
+    // 4. Sync chat
+    await syncChatToBookingStatus(bookingId, 'no_show', platform);
+
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Error reporting no-show', error);
+    res.status(500).json({ error: 'Failed to report no-show' });
+  }
+});
+
+/**
+ * POST /api/booking-chat/:bookingId/dispute
+ * Open a dispute for a booking
+ */
+router.post('/:bookingId/dispute', async (req, res) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const { bookingId } = req.params;
+    const { reason, category } = req.body;
+
+    // 1. Find booking
+    let platform = '';
+    let booking: any = null;
+
+    const [walkBooking] = await db.select().from(walkBookings).where(eq(walkBookings.bookingId, bookingId)).limit(1);
+    if (walkBooking) {
+      booking = walkBooking;
+      platform = 'walk_my_pet';
+    } else {
+      const [sitterBooking] = await db.select().from(sitterBookings).where(eq(sitterBookings.bookingId, bookingId)).limit(1);
+      if (sitterBooking) {
+        booking = sitterBooking;
+        platform = 'sitter_suite';
+      }
+    }
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // 2. Auth check
+    const isCustomer = (platform === 'walk_my_pet' ? booking.ownerId : booking.ownerId) === uid;
+    const isProvider = (platform === 'walk_my_pet' ? booking.walkerId : booking.sitterId?.toString()) === uid;
+
+    if (!isCustomer && !isProvider) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // 3. Update status
+    if (platform === 'walk_my_pet') {
+      await db.update(walkBookings).set({ status: 'disputed', updatedAt: new Date() }).where(eq(walkBookings.bookingId, bookingId));
+    } else {
+      await db.update(sitterBookings).set({ status: 'disputed', updatedAt: new Date() }).where(eq(sitterBookings.bookingId, bookingId));
+    }
+
+    // 4. Sync chat
+    await syncChatToBookingStatus(bookingId, 'disputed', platform);
+
+    // 5. Audit log (logger)
+    logger.info(`[Dispute] Dispute opened for booking ${bookingId}`, { uid, platform, reason, category });
+
+    res.json({ success: true, disputeId: `DISP-${nanoid(8)}` });
+  } catch (error) {
+    logger.error('Error opening dispute', error);
+    res.status(500).json({ error: 'Failed to open dispute' });
   }
 });
 

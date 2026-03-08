@@ -312,6 +312,8 @@ const MarketplaceTerms = lazy(() => import("@/pages/legal/MarketplaceTerms"));
 // ⁦Walk My Pet™⁩ Pages
 const TrackWalk = lazy(() => import("@/pages/walks/TrackWalk"));
 const BookingChat = lazy(() => import("@/pages/BookingChat"));
+const BookingChatInbox = lazy(() => import("@/pages/BookingChatInbox"));
+const AdminBookingChat = lazy(() => import("@/pages/admin/AdminBookingChat"));
 
 // ⁦PetTrek™⁩ Pages
 const BookTrip = lazy(() => import("@/pages/pettrek/BookTrip"));
@@ -407,6 +409,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/booking-chat/:bookingId">
           {() => <BookingChat />}
+        </Route>
+        <Route path="/booking-chat/inbox">
+          {() => <BookingChatInbox />}
+        </Route>
+        <Route path="/admin/booking-chat/:bookingId">
+          {() => <AdminBookingChat />}
         </Route>
         <Route path="/signin-advanced">
           {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}

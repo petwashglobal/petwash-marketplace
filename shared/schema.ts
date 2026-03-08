@@ -11584,4 +11584,16 @@ export const redeemedQrTokens = pgTable("redeemed_qr_tokens", {
   index("idx_rqt_used").on(table.usedAt),
 ]);
 
+export const userBlocks = pgTable("user_blocks", {
+  id: serial("id").primaryKey(),
+  blockerUid: varchar("blocker_uid").notNull(),
+  blockedUid: varchar("blocked_uid").notNull(),
+  reason: varchar("reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  blockerIdx: index("ub_blocker_idx").on(table.blockerUid),
+  blockedIdx: index("ub_blocked_idx").on(table.blockedUid),
+}));
+
 export type RedeemedQrToken = typeof redeemedQrTokens.$inferSelect;
+export type UserBlock = typeof userBlocks.$inferSelect;

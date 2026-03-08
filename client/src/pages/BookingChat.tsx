@@ -25,8 +25,25 @@ import {
   ArrowLeft,
   Calendar,
   ShieldCheck,
-  Info
+  Info,
+  Flag
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import type { BookingConversation, BookingMessage } from "@shared/schema";
 import { getApiUrl } from "@/lib/apiConfig";
@@ -42,6 +59,9 @@ export default function BookingChat() {
   const [inputText, setInputText] = useState("");
   const [wsConnected, setWsConnected] = useState(false);
   const [messages, setMessages] = useState<BookingMessage[]>([]);
+  const [reportingMessage, setReportingMessage] = useState<BookingMessage | null>(null);
+  const [reportReason, setReportReason] = useState("");
+  const [blockUser, setBlockUser] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -82,6 +102,25 @@ export default function BookingChat() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/booking-chat/inbox"] });
+    }
+  });
+
+  const reportMutation = useMutation({
+    mutationFn: async ({ messageId, reason, block }: { messageId: string; reason: string; block: boolean }) => {
+      await apiRequest("POST", `/api/booking-chat/${bookingId}/report`, {
+        messageId,
+        reason,
+        blockUser: block
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Report submitted", description: "Thank you. Our team will review this message." });
+      setReportingMessage(null);
+      setReportReason("");
+      setBlockUser(false);
+    },
+    onError: () => {
+      toast({ title: "Failed to submit report", variant: "destructive" });
     }
   });
 
@@ -246,7 +285,7 @@ export default function BookingChat() {
             return (
               <div
                 key={msg.messageId}
-                className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
+                className={`flex flex-col group ${isMe ? "items-end" : "items-start"}`}
               >
                 <div
                   className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2.5 shadow-sm ${
@@ -282,6 +321,16 @@ export default function BookingChat() {
                     <AlertTriangle className="w-3 h-3" />
                     Under review
                   </div>
+                )}
+                {!isMe && !msg.isDeleted && (
+                  <button
+                    onClick={() => setReportingMessage(msg)}
+                    className="opacity-0 group-hover:opacity-100 focus:opacity-100 mt-1 px-1 text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-1 transition-opacity"
+                    aria-label="Report message"
+                  >
+                    <Flag className="w-3 h-3" />
+                    Report
+                  </button>
                 )}
               </div>
             );
@@ -325,6 +374,61 @@ export default function BookingChat() {
           </div>
         </div>
       )}
+
+      {/* Report Message Dialog */}
+      <Dialog open={!!reportingMessage} onOpenChange={(open) => { if (!open) { setReportingMessage(null); setReportReason(""); setBlockUser(false); } }}>
+        <DialogContent className="max-w-sm mx-4">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Flag className="w-4 h-4 text-destructive" />
+              Report Message
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Reason</Label>
+              <Select value={reportReason} onValueChange={setReportReason}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a reason..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inappropriate_content">Inappropriate content</SelectItem>
+                  <SelectItem value="contact_info">Sharing contact information</SelectItem>
+                  <SelectItem value="harassment">Harassment or threats</SelectItem>
+                  <SelectItem value="spam">Spam</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="block-user"
+                checked={blockUser}
+                onCheckedChange={(checked) => setBlockUser(checked === true)}
+              />
+              <Label htmlFor="block-user" className="text-sm font-normal cursor-pointer">
+                Also block this user from contacting me
+              </Label>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setReportingMessage(null); setReportReason(""); setBlockUser(false); }}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!reportReason || reportMutation.isPending}
+              onClick={() => {
+                if (reportingMessage && reportReason) {
+                  reportMutation.mutate({ messageId: reportingMessage.messageId, reason: reportReason, block: blockUser });
+                }
+              }}
+            >
+              {reportMutation.isPending ? "Submitting..." : "Submit Report"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

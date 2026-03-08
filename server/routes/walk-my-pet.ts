@@ -32,6 +32,7 @@ import { calendarIntegrationService } from '../services/CalendarIntegrationServi
 import { IsraeliDigitalReceiptService } from '../services/IsraeliDigitalReceiptService';
 import VATCalculatorService from '../services/VATCalculatorService';
 import { logger } from '../lib/logger';
+import { syncChatToBookingStatus, checkCancellationWindow } from '../lib/booking-chat-sync';
 import { backupFinancialDocument } from '../services/gcsBackupService';
 
 const router = Router();
@@ -510,6 +511,8 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         })
         .where(eq(walkBookings.bookingId, bookingId));
       
+      await syncChatToBookingStatus(bookingId, 'confirmed', 'walk_my_pet');
+      
       logger.info(`[Walk My Pet] Walker ACCEPTED booking ${bookingId}`);
 
       // Update Octopus Brain: DRAFT → CONFIRMED + payment captured ledger
@@ -626,6 +629,8 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
           updatedAt: new Date(),
         })
         .where(eq(walkBookings.bookingId, bookingId));
+      
+      await syncChatToBookingStatus(bookingId, 'cancelled', 'walk_my_pet');
       
       logger.info(`[Walk My Pet] Walker DECLINED booking ${bookingId}, reason: ${declineReason}`);
       
@@ -801,6 +806,8 @@ router.post('/api/walks/:bookingId/confirm', async (req, res) => {
       .where(eq(walkBookings.bookingId, bookingId))
       .returning();
 
+    await syncChatToBookingStatus(bookingId, 'confirmed', 'walk_my_pet');
+
     // Notify owner
     await db.insert(walkAlerts).values({
       alertId: `ALERT-${crypto.randomUUID()}`,
@@ -866,6 +873,8 @@ router.post('/api/walks/:bookingId/start', async (req, res) => {
       })
       .where(eq(walkBookings.bookingId, bookingId))
       .returning();
+
+    await syncChatToBookingStatus(bookingId, 'in_progress', 'walk_my_pet');
 
     // Record first GPS point
     await db.insert(walkGpsTracking).values({
@@ -1058,6 +1067,8 @@ router.post('/api/walks/:bookingId/complete', async (req, res) => {
       })
       .where(eq(walkBookings.bookingId, bookingId))
       .returning();
+
+    await syncChatToBookingStatus(bookingId, 'completed', 'walk_my_pet');
 
     // Create blockchain audit record
     const previousBlock = await db

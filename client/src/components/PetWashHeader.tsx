@@ -415,6 +415,11 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               </button>
             </div>
             <div className="pw-nav-item">
+              <button className="pw-nav-link" onClick={() => handleNavigate("/booking-chat/inbox")}>
+                {t("nav.messages", currentLanguage)}
+              </button>
+            </div>
+            <div className="pw-nav-item">
               <button className="pw-nav-link" onClick={() => handleNavigate("/egift")}>
                 {t("nav.giftCards", currentLanguage)}
               </button>
@@ -578,6 +583,12 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             <div className="pw-mobile-section-title">
               {t("section.loyalty", currentLanguage)}
             </div>
+            <button
+              className="pw-mobile-link"
+              onClick={() => handleNavigate("/booking-chat/inbox")}
+            >
+              <span>{t("nav.messages", currentLanguage)}</span>
+            </button>
             {USER_MENU_ITEMS.map((item) => (
               <button
                 key={item.id}
