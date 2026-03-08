@@ -27,9 +27,20 @@ import {
 interface InsuranceAndProtectionProps {
   variant?: "provider" | "customer" | "full";
   className?: string;
+  /**
+   * flowType controls whether provider-specific sections (taxes, escrow, provider obligations)
+   * are shown. Only pass "marketplace_booking" when a provider is actually involved.
+   *
+   * "marketplace_booking" → show provider tax explanation (Flow A)
+   * "direct_platform_sale" | "egift_sale" | "wallet_topup" → hide all provider sections (Flow B)
+   *
+   * Defaults to "marketplace_booking" for backwards compatibility.
+   */
+  flowType?: "marketplace_booking" | "direct_platform_sale" | "egift_sale" | "wallet_topup";
 }
 
-export function InsuranceAndProtection({ variant = "full", className = "" }: InsuranceAndProtectionProps) {
+export function InsuranceAndProtection({ variant = "full", className = "", flowType = "marketplace_booking" }: InsuranceAndProtectionProps) {
+  const isMarketplaceFlow = flowType === "marketplace_booking";
   const { i18n } = useTranslation();
   const isHebrew = i18n.language === 'he';
   const isRTL = isHebrew;
@@ -604,7 +615,7 @@ export function InsuranceAndProtection({ variant = "full", className = "" }: Ins
           </div>
           {renderClaimsProcess()}
           {renderDisclaimers()}
-          {variant === "provider" && renderProviderTax()}
+          {variant === "provider" && isMarketplaceFlow && renderProviderTax()}
         </>
       )}
 

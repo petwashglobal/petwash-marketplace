@@ -103,6 +103,7 @@ const AdminKYC = lazy(() => import("@/pages/AdminKYC"));
 const AdminSystemLogs = lazy(() => import("@/pages/AdminSystemLogs"));
 const AdminVouchers = lazy(() => import("@/pages/AdminVouchers"));
 const AdminFinancial = lazy(() => import("@/pages/AdminFinancial"));
+const MoneyFlow = lazy(() => import("@/pages/MoneyFlow"));
 const CrmDashboard = lazy(() => import("@/pages/CrmDashboard"));
 const CustomerManagement = lazy(() => import("@/pages/CustomerManagement"));
 const LeadManagement = lazy(() => import("@/pages/LeadManagement"));
@@ -2102,6 +2103,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <FinanceDashboard />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/money-flow">
+          {() => (
+            <AdminRouteGuard>
+              <MoneyFlow language={language} />
             </AdminRouteGuard>
           )}
         </Route>

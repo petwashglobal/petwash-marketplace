@@ -184,6 +184,17 @@ The following composite indexes were created via REST API and may still be build
 - **Provider card trust signals** (`ProviderSearch.tsx`): Added `instantBook` (green/grey badge), `available` (pulsing green dot / grey "Busy today"), `responseTime` ("Responds in ~2 hrs") props with defaults; `BrowseWalkers` and `BrowseSitters` pass these through
 - **Notification permission Apple compliance** (`useFCMNotifications.ts`, `NotificationPermissionPrompt.tsx`): `autoRequest` default changed `true→false` so push permission is never triggered on page load; prompt now hidden until `petwash_first_booking_complete` localStorage flag is set; flag is set when first booking confirmation completes in either flow
 
+## Money Flow Classification System (March 2026 Session 6)
+- **Type system**: `shared/finance-flow-types.ts` — 14 `TRANSACTION_TYPES` constants, `isMarketplaceFlow` / `isDirectSaleFlow` / `hasProvider` guards, `MarketplaceFeeBreakdown`, `DirectSaleFeeBreakdown`, `ReceiptMetadata`, `MoneyFlowSummary` interfaces, `ISRAELI_TAX_2026` constants
+- **Two flows — never mixed**:
+  - Flow A (marketplace_booking): Customer → Processor → VAT(on fee) → PlatformFee → Escrow → ProviderPayout — provider exists, escrow exists, provider tax section shown
+  - Flow B (direct_platform_sale / egift_sale / wallet_topup): Customer → Processor → VAT(on full sale) → PetWash Revenue — no provider, no escrow, no provider tax explanation
+- **DB changes**: `flow_type VARCHAR` column added to `transaction_records` and `nayax_transactions`, backfilled (is_gift_card=true → egift_sale, else direct_platform_sale)
+- **Backend API**: `server/routes/finance/money-flow.ts` mounted at `/api/finance` — `GET /money-flow-summary` (aggregated KPIs split by flow), `GET /transaction-types` (counts per type). Protected by `requireRole` (admin/management/staff)
+- **Visual page**: `/admin/money-flow` → `client/src/pages/MoneyFlow.tsx` — 4 tabs: Flow diagrams (A+B with formulas), KPI cards per flow, Transaction type glossary, VAT guide; Flow A shows provider tax explanation, Flow B explicitly labels what does NOT happen (no provider, no escrow, no provider tax)
+- **AdminFinancial new tab**: "זרימת כסף / Money Flow" tab in `/admin/financial` — separated KPI grids for Flow A and Flow B, link to visual page, critical rule reminder
+- **InsuranceAndProtection**: New `flowType` prop (default: `"marketplace_booking"`); provider tax section gated by `isMarketplaceFlow` — never shown for egift_sale / wallet_topup / direct_platform_sale receipts
+
 ## Provider Operations Console 2026 (March 2026 Session 5)
 - **New route**: `/provider/console` (protected, minRole=provider) → `client/src/pages/ProviderConsole.tsx`
 - **8-tab unified console**: Dashboard / Calendar / Bookings / Pricing / Settings / Performance / Safety / Kenzo AI

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { getApiUrl } from '@/lib/apiConfig';
 import { Layout } from "@/components/Layout";
 import { type Language } from "@/lib/i18n";
@@ -9,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -34,8 +37,15 @@ import {
   Building2,
   Briefcase,
   Truck,
-  Zap
+  Zap,
+  Users,
+  ShieldCheck,
+  Banknote,
+  ExternalLink,
+  GitBranch,
+  AlertCircle,
 } from "lucide-react";
+import type { MoneyFlowSummary } from "../../../shared/finance-flow-types";
 
 interface AdminFinancialProps {
   language: Language;
@@ -54,6 +64,10 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
 
   const { data: dashboardData } = useQuery({
     queryKey: ['/api/accounting/dashboard'],
+  });
+
+  const { data: moneyFlowSummary, isLoading: moneyFlowLoading } = useQuery<MoneyFlowSummary>({
+    queryKey: ['/api/finance/money-flow-summary'],
   });
 
   const { data: vatDeclarations } = useQuery({
@@ -271,6 +285,10 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
               <TabsTrigger value="payments" className="data-[state=active]:luxury-glass-card">{isHebrew ? 'אמצעי תשלום' : 'Payments'}</TabsTrigger>
               <TabsTrigger value="emails" className="data-[state=active]:luxury-glass-card">{isHebrew ? 'אימיילים' : 'Emails'}</TabsTrigger>
               <TabsTrigger value="reports" className="data-[state=active]:luxury-glass-card">{isHebrew ? 'דוחות' : 'Reports'}</TabsTrigger>
+              <TabsTrigger value="money-flow" className="data-[state=active]:luxury-glass-card flex items-center gap-1">
+                <GitBranch className="w-3.5 h-3.5" />
+                {isHebrew ? 'זרימת כסף' : 'Money Flow'}
+              </TabsTrigger>
             </TabsList>
 
             {/* Transactions Tab */}
@@ -878,6 +896,141 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
                     </div>
                   </div>
                 </div>
+              </div>
+            </TabsContent>
+
+            {/* Money Flow Tab */}
+            <TabsContent value="money-flow">
+              <div className="space-y-6">
+                {/* Header + link to visual page */}
+                <div className="luxury-glass-card luxury-shadow-xl p-6">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                      <h2 className="luxury-heading-md flex items-center gap-2">
+                        <GitBranch className="w-5 h-5 text-purple-600" />
+                        {isHebrew ? 'זרימת כסף — מבנה פיננסי מלא' : 'Money Flow — Full Financial Architecture'}
+                      </h2>
+                      <p className="luxury-text-small mt-1">
+                        {isHebrew
+                          ? 'שני זרמי תשלום מופרדים: מרקטפלייס עם ספק | מכירה ישירה ללא ספק'
+                          : 'Two separated payment flows: Marketplace with provider | Direct sale without provider'}
+                      </p>
+                    </div>
+                    <Link href="/admin/money-flow">
+                      <Button variant="outline" className="flex items-center gap-2 text-sm">
+                        <ExternalLink className="w-4 h-4" />
+                        {isHebrew ? 'פתח תרשים זרימה מלא' : 'Open Full Flow Diagram'}
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+
+                {moneyFlowLoading ? (
+                  <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div>
+                ) : (
+                  <>
+                    {/* Flow A — Marketplace */}
+                    <div className="luxury-glass-card luxury-shadow-xl p-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Users className="w-5 h-5 text-blue-600" />
+                        <h3 className="font-semibold text-gray-900">{isHebrew ? 'Flow A — הזמנות מרקטפלייס (עם ספק)' : 'Flow A — Marketplace Bookings (with provider)'}</h3>
+                        <Badge className="bg-blue-100 text-blue-700 text-xs">{isHebrew ? 'ספק קיים' : 'Provider exists'}</Badge>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {[
+                          { label: isHebrew ? 'הזמנות מרקטפלייס' : 'Marketplace Bookings', value: (moneyFlowSummary?.totalMarketplaceBookings ?? '—').toString(), icon: Users, color: 'text-blue-500' },
+                          { label: isHebrew ? 'מחזור ברוטו' : 'Gross Revenue', value: `₪${(moneyFlowSummary?.totalMarketplaceGrossILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`, icon: TrendingUp, color: 'text-blue-600' },
+                          { label: isHebrew ? 'עמלות פלטפורמה' : 'Platform Fees', value: `₪${(moneyFlowSummary?.totalPlatformFeesILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`, icon: Building2, color: 'text-purple-500' },
+                          { label: isHebrew ? 'תשלומים לספקים' : 'Provider Payouts', value: `₪${(moneyFlowSummary?.totalProviderPayoutsILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`, icon: Banknote, color: 'text-green-500' },
+                          { label: isHebrew ? 'נאמנות מוחזקת' : 'Escrow Held', value: `₪${(moneyFlowSummary?.totalEscrowHeldILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`, icon: ShieldCheck, color: 'text-indigo-500' },
+                          { label: isHebrew ? 'נאמנות שוחררה' : 'Escrow Released', value: `₪${(moneyFlowSummary?.totalEscrowReleasedILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`, icon: ShieldCheck, color: 'text-green-500' },
+                          { label: isHebrew ? 'מע"מ על עמלות' : 'VAT on Fees (18%)', value: `₪${(moneyFlowSummary?.totalVATMarketplaceILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`, icon: Receipt, color: 'text-amber-500' },
+                        ].map(item => (
+                          <Card key={item.label} className="border-0 shadow-sm bg-blue-50/40">
+                            <CardContent className="pt-4">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs text-gray-500">{item.label}</span>
+                                <item.icon className={`w-4 h-4 ${item.color}`} />
+                              </div>
+                              <p className="text-lg font-bold text-gray-900">{item.value}</p>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Flow B — Direct Sale */}
+                    <div className="luxury-glass-card luxury-shadow-xl p-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Gift className="w-5 h-5 text-emerald-600" />
+                        <h3 className="font-semibold text-gray-900">{isHebrew ? 'Flow B — מכירות ישירות (ללא ספק)' : 'Flow B — Direct PetWash™ Sales (no provider)'}</h3>
+                        <Badge className="bg-emerald-100 text-emerald-700 text-xs">{isHebrew ? 'ללא ספק' : 'No provider'}</Badge>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {[
+                          { label: isHebrew ? 'מכירות ישירות' : 'Direct Sales', value: (moneyFlowSummary?.totalDirectPlatformSales ?? '—').toString(), icon: Building2, color: 'text-emerald-600' },
+                          { label: isHebrew ? 'מחזור מכירות' : 'Direct Sales Revenue', value: `₪${(moneyFlowSummary?.totalDirectSalesGrossILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`, icon: TrendingUp, color: 'text-emerald-600' },
+                          { label: isHebrew ? 'גיפט קארד נמכרו' : 'E-Gift Cards Sold', value: (moneyFlowSummary?.totalEGiftSales ?? '—').toString(), icon: Gift, color: 'text-pink-500', sub: `₪${(moneyFlowSummary?.totalEGiftValueILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}` },
+                          { label: isHebrew ? 'טעינות ארנק' : 'Wallet Top-ups', value: (moneyFlowSummary?.totalWalletTopups ?? '—').toString(), icon: Wallet, color: 'text-blue-500', sub: `₪${(moneyFlowSummary?.totalWalletTopupValueILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}` },
+                          { label: isHebrew ? 'מע"מ מכירה ישירה' : 'VAT Direct Sales (18%)', value: `₪${(moneyFlowSummary?.totalVATDirectSalesILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`, icon: Receipt, color: 'text-amber-500' },
+                        ].map(item => (
+                          <Card key={item.label} className="border-0 shadow-sm bg-emerald-50/40">
+                            <CardContent className="pt-4">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs text-gray-500">{item.label}</span>
+                                <item.icon className={`w-4 h-4 ${item.color}`} />
+                              </div>
+                              <p className="text-lg font-bold text-gray-900">{item.value}</p>
+                              {(item as any).sub && <p className="text-xs text-gray-400 mt-0.5">{(item as any).sub}</p>}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Shared Totals */}
+                    <div className="luxury-glass-card luxury-shadow-xl p-6">
+                      <h3 className="font-semibold text-gray-700 mb-4">{isHebrew ? 'סיכום — שני הזרמים' : 'Summary — Both Flows'}</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {[
+                          { label: isHebrew ? 'סה"כ מע"מ' : 'Total VAT Collected', value: `₪${(moneyFlowSummary?.totalVATAllFlowsILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`, icon: Receipt, color: 'text-amber-500' },
+                          { label: isHebrew ? 'הכנסה נטו' : 'Net Revenue', value: `₪${(moneyFlowSummary?.totalNetRevenueILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`, icon: TrendingUp, color: 'text-green-600' },
+                          { label: isHebrew ? 'עמלות עיבוד' : 'Processing Fees', value: `₪${(moneyFlowSummary?.totalProcessorFeesILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`, icon: CreditCard, color: 'text-gray-500' },
+                          { label: isHebrew ? 'החזרים' : 'Refunds', value: `₪${(moneyFlowSummary?.totalRefundsILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`, icon: AlertCircle, color: 'text-red-500' },
+                        ].map(item => (
+                          <Card key={item.label} className="border-0 shadow-sm">
+                            <CardContent className="pt-4">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs text-gray-500">{item.label}</span>
+                                <item.icon className={`w-4 h-4 ${item.color}`} />
+                              </div>
+                              <p className="text-lg font-bold text-gray-900">{item.value}</p>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Critical rule reminder */}
+                    <Card className="border-blue-200 bg-blue-50">
+                      <CardContent className="pt-4">
+                        <div className="flex items-start gap-3">
+                          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                          <div className="text-sm text-blue-800">
+                            <p className="font-semibold mb-1">
+                              {isHebrew ? 'כלל קריטי — הפרדת זרמים' : 'Critical Rule — Flow Separation'}
+                            </p>
+                            <p className="text-blue-700">
+                              {isHebrew
+                                ? 'שני הזרמים הפיננסיים לעולם לא מתערבבים. Flow A כולל ספק, נאמנות, ומידע מס לספק. Flow B הוא מכירה ישירה של PetWash™ — אין ספק, אין נאמנות, אין הסבר מס לספק.'
+                                : 'The two financial flows are never mixed. Flow A includes provider, escrow, and provider tax info. Flow B is a direct PetWash™ sale — no provider, no escrow, no provider tax explanation.'}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
               </div>
             </TabsContent>
           </Tabs>

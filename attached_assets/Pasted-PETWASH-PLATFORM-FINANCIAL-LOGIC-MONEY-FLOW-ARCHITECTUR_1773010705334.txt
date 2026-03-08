@@ -1,0 +1,429 @@
+PETWASH PLATFORM
+FINANCIAL LOGIC & MONEY FLOW ARCHITECTURE
+FULL SPECIFICATION – 2026
+
+Purpose
+The PetWash platform operates as a hybrid system containing both:
+1) Marketplace transactions involving third-party providers
+2) Direct platform sales made by PetWash Ltd itself
+
+These two flows must never be mixed in financial logic, taxation handling, reporting, receipts, or legal explanations.
+
+Every payment in the system must be classified, processed, and reported according to its true financial nature.
+
+------------------------------------------------
+
+SECTION 1 — CORE FINANCIAL PRINCIPLE
+
+Every financial transaction must belong to a clearly defined transaction type.
+
+The system must never assume that every customer payment includes a provider.
+
+There are multiple valid financial flows in the platform.
+
+The system must treat each one separately.
+
+------------------------------------------------
+
+SECTION 2 — TRANSACTION TYPE CLASSIFICATION
+
+Every transaction stored in the database must include a mandatory field:
+
+transactionType
+
+Allowed values:
+
+marketplace_booking
+direct_platform_sale
+egift_sale
+wallet_topup
+provider_payout
+platform_fee
+processing_fee
+vat_entry
+escrow_hold
+escrow_release
+escrow_refund
+refund
+adjustment
+chargeback
+
+All financial calculations must branch based on this classification.
+
+------------------------------------------------
+
+SECTION 3 — FLOW A
+MARKETPLACE BOOKING (WITH PROVIDER)
+
+Example:
+Customer books a pet sitter / walker / host via PetWash.
+
+Financial flow:
+
+Customer payment
+↓
+Payment processor / Nayax
+↓
+Payment captured
+↓
+VAT calculated where legally required
+↓
+Platform commission calculated
+↓
+Processing fees deducted
+↓
+Escrow / trust hold created
+↓
+Service completed
+↓
+Provider payout executed
+↓
+Final settlement recorded
+
+Data elements required:
+
+customerId
+providerId
+bookingId
+grossAmount
+platformFee
+vatOnPlatformFee
+processorFee
+escrowAmount
+payoutAmount
+currency
+timestamp
+
+Important rule:
+
+Provider earnings must always be calculated from the booking logic.
+
+The platform never mixes provider earnings with platform-only sales.
+
+------------------------------------------------
+
+SECTION 4 — FLOW B
+DIRECT PLATFORM SALE (NO PROVIDER)
+
+Example:
+
+User buys:
+• e-gift card
+• wallet credit
+• promotional credit
+• service bundle
+
+directly from PetWash.
+
+Financial flow:
+
+Customer payment
+↓
+Payment processor / Nayax
+↓
+Processing fee deducted
+↓
+VAT handled on PetWash company sale
+↓
+Revenue recorded as PetWash income
+
+Key rule:
+
+NO provider exists in this flow.
+
+Therefore:
+
+No provider payout
+No provider commission
+No provider tax explanation
+No provider ledger entry
+
+Fields required:
+
+saleId
+customerId
+grossAmount
+processorFee
+vatAmount
+netRevenue
+saleType (egift / wallet / bundle)
+
+------------------------------------------------
+
+SECTION 5 — WALLET / E-GIFT LOGIC
+
+Gift cards and wallet credits represent stored value.
+
+They require two accounting stages:
+
+Stage 1 — purchase
+
+Customer pays PetWash
+↓
+Revenue temporarily recorded as liability
+↓
+Wallet balance created
+
+Stage 2 — redemption
+
+Customer uses credit
+↓
+If service with provider → convert to marketplace flow
+↓
+If platform service → convert to direct sale
+
+System must track:
+
+walletBalance
+walletSource
+walletTransactionHistory
+
+------------------------------------------------
+
+SECTION 6 — ESCROW / TRUST MODEL
+
+Marketplace bookings must support escrow protection.
+
+Escrow states:
+
+pending
+held
+released
+refunded
+disputed
+
+Escrow lifecycle:
+
+Payment captured
+↓
+Funds held in escrow
+↓
+Service confirmed
+↓
+Escrow released
+↓
+Provider payout
+
+If dispute:
+
+Escrow held
+Admin review
+Manual decision
+
+------------------------------------------------
+
+SECTION 7 — VAT HANDLING
+
+VAT must only be applied where legally required.
+
+Important distinction:
+
+Marketplace flow
+→ VAT applies to platform service portion.
+
+Direct platform sale
+→ VAT applies to the PetWash sale itself.
+
+VAT must always be labeled as VAT.
+
+It must never be labeled as income tax.
+
+------------------------------------------------
+
+SECTION 8 — PROVIDER TAX EXPLANATION
+
+Provider tax explanation pages must clarify:
+
+Income tax is progressive.
+
+Example ranges shown for explanation only:
+
+10%
+14%
+20%
+31%
+35%
+47-50%
+
+National insurance example ranges:
+
+9% – 17%
+
+These are informational only.
+
+They do not represent taxes collected by the platform.
+
+The platform must not present them as platform charges.
+
+------------------------------------------------
+
+SECTION 9 — PROCESSOR FEES
+
+Payment processors (example: Nayax) charge fees.
+
+Processing fees must be recorded as:
+
+transactionType = processing_fee
+
+Fields required:
+
+processorName
+feePercentage
+feeAmount
+currency
+timestamp
+
+------------------------------------------------
+
+SECTION 10 — ADMIN FINANCE DASHBOARD
+
+Admin finance must separate flows.
+
+Required metrics:
+
+totalMarketplaceBookings
+totalDirectPlatformSales
+totalEGiftSales
+totalWalletTopups
+totalProcessorFees
+totalVATCollected
+totalProviderPayouts
+totalEscrowHeld
+totalEscrowReleased
+totalRefunds
+totalChargebacks
+
+All metrics must be filterable by:
+
+date
+country
+currency
+service type
+
+------------------------------------------------
+
+SECTION 11 — VISUAL MONEY FLOW PAGE
+
+The platform must include a visual diagram explaining money flows.
+
+Two diagrams are required:
+
+Diagram A — Marketplace flow
+
+Customer payment
+→ Processor
+→ VAT
+→ Platform fee
+→ Escrow
+→ Provider payout
+
+Diagram B — Direct platform sale
+
+Customer payment
+→ Processor
+→ VAT
+→ PetWash revenue
+
+This page should appear in:
+
+Admin finance dashboard
+Provider help center
+Internal documentation
+
+------------------------------------------------
+
+SECTION 12 — RECEIPTS AND INVOICES
+
+Receipts must clearly indicate:
+
+Transaction type
+Provider (if exists)
+VAT amount
+Platform fee
+Processor fee
+Final amount
+
+Direct platform sale receipts must NOT reference providers.
+
+------------------------------------------------
+
+SECTION 13 — REPORTING / EXPORTS
+
+Finance exports must include:
+
+transactionId
+transactionType
+bookingId
+providerId
+customerId
+grossAmount
+vatAmount
+platformFee
+processorFee
+netAmount
+currency
+timestamp
+
+Exports required:
+
+CSV
+Excel
+API endpoint
+
+------------------------------------------------
+
+SECTION 14 — DATA INTEGRITY RULES
+
+The system must enforce:
+
+Provider payouts only allowed when providerId exists.
+
+Direct platform sales must never generate provider payouts.
+
+Escrow records must always link to bookingId.
+
+Wallet transactions must always link to customerId.
+
+------------------------------------------------
+
+SECTION 15 — ERROR CONDITIONS
+
+System must detect and prevent:
+
+Provider payout with no provider
+VAT labeled incorrectly
+Duplicate payouts
+Wallet negative balance
+Escrow release without booking completion
+Provider tax labels applied to direct platform sales
+
+------------------------------------------------
+
+SECTION 16 — IMPLEMENTATION TASKS
+
+Please implement:
+
+1) transactionType architecture
+2) finance logic branching
+3) wallet / gift accounting
+4) escrow tracking
+5) admin finance metrics
+6) visual money flow page
+7) receipt logic updates
+8) reporting exports
+9) legal explanation alignment
+
+------------------------------------------------
+
+SECTION 17 — DELIVERY REQUIREMENTS
+
+After implementation please provide:
+
+• files changed
+• database schema updates
+• API endpoints added
+• UI screens updated
+• finance formulas used
+• screenshots of visual money flow diagrams
+• example receipts for both flows
+• example admin finance dashboard
