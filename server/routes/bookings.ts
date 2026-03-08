@@ -91,7 +91,7 @@ router.post("/create", requireAuth, async (req, res) => {
       currency: "ILS",
       status: "confirmed", // Mark as confirmed after payment
       createdAt: new Date(),
-      metadata: booking.metadata,
+      ...(booking.metadata !== undefined ? { metadata: booking.metadata } : {}),
     };
 
     await bookingRef.set(bookingData);
@@ -122,18 +122,21 @@ router.post("/create", requireAuth, async (req, res) => {
       booking.platform === "sitter-suite" ? "sitter" : booking.platform === "walk-my-pet" ? "walk" : "transport"
     );
 
-    await NotificationService.sendBookingConfirmation(customerId, {
-      bookingId: bookingRef.id,
-      platform: booking.platform,
-      date: booking.serviceDate,
-      total: vatCalc.totalCharged,
+    await NotificationService.sendNotification({
+      userId: customerId,
+      type: "booking",
+      title: "Booking Confirmed!",
+      message: `Your ${booking.platform} booking has been confirmed for ${new Date(booking.serviceDate).toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' })}. Total: ₪${vatCalc.totalCharged.toFixed(2)}`,
+      priority: "high",
+      channel: "all",
+      data: { bookingId: bookingRef.id, platform: booking.platform },
     });
 
     await NotificationService.sendNotification({
       userId: booking.providerId,
       type: "booking",
-      title: "New Booking Request 🎉",
-      message: `You have a new booking for ${new Date(booking.serviceDate).toLocaleDateString()}`,
+      title: "New Booking Request",
+      message: `You have a new booking for ${new Date(booking.serviceDate).toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' })}`,
       priority: "high",
       channel: "all",
       data: { bookingId: bookingRef.id },
@@ -181,6 +184,61 @@ router.get("/my-bookings", requireAuth, async (req, res) => {
   } catch (error: any) {
     console.error("[Bookings] Error fetching:", error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/bookings/availability — MUST be defined before /:bookingId to avoid param shadowing
+router.get("/availability", async (req, res) => {
+  try {
+    const { platform, providerId, from, to } = req.query;
+
+    if (!platform || !providerId || !from || !to) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required query params: platform, providerId, from, to',
+      });
+    }
+
+    const fromDate = new Date(from as string);
+    const toDate = new Date(to as string);
+
+    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+      return res.status(400).json({ success: false, message: 'Invalid date format' });
+    }
+
+    const { db: pgDb } = await import('../db');
+    const { availabilitySlots } = await import('@shared/schema');
+    const { eq, and, gte, lte } = await import('drizzle-orm');
+
+    const slots = await pgDb.query.availabilitySlots.findMany({
+      where: and(
+        eq(availabilitySlots.providerId, Number(providerId)),
+        gte(availabilitySlots.startTime, fromDate),
+        lte(availabilitySlots.endTime, toDate)
+      ),
+    });
+
+    const now = new Date();
+    const availableSlots = slots
+      .filter((slot) => {
+        if (slot.status === 'booked') return false;
+        if (slot.status === 'held' && slot.lockExpiresAt && new Date(slot.lockExpiresAt) > now) return false;
+        return true;
+      })
+      .map((slot) => ({
+        id: slot.id,
+        providerId: slot.providerId,
+        platform: slot.platformId,
+        start: slot.startTime.toISOString(),
+        end: slot.endTime.toISOString(),
+        status: slot.status === 'booked' ? 'BOOKED' : (slot.status === 'held' && slot.lockExpiresAt && new Date(slot.lockExpiresAt) > now ? 'HELD' : 'AVAILABLE'),
+        timezone: slot.timezone || 'Asia/Jerusalem',
+      }));
+
+    return res.status(200).json({ success: true, slots: availableSlots, count: availableSlots.length });
+  } catch (error: any) {
+    console.error('[Bookings] Availability error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
@@ -282,94 +340,8 @@ router.post("/:bookingId/cancel", requireAuth, async (req, res) => {
 
 // =================== AVAILABILITY-BASED BOOKING SYSTEM (2025) ===================
 // 5-minute payment lock system for marketplace bookings
-
+// NOTE: router.get("/availability") is defined ABOVE /:bookingId to prevent route shadowing
 // import { BookingLockService } from "../services/BookingLockService"; // TODO: Re-enable when service is created
-import { db as pgDb } from '../db';
-import { availabilitySlots } from '@shared/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
-
-/**
- * GET /api/bookings/availability
- * Get available slots for a provider within date range
- */
-router.get("/availability", async (req, res) => {
-  try {
-    const { platform, providerId, from, to } = req.query;
-
-    if (!platform || !providerId || !from || !to) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required query params: platform, providerId, from, to',
-      });
-    }
-
-    // Parse dates
-    const fromDate = new Date(from as string);
-    const toDate = new Date(to as string);
-
-    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid date format',
-      });
-    }
-
-    // Fetch slots from PostgreSQL
-    const slots = await pgDb.query.availabilitySlots.findMany({
-      where: and(
-        eq(availabilitySlots.providerId, Number(providerId)),
-        gte(availabilitySlots.startTime, fromDate),
-        lte(availabilitySlots.endTime, toDate)
-      ),
-    });
-
-    // Filter and format slots
-    const now = new Date();
-    const availableSlots = slots
-      .filter((slot) => {
-        // Must not be booked
-        if (slot.status === 'booked') return false;
-        
-        // If held, check if lock expired
-        if (slot.status === 'held' && slot.lockExpiresAt) {
-          if (new Date(slot.lockExpiresAt) > now) return false;
-        }
-
-        return true;
-      })
-      .map((slot) => {
-        // Determine status with proper casing
-        let status = 'AVAILABLE';
-        if (slot.status === 'booked') {
-          status = 'BOOKED';
-        } else if (slot.status === 'held' && slot.lockExpiresAt && new Date(slot.lockExpiresAt) > now) {
-          status = 'HELD';
-        }
-        
-        return {
-          id: slot.id,
-          providerId: slot.providerId,
-          platform: slot.platformId,
-          start: slot.startTime.toISOString(),
-          end: slot.endTime.toISOString(),
-          status,
-          timezone: slot.timezone || 'Asia/Jerusalem',
-        };
-      });
-
-    return res.status(200).json({
-      success: true,
-      slots: availableSlots,
-      count: availableSlots.length,
-    });
-  } catch (error: any) {
-    console.error('[Bookings] Availability error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-    });
-  }
-});
 
 /**
  * POST /api/bookings/lock

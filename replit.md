@@ -116,4 +116,45 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Mapping & Location**: Google Maps API.
 - **AI & Vision**: Google Cloud Vision API, Google Gemini AI, Google Cloud Translation API, Google Dialogflow CX.
 - **Business Management**: Google Business Profile API.
-- **Google Forms Integration**: Admin-configurable embedded Google Forms.
+- **Google Forms Integration**: Admin-configurable embedded Google Forms (`GOOGLE_FORM_WALKER`, `GOOGLE_FORM_SITTER`, `GOOGLE_FORM_DRIVER`, `GOOGLE_FORM_GROOMER`, `GOOGLE_FORM_TRAINER`, `GOOGLE_FORM_STATION`, `GOOGLE_FORM_GENERAL` env vars; returns `null` if not configured).
+
+## Known Configuration Items
+- **SendGrid**: API key valid but zero email credits — requires billing plan activation at SendGrid dashboard
+- **DKIM propagation**: `em193.petwash.co.il`, `s1._domainkey.petwash.co.il`, `s2._domainkey.petwash.co.il` CNAMEs propagating via Internic (30min–48hr)
+- **Click tracking DNS**: Add `url5717.click.petwash.co.il` and `56671012.click.petwash.co.il` CNAME → `sendgrid.net` at Internic
+- **Twilio SMS**: `SMS_EMERGENCY_DISABLED=true` still set; remove once Twilio account reinstated
+- **Google Cloud DPA**: Set `GOOGLE_CLOUD_DPA_ACCEPTED=true` after signing Google Cloud DPA (required for Vision API, Cloud Storage biometric, receipt OCR)
+- **Nayax payments**: `NAYAX_API_KEY` not configured — payment terminal features disabled
+- **ITA integration**: `CLIENT_ID`/`CLIENT_SECRET` not set — Israeli Tax Authority integration disabled
+- **DocuSeal**: `DOCUSEAL_API_KEY` not configured — demo mode only
+- **ReceiptOCR**: `GOOGLE_APPLICATION_CREDENTIALS_JSON` is an API key, not service account JSON — non-blocking error
+- **Redis**: `REDIS_URL` not configured — using in-memory fallback for rate limiting/caching
+
+## Firestore Indexes (Created March 2026)
+The following composite indexes were created via REST API and may still be building:
+- `bookings`: `customerId ASC + createdAt DESC`
+- `bookings`: `providerId ASC + createdAt DESC`
+- `bookings`: `customerId ASC + platform ASC + createdAt DESC`
+- `bookings`: `providerId ASC + platform ASC + createdAt DESC`
+- `pets` (collection group): `deletedAt ASC + createdAt DESC`
+
+## QA Verified (March 2026)
+- Health endpoint ✅
+- Firebase Admin SDK (Gemini 2.5 Flash, Vision API, K9000 LED) ✅
+- Booking create/list/availability ✅ (Firestore + PostgreSQL)
+- Pet profiles (Firestore `users/{uid}/pets`) ✅
+- Privilege Club registration (`PWP-XXXX-XXXXXX` → `privilege_members`) ✅
+- Provider intake (auto-approve → `provider_intake_queue` → Google Sheets) ✅
+- Onboarding email verification (503 when SendGrid unavailable) ✅
+- Referral link generation ✅
+- Calendar (Google Calendar connected) ✅
+- Notifications ✅
+
+## Critical Bugs Fixed (March 2026)
+- **Firestore pets path**: Fixed from invalid 2-segment `pets/{uid}` to valid 3-segment `users/{uid}/pets`
+- **Booking create undefined metadata**: Fixed with conditional spread (`booking.metadata` could be undefined, Firestore rejects undefined values)
+- **Booking notification method**: Fixed `NotificationService.sendBookingConfirmation` (non-existent) → `NotificationService.sendNotification`
+- **Booking availability route order**: Moved `/availability` before `/:bookingId` to prevent Express dynamic param shadowing
+- **Onboarding email 500 → 503**: Returns proper 503 Service Unavailable with `retryAfter: 30` when SendGrid fails
+- **Provider intake placeholder URLs**: Replaced hardcoded `https://forms.gle/your-*-form` placeholders with `null` (controlled by env vars)
+- **Firestore ignoreUndefinedProperties**: Added globally to Firestore settings in `firebase-admin.ts`

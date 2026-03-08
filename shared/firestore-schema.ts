@@ -740,7 +740,7 @@ export const FIRESTORE_PATHS = {
     franchiseId ? `franchiseProfiles/${franchiseId}` : `franchiseProfiles`,
   
   PETS: (uid: string, petId?: string) =>
-    petId ? `pets/${uid}/${petId}` : `pets/${uid}`,
+    petId ? `users/${uid}/pets/${petId}` : `users/${uid}/pets`,
   
   VOUCHERS: (code: string) => `vouchers/${code}`,
   

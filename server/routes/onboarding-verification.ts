@@ -198,9 +198,12 @@ router.post('/send-email-code', verificationLimiter, async (req: Request, res: R
         expiresIn: EMAIL_CODE_EXPIRY_MINUTES * 60,
       });
     } else {
-      return res.status(500).json({
+      return res.status(503).json({
         success: false,
-        message: isHebrew ? 'שגיאה בשליחת קוד האימות' : 'Failed to send verification code',
+        message: isHebrew
+          ? 'שירות האימייל אינו זמין כרגע. נסו שוב מאוחר יותר.'
+          : 'Email service temporarily unavailable. Please try again later.',
+        retryAfter: 30,
       });
     }
   } catch (error: any) {

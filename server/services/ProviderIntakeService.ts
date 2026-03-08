@@ -333,17 +333,17 @@ export class ProviderIntakeService {
    */
   getGoogleFormUrl(providerType: string): string {
     // These are placeholder URLs - user needs to create actual Google Forms
-    const formUrls: Record<string, string> = {
-      walker: process.env.GOOGLE_FORM_WALKER || 'https://forms.gle/your-walker-form',
-      sitter: process.env.GOOGLE_FORM_SITTER || 'https://forms.gle/your-sitter-form',
-      driver: process.env.GOOGLE_FORM_DRIVER || 'https://forms.gle/your-driver-form',
-      groomer: process.env.GOOGLE_FORM_GROOMER || 'https://forms.gle/your-groomer-form',
-      trainer: process.env.GOOGLE_FORM_TRAINER || 'https://forms.gle/your-trainer-form',
-      station_operator: process.env.GOOGLE_FORM_STATION || 'https://forms.gle/your-station-form',
-      general: process.env.GOOGLE_FORM_GENERAL || 'https://forms.gle/your-general-form'
+    const formUrls: Record<string, string | null> = {
+      walker: process.env.GOOGLE_FORM_WALKER || null,
+      sitter: process.env.GOOGLE_FORM_SITTER || null,
+      driver: process.env.GOOGLE_FORM_DRIVER || null,
+      groomer: process.env.GOOGLE_FORM_GROOMER || null,
+      trainer: process.env.GOOGLE_FORM_TRAINER || null,
+      station_operator: process.env.GOOGLE_FORM_STATION || null,
+      general: process.env.GOOGLE_FORM_GENERAL || null
     };
     
-    return formUrls[providerType] || formUrls.general;
+    return (formUrls[providerType] || formUrls.general) as string;
   }
 }
 

@@ -52,7 +52,11 @@ export function getFirestore() {
 }
 
 // Export direct references for convenience (most common pattern)
-export const db = getFirestore();
+export const db = (() => {
+  const firestore = getFirestore();
+  firestore.settings({ ignoreUndefinedProperties: true });
+  return firestore;
+})();
 export const storage = firebaseApp.storage();
 export const auth = firebaseApp.auth();
 // Alias for consistency with some route imports
