@@ -295,13 +295,13 @@ export function InsuranceAndProtection({ variant = "full", className = "" }: Ins
           {
             label: isHebrew ? "ביטוח לאומי" : "National Insurance",
             description: isHebrew 
-              ? "רישום כעצמאי, תשלומים חודשיים (כ-4.5%-13.6% מההכנסה)"
-              : "Register as self-employed, monthly payments (~4.5%-13.6% of income)"
+              ? "רישום כעצמאי, תשלומים חודשיים (כ-9%-17% מההכנסה — ביטוח לאומי + ביטוח בריאות)"
+              : "Register as self-employed, monthly payments (~9%-17% of income — national insurance + health insurance)"
           }
         ]
       },
       {
-        title: isHebrew ? "שיעורי מס הכנסה 2025" : "Income Tax Rates 2025",
+        title: isHebrew ? "שיעורי מס הכנסה 2026 (לפי מדרגות)" : "Income Tax Rates 2026 (Progressive Brackets)",
         items: [
           { label: "₪0 - ₪84,120", description: "10%" },
           { label: "₪84,121 - ₪120,720", description: "14%" },
