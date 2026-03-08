@@ -217,8 +217,8 @@ const WalkMyPet = lazy(() => import("@/pages/walk-my-pet/BrowseWalkers"));
 const WalkerDetail = lazy(() => import("@/pages/walk-my-pet/WalkerDetail"));
 const WalkBookingFlow = lazy(() => import("@/pages/walk-my-pet/BookingFlow"));
 const WalkOwnerDashboardPage = lazy(() => import("@/pages/walk-my-pet/OwnerDashboard"));
+
 const WalkerDashboardPage = lazy(() => import("@/pages/WalkerDashboard"));
-const WalkerBooking = lazy(() => import("@/pages/WalkerBooking"));
 
 // ⁦PetTrek™⁩ - Advanced Pet Transport
 const PetTrekOverview = lazy(() => import("@/pages/pettrek/Overview"));
@@ -861,16 +861,6 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
 
         {/* ⁦Walk My Pet™⁩ - Specific routes BEFORE general routes to avoid catch-all */}
-        {/* ⁦Walk My Pet™⁩ - Walker Booking Page */}
-        <Route path="/walk-my-pet/book/:walkerId">
-          {() => (
-            <RequireAuth>
-              <Suspense fallback={<PageLoader />}>
-                <WalkerBooking />
-              </Suspense>
-            </RequireAuth>
-          )}
-        </Route>
         
         {/* ⁦Walk My Pet™⁩ - Walker Dashboard (Uber-style for dog walkers) */}
         <Route path="/walk-my-pet/walker/dashboard">
