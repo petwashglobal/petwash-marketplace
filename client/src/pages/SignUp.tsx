@@ -163,34 +163,57 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       const result = await signInWithPopup(auth, provider);
       const { user } = result;
       const additionalInfo = getAdditionalUserInfo(result);
+      const isNewUser = additionalInfo?.isNewUser || false;
 
-      const consentTimestamp = new Date().toISOString();
-      const consentVersion = '2026-02-19-v1';
+      const idToken = await user.getIdToken();
 
-      await fetch(getApiUrl('/api/auth/sync-user'), {
+      const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          provider: 'google',
-          isNewUser: additionalInfo?.isNewUser,
-          consentTimestamp,
-          consentVersion,
-          acceptedTerms: true,
-          loyaltyProgram: formData.loyaltyProgram,
-          marketing: formData.marketing,
-        }),
-      }).catch(() => {});
+        credentials: 'include',
+        body: JSON.stringify({ idToken }),
+      });
+      if (!sessionResponse.ok) {
+        throw new Error('Failed to create session');
+      }
+
+      if (isNewUser) {
+        await fetch(getApiUrl('/api/loyalty/auto-enroll'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`,
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            userId: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            provider: 'google',
+            role: 'pet_parent',
+          }),
+        }).catch(() => {});
+      }
 
       trackSignUp('google');
       toast({
-        title: additionalInfo?.isNewUser
+        title: isNewUser
           ? (language === 'he' ? '✅ חשבון נוצר בהצלחה!' : '✅ Account created!')
           : (language === 'he' ? '✅ ברוך הבא בחזרה!' : '✅ Welcome back!'),
       });
-      navigate('/dashboard');
+
+      try {
+        const postLoginRes = await fetch(getApiUrl('/api/auth/post-login'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        });
+        const postLoginData = await postLoginRes.json();
+        window.scrollTo(0, 0);
+        navigate(postLoginData.nextUrl || postLoginData.redirectTo || '/home');
+      } catch {
+        navigate('/home');
+      }
     } catch (err: any) {
       if (err.code !== 'auth/popup-closed-by-user') {
         toast({
