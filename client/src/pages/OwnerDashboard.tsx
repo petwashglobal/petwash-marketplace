@@ -526,9 +526,20 @@ function BookingCard({ booking, isHebrew }: any) {
           </span>
         </div>
         
-        <Button className="w-full luxury-btn-ghost mt-2" data-testid={`button-view-details-${booking.id}`}>
-          {isHebrew ? 'צפה בפרטים' : 'View Details'}
-        </Button>
+        <div className="flex gap-2 mt-2">
+          <Button 
+            className="flex-1 luxury-btn-ghost" 
+            data-testid={`button-view-details-${booking.id}`}
+          >
+            {isHebrew ? 'צפה בפרטים' : 'View Details'}
+          </Button>
+          <Button 
+            className="luxury-btn-secondary px-4"
+            onClick={() => setLocation(`/booking-chat/${booking.id}`)}
+          >
+            <MessageSquare className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -64,6 +64,7 @@ import esignRoutes from "./routes/esign";
 import israeli2025EsignRoutes from "./routes/israeli-2025-esign";
 import notificationsRoutes from "./routes/notifications";
 import chatRoutes from "./routes/chat";
+import bookingChatRouter from './routes/booking-chat';
 import careersRoutes from "./routes/careers";
 import vatRoutes from "./routes/vat";
 import feesRoutes from "./routes/fees";
@@ -9512,6 +9513,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/vouchers-2025', apiLimiter, vouchers2025Routes);
 
   // Unified Voucher System 2026 - WASH_PACKAGE + PLATFORM_CREDIT with full ledger
+  app.use('/api/booking-chat', bookingChatRouter);
+  app.use('/api/admin/booking-chat', bookingChatRouter);
   app.use('/api/v2/vouchers', apiLimiter, unifiedVouchersRoutes);
   
   // Email/SMS Campaigns (Marketing - Template Personalization)

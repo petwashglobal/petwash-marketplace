@@ -223,6 +223,13 @@ export default function SitterBookingFlow() {
 
       setBookingId(booking.booking?.id || booking.id || booking.bookingId || 'pending');
       
+      // Open chat conversation
+      if (booking.booking?.id || booking.id) {
+        apiRequest('POST', `/api/booking-chat/${booking.booking?.id || booking.id}/open`).catch(err => {
+          console.error('Failed to open booking chat:', err);
+        });
+      }
+
       // Mark first booking as complete for push notification permission (Apple compliance)
       localStorage.setItem('petwash_first_booking_complete', 'true');
 
@@ -772,13 +779,24 @@ export default function SitterBookingFlow() {
               </p>
             </div>
 
-            <Button
-              className="h-14 px-12 rounded-xl text-base font-semibold bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg touch-manipulation"
-              onClick={() => setLocation("/dashboard")}
-              data-testid="button-dashboard"
-            >
-              חזרה ללוח הבקרה
-            </Button>
+            <div className="flex flex-col gap-3 max-w-md mx-auto mb-8">
+              <Button
+                className="h-14 px-12 rounded-xl text-base font-semibold bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg touch-manipulation"
+                onClick={() => setLocation(`/booking-chat/${bookingId}`)}
+                data-testid="button-message-sitter"
+              >
+                <MessageSquare className="w-5 h-5 mr-2" />
+                {isHebrew ? 'שלח הודעה לשמרטף' : 'Message your sitter'}
+              </Button>
+              <Button
+                variant="outline"
+                className="h-12 px-12 rounded-xl text-base font-semibold border-emerald-200 text-emerald-700 hover:bg-emerald-50 shadow-sm touch-manipulation"
+                onClick={() => setLocation("/dashboard")}
+                data-testid="button-dashboard"
+              >
+                חזרה ללוח הבקרה
+              </Button>
+            </div>
           </div>
         )}
       </div>

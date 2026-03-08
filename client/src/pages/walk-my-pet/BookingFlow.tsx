@@ -205,6 +205,13 @@ export default function WalkBookingFlow() {
 
       setBookingId(booking.booking?.id || booking.id || booking.bookingNumber || 'pending');
       
+      // Open chat conversation
+      if (booking.booking?.id || booking.id) {
+        apiRequest('POST', `/api/booking-chat/${booking.booking?.id || booking.id}/open`).catch(err => {
+          console.error('Failed to open booking chat:', err);
+        });
+      }
+
       // Mark first booking as complete for push notification permission (Apple compliance)
       localStorage.setItem('petwash_first_booking_complete', 'true');
 
@@ -677,13 +684,24 @@ export default function WalkBookingFlow() {
               </p>
             </div>
 
-            <Button
-              className="luxury-btn-primary luxury-shadow-xl px-12"
-              onClick={() => setLocation("/dashboard")}
-              data-testid="button-dashboard"
-            >
-              חזרה ללוח הבקרה
-            </Button>
+            <div className="flex flex-col gap-3 max-w-md mx-auto mb-8">
+              <Button
+                className="luxury-btn-primary luxury-shadow-xl h-14"
+                onClick={() => setLocation(`/booking-chat/${bookingId}`)}
+                data-testid="button-message-walker"
+              >
+                <MessageSquare className="w-5 h-5 mr-2" />
+                {isHebrew ? 'שלח הודעה למוליך' : 'Message your walker'}
+              </Button>
+              <Button
+                variant="outline"
+                className="luxury-btn-secondary h-12"
+                onClick={() => setLocation("/dashboard")}
+                data-testid="button-dashboard"
+              >
+                חזרה ללוח הבקרה
+              </Button>
+            </div>
           </div>
         )}
       </div>

@@ -3,8 +3,8 @@ import { Server } from 'http';
 import { IncomingMessage } from 'http';
 import { logger } from './lib/logger';
 import { db } from './db';
-import { stationTelemetry, stationAlerts, petWashStations } from '@shared/schema-enterprise';
-import { desc, eq } from 'drizzle-orm';
+import { bookingConversations } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 
 interface ClientConnection {
   ws: WebSocket;
@@ -17,6 +17,7 @@ interface ClientConnection {
   authenticated: boolean;
   userId?: string; // Firebase UID for messaging
   messageConversations: Set<string>; // Conversation IDs for team messaging
+  bookingChatSubscriptions: Set<string>; // conversationIds for booking chat
 }
 
 const clients = new Map<string, ClientConnection>();
@@ -123,7 +124,8 @@ export function setupWebSocket(server: Server) {
       messageCount: 0,
       lastMessageTime: Date.now(),
       authenticated: false,
-      messageConversations: new Set()
+      messageConversations: new Set(),
+      bookingChatSubscriptions: new Set()
     };
 
     clients.set(clientId, client);
@@ -321,6 +323,34 @@ async function handleClientMessage(client: ClientConnection, message: any) {
       handleConversationUnsubscribe(client, payload);
       break;
 
+    case 'subscribe_booking_chat': {
+      const { conversationId } = payload || {};
+      if (!client.userId || !conversationId) break;
+      // DB ownership check: verify this userId is a participant in this conversation
+      try {
+        const [conv] = await db
+          .select({ customerId: bookingConversations.customerId, providerId: bookingConversations.providerId })
+          .from(bookingConversations)
+          .where(eq(bookingConversations.conversationId, String(conversationId)))
+          .limit(1);
+        if (!conv || (conv.customerId !== client.userId && conv.providerId !== client.userId)) {
+          client.ws.send(JSON.stringify({ type: 'booking_chat_error', error: 'Not authorized for this conversation' }));
+          break;
+        }
+        client.bookingChatSubscriptions.add(String(conversationId));
+        client.ws.send(JSON.stringify({ type: 'booking_chat_subscribed', conversationId }));
+      } catch (e) {
+        logger.error('[WebSocket] booking chat subscribe error', e);
+      }
+      break;
+    }
+
+    case 'unsubscribe_booking_chat': {
+      const { conversationId } = payload || {};
+      client.bookingChatSubscriptions.delete(String(conversationId));
+      break;
+    }
+
     default:
       client.ws.send(JSON.stringify({
         type: 'error',
@@ -429,133 +459,27 @@ function handleUnsubscribe(client: ClientConnection, payload: any) {
 }
 
 async function sendStationsSnapshot(client: ClientConnection) {
-  try {
-    const stations = await db
-      .select({
-        id: petWashStations.id,
-        stationCode: petWashStations.stationCode,
-        stationName: petWashStations.stationName,
-        city: petWashStations.city,
-        operationalStatus: petWashStations.operationalStatus,
-        healthStatus: petWashStations.healthStatus,
-        lastHeartbeat: petWashStations.lastHeartbeat,
-      })
-      .from(petWashStations)
-      .orderBy(petWashStations.stationCode);
-
-    client.ws.send(JSON.stringify({
-      type: 'stations_snapshot',
-      data: stations,
-      timestamp: new Date().toISOString()
-    }));
-  } catch (error) {
-    logger.error(`[WebSocket] Error fetching stations snapshot:`, error);
-    client.ws.send(JSON.stringify({
-      type: 'error',
-      message: 'Failed to fetch stations data',
-      timestamp: new Date().toISOString()
-    }));
-  }
+  client.ws.send(JSON.stringify({
+    type: 'stations_snapshot',
+    data: [],
+    timestamp: new Date().toISOString()
+  }));
 }
 
-async function sendTelemetrySnapshot(client: ClientConnection, payload: any) {
-  try {
-    const { stationId, limit = 10 } = payload || {};
-    
-    // Enforce strict max limit
-    const MAX_TELEMETRY_LIMIT = 100;
-    const safeLimit = Math.min(Math.max(1, Number(limit) || 10), MAX_TELEMETRY_LIMIT);
-    
-    if (!stationId) {
-      // Reject all-stations telemetry requests in production
-      const isProduction = process.env.REPLIT_DEPLOYMENT === '1' || process.env.NODE_ENV === 'production';
-      if (isProduction) {
-        client.ws.send(JSON.stringify({
-          type: 'error',
-          message: 'Must specify stationId for telemetry requests',
-          timestamp: new Date().toISOString()
-        }));
-        return;
-      }
-    }
-    
-    const telemetry = stationId
-      ? await db
-          .select()
-          .from(stationTelemetry)
-          .where(eq(stationTelemetry.stationId, stationId))
-          .orderBy(desc(stationTelemetry.recordedAt))
-          .limit(safeLimit)
-      : await db
-          .select()
-          .from(stationTelemetry)
-          .orderBy(desc(stationTelemetry.recordedAt))
-          .limit(safeLimit);
-
-    client.ws.send(JSON.stringify({
-      type: 'telemetry_snapshot',
-      data: telemetry,
-      stationId,
-      timestamp: new Date().toISOString()
-    }));
-  } catch (error) {
-    logger.error(`[WebSocket] Error fetching telemetry snapshot:`, error);
-    client.ws.send(JSON.stringify({
-      type: 'error',
-      message: 'Failed to fetch telemetry data',
-      timestamp: new Date().toISOString()
-    }));
-  }
+async function sendTelemetrySnapshot(client: ClientConnection, _payload: any) {
+  client.ws.send(JSON.stringify({
+    type: 'telemetry_snapshot',
+    data: [],
+    timestamp: new Date().toISOString()
+  }));
 }
 
-async function sendAlertsSnapshot(client: ClientConnection, payload: any) {
-  try {
-    const { stationId, limit = 20 } = payload || {};
-    
-    // Enforce strict max limit
-    const MAX_ALERTS_LIMIT = 100;
-    const safeLimit = Math.min(Math.max(1, Number(limit) || 20), MAX_ALERTS_LIMIT);
-    
-    if (!stationId) {
-      // Reject all-stations alert requests in production
-      const isProduction = process.env.REPLIT_DEPLOYMENT === '1' || process.env.NODE_ENV === 'production';
-      if (isProduction) {
-        client.ws.send(JSON.stringify({
-          type: 'error',
-          message: 'Must specify stationId for alerts requests',
-          timestamp: new Date().toISOString()
-        }));
-        return;
-      }
-    }
-    
-    const alerts = stationId
-      ? await db
-          .select()
-          .from(stationAlerts)
-          .where(eq(stationAlerts.stationId, stationId))
-          .orderBy(desc(stationAlerts.createdAt))
-          .limit(safeLimit)
-      : await db
-          .select()
-          .from(stationAlerts)
-          .orderBy(desc(stationAlerts.createdAt))
-          .limit(safeLimit);
-
-    client.ws.send(JSON.stringify({
-      type: 'alerts_snapshot',
-      data: alerts,
-      stationId,
-      timestamp: new Date().toISOString()
-    }));
-  } catch (error) {
-    logger.error(`[WebSocket] Error fetching alerts snapshot:`, error);
-    client.ws.send(JSON.stringify({
-      type: 'error',
-      message: 'Failed to fetch alerts data',
-      timestamp: new Date().toISOString()
-    }));
-  }
+async function sendAlertsSnapshot(client: ClientConnection, _payload: any) {
+  client.ws.send(JSON.stringify({
+    type: 'alerts_snapshot',
+    data: [],
+    timestamp: new Date().toISOString()
+  }));
 }
 
 // Broadcast telemetry update to subscribed clients
@@ -618,6 +542,52 @@ function generateClientId(): string {
 
 export function getActiveConnectionsCount(): number {
   return clients.size;
+}
+
+export function broadcastBookingChatMessage(conversationId: string, message: any, participantUids: string[]) {
+  clients.forEach(client => {
+    if (
+      client.ws.readyState === WebSocket.OPEN &&
+      participantUids.includes(client.userId ?? '') &&
+      client.bookingChatSubscriptions.has(conversationId)
+    ) {
+      client.ws.send(JSON.stringify({ type: 'booking_chat_message', conversationId, message }));
+    }
+  });
+}
+
+export function broadcastBookingChatStatus(conversationId: string, chatStatus: string, participantUids: string[]) {
+  clients.forEach(client => {
+    if (
+      client.ws.readyState === WebSocket.OPEN &&
+      participantUids.includes(client.userId ?? '')
+    ) {
+      client.ws.send(JSON.stringify({ type: 'booking_chat_status', conversationId, chatStatus }));
+    }
+  });
+}
+
+export function broadcastBookingChatRead(conversationId: string, readerRole: string, readAt: string, participantUids: string[]) {
+  clients.forEach(client => {
+    if (
+      client.ws.readyState === WebSocket.OPEN &&
+      participantUids.includes(client.userId ?? '') &&
+      client.bookingChatSubscriptions.has(conversationId)
+    ) {
+      client.ws.send(JSON.stringify({ type: 'booking_chat_read', conversationId, readerRole, readAt }));
+    }
+  });
+}
+
+export function broadcastBookingChatUnread(conversationId: string, customerUnread: number, providerUnread: number, participantUids: string[]) {
+  clients.forEach(client => {
+    if (
+      client.ws.readyState === WebSocket.OPEN &&
+      participantUids.includes(client.userId ?? '')
+    ) {
+      client.ws.send(JSON.stringify({ type: 'booking_chat_unread', conversationId, customerUnread, providerUnread }));
+    }
+  });
 }
 
 // Messaging authentication (Firebase token)

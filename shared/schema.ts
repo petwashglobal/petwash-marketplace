@@ -7835,6 +7835,60 @@ export const insertBookingPetSchema = createInsertSchema(bookingPets).omit({ id:
 export type InsertBookingPet = z.infer<typeof insertBookingPetSchema>;
 export type SelectBookingPet = typeof bookingPets.$inferSelect;
 
+// ===== BOOKING CONVERSATION CHAT =====
+// One conversation per booking. Opens on confirmed, closes on terminal statuses.
+// chatStatus: active | read_only | archived
+export const bookingConversations = pgTable("booking_conversations", {
+  conversationId: varchar("conversation_id").primaryKey(), // BC-{nanoid}
+  bookingId: varchar("booking_id").notNull().references(() => bookings.id, { onDelete: 'cascade' }),
+  platform: varchar("platform").notNull(), // walk_my_pet | sitter_suite | academy | pettrek | groomers
+  customerId: varchar("customer_id").notNull(), // Firebase UID
+  providerId: varchar("provider_id").notNull(), // Firebase UID
+  chatStatus: varchar("chat_status").notNull().default("active"), // active | read_only | archived
+  closedReason: varchar("closed_reason"), // completed | cancelled | refunded | disputed | expired
+  customerUnread: integer("customer_unread").notNull().default(0),
+  providerUnread: integer("provider_unread").notNull().default(0),
+  lastMessageAt: timestamp("last_message_at"),
+  lastMessagePreview: varchar("last_message_preview", { length: 120 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  closedAt: timestamp("closed_at"),
+}, (table) => ({
+  bookingIdx: uniqueIndex("bc_booking_idx").on(table.bookingId),
+  customerIdx: index("bc_customer_idx").on(table.customerId),
+  providerIdx: index("bc_provider_idx").on(table.providerId),
+  statusIdx: index("bc_status_idx").on(table.chatStatus),
+}));
+
+export const bookingMessages = pgTable("booking_messages", {
+  messageId: varchar("message_id").primaryKey(), // BM-{nanoid}
+  conversationId: varchar("conversation_id").notNull().references(() => bookingConversations.conversationId, { onDelete: 'cascade' }),
+  senderUid: varchar("sender_uid").notNull(), // Firebase UID or 'system'
+  senderRole: varchar("sender_role").notNull(), // customer | provider | system | admin
+  messageType: varchar("message_type").notNull().default("text"), // text | system_event | image
+  content: text("content").notNull(),
+  systemEventType: varchar("system_event_type"), // booking_confirmed | in_progress | completed | cancelled | dispute_opened | no_show
+  isFlagged: boolean("is_flagged").default(false),
+  flaggedReason: varchar("flagged_reason"), // contact_info | inappropriate | spam | harassment
+  moderatedBy: varchar("moderated_by"), // admin UID
+  isDeleted: boolean("is_deleted").default(false),
+  deletedBy: varchar("deleted_by"),
+  readByCustomerAt: timestamp("read_by_customer_at"),
+  readByProviderAt: timestamp("read_by_provider_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  conversationIdx: index("bm_conversation_idx").on(table.conversationId),
+  createdAtIdx: index("bm_created_idx").on(table.conversationId, table.createdAt),
+  flaggedIdx: index("bm_flagged_idx").on(table.isFlagged),
+}));
+
+export const insertBookingConversationSchema = createInsertSchema(bookingConversations).omit({ createdAt: true });
+export type InsertBookingConversation = z.infer<typeof insertBookingConversationSchema>;
+export type BookingConversation = typeof bookingConversations.$inferSelect;
+
+export const insertBookingMessageSchema = createInsertSchema(bookingMessages).omit({ createdAt: true });
+export type InsertBookingMessage = z.infer<typeof insertBookingMessageSchema>;
+export type BookingMessage = typeof bookingMessages.$inferSelect;
+
 export const insertBookingItemSchema = createInsertSchema(bookingItems).omit({ id: true });
 export type InsertBookingItem = z.infer<typeof insertBookingItemSchema>;
 export type SelectBookingItem = typeof bookingItems.$inferSelect;
@@ -10545,68 +10599,6 @@ export const redemptionSessions = pgTable("redemption_sessions", {
   index("idx_redeem_session_expires").on(table.expiresAt),
 ]);
 
-// =================== IN-APP MESSAGING SYSTEM ===================
-// Secure platform messaging - NO external contact exchange allowed
-// Anti-bypass detection for phone numbers, emails, social media
-
-export const bookingConversations = pgTable("booking_conversations", {
-  id: serial("id").primaryKey(),
-  conversationId: varchar("conversation_id", { length: 50 }).unique().notNull(),
-  
-  // Participants
-  bookingId: varchar("booking_id"), // Optional - can exist before booking
-  customerId: varchar("customer_id").notNull(),
-  providerId: varchar("provider_id").notNull(),
-  platformId: varchar("platform_id").notNull(), // sitter_suite, walk_my_pet, pet_trek
-  
-  // Status
-  status: varchar("status").default("active"), // active, archived, blocked
-  lastMessageAt: timestamp("last_message_at"),
-  
-  // Anti-bypass flags
-  bypassAttemptCount: integer("bypass_attempt_count").default(0),
-  bypassWarningIssued: boolean("bypass_warning_issued").default(false),
-  bypassSuspended: boolean("bypass_suspended").default(false),
-  
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => [
-  index("idx_conversation_customer").on(table.customerId),
-  index("idx_conversation_provider").on(table.providerId),
-  index("idx_conversation_booking").on(table.bookingId),
-]);
-
-export const conversationMessages = pgTable("conversation_messages", {
-  id: serial("id").primaryKey(),
-  messageId: varchar("message_id", { length: 50 }).unique().notNull(),
-  conversationId: varchar("conversation_id").notNull(),
-  
-  // Sender
-  senderId: varchar("sender_id").notNull(),
-  senderRole: varchar("sender_role").notNull(), // customer, provider, system
-  
-  // Content
-  messageType: varchar("message_type").default("text"), // text, image, booking_request, system
-  content: text("content").notNull(),
-  
-  // Anti-bypass detection
-  containsSuspiciousContent: boolean("contains_suspicious_content").default(false),
-  suspiciousPatterns: text("suspicious_patterns").array(), // phone_number, email, whatsapp, telegram
-  redactedContent: text("redacted_content"), // Content with sensitive info masked
-  
-  // Status
-  isRead: boolean("is_read").default(false),
-  readAt: timestamp("read_at"),
-  isDeleted: boolean("is_deleted").default(false),
-  deletedAt: timestamp("deleted_at"),
-  
-  createdAt: timestamp("created_at").defaultNow(),
-}, (table) => [
-  index("idx_conv_msg_conversation").on(table.conversationId),
-  index("idx_conv_msg_sender").on(table.senderId),
-  index("idx_conv_msg_suspicious").on(table.containsSuspiciousContent),
-]);
-
 // Zod schemas for wallet system
 export const insertWalletAccountSchema = createInsertSchema(walletAccounts).omit({
   id: true,
@@ -10630,22 +10622,6 @@ export const insertRedemptionSessionSchema = createInsertSchema(redemptionSessio
 });
 export type InsertRedemptionSession = z.infer<typeof insertRedemptionSessionSchema>;
 export type RedemptionSession = typeof redemptionSessions.$inferSelect;
-
-// Zod schemas for messaging system
-export const insertBookingConversationSchema = createInsertSchema(bookingConversations).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export type InsertBookingConversation = z.infer<typeof insertBookingConversationSchema>;
-export type BookingConversation = typeof bookingConversations.$inferSelect;
-
-export const insertConversationMessageSchema = createInsertSchema(conversationMessages).omit({
-  id: true,
-  createdAt: true,
-});
-export type InsertConversationMessage = z.infer<typeof insertConversationMessageSchema>;
-export type ConversationMessage = typeof conversationMessages.$inferSelect;
 
 export const googleFormsConfig = pgTable("google_forms_config", {
   id: serial("id").primaryKey(),

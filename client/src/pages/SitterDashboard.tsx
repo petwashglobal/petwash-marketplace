@@ -529,7 +529,10 @@ function SitterBookingCard({ booking, isHebrew }: any) {
         <Button className="flex-1 luxury-btn-primary">
           {isHebrew ? 'צפה בפרטים' : 'View Details'}
         </Button>
-        <Button className="luxury-btn-secondary px-4 py-2">
+        <Button 
+          className="luxury-btn-secondary px-4 py-2"
+          onClick={() => setLocation(`/booking-chat/${booking.id}`)}
+        >
           <MessageSquare className="h-5 w-5" />
         </Button>
       </div>

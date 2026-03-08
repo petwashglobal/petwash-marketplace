@@ -566,6 +566,24 @@ export default function WalkerDashboard() {
                       </div>
                     </div>
 
+                    <div className="flex items-center justify-between p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg border border-white/20">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4 text-blue-500" />
+                        <span className="text-sm font-medium">
+                          {isHebrew ? 'צ׳אט עם הלקוח' : 'Chat with customer'}
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="luxury-btn-ghost h-8 relative"
+                        onClick={() => setLocation(`/booking-chat/${request.id}`)}
+                      >
+                        <MessageSquare className="w-4 h-4 mr-1" />
+                        {isHebrew ? 'פתח צ׳אט' : 'Open Chat'}
+                      </Button>
+                    </div>
+
                     {request.specialInstructions && (
                       <div className="bg-white dark:bg-yellow-900/20 p-3 rounded-lg">
                         <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-200 mb-1">
