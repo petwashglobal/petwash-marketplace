@@ -622,7 +622,6 @@ export default function ProviderOnboarding() {
                       placeholder={isHebrew ? 'התחל להקליד עיר...' : 'Start typing city...'}
                       country={['il', 'us', 'gb', 'au', 'ca']}
                       inputClassName="bg-white !text-gray-900 border-2 border-gray-200 rounded-xl placeholder:text-gray-400 px-4 py-4 text-base min-h-[48px]"
-                      types={['(cities)']}
                     />
                   </div>
                   <div>

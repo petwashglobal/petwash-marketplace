@@ -334,6 +334,7 @@ function GooglePlacesLocationInput({
         input,
         components: 'country:il',
         language: document.documentElement.lang === 'he' ? 'iw' : 'en',
+        types: 'geocode',
       });
       const res = await fetch(`/api/google/places-autocomplete?${params}`, {
         signal: abortRef.current.signal,
