@@ -68,8 +68,34 @@ function sanitizeMessageContent(raw: string): string {
     .trim();
 }
 
-// Section 6: In-memory rate limiter — max 10 messages per user per conversation per 60s
+/**
+ * §6 SEND RATE LIMITER — 10 messages per user per conversation per 60 seconds.
+ *
+ * CURRENT IMPLEMENTATION: in-memory Map (single-instance safe only).
+ *
+ * Limitation: state lives in process memory. Under horizontal scaling (multiple
+ * Node.js instances behind a load balancer), each instance maintains its own
+ * independent counter, so a user can send up to 10 × N messages per window
+ * across N instances. This is acceptable for single-instance production launch.
+ *
+ * REDIS MIGRATION PLAN (required before horizontal scaling):
+ * Replace the Map with an atomic Redis INCR + EXPIRE pattern:
+ *
+ *   const key = `chat:rl:${uid}:${conversationId}`;
+ *   const count = await redis.incr(key);
+ *   if (count === 1) await redis.expire(key, 60);   // set TTL only on first increment
+ *   if (count > 10) throw new RateLimitError();
+ *
+ * INCR is atomic — no race condition between read and write. The counter expires
+ * automatically after 60s. With Redis, all instances share one counter, so the
+ * 10-msg/60s limit applies across the entire cluster.
+ *
+ * Redis client to add: `ioredis` package + REDIS_URL secret.
+ * Wrapper function signature stays identical — only the body changes.
+ * No endpoint changes or schema changes required.
+ */
 const sendRateLimits = new Map<string, { count: number; resetAt: number }>();
+
 function checkSendRateLimit(uid: string, conversationId: string): boolean {
   const key = `${uid}:${conversationId}`;
   const now = Date.now();
@@ -82,6 +108,26 @@ function checkSendRateLimit(uid: string, conversationId: string): boolean {
   entry.count++;
   return true;
 }
+
+/*
+ * REDIS MIGRATION — drop-in replacement for checkSendRateLimit above.
+ * Uncomment and wire in a Redis client (ioredis) when moving to multi-instance:
+ *
+ * import Redis from 'ioredis';
+ * const redis = new Redis(process.env.REDIS_URL!);
+ *
+ * async function checkSendRateLimitRedis(uid: string, conversationId: string): Promise<boolean> {
+ *   const key = `chat:rl:${uid}:${conversationId}`;
+ *   const count = await redis.incr(key);
+ *   if (count === 1) await redis.expire(key, 60);
+ *   return count <= 10;
+ * }
+ *
+ * Then in the send handler, replace:
+ *   if (!checkSendRateLimit(uid, conv.conversationId)) { ... }
+ * with:
+ *   if (!await checkSendRateLimitRedis(uid, conv.conversationId)) { ... }
+ */
 
 // Detect specific flag reason for contact info violations (§7)
 function detectFlagReason(content: string): string {
@@ -196,9 +242,27 @@ router.post('/:bookingId/open', async (req, res) => {
       lastMessageAt: new Date(),
     };
 
-    await db.insert(bookingConversations).values(newConv);
+    // 5b. Conflict-safe insert — bc_booking_idx (UNIQUE on booking_id) is the enforcer.
+    //     Under concurrent /open requests for the same booking, exactly one INSERT wins;
+    //     the rest return nothing from RETURNING. We then fall back to SELECT to get the
+    //     winner's conversationId. This is fully atomic — no race window.
+    const [inserted] = await db
+      .insert(bookingConversations)
+      .values(newConv)
+      .onConflictDoNothing()
+      .returning();
 
-    // 6. Insert system message
+    if (!inserted) {
+      // Another concurrent request already created the conversation — return it cleanly.
+      const [existing] = await db
+        .select({ conversationId: bookingConversations.conversationId })
+        .from(bookingConversations)
+        .where(eq(bookingConversations.bookingId, bookingId))
+        .limit(1);
+      return res.json({ conversationId: existing!.conversationId });
+    }
+
+    // 6. Insert system message (only for the winning insert — not for concurrent losers)
     const messageId = `BM-${nanoid()}`;
     await db.insert(bookingMessages).values({
       messageId,
