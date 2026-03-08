@@ -31,23 +31,26 @@ router.get('/money-flow-summary', requireRole('admin', 'management', 'staff'), a
       : sql``;
 
     // ── Marketplace bookings (walk_bookings + sitter_bookings) ────────────────
+    // walk_bookings uses decimal ILS amounts (total_cost, platform_fee_owner/sitter, walker_payout)
+    // multiply by 100 to normalise to cents for uniform arithmetic
     const walkStats = await db.execute(sql`
       SELECT
         COUNT(*) FILTER (WHERE status NOT IN ('cancelled','refunded')) AS total,
-        COALESCE(SUM(total_amount_cents) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS gross_cents,
-        COALESCE(SUM(platform_fee_cents) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS fee_cents,
-        COALESCE(SUM(walker_payout_cents) FILTER (WHERE status = 'completed'), 0) AS payout_cents,
-        COALESCE(SUM(vat_cents) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS vat_cents
+        COALESCE(SUM(CAST(total_cost AS NUMERIC) * 100) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS gross_cents,
+        COALESCE(SUM((COALESCE(CAST(platform_fee_owner AS NUMERIC),0) + COALESCE(CAST(platform_fee_sitter AS NUMERIC),0)) * 100) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS fee_cents,
+        COALESCE(SUM(CAST(walker_payout AS NUMERIC) * 100) FILTER (WHERE status = 'completed'), 0) AS payout_cents,
+        0 AS vat_cents
       FROM walk_bookings
     `);
 
+    // sitter_bookings uses cents columns: total_charge_cents, platform_service_fee_cents, sitter_payout_cents
     const sitterStats = await db.execute(sql`
       SELECT
         COUNT(*) FILTER (WHERE status NOT IN ('cancelled','refunded')) AS total,
-        COALESCE(SUM(total_amount_cents) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS gross_cents,
-        COALESCE(SUM(platform_fee_cents) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS fee_cents,
+        COALESCE(SUM(total_charge_cents) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS gross_cents,
+        COALESCE(SUM(platform_service_fee_cents) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS fee_cents,
         COALESCE(SUM(sitter_payout_cents) FILTER (WHERE status = 'completed'), 0) AS payout_cents,
-        COALESCE(SUM(vat_cents) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS vat_cents
+        0 AS vat_cents
       FROM sitter_bookings
     `);
 
