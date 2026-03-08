@@ -684,7 +684,7 @@ async function sendBackupSummaryEmail(data: {
     to: 'nir.h@petwash.co.il',  // Updated for deployment report
     cc: 'Support@PetWash.co.il',
     from: {
-      email: 'Support@PetWash.co.il',
+      email: 'noreply@petwash.co.il',
       name: '⁦Pet Wash™⁩ Backup System'
     },
     subject,

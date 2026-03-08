@@ -293,7 +293,7 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
   try {
     await sgMail.send({
       to: config.senderEmail,
-      from: { email: 'support@petwash.co.il', name: '⁦Pet Wash™⁩' },
+      from: { email: 'noreply@petwash.co.il', name: '⁦Pet Wash™⁩' },
       subject: t.subject,
       html,
     });
@@ -309,7 +309,7 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
     
     await sgMail.send({
       to: config.recipientEmail,
-      from: { email: 'support@petwash.co.il', name: '⁦Pet Wash™⁩' },
+      from: { email: 'noreply@petwash.co.il', name: '⁦Pet Wash™⁩' },
       subject: recipientSubject,
       html: recipientHtml,
     });

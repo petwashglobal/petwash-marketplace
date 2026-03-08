@@ -298,7 +298,7 @@ router.post('/send-wallet-email', async (req, res) => {
     const emailData = {
       to: email,
       from: {
-        email: 'Support@PetWash.co.il',
+        email: 'noreply@petwash.co.il',
         name: '⁦Pet Wash™⁩'
       },
       subject: emailSubject,
@@ -561,7 +561,7 @@ router.post('/send-launch-invitation', async (req, res) => {
       to: recipients,
       cc: ccRecipients,
       from: {
-        email: 'Support@PetWash.co.il',
+        email: 'noreply@petwash.co.il',
         name: '⁦Pet Wash™⁩ Management'
       },
       subject: `🐾 Official Invitation: ⁦Pet Wash™⁩ Israel Launch - ${formattedDate}`,

@@ -56,7 +56,7 @@ export class GoogleMessagingService {
       
       await sgMail.send({
         to: payload.to,
-        from: payload.from || 'Support@PetWash.co.il',
+        from: payload.from || 'noreply@petwash.co.il',
         subject: payload.subject,
         html: payload.html,
       });

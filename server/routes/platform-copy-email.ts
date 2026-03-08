@@ -662,7 +662,7 @@ router.post('/send-platform-copy', async (req: Request, res: Response) => {
       subject,
       html,
       from: {
-        email: 'Support@PetWash.co.il',
+        email: 'noreply@petwash.co.il',
         name: '⁦Pet Wash™⁩'
       }
     });

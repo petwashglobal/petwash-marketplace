@@ -15,7 +15,7 @@ import { generateInvestorLaunchEventEmail } from './templates/luxury-investor-la
 import { generateLuxuryWelcomeEmail } from './templates/welcome-luxury-2026';
 import { createMailService, isSendGridConfigured } from '../lib/sendgrid';
 
-const FROM_EMAIL = 'Support@PetWash.co.il';
+const FROM_EMAIL = 'noreply@petwash.co.il';
 const FROM_NAME = '⁦Pet Wash™⁩ Team';
 
 let sgMail: MailService | null = isSendGridConfigured() ? createMailService() : null;

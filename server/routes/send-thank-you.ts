@@ -89,7 +89,7 @@ router.post('/send-signature-invite', async (req, res) => {
 
     const msg = {
       to: 'ido.s@petwash.co.il',
-      from: 'Support@PetWash.co.il',
+      from: 'noreply@petwash.co.il',
       cc: 'Support@PetWash.co.il', // CC Nir Hadad
       subject: '🔐 ⁦PetWash™⁩ E-Signature System - הזמנה אישית לחתימה דיגיטלית',
       html: emailHtml,
@@ -393,7 +393,7 @@ router.post('/send-thank-you', async (req, res) => {
       to: recipientEmail,
       cc: 'nir.h@petwash.co.il',
       from: {
-        email: 'Support@PetWash.co.il',
+        email: 'noreply@petwash.co.il',
         name: '⁦Pet Wash™⁩ Management Team'
       },
       subject: '🎉 Heartfelt Thanks & Exciting Future Ahead! - ⁦Pet Wash™⁩',

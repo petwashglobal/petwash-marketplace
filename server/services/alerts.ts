@@ -8,7 +8,7 @@ import { db } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { countFailedAttempts } from './securityEvents';
 
-const FROM = process.env.ALERT_EMAIL_FROM || 'Support@PetWash.co.il';
+const FROM = process.env.ALERT_EMAIL_FROM || 'noreply@petwash.co.il';
 const TO = process.env.ALERT_EMAIL_TO || 'Support@PetWash.co.il';
 
 /**

@@ -72,7 +72,7 @@ const COMPANY_DETAILS: CompanyDetails = {
   taxId: '517145033', // ח.פ.
   vatNumber: '517145033', // מספר עוסק מורשה
   phone: '+972-50-123-4567',
-  email: 'Support@PetWash.co.il'
+  email: 'noreply@petwash.co.il'
 };
 
 const VAT_RATE = 0.18; // 18% מע"מ ישראלי
