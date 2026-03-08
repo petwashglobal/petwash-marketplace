@@ -158,3 +158,9 @@ The following composite indexes were created via REST API and may still be build
 - **Onboarding email 500 → 503**: Returns proper 503 Service Unavailable with `retryAfter: 30` when SendGrid fails
 - **Provider intake placeholder URLs**: Replaced hardcoded `https://forms.gle/your-*-form` placeholders with `null` (controlled by env vars)
 - **Firestore ignoreUndefinedProperties**: Added globally to Firestore settings in `firebase-admin.ts`
+
+## Routing Regressions Fixed (March 2026 Session 2)
+- **WalkerDashboard routing**: `App.tsx` now correctly routes `/walk-my-pet/walker/dashboard` → `client/src/pages/WalkerDashboard.tsx` (1050 lines, full walker tools) instead of the regressed `walk-my-pet/WalkerDashboard.tsx` (105 lines)
+- **WalkTracking routing**: `WalkTracking` and `TrackMyPetLive` now correctly import `client/src/pages/WalkTracking.tsx` (622 lines, real GPS + Leaflet map) instead of the alias to the shallow `walks/TrackWalk.tsx` (96 lines)
+- **walk-my-pet/OwnerDashboard**: Restored from original commit to full 370-line implementation with real API calls, active walk tracking, tabs for upcoming/past/recurring walks
+- **All 4 Groomer pages built** (were always 37-line placeholder stubs): `GroomersProviderDashboard.tsx` (7-tab dashboard: today/requests/upcoming/history/earnings/clients/services), `GroomersCustomerDashboard.tsx` (upcoming/history/cancelled with review/rebook flow), `GroomersBook.tsx` (4-step booking wizard: service→date/time→pet→confirm), `Groomers.tsx` (browse/search marketplace with service and pet type filters)

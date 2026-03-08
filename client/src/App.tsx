@@ -212,7 +212,7 @@ const WalkMyPet = lazy(() => import("@/pages/walk-my-pet/BrowseWalkers"));
 const WalkerDetail = lazy(() => import("@/pages/walk-my-pet/WalkerDetail"));
 const WalkBookingFlow = lazy(() => import("@/pages/walk-my-pet/BookingFlow"));
 const WalkOwnerDashboardPage = lazy(() => import("@/pages/walk-my-pet/OwnerDashboard"));
-const WalkerDashboardPage = lazy(() => import("@/pages/walk-my-pet/WalkerDashboard"));
+const WalkerDashboardPage = lazy(() => import("@/pages/WalkerDashboard"));
 const WalkerBooking = lazy(() => import("@/pages/WalkerBooking"));
 
 // ⁦PetTrek™⁩ - Advanced Pet Transport
@@ -315,9 +315,9 @@ const SitterPrivacyPolicy = lazy(() => import("@/pages/legal/PrivacyPolicy"));
 const SitterTermsConditions = lazy(() => import("@/pages/legal/TermsConditions"));
 const SitterDisclaimer = lazy(() => import("@/pages/legal/Disclaimer"));
 
-// ⁦Walk My Pet™⁩ - Legacy/Alias Pages
-const WalkTracking = lazy(() => import("@/pages/walks/TrackWalk")); // Alias
-const TrackMyPetLive = lazy(() => import("@/pages/walks/TrackWalk")); // Alias
+// ⁦Walk My Pet™⁩ - Live Tracking Pages
+const WalkTracking = lazy(() => import("@/pages/WalkTracking"));
+const TrackMyPetLive = lazy(() => import("@/pages/WalkTracking"));
 
 // ⁦PetTrek™⁩ - Legacy/Alias Pages
 const PetTrekBooking = lazy(() => import("@/pages/pettrek/BookTrip")); // Alias
