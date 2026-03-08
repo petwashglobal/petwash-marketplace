@@ -185,6 +185,11 @@ export default function WalkTracking() {
   useEffect(() => {
     if (!walk || !walk.currentLocation || !mapContainerRef.current) return;
     
+    // Load Leaflet CSS on-demand (removed from <head> to avoid render-blocking)
+    if (typeof window !== 'undefined' && (window as any).__loadLeafletCSS) {
+      (window as any).__loadLeafletCSS();
+    }
+
     // Destroy existing map if reinitializing
     if (mapRef.current) {
       mapRef.current.remove();

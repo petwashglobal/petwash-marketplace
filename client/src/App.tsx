@@ -34,15 +34,17 @@ import { useFCMNotifications } from "@/hooks/useFCMNotifications";
 import { usePersonalizedGreeting } from "@/hooks/usePersonalizedGreeting";
 import { GoogleOneTap } from "@/components/GoogleOneTap";
 
-// CRITICAL: Only import home route components (for instant load)
+// CRITICAL: Only the two entry-point pages stay eager (everything else lazy)
 import Landing from "@/pages/Landing";
 import Home from "@/pages/Home";
-import EmployeeExpenses from "@/pages/EmployeeExpenses";
-import NewExpense from "@/pages/NewExpense";
-import MyExpenses from "@/pages/MyExpenses";
-import ApproveExpenses from "@/pages/ApproveExpenses";
-import StaffApplication from "@/pages/StaffApplication";
-import StaffOnboarding from "@/pages/admin/StaffOnboarding";
+
+// Lazy-load all non-home routes (staff, expenses, admin tools)
+const EmployeeExpenses = lazy(() => import("@/pages/EmployeeExpenses"));
+const NewExpense = lazy(() => import("@/pages/NewExpense"));
+const MyExpenses = lazy(() => import("@/pages/MyExpenses"));
+const ApproveExpenses = lazy(() => import("@/pages/ApproveExpenses"));
+const StaffApplication = lazy(() => import("@/pages/StaffApplication"));
+const StaffOnboarding = lazy(() => import("@/pages/admin/StaffOnboarding"));
 
 // LAZY LOAD: All other routes (code split for performance)
 const ChooseRole = lazy(() => import("@/pages/ChooseRole"));

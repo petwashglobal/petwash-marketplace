@@ -501,7 +501,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
         messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
         appId: process.env.VITE_FIREBASE_APP_ID,
-        measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID
+        measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-B5W5GHJ5EN'
       };
       
       // Validate required fields
@@ -730,7 +730,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
         messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
         appId: process.env.VITE_FIREBASE_APP_ID,
-        measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID
+        measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-B5W5GHJ5EN'
       };
 
       // Validate required fields
