@@ -20,6 +20,7 @@ import { sendProviderEnrollmentConfirmation } from '../email/luxury-email-servic
 import { logProviderApplication } from '../services/googleSheetsIntegration';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { assignProviderMembership } from '../services/MembershipService';
+import { auth as firebaseAuth } from '../lib/firebase-admin';
 
 const submissionRateMap = new Map<string, { count: number; resetAt: number }>();
 const MAX_SUBMISSIONS_PER_IP_PER_HOUR = 3;
@@ -846,6 +847,20 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
         stageChangedAt: new Date()
       })
       .where(eq(providerApplicants.id, applicationId));
+
+    // Set Firebase custom claims so the provider can access /provider/dashboard
+    if (application.userId) {
+      try {
+        await firebaseAuth.setCustomUserClaims(application.userId, {
+          role: 'provider',
+          accountType: 'provider',
+          providerApprovedAt: new Date().toISOString(),
+        });
+        logger.info('[ProviderApplication] Firebase claims set for approved provider', { userId: application.userId });
+      } catch (claimsErr) {
+        logger.warn('[ProviderApplication] Could not set Firebase claims (non-fatal)', { claimsErr, userId: application.userId });
+      }
+    }
     
     await recordStageTransition(
       applicationId,

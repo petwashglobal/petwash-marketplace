@@ -37,7 +37,6 @@ export default function JoinAsWalker() {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>(1);
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -101,7 +100,7 @@ export default function JoinAsWalker() {
         isAvailable: false,
         isActive: true,
       });
-      setSubmitted(true);
+      navigate('/provider/pending');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Submission failed";
       toast({ title: "Could not submit application", description: msg, variant: "destructive" });
@@ -116,22 +115,6 @@ export default function JoinAsWalker() {
     { num: 3, icon: <Wrench className="h-4 w-4" />, label: "Equipment & Skills" },
     { num: 4, icon: <BadgeDollarSign className="h-4 w-4" />, label: "Pricing & Legal" },
   ];
-
-  if (submitted) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-10 max-w-md w-full text-center">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Check className="h-10 w-10 text-green-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">Application Received!</h1>
-          <p className="text-slate-600 mb-2">Your Walk My Pet™ walker application is under review.</p>
-          <p className="text-sm text-slate-500 mb-8">We'll verify your details and contact you within 2–3 business days. Once approved, you'll appear in our walker listings and start receiving booking requests.</p>
-          <Button onClick={() => navigate("/walk-my-pet")} className="w-full bg-blue-600 hover:bg-blue-700">Back to Walk My Pet™</Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-50">

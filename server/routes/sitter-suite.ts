@@ -19,6 +19,7 @@ import {
   octopusBookings,
   octopusLedger,
   octopusInvoices,
+  providerApprovalQueue,
   type SitterProfile,
   type PetProfileForSitting,
   type SitterBooking,
@@ -354,6 +355,18 @@ router.post('/sitters', async (req, res) => {
       sitterId: newSitter.id,
       city: newSitter.city,
     });
+
+    // Add to admin approval queue so staff can review the application
+    try {
+      await db.insert(providerApprovalQueue).values({
+        providerId: String(newSitter.id),
+        platform: 'sitter_suite',
+        status: 'pending',
+        priority: 'normal',
+      });
+    } catch (queueErr) {
+      logger.warn('[Sitter Suite] Could not add to approval queue (non-fatal)', { queueErr });
+    }
     
     res.status(201).json(newSitter);
   } catch (error) {

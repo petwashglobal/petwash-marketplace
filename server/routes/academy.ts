@@ -13,6 +13,7 @@ import {
   contractorReviews,
   insertTrainerSchema,
   insertTrainerBookingSchema,
+  providerApprovalQueue,
   type Trainer,
   type TrainerBooking,
 } from '@shared/schema';
@@ -450,6 +451,19 @@ router.post('/trainers/register', async (req, res) => {
     }).returning();
 
     logger.info('[Academy] Trainer self-registered', { trainerId: newTrainer.trainerId, email: newTrainer.email });
+
+    // Add to admin approval queue so staff can review the application
+    try {
+      await db.insert(providerApprovalQueue).values({
+        providerId: newTrainer.trainerId,
+        platform: 'academy',
+        status: 'pending',
+        priority: 'normal',
+      });
+    } catch (queueErr) {
+      logger.warn('[Academy] Could not add to approval queue (non-fatal)', { queueErr });
+    }
+
     res.status(201).json({ success: true, trainer: newTrainer, message: 'Application submitted. You will be notified once verified.' });
   } catch (error) {
     logger.error('[Academy] Trainer registration error', error);

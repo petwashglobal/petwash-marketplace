@@ -44,7 +44,6 @@ export default function JoinAsSitter() {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>(1);
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -115,7 +114,7 @@ export default function JoinAsSitter() {
         isActive: false,
         verificationStatus: "pending",
       });
-      setSubmitted(true);
+      navigate('/provider/pending');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Submission failed";
       toast({ title: "Could not submit application", description: msg, variant: "destructive" });
@@ -130,22 +129,6 @@ export default function JoinAsSitter() {
     { num: 3, icon: "🐾", label: "What You Offer" },
     { num: 4, icon: <DollarSign className="h-4 w-4" />, label: "Pricing & Legal" },
   ];
-
-  if (submitted) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-10 max-w-md w-full text-center">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Check className="h-10 w-10 text-green-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">Application Submitted!</h1>
-          <p className="text-slate-600 mb-2">Your Sitter Suite™ application is now under review.</p>
-          <p className="text-sm text-slate-500 mb-8">We'll verify your details and home environment within 3–5 business days. Once approved, you'll appear in our sitter listings and pet owners can book you.</p>
-          <Button onClick={() => navigate("/sitter-suite")} className="w-full bg-purple-600 hover:bg-purple-700">Back to Sitter Suite™</Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">

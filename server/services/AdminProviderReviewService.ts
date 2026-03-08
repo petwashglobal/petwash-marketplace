@@ -13,11 +13,15 @@ import {
   providerApprovalQueue,
   providerPoliceChecks,
   providerCertificates,
+  walkerProfiles,
+  sitterProfiles,
+  trainers,
   type InsertProviderApprovalQueue,
   type ProviderApprovalQueue,
 } from '@shared/schema';
 import { eq, and, desc, sql, or, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { auth as firebaseAuth } from '../lib/firebase-admin';
 
 // Approval queue status types
 export type ApprovalStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'on_hold';
@@ -372,6 +376,53 @@ class AdminProviderReviewService {
         providerId: review.application.providerId,
         platform: review.application.platform,
       });
+
+      // Look up the provider's Firebase UID and set their role claim to 'provider'
+      try {
+        const { providerId, platform } = review.application;
+        let firebaseUid: string | null = null;
+
+        if (platform === 'walk_my_pet') {
+          const [walker] = await db.select({ userId: walkerProfiles.userId })
+            .from(walkerProfiles).where(eq(walkerProfiles.walkerId, providerId)).limit(1);
+          if (walker) {
+            firebaseUid = walker.userId;
+            await db.update(walkerProfiles)
+              .set({ verificationStatus: 'verified', isAvailable: true, isActive: true })
+              .where(eq(walkerProfiles.walkerId, providerId));
+          }
+        } else if (platform === 'sitter_suite') {
+          const numId = parseInt(providerId);
+          const [sitter] = await db.select({ userId: sitterProfiles.userId })
+            .from(sitterProfiles).where(eq(sitterProfiles.id, numId)).limit(1);
+          if (sitter) {
+            firebaseUid = sitter.userId;
+            await db.update(sitterProfiles)
+              .set({ verificationStatus: 'active', isActive: true })
+              .where(eq(sitterProfiles.id, numId));
+          }
+        } else if (platform === 'academy') {
+          const [trainer] = await db.select({ userId: trainers.userId })
+            .from(trainers).where(eq(trainers.trainerId, providerId)).limit(1);
+          if (trainer) {
+            firebaseUid = trainer.userId;
+            await db.update(trainers)
+              .set({ verificationStatus: 'approved', isActive: true })
+              .where(eq(trainers.trainerId, providerId));
+          }
+        }
+
+        if (firebaseUid) {
+          await firebaseAuth.setCustomUserClaims(firebaseUid, {
+            role: 'provider',
+            accountType: 'provider',
+            providerApprovedAt: new Date().toISOString(),
+          });
+          logger.info('[AdminReview] Firebase claims set for approved provider', { firebaseUid, platform });
+        }
+      } catch (claimsErr) {
+        logger.warn('[AdminReview] Could not set Firebase claims (non-fatal)', { claimsErr });
+      }
 
       return {
         success: true,

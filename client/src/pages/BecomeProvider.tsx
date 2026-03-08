@@ -271,10 +271,11 @@ export default function BecomeProvider() {
       setMembershipNumber(data.membershipNumber);
       toast({
         title: isHebrew ? 'הבקשה נשלחה בהצלחה!' : 'Application Submitted!',
-        description: isHebrew 
-          ? 'נעבור על הבקשה שלך ונחזור אליך בקרוב.'
-          : 'We will review your application and get back to you soon.',
+        description: data.membershipNumber
+          ? (isHebrew ? `מספר חבר: ${data.membershipNumber}` : `Member #: ${data.membershipNumber}`)
+          : (isHebrew ? 'נעבור על הבקשה שלך ונחזור אליך בקרוב.' : 'We will review your application and get back to you soon.'),
       });
+      navigate('/provider/pending');
     },
     onError: (error: any) => {
       toast({

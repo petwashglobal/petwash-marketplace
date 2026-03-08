@@ -44,7 +44,6 @@ export default function JoinAsTrainer() {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>(1);
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -119,7 +118,7 @@ export default function JoinAsTrainer() {
         serviceArea: form.serviceArea || form.city,
         languages: form.languages,
       });
-      setSubmitted(true);
+      navigate('/provider/pending');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Submission failed";
       toast({ title: "Could not submit application", description: msg, variant: "destructive" });
@@ -134,22 +133,6 @@ export default function JoinAsTrainer() {
     { num: 3, icon: <MapPin className="h-4 w-4" />, label: "Sessions & Area" },
     { num: 4, icon: <DollarSign className="h-4 w-4" />, label: "Pricing & Legal" },
   ];
-
-  if (submitted) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-10 max-w-md w-full text-center">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Check className="h-10 w-10 text-green-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">Application Received!</h1>
-          <p className="text-slate-600 mb-2">Your Pet Wash Academy™ trainer application is under review.</p>
-          <p className="text-sm text-slate-500 mb-8">Our team will verify your credentials and experience within 5–7 business days. Once verified, you'll receive a certified trainer badge and clients can book sessions with you.</p>
-          <Button onClick={() => navigate("/academy")} className="w-full bg-emerald-600 hover:bg-emerald-700">Back to Academy™</Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50">

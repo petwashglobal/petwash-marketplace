@@ -14,6 +14,7 @@ import {
   octopusLedger,
   octopusInvoices,
   bookingRequests,
+  providerApprovalQueue,
   type InsertWalkerProfile,
   type InsertWalkBooking,
   type InsertWalkGpsTracking,
@@ -60,6 +61,18 @@ router.post('/walkers/register', async (req, res) => {
     };
 
     const [newWalker] = await db.insert(walkerProfiles).values(walkerData).returning();
+
+    // Add to admin approval queue so staff can review the application
+    try {
+      await db.insert(providerApprovalQueue).values({
+        providerId: newWalker.walkerId,
+        platform: 'walk_my_pet',
+        status: 'pending',
+        priority: 'normal',
+      });
+    } catch (queueErr) {
+      console.warn('[Walk My Pet] Could not add to approval queue (non-fatal):', queueErr);
+    }
     
     res.status(201).json({ 
       success: true, 
