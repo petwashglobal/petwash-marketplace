@@ -3632,8 +3632,8 @@ export const sitterProfiles = pgTable("sitter_profiles", {
   activatedAt: timestamp("activated_at"),
   
   // BIOMETRIC KYC (TWO-WAY AUTHENTICATION - MANDATORY)
-  selfiePhotoUrl: varchar("selfie_photo_url").notNull(), // Current selfie with clear face
-  idPhotoUrl: varchar("id_photo_url").notNull(), // Government ID photo (passport, driver's license, national ID)
+  selfiePhotoUrl: varchar("selfie_photo_url"), // Current selfie with clear face (uploaded during KYC)
+  idPhotoUrl: varchar("id_photo_url"), // Government ID photo (uploaded during KYC)
   biometricMatchStatus: varchar("biometric_match_status").default("pending"), // pending | matched | failed
   biometricMatchScore: decimal("biometric_match_score", { precision: 5, scale: 2 }), // 0-100 confidence score from Google Vision API
   biometricVerifiedAt: timestamp("biometric_verified_at"), // When verification passed
@@ -3836,7 +3836,9 @@ export const sitterComplaints = pgTable("sitter_complaints", {
 export const insertSitterProfileSchema = createInsertSchema(sitterProfiles).omit({ 
   id: true, 
   createdAt: true, 
-  updatedAt: true 
+  updatedAt: true,
+  selfiePhotoUrl: true,
+  idPhotoUrl: true,
 });
 export type InsertSitterProfile = z.infer<typeof insertSitterProfileSchema>;
 export type SitterProfile = typeof sitterProfiles.$inferSelect;

@@ -136,11 +136,32 @@ router.post('/apply', requireAuth, async (req: any, res) => {
 router.get('/my-status/:platform', requireAuth, async (req: any, res) => {
   try {
     const { platform } = req.params;
+
+    // 'any' — check providerApplications (BecomeProvider flow) by Firebase UID
+    if (platform === 'any') {
+      const { db: dbConn } = await import('../db');
+      const { providerApplications } = await import('@shared/schema');
+      const { eq, desc } = await import('drizzle-orm');
+
+      const rows = await dbConn
+        .select({ status: providerApplications.status, providerType: providerApplications.providerType })
+        .from(providerApplications)
+        .where(eq(providerApplications.userId, req.userId))
+        .orderBy(desc(providerApplications.createdAt))
+        .limit(1);
+
+      if (!rows.length) {
+        return res.json({ status: 'not_found', platform: 'any' });
+      }
+      return res.json({ status: rows[0].status, platform: rows[0].providerType || 'any' });
+    }
+
     const isApproved = await adminProviderReviewService.isProviderApproved(req.userId, platform);
 
     res.json({
       providerId: req.userId,
       platform,
+      status: isApproved ? 'approved' : 'pending',
       isApproved,
       messageHe: isApproved 
         ? 'מאושר לעבודה בפלטפורמה זו ✓' 

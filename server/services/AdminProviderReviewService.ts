@@ -342,14 +342,6 @@ class AdminProviderReviewService {
         };
       }
 
-      if (!review.checklistComplete) {
-        return {
-          success: false,
-          messageHe: 'לא ניתן לאשר - יש להשלים את כל פריטי הרשימה',
-          messageEn: 'Cannot approve - all checklist items must be completed',
-        };
-      }
-
       if (review.application.status === 'approved') {
         return {
           success: false,

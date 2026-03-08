@@ -14,6 +14,7 @@ import {
   providerApplications,
   providerPoliceChecks,
   providerTrainingProgress,
+  providerApprovalQueue,
 } from "@shared/schema";
 import { eq, desc, gte, count, sql, and, lte } from "drizzle-orm";
 import { logger } from "../lib/logger";
@@ -234,6 +235,27 @@ router.get("/providers/stats", async (req, res) => {
       .from(providerApplications)
       .where(eq(providerApplications.status, "rejected"));
 
+    // Also count from quick-join queue (walkers/sitters/trainers)
+    const [pendingQueue] = await db
+      .select({ count: count() })
+      .from(providerApprovalQueue)
+      .where(eq(providerApprovalQueue.status, "pending"));
+
+    const [approvedQueue] = await db
+      .select({ count: count() })
+      .from(providerApprovalQueue)
+      .where(eq(providerApprovalQueue.status, "approved"));
+
+    const [rejectedQueue] = await db
+      .select({ count: count() })
+      .from(providerApprovalQueue)
+      .where(eq(providerApprovalQueue.status, "rejected"));
+
+    const [onHoldQueue] = await db
+      .select({ count: count() })
+      .from(providerApprovalQueue)
+      .where(eq(providerApprovalQueue.status, "on_hold"));
+
     const [pendingPolice] = await db
       .select({ count: count() })
       .from(providerPoliceChecks)
@@ -257,21 +279,37 @@ router.get("/providers/stats", async (req, res) => {
       .from(providerTrainingProgress)
       .where(eq(providerTrainingProgress.completed, true));
 
+    // Count by platform from approval queue
+    const queueByPlatform = await db
+      .select({ platform: providerApprovalQueue.platform, cnt: count() })
+      .from(providerApprovalQueue)
+      .groupBy(providerApprovalQueue.platform);
+
+    const byPlatform: Record<string, number> = {
+      sitter_suite: 0,
+      walk_my_pet: 0,
+      pettrek: 0,
+      k9000: 0,
+      academy: 0,
+    };
+    for (const row of queueByPlatform) {
+      byPlatform[row.platform] = Number(row.cnt) || 0;
+    }
+
+    const totalPending = (pendingApps?.count || 0) + (pendingQueue?.count || 0);
+    const totalApproved = (approvedApps?.count || 0) + (approvedQueue?.count || 0);
+    const totalRejected = (rejectedApps?.count || 0) + (rejectedQueue?.count || 0);
+
     res.json({
-      totalProviders: (approvedApps?.count || 0) + (pendingApps?.count || 0),
-      pendingReview: pendingApps?.count || 0,
-      approved: approvedApps?.count || 0,
-      rejected: rejectedApps?.count || 0,
-      onHold: 0,
+      totalProviders: totalApproved + totalPending,
+      pendingReview: totalPending,
+      approved: totalApproved,
+      rejected: totalRejected,
+      onHold: onHoldQueue?.count || 0,
       expiringPoliceChecks: expiringPolice?.count || 0,
       pendingPoliceChecks: pendingPolice?.count || 0,
       trainingCompletions: trainingCerts?.count || 0,
-      byPlatform: {
-        sitter_suite: 0,
-        walk_my_pet: 0,
-        pettrek: 0,
-        k9000: 0,
-      },
+      byPlatform,
     });
   } catch (error) {
     logger.error("[Control Panel] Failed to fetch provider stats", error);
@@ -289,23 +327,42 @@ router.get("/providers/stats", async (req, res) => {
 router.get("/providers/queue", async (req, res) => {
   try {
     const limit = parseInt(req.query.limit as string) || 50;
+    const statusFilter = req.query.status as string | undefined;
 
-    const applications = await db
-      .select()
-      .from(providerApplications)
-      .orderBy(desc(providerApplications.createdAt))
+    let query = db.select().from(providerApprovalQueue) as any;
+    if (statusFilter) {
+      query = query.where(eq(providerApprovalQueue.status, statusFilter));
+    }
+
+    const queueRows = await query
+      .orderBy(
+        sql`CASE 
+          WHEN ${providerApprovalQueue.priority} = 'urgent' THEN 1 
+          WHEN ${providerApprovalQueue.priority} = 'high' THEN 2 
+          WHEN ${providerApprovalQueue.priority} = 'normal' THEN 3 
+          ELSE 4 END`,
+        desc(providerApprovalQueue.createdAt)
+      )
       .limit(limit);
 
-    const queue = applications.map((app) => ({
-      id: app.id,
-      providerId: app.userId,
-      providerName: `${app.firstName} ${app.lastName}`,
-      platform: app.providerType,
-      status: app.status,
-      priority: "normal",
-      createdAt: app.createdAt,
-      checklistProgress: app.status === "approved" ? 100 : app.status === "pending" ? 50 : 0,
-    }));
+    const checkedFields = [
+      "photoApproved", "certificateApproved", "idVerified",
+      "addressVerified", "policeCheckApproved", "insuranceVerified", "pricingApproved",
+    ] as const;
+
+    const queue = queueRows.map((row: any) => {
+      const checked = checkedFields.filter((f) => row[f]).length;
+      return {
+        id: row.id,
+        providerId: row.providerId,
+        providerName: row.providerId,
+        platform: row.platform,
+        status: row.status,
+        priority: row.priority,
+        createdAt: row.createdAt,
+        checklistProgress: Math.round((checked / checkedFields.length) * 100),
+      };
+    });
 
     res.json({ queue });
   } catch (error) {
