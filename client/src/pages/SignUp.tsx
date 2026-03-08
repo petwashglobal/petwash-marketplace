@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, getAdditionalUserInfo } from "firebase/auth";
 import { auth } from "../lib/firebase";
 import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
@@ -12,6 +12,7 @@ import { NativeDateSelect } from '@/components/ui/native-date-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, AlertCircle, MapPin, Fingerprint, Shield, Sparkles, X } from "lucide-react";
+import { FaGoogle } from "react-icons/fa";
 import { Link, useLocation } from "wouter";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { trackSignUp } from "@/lib/analytics";
@@ -147,6 +148,61 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       document.body.removeAttribute('data-auth-page');
     };
   }, [language]);
+
+  const handleGoogleSignUp = async () => {
+    if (!formData.acceptedTerms) {
+      setTermsError(true);
+      toast({ title: t('register.termsRequired', language), variant: 'destructive' });
+      return;
+    }
+    setLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.addScope('email');
+      provider.addScope('profile');
+      const result = await signInWithPopup(auth, provider);
+      const { user } = result;
+      const additionalInfo = getAdditionalUserInfo(result);
+
+      const consentTimestamp = new Date().toISOString();
+      const consentVersion = '2026-02-19-v1';
+
+      await fetch(getApiUrl('/api/auth/sync-user'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          provider: 'google',
+          isNewUser: additionalInfo?.isNewUser,
+          consentTimestamp,
+          consentVersion,
+          acceptedTerms: true,
+          loyaltyProgram: formData.loyaltyProgram,
+          marketing: formData.marketing,
+        }),
+      }).catch(() => {});
+
+      trackSignUp('google');
+      toast({
+        title: additionalInfo?.isNewUser
+          ? (language === 'he' ? '✅ חשבון נוצר בהצלחה!' : '✅ Account created!')
+          : (language === 'he' ? '✅ ברוך הבא בחזרה!' : '✅ Welcome back!'),
+      });
+      navigate('/dashboard');
+    } catch (err: any) {
+      if (err.code !== 'auth/popup-closed-by-user') {
+        toast({
+          title: language === 'he' ? 'שגיאה בהתחברות עם Google' : 'Google sign-in failed',
+          description: err.message,
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -527,6 +583,37 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
             </div>
           </motion.div>
           
+          {/* Google Sign-Up Button */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="space-y-3"
+          >
+            <Button
+              type="button"
+              onClick={handleGoogleSignUp}
+              disabled={loading}
+              className="w-full h-14 bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 shadow-sm font-medium text-base flex items-center justify-center gap-3 rounded-2xl transition-all hover:shadow-md"
+              data-testid="button-google-signup"
+            >
+              {loading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+              ) : (
+                <FaGoogle className="h-5 w-5 text-[#4285F4]" />
+              )}
+              {language === 'he' ? 'המשך עם Google' : language === 'ar' ? 'تسجيل باستخدام Google' : 'Continue with Google'}
+            </Button>
+
+            <div className="relative flex items-center gap-3">
+              <div className="flex-1 border-t border-gray-200" />
+              <span className="text-xs text-gray-400 font-medium">
+                {language === 'he' ? 'או הירשם עם אימייל' : 'or sign up with email'}
+              </span>
+              <div className="flex-1 border-t border-gray-200" />
+            </div>
+          </motion.div>
+
           <motion.form 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
