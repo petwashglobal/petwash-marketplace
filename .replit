@@ -68,6 +68,9 @@ VITE_RECAPTCHA_SITE_KEY = "6LfPr3ksAAAAAAk-gDoRZk6T3bA_t9UNavopPTDJ"
 [userenv.development]
 DEV_TEST_SECRET = "petwash-dev-test-2026-secret-internal"
 
+[userenv.production]
+NODE_ENV = "production"
+
 [[ports]]
 localPort = 5000
 externalPort = 80
