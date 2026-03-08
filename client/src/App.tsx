@@ -337,6 +337,9 @@ const PetTrekProviderDashboard = lazy(() => import("@/pages/pettrek/ProviderDash
 // Unified Provider Dashboard (Pet Wash™ style)
 const UnifiedProviderDashboard = lazy(() => import("@/pages/ProviderDashboard"));
 
+// Provider Operations Console 2026
+const ProviderConsole = lazy(() => import("@/pages/ProviderConsole"));
+
 // E-Signature System
 const DocumentSigning = lazy(() => import("@/pages/DocumentSigning"));
 
@@ -1001,6 +1004,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <RoleProtectedRoute minRole="provider">
               <Suspense fallback={<PageLoader />}>
                 <UnifiedProviderDashboard />
+              </Suspense>
+            </RoleProtectedRoute>
+          )}
+        </Route>
+
+        {/* Provider Operations Console 2026 */}
+        <Route path="/provider/console">
+          {() => (
+            <RoleProtectedRoute minRole="provider">
+              <Suspense fallback={<PageLoader />}>
+                <ProviderConsole />
               </Suspense>
             </RoleProtectedRoute>
           )}

@@ -11609,3 +11609,89 @@ export const userBlocks = pgTable("user_blocks", {
 
 export type RedeemedQrToken = typeof redeemedQrTokens.$inferSelect;
 export type UserBlock = typeof userBlocks.$inferSelect;
+
+// ============================================================
+// PROVIDER OPERATIONS CONSOLE — 2026
+// ============================================================
+
+export const providerOperationalSettings = pgTable("provider_operational_settings", {
+  providerUid:          varchar("provider_uid").primaryKey(),
+  autoAccept:           boolean("auto_accept").notNull().default(false),
+  instantBooking:       boolean("instant_booking").notNull().default(false),
+  requireApproval:      boolean("require_approval").notNull().default(true),
+  sameDayBookings:      boolean("same_day_bookings").notNull().default(true),
+  weekendJobs:          boolean("weekend_jobs").notNull().default(true),
+  nightJobs:            boolean("night_jobs").notNull().default(false),
+  nightStartHour:       integer("night_start_hour").notNull().default(22),
+  nightEndHour:         integer("night_end_hour").notNull().default(6),
+  repeatCustomersOnly:  boolean("repeat_customers_only").notNull().default(false),
+  newCustomerRequests:  boolean("new_customer_requests").notNull().default(true),
+  notifInApp:           boolean("notif_in_app").notNull().default(true),
+  notifPush:            boolean("notif_push").notNull().default(true),
+  notifEmail:           boolean("notif_email").notNull().default(true),
+  notifSmsEmergency:    boolean("notif_sms_emergency").notNull().default(true),
+  aiSuggestions:        boolean("ai_suggestions").notNull().default(true),
+  maxSimultaneous:      integer("max_simultaneous").notNull().default(1),
+  maxJobsPerDay:        integer("max_jobs_per_day").notNull().default(5),
+  bufferMinutes:        integer("buffer_minutes").notNull().default(30),
+  travelRadiusKm:       integer("travel_radius_km").notNull().default(10),
+  homeVisitsOnly:       boolean("home_visits_only").notNull().default(false),
+  holidayMode:          boolean("holiday_mode").notNull().default(false),
+  holidayStart:         timestamp("holiday_start"),
+  holidayEnd:           timestamp("holiday_end"),
+  emergencyUnavailable: boolean("emergency_unavailable").notNull().default(false),
+  updatedAt:            timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type ProviderOperationalSettings = typeof providerOperationalSettings.$inferSelect;
+export type InsertProviderOperationalSettings = typeof providerOperationalSettings.$inferInsert;
+
+export const providerBlockedList = pgTable("provider_blocked_list", {
+  id:          serial("id").primaryKey(),
+  providerUid: varchar("provider_uid").notNull(),
+  blockedType: varchar("blocked_type").notNull(), // 'customer' | 'address' | 'pet'
+  blockedRef:  varchar("blocked_ref").notNull(),   // UID / address / petId
+  blockedName: varchar("blocked_name"),
+  reason:      text("reason"),
+  notes:       text("notes"),
+  createdAt:   timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  providerIdx: index("pbl_provider_idx").on(table.providerUid),
+}));
+
+export type ProviderBlockedEntry = typeof providerBlockedList.$inferSelect;
+
+export const bookingActionsLog = pgTable("booking_actions_log", {
+  id:         serial("id").primaryKey(),
+  bookingId:  varchar("booking_id").notNull(),
+  platform:   varchar("platform").notNull().default("walk_my_pet"),
+  actorUid:   varchar("actor_uid").notNull(),
+  actorRole:  varchar("actor_role").notNull(), // provider | customer | admin | system
+  action:     varchar("action").notNull(),      // accepted | rejected | arrived | in_progress | completed | cancelled | unsafe_report | ...
+  reasonCode: varchar("reason_code"),
+  notes:      text("notes"),
+  metadata:   jsonb("metadata"),
+  createdAt:  timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  bookingIdx: index("bal_booking_idx").on(table.bookingId),
+  actorIdx:   index("bal_actor_idx").on(table.actorUid),
+}));
+
+export type BookingActionEntry = typeof bookingActionsLog.$inferSelect;
+
+export const providerSafetyNotes = pgTable("provider_safety_notes", {
+  id:          serial("id").primaryKey(),
+  providerUid: varchar("provider_uid").notNull(),
+  subjectType: varchar("subject_type").notNull(), // 'customer' | 'pet'
+  subjectId:   varchar("subject_id").notNull(),
+  subjectName: varchar("subject_name"),
+  notes:       text("notes").notNull(),
+  riskLevel:   varchar("risk_level").notNull().default("low"), // 'low' | 'medium' | 'high'
+  createdAt:   timestamp("created_at").notNull().defaultNow(),
+  updatedAt:   timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  providerIdx:    index("psn_provider_idx").on(table.providerUid),
+  subjectUnique:  uniqueIndex("psn_provider_subject_unique").on(table.providerUid, table.subjectType, table.subjectId),
+}));
+
+export type ProviderSafetyNote = typeof providerSafetyNotes.$inferSelect;

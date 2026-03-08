@@ -183,3 +183,18 @@ The following composite indexes were created via REST API and may still be build
 - **"What happens next?" added to confirmation screens**: Both flows now show post-booking instructions (walker confirms within 2hrs, SMS notifications sent)
 - **Provider card trust signals** (`ProviderSearch.tsx`): Added `instantBook` (green/grey badge), `available` (pulsing green dot / grey "Busy today"), `responseTime` ("Responds in ~2 hrs") props with defaults; `BrowseWalkers` and `BrowseSitters` pass these through
 - **Notification permission Apple compliance** (`useFCMNotifications.ts`, `NotificationPermissionPrompt.tsx`): `autoRequest` default changed `true→false` so push permission is never triggered on page load; prompt now hidden until `petwash_first_booking_complete` localStorage flag is set; flag is set when first booking confirmation completes in either flow
+
+## Provider Operations Console 2026 (March 2026 Session 5)
+- **New route**: `/provider/console` (protected, minRole=provider) → `client/src/pages/ProviderConsole.tsx`
+- **8-tab unified console**: Dashboard / Calendar / Bookings / Pricing / Settings / Performance / Safety / Kenzo AI
+- **4 new DB tables created**: `provider_operational_settings` (PK: provider_uid, 24 fields covering all booking behaviour + notifications + capacity), `provider_blocked_list`, `booking_actions_log`, `provider_safety_notes` (unique index on provider_uid+subject_type+subject_id)
+- **provider_rate_cards extended**: night/urgent/travel surcharges, repeat discount, cancellation policy (24/48/72h %), promo participation, size adjustments (S/L/XL)
+- **Backend API file**: `server/routes/provider-console.ts` mounted at `/api/provider-console` — GET/PUT settings, CRUD blocked-list, CRUD safety-notes, GET/POST booking-actions (cascades status to walk/sitter booking tables), GET/PUT pricing per-platform, GET performance aggregate (completion/cancellation/acceptance rates + flagged messages count), POST `/ai/query` (Gemini 2.5 Flash with live context injection: upcoming bookings + settings)
+- **Dashboard tab**: KPI cards (today/week/completion/acceptance rate), emergency alerts (holiday mode, emergency unavailable), Kenzo quick-query buttons + live chat input
+- **Calendar tab**: Monthly grid (green=available, red=blocked, amber=holiday), emergency unavailable toggle, holiday mode date range picker, recurring weekly schedule grid (7 days × 3 slots), capacity controls (max jobs, buffer, simultaneous)
+- **Bookings tab**: Sub-tabs (pending/active/completed/cancelled/disputed), per-booking action panel with all 10 actions (accept/reject/arrived/start/complete/cancel/unsafe-report) + reason code selector for cancellations/rejections
+- **Pricing tab**: Per-platform rate card editor — base rates (hourly/visit/nightly), all surcharges, discounts, cancellation policy, promo toggle
+- **Settings tab**: Full toggle controls for all 24 operational settings + notification preferences + capacity inputs
+- **Performance tab**: KPI grid + bar chart (bookings by period) + rate progress bars + Gemini analysis paragraph
+- **Safety tab**: Blocked list CRUD (block customer/address/pet with reason), safety notes CRUD (per customer/pet with risk level low/medium/high)
+- **Kenzo AI tab**: 8 quick-action prompts + full chat interface with provider-context injection (live bookings + settings + today's date injected into Gemini system prompt)
