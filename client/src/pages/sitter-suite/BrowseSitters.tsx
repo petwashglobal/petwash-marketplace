@@ -266,7 +266,8 @@ export default function BrowseSitters() {
   });
 
   const apiProviders = data?.providers || [];
-  const providers = apiProviders.length > 0 ? apiProviders : DEMO_SITTERS;
+  const hasSearched = !!searchParams?.location || (searchParams?.lat != null && searchParams?.lng != null);
+  const providers = hasSearched ? apiProviders : (apiProviders.length > 0 ? apiProviders : DEMO_SITTERS);
 
   const handleSearch = (params: SearchParams) => {
     setSearchParams(params);
@@ -488,12 +489,19 @@ export default function BrowseSitters() {
                   <Heart className="w-12 h-12 text-fuchsia-400" />
                 </div>
                 <h3 className="text-2xl font-semibold text-gray-900 mb-3">
-                  {isHebrew ? 'בקרוב - שמרטפים מקצועיים' : 'Professional sitters coming soon'}
+                  {hasSearched
+                    ? (isHebrew ? 'לא נמצאו שמרטפים זמינים באזור זה' : 'No available sitters found in this area')
+                    : (isHebrew ? 'בקרוב - שמרטפים מקצועיים' : 'Professional sitters coming soon')
+                  }
                 </h3>
                 <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                  {isHebrew 
-                    ? 'אנחנו מגייסים שמרטפים מאומתים לפלטפורמה. הזינו את המיקום שלכם כדי לקבל עדכון כשנשיק באזורכם.'
-                    : 'We\'re recruiting verified sitters to our platform. Enter your location to get notified when we launch in your area.'
+                  {hasSearched
+                    ? (isHebrew
+                        ? 'נסו לשנות את האזור, התאריכים או הפילטרים. ניתן גם להרחיב את רדיוס החיפוש.'
+                        : 'Try adjusting the area, dates, or filters. You can also expand the search radius.')
+                    : (isHebrew 
+                        ? 'אנחנו מגייסים שמרטפים מאומתים לפלטפורמה. הזינו את המיקום שלכם כדי לקבל עדכון כשנשיק באזורכם.'
+                        : 'We\'re recruiting verified sitters to our platform. Enter your location to get notified when we launch in your area.')
                   }
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">

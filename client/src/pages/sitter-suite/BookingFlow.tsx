@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Shield, PawPrint, Clock, Check } from "lucide-react";
+import { ChevronLeft, Shield, PawPrint, Clock, Check, CalendarRange } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +12,8 @@ import { GooglePlacesAutocomplete, PlaceDetails } from "@/components/ui/google-p
 import { OwnerInstructionsForm, useOwnerInstructions, type OwnerInstructions } from "@/components/booking/OwnerInstructionsForm";
 import { CreditWalletCard } from "@/components/wallet/CreditWalletCard";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
+import { Calendar } from "@/components/ui/calendar";
+import type { DateRange } from "react-day-picker";
 
 type BookingStep = "details" | "summary" | "confirmation";
 
@@ -50,6 +52,7 @@ export default function SitterBookingFlow() {
   const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
   const [checkInTime, setCheckInTime] = useState("10:00");
   const [checkOutTime, setCheckOutTime] = useState("10:00");
+  const [calendarRange, setCalendarRange] = useState<DateRange | undefined>();
   const [notes, setNotes] = useState("");
   const [address, setAddress] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,29 +98,6 @@ export default function SitterBookingFlow() {
     );
   }, [sitter, selectedPetIds, checkInDate, checkOutDate, address]);
 
-  function handleCheckInDateChange(dateStr: string) {
-    if (!dateStr) return;
-    const d = new Date(dateStr);
-    const [h, m] = checkInTime.split(':').map(Number);
-    d.setHours(h, m, 0, 0);
-    setCheckInDate(d);
-    if (checkOutDate && d >= checkOutDate) {
-      const next = new Date(d);
-      next.setDate(next.getDate() + 1);
-      const [oh, om] = checkOutTime.split(':').map(Number);
-      next.setHours(oh, om, 0, 0);
-      setCheckOutDate(next);
-    }
-  }
-
-  function handleCheckOutDateChange(dateStr: string) {
-    if (!dateStr) return;
-    const d = new Date(dateStr);
-    const [h, m] = checkOutTime.split(':').map(Number);
-    d.setHours(h, m, 0, 0);
-    setCheckOutDate(d);
-  }
-
   function handleCheckInTimeChange(timeStr: string) {
     setCheckInTime(timeStr);
     if (checkInDate) {
@@ -135,6 +115,26 @@ export default function SitterBookingFlow() {
       const d = new Date(checkOutDate);
       d.setHours(h, m, 0, 0);
       setCheckOutDate(d);
+    }
+  }
+
+  function handleCalendarRangeSelect(range: DateRange | undefined) {
+    setCalendarRange(range);
+    if (range?.from) {
+      const d = new Date(range.from);
+      const [h, m] = checkInTime.split(':').map(Number);
+      d.setHours(h, m, 0, 0);
+      setCheckInDate(d);
+    } else {
+      setCheckInDate(null);
+    }
+    if (range?.to) {
+      const d = new Date(range.to);
+      const [h, m] = checkOutTime.split(':').map(Number);
+      d.setHours(h, m, 0, 0);
+      setCheckOutDate(d);
+    } else {
+      setCheckOutDate(null);
     }
   }
 
@@ -244,8 +244,6 @@ export default function SitterBookingFlow() {
     if (step === "summary") setStep("details");
     if (step === "confirmation") setLocation("/sitter-suite");
   }
-
-  const todayStr = formatDateForInput(new Date());
 
   if (sitterLoading || petsLoading) {
     return (
@@ -397,76 +395,78 @@ export default function SitterBookingFlow() {
               )}
             </section>
 
-            {/* Check-in / Check-out */}
+            {/* Date Range Picker */}
             <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-              <div className="mb-4 flex items-center gap-2">
-                <Clock className="h-4 w-4 text-emerald-500" />
-                <span className="font-semibold text-slate-800 text-sm">תאריכי שמרטפות</span>
+              <div className="mb-3 flex items-center gap-2">
+                <CalendarRange className="h-4 w-4 text-emerald-500" />
+                <span className="font-semibold text-slate-800 text-sm">בחירת תאריכי שמרטפות</span>
               </div>
 
-              <div className="space-y-4">
-                {/* Check-in */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">כניסה (Check-in)</label>
-                  <div className="grid grid-cols-[1fr_auto] gap-2">
-                    <input
-                      type="date"
-                      value={formatDateForInput(checkInDate)}
-                      onChange={(e) => handleCheckInDateChange(e.target.value)}
-                      min={todayStr}
-                      className="w-full px-4 py-3 min-h-[48px] text-base rounded-xl border-2 border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 transition-all touch-manipulation bg-white"
-                      style={{ fontSize: '16px' }}
-                      data-testid="input-checkin-date"
-                    />
-                    <input
-                      type="time"
-                      value={checkInTime}
-                      onChange={(e) => handleCheckInTimeChange(e.target.value)}
-                      className="w-28 px-3 py-3 min-h-[48px] text-base rounded-xl border-2 border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 transition-all touch-manipulation bg-white text-center"
-                      style={{ fontSize: '16px' }}
-                      data-testid="input-checkin-time"
-                    />
-                  </div>
+              {/* Inline range calendar */}
+              <div className="flex justify-center overflow-x-auto">
+                <Calendar
+                  mode="range"
+                  selected={calendarRange}
+                  onSelect={handleCalendarRangeSelect}
+                  disabled={{ before: new Date() }}
+                  numberOfMonths={1}
+                  defaultMonth={new Date()}
+                  className="rounded-xl border border-slate-100 bg-slate-50"
+                />
+              </div>
+
+              {/* Selected range summary */}
+              {(checkInDate || checkOutDate) && (
+                <div className="mt-3 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 text-center space-y-1">
                   {checkInDate && (
-                    <p className="text-xs text-slate-500 mt-1">{formatDisplayDate(checkInDate)}</p>
+                    <p className="text-sm text-emerald-700">
+                      <span className="font-medium">כניסה: </span>{formatDisplayDate(checkInDate)}
+                    </p>
                   )}
-                </div>
-
-                {/* Check-out */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">יציאה (Check-out)</label>
-                  <div className="grid grid-cols-[1fr_auto] gap-2">
-                    <input
-                      type="date"
-                      value={formatDateForInput(checkOutDate)}
-                      onChange={(e) => handleCheckOutDateChange(e.target.value)}
-                      min={checkInDate ? formatDateForInput(new Date(checkInDate.getTime() + 86400000)) : todayStr}
-                      className="w-full px-4 py-3 min-h-[48px] text-base rounded-xl border-2 border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 transition-all touch-manipulation bg-white"
-                      style={{ fontSize: '16px' }}
-                      data-testid="input-checkout-date"
-                    />
-                    <input
-                      type="time"
-                      value={checkOutTime}
-                      onChange={(e) => handleCheckOutTimeChange(e.target.value)}
-                      className="w-28 px-3 py-3 min-h-[48px] text-base rounded-xl border-2 border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 transition-all touch-manipulation bg-white text-center"
-                      style={{ fontSize: '16px' }}
-                      data-testid="input-checkout-time"
-                    />
-                  </div>
                   {checkOutDate && (
-                    <p className="text-xs text-slate-500 mt-1">{formatDisplayDate(checkOutDate)}</p>
+                    <p className="text-sm text-emerald-700">
+                      <span className="font-medium">יציאה: </span>{formatDisplayDate(checkOutDate)}
+                    </p>
+                  )}
+                  {totalDays > 0 && (
+                    <p className="text-base font-semibold text-emerald-800">
+                      {totalDays === 1 ? 'לילה אחד' : `${totalDays} לילות`}
+                    </p>
                   )}
                 </div>
+              )}
 
-                {/* Duration summary */}
-                {totalDays > 0 && (
-                  <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 text-center">
-                    <span className="text-sm font-medium text-emerald-800">
-                      {totalDays === 1 ? 'יום אחד' : `${totalDays} ימים`}
-                    </span>
-                  </div>
-                )}
+              {!checkInDate && (
+                <p className="mt-3 text-center text-xs text-slate-400">לחץ על תאריך התחלה ואז תאריך סיום</p>
+              )}
+              {checkInDate && !checkOutDate && (
+                <p className="mt-3 text-center text-xs text-emerald-500">כעת בחר את תאריך היציאה</p>
+              )}
+
+              {/* Time row */}
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">שעת כניסה</label>
+                  <input
+                    type="time"
+                    value={checkInTime}
+                    onChange={(e) => handleCheckInTimeChange(e.target.value)}
+                    className="w-full px-3 py-2.5 min-h-[44px] text-base rounded-xl border-2 border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 transition-all bg-white text-center touch-manipulation"
+                    style={{ fontSize: '16px' }}
+                    data-testid="input-checkin-time"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">שעת יציאה</label>
+                  <input
+                    type="time"
+                    value={checkOutTime}
+                    onChange={(e) => handleCheckOutTimeChange(e.target.value)}
+                    className="w-full px-3 py-2.5 min-h-[44px] text-base rounded-xl border-2 border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 transition-all bg-white text-center touch-manipulation"
+                    style={{ fontSize: '16px' }}
+                    data-testid="input-checkout-time"
+                  />
+                </div>
               </div>
             </section>
 

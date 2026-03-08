@@ -180,7 +180,8 @@ export function GooglePlacesAutocomplete({
       if (components) params.append('components', components);
       if (types && types.length > 0) params.append('types', types.join('|'));
 
-      const lang = document.documentElement.lang === 'he' ? 'iw' : 'en';
+      const GOOGLE_LANG_MAP: Record<string, string> = { he: 'iw', ar: 'ar', ru: 'ru', fr: 'fr', es: 'es' };
+      const lang = GOOGLE_LANG_MAP[document.documentElement.lang] || 'en';
       params.append('language', lang);
 
       const response = await fetch(getApiUrl(`/api/google/places-autocomplete?${params}`), {
@@ -236,7 +237,8 @@ export function GooglePlacesAutocomplete({
     setIsLoading(true);
 
     try {
-      const lang = document.documentElement.lang === 'he' ? 'iw' : 'en';
+      const GOOGLE_LANG_MAP: Record<string, string> = { he: 'iw', ar: 'ar', ru: 'ru', fr: 'fr', es: 'es' };
+      const lang = GOOGLE_LANG_MAP[document.documentElement.lang] || 'en';
       const params = new URLSearchParams({
         placeId: prediction.placeId,
         language: lang,
