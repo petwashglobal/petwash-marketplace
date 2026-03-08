@@ -473,6 +473,8 @@ export default function BrowseWalkers() {
                   verified={walker.verified}
                   theme="emerald"
                   bio={walker.bio || undefined}
+                  instantBook={true}
+                  available={true}
                   specialties={[
                     isHebrew ? `${walker.yearsExperience} שנות ניסיון` : `${walker.yearsExperience} years exp.`,
                     isHebrew ? 'GPS בזמן אמת' : 'Live GPS'

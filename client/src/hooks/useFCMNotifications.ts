@@ -22,7 +22,7 @@ interface FCMNotificationsState {
  * React hook for managing FCM push notifications
  * Automatically requests permission and registers token after user login
  */
-export function useFCMNotifications(autoRequest: boolean = true) {
+export function useFCMNotifications(autoRequest: boolean = false) {
   const { user } = useFirebaseAuth();
   const [state, setState] = useState<FCMNotificationsState>({
     supported: areNotificationsSupported(),

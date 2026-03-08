@@ -1,13 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Shield, PawPrint, Clock, Check, CalendarRange } from "lucide-react";
+import { ChevronLeft, Shield, PawPrint, Clock, Check, CalendarRange, Loader2, CreditCard, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { vatCalculator } from "@/lib/vatCalculator";
-import { getActivePaymentMethod } from "@/lib/paymentConfig";
+import { getActivePaymentMethod, PAYMENTS_CONFIG } from "@/lib/paymentConfig";
 import { GooglePlacesAutocomplete, PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { OwnerInstructionsForm, useOwnerInstructions, type OwnerInstructions } from "@/components/booking/OwnerInstructionsForm";
 import { CreditWalletCard } from "@/components/wallet/CreditWalletCard";
@@ -15,7 +15,7 @@ import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { Calendar } from "@/components/ui/calendar";
 import type { DateRange } from "react-day-picker";
 
-type BookingStep = "details" | "summary" | "confirmation";
+type BookingStep = "details" | "summary" | "pending_match" | "confirmation";
 
 function formatDateForInput(date?: Date | null): string {
   if (!date) return '';
@@ -70,8 +70,29 @@ export default function SitterBookingFlow() {
     enabled: step === 'details',
   });
 
+  const { data: bookingStatus } = useQuery({
+    queryKey: [`/api/sitter-suite/bookings/${bookingId}/status`],
+    enabled: step === 'pending_match' && !!bookingId,
+    refetchInterval: 5000,
+  });
+
+  useEffect(() => {
+    if (step === 'pending_match' && bookingStatus) {
+      if (bookingStatus.status === 'accepted' || bookingStatus.status === 'confirmed') {
+        setStep('confirmation');
+      }
+    }
+  }, [step, bookingStatus]);
+
   const sitter = sitterData?.sitter;
   const pets = Array.isArray(petsData) ? petsData : (petsData?.pets || []);
+
+  // Auto-select pet if user has exactly one pet
+  useEffect(() => {
+    if (pets.length === 1 && selectedPetIds.length === 0) {
+      setSelectedPetIds([pets[0].id]);
+    }
+  }, [pets, selectedPetIds]);
 
   const totalDays = useMemo(() => {
     if (!checkInDate || !checkOutDate) return 0;
@@ -201,11 +222,15 @@ export default function SitterBookingFlow() {
       const booking = await response.json();
 
       setBookingId(booking.booking?.id || booking.id || booking.bookingId || 'pending');
-      setStep("confirmation");
+      
+      // Mark first booking as complete for push notification permission (Apple compliance)
+      localStorage.setItem('petwash_first_booking_complete', 'true');
+
+      setStep("pending_match");
 
       toast({
         title: "ההזמנה נקלטה בהצלחה!",
-        description: "השמרטף/ית יקבל/תקבל הודעה. התשלום יתואם לאחר ההזמנה.",
+        description: "השמרטף/ית יקבל/תקבל הודעה. ממתינים לאישור.",
       });
     } catch (error: any) {
       const errorMsg = error.message || "";
@@ -297,9 +322,10 @@ export default function SitterBookingFlow() {
           {[
             { num: 1, label: 'פרטים', key: 'details' },
             { num: 2, label: 'סיכום', key: 'summary' },
-            { num: 3, label: 'אישור', key: 'confirmation' },
+            { num: 3, label: 'התאמה', key: 'pending_match' },
+            { num: 4, label: 'אישור', key: 'confirmation' },
           ].map(({ num, label, key }, idx) => {
-            const steps: BookingStep[] = ['details', 'summary', 'confirmation'];
+            const steps: BookingStep[] = ['details', 'summary', 'pending_match', 'confirmation'];
             const currentIdx = steps.indexOf(step);
             const stepIdx = steps.indexOf(key as BookingStep);
             const isActive = step === key;
@@ -631,6 +657,35 @@ export default function SitterBookingFlow() {
               />
             )}
 
+            {/* Payment Method Disclosure */}
+            <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+              <div className="flex items-center gap-2 mb-4 font-semibold text-slate-900 text-sm">
+                <CreditCard className="h-4 w-4 text-emerald-500" />
+                אמצעי תשלום
+              </div>
+              
+              {PAYMENTS_CONFIG.enableCreditCard && !PAYMENTS_CONFIG.enableNayax && (
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 mb-4">
+                  <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <CreditCard className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">כרטיס אשראי שמור</div>
+                    <div className="text-xs text-slate-500">החיוב יתבצע רק לאחר סיום השירות</div>
+                  </div>
+                  <Lock className="h-4 w-4 text-slate-300 ml-auto" />
+                </div>
+              )}
+
+              <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl flex gap-3">
+                <Shield className="h-5 w-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-emerald-800 leading-relaxed">
+                  <span className="font-semibold block mb-1">הגנת ⁦Pet Wash™⁩</span>
+                  {PAYMENTS_CONFIG.escrowMessage.he} הכרטיס שלך לא יחויב כעת.
+                </div>
+              </div>
+            </section>
+
             <div className="flex gap-3">
               <Button
                 variant="outline"
@@ -652,7 +707,44 @@ export default function SitterBookingFlow() {
           </div>
         )}
 
-        {/* Step 3: Confirmation */}
+        {/* Step 3: Pending Match */}
+        {step === "pending_match" && (
+          <div className="text-center py-16 space-y-8 animate-in fade-in zoom-in duration-500">
+            <div className="relative mx-auto w-32 h-32">
+              <div className="absolute inset-0 rounded-full bg-emerald-100 animate-ping opacity-20" />
+              <div className="relative w-32 h-32 rounded-full bg-emerald-50 border-2 border-emerald-100 flex items-center justify-center">
+                <Loader2 className="h-12 w-12 text-emerald-500 animate-spin" />
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <h2 className="text-2xl font-bold text-slate-900">מחפשים התאמה...</h2>
+              <p className="text-slate-500 max-w-sm mx-auto">
+                שלחנו את הבקשה שלך ל{sitter.firstName}.
+                <br />
+                זה לוקח בדרך כלל כמה רגעים.
+              </p>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm max-w-sm mx-auto">
+              <div className="flex items-center gap-4 text-right" dir="rtl">
+                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                  <Clock className="h-6 w-6" />
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-900">ממתינים לאישור</div>
+                  <div className="text-sm text-slate-500">השמרטף/ית בודק/ת את הפרטים</div>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-400 italic">
+              ניתן לסגור את הדף, תקבל/י עדכון ב-SMS כשההזמנה תאושר
+            </p>
+          </div>
+        )}
+
+        {/* Step 4: Confirmation */}
         {step === "confirmation" && (
           <div className="text-center py-12">
             <div className="w-20 h-20 rounded-full bg-emerald-100 mx-auto flex items-center justify-center mb-6">
@@ -668,6 +760,18 @@ export default function SitterBookingFlow() {
             <p className="text-sm text-slate-400 mb-8">
               פרטי התשלום ישלחו בהודעה נפרדת.
             </p>
+
+            {/* What happens next section */}
+            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 mb-8 text-right max-w-md mx-auto">
+              <h3 className="text-emerald-900 font-semibold mb-3 flex items-center justify-end gap-2">
+                <Clock className="h-4 w-4" />
+                מה קורה עכשיו?
+              </h3>
+              <p className="text-emerald-800 text-sm leading-relaxed">
+                השמרטף שלך אישר! תקבל את כל הפרטים ב-SMS ובמייל.
+              </p>
+            </div>
+
             <Button
               className="h-14 px-12 rounded-xl text-base font-semibold bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg touch-manipulation"
               onClick={() => setLocation("/dashboard")}

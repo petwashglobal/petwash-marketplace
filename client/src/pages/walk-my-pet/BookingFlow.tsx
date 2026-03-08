@@ -1,20 +1,20 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Shield, PawPrint, Clock, Check, Users, Handshake } from "lucide-react";
+import { ChevronLeft, Shield, PawPrint, Clock, Check, Users, Handshake, CreditCard, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MobileDatePicker } from "@/components/ui/mobile-date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { vatCalculator } from "@/lib/vatCalculator";
-import { getActivePaymentMethod } from "@/lib/paymentConfig";
+import { getActivePaymentMethod, PAYMENTS_CONFIG } from "@/lib/paymentConfig";
 import { WeatherConsentDialog, useWeatherConsent } from "@/components/weather/WeatherConsentDialog";
 import { OwnerInstructionsForm, useOwnerInstructions } from "@/components/booking/OwnerInstructionsForm";
 import { CreditWalletCard } from "@/components/wallet/CreditWalletCard";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 
-type BookingStep = "details" | "summary" | "weather_consent" | "pending_match" | "confirmation";
+type BookingStep = "details" | "summary" | "pending_match" | "confirmation";
 
 export default function WalkBookingFlow() {
   const { walkerId } = useParams();
@@ -73,6 +73,13 @@ export default function WalkBookingFlow() {
   const providers = Array.isArray(providersData) ? providersData : [];
   const walker = providers.find((p: any) => Number(p.id) === walkerIdNumber);
   const pets = Array.isArray(petsData) ? petsData : (petsData?.pets || []);
+
+  // Auto-select pet if user has exactly one pet
+  useEffect(() => {
+    if (pets.length === 1 && selectedPetIds.length === 0) {
+      setSelectedPetIds([pets[0].id]);
+    }
+  }, [pets, selectedPetIds]);
 
   // Calculate pricing using VAT calculator
   const baseAmount = useMemo(() => {
@@ -198,6 +205,9 @@ export default function WalkBookingFlow() {
 
       setBookingId(booking.booking?.id || booking.id || booking.bookingNumber || 'pending');
       
+      // Mark first booking as complete for push notification permission (Apple compliance)
+      localStorage.setItem('petwash_first_booking_complete', 'true');
+
       // Show pending match step for two-way consent (like Uber/Tinder matching)
       setStep("pending_match");
 
@@ -521,19 +531,50 @@ export default function WalkBookingFlow() {
             </div>
 
             {user && (
-              <CreditWalletCard
-                userId={user.uid}
-                platform="walker"
-                transactionAmountCents={Math.round(pricing.totalCharged * 100)}
-                onRedeemCredits={(preview, redemption) => {
-                  setAppliedCredits({
-                    redemptionSessionId: redemption.sessionId,
-                    totalCreditsAppliedCents: preview.totalCreditsApplicableCents,
-                    cashDueCents: redemption.cashDueCents,
-                  });
-                }}
-              />
+              <div className="mb-6 luxury-stagger-item">
+                <CreditWalletCard
+                  userId={user.uid}
+                  platform="walker"
+                  transactionAmountCents={Math.round(pricing.totalCharged * 100)}
+                  onRedeemCredits={(preview, redemption) => {
+                    setAppliedCredits({
+                      redemptionSessionId: redemption.sessionId,
+                      totalCreditsAppliedCents: preview.totalCreditsApplicableCents,
+                      cashDueCents: redemption.cashDueCents,
+                    });
+                  }}
+                />
+              </div>
             )}
+
+            {/* Payment Method Disclosure */}
+            <section className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6">
+              <div className="flex items-center gap-2 mb-4 luxury-heading-sm">
+                <CreditCard className="h-4 w-4 text-blue-500" />
+                אמצעי תשלום
+              </div>
+              
+              {PAYMENTS_CONFIG.enableCreditCard && !PAYMENTS_CONFIG.enableNayax && (
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 mb-4">
+                  <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                    <CreditCard className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">כרטיס אשראי שמור</div>
+                    <div className="text-xs text-slate-500">החיוב יתבצע רק לאחר סיום השירות</div>
+                  </div>
+                  <Lock className="h-4 w-4 text-slate-300 ml-auto" />
+                </div>
+              )}
+
+              <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-xl flex gap-3">
+                <Shield className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-blue-800 leading-relaxed">
+                  <span className="font-semibold block mb-1">הגנת ⁦Pet Wash™⁩</span>
+                  {PAYMENTS_CONFIG.escrowMessage.he} הכרטיס שלך לא יחויב כעת.
+                </div>
+              </div>
+            </section>
 
             <div className="flex gap-4 luxury-stagger-item">
               <Button
@@ -624,6 +665,18 @@ export default function WalkBookingFlow() {
             <p className="luxury-text-small max-w-md mx-auto mb-8">
               מספר הזמנה: {bookingId || "בבדיקה"} · פרטי התשלום ומעקב GPS ישלחו בהודעה נפרדת.
             </p>
+
+            {/* What happens next section */}
+            <div className="bg-emerald-50/50 rounded-2xl p-6 border border-emerald-100 mb-8 text-right max-w-md mx-auto">
+              <h3 className="text-emerald-900 font-semibold mb-3 flex items-center justify-end gap-2">
+                <Clock className="h-4 w-4" />
+                מה קורה עכשיו?
+              </h3>
+              <p className="text-emerald-800 text-sm leading-relaxed">
+                המוליך שלך יאשר את ההזמנה תוך שעתיים. תקבל הודעת SMS והתראה באפליקציה ברגע שהכל מוכן.
+              </p>
+            </div>
+
             <Button
               className="luxury-btn-primary luxury-shadow-xl px-12"
               onClick={() => setLocation("/dashboard")}

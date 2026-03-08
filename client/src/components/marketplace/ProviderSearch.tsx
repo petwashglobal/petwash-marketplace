@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { 
   Search, MapPin, CalendarDays, Dog, Cat, ChevronDown, ChevronUp,
   Home, Heart, Clock, Route, Car, GraduationCap, Sparkles,
-  Star, Shield, CheckCircle, Users, Plus, Minus, AlertTriangle, Loader2
+  Star, Shield, CheckCircle, Users, Plus, Minus, AlertTriangle, Loader2, Zap
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1530,6 +1530,9 @@ interface ProviderCardProps {
   verified: boolean;
   specialties?: string[];
   bio?: string;
+  instantBook?: boolean;
+  responseTime?: string;
+  available?: boolean;
   theme?: 'pink' | 'emerald' | 'blue' | 'purple' | 'amber';
   onClick: () => void;
 }
@@ -1548,6 +1551,9 @@ export function ProviderCard({
   verified,
   specialties = [],
   bio,
+  instantBook = false,
+  responseTime = "~2 hrs",
+  available = true,
   theme = 'pink',
   onClick,
 }: ProviderCardProps) {
@@ -1585,6 +1591,28 @@ export function ProviderCard({
           </div>
         )}
 
+        <div className="absolute top-3 start-3 flex flex-col gap-2">
+          <div className={`flex items-center gap-1 px-2 py-1 rounded-full shadow-md backdrop-blur-sm ${instantBook ? 'bg-green-500/90' : 'bg-gray-500/90'}`}>
+            <Zap className="h-3 w-3 text-white fill-current" />
+            <span className="text-[10px] font-bold text-white uppercase tracking-wider">
+              {instantBook 
+                ? (isHebrew ? 'הזמנה מיידית' : 'Instant Book')
+                : (isHebrew ? 'בקשת הזמנה' : 'Request to Book')
+              }
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-white/90 backdrop-blur-sm rounded-full shadow-sm w-fit">
+            <div className={`w-1.5 h-1.5 rounded-full ${available ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+            <span className="text-[10px] font-medium text-gray-700">
+              {available 
+                ? (isHebrew ? 'זמין היום' : 'Available') 
+                : (isHebrew ? 'עמוס היום' : 'Busy today')
+              }
+            </span>
+          </div>
+        </div>
+
         <div className="absolute bottom-3 start-3 flex items-center gap-1 px-2.5 py-1 bg-amber-500 rounded-full shadow-md">
           <Star className="h-3.5 w-3.5 text-white fill-current" />
           <span className="text-sm font-bold text-white">{rating.toFixed(1)}</span>
@@ -1599,9 +1627,15 @@ export function ProviderCard({
       </div>
 
       <div className="p-4">
-        <h3 className="font-semibold text-lg text-gray-900 mb-1" data-testid={`text-name-${id}`}>
-          {name}
-        </h3>
+        <div className="flex justify-between items-start mb-1">
+          <h3 className="font-semibold text-lg text-gray-900" data-testid={`text-name-${id}`}>
+            {name}
+          </h3>
+          <div className="flex items-center gap-1 text-[10px] text-gray-400 font-medium">
+            <Clock className="h-3 w-3" />
+            <span>{isHebrew ? `מגיב תוך ${responseTime}` : `Responds in ${responseTime}`}</span>
+          </div>
+        </div>
 
         <div className="flex items-center gap-1.5 text-sm text-gray-500 mb-2">
           <MapPin className="h-4 w-4 shrink-0" />

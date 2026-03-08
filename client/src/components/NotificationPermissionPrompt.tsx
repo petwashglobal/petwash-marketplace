@@ -59,6 +59,13 @@ export function NotificationPermissionPrompt() {
       }
     }
 
+    // Check for first booking complete (Apple compliance)
+    const firstBookingComplete = localStorage.getItem('petwash_first_booking_complete') === 'true';
+    if (!firstBookingComplete) {
+      setIsVisible(false);
+      return;
+    }
+
     // Show prompt after 3 seconds (non-intrusive)
     const timer = setTimeout(() => {
       setIsVisible(true);

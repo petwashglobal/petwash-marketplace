@@ -636,6 +636,8 @@ export default function BrowseSitters() {
                     verified={true}
                     theme="pink"
                     bio={provider.bio || undefined}
+                    instantBook={provider.instantBooking ?? true}
+                    available={true}
                     specialties={provider.acceptedPetTypes?.slice(0, 2).map(pt => pt === 'dog' ? (isHebrew ? 'כלבים' : 'Dogs') : pt === 'cat' ? (isHebrew ? 'חתולים' : 'Cats') : pt) || []}
                     onClick={() => setLocation(`/sitter-suite/sitters/${provider.id}`)}
                   />
