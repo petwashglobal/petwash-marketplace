@@ -31,6 +31,7 @@
  */
 
 import React, { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { SiInstagram, SiFacebook, SiTiktok, SiSpotify } from "react-icons/si";
 import { useFirebaseAuth, type UserRole } from "../auth/AuthProvider";
 import goldUserIcon from "@assets/IMG_3329_1771419021263.jpeg";
@@ -252,6 +253,17 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
   const [isPlatformsOpen, setIsPlatformsOpen] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
+  // Unread message count for badge on Messages nav link
+  const { data: inboxConversations } = useQuery<any[]>({
+    queryKey: ["/api/booking-chat/inbox"],
+    refetchInterval: 30000,
+    enabled: !!user,
+  });
+  const totalUnreadMessages = inboxConversations?.reduce((sum: number, c: any) => {
+    const myUnread = user?.uid === c.customerId ? (c.customerUnread ?? 0) : (c.providerUnread ?? 0);
+    return sum + myUnread;
+  }, 0) ?? 0;
+
   // Use controlled value if provided, otherwise use internal state
   const currentLanguage = controlledLanguage !== undefined ? controlledLanguage : internalLanguage;
   
@@ -415,8 +427,20 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               </button>
             </div>
             <div className="pw-nav-item">
-              <button className="pw-nav-link" onClick={() => handleNavigate("/booking-chat/inbox")}>
+              <button className="pw-nav-link" onClick={() => handleNavigate("/booking-chat/inbox")}
+                style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 {t("nav.messages", currentLanguage)}
+                {totalUnreadMessages > 0 && (
+                  <span style={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    minWidth: 17, height: 17, padding: "0 4px", borderRadius: 999,
+                    background: "linear-gradient(135deg, #0B57D0, #4E8DF7)",
+                    color: "#fff", fontSize: 10, fontWeight: 700, lineHeight: 1,
+                    boxShadow: "0 1px 4px rgba(11,87,208,0.35)",
+                  }}>
+                    {totalUnreadMessages > 99 ? "99+" : totalUnreadMessages}
+                  </span>
+                )}
               </button>
             </div>
             <div className="pw-nav-item">
@@ -586,8 +610,20 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             <button
               className="pw-mobile-link"
               onClick={() => handleNavigate("/booking-chat/inbox")}
+              style={{ display: "flex", alignItems: "center", gap: 8 }}
             >
               <span>{t("nav.messages", currentLanguage)}</span>
+              {totalUnreadMessages > 0 && (
+                <span style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  minWidth: 17, height: 17, padding: "0 4px", borderRadius: 999,
+                  background: "linear-gradient(135deg, #0B57D0, #4E8DF7)",
+                  color: "#fff", fontSize: 10, fontWeight: 700, lineHeight: 1,
+                  boxShadow: "0 1px 4px rgba(11,87,208,0.35)",
+                }}>
+                  {totalUnreadMessages > 99 ? "99+" : totalUnreadMessages}
+                </span>
+              )}
             </button>
             {USER_MENU_ITEMS.map((item) => (
               <button

@@ -351,6 +351,20 @@ async function handleClientMessage(client: ClientConnection, message: any) {
       break;
     }
 
+    case 'chat_typing_start': {
+      const { conversationId } = payload || {};
+      if (!client.userId || !conversationId) break;
+      broadcastTypingInternal(String(conversationId), client.userId, true, clients);
+      break;
+    }
+
+    case 'chat_typing_stop': {
+      const { conversationId } = payload || {};
+      if (!client.userId || !conversationId) break;
+      broadcastTypingInternal(String(conversationId), client.userId, false, clients);
+      break;
+    }
+
     default:
       client.ws.send(JSON.stringify({
         type: 'error',
@@ -597,6 +611,43 @@ export function broadcastBookingChatUnread(conversationId: string, customerUnrea
       client.ws.send(JSON.stringify({ type: 'booking_chat_unread', conversationId, customerUnread, providerUnread }));
     }
   });
+}
+
+// Typing presence — auto-expires server-side after 5s
+const typingTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function broadcastTypingInternal(conversationId: string, senderUid: string, isTyping: boolean, clientsMap: Map<string, ClientConnection>) {
+  const timerKey = `${conversationId}:${senderUid}`;
+  if (typingTimers.has(timerKey)) {
+    clearTimeout(typingTimers.get(timerKey)!);
+    typingTimers.delete(timerKey);
+  }
+  clientsMap.forEach(client => {
+    if (
+      client.ws.readyState === WebSocket.OPEN &&
+      client.userId &&
+      client.userId !== senderUid &&
+      client.bookingChatSubscriptions.has(conversationId)
+    ) {
+      client.ws.send(JSON.stringify({ type: 'chat_typing_presence', conversationId, senderUid, isTyping }));
+    }
+  });
+  if (isTyping) {
+    const timer = setTimeout(() => {
+      clientsMap.forEach(client => {
+        if (
+          client.ws.readyState === WebSocket.OPEN &&
+          client.userId &&
+          client.userId !== senderUid &&
+          client.bookingChatSubscriptions.has(conversationId)
+        ) {
+          client.ws.send(JSON.stringify({ type: 'chat_typing_presence', conversationId, senderUid, isTyping: false }));
+        }
+      });
+      typingTimers.delete(timerKey);
+    }, 5000);
+    typingTimers.set(timerKey, timer);
+  }
 }
 
 // Messaging authentication (Firebase token)

@@ -16,6 +16,7 @@ import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
+import { GoogleGenAI } from '@google/genai';
 import { 
   broadcastBookingChatMessage, 
   broadcastBookingChatRead, 
@@ -843,6 +844,69 @@ router.post('/:bookingId/dispute', async (req, res) => {
   } catch (error) {
     logger.error('Error opening dispute', error);
     res.status(500).json({ error: 'Failed to open dispute' });
+  }
+});
+
+/**
+ * POST /api/booking-chat/:bookingId/ai-draft
+ * Ask Gemini to draft a polite, contextual reply — never auto-sends.
+ */
+router.post('/:bookingId/ai-draft', async (req, res) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const { bookingId } = req.params;
+
+    const [conv] = await db
+      .select()
+      .from(bookingConversations)
+      .where(eq(bookingConversations.bookingId, bookingId))
+      .limit(1);
+
+    if (!conv || (conv.customerId !== uid && conv.providerId !== uid)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const recentMessages = await db
+      .select()
+      .from(bookingMessages)
+      .where(eq(bookingMessages.conversationId, conv.conversationId))
+      .orderBy(desc(bookingMessages.createdAt))
+      .limit(10);
+
+    recentMessages.reverse();
+
+    const isProvider = conv.providerId === uid;
+    const myRole = isProvider ? 'provider' : 'customer';
+    const otherRole = isProvider ? 'customer' : 'provider';
+
+    const conversationText = recentMessages
+      .map(m => {
+        const roleLabel = m.senderRole === 'system' ? 'SYSTEM' : (m.senderUid === uid ? `ME (${myRole})` : `THEM (${otherRole})`);
+        return `${roleLabel}: ${m.content}`;
+      })
+      .join('\n');
+
+    const prompt = `You are a helpful assistant for a pet care marketplace called PetWash.
+A ${myRole} needs help drafting a polite, professional, and brief reply in the same language as the conversation.
+Keep the reply concise (1-3 sentences). Do not include greetings or sign-offs — just the reply body.
+Do not auto-share any personal contact information.
+
+Recent conversation:
+${conversationText}
+
+Draft a reply for the ${myRole}:`;
+
+    const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
+    const response = await genAI.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: prompt,
+    });
+
+    const draft = response.text?.trim() || '';
+    res.json({ draft });
+  } catch (error) {
+    logger.error('Error generating AI draft', error);
+    res.status(500).json({ error: 'Failed to generate draft' });
   }
 });
 
