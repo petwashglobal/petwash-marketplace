@@ -11,7 +11,7 @@ packages = ["dig", "freetype", "git-lfs", "imagemagick", "jq", "k6", "lcms2", "l
 
 [deployment]
 deploymentTarget = "autoscale"
-build = ["vite", "build"]
+build = ["npm", "run", "build"]
 run = ["npm", "run", "start"]
 publicDir = "dist/public"
 
