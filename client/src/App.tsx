@@ -341,6 +341,9 @@ const UnifiedProviderDashboard = lazy(() => import("@/pages/ProviderDashboard"))
 // Provider Operations Console 2026
 const ProviderConsole = lazy(() => import("@/pages/ProviderConsole"));
 
+// Provider OS — Full Operating System
+const ProviderOS = lazy(() => import("@/pages/provider-os/ProviderOS"));
+
 // E-Signature System
 const DocumentSigning = lazy(() => import("@/pages/DocumentSigning"));
 
@@ -1016,6 +1019,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <RoleProtectedRoute minRole="provider">
               <Suspense fallback={<PageLoader />}>
                 <ProviderConsole />
+              </Suspense>
+            </RoleProtectedRoute>
+          )}
+        </Route>
+
+        {/* Provider OS — Full Operating System */}
+        <Route path="/provider-os">
+          {() => (
+            <RoleProtectedRoute minRole="provider">
+              <Suspense fallback={<PageLoader />}>
+                <ProviderOS />
               </Suspense>
             </RoleProtectedRoute>
           )}

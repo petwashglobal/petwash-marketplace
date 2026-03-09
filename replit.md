@@ -209,3 +209,21 @@ The following composite indexes were created via REST API and may still be build
 - **Performance tab**: KPI grid + bar chart (bookings by period) + rate progress bars + Gemini analysis paragraph
 - **Safety tab**: Blocked list CRUD (block customer/address/pet with reason), safety notes CRUD (per customer/pet with risk level low/medium/high)
 - **Kenzo AI tab**: 8 quick-action prompts + full chat interface with provider-context injection (live bookings + settings + today's date injected into Gemini system prompt)
+
+## Provider OS — Full Operating System (March 2026 Session 7)
+- **Route**: `/provider-os` — unified provider shell replacing scattered provider dashboards
+- **Shell** (`provider-os/ProviderOS.tsx`): sticky top header with platform switcher (PetSitter/Walk My Pet/PetWash/Academy), availability quick-toggle, unread notification badge, user avatar. Desktop: 56px left sidebar. Mobile: bottom nav (Home/Jobs/Calendar/Wallet/More) + slide-up "More" menu.
+- **10 modules built**:
+  1. `POSDashboard.tsx` — real-time pulse: new requests (Accept/Decline), today's jobs, active now, finance strip, KPI row, quick actions grid
+  2. `POSJobs.tsx` — full booking pipeline: 7-status tabs (New/Pending/Confirmed/Active/Done/Cancelled/Dispute), platform filter, expandable job cards with all actions (accept, decline, start, finish, report, cancel-with-reason)
+  3. `POSCalendar.tsx` — 3-tab: calendar (tap to block dates, vacation mode, pause bookings), weekly recurring schedule builder, advanced settings (buffer, max jobs/day, min notice, radius, instant booking)
+  4. `POSWallet.tsx` — 4-tab: overview (wallet explainer + fee breakdown), transactions (per-booking gross/fee/net ledger), payout request (IBAN/bank form), monthly reports (CSV/Excel)
+  5. `POSProfile.tsx` — 4-tab: basic info (name, bio, languages, service areas, radius), per-platform services (toggle + price + description for each service under PetSitter/Walker/Washer/Trainer), business details (type, VAT number, bank account), badges (verified/insurance/premium/background)
+  6. `POSSettings.tsx` — 4-tab: operational toggles (15 settings), notification alerts (6 channels), privacy settings (3 toggles), pet restrictions (5 toggles + max pets)
+  7. `POSDocuments.tsx` — 3-tab: click-to-accept (6 docs with checkbox + audit trail), e-signature (8 docs with embedded DocuSign modal stub), provider uploads (5 doc types with camera/file upload + status badge)
+  8. `POSNotifications.tsx` — filtered notification feed (All/Unread/Jobs/Payments/Documents/System), mark-all-read, per-notification delete, action CTAs
+  9. `POSSafety.tsx` — 4-tab: report client (incident type form), block clients/addresses (with list management), emergency contacts + check-in timer, safety guidelines
+  10. `POSAssistant.tsx` — full Gemini AI chat: 8 suggestion chips (Summarize day/Which job/Explain payout/Draft reply/Check docs/Pricing/Bio/Cancellation), provider stats injected into system prompt, typing indicator
+- **Design**: white/gray functional theme consistent with PersonalInbox/Settings design system
+- **Document workflow**: Click-to-accept = checkbox + SHA-256 audit trail. E-sign = DocuSign embedded iframe (no redirect). Both types clearly separated in UI.
+- **Wallet logic**: marketplace flow (escrow → 48h hold → platform fee 18% + VAT 18% on fee → net payout). Direct platform revenue (K9000/e-gift) never shown in provider wallet.

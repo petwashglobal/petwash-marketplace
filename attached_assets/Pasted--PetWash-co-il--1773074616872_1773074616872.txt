@@ -1,0 +1,301 @@
+מצוין. אם אתה בונה את PetWash.co.il כקבוצת פלטפורמות (ולא רק שירות אחד), הדשבורד של הספק צריך להיות מערכת אחת שמנהלת כמה שירותים:
+	•	PetSitter
+	•	Walk My Pet
+	•	PetWash
+	•	PetWash Academy
+	•	בעתיד אולי גם:
+	•	Pet Transport
+	•	Pet Boarding
+	•	Grooming
+	•	Training
+
+MadPaws באוסטרליה הוא רפרנס טוב, אבל המערכת שלך צריכה להיות יותר מתקדמת ורחבה כי אתה מנהל כמה פלטפורמות תחת אותו חשבון ספק.
+
+אני אתן לך מבנה נכון.
+
+⸻
+
+מבנה דשבורד ספקים – PetWash Provider OS
+
+1. Dashboard (מסך ראשי)
+
+המסך הראשון שספק רואה.
+
+צריך להראות:
+
+עבודות
+	•	הזמנות חדשות
+	•	הזמנות ממתינות לאישור
+	•	עבודות היום
+	•	עבודות פעילות
+	•	עבודות שבוטלו
+
+מצב תפעולי
+	•	זמינות: ON / OFF
+	•	סטטוס אימות
+	•	מסמכים חסרים
+	•	התראות מערכת
+
+כספים
+	•	יתרה זמינה
+	•	יתרה בהמתנה
+	•	payout אחרון
+	•	סכום החודש
+
+מדדי ביצוע
+	•	דירוג
+	•	שיעור ביטולים
+	•	זמן תגובה
+	•	מספר עבודות
+
+⸻
+
+2. Jobs / Bookings
+
+מרכז כל העבודות.
+
+פילטרים:
+	•	PetSitter
+	•	Walk My Pet
+	•	PetWash
+	•	Academy
+
+סטטוסים:
+	•	new request
+	•	pending
+	•	confirmed
+	•	in progress
+	•	completed
+	•	cancelled
+	•	dispute
+
+פעולות ספק:
+	•	accept job
+	•	decline
+	•	message client
+	•	start job
+	•	finish job
+	•	report issue
+	•	cancel (עם סיבה)
+
+⸻
+
+3. Calendar & Availability
+
+מאוד חשוב.
+
+אפשרויות:
+
+זמינות
+	•	שעות עבודה
+	•	ימים בשבוע
+	•	זמינות חוזרת
+
+חסימות
+	•	block date
+	•	vacation mode
+	•	pause new bookings
+
+הגדרות מתקדמות
+	•	מרחק מקסימלי
+	•	זמן נסיעה
+	•	buffer בין עבודות
+	•	מינימום זמן להזמנה
+
+⸻
+
+4. Wallet & Earnings
+
+אחד המסכים הכי חשובים.
+
+הספק צריך להבין בדיוק:
+
+יתרה
+	•	Available balance
+	•	Pending balance (escrow)
+	•	Processing payouts
+
+היסטוריה
+	•	כל תשלום
+	•	עמלת פלטפורמה
+	•	refund
+	•	dispute
+
+payouts
+	•	בקשת payout
+	•	חשבון בנק
+	•	PayPal / Stripe / IBAN
+
+דוחות
+	•	דוח חודשי
+	•	CSV
+	•	Excel
+
+⸻
+
+5. Messages
+
+מערכת צ’אט לפי הזמנה.
+
+מאפשר:
+	•	שליחת תמונות
+	•	מיקום
+	•	קבצים
+	•	הודעות מערכת
+
+הצ’אט נפתח רק אחרי הזמנה כדי למנוע עקיפת הפלטפורמה.
+
+⸻
+
+6. Profile
+
+עמוד פרופיל הספק.
+
+כולל:
+	•	תמונה
+	•	bio
+	•	ניסיון
+	•	שפות
+	•	אזורי שירות
+	•	שירותים שהוא מציע
+
+שירותים
+
+לדוגמה:
+
+PetSitter
+Walk My Pet
+PetWash
+Training
+
+לכל שירות:
+	•	מחיר
+	•	זמינות
+	•	תיאור
+
+⸻
+
+7. Settings
+
+הגדרות.
+
+תפעול
+	•	accept jobs automatically
+	•	manual approval
+	•	instant booking
+	•	max distance
+	•	max pets
+
+התראות
+	•	push
+	•	email
+	•	SMS
+
+פרטיות
+	•	hide phone
+	•	messaging only through platform
+
+⸻
+
+8. Documents Center
+
+מרכז מסמכים.
+
+מסמכים שספק מעלה
+	•	תעודת זהות
+	•	רישיון
+	•	ביטוח
+	•	תעודת הכשרה
+
+מסמכים שהמערכת נותנת
+	•	הסכם ספק
+	•	NDA
+	•	תנאי שימוש
+	•	מדיניות ביטולים
+	•	כללי בטיחות
+
+⸻
+
+חתימות
+
+צריך שני סוגים:
+
+Click-to-accept
+
+מספיק checkbox:
+	•	תנאי שימוש
+	•	privacy
+	•	קבלת הודעות
+
+חתימה דיגיטלית מלאה
+
+צריך e-sign:
+	•	supplier agreement
+	•	NDA
+	•	IP protection
+	•	liability waiver
+
+⸻
+
+9. Safety & Trust
+
+כלים להגנה.
+	•	report client
+	•	block client
+	•	emergency contact
+	•	safety guidelines
+
+⸻
+
+10. AI Assistant (Gemini)
+
+עוזר חכם לספק.
+
+לדוגמה:
+	•	מציע עבודות
+	•	מסביר למה עבודה בוטלה
+	•	מסכם את היום
+	•	מזהיר על עומס
+	•	מציע מחיר
+
+⸻
+
+Mobile UX
+
+האפליקציה חייבת להיות mobile-first.
+
+מבנה תחתון:
+
+Home
+Jobs
+Calendar
+Wallet
+Profile
+
+⸻
+
+כלים טכנולוגיים
+
+חובה
+
+Maps
+
+Google Places API (New)
+
+Push
+
+Firebase Cloud Messaging
+
+חתימות
+
+DocuSign או Dropbox Sign
+
+צ’אט
+
+WebSocket realtime
+
+⸻
+
+ארכיטקטורה חשובה
+
+כל ספק יכול להיות בכמה פלטפורמות:
