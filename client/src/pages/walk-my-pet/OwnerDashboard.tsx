@@ -100,7 +100,7 @@ export default function WalkMyPetOwnerDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="min-h-screen bg-white">
       {/* Premium White Neomorphic Header */}
       <div className="relative bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

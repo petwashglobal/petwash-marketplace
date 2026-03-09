@@ -313,7 +313,7 @@ export default function SitterBookingFlow() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-white">
+    <div className="min-h-screen bg-white">
       {/* Header */}
       <div className="bg-white/90 backdrop-blur-md border-b border-slate-100 sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-4 py-4">

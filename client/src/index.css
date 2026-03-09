@@ -45,13 +45,13 @@
     --primary: 0 0% 0%;
     --primary-foreground: 0 0% 100%;
     
-    --secondary: 0 0% 96%;
+    --secondary: 0 0% 100%;
     --secondary-foreground: 0 0% 10%;
     
-    --muted: 0 0% 96%;
+    --muted: 0 0% 100%;
     --muted-foreground: 0 0% 45%;
     
-    --accent: 0 0% 96%;
+    --accent: 0 0% 100%;
     --accent-foreground: 0 0% 10%;
     
     --destructive: 0 84% 60%;
@@ -74,7 +74,7 @@
     --sidebar-foreground: 0 0% 0%;
     --sidebar-primary: 0 0% 0%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent: 0 0% 100%;
     --sidebar-accent-foreground: 0 0% 10%;
     --sidebar-border: 0 0% 90%;
     --sidebar-ring: 0 0% 0%;

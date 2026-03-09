@@ -157,7 +157,7 @@ export default function SitterSuiteOverview() {
         </div>
 
         {/* Stats Section */}
-        <div className="py-16 bg-gradient-to-r from-fuchsia-50 via-purple-50 to-pink-50">
+        <div className="py-16 bg-white border-y border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="luxury-grid-3">
               {stats.map((stat, index) => (
@@ -255,7 +255,7 @@ export default function SitterSuiteOverview() {
             </div>
 
             {/* Vacation CTA */}
-            <div className="mt-12 bg-gradient-to-r from-pink-50 via-purple-50 to-pink-50 rounded-2xl border-2 border-pink-200 p-8">
+            <div className="mt-12 bg-white rounded-2xl border-2 border-gray-200 p-8">
               <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
                 <div className="text-center lg:text-end">
                   <h3 className="text-2xl font-black text-gray-900 mb-2" data-testid="heading-vacation-cta">

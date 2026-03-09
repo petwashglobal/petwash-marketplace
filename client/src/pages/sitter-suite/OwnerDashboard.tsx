@@ -141,10 +141,7 @@ export default function OwnerDashboard() {
 
       {/* ── Hero Section ── */}
       <section className="relative bg-white overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-pink-50 to-fuchsia-50 opacity-70 blur-3xl" />
-          <div className="absolute -bottom-40 -left-40 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-rose-50 to-pink-50 opacity-50 blur-3xl" />
-        </div>
+        <div className="absolute inset-0 pointer-events-none"></div>
 
         <div className="relative container mx-auto px-4 sm:px-6 pt-10 pb-12 md:pt-14 md:pb-16">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
@@ -186,7 +183,7 @@ export default function OwnerDashboard() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5 mt-10">
             {statCards.map((stat) => (
               <div key={stat.label} className={`group relative bg-white rounded-2xl p-5 md:p-6 border border-gray-100 shadow-sm ${stat.shadow} hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden`}>
-                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-pink-50 to-transparent rounded-bl-[60px] opacity-60 pointer-events-none" />
+                <div className="absolute top-0 right-0 w-24 h-24 pointer-events-none" />
                 <div className="relative flex items-center gap-4">
                   <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg`}>
                     <stat.icon className="w-5 h-5 text-white" />
@@ -230,7 +227,7 @@ export default function OwnerDashboard() {
           <TabsContent value="overview" className="space-y-6">
             {pendingBookings.length > 0 && (
               <div className="bg-white rounded-3xl border border-amber-200/80 overflow-hidden shadow-sm">
-                <div className="px-6 py-4 border-b border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50/50">
+                <div className="px-6 py-4 border-b border-gray-100 bg-white">
                   <h3 className="flex items-center gap-2 text-amber-800 font-bold text-base">
                     <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
                       <Clock className="w-4 h-4 text-white" />
@@ -281,7 +278,7 @@ export default function OwnerDashboard() {
                   <div className="text-center py-16">
                     <div className="relative mx-auto w-24 h-24 mb-6">
                       <div className="absolute inset-0 rounded-full bg-pink-100/60 animate-pulse" />
-                      <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-pink-50 to-fuchsia-50 flex items-center justify-center border border-pink-100">
+                      <div className="relative w-24 h-24 rounded-full bg-white flex items-center justify-center border border-gray-200">
                         <PawPrint className="w-10 h-10 text-pink-300" />
                       </div>
                     </div>
@@ -381,7 +378,7 @@ export default function OwnerDashboard() {
                 ) : (
                   <div className="bg-white border border-gray-100 rounded-3xl h-[600px] flex items-center justify-center">
                     <div className="text-center">
-                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-50 to-fuchsia-50 flex items-center justify-center mx-auto mb-5 border border-pink-100">
+                      <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center mx-auto mb-5 border border-gray-200">
                         <MessageCircle className="h-9 w-9 text-pink-300" />
                       </div>
                       <p className="text-gray-900 font-bold text-lg mb-1">{t('sitterHub.noConversation')}</p>
@@ -495,8 +492,8 @@ export default function OwnerDashboard() {
                       <h3 className="text-xl font-extrabold text-gray-900 mb-1">{pet.petName}</h3>
                       <p className="text-sm text-gray-400 font-medium mb-3">{pet.breed}</p>
                       <div className="flex items-center justify-center gap-3 text-xs text-gray-400 font-medium">
-                        <span className="px-2.5 py-1 bg-gray-50 rounded-full">{pet.petType}</span>
-                        <span className="px-2.5 py-1 bg-gray-50 rounded-full">{pet.age} {t('sitterHub.years')}</span>
+                        <span className="px-2.5 py-1 bg-white border border-gray-200 rounded-full">{pet.petType}</span>
+                        <span className="px-2.5 py-1 bg-white border border-gray-200 rounded-full">{pet.age} {t('sitterHub.years')}</span>
                       </div>
                       <Button variant="outline" size="sm" className="mt-5 w-full rounded-xl border-pink-200 text-pink-600 hover:bg-pink-50 hover:text-pink-700 font-semibold" data-testid={`button-edit-pet-${pet.id}`}>
                         {t('sitterHub.editProfile')}
@@ -507,7 +504,7 @@ export default function OwnerDashboard() {
                     <div className="col-span-full text-center py-16">
                       <div className="relative mx-auto w-24 h-24 mb-6">
                         <div className="absolute inset-0 rounded-full bg-pink-100/60 animate-pulse" />
-                        <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-pink-50 to-fuchsia-50 flex items-center justify-center border border-pink-100">
+                        <div className="relative w-24 h-24 rounded-full bg-white flex items-center justify-center border border-gray-200">
                           <PawPrint className="w-10 h-10 text-pink-300" />
                         </div>
                       </div>

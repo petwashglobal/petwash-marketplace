@@ -224,7 +224,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
               </p>
 
               <dl className="mt-4 grid gap-4 text-xs text-gray-700 sm:grid-cols-3">
-                <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
                   <dt className="text-gray-500">{isHebrew ? 'ניסיון' : 'Experience'}</dt>
                   <dd className="mt-1 font-medium">
                     {yearsExperience}+ {isHebrew ? 'שנים' : 'years'}
@@ -233,7 +233,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                     {isHebrew ? 'מהימן על ידי משפחות חוזרות' : 'Trusted by repeat families'}
                   </dd>
                 </div>
-                <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
                   <dt className="text-gray-500">{isHebrew ? 'אורחים מתקבלים' : 'Accepted guests'}</dt>
                   <dd className="mt-1 font-medium">
                     {acceptedPetsSummary}
@@ -242,7 +242,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                     {isHebrew ? `עד ${maxPetsPerBooking} חיות מחמד להזמנה` : `Up to ${maxPetsPerBooking} pets per booking`}
                   </dd>
                 </div>
-                <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+                <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
                   <dt className="text-gray-500">{isHebrew ? 'שפות' : 'Languages'}</dt>
                   <dd className="mt-1 font-medium">
                     {languages.join(" · ")}
@@ -263,7 +263,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                 {highlightBullets.map((item, index) => (
                   <div
                     key={index}
-                    className="flex gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-3"
+                    className="flex gap-3 rounded-2xl border border-gray-200 bg-white p-3"
                   >
                     <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 text-xs text-emerald-600">
                       ✓
@@ -276,7 +276,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                 {verifiedBadges.map((badge) => (
                   <span
                     key={badge}
-                    className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-3 py-1"
+                    className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1"
                   >
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                     {badge}
@@ -320,7 +320,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                 {activeServices.map((service) => (
                   <div
                     key={service.id}
-                    className="flex items-start justify-between rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3"
+                    className="flex items-start justify-between rounded-2xl border border-gray-200 bg-white px-4 py-3"
                   >
                     <div className="max-w-[70%]">
                       <div className="font-medium">{service.label}</div>
@@ -457,7 +457,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                 {reviews.slice(0, 4).map((review) => (
                   <article
                     key={review.id}
-                    className="flex flex-col rounded-2xl border border-gray-200 bg-gray-50 p-3"
+                    className="flex flex-col rounded-2xl border border-gray-200 bg-white p-3"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div>
@@ -545,7 +545,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
 
               {/* Placeholder booking controls - dev can replace with real form/datepicker */}
               <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-gray-200 text-xs text-gray-800">
-                <div className="flex flex-col gap-1 bg-gray-50 px-3 py-2.5">
+                <div className="flex flex-col gap-1 bg-white border-t border-gray-100 px-3 py-2.5">
                   <span className="text-[10px] uppercase tracking-wide text-gray-400">
                     {isHebrew ? 'כניסה' : 'Check in'}
                   </span>
@@ -553,7 +553,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                     {isHebrew ? 'הוספת תאריך' : 'Add date'}
                   </span>
                 </div>
-                <div className="flex flex-col gap-1 bg-gray-50 px-3 py-2.5">
+                <div className="flex flex-col gap-1 bg-white border-t border-gray-100 px-3 py-2.5">
                   <span className="text-[10px] uppercase tracking-wide text-gray-400">
                     {isHebrew ? 'יציאה' : 'Check out'}
                   </span>
@@ -561,7 +561,7 @@ const PetSitterProfilePage: FC<PetSitterProfileProps> = (props) => {
                     {isHebrew ? 'הוספת תאריך' : 'Add date'}
                   </span>
                 </div>
-                <div className="col-span-2 flex flex-col gap-1 bg-gray-50 px-3 py-2.5">
+                <div className="col-span-2 flex flex-col gap-1 bg-white border-t border-gray-100 px-3 py-2.5">
                   <span className="text-[10px] uppercase tracking-wide text-gray-400">
                     {isHebrew ? 'אורחים' : 'Guests'}
                   </span>

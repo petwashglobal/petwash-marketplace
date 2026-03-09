@@ -237,7 +237,7 @@ export default function BrowseWalkers() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-white">
         <div className="relative bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500 overflow-hidden">
           <div className="absolute inset-0 opacity-40">
             <div className="absolute top-10 left-10 w-72 h-72 bg-emerald-300 rounded-full blur-3xl animate-pulse"></div>
@@ -309,7 +309,7 @@ export default function BrowseWalkers() {
             </div>
             <div className="flex items-center gap-3">
               <div className="hidden sm:block">
-                <CompactWeatherWidget variant="compact" className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10" />
+                <CompactWeatherWidget variant="compact" className="bg-white" />
               </div>
               <Button variant="outline" className="gap-2 rounded-full" data-testid="button-map-view">
                 <MapPin className="h-4 w-4" />
@@ -499,7 +499,7 @@ export default function BrowseWalkers() {
           )}
         </div>
 
-        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 py-16">
+        <div className="bg-white py-16 border-t border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-10">
               <h2 className="text-3xl font-semibold text-gray-900 mb-3">
@@ -607,7 +607,7 @@ export default function BrowseWalkers() {
             </div>
             
             <div className="grid md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 text-center">
+              <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center">
                 <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-emerald-100 flex items-center justify-center">
                   <Wallet className="h-7 w-7 text-emerald-600" />
                 </div>
@@ -618,7 +618,7 @@ export default function BrowseWalkers() {
                   {isHebrew ? 'תעריפים תחרותיים' : 'Competitive rates'}
                 </p>
               </div>
-              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 text-center">
+              <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center">
                 <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-emerald-100 flex items-center justify-center">
                   <Route className="h-7 w-7 text-emerald-600" />
                 </div>
@@ -629,7 +629,7 @@ export default function BrowseWalkers() {
                   {isHebrew ? 'עבדו בחוץ עם כלבים' : 'Work outdoors with dogs'}
                 </p>
               </div>
-              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 text-center">
+              <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center">
                 <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-emerald-100 flex items-center justify-center">
                   <Smartphone className="h-7 w-7 text-emerald-600" />
                 </div>
