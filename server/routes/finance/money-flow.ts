@@ -4,35 +4,79 @@
  *
  * Flow A: marketplace_booking (provider exists)
  * Flow B: direct_platform_sale / egift_sale / wallet_topup (no provider)
+ *
+ * Compliance controls:
+ *  - requireRole: admin / management / staff only
+ *  - adminLimiter: 200 req / 15 min (applied at mount in routes.ts)
+ *  - Zod input validation: from, to, currency strictly validated
+ *  - Date range cap: max 365 days to prevent slow-query DoS
+ *  - Audit event logged on every successful data access
+ *  - All SQL uses parameterised Drizzle `sql` template literals (no raw interpolation)
  */
 
 import { Router } from 'express';
+import { z } from 'zod';
 import { db } from '../../db';
 import { sql } from 'drizzle-orm';
 import { requireRole } from '../../middleware/gates';
 import { logger } from '../../lib/logger';
+import { logAuditEvent } from '../../middleware/auditLog';
 import type { MoneyFlowSummary } from '../../../shared/finance-flow-types';
 
 const router = Router();
+
+// ── Input schema ───────────────────────────────────────────────────────────────
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_DATE_RANGE_DAYS = 365;
+
+const querySchema = z.object({
+  from: z
+    .string()
+    .regex(ISO_DATE_RE, 'from must be YYYY-MM-DD')
+    .refine(v => !isNaN(Date.parse(v)), 'from is not a valid date')
+    .optional(),
+  to: z
+    .string()
+    .regex(ISO_DATE_RE, 'to must be YYYY-MM-DD')
+    .refine(v => !isNaN(Date.parse(v)), 'to is not a valid date')
+    .optional(),
+  currency: z.enum(['ILS', 'USD', 'EUR']).optional().default('ILS'),
+}).refine(data => {
+  if (data.from && data.to) {
+    const fromMs = Date.parse(data.from);
+    const toMs = Date.parse(data.to);
+    if (toMs < fromMs) return false;
+    const diffDays = (toMs - fromMs) / (1000 * 60 * 60 * 24);
+    if (diffDays > MAX_DATE_RANGE_DAYS) return false;
+  }
+  return true;
+}, { message: `Date range invalid or exceeds ${MAX_DATE_RANGE_DAYS}-day maximum` });
 
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 /**
  * GET /api/finance/money-flow-summary
  * Returns all KPIs separated by flow type.
- * Admin only.
+ * Requires admin / management / staff role.
+ * Rate-limited to 200 req/15 min via adminLimiter at mount.
  */
-router.get('/money-flow-summary', requireRole('admin', 'management', 'staff'), async (req, res) => {
+router.get('/money-flow-summary', requireRole('admin', 'management', 'staff'), async (req: any, res) => {
   try {
-    const { from, to, currency = 'ILS' } = req.query;
+    const parsed = querySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Invalid query parameters',
+        details: parsed.error.flatten().fieldErrors,
+      });
+    }
+    const { from, to, currency } = parsed.data;
 
     const dateFilter = from && to
-      ? sql`AND created_at BETWEEN ${from} AND ${to}`
+      ? sql`AND created_at BETWEEN ${from}::date AND ${to}::date`
       : sql``;
 
     // ── Marketplace bookings (walk_bookings + sitter_bookings) ────────────────
-    // walk_bookings uses decimal ILS amounts (total_cost, platform_fee_owner/sitter, walker_payout)
-    // multiply by 100 to normalise to cents for uniform arithmetic
     const walkStats = await db.execute(sql`
       SELECT
         COUNT(*) FILTER (WHERE status NOT IN ('cancelled','refunded')) AS total,
@@ -43,7 +87,6 @@ router.get('/money-flow-summary', requireRole('admin', 'management', 'staff'), a
       FROM walk_bookings
     `);
 
-    // sitter_bookings uses cents columns: total_charge_cents, platform_service_fee_cents, sitter_payout_cents
     const sitterStats = await db.execute(sql`
       SELECT
         COUNT(*) FILTER (WHERE status NOT IN ('cancelled','refunded')) AS total,
@@ -92,7 +135,7 @@ router.get('/money-flow-summary', requireRole('admin', 'management', 'staff'), a
       WHERE status = 'refunded' AND refund_amount_cents IS NOT NULL
     `);
 
-    // Normalise rows
+    // ── Normalise rows ─────────────────────────────────────────────────────────
     const ws = (walkStats.rows?.[0] || {}) as any;
     const ss = (sitterStats.rows?.[0] || {}) as any;
     const es = (escrowStats.rows?.[0] || {}) as any;
@@ -112,11 +155,9 @@ router.get('/money-flow-summary', requireRole('admin', 'management', 'staff'), a
     const walletGross = parseFloat(ds.wallet_gross || 0);
     const processorFees = parseFloat(ds.processor_fees || 0);
 
-    // Wallet topups from credit_transactions are in cents — convert
     const walletTopupGrossILS = parseInt(cs.topup_cents || 0) / 100;
 
     const summary: MoneyFlowSummary = {
-      // Flow A
       totalMarketplaceBookings: mktBookings,
       totalMarketplaceGrossILS: mktGrossCents / 100,
       totalPlatformFeesILS: mktFeeCents / 100,
@@ -125,7 +166,6 @@ router.get('/money-flow-summary', requireRole('admin', 'management', 'staff'), a
       totalEscrowReleasedILS: parseInt(es.released_cents || 0) / 100,
       totalVATMarketplaceILS: mktVatCents / 100,
 
-      // Flow B
       totalDirectPlatformSales: parseInt(ds.direct_count || 0),
       totalDirectSalesGrossILS: directGross,
       totalEGiftSales: parseInt(ds.egift_count || 0),
@@ -134,15 +174,25 @@ router.get('/money-flow-summary', requireRole('admin', 'management', 'staff'), a
       totalWalletTopupValueILS: walletGross + walletTopupGrossILS,
       totalVATDirectSalesILS: directVat,
 
-      // Shared
       totalProcessorFeesILS: processorFees,
       totalRefundsILS: parseInt(rs.total_refund_cents || 0) / 100,
       totalChargebacks: 0,
 
-      // Computed
       totalVATAllFlowsILS: (mktVatCents / 100) + directVat,
       totalNetRevenueILS: (mktFeeCents / 100) + directGross - directVat - processorFees,
     };
+
+    // ── Audit trail ────────────────────────────────────────────────────────────
+    await logAuditEvent({
+      actorUserId: req.user?.uid || req.userId || 'unknown',
+      actorRole: req.user?.role || 'admin',
+      actionType: 'FINANCE_MONEY_FLOW_SUMMARY_READ',
+      targetType: 'money_flow_summary',
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+      traceId: req.traceId,
+      metadata: { currency, from: from ?? null, to: to ?? null, mktBookings, directSales: ds.direct_count },
+    }).catch(() => {}); // non-blocking — never fail request on audit error
 
     res.json(summary);
   } catch (err) {
@@ -151,12 +201,27 @@ router.get('/money-flow-summary', requireRole('admin', 'management', 'staff'), a
   }
 });
 
+// ── Transaction types ─────────────────────────────────────────────────────────
+
+const txnQuerySchema = z.object({
+  currency: z.enum(['ILS', 'USD', 'EUR']).optional().default('ILS'),
+});
+
 /**
  * GET /api/finance/transaction-types
  * Returns transaction type counts for admin table/chart.
+ * Requires admin / management / staff role.
  */
-router.get('/transaction-types', requireRole('admin', 'management', 'staff'), async (req, res) => {
+router.get('/transaction-types', requireRole('admin', 'management', 'staff'), async (req: any, res) => {
   try {
+    const parsed = txnQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Invalid query parameters',
+        details: parsed.error.flatten().fieldErrors,
+      });
+    }
+
     const result = await db.execute(sql`
       SELECT
         flow_type AS transaction_type,
@@ -166,6 +231,18 @@ router.get('/transaction-types', requireRole('admin', 'management', 'staff'), as
       GROUP BY flow_type
       ORDER BY count DESC
     `);
+
+    await logAuditEvent({
+      actorUserId: req.user?.uid || req.userId || 'unknown',
+      actorRole: req.user?.role || 'admin',
+      actionType: 'FINANCE_TRANSACTION_TYPES_READ',
+      targetType: 'transaction_records',
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+      traceId: req.traceId,
+      metadata: { rowCount: result.rows?.length ?? 0 },
+    }).catch(() => {});
+
     res.json(result.rows || []);
   } catch (err) {
     logger.error('GET /finance/transaction-types', err);

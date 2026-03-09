@@ -9518,7 +9518,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/booking-chat', bookingChatRouter);
   app.use('/api/admin/booking-chat', bookingChatRouter);
   app.use('/api/provider-console', providerConsoleRouter);
-  app.use('/api/finance', moneyFlowRouter);
+  app.use('/api/finance', adminLimiter, moneyFlowRouter);
   app.use('/api/v2/vouchers', apiLimiter, unifiedVouchersRoutes);
   
   // Email/SMS Campaigns (Marketing - Template Personalization)
