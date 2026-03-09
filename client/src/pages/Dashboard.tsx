@@ -661,7 +661,7 @@ export default function Dashboard() {
                       className="flex-shrink-0 rounded-2xl overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
                       style={{ background: '#FFFFFF', border: cardBorder, boxShadow: cardShadow, minWidth: 90 }}
                     >
-                      <div className="w-[90px] h-[90px] bg-gray-50 flex items-center justify-center">
+                      <div className="w-[90px] h-[90px] bg-white flex items-center justify-center">
                         {pet.photoUrl ? (
                           <img src={pet.photoUrl} alt={pet.name} className="w-full h-full object-cover" />
                         ) : (
@@ -782,7 +782,7 @@ export default function Dashboard() {
               ].map((item, idx) => (
                 <Link key={item.href} href={item.href}>
                   <div
-                    className="px-5 py-3.5 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer"
+                    className="px-5 py-3.5 flex items-center justify-between transition-colors cursor-pointer"
                     style={{
                       background: '#FFFFFF',
                       borderBottom: idx < 6 ? '1px solid rgba(229,231,235,1)' : 'none',

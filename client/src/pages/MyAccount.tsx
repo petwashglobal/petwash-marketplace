@@ -660,7 +660,7 @@ export default function MyAccount() {
               <div className="relative group">
                 <Avatar className="w-32 h-32 border-4 border-gray-200 shadow-sm">
                   <AvatarImage src={profile.photoURL} alt={profile.displayName} />
-                  <AvatarFallback className="text-4xl font-bold bg-stone-100 text-stone-700">
+                  <AvatarFallback className="text-4xl font-bold bg-white text-gray-700">
                     {profile.displayName?.charAt(0) || 'P'}
                   </AvatarFallback>
                 </Avatar>
@@ -716,14 +716,14 @@ export default function MyAccount() {
                     <Trash2 className="w-3 h-3" />
                   </Button>
                 )}
-                <div className="absolute -bottom-2 -right-2 p-2 rounded-full shadow-sm bg-stone-100 border border-gray-200">
-                  <TierIcon className="w-5 h-5 text-stone-700" />
+                <div className="absolute -bottom-2 -right-2 p-2 rounded-full shadow-sm bg-white border border-gray-200">
+                  <TierIcon className="w-5 h-5 text-gray-700" />
                 </div>
               </div>
 
               <div className="flex-1 text-center md:text-start">
                 <h2 className="text-3xl font-semibold text-gray-900 mb-2">{profile.displayName || 'Pet Parent'}</h2>
-                <Badge className="text-sm px-4 py-2 font-medium bg-stone-100 text-stone-800 border border-stone-200">
+                <Badge className="text-sm px-4 py-2 font-medium bg-white text-gray-800 border border-gray-200">
                   <TierIcon className="w-4 h-4 mr-2" />
                   {isHebrew ? tierInfo.labelHe : tierInfo.label}
                 </Badge>
@@ -899,7 +899,7 @@ export default function MyAccount() {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      className="border-gray-200 text-gray-600 hover:bg-gray-50"
+                      className="border-gray-200 text-gray-600 hover:bg-gray-100"
                       onClick={() => setIsEditing(true)}
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -923,7 +923,7 @@ export default function MyAccount() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        className="border-gray-200 text-gray-500 hover:bg-gray-50"
+                        className="border-gray-200 text-gray-500 hover:bg-gray-100"
                         onClick={() => {
                           setIsEditing(false);
                           setEditedProfile(profile);
@@ -1087,7 +1087,7 @@ export default function MyAccount() {
                 </h3>
 
                 <div className="space-y-4">
-                  <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50">
+                  <div className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-gray-100">
                     <div className="flex-1">
                       <p className="text-gray-900 font-medium">{profile?.email || firebaseUser?.email}</p>
                       <p className="text-gray-500 text-sm">
@@ -1100,7 +1100,7 @@ export default function MyAccount() {
                     <Button 
                       variant="outline"
                       size="sm"
-                      className="border-gray-200 text-gray-600 hover:bg-gray-50"
+                      className="border-gray-200 text-gray-600 hover:bg-gray-100"
                       onClick={() => setShowEmailChangeDialog(true)}
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
@@ -1134,7 +1134,7 @@ export default function MyAccount() {
                 </h3>
 
                 <div className="space-y-4">
-                  <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50">
+                  <div className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-gray-100">
                     <div className="flex-1">
                       <p className="text-gray-900 font-medium">
                         {phoneStatus?.phone || profile?.phone || (isHebrew ? 'לא הוגדר' : 'Not set')}
@@ -1149,7 +1149,7 @@ export default function MyAccount() {
                     <Button 
                       variant="outline"
                       size="sm"
-                      className="border-gray-200 text-gray-600 hover:bg-gray-50"
+                      className="border-gray-200 text-gray-600 hover:bg-gray-100"
                       onClick={() => setShowPhoneVerifyDialog(true)}
                     >
                       <Phone className="w-4 h-4 mr-2" />
@@ -1269,7 +1269,7 @@ export default function MyAccount() {
                     { key: 'birthdayOffersEnabled', label: isHebrew ? 'הטבות יום הולדת' : 'Birthday Offers', desc: isHebrew ? 'קופון מיוחד ליום ההולדת של החיה' : 'Special coupon for pet birthdays', icon: Sparkles },
                     { key: 'loyaltyUpdatesEnabled', label: isHebrew ? 'עדכוני נאמנות' : 'Loyalty Updates', desc: isHebrew ? 'עדכונים על נקודות ודרגות' : 'Points & tier notifications', icon: Crown },
                   ].map((item) => (
-                    <div key={item.key} className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-gray-50 transition-colors">
+                    <div key={item.key} className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 transition-colors">
                       <div className="flex items-center gap-4">
                         <item.icon className="w-5 h-5 text-gray-400" />
                         <div>
@@ -1304,7 +1304,7 @@ export default function MyAccount() {
                 <div className="space-y-4">
                   <a 
                     href="/settings/security"
-                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 transition-colors cursor-pointer group"
                   >
                     <div className="flex items-center gap-4">
                       <Shield className="w-5 h-5 text-gray-400" />
@@ -1318,7 +1318,7 @@ export default function MyAccount() {
 
                   <a 
                     href="/settings"
-                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 transition-colors cursor-pointer group"
                   >
                     <div className="flex items-center gap-4">
                       <Settings className="w-5 h-5 text-gray-400" />
@@ -1332,7 +1332,7 @@ export default function MyAccount() {
 
                   <a 
                     href="/my-devices"
-                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 transition-colors cursor-pointer group"
                   >
                     <div className="flex items-center gap-4">
                       <CreditCard className="w-5 h-5 text-gray-400" />
@@ -1347,7 +1347,7 @@ export default function MyAccount() {
                   <Button
                     onClick={() => exportDataMutation.mutate()}
                     disabled={exportDataMutation.isPending}
-                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group w-full"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 transition-colors cursor-pointer group w-full"
                   >
                     <div className="flex items-center gap-4">
                       <Download className="w-5 h-5 text-gray-400" />
@@ -1446,7 +1446,7 @@ export default function MyAccount() {
                   <Button
                     onClick={() => setShowFreezeDialog(true)}
                     disabled={accountStatus?.status === 'frozen' || accountStatus?.status === 'pending_deletion'}
-                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-blue-50 transition-colors cursor-pointer group w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 transition-colors cursor-pointer group w-full disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="flex items-center gap-4">
                       <Snowflake className="w-5 h-5 text-blue-500" />
@@ -1466,7 +1466,7 @@ export default function MyAccount() {
                   <Button
                     onClick={() => setShowDeleteDialog(true)}
                     disabled={accountStatus?.status === 'pending_deletion'}
-                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 hover:bg-red-50 transition-colors cursor-pointer group w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 transition-colors cursor-pointer group w-full disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="flex items-center gap-4">
                       <Trash2 className="w-5 h-5 text-red-500" />
@@ -1558,7 +1558,7 @@ export default function MyAccount() {
                   <Button 
                     variant="outline" 
                     onClick={() => setShowFreezeDialog(false)}
-                    className="border-gray-200 text-gray-600 hover:bg-gray-50"
+                    className="border-gray-200 text-gray-600 hover:bg-gray-100"
                   >
                     {isHebrew ? 'ביטול' : 'Cancel'}
                   </Button>
@@ -1687,7 +1687,7 @@ export default function MyAccount() {
                       setDeleteConfirmPhrase('');
                       setDeleteAcknowledgements({ credits: false, data: false, egift: false });
                     }}
-                    className="border-gray-200 text-gray-600 hover:bg-gray-50"
+                    className="border-gray-200 text-gray-600 hover:bg-gray-100"
                   >
                     {isHebrew ? 'ביטול' : 'Cancel'}
                   </Button>
@@ -1750,7 +1750,7 @@ export default function MyAccount() {
                         <Input
                           value={profile?.email || firebaseUser?.email || ''}
                           disabled
-                          className="bg-gray-50 border-gray-200 text-gray-400"
+                          className="bg-white border-gray-200 text-gray-400"
                         />
                       </div>
                       <div>
@@ -1780,7 +1780,7 @@ export default function MyAccount() {
                   ) : (
                     <>
                       <div className="text-center mb-4">
-                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-stone-100 border border-gray-200 flex items-center justify-center">
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white border border-gray-200 flex items-center justify-center">
                           <KeyRound className="w-8 h-8 text-stone-700" />
                         </div>
                         <p className="text-gray-500">
@@ -1815,7 +1815,7 @@ export default function MyAccount() {
                       setEmailVerificationCode('');
                       setEmailChangeStep('request');
                     }}
-                    className="border-gray-200 text-gray-600 hover:bg-gray-50"
+                    className="border-gray-200 text-gray-600 hover:bg-gray-100"
                   >
                     {isHebrew ? 'ביטול' : 'Cancel'}
                   </Button>
@@ -1900,7 +1900,7 @@ export default function MyAccount() {
                   ) : (
                     <>
                       <div className="text-center mb-4">
-                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-stone-100 border border-gray-200 flex items-center justify-center">
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white border border-gray-200 flex items-center justify-center">
                           <KeyRound className="w-8 h-8 text-stone-700" />
                         </div>
                         <p className="text-gray-500">
@@ -1942,7 +1942,7 @@ export default function MyAccount() {
                       setPhoneVerificationCode('');
                       phoneVerification.reset();
                     }}
-                    className="border-gray-200 text-gray-600 hover:bg-gray-50"
+                    className="border-gray-200 text-gray-600 hover:bg-gray-100"
                   >
                     {isHebrew ? 'ביטול' : 'Cancel'}
                   </Button>

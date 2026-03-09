@@ -441,7 +441,7 @@ video.lazy-loaded {
 
 /* Lazy background images */
 [data-bg].lazy {
-  background-color: #f3f4f6;
+  background-color: #ffffff;
   transition: background-image 0.3s ease-in-out;
 }
 
