@@ -243,3 +243,39 @@ The following composite indexes were created via REST API and may still be build
   5. `requireVatAmountOnTaxableTypes` — blocks `direct_platform_sale`/`k9000_terminal_sale`/`platform_fee` with missing/zero `vatAmount`
   - **Wired in routes.ts**: `app.post('/api/finance/*', ...allFinanceGuards)` + `app.patch('/api/finance/*', ...allFinanceGuards)` — mounted before all `/api/finance/` sub-routers
 - **MoneyFlow.tsx** (`/money-flow`): wallet_redemption KPI card, 3 new summary cards, eGift VAT mode advisory panel
+
+## Immutable Legal Stamp System + User Dashboard Enrichment (March 2026 Session 10)
+
+### Immutable Legal Stamps
+- **`legal_stamps` table** (`shared/schema-finance.ts`): append-only, no updatedAt, no deletedAt — 7-year retention (IL VAT §17)
+  - Fields: stampId (UUID PK), entityType, entityId, eventType, actorUid, actorRole, amountCents, currency, metadata (jsonb), previousStampHash, contentHash (SHA-256), signature (ES256), gcsPath, firestorePath, createdAt
+  - Indexes: entity, actor, event, created
+- **`ImmutableStampService`** (`server/services/ImmutableStampService.ts`):
+  - Hash chain: SHA-256 of canonical string per entity (tamper detection)
+  - ES256 signing (EC P-256 key pair)
+  - GCS backup to `gs://petwash-legal-stamps/{year}/{month}/{entityType}/{stampId}.json` (async, non-blocking)
+  - Firestore mirror to `legal_stamps/{stampId}` collection (async, non-blocking)
+  - Methods: `createStamp()`, `verifyStamp()`, `verifyChain()`, `getStampsForEntity()`, `getStampsForActor()`
+- **`server/routes/legal-stamps.ts`** mounted at `/api/legal-stamps`:
+  - DELETE permanently blocked with 405 and legal retention message
+  - GET /me, GET /entity/:type/:id, GET /:stampId, GET /:stampId/verify, GET /chain/:type/:id/verify, POST (admin only)
+- **Auto-stamp triggers**:
+  - Booking completion → `booking_completed` stamp (bookings.ts)
+  - Settlement paid → `payout_sent` stamp (finance/settlements.ts)
+
+### User Activity API
+- **`server/routes/user-activity.ts`** mounted at `/api/user/activity`:
+  - GET /summary — pets, upcoming bookings (sitter+walk), recent wallet transactions, stamp count
+  - GET /bookings — full booking history across sitter + walk platforms
+  - GET /pets — user's pets from customerPets table
+
+### User Dashboard Enhancement (`/dashboard`)
+- Query: `/api/user/activity/summary` — feeds new dynamic sections
+- **My Pets section**: horizontal scroll cards with pet photo/name/species; Add button if empty
+- **Upcoming Bookings section**: next 3 bookings with platform, date, status, amount (hidden if none)
+- **Document Vault card**: shows stamp count with legal retention note; links to /my-account (shown only if stamps exist)
+- All sections appear/disappear based on real data (no placeholder zeros)
+
+### MyAccount Page Enhancement (`/my-account`)
+- **Activity History section** (below existing tabs): full booking history with status color-coded badges, dates, amounts across sitter + walk platforms
+- **Document Vault section** (below Activity): legal stamp list with SHA-256 hash preview, GCS badge, event labels in Hebrew/English, cryptographic verification info

@@ -5,6 +5,7 @@ import VATCalculatorService from "../services/VATCalculatorService";
 import EscrowService from "../services/EscrowService";
 import NotificationService from "../services/NotificationService";
 import ChatService from "../services/ChatService";
+import { ImmutableStampService } from "../services/ImmutableStampService";
 
 const router = express.Router();
 
@@ -298,6 +299,16 @@ router.post("/:bookingId/complete", requireAuth, async (req, res) => {
         }
       }
     }
+
+    // Immutable legal stamp — booking completion event
+    void ImmutableStampService.createStamp({
+      entityType: 'booking',
+      entityId: bookingId,
+      eventType: 'booking_completed',
+      actorUid: userId,
+      actorRole: 'user',
+      metadata: { platform: booking?.platform ?? 'unknown', completedAt: new Date().toISOString() },
+    }).catch(() => {});
 
     res.json({ success: true });
   } catch (error: any) {

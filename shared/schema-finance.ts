@@ -572,3 +572,35 @@ export const insertUsStateTaxFilingSchema = createInsertSchema(usStateTaxFilings
 });
 export type InsertUsStateTaxFiling = z.infer<typeof insertUsStateTaxFilingSchema>;
 export type UsStateTaxFiling = typeof usStateTaxFilings.$inferSelect;
+
+// =================== IMMUTABLE LEGAL STAMPS ===================
+// Append-only audit chain — cryptographically signed, GCS + Firestore backed, NEVER deleted.
+// Every financial event, booking completion, payout, and contract acceptance creates a stamp.
+export const legalStamps = pgTable("legal_stamps", {
+  stampId: varchar("stamp_id", { length: 36 }).primaryKey(),
+  entityType: varchar("entity_type", { length: 64 }).notNull(),
+  entityId: varchar("entity_id", { length: 128 }).notNull(),
+  eventType: varchar("event_type", { length: 64 }).notNull(),
+  actorUid: varchar("actor_uid", { length: 128 }),
+  actorRole: varchar("actor_role", { length: 32 }).default("system"),
+  amountCents: integer("amount_cents"),
+  currency: varchar("currency", { length: 8 }).default("ILS"),
+  metadata: jsonb("metadata"),
+  previousStampHash: varchar("previous_stamp_hash", { length: 64 }),
+  contentHash: varchar("content_hash", { length: 64 }).notNull(),
+  signature: text("signature").notNull(),
+  gcsPath: text("gcs_path"),
+  firestorePath: text("firestore_path"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  entityIdx: index("idx_ls_entity").on(table.entityType, table.entityId),
+  actorIdx: index("idx_ls_actor").on(table.actorUid),
+  eventIdx: index("idx_ls_event").on(table.eventType),
+  createdIdx: index("idx_ls_created").on(table.createdAt),
+}));
+
+export const insertLegalStampSchema = createInsertSchema(legalStamps).omit({
+  createdAt: true,
+});
+export type InsertLegalStamp = z.infer<typeof insertLegalStampSchema>;
+export type LegalStamp = typeof legalStamps.$inferSelect;

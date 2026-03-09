@@ -45,6 +45,8 @@ import sendInvestorEventEmailRoutes from "./routes/send-investor-event-email";
 import financeSettlementsRoutes from "./routes/finance/settlements";
 import transactionAuditRoutes from "./routes/finance/transaction-audit";
 import { allFinanceGuards } from "./middleware/financeGuards";
+import legalStampsRoutes from "./routes/legal-stamps";
+import userActivityRoutes from "./routes/user-activity";
 import sitterSuiteRoutes from "./routes/sitter-suite";
 import academyRoutes from "./routes/academy";
 import walkMyPetRoutes from "./routes/walk-my-pet";
@@ -9525,6 +9527,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/admin/booking-chat', bookingChatRouter);
   app.use('/api/provider-console', providerConsoleRouter);
   app.use('/api/finance', adminLimiter, moneyFlowRouter);
+  app.use('/api/legal-stamps', apiLimiter, legalStampsRoutes);
+  app.use('/api/user/activity', apiLimiter, userActivityRoutes);
   app.use('/api/v2/vouchers', apiLimiter, unifiedVouchersRoutes);
   
   // Email/SMS Campaigns (Marketing - Template Personalization)

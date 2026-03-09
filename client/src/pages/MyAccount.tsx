@@ -28,6 +28,9 @@ import {
   Check, 
   X,
   ChevronRight,
+  CalendarCheck,
+  FileCheck,
+  History,
   Phone,
   Mail,
   MapPin,
@@ -1971,8 +1974,148 @@ export default function MyAccount() {
             <div id="recaptcha-container-phone" />
           </Tabs>
 
+          {/* ── Activity History ───────────────────────────────────── */}
+          <ActivityHistorySection isHebrew={isHebrew} firebaseUser={firebaseUser} />
+
+          {/* ── Document Vault ───────────────────────────────────── */}
+          <DocumentVaultSection isHebrew={isHebrew} firebaseUser={firebaseUser} />
+
         </div>
       </div>
     </Layout>
+  );
+}
+
+// ── Activity History component ───────────────────────────────────────────────
+function ActivityHistorySection({ isHebrew, firebaseUser }: { isHebrew: boolean; firebaseUser: any }) {
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ['/api/user/activity/bookings'],
+    enabled: !!firebaseUser,
+  });
+
+  const bookings: any[] = data?.bookings ?? [];
+
+  if (!isLoading && bookings.length === 0) return null;
+
+  const statusColor = (s: string) => {
+    if (s === 'completed') return 'bg-green-100 text-green-800';
+    if (s === 'confirmed') return 'bg-blue-100 text-blue-800';
+    if (s === 'cancelled') return 'bg-red-100 text-red-800';
+    if (s === 'disputed') return 'bg-orange-100 text-orange-800';
+    return 'bg-gray-100 text-gray-600';
+  };
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center gap-2 mb-4">
+        <History className="w-4 h-4 text-gray-500" />
+        <h3 className="text-sm font-semibold text-gray-800">
+          {isHebrew ? 'היסטוריית פעילות' : 'Activity History'}
+        </h3>
+      </div>
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        {isLoading ? (
+          <div className="px-5 py-4 text-sm text-gray-400">{isHebrew ? 'טוען...' : 'Loading…'}</div>
+        ) : (
+          bookings.slice(0, 10).map((b: any, idx: number) => (
+            <div
+              key={b.id}
+              className="px-5 py-3.5 flex items-center gap-3"
+              style={{ borderBottom: idx < bookings.length - 1 ? '1px solid #f3f4f6' : 'none' }}
+            >
+              <CalendarCheck className="w-4 h-4 flex-shrink-0 text-gray-400" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-800 font-medium truncate">{b.platform}</p>
+                <p className="text-[10px] text-gray-400">
+                  {b.startDate
+                    ? new Date(b.startDate).toLocaleDateString(isHebrew ? 'he-IL' : 'en-IL', { day: 'numeric', month: 'short', year: 'numeric' })
+                    : '—'}
+                </p>
+              </div>
+              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${statusColor(b.status)}`}>
+                {b.status}
+              </span>
+              {b.amountCents > 0 && (
+                <p className="text-xs text-gray-600">₪{(b.amountCents / 100).toFixed(0)}</p>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Document Vault component ─────────────────────────────────────────────────
+function DocumentVaultSection({ isHebrew, firebaseUser }: { isHebrew: boolean; firebaseUser: any }) {
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ['/api/legal-stamps/me'],
+    enabled: !!firebaseUser,
+  });
+
+  const stamps: any[] = data?.stamps ?? [];
+
+  if (!isLoading && stamps.length === 0) return null;
+
+  const eventLabel = (eventType: string) => {
+    const map: Record<string, string> = {
+      booking_completed: isHebrew ? 'הזמנה הושלמה' : 'Booking Completed',
+      payment_received: isHebrew ? 'תשלום התקבל' : 'Payment Received',
+      payout_sent: isHebrew ? 'תשלום נשלח' : 'Payout Sent',
+      contract_signed: isHebrew ? 'חוזה נחתם' : 'Contract Signed',
+      egift_sold: isHebrew ? 'כרטיס מתנה נמכר' : 'e-Gift Sold',
+      wallet_topped_up: isHebrew ? 'ארנק טוען' : 'Wallet Topped Up',
+      escrow_held: isHebrew ? 'כספים בנאמנות' : 'Escrow Held',
+      escrow_released: isHebrew ? 'כספים שוחררו' : 'Escrow Released',
+    };
+    return map[eventType] ?? eventType.replace(/_/g, ' ');
+  };
+
+  return (
+    <div className="mt-8 mb-6">
+      <div className="flex items-center gap-2 mb-4">
+        <FileCheck className="w-4 h-4 text-gray-500" />
+        <div className="flex-1">
+          <h3 className="text-sm font-semibold text-gray-800">
+            {isHebrew ? 'כספת מסמכים משפטיים' : 'Legal Document Vault'}
+          </h3>
+          <p className="text-[10px] text-gray-400">
+            {isHebrew
+              ? 'חתימות קריפטוגרפיות בלתי ניתנות למחיקה · שמירה 7 שנים'
+              : 'Immutable cryptographic stamps · 7-year retention (IL VAT §17)'}
+          </p>
+        </div>
+        <span className="px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase rounded-full bg-green-100 text-green-800">
+          {stamps.length}
+        </span>
+      </div>
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        {isLoading ? (
+          <div className="px-5 py-4 text-sm text-gray-400">{isHebrew ? 'טוען...' : 'Loading…'}</div>
+        ) : (
+          stamps.slice(0, 8).map((s: any, idx: number) => (
+            <div
+              key={s.stampId}
+              className="px-5 py-3.5 flex items-start gap-3"
+              style={{ borderBottom: idx < stamps.length - 1 ? '1px solid #f3f4f6' : 'none' }}
+            >
+              <Shield className="w-4 h-4 flex-shrink-0 text-green-500 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-800 font-medium">{eventLabel(s.eventType)}</p>
+                <p className="text-[10px] text-gray-400 font-mono truncate">
+                  {s.stampId.slice(0, 16)}… · {new Date(s.createdAt).toLocaleDateString(isHebrew ? 'he-IL' : 'en-IL')}
+                </p>
+                <p className="text-[9px] text-gray-300 font-mono truncate mt-0.5">
+                  SHA-256: {s.contentHash.slice(0, 20)}…
+                </p>
+              </div>
+              {s.gcsPath && (
+                <span className="px-1.5 py-0.5 text-[9px] rounded bg-blue-50 text-blue-600 font-medium flex-shrink-0">GCS</span>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
   );
 }

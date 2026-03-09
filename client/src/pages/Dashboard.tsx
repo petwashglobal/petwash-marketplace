@@ -6,9 +6,33 @@ import { Link, useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { LogOut, ChevronRight } from 'lucide-react';
+import { LogOut, ChevronRight, PawPrint, CalendarCheck, Clock, Shield, ArrowRight } from 'lucide-react';
 import type { ReactNode } from 'react';
 import diamondLogo from '@assets/IMG_3257_1771582024352.png';
+
+interface ActivitySummary {
+  success: boolean;
+  pets: Array<{ id: number; name: string; species: string; breed: string; photoUrl: string | null }>;
+  petsCount: number;
+  upcomingBookings: Array<{
+    id: number;
+    bookingId: string;
+    platform: string;
+    status: string;
+    startDate: string;
+    endDate: string;
+    amountCents: number;
+  }>;
+  recentTransactions: Array<{
+    id: number;
+    type: string;
+    creditType: string;
+    amountCents: number | null;
+    description: string | null;
+    createdAt: string;
+  }>;
+  stampCount: number;
+}
 
 interface WalletSummary {
   walletId: string;
@@ -322,6 +346,11 @@ export default function Dashboard() {
     enabled: !!firebaseUser,
   });
 
+  const { data: activityData } = useQuery<ActivitySummary>({
+    queryKey: ['/api/user/activity/summary'],
+    enabled: !!firebaseUser,
+  });
+
   const wallet = walletData?.wallet || null;
   const userProfile = (profileData as any)?.user;
   const userName = userProfile?.firstName || firebaseUser?.displayName?.split(' ')[0] || '';
@@ -613,6 +642,121 @@ export default function Dashboard() {
               </div>
             </motion.button>
           </div>
+
+          {/* My Pets Section */}
+          {activityData && activityData.petsCount > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.76 }}
+              className="mb-5"
+            >
+              <p className="text-[10px] tracking-[0.25em] uppercase font-medium mb-3 text-center" style={goldText}>
+                {language === 'he' ? 'חיות המחמד שלי' : 'My Pets'}
+              </p>
+              <div className="flex gap-3 overflow-x-auto pb-1">
+                {activityData.pets.map((pet) => (
+                  <Link key={pet.id} href="/sitter-suite">
+                    <div
+                      className="flex-shrink-0 rounded-2xl overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                      style={{ background: '#FFFFFF', border: cardBorder, boxShadow: cardShadow, minWidth: 90 }}
+                    >
+                      <div className="w-[90px] h-[90px] bg-gray-50 flex items-center justify-center">
+                        {pet.photoUrl ? (
+                          <img src={pet.photoUrl} alt={pet.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <PawPrint className="w-8 h-8" style={{ color: '#c9a96e' }} />
+                        )}
+                      </div>
+                      <div className="px-2 py-2 text-center">
+                        <p className="text-[10px] font-medium text-gray-800 truncate">{pet.name}</p>
+                        <p className="text-[9px] text-gray-400 truncate">{pet.species || pet.breed || ''}</p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+                <Link href="/my-account">
+                  <div
+                    className="flex-shrink-0 rounded-2xl overflow-hidden cursor-pointer hover:opacity-80 transition-opacity flex flex-col items-center justify-center"
+                    style={{ background: '#FFFFFF', border: cardBorder, boxShadow: cardShadow, minWidth: 90, height: 120 }}
+                  >
+                    <ArrowRight className="w-5 h-5 mb-1" style={{ color: '#c9a96e' }} />
+                    <p className="text-[9px] tracking-wide" style={{ color: '#c9a96e' }}>
+                      {language === 'he' ? 'הוסף' : 'Add'}
+                    </p>
+                  </div>
+                </Link>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Upcoming Bookings Section */}
+          {activityData && activityData.upcomingBookings.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.77 }}
+              className="mb-5"
+            >
+              <p className="text-[10px] tracking-[0.25em] uppercase font-medium mb-3 text-center" style={goldText}>
+                {language === 'he' ? 'הזמנות קרובות' : 'Upcoming Bookings'}
+              </p>
+              <div className="rounded-2xl overflow-hidden" style={{ border: cardBorder, boxShadow: cardShadow }}>
+                {activityData.upcomingBookings.slice(0, 3).map((booking, idx) => (
+                  <div
+                    key={booking.id}
+                    className="px-5 py-3.5 flex items-center gap-3"
+                    style={{ background: '#FFFFFF', borderBottom: idx < activityData.upcomingBookings.length - 1 ? '1px solid rgba(229,231,235,1)' : 'none' }}
+                  >
+                    <CalendarCheck className="w-4 h-4 flex-shrink-0" style={{ color: '#c9a96e' }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-800 font-medium truncate">{booking.platform}</p>
+                      <p className="text-[10px] text-gray-400">
+                        {new Date(booking.startDate).toLocaleDateString(language === 'he' ? 'he-IL' : 'en-IL', { day: 'numeric', month: 'short' })}
+                        {' · '}
+                        <span className="capitalize">{booking.status}</span>
+                      </p>
+                    </div>
+                    {booking.amountCents > 0 && (
+                      <p className="text-sm font-light" style={{ color: '#c9a96e' }}>
+                        ₪{(booking.amountCents / 100).toFixed(0)}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Document Vault — legal stamps */}
+          {activityData && activityData.stampCount > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.78 }}
+              className="mb-5"
+            >
+              <Link href="/my-account">
+                <div
+                  className="rounded-2xl overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                  style={{ background: '#FFFFFF', border: cardBorder, boxShadow: cardShadow }}
+                >
+                  <div className="px-5 py-4 flex items-center gap-3">
+                    <Shield className="w-4 h-4 flex-shrink-0" style={{ color: '#c9a96e' }} />
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-800 font-medium">
+                        {language === 'he' ? 'כספת מסמכים משפטיים' : 'Legal Document Vault'}
+                      </p>
+                      <p className="text-[10px] text-gray-400">
+                        {activityData.stampCount} {language === 'he' ? 'רשומות חתומות · 7 שנות שמירה' : 'signed records · 7-year retention'}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5" style={goldText} />
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
+          )}
 
           <motion.div
             initial={{ opacity: 0, y: 10 }}

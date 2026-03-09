@@ -25,6 +25,7 @@ import { eq, desc, and, gte, lte, sql } from 'drizzle-orm';
 import { requireAdmin } from '../../adminAuth';
 import { logger } from '../../lib/logger';
 import { FinanceSettlementService } from '../../services/FinanceSettlementService';
+import { ImmutableStampService } from '../../services/ImmutableStampService';
 
 const router = Router();
 
@@ -367,6 +368,23 @@ router.patch('/:id/pay', async (req, res) => {
       settlementNumber: updatedSettlement.settlementNumber,
       paymentReference,
     });
+
+    // Immutable legal stamp — payout sent event
+    void ImmutableStampService.createStamp({
+      entityType: 'payout',
+      entityId: String(settlementId),
+      eventType: 'payout_sent',
+      actorRole: 'admin',
+      amountCents: updatedSettlement.totalAmountIls
+        ? Math.round(Number(updatedSettlement.totalAmountIls) * 100)
+        : undefined,
+      currency: 'ILS',
+      metadata: {
+        settlementNumber: updatedSettlement.settlementNumber,
+        paymentReference,
+        partnerId: updatedSettlement.partnerId,
+      },
+    }).catch(() => {});
 
     res.json({
       success: true,
