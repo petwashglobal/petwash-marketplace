@@ -577,7 +577,7 @@ function LuxuryGiftCard({
   const occasionLabel = occasion ? (occasion.labels[lang] || occasion.labels.en) : null;
 
   return (
-    <Button 
+    <button 
       type="button"
       className="relative w-full text-left transition-all duration-300 group"
       onClick={onClick}
@@ -660,7 +660,7 @@ function LuxuryGiftCard({
           </div>
         </div>
       </div>
-    </Button>
+    </button>
   );
 }
 
@@ -947,20 +947,20 @@ export default function EGift() {
                         <Globe className="w-3 h-3 text-[#aaa]" />
                         <div className="flex gap-0.5">
                           {messageLanguages.map((ml) => (
-                            <Button
+                            <button
                               key={ml.code}
                               type="button"
                               onClick={() => setMessageLang(ml)}
                               className={`px-1.5 py-0.5 text-[10px] rounded transition-all duration-200 touch-manipulation ${
                                 messageLang.code === ml.code
                                   ? 'bg-[#1a1a1a] text-white shadow-sm'
-                                  : 'text-[#999] hover:text-[#555] hover:bg-[#f5f5f5]'
+                                  : 'bg-transparent text-[#999] hover:text-[#555] hover:bg-[#f5f5f5]'
                               }`}
                               title={ml.label}
                               data-testid={`msg-lang-${ml.code}`}
                             >
                               {ml.flag}
-                            </Button>
+                            </button>
                           ))}
                         </div>
                       </div>
@@ -971,7 +971,7 @@ export default function EGift() {
                         <p className="text-[9px] tracking-[0.1em] uppercase text-[#bbb] mb-1.5">{tx('suggestedMessages', lang)}</p>
                         <div className="flex flex-wrap gap-1.5">
                           {suggestions.map((msg, i) => (
-                            <Button
+                            <button
                               key={i}
                               type="button"
                               onClick={() => applySuggestedMessage(msg)}
@@ -980,7 +980,7 @@ export default function EGift() {
                               dir={messageLang.dir}
                             >
                               {msg.length > 50 ? msg.substring(0, 50) + '...' : msg}
-                            </Button>
+                            </button>
                           ))}
                         </div>
                       </div>
@@ -1138,7 +1138,7 @@ export default function EGift() {
                 const isSelected = selectedOccasion?.id === occasion.id;
                 const label = occasion.labels[lang] || occasion.labels.en;
                 return (
-                  <Button
+                  <button
                     key={occasion.id}
                     type="button"
                     onClick={() => {
@@ -1155,13 +1155,13 @@ export default function EGift() {
                     style={{
                       borderRadius: '100px',
                       border: isSelected ? `2px solid ${occasion.borderColor}` : '1.5px solid #eee',
-                      background: isSelected ? occasion.borderColor : undefined,
+                      background: isSelected ? occasion.borderColor : '#ffffff',
                     }}
                     data-testid={`occasion-${occasion.id}`}
                   >
                     <OccIcon className="w-4 h-4" strokeWidth={isSelected ? 2.5 : 1.5} />
                     {label}
-                  </Button>
+                  </button>
                 );
               })}
             </div>
@@ -1173,20 +1173,20 @@ export default function EGift() {
             </p>
             <div className="flex flex-wrap justify-center gap-2">
               {platformServices.map(service => (
-                <Button
+                <button
                   key={service.id}
                   type="button"
                   onClick={() => toggleService(service.id)}
                   className={`px-3 sm:px-4 py-2 text-[10px] sm:text-[11px] tracking-[0.08em] font-medium transition-all duration-200 touch-manipulation ${
                     selectedServices.includes(service.id)
-                      ? 'text-[#1a1a1a] border-[#1a1a1a] bg-[#FAFAF8]'
-                      : 'text-[#aaa] border-[#eee] bg-white hover:text-[#555] hover:border-[#ccc]'
+                      ? 'text-[#1a1a1a] bg-[#FAFAF8]'
+                      : 'text-[#aaa] bg-white hover:text-[#555] hover:border-[#ccc]'
                   }`}
                   style={{ borderRadius: '2px', border: selectedServices.includes(service.id) ? '1px solid #1a1a1a' : '1px solid #eee' }}
                   data-testid={`service-toggle-${service.id}`}
                 >
                   {service.name}
-                </Button>
+                </button>
               ))}
             </div>
           </div>
