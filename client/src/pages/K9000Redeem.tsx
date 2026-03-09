@@ -24,7 +24,7 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { apiRequest } from '@/lib/queryClient';
 import QRCode from 'qrcode';
 
-const WASH_PRICE_CENTS = 3500;
+const WASH_PRICE_CENTS = 5500;
 
 interface WalletSummary {
   walletId: string;
