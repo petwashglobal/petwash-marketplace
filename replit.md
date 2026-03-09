@@ -78,7 +78,12 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Backend**: Node.js, Express.js, Neon serverless PostgreSQL with Drizzle ORM, Redis caching.
 - **Authentication & User Management**: Firebase Auth with Twilio SMS, WebAuthn/Passkey, RBAC, biometrics, GDPR compliance. Includes mandatory MFA for admin roles and email verification for critical actions. Features a robust user status state machine, authorization gates for roles and MFA, and an audit trail for critical actions.
 - **AI Chat Assistant**: Google Dialogflow CX with Gemini 2.5 Flash, bilingual (Hebrew/English), WCAG 2.1 AA compliant.
-- **Real-Time Booking Chat**: Full WebSocket-based chat between customers and pet care providers. Backend: `/api/booking-chat/*` (open, fetch, send, read, report). Frontend: `BookingChat.tsx` (chat UI) + `BookingChatInbox.tsx` (conversation list). Accessible from provider/owner dashboards via "Message" buttons. Routes: `/booking-chat/inbox` and `/booking-chat/:bookingId`.
+- **Real-Time Booking Chat** (570-line spec, fully implemented): Production-grade WebSocket chat per spec §1-19.
+  - **Inbox** (`BookingChatInbox.tsx`): Active/Archived tabs, unread pills, platform badges, skeleton loaders, empty states.
+  - **Chat** (`BookingChat.tsx`): Typing indicators (WS `chat_typing_start/stop` + `chat_typing_presence`), read receipts (CheckCheck), image upload (multer → Firebase Storage → `POST /:bookingId/upload` → `imageUrl` sent as `messageType: "image"`), full-screen image viewer, AI Draft (Gemini last 10 msgs prefills composer), AI Summarize (Gemini last 30 msgs → SummaryPanel), overflow MoreVertical menu (report/block/help), Block User Sheet (standalone bottom sheet), Report Message Dialog, service type badge in header, provider quick actions bar (6 buttons, collapsible), system message chips, rate limiting (10/60s), contact info detection + flagging (§7), soft delete, iOS safe-area padding.
+  - **Backend routes**: `open`, `send`, `read`, `upload`, `ai-draft`, `ai-summarize`, `report`, `provider-arriving`, `no-show`, `dispute`, admin moderation.
+  - **WebSocket events**: `chat_typing_start/stop` → `broadcastTypingInternal` → `chat_typing_presence`; `booking_chat_message`, `booking_chat_read`, `booking_chat_status`; auto-expire typing after 5s.
+  - Routes: `/booking-chat/inbox` and `/booking-chat/:bookingId`.
 - **Marketplaces**: Unified system for The Sitter Suite™, Walk My Pet™, PetTrek™, and The Plush Lab™ (AI avatar creator).
 - **Loyalty Program**: 7-tier system, e-gift cards, wash packages, Apple Wallet integration.
 - **E-Signature**: DocuSeal with Hebrew RTL support; custom system for Israeli subcontractor agreements.

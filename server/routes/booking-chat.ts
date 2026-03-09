@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { db } from '../db';
 import { 
   bookingConversations, 
@@ -24,8 +25,18 @@ import {
   isUserConnected
 } from '../websocket';
 import { syncChatToBookingStatus } from '../lib/booking-chat-sync';
-import { auth as firebaseAuth } from '../lib/firebase-admin';
+import { auth as firebaseAuth, storage as firebaseStorage } from '../lib/firebase-admin';
 import sgMail from '../lib/sendgrid';
+
+// Multer for in-memory image upload (max 8MB)
+const uploadMiddleware = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Only image files are allowed'));
+  },
+});
 
 const router = Router();
 
@@ -844,6 +855,123 @@ router.post('/:bookingId/dispute', async (req, res) => {
   } catch (error) {
     logger.error('Error opening dispute', error);
     res.status(500).json({ error: 'Failed to open dispute' });
+  }
+});
+
+/**
+ * POST /api/booking-chat/:bookingId/upload
+ * §5: Upload an image file → Firebase Storage → return imageUrl
+ * §9: Image upload from camera or gallery
+ * §16: image upload failure handling
+ */
+router.post('/:bookingId/upload', uploadMiddleware.single('image'), async (req: any, res) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const { bookingId } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' });
+    }
+
+    const [conv] = await db
+      .select()
+      .from(bookingConversations)
+      .where(eq(bookingConversations.bookingId, bookingId))
+      .limit(1);
+
+    if (!conv || (conv.customerId !== uid && conv.providerId !== uid)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    if (conv.chatStatus !== 'active') {
+      return res.status(403).json({ error: 'Chat is read-only' });
+    }
+
+    // Upload to Firebase Storage
+    const ext = req.file.mimetype === 'image/png' ? 'png' : req.file.mimetype === 'image/webp' ? 'webp' : 'jpg';
+    const fileName = `chat-images/${conv.conversationId}/${nanoid()}.${ext}`;
+    const bucket = firebaseStorage.bucket();
+    const fileRef = bucket.file(fileName);
+
+    await fileRef.save(req.file.buffer, {
+      metadata: {
+        contentType: req.file.mimetype,
+        metadata: { uploadedBy: uid, conversationId: conv.conversationId },
+      },
+    });
+
+    // Make publicly readable
+    await fileRef.makePublic();
+    const imageUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+
+    logger.info(`[ChatUpload] Image uploaded for booking ${bookingId} by ${uid}: ${imageUrl}`);
+    res.json({ imageUrl });
+  } catch (error) {
+    logger.error('Error uploading chat image', error);
+    res.status(500).json({ error: 'Image upload failed' });
+  }
+});
+
+/**
+ * POST /api/booking-chat/:bookingId/ai-summarize
+ * §14: Gemini summarizes the conversation for user/provider — never auto-sends.
+ */
+router.post('/:bookingId/ai-summarize', async (req, res) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const { bookingId } = req.params;
+
+    const [conv] = await db
+      .select()
+      .from(bookingConversations)
+      .where(eq(bookingConversations.bookingId, bookingId))
+      .limit(1);
+
+    if (!conv || (conv.customerId !== uid && conv.providerId !== uid)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const messages = await db
+      .select()
+      .from(bookingMessages)
+      .where(eq(bookingMessages.conversationId, conv.conversationId))
+      .orderBy(desc(bookingMessages.createdAt))
+      .limit(30);
+
+    messages.reverse();
+
+    const isProvider = conv.providerId === uid;
+    const myRole = isProvider ? 'provider' : 'customer';
+    const otherRole = isProvider ? 'customer' : 'provider';
+
+    const conversationText = messages
+      .filter(m => !m.isDeleted)
+      .map(m => {
+        const roleLabel = m.senderRole === 'system' ? 'SYSTEM' : (m.senderUid === uid ? `ME (${myRole})` : `THEM (${otherRole})`);
+        return `${roleLabel}: ${m.content}`;
+      })
+      .join('\n');
+
+    const prompt = `You are a helpful assistant for a pet care marketplace called PetWash.
+Summarize this conversation in 2-4 concise bullet points in the same language as the conversation.
+Focus on: what was discussed, any commitments made, any open items.
+
+Conversation:
+${conversationText || '(no messages yet)'}
+
+Summary (bullet points):`;
+
+    const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
+    const response = await genAI.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: prompt,
+    });
+
+    const summary = response.text?.trim() || '';
+    res.json({ summary });
+  } catch (error) {
+    logger.error('Error generating AI summary', error);
+    res.status(500).json({ error: 'Failed to generate summary' });
   }
 });
 
