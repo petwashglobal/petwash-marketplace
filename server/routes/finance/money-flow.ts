@@ -77,13 +77,16 @@ router.get('/money-flow-summary', requireRole('admin', 'management', 'staff'), a
       : sql``;
 
     // ── Marketplace bookings (walk_bookings + sitter_bookings) ────────────────
+    // VAT is 18% on platform fee only (Section 5 — marketplace flow)
     const walkStats = await db.execute(sql`
       SELECT
         COUNT(*) FILTER (WHERE status NOT IN ('cancelled','refunded')) AS total,
         COALESCE(SUM(CAST(total_cost AS NUMERIC) * 100) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS gross_cents,
         COALESCE(SUM((COALESCE(CAST(platform_fee_owner AS NUMERIC),0) + COALESCE(CAST(platform_fee_sitter AS NUMERIC),0)) * 100) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS fee_cents,
         COALESCE(SUM(CAST(walker_payout AS NUMERIC) * 100) FILTER (WHERE status = 'completed'), 0) AS payout_cents,
-        0 AS vat_cents
+        COALESCE(SUM(
+          ROUND((COALESCE(CAST(platform_fee_owner AS NUMERIC),0) + COALESCE(CAST(platform_fee_sitter AS NUMERIC),0)) * 100 * 0.18)
+        ) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS vat_cents
       FROM walk_bookings
     `);
 
@@ -93,7 +96,7 @@ router.get('/money-flow-summary', requireRole('admin', 'management', 'staff'), a
         COALESCE(SUM(total_charge_cents) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS gross_cents,
         COALESCE(SUM(platform_service_fee_cents) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS fee_cents,
         COALESCE(SUM(sitter_payout_cents) FILTER (WHERE status = 'completed'), 0) AS payout_cents,
-        0 AS vat_cents
+        COALESCE(SUM(ROUND(platform_service_fee_cents * 0.18)) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS vat_cents
       FROM sitter_bookings
     `);
 
@@ -123,8 +126,28 @@ router.get('/money-flow-summary', requireRole('admin', 'management', 'staff'), a
     const creditStats = await db.execute(sql`
       SELECT
         COUNT(*) FILTER (WHERE transaction_type = 'topup') AS topup_count,
-        COALESCE(SUM(amount_cents) FILTER (WHERE transaction_type = 'topup'), 0) AS topup_cents
+        COALESCE(SUM(amount_cents) FILTER (WHERE transaction_type = 'topup'), 0) AS topup_cents,
+        COUNT(*) FILTER (WHERE transaction_type = 'redemption' OR transaction_type = 'wallet_redemption') AS redemption_count,
+        COALESCE(SUM(amount_cents) FILTER (WHERE transaction_type = 'redemption' OR transaction_type = 'wallet_redemption'), 0) AS redemption_cents
       FROM credit_transactions
+    `);
+
+    // ── Wallet redemptions (transaction_records) ───────────────────────────────
+    const redemptionStats = await db.execute(sql`
+      SELECT
+        COUNT(*) AS redemption_count,
+        COALESCE(SUM(CAST(total_amount AS NUMERIC)), 0) AS redemption_gross
+      FROM transaction_records
+      WHERE flow_type = 'wallet_redemption'
+    `);
+
+    // ── Chargebacks ────────────────────────────────────────────────────────────
+    const chargebackStats = await db.execute(sql`
+      SELECT
+        COUNT(*) AS total_chargebacks,
+        COALESCE(SUM(CAST(total_amount AS NUMERIC)), 0) AS chargeback_gross
+      FROM transaction_records
+      WHERE flow_type = 'chargeback'
     `);
 
     // ── Refunds ───────────────────────────────────────────────────────────────
@@ -141,12 +164,15 @@ router.get('/money-flow-summary', requireRole('admin', 'management', 'staff'), a
     const es = (escrowStats.rows?.[0] || {}) as any;
     const ds = (directStats.rows?.[0] || {}) as any;
     const cs = (creditStats.rows?.[0] || {}) as any;
+    const rds = (redemptionStats.rows?.[0] || {}) as any;
+    const cbs = (chargebackStats.rows?.[0] || {}) as any;
     const rs = (refundStats.rows?.[0] || {}) as any;
 
     const mktBookings = parseInt(ws.total || 0) + parseInt(ss.total || 0);
     const mktGrossCents = parseInt(ws.gross_cents || 0) + parseInt(ss.gross_cents || 0);
     const mktFeeCents = parseInt(ws.fee_cents || 0) + parseInt(ss.fee_cents || 0);
     const mktPayoutCents = parseInt(ws.payout_cents || 0) + parseInt(ss.payout_cents || 0);
+    // VAT on marketplace = 18% of platform fee only (Section 5)
     const mktVatCents = parseInt(ws.vat_cents || 0) + parseInt(ss.vat_cents || 0);
 
     const directGross = parseFloat(ds.direct_gross || 0);
@@ -156,6 +182,16 @@ router.get('/money-flow-summary', requireRole('admin', 'management', 'staff'), a
     const processorFees = parseFloat(ds.processor_fees || 0);
 
     const walletTopupGrossILS = parseInt(cs.topup_cents || 0) / 100;
+
+    // Wallet redemptions — both credit_transactions and transaction_records
+    const totalWalletRedemptions =
+      parseInt(rds.redemption_count || 0) + parseInt(cs.redemption_count || 0);
+    const totalWalletRedemptionValueILS =
+      parseFloat(rds.redemption_gross || 0) + (parseInt(cs.redemption_cents || 0) / 100);
+
+    const totalChargebacks = parseInt(cbs.total_chargebacks || 0);
+
+    const totalPlatformRevenue = (mktFeeCents / 100) + directGross - directVat - processorFees;
 
     const summary: MoneyFlowSummary = {
       totalMarketplaceBookings: mktBookings,
@@ -172,14 +208,17 @@ router.get('/money-flow-summary', requireRole('admin', 'management', 'staff'), a
       totalEGiftValueILS: egiftGross,
       totalWalletTopups: parseInt(ds.wallet_count || 0) + parseInt(cs.topup_count || 0),
       totalWalletTopupValueILS: walletGross + walletTopupGrossILS,
+      totalWalletRedemptions,
+      totalWalletRedemptionValueILS,
       totalVATDirectSalesILS: directVat,
 
       totalProcessorFeesILS: processorFees,
       totalRefundsILS: parseInt(rs.total_refund_cents || 0) / 100,
-      totalChargebacks: 0,
+      totalChargebacks,
 
       totalVATAllFlowsILS: (mktVatCents / 100) + directVat,
-      totalNetRevenueILS: (mktFeeCents / 100) + directGross - directVat - processorFees,
+      totalNetRevenueILS: totalPlatformRevenue,
+      totalPlatformRevenue,
     };
 
     // ── Audit trail ────────────────────────────────────────────────────────────

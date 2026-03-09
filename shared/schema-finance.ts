@@ -82,12 +82,28 @@ export const generalLedger = pgTable("general_ledger", {
   accountCode: varchar("account_code").notNull(), // 1000, 2000, 3000, etc.
   accountName: varchar("account_name").notNull(),
   accountType: varchar("account_type").notNull(), // asset, liability, equity, revenue, expense
+  /**
+   * SECTION 1 — MANDATORY: Every ledger entry MUST carry the transaction type.
+   * Permitted values (from TRANSACTION_TYPES in shared/finance-flow-types.ts):
+   * marketplace_booking | direct_platform_sale | egift_sale | wallet_topup |
+   * wallet_redemption | platform_fee | processing_fee | vat_entry |
+   * escrow_hold | escrow_release | escrow_refund | provider_payout |
+   * refund | adjustment | chargeback
+   */
+  transactionType: varchar("transaction_type").notNull(), // See TRANSACTION_TYPES — mandatory per spec Section 1
   debit: decimal("debit", { precision: 12, scale: 2 }).default("0"),
   credit: decimal("credit", { precision: 12, scale: 2 }).default("0"),
   currency: varchar("currency").default("ILS"),
   description: text("description").notNull(),
   referenceType: varchar("reference_type"), // invoice, payment, journal_entry
   referenceId: varchar("reference_id"),
+  /**
+   * eGift / wallet VAT mode (Section 5 advisory).
+   * 'deferred_liability' = VAT event at redemption (default until CPA confirms)
+   * 'taxable_sale'       = VAT event at purchase
+   * null for non-egift/wallet entries.
+   */
+  vatMode: varchar("vat_mode"), // 'deferred_liability' | 'taxable_sale' | null
   fiscalYear: integer("fiscal_year").notNull(),
   fiscalPeriod: integer("fiscal_period").notNull(), // 1-12 for months
   enteredBy: integer("entered_by"),
@@ -98,6 +114,7 @@ export const generalLedger = pgTable("general_ledger", {
   entryNumberIdx: uniqueIndex("idx_gl_entry").on(table.entryNumber),
   accountIdx: index("idx_gl_account").on(table.accountCode),
   dateIdx: index("idx_gl_date").on(table.entryDate),
+  txTypeIdx: index("idx_gl_tx_type").on(table.transactionType),
   fiscalIdx: index("idx_gl_fiscal").on(table.fiscalYear, table.fiscalPeriod),
 }));
 

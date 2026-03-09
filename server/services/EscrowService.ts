@@ -216,24 +216,40 @@ class EscrowService {
 
     const escrow = escrowDoc.data() as EscrowPayment;
 
+    if (escrow.status === "released" || escrow.status === "refunded") {
+      throw new Error(`Cannot dispute an escrow that is already ${escrow.status}`);
+    }
+
+    // Section 10: Set disputedAt + autoReleaseBlocked to prevent cron auto-release
     await escrowRef.update({
       status: "disputed",
       disputeReason,
       disputedBy,
       disputedAt: new Date(),
+      autoReleaseBlocked: true, // FREEZE: cron must NOT auto-release disputed funds (Section 10)
     });
 
-    const adminNotification = {
+    await NotificationService.sendNotification({
       userId: "admin",
-      type: "system" as const,
-      title: "🚨 Escrow Dispute",
-      message: `Dispute filed for booking ${escrow.bookingId}. Amount: ₪${escrow.amount.toFixed(2)}`,
-      priority: "high" as const,
-      channel: "all" as const,
-      data: { escrowId, bookingId: escrow.bookingId, reason: disputeReason },
-    };
+      type: "system",
+      title: "🚨 Escrow Dispute — Auto-Release Frozen",
+      message: `Dispute filed for booking ${escrow.bookingId}. Amount: ₪${escrow.amount.toFixed(2)}. Auto-release is FROZEN pending admin review.`,
+      priority: "high",
+      channel: "all",
+      data: { escrowId, bookingId: escrow.bookingId, reason: disputeReason, autoReleaseBlocked: true },
+    });
 
-    console.log(`[Escrow] DISPUTE: ${escrowId} - Reason: ${disputeReason}`);
+    await NotificationService.sendNotification({
+      userId: escrow.customerId,
+      type: "system",
+      title: "Dispute Received",
+      message: `Your dispute for booking has been received and is under review. Payment is frozen.`,
+      priority: "high",
+      channel: "all",
+      data: { escrowId, bookingId: escrow.bookingId },
+    });
+
+    console.log(`[Escrow] DISPUTE FROZEN: ${escrowId} - Reason: ${disputeReason} - Auto-release blocked`);
   }
 
   async getEscrowPayment(escrowId: string): Promise<EscrowPayment | null> {
@@ -252,6 +268,8 @@ class EscrowService {
 
   async getExpiredHolds(): Promise<EscrowPayment[]> {
     const now = new Date();
+    // Section 10: Only fetch 'held' status — 'disputed' escrows are frozen and excluded.
+    // autoReleaseBlocked check is done in autoReleaseExpiredHolds as an extra safety layer.
     const snapshot = await this.db
       .collection("escrow_payments")
       .where("status", "==", "held")
@@ -264,9 +282,21 @@ class EscrowService {
   async autoReleaseExpiredHolds(): Promise<number> {
     const expiredHolds = await this.getExpiredHolds();
     let releasedCount = 0;
+    let skippedDisputed = 0;
 
     for (const escrow of expiredHolds) {
       try {
+        // Section 10: Double-check autoReleaseBlocked flag — disputed escrows
+        // may have been set to 'held' accidentally before dispute was filed.
+        const doc = await this.db.collection("escrow_payments").doc(escrow.id).get();
+        const fresh = doc.data() as any;
+
+        if (fresh?.autoReleaseBlocked === true || fresh?.status === "disputed") {
+          skippedDisputed++;
+          console.warn(`[Escrow] SKIPPED auto-release for disputed escrow: ${escrow.id}`);
+          continue;
+        }
+
         await this.releaseEscrowPayment(escrow.id, "system_auto_release");
         releasedCount++;
       } catch (error) {
@@ -274,8 +304,8 @@ class EscrowService {
       }
     }
 
-    if (releasedCount > 0) {
-      console.log(`[Escrow] Auto-released ${releasedCount} expired holds`);
+    if (releasedCount > 0 || skippedDisputed > 0) {
+      console.log(`[Escrow] Auto-release run: ${releasedCount} released, ${skippedDisputed} skipped (disputed/frozen)`);
     }
 
     return releasedCount;

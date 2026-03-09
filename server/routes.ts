@@ -44,6 +44,7 @@ import ceoWalletRoutes from "./routes/ceo-wallet";
 import sendInvestorEventEmailRoutes from "./routes/send-investor-event-email";
 import financeSettlementsRoutes from "./routes/finance/settlements";
 import transactionAuditRoutes from "./routes/finance/transaction-audit";
+import { allFinanceGuards } from "./middleware/financeGuards";
 import sitterSuiteRoutes from "./routes/sitter-suite";
 import academyRoutes from "./routes/academy";
 import walkMyPetRoutes from "./routes/walk-my-pet";
@@ -9413,6 +9414,11 @@ self.addEventListener('notificationclick', (event) => {
   // Nayax Webhooks (terminal transactions, settlements, refunds) - NO rate limiting
   app.use('/api/webhooks', nayaxWebhooksRoutes);
   
+  // Section 14 Finance Guards — enforce transaction type integrity on all finance mutations
+  // Block: payout without providerId, egift with providerId, direct_sale with payout, negative wallet, missing VAT
+  app.post('/api/finance/*', ...allFinanceGuards);
+  app.patch('/api/finance/*', ...allFinanceGuards);
+
   // Finance Settlements API (automated revenue sharing for partners/municipalities)
   app.use('/api/finance/settlements', apiLimiter, financeSettlementsRoutes);
   app.use('/api/finance/transaction-audit', adminLimiter, transactionAuditRoutes);

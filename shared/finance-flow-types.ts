@@ -26,8 +26,9 @@ export const TRANSACTION_TYPES = {
 
   // Flow B — Direct PetWash Sale
   DIRECT_PLATFORM_SALE: 'direct_platform_sale',  // Platform sells something directly (no provider)
-  EGIFT_SALE:           'egift_sale',             // E-gift card purchase
+  EGIFT_SALE:           'egift_sale',             // E-gift card purchase — stored value liability, NO providerId
   WALLET_TOPUP:         'wallet_topup',           // Customer tops up wallet balance
+  WALLET_REDEMPTION:    'wallet_redemption',      // Customer redeems wallet/egift credit — triggers new flow
 
   // Shared — both flows
   PLATFORM_FEE:         'platform_fee',           // Commission entry (marketplace)
@@ -60,6 +61,7 @@ export function isDirectSaleFlow(type: TransactionType): boolean {
     TRANSACTION_TYPES.DIRECT_PLATFORM_SALE,
     TRANSACTION_TYPES.EGIFT_SALE,
     TRANSACTION_TYPES.WALLET_TOPUP,
+    TRANSACTION_TYPES.WALLET_REDEMPTION,
   ].includes(type as any);
 }
 
@@ -89,14 +91,32 @@ export interface MarketplaceFeeBreakdown {
 
 // ── Flow B: Direct Platform Sale Fee Breakdown ────────────────────────────────
 
+/**
+ * VAT mode for eGift / wallet / stored value.
+ *
+ * CRITICAL — Section 5 advisory:
+ * "לפני קיבוע סופי של לוגיקת מע״מ על eGift / wallet / stored value, יש ליישם את הארכיטקטורה
+ * כך שתתמוך גם במודל deferred liability וגם במודל taxable sale, ולסגור את ברירת המחדל
+ * הסופית עם רו״ח/יועץ מע״מ של החברה."
+ *
+ * deferred_liability = VAT event occurs at redemption (when product/service is delivered)
+ * taxable_sale       = VAT event occurs at purchase (PetWash is the seller of the stored value)
+ *
+ * DEFAULT: 'deferred_liability' — must be confirmed with company VAT advisor.
+ */
+export type EGiftVatMode = 'deferred_liability' | 'taxable_sale';
+
+export const EGIFT_VAT_MODE_DEFAULT: EGiftVatMode = 'deferred_liability';
+
 export interface DirectSaleFeeBreakdown {
-  flowType: 'direct_platform_sale' | 'egift_sale' | 'wallet_topup';
+  flowType: 'direct_platform_sale' | 'egift_sale' | 'wallet_topup' | 'wallet_redemption';
   customerId: string;
   saleId: string;
-  saleType: 'egift' | 'wallet' | 'bundle' | 'wash_package';
+  saleType: 'egift' | 'wallet' | 'bundle' | 'wash_package' | 'redemption';
   grossAmountCents: number;       // Customer paid
-  vatAmountCents: number;         // 18% VAT on the full sale (PetWash is the seller)
+  vatAmountCents: number;         // VAT amount (timing depends on vatMode for egift/wallet)
   vatRate: number;                // 0.18
+  vatMode?: EGiftVatMode;         // Only relevant for egift_sale / wallet_topup / wallet_redemption
   processorFeeCents: number;      // Nayax fee
   netRevenueCents: number;        // PetWash net income (gross - vat - processor)
   currency: string;               // 'ILS'
@@ -145,16 +165,19 @@ export interface MoneyFlowSummary {
   totalEGiftValueILS: number;
   totalWalletTopups: number;
   totalWalletTopupValueILS: number;
+  totalWalletRedemptions: number;           // Section 12 — spec required
+  totalWalletRedemptionValueILS: number;    // Section 12 — spec required
   totalVATDirectSalesILS: number;
 
   // Shared
   totalProcessorFeesILS: number;
   totalRefundsILS: number;
-  totalChargebacks: number;
+  totalChargebacks: number;                 // Section 12 — queried from chargeback records
 
   // Computed
-  totalVATAllFlowsILS: number;    // marketplace VAT + direct sales VAT
+  totalVATAllFlowsILS: number;    // marketplace VAT + direct sales VAT — Section 12: totalVATByFlow
   totalNetRevenueILS: number;     // platform fees + direct sales net
+  totalPlatformRevenue: number;   // Section 12 — platform fees (marketplace) + direct net (B)
 }
 
 // ── Israeli Tax Constants 2026 ────────────────────────────────────────────────

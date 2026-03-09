@@ -227,3 +227,19 @@ The following composite indexes were created via REST API and may still be build
 - **Design**: white/gray functional theme consistent with PersonalInbox/Settings design system
 - **Document workflow**: Click-to-accept = checkbox + SHA-256 audit trail. E-sign = DocuSign embedded iframe (no redirect). Both types clearly separated in UI.
 - **Wallet logic**: marketplace flow (escrow → 48h hold → platform fee 18% + VAT 18% on fee → net payout). Direct platform revenue (K9000/e-gift) never shown in provider wallet.
+
+## Financial Architecture — 19-Section Spec (March 2026 Sessions 8-9)
+- **15 mandatory transactionType values** (all enforced): `marketplace_booking`, `direct_platform_sale`, `k9000_terminal_sale`, `provider_payout`, `platform_fee`, `egift_sale`, `egift_redemption`, `wallet_topup`, `wallet_redemption`, `refund`, `chargeback`, `escrow_hold`, `escrow_release`, `adjustment`, `tax_remittance`
+- **schema-finance.ts**: `general_ledger` table has mandatory `transactionType` + `vatMode` columns; index `idx_gl_tx_type`
+- **EGiftVatMode type**: `deferred_liability | taxable_sale` — default `deferred_liability` pending CPA confirmation
+- **MoneyFlowSummary**: includes `totalWalletRedemptions`, `totalWalletRedemptionValueILS`, `totalPlatformRevenue`
+- **VAT fix**: marketplace bookings now compute VAT as `platform_fee × 18%` (was hardcoded 0)
+- **EscrowService**: `disputeEscrowPayment` sets `autoReleaseBlocked: true`; `autoReleaseExpiredHolds` skips disputed/blocked holds
+- **Section 14 Finance Guards** (`server/middleware/financeGuards.ts`): 5 hard-block guards
+  1. `requireProviderIdForPayout` — blocks `provider_payout` without `providerId`
+  2. `blockProviderIdOnEgiftWallet` — blocks `egift_sale`/`wallet_topup`/`wallet_redemption` with `providerId`
+  3. `blockPayoutIntentOnDirectSale` — blocks `direct_platform_sale` with payout intent
+  4. `blockNegativeWalletBalance` — blocks wallet credit going negative (cents level)
+  5. `requireVatAmountOnTaxableTypes` — blocks `direct_platform_sale`/`k9000_terminal_sale`/`platform_fee` with missing/zero `vatAmount`
+  - **Wired in routes.ts**: `app.post('/api/finance/*', ...allFinanceGuards)` + `app.patch('/api/finance/*', ...allFinanceGuards)` — mounted before all `/api/finance/` sub-routers
+- **MoneyFlow.tsx** (`/money-flow`): wallet_redemption KPI card, 3 new summary cards, eGift VAT mode advisory panel

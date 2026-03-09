@@ -327,6 +327,7 @@ export default function MoneyFlow({ language }: MoneyFlowProps) {
     { name: 'מכירות ישירות', value: summary.totalDirectSalesGrossILS || 0 },
     { name: 'גיפט קארד', value: summary.totalEGiftValueILS || 0 },
     { name: 'ארנק', value: summary.totalWalletTopupValueILS || 0 },
+    { name: 'מימושי ארנק', value: summary.totalWalletRedemptionValueILS || 0 },
   ].filter(d => d.value > 0) : [];
 
   const barData = summary ? [
@@ -419,6 +420,7 @@ export default function MoneyFlow({ language }: MoneyFlowProps) {
                     <KpiCard icon={TrendingUp} label="מחזור מכירות (₪)" value={`₪${(summary?.totalDirectSalesGrossILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`} color="text-emerald-500" />
                     <KpiCard icon={Gift} label="גיפט קארד נמכרו" value={(summary?.totalEGiftSales ?? '—').toString()} sub={`₪${(summary?.totalEGiftValueILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })} שווי`} color="text-pink-500" />
                     <KpiCard icon={Wallet} label="טעינות ארנק" value={(summary?.totalWalletTopups ?? '—').toString()} sub={`₪${(summary?.totalWalletTopupValueILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`} color="text-blue-500" />
+                    <KpiCard icon={RefreshCw} label="מימושי ארנק" value={(summary?.totalWalletRedemptions ?? '—').toString()} sub={`₪${(summary?.totalWalletRedemptionValueILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })} מומשו`} color="text-violet-500" />
                     <KpiCard icon={Receipt} label='מע"מ Flow B (₪)' value={`₪${(summary?.totalVATDirectSalesILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`} sub="על מכירה ישירה" color="text-amber-500" />
                   </div>
                 </div>
@@ -430,9 +432,11 @@ export default function MoneyFlow({ language }: MoneyFlowProps) {
                   <h3 className="text-sm font-semibold text-gray-700 mb-3">משותף לשני הזרמים</h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <KpiCard icon={Landmark} label="עמלות עיבוד (Nayax)" value={`₪${(summary?.totalProcessorFeesILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`} color="text-gray-500" />
-                    <KpiCard icon={Receipt} label='סה"כ מע"מ' value={`₪${(summary?.totalVATAllFlowsILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`} sub="שני הזרמים" color="text-amber-500" />
+                    <KpiCard icon={Receipt} label='סה"כ מע"מ (VAT)' value={`₪${(summary?.totalVATAllFlowsILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`} sub="שני הזרמים — totalVATByFlow" color="text-amber-500" />
+                    <KpiCard icon={TrendingUp} label="הכנסת פלטפורמה (₪)" value={`₪${(summary?.totalPlatformRevenue ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`} sub="עמלות + מכירות נטו" color="text-green-600" />
                     <KpiCard icon={TrendingUp} label="הכנסה נטו PetWash™" value={`₪${(summary?.totalNetRevenueILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`} color="text-green-600" />
                     <KpiCard icon={AlertCircle} label="החזרים" value={`₪${(summary?.totalRefundsILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`} color="text-red-500" />
+                    <KpiCard icon={AlertCircle} label="Chargebacks" value={(summary?.totalChargebacks ?? 0).toString()} sub="ערעורי כרטיס אשראי" color="text-red-600" />
                   </div>
                 </div>
 
@@ -511,9 +515,10 @@ export default function MoneyFlow({ language }: MoneyFlowProps) {
                     </div>
                     <div className="space-y-2">
                       {[
-                        { type: 'direct_platform_sale', desc: 'מכירת חבילה / מוצר ישירות', note: 'PetWash™ המוכר' },
-                        { type: 'egift_sale', desc: 'מכירת גיפט קארד', note: 'ללא ספק, ללא נאמנות' },
-                        { type: 'wallet_topup', desc: 'טעינת ארנק', note: 'ללא ספק, ללא נאמנות' },
+                        { type: 'direct_platform_sale', desc: 'מכירת חבילה / מוצר ישירות', note: 'PetWash™ המוכר, אין ספק' },
+                        { type: 'egift_sale', desc: 'מכירת גיפט קארד / stored value', note: 'ללא ספק — התחייבות כספית לחברה' },
+                        { type: 'wallet_topup', desc: 'טעינת ארנק לקוח', note: 'ללא ספק — stored value liability' },
+                        { type: 'wallet_redemption', desc: 'מימוש ארנק / גיפט קארד', note: 'מפעיל זרם חדש — A או B לפי השימוש' },
                       ].map(item => (
                         <div key={item.type} className="flex items-start gap-2 p-2.5 bg-emerald-50 rounded-lg">
                           <code className="text-xs font-mono text-emerald-700 min-w-40">{item.type}</code>
@@ -552,6 +557,36 @@ export default function MoneyFlow({ language }: MoneyFlowProps) {
 
           {/* ── VAT Guide ── */}
           <TabsContent value="vat">
+            {/* eGift VAT mode advisory — Section 5 */}
+            <div className="mb-6 p-4 bg-orange-50 border border-orange-300 rounded-xl">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-orange-900 text-sm">⚠️ מע״מ על eGift / Wallet / Stored Value — דרוש אישור רו״ח</p>
+                  <p className="text-orange-800 text-xs mt-1 leading-relaxed">
+                    <strong>חשוב:</strong> לפני קיבוע סופי של לוגיקת מע״מ על eGift / wallet / stored value,
+                    יש ליישם את הארכיטקטורה כך שתתמוך גם במודל <strong>deferred liability</strong> וגם במודל <strong>taxable sale</strong>,
+                    ולסגור את ברירת המחדל הסופית עם רו״ח/יועץ מע״מ של החברה.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                    <div className="bg-white rounded-lg p-3 border border-orange-200">
+                      <p className="font-semibold text-xs text-orange-800">מודל 1 — Deferred Liability (ברירת מחדל נוכחית)</p>
+                      <p className="text-xs text-gray-600 mt-1">אירוע מע״מ = בעת <strong>מימוש</strong> הגיפט קארד / ארנק</p>
+                      <p className="text-xs text-gray-500">רכישת התו = התחייבות, לא הכנסה סופית</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-orange-200">
+                      <p className="font-semibold text-xs text-orange-800">מודל 2 — Taxable Sale</p>
+                      <p className="text-xs text-gray-600 mt-1">אירוע מע״מ = בעת <strong>רכישת</strong> הגיפט קארד / ארנק</p>
+                      <p className="text-xs text-gray-500">PetWash™ היא המוכרת הישירה של ה-stored value</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-orange-700 mt-2 font-medium">
+                    המערכת תומכת בשני המודלים — vatMode מאוחסן בכל עסקת egift/wallet. סגרו עם רו״ח לפני go-live.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card className="border-0 shadow-sm">
                 <CardHeader>
