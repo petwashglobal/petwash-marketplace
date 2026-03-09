@@ -211,19 +211,19 @@ export default function PersonalInbox() {
   const unreadCount = unreadData?.count || 0;
 
   const priorityConfig: Record<string, { bg: string; text: string; label: { en: string; he: string } }> = {
-    normal: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', label: { en: 'Normal', he: 'רגיל' } },
-    high: { bg: 'bg-amber-500/15', text: 'text-amber-400', label: { en: 'High', he: 'גבוה' } },
-    urgent: { bg: 'bg-red-500/15', text: 'text-red-400', label: { en: 'Urgent', he: 'דחוף' } },
+    normal: { bg: 'bg-emerald-50', text: 'text-emerald-700', label: { en: 'Normal', he: 'רגיל' } },
+    high: { bg: 'bg-amber-50', text: 'text-amber-700', label: { en: 'High', he: 'גבוה' } },
+    urgent: { bg: 'bg-red-50', text: 'text-red-700', label: { en: 'Urgent', he: 'דחוף' } },
   };
 
   if (!firebaseUser) {
     return (
       <Layout>
-        <div className="luxury-dark-mesh min-h-screen flex items-center justify-center px-4">
-          <div className="text-center luxury-dark-card p-10 rounded-2xl max-w-md w-full">
+        <div className="bg-white min-h-screen flex items-center justify-center px-4">
+          <div className="text-center bg-white border border-gray-200 shadow-sm p-10 rounded-2xl max-w-md w-full">
             <Lock className="w-14 h-14 mx-auto mb-6 text-[#C9A96E]" />
-            <h2 className="luxury-dark-heading-lg text-2xl mb-3">{isHebrew ? 'נדרשת כניסה' : 'Sign In Required'}</h2>
-            <p className="luxury-dark-text-body">{isHebrew ? 'התחבר כדי לגשת לתיבת הדואר הפרטית שלך' : 'Sign in to access your private inbox'}</p>
+            <h2 className="text-gray-900 font-bold text-2xl mb-3">{isHebrew ? 'נדרשת כניסה' : 'Sign In Required'}</h2>
+            <p className="text-gray-600">{isHebrew ? 'התחבר כדי לגשת לתיבת הדואר הפרטית שלך' : 'Sign in to access your private inbox'}</p>
           </div>
         </div>
       </Layout>
@@ -232,21 +232,21 @@ export default function PersonalInbox() {
 
   return (
     <Layout>
-      <div className="luxury-dark-mesh min-h-screen">
+      <div className="bg-white min-h-screen">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
 
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4 luxury-animate-fade-in">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[rgba(201,169,110,0.3)] to-[rgba(201,169,110,0.1)] flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center">
                   <Mail className="w-6 h-6 text-[#C9A96E]" />
                 </div>
                 <div>
-                  <h1 className="luxury-dark-heading-xl text-2xl sm:text-3xl">
+                  <h1 className="text-gray-900 font-bold text-2xl sm:text-3xl">
                     {isHebrew ? 'תיבת דואר פרטית' : 'Private Inbox'}
                   </h1>
-                  <p className="luxury-dark-text-small text-xs flex items-center gap-1.5">
-                    <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                  <p className="text-gray-500 text-xs flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-emerald-500" />
                     {isHebrew ? 'מוצפן ומאובטח | יומן ביקורת SHA-256' : 'Encrypted & Secure | SHA-256 Audit Trail'}
                   </p>
                 </div>
@@ -255,59 +255,59 @@ export default function PersonalInbox() {
 
             <div className="flex items-center gap-3">
               {unreadCount > 0 && (
-                <div className="luxury-dark-badge-gold flex items-center gap-1.5 px-3 py-1.5">
+                <div className="bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-3 py-1.5 text-sm font-medium flex items-center gap-1.5">
                   <Bell className="w-3.5 h-3.5" />
-                  <span className="text-sm font-medium">{unreadCount} {isHebrew ? 'חדשות' : 'New'}</span>
+                  <span>{unreadCount} {isHebrew ? 'חדשות' : 'New'}</span>
                 </div>
               )}
               <Dialog open={isComposing} onOpenChange={setIsComposing}>
                 <DialogTrigger asChild>
-                  <Button className="luxury-dark-btn-gold px-5 py-3 flex items-center gap-2" data-testid="button-compose-message">
+                  <Button className="bg-[#C9A96E] hover:bg-[#b8935a] text-white px-5 py-3 flex items-center gap-2 rounded-xl" data-testid="button-compose-message">
                     <Plus className="w-4 h-4" />
                     {isHebrew ? 'הודעה חדשה' : 'Compose'}
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl !bg-[#12121a] !border-[rgba(232,230,240,0.1)] rounded-2xl">
+                <DialogContent className="max-w-2xl bg-white border border-gray-200 rounded-2xl">
                   <DialogHeader>
-                    <DialogTitle className="luxury-dark-heading-lg text-xl flex items-center gap-2">
+                    <DialogTitle className="text-gray-900 font-semibold text-xl flex items-center gap-2">
                       <Send className="w-5 h-5 text-[#C9A96E]" />
                       {isHebrew ? 'הודעה מאובטחת חדשה' : 'New Secure Message'}
                     </DialogTitle>
-                    <DialogDescription className="luxury-dark-text-body">
+                    <DialogDescription className="text-gray-600">
                       {isHebrew ? 'הודעות מוצפנות עם חתימה קריפטוגרפית' : 'Messages encrypted with cryptographic audit trail'}
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleSendMessage} className="space-y-4 mt-2">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="luxury-dark-text-small text-xs uppercase tracking-wider mb-2 block">
+                        <label className="text-gray-500 text-xs uppercase tracking-wider mb-2 block">
                           {isHebrew ? 'שם הנמען' : 'Recipient Name'}
                         </label>
-                        <Input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder={isHebrew ? 'שם מלא' : 'Full Name'} className="h-12 bg-[rgba(232,230,240,0.05)] border-[rgba(232,230,240,0.1)] text-white placeholder:text-[rgba(149,144,168,0.5)]" required />
+                        <Input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder={isHebrew ? 'שם מלא' : 'Full Name'} className="h-12 bg-white border-gray-200 text-gray-900 placeholder:text-gray-400" required />
                       </div>
                       <div>
-                        <label className="luxury-dark-text-small text-xs uppercase tracking-wider mb-2 block">
+                        <label className="text-gray-500 text-xs uppercase tracking-wider mb-2 block">
                           {isHebrew ? 'אימייל' : 'Email'}
                         </label>
-                        <Input type="email" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} placeholder="name@petwash.co.il" className="h-12 bg-[rgba(232,230,240,0.05)] border-[rgba(232,230,240,0.1)] text-white placeholder:text-[rgba(149,144,168,0.5)]" required />
+                        <Input type="email" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} placeholder="name@petwash.co.il" className="h-12 bg-white border-gray-200 text-gray-900 placeholder:text-gray-400" required />
                       </div>
                     </div>
                     <div>
-                      <label className="luxury-dark-text-small text-xs uppercase tracking-wider mb-2 block">
+                      <label className="text-gray-500 text-xs uppercase tracking-wider mb-2 block">
                         {isHebrew ? 'נושא' : 'Subject'}
                       </label>
-                      <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={isHebrew ? 'נושא ההודעה...' : 'Message subject...'} className="h-12 bg-[rgba(232,230,240,0.05)] border-[rgba(232,230,240,0.1)] text-white placeholder:text-[rgba(149,144,168,0.5)]" required />
+                      <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={isHebrew ? 'נושא ההודעה...' : 'Message subject...'} className="h-12 bg-white border-gray-200 text-gray-900 placeholder:text-gray-400" required />
                     </div>
                     <div className="flex gap-3">
                       <div className="flex-1">
-                        <label className="luxury-dark-text-small text-xs uppercase tracking-wider mb-2 block">
+                        <label className="text-gray-500 text-xs uppercase tracking-wider mb-2 block">
                           {isHebrew ? 'עדיפות' : 'Priority'}
                         </label>
                         <Select value={priority} onValueChange={(val: any) => setPriority(val)}>
-                          <SelectTrigger className="h-12 bg-[rgba(232,230,240,0.05)] border-[rgba(232,230,240,0.1)] text-white">
+                          <SelectTrigger className="h-12 bg-white border-gray-200 text-gray-900">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="bg-[#1a1a2e] border-[rgba(232,230,240,0.1)]">
+                          <SelectContent className="bg-white border-gray-200">
                             <SelectItem value="normal">{isHebrew ? 'רגיל' : 'Normal'}</SelectItem>
                             <SelectItem value="high">{isHebrew ? 'גבוה' : 'High'}</SelectItem>
                             <SelectItem value="urgent">{isHebrew ? 'דחוף' : 'Urgent'}</SelectItem>
@@ -316,20 +316,20 @@ export default function PersonalInbox() {
                       </div>
                     </div>
                     <div>
-                      <label className="luxury-dark-text-small text-xs uppercase tracking-wider mb-2 block">
+                      <label className="text-gray-500 text-xs uppercase tracking-wider mb-2 block">
                         {isHebrew ? 'תוכן ההודעה' : 'Message'}
                       </label>
-                      <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={isHebrew ? 'כתוב את ההודעה שלך...' : 'Write your message...'} className="min-h-[160px] bg-[rgba(232,230,240,0.05)] border-[rgba(232,230,240,0.1)] text-white placeholder:text-[rgba(149,144,168,0.5)]" required />
+                      <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder={isHebrew ? 'כתוב את ההודעה שלך...' : 'Write your message...'} className="min-h-[160px] bg-white border-gray-200 text-gray-900 placeholder:text-gray-400" required />
                     </div>
-                    <div className="flex items-center gap-2 luxury-dark-text-small text-xs">
-                      <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                    <div className="flex items-center gap-2 text-gray-500 text-xs">
+                      <Lock className="w-3.5 h-3.5 text-emerald-500" />
                       <span>{isHebrew ? 'מאובטח בהצפנת SHA-256 ויומן ביקורת' : 'Secured with SHA-256 hashing and audit trail'}</span>
                     </div>
                     <div className="flex justify-end gap-3 pt-2">
-                      <Button type="button" className="luxury-dark-btn-ghost px-5 py-3 border border-[rgba(232,230,240,0.1)]" onClick={() => setIsComposing(false)}>
+                      <Button type="button" className="bg-gray-100 text-gray-700 hover:bg-gray-200 px-5 py-3 border border-gray-200 rounded-xl" onClick={() => setIsComposing(false)}>
                         {isHebrew ? 'ביטול' : 'Cancel'}
                       </Button>
-                      <Button type="submit" disabled={sendMessageMutation.isPending} className="luxury-dark-btn-gold px-5 py-3 flex items-center gap-2">
+                      <Button type="submit" disabled={sendMessageMutation.isPending} className="bg-[#C9A96E] hover:bg-[#b8935a] text-white px-5 py-3 flex items-center gap-2 rounded-xl">
                         {sendMessageMutation.isPending ? (
                           <><Loader2 className="w-4 h-4 animate-spin" /> {isHebrew ? 'שולח...' : 'Sending...'}</>
                         ) : (
@@ -343,15 +343,15 @@ export default function PersonalInbox() {
             </div>
           </div>
 
-          <div className="luxury-animate-fade-in luxury-delay-1 mb-6">
+          <div className="mb-6">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[rgba(149,144,168,0.5)]" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={isHebrew ? 'חפש הודעות...' : 'Search messages...'}
-                  className="pl-10 h-12 bg-[rgba(232,230,240,0.05)] border-[rgba(232,230,240,0.1)] text-white placeholder:text-[rgba(149,144,168,0.5)] rounded-xl"
+                  className="pl-10 h-12 bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 rounded-xl"
                 />
               </div>
               <div className="flex gap-2">
@@ -362,8 +362,8 @@ export default function PersonalInbox() {
                     className={cn(
                       'px-4 py-2.5 rounded-xl text-sm font-medium transition-all',
                       filter === f
-                        ? 'bg-gradient-to-r from-[#C9A96E] to-[#d4af37] text-[#0A0A0F]'
-                        : 'luxury-dark-surface text-[rgba(232,230,240,0.6)] hover:text-white'
+                        ? 'bg-gradient-to-r from-[#C9A96E] to-[#d4af37] text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
                     )}
                   >
                     {f === 'all' ? (isHebrew ? 'הכל' : 'All') :
@@ -375,11 +375,11 @@ export default function PersonalInbox() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 luxury-animate-fade-in luxury-delay-2">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
             <div className="lg:col-span-2">
-              <div className="luxury-dark-card rounded-2xl overflow-hidden">
-                <div className="h-0.5 bg-gradient-to-r from-transparent via-[#C9A96E]/30 to-transparent" />
+              <div className="bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden">
+                <div className="h-0.5 bg-gradient-to-r from-transparent via-[#C9A96E]/40 to-transparent" />
                 <ScrollArea className="h-[calc(100vh-320px)] sm:h-[700px]">
                   {isLoading ? (
                     <div className="flex items-center justify-center p-16">
@@ -387,13 +387,13 @@ export default function PersonalInbox() {
                     </div>
                   ) : filteredMessages.length === 0 ? (
                     <div className="text-center p-16">
-                      <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[rgba(201,169,110,0.2)] to-[rgba(201,169,110,0.05)] flex items-center justify-center">
-                        <Inbox className="w-8 h-8 text-[rgba(149,144,168,0.4)]" />
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-50 flex items-center justify-center">
+                        <Inbox className="w-8 h-8 text-gray-400" />
                       </div>
-                      <p className="luxury-dark-heading-sm text-base mb-2">
+                      <p className="text-gray-900 font-medium text-base mb-2">
                         {isHebrew ? 'אין הודעות' : 'No Messages'}
                       </p>
-                      <p className="luxury-dark-text-body text-sm">
+                      <p className="text-gray-500 text-sm">
                         {isHebrew ? 'תיבת הדואר שלך ריקה' : 'Your inbox is empty'}
                       </p>
                     </div>
@@ -411,8 +411,8 @@ export default function PersonalInbox() {
                             className={cn(
                               'w-full text-left p-4 rounded-xl transition-all',
                               isSelected
-                                ? 'bg-gradient-to-r from-[rgba(201,169,110,0.15)] to-[rgba(201,169,110,0.05)] border border-[#C9A96E]/30'
-                                : 'hover:bg-[rgba(232,230,240,0.03)] border border-transparent',
+                                ? 'bg-amber-50 border border-amber-200'
+                                : 'hover:bg-gray-50 border border-transparent',
                               isUnread && 'border-l-2 border-l-[#C9A96E]'
                             )}
                             data-testid={`message-item-${msg.id}`}
@@ -420,7 +420,7 @@ export default function PersonalInbox() {
                             <div className="flex items-start justify-between mb-1.5">
                               <div className="flex items-center gap-2 min-w-0">
                                 {isUnread && <div className="w-2 h-2 rounded-full bg-[#C9A96E] flex-shrink-0" />}
-                                <span className={cn('text-sm truncate', isUnread ? 'text-white font-semibold' : 'text-[rgba(232,230,240,0.7)]')}>
+                                <span className={cn('text-sm truncate', isUnread ? 'text-gray-900 font-semibold' : 'text-gray-600')}>
                                   {isMyMessage(msg) ? `${isHebrew ? 'אל' : 'To'}: ${msg.recipientName}` : msg.senderName}
                                 </span>
                               </div>
@@ -433,19 +433,19 @@ export default function PersonalInbox() {
                                 {msg.isStarred && <Star className="w-3.5 h-3.5 fill-[#C9A96E] text-[#C9A96E]" />}
                               </div>
                             </div>
-                            <p className={cn('text-sm mb-1 line-clamp-1', isUnread ? 'text-white font-medium' : 'text-[rgba(232,230,240,0.6)]')}>
+                            <p className={cn('text-sm mb-1 line-clamp-1', isUnread ? 'text-gray-900 font-medium' : 'text-gray-600')}>
                               {msg.subject}
                             </p>
-                            <p className="text-xs text-[rgba(149,144,168,0.5)] line-clamp-1 mb-2">
+                            <p className="text-xs text-gray-400 line-clamp-1 mb-2">
                               {msg.body}
                             </p>
                             <div className="flex items-center gap-2">
-                              <Clock className="w-3 h-3 text-[rgba(149,144,168,0.4)]" />
-                              <span className="text-[11px] text-[rgba(149,144,168,0.4)]">
+                              <Clock className="w-3 h-3 text-gray-400" />
+                              <span className="text-[11px] text-gray-400">
                                 {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
                               </span>
                               {isMyMessage(msg) && (
-                                <span className="text-[10px] text-[rgba(149,144,168,0.3)] flex items-center gap-1">
+                                <span className="text-[10px] text-gray-400 flex items-center gap-1">
                                   <MailOpen className="w-3 h-3" /> {isHebrew ? 'נשלח' : 'Sent'}
                                 </span>
                               )}
@@ -461,10 +461,10 @@ export default function PersonalInbox() {
 
             <div className="lg:col-span-3">
               {selectedMessage ? (
-                <div className="luxury-dark-card rounded-2xl overflow-hidden">
-                  <div className="h-0.5 bg-gradient-to-r from-transparent via-[#C9A96E]/30 to-transparent" />
+                <div className="bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden">
+                  <div className="h-0.5 bg-gradient-to-r from-transparent via-[#C9A96E]/40 to-transparent" />
 
-                  <div className="p-6 border-b border-[rgba(232,230,240,0.06)]">
+                  <div className="p-6 border-b border-gray-100">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-3">
@@ -477,28 +477,28 @@ export default function PersonalInbox() {
                             );
                           })()}
                           {selectedMessage.messageType !== 'general' && (
-                            <span className="text-xs px-2 py-1 rounded-lg bg-purple-500/15 text-purple-400">
+                            <span className="text-xs px-2 py-1 rounded-lg bg-purple-50 text-purple-700">
                               {selectedMessage.messageType}
                             </span>
                           )}
                         </div>
-                        <h2 className="luxury-dark-heading-lg text-xl mb-3">{selectedMessage.subject}</h2>
-                        <div className="space-y-1.5 luxury-dark-text-body text-sm">
-                          <p><span className="text-[rgba(149,144,168,0.6)]">{isHebrew ? 'מ:' : 'From:'}</span> <span className="text-white">{selectedMessage.senderName}</span> <span className="text-[rgba(149,144,168,0.4)]">({selectedMessage.senderEmail})</span></p>
-                          <p><span className="text-[rgba(149,144,168,0.6)]">{isHebrew ? 'אל:' : 'To:'}</span> <span className="text-white">{selectedMessage.recipientName}</span> <span className="text-[rgba(149,144,168,0.4)]">({selectedMessage.recipientEmail})</span></p>
-                          <p><span className="text-[rgba(149,144,168,0.6)]">{isHebrew ? 'נשלח:' : 'Sent:'}</span> <span className="text-[rgba(232,230,240,0.7)]">{new Date(selectedMessage.createdAt).toLocaleString(isHebrew ? 'he-IL' : 'en-US')}</span></p>
+                        <h2 className="text-gray-900 font-semibold text-xl mb-3">{selectedMessage.subject}</h2>
+                        <div className="space-y-1.5 text-gray-600 text-sm">
+                          <p><span className="text-gray-400">{isHebrew ? 'מ:' : 'From:'}</span> <span className="text-gray-900 font-medium">{selectedMessage.senderName}</span> <span className="text-gray-400">({selectedMessage.senderEmail})</span></p>
+                          <p><span className="text-gray-400">{isHebrew ? 'אל:' : 'To:'}</span> <span className="text-gray-900 font-medium">{selectedMessage.recipientName}</span> <span className="text-gray-400">({selectedMessage.recipientEmail})</span></p>
+                          <p><span className="text-gray-400">{isHebrew ? 'נשלח:' : 'Sent:'}</span> <span className="text-gray-700">{new Date(selectedMessage.createdAt).toLocaleString(isHebrew ? 'he-IL' : 'en-US')}</span></p>
                         </div>
                       </div>
                       <div className="flex gap-2">
                         <Button
                           onClick={() => toggleStarMutation.mutate(selectedMessage.id)}
-                          className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-[rgba(232,230,240,0.05)] transition-colors"
+                          className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors bg-transparent border-0 shadow-none"
                         >
-                          <Star className={cn('w-4 h-4', selectedMessage.isStarred ? 'fill-[#C9A96E] text-[#C9A96E]' : 'text-[rgba(149,144,168,0.5)]')} />
+                          <Star className={cn('w-4 h-4', selectedMessage.isStarred ? 'fill-[#C9A96E] text-[#C9A96E]' : 'text-gray-400')} />
                         </Button>
                         <Button
                           onClick={() => deleteMessageMutation.mutate(selectedMessage.id)}
-                          className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-red-500/10 transition-colors text-[rgba(149,144,168,0.5)] hover:text-red-400"
+                          className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-red-50 transition-colors text-gray-400 hover:text-red-500 bg-transparent border-0 shadow-none"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -508,27 +508,27 @@ export default function PersonalInbox() {
 
                   <div className="p-6 sm:p-8">
                     <div className="prose-sm max-w-none mb-8">
-                      <p className="whitespace-pre-wrap text-[rgba(232,230,240,0.8)] text-base leading-relaxed">{selectedMessage.body}</p>
+                      <p className="whitespace-pre-wrap text-gray-800 text-base leading-relaxed">{selectedMessage.body}</p>
                     </div>
 
-                    <div className="luxury-dark-surface rounded-xl p-5 space-y-3">
-                      <p className="luxury-dark-text-small text-[10px] uppercase tracking-widest text-[#C9A96E] mb-3 flex items-center gap-1.5">
+                    <div className="bg-gray-50 border border-gray-100 rounded-xl p-5 space-y-3">
+                      <p className="text-gray-500 text-[10px] uppercase tracking-widest text-[#C9A96E] mb-3 flex items-center gap-1.5">
                         <Shield className="w-3.5 h-3.5" />
                         {isHebrew ? 'מידע אבטחה וביקורת' : 'Security & Audit Information'}
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="flex items-start gap-2">
-                          <Shield className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                          <Shield className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
                           <div>
-                            <p className="text-xs font-medium text-white">{isHebrew ? 'חתימת הודעה' : 'Message Hash'}</p>
-                            <p className="text-[11px] text-[rgba(149,144,168,0.5)] font-mono break-all">{selectedMessage.messageHash?.substring(0, 32)}...</p>
+                            <p className="text-xs font-medium text-gray-900">{isHebrew ? 'חתימת הודעה' : 'Message Hash'}</p>
+                            <p className="text-[11px] text-gray-400 font-mono break-all">{selectedMessage.messageHash?.substring(0, 32)}...</p>
                           </div>
                         </div>
                         <div className="flex items-start gap-2">
-                          <Lock className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                          <Lock className="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0" />
                           <div>
-                            <p className="text-xs font-medium text-white">{isHebrew ? 'חתימת ביקורת' : 'Audit Signature'}</p>
-                            <p className="text-[11px] text-[rgba(149,144,168,0.5)] font-mono break-all">{selectedMessage.auditHash?.substring(0, 32)}...</p>
+                            <p className="text-xs font-medium text-gray-900">{isHebrew ? 'חתימת ביקורת' : 'Audit Signature'}</p>
+                            <p className="text-[11px] text-gray-400 font-mono break-all">{selectedMessage.auditHash?.substring(0, 32)}...</p>
                           </div>
                         </div>
                       </div>
@@ -536,15 +536,15 @@ export default function PersonalInbox() {
                   </div>
                 </div>
               ) : (
-                <div className="luxury-dark-card rounded-2xl h-[calc(100vh-320px)] sm:h-[700px] flex items-center justify-center">
+                <div className="bg-white border border-gray-200 shadow-sm rounded-2xl h-[calc(100vh-320px)] sm:h-[700px] flex items-center justify-center">
                   <div className="text-center p-12">
-                    <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-[rgba(201,169,110,0.15)] to-[rgba(201,169,110,0.05)] flex items-center justify-center">
-                      <Sparkles className="w-10 h-10 text-[rgba(149,144,168,0.3)]" />
+                    <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-amber-50 flex items-center justify-center">
+                      <Sparkles className="w-10 h-10 text-gray-300" />
                     </div>
-                    <h3 className="luxury-dark-heading-sm text-lg mb-2">
+                    <h3 className="text-gray-900 font-medium text-lg mb-2">
                       {isHebrew ? 'בחר הודעה לצפייה' : 'Select a Message'}
                     </h3>
-                    <p className="luxury-dark-text-body text-sm max-w-xs mx-auto">
+                    <p className="text-gray-500 text-sm max-w-xs mx-auto">
                       {isHebrew ? 'הודעות מאובטחות עם חתימה קריפטוגרפית ויומן ביקורת' : 'Your secure messages with cryptographic audit trail'}
                     </p>
                   </div>
@@ -554,18 +554,18 @@ export default function PersonalInbox() {
 
           </div>
 
-          <div className="mt-6 luxury-dark-surface rounded-xl p-4 flex items-center justify-center gap-6 luxury-animate-fade-in luxury-delay-3">
-            <div className="flex items-center gap-2 text-xs text-[rgba(149,144,168,0.5)]">
-              <Shield className="w-3.5 h-3.5 text-emerald-400" />
+          <div className="mt-6 bg-gray-50 border border-gray-100 rounded-xl p-4 flex items-center justify-center gap-6">
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <Shield className="w-3.5 h-3.5 text-emerald-500" />
               <span>{isHebrew ? 'חוק הפרטיות הישראלי 2025' : 'Israeli Privacy Law 2025'}</span>
             </div>
-            <div className="w-px h-4 bg-[rgba(232,230,240,0.1)]" />
-            <div className="flex items-center gap-2 text-xs text-[rgba(149,144,168,0.5)]">
-              <Lock className="w-3.5 h-3.5 text-purple-400" />
+            <div className="w-px h-4 bg-gray-200" />
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <Lock className="w-3.5 h-3.5 text-purple-500" />
               <span>{isHebrew ? 'הצפנה מקצה לקצה' : 'End-to-End Encryption'}</span>
             </div>
-            <div className="w-px h-4 bg-[rgba(232,230,240,0.1)]" />
-            <div className="flex items-center gap-2 text-xs text-[rgba(149,144,168,0.5)]">
+            <div className="w-px h-4 bg-gray-200" />
+            <div className="flex items-center gap-2 text-xs text-gray-500">
               <CheckCircle2 className="w-3.5 h-3.5 text-[#C9A96E]" />
               <span>SHA-256</span>
             </div>
