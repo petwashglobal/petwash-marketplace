@@ -102,6 +102,7 @@ export function GooglePlacesAutocomplete({
   const [showDropdown, setShowDropdown] = useState(false);
   const [dropdownRect, setDropdownRect] = useState<DropdownRect | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
+  const [buildingNumber, setBuildingNumber] = useState('');
   const [apartment, setApartment] = useState('');
   const [postalCode, setPostalCodeState] = useState('');
   const [highlightIndex, setHighlightIndex] = useState(-1);
@@ -275,6 +276,7 @@ export function GooglePlacesAutocomplete({
       }
 
       setSelectedPlace(details);
+      setBuildingNumber(details.streetNumber || '');
       setApartment('');
       setPostalCodeState(details.postalCode || '');
       onChange(details.formattedAddress, details);
@@ -299,6 +301,7 @@ export function GooglePlacesAutocomplete({
     onChange(val);
     setSelectedPlace(null);
     if (!val) {
+      setBuildingNumber('');
       setApartment('');
       setPostalCodeState('');
       setPredictions([]);
@@ -338,30 +341,40 @@ export function GooglePlacesAutocomplete({
     }
   }, [showDropdown, predictions, highlightIndex, selectPrediction]);
 
-  const emitUpdatedDetails = useCallback((base: PlaceDetails, apt: string, zip: string) => {
+  const emitUpdatedDetails = useCallback((base: PlaceDetails, bldg: string, apt: string, zip: string) => {
     const updated: PlaceDetails = {
       ...base,
+      streetNumber: bldg || base.streetNumber,
       apartment: apt || undefined,
       postalCode: zip || base.postalCode,
     };
-    let fullAddr = base.formattedAddress;
+    // Rebuild formatted address incorporating building number + apartment
+    let fullAddr = base.street
+      ? `${base.street}${bldg ? ' ' + bldg : ''}${base.city ? ', ' + base.city : ''}`
+      : base.formattedAddress;
     if (apt) fullAddr = `${fullAddr}, ${apt}`;
     updated.formattedAddress = fullAddr;
     onChange(fullAddr, updated);
     onPlaceSelected?.(updated);
   }, [onChange, onPlaceSelected]);
 
+  const handleBuildingNumberChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setBuildingNumber(val);
+    if (selectedPlace) emitUpdatedDetails(selectedPlace, val, apartment, postalCode);
+  }, [selectedPlace, apartment, postalCode, emitUpdatedDetails]);
+
   const handleApartmentChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setApartment(val);
-    if (selectedPlace) emitUpdatedDetails(selectedPlace, val, postalCode);
-  }, [selectedPlace, postalCode, emitUpdatedDetails]);
+    if (selectedPlace) emitUpdatedDetails(selectedPlace, buildingNumber, val, postalCode);
+  }, [selectedPlace, buildingNumber, postalCode, emitUpdatedDetails]);
 
   const handlePostalCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setPostalCodeState(val);
-    if (selectedPlace) emitUpdatedDetails(selectedPlace, apartment, val);
-  }, [selectedPlace, apartment, emitUpdatedDetails]);
+    if (selectedPlace) emitUpdatedDetails(selectedPlace, buildingNumber, apartment, val);
+  }, [selectedPlace, buildingNumber, apartment, emitUpdatedDetails]);
 
   // Dropdown rendered via portal so it escapes any overflow:hidden parent container
   const dropdownPortal = showDropdown && predictions.length > 0 && dropdownRect
@@ -480,55 +493,77 @@ export function GooglePlacesAutocomplete({
       {dropdownPortal}
 
       {showExtraFields && selectedPlace && (
-        <div className="mt-2 space-y-3">
-          <div className="flex flex-wrap gap-2">
-            {selectedPlace.street && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
-                🏠 {selectedPlace.street}
-              </span>
-            )}
-            {selectedPlace.city && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-100">
-                🏙️ {selectedPlace.city}
-              </span>
-            )}
-            {(postalCode || selectedPlace.postalCode) && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-100">
-                📮 {postalCode || selectedPlace.postalCode}
-              </span>
-            )}
-          </div>
+        <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50/40 p-3 space-y-3">
+          {/* Confirmed address context — city / area / country */}
+          {(selectedPlace.city || selectedPlace.state || selectedPlace.country) && (
+            <div className="flex flex-wrap gap-1.5">
+              {selectedPlace.city && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-white text-green-700 border border-green-200 shadow-sm">
+                  🏙️ {selectedPlace.city}
+                </span>
+              )}
+              {selectedPlace.state && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-white text-blue-700 border border-blue-200 shadow-sm">
+                  📍 {selectedPlace.state}
+                </span>
+              )}
+              {selectedPlace.country && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-white text-gray-700 border border-gray-200 shadow-sm">
+                  🌍 {selectedPlace.country}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Editable sub-fields: building no. + unit, then postal code */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-sm font-medium text-gray-600 mb-1 block">
-                {apartmentLabel || 'דירה / קומה / יחידה'}
+              <Label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
+                מספר בניין / בית
               </Label>
               <Input
                 type="text"
-                value={apartment}
-                onChange={handleApartmentChange}
-                placeholder={apartmentPlaceholder || 'לדוג׳ דירה 3, קומה 2, כניסה א׳'}
-                className="px-3 py-3 text-sm rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 min-h-[48px] touch-manipulation"
-                style={{ fontSize: '16px' }}
-                autoComplete="off"
-                dir="rtl"
-              />
-            </div>
-            <div>
-              <Label className="text-sm font-medium text-gray-600 mb-1 block">
-                {postalCodeLabel || 'מיקוד'}
-              </Label>
-              <Input
-                type="text"
-                value={postalCode}
-                onChange={handlePostalCodeChange}
-                placeholder={postalCodePlaceholder || 'לדוג׳ 6291302'}
-                className="px-3 py-3 text-sm rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 min-h-[48px] touch-manipulation"
+                inputMode="numeric"
+                value={buildingNumber}
+                onChange={handleBuildingNumberChange}
+                placeholder="לדוג׳ 18"
+                className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation bg-white"
                 style={{ fontSize: '16px' }}
                 autoComplete="off"
                 dir="ltr"
               />
             </div>
+            <div>
+              <Label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
+                {apartmentLabel || 'דירה / יחידה'}
+              </Label>
+              <Input
+                type="text"
+                value={apartment}
+                onChange={handleApartmentChange}
+                placeholder={apartmentPlaceholder || 'דירה 3, קומה 2'}
+                className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation bg-white"
+                style={{ fontSize: '16px' }}
+                autoComplete="off"
+                dir="rtl"
+              />
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
+              {postalCodeLabel || 'מיקוד (Postal Code)'}
+            </Label>
+            <Input
+              type="text"
+              inputMode="numeric"
+              value={postalCode}
+              onChange={handlePostalCodeChange}
+              placeholder={postalCodePlaceholder || 'לדוג׳ 6291302'}
+              className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation bg-white"
+              style={{ fontSize: '16px' }}
+              autoComplete="off"
+              dir="ltr"
+            />
           </div>
         </div>
       )}
