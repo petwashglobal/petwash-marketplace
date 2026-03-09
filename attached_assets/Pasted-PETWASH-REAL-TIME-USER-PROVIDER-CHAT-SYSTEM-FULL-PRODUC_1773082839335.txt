@@ -1,0 +1,570 @@
+PETWASH
+REAL-TIME USER ↔ PROVIDER CHAT SYSTEM
+FULL PRODUCT + UX + ENGINEERING SPEC
+2026 MOBILE-FIRST EDITION
+
+Goal
+Build a complete real-time chat system for PetWash users and pet care providers across all relevant platforms, including:
+- PetSitter
+- Walk My Pet
+- PetWash
+- PetWash Academy where relevant
+- future provider services
+
+This must be a premium, ultra-modern, mobile-first communication system for iOS and Android with a luxury visual language:
+- pure white background
+- metallic accents
+- very clean typography
+- minimal clutter
+- elegant cards
+- fast and smooth transitions
+- premium unread states
+- polished interaction design
+
+This is not a generic messaging tool.
+It is a booking-bound, provider-safe, premium marketplace communication system.
+
+==================================================
+SECTION 1 — CORE CHAT MODEL
+==================================================
+
+The system must support:
+1. customer ↔ provider real-time messaging
+2. one conversation per booking / job / service engagement
+3. optional support / admin visibility when needed
+4. booking lifecycle aware chat states
+5. mobile-first UX
+6. read receipts, unread counts, notifications, archive
+7. abuse reporting and moderation
+8. luxury premium visual design
+
+Golden rule:
+No free messaging outside a valid service relationship unless explicitly allowed by product policy.
+
+==================================================
+SECTION 2 — CHAT TYPES
+==================================================
+
+Supported conversation types:
+
+1. booking_chat
+User and provider talk inside an active booking
+
+2. support_chat
+User and support/admin talk for help, dispute, billing, escalation
+
+3. provider_admin_chat
+Provider and internal staff communication when needed
+
+Primary focus now:
+booking_chat
+
+==================================================
+SECTION 3 — BOOKING CHAT LOGIC
+==================================================
+
+Conversation creation:
+- exactly one conversation per booking
+- created automatically when booking becomes confirmed
+- not before confirmed state
+- not available for anonymous browsing
+
+Allowed states:
+- draft = locked
+- pending = locked
+- confirmed = active
+- in_progress = active
+- completed = read_only
+- cancelled = read_only
+- expired = read_only
+- disputed = read_only for user/provider, admin has access
+- refunded = read_only
+- no_show = read_only
+
+Rules:
+- only assigned customer and assigned provider may access the thread
+- admin/support may have controlled read/moderation access
+- no off-platform freeform messaging
+- no duplicate conversations for same booking
+
+==================================================
+SECTION 4 — REQUIRED DATABASE MODEL
+==================================================
+
+Table: conversations
+Fields:
+- id
+- conversationId
+- conversationType
+- bookingId nullable
+- customerId nullable
+- providerId nullable
+- supportAgentId nullable
+- platform
+- status (active / read_only / archived / locked)
+- closedReason nullable
+- customerUnreadCount
+- providerUnreadCount
+- adminUnreadCount
+- lastMessageAt
+- lastMessagePreview
+- lastSenderRole
+- createdAt
+- updatedAt
+- closedAt nullable
+
+Table: messages
+Fields:
+- id
+- messageId
+- conversationId
+- senderUid
+- senderRole (customer / provider / admin / system)
+- messageType (text / image / system_event / quick_action)
+- content
+- metadata json
+- isFlagged
+- flaggedReason nullable
+- isDeleted
+- isHidden
+- readByCustomerAt nullable
+- readByProviderAt nullable
+- readByAdminAt nullable
+- createdAt
+- updatedAt
+
+Table: message_attachments
+Fields:
+- id
+- messageId
+- fileType
+- fileUrl
+- thumbnailUrl nullable
+- sizeBytes
+- mimeType
+- uploadedAt
+
+Table: conversation_participants
+Fields:
+- id
+- conversationId
+- userId
+- role
+- joinedAt
+- lastReadAt
+- isMuted
+- notificationsEnabled
+
+Optional:
+table for moderation_actions
+table for message_reports
+table for presence / typing state if not handled in memory or socket layer
+
+==================================================
+SECTION 5 — REQUIRED API
+==================================================
+
+REST or RPC endpoints required:
+
+GET /api/chat/inbox
+GET /api/chat/:conversationId
+GET /api/chat/:conversationId/messages
+POST /api/chat/:conversationId/send
+POST /api/chat/:conversationId/read
+POST /api/chat/:conversationId/report
+POST /api/chat/:conversationId/upload
+POST /api/chat/:conversationId/archive
+POST /api/chat/:bookingId/open-booking-chat
+
+Admin:
+GET /api/admin/chat/:conversationId
+POST /api/admin/chat/messages/:messageId/moderate
+POST /api/admin/chat/conversations/:conversationId/add-note
+
+Support:
+POST /api/support/chat/open
+POST /api/support/chat/:conversationId/send
+
+Requirements:
+- strict auth on every route
+- strict ownership validation
+- no client-trust logic
+- pagination
+- cursor-based loading preferred
+- idempotency for send
+- rate limiting
+- audit logging
+
+==================================================
+SECTION 6 — REAL-TIME LAYER
+==================================================
+
+Use WebSocket / Socket.IO / similar real-time transport.
+
+Required events:
+
+Client → Server
+- chat_subscribe
+- chat_unsubscribe
+- chat_typing_start
+- chat_typing_stop
+- chat_message_send
+- chat_mark_read
+
+Server → Client
+- chat_message_new
+- chat_message_updated
+- chat_message_deleted_soft
+- chat_read_receipt
+- chat_unread_count
+- chat_typing_presence
+- chat_status_changed
+- chat_system_event
+
+Rules:
+- server must validate ownership before room subscription
+- unauthorized subscriptions must be rejected and logged
+- events must be scoped to conversation room only
+- never broadcast globally
+- connection must be auth-bound
+
+==================================================
+SECTION 7 — MESSAGE FEATURES
+==================================================
+
+MVP features:
+- text messages
+- image messages
+- system status messages
+- read receipts
+- unread badge
+- typing indicator
+- message timestamps
+- archived closed chats
+- report / block / moderation
+
+Optional later:
+- voice notes
+- location sharing
+- quick templates
+- translation
+- AI summarization
+
+Message constraints:
+- max length
+- sanitize input
+- strip dangerous HTML
+- detect phone/email/url/social handle leakage
+- allow report and moderation
+
+==================================================
+SECTION 8 — MOBILE UX / VISUAL DESIGN
+==================================================
+
+Design direction:
+Luxury, premium, ultra-clean, 2026 mobile visual language
+
+Visual rules:
+- pure white background
+- metallic silver / soft platinum accents
+- black / graphite text
+- minimal color noise
+- soft shadow depth
+- rounded containers
+- strong whitespace
+- elegant motion
+- smooth keyboard behavior
+- premium haptics where supported
+
+Layout:
+1. Inbox screen
+2. Conversation screen
+3. Full-screen image preview
+4. Report / block sheet
+5. Archived conversation state
+6. Empty state
+7. Error / offline state
+
+Inbox design:
+- white background
+- large clean list rows
+- circular avatar or pet icon
+- provider name
+- service type badge
+- last message preview
+- unread metallic pill badge
+- timestamp at right
+- subtle divider or card spacing
+- premium empty state with illustration
+
+Conversation design:
+- white background
+- top sticky header
+- provider avatar
+- booking/service context
+- trust badge / verified badge
+- message bubbles with refined spacing
+- user bubble: soft metallic tint or pale silver white
+- provider bubble: pure white with silver border
+- system event chip: centered pill, faint metallic border
+- composer anchored bottom
+- image attachment button
+- send button clean and modern
+- typing indicator subtle
+- read receipt small and elegant
+
+Header must include:
+- provider name
+- booking title / service type
+- status chip (Active / In Progress / Closed)
+- overflow menu for report/help
+
+Composer area:
+- large rounded white input
+- attachment icon
+- optional camera icon
+- send button
+- disabled state in read_only mode
+
+Animation:
+- smooth open/close
+- subtle fade/slide on new messages
+- skeleton loaders
+- no heavy gimmicks
+
+==================================================
+SECTION 9 — IOS / ANDROID BEHAVIOR
+==================================================
+
+Must be designed specifically for mobile.
+
+Requirements:
+- keyboard-safe layout
+- safe area support
+- smooth scroll to latest
+- maintain position when loading older messages
+- image upload from camera or gallery
+- push notification deep-link into conversation
+- offline fallback and reconnect state
+- app background / foreground sync
+- unread badge update across tabs
+- native-feeling gesture support where possible
+
+Bottom nav integration:
+- Home
+- Jobs
+- Messages
+- Wallet
+- Profile
+
+Messages tab must show unread badge.
+
+==================================================
+SECTION 10 — NOTIFICATIONS
+==================================================
+
+Must support:
+- in-app notification
+- push notification
+- optional email fallback
+- quiet hours logic later
+
+Push notification examples:
+- New message from provider
+- Provider accepted booking and sent a message
+- Customer sent a message
+- Booking chat closed
+- Support replied
+
+Deep link:
+Push should open exact conversation screen directly.
+
+==================================================
+SECTION 11 — PROVIDER EXPERIENCE
+==================================================
+
+Provider side must include:
+- inbox
+- conversation screen
+- quick actions
+- customer context
+- booking context
+- status action integration
+
+Provider quick actions:
+- On my way
+- Arrived
+- Starting now
+- Completed
+- Need help
+- Report issue
+
+These actions may create system messages in chat.
+
+==================================================
+SECTION 12 — USER EXPERIENCE
+==================================================
+
+User must be able to:
+- open chat from booking card
+- read provider replies live
+- send text and images
+- see provider status
+- report abuse
+- view archive after booking closes
+
+User should not see:
+- provider private email
+- provider direct phone unless policy allows
+- internal admin notes
+
+==================================================
+SECTION 13 — MODERATION AND SAFETY
+==================================================
+
+Need:
+- report message
+- report provider
+- report user
+- block future contact
+- admin moderation queue
+- soft delete
+- hidden by admin
+- review notes
+- dispute linkage
+
+System should flag:
+- phone number leakage
+- email leakage
+- external URLs
+- social handle attempts
+- harassment keywords later if policy requires
+
+==================================================
+SECTION 14 — AI / GEMINI ASSIST
+==================================================
+
+Gemini should be integrated as a premium assist layer, not as noisy chatbot clutter.
+
+Use cases:
+For users:
+- summarize conversation
+- draft polite message
+- translate if needed
+- suggest questions before service
+
+For providers:
+- draft professional reply
+- summarize job context
+- suggest next operational action
+- highlight urgent customer messages
+
+For admin:
+- summarize dispute thread
+- identify risk patterns
+- classify abusive content
+- summarize unresolved chats
+
+AI must be optional and controlled.
+Never auto-send messages.
+Only suggest.
+
+==================================================
+SECTION 15 — REQUIRED SCREENS
+==================================================
+
+Build these screens:
+
+1. MessagesInboxScreen
+2. BookingChatScreen
+3. ImageViewerScreen
+4. ReportMessageModal
+5. BlockUserSheet
+6. ArchivedConversationScreenState
+7. EmptyInboxState
+8. AdminChatViewer
+9. SupportChatScreen if support chat is enabled
+
+==================================================
+SECTION 16 — REQUIRED EDGE CASES
+==================================================
+
+Handle:
+- duplicate send
+- message retry on bad network
+- reconnect and re-sync
+- unread count mismatch
+- provider removed from booking
+- booking cancelled mid-conversation
+- admin archived thread
+- image upload failure
+- user offline while receiving new message
+- race conditions when opening chat from multiple devices
+
+==================================================
+SECTION 17 — REQUIRED TESTS
+==================================================
+
+Must test:
+- conversation opens only for allowed booking
+- only customer/provider can access thread
+- unauthorized user blocked
+- websocket subscribe auth check
+- real-time message delivery
+- typing indicator
+- read receipt
+- unread count changes
+- archive on completed/cancelled
+- report flow
+- moderation flow
+- image upload
+- deep link from push notification
+- iOS keyboard behavior
+- Android keyboard behavior
+- mobile dark/light asset consistency if supported
+
+==================================================
+SECTION 18 — REQUIRED DELIVERABLES
+==================================================
+
+After implementation send me:
+- exact DB schema changes
+- exact routes added
+- exact websocket events added
+- exact screens built
+- exact mobile components built
+- exact UI design system choices
+- screenshots or video of:
+  1. inbox
+  2. active chat
+  3. provider side chat
+  4. archived chat
+  5. report flow
+  6. unread badge
+- proof of iOS and Android responsiveness
+- proof of live real-time messaging
+- proof of auth / ownership enforcement
+
+==================================================
+SECTION 19 — PRODUCT QUALITY BAR
+==================================================
+
+This must feel like a top-tier 2026 marketplace app.
+No generic bootstrap chat.
+No cluttered UI.
+No dark busy background.
+No low-end messenger look.
+
+It must feel:
+- premium
+- clean
+- modern
+- calm
+- trustworthy
+- very polished on mobile
+
+White first.
+Metallic accents.
+Fast.
+Elegant.
+Operationally smart.

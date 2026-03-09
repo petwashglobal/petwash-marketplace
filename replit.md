@@ -78,6 +78,7 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **Backend**: Node.js, Express.js, Neon serverless PostgreSQL with Drizzle ORM, Redis caching.
 - **Authentication & User Management**: Firebase Auth with Twilio SMS, WebAuthn/Passkey, RBAC, biometrics, GDPR compliance. Includes mandatory MFA for admin roles and email verification for critical actions. Features a robust user status state machine, authorization gates for roles and MFA, and an audit trail for critical actions.
 - **AI Chat Assistant**: Google Dialogflow CX with Gemini 2.5 Flash, bilingual (Hebrew/English), WCAG 2.1 AA compliant.
+- **Real-Time Booking Chat**: Full WebSocket-based chat between customers and pet care providers. Backend: `/api/booking-chat/*` (open, fetch, send, read, report). Frontend: `BookingChat.tsx` (chat UI) + `BookingChatInbox.tsx` (conversation list). Accessible from provider/owner dashboards via "Message" buttons. Routes: `/booking-chat/inbox` and `/booking-chat/:bookingId`.
 - **Marketplaces**: Unified system for The Sitter Suite™, Walk My Pet™, PetTrek™, and The Plush Lab™ (AI avatar creator).
 - **Loyalty Program**: 7-tier system, e-gift cards, wash packages, Apple Wallet integration.
 - **E-Signature**: DocuSeal with Hebrew RTL support; custom system for Israeli subcontractor agreements.

@@ -414,11 +414,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/login">
           {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
-        <Route path="/booking-chat/:bookingId">
-          {() => <BookingChat />}
-        </Route>
         <Route path="/booking-chat/inbox">
           {() => <BookingChatInbox />}
+        </Route>
+        <Route path="/booking-chat/:bookingId">
+          {() => <BookingChat />}
         </Route>
         <Route path="/admin/booking-chat/:bookingId">
           {() => <AdminBookingChat />}
