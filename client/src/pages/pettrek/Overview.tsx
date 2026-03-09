@@ -35,7 +35,11 @@ export default function PetTrekOverview() {
   const isRtl = language === 'he' || language === 'ar';
   const BackArrow = isRtl ? ArrowRight : ArrowLeft;
   const [pickupLocation, setPickupLocation] = useState('');
+  const [pickupLat, setPickupLat] = useState<number | null>(null);
+  const [pickupLng, setPickupLng] = useState<number | null>(null);
   const [destination, setDestination] = useState('');
+  const [destLat, setDestLat] = useState<number | null>(null);
+  const [destLng, setDestLng] = useState<number | null>(null);
   
   const serviceTypes = [
     {
@@ -200,7 +204,11 @@ export default function PetTrekOverview() {
                     <GooglePlacesAutocomplete
                       value={pickupLocation}
                       onChange={(val) => setPickupLocation(val)}
-                      onPlaceSelected={(place) => setPickupLocation(place.formattedAddress)}
+                      onPlaceSelected={(place) => {
+                        setPickupLocation(place.formattedAddress);
+                        if (place.lat != null) setPickupLat(place.lat);
+                        if (place.lng != null) setPickupLng(place.lng);
+                      }}
                       placeholder={t('pettrek.enterAddress')}
                       country={['il']}
                       inputClassName="px-4 py-2 text-sm outline-none flex-1 border border-gray-200 rounded-lg focus:border-purple-600"
@@ -211,7 +219,11 @@ export default function PetTrekOverview() {
                     <GooglePlacesAutocomplete
                       value={destination}
                       onChange={(val) => setDestination(val)}
-                      onPlaceSelected={(place) => setDestination(place.formattedAddress)}
+                      onPlaceSelected={(place) => {
+                        setDestination(place.formattedAddress);
+                        if (place.lat != null) setDestLat(place.lat);
+                        if (place.lng != null) setDestLng(place.lng);
+                      }}
                       placeholder={t('pettrek.whereTo')}
                       country={['il']}
                       inputClassName="px-4 py-2 text-sm outline-none flex-1 border border-gray-200 rounded-lg focus:border-purple-600"

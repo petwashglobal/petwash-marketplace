@@ -55,6 +55,10 @@ export default function SitterBookingFlow() {
   const [calendarRange, setCalendarRange] = useState<DateRange | undefined>();
   const [notes, setNotes] = useState("");
   const [address, setAddress] = useState("");
+  const [addressCity, setAddressCity] = useState("");
+  const [addressPostal, setAddressPostal] = useState("");
+  const [addressLat, setAddressLat] = useState<number | null>(null);
+  const [addressLng, setAddressLng] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [appliedCredits, setAppliedCredits] = useState<{ redemptionSessionId: string; totalCreditsAppliedCents: number; cashDueCents: number } | null>(null);
@@ -184,6 +188,10 @@ export default function SitterBookingFlow() {
         endDate: checkOutDate.toISOString(),
         specialInstructions: notes || '',
         address,
+        addressCity: addressCity || undefined,
+        addressPostal: addressPostal || undefined,
+        addressLat: addressLat ?? undefined,
+        addressLng: addressLng ?? undefined,
         petIds: selectedPetIds,
         pricing: {
           currency: "ILS",
@@ -510,8 +518,20 @@ export default function SitterBookingFlow() {
               </label>
               <GooglePlacesAutocomplete
                 value={address}
-                onChange={(value) => setAddress(value)}
-                onPlaceSelected={(place: PlaceDetails) => setAddress(place.formattedAddress)}
+                onChange={(value, details) => {
+                  setAddress(value);
+                  if (details?.city) setAddressCity(details.city);
+                  if (details?.postalCode) setAddressPostal(details.postalCode);
+                  if (details?.lat != null) setAddressLat(details.lat);
+                  if (details?.lng != null) setAddressLng(details.lng);
+                }}
+                onPlaceSelected={(place: PlaceDetails) => {
+                  setAddress(place.formattedAddress);
+                  if (place.city) setAddressCity(place.city);
+                  if (place.postalCode) setAddressPostal(place.postalCode);
+                  if (place.lat != null) setAddressLat(place.lat);
+                  if (place.lng != null) setAddressLng(place.lng);
+                }}
                 placeholder="הקלידו כתובת..."
                 country={['il', 'us', 'gb', 'au', 'ca']}
                 showExtraFields={true}

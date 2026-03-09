@@ -555,9 +555,10 @@ export function StationSheet({ stationId, open, onOpenChange }: StationSheetProp
                       }}
                       onPlaceSelected={(place) => {
                         setAddressLine1(place.formattedAddress);
-                        if (place.city) {
-                          setCity(place.city);
-                        }
+                        if (place.city) setCity(place.city);
+                        if (place.postalCode) setPostcode(place.postalCode);
+                        if (place.lat != null) setGeoLat(place.lat.toString());
+                        if (place.lng != null) setGeoLng(place.lng.toString());
                         setOverviewSaveState("unsaved");
                       }}
                       placeholder="Start typing station address..."

@@ -34,12 +34,27 @@ class ReceiptOCRService {
 
   constructor() {
     try {
-      const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-      if (credentialsJson) {
-        const credentials = JSON.parse(credentialsJson);
+      // Try GOOGLE_APPLICATION_CREDENTIALS_JSON first (must be valid JSON service account)
+      // If it's an API key (AIza...) or malformed, fall through to FIREBASE_SERVICE_ACCOUNT_KEY
+      let credentials: object | null = null;
+      for (const envKey of ['GOOGLE_APPLICATION_CREDENTIALS_JSON', 'FIREBASE_SERVICE_ACCOUNT_KEY']) {
+        const raw = process.env[envKey];
+        if (!raw) continue;
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object' && (parsed as any).type === 'service_account') {
+            credentials = parsed;
+            break;
+          }
+        } catch {
+          // Not valid JSON — skip this env var and try next
+          logger.warn(`[ReceiptOCR] ${envKey} is not valid JSON service-account — skipping`);
+        }
+      }
+      if (credentials) {
         this.visionClient = new ImageAnnotatorClient({ credentials });
       } else {
-        this.visionClient = new ImageAnnotatorClient();
+        this.visionClient = new ImageAnnotatorClient(); // Application Default Credentials
       }
       logger.info('[ReceiptOCR] ✅ Google Vision API initialized');
     } catch (error) {

@@ -23,7 +23,11 @@ export default function PetTrekBookingFlow() {
   const [selectedPetIds, setSelectedPetIds] = useState<number[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [pickupAddress, setPickupAddress] = useState("");
+  const [pickupLat, setPickupLat] = useState<number | null>(null);
+  const [pickupLng, setPickupLng] = useState<number | null>(null);
   const [dropoffAddress, setDropoffAddress] = useState("");
+  const [dropoffLat, setDropoffLat] = useState<number | null>(null);
+  const [dropoffLng, setDropoffLng] = useState<number | null>(null);
   const [estimatedDistance, setEstimatedDistance] = useState(18); // km
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,7 +99,11 @@ export default function PetTrekBookingFlow() {
         },
         platformData: {
           pickupAddress,
+          pickupLat,
+          pickupLng,
           dropoffAddress,
+          dropoffLat,
+          dropoffLng,
           estimatedDistance,
           paymentMethod: getActivePaymentMethod(),
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -206,6 +214,8 @@ export default function PetTrekBookingFlow() {
                     value={pickupAddress}
                     onChange={(value, details) => {
                       setPickupAddress(value);
+                      if (details?.lat != null) setPickupLat(details.lat);
+                      if (details?.lng != null) setPickupLng(details.lng);
                     }}
                     placeholder="רחוב, מספר, עיר"
                     country={['il', 'us', 'gb', 'au', 'ca']}
@@ -218,6 +228,8 @@ export default function PetTrekBookingFlow() {
                     value={dropoffAddress}
                     onChange={(value, details) => {
                       setDropoffAddress(value);
+                      if (details?.lat != null) setDropoffLat(details.lat);
+                      if (details?.lng != null) setDropoffLng(details.lng);
                     }}
                     placeholder="רחוב, מספר, עיר"
                     country={['il', 'us', 'gb', 'au', 'ca']}
