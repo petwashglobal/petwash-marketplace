@@ -353,14 +353,18 @@ async function handleClientMessage(client: ClientConnection, message: any) {
 
     case 'chat_typing_start': {
       const { conversationId } = payload || {};
+      // Security: only broadcast if client is subscribed to this conversation
       if (!client.userId || !conversationId) break;
+      if (!client.bookingChatSubscriptions.has(String(conversationId))) break;
       broadcastTypingInternal(String(conversationId), client.userId, true, clients);
       break;
     }
 
     case 'chat_typing_stop': {
       const { conversationId } = payload || {};
+      // Security: only broadcast if client is subscribed to this conversation
       if (!client.userId || !conversationId) break;
+      if (!client.bookingChatSubscriptions.has(String(conversationId))) break;
       broadcastTypingInternal(String(conversationId), client.userId, false, clients);
       break;
     }

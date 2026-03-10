@@ -19,8 +19,6 @@ import RoleProtectedRoute from "@/auth/RoleProtectedRoute";
 import { PlatformComingSoon } from "@/components/PlatformComingSoon";
 import { Car } from "lucide-react";
 import { initClientSentry } from "@/lib/sentry";
-
-initClientSentry();
 import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
@@ -37,6 +35,9 @@ import { GoogleOneTap } from "@/components/GoogleOneTap";
 // CRITICAL: Only the two entry-point pages stay eager (everything else lazy)
 import Landing from "@/pages/Landing";
 import Home from "@/pages/Home";
+
+// Initialize Sentry once — after all static imports are resolved
+initClientSentry();
 
 // Lazy-load all non-home routes (staff, expenses, admin tools)
 const EmployeeExpenses = lazy(() => import("@/pages/EmployeeExpenses"));

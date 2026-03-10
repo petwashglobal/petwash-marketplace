@@ -399,11 +399,12 @@ export default function BookingChat() {
   });
 
   // ── 4. Mark read ──────────────────────────────────────────────────────────
+  // Only invalidate inbox (unread counts) — NOT the chat query itself.
+  // Invalidating the chat query would re-trigger chatData → useEffect → markRead (loop).
   const markReadMutation = useMutation({
     mutationFn: async () => { await apiRequest("PUT", `/api/booking-chat/${bookingId}/read`); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/booking-chat/inbox"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/booking-chat/${bookingId}`] });
     },
   });
 

@@ -67,7 +67,9 @@ export function NotificationCenterPanel({ open, onClose }: NotificationCenterPan
     mutationFn: async (payload: { bookingId?: string; ids?: string[] }) =>
       apiRequest("PUT", "/api/booking-chat/notifications/mark-read", payload),
     onSuccess: () => {
+      // Invalidate both notification panel AND inbox unread badge
       qc.invalidateQueries({ queryKey: ["/api/booking-chat/notifications/grouped"] });
+      qc.invalidateQueries({ queryKey: ["/api/booking-chat/inbox"] });
     },
   });
 
