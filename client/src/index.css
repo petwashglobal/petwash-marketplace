@@ -484,6 +484,32 @@ html, body, #root {
   background-color: #FFFFFF !important;
 }
 
+/* FORCE PURE WHITE: Override ALL off-white Tailwind bg utilities globally */
+.bg-gray-50,
+.bg-stone-50,
+.bg-neutral-50,
+.bg-zinc-50,
+.bg-slate-50,
+.bg-amber-50,
+.bg-yellow-50,
+.bg-orange-50,
+.bg-rose-50,
+.bg-red-50,
+.bg-pink-50,
+.bg-fuchsia-50,
+.bg-purple-50,
+.bg-violet-50,
+.bg-indigo-50,
+.bg-blue-50,
+.bg-sky-50,
+.bg-cyan-50,
+.bg-teal-50,
+.bg-emerald-50,
+.bg-green-50,
+.bg-lime-50 {
+  background-color: #FFFFFF !important;
+}
+
 /* TRANSPARENT BEHIND ALL IMAGES AND ICONS */
 img, svg, picture, video, canvas {
   background-color: transparent;
