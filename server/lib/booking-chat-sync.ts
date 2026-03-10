@@ -151,7 +151,6 @@ export async function syncChatToBookingStatus(
         chatStatus: newChatStatus, 
         closedReason, 
         closedAt: isTerminal ? new Date() : null,
-        updatedAt: new Date()
       })
       .where(eq(bookingConversations.conversationId, conversationId));
 

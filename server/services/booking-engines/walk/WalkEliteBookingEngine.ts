@@ -42,7 +42,7 @@ class WalkAvailabilityStrategy implements AvailabilityStrategy {
       const [walker] = await db
         .select()
         .from(walkerProfiles)
-        .where(eq(walkerProfiles.providerId, walkerId))
+        .where(eq(walkerProfiles.walkerId, walkerId))
         .limit(1);
 
       if (!walker) {
@@ -52,7 +52,7 @@ class WalkAvailabilityStrategy implements AvailabilityStrategy {
         };
       }
 
-      if (!walker.isAvailable || !walker.isOnline) {
+      if (!walker.isAvailable) {
         return {
           available: false,
           message: 'Walker is currently unavailable.',
@@ -105,14 +105,14 @@ class WalkPricingStrategy implements PricingStrategy {
     const [walker] = await db
       .select()
       .from(walkerProfiles)
-      .where(eq(walkerProfiles.providerId, walkerId))
+      .where(eq(walkerProfiles.walkerId, walkerId))
       .limit(1);
 
     if (!walker) {
       throw new Error('Walker not found');
     }
 
-    const baseRate = parseFloat(walker.hourlyRate || '60'); // Default 60 ILS/hour
+    const baseRate = parseFloat(walker.baseHourlyRate || '60'); // Default 60 ILS/hour
     const durationHours = this.calculateDurationHours(params.startDate, params.endDate);
     let subtotal = baseRate * durationHours;
 
@@ -214,26 +214,21 @@ export class WalkEliteBookingEngine extends BaseLuxuryBookingEngine {
     maxDistance: number = 5 // km
   ): Promise<any[]> {
     try {
-      // Get all online, available walkers
+      // Get all available walkers
       const walkers = await db
         .select()
         .from(walkerProfiles)
-        .where(
-          and(
-            eq(walkerProfiles.isOnline, true),
-            eq(walkerProfiles.isAvailable, true)
-          )
-        );
+        .where(eq(walkerProfiles.isAvailable, true));
 
       // Calculate distance for each walker
       const walkersWithDistance = walkers
-        .filter((walker) => walker.lastKnownLatitude && walker.lastKnownLongitude)
+        .filter((walker) => walker.currentLatitude && walker.currentLongitude)
         .map((walker) => {
           const distance = this.calculateDistance(
             latitude,
             longitude,
-            parseFloat(walker.lastKnownLatitude!),
-            parseFloat(walker.lastKnownLongitude!)
+            parseFloat(walker.currentLatitude!),
+            parseFloat(walker.currentLongitude!)
           );
 
           return {

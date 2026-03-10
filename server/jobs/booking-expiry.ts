@@ -27,12 +27,12 @@ async function findReplacementSitter(city: string, excludeUids: string[]): Promi
     .select({ id: sitterProfiles.id })
     .from(sitterProfiles)
     .where(and(
-      eq(sitterProfiles.isAvailable, true),
+      eq(sitterProfiles.isActive, true),
       eq(sitterProfiles.verificationStatus, 'verified'),
       eq(sitterProfiles.city, city),
       excludeUids.length > 0 ? notInArray(sitterProfiles.userId, excludeUids) : sql`TRUE`
     ))
-    .orderBy(sitterProfiles.averageRating, sitterProfiles.responseTimeMinutes)
+    .orderBy(sitterProfiles.rating, sitterProfiles.responseTimeMinutes)
     .limit(1);
   return candidate ?? null;
 }

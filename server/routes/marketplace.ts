@@ -129,11 +129,11 @@ async function searchWalkers(filters: MarketplaceSearchFilters): Promise<{
     }
 
     if (filters.bodyCamera !== undefined) {
-      conditions.push(eq(walkerProfiles.bodyCamera, filters.bodyCamera));
+      conditions.push(eq(walkerProfiles.hasBodyCamera, filters.bodyCamera));
     }
 
     if (filters.droneAccess !== undefined) {
-      conditions.push(eq(walkerProfiles.droneAccess, filters.droneAccess));
+      conditions.push(eq(walkerProfiles.hasDroneAccess, filters.droneAccess));
     }
 
     // Execute query
