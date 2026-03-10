@@ -10,7 +10,7 @@ import {
   userBlocks,
   superAppNotifications,
   insertBookingConversationSchema,
-  insertBookingMessageSchema 
+  insertBookingMessageSchema,
 } from '@shared/schema';
 import { eq, and, or, desc, lt, sql } from 'drizzle-orm';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
@@ -855,6 +855,137 @@ router.post('/:bookingId/dispute', async (req, res) => {
   } catch (error) {
     logger.error('Error opening dispute', error);
     res.status(500).json({ error: 'Failed to open dispute' });
+  }
+});
+
+/**
+ * GET /api/booking-chat/notifications/grouped
+ * Wave 1 #4: Return in-app notifications grouped by bookingId to reduce notification fatigue.
+ * Each group contains: bookingId, platform, latest title/body, unread count, latestAt.
+ */
+router.get('/notifications/grouped', async (req, res) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+
+    // Fetch all unread/recent notifications for this user (last 100, up to 30 days)
+    const rawNotifs = await db
+      .select()
+      .from(superAppNotifications)
+      .where(
+        and(
+          eq(superAppNotifications.userId, uid),
+          sql`${superAppNotifications.createdAt} > NOW() - INTERVAL '30 days'`
+        )
+      )
+      .orderBy(desc(superAppNotifications.createdAt))
+      .limit(100);
+
+    // Group by bookingId (nulls go into an "other" bucket)
+    const groupMap = new Map<string, {
+      bookingId: string | null;
+      platform: string | null;
+      totalCount: number;
+      unreadCount: number;
+      latestTitle: string;
+      latestBody: string;
+      latestAt: Date | null;
+      ids: string[];
+      actionUrl: string | null;
+    }>();
+
+    for (const n of rawNotifs) {
+      const key = n.bookingId ?? `__other__${n.type}`;
+      const existing = groupMap.get(key);
+      if (!existing) {
+        groupMap.set(key, {
+          bookingId: n.bookingId ?? null,
+          platform: null,
+          totalCount: 1,
+          unreadCount: n.isRead ? 0 : 1,
+          latestTitle: n.title,
+          latestBody: n.body,
+          latestAt: n.createdAt,
+          ids: [n.id],
+          actionUrl: n.actionUrl ?? null,
+        });
+      } else {
+        existing.totalCount++;
+        if (!n.isRead) existing.unreadCount++;
+        // Keep the latest
+        if (n.createdAt && (!existing.latestAt || n.createdAt > existing.latestAt)) {
+          existing.latestTitle = n.title;
+          existing.latestBody  = n.body;
+          existing.latestAt    = n.createdAt;
+          existing.actionUrl   = n.actionUrl ?? existing.actionUrl;
+        }
+        existing.ids.push(n.id);
+      }
+    }
+
+    // Enrich with platform info from booking conversations
+    const bookingIds = [...groupMap.keys()].filter(k => !k.startsWith('__other__'));
+    if (bookingIds.length > 0) {
+      const convs = await db
+        .select({ bookingId: bookingConversations.bookingId, platform: bookingConversations.platform })
+        .from(bookingConversations)
+        .where(sql`${bookingConversations.bookingId} = ANY(${bookingIds})`);
+
+      for (const c of convs) {
+        const grp = groupMap.get(c.bookingId);
+        if (grp) grp.platform = c.platform;
+      }
+    }
+
+    const groups = [...groupMap.values()]
+      .filter(g => g.totalCount > 0)
+      .sort((a, b) => {
+        const ta = a.latestAt?.getTime() ?? 0;
+        const tb = b.latestAt?.getTime() ?? 0;
+        return tb - ta;
+      });
+
+    const totalUnread = rawNotifs.filter(n => !n.isRead).length;
+    res.json({ groups, totalUnread });
+  } catch (error) {
+    logger.error('Error fetching grouped notifications', error);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+/**
+ * PUT /api/booking-chat/notifications/mark-read
+ * Wave 1 #4: Mark notification IDs as read (accepts array of ids or bookingId to clear a group).
+ */
+router.put('/notifications/mark-read', async (req, res) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const { ids, bookingId } = req.body as { ids?: string[]; bookingId?: string };
+
+    if (bookingId) {
+      await db
+        .update(superAppNotifications)
+        .set({ isRead: true, readAt: new Date() })
+        .where(
+          and(
+            eq(superAppNotifications.userId, uid),
+            eq(superAppNotifications.bookingId, bookingId)
+          )
+        );
+    } else if (ids?.length) {
+      await db
+        .update(superAppNotifications)
+        .set({ isRead: true, readAt: new Date() })
+        .where(
+          and(
+            eq(superAppNotifications.userId, uid),
+            sql`${superAppNotifications.id} = ANY(${ids})`
+          )
+        );
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    logger.error('Error marking notifications read', error);
+    res.status(500).json({ error: 'Failed to mark as read' });
   }
 });
 

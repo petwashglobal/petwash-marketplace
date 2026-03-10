@@ -36,8 +36,10 @@ import {
   Wifi, WifiOff, Sparkles, MapPin, Navigation,
   PlayCircle, CheckCircle2, HelpCircle, AlertOctagon,
   X, Image as ImageIcon, MoreVertical, Ban, Phone,
-  FileText, Bot, ChevronDown, ChevronUp
+  FileText, Bot, ChevronDown, ChevronUp,
+  Timer, Dog, Cat, PawPrint, BookOpen, Calendar
 } from "lucide-react";
+import { formatDistance } from "date-fns";
 
 // ─── Platform labels ──────────────────────────────────────────────────────────
 const PLATFORM_LABELS: Record<string, string> = {
@@ -178,6 +180,128 @@ function StatusChip({ status }: { status: string }) {
   );
 }
 
+// ─── Session timer formatter ──────────────────────────────────────────────────
+function formatElapsed(startedAt: Date): string {
+  const secs = Math.floor((Date.now() - startedAt.getTime()) / 1000);
+  if (secs < 0) return "0:00";
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+// ─── Session timer chip (Wave 1 #3) ──────────────────────────────────────────
+function SessionTimerChip({ startedAt }: { startedAt: Date }) {
+  const [elapsed, setElapsed] = useState(() => formatElapsed(startedAt));
+  useEffect(() => {
+    const id = setInterval(() => setElapsed(formatElapsed(startedAt)), 1000);
+    return () => clearInterval(id);
+  }, [startedAt]);
+  return (
+    <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
+      style={{ background: "rgba(124,58,237,0.08)", color: "#7C3AED", border: "1px solid rgba(124,58,237,0.15)" }}>
+      <Timer className="w-3 h-3" />
+      {elapsed}
+    </span>
+  );
+}
+
+// ─── Contextual empty states (Wave 1 #2) ─────────────────────────────────────
+const PLATFORM_EMPTY: Record<string, {
+  Icon: any; color: string; title: string; body: string; cta?: string;
+}> = {
+  walk_my_pet: {
+    Icon: Dog, color: "#4F7942",
+    title: "Introduce yourself to your walker",
+    body: "Share your dog's name, any special needs, and the best spot for pickup. Your walker is ready to listen.",
+    cta: "Say hello 👋",
+  },
+  sitter_suite: {
+    Icon: Cat, color: "#7B5EA7",
+    title: "Tell your sitter about your pet",
+    body: "Their routine, favourite toys, feeding schedule — the more you share, the better the care.",
+    cta: "Start the conversation",
+  },
+  petwash: {
+    Icon: PawPrint, color: "#0B57D0",
+    title: "Questions before your wash?",
+    body: "Ask about the station, product options, or how to book extra services. We're here.",
+    cta: "Ask anything",
+  },
+  academy: {
+    Icon: BookOpen, color: "#B45309",
+    title: "Connect with your trainer",
+    body: "Share your training goals, your pet's experience level, and any concerns before your first session.",
+    cta: "Introduce your pet",
+  },
+};
+
+function ContextualEmptyState({
+  platform, chatStatus, closedReason, isReadOnly
+}: { platform: string; chatStatus: string; closedReason?: string | null; isReadOnly: boolean }) {
+  if (isReadOnly) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center mb-5">
+          <Lock className="w-7 h-7 text-amber-400" />
+        </div>
+        <h3 className="text-base font-bold text-gray-700 mb-2">Session complete</h3>
+        <p className="text-sm text-gray-400 leading-relaxed max-w-xs">
+          {closedReason
+            ? `Conversation closed — ${closedReason}.`
+            : "This booking is complete. You can still browse the conversation history above."}
+        </p>
+        <p className="text-xs text-gray-300 mt-3">Read-only archive</p>
+      </div>
+    );
+  }
+
+  const cfg = PLATFORM_EMPTY[platform] ?? {
+    Icon: MessageSquare, color: "#6B7280",
+    title: "Start the conversation",
+    body: "Say hello to your service provider. Ask any questions before your booking.",
+    cta: "Send your first message",
+  };
+  const Icon = cfg.Icon;
+
+  return (
+    <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
+        style={{ background: cfg.color + "12", border: `1.5px solid ${cfg.color}22` }}>
+        <Icon className="w-7 h-7" style={{ color: cfg.color }} />
+      </div>
+      <h3 className="text-base font-bold text-gray-800 mb-2">{cfg.title}</h3>
+      <p className="text-sm text-gray-400 leading-relaxed max-w-xs mb-5">{cfg.body}</p>
+      {cfg.cta && (
+        <div className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full"
+          style={{ color: cfg.color, background: cfg.color + "10", border: `1px solid ${cfg.color}25` }}>
+          {cfg.cta}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Seen popup (Wave 1 #1) ───────────────────────────────────────────────────
+function SeenPopup({ readAt }: { readAt: Date | string | null }) {
+  if (!readAt) {
+    return (
+      <div className="absolute -bottom-7 right-0 bg-gray-800/80 text-white text-[10px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap backdrop-blur-sm z-10">
+        Delivered
+      </div>
+    );
+  }
+  const date = typeof readAt === "string" ? new Date(readAt) : readAt;
+  const timeStr = format(date, "HH:mm");
+  const dateStr = formatDistance(date, new Date(), { addSuffix: true });
+  return (
+    <div className="absolute -bottom-7 right-0 bg-gray-800/80 text-white text-[10px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap backdrop-blur-sm z-10">
+      Seen at {timeStr} · {dateStr}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function BookingChat() {
   const [, params]    = useRoute("/booking-chat/:bookingId");
@@ -204,6 +328,12 @@ export default function BookingChat() {
   const [aiSummary, setAiSummary]         = useState<string | null>(null);
   const [showQuickActions, setShowQuickActions] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Wave 1: Seen popup (#1) — which message has seen tooltip open
+  const [seenPopupId, setSeenPopupId]     = useState<string | null>(null);
+
+  // Wave 1: Session timer (#3)
+  const [sessionStartedAt, setSessionStartedAt] = useState<Date | null>(null);
 
   // Refs
   const socketRef         = useRef<WebSocket | null>(null);
@@ -352,9 +482,18 @@ export default function BookingChat() {
     if (chatData?.messages) {
       setMessages(chatData.messages);
       const conv = chatData.conversation;
-      setIsProvider(conv.providerId === user?.uid);
+      const providerUid = conv.providerId;
+      setIsProvider(providerUid === user?.uid);
       setPlatform(conv.platform || "");
       markReadMutation.mutate();
+
+      // Wave 1 #3: detect "Starting the session now." from provider → set session timer
+      const startMsg = chatData.messages.find(
+        m => m.senderUid === providerUid && m.content === "Starting the session now."
+      );
+      if (startMsg?.createdAt) {
+        setSessionStartedAt(new Date(startMsg.createdAt));
+      }
     }
   }, [chatData?.messages]);
 
@@ -387,6 +526,10 @@ export default function BookingChat() {
           });
           setIsOtherTyping(false);
           markReadMutation.mutate();
+          // Wave 1 #3: detect session start from incoming WS message
+          if (data.message.content === "Starting the session now." && data.message.createdAt) {
+            setSessionStartedAt(new Date(data.message.createdAt));
+          }
         }
         if (data.type === "chat_typing_presence" && data.conversationId === conversationId && data.senderUid !== user.uid) {
           setIsOtherTyping(data.isTyping);
@@ -572,8 +715,12 @@ export default function BookingChat() {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               <StatusChip status={conversation.chatStatus} />
+              {/* Wave 1 #3: session timer chip — live elapsed since "Starting now" */}
+              {sessionStartedAt && !isReadOnly && (
+                <SessionTimerChip startedAt={sessionStartedAt} />
+              )}
               <span className="text-[10px] text-gray-300 font-mono">#{bookingId?.slice(-6).toUpperCase()}</span>
             </div>
           </div>
@@ -680,11 +827,14 @@ export default function BookingChat() {
         {/* ── Message list ─────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <div className="flex flex-col gap-3 max-w-2xl mx-auto">
+            {/* Wave 1 #2: Contextual empty state */}
             {messages.length === 0 && (
-              <div className="text-center py-16 text-gray-300">
-                <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                <p className="text-sm">No messages yet. Say hello!</p>
-              </div>
+              <ContextualEmptyState
+                platform={platform}
+                chatStatus={conversation.chatStatus}
+                closedReason={conversation.closedReason}
+                isReadOnly={isReadOnly}
+              />
             )}
 
             {messages.map((msg) => {
@@ -723,13 +873,28 @@ export default function BookingChat() {
                     ) : (
                       <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                     )}
+                    {/* Wave 1 #1: tappable read receipt — shows "Seen at HH:mm" */}
                     <div className={`flex items-center gap-1 mt-1 text-[10px] ${isMe ? "text-white/60 justify-end" : "text-gray-300"}`}>
                       {msg.createdAt ? format(new Date(msg.createdAt), "HH:mm") : ""}
-                      {isMe && (
-                        <span className="ml-0.5">
-                          {(msg.readByCustomerAt || msg.readByProviderAt) ? <CheckCheck className="w-3 h-3" /> : <Check className="w-3 h-3" />}
-                        </span>
-                      )}
+                      {isMe && (() => {
+                        const readAt = isProvider ? msg.readByCustomerAt : msg.readByProviderAt;
+                        const isRead = !!readAt;
+                        return (
+                          <button
+                            className="ml-0.5 relative outline-none"
+                            onClick={() => setSeenPopupId(seenPopupId === msg.messageId ? null : msg.messageId)}
+                            title={isRead ? "Seen" : "Delivered"}
+                          >
+                            {isRead
+                              ? <CheckCheck className="w-3 h-3" style={{ color: isMe ? "rgba(255,255,255,0.9)" : "#0B57D0" }} />
+                              : <Check className="w-3 h-3" />
+                            }
+                            {seenPopupId === msg.messageId && (
+                              <SeenPopup readAt={readAt ?? null} />
+                            )}
+                          </button>
+                        );
+                      })()}
                     </div>
                   </div>
 

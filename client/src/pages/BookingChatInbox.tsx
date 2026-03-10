@@ -9,6 +9,7 @@ import {
   MessageSquare, Lock, CheckCheck, ChevronRight,
   Dog, Cat, PawPrint, Archive, Inbox
 } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationCenterPanel";
 
 // ─── Platform config ──────────────────────────────────────────────────────────
 const PLATFORM_CONFIG: Record<string, { label: string; color: string; Icon: any }> = {
@@ -184,7 +185,8 @@ export default function BookingChatInbox() {
                 <p className="text-xs text-gray-400 mt-0.5">{totalUnread} unread</p>
               )}
             </div>
-            <MessageSquare className="w-5 h-5 text-gray-200 mb-0.5" />
+            {/* Wave 1 #4: notification bell with grouped unread count */}
+            <NotificationBell />
           </div>
 
           {/* ── Tabs: Active / Archived (§15 #6: ArchivedConversationScreenState) ── */}
