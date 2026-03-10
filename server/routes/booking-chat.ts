@@ -9,8 +9,10 @@ import {
   sitterBookings,
   userBlocks,
   superAppNotifications,
+  sessionCareLogs,
   insertBookingConversationSchema,
   insertBookingMessageSchema,
+  insertSessionCareLogSchema,
 } from '@shared/schema';
 import { eq, and, or, desc, lt, sql } from 'drizzle-orm';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
@@ -498,7 +500,7 @@ router.post('/:bookingId/send', async (req, res) => {
   try {
     const uid = req.firebaseUser!.uid;
     const { bookingId } = req.params;
-    const { content, messageType = 'text' } = req.body;
+    const { content, messageType = 'text', replyToMessageId } = req.body;
 
     // 1. Participant check
     const [conv] = await db
@@ -576,6 +578,7 @@ router.post('/:bookingId/send', async (req, res) => {
       content: safeContent,
       isFlagged,
       flaggedReason: flagReason,
+      replyToMessageId: replyToMessageId || null,
       createdAt: new Date(),
       // §6 Idempotency: store clientMessageId in metadata so duplicate sends can be detected
       metadata: clientMessageId ? { clientMessageId } : null,
@@ -1244,6 +1247,90 @@ router.post('/admin/messages/:messageId/moderate', async (req, res) => {
   } catch (error) {
     logger.error('Admin error moderating message', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/booking-chat/:bookingId/care-log
+ * Provider submits pet health summary after session. Gemini generates customer-facing prose.
+ */
+router.post('/:bookingId/care-log', async (req, res) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const { bookingId } = req.params;
+
+    const [conv] = await db
+      .select()
+      .from(bookingConversations)
+      .where(eq(bookingConversations.bookingId, bookingId))
+      .limit(1);
+
+    if (!conv) return res.status(404).json({ error: 'Conversation not found' });
+    if (conv.providerId !== uid) return res.status(403).json({ error: 'Only providers can submit care logs' });
+
+    const parsed = insertSessionCareLogSchema.safeParse({
+      bookingId: parseInt(bookingId) || 0,
+      petId: req.body.petId ? parseInt(req.body.petId) : null,
+      providerUid: uid,
+      mood: req.body.mood,
+      energyLevel: parseInt(req.body.energyLevel) || 3,
+      ateWell: Boolean(req.body.ateWell),
+      drankWater: Boolean(req.body.drankWater),
+      usedToilet: Boolean(req.body.usedToilet),
+      played: Boolean(req.body.played),
+      notes: req.body.notes || null,
+    });
+
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid care log data', issues: parsed.error.issues });
+    }
+
+    const moodEmoji: Record<string, string> = { happy: '😄', calm: '😌', anxious: '😰', tired: '😴' };
+    const moodText: Record<string, string> = { happy: 'happy and playful', calm: 'calm and relaxed', anxious: 'a little anxious', tired: 'tired but content' };
+
+    let geminiSummary: string | null = null;
+    try {
+      const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
+      const data = parsed.data;
+      const prompt = `You are writing a warm, premium care summary for a pet owner. Be concise (2-3 sentences), emotional, and use the pet care details below. Do not mention that this was AI-generated.
+Mood: ${data.mood} (${moodText[data.mood] || data.mood})
+Energy level: ${data.energyLevel}/5
+Ate well: ${data.ateWell ? 'Yes' : 'No'}
+Drank water: ${data.drankWater ? 'Yes' : 'No'}
+Used toilet: ${data.usedToilet ? 'Yes' : 'No'}
+Played: ${data.played ? 'Yes' : 'No'}
+Provider notes: ${data.notes || 'No additional notes'}
+Write a 2-3 sentence summary starting with the pet's session highlights. End with one warm reassuring sentence.`;
+      const result = await genAI.models.generateContent({ model: 'gemini-2.0-flash', contents: prompt });
+      geminiSummary = result.text?.trim() ?? null;
+    } catch (aiErr) {
+      logger.warn('[CareLog] Gemini summary failed', aiErr);
+      const d = parsed.data;
+      geminiSummary = `Your pet had a ${moodText[d.mood] || d.mood} session ${moodEmoji[d.mood] || ''}. ${d.ateWell && d.drankWater ? 'They ate and drank well.' : ''} ${d.notes ? `Provider note: ${d.notes}` : ''}`.trim();
+    }
+
+    const [careLog] = await db.insert(sessionCareLogs)
+      .values({ ...parsed.data, geminiSummary })
+      .returning();
+
+    const messageId = `BM-${nanoid()}`;
+    const [careSummaryMsg] = await db.insert(bookingMessages).values({
+      messageId,
+      conversationId: conv.conversationId,
+      senderUid: 'system',
+      senderRole: 'system',
+      messageType: 'care_summary',
+      content: geminiSummary || 'Session care summary submitted.',
+      metadata: { careLogId: careLog.id, mood: parsed.data.mood, energyLevel: parsed.data.energyLevel },
+    }).returning();
+
+    const participantUids = [conv.customerId, conv.providerId];
+    broadcastBookingChatMessage(conv.conversationId, careSummaryMsg, participantUids);
+
+    res.json({ success: true, careLogId: careLog.id, summary: geminiSummary });
+  } catch (error) {
+    logger.error('Error submitting care log', error);
+    res.status(500).json({ error: 'Failed to submit care log' });
   }
 });
 

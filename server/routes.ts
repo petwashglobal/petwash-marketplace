@@ -68,6 +68,7 @@ import israeli2025EsignRoutes from "./routes/israeli-2025-esign";
 import notificationsRoutes from "./routes/notifications";
 import chatRoutes from "./routes/chat";
 import bookingChatRouter from './routes/booking-chat';
+import onboardingRouter from './routes/onboarding';
 import providerConsoleRouter from './routes/provider-console';
 import moneyFlowRouter from './routes/finance/money-flow';
 import careersRoutes from "./routes/careers";
@@ -9525,6 +9526,7 @@ self.addEventListener('notificationclick', (event) => {
   // Unified Voucher System 2026 - WASH_PACKAGE + PLATFORM_CREDIT with full ledger
   app.use('/api/booking-chat', bookingChatRouter);
   app.use('/api/admin/booking-chat', bookingChatRouter);
+  app.use('/api/onboarding', onboardingRouter);
   app.use('/api/provider-console', providerConsoleRouter);
   app.use('/api/finance', adminLimiter, moneyFlowRouter);
   app.use('/api/legal-stamps', apiLimiter, legalStampsRoutes);

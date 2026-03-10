@@ -7883,6 +7883,7 @@ export const bookingMessages = pgTable("booking_messages", {
   moderatedBy: varchar("moderated_by"), // admin UID
   isDeleted: boolean("is_deleted").default(false),
   deletedBy: varchar("deleted_by"),
+  replyToMessageId: varchar("reply_to_message_id"), // BM-{nanoid} of the quoted message
   readByCustomerAt: timestamp("read_by_customer_at"),
   readByProviderAt: timestamp("read_by_provider_at"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -11693,5 +11694,47 @@ export const providerSafetyNotes = pgTable("provider_safety_notes", {
   providerIdx:    index("psn_provider_idx").on(table.providerUid),
   subjectUnique:  uniqueIndex("psn_provider_subject_unique").on(table.providerUid, table.subjectType, table.subjectId),
 }));
+
+// ─── Onboarding Milestones ────────────────────────────────────────────────────
+export const onboardingMilestones = pgTable("onboarding_milestones", {
+  id:          serial("id").primaryKey(),
+  userId:      varchar("user_id").notNull(),
+  role:        varchar("role").notNull(), // 'customer' | 'provider'
+  milestone:   varchar("milestone").notNull(),
+  // customer: pet_profile, pet_photo, address_added, first_booking, first_review_given, loyalty_joined
+  // provider: profile_photo, service_area, id_verified, first_booking_accepted, first_session_complete, first_review_received
+  completedAt: timestamp("completed_at").defaultNow(),
+}, (table) => ({
+  userMilestoneUnique: uniqueIndex("om_user_milestone_unique").on(table.userId, table.milestone),
+  userIdx: index("om_user_idx").on(table.userId),
+}));
+
+export const insertOnboardingMilestoneSchema = createInsertSchema(onboardingMilestones).omit({ id: true, completedAt: true });
+export type InsertOnboardingMilestone = z.infer<typeof insertOnboardingMilestoneSchema>;
+export type OnboardingMilestone = typeof onboardingMilestones.$inferSelect;
+
+// ─── Session Care Logs (pet health log after session) ─────────────────────────
+export const sessionCareLogs = pgTable("session_care_logs", {
+  id:            serial("id").primaryKey(),
+  bookingId:     integer("booking_id").notNull(),
+  petId:         integer("pet_id"),
+  providerUid:   varchar("provider_uid").notNull(),
+  mood:          varchar("mood").notNull(), // 'happy' | 'calm' | 'anxious' | 'tired'
+  energyLevel:   integer("energy_level").notNull(), // 1-5
+  ateWell:       boolean("ate_well").notNull().default(false),
+  drankWater:    boolean("drank_water").notNull().default(false),
+  usedToilet:    boolean("used_toilet").notNull().default(false),
+  played:        boolean("played").notNull().default(false),
+  notes:         varchar("notes", { length: 500 }),
+  geminiSummary: text("gemini_summary"), // AI-generated customer-facing summary
+  createdAt:     timestamp("created_at").defaultNow(),
+}, (table) => ({
+  bookingIdx: index("scl_booking_idx").on(table.bookingId),
+  petIdx:     index("scl_pet_idx").on(table.petId),
+}));
+
+export const insertSessionCareLogSchema = createInsertSchema(sessionCareLogs).omit({ id: true, geminiSummary: true, createdAt: true });
+export type InsertSessionCareLog = z.infer<typeof insertSessionCareLogSchema>;
+export type SessionCareLog = typeof sessionCareLogs.$inferSelect;
 
 export type ProviderSafetyNote = typeof providerSafetyNotes.$inferSelect;

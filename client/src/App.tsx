@@ -31,6 +31,7 @@ import { initializeInteractionTracking } from "@/lib/interactionTracker";
 import { useFCMNotifications } from "@/hooks/useFCMNotifications";
 import { usePersonalizedGreeting } from "@/hooks/usePersonalizedGreeting";
 import { GoogleOneTap } from "@/components/GoogleOneTap";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 
 // CRITICAL: Only the two entry-point pages stay eager (everything else lazy)
 import Landing from "@/pages/Landing";
@@ -2369,6 +2370,7 @@ console.log("Build: 1769350182889");
           </svg>
           
           <Toaster />
+          <OnboardingChecklist />
           <FloatingStack 
             language={currentLanguage}
             onAIClick={() => setIsAIChatOpen(true)}

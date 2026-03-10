@@ -37,7 +37,8 @@ import {
   PlayCircle, CheckCircle2, HelpCircle, AlertOctagon,
   X, Image as ImageIcon, MoreVertical, Ban, Phone,
   FileText, Bot, ChevronDown, ChevronUp,
-  Timer, Dog, Cat, PawPrint, BookOpen, Calendar
+  Timer, Dog, Cat, PawPrint, BookOpen, Calendar,
+  Reply, Heart, ClipboardList
 } from "lucide-react";
 import { formatDistance } from "date-fns";
 
@@ -353,6 +354,9 @@ export default function BookingChat() {
 
   // Wave 1: Seen popup (#1) — which message has seen tooltip open
   const [seenPopupId, setSeenPopupId]     = useState<string | null>(null);
+  const [replyingTo, setReplyingTo]       = useState<BookingMessage | null>(null);
+  const [swipeOffsets, setSwipeOffsets]   = useState<Record<string, number>>({});
+  const swipeTouchStart                   = useRef<Record<string, number>>({});
 
   // Wave 1: Session timer (#3)
   const [sessionStartedAt, setSessionStartedAt] = useState<Date | null>(null);
@@ -388,11 +392,11 @@ export default function BookingChat() {
 
   // ── 3. Send message ───────────────────────────────────────────────────────
   const sendMutation = useMutation({
-    mutationFn: async ({ content, messageType, metadata }: { content: string; messageType: string; metadata?: any }) => {
-      const res = await apiRequest("POST", `/api/booking-chat/${bookingId}/send`, { content, messageType, metadata });
+    mutationFn: async ({ content, messageType, metadata, replyToMessageId }: { content: string; messageType: string; metadata?: any; replyToMessageId?: string | null }) => {
+      const res = await apiRequest("POST", `/api/booking-chat/${bookingId}/send`, { content, messageType, metadata, replyToMessageId });
       return res.json();
     },
-    onSuccess: () => setInputText(""),
+    onSuccess: () => { setInputText(""); setReplyingTo(null); },
     onError: (err: any) => {
       toast({ title: "Failed to send", description: err.userMessage || "Please try again.", variant: "destructive" });
     },
@@ -623,7 +627,7 @@ export default function BookingChat() {
     if (!inputText.trim() || sendMutation.isPending) return;
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     sendTyping(false);
-    sendMutation.mutate({ content: inputText, messageType: "text" });
+    sendMutation.mutate({ content: inputText, messageType: "text", replyToMessageId: replyingTo?.messageId ?? null });
   };
 
   // ── Loading / Error states ────────────────────────────────────────────────
@@ -867,6 +871,49 @@ export default function BookingChat() {
               const isMe     = msg.senderUid === user?.uid;
               const isSystem = msg.senderRole === "system";
               const isImage  = msg.messageType === "image" && msg.metadata && (msg.metadata as any).imageUrl;
+              const isCare   = msg.messageType === "care_summary";
+              const swipeX   = swipeOffsets[msg.messageId] || 0;
+
+              // Swipe-to-reply touch handlers (right swipe → reply)
+              const onTouchStart = (e: React.TouchEvent) => {
+                swipeTouchStart.current[msg.messageId] = e.touches[0].clientX;
+              };
+              const onTouchMove = (e: React.TouchEvent) => {
+                const delta = e.touches[0].clientX - (swipeTouchStart.current[msg.messageId] ?? 0);
+                if (delta > 0 && delta < 80) {
+                  setSwipeOffsets(p => ({ ...p, [msg.messageId]: delta }));
+                }
+              };
+              const onTouchEnd = () => {
+                const delta = swipeOffsets[msg.messageId] || 0;
+                if (delta >= 55) setReplyingTo(msg);
+                setSwipeOffsets(p => ({ ...p, [msg.messageId]: 0 }));
+              };
+
+              if (isSystem && isCare) {
+                const meta = (msg.metadata as any) || {};
+                return (
+                  <div key={msg.messageId} className="flex justify-center my-2">
+                    <div className="bg-white border border-emerald-100 rounded-2xl px-4 py-3 max-w-[85%]"
+                      style={{ boxShadow: "0 2px 12px rgba(5,150,105,0.08)" }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center">
+                          <ClipboardList className="w-4 h-4 text-emerald-500" />
+                        </div>
+                        <span className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wide">Care Summary</span>
+                      </div>
+                      <p className="text-sm text-gray-700 leading-relaxed">{msg.content}</p>
+                      {meta.mood && (
+                        <div className="flex items-center gap-3 mt-2 pt-2 border-t border-gray-50 text-[10px] text-gray-400">
+                          <span>Mood: {meta.mood}</span>
+                          {meta.energyLevel && <span>Energy: {meta.energyLevel}/5</span>}
+                        </div>
+                      )}
+                      <div className="mt-1 text-[9px] text-gray-300">{msg.createdAt ? format(new Date(msg.createdAt), "HH:mm") : ""}</div>
+                    </div>
+                  </div>
+                );
+              }
 
               if (isSystem) {
                 return (
@@ -881,15 +928,34 @@ export default function BookingChat() {
                 );
               }
 
+              const quotedMsg = msg.replyToMessageId ? messages.find(m => m.messageId === msg.replyToMessageId) : null;
+
               return (
                 <div key={msg.messageId} className={`flex flex-col group ${isMe ? "items-end" : "items-start"}`}>
                   <div
-                    className={`max-w-[82%] sm:max-w-[65%] rounded-2xl px-4 py-2.5 ${isMe ? "rounded-tr-sm text-white" : "rounded-tl-sm bg-white text-gray-900 border border-gray-100"}`}
-                    style={isMe
-                      ? { background: "linear-gradient(135deg,#0B57D0,#4E8DF7)", boxShadow: "0 2px 10px rgba(11,87,208,0.2)" }
-                      : { boxShadow: "0 1px 6px rgba(0,0,0,0.06)" }
-                    }
+                    onTouchStart={onTouchStart}
+                    onTouchMove={onTouchMove}
+                    onTouchEnd={onTouchEnd}
+                    className={`max-w-[82%] sm:max-w-[65%] rounded-2xl px-4 py-2.5 transition-transform ${isMe ? "rounded-tr-sm text-white" : "rounded-tl-sm bg-white text-gray-900 border border-gray-100"}`}
+                    style={Object.assign(
+                      isMe
+                        ? { background: "linear-gradient(135deg,#0B57D0,#4E8DF7)", boxShadow: "0 2px 10px rgba(11,87,208,0.2)" }
+                        : { boxShadow: "0 1px 6px rgba(0,0,0,0.06)" },
+                      swipeX > 0 ? { transform: `translateX(${swipeX}px)` } : {}
+                    )}
                   >
+                    {/* Quoted reply preview */}
+                    {quotedMsg && (
+                      <div className={`mb-2 rounded-lg px-2.5 py-1.5 text-[11px] border-l-2 ${isMe ? "border-white/50 bg-white/15" : "border-blue-300 bg-blue-50"}`}>
+                        <div className={`font-semibold mb-0.5 ${isMe ? "text-white/80" : "text-blue-600"}`}>
+                          {quotedMsg.senderUid === user?.uid ? "You" : "Them"}
+                        </div>
+                        <div className={`truncate ${isMe ? "text-white/70" : "text-gray-500"}`}>
+                          {quotedMsg.isDeleted ? "[Deleted]" : quotedMsg.content.slice(0, 80)}
+                        </div>
+                      </div>
+                    )}
+
                     {msg.isDeleted ? (
                       <span className="italic text-sm opacity-60">[Message removed]</span>
                     ) : isImage ? (
@@ -930,12 +996,20 @@ export default function BookingChat() {
                     </div>
                   )}
 
-                  {!isMe && !msg.isDeleted && (
-                    <button onClick={() => setReportingMsg(msg)}
-                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-red-400 flex items-center gap-1 transition-opacity">
-                      <Flag className="w-3 h-3" /> Report
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {!msg.isDeleted && (
+                      <button onClick={() => setReplyingTo(msg)}
+                        className="opacity-0 group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-blue-400 flex items-center gap-1 transition-opacity">
+                        <Reply className="w-3 h-3" /> Reply
+                      </button>
+                    )}
+                    {!isMe && !msg.isDeleted && (
+                      <button onClick={() => setReportingMsg(msg)}
+                        className="opacity-0 group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-red-400 flex items-center gap-1 transition-opacity">
+                        <Flag className="w-3 h-3" /> Report
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -958,6 +1032,23 @@ export default function BookingChat() {
           <div className="shrink-0 border-t border-gray-100 bg-white px-3 py-3"
             style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
             <div className="max-w-2xl mx-auto">
+              {/* Reply preview bar */}
+              {replyingTo && (
+                <div className="flex items-center gap-2 mb-2 px-1 py-1.5 bg-blue-50 rounded-xl border border-blue-100">
+                  <div className="w-0.5 h-8 bg-blue-400 rounded-full shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] font-semibold text-blue-600 flex items-center gap-1">
+                      <Reply className="w-3 h-3" />
+                      Replying to {replyingTo.senderUid === user?.uid ? "yourself" : "them"}
+                    </div>
+                    <div className="text-[11px] text-gray-500 truncate">{replyingTo.content.slice(0, 80)}</div>
+                  </div>
+                  <button onClick={() => setReplyingTo(null)} className="text-gray-300 hover:text-gray-500 transition-colors p-1">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
               {/* AI assist row (§14) */}
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <button onClick={() => aiDraftMutation.mutate()}
