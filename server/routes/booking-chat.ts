@@ -41,6 +41,63 @@ const uploadMiddleware = multer({
   },
 });
 
+// Multer for in-memory audio upload (max 5MB, voice messages)
+const audioUploadMiddleware = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('audio/')) cb(null, true);
+    else cb(new Error('Only audio files are allowed'));
+  },
+});
+
+// In-memory payment CTA cooldown (conversationId → last CTA timestamp)
+const paymentCtaCooldowns = new Map<string, number>();
+const PAYMENT_CTA_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
+
+async function checkPaymentIntent(
+  conversationId: string,
+  content: string,
+  conv: { customerId: string; providerId: string },
+  bookingId: string
+) {
+  const lastCta = paymentCtaCooldowns.get(conversationId) || 0;
+  if (Date.now() - lastCta < PAYMENT_CTA_COOLDOWN_MS) return;
+
+  try {
+    const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
+    const result = await genAI.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: [{
+        role: 'user',
+        parts: [{ text: `You are analyzing a chat message in a pet care service app. Detect if the message implies a tip, payment, extra service request, or upgrade. Reply with JSON only: {"intent": true/false, "ctaType": "tip"|"upgrade"|"package"|null, "ctaText": "short friendly CTA (max 10 words)"|null}. Message: "${content.slice(0, 300)}"` }]
+      }],
+    });
+    const raw = result.text?.trim() || '';
+    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    if (!parsed.intent) return;
+
+    paymentCtaCooldowns.set(conversationId, Date.now());
+
+    const [ctaMsg] = await db.insert(bookingMessages).values({
+      messageId: `BM-${nanoid()}`,
+      conversationId,
+      senderUid: 'system',
+      senderRole: 'system',
+      messageType: 'payment_cta',
+      content: parsed.ctaText || 'Quick payment option available',
+      isFlagged: false,
+      createdAt: new Date(),
+      metadata: { ctaType: parsed.ctaType, bookingId },
+    }).returning();
+
+    const participantUids = [conv.customerId, conv.providerId];
+    broadcastBookingChatMessage(conversationId, ctaMsg, participantUids);
+  } catch {
+    // best-effort only, never throw
+  }
+}
+
 const router = Router();
 
 // Helper functions
@@ -610,6 +667,11 @@ router.post('/:bookingId/send', async (req, res) => {
       participantUids
     );
 
+    // 7b. Async payment intent detection (T009) — fire-and-forget, never blocks response
+    if (messageType === 'text' && content.trim().length > 5) {
+      setImmediate(() => checkPaymentIntent(conv.conversationId, content, conv, bookingId));
+    }
+
     // 9. Notification cascade: in-app → push → email (§9)
     try {
       const recipientUid = isCustomer ? conv.providerId : conv.customerId;
@@ -1043,6 +1105,64 @@ router.post('/:bookingId/upload', uploadMiddleware.single('image'), async (req: 
 });
 
 /**
+ * POST /api/booking-chat/:bookingId/upload-audio
+ * Upload a voice message (WebM/mp4, max 5MB) → Firebase Storage + Gemini transcription
+ */
+router.post('/:bookingId/upload-audio', audioUploadMiddleware.single('audio'), async (req: any, res) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const { bookingId } = req.params;
+
+    if (!req.file) return res.status(400).json({ error: 'No audio file provided' });
+
+    const [conv] = await db.select().from(bookingConversations)
+      .where(eq(bookingConversations.bookingId, bookingId)).limit(1);
+
+    if (!conv || (conv.customerId !== uid && conv.providerId !== uid)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    if (conv.chatStatus !== 'active') {
+      return res.status(403).json({ error: 'Chat is read-only' });
+    }
+
+    const ext = req.file.mimetype.includes('mp4') ? 'mp4' : 'webm';
+    const fileName = `chat-audio/${conv.conversationId}/${nanoid()}.${ext}`;
+    const bucket = firebaseStorage.bucket();
+    const fileRef = bucket.file(fileName);
+
+    await fileRef.save(req.file.buffer, {
+      metadata: { contentType: req.file.mimetype, metadata: { uploadedBy: uid } },
+    });
+    await fileRef.makePublic();
+    const audioUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+
+    let transcript: string | null = null;
+    try {
+      const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
+      const audioBytes = req.file.buffer.toString('base64');
+      const result = await genAI.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: [{
+          role: 'user',
+          parts: [
+            { inlineData: { mimeType: req.file.mimetype, data: audioBytes } },
+            { text: 'Transcribe this voice message accurately. Return only the transcribed text with no preamble.' },
+          ]
+        }],
+      });
+      transcript = result.text?.trim() || null;
+    } catch {
+      logger.warn('[AudioUpload] Gemini transcription failed');
+    }
+
+    res.json({ audioUrl, transcript });
+  } catch (error) {
+    logger.error('Error uploading chat audio', error);
+    res.status(500).json({ error: 'Audio upload failed' });
+  }
+});
+
+/**
  * POST /api/booking-chat/:bookingId/ai-summarize
  * §14: Gemini summarizes the conversation for user/provider — never auto-sends.
  */
@@ -1165,6 +1285,47 @@ Draft a reply for the ${myRole}:`;
   } catch (error) {
     logger.error('Error generating AI draft', error);
     res.status(500).json({ error: 'Failed to generate draft' });
+  }
+});
+
+/**
+ * POST /api/booking-chat/:bookingId/messages/:messageId/translate
+ * T010: Gemini auto-detects source language and translates to the target language.
+ */
+router.post('/:bookingId/messages/:messageId/translate', async (req, res) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const { bookingId, messageId } = req.params;
+    const { targetLang = 'en' } = req.body;
+
+    const [conv] = await db.select().from(bookingConversations)
+      .where(eq(bookingConversations.bookingId, bookingId)).limit(1);
+    if (!conv || (conv.customerId !== uid && conv.providerId !== uid)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const [msg] = await db.select().from(bookingMessages)
+      .where(eq(bookingMessages.messageId, messageId)).limit(1);
+    if (!msg || !msg.content) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    const LANG_NAMES: Record<string, string> = { en: 'English', he: 'Hebrew', ar: 'Arabic', ru: 'Russian' };
+    const targetName = LANG_NAMES[targetLang] || 'English';
+
+    const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
+    const result = await genAI.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: [{
+        role: 'user',
+        parts: [{ text: `Translate the following message to ${targetName}. Return ONLY the translated text with no explanation, preamble, or quotation marks.\n\nMessage: ${msg.content}` }]
+      }],
+    });
+    const translated = result.text?.trim() || msg.content;
+    res.json({ translated, sourceContent: msg.content });
+  } catch (error) {
+    logger.error('Error translating message', error);
+    res.status(500).json({ error: 'Translation failed' });
   }
 });
 

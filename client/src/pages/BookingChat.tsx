@@ -38,7 +38,9 @@ import {
   X, Image as ImageIcon, MoreVertical, Ban, Phone,
   FileText, Bot, ChevronDown, ChevronUp,
   Timer, Dog, Cat, PawPrint, BookOpen, Calendar,
-  Reply, Heart, ClipboardList, Camera, Smile, Edit2
+  Reply, Heart, ClipboardList, Camera, Smile, Edit2,
+  Mic, MicOff, StopCircle, Play, Pause, CreditCard, Wallet,
+  Globe, Languages
 } from "lucide-react";
 import { formatDistance } from "date-fns";
 
@@ -325,6 +327,95 @@ function SeenPopup({ readAt }: { readAt: Date | string | null }) {
   );
 }
 
+// ─── WaveformPlayer ───────────────────────────────────────────────────────────
+function WaveformPlayer({ audioUrl, transcript, isMe }: { audioUrl: string; transcript?: string | null; isMe: boolean }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying]     = useState(false);
+  const [current, setCurrent]     = useState(0);
+  const [duration, setDuration]   = useState(0);
+  const [showTx, setShowTx]       = useState(false);
+
+  // Deterministic pseudo-waveform bars seeded from URL chars
+  const bars = Array.from({ length: 32 }, (_, i) => {
+    const seed = audioUrl.charCodeAt(i % audioUrl.length) + i * 17;
+    return 20 + (seed % 60);
+  });
+
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    const onTime = () => setCurrent(el.currentTime);
+    const onLoad = () => setDuration(el.duration);
+    const onEnd  = () => { setPlaying(false); setCurrent(0); };
+    el.addEventListener('timeupdate', onTime);
+    el.addEventListener('loadedmetadata', onLoad);
+    el.addEventListener('ended', onEnd);
+    return () => { el.removeEventListener('timeupdate', onTime); el.removeEventListener('loadedmetadata', onLoad); el.removeEventListener('ended', onEnd); };
+  }, []);
+
+  const toggle = () => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) { el.pause(); setPlaying(false); }
+    else { el.play().catch(() => {}); setPlaying(true); }
+  };
+
+  const seek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = audioRef.current;
+    if (!el || !duration) return;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    el.currentTime = ((e.clientX - rect.left) / rect.width) * duration;
+  };
+
+  const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const progress = duration ? current / duration : 0;
+
+  return (
+    <div className="w-52 select-none">
+      <audio ref={audioRef} src={audioUrl} preload="metadata" />
+      <div className="flex items-center gap-2">
+        <button onClick={toggle}
+          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all ${isMe ? "bg-white/20 hover:bg-white/30" : "bg-blue-50 hover:bg-blue-100"}`}>
+          {playing
+            ? <Pause className={`w-3.5 h-3.5 ${isMe ? "text-white" : "text-blue-600"}`} />
+            : <Play  className={`w-3.5 h-3.5 ${isMe ? "text-white" : "text-blue-600"}`} />
+          }
+        </button>
+        {/* Waveform bars + seek */}
+        <div className="flex-1 flex flex-col gap-0.5">
+          <div className="flex items-center gap-px h-8 cursor-pointer" onClick={seek}>
+            {bars.map((h, i) => {
+              const barProgress = i / bars.length;
+              const active = barProgress <= progress;
+              return (
+                <div key={i}
+                  style={{ height: `${h}%`, minHeight: 3 }}
+                  className={`flex-1 rounded-full transition-colors ${active
+                    ? (isMe ? "bg-white" : "bg-blue-500")
+                    : (isMe ? "bg-white/35" : "bg-gray-200")
+                  }`}
+                />
+              );
+            })}
+          </div>
+          <div className={`text-[9px] ${isMe ? "text-white/60" : "text-gray-400"}`}>
+            {fmtTime(current)} / {fmtTime(duration || 0)}
+          </div>
+        </div>
+      </div>
+      {transcript && (
+        <button onClick={() => setShowTx(t => !t)}
+          className={`mt-1 text-[10px] underline underline-offset-2 ${isMe ? "text-white/60" : "text-gray-400"}`}>
+          {showTx ? "Hide transcript" : "Show transcript"}
+        </button>
+      )}
+      {showTx && transcript && (
+        <p className={`mt-1 text-[11px] leading-snug italic ${isMe ? "text-white/80" : "text-gray-500"}`}>{transcript}</p>
+      )}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function BookingChat() {
   const [, params]    = useRoute("/booking-chat/:bookingId");
@@ -363,6 +454,19 @@ export default function BookingChat() {
   // Session photo: pending photo to send (with optional AI caption)
   const [pendingPhoto, setPendingPhoto]   = useState<{ imageUrl: string; aiCaption: string | null } | null>(null);
   const [photoCaption, setPhotoCaption]   = useState("");
+  // T007: Voice recorder
+  const [isRecording, setIsRecording]     = useState(false);
+  const [recordingSecs, setRecordingSecs] = useState(0);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
+  const mediaRecorderRef                  = useRef<MediaRecorder | null>(null);
+  const audioChunksRef                    = useRef<Blob[]>([]);
+  const recordingTimerRef                 = useRef<ReturnType<typeof setInterval> | null>(null);
+  // T009: dismissed payment CTAs (local state, not persisted)
+  const [dismissedCtaIds, setDismissedCtaIds] = useState<Set<string>>(new Set());
+  // T010: in-chat translations (messageId → translated text)
+  const [translations, setTranslations]   = useState<Record<string, string>>({});
+  const [showOriginal, setShowOriginal]   = useState<Set<string>>(new Set());
+  const [translatingId, setTranslatingId] = useState<string | null>(null);
 
   // Wave 1: Session timer (#3)
   const [sessionStartedAt, setSessionStartedAt] = useState<Date | null>(null);
@@ -520,7 +624,95 @@ export default function BookingChat() {
     setPhotoCaption("");
   };
 
-  // ── 11. Reaction toggle ────────────────────────────────────────────────────
+  // ── 11. Voice recorder (T007) ─────────────────────────────────────────────
+  const startRecording = async () => {
+    if (isRecording) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4' });
+      audioChunksRef.current = [];
+      mr.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(audioChunksRef.current, { type: mr.mimeType });
+        await uploadAudioBlob(blob, mr.mimeType);
+      };
+      mr.start(250);
+      mediaRecorderRef.current = mr;
+      setIsRecording(true);
+      setRecordingSecs(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSecs(s => {
+          if (s >= 59) { stopRecording(); return 59; }
+          return s + 1;
+        });
+      }, 1000);
+    } catch {
+      toast({ title: "Microphone access denied", variant: "destructive" });
+    }
+  };
+
+  const stopRecording = () => {
+    if (recordingTimerRef.current) { clearInterval(recordingTimerRef.current); recordingTimerRef.current = null; }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    setRecordingSecs(0);
+  };
+
+  const uploadAudioBlob = async (blob: Blob, mimeType: string) => {
+    setUploadingAudio(true);
+    try {
+      const formData = new FormData();
+      formData.append("audio", blob, `voice.${mimeType.includes('mp4') ? 'mp4' : 'webm'}`);
+      const token = await user!.getIdToken();
+      const res = await fetch(`/api/booking-chat/${bookingId}/upload-audio`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const { audioUrl, transcript } = await res.json();
+      sendMutation.mutate({
+        content: transcript || "",
+        messageType: "voice_message",
+        metadata: { audioUrl, transcript, durationSeconds: recordingSecs },
+      });
+    } catch {
+      toast({ title: "Voice message failed", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setUploadingAudio(false);
+    }
+  };
+
+  // ── 12. Translate message (T010) ──────────────────────────────────────────
+  const translateMessage = async (msg: BookingMessage) => {
+    if (translatingId) return;
+    if (translations[msg.messageId]) {
+      // Toggle "show original" if already translated
+      setShowOriginal(prev => {
+        const next = new Set(prev);
+        if (next.has(msg.messageId)) next.delete(msg.messageId);
+        else next.add(msg.messageId);
+        return next;
+      });
+      return;
+    }
+    setTranslatingId(msg.messageId);
+    try {
+      const targetLang = document.documentElement.lang === 'he' ? 'en' : 'he';
+      const res = await apiRequest('POST', `/api/booking-chat/${bookingId}/messages/${msg.messageId}/translate`, { targetLang });
+      const { translated } = await res.json();
+      setTranslations(prev => ({ ...prev, [msg.messageId]: translated }));
+    } catch {
+      toast({ title: "Translation failed", variant: "destructive" });
+    } finally {
+      setTranslatingId(null);
+    }
+  };
+
+  // ── 13. Reaction toggle ────────────────────────────────────────────────────
   const reactMutation = useMutation({
     mutationFn: async ({ messageId, reaction }: { messageId: string; reaction: string }) => {
       const res = await apiRequest("POST", `/api/booking-chat/${bookingId}/messages/${messageId}/react`, { reaction });
@@ -924,6 +1116,36 @@ export default function BookingChat() {
                 setSwipeOffsets(p => ({ ...p, [msg.messageId]: 0 }));
               };
 
+              if (msg.messageType === "payment_cta" && !dismissedCtaIds.has(msg.messageId)) {
+                const meta = (msg.metadata as any) || {};
+                const ctaType = meta.ctaType as string | undefined;
+                const ctaLabel = ctaType === 'tip' ? 'Leave a Tip' : ctaType === 'upgrade' ? 'Upgrade Service' : 'View Packages';
+                return (
+                  <div key={msg.messageId} className="flex justify-center my-2">
+                    <div className="bg-white border border-amber-100 rounded-2xl px-4 py-3 max-w-[85%] relative"
+                      style={{ boxShadow: "0 2px 14px rgba(245,158,11,0.10)" }}>
+                      <button onClick={() => setDismissedCtaIds(s => new Set([...s, msg.messageId]))}
+                        className="absolute top-2 right-2 text-gray-200 hover:text-gray-400 transition-colors">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-7 h-7 rounded-full bg-amber-50 flex items-center justify-center">
+                          <Wallet className="w-4 h-4 text-amber-500" />
+                        </div>
+                        <span className="text-[11px] font-semibold text-amber-700 uppercase tracking-wide">Payment Suggestion</span>
+                      </div>
+                      <p className="text-sm text-gray-700 leading-relaxed mb-3">{msg.content}</p>
+                      <a href="/wallet"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+                        style={{ background: "linear-gradient(135deg,#D97706,#F59E0B)" }}>
+                        <CreditCard className="w-3.5 h-3.5" />
+                        {ctaLabel}
+                      </a>
+                    </div>
+                  </div>
+                );
+              }
+
               if (msg.messageType === "gps_card") {
                 const meta = (msg.metadata as any) || {};
                 const mapsUrl = `https://maps.google.com/?q=${meta.lat},${meta.lng}`;
@@ -1057,8 +1279,29 @@ export default function BookingChat() {
                       </div>
                     )}
 
+                    {/* T010: Translation display */}
+                    {translations[msg.messageId] && !showOriginal.has(msg.messageId) && !msg.isDeleted && (
+                      <div className={`mb-1.5 rounded-lg px-2 py-1 text-[11px] border-l-2 ${isMe ? "border-white/40 bg-white/10" : "border-blue-200 bg-blue-50/50"}`}>
+                        <div className={`flex items-center gap-1 mb-0.5 ${isMe ? "text-white/60" : "text-blue-500"}`}>
+                          <Globe className="w-2.5 h-2.5" />
+                          <span className="font-semibold text-[9px] uppercase tracking-wide">Translated</span>
+                        </div>
+                        <p className={`text-xs leading-snug ${isMe ? "text-white/85" : "text-gray-600"}`}>{translations[msg.messageId]}</p>
+                        <button onClick={() => setShowOriginal(p => { const n = new Set(p); n.add(msg.messageId); return n; })}
+                          className={`mt-0.5 text-[9px] underline underline-offset-2 ${isMe ? "text-white/50" : "text-gray-400"}`}>
+                          Show original
+                        </button>
+                      </div>
+                    )}
+
                     {msg.isDeleted ? (
                       <span className="italic text-sm opacity-60">[Message removed]</span>
+                    ) : msg.messageType === "voice_message" && (msg.metadata as any)?.audioUrl ? (
+                      <WaveformPlayer
+                        audioUrl={(msg.metadata as any).audioUrl}
+                        transcript={(msg.metadata as any).transcript}
+                        isMe={isMe}
+                      />
                     ) : isSessionPhoto ? (
                       <div className="rounded-xl overflow-hidden -mx-1">
                         <button onClick={() => setViewingImage((msg.metadata as any).imageUrl)} className="block w-full">
@@ -1137,6 +1380,17 @@ export default function BookingChat() {
                         <Smile className="w-3 h-3" />
                       </button>
                     )}
+                    {!msg.isDeleted && msg.messageType === 'text' && msg.content.length > 2 && (
+                      <button onClick={() => translateMessage(msg)}
+                        disabled={translatingId === msg.messageId}
+                        className="opacity-0 group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-indigo-400 flex items-center gap-1 transition-opacity disabled:opacity-30"
+                        title={translations[msg.messageId] ? (showOriginal.has(msg.messageId) ? "Show translation" : "Show original") : "Translate"}>
+                        {translatingId === msg.messageId
+                          ? <span className="w-2.5 h-2.5 border border-gray-300 border-t-indigo-400 rounded-full animate-spin" />
+                          : <Globe className="w-3 h-3" />
+                        }
+                      </button>
+                    )}
                     {!isMe && !msg.isDeleted && (
                       <button onClick={() => setReportingMsg(msg)}
                         className="opacity-0 group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-red-400 flex items-center gap-1 transition-opacity">
@@ -1199,12 +1453,24 @@ export default function BookingChat() {
                 </button>
               </div>
 
+              {/* Recording indicator */}
+              {isRecording && (
+                <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-red-50 border border-red-100 rounded-xl">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+                  <span className="text-sm font-semibold text-red-600 flex-1">Recording…</span>
+                  <span className="text-sm text-red-400 tabular-nums">{recordingSecs}s / 60s</span>
+                  <button onClick={stopRecording} className="text-red-400 hover:text-red-600 transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
               {/* Input row */}
               <div className="flex items-end gap-2">
-                {/* Image attach (§8 Composer: attachment icon, §9: image upload from camera or gallery) */}
+                {/* Image attach */}
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingImage || sendMutation.isPending}
+                  disabled={uploadingImage || sendMutation.isPending || isRecording}
                   className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:text-blue-500 hover:border-blue-200 transition-colors shrink-0 disabled:opacity-40"
                   title="Attach image"
                 >
@@ -1212,6 +1478,26 @@ export default function BookingChat() {
                     <span className="w-3.5 h-3.5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
                   ) : (
                     <ImageIcon className="w-4 h-4" />
+                  )}
+                </button>
+
+                {/* Mic button (T007) */}
+                <button
+                  onClick={isRecording ? stopRecording : startRecording}
+                  disabled={uploadingAudio || uploadingImage || sendMutation.isPending}
+                  className={`w-9 h-9 rounded-full border flex items-center justify-center shrink-0 transition-all disabled:opacity-40 ${
+                    isRecording
+                      ? "border-red-300 bg-red-50 text-red-500 animate-pulse"
+                      : "border-gray-200 text-gray-400 hover:text-red-400 hover:border-red-200"
+                  }`}
+                  title={isRecording ? `Stop recording (${recordingSecs}s)` : "Voice message"}
+                >
+                  {uploadingAudio ? (
+                    <span className="w-3.5 h-3.5 border-2 border-gray-300 border-t-red-400 rounded-full animate-spin" />
+                  ) : isRecording ? (
+                    <StopCircle className="w-4 h-4" />
+                  ) : (
+                    <Mic className="w-4 h-4" />
                   )}
                 </button>
 

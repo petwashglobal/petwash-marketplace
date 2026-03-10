@@ -18,9 +18,11 @@ import {
   Moon,
   Heart,
   Gem,
+  RefreshCw,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 import { Layout } from '@/components/Layout';
+import { apiRequest } from '@/lib/queryClient';
 import { ProgressCircle, SparklineChart, GlassCard, DashboardWidget } from '@/components/LuxuryWidgets';
 import { TIER_CONFIGS } from '@shared/schema-loyalty';
 
@@ -188,6 +190,35 @@ export default function LoyaltyDashboard() {
   const currentTier = loyaltyProfile?.tier || mockStatus;
   const currentPoints = loyaltyProfile?.points || mockPoints;
 
+  // T012: Gemini AI personalized loyalty message
+  const [aiLoyaltyMsg, setAiLoyaltyMsg]     = useState<string | null>(null);
+  const [fetchingAiMsg, setFetchingAiMsg]   = useState(false);
+
+  const fetchAiLoyaltyMessage = async () => {
+    setFetchingAiMsg(true);
+    try {
+      const tierConfigs = TIER_CONFIGS;
+      const currentTierConfig = tierConfigs.find(t => t.id === currentTier.toLowerCase());
+      const currentIdx = tierConfigs.findIndex(t => t.id === currentTier.toLowerCase());
+      const nextTierConfig = tierConfigs[currentIdx + 1];
+      const nextTierPoints = nextTierConfig ? nextTierConfig.threshold - currentPoints : 0;
+      const totalWashes = loyaltyProfile?.totalWashes || 0;
+
+      const res = await apiRequest('POST', '/api/loyalty/ai-rewards-message', {
+        tier: currentTier.toLowerCase(),
+        points: currentPoints,
+        totalWashes,
+        nextTierPoints: Math.max(0, nextTierPoints),
+      });
+      const data = await res.json();
+      setAiLoyaltyMsg(data.message || null);
+    } catch {
+      setAiLoyaltyMsg('Your loyalty means everything to us, PetWash™ member! Keep washing, keep shining. 🐾');
+    } finally {
+      setFetchingAiMsg(false);
+    }
+  };
+
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
     document.documentElement.classList.toggle('dark');
@@ -218,6 +249,40 @@ export default function LoyaltyDashboard() {
               <Switch checked={isDarkMode} onCheckedChange={toggleDarkMode} />
               <Moon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
             </div>
+          </div>
+
+          {/* T012: Gemini AI Personalized Loyalty Message */}
+          <div className="luxury-glass-card luxury-shadow-lg mb-6 luxury-animate-fade-in p-5 border border-amber-100/60 dark:border-amber-700/30" style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #ffffff 60%, #fef3c7 100%)' }}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-md" style={{ background: 'linear-gradient(135deg,#F59E0B,#D97706)' }}>
+                <Sparkles className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm">
+                  {isHebrew ? 'מסר אישי מ-AI' : 'Your AI Concierge Message'}
+                </h3>
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  {isHebrew ? 'מסר מותאם אישית מ-Gemini' : 'Personalized by Gemini'}
+                </p>
+              </div>
+            </div>
+            {aiLoyaltyMsg ? (
+              <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed bg-white/60 dark:bg-white/5 rounded-xl px-4 py-3 border border-amber-100 dark:border-amber-800/30 mb-3 italic">
+                {aiLoyaltyMsg}
+              </p>
+            ) : (
+              <p className="text-xs text-amber-500 italic mb-3">
+                {isHebrew ? 'לחץ כדי לקבל מסר אישי מ-AI על הנאמנות שלך.' : 'Tap to receive a personalized AI message about your loyalty status.'}
+              </p>
+            )}
+            <button onClick={fetchAiLoyaltyMessage} disabled={fetchingAiMsg}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50 transition-all shadow-sm"
+              style={{ background: 'linear-gradient(135deg,#F59E0B,#D97706)' }}>
+              {fetchingAiMsg
+                ? <><RefreshCw className="h-3 w-3 animate-spin" /> {isHebrew ? 'יוצר מסר…' : 'Generating…'}</>
+                : <><Sparkles className="h-3 w-3" /> {aiLoyaltyMsg ? (isHebrew ? 'מסר חדש' : 'New Message') : (isHebrew ? 'קבל מסר AI' : 'Get AI Message')}</>
+              }
+            </button>
           </div>
 
           {/* Main Loyalty Widget Card */}

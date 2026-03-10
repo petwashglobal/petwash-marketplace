@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db as firestore } from '../lib/firebase-admin';
 import { requireFranchiseAuth } from '../franchiseAuth';
 import { z } from 'zod';
+import { GoogleGenAI } from '@google/genai';
 import { 
   FIRESTORE_PATHS, 
   insertServiceTicketSchema,
@@ -662,6 +663,40 @@ router.patch('/support/tickets/:ticketId', requireFranchiseAuth, async (req, res
   } catch (error) {
     logger.error('Error updating support ticket', error);
     res.status(500).json({ error: 'Failed to update support ticket' });
+  }
+});
+
+/**
+ * POST /api/franchise/:franchiseId/ai-narrative-report
+ * Gemini generates a weekly narrative business intelligence report for the franchise.
+ */
+router.post('/:franchiseId/ai-narrative-report', requireFranchiseAuth, async (req, res) => {
+  try {
+    const { franchiseId } = req.params;
+
+    // Pull recent stats from Firestore
+    let statsContext = '';
+    try {
+      const statsDoc = await firestore.collection('franchise_stats').doc(franchiseId).get();
+      const stats = statsDoc.data() || {};
+      statsContext = `Total washes this month: ${stats.monthlyWashes || 'N/A'}, Revenue: ₪${stats.monthlyRevenue || 'N/A'}, Active customers: ${stats.activeCustomers || 'N/A'}, Avg rating: ${stats.avgRating || 'N/A'}, Provider count: ${stats.providerCount || 'N/A'}`;
+    } catch {
+      statsContext = 'Stats unavailable — generate a motivating general overview';
+    }
+
+    const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
+    const result = await genAI.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: [{
+        role: 'user',
+        parts: [{ text: `You are a business intelligence analyst for PetWash™, a premium pet grooming franchise network in Israel. Generate a concise, motivating weekly narrative report for franchise partner "${franchiseId}". Data: ${statsContext}. The report should cover: 1) Performance highlights (2-3 sentences), 2) Key opportunities to grow (2-3 actionable bullets), 3) A motivating closing statement. Use a warm, professional tone. Keep it under 200 words. Write in English.` }]
+      }],
+    });
+
+    res.json({ success: true, report: result.text?.trim() || 'Unable to generate report at this time.' });
+  } catch (error) {
+    logger.error('Error generating AI narrative report', error);
+    res.status(500).json({ error: 'Failed to generate AI report' });
   }
 });
 
