@@ -501,6 +501,18 @@ async function sendAlertsSnapshot(client: ClientConnection, _payload: any) {
 }
 
 // Broadcast telemetry update to subscribed clients
+/**
+ * Broadcast a payload to a single connected user by UID.
+ * Used for social DMs, notification pushes, etc.
+ */
+export function broadcastToUserUid(uid: string, payload: object) {
+  clients.forEach(client => {
+    if (client.ws.readyState === WebSocket.OPEN && client.userId === uid) {
+      client.ws.send(JSON.stringify(payload));
+    }
+  });
+}
+
 export function broadcastTelemetryUpdate(stationId: number, telemetry: any) {
   const message = JSON.stringify({
     type: 'telemetry_update',

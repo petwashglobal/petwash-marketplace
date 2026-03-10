@@ -171,7 +171,7 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <p className="text-sm font-semibold text-gray-900">{b.clientName || 'Client'}</p>
-                    <p className="text-xs text-gray-500">{b.serviceName || 'Service'} · {b.scheduledDate || 'TBD'}</p>
+                    <p className="text-xs text-gray-500">{b.serviceName || 'Service'} · {b.scheduledDate ? new Date(b.scheduledDate).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }) : 'לא נקבע'}</p>
                   </div>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ background: status.bg, color: status.color }}>
                     {status.label}

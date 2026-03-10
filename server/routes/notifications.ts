@@ -277,18 +277,48 @@ router.get("/", requireAuth, async (req, res) => {
 
 /**
  * POST /api/notifications/:logId/read
- * Mark notification as read (placeholder for future implementation)
+ * Mark a notification log as read
  */
 router.post("/:logId/read", requireAuth, async (req, res) => {
   try {
     const { logId } = req.params;
-    
-    // TODO: Add read/unread status to notification_logs table
-    logger.info("[Notifications] Mark as read", { logId });
-    
+    const id = parseInt(logId, 10);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid logId' });
+
+    const { db } = await import('../db');
+    const { notificationLogs } = await import('@shared/schema');
+    const { eq } = await import('drizzle-orm');
+
+    await db.update(notificationLogs)
+      .set({ isRead: true, readAt: new Date() })
+      .where(eq(notificationLogs.id, id));
+
+    logger.info("[Notifications] Marked as read", { logId: id });
     res.json({ success: true });
   } catch (error: any) {
     logger.error("[Notifications] Error marking as read:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/notifications/read-all
+ * Mark all of the current user's notifications as read
+ */
+router.post("/read-all", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user!.uid;
+    const { db } = await import('../db');
+    const { notificationLogs } = await import('@shared/schema');
+    const { eq, and } = await import('drizzle-orm');
+
+    await db.update(notificationLogs)
+      .set({ isRead: true, readAt: new Date() })
+      .where(and(eq(notificationLogs.recipientUserId, uid), eq(notificationLogs.isRead, false)));
+
+    res.json({ success: true });
+  } catch (error: any) {
+    logger.error("[Notifications] Error marking all as read:", error);
     res.status(500).json({ error: error.message });
   }
 });

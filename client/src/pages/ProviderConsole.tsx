@@ -487,7 +487,7 @@ function BookingCard({ booking, platform }: { booking: any; platform: string }) 
           <div>
             <p className="font-medium text-sm">{booking.bookingId || booking.id}</p>
             <p className="text-xs text-gray-500">
-              {booking.scheduledDate ? format(new Date(booking.scheduledDate), 'EEE, MMM d · HH:mm') : 'Date TBD'}
+              {booking.scheduledDate ? format(new Date(booking.scheduledDate), 'EEE, MMM d · HH:mm') : <span className="text-gray-400 italic text-xs">Not scheduled</span>}
               {booking.ownerId ? ` · Owner: ${booking.ownerId.slice(0, 8)}…` : ''}
             </p>
           </div>

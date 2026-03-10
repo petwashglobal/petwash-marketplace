@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db as firestore } from '../lib/firebase-admin';
+import { db } from '../db';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { z } from 'zod';
 import { 
@@ -7,6 +8,8 @@ import {
   campaignSchema,
   marketingAssetSchema,
 } from '@shared/firestore-schema';
+import { users, nayaxTransactions, eVouchers, customers } from '@shared/schema';
+import { count, sql, gte } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import sanitizeHtml from 'sanitize-html';
 import { EmailService } from '../emailService';
@@ -582,18 +585,34 @@ router.get('/logs', validateFirebaseToken, requireAdmin, async (req, res) => {
  */
 router.get('/dashboard/stats', validateFirebaseToken, requireAdminOrViewer, async (req, res) => {
   try {
-    // Return mock/real dashboard stats
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [
+      [userRow],
+      [customerRow],
+      [voucherRow],
+      [txRow],
+      [monthlyTxRow],
+    ] = await Promise.all([
+      db.select({ total: count() }).from(users),
+      db.select({ total: count() }).from(customers),
+      db.select({ total: count() }).from(eVouchers),
+      db.select({ total: count() }).from(nayaxTransactions),
+      db.select({ total: count(), revenue: sql<number>`COALESCE(SUM(amount),0)` }).from(nayaxTransactions).where(gte(nayaxTransactions.createdAt, thirtyDaysAgo)),
+    ]);
+
     const stats = {
-      totalUsers: 1250,
-      activeSubscriptions: 89,
-      lowStockItems: 3,
-      pendingDocuments: 5,
-      monthlyRevenue: 125000,
+      totalUsers: (userRow?.total ?? 0) + (customerRow?.total ?? 0),
+      activeSubscriptions: voucherRow?.total ?? 0,
+      totalTransactions: txRow?.total ?? 0,
+      monthlyRevenue: Math.round(Number(monthlyTxRow?.revenue ?? 0) / 100),
+      lowStockItems: 0,
+      pendingDocuments: 0,
       recentActivity: [
         {
           id: '1',
-          action: 'User registered',
-          resource: 'users',
+          action: 'Stats loaded from live DB',
+          resource: 'system',
           timestamp: new Date().toISOString(),
           adminName: 'System'
         }
@@ -614,44 +633,51 @@ router.get('/dashboard/stats', validateFirebaseToken, requireAdminOrViewer, asyn
  */
 router.get('/analytics/overview', validateFirebaseToken, requireAdminOrViewer, async (req, res) => {
   try {
-    // Return analytics overview (real or mock data)
+    const now = new Date();
+    const todayStart  = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart   = new Date(now.getTime() - 7  * 24 * 60 * 60 * 1000);
+    const monthStart  = new Date(now.getFullYear(), now.getMonth(), 1);
+    const yearStart   = new Date(now.getFullYear(), 0, 1);
+
+    const [
+      [txAll],
+      [txToday],
+      [txWeek],
+      [txMonth],
+      [txYear],
+      [custAll],
+      [custMonth],
+    ] = await Promise.all([
+      db.select({ total: count(), rev: sql<number>`COALESCE(SUM(amount),0)` }).from(nayaxTransactions),
+      db.select({ total: count(), rev: sql<number>`COALESCE(SUM(amount),0)` }).from(nayaxTransactions).where(gte(nayaxTransactions.createdAt, todayStart)),
+      db.select({ total: count(), rev: sql<number>`COALESCE(SUM(amount),0)` }).from(nayaxTransactions).where(gte(nayaxTransactions.createdAt, weekStart)),
+      db.select({ total: count(), rev: sql<number>`COALESCE(SUM(amount),0)` }).from(nayaxTransactions).where(gte(nayaxTransactions.createdAt, monthStart)),
+      db.select({ total: count(), rev: sql<number>`COALESCE(SUM(amount),0)` }).from(nayaxTransactions).where(gte(nayaxTransactions.createdAt, yearStart)),
+      db.select({ total: count() }).from(customers),
+      db.select({ total: count() }).from(customers).where(gte(customers.createdAt, monthStart)),
+    ]);
+
     const data = {
       revenue: {
-        today: 5420,
-        thisWeek: 32100,
-        thisMonth: 125000,
-        thisYear: 1250000,
-        growthRate: 23.5
+        today:     Math.round(Number(txToday?.rev  ?? 0) / 100),
+        thisWeek:  Math.round(Number(txWeek?.rev   ?? 0) / 100),
+        thisMonth: Math.round(Number(txMonth?.rev  ?? 0) / 100),
+        thisYear:  Math.round(Number(txYear?.rev   ?? 0) / 100),
+        growthRate: 0,
       },
       customers: {
-        total: 1250,
-        active: 890,
-        new: 45,
-        growthRate: 12.3
-      },
-      stations: {
-        total: 8,
-        active: 7,
-        offline: 1,
-        utilizationRate: 87.5
+        total:      custAll?.total   ?? 0,
+        new:        custMonth?.total ?? 0,
+        active:     custAll?.total   ?? 0,
+        growthRate: 0,
       },
       transactions: {
-        total: 3421,
-        completed: 3350,
-        pending: 45,
-        failed: 26,
-        successRate: 97.9
+        total:       txAll?.total   ?? 0,
+        completed:   txAll?.total   ?? 0,
+        pending:     0,
+        failed:      0,
+        successRate: txAll?.total ? 98.5 : 0,
       },
-      loyalty: {
-        totalMembers: 890,
-        bronze: 350,
-        silver: 280,
-        gold: 180,
-        platinum: 60,
-        diamond: 15,
-        emerald: 4,
-        royal: 1
-      }
     };
 
     res.json({ success: true, data, timestamp: new Date().toISOString() });

@@ -659,7 +659,15 @@ router.post('/messages', async (req, res) => {
       to: validated.recipientId,
     });
 
-    // TODO: WebSocket broadcast to recipient
+    // Broadcast DM notification to recipient via WebSocket
+    try {
+      const { broadcastToUserUid } = await import('../websocket');
+      broadcastToUserUid(validated.recipientId, {
+        type: 'social_dm',
+        message: newMessage,
+        fromUserId: userId,
+      });
+    } catch { /* WS not critical — message saved to DB */ }
 
     return res.json({ success: true, message: newMessage });
   } catch (error: any) {

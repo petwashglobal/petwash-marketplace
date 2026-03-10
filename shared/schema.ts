@@ -184,6 +184,8 @@ export const notificationLogs = pgTable("notification_logs", {
   deliveredAt: timestamp("delivered_at"),
   failureReason: text("failure_reason"),
   createdAt: timestamp("created_at").defaultNow(),
+  isRead: boolean("is_read").default(false),
+  readAt: timestamp("read_at"),
 }, (table) => [
   index("idx_notification_logs_template").on(table.templateKey),
   index("idx_notification_logs_user").on(table.recipientUserId),

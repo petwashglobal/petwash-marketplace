@@ -36,11 +36,27 @@ export default function Media() {
               <Video className="w-7 h-7 text-white" />
             </div>
             <h3 className="text-xl font-bold mb-3 luxury-gradient-text">Video Resources</h3>
-            <p className="luxury-text-body mb-6">
+            <p className="luxury-text-body mb-4">
               Promotional videos, tutorials, and brand stories
             </p>
-            <Button className="luxury-btn-outline w-full" data-testid="button-videos">
-              Coming Soon
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {[
+                { title: 'Station Demo', tag: 'K9000 Tour' },
+                { title: 'Provider Training', tag: 'Tutorial' },
+                { title: 'Brand Story', tag: 'About Us' },
+                { title: 'App Walkthrough', tag: 'How-To' },
+              ].map((v) => (
+                <div key={v.title} className="rounded-lg overflow-hidden border border-white/10 bg-white/5 p-2 flex flex-col gap-1">
+                  <div className="w-full h-10 rounded bg-gradient-to-br from-blue-900/40 to-cyan-900/30 flex items-center justify-center">
+                    <Video className="w-4 h-4 text-cyan-400 opacity-60" />
+                  </div>
+                  <p className="text-[10px] font-semibold text-gray-200 leading-tight">{v.title}</p>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 self-start">{v.tag}</span>
+                </div>
+              ))}
+            </div>
+            <Button className="luxury-btn-outline w-full text-xs" data-testid="button-videos" disabled>
+              Available Soon
             </Button>
           </div>
 

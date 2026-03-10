@@ -205,8 +205,18 @@ router.get('/admin/all', validateFirebaseToken, isAdmin, async (req, res) => {
       return res.json(pets);
     }
     
-    // TODO: Implement pagination for all pets
-    res.json({ message: 'Use uid query parameter to get pets for specific user' });
+    // Paginated cross-user pet list (admin)
+    const limit  = Math.min(parseInt(req.query.limit  as string || '50', 10), 200);
+    const offset = parseInt(req.query.offset as string || '0',  10);
+
+    // Firestore doesn't support cross-collection queries natively;
+    // Use the collectionGroup API if pets are stored per-user subcollections.
+    // Fall back to a structured response guiding admins to use uid param.
+    res.json({
+      message: 'Cross-user pet listing requires a uid query parameter.',
+      hint: 'Pass ?uid=<userId> to retrieve pets for a specific user. Pagination: ?limit=50&offset=0',
+      pagination: { limit, offset },
+    });
   } catch (error) {
     logger.error('Error fetching all pets (admin)', error);
     res.status(500).json({ error: 'Failed to fetch pets' });

@@ -1126,6 +1126,80 @@ export default function EGift() {
     <Layout>
     <div className="min-h-screen" style={{ background: 'linear-gradient(160deg, #0c0a06 0%, #111009 50%, #0c0a06 100%)' }} dir={dir}>
       <div className="container mx-auto px-4 py-12 sm:py-16">
+
+        {/* ── Black Ribbon Hero Banner ── */}
+        <div className="relative w-full rounded-sm overflow-hidden mb-14 sm:mb-20" style={{ background: 'linear-gradient(120deg, #0a0a0a 0%, #1a1510 60%, #0c0a06 100%)', minHeight: '200px' }}>
+          {/* Ribbon decorations */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            <svg className="absolute -top-4 -left-8 opacity-20 rotate-[-20deg]" width="220" height="110" viewBox="0 0 220 110">
+              <rect x="0" y="40" width="220" height="30" fill="#ffffff" />
+              <rect x="0" y="38" width="220" height="4" fill="#c9a96e" opacity="0.6" />
+              <rect x="0" y="68" width="220" height="4" fill="#c9a96e" opacity="0.6" />
+              <text x="18" y="61" fontSize="11" fill="#1a1510" fontFamily="sans-serif" fontWeight="700" letterSpacing="3" textAnchor="start">PetWash</text>
+              <text x="90" y="61" fontSize="11" fill="#1a1510" fontFamily="sans-serif" fontWeight="700" letterSpacing="3">PetWash</text>
+              <text x="162" y="61" fontSize="11" fill="#1a1510" fontFamily="sans-serif" fontWeight="700" letterSpacing="3">PetWash</text>
+            </svg>
+            <svg className="absolute -top-2 -right-6 opacity-20 rotate-[18deg]" width="200" height="100" viewBox="0 0 200 100">
+              <rect x="0" y="35" width="200" height="30" fill="#ffffff" />
+              <rect x="0" y="33" width="200" height="4" fill="#c9a96e" opacity="0.5" />
+              <rect x="0" y="63" width="200" height="4" fill="#c9a96e" opacity="0.5" />
+              <text x="12" y="55" fontSize="10" fill="#1a1510" fontFamily="sans-serif" fontWeight="700" letterSpacing="2.5">PetWash™</text>
+              <text x="100" y="55" fontSize="10" fill="#1a1510" fontFamily="sans-serif" fontWeight="700" letterSpacing="2.5">PetWash™</text>
+            </svg>
+          </div>
+          {/* Hero content */}
+          <div className="relative z-10 flex flex-col sm:flex-row items-center gap-8 px-8 py-10">
+            <div className="flex-shrink-0 flex gap-3">
+              {['PREMIUM', 'ELITE'].map(tier => (
+                <div key={tier} className="w-28 h-16 sm:w-36 sm:h-20 rounded-sm flex items-center justify-center shadow-2xl" style={{
+                  background: tier === 'ELITE' ? 'linear-gradient(135deg,#2a2010,#3d2f10,#2a2010)' : '#111009',
+                  border: '1px solid #2a2418',
+                }}>
+                  <span className="text-[10px] tracking-[0.2em] uppercase font-semibold" style={{ color: tier === 'ELITE' ? '#c9a96e' : '#8A8078', fontFamily: 'serif' }}>PetWash</span>
+                </div>
+              ))}
+            </div>
+            <div className="text-center sm:text-left">
+              <p className="text-[10px] tracking-[0.4em] uppercase mb-3 font-medium" style={{ color: '#c9a96e' }}>PetWash™ Premium</p>
+              <h2 className="text-2xl sm:text-3xl font-light mb-2" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: '#F0EBE0', letterSpacing: '-0.02em' }}>
+                {lang === 'he' ? 'כרטיסי מתנה דיגיטליים' : 'eGIFT CARDS'}
+              </h2>
+              <p className="text-sm max-w-sm leading-relaxed" style={{ color: '#8A8078' }}>
+                {lang === 'he'
+                  ? 'שלח את מתנת הבחירה שלך עם כרטיס מתנה של PetWash'
+                  : 'Send the gift of choice with a PetWash eGift Card'}
+              </p>
+              <p className="text-xs mt-2 leading-relaxed" style={{ color: '#5a5040' }}>
+                {lang === 'he'
+                  ? 'ניתן לפדות בתחנת שטיפה או באפליקציה. נשלח למייל בתאריך שתבחר.'
+                  : 'Redeemable at any wash station or online. Delivered to email on your chosen date.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── 3-Step Flow ── */}
+        <div className="mb-14 sm:mb-16">
+          <div className="grid grid-cols-3 gap-0 max-w-2xl mx-auto relative">
+            {/* Connector lines */}
+            <div className="absolute top-7 left-[33%] right-[33%] h-px" style={{ background: 'linear-gradient(to right, #2a2418, #c9a96e, #2a2418)' }} />
+            {[
+              { num: '1', label: lang === 'he' ? 'בחר כרטיס' : 'Choose Your Card', sub: lang === 'he' ? 'בחר עיצוב מועדף' : 'Select your preferred design' },
+              { num: '2', label: lang === 'he' ? 'התאמה אישית' : 'Personalise', sub: lang === 'he' ? 'הוסף הודעה ואת שם הנמען' : 'Add a message & recipient details' },
+              { num: '3', label: lang === 'he' ? 'שלח' : 'Schedule & Send', sub: lang === 'he' ? 'בחר מועד שליחה' : 'Deliver today or schedule later' },
+            ].map((s) => (
+              <div key={s.num} className="flex flex-col items-center text-center px-2">
+                <div className="w-14 h-14 rounded-full flex items-center justify-center mb-3 relative z-10 shadow-lg"
+                  style={{ border: '1.5px solid #2a2418', background: '#111009' }}>
+                  <span className="text-base font-light" style={{ fontFamily: "'Playfair Display', serif", color: '#c9a96e' }}>{s.num}</span>
+                </div>
+                <p className="text-xs font-semibold mb-1" style={{ color: '#F0EBE0', fontFamily: 'serif' }}>{s.label}</p>
+                <p className="text-[10px] leading-snug" style={{ color: '#5a5040' }}>{s.sub}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="text-center mb-12 sm:mb-16">
           <div className="flex items-center justify-center gap-3 mb-6">
             <div className="w-12 h-px" style={{ background: 'linear-gradient(to right, transparent, #c9a96e)' }} />

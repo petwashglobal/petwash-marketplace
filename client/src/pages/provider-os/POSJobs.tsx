@@ -214,7 +214,7 @@ function JobCard({ booking, onAction, onCancelRequest, isPending }: {
             </div>
             <p className="text-xs text-gray-500 truncate">{booking.serviceName || booking.serviceType || 'Service'}</p>
             <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
-              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{booking.scheduledDate || booking.startTime || 'TBD'}</span>
+              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{booking.scheduledDate ? new Date(booking.scheduledDate).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : booking.startTime ? new Date(booking.startTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : 'לא נקבע'}</span>
               <span className="font-semibold text-green-700">₪{((booking.providerPayout || booking.amount || 0) / 100).toFixed(0)}</span>
             </div>
           </div>
