@@ -240,23 +240,44 @@ const PLATFORM_EMPTY: Record<string, {
 function ContextualEmptyState({
   platform, chatStatus, closedReason, isReadOnly
 }: { platform: string; chatStatus: string; closedReason?: string | null; isReadOnly: boolean }) {
-  if (isReadOnly) {
+
+  // ── Status-aware branching (architect recommendation) ──────────────────────
+  if (chatStatus === "locked" || isReadOnly) {
+    const reasonLabel: Record<string, string> = {
+      completed:  "Booking complete — great service delivered!",
+      cancelled:  "Booking was cancelled before it started.",
+      refunded:   "Booking was refunded. No charges apply.",
+      disputed:   "This booking is under review by our team.",
+      expired:    "Booking expired without confirmation.",
+    };
+    const label = closedReason ? reasonLabel[closedReason] ?? `Closed — ${closedReason}` : "This booking is archived.";
     return (
       <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
         <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center mb-5">
           <Lock className="w-7 h-7 text-amber-400" />
         </div>
-        <h3 className="text-base font-bold text-gray-700 mb-2">Session complete</h3>
-        <p className="text-sm text-gray-400 leading-relaxed max-w-xs">
-          {closedReason
-            ? `Conversation closed — ${closedReason}.`
-            : "This booking is complete. You can still browse the conversation history above."}
-        </p>
-        <p className="text-xs text-gray-300 mt-3">Read-only archive</p>
+        <h3 className="text-base font-bold text-gray-700 mb-2">Read-only archive</h3>
+        <p className="text-sm text-gray-400 leading-relaxed max-w-xs">{label}</p>
+        <p className="text-xs text-gray-300 mt-3">Messages are preserved for 7 years.</p>
       </div>
     );
   }
 
+  if (chatStatus === "pending" || chatStatus === "awaiting_confirmation") {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-5">
+          <Calendar className="w-7 h-7 text-blue-400" />
+        </div>
+        <h3 className="text-base font-bold text-gray-800 mb-2">Booking pending confirmation</h3>
+        <p className="text-sm text-gray-400 leading-relaxed max-w-xs">
+          Once your booking is confirmed you can chat with your provider here. Check back soon!
+        </p>
+      </div>
+    );
+  }
+
+  // ── Active chat: platform-specific prompt ─────────────────────────────────
   const cfg = PLATFORM_EMPTY[platform] ?? {
     Icon: MessageSquare, color: "#6B7280",
     title: "Start the conversation",
@@ -293,6 +314,7 @@ function SeenPopup({ readAt }: { readAt: Date | string | null }) {
     );
   }
   const date = typeof readAt === "string" ? new Date(readAt) : readAt;
+  if (isNaN(date.getTime())) return null;
   const timeStr = format(date, "HH:mm");
   const dateStr = formatDistance(date, new Date(), { addSuffix: true });
   return (
@@ -487,12 +509,15 @@ export default function BookingChat() {
       setPlatform(conv.platform || "");
       markReadMutation.mutate();
 
-      // Wave 1 #3: detect "Starting the session now." from provider → set session timer
-      const startMsg = chatData.messages.find(
-        m => m.senderUid === providerUid && m.content === "Starting the session now."
+      // Wave 1 #3: detect session start via constant (avoid brittle literal matching)
+      // Use .filter + last match so multiple "start" sends don't pick the wrong one
+      const SESSION_START_TEXT = QUICK_ACTION_MESSAGES["starting"];
+      const startMsgs = chatData.messages.filter(
+        m => m.senderUid === providerUid && m.content === SESSION_START_TEXT
       );
-      if (startMsg?.createdAt) {
-        setSessionStartedAt(new Date(startMsg.createdAt));
+      const latestStart = startMsgs[startMsgs.length - 1];
+      if (latestStart?.createdAt) {
+        setSessionStartedAt(new Date(latestStart.createdAt));
       }
     }
   }, [chatData?.messages]);
@@ -526,8 +551,8 @@ export default function BookingChat() {
           });
           setIsOtherTyping(false);
           markReadMutation.mutate();
-          // Wave 1 #3: detect session start from incoming WS message
-          if (data.message.content === "Starting the session now." && data.message.createdAt) {
+          // Wave 1 #3: detect session start from incoming WS message (use constant)
+          if (data.message.content === QUICK_ACTION_MESSAGES["starting"] && data.message.createdAt) {
             setSessionStartedAt(new Date(data.message.createdAt));
           }
         }

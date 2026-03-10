@@ -77,7 +77,7 @@ export function NotificationCenterPanel({ open, onClose }: NotificationCenterPan
     } else if (group.unreadCount > 0 && group.ids.length) {
       markReadMutation.mutate({ ids: group.ids });
     }
-    const target = group.actionUrl ?? (group.bookingId ? `/chat/${group.bookingId}` : null);
+    const target = group.actionUrl ?? (group.bookingId ? `/booking-chat/${group.bookingId}` : null);
     if (target) {
       onClose();
       setLocation(target);
