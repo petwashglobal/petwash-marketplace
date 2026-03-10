@@ -4161,14 +4161,10 @@ html[dir="rtl"] .rdp-cell:has(.rdp-day_range_end:not(.rdp-day_range_start))::aft
   --a11y-font-scale: 1;
 }
 
-/* Font scale - applied to body content, NOT root (prevents layout breakage) */
-.a11y-large-text body,
-html[style*="--a11y-font-scale"] body {
-  font-size: calc(1rem * var(--a11y-font-scale, 1));
-}
-
-.a11y-large-text body {
-  font-size: 1.2rem;
+/* Font scale — JS sets html.style.fontSize directly (scales all rem values) */
+/* Fallback CSS for large-text class if JS fails */
+.a11y-large-text {
+  font-size: 120% !important;
 }
 
 /* 🛡️ SECURITY & AUTHENTICATION UTILITIES */
@@ -4207,11 +4203,11 @@ html[style*="--a11y-font-scale"] body {
 }
 
 .a11y-high-contrast body {
-  filter: contrast(1.4);
+  filter: contrast(2) !important;
 }
 .a11y-high-contrast img,
 .a11y-high-contrast video {
-  filter: contrast(1);
+  filter: contrast(1) !important;
 }
 
 /* Reduced motion */
@@ -4348,3 +4344,24 @@ html[style*="--a11y-font-scale"] body {
   opacity: 0.5;
 }
 
+
+/* ============================================
+   ACCESSIBILITY DIALOG — iOS TOUCH FIX
+   Ensure all interactive elements inside the
+   a11y menu respond immediately on iOS/iPad
+   ============================================ */
+[role="dialog"] button,
+[role="dialog"] [role="switch"],
+[role="dialog"] [role="tab"],
+[role="dialog"] select,
+[role="dialog"] textarea,
+[role="dialog"] input {
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
+  cursor: pointer;
+}
+
+[role="dialog"] [role="switch"] {
+  min-height: 44px !important;
+  min-width: 48px !important;
+}

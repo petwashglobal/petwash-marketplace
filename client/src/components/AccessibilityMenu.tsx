@@ -355,6 +355,11 @@ export function AccessibilityMenu({ language, isOpen, onClose }: AccessibilityMe
       }
 
       html.style.setProperty('--a11y-font-scale', `${settings.fontScale / 100}`);
+      if (settings.fontScale !== 100) {
+        html.style.fontSize = `${settings.fontScale}%`;
+      } else {
+        html.style.fontSize = '';
+      }
     } catch {
       // silent
     }
@@ -461,7 +466,12 @@ export function AccessibilityMenu({ language, isOpen, onClose }: AccessibilityMe
       <div
         ref={dialogRef}
         className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-y-auto"
-        style={{ direction: isRtl ? 'rtl' : 'ltr' }}
+        style={{
+          direction: isRtl ? 'rtl' : 'ltr',
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehavior: 'contain',
+          touchAction: 'pan-y',
+        }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -486,8 +496,10 @@ export function AccessibilityMenu({ language, isOpen, onClose }: AccessibilityMe
             <button
               key={tab}
               role="tab"
+              type="button"
               aria-selected={activeTab === tab}
               onClick={() => handleTabChange(tab)}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', minHeight: 48 }}
               className={`flex-1 py-3 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
                 activeTab === tab
                   ? 'text-black border-b-2 border-black'
@@ -513,10 +525,12 @@ export function AccessibilityMenu({ language, isOpen, onClose }: AccessibilityMe
               <div className="flex items-center gap-3 justify-center">
                 <button
                   onClick={() => adjustFontScale(-10)}
-                  className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                  className="rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                  style={{ width: 48, height: 48, minWidth: 48, minHeight: 48, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                   aria-label="Decrease font size"
+                  type="button"
                 >
-                  <ZoomOut size={18} />
+                  <ZoomOut size={20} />
                 </button>
                 <div className="flex-1 h-2 bg-gray-100 rounded-full relative">
                   <div
@@ -526,10 +540,12 @@ export function AccessibilityMenu({ language, isOpen, onClose }: AccessibilityMe
                 </div>
                 <button
                   onClick={() => adjustFontScale(10)}
-                  className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                  className="rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                  style={{ width: 48, height: 48, minWidth: 48, minHeight: 48, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                   aria-label="Increase font size"
+                  type="button"
                 >
-                  <ZoomIn size={18} />
+                  <ZoomIn size={20} />
                 </button>
               </div>
             </div>
