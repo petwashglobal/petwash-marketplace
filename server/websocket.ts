@@ -617,6 +617,14 @@ export function broadcastBookingChatUnread(conversationId: string, customerUnrea
   });
 }
 
+export function broadcastReaction(conversationId: string, messageId: string, reaction: string, userId: string, counts: Record<string, number>, participantUids: string[]) {
+  clients.forEach(client => {
+    if (client.ws.readyState === WebSocket.OPEN && participantUids.includes(client.userId ?? '')) {
+      client.ws.send(JSON.stringify({ type: 'chat_reaction', conversationId, messageId, reaction, userId, counts }));
+    }
+  });
+}
+
 // Typing presence — auto-expires server-side after 5s
 const typingTimers = new Map<string, ReturnType<typeof setTimeout>>();
 

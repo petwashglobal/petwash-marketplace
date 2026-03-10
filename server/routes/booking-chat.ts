@@ -24,6 +24,7 @@ import {
   broadcastBookingChatMessage, 
   broadcastBookingChatRead, 
   broadcastBookingChatUnread,
+  broadcastReaction,
   isUserConnected
 } from '../websocket';
 import { syncChatToBookingStatus } from '../lib/booking-chat-sync';
@@ -824,17 +825,21 @@ router.post('/:bookingId/provider-arriving', async (req, res) => {
       return res.status(403).json({ error: 'Chat is not active' });
     }
 
+    const { lat, lng } = req.body;
+    const hasGps = typeof lat === 'number' && typeof lng === 'number';
+
     const messageId = `BM-${nanoid()}`;
     const [sysMsg] = await db.insert(bookingMessages).values({
       messageId,
       conversationId: conv.conversationId,
       senderUid: 'system',
       senderRole: 'system',
-      messageType: 'system_event',
+      messageType: hasGps ? 'gps_card' : 'system_event',
       content: 'Your provider is on the way!',
       systemEventType: 'provider_arriving',
       isFlagged: false,
       createdAt: new Date(),
+      metadata: hasGps ? { lat, lng, providerUid: uid } : null,
     }).returning();
 
     const participantUids = [conv.customerId, conv.providerId];
@@ -1007,7 +1012,30 @@ router.post('/:bookingId/upload', uploadMiddleware.single('image'), async (req: 
     const imageUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
 
     logger.info(`[ChatUpload] Image uploaded for booking ${bookingId} by ${uid}: ${imageUrl}`);
-    res.json({ imageUrl });
+
+    // Gemini auto-caption for provider session photos
+    let aiCaption: string | null = null;
+    const isProvider = conv.providerId === uid;
+    if (isProvider) {
+      try {
+        const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
+        const imageBytes = req.file.buffer.toString('base64');
+        const result = await genAI.models.generateContent({
+          model: 'gemini-2.0-flash',
+          contents: [
+            { role: 'user', parts: [
+              { inlineData: { mimeType: req.file.mimetype, data: imageBytes } },
+              { text: 'You are captioning a pet care session photo for a premium pet service app. Write a warm, short caption (max 12 words) that could be shown to the pet owner. Focus on the pet\'s mood or activity. Add one relevant emoji at the end. Do not describe the human, only the pet.' }
+            ]}
+          ],
+        });
+        aiCaption = result.text?.trim() || null;
+      } catch (captionErr) {
+        logger.warn('[ChatUpload] Gemini caption failed', captionErr);
+      }
+    }
+
+    res.json({ imageUrl, aiCaption });
   } catch (error) {
     logger.error('Error uploading chat image', error);
     res.status(500).json({ error: 'Image upload failed' });
@@ -1331,6 +1359,100 @@ Write a 2-3 sentence summary starting with the pet's session highlights. End wit
   } catch (error) {
     logger.error('Error submitting care log', error);
     res.status(500).json({ error: 'Failed to submit care log' });
+  }
+});
+
+/**
+ * POST /api/booking-chat/:bookingId/messages/:messageId/react
+ * Toggle a reaction on a message (insert or delete on conflict).
+ */
+router.post('/:bookingId/messages/:messageId/react', async (req, res) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const { bookingId, messageId } = req.params;
+    const { reaction } = req.body;
+
+    const VALID_REACTIONS = ['❤️', '🐾', '👍', '⭐', '✅', '🎉'];
+    if (!VALID_REACTIONS.includes(reaction)) {
+      return res.status(400).json({ error: 'Invalid reaction' });
+    }
+
+    const [conv] = await db
+      .select()
+      .from(bookingConversations)
+      .where(eq(bookingConversations.bookingId, bookingId))
+      .limit(1);
+
+    if (!conv || (conv.customerId !== uid && conv.providerId !== uid)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Toggle: try insert, on conflict delete (remove reaction)
+    const existing = await db.execute(
+      sql`SELECT id FROM message_reactions WHERE message_id = ${messageId} AND user_id = ${uid} AND reaction = ${reaction} LIMIT 1`
+    );
+    
+    let action: 'added' | 'removed';
+    if (existing.rows.length > 0) {
+      await db.execute(sql`DELETE FROM message_reactions WHERE message_id = ${messageId} AND user_id = ${uid} AND reaction = ${reaction}`);
+      action = 'removed';
+    } else {
+      await db.execute(sql`INSERT INTO message_reactions (message_id, user_id, reaction) VALUES (${messageId}, ${uid}, ${reaction}) ON CONFLICT DO NOTHING`);
+      action = 'added';
+    }
+
+    // Get updated counts for this message
+    const countsResult = await db.execute(
+      sql`SELECT reaction, COUNT(*)::int AS count FROM message_reactions WHERE message_id = ${messageId} GROUP BY reaction`
+    );
+    const counts: Record<string, number> = {};
+    countsResult.rows.forEach((r: any) => { counts[r.reaction] = r.count; });
+
+    // Broadcast to both participants
+    const participantUids = [conv.customerId, conv.providerId];
+    broadcastReaction(conv.conversationId, messageId, reaction, uid, counts, participantUids);
+
+    res.json({ success: true, action, counts });
+  } catch (error) {
+    logger.error('Error toggling reaction', error);
+    res.status(500).json({ error: 'Failed to toggle reaction' });
+  }
+});
+
+/**
+ * GET /api/booking-chat/:bookingId/messages/:messageId/reactions
+ * Get reaction counts for a message.
+ */
+router.get('/:bookingId/messages/:messageId/reactions', async (req, res) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const { bookingId, messageId } = req.params;
+
+    const [conv] = await db
+      .select()
+      .from(bookingConversations)
+      .where(eq(bookingConversations.bookingId, bookingId))
+      .limit(1);
+
+    if (!conv || (conv.customerId !== uid && conv.providerId !== uid)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const countsResult = await db.execute(
+      sql`SELECT reaction, COUNT(*)::int AS count FROM message_reactions WHERE message_id = ${messageId} GROUP BY reaction`
+    );
+    const myReactionsResult = await db.execute(
+      sql`SELECT reaction FROM message_reactions WHERE message_id = ${messageId} AND user_id = ${uid}`
+    );
+
+    const counts: Record<string, number> = {};
+    countsResult.rows.forEach((r: any) => { counts[r.reaction] = r.count; });
+    const myReactions = myReactionsResult.rows.map((r: any) => r.reaction);
+
+    res.json({ counts, myReactions });
+  } catch (error) {
+    logger.error('Error fetching reactions', error);
+    res.status(500).json({ error: 'Failed to fetch reactions' });
   }
 });
 

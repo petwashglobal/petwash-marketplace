@@ -38,7 +38,7 @@ import {
   X, Image as ImageIcon, MoreVertical, Ban, Phone,
   FileText, Bot, ChevronDown, ChevronUp,
   Timer, Dog, Cat, PawPrint, BookOpen, Calendar,
-  Reply, Heart, ClipboardList
+  Reply, Heart, ClipboardList, Camera, Smile, Edit2
 } from "lucide-react";
 import { formatDistance } from "date-fns";
 
@@ -357,6 +357,12 @@ export default function BookingChat() {
   const [replyingTo, setReplyingTo]       = useState<BookingMessage | null>(null);
   const [swipeOffsets, setSwipeOffsets]   = useState<Record<string, number>>({});
   const swipeTouchStart                   = useRef<Record<string, number>>({});
+  const [reactionCounts, setReactionCounts] = useState<Record<string, Record<string, number>>>({});
+  const [reactionPickerMsgId, setReactionPickerMsgId] = useState<string | null>(null);
+  const longPressTimer                    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Session photo: pending photo to send (with optional AI caption)
+  const [pendingPhoto, setPendingPhoto]   = useState<{ imageUrl: string; aiCaption: string | null } | null>(null);
+  const [photoCaption, setPhotoCaption]   = useState("");
 
   // Wave 1: Session timer (#3)
   const [sessionStartedAt, setSessionStartedAt] = useState<Date | null>(null);
@@ -469,7 +475,7 @@ export default function BookingChat() {
     onError: () => toast({ title: "Failed to block user", variant: "destructive" }),
   });
 
-  // ── 10. Image upload ──────────────────────────────────────────────────────
+  // ── 10. Image upload with Gemini caption (providers get caption dialog) ─────
   const handleImageSelect = async (file: File) => {
     if (!file) return;
     setUploadingImage(true);
@@ -486,12 +492,15 @@ export default function BookingChat() {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "Upload failed");
       }
-      const { imageUrl } = await res.json();
-      sendMutation.mutate({
-        content: "",
-        messageType: "image",
-        metadata: { imageUrl },
-      });
+      const { imageUrl, aiCaption } = await res.json();
+      if (isProvider && aiCaption) {
+        // Show caption preview dialog for providers
+        setPendingPhoto({ imageUrl, aiCaption });
+        setPhotoCaption(aiCaption);
+      } else {
+        // Customers or no AI caption: send immediately
+        sendMutation.mutate({ content: aiCaption || "", messageType: "image", metadata: { imageUrl } });
+      }
     } catch (err: any) {
       toast({ title: "Image upload failed", description: err.message || "Please try again.", variant: "destructive" });
     } finally {
@@ -499,6 +508,28 @@ export default function BookingChat() {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
+
+  const sendPendingPhoto = () => {
+    if (!pendingPhoto) return;
+    sendMutation.mutate({
+      content: photoCaption.trim(),
+      messageType: "session_photo",
+      metadata: { imageUrl: pendingPhoto.imageUrl, caption: photoCaption.trim() },
+    });
+    setPendingPhoto(null);
+    setPhotoCaption("");
+  };
+
+  // ── 11. Reaction toggle ────────────────────────────────────────────────────
+  const reactMutation = useMutation({
+    mutationFn: async ({ messageId, reaction }: { messageId: string; reaction: string }) => {
+      const res = await apiRequest("POST", `/api/booking-chat/${bookingId}/messages/${messageId}/react`, { reaction });
+      return res.json() as Promise<{ counts: Record<string, number> }>;
+    },
+    onSuccess: (data, { messageId }) => {
+      setReactionCounts(prev => ({ ...prev, [messageId]: data.counts }));
+    },
+  });
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -573,6 +604,9 @@ export default function BookingChat() {
             if (!old) return old;
             return { ...old, conversation: { ...old.conversation, chatStatus: data.chatStatus } };
           });
+        }
+        if (data.type === "chat_reaction" && data.conversationId === conversationId) {
+          setReactionCounts(prev => ({ ...prev, [data.messageId]: data.counts }));
         }
       } catch {}
     };
@@ -890,6 +924,40 @@ export default function BookingChat() {
                 setSwipeOffsets(p => ({ ...p, [msg.messageId]: 0 }));
               };
 
+              if (msg.messageType === "gps_card") {
+                const meta = (msg.metadata as any) || {};
+                const mapsUrl = `https://maps.google.com/?q=${meta.lat},${meta.lng}`;
+                return (
+                  <div key={msg.messageId} className="flex justify-center my-2">
+                    <div className="bg-white border border-blue-100 rounded-2xl overflow-hidden max-w-[85%]"
+                      style={{ boxShadow: "0 2px 14px rgba(11,87,208,0.10)" }}>
+                      {/* Map visual */}
+                      <div className="relative bg-blue-50 h-28 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMCAwaDYwdjYwSDB6IiBmaWxsPSIjRTdFRkZGIi8+PHBhdGggZD0iTTMwIDMwbTMwIDBhMzAgMzAgMCAxIDEtNjAgMCAzMCAzMCAwIDAgMSA2MCAwIiBmaWxsPSJub25lIiBzdHJva2U9IiNDN0Q3RjgiIHN0cm9rZS13aWR0aD0iMC41Ii8+PHBhdGggZD0iTTAgMzBoNjBNMzAgMHYzMCIgc3Ryb2tlPSIjQzdEN0Y4IiBzdHJva2Utd2lkdGg9IjAuNSIvPjwvc3ZnPg==')] opacity-60" />
+                        <div className="relative flex flex-col items-center gap-1">
+                          <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center shadow-lg">
+                            <MapPin className="w-5 h-5 text-white" />
+                          </div>
+                          <div className="w-2 h-2 rounded-full bg-blue-200 mt-0.5" />
+                        </div>
+                      </div>
+                      {/* Info */}
+                      <div className="px-4 py-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[11px] font-semibold text-blue-700 uppercase tracking-wide">Provider On the Way</span>
+                          <span className="text-[9px] text-gray-300">{msg.createdAt ? format(new Date(msg.createdAt), "HH:mm") : ""}</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-2">{msg.content}</p>
+                        <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-600 text-white text-[11px] font-semibold hover:bg-blue-700 transition-colors">
+                          <MapPin className="w-3 h-3" /> View on Map
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
               if (isSystem && isCare) {
                 const meta = (msg.metadata as any) || {};
                 return (
@@ -929,13 +997,46 @@ export default function BookingChat() {
               }
 
               const quotedMsg = msg.replyToMessageId ? messages.find(m => m.messageId === msg.replyToMessageId) : null;
+              const isSessionPhoto = msg.messageType === "session_photo" && msg.metadata && (msg.metadata as any).imageUrl;
+              const msgReactions = reactionCounts[msg.messageId] || {};
+              const hasReactions = Object.keys(msgReactions).length > 0;
+
+              const startLongPress = () => {
+                longPressTimer.current = setTimeout(() => setReactionPickerMsgId(msg.messageId), 480);
+              };
+              const cancelLongPress = () => {
+                if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+              };
 
               return (
                 <div key={msg.messageId} className={`flex flex-col group ${isMe ? "items-end" : "items-start"}`}>
+                  <div className="relative">
+                  {/* Reaction picker popup */}
+                  {reactionPickerMsgId === msg.messageId && (
+                    <div className={`absolute z-20 bottom-full mb-1 ${isMe ? "right-0" : "left-0"}`}>
+                      <div className="bg-white border border-gray-100 rounded-full px-3 py-2 flex items-center gap-1.5 shadow-xl"
+                        style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }}>
+                        {["❤️", "🐾", "👍", "⭐", "✅", "🎉"].map(r => (
+                          <button key={r}
+                            onClick={() => { reactMutation.mutate({ messageId: msg.messageId, reaction: r }); setReactionPickerMsgId(null); }}
+                            className="text-xl hover:scale-125 transition-transform active:scale-110 p-0.5 rounded-full hover:bg-gray-50">
+                            {r}
+                          </button>
+                        ))}
+                        <button onClick={() => setReactionPickerMsgId(null)}
+                          className="ml-1 text-gray-300 hover:text-gray-500 transition-colors">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <div
-                    onTouchStart={onTouchStart}
-                    onTouchMove={onTouchMove}
-                    onTouchEnd={onTouchEnd}
+                    onTouchStart={(e) => { onTouchStart(e); startLongPress(); }}
+                    onTouchMove={(e) => { onTouchMove(e); cancelLongPress(); }}
+                    onTouchEnd={() => { cancelLongPress(); onTouchEnd(); }}
+                    onMouseDown={startLongPress}
+                    onMouseUp={cancelLongPress}
+                    onMouseLeave={cancelLongPress}
                     className={`max-w-[82%] sm:max-w-[65%] rounded-2xl px-4 py-2.5 transition-transform ${isMe ? "rounded-tr-sm text-white" : "rounded-tl-sm bg-white text-gray-900 border border-gray-100"}`}
                     style={Object.assign(
                       isMe
@@ -958,6 +1059,17 @@ export default function BookingChat() {
 
                     {msg.isDeleted ? (
                       <span className="italic text-sm opacity-60">[Message removed]</span>
+                    ) : isSessionPhoto ? (
+                      <div className="rounded-xl overflow-hidden -mx-1">
+                        <button onClick={() => setViewingImage((msg.metadata as any).imageUrl)} className="block w-full">
+                          <img src={(msg.metadata as any).imageUrl} className="w-full object-cover" style={{ maxHeight: 240 }} alt="Session photo" />
+                        </button>
+                        {(msg.metadata as any).caption && (
+                          <div className={`px-2 py-1.5 text-xs leading-snug ${isMe ? "text-white/85" : "text-gray-600"}`}>
+                            {(msg.metadata as any).caption}
+                          </div>
+                        )}
+                      </div>
                     ) : isImage ? (
                       <button onClick={() => setViewingImage((msg.metadata as any).imageUrl)} className="block rounded-lg overflow-hidden">
                         <img src={(msg.metadata as any).imageUrl} className="max-w-full rounded-lg" style={{ maxHeight: 220, objectFit: "cover" }} alt="Chat image" />
@@ -989,6 +1101,22 @@ export default function BookingChat() {
                       })()}
                     </div>
                   </div>
+                  </div>{/* close relative */}
+
+                  {/* Reaction counts */}
+                  {hasReactions && (
+                    <div className={`flex flex-wrap gap-1 mt-0.5 px-1 ${isMe ? "justify-end" : "justify-start"}`}>
+                      {Object.entries(msgReactions).map(([emoji, count]) => count > 0 && (
+                        <button key={emoji}
+                          onClick={() => reactMutation.mutate({ messageId: msg.messageId, reaction: emoji })}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-gray-100 text-[11px] font-medium text-gray-600 hover:border-blue-200 hover:bg-blue-50 transition-colors"
+                          style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                          <span>{emoji}</span>
+                          <span>{count}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   {msg.isFlagged && !msg.isDeleted && (
                     <div className="flex items-center gap-1 mt-0.5 px-1 text-[10px] text-amber-500 font-medium">
@@ -1001,6 +1129,12 @@ export default function BookingChat() {
                       <button onClick={() => setReplyingTo(msg)}
                         className="opacity-0 group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-blue-400 flex items-center gap-1 transition-opacity">
                         <Reply className="w-3 h-3" /> Reply
+                      </button>
+                    )}
+                    {!msg.isDeleted && (
+                      <button onClick={() => setReactionPickerMsgId(reactionPickerMsgId === msg.messageId ? null : msg.messageId)}
+                        className="opacity-0 group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-yellow-400 flex items-center gap-1 transition-opacity">
+                        <Smile className="w-3 h-3" />
                       </button>
                     )}
                     {!isMe && !msg.isDeleted && (
@@ -1126,6 +1260,54 @@ export default function BookingChat() {
           </div>
         )}
       </div>
+
+      {/* Backdrop to dismiss reaction picker */}
+      {reactionPickerMsgId && (
+        <div className="fixed inset-0 z-10" onClick={() => setReactionPickerMsgId(null)} />
+      )}
+
+      {/* ── Session photo caption dialog ─────────────────────────────────── */}
+      {pendingPhoto && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden"
+            style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+            {/* Image preview */}
+            <div className="relative">
+              <img src={pendingPhoto.imageUrl} className="w-full object-cover" style={{ maxHeight: 220 }} alt="Preview" />
+              <div className="absolute top-2 left-2 bg-black/50 backdrop-blur-sm rounded-full px-2.5 py-1 flex items-center gap-1.5">
+                <Camera className="w-3 h-3 text-white" />
+                <span className="text-white text-[10px] font-semibold">Session Photo</span>
+              </div>
+            </div>
+            {/* Caption editor */}
+            <div className="px-4 pt-3 pb-2">
+              <div className="flex items-start gap-2 mb-1">
+                <Edit2 className="w-3.5 h-3.5 text-blue-400 mt-1 shrink-0" />
+                <span className="text-[11px] font-semibold text-blue-600 uppercase tracking-wide">AI Caption — edit before sending</span>
+              </div>
+              <textarea
+                value={photoCaption}
+                onChange={e => setPhotoCaption(e.target.value)}
+                rows={3}
+                className="w-full text-sm text-gray-700 border border-gray-100 rounded-xl p-2.5 resize-none focus:outline-none focus:border-blue-200 focus:ring-2 focus:ring-blue-50"
+                placeholder="Add a caption…"
+              />
+            </div>
+            {/* Actions */}
+            <div className="flex gap-2 px-4 pb-4">
+              <button onClick={() => { setPendingPhoto(null); setPhotoCaption(""); }}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition-colors">
+                Discard
+              </button>
+              <button onClick={sendPendingPhoto} disabled={sendMutation.isPending}
+                className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-all active:scale-95 disabled:opacity-50"
+                style={{ background: "linear-gradient(135deg,#0B57D0,#4E8DF7)" }}>
+                {sendMutation.isPending ? "Sending…" : "Send Photo"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Full-screen image viewer (§15 #3: ImageViewerScreen) ──────────── */}
       {viewingImage && <ImageViewer url={viewingImage} onClose={() => setViewingImage(null)} />}
