@@ -48,7 +48,7 @@ export function LuxuryConsentCard() {
           </a>{" "}
           and{" "}
           <a
-            href="/privacy"
+            href="/privacy-policy"
             className="underline decoration-white/40 underline-offset-4 hover:text-white"
           >
             Privacy Policy

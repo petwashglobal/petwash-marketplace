@@ -871,7 +871,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                   {t('signUp.termsOfUse', language)}
                 </Link>
                 {' • '}
-                <Link href="/privacy" className="text-purple-600 hover:text-purple-700 font-medium transition-colors" data-testid="link-privacy">
+                <Link href="/privacy-policy" className="text-purple-600 hover:text-purple-700 font-medium transition-colors" data-testid="link-privacy">
                   {t('signUp.privacyPolicy', language)}
                 </Link>
               </p>

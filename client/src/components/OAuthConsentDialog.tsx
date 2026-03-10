@@ -118,7 +118,7 @@ export function OAuthConsentDialog({
             </div>
             <p className="text-xs text-gray-500">
               {t('oauth.byContinuing', language)}
-              <a href="/privacy" target="_blank" className="text-blue-600 hover:underline">
+              <a href="/privacy-policy" target="_blank" className="text-blue-600 hover:underline">
                 {t('oauth.privacyPolicy', language)}
               </a>
               {" "}

@@ -328,7 +328,7 @@ export function ExpressCheckoutModal({
               {tx('termsAccept', lang)}{' '}
               <a href="/terms" target="_blank" className="text-[#c9a96e] hover:underline">{tx('termsLink', lang)}</a>
               {' '}{tx('andPrivacy', lang)}{' '}
-              <a href="/privacy" target="_blank" className="text-[#c9a96e] hover:underline">{tx('privacyLink', lang)}</a>
+              <a href="/privacy-policy" target="_blank" className="text-[#c9a96e] hover:underline">{tx('privacyLink', lang)}</a>
             </label>
           </div>
 

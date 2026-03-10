@@ -151,7 +151,7 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
             >
               {t.policy}{' '}
               <a 
-                href="/privacy" 
+                href="/privacy-policy" 
                 className="inline-flex items-center hover:opacity-80 transition-opacity"
                 style={{
                   color: '#000000',

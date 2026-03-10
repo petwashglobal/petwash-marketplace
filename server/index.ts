@@ -589,27 +589,12 @@ if (isProduction) {
       }
     })();
     
-    // --- 2025 PRODUCTION SAFETY NET ---
-    
-    // 6. Global Error Handler (Prevents Server Crashes)
-    // NOTE: This must be registered BEFORE the catchall route to catch API errors
-    app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-      const status = err.statusCode || err.status || 500;
-      const traceId = (req as any).traceId || res.getHeader('x-trace-id') || '';
-      
-      console.error(`[CRITICAL ERROR] ${new Date().toISOString()}:`, err);
+    // NOTE: The canonical error handler is registered inside registerRoutes() at the end
+    // of server/routes.ts. It uses structured logger.error with full traceId/stack context.
+    // A duplicate handler was previously registered here (index.ts) but was unreachable:
+    // registerRoutes() is fully awaited above, so routes.ts handler always fires first.
+    // Removed 2026-03 to eliminate the dead code. See server/routes.ts for the live handler.
 
-      if (!res.headersSent) {
-        res.status(status).json({
-          error: err.code || 'SERVER_ERROR',
-          message: status >= 500
-            ? 'Something went wrong. Please try again later.'
-            : (err.message || 'Request failed'),
-          traceId,
-        });
-      }
-    });
-    
     // 7. SPA Catchall Route - Serve index.html for ALL non-API routes (UNIVERSAL - works in dev AND production)
     // CRITICAL FIX 2025: Removed production-only check - now works in ALL environments
     app.get("*", (req, res, next) => {

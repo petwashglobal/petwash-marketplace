@@ -1685,7 +1685,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/our-service">{() => <OurService language={language} onLanguageChange={handleLanguageChange} />}</Route>
         <Route path="/contact">{() => <Contact language={language} />}</Route>
         <Route path="/gallery">{() => <Gallery language={language} onLanguageChange={handleLanguageChange} />}</Route>
-        <Route path="/privacy" component={Privacy} />
+        <Route path="/privacy">{() => <Redirect to="/privacy-policy" />}</Route>
         <Route path="/privacy-policy" component={PrivacyPolicy} />
         <Route path="/terms" component={Terms} />
         <Route path="/platform-legal">
