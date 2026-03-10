@@ -525,14 +525,14 @@ export function AccessibilityMenu({ language, isOpen, onClose }: AccessibilityMe
               <div className="flex items-center gap-3 justify-center">
                 <button
                   onClick={() => adjustFontScale(-10)}
-                  className="rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
-                  style={{ width: 48, height: 48, minWidth: 48, minHeight: 48, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                  className="rounded-full flex items-center justify-center transition-colors"
+                  style={{ width: 48, height: 48, minWidth: 48, minHeight: 48, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', border: '1.5px solid #d1d5db', backgroundColor: '#FFFFFF' }}
                   aria-label="Decrease font size"
                   type="button"
                 >
                   <ZoomOut size={20} />
                 </button>
-                <div className="flex-1 h-2 bg-gray-100 rounded-full relative">
+                <div className="flex-1 h-2 rounded-full relative" style={{ backgroundColor: '#e5e7eb' }}>
                   <div
                     className="h-2 bg-black rounded-full transition-all"
                     style={{ width: `${((settings.fontScale - 80) / 70) * 100}%` }}
@@ -540,8 +540,8 @@ export function AccessibilityMenu({ language, isOpen, onClose }: AccessibilityMe
                 </div>
                 <button
                   onClick={() => adjustFontScale(10)}
-                  className="rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
-                  style={{ width: 48, height: 48, minWidth: 48, minHeight: 48, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                  className="rounded-full flex items-center justify-center transition-colors"
+                  style={{ width: 48, height: 48, minWidth: 48, minHeight: 48, touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', border: '1.5px solid #d1d5db', backgroundColor: '#FFFFFF' }}
                   aria-label="Increase font size"
                   type="button"
                 >
@@ -550,7 +550,7 @@ export function AccessibilityMenu({ language, isOpen, onClose }: AccessibilityMe
               </div>
             </div>
 
-            <div className="h-px bg-gray-100" />
+            <div className="border-t border-gray-200" />
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -640,7 +640,7 @@ export function AccessibilityMenu({ language, isOpen, onClose }: AccessibilityMe
               />
             </div>
 
-            <div className="h-px bg-gray-100" />
+            <div className="border-t border-gray-200" />
 
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm font-medium text-gray-700">

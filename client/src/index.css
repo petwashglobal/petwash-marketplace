@@ -485,34 +485,44 @@ html, body, #root {
 }
 
 /* FORCE PURE WHITE: Override ALL off-white Tailwind bg utilities globally */
-.bg-gray-50,
-.bg-stone-50,
-.bg-neutral-50,
-.bg-zinc-50,
-.bg-slate-50,
-.bg-amber-50,
-.bg-yellow-50,
-.bg-orange-50,
-.bg-rose-50,
-.bg-red-50,
-.bg-pink-50,
-.bg-fuchsia-50,
-.bg-purple-50,
-.bg-violet-50,
-.bg-indigo-50,
-.bg-blue-50,
-.bg-sky-50,
-.bg-cyan-50,
-.bg-teal-50,
-.bg-emerald-50,
-.bg-green-50,
-.bg-lime-50 {
+.bg-gray-50, .bg-gray-100, .bg-gray-200,
+.bg-stone-50, .bg-stone-100, .bg-stone-200,
+.bg-neutral-50, .bg-neutral-100, .bg-neutral-200,
+.bg-zinc-50, .bg-zinc-100, .bg-zinc-200,
+.bg-slate-50, .bg-slate-100, .bg-slate-200,
+.bg-amber-50, .bg-amber-100,
+.bg-yellow-50, .bg-yellow-100,
+.bg-orange-50, .bg-orange-100,
+.bg-rose-50, .bg-rose-100,
+.bg-red-50, .bg-red-100,
+.bg-pink-50, .bg-pink-100,
+.bg-fuchsia-50, .bg-fuchsia-100,
+.bg-purple-50, .bg-purple-100,
+.bg-violet-50, .bg-violet-100,
+.bg-indigo-50, .bg-indigo-100,
+.bg-blue-50, .bg-blue-100,
+.bg-sky-50, .bg-sky-100,
+.bg-cyan-50, .bg-cyan-100,
+.bg-teal-50, .bg-teal-100,
+.bg-emerald-50, .bg-emerald-100,
+.bg-green-50, .bg-green-100,
+.bg-lime-50, .bg-lime-100 {
   background-color: #FFFFFF !important;
 }
 
 /* TRANSPARENT BEHIND ALL IMAGES AND ICONS */
 img, svg, picture, video, canvas {
-  background-color: transparent;
+  background-color: transparent !important;
+}
+
+/* IMAGE & ICON CONTAINERS — pure white behind all media */
+[class*="rounded-full"] img,
+[class*="rounded-full"] svg,
+figure img,
+figure svg,
+.avatar img,
+.avatar svg {
+  background-color: transparent !important;
 }
 
 /* GUCCI-STYLE TYPOGRAPHY - Apply to headings */
