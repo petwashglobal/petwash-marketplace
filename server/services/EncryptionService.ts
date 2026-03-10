@@ -93,7 +93,9 @@ export class EncryptionService {
     // Security: GCM auth tag is set before any decryption, ensuring ciphertext
     // integrity is verified by Node.js during decipher.final() — if the tag
     // does not match the decrypted content, final() throws and decryption fails.
-    const decipher = crypto.createDecipheriv(ALGORITHM, this.encryptionKey, iv);
+    // authTagLength: 16 locks enforcement to exactly 128-bit tags, rejecting
+    // any forged ciphertext that supplies a shorter-than-expected auth tag.
+    const decipher = crypto.createDecipheriv(ALGORITHM, this.encryptionKey, iv, { authTagLength: 16 });
     decipher.setAuthTag(authTag);
     
     // Decrypt data

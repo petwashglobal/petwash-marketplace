@@ -11,7 +11,6 @@ console.log(`  SENDGRID_API_KEY present: ${!!rawKey}`);
 console.log(`  startsWithSG: ${SENDGRID_API_KEY.startsWith('SG.')}`);
 console.log(`  rawLength: ${rawKey.length}`);
 console.log(`  cleanLength: ${SENDGRID_API_KEY.length}`);
-console.log(`  prefix: ${SENDGRID_API_KEY.slice(0, 5)}${'*'.repeat(Math.max(0, SENDGRID_API_KEY.length - 10))}${SENDGRID_API_KEY.slice(-5)}`);
 
 if (rawKey && rawKey !== SENDGRID_API_KEY) {
   console.warn(`[SendGrid] ⚠️ API key sanitized: trimmed whitespace/control characters (original length: ${rawKey.length}, clean length: ${SENDGRID_API_KEY.length})`);
