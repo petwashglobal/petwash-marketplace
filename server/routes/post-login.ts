@@ -267,7 +267,7 @@ export async function postLoginDecider(req: Request, res: Response) {
 
     const refreshedUser = await storage.getUser(userId);
     const u = refreshedUser || user;
-    const effectiveRole = (u as any).role || userRole || 'customer';
+    let effectiveRole = (u as any).role || userRole || 'customer';
     const missingFields = getMissingFields(u, effectiveRole);
 
     let providerApp: any = null;

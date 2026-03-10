@@ -17,7 +17,7 @@
  */
 
 import { db } from '../db';
-import { walkBookings, users } from '@db/schema';
+import { walkBookings, users } from '@shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { calculateWalkFees, type WalkFeeCalculation } from '../utils/walkFeeCalculator';

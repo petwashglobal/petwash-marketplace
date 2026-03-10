@@ -256,3 +256,10 @@ export class FCMService {
 }
 
 export default FCMService;
+
+export async function sendPushNotification(
+  userId: string,
+  payload: { title: string; body: string; data?: Record<string, string>; imageUrl?: string; clickAction?: string }
+): Promise<boolean> {
+  return FCMService.sendToUser({ userId, ...payload });
+}
