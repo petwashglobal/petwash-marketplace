@@ -11,8 +11,8 @@ packages = ["dig", "freetype", "git-lfs", "imagemagick", "jq", "k6", "lcms2", "l
 
 [deployment]
 deploymentTarget = "vm"
-build = ["bash", "-c", "npm run build && mkdir -p dist/server && node_modules/.bin/esbuild server/index.ts --bundle --platform=node --target=node20 --format=esm --packages=external --alias:@shared=./shared --outfile=dist/server/index.js --log-level=warning"]
-run = ["node", "dist/server/index.js"]
+build = ["npm", "run", "build"]
+run = ["npm", "run", "start"]
 publicDir = "dist/public"
 
 [workflows]

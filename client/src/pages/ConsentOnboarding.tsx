@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { PawPrint, Shield, ChevronRight } from 'lucide-react';
+import { PawPrint, Shield, ChevronRight, ChevronLeft } from 'lucide-react';
 import { getApiUrl } from '@/lib/apiConfig';
 import type { Language } from '@/lib/i18n';
 
@@ -76,20 +76,35 @@ export default function ConsentOnboarding({ language = 'he' }: ConsentOnboarding
         ? 'אתה בטוח? פעולה זו תמחק את חשבונך לצמיתות.'
         : 'Are you sure? This will permanently delete your account.'
     )) return;
-    localStorage.clear();
+    setLoading(true);
     try {
-      await fetch(getApiUrl('/api/account/delete'), {
+      const res = await fetch(getApiUrl('/api/account/delete'), {
         method: 'DELETE',
         credentials: 'include',
       });
-    } catch { /* best effort */ }
+      if (!res.ok) throw new Error('delete_failed');
+    } catch {
+      alert(
+        language === 'he'
+          ? 'שגיאה במחיקת החשבון. אנא נסה שוב.'
+          : 'Failed to delete account. Please try again.'
+      );
+      setLoading(false);
+      return;
+    }
+    localStorage.clear();
     navigate('/');
   };
 
   return (
     <div
-      className="min-h-screen bg-white flex flex-col items-center justify-between px-6 py-12"
+      className="min-h-[100dvh] bg-white flex flex-col items-center justify-between px-6"
       dir={isRTL ? 'rtl' : 'ltr'}
+      style={{
+        paddingTop: 'max(3rem, env(safe-area-inset-top, 0px))',
+        paddingBottom: 'max(3rem, env(safe-area-inset-bottom, 0px))',
+        WebkitTapHighlightColor: 'transparent',
+      }}
     >
       {/* Top Illustration */}
       <div className="flex-1 flex flex-col items-center justify-center w-full max-w-sm">
@@ -193,7 +208,7 @@ export default function ConsentOnboarding({ language = 'he' }: ConsentOnboarding
           ) : (
             <>
               {t.agree}
-              <ChevronRight className="w-5 h-5" />
+              {isRTL ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
             </>
           )}
         </button>
@@ -202,7 +217,7 @@ export default function ConsentOnboarding({ language = 'he' }: ConsentOnboarding
         <button
           onClick={handleDecline}
           data-testid="button-decline-and-delete"
-          className="w-full text-center text-sm font-bold underline py-2 transition-opacity hover:opacity-70"
+          className="w-full text-center text-sm font-bold underline min-h-[44px] flex items-center justify-center transition-opacity hover:opacity-70"
           style={{ color: '#dc2626' }}
         >
           {t.decline}

@@ -79,8 +79,13 @@ export default function NotificationConsent({ language = 'he' }: NotificationCon
 
   return (
     <div
-      className="min-h-screen bg-white flex flex-col items-center justify-between px-6 py-12"
+      className="min-h-[100dvh] bg-white flex flex-col items-center justify-between px-6"
       dir={isRTL ? 'rtl' : 'ltr'}
+      style={{
+        paddingTop: 'max(3rem, env(safe-area-inset-top, 0px))',
+        paddingBottom: 'max(3rem, env(safe-area-inset-bottom, 0px))',
+        WebkitTapHighlightColor: 'transparent',
+      }}
     >
       {/* Top Illustration */}
       <div className="flex-1 flex flex-col items-center justify-center w-full max-w-sm">
@@ -172,7 +177,7 @@ export default function NotificationConsent({ language = 'he' }: NotificationCon
         <button
           onClick={handleNotNow}
           data-testid="button-not-now-notifications"
-          className="w-full text-center text-sm font-bold underline py-2 transition-opacity hover:opacity-70 tracking-wide"
+          className="w-full text-center text-sm font-bold underline min-h-[44px] flex items-center justify-center transition-opacity hover:opacity-70 tracking-wide"
           style={{ color: '#D4AF37' }}
         >
           {t.notNow}
