@@ -347,7 +347,7 @@ export default function Disclaimer() {
 
             {/* Footer */}
             <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 text-center">
-              <p>© 2025 Pet Wash Ltd. {isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
+              <p>© 2026 Pet Wash Ltd. {isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
               <p className="mt-2 font-bold text-red-600 dark:text-red-400">
                 {isHebrew ? (
                   <>כתב ויתור זה מספק הגנה משפטית מקסימלית ל-Pet Wash Ltd כפלטפורמת מקשרת.</>

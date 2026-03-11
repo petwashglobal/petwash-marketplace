@@ -1,6 +1,6 @@
 /**
  * PETWASH UNIFIED BOOKING SYSTEM - DOMAIN TYPES
- * Based on reference implementation (2025)
+ * Based on reference implementation (2026)
  * 
  * GUARANTEES:
  * - Every wash, paid or free, has a Booking
@@ -125,7 +125,7 @@ export const SERVICE_CONFIGS: Record<string, ServiceConfig> = {
     pricingType: "MINUTES",
     basePrice: 35,
     currency: "ILS",
-    vatRate: 0.17,
+    vatRate: 0.18,
     rules: {
       requiresStation: true,
       allowAdminFreeRun: true,
@@ -138,7 +138,7 @@ export const SERVICE_CONFIGS: Record<string, ServiceConfig> = {
     pricingType: "SESSION",
     basePrice: 200,
     currency: "ILS",
-    vatRate: 0.17,
+    vatRate: 0.18,
     rules: {
       requiresProvider: true
     }
@@ -149,7 +149,7 @@ export const SERVICE_CONFIGS: Record<string, ServiceConfig> = {
     pricingType: "HOURLY",
     basePrice: 50,
     currency: "ILS",
-    vatRate: 0.17,
+    vatRate: 0.18,
     rules: {
       requiresProvider: true,
       maxHours: 168
@@ -161,7 +161,7 @@ export const SERVICE_CONFIGS: Record<string, ServiceConfig> = {
     pricingType: "HOURLY",
     basePrice: 40,
     currency: "ILS",
-    vatRate: 0.17,
+    vatRate: 0.18,
     rules: {
       requiresProvider: true,
       maxHours: 4
@@ -173,7 +173,7 @@ export const SERVICE_CONFIGS: Record<string, ServiceConfig> = {
     pricingType: "DISTANCE",
     basePrice: 15,
     currency: "ILS",
-    vatRate: 0.17,
+    vatRate: 0.18,
     rules: {
       requiresProvider: true,
       maxHours: 12

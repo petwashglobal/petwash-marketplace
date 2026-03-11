@@ -717,7 +717,7 @@ export default function PlatformHub() {
             </div>
             
             <p className="text-xs font-light text-gray-300 mt-8 tracking-wider">
-              © 2025 ⁦Pet Wash™⁩ · Israel
+              © 2026 ⁦Pet Wash™⁩ · Israel
             </p>
           </div>
         </section>

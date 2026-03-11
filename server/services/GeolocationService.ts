@@ -138,7 +138,7 @@ export class GeolocationService {
    * Primary API: ip-api.com (free, 45 req/min)
    */
   private async useIPAPI(ip: string): Promise<GeolocationData> {
-    const response = await fetch(`http://ip-api.com/json/${ip}`);
+    const response = await fetch(`https://ip-api.com/json/${ip}`);
     
     if (!response.ok) {
       throw new Error(`ip-api.com returned ${response.status}`);

@@ -129,7 +129,7 @@ router.get('/compliance/report', async (req: Request, res: Response) => {
       data: {
         ...report,
         legalNotes: {
-          vatNote: 'מע"מ 17% על עמלות שירות בלבד',
+          vatNote: 'מע"מ 18% על עמלות שירות בלבד',
           withholdingNote: 'ניכוי מס במקור 20% - בכפוף לאישור רשות המסים',
           nationalInsuranceNote: 'ביטוח לאומי לעצמאים - שיעור מופחת עד 60% מהשכר הממוצע',
         },

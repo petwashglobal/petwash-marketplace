@@ -416,7 +416,7 @@ export function generateBackendTeamInvitation(data: BackendInvitationData): { su
       </div>
       
       <p class="footer-text" style="margin-top: 30px; font-size: 12px;">
-        © 2025 Pet Wash Ltd. All rights reserved.<br>
+        © 2026 Pet Wash Ltd. All rights reserved.<br>
         Company No. 517145033 | Registered in Israel
       </p>
     </div>

@@ -340,7 +340,7 @@ router.post('/send-launch-invitation', async (req, res) => {
       });
     }
 
-    const formattedDate = launchDate || 'November 7, 2025';
+    const formattedDate = launchDate || 'November 7, 2026';
 
     const emailContent = `
       <!DOCTYPE html>

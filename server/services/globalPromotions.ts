@@ -33,16 +33,16 @@ export interface SpecialDayPromotion {
 }
 
 /**
- * 2025 Global Special Days Calendar
+ * 2026 Global Special Days Calendar
  */
-export const SPECIAL_DAYS_2025: SpecialDayPromotion[] = [
+export const SPECIAL_DAYS_2026: SpecialDayPromotion[] = [
   // January
   {
-    id: 'new-year-2025',
+    id: 'new-year-2026',
     name: 'New Year Celebration',
     nameHe: 'חגיגת השנה החדשה',
     nameAr: 'احتفال رأس السنة',
-    date: new Date('2025-01-01'),
+    date: new Date('2026-01-01'),
     discountPercent: 10,
     description: 'Start the year fresh! 10% off all pet wash services',
     descriptionHe: 'התחילו את השנה נקיים! 10% הנחה על כל שירותי הרחצה',
@@ -54,11 +54,11 @@ export const SPECIAL_DAYS_2025: SpecialDayPromotion[] = [
 
   // February
   {
-    id: 'valentines-day-2025',
+    id: 'valentines-day-2026',
     name: "Valentine's Day",
     nameHe: 'יום האהבה',
     nameAr: 'عيد الحب',
-    date: new Date('2025-02-14'),
+    date: new Date('2026-02-14'),
     discountPercent: 15,
     description: 'Love your pet! 15% off - pamper your furry valentine',
     descriptionHe: 'אהבו את חיית המחמד שלכם! 15% הנחה - פנקו את הוולנטיין הפרוותי שלכם',
@@ -70,11 +70,11 @@ export const SPECIAL_DAYS_2025: SpecialDayPromotion[] = [
 
   // March
   {
-    id: 'mothers-day-uk-2025',
+    id: 'mothers-day-uk-2026',
     name: "Mother's Day (UK)",
     nameHe: 'יום האם (בריטניה)',
     nameAr: 'عيد الأم (المملكة المتحدة)',
-    date: new Date('2025-03-30'),
+    date: new Date('2026-03-22'),
     discountPercent: 12,
     description: "Mom's best friend deserves the best! 12% off",
     descriptionHe: 'החבר הטוב ביותר של אמא מגיע לה הטוב ביותר! 12% הנחה',
@@ -87,11 +87,11 @@ export const SPECIAL_DAYS_2025: SpecialDayPromotion[] = [
 
   // April
   {
-    id: 'earth-day-2025',
+    id: 'earth-day-2026',
     name: 'Earth Day',
     nameHe: 'יום כדור הארץ',
     nameAr: 'يوم الأرض',
-    date: new Date('2025-04-22'),
+    date: new Date('2026-04-22'),
     discountPercent: 10,
     description: 'Eco-friendly wash! 10% off - save water, save the planet',
     descriptionHe: 'רחצה ידידותית לסביבה! 10% הנחה - חסכו במים, הצילו את כדור הארץ',
@@ -103,11 +103,11 @@ export const SPECIAL_DAYS_2025: SpecialDayPromotion[] = [
 
   // May
   {
-    id: 'mothers-day-us-2025',
+    id: 'mothers-day-us-2026',
     name: "Mother's Day (USA/Canada)",
     nameHe: 'יום האם (ארה"ב/קנדה)',
     nameAr: 'عيد الأم (الولايات المتحدة / كندا)',
-    date: new Date('2025-05-11'),
+    date: new Date('2026-05-10'),
     discountPercent: 12,
     description: "Treat mom's furry companion! 12% off",
     descriptionHe: 'פנקו את בן הלוויה הפרוותי של אמא! 12% הנחה',
@@ -120,11 +120,11 @@ export const SPECIAL_DAYS_2025: SpecialDayPromotion[] = [
 
   // June
   {
-    id: 'fathers-day-2025',
+    id: 'fathers-day-2026',
     name: "Father's Day",
     nameHe: 'יום האב',
     nameAr: 'عيد الأب',
-    date: new Date('2025-06-15'),
+    date: new Date('2026-06-21'),
     discountPercent: 12,
     description: "Dad's best buddy deserves a spa day! 12% off",
     descriptionHe: 'החבר הכי טוב של אבא מגיע לו יום ספא! 12% הנחה',
@@ -136,11 +136,11 @@ export const SPECIAL_DAYS_2025: SpecialDayPromotion[] = [
 
   // July
   {
-    id: 'independence-day-us-2025',
+    id: 'independence-day-us-2026',
     name: 'Independence Day (USA)',
     nameHe: 'יום העצמאות האמריקאי',
     nameAr: 'عيد الاستقلال (الولايات المتحدة)',
-    date: new Date('2025-07-04'),
+    date: new Date('2026-07-04'),
     discountPercent: 15,
     description: 'Celebrate freedom with a fresh pup! 15% off',
     descriptionHe: 'חגגו חופש עם כלב נקי! 15% הנחה',
@@ -153,11 +153,11 @@ export const SPECIAL_DAYS_2025: SpecialDayPromotion[] = [
 
   // August
   {
-    id: 'international-dog-day-2025',
+    id: 'international-dog-day-2026',
     name: 'International Dog Day',
     nameHe: 'יום הכלב הבינלאומי',
     nameAr: 'اليوم العالمي للكلب',
-    date: new Date('2025-08-26'),
+    date: new Date('2026-08-26'),
     discountPercent: 20,
     description: '🐕 Biggest sale of the year! 20% off all services',
     descriptionHe: '🐕 המבצע הגדול של השנה! 20% הנחה על כל השירותים',
@@ -169,11 +169,11 @@ export const SPECIAL_DAYS_2025: SpecialDayPromotion[] = [
 
   // September
   {
-    id: 'family-day-2025',
+    id: 'family-day-2026',
     name: 'International Family Day',
     nameHe: 'יום המשפחה הבינלאומי',
     nameAr: 'اليوم العالمي للأسرة',
-    date: new Date('2025-09-15'),
+    date: new Date('2026-09-15'),
     discountPercent: 10,
     description: 'Family includes furry members! 10% off',
     descriptionHe: 'המשפחה כוללת גם חברים פרוותיים! 10% הנחה',
@@ -185,11 +185,11 @@ export const SPECIAL_DAYS_2025: SpecialDayPromotion[] = [
 
   // November
   {
-    id: 'black-friday-2025',
+    id: 'black-friday-2026',
     name: 'Black Friday',
     nameHe: 'בלאק פריידי',
     nameAr: 'الجمعة السوداء',
-    date: new Date('2025-11-28'),
+    date: new Date('2026-11-27'),
     discountPercent: 25,
     description: '💥 BLACK FRIDAY! 25% off - biggest discount ever!',
     descriptionHe: '💥 בלאק פריידי! 25% הנחה - ההנחה הכי גדולה אי פעם!',
@@ -200,11 +200,11 @@ export const SPECIAL_DAYS_2025: SpecialDayPromotion[] = [
   },
 
   {
-    id: 'cyber-monday-2025',
+    id: 'cyber-monday-2026',
     name: 'Cyber Monday',
     nameHe: 'סייבר מאנדי',
     nameAr: 'الاثنين الإلكتروني',
-    date: new Date('2025-12-01'),
+    date: new Date('2026-11-30'),
     discountPercent: 20,
     description: '🖥️ CYBER MONDAY! 20% off online bookings only',
     descriptionHe: '🖥️ סייבר מאנדי! 20% הנחה להזמנות אונליין בלבד',
@@ -216,11 +216,11 @@ export const SPECIAL_DAYS_2025: SpecialDayPromotion[] = [
 
   // December
   {
-    id: 'christmas-2025',
+    id: 'christmas-2026',
     name: 'Christmas',
     nameHe: 'חג המולד',
     nameAr: 'عيد الميلاد',
-    date: new Date('2025-12-25'),
+    date: new Date('2026-12-25'),
     discountPercent: 15,
     description: '🎄 Merry Christmas! 15% off - gift your pet a spa day',
     descriptionHe: '🎄 חג מולד שמח! 15% הנחה - תנו לחיית המחמד שלכם יום ספא במתנה',
@@ -238,7 +238,7 @@ export function getTodaysPromotion(userCountry?: string): SpecialDayPromotion | 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  for (const promo of SPECIAL_DAYS_2025) {
+  for (const promo of SPECIAL_DAYS_2026) {
     const promoDate = new Date(promo.date);
     promoDate.setHours(0, 0, 0, 0);
 
@@ -269,7 +269,7 @@ export function getUpcomingPromotions(
   const futureDate = new Date(today);
   futureDate.setDate(futureDate.getDate() + daysAhead);
 
-  return SPECIAL_DAYS_2025.filter(promo => {
+  return SPECIAL_DAYS_2026.filter(promo => {
     const promoDate = new Date(promo.date);
     promoDate.setHours(0, 0, 0, 0);
 
@@ -346,7 +346,7 @@ export function hasPromotionOnDate(date: Date, userCountry?: string): boolean {
   const checkDate = new Date(date);
   checkDate.setHours(0, 0, 0, 0);
 
-  for (const promo of SPECIAL_DAYS_2025) {
+  for (const promo of SPECIAL_DAYS_2026) {
     const promoDate = new Date(promo.date);
     promoDate.setHours(0, 0, 0, 0);
 
@@ -360,7 +360,7 @@ export function hasPromotionOnDate(date: Date, userCountry?: string): boolean {
 }
 
 export default {
-  SPECIAL_DAYS_2025,
+  SPECIAL_DAYS_2026,
   getTodaysPromotion,
   getUpcomingPromotions,
   applyPromotionDiscount,

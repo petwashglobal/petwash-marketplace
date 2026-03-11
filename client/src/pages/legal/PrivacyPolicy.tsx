@@ -426,7 +426,7 @@ export default function PrivacyPolicy() {
 
             {/* Footer */}
             <div className="luxury-glass-panel p-6 text-center luxury-animate-fade-in mt-8">
-              <p className="luxury-text-small">© 2025 Pet Wash Ltd. {isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
+              <p className="luxury-text-small">© 2026 Pet Wash Ltd. {isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
               <p className="luxury-text-small mt-2">
                 {isHebrew ? 'מדיניות זו מותאמת מפרקטיקות מובילות בתעשייה (Airbnb, Booking.com) לשוק טיפול בחיות מחמד.' : 'This policy is adapted from industry-leading practices (Airbnb, Booking.com) for the pet care marketplace.'}
               </p>

@@ -11,7 +11,7 @@ import {
   getUpcomingPromotions,
   applyPromotionDiscount,
   hasPromotionOnDate,
-  SPECIAL_DAYS_2025
+  SPECIAL_DAYS_2026 as SPECIAL_DAYS_2025
 } from '../services/globalPromotions';
 import { logger } from '../lib/logger';
 import { z } from 'zod';

@@ -185,7 +185,7 @@ export class MultiSourceWeatherService {
     }
 
     try {
-      const url = `http://api.weatherapi.com/v1/forecast.json?key=${WEATHERAPI_KEY}&q=${lat},${lon}&days=7&aqi=no&alerts=yes`;
+      const url = `https://api.weatherapi.com/v1/forecast.json?key=${WEATHERAPI_KEY}&q=${lat},${lon}&days=7&aqi=no&alerts=yes`;
       
       const response = await fetch(url);
       if (!response.ok) throw new Error(`WeatherAPI error: ${response.status}`);

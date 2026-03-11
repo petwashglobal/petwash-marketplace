@@ -327,7 +327,7 @@ export default function TermsConditions() {
 
             {/* Footer */}
             <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400 text-center">
-              <p>© 2025 Pet Wash Ltd. {isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
+              <p>© 2026 Pet Wash Ltd. {isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
               <p className="mt-2">
                 {isHebrew ? 'תנאים אלה מותאמים מפרקטיקות מובילות בתעשייה (Airbnb, Booking.com) למרקטפלייס טיפול בחיות מחמד.' : 'These Terms are adapted from industry-leading practices (Airbnb, Booking.com) for the pet care marketplace.'}
               </p>

@@ -16,12 +16,12 @@ import { superAppPayments } from '@shared/schema';
 import { logger } from '../../lib/logger';
 import type { UnifiedTransaction, TransactionType, Currency } from './types';
 
-const ISRAEL_VAT_RATE = 0.17;
+const ISRAEL_VAT_RATE = 0.18;
 
 export class TransactionStampService {
   
   /**
-   * Calculate VAT from gross amount (Israel standard 17%)
+   * Calculate VAT from gross amount (Israel standard 18% — effective Jan 2025)
    */
   calculateVAT(amount: number, vatRate: number = ISRAEL_VAT_RATE): number {
     return Math.round(amount * vatRate * 100) / 100;

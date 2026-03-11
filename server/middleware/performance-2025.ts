@@ -232,7 +232,7 @@ export function conditionalRequestSupport(
     // Only for GET requests
     if (req.method === 'GET' && data) {
       const crypto = require('crypto');
-      const etag = crypto.createHash('md5').update(JSON.stringify(data)).digest('hex');
+      const etag = crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');
       
       res.setHeader('ETag', etag);
       

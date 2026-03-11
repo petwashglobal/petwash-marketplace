@@ -285,3 +285,38 @@ The following composite indexes were created via REST API and may still be build
 ### MyAccount Page Enhancement (`/my-account`)
 - **Activity History section** (below existing tabs): full booking history with status color-coded badges, dates, amounts across sitter + walk platforms
 - **Document Vault section** (below Activity): legal stamp list with SHA-256 hash preview, GCS badge, event labels in Hebrew/English, cryptographic verification info
+
+## 2026 Codebase Audit & Modernisation (March 2026)
+
+### VAT Rate Correction (Critical)
+- Corrected Israeli VAT from 17% → **18%** (effective Jan 2025) across all 8 affected files:
+  - `server/services/unified-booking/TransactionStampService.ts` — `ISRAEL_VAT_RATE = 0.18`
+  - `server/services/unified-booking/UnifiedBookingEngine.ts` — `ISRAEL_VAT_RATE = 0.18`
+  - `server/services/unified-booking/types.ts` — all 5 `SERVICE_CONFIGS` entries
+  - `server/routes/unified-booking.ts` — fallback `vatRate: 0.18`
+  - `server/routes/accounting-export.ts` — Hebrew VAT note updated
+  - `server/services/BookingExportService.ts` — type, AI default, vatRate, column header, AI prompt context
+  - `server/utils/walkFeeCalculator.ts` — comment updated
+
+### Security Upgrades
+- **MD5 → SHA-256** for ETag generation in `server/middleware/performance-2025.ts`
+- **http:// → https://** for two external API calls:
+  - `server/services/GeolocationService.ts` — `ip-api.com`
+  - `server/services/MultiSourceWeatherService.ts` — `api.weatherapi.com`
+
+### Copyright & Date Updates (© 2025 → © 2026)
+- `client/src/components/LegalFooter.tsx`
+- `client/src/pages/legal/PrivacyPolicy.tsx`
+- `client/src/pages/legal/Disclaimer.tsx`
+- `client/src/pages/legal/TermsConditions.tsx`
+- `client/src/pages/PlatformHub.tsx`
+- `server/email/templates/backend-team-invitation-2025.ts`
+
+### Promotions Calendar (SPECIAL_DAYS_2025 → SPECIAL_DAYS_2026)
+- All 12 promotion entries in `server/services/globalPromotions.ts` updated to 2026 calendar dates
+- Floating holidays correctly recalculated: UK Mother's Day (Mar 22), US Mother's Day (May 10), Father's Day (Jun 21), Black Friday (Nov 27), Cyber Monday (Nov 30)
+- Export renamed to `SPECIAL_DAYS_2026`; `server/routes/promotions.ts` updated to import via alias
+
+### Other Stale Data
+- `client/src/lib/i18n.ts` — privilege club milestone date `'2025'` → `'2026'`
+- `server/routes/ceo-wallet.ts` — default launch date `'November 7, 2025'` → `'November 7, 2026'`

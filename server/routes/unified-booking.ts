@@ -57,7 +57,7 @@ async function loadBookingFromDB(bookingId: string): Promise<UnifiedBooking | nu
       vat: 0,
       net: Number(dbBooking.subtotal) || 0,
       currency: dbBooking.currency || 'ILS',
-      vatRate: 0.17,
+      vatRate: 0.18,
       breakdown: {},
       platformFee: Number(dbBooking.platformFee) || 0,
       providerPayout: Number(dbBooking.providerPayout) || 0

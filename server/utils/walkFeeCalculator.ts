@@ -17,7 +17,7 @@
  * - Walker gets: ₪100 - ₪15 (15% fee) = ₪85
  * - Platform keeps: ₪15 (15% total) + VAT collected
  * 
- * Commission Comparison (2025 Benchmarks):
+ * Commission Comparison (2026 Benchmarks):
  * - Industry standard: 15-20% platform commission
  * - ⁦Walk My Pet™⁩: 15% platform commission (industry standard) ✓
  * 

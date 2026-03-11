@@ -42,7 +42,7 @@ interface ExportResult {
 
 interface AIClassification {
   revenueType: 'service_commission' | 'platform_fee' | 'cancellation_fee' | 'other';
-  vatCategory: 'standard_17' | 'exempt' | 'reduced';
+  vatCategory: 'standard_18' | 'exempt' | 'reduced';
   taxDeductible: boolean;
   expenseCategory?: string;
   confidence: number;
@@ -185,7 +185,7 @@ async function classifyTransactionWithAI(booking: any): Promise<AIClassification
   if (!ai) {
     return {
       revenueType: 'platform_fee',
-      vatCategory: 'standard_17',
+      vatCategory: 'standard_18',
       taxDeductible: false,
       confidence: 0.5,
       notes: 'AI not configured - using default classification'
@@ -195,7 +195,7 @@ async function classifyTransactionWithAI(booking: any): Promise<AIClassification
   try {
     const prompt = `You are an Israeli certified public accountant (רואה חשבון מוסמך) for ⁦Pet Wash™⁩.
     
-Classify this booking transaction for Israeli tax compliance 2025:
+Classify this booking transaction for Israeli tax compliance 2026:
 
 Transaction Details:
 - Service Type: ${booking.serviceType}
@@ -210,15 +210,15 @@ Transaction Details:
 Return JSON with these fields:
 {
   "revenueType": "service_commission" | "platform_fee" | "cancellation_fee" | "other",
-  "vatCategory": "standard_17" | "exempt" | "reduced",
+  "vatCategory": "standard_18" | "exempt" | "reduced",
   "taxDeductible": boolean,
   "expenseCategory": string or null,
   "confidence": number (0-1),
   "notes": "brief accounting notes for this transaction"
 }
 
-Israeli Tax Context 2025:
-- Standard VAT rate: 17%
+Israeli Tax Context 2026:
+- Standard VAT rate: 18% (effective January 2025)
 - Platform fee is service commission (עמלת שירות)
 - Provider payouts are pass-through (not our revenue)
 - Escrow held funds are liability until released
@@ -243,7 +243,7 @@ Israeli Tax Context 2025:
     logger.error('[BookingExport] AI classification failed:', error);
     return {
       revenueType: 'platform_fee',
-      vatCategory: 'standard_17',
+      vatCategory: 'standard_18',
       taxDeductible: false,
       confidence: 0.3,
       notes: `AI error: ${error.message}`
@@ -290,7 +290,7 @@ export async function exportBookingsToSheets(
         classification = await classifyTransactionWithAI(booking);
       }
 
-      const vatRate = classification?.vatCategory === 'standard_17' ? 0.17 : 0;
+      const vatRate = classification?.vatCategory === 'standard_18' ? 0.18 : 0;
       const vatAmount = (booking.serviceFeeCents / 100) * vatRate;
 
       rows.push([
@@ -372,7 +372,7 @@ export async function generateComplianceReport(
   const escrowHeld = escrowBookings.reduce((sum, b) => sum + b.totalCents, 0) / 100;
   
   // Israeli tax calculations
-  const vatRate = 0.17;
+  const vatRate = 0.18;
   const vatCollected = platformFees * vatRate;
   const withholdingRate = 0.20; // Default 20% unless provider has exemption certificate
   const withholdingTax = providerPayouts * withholdingRate;
@@ -413,7 +413,7 @@ export async function exportComplianceReport(
     const vatRow = [
       report.period,
       report.platformFees.toFixed(2),
-      '17%',
+      '18%',
       report.vatCollected.toFixed(2),
       '0.00', // Input VAT (calculated separately)
       report.vatCollected.toFixed(2),

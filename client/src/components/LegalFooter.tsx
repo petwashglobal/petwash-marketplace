@@ -399,7 +399,7 @@ Support Phone: 1-700-700-PET (738)
         </Dialog>
 
         <p className="text-xs text-gray-600 dark:text-gray-400 mt-4">
-          © 2025 PetWash Ltd. All rights reserved. • כל הזכויות שמורות
+          © 2026 PetWash Ltd. All rights reserved. • כל הזכויות שמורות
         </p>
       </div>
     </div>

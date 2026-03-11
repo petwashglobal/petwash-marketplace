@@ -37,7 +37,7 @@ import type {
   CompletionReceiptData
 } from './types';
 
-const ISRAEL_VAT_RATE = 0.17;
+const ISRAEL_VAT_RATE = 0.18;
 
 /**
  * Generate unique booking number: PWB-YYYYMMDD-XXXXXX
