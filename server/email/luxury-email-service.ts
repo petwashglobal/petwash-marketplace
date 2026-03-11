@@ -6,7 +6,6 @@
 import { MailService } from '@sendgrid/mail';
 import { logger } from '../lib/logger';
 import { generateBackendTeamInvitation } from './templates/backend-team-invitation-2025';
-import { generateWelcomeEmail } from './templates/welcome-new-customer-2025';
 import { generatePartnerInvitation } from './templates/partner-invitation-2025';
 import { generatePartnerInvitationHebrew } from './templates/partner-invitation-hebrew-2025';
 import { generateWorkflowNotification } from './templates/workflow-notification-2025';
@@ -152,7 +151,8 @@ export async function sendLuxuryWelcomeProvider(
 }
 
 /**
- * Send Welcome Email to New Customer (legacy 2025)
+ * Send Welcome Email to New Customer
+ * Upgraded to 2026 luxury template — 2025 template retired
  */
 export async function sendWelcomeEmail(
   email: string,
@@ -161,19 +161,14 @@ export async function sendWelcomeEmail(
   petType?: string,
   language?: 'he' | 'en'
 ): Promise<boolean> {
-  const { subject, html } = generateWelcomeEmail({
+  const { subject, html } = generateLuxuryWelcomeEmail({
     firstName,
-    email,
-    petName,
-    petType,
-    language: language || 'en'
+    variant: 'customer',
+    language: language || 'he',
   });
 
-  return sendLuxuryEmail({
-    to: email,
-    subject,
-    html
-  });
+  logger.info('[Luxury Email] Sending customer welcome (2026 via sendWelcomeEmail)', { email, firstName });
+  return sendLuxuryEmail({ to: email, subject, html });
 }
 
 /**

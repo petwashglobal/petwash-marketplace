@@ -61,7 +61,6 @@ import socialCircleRoutes from "./routes/social-circle";
 import giftCardsRoutes from "./routes/gift-cards";
 import campaignsRoutes from "./routes/campaigns";
 import meetingsRoutes from "./routes/meetings";
-import vouchers2025Routes from "./routes/vouchers-2025";
 import unifiedVouchersRoutes from "./routes/unified-vouchers";
 import esignRoutes from "./routes/esign";
 import israeli2025EsignRoutes from "./routes/israeli-2025-esign";
@@ -120,7 +119,7 @@ import { requireRole, requireStaffApproved, requireProviderActive, requireSuperA
 import { blockDuringIncident } from './middleware/incidentGuard';
 import { activateIncidentMode, deactivateIncidentMode, getIncidentStatus } from './services/incidentMode';
 import { logAuditEvent, auditMiddleware as auditLogMiddleware } from "./middleware/auditLog";
-import { requireOnboardingComplete as requireOnboardingCompleteV2, requireProviderCanAcceptBooking, requireProfileComplete } from './middleware/stateGuards';
+import { requireProviderCanAcceptBooking, requireProfileComplete } from './middleware/stateGuards';
 import referralRoutes from "./routes/referral";
 import pricingApiRoutes from "./routes/pricing-api";
 import accountingRoutes from "./routes/accounting";
@@ -187,7 +186,6 @@ import unifiedBookingRoutes from "./routes/unified-booking";
 import sendReportRoutes from "./routes/send-report";
 import seoRoutes from "./routes/seo";
 import signaturesRoutes from "./routes/signatures";
-import socialRoutes from "./routes/social";
 import statusRoutes from "./routes/status";
 import syntheticRoutes from "./routes/synthetic";
 import walkPaymentFlowRoutes from "./routes/walk-payment-flow";
@@ -9520,12 +9518,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/fcm', apiLimiter, fcmRoutes);
   app.use('/api/gift-cards', requireOnboardingComplete, giftCardsRoutes);
   
-  // PetWash Vouchers 2025 - 7-Star Luxury System (legacy)
-  app.use('/api/vouchers-2025', apiLimiter, vouchers2025Routes);
-
   // Unified Voucher System 2026 - WASH_PACKAGE + PLATFORM_CREDIT with full ledger
   app.use('/api/booking-chat', bookingChatRouter);
-  app.use('/api/admin/booking-chat', bookingChatRouter);
   app.use('/api/onboarding', onboardingRouter);
   app.use('/api/provider-console', providerConsoleRouter);
   app.use('/api/finance', adminLimiter, moneyFlowRouter);
@@ -9671,7 +9665,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/provider-applications', validateFirebaseToken, apiLimiter, providerApplicationsRoutes);
   
   // DocuSeal E-Signature (FREE - Hebrew RTL Support)
-  app.use(apiLimiter, esignRoutes);
+  app.use('/api/esign', apiLimiter, esignRoutes);
   
   // 🇮🇱 Israeli Government-Grade E-Signature (2025 Compliance - ES256, TSA, MFA)
   app.use('/api/israeli-2025-esign', apiLimiter, israeli2025EsignRoutes);
@@ -9689,7 +9683,7 @@ self.addEventListener('notificationclick', (event) => {
   
   // Accounting & Finance
   app.use('/api/accounting', adminLimiter, accountingRoutes);
-  app.use('/api/accounting', adminLimiter, accountingExportRoutes); // Export & AI Bookkeeping
+  app.use('/api/accounting-exports', adminLimiter, accountingExportRoutes);
   app.use('/api/bank', adminLimiter, bankRoutes);
   app.use('/api/multi-currency', apiLimiter, multiCurrencyRoutes);
   app.use('/api/pricing', apiLimiter, pricingRoutes);
@@ -9724,8 +9718,7 @@ self.addEventListener('notificationclick', (event) => {
   // Franchise Management
   app.use('/api/franchise-mgmt', adminLimiter, franchiseMgmtRoutes);
   
-  // Customer & Social Features
-  app.use('/api/social', apiLimiter, socialRoutes);
+  // Customer & Social Features — social-circle.ts handles /api/social (registered above)
   app.use('/api/messages', optionalFirebaseToken, apiLimiter, messagesRoutes);
   app.use('/api/concierge', apiLimiter, conciergeRoutes);
   

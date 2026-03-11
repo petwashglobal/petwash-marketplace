@@ -12,27 +12,9 @@ const router = Router();
  * FREE E-SIGNATURE: Create Signing Session (DocuSeal)
  * Supports Hebrew, Arabic, and 14 languages
  * Works in mobile browsers (iOS/Android)
- * 
- * Request Body:
- * {
- *   "documentType": "waiver",
- *   "templateSlug": "pet-wash-waiver-2025",
- *   "signerEmail": "customer@example.com",
- *   "signerName": "ישראל ישראלי",
- *   "language": "he",
- *   "sendEmail": true
- * }
- * 
- * Response:
- * {
- *   "sessionId": 123,
- *   "submissionId": "abc123",
- *   "signingUrl": "https://app.docuseal.com/s/...",
- *   "embedCode": "<docuseal-form.../>",
- *   "status": "pending"
- * }
+ * Mounted at /api/esign — paths are relative to that prefix
  */
-router.post('/api/esign/create-session', requireAuth, async (req, res) => {
+router.post('/create-session', requireAuth, async (req, res) => {
   try {
     const userId = req.user!.uid;
     const {
@@ -44,21 +26,19 @@ router.post('/api/esign/create-session', requireAuth, async (req, res) => {
       sendEmail
     } = req.body;
 
-    // Validate required fields
     if (!documentType || !templateSlug || !signerEmail || !signerName) {
       return res.status(400).json({
         error: 'Missing required fields: documentType, templateSlug, signerEmail, signerName'
       });
     }
 
-    // Create DocuSeal submission
     const submission = await docuSealService.createSubmission({
       templateSlug,
       signerEmail,
       signerName,
-      language: language || 'he', // Default to Hebrew
+      language: language || 'he',
       sendEmail: sendEmail !== false,
-      expiresIn: 30, // 30 days
+      expiresIn: 30,
       metadata: {
         userId,
         documentType,
@@ -66,11 +46,9 @@ router.post('/api/esign/create-session', requireAuth, async (req, res) => {
       }
     });
 
-    // Get signing URL for mobile
     const signingUrl = docuSealService.getSigningUrl(submission, language);
     const embedCode = docuSealService.getEmbedCode(submission, language);
 
-    // Save to database
     const [session] = await db.insert(signingSessions).values({
       userId,
       submissionId: submission.id,
@@ -84,7 +62,7 @@ router.post('/api/esign/create-session', requireAuth, async (req, res) => {
       signingUrl,
       embedCode,
       sentAt: new Date(),
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       ipAddress: req.ip,
       userAgent: req.headers['user-agent']
     }).returning();
@@ -119,12 +97,11 @@ router.post('/api/esign/create-session', requireAuth, async (req, res) => {
 /**
  * Get signing session status
  */
-router.get('/api/esign/session/:sessionId', requireAuth, async (req, res) => {
+router.get('/session/:sessionId', requireAuth, async (req, res) => {
   try {
     const { sessionId } = req.params;
     const userId = req.user!.uid;
 
-    // Get from database
     const session = await db.query.signingSessions.findFirst({
       where: eq(signingSessions.id, parseInt(sessionId))
     });
@@ -137,12 +114,10 @@ router.get('/api/esign/session/:sessionId', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    // Get latest status from DocuSeal
     if (session.submissionId) {
       try {
         const submission = await docuSealService.getSubmission(session.submissionId);
         
-        // Update database
         await db.update(signingSessions)
           .set({
             status: submission.status,
@@ -167,10 +142,7 @@ router.get('/api/esign/session/:sessionId', requireAuth, async (req, res) => {
       }
     }
 
-    res.json({
-      success: true,
-      session
-    });
+    res.json({ success: true, session });
 
   } catch (error: any) {
     logger.error('[E-Sign] ❌ Failed to get session:', error);
@@ -184,7 +156,7 @@ router.get('/api/esign/session/:sessionId', requireAuth, async (req, res) => {
 /**
  * Get user's signing sessions
  */
-router.get('/api/esign/sessions', requireAuth, async (req, res) => {
+router.get('/sessions', requireAuth, async (req, res) => {
   try {
     const userId = req.user!.uid;
 
@@ -193,10 +165,7 @@ router.get('/api/esign/sessions', requireAuth, async (req, res) => {
       orderBy: (session, { desc }) => [desc(session.createdAt)]
     });
 
-    res.json({
-      success: true,
-      sessions
-    });
+    res.json({ success: true, sessions });
 
   } catch (error: any) {
     logger.error('[E-Sign] ❌ Failed to get sessions:', error);
@@ -208,10 +177,9 @@ router.get('/api/esign/sessions', requireAuth, async (req, res) => {
 });
 
 /**
- * Webhook endpoint for DocuSeal events
- * Receives completion notifications
+ * Webhook endpoint for DocuSeal events — no auth required (called by DocuSeal)
  */
-router.post('/api/esign/webhook', async (req, res) => {
+router.post('/webhook', async (req, res) => {
   try {
     const event = req.body;
 
@@ -220,7 +188,6 @@ router.post('/api/esign/webhook', async (req, res) => {
       submissionId: event.data?.id
     });
 
-    // Update session based on webhook event
     if (event.data?.id) {
       await db.update(signingSessions)
         .set({
