@@ -2,6 +2,7 @@
 // Invite codes, KYC verification, and application management for walkers, sitters, station operators
 
 import { Router, Request, Response } from 'express';
+import { randomBytes, randomInt } from 'crypto';
 import { db } from '../db';
 import { providerInviteCodes, providerApplications, insertProviderApplicationSchema } from '@shared/schema';
 import { systemRoles, userRoleAssignments } from '@shared/schema-enterprise';
@@ -138,7 +139,7 @@ router.post('/admin/invite-codes/generate', requireAdmin, async (req: Request, r
 
     // Generate unique invite code (e.g., WALKER-A8F3H9K2)
     const codePrefix = providerType.toUpperCase().substring(0, 6);
-    const randomCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const randomCode = randomBytes(5).toString('hex').toUpperCase();
     const inviteCode = `${codePrefix}-${randomCode}`;
 
     const [code] = await db.insert(providerInviteCodes).values({
@@ -499,7 +500,7 @@ router.post('/apply', upload.fields([
 
     // Generate application ID
     const year = new Date().getFullYear();
-    const randomNum = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+    const randomNum = randomInt(0, 1000000).toString().padStart(6, '0');
     const applicationId = `APP-${year}-${randomNum}`;
 
     // AUTO-APPROVAL: If biometric verification passed and required documents uploaded,
@@ -511,7 +512,7 @@ router.post('/apply', upload.fields([
     let providerId = null;
     if (autoApproved) {
       const providerPrefix = providerType.toUpperCase().substring(0, 6);
-      const randomId = Math.random().toString(36).substring(2, 10).toUpperCase();
+      const randomId = randomBytes(5).toString('hex').toUpperCase();
       providerId = `${providerPrefix}-${randomId}`;
     }
 
@@ -716,7 +717,7 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
 
     // Generate provider ID based on type
     const providerPrefix = application.providerType.toUpperCase().substring(0, 6);
-    const randomId = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const randomId = randomBytes(5).toString('hex').toUpperCase();
     const providerId = `${providerPrefix}-${randomId}`;
 
     // Update application

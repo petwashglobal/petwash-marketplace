@@ -333,9 +333,8 @@ export class WalletFraudDetection {
     
     // For now, just detect common VPN patterns
     const suspiciousPatterns = [
-      /^10\./,      // Private network
-      /^172\.16\./, // Private network
-      /^192\.168\./, // Private network
+      /^100\.64\./, // Carrier-grade NAT (RFC 6598) — likely proxy/shared infra
+      /^169\.254\./, // Link-local — indicates missing real IP
     ];
 
     return suspiciousPatterns.some(pattern => pattern.test(ipAddress));

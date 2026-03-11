@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { randomInt } from 'crypto';
 import { db } from '../db';
 import { 
   walkerProfiles, 
@@ -346,7 +347,7 @@ router.post('/api/walks/book', requireAuth, async (req, res) => {
       walkerPayout: pricing.providerPayout.toFixed(2),
       currency: pricing.currency,
       status: 'pending_provider',
-      confirmationCode: Math.floor(100000 + Math.random() * 900000).toString(),
+      confirmationCode: randomInt(100000, 1000000).toString(),
       isLiveTrackingActive: false,
       isVideoStreamActive: false,
       isDroneMonitoringActive: false,

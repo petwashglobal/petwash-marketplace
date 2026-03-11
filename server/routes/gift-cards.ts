@@ -140,7 +140,7 @@ function generateVoucherCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No confusing chars (0, O, I, 1)
   let code = '';
   for (let i = 0; i < 16; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
+    code += chars[crypto.randomBytes(1)[0] % chars.length];
     if ((i + 1) % 4 === 0 && i !== 15) code += '-'; // Add dashes every 4 chars
   }
   return code;

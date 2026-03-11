@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import { db } from "../db";
 import { z } from "zod";
 import {
@@ -29,7 +29,7 @@ function calculateSplit(price: number) {
 }
 
 function generateId(prefix: string) {
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  return `${prefix}-${Date.now().toString(36)}-${randomBytes(4).toString('hex')}`;
 }
 
 // =================== CREATE BOOKING ===================
@@ -44,6 +44,15 @@ const createBookingSchema = z.object({
 router.post("/v1/bookings", async (req: Request, res: Response) => {
   try {
     const body = createBookingSchema.parse(req.body);
+
+    // BOLA guard: if Firebase auth token is present, userId in body must match
+    const authUid = (req as any).firebaseUser?.uid;
+    const isAdminToken = (req as any).firebaseUser?.token?.role === 'admin' ||
+                         (req as any).firebaseUser?.token?.admin === true;
+    if (authUid && !isAdminToken && body.userId !== authUid) {
+      logger.warn('[Octopus] BOLA attempt blocked', { authUid, bodyUserId: body.userId });
+      return res.status(403).json({ error: "Cannot create bookings on behalf of other users" });
+    }
 
     if (body.idempotencyKey) {
       const [existing] = await db

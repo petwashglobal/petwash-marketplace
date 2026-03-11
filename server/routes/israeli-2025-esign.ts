@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { randomInt } from 'crypto';
 import { israeli2025SignatureService, type EnhancedSignatureRequest } from '../services/Israeli2025SignatureService';
 import { requireAuth } from '../customAuth';
 import { logger } from '../lib/logger';
@@ -253,7 +254,7 @@ router.post('/otp/send', requireAuth, async (req, res) => {
     }
     
     // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = randomInt(100000, 1000000).toString();
     
     // TODO: Send OTP via SMS/Email service
     // For now, log it (in production, integrate with SMS/Email provider)

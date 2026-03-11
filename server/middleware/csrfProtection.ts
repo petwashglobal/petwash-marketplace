@@ -4,7 +4,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { randomBytes } from 'crypto';
+import { randomBytes, timingSafeEqual } from 'crypto';
 
 // Generate CSRF token
 export function generateCsrfToken(): string {
@@ -58,7 +58,16 @@ export function verifyCsrfToken(req: Request, res: Response, next: NextFunction)
     });
   }
   
-  if (providedToken !== sessionToken) {
+  const tokensMatch = (() => {
+    try {
+      const a = Buffer.from(providedToken as string);
+      const b = Buffer.from(sessionToken);
+      return a.length === b.length && timingSafeEqual(a, b);
+    } catch {
+      return false;
+    }
+  })();
+  if (!tokensMatch) {
     return res.status(403).json({ 
       error: 'Invalid CSRF token' 
     });

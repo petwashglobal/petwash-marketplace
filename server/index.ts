@@ -112,7 +112,7 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", "https://www.google.com", "https://www.gstatic.com", "https://www.googletagmanager.com", "https://connect.facebook.net", "https://analytics.tiktok.com", "https://www.clarity.ms", "https://maps.googleapis.com", "https://www.googleadservices.com"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
+      imgSrc: ["'self'", "data:", "blob:", "https:"],
       fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
       connectSrc: ["'self'", "https://*.googleapis.com", "https://*.google.com", "https://*.firebaseio.com", "https://*.firebaseapp.com", "https://*.cloudfunctions.net", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com", "wss://*.firebaseio.com", "https://ipapi.co", "https://ip-api.com", "https://ipinfo.io", "https://www.google-analytics.com", "https://api.hubspot.com", "https://*.sentry.io", "https://*.clarity.ms", "https://*.facebook.com", "https://*.tiktok.com"],
       frameSrc: ["'self'", "https://www.google.com", "https://*.firebaseapp.com", "https://docs.google.com"],
@@ -131,7 +131,7 @@ app.use(helmet({
   } : false, // HSTS only in production
   frameguard: { action: 'deny' }, // Prevent clickjacking
   noSniff: true, // Prevent MIME type sniffing
-  xssFilter: true // Enable XSS filter
+  xssFilter: false // X-XSS-Protection: 0 — disabling legacy header per 2026 OWASP guidance (can be exploited in legacy browsers)
 }));
 
 // B. Compression (Makes your site load 70% faster)

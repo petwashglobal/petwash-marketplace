@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from 'express';
+import { randomBytes } from 'crypto';
 import { db } from '../db';
 import { eq, desc, and, gte, lte } from 'drizzle-orm';
 import {
@@ -749,7 +750,7 @@ router.post('/rewards/redeem', async (req: AuthenticatedRequest, res: Response) 
     }
 
     // Create redemption
-    const voucherCode = `REWARD-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
+    const voucherCode = `REWARD-${Date.now()}-${randomBytes(5).toString('hex').toUpperCase()}`;
     
     const [redemption] = await db
       .insert(userRedemptions)

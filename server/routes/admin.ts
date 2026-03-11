@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { randomInt, randomBytes } from 'crypto';
 import { db as firestore } from '../lib/firebase-admin';
 import { db } from '../db';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
@@ -910,7 +911,7 @@ router.post('/ceo/request-voucher', validateFirebaseToken, requireCEO, async (re
     }
 
     // Generate 6-digit verification code
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationCode = randomInt(100000, 1000000).toString();
     
     // Store pending voucher request in Firestore (expires in 5 minutes)
     const requestRef = firestore.collection('ceo_voucher_requests').doc();
@@ -1019,7 +1020,7 @@ router.post('/ceo/issue-free-voucher', validateFirebaseToken, requireCEO, async 
     }
 
     // Generate voucher code
-    const code = `FREE-${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
+    const code = `FREE-${randomBytes(5).toString('hex').toUpperCase()}`;
     const expiresAt = new Date();
     expiresAt.setFullYear(expiresAt.getFullYear() + 1); // Valid for 1 year
 

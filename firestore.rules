@@ -258,8 +258,10 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         request.auth.uid == resource.data.userId || isAdmin()
       );
-      allow create: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+                      request.auth.uid == request.resource.data.userId;
       allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
     
     // ============================================
@@ -374,7 +376,11 @@ service cloud.firestore {
     match /receipts_raw/{receiptId} {
       allow read: if isAdmin() || 
                     (isAuthenticated() && resource.data.franchiseId == request.auth.token.franchise_id);
-      allow write: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+                      request.resource.data.franchiseId == request.auth.token.franchise_id &&
+                      request.auth.token.franchise_id != null;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
     
     // ============================================

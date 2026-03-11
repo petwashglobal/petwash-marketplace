@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { randomBytes } from "crypto";
 import { compare, hash } from "bcrypt";
 import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
@@ -41,7 +42,7 @@ function generateAccessToken(user: any): string {
 
 // Helper: Generate refresh token with unique jti (JWT ID)
 function generateRefreshToken(user: any, deviceId?: string): string {
-  const jti = `${user.id}-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+  const jti = `${user.id}-${Date.now()}-${randomBytes(8).toString('hex')}`;
   return jwt.sign(
     {
       sub: user.id,

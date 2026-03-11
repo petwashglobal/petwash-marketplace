@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { randomBytes } from 'crypto';
 import { db } from '../db';
 import { users } from '@shared/schema';
 import { accountDeletionRequests, accountDeletionAuditLog } from '@shared/schema-enterprise';
@@ -103,7 +104,7 @@ router.post('/request', requireAuth, async (req: any, res) => {
       return res.status(404).json({ error: 'User account not found' });
     }
 
-    const requestId = `DEL-${Date.now()}-${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
+    const requestId = `DEL-${Date.now()}-${randomBytes(5).toString('hex').toUpperCase()}`;
     const consentText = data.language === 'he' ? CONSENT_TEXT_HE : CONSENT_TEXT_EN;
     const consentTimestamp = new Date();
     const hardDeleteDate = new Date();
