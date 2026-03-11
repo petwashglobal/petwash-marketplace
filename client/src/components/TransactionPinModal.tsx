@@ -1,322 +1,355 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { CheckCircle2, X, ChevronLeft, Delete } from 'lucide-react';
-import { useFirebaseAuth } from '@/auth/AuthProvider';
-import { apiRequest } from '@/lib/queryClient';
+import { useState, useEffect, useRef } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 interface TransactionPinModalProps {
-  open: boolean;
+  isOpen?: boolean;
+  open?: boolean;
   onClose: () => void;
-  onVerified: () => void;
-  title?: string;
-  amount?: string;
-  currency?: string;
-  recipientName?: string;
-  description?: string;
-  language?: 'he' | 'en';
+  onSuccess?: (token: string) => void;
+  onVerified?: () => void;
+  lang?: "he" | "en";
+  reason?: string;
 }
-
-const PIN_LENGTH = 6;
 
 const LABELS = {
   he: {
-    readyToPay: 'מוכן לתשלום?',
-    enterPin: 'הזינו את קוד הגישה שלכם',
-    forgotPin: 'שכחתי קוד',
-    cancel: 'ביטול',
-    back: 'חזרה',
-    verifying: 'מאמת...',
-    success: 'התשלום אושר',
-    wrongPin: 'קוד שגוי',
-    attemptsLeft: (n: number) => `נותרו ${n} ניסיונות`,
-    locked: (m: number) => `החשבון נעול. נסו שוב בעוד ${m} דקות`,
-    noPin: 'לא הוגדר קוד גישה לחשבון זה',
-    error: 'שגיאה. נסו שנית',
-    from: 'מ',
+    title: "אישור עסקה",
+    subtitle: "מועדון יוקרה",
+    prompt: "הזן קוד PIN לאישור",
+    forgot: "שכחת PIN?",
+    locked: "החשבון נעול למשך 15 דקות",
+    wrongPin: (n: number) => `PIN שגוי — ${n} ניסיונות נותרו`,
+    verifying: "מאמת...",
   },
   en: {
-    readyToPay: 'Ready to pay?',
-    enterPin: 'Enter your Access PIN',
-    forgotPin: 'Forgot PIN',
-    cancel: 'Cancel',
-    back: 'Back',
-    verifying: 'Verifying...',
-    success: 'Payment approved',
-    wrongPin: 'Incorrect PIN',
-    attemptsLeft: (n: number) => `${n} attempts remaining`,
-    locked: (m: number) => `Account locked. Try again in ${m} minutes`,
-    noPin: 'No PIN set up for this account',
-    error: 'Something went wrong. Try again.',
-    from: 'From',
+    title: "Authorise Transaction",
+    subtitle: "Prestige Club",
+    prompt: "Enter your PIN to confirm",
+    forgot: "Forgot PIN?",
+    locked: "Account locked for 15 minutes",
+    wrongPin: (n: number) => `Wrong PIN — ${n} attempts remaining`,
+    verifying: "Verifying...",
   },
 };
 
-type Phase = 'input' | 'verifying' | 'success' | 'error';
+const PAD_KEYS = ["1","2","3","4","5","6","7","8","9","","0","⌫"];
 
-export function TransactionPinModal({
+export default function TransactionPinModal({
+  isOpen,
   open,
   onClose,
+  onSuccess,
   onVerified,
-  title,
-  amount,
-  currency = '₪',
-  recipientName,
-  description,
-  language = 'he',
+  lang = "en",
+  reason,
 }: TransactionPinModalProps) {
-  const { user } = useFirebaseAuth();
-  const t = LABELS[language];
-  const isRTL = language === 'he';
-
-  const [pin, setPin] = useState('');
-  const [phase, setPhase] = useState<Phase>('input');
-  const [errorMsg, setErrorMsg] = useState('');
-  const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
-  const [lockoutMinutes, setLockoutMinutes] = useState<number | null>(null);
+  const modalOpen = isOpen ?? open ?? false;
+  const [pin, setPin] = useState<string[]>([]);
+  const [shake, setShake] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pressedKey, setPressedKey] = useState<string | null>(null);
+  const didSubmit = useRef(false);
+  const { toast } = useToast();
+  const t = LABELS[lang];
+  const isRtl = lang === "he";
 
   useEffect(() => {
-    if (!open) {
-      setPin('');
-      setPhase('input');
-      setErrorMsg('');
-      setAttemptsLeft(null);
-      setLockoutMinutes(null);
+    if (!modalOpen) {
+      setPin([]);
+      setError(null);
+      setLoading(false);
+      didSubmit.current = false;
     }
-  }, [open]);
+  }, [modalOpen]);
 
-  const verifyPin = useCallback(async (enteredPin: string) => {
-    if (!user?.email) return;
-    setPhase('verifying');
-    setErrorMsg('');
+  useEffect(() => {
+    if (pin.length === 6 && !didSubmit.current) {
+      didSubmit.current = true;
+      submitPin(pin.join(""));
+    }
+  }, [pin]);
 
+  async function submitPin(code: string) {
+    setLoading(true);
+    setError(null);
     try {
-      const idToken = await user.getIdToken();
-      const res = await fetch('/api/pin-auth/verify', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({ pin: enteredPin, email: user.email }),
-      });
-
+      const res = await apiRequest("POST", "/api/pin-auth/verify", { pin: code });
       const data = await res.json();
-
       if (data.success) {
-        setPhase('success');
-        setTimeout(() => {
-          onVerified();
-          onClose();
-        }, 900);
-        return;
+        const token = data.token || "pin_verified";
+        onSuccess?.(token);
+        onVerified?.();
+        onClose();
+      } else if (data.locked) {
+        setError(t.locked);
+        triggerShake();
+      } else {
+        const remaining = data.attemptsRemaining ?? 4;
+        setError(t.wrongPin(remaining));
+        triggerShake();
+        setPin([]);
+        didSubmit.current = false;
       }
-
-      if (data.code === 'ACCOUNT_LOCKED') {
-        setLockoutMinutes(data.lockoutMinutes ?? 15);
-        setErrorMsg(t.locked(data.lockoutMinutes ?? 15));
-        setPhase('error');
-        return;
-      }
-
-      if (data.code === 'PIN_NOT_SETUP') {
-        setErrorMsg(t.noPin);
-        setPhase('error');
-        return;
-      }
-
-      setAttemptsLeft(data.attemptsRemaining ?? null);
-      setErrorMsg(
-        data.attemptsRemaining != null
-          ? `${t.wrongPin} — ${t.attemptsLeft(data.attemptsRemaining)}`
-          : t.wrongPin
-      );
-      setPin('');
-      setPhase('input');
     } catch {
-      setErrorMsg(t.error);
-      setPin('');
-      setPhase('input');
+      setError("Connection error. Please try again.");
+      setPin([]);
+      didSubmit.current = false;
+    } finally {
+      setLoading(false);
     }
-  }, [user, t, onVerified, onClose]);
+  }
 
-  const handleDigit = useCallback((digit: string) => {
-    if (phase !== 'input') return;
-    setErrorMsg('');
-    setPin((prev) => {
-      if (prev.length >= PIN_LENGTH) return prev;
-      const next = prev + digit;
-      if (next.length === PIN_LENGTH) {
-        setTimeout(() => verifyPin(next), 80);
-      }
-      return next;
-    });
-  }, [phase, verifyPin]);
+  function triggerShake() {
+    setShake(true);
+    setTimeout(() => setShake(false), 600);
+  }
 
-  const handleBackspace = useCallback(() => {
-    if (phase !== 'input') return;
-    setPin((prev) => prev.slice(0, -1));
-    setErrorMsg('');
-  }, [phase]);
-
-  const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'back'];
-
-  const amountDisplay = amount ? `${currency}${parseFloat(amount).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : null;
+  function handleKey(key: string) {
+    if (loading) return;
+    if (key === "⌫") {
+      setPin((p) => p.slice(0, -1));
+      setError(null);
+    } else if (key !== "" && pin.length < 6) {
+      setPin((p) => [...p, key]);
+      setError(null);
+    }
+    setPressedKey(key);
+    setTimeout(() => setPressedKey(null), 140);
+  }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o && phase !== 'verifying') onClose(); }}>
+    <Dialog open={modalOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent
-        className="p-0 overflow-hidden bg-white max-w-[380px] w-full rounded-3xl shadow-2xl border-0"
-        dir={isRTL ? 'rtl' : 'ltr'}
-        style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}
+        className="p-0 border-0 shadow-none bg-transparent max-w-[360px] w-full"
+        dir={isRtl ? "rtl" : "ltr"}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-2">
-          <button
-            onClick={onClose}
-            disabled={phase === 'verifying'}
-            className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
-          >
-            {isRTL ? <ChevronLeft className="w-4 h-4 rotate-180" /> : <ChevronLeft className="w-4 h-4" />}
-          </button>
-          <span className="text-sm font-medium text-gray-500">{t.back}</span>
-          <button
-            onClick={onClose}
-            disabled={phase === 'verifying'}
-            className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        <div
+          className="relative overflow-hidden rounded-2xl"
+          style={{
+            background: "linear-gradient(160deg, #0f172a 0%, #1e293b 55%, #0f172a 100%)",
+            boxShadow: "0 32px 80px rgba(0,0,0,0.75), 0 0 0 1px rgba(212,175,55,0.2)",
+          }}
+        >
+          {/* Top gold accent bar */}
+          <div style={{
+            height: 2,
+            background: "linear-gradient(90deg, transparent, #F0D060 20%, #D4AF37 50%, #F0D060 80%, transparent)",
+          }} />
 
-        {/* Transaction summary */}
-        {(recipientName || amountDisplay || description) && (
-          <div className="px-6 pt-2 pb-4 text-center space-y-1">
-            {recipientName && (
-              <p className="text-xs text-gray-400 uppercase tracking-wide">
-                {title || (language === 'he' ? 'תשלום ל' : 'Payment to')}
-              </p>
-            )}
-            {recipientName && (
-              <p className="text-base font-semibold text-gray-800">{recipientName}</p>
-            )}
-            {amountDisplay && (
-              <p className="text-3xl font-bold text-gray-900 tracking-tight">{amountDisplay}</p>
-            )}
-            {description && (
-              <span className="inline-block bg-blue-600 text-white text-xs font-medium px-3 py-1 rounded-full mt-1">
-                {description}
-              </span>
-            )}
-          </div>
-        )}
-
-        <div className="bg-white rounded-t-3xl pb-8">
-          {phase === 'success' ? (
-            /* Success state */
-            <div className="flex flex-col items-center gap-3 py-10">
-              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-                <CheckCircle2 className="w-10 h-10 text-green-500" />
-              </div>
-              <p className="text-base font-medium text-green-700">{t.success}</p>
+          {/* Header */}
+          <div className="pt-8 pb-5 px-8 text-center">
+            {/* Diamond Prestige Club Logo */}
+            <div className="flex justify-center mb-5">
+              <svg viewBox="0 0 64 64" width="62" height="62" fill="none">
+                <defs>
+                  <linearGradient id="pinDiaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%"   stopColor="#F5E68A" />
+                    <stop offset="22%"  stopColor="#F0D060" />
+                    <stop offset="50%"  stopColor="#D4AF37" />
+                    <stop offset="78%"  stopColor="#B8941F" />
+                    <stop offset="100%" stopColor="#8B6914" />
+                  </linearGradient>
+                  <linearGradient id="pinDiaFacet" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%"   stopColor="#F5E68A" stopOpacity="0.55" />
+                    <stop offset="100%" stopColor="#B8941F" stopOpacity="0.08" />
+                  </linearGradient>
+                  <filter id="pinGlow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="2.5" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+                {/* Outer ring */}
+                <circle cx="32" cy="32" r="30" stroke="url(#pinDiaGrad)" strokeWidth="1.2" fill="none" opacity="0.4" />
+                {/* Diamond */}
+                <polygon points="32,5 57,29 32,59 7,29" fill="url(#pinDiaGrad)" filter="url(#pinGlow)" />
+                {/* Facet highlights */}
+                <polygon points="32,5 57,29 32,29"   fill="url(#pinDiaFacet)" />
+                <polygon points="7,29 32,29 32,59"   fill="rgba(0,0,0,0.18)" />
+                {/* Center lines */}
+                <line x1="32" y1="5"  x2="32" y2="59" stroke="#8B6914" strokeWidth="0.5" opacity="0.5" />
+                <line x1="7"  y1="29" x2="57" y2="29" stroke="#8B6914" strokeWidth="0.5" opacity="0.5" />
+                {/* Side facet lines */}
+                <line x1="32" y1="5"  x2="7"  y2="29" stroke="rgba(212,175,55,0.25)" strokeWidth="0.4" />
+                <line x1="32" y1="5"  x2="57" y2="29" stroke="rgba(212,175,55,0.25)" strokeWidth="0.4" />
+              </svg>
             </div>
-          ) : (
-            <>
-              {/* PIN prompt */}
-              <div className="text-center pt-2 pb-5 px-6">
-                <p className="text-lg font-semibold text-gray-900 mb-0.5">
-                  {t.enterPin}
-                </p>
 
-                {/* PIN dots */}
-                <div className="flex items-center justify-center gap-3 mt-4">
-                  {Array.from({ length: PIN_LENGTH }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`w-3 h-3 rounded-full transition-all duration-150 ${
-                        i < pin.length
-                          ? 'bg-blue-600 scale-110'
-                          : 'bg-gray-200'
-                      }`}
-                    />
-                  ))}
-                </div>
+            {/* Brand label */}
+            <p style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontSize: 10.5,
+              letterSpacing: "0.28em",
+              background: "linear-gradient(90deg, #F0D060, #D4AF37, #F0D060)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              textTransform: "uppercase",
+              marginBottom: 6,
+            }}>
+              PetWash™ &nbsp;{t.subtitle}
+            </p>
 
-                {/* Error message */}
-                {errorMsg && (
-                  <p className="text-sm text-red-500 mt-3 font-medium">{errorMsg}</p>
-                )}
+            {/* Title */}
+            <h2 style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontSize: 23,
+              fontWeight: 600,
+              color: "#EEF2FF",
+              letterSpacing: "0.04em",
+              marginBottom: 6,
+            }}>
+              {t.title}
+            </h2>
 
-                {phase === 'verifying' && (
-                  <p className="text-sm text-gray-400 mt-3">{t.verifying}</p>
-                )}
-              </div>
+            {/* Prompt */}
+            <p style={{
+              fontSize: 12,
+              color: "rgba(238,242,255,0.38)",
+              letterSpacing: "0.07em",
+            }}>
+              {reason || t.prompt}
+            </p>
+          </div>
 
-              {/* Number pad */}
-              <div className="px-6">
-                <div className="grid grid-cols-3 gap-3">
-                  {KEYS.map((key, idx) => {
-                    if (key === '') {
-                      return <div key={idx} />;
-                    }
+          {/* Divider */}
+          <div className="mx-8 mb-6" style={{
+            height: 1,
+            background: "linear-gradient(90deg, transparent, rgba(212,175,55,0.35), transparent)",
+          }} />
 
-                    if (key === 'back') {
-                      return (
-                        <button
-                          key={idx}
-                          onPointerDown={(e) => { e.preventDefault(); handleBackspace(); }}
-                          disabled={phase === 'verifying' || pin.length === 0}
-                          className="flex items-center justify-center h-16 rounded-full text-gray-700 hover:bg-gray-100 active:bg-gray-200 transition-colors disabled:opacity-30"
-                        >
-                          <Delete className="w-6 h-6" />
-                        </button>
-                      );
-                    }
+          {/* PIN dots */}
+          <div className={`flex justify-center gap-[14px] mb-5 ${shake ? "pin-shake" : ""}`}>
+            {Array.from({ length: 6 }).map((_, i) => {
+              const filled = i < pin.length;
+              return (
+                <div key={i} style={{
+                  width: 13,
+                  height: 13,
+                  borderRadius: "50%",
+                  border: filled ? "none" : "1.5px solid rgba(212,175,55,0.38)",
+                  background: filled
+                    ? "linear-gradient(135deg, #F0D060 0%, #D4AF37 50%, #B8941F 100%)"
+                    : "transparent",
+                  boxShadow: filled
+                    ? "0 0 12px rgba(212,175,55,0.65), 0 0 4px rgba(212,175,55,0.4)"
+                    : "none",
+                  transition: "all 0.15s cubic-bezier(0.34,1.56,0.64,1)",
+                  transform: filled ? "scale(1.1)" : "scale(1)",
+                }} />
+              );
+            })}
+          </div>
 
-                    const subLabels: Record<string, string> = {
-                      '2': 'ABC', '3': 'DEF', '4': 'GHI',
-                      '5': 'JKL', '6': 'MNO', '7': 'PQRS',
-                      '8': 'TUV', '9': 'WXYZ',
-                    };
+          {/* Status line */}
+          <div className="text-center mb-1 min-h-[22px] px-6">
+            {loading ? (
+              <span style={{
+                fontSize: 11.5,
+                letterSpacing: "0.12em",
+                background: "linear-gradient(90deg, #F0D060, #D4AF37)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                fontFamily: "'Cormorant Garamond', serif",
+              }}>
+                {t.verifying}
+              </span>
+            ) : error ? (
+              <span style={{ color: "#f87171", fontSize: 11.5, letterSpacing: "0.04em" }}>
+                {error}
+              </span>
+            ) : null}
+          </div>
 
-                    return (
-                      <button
-                        key={idx}
-                        onPointerDown={(e) => { e.preventDefault(); handleDigit(key); }}
-                        disabled={phase === 'verifying'}
-                        className="flex flex-col items-center justify-center h-16 rounded-full bg-gray-50 hover:bg-gray-100 active:bg-gray-200 transition-colors disabled:opacity-40 select-none"
-                      >
-                        <span className="text-2xl font-light text-gray-900 leading-none">{key}</span>
-                        {subLabels[key] && (
-                          <span className="text-[9px] font-medium text-gray-400 tracking-widest mt-0.5">
-                            {subLabels[key]}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Footer links */}
-              <div className="flex items-center justify-between px-8 mt-5">
+          {/* Number pad */}
+          <div className="grid grid-cols-3 gap-2 px-7 pb-3 mt-3">
+            {PAD_KEYS.map((key, idx) => {
+              if (key === "") return <div key={idx} />;
+              const isDelete = key === "⌫";
+              const isPressed = pressedKey === key;
+              return (
                 <button
-                  onClick={onClose}
-                  disabled={phase === 'verifying'}
-                  className="text-sm text-blue-600 font-medium disabled:opacity-40"
+                  key={idx}
+                  onClick={() => handleKey(key)}
+                  disabled={loading}
+                  style={{
+                    height: 56,
+                    borderRadius: 11,
+                    border: isPressed
+                      ? "1.5px solid #D4AF37"
+                      : "1.5px solid rgba(212,175,55,0.14)",
+                    background: isPressed
+                      ? "rgba(212,175,55,0.12)"
+                      : "rgba(255,255,255,0.035)",
+                    color: isDelete ? "rgba(238,242,255,0.38)" : "#EEF2FF",
+                    fontSize: isDelete ? 19 : 22,
+                    fontFamily: isDelete ? "system-ui, sans-serif" : "'Cormorant Garamond', serif",
+                    fontWeight: isDelete ? 300 : 500,
+                    letterSpacing: "0.04em",
+                    cursor: loading ? "not-allowed" : "pointer",
+                    boxShadow: isPressed
+                      ? "0 0 18px rgba(212,175,55,0.28), inset 0 1px 0 rgba(212,175,55,0.18)"
+                      : "none",
+                    transition: "all 0.1s ease",
+                    transform: isPressed ? "scale(0.94)" : "scale(1)",
+                    backdropFilter: "blur(4px)",
+                    outline: "none",
+                  }}
                 >
-                  {t.forgotPin}
+                  {key}
                 </button>
-                <button
-                  onClick={onClose}
-                  disabled={phase === 'verifying'}
-                  className="text-sm text-blue-600 font-medium disabled:opacity-40"
-                >
-                  {t.cancel}
-                </button>
-              </div>
-            </>
-          )}
+              );
+            })}
+          </div>
+
+          {/* Forgot PIN */}
+          <div className="text-center py-5">
+            <button
+              onClick={() => toast({
+                title: "PIN Reset",
+                description: "A reset link has been sent to your registered email.",
+              })}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontSize: 12,
+                letterSpacing: "0.1em",
+                backgroundImage: "linear-gradient(90deg, #F0D060, #D4AF37, #F0D060)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                fontFamily: "'Cormorant Garamond', serif",
+                fontWeight: 500,
+                textTransform: "uppercase",
+              }}
+            >
+              {t.forgot}
+            </button>
+          </div>
+
+          {/* Bottom gold accent bar */}
+          <div style={{
+            height: 2,
+            background: "linear-gradient(90deg, transparent, #F0D060 20%, #D4AF37 50%, #F0D060 80%, transparent)",
+          }} />
         </div>
+
+        <style>{`
+          @keyframes pinShakeKf {
+            0%,100% { transform: translateX(0); }
+            15%      { transform: translateX(-9px); }
+            30%      { transform: translateX(9px); }
+            45%      { transform: translateX(-6px); }
+            60%      { transform: translateX(6px); }
+            75%      { transform: translateX(-3px); }
+            90%      { transform: translateX(3px); }
+          }
+          .pin-shake { animation: pinShakeKf 0.6s ease-in-out; }
+        `}</style>
       </DialogContent>
     </Dialog>
   );

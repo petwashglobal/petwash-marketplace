@@ -248,11 +248,11 @@
 .gold-shimmer-text {
   background: linear-gradient(
     90deg,
-    #c6a664 0%,
+    #D4AF37 0%,
     #e8d5a3 25%,
-    #c6a664 50%,
+    #D4AF37 50%,
     #a08050 75%,
-    #c6a664 100%
+    #D4AF37 100%
   );
   background-size: 200% auto;
   -webkit-background-clip: text;
@@ -265,7 +265,7 @@
 .gold-shimmer-btn {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, #c6a664 0%, #d4b87a 50%, #c6a664 100%);
+  background: linear-gradient(135deg, #D4AF37 0%, #d4b87a 50%, #D4AF37 100%);
   transition: all 0.4s ease;
 }
 
@@ -361,7 +361,7 @@
   left: 50%;
   width: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #c6a664, transparent);
+  background: linear-gradient(90deg, transparent, #D4AF37, transparent);
   transition: all 0.4s ease;
   transform: translateX(-50%);
 }
@@ -550,35 +550,35 @@ h1, h2, h3, h4, h5, h6,
   --color-text-dark: #000000;
   --color-muted: #666666;
   
-  /* LUXURY GOLD PALETTE - Cartier/Louis Vuitton Style */
-  --cartier-gold: #c6a664;           /* Primary luxury gold */
-  --cartier-gold-light: #d4bc8a;     /* Light gold highlight */
-  --cartier-gold-dark: #a08040;      /* Deep gold shadow */
-  --cartier-gold-highlight: #e8d9b5; /* Soft gold highlight */
-  --cartier-gold-shadow: #8b7035;    /* Dark gold shadow */
-  --gold-metallic: #c9b37b;          /* Metallic gold */
-  --color-gold: #c6a664;             /* Primary gold reference */
-  --color-gold-2: #b8956e;           /* Secondary gold */
+  /* LUXURY GOLD PALETTE - True Cartier 18k Yellow Gold */
+  --cartier-gold: #D4AF37;           /* Primary: true 18k yellow gold */
+  --cartier-gold-light: #F0D060;     /* Bright gold reflection / highlight */
+  --cartier-gold-dark: #B8941F;      /* Deep gold shadow */
+  --cartier-gold-highlight: #F5E68A; /* Shimmer / specular */
+  --cartier-gold-shadow: #8B6914;    /* Darkest gold shadow */
+  --gold-metallic: #D4AF37;          /* Metallic gold */
+  --color-gold: #D4AF37;             /* Primary gold reference */
+  --color-gold-2: #B8941F;           /* Secondary / deep gold */
   
-  /* LUXURY GOLD GRADIENTS - Rich & Premium */
-  --gradient-gold: linear-gradient(145deg, #e8d9b5 0%, #d4bc8a 25%, #c6a664 50%, #a08040 75%, #8b7035 100%);
-  --gradient-gold-shine: linear-gradient(90deg, transparent 0%, rgba(230,215,180,0.6) 50%, transparent 100%);
+  /* LUXURY GOLD GRADIENTS - True 18k Yellow Gold */
+  --gradient-gold: linear-gradient(145deg, #F5E68A 0%, #F0D060 20%, #D4AF37 50%, #B8941F 75%, #8B6914 100%);
+  --gradient-gold-shine: linear-gradient(90deg, transparent 0%, rgba(244,224,96,0.5) 50%, transparent 100%);
   --gradient-black: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
   
   /* Effects - GOLD GLOW for luxury feel */
-  --gold-glow-light: rgba(198, 166, 100, 0.15);
-  --gold-glow-medium: rgba(198, 166, 100, 0.25);
-  --gold-glow-heavy: rgba(198, 166, 100, 0.4);
-  --shadow-gold: 0 8px 24px rgba(198, 166, 100, 0.25);
+  --gold-glow-light: rgba(212, 175, 55, 0.15);
+  --gold-glow-medium: rgba(212, 175, 55, 0.28);
+  --gold-glow-heavy: rgba(212, 175, 55, 0.45);
+  --shadow-gold: 0 8px 24px rgba(212, 175, 55, 0.30);
   --shadow-default: 0 8px 32px rgba(0, 0, 0, 0.08);
   
   /* ===== 2025 LUXURY GOLD GRADIENTS - Fashion House Style ===== */
   
   /* METALLIC GOLD VARIANTS */
-  --gradient-metallic-gold: linear-gradient(135deg, #e8d9b5 0%, #d4bc8a 25%, #c6a664 50%, #b8956e 75%, #a08040 100%);
-  --gradient-gold-rich: linear-gradient(135deg, #d4bc8a 0%, #c6a664 50%, #a08040 100%);
-  --gradient-gold-royal: linear-gradient(to right, #e8d9b5 0%, #c6a664 50%, #8b7035 100%);
-  --gradient-gold-pure: radial-gradient(circle at 30% 30%, #e8d9b5, #c6a664 50%, #a08040);
+  --gradient-metallic-gold: linear-gradient(135deg, #F5E68A 0%, #F0D060 20%, #D4AF37 50%, #B8941F 75%, #8B6914 100%);
+  --gradient-gold-rich: linear-gradient(135deg, #F0D060 0%, #D4AF37 50%, #B8941F 100%);
+  --gradient-gold-royal: linear-gradient(to right, #F5E68A 0%, #D4AF37 50%, #8B6914 100%);
+  --gradient-gold-pure: radial-gradient(circle at 30% 30%, #F5E68A, #D4AF37 50%, #B8941F);
   
   /* Diamond & Crystal Effects - Keep white/light */
   --gradient-diamond: linear-gradient(135deg, #FFFFFF 0%, #F8F8F8 20%, #F0F0F0 40%, #E8E8E8 60%, #F0F0F0 80%, #FFFFFF 100%);
@@ -602,7 +602,7 @@ h1, h2, h3, h4, h5, h6,
   
   /* Premium Button Gradients - LUXURY GOLD + BLACK */
   --gradient-luxury-primary: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #000000 100%);
-  --gradient-luxury-gold-button: linear-gradient(135deg, #d4bc8a 0%, #c6a664 50%, #a08040 100%);
+  --gradient-luxury-gold-button: linear-gradient(135deg, #F0D060 0%, #D4AF37 50%, #B8941F 100%);
   --gradient-luxury-rose-button: linear-gradient(135deg, #e8c4b8 0%, #d4a394 50%, #c9967a 100%);
   --gradient-luxury-platinum-button: linear-gradient(135deg, #E5E4E2 0%, #D8D8D8 50%, #E5E4E2 100%);
   
