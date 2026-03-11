@@ -340,13 +340,13 @@ export default function MobileStationSheet() {
 
         {/* Overview Tab - Enterprise KPI Dashboard */}
         <TabsContent value="overview" className="px-0 py-0 mt-0">
-          <div className="min-h-screen bg-[#0B0B0B]">
+          <div className="min-h-screen bg-white">
             {/* Header */}
-            <div className="border-b border-[#2A2A2A] px-4 py-3 sticky top-0 bg-[#0B0B0B] z-10">
+            <div className="border-b border-[#E8E3D9] px-4 py-3 sticky top-0 bg-white z-10">
               <div className="flex items-center justify-between">
-                <h3 className="text-[15px] font-medium text-[#EDEDED]">Station Overview</h3>
+                <h3 className="text-[15px] font-medium text-[#1A1A1A]">Station Overview</h3>
                 <div className="flex items-center gap-2">
-                  <span className="text-[12px] text-[#666666]">{station.serialNumber}</span>
+                  <span className="text-[12px] text-[#8A8078]">{station.serialNumber}</span>
                   <div className={`w-2 h-2 rounded-full ${station.status === 'online' ? 'bg-[#00F57A]' : 'bg-[#EF4444]'}`} />
                 </div>
               </div>
@@ -355,50 +355,50 @@ export default function MobileStationSheet() {
             {/* KPI Grid */}
             <div className="p-4 space-y-3">
               {/* Today's Washes */}
-              <div className="p-4 rounded-lg bg-[#1A1A1A] border border-[#2A2A2A]">
+              <div className="p-4 rounded-lg bg-[#F7F4EE] border border-[#E8E3D9]">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[13px] text-[#666666]">Today's Washes</span>
-                  <span className="text-[11px] px-1.5 py-0.5 rounded bg-[#1F1F1F] text-[#A0A0A0]">Live</span>
+                  <span className="text-[13px] text-[#8A8078]">Today's Washes</span>
+                  <span className="text-[11px] px-1.5 py-0.5 rounded bg-[#F0EBE0] text-[#7A7068]">Live</span>
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[28px] font-semibold text-[#EDEDED] tabular-nums">0</span>
-                  <span className="text-[13px] text-[#A0A0A0]">cycles</span>
+                  <span className="text-[28px] font-semibold text-[#1A1A1A] tabular-nums">0</span>
+                  <span className="text-[13px] text-[#7A7068]">cycles</span>
                 </div>
-                <div className="mt-2 h-1 bg-[#1F1F1F] rounded-full overflow-hidden">
+                <div className="mt-2 h-1 bg-[#F0EBE0] rounded-full overflow-hidden">
                   <div className="h-full w-0 bg-[#00F57A]" />
                 </div>
               </div>
 
               {/* 7-Day Trend */}
-              <div className="p-4 rounded-lg bg-[#1A1A1A] border border-[#2A2A2A]">
+              <div className="p-4 rounded-lg bg-[#F7F4EE] border border-[#E8E3D9]">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[13px] text-[#666666]">7-Day Volume</span>
-                  <span className="text-[11px] text-[#A0A0A0]">—</span>
+                  <span className="text-[13px] text-[#8A8078]">7-Day Volume</span>
+                  <span className="text-[11px] text-[#7A7068]">—</span>
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[28px] font-semibold text-[#EDEDED] tabular-nums">—</span>
-                  <span className="text-[13px] text-[#A0A0A0]">total</span>
+                  <span className="text-[28px] font-semibold text-[#1A1A1A] tabular-nums">—</span>
+                  <span className="text-[13px] text-[#7A7068]">total</span>
                 </div>
-                <div className="mt-2 h-1 bg-[#1F1F1F] rounded-full overflow-hidden">
+                <div className="mt-2 h-1 bg-[#F0EBE0] rounded-full overflow-hidden">
                   <div className="h-full w-0 bg-[#A0A0A0]" />
                 </div>
               </div>
 
               {/* Low Stock Items */}
-              <div className="p-4 rounded-lg bg-[#1A1A1A] border border-[#2A2A2A]">
+              <div className="p-4 rounded-lg bg-[#F7F4EE] border border-[#E8E3D9]">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[13px] text-[#666666]">Low Stock Items</span>
+                  <span className="text-[13px] text-[#8A8078]">Low Stock Items</span>
                   {Object.values(inventory).filter(item => item.qty <= item.reorderLevel).length > 0 && (
                     <span className="text-[11px] px-1.5 py-0.5 rounded bg-[#FFB547]/10 text-[#FFB547]">Alert</span>
                   )}
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[28px] font-semibold text-[#EDEDED] tabular-nums">
+                  <span className="text-[28px] font-semibold text-[#1A1A1A] tabular-nums">
                     {Object.values(inventory).filter(item => item.qty <= item.reorderLevel).length}
                   </span>
-                  <span className="text-[13px] text-[#A0A0A0]">/ {Object.keys(inventory).length} items</span>
+                  <span className="text-[13px] text-[#7A7068]">/ {Object.keys(inventory).length} items</span>
                 </div>
-                <div className="mt-2 h-1 bg-[#1F1F1F] rounded-full overflow-hidden">
+                <div className="mt-2 h-1 bg-[#F0EBE0] rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-[#FFB547]" 
                     style={{ 
@@ -409,9 +409,9 @@ export default function MobileStationSheet() {
               </div>
 
               {/* Upcoming Renewals */}
-              <div className="p-4 rounded-lg bg-[#1A1A1A] border border-[#2A2A2A]">
+              <div className="p-4 rounded-lg bg-[#F7F4EE] border border-[#E8E3D9]">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[13px] text-[#666666]">Renewals (30d)</span>
+                  <span className="text-[13px] text-[#8A8078]">Renewals (30d)</span>
                   {(() => {
                     const upcoming = [
                       station.utilities?.insurance?.renewalDate,
@@ -422,7 +422,7 @@ export default function MobileStationSheet() {
                   })()}
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[28px] font-semibold text-[#EDEDED] tabular-nums">
+                  <span className="text-[28px] font-semibold text-[#1A1A1A] tabular-nums">
                     {(() => {
                       const upcoming = [
                         station.utilities?.insurance?.renewalDate,
@@ -430,30 +430,30 @@ export default function MobileStationSheet() {
                       return upcoming.length;
                     })()}
                   </span>
-                  <span className="text-[13px] text-[#A0A0A0]">utilities</span>
+                  <span className="text-[13px] text-[#7A7068]">utilities</span>
                 </div>
-                <div className="mt-2 h-1 bg-[#1F1F1F] rounded-full overflow-hidden">
+                <div className="mt-2 h-1 bg-[#F0EBE0] rounded-full overflow-hidden">
                   <div className="h-full w-0 bg-[#3B82F6]" />
                 </div>
               </div>
 
               {/* Station Details */}
-              <div className="mt-6 p-4 rounded-lg bg-[#1A1A1A] border border-[#2A2A2A]">
-                <h4 className="text-[13px] font-semibold text-[#EDEDED] mb-3">Station Details</h4>
+              <div className="mt-6 p-4 rounded-lg bg-[#F7F4EE] border border-[#E8E3D9]">
+                <h4 className="text-[13px] font-semibold text-[#1A1A1A] mb-3">Station Details</h4>
                 <div className="space-y-2 text-[13px]">
                   <div className="flex justify-between">
-                    <span className="text-[#666666]">Location</span>
-                    <span className="text-[#EDEDED] text-right">{station.address.city}</span>
+                    <span className="text-[#8A8078]">Location</span>
+                    <span className="text-[#1A1A1A] text-right">{station.address.city}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[#666666]">Nayax Terminal</span>
-                    <span className="text-[#EDEDED]">{station.nayax?.terminalId || '—'}</span>
+                    <span className="text-[#8A8078]">Nayax Terminal</span>
+                    <span className="text-[#1A1A1A]">{station.nayax?.terminalId || '—'}</span>
                   </div>
                 </div>
                 <div className="mt-3 flex gap-2">
                   <button
                     onClick={copyAddress}
-                    className="flex-1 h-9 rounded-lg bg-[#1F1F1F] border border-[#2A2A2A] text-[#EDEDED] text-[13px] font-medium hover:bg-[#252525] transition-colors duration-100"
+                    className="flex-1 h-9 rounded-lg bg-[#F0EBE0] border border-[#E8E3D9] text-[#1A1A1A] text-[13px] font-medium hover:bg-[#E8E3D9] transition-colors duration-100"
                     data-testid="button-copy-address"
                   >
                     <Copy className="w-3.5 h-3.5 inline mr-1" />
@@ -461,7 +461,7 @@ export default function MobileStationSheet() {
                   </button>
                   <button
                     onClick={() => setShowQR(true)}
-                    className="flex-1 h-9 rounded-lg bg-[#1F1F1F] border border-[#2A2A2A] text-[#EDEDED] text-[13px] font-medium hover:bg-[#252525] transition-colors duration-100"
+                    className="flex-1 h-9 rounded-lg bg-[#F0EBE0] border border-[#E8E3D9] text-[#1A1A1A] text-[13px] font-medium hover:bg-[#E8E3D9] transition-colors duration-100"
                     data-testid="button-share-qr"
                   >
                     <QrCode className="w-3.5 h-3.5 inline mr-1" />
@@ -475,36 +475,36 @@ export default function MobileStationSheet() {
 
         {/* Inventory Tab - Enterprise Design */}
         <TabsContent value="inventory" className="px-0 py-0 mt-0">
-          <div className="min-h-screen bg-[#0B0B0B]">
+          <div className="min-h-screen bg-white">
             {/* Header */}
-            <div className="border-b border-[#2A2A2A] px-4 py-3 flex items-center justify-between sticky top-0 bg-[#0B0B0B] z-10">
-              <h3 className="text-[15px] font-medium text-[#EDEDED]">Consumables Inventory</h3>
-              <span className="text-[13px] text-[#A0A0A0]">Last updated: Now</span>
+            <div className="border-b border-[#E8E3D9] px-4 py-3 flex items-center justify-between sticky top-0 bg-white z-10">
+              <h3 className="text-[15px] font-medium text-[#1A1A1A]">Consumables Inventory</h3>
+              <span className="text-[13px] text-[#7A7068]">Last updated: Now</span>
             </div>
 
             {Object.keys(inventory).length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 px-4">
-                <Package className="w-12 h-12 text-[#404040] mb-3" />
-                <p className="text-[14px] text-[#A0A0A0]">No inventory data</p>
+                <Package className="w-12 h-12 text-[#CCCCCC] mb-3" />
+                <p className="text-[14px] text-[#7A7068]">No inventory data</p>
               </div>
             ) : (
-              <div className="divide-y divide-[#2A2A2A]">
+              <div className="divide-y divide-[#E8E3D9]">
                 {Object.entries(inventory).map(([sku, item]) => {
                   const isLowStock = item.qty <= item.reorderLevel;
                   const percentage = Math.min(100, (item.qty / Math.max(item.reorderLevel, 1)) * 100);
                   
                   return (
-                    <div key={sku} className="hover:bg-[#151515] transition-colors duration-100">
+                    <div key={sku} className="hover:bg-[#F0EBE0] transition-colors duration-100">
                       {/* Horizontal Row Layout */}
                       <div className="p-4">
                         {/* Top Row: Icon, Name, Status */}
                         <div className="flex items-center gap-3 mb-3">
-                          <div className="w-8 h-8 rounded bg-[#1F1F1F] flex items-center justify-center flex-shrink-0">
-                            <Package className="w-4 h-4 text-[#A0A0A0]" />
+                          <div className="w-8 h-8 rounded bg-[#F0EBE0] flex items-center justify-center flex-shrink-0">
+                            <Package className="w-4 h-4 text-[#7A7068]" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-[15px] font-medium text-[#EDEDED] truncate">{item.name}</h4>
-                            <p className="text-[13px] text-[#666666]">Reorder at {item.reorderLevel} {item.unit}</p>
+                            <h4 className="text-[15px] font-medium text-[#1A1A1A] truncate">{item.name}</h4>
+                            <p className="text-[13px] text-[#8A8078]">Reorder at {item.reorderLevel} {item.unit}</p>
                           </div>
                           {isLowStock && (
                             <div 
@@ -521,10 +521,10 @@ export default function MobileStationSheet() {
                         {/* Progress Bar */}
                         <div className="mb-3">
                           <div className="flex items-baseline gap-2 mb-1">
-                            <span className="text-[20px] font-semibold text-[#EDEDED] tabular-nums">{item.qty}</span>
-                            <span className="text-[13px] text-[#A0A0A0]">/ {item.reorderLevel} {item.unit}</span>
+                            <span className="text-[20px] font-semibold text-[#1A1A1A] tabular-nums">{item.qty}</span>
+                            <span className="text-[13px] text-[#7A7068]">/ {item.reorderLevel} {item.unit}</span>
                           </div>
-                          <div className="h-2 bg-[#1F1F1F] rounded-sm overflow-hidden">
+                          <div className="h-2 bg-[#F0EBE0] rounded-sm overflow-hidden">
                             <div 
                               className={`h-full transition-all duration-300 ${
                                 percentage <= 50 ? 'bg-[#EF4444]' : percentage <= 75 ? 'bg-[#FFB547]' : 'bg-[#00F57A]'
@@ -544,7 +544,7 @@ export default function MobileStationSheet() {
                           <button
                             onClick={() => handleQuickAdjust(sku, -5)}
                             disabled={adjustInventoryMutation.isPending}
-                            className="flex-1 h-11 rounded-lg bg-[#1F1F1F] border border-[#2A2A2A] text-[#EDEDED] text-[14px] font-medium hover:bg-[#252525] hover:border-[#3A3A3A] focus:outline-none focus:ring-2 focus:ring-[#00F57A] focus:ring-opacity-50 transition-all duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="flex-1 h-11 rounded-lg bg-[#F0EBE0] border border-[#E8E3D9] text-[#1A1A1A] text-[14px] font-medium hover:bg-[#E8E3D9] hover:border-[#3A3A3A] focus:outline-none focus:ring-2 focus:ring-[#00F57A] focus:ring-opacity-50 transition-all duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
                             data-testid={`button-${sku}-minus5`}
                           >
                             −5
@@ -552,7 +552,7 @@ export default function MobileStationSheet() {
                           <button
                             onClick={() => handleQuickAdjust(sku, -1)}
                             disabled={adjustInventoryMutation.isPending}
-                            className="flex-1 h-11 rounded-lg bg-[#1F1F1F] border border-[#2A2A2A] text-[#EDEDED] text-[14px] font-medium hover:bg-[#252525] hover:border-[#3A3A3A] focus:outline-none focus:ring-2 focus:ring-[#00F57A] focus:ring-opacity-50 transition-all duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="flex-1 h-11 rounded-lg bg-[#F0EBE0] border border-[#E8E3D9] text-[#1A1A1A] text-[14px] font-medium hover:bg-[#E8E3D9] hover:border-[#3A3A3A] focus:outline-none focus:ring-2 focus:ring-[#00F57A] focus:ring-opacity-50 transition-all duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
                             data-testid={`button-${sku}-minus1`}
                           >
                             −1
@@ -560,7 +560,7 @@ export default function MobileStationSheet() {
                           <button
                             onClick={() => handleQuickAdjust(sku, 1)}
                             disabled={adjustInventoryMutation.isPending}
-                            className="flex-1 h-11 rounded-lg bg-[#1F1F1F] border border-[#2A2A2A] text-[#EDEDED] text-[14px] font-medium hover:bg-[#252525] hover:border-[#3A3A3A] focus:outline-none focus:ring-2 focus:ring-[#00F57A] focus:ring-opacity-50 transition-all duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="flex-1 h-11 rounded-lg bg-[#F0EBE0] border border-[#E8E3D9] text-[#1A1A1A] text-[14px] font-medium hover:bg-[#E8E3D9] hover:border-[#3A3A3A] focus:outline-none focus:ring-2 focus:ring-[#00F57A] focus:ring-opacity-50 transition-all duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
                             data-testid={`button-${sku}-plus1`}
                           >
                             +1
@@ -568,7 +568,7 @@ export default function MobileStationSheet() {
                           <button
                             onClick={() => handleQuickAdjust(sku, 5)}
                             disabled={adjustInventoryMutation.isPending}
-                            className="flex-1 h-11 rounded-lg bg-[#1F1F1F] border border-[#2A2A2A] text-[#EDEDED] text-[14px] font-medium hover:bg-[#252525] hover:border-[#3A3A3A] focus:outline-none focus:ring-2 focus:ring-[#00F57A] focus:ring-opacity-50 transition-all duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="flex-1 h-11 rounded-lg bg-[#F0EBE0] border border-[#E8E3D9] text-[#1A1A1A] text-[14px] font-medium hover:bg-[#E8E3D9] hover:border-[#3A3A3A] focus:outline-none focus:ring-2 focus:ring-[#00F57A] focus:ring-opacity-50 transition-all duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
                             data-testid={`button-${sku}-plus5`}
                           >
                             +5
@@ -579,14 +579,14 @@ export default function MobileStationSheet() {
                         <button
                           onClick={() => openSetDialog(sku, item)}
                           disabled={setInventoryMutation.isPending}
-                          className="w-full h-11 rounded-lg bg-[#1F1F1F] border border-[#2A2A2A] text-[#EDEDED] text-[14px] font-medium hover:bg-[#252525] hover:border-[#00F57A]/50 focus:outline-none focus:ring-2 focus:ring-[#00F57A] focus:ring-opacity-50 transition-all duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="w-full h-11 rounded-lg bg-[#F0EBE0] border border-[#E8E3D9] text-[#1A1A1A] text-[14px] font-medium hover:bg-[#E8E3D9] hover:border-[#00F57A]/50 focus:outline-none focus:ring-2 focus:ring-[#00F57A] focus:ring-opacity-50 transition-all duration-100 disabled:opacity-40 disabled:cursor-not-allowed"
                           data-testid={`button-${sku}-set`}
                         >
                           Set Exact Values
                         </button>
 
                         {/* Meta Info */}
-                        <div className="mt-3 flex items-center gap-4 text-[12px] text-[#666666]">
+                        <div className="mt-3 flex items-center gap-4 text-[12px] text-[#8A8078]">
                           {item.lastRefillAt && (
                             <span>Last refill: {formatDate(item.lastRefillAt)}</span>
                           )}
@@ -594,8 +594,8 @@ export default function MobileStationSheet() {
 
                         {/* Notes */}
                         {item.notes && (
-                          <div className="mt-3 p-2 rounded bg-[#1A1A1A] border border-[#2A2A2A]">
-                            <p className="text-[13px] text-[#A0A0A0]">{item.notes}</p>
+                          <div className="mt-3 p-2 rounded bg-[#F7F4EE] border border-[#E8E3D9]">
+                            <p className="text-[13px] text-[#7A7068]">{item.notes}</p>
                           </div>
                         )}
                       </div>
@@ -609,10 +609,10 @@ export default function MobileStationSheet() {
 
         {/* Utilities + Council Tab - Enterprise Design */}
         <TabsContent value="utilities" className="px-0 py-0 mt-0">
-          <div className="min-h-screen bg-[#0B0B0B]">
+          <div className="min-h-screen bg-white">
             {/* Header with Copy Button */}
-            <div className="border-b border-[#2A2A2A] px-4 py-3 flex items-center justify-between sticky top-0 bg-[#0B0B0B] z-10">
-              <h3 className="text-[15px] font-medium text-[#EDEDED]">Utilities & Council</h3>
+            <div className="border-b border-[#E8E3D9] px-4 py-3 flex items-center justify-between sticky top-0 bg-white z-10">
+              <h3 className="text-[15px] font-medium text-[#1A1A1A]">Utilities & Council</h3>
               <button
                 onClick={async () => {
                   const summary = `Station: ${station.name}\nAddress: ${station.address.line1}, ${station.address.city}\nSerial: ${station.serialNumber}\nNayax Terminal: ${station.nayax?.terminalId || 'N/A'}`;
@@ -630,7 +630,7 @@ export default function MobileStationSheet() {
                   }
                   toast({ title: 'Copied to clipboard' });
                 }}
-                className="px-3 py-1.5 rounded text-[13px] font-medium bg-[#1F1F1F] border border-[#2A2A2A] text-[#EDEDED] hover:bg-[#252525] transition-colors duration-100"
+                className="px-3 py-1.5 rounded text-[13px] font-medium bg-[#F0EBE0] border border-[#E8E3D9] text-[#1A1A1A] hover:bg-[#E8E3D9] transition-colors duration-100"
               >
                 <Copy className="w-3.5 h-3.5 inline mr-1" />
                 Copy for Contractor
@@ -638,30 +638,30 @@ export default function MobileStationSheet() {
             </div>
 
             {/* Two-Column Layout (stacks on mobile) */}
-            <div className="grid md:grid-cols-2 gap-px bg-[#2A2A2A]">
+            <div className="grid md:grid-cols-2 gap-px bg-[#E8E3D9]">
               {/* Left Column: Utilities */}
-              <div className="bg-[#0B0B0B] p-4 space-y-4">
-                <h4 className="text-[14px] font-semibold text-[#EDEDED] mb-4">Utilities</h4>
+              <div className="bg-white p-4 space-y-4">
+                <h4 className="text-[14px] font-semibold text-[#1A1A1A] mb-4">Utilities</h4>
                 
                 {/* Insurance */}
                 {station.utilities?.insurance ? (
-                  <div className="p-3 rounded-lg bg-[#1A1A1A] border border-[#2A2A2A]">
-                    <h5 className="text-[13px] font-medium text-[#EDEDED] mb-2">Insurance</h5>
+                  <div className="p-3 rounded-lg bg-[#F7F4EE] border border-[#E8E3D9]">
+                    <h5 className="text-[13px] font-medium text-[#1A1A1A] mb-2">Insurance</h5>
                     <div className="space-y-1.5 text-[13px]">
                       <div className="flex justify-between">
-                        <span className="text-[#666666]">Provider</span>
-                        <span className="text-[#EDEDED]">{station.utilities.insurance.provider}</span>
+                        <span className="text-[#8A8078]">Provider</span>
+                        <span className="text-[#1A1A1A]">{station.utilities.insurance.provider}</span>
                       </div>
                       {station.utilities.insurance.policyNumber && (
                         <div className="flex justify-between">
-                          <span className="text-[#666666]">Policy #</span>
-                          <span className="text-[#EDEDED]">{station.utilities.insurance.policyNumber}</span>
+                          <span className="text-[#8A8078]">Policy #</span>
+                          <span className="text-[#1A1A1A]">{station.utilities.insurance.policyNumber}</span>
                         </div>
                       )}
                       {station.utilities.insurance.renewalDate && (
                         <div className="flex justify-between items-center">
-                          <span className="text-[#666666]">Renewal</span>
-                          <span className="text-[#EDEDED]">
+                          <span className="text-[#8A8078]">Renewal</span>
+                          <span className="text-[#1A1A1A]">
                             {formatDate(station.utilities.insurance.renewalDate)}
                             {getDaysUntilRenewal(station.utilities.insurance.renewalDate)! < 30 && (
                               <span className="ml-2 px-1.5 py-0.5 rounded text-[11px] bg-[#FFB547]/10 text-[#FFB547]">
@@ -674,68 +674,68 @@ export default function MobileStationSheet() {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-3 rounded-lg bg-[#1A1A1A]/50 border border-[#2A2A2A]/50">
-                    <p className="text-[13px] text-[#666666]">No insurance data</p>
+                  <div className="p-3 rounded-lg bg-[#F7F4EE]/50 border border-[#E8E3D9]/50">
+                    <p className="text-[13px] text-[#8A8078]">No insurance data</p>
                   </div>
                 )}
 
                 {/* Electricity */}
                 {station.utilities?.electricity ? (
-                  <div className="p-3 rounded-lg bg-[#1A1A1A] border border-[#2A2A2A]">
-                    <h5 className="text-[13px] font-medium text-[#EDEDED] mb-2">Electricity</h5>
+                  <div className="p-3 rounded-lg bg-[#F7F4EE] border border-[#E8E3D9]">
+                    <h5 className="text-[13px] font-medium text-[#1A1A1A] mb-2">Electricity</h5>
                     <div className="space-y-1.5 text-[13px]">
                       <div className="flex justify-between">
-                        <span className="text-[#666666]">Provider</span>
-                        <span className="text-[#EDEDED]">{station.utilities.electricity.provider}</span>
+                        <span className="text-[#8A8078]">Provider</span>
+                        <span className="text-[#1A1A1A]">{station.utilities.electricity.provider}</span>
                       </div>
                       {station.utilities.electricity.meterId && (
                         <div className="flex justify-between">
-                          <span className="text-[#666666]">Meter #</span>
-                          <span className="text-[#EDEDED]">{station.utilities.electricity.meterId}</span>
+                          <span className="text-[#8A8078]">Meter #</span>
+                          <span className="text-[#1A1A1A]">{station.utilities.electricity.meterId}</span>
                         </div>
                       )}
                       {station.utilities.electricity.accountNumber && (
                         <div className="flex justify-between">
-                          <span className="text-[#666666]">Account #</span>
-                          <span className="text-[#EDEDED]">{station.utilities.electricity.accountNumber}</span>
+                          <span className="text-[#8A8078]">Account #</span>
+                          <span className="text-[#1A1A1A]">{station.utilities.electricity.accountNumber}</span>
                         </div>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <div className="p-3 rounded-lg bg-[#1A1A1A]/50 border border-[#2A2A2A]/50">
-                    <p className="text-[13px] text-[#666666]">No electricity data</p>
+                  <div className="p-3 rounded-lg bg-[#F7F4EE]/50 border border-[#E8E3D9]/50">
+                    <p className="text-[13px] text-[#8A8078]">No electricity data</p>
                   </div>
                 )}
 
                 {/* Water */}
                 {station.utilities?.water ? (
-                  <div className="p-3 rounded-lg bg-[#1A1A1A] border border-[#2A2A2A]">
-                    <h5 className="text-[13px] font-medium text-[#EDEDED] mb-2">Water</h5>
+                  <div className="p-3 rounded-lg bg-[#F7F4EE] border border-[#E8E3D9]">
+                    <h5 className="text-[13px] font-medium text-[#1A1A1A] mb-2">Water</h5>
                     <div className="space-y-1.5 text-[13px]">
                       <div className="flex justify-between">
-                        <span className="text-[#666666]">Provider</span>
-                        <span className="text-[#EDEDED]">{station.utilities.water.provider}</span>
+                        <span className="text-[#8A8078]">Provider</span>
+                        <span className="text-[#1A1A1A]">{station.utilities.water.provider}</span>
                       </div>
                       {station.utilities.water.accountNumber && (
                         <div className="flex justify-between">
-                          <span className="text-[#666666]">Account #</span>
-                          <span className="text-[#EDEDED]">{station.utilities.water.accountNumber}</span>
+                          <span className="text-[#8A8078]">Account #</span>
+                          <span className="text-[#1A1A1A]">{station.utilities.water.accountNumber}</span>
                         </div>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <div className="p-3 rounded-lg bg-[#1A1A1A]/50 border border-[#2A2A2A]/50">
-                    <p className="text-[13px] text-[#666666]">No water data</p>
+                  <div className="p-3 rounded-lg bg-[#F7F4EE]/50 border border-[#E8E3D9]/50">
+                    <p className="text-[13px] text-[#8A8078]">No water data</p>
                   </div>
                 )}
               </div>
 
               {/* Right Column: Council Contact */}
-              <div className="bg-[#0B0B0B] p-4">
+              <div className="bg-white p-4">
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-[14px] font-semibold text-[#EDEDED]">Council Contact</h4>
+                  <h4 className="text-[14px] font-semibold text-[#1A1A1A]">Council Contact</h4>
                   {hasMissingCouncilInfo && (
                     <div className="px-2 py-1 rounded bg-[#FFB547]/10 border border-[#FFB547]/20">
                       <span className="text-[12px] font-medium text-[#FFB547]">Missing Info</span>
@@ -744,28 +744,28 @@ export default function MobileStationSheet() {
                 </div>
                 
                 {councilContact && (councilContact.name || councilContact.contactPerson) ? (
-                  <div className="p-3 rounded-lg bg-[#1A1A1A] border border-[#2A2A2A] space-y-3">
+                  <div className="p-3 rounded-lg bg-[#F7F4EE] border border-[#E8E3D9] space-y-3">
                     {councilContact.name && (
                       <div>
-                        <p className="text-[12px] text-[#666666] mb-1">Council Name</p>
-                        <p className="text-[13px] text-[#EDEDED] font-medium">{councilContact.name}</p>
+                        <p className="text-[12px] text-[#8A8078] mb-1">Council Name</p>
+                        <p className="text-[13px] text-[#1A1A1A] font-medium">{councilContact.name}</p>
                       </div>
                     )}
                     {councilContact.contactPerson && (
                       <div>
-                        <p className="text-[12px] text-[#666666] mb-1">Contact Person</p>
-                        <p className="text-[13px] text-[#EDEDED] font-medium">{councilContact.contactPerson}</p>
+                        <p className="text-[12px] text-[#8A8078] mb-1">Contact Person</p>
+                        <p className="text-[13px] text-[#1A1A1A] font-medium">{councilContact.contactPerson}</p>
                       </div>
                     )}
                     {councilContact.role && (
                       <div>
-                        <p className="text-[12px] text-[#666666] mb-1">Department</p>
-                        <p className="text-[13px] text-[#EDEDED]">{councilContact.role}</p>
+                        <p className="text-[12px] text-[#8A8078] mb-1">Department</p>
+                        <p className="text-[13px] text-[#1A1A1A]">{councilContact.role}</p>
                       </div>
                     )}
                     {councilContact.phone && (
                       <div>
-                        <p className="text-[12px] text-[#666666] mb-1">Phone</p>
+                        <p className="text-[12px] text-[#8A8078] mb-1">Phone</p>
                         <a
                           href={`tel:${councilContact.phone}`}
                           className="text-[13px] text-[#00F57A] hover:text-[#00D86A] flex items-center gap-1.5 transition-colors duration-100"
@@ -778,7 +778,7 @@ export default function MobileStationSheet() {
                     )}
                     {councilContact.email && (
                       <div>
-                        <p className="text-[12px] text-[#666666] mb-1">Email</p>
+                        <p className="text-[12px] text-[#8A8078] mb-1">Email</p>
                         <a
                           href={`mailto:${councilContact.email}`}
                           className="text-[13px] text-[#00F57A] hover:text-[#00D86A] flex items-center gap-1.5 break-all transition-colors duration-100"
@@ -791,14 +791,14 @@ export default function MobileStationSheet() {
                     )}
                     {councilContact.notes && (
                       <div>
-                        <p className="text-[12px] text-[#666666] mb-1">Notes</p>
-                        <p className="text-[13px] text-[#A0A0A0] bg-[#151515] p-2 rounded">{councilContact.notes}</p>
+                        <p className="text-[12px] text-[#8A8078] mb-1">Notes</p>
+                        <p className="text-[13px] text-[#7A7068] bg-[#F0EBE0] p-2 rounded">{councilContact.notes}</p>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="p-3 rounded-lg bg-[#1A1A1A]/50 border border-[#2A2A2A]/50">
-                    <p className="text-[13px] text-[#666666]">No council contact information</p>
+                  <div className="p-3 rounded-lg bg-[#F7F4EE]/50 border border-[#E8E3D9]/50">
+                    <p className="text-[13px] text-[#8A8078]">No council contact information</p>
                   </div>
                 )}
               </div>

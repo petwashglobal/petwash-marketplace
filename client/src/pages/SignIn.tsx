@@ -1303,11 +1303,11 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           animate={{ opacity: 1, y: 0 }}
           className="text-center space-y-6"
         >
-          <div className="w-16 h-16 bg-black rounded-full mx-auto flex items-center justify-center">
+          <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #c9a96e, #d4af37)' }}>
             <Sparkles className="w-8 h-8 text-white" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-semibold text-black">
+            <h2 className="text-2xl font-semibold text-[#1A1A1A]">
               {t('auth.signedInAs', language)}
             </h2>
             <p className="text-gray-600">{user.email}</p>
@@ -1315,7 +1315,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           <div className="space-y-3">
             <Button
               onClick={() => navigatePostLogin()}
-              className="bg-black hover:bg-gray-800 text-white rounded-full px-8"
+              className="text-white rounded-full px-8"
+              style={{ background: 'linear-gradient(90deg, #c9a96e, #d4af37)' }}
               data-testid="button-go-to-dashboard"
             >
               {t('auth.goToDashboard', language)}

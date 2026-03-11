@@ -173,22 +173,22 @@ export default function MobileManagementDashboard() {
   });
 
   return (
-    <div className={`min-h-screen bg-[#0A0A0F] ${isHebrew ? 'rtl' : 'ltr'}`}>
+    <div className={`min-h-screen bg-white ${isHebrew ? 'rtl' : 'ltr'}`}>
 
-      <header className="sticky top-0 z-50 bg-[#0A0A0F]/90 backdrop-blur-xl border-b border-[rgba(232,230,240,0.06)]">
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-[#E8E3D9]">
         <div className="px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-[#C9A96E] to-[#d4af37] rounded-xl flex items-center justify-center shadow-lg shadow-[#C9A96E]/20">
-              <Crown className="h-5 w-5 text-[#0A0A0F]" />
+              <Crown className="h-5 w-5 text-[#1A1A1A]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-white">{isHebrew ? 'מרכז הניהול' : 'Management Hub'}</h1>
+                <h1 className="text-lg font-bold text-[#1A1A1A]">{isHebrew ? 'מרכז הניהול' : 'Management Hub'}</h1>
                 <span className="px-1.5 py-0.5 text-[7px] tracking-[0.1em] uppercase font-semibold bg-[#C9A96E]/20 text-[#C9A96E] border border-[#C9A96E]/30 rounded-sm">
                   Staff
                 </span>
               </div>
-              <p className="text-xs text-[rgba(149,144,168,0.6)]">{isHebrew ? 'ניהול מאייפון' : 'iPhone Management'}</p>
+              <p className="text-xs text-[#8A8078]">{isHebrew ? 'ניהול מאייפון' : 'iPhone Management'}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -198,7 +198,7 @@ export default function MobileManagementDashboard() {
                 'p-2.5 rounded-xl transition-colors',
                 activeView === 'providers'
                   ? 'bg-[#C9A96E]/20 text-[#C9A96E]'
-                  : 'bg-[rgba(232,230,240,0.05)] text-[rgba(149,144,168,0.6)]'
+                  : 'bg-[#F7F4EE] text-[#8A8078]'
               )}
               data-testid="toggle-providers-view"
             >
@@ -206,7 +206,7 @@ export default function MobileManagementDashboard() {
             </Button>
             <Button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2.5 rounded-xl bg-[rgba(232,230,240,0.05)] text-[rgba(149,144,168,0.6)] hover:text-white transition-colors"
+              className="p-2.5 rounded-xl bg-[#F7F4EE] text-[#8A8078] hover:text-[#333333] transition-colors"
               data-testid="button-mobile-menu"
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -216,12 +216,12 @@ export default function MobileManagementDashboard() {
 
         <div className="px-4 pb-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[rgba(149,144,168,0.4)]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#AAAAAA]" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={activeView === 'providers' ? (isHebrew ? 'חפש ספקים...' : 'Search providers...') : (isHebrew ? 'חיפוש...' : 'Search...')}
-              className="pl-10 h-11 bg-[rgba(232,230,240,0.05)] border-[rgba(232,230,240,0.08)] text-white placeholder:text-[rgba(149,144,168,0.4)] rounded-xl"
+              className="pl-10 h-11 bg-[#F7F4EE] border-[#E8E3D9] text-[#1A1A1A] placeholder:text-[#AAAAAA] rounded-xl"
               data-testid="input-search"
             />
           </div>
@@ -236,8 +236,8 @@ export default function MobileManagementDashboard() {
               <ArrowLeft className="h-3.5 w-3.5" />
               {isHebrew ? 'חזרה' : 'Back'}
             </Button>
-            <span className="text-xs text-[rgba(149,144,168,0.3)]">|</span>
-            <span className="text-xs text-[rgba(149,144,168,0.5)]">
+            <span className="text-xs text-[#CCCCCC]">|</span>
+            <span className="text-xs text-[#8A8078]">
               {isHebrew ? `${providers.length} ספקים` : `${providers.length} Providers`}
             </span>
           </div>
@@ -254,10 +254,10 @@ export default function MobileManagementDashboard() {
                 { icon: DollarSign, value: '₪0', label: isHebrew ? 'הכנסות' : 'Revenue', gradient: 'from-emerald-500/25 to-teal-600/15', color: 'text-emerald-400' },
                 { icon: UserPlus, value: 0, label: isHebrew ? 'לידים' : 'Leads', gradient: 'from-violet-500/25 to-purple-600/15', color: 'text-violet-400' },
               ].map((stat, i) => (
-                <div key={i} className={`luxury-dark-card rounded-2xl p-4 min-w-[130px] bg-gradient-to-br ${stat.gradient}`}>
+                <div key={i} className={`bg-white border border-[#E8E3D9] shadow-sm rounded-2xl p-4 min-w-[130px] bg-gradient-to-br ${stat.gradient}`}>
                   <stat.icon className={`h-5 w-5 mb-2 ${stat.color}`} />
-                  <p className="text-2xl font-bold text-white">{stat.value}</p>
-                  <p className="text-xs text-[rgba(149,144,168,0.6)]">{stat.label}</p>
+                  <p className="text-2xl font-bold text-[#1A1A1A]">{stat.value}</p>
+                  <p className="text-xs text-[#8A8078]">{stat.label}</p>
                 </div>
               ))}
             </div>
@@ -265,7 +265,7 @@ export default function MobileManagementDashboard() {
 
           <div className="px-4 pb-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold text-[rgba(149,144,168,0.5)] uppercase tracking-wider">
+              <h3 className="text-xs font-semibold text-[#8A8078] uppercase tracking-wider">
                 {isHebrew ? 'ספקים לפי פלטפורמה' : 'Providers by Platform'}
               </h3>
               <Button
@@ -285,11 +285,11 @@ export default function MobileManagementDashboard() {
                 { label: '⁦K9000™⁩', icon: Droplets, color: 'text-[#C9A96E]', bg: 'from-[#C9A96E]/15 to-[#C9A96E]/5', count: 6, route: '/k9000' },
               ].map((p, i) => (
                 <Link key={i} href={p.route}>
-                  <div className={`luxury-dark-card rounded-xl p-3 text-center hover:border-[rgba(201,169,110,0.2)] transition-all cursor-pointer bg-gradient-to-br ${p.bg}`} data-testid={`platform-${p.label.toLowerCase()}`}>
+                  <div className={`bg-white border border-[#E8E3D9] shadow-sm rounded-xl p-3 text-center hover:border-[#D4AF37]/30 transition-all cursor-pointer bg-gradient-to-br ${p.bg}`} data-testid={`platform-${p.label.toLowerCase()}`}>
                     <div className="w-10 h-10 mx-auto mb-2 rounded-lg flex items-center justify-center">
                       <p.icon className={`h-5 w-5 ${p.color}`} />
                     </div>
-                    <p className="text-xs font-medium text-[rgba(232,230,240,0.7)]">{p.label}</p>
+                    <p className="text-xs font-medium text-[#4A4A4A]">{p.label}</p>
                     <p className={`text-lg font-bold ${p.color}`}>{p.count}</p>
                   </div>
                 </Link>
@@ -299,7 +299,7 @@ export default function MobileManagementDashboard() {
 
           <div className="px-4 pb-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold text-[rgba(149,144,168,0.5)] uppercase tracking-wider">
+              <h3 className="text-xs font-semibold text-[#8A8078] uppercase tracking-wider">
                 {isHebrew ? 'תחנות K9000' : 'K9000 Stations'}
               </h3>
               <Link href="/admin/stations">
@@ -308,8 +308,8 @@ export default function MobileManagementDashboard() {
                 </span>
               </Link>
             </div>
-            <div className="luxury-dark-card rounded-2xl overflow-hidden">
-              <div className="grid grid-cols-3 divide-x divide-[rgba(232,230,240,0.06)]">
+            <div className="bg-white border border-[#E8E3D9] shadow-sm rounded-2xl overflow-hidden">
+              <div className="grid grid-cols-3 divide-x divide-[#E8E3D9]">
                 {[
                   { icon: Wifi, color: 'text-emerald-400', value: 4, label: isHebrew ? 'מקוון' : 'Online' },
                   { icon: Activity, color: 'text-amber-400', value: 1, label: isHebrew ? 'בשימוש' : 'In Use' },
@@ -320,14 +320,14 @@ export default function MobileManagementDashboard() {
                       <s.icon className={`h-4 w-4 ${s.color}`} />
                       <span className={`text-2xl font-bold ${s.color}`}>{s.value}</span>
                     </div>
-                    <p className="text-xs text-[rgba(149,144,168,0.5)]">{s.label}</p>
+                    <p className="text-xs text-[#8A8078]">{s.label}</p>
                   </div>
                 ))}
               </div>
-              <div className="border-t border-[rgba(232,230,240,0.06)] p-3 bg-[rgba(232,230,240,0.02)]">
+              <div className="border-t border-[#E8E3D9] p-3 bg-[#F7F4EE]">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[rgba(149,144,168,0.5)]">{isHebrew ? 'תחנה פופולרית:' : 'Top Station:'}</span>
-                  <span className="text-white font-medium flex items-center gap-1">
+                  <span className="text-[#8A8078]">{isHebrew ? 'תחנה פופולרית:' : 'Top Station:'}</span>
+                  <span className="text-[#1A1A1A] font-medium flex items-center gap-1">
                     <MapPin className="h-3 w-3 text-[#C9A96E]" /> Tel Aviv Central
                   </span>
                 </div>
@@ -336,7 +336,7 @@ export default function MobileManagementDashboard() {
           </div>
 
           <div className="px-4 pb-8">
-            <h3 className="text-xs font-semibold text-[rgba(149,144,168,0.5)] uppercase tracking-wider mb-3">
+            <h3 className="text-xs font-semibold text-[#8A8078] uppercase tracking-wider mb-3">
               {isHebrew ? 'מודולי ניהול' : 'Management Modules'}
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -345,20 +345,20 @@ export default function MobileManagementDashboard() {
                 return (
                   <Link key={section.id} href={section.route || '#'}>
                     <div
-                      className={`luxury-dark-card rounded-2xl p-4 hover:border-[rgba(201,169,110,0.2)] transition-all cursor-pointer group bg-gradient-to-br ${section.bgGradient}`}
+                      className={`bg-white border border-[#E8E3D9] shadow-sm rounded-2xl p-4 hover:border-[#D4AF37]/30 transition-all cursor-pointer group bg-gradient-to-br ${section.bgGradient}`}
                       data-testid={`card-${section.id}`}
                     >
                       <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                         <Icon className="h-6 w-6 text-[#C9A96E]" />
                       </div>
-                      <h3 className="font-bold text-sm text-white mb-1">
+                      <h3 className="font-bold text-sm text-[#1A1A1A] mb-1">
                         {isHebrew ? section.label.he : section.label.en}
                       </h3>
-                      <p className="text-xs text-[rgba(149,144,168,0.5)] line-clamp-2">
+                      <p className="text-xs text-[#8A8078] line-clamp-2">
                         {isHebrew ? section.description.he : section.description.en}
                       </p>
                       <div className="flex items-center justify-end mt-2">
-                        <ChevronRight className="h-4 w-4 text-[rgba(149,144,168,0.3)] group-hover:text-[#C9A96E] transition-colors" />
+                        <ChevronRight className="h-4 w-4 text-[#CCCCCC] group-hover:text-[#C9A96E] transition-colors" />
                       </div>
                     </div>
                   </Link>
@@ -376,12 +376,12 @@ export default function MobileManagementDashboard() {
           ) : providers.length === 0 ? (
             <div className="text-center py-20">
               <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[rgba(201,169,110,0.2)] to-[rgba(201,169,110,0.05)] flex items-center justify-center">
-                <Users className="h-8 w-8 text-[rgba(149,144,168,0.4)]" />
+                <Users className="h-8 w-8 text-[#AAAAAA]" />
               </div>
-              <h3 className="luxury-dark-heading-sm text-white mb-2">
+              <h3 className="text-sm font-semibold text-[#1A1A1A] mb-2">
                 {isHebrew ? 'אין ספקים להצגה' : 'No Providers Found'}
               </h3>
-              <p className="luxury-dark-text-body text-sm">
+              <p className="text-[#7A7068] text-sm">
                 {isHebrew ? 'נסה לחפש שם או פלטפורמה אחרת' : 'Try a different search term'}
               </p>
             </div>
@@ -393,7 +393,7 @@ export default function MobileManagementDashboard() {
                 return (
                   <div
                     key={provider.id}
-                    className="luxury-dark-card rounded-2xl p-4 hover:border-[rgba(201,169,110,0.2)] transition-all"
+                    className="bg-white border border-[#E8E3D9] shadow-sm rounded-2xl p-4 hover:border-[#D4AF37]/30 transition-all"
                   >
                     <div className="flex items-start gap-3">
                       <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0', pc.bg)}>
@@ -401,16 +401,16 @@ export default function MobileManagementDashboard() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h4 className="text-white font-semibold text-sm truncate">
+                          <h4 className="text-[#1A1A1A] font-semibold text-sm truncate">
                             {provider.firstName} {provider.lastName}
                           </h4>
                           <Badge className={cn('text-[10px] border-0', pc.bg, pc.text)}>
                             {provider.platform}
                           </Badge>
                         </div>
-                        <p className="text-xs text-[rgba(149,144,168,0.5)] truncate">{provider.email}</p>
+                        <p className="text-xs text-[#8A8078] truncate">{provider.email}</p>
                         {provider.location && (
-                          <p className="text-xs text-[rgba(149,144,168,0.4)] flex items-center gap-1 mt-1">
+                          <p className="text-xs text-[#AAAAAA] flex items-center gap-1 mt-1">
                             <MapPin className="h-3 w-3" /> {provider.location}
                           </p>
                         )}
@@ -434,8 +434,8 @@ export default function MobileManagementDashboard() {
                             <MessageSquare className="h-4 w-4 text-[#C9A96E]" />
                           </Button>
                         ) : (
-                          <div className="w-10 h-10 rounded-xl bg-[rgba(232,230,240,0.03)] flex items-center justify-center" title={isHebrew ? 'אין אימייל זמין' : 'No email available'}>
-                            <MessageSquare className="h-4 w-4 text-[rgba(149,144,168,0.2)]" />
+                          <div className="w-10 h-10 rounded-xl bg-[#F7F4EE] flex items-center justify-center" title={isHebrew ? 'אין אימייל זמין' : 'No email available'}>
+                            <MessageSquare className="h-4 w-4 text-[#DDDDDD]" />
                           </div>
                         )}
                         {provider.phone && (
@@ -459,56 +459,56 @@ export default function MobileManagementDashboard() {
           className="w-14 h-14 bg-gradient-to-br from-[#C9A96E] to-[#d4af37] rounded-full shadow-2xl shadow-[#C9A96E]/30 flex items-center justify-center hover:scale-110 transition-transform"
           data-testid="fab-providers"
         >
-          <Users className="h-6 w-6 text-[#0A0A0F]" />
+          <Users className="h-6 w-6 text-[#1A1A1A]" />
         </Button>
         <Link href="/">
           <Button
-            className="w-14 h-14 bg-[rgba(232,230,240,0.1)] rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform border border-[rgba(232,230,240,0.1)]"
+            className="w-14 h-14 bg-[#F0EBE0] rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform border border-[#E8E3D9]"
             data-testid="fab-home"
           >
-            <Home className="h-6 w-6 text-white" />
+            <Home className="h-6 w-6 text-[#1A1A1A]" />
           </Button>
         </Link>
       </div>
 
       <Dialog open={showMessageDialog} onOpenChange={setShowMessageDialog}>
-        <DialogContent className="max-w-lg !bg-[#12121a] !border-[rgba(232,230,240,0.1)] rounded-2xl mx-4">
+        <DialogContent className="max-w-lg !bg-white !border-[#E8E3D9] rounded-2xl mx-4">
           <DialogHeader>
-            <DialogTitle className="luxury-dark-heading-lg text-lg flex items-center gap-2">
+            <DialogTitle className="text-lg font-semibold text-[#1A1A1A] flex items-center gap-2">
               <Send className="w-5 h-5 text-[#C9A96E]" />
               {isHebrew ? 'שלח הודעה לספק' : 'Message Provider'}
             </DialogTitle>
-            <DialogDescription className="luxury-dark-text-body">
+            <DialogDescription className="text-[#7A7068]">
               {selectedProvider && (
                 <span className="flex items-center gap-2 mt-1">
-                  <span className="text-white font-medium">{selectedProvider.firstName} {selectedProvider.lastName}</span>
-                  <span className="text-[rgba(149,144,168,0.4)]">({selectedProvider.email})</span>
+                  <span className="text-[#1A1A1A] font-medium">{selectedProvider.firstName} {selectedProvider.lastName}</span>
+                  <span className="text-[#AAAAAA]">({selectedProvider.email})</span>
                 </span>
               )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-2">
             <div>
-              <label className="luxury-dark-text-small text-xs uppercase tracking-wider mb-2 block">
+              <label className="text-xs text-[#8A8078] text-xs uppercase tracking-wider mb-2 block">
                 {isHebrew ? 'נושא' : 'Subject'}
               </label>
               <Input
                 value={messageSubject}
                 onChange={(e) => setMessageSubject(e.target.value)}
                 placeholder={isHebrew ? 'נושא ההודעה...' : 'Message subject...'}
-                className="h-12 bg-[rgba(232,230,240,0.05)] border-[rgba(232,230,240,0.1)] text-white placeholder:text-[rgba(149,144,168,0.5)]"
+                className="h-12 bg-[#F7F4EE] border-[#E8E3D9] text-[#1A1A1A] placeholder:text-[#8A8078]"
                 required
               />
             </div>
             <div>
-              <label className="luxury-dark-text-small text-xs uppercase tracking-wider mb-2 block">
+              <label className="text-xs text-[#8A8078] text-xs uppercase tracking-wider mb-2 block">
                 {isHebrew ? 'עדיפות' : 'Priority'}
               </label>
               <Select value={messagePriority} onValueChange={(val: any) => setMessagePriority(val)}>
-                <SelectTrigger className="h-12 bg-[rgba(232,230,240,0.05)] border-[rgba(232,230,240,0.1)] text-white">
+                <SelectTrigger className="h-12 bg-[#F7F4EE] border-[#E8E3D9] text-[#1A1A1A]">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#1a1a2e] border-[rgba(232,230,240,0.1)]">
+                <SelectContent className="bg-white border-[#E8E3D9]">
                   <SelectItem value="normal">{isHebrew ? 'רגיל' : 'Normal'}</SelectItem>
                   <SelectItem value="high">{isHebrew ? 'גבוה' : 'High'}</SelectItem>
                   <SelectItem value="urgent">{isHebrew ? 'דחוף' : 'Urgent'}</SelectItem>
@@ -516,25 +516,25 @@ export default function MobileManagementDashboard() {
               </Select>
             </div>
             <div>
-              <label className="luxury-dark-text-small text-xs uppercase tracking-wider mb-2 block">
+              <label className="text-xs text-[#8A8078] text-xs uppercase tracking-wider mb-2 block">
                 {isHebrew ? 'הודעה' : 'Message'}
               </label>
               <Textarea
                 value={messageBody}
                 onChange={(e) => setMessageBody(e.target.value)}
                 placeholder={isHebrew ? 'כתוב את ההודעה שלך...' : 'Write your message...'}
-                className="min-h-[140px] bg-[rgba(232,230,240,0.05)] border-[rgba(232,230,240,0.1)] text-white placeholder:text-[rgba(149,144,168,0.5)]"
+                className="min-h-[140px] bg-[#F7F4EE] border-[#E8E3D9] text-[#1A1A1A] placeholder:text-[#8A8078]"
                 required
               />
             </div>
-            <div className="flex items-center gap-2 luxury-dark-text-small text-xs">
+            <div className="flex items-center gap-2 text-xs text-[#8A8078] text-xs">
               <Shield className="w-3.5 h-3.5 text-emerald-400" />
               <span>{isHebrew ? 'מאובטח בהצפנת SHA-256 | נשלח לתיבת הדואר הפרטית של הספק' : 'SHA-256 encrypted | Delivered to provider\'s private inbox'}</span>
             </div>
             <div className="flex justify-end gap-3 pt-2">
               <Button
                 type="button"
-                className="luxury-dark-btn-ghost px-5 py-3 border border-[rgba(232,230,240,0.1)]"
+                className="border border-[#E8E3D9] text-[#1A1A1A] hover:bg-[#F7F4EE] rounded-xl px-5 py-3"
                 onClick={() => setShowMessageDialog(false)}
               >
                 {isHebrew ? 'ביטול' : 'Cancel'}
@@ -542,7 +542,8 @@ export default function MobileManagementDashboard() {
               <Button
                 onClick={handleSendToProvider}
                 disabled={sendMessageMutation.isPending || !messageSubject || !messageBody}
-                className="luxury-dark-btn-gold px-5 py-3 flex items-center gap-2 disabled:opacity-50"
+                className="px-5 py-3 rounded-xl text-white font-semibold flex items-center gap-2 disabled:opacity-50"
+                style={{ background: "linear-gradient(90deg, #c9a96e, #d4af37)" }}
               >
                 {sendMessageMutation.isPending ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> {isHebrew ? 'שולח...' : 'Sending...'}</>
@@ -558,23 +559,23 @@ export default function MobileManagementDashboard() {
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}>
           <div
-            className="absolute top-0 right-0 w-80 h-full bg-[#0A0A0F] border-l border-[rgba(232,230,240,0.06)] overflow-y-auto"
+            className="absolute top-0 right-0 w-80 h-full bg-white border-l border-[#E8E3D9] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6">
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gradient-to-br from-[#C9A96E] to-[#d4af37] rounded-xl flex items-center justify-center">
-                    <Sparkles className="h-6 w-6 text-[#0A0A0F]" />
+                    <Sparkles className="h-6 w-6 text-[#1A1A1A]" />
                   </div>
                   <div>
-                    <h2 className="font-bold text-lg text-white">⁦Pet Wash™⁩</h2>
-                    <p className="text-xs text-[rgba(149,144,168,0.5)]">{isHebrew ? 'מרכז ניהול' : 'Management'}</p>
+                    <h2 className="font-bold text-lg text-[#1A1A1A]">⁦Pet Wash™⁩</h2>
+                    <p className="text-xs text-[#8A8078]">{isHebrew ? 'מרכז ניהול' : 'Management'}</p>
                   </div>
                 </div>
                 <Button
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 rounded-lg hover:bg-[rgba(232,230,240,0.05)] text-[rgba(149,144,168,0.6)]"
+                  className="p-2 rounded-lg hover:bg-[#F7F4EE] text-[#8A8078]"
                   data-testid="button-close-menu"
                 >
                   <X className="h-5 w-5" />
@@ -592,7 +593,7 @@ export default function MobileManagementDashboard() {
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-sm text-[#C9A96E]">{isHebrew ? 'ספקים והודעות' : 'Providers & Messages'}</p>
-                    <p className="text-xs text-[rgba(149,144,168,0.5)]">{isHebrew ? 'צפה בספקים ושלח הודעות' : 'View & message providers'}</p>
+                    <p className="text-xs text-[#8A8078]">{isHebrew ? 'צפה בספקים ושלח הודעות' : 'View & message providers'}</p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-[#C9A96E]" />
                 </Button>
@@ -602,7 +603,7 @@ export default function MobileManagementDashboard() {
                   return (
                     <Link key={section.id} href={section.route || '#'}>
                       <div
-                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-[rgba(232,230,240,0.03)] transition-colors cursor-pointer"
+                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-[#F7F4EE] transition-colors cursor-pointer"
                         onClick={() => setMobileMenuOpen(false)}
                         data-testid={`menu-${section.id}`}
                       >
@@ -610,14 +611,14 @@ export default function MobileManagementDashboard() {
                           <Icon className="h-5 w-5 text-[#C9A96E]" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium text-sm text-[rgba(232,230,240,0.8)]">
+                          <p className="font-medium text-sm text-[#4A4A4A]">
                             {isHebrew ? section.label.he : section.label.en}
                           </p>
-                          <p className="text-xs text-[rgba(149,144,168,0.5)]">
+                          <p className="text-xs text-[#8A8078]">
                             {isHebrew ? section.description.he : section.description.en}
                           </p>
                         </div>
-                        <ChevronRight className="h-4 w-4 text-[rgba(149,144,168,0.3)]" />
+                        <ChevronRight className="h-4 w-4 text-[#CCCCCC]" />
                       </div>
                     </Link>
                   );

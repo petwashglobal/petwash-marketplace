@@ -188,7 +188,7 @@ export default function Inbox() {
       case 'promo': return <Sparkles className={cn(iconClass, 'text-amber-400')} />;
       case 'reminder': return <Syringe className={cn(iconClass, 'text-blue-400')} />;
       case 'system': return <Heart className={cn(iconClass, 'text-rose-400')} />;
-      default: return <AlertCircle className={cn(iconClass, 'text-[rgba(149,144,168,0.6)]')} />;
+      default: return <AlertCircle className={cn(iconClass, 'text-[#8A8078]')} />;
     }
   };
 
@@ -216,9 +216,9 @@ export default function Inbox() {
     if (!vaccineDate) return { 
       status: 'unknown', 
       days: null, 
-      bgClass: 'bg-[rgba(149,144,168,0.1)]',
-      textClass: 'text-[rgba(149,144,168,0.8)]',
-      icon: <Syringe className="h-4 w-4 text-[rgba(149,144,168,0.6)]" />
+      bgClass: 'bg-[#F0EBE0]',
+      textClass: 'text-[#7A7068]',
+      icon: <Syringe className="h-4 w-4 text-[#8A8078]" />
     };
     
     const today = new Date();
@@ -310,7 +310,7 @@ export default function Inbox() {
                 <div className="h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-cyan-500" />
                 <div className="p-5">
                   <div className="flex items-center gap-4 mb-4">
-                    <Avatar className="h-14 w-14 border-2 border-[rgba(232,230,240,0.1)]">
+                    <Avatar className="h-14 w-14 border-2 border-[#E8E3D9]">
                       <AvatarImage src={pet.photoUrl} alt={pet.name} />
                       <AvatarFallback className="bg-gradient-to-br from-[rgba(212,175,55,0.3)] to-[rgba(212,175,55,0.1)] text-[#d4af37]">
                         <Dog className="h-7 w-7" />
@@ -343,7 +343,7 @@ export default function Inbox() {
                           <div className={cn('flex items-center justify-between py-2 px-3 rounded-lg', status.bgClass)}>
                             <div className="flex items-center gap-2">
                               <Syringe className={status.textClass} />
-                              <span className="text-sm text-[#e8e6f0]">{t('inbox.rabies', language)}</span>
+                              <span className="text-sm text-[#1A1A1A]">{t('inbox.rabies', language)}</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               {status.icon}
@@ -367,7 +367,7 @@ export default function Inbox() {
                           <div className={cn('flex items-center justify-between py-2 px-3 rounded-lg', status.bgClass)}>
                             <div className="flex items-center gap-2">
                               <Syringe className={status.textClass} />
-                              <span className="text-sm text-[#e8e6f0]">DHPP</span>
+                              <span className="text-sm text-[#1A1A1A]">DHPP</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               {status.icon}
@@ -399,7 +399,7 @@ export default function Inbox() {
                         {t('inbox.birthdayDiscount', language)}
                       </p>
                       {pet.birthdayVoucherCode && (
-                        <div className="bg-[rgba(0,0,0,0.3)] rounded-lg px-4 py-2.5 flex items-center justify-between">
+                        <div className="bg-[#F0EBE0] rounded-lg px-4 py-2.5 flex items-center justify-between">
                           <span className="luxury-dark-text-small text-xs">{t('inbox.voucherCode', language)}</span>
                           <code className="text-base font-mono font-semibold tracking-wider text-amber-300">
                             {pet.birthdayVoucherCode}
@@ -417,7 +417,7 @@ export default function Inbox() {
         {!selectedMessage ? (
           <div className="luxury-dark-card luxury-animate-slide-up luxury-delay-1 overflow-hidden">
             <div className="h-1 bg-gradient-to-r from-[#d4af37] via-[#e8e6f0] to-[#d4af37]" />
-            <div className="p-6 sm:p-7 border-b border-[rgba(232,230,240,0.06)]">
+            <div className="p-6 sm:p-7 border-b border-[#E8E3D9]">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[rgba(212,175,55,0.25)] to-[rgba(212,175,55,0.1)] flex items-center justify-center">
                   <Mail className="w-6 h-6 text-[#d4af37]" />
@@ -430,13 +430,13 @@ export default function Inbox() {
             </div>
 
             <Tabs defaultValue="all" className="w-full" onValueChange={setFilterType}>
-              <div className="border-b border-[rgba(232,230,240,0.06)] px-6 py-2">
+              <div className="border-b border-[#E8E3D9] px-6 py-2">
                 <TabsList className="bg-transparent h-11 p-0 gap-1">
                   {['all', 'receipt', 'voucher', 'promo', 'reminder'].map((tab) => (
                     <TabsTrigger 
                       key={tab}
                       value={tab} 
-                      className="luxury-dark-text-small text-xs px-4 py-2 rounded-lg data-[state=active]:bg-[rgba(232,230,240,0.08)] data-[state=active]:text-[#e8e6f0] transition-all"
+                      className="luxury-dark-text-small text-xs px-4 py-2 rounded-lg data-[state=active]:bg-[#F0EBE0] data-[state=active]:text-[#1A1A1A] transition-all"
                     >
                       {tab === 'all' ? t('inbox.all', language) :
                        tab === 'receipt' ? t('inbox.receipts', language) :
@@ -456,7 +456,7 @@ export default function Inbox() {
                     </div>
                   ) : filteredMessages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-96">
-                      <Mail className="h-16 w-16 mb-4 text-[rgba(149,144,168,0.3)]" />
+                      <Mail className="h-16 w-16 mb-4 text-[#CCCCCC]" />
                       <p className="luxury-dark-text-body">{t('inbox.noMessages', language)}</p>
                     </div>
                   ) : (
@@ -473,12 +473,12 @@ export default function Inbox() {
                           )}
                         >
                           <div className="flex items-start gap-4">
-                            <div className={cn('flex-shrink-0 mt-0.5', !message.isRead ? 'text-[#d4af37]' : 'text-[rgba(149,144,168,0.5)]')}>
+                            <div className={cn('flex-shrink-0 mt-0.5', !message.isRead ? 'text-[#d4af37]' : 'text-[#8A8078]')}>
                               {message.isRead ? <MailOpen className="h-5 w-5" /> : <Mail className="h-5 w-5" />}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1.5">
-                                <h3 className={cn('luxury-dark-heading-sm text-base truncate', !message.isRead && 'text-[#e8e6f0]')}>
+                                <h3 className={cn('luxury-dark-heading-sm text-base truncate', !message.isRead && 'text-[#1A1A1A]')}>
                                   {message.subject}
                                 </h3>
                                 <span className="luxury-dark-badge text-[10px] flex-shrink-0">
@@ -509,7 +509,7 @@ export default function Inbox() {
         ) : (
           <div className="luxury-dark-card luxury-animate-scale-in overflow-hidden">
             <div className="h-1 bg-gradient-to-r from-[#d4af37] via-[#e8e6f0] to-[#d4af37]" />
-            <div className="p-6 sm:p-7 border-b border-[rgba(232,230,240,0.06)]">
+            <div className="p-6 sm:p-7 border-b border-[#E8E3D9]">
               <div className="flex items-center gap-4">
                 <Button
                   variant="ghost"
@@ -518,7 +518,7 @@ export default function Inbox() {
                   data-testid="button-back-to-inbox"
                   className="luxury-dark-btn-ghost h-10 w-10 rounded-xl"
                 >
-                  <ArrowLeft className="h-5 w-5 text-[#e8e6f0]" />
+                  <ArrowLeft className="h-5 w-5 text-[#1A1A1A]" />
                 </Button>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
@@ -544,14 +544,14 @@ export default function Inbox() {
                 />
                 
                 {selectedMessage.attachments && selectedMessage.attachments.length > 0 && (
-                  <div className="mt-6 pt-6 border-t border-[rgba(232,230,240,0.08)]">
+                  <div className="mt-6 pt-6 border-t border-[#E8E3D9]">
                     <h4 className="luxury-dark-heading-sm mb-4">{t('inbox.attachments', language)}</h4>
                     <div className="space-y-2">
                       {selectedMessage.attachments.map((url, index) => (
                         <Button
                           key={index}
                           variant="outline"
-                          className="luxury-dark-btn-ghost w-full justify-start border border-[rgba(232,230,240,0.1)] h-12"
+                          className="luxury-dark-btn-ghost w-full justify-start border border-[#E8E3D9] h-12"
                           onClick={() => window.open(url, '_blank')}
                           data-testid={`button-attachment-${index}`}
                         >

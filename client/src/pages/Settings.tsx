@@ -214,7 +214,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
             {language === 'he' ? 'מופעל' : 'Enabled'}
           </Badge>
         ) : (
-          <Badge variant="outline" className="border-[rgba(232,230,240,0.1)] text-[rgba(149,144,168,0.6)]">
+          <Badge variant="outline" className="border-[#E8E3D9] text-[#8A8078]">
             {language === 'he' ? 'לא מופעל' : 'Not set'}
           </Badge>
         )}
@@ -222,7 +222,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
 
       {showSetup ? (
         <div className="luxury-dark-surface p-6 rounded-2xl">
-          <h3 className="luxury-dark-heading-sm text-center mb-4 text-white">
+          <h3 className="luxury-dark-heading-sm text-center mb-4 text-[#1A1A1A]">
             {setupStep === 'enter' 
               ? (language === 'he' ? 'הזן קוד PIN חדש' : 'Enter new PIN')
               : (language === 'he' ? 'אשר את קוד ה-PIN' : 'Confirm your PIN')
@@ -258,7 +258,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
                 <Button
                   onClick={() => setShowSetup(true)}
                   variant="outline"
-                  className="border-[rgba(232,230,240,0.1)] text-white hover:bg-[rgba(232,230,240,0.05)]"
+                  className="border-[#E8E3D9] text-[#1A1A1A] hover:bg-[#F7F4EE]"
                   data-testid="button-change-pin"
                 >
                   <KeyRound className="h-4 w-4 mr-2" />
@@ -587,7 +587,7 @@ export default function Settings() {
           <div className="mb-8 luxury-animate-fade-in">
             <div className="flex items-center gap-6 mb-6">
               <div className="relative p-1 rounded-full bg-gradient-to-br from-[#C9A96E] via-[#d4af37] to-[#C9A96E] luxury-animate-scale-in">
-                <div className="bg-[#0A0A0F] rounded-full p-1">
+                <div className="bg-[#F0EBE0] rounded-full p-1">
                   <PetAvatarDisplay 
                     size="lg" 
                     showName={true}
@@ -607,11 +607,11 @@ export default function Settings() {
           </div>
 
           <Tabs defaultValue="security" className="w-full luxury-animate-slide-up luxury-delay-2">
-            <TabsList className="grid w-full grid-cols-2 mb-8 bg-[rgba(232,230,240,0.05)] border border-[rgba(232,230,240,0.1)] rounded-xl">
-              <TabsTrigger value="account" data-testid="tab-account" className="text-[rgba(232,230,240,0.6)] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#C9A96E] data-[state=active]:to-[#d4af37] data-[state=active]:text-[#0A0A0F] rounded-lg">
+            <TabsList className="grid w-full grid-cols-2 mb-8 bg-[#F7F4EE] border border-[#E8E3D9] rounded-xl">
+              <TabsTrigger value="account" data-testid="tab-account" className="text-[#6A6460] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#C9A96E] data-[state=active]:to-[#d4af37] data-[state=active]:text-white rounded-lg">
                 {t('settings.account', language)}
               </TabsTrigger>
-              <TabsTrigger value="security" data-testid="tab-security" className="text-[rgba(232,230,240,0.6)] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#C9A96E] data-[state=active]:to-[#d4af37] data-[state=active]:text-[#0A0A0F] rounded-lg">
+              <TabsTrigger value="security" data-testid="tab-security" className="text-[#6A6460] data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#C9A96E] data-[state=active]:to-[#d4af37] data-[state=active]:text-white rounded-lg">
                 <Shield className="h-4 w-4 mr-2" />
                 {t('settings.security', language)}
               </TabsTrigger>
@@ -628,11 +628,11 @@ export default function Settings() {
                 <div className="space-y-6">
                   <div className="luxury-animate-fade-in luxury-delay-1">
                     <Label className="luxury-dark-text-small text-xs uppercase tracking-wider font-semibold">{t('settings.email', language)}</Label>
-                    <Input value={firebaseUser?.email || ''} disabled className="mt-2 h-12 bg-[rgba(232,230,240,0.05)] border-[rgba(232,230,240,0.1)] text-white" />
+                    <Input value={firebaseUser?.email || ''} disabled className="mt-2 h-12 bg-[#F7F4EE] border-[#E8E3D9] text-[#1A1A1A]" />
                   </div>
                   <div className="luxury-animate-fade-in luxury-delay-2">
                     <Label className="luxury-dark-text-small text-xs uppercase tracking-wider font-semibold">{t('settings.name', language)}</Label>
-                    <Input value={firebaseUser?.displayName || ''} disabled className="mt-2 h-12 bg-[rgba(232,230,240,0.05)] border-[rgba(232,230,240,0.1)] text-white" />
+                    <Input value={firebaseUser?.displayName || ''} disabled className="mt-2 h-12 bg-[#F7F4EE] border-[#E8E3D9] text-[#1A1A1A]" />
                   </div>
                 </div>
               </div>
@@ -656,7 +656,7 @@ export default function Settings() {
                 <div className="luxury-dark-surface rounded-xl p-6 border border-red-500/10">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      <h3 className="luxury-dark-heading-sm text-white mb-3 flex items-center gap-2">
+                      <h3 className="luxury-dark-heading-sm text-[#1A1A1A] mb-3 flex items-center gap-2">
                         <div className="p-2 rounded-xl bg-red-500/15">
                           <Trash2 className="h-5 w-5 text-red-400" />
                         </div>
@@ -665,7 +665,7 @@ export default function Settings() {
                       <p className="luxury-dark-text-body mb-4">
                         {t('settings.deleteDescPermanent', language)}
                       </p>
-                      <ul className="luxury-dark-text-small space-y-2 pl-6 list-disc text-[rgba(149,144,168,0.6)]">
+                      <ul className="luxury-dark-text-small space-y-2 pl-6 list-disc text-[#8A8078]">
                         <li>{t('settings.deleteWarning1', language)}</li>
                         <li>{t('settings.deleteWarning2', language)}</li>
                         <li>{t('settings.deleteWarning3', language)}</li>
@@ -676,7 +676,7 @@ export default function Settings() {
                     <Button
                       onClick={() => setDeletingAccount(true)}
                       variant="destructive"
-                      className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white"
+                      className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-[#1A1A1A]"
                       data-testid="button-delete-account"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
@@ -803,7 +803,7 @@ export default function Settings() {
                     {devices.map((device, index) => (
                       <div
                         key={device.credentialId}
-                        className={`luxury-dark-surface p-6 rounded-xl border border-[rgba(232,230,240,0.06)] hover:border-[rgba(201,169,110,0.2)] transition-all luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 10)}`}
+                        className={`luxury-dark-surface p-6 rounded-xl border border-[#E8E3D9] hover:border-[#D4AF37]/30 transition-all luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 10)}`}
                         data-testid={`device-${device.credentialId}`}
                       >
                         <div className="flex items-center justify-between">
@@ -818,7 +818,7 @@ export default function Settings() {
                                   <Input
                                     value={editName}
                                     onChange={(e) => setEditName(e.target.value)}
-                                    className="max-w-xs h-10 bg-[rgba(232,230,240,0.05)] border-[rgba(232,230,240,0.1)] text-white"
+                                    className="max-w-xs h-10 bg-[#F7F4EE] border-[#E8E3D9] text-[#1A1A1A]"
                                     autoFocus
                                     data-testid="input-device-name"
                                   />
@@ -836,7 +836,7 @@ export default function Settings() {
                                       setEditingDevice(null);
                                       setEditName("");
                                     }}
-                                    className="text-[rgba(149,144,168,0.6)] hover:text-white"
+                                    className="text-[#8A8078] hover:text-[#1A1A1A]"
                                     data-testid="button-cancel-edit"
                                   >
                                     <X className="h-4 w-4" />
@@ -845,7 +845,7 @@ export default function Settings() {
                               ) : (
                                 <>
                                   <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="luxury-dark-heading-sm text-white">
+                                    <h3 className="luxury-dark-heading-sm text-[#1A1A1A]">
                                       {device.deviceName}
                                     </h3>
                                     <span className="luxury-dark-badge-gold text-[10px]">
@@ -877,7 +877,7 @@ export default function Settings() {
                                   setEditingDevice(device.credentialId);
                                   setEditName(device.deviceName);
                                 }}
-                                className="text-[rgba(149,144,168,0.6)] hover:text-white hover:bg-[rgba(232,230,240,0.05)]"
+                                className="text-[#8A8078] hover:text-[#1A1A1A] hover:bg-[#F7F4EE]"
                                 data-testid="button-edit-device"
                               >
                                 <Edit2 className="h-4 w-4" />
@@ -922,13 +922,13 @@ export default function Settings() {
 
       {/* Delete Device Confirmation Dialog */}
       <AlertDialog open={!!deletingDevice} onOpenChange={() => setDeletingDevice(null)}>
-        <AlertDialogContent className="!bg-[#12121a] !border-[rgba(232,230,240,0.1)] rounded-2xl">
+        <AlertDialogContent className="!bg-[#12121a] !border-[#E8E3D9] rounded-2xl">
           <AlertDialogHeader>
             <div className="flex items-center gap-3 mb-2">
               <div className="p-3 rounded-xl bg-red-500/15">
                 <Trash2 className="h-6 w-6 text-red-400" />
               </div>
-              <AlertDialogTitle className="luxury-dark-heading-lg text-white">
+              <AlertDialogTitle className="luxury-dark-heading-lg text-[#1A1A1A]">
                 {t('settings.removeDevice', language)}
               </AlertDialogTitle>
             </div>
@@ -937,12 +937,12 @@ export default function Settings() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-transparent border border-[rgba(232,230,240,0.1)] text-white hover:bg-[rgba(232,230,240,0.05)]" data-testid="button-cancel-delete">
+            <AlertDialogCancel className="bg-transparent border border-[#E8E3D9] text-[#1A1A1A] hover:bg-[#F7F4EE]" data-testid="button-cancel-delete">
               {t('settings.cancel', language)}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deletingDevice && handleDeleteDevice(deletingDevice)}
-              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white"
+              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-[#1A1A1A]"
               data-testid="button-confirm-delete"
             >
               {t('settings.remove', language)}
@@ -994,7 +994,7 @@ export default function Settings() {
                       <div className="p-1 rounded-lg bg-red-500/15">
                         <X className="h-4 w-4 text-red-400" />
                       </div>
-                      <span className="luxury-dark-text-small text-[rgba(232,230,240,0.6)]">{t(`settings.${key}`, language)}</span>
+                      <span className="luxury-dark-text-small text-[#6A6460]">{t(`settings.${key}`, language)}</span>
                     </div>
                   ))}
                 </div>
@@ -1011,7 +1011,7 @@ export default function Settings() {
                 </div>
 
                 <div className="pt-4">
-                  <Label htmlFor="confirm-email" className="luxury-dark-heading-sm text-white">
+                  <Label htmlFor="confirm-email" className="luxury-dark-heading-sm text-[#1A1A1A]">
                     {t('settings.confirmEmailContinue', language)}
                   </Label>
                   <Input
@@ -1020,10 +1020,10 @@ export default function Settings() {
                     value={confirmEmail}
                     onChange={(e) => setConfirmEmail(e.target.value)}
                     placeholder={firebaseUser?.email || ''}
-                    className="mt-3 h-12 bg-[rgba(232,230,240,0.05)] border-red-500/30 focus:border-red-500/50 text-white placeholder:text-[rgba(149,144,168,0.5)]"
+                    className="mt-3 h-12 bg-[#F7F4EE] border-red-500/30 focus:border-red-500/50 text-[#1A1A1A] placeholder:text-[#AAAAAA]"
                     data-testid="input-confirm-email"
                   />
-                  <p className="luxury-dark-text-small mt-2 text-[rgba(149,144,168,0.5)]">
+                  <p className="luxury-dark-text-small mt-2 text-[#AAAAAA]">
                     {t('settings.typeEmail', language)} {firebaseUser?.email}
                   </p>
                 </div>
@@ -1036,7 +1036,7 @@ export default function Settings() {
                     setDeletionStep(1);
                     setConfirmEmail("");
                   }}
-                  className="bg-transparent border border-[rgba(232,230,240,0.1)] text-white hover:bg-[rgba(232,230,240,0.05)]"
+                  className="bg-transparent border border-[#E8E3D9] text-[#1A1A1A] hover:bg-[#F7F4EE]"
                   data-testid="button-cancel-account-delete-step1"
                 >
                   {t('settings.cancelKeepAccount', language)}
@@ -1044,7 +1044,7 @@ export default function Settings() {
                 <button
                   onClick={() => setDeletionStep(2)}
                   disabled={confirmEmail !== firebaseUser?.email}
-                  className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:opacity-50 text-white font-medium"
+                  className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:opacity-50 text-[#1A1A1A] font-medium"
                   data-testid="button-proceed-step2"
                 >
                   {t('settings.proceedDelete', language)}
@@ -1064,7 +1064,7 @@ export default function Settings() {
                 </div>
 
                 <div className="pt-2">
-                  <Label htmlFor="deletion-reason" className="luxury-dark-heading-sm text-white mb-2 block">
+                  <Label htmlFor="deletion-reason" className="luxury-dark-heading-sm text-[#1A1A1A] mb-2 block">
                     {language === 'he' ? 'סיבת המחיקה (אופציונלי)' : 'Reason for deletion (optional)'}
                   </Label>
                   <Input
@@ -1073,7 +1073,7 @@ export default function Settings() {
                     value={deletionReason}
                     onChange={(e) => setDeletionReason(e.target.value)}
                     placeholder={language === 'he' ? 'ספר/י לנו למה...' : 'Tell us why...'}
-                    className="h-12 bg-[rgba(232,230,240,0.05)] border-[rgba(232,230,240,0.15)] focus:border-[rgba(232,230,240,0.3)] text-white placeholder:text-[rgba(149,144,168,0.4)]"
+                    className="h-12 bg-[#F7F4EE] border-[#E8E3D9] focus:border-[#D4AF37] text-[#1A1A1A] placeholder:text-[#AAAAAA]"
                     data-testid="input-deletion-reason"
                   />
                 </div>
@@ -1082,7 +1082,7 @@ export default function Settings() {
                   <Label htmlFor="confirm-text" className="luxury-dark-heading-sm text-red-400">
                     {t('settings.typeTextExactly', language)}
                   </Label>
-                  <p className="luxury-dark-heading-lg text-center my-4 p-4 luxury-dark-surface rounded-xl border border-[rgba(232,230,240,0.1)] text-white">
+                  <p className="luxury-dark-heading-lg text-center my-4 p-4 luxury-dark-surface rounded-xl border border-[#E8E3D9] text-[#1A1A1A]">
                     DELETE MY ACCOUNT
                   </p>
                   <Input
@@ -1091,7 +1091,7 @@ export default function Settings() {
                     value={confirmText}
                     onChange={(e) => setConfirmText(e.target.value)}
                     placeholder="DELETE MY ACCOUNT"
-                    className="mt-3 h-12 bg-[rgba(232,230,240,0.05)] border-red-500/30 focus:border-red-500/50 text-white text-center font-semibold placeholder:text-[rgba(149,144,168,0.5)]"
+                    className="mt-3 h-12 bg-[#F7F4EE] border-red-500/30 focus:border-red-500/50 text-[#1A1A1A] text-center font-semibold placeholder:text-[#AAAAAA]"
                     data-testid="input-confirm-delete-text"
                   />
                 </div>
@@ -1122,7 +1122,7 @@ export default function Settings() {
                     setLegalConsentChecked(false);
                     setDeletionReason("");
                   }}
-                  className="bg-transparent border border-[rgba(232,230,240,0.1)] text-white hover:bg-[rgba(232,230,240,0.05)]"
+                  className="bg-transparent border border-[#E8E3D9] text-[#1A1A1A] hover:bg-[#F7F4EE]"
                   data-testid="button-back-step1"
                 >
                   {t('settings.goBack', language)}
@@ -1130,7 +1130,7 @@ export default function Settings() {
                 <button
                   onClick={handleDeleteAccount}
                   disabled={confirmText !== 'DELETE MY ACCOUNT' || !legalConsentChecked || deletionProcessing}
-                  className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-red-700 to-red-800 hover:from-red-800 hover:to-red-900 disabled:opacity-50 text-white font-bold flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-red-700 to-red-800 hover:from-red-800 hover:to-red-900 disabled:opacity-50 text-[#1A1A1A] font-bold flex items-center gap-2"
                   data-testid="button-confirm-final-delete"
                 >
                   {deletionProcessing ? (

@@ -1906,15 +1906,13 @@ html[lang="en"] *,
 
 /* Luxury Tab Navigation */
 .luxury-tab-navigation {
-  background: linear-gradient(180deg, rgba(10, 10, 10, 0.98) 0%, rgba(18, 18, 18, 0.95) 100%);
-  border-top: 1px solid rgba(212, 175, 55, 0.1);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
+  background: #ffffff;
+  border-top: 1px solid #E8E3D9;
+  border-bottom: 1px solid #E8E3D9;
   position: sticky;
   top: 0;
   z-index: 40;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
 .luxury-tab-container {
@@ -1933,7 +1931,7 @@ html[lang="en"] *,
   padding: 1rem 1.5rem;
   border: 1px solid transparent;
   background: transparent;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(30, 30, 30, 0.55);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -1957,8 +1955,8 @@ html[lang="en"] *,
 }
 
 .luxury-tab-button:hover {
-  color: rgba(255, 255, 255, 0.9);
-  border-color: rgba(212, 175, 55, 0.2);
+  color: rgba(30, 30, 30, 0.9);
+  border-color: rgba(212, 175, 55, 0.3);
 }
 
 .luxury-tab-button:hover::before {
@@ -1966,10 +1964,10 @@ html[lang="en"] *,
 }
 
 .luxury-tab-button.active {
-  color: #ffffff;
-  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(212, 175, 55, 0.1) 100%);
-  border: 1px solid rgba(212, 175, 55, 0.4);
-  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.15);
+  color: #1A1A1A;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(212, 175, 55, 0.08) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.12);
 }
 
 .luxury-tab-button.active::before {
@@ -1993,7 +1991,7 @@ html[lang="en"] *,
 
 /* Luxury Content Panels */
 .luxury-tab-content {
-  background: linear-gradient(180deg, #0a0a0a 0%, #121212 50%, #0a0a0a 100%);
+  background: #ffffff;
   min-height: 60vh;
   position: relative;
 }
@@ -2003,8 +2001,8 @@ html[lang="en"] *,
   position: absolute;
   inset: 0;
   background: 
-    radial-gradient(ellipse at 20% 30%, rgba(212, 175, 55, 0.03) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 70%, rgba(212, 175, 55, 0.02) 0%, transparent 50%);
+    radial-gradient(ellipse at 20% 30%, rgba(212, 175, 55, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(212, 175, 55, 0.03) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -2024,11 +2022,9 @@ html[lang="en"] *,
 .luxury-content-title {
   font-size: 2.25rem;
   font-weight: 600;
-  color: #ffffff;
   margin-bottom: 1rem;
-  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #ffffff 0%, rgba(212, 175, 55, 0.9) 100%);
+  background: linear-gradient(135deg, #1A1A1A 0%, #D4AF37 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -2036,7 +2032,7 @@ html[lang="en"] *,
 
 .luxury-content-subtitle {
   font-size: 1.125rem;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(30, 30, 30, 0.65);
   line-height: 1.7;
   max-width: 700px;
   margin: 0 auto;
@@ -2093,15 +2089,11 @@ html[lang="en"] *,
 }
 
 .luxury-feature-card {
-  background: linear-gradient(145deg, rgba(20, 20, 20, 0.95) 0%, rgba(10, 10, 10, 0.98) 100%);
-  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: #ffffff;
+  border: 1px solid rgba(212, 175, 55, 0.25);
   border-radius: 1.25rem;
   padding: 2rem;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  box-shadow: 
-    0 20px 40px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
   transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
   position: relative;
   overflow: hidden;
@@ -2110,10 +2102,9 @@ html[lang="en"] *,
 .luxury-feature-card:hover {
   transform: translateY(-6px) scale(1.02);
   box-shadow: 
-    0 30px 60px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(212, 175, 55, 0.4),
-    0 0 40px rgba(212, 175, 55, 0.08);
-  border-color: rgba(212, 175, 55, 0.4);
+    0 12px 40px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(212, 175, 55, 0.4);
+  border-color: rgba(212, 175, 55, 0.45);
 }
 
 .luxury-feature-icon {
@@ -2125,13 +2116,12 @@ html[lang="en"] *,
 .luxury-feature-title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #ffffff;
+  color: #1A1A1A;
   margin-bottom: 0.75rem;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .luxury-feature-desc {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(30, 30, 30, 0.65);
   font-size: 0.9rem;
   line-height: 1.6;
 }
@@ -2145,16 +2135,12 @@ html[lang="en"] *,
 }
 
 .luxury-product-card {
-  background: linear-gradient(145deg, rgba(18, 18, 18, 0.96) 0%, rgba(8, 8, 8, 0.99) 100%);
-  border: 1px solid rgba(212, 175, 55, 0.15);
+  background: #ffffff;
+  border: 1px solid rgba(212, 175, 55, 0.2);
   border-radius: 1.5rem;
   padding: 2.5rem;
   text-align: center;
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
-  box-shadow: 
-    0 25px 50px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
   transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
   position: relative;
   overflow: hidden;

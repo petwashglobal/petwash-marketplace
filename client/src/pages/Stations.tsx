@@ -346,21 +346,21 @@ export default function Stations() {
 
   return (
     <Layout>
-    <div className="min-h-screen luxury-dark-mesh">
+    <div className="min-h-screen bg-white">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         
         <button
           onClick={() => { try { window.history.back(); } catch { setLocation('/dashboard'); } }}
-          className="flex items-center gap-2 mb-6 text-gray-300 hover:text-white transition-colors"
+          className="flex items-center gap-2 mb-6 text-gray-500 hover:text-gray-900 transition-colors"
         >
           <BackArrow className="w-5 h-5" />
           <span className="text-sm font-medium">{tx('back', language)}</span>
         </button>
 
         <div className="text-center mb-12 luxury-animate-fade-in">
-          <div className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-400/30">
+          <div className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-50 to-blue-50 border border-cyan-300">
             <Sparkles className="w-4 h-4 text-cyan-400" />
-            <span className="text-sm font-bold tracking-wider text-cyan-300">{tx('smartWashHubs', language)}</span>
+            <span className="text-sm font-bold tracking-wider text-cyan-600">{tx('smartWashHubs', language)}</span>
           </div>
           
           <div className="flex justify-center items-center gap-4 mb-6">
@@ -369,14 +369,14 @@ export default function Stations() {
             </div>
           </div>
           
-          <h1 className="luxury-dark-heading-xl mb-4">
+          <h1 className="text-3xl sm:text-4xl font-light text-gray-900 mb-4" style={{ fontFamily: 'Georgia, serif' }}>
             {tx('premiumWashStations', language)}
           </h1>
-          <p className="luxury-dark-text-body max-w-2xl mx-auto mb-8">
+          <p className="text-gray-500 text-base max-w-2xl mx-auto mb-8">
             {tx('heroDesc', language)}
           </p>
 
-          <div className="max-w-2xl mx-auto luxury-wallet-hero p-5">
+          <div className="max-w-2xl mx-auto p-5 rounded-3xl bg-white border border-[#E8E3D9] shadow-md">
             <div className="h-1 -mt-5 -mx-5 mb-5 rounded-t-[28px] bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-500" />
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-400" />
@@ -385,27 +385,27 @@ export default function Stations() {
                 placeholder={tx('searchPlaceholder', language)}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 pr-4 py-6 text-lg bg-[rgba(26,24,37,0.6)] border-[rgba(232,230,240,0.1)] text-[#e8e6f0] placeholder:text-[rgba(149,144,168,0.5)] focus:border-cyan-500/40 rounded-xl"
+                className="pl-12 pr-4 py-6 text-lg bg-[#F7F4EE] border-[#E8E3D9] text-[#1A1A1A] placeholder:text-[#AAAAAA] focus:border-cyan-500 rounded-xl"
               />
             </div>
           </div>
         </div>
 
-        <div className="luxury-dark-grid-4 mb-12 luxury-animate-slide-up luxury-delay-1">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12 luxury-animate-slide-up luxury-delay-1">
           {stats.map((stat, index) => {
             const Icon = stat.icon;
             return (
               <div
                 key={index}
-                className="luxury-dark-card p-6 text-center transition-all duration-300 hover:scale-[1.02]"
+                className="p-6 text-center transition-all duration-300 hover:scale-[1.02] rounded-3xl bg-white border border-[#E8E3D9] shadow-sm"
               >
                 <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br from-cyan-500/25 to-blue-500/15 flex items-center justify-center">
                   <Icon className="w-6 h-6 text-cyan-400" />
                 </div>
-                <div className="luxury-dark-heading-lg luxury-dark-text-gradient mb-1">
+                <div className="text-2xl font-bold text-[#1A1A1A] mb-1">
                   {stat.value}
                 </div>
-                <div className="luxury-dark-text-small">
+                <div className="text-sm text-[#7A7068]">
                   {stat.label}
                 </div>
               </div>
@@ -413,9 +413,9 @@ export default function Stations() {
           })}
         </div>
 
-        <div className="luxury-dark-panel p-6 mb-8 luxury-animate-fade-in luxury-delay-2">
+        <div className="p-6 mb-8 luxury-animate-fade-in luxury-delay-2 rounded-2xl bg-white border border-[#E8E3D9] shadow-sm">
           <div className="flex flex-wrap items-center gap-6">
-            <h3 className="luxury-dark-heading-sm text-[#e8e6f0]">{tx('filters', language)}</h3>
+            <h3 className="text-sm font-semibold text-[#1A1A1A]">{tx('filters', language)}</h3>
             
             <label className="flex items-center gap-2 cursor-pointer group">
               <Checkbox
@@ -423,7 +423,7 @@ export default function Stations() {
                 onCheckedChange={(checked) => setFilters(prev => ({ ...prev, available: !!checked }))}
                 className="border-cyan-500/50 data-[state=checked]:bg-cyan-600"
               />
-              <span className="luxury-dark-text-small group-hover:text-cyan-300 transition-colors">{tx('availableNow', language)}</span>
+              <span className="text-sm text-[#7A7068] group-hover:text-cyan-600 transition-colors">{tx('availableNow', language)}</span>
             </label>
 
             <label className="flex items-center gap-2 cursor-pointer group">
@@ -432,7 +432,7 @@ export default function Stations() {
                 onCheckedChange={(checked) => setFilters(prev => ({ ...prev, accessible: !!checked }))}
                 className="border-cyan-500/50 data-[state=checked]:bg-cyan-600"
               />
-              <span className="luxury-dark-text-small group-hover:text-cyan-300 transition-colors">{tx('wheelchairAccessible', language)}</span>
+              <span className="text-sm text-[#7A7068] group-hover:text-cyan-600 transition-colors">{tx('wheelchairAccessible', language)}</span>
             </label>
 
             <label className="flex items-center gap-2 cursor-pointer group">
@@ -441,13 +441,13 @@ export default function Stations() {
                 onCheckedChange={(checked) => setFilters(prev => ({ ...prev, wifi: !!checked }))}
                 className="border-cyan-500/50 data-[state=checked]:bg-cyan-600"
               />
-              <span className="luxury-dark-text-small group-hover:text-cyan-300 transition-colors">{tx('freeWifi', language)}</span>
+              <span className="text-sm text-[#7A7068] group-hover:text-cyan-600 transition-colors">{tx('freeWifi', language)}</span>
             </label>
 
             {(filters.available || filters.accessible || filters.wifi) && (
               <button
                 onClick={() => setFilters({ available: false, accessible: false, wifi: false })}
-                className="luxury-dark-text-small text-cyan-400 hover:text-cyan-300 ml-auto transition-colors"
+                className="text-sm text-[#7A7068] text-cyan-400 hover:text-cyan-600 ml-auto transition-colors"
               >
                 {tx('clearAll', language)}
               </button>
@@ -457,19 +457,19 @@ export default function Stations() {
           {(filters.available || filters.accessible || filters.wifi) && (
             <div className="flex flex-wrap gap-2 mt-4">
               {filters.available && (
-                <span className="luxury-dark-badge luxury-dark-badge-success">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
                   <CheckCircle2 className="w-4 h-4" />
                   {tx('availableNow', language)}
                 </span>
               )}
               {filters.accessible && (
-                <span className="luxury-dark-badge">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
                   <Accessibility className="w-4 h-4" />
                   {tx('accessible', language)}
                 </span>
               )}
               {filters.wifi && (
-                <span className="luxury-dark-badge">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
                   <Wifi className="w-4 h-4" />
                   WiFi
                 </span>
@@ -479,19 +479,19 @@ export default function Stations() {
         </div>
 
         <div 
-          className="luxury-wallet-hero overflow-hidden mb-12 luxury-animate-scale-in luxury-delay-3"
+          className="rounded-2xl overflow-hidden mb-12 luxury-animate-scale-in luxury-delay-3 bg-white border border-[#E8E3D9] shadow-sm"
         >
           <div className="h-1 bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-500" />
-          <div className="aspect-video bg-gradient-to-br from-cyan-900/30 via-[#1a1825] to-blue-900/30 flex items-center justify-center relative p-8">
+          <div className="aspect-video bg-gradient-to-br from-cyan-50 via-white to-blue-50 flex items-center justify-center relative p-8 border border-[#E8E3D9] rounded-xl">
             <div className="text-center">
               <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-cyan-500/30 to-blue-500/20 flex items-center justify-center">
                 <MapPin className="w-10 h-10 text-cyan-400" />
               </div>
-              <h3 className="luxury-dark-heading-md mb-3">{tx('interactiveMap', language)}</h3>
-              <p className="luxury-dark-text-body mb-6">{tx('viewAllStations', language)}</p>
+              <h3 className="text-base font-semibold text-[#1A1A1A] mb-3">{tx('interactiveMap', language)}</h3>
+              <p className="text-gray-500 text-base mb-6">{tx('viewAllStations', language)}</p>
               <button
                 onClick={() => setLocation("/map")}
-                className="luxury-dark-btn-primary px-8 py-3"
+                className="px-8 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold text-sm hover:opacity-90 transition-opacity inline-flex items-center"
               >
                 <Navigation className="w-5 h-5 mr-2 inline" />
                 {tx('openMapView', language)}
@@ -501,15 +501,15 @@ export default function Stations() {
         </div>
 
         <div className="mb-12">
-          <h2 className="luxury-dark-heading-lg text-[#e8e6f0] mb-6">
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mb-6">
             {filteredStations.length} {tx('stationsFound', language)}
           </h2>
           
-          <div className="luxury-dark-grid-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredStations.map((station, index) => (
               <div
                 key={station.id}
-                className="luxury-dark-card overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.02] luxury-animate-fade-in"
+                className="bg-white border border-[#E8E3D9] rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.02] luxury-animate-fade-in shadow-sm"
                 style={{ animationDelay: `${0.1 * (index + 1)}s` }}
                 onClick={() => setSelectedStation(station)}
               >
@@ -524,19 +524,19 @@ export default function Stations() {
                   
                   <div className="absolute top-4 right-4">
                     {station.status === "open" && (
-                      <span className="luxury-dark-badge luxury-dark-badge-success">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
                         <CheckCircle2 className="w-4 h-4" />
                         {tx('open', language)}
                       </span>
                     )}
                     {station.status === "busy" && (
-                      <span className="luxury-dark-badge-gold">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">
                         <Users className="w-4 h-4" />
                         {tx('busy', language)}
                       </span>
                     )}
                     {station.status === "closed" && (
-                      <span className="luxury-dark-badge">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
                         <XCircle className="w-4 h-4" />
                         {tx('closed', language)}
                       </span>
@@ -545,18 +545,18 @@ export default function Stations() {
                 </div>
 
                 <div className="p-6">
-                  <h3 className="luxury-dark-heading-md text-[#e8e6f0] mb-2">{station.name}</h3>
+                  <h3 className="text-base font-semibold text-[#1A1A1A] mb-2">{station.name}</h3>
                   
-                  <p className="luxury-dark-text-small mb-3 flex items-start gap-2">
+                  <p className="text-sm text-[#7A7068] mb-3 flex items-start gap-2">
                     <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-cyan-400" />
                     {station.address}
                   </p>
 
-                  <p className="luxury-dark-text-gradient font-semibold mb-3 text-cyan-300">
+                  <p className="font-bold text-[#1A1A1A] text-2xl font-semibold mb-3 text-cyan-600">
                     {station.distance} {tx('away', language)}
                   </p>
 
-                  <p className="luxury-dark-text-small mb-4 flex items-center gap-2">
+                  <p className="text-sm text-[#7A7068] mb-4 flex items-center gap-2">
                     <Clock className="w-4 h-4 text-cyan-400" />
                     {station.availability} • {station.hours}
                   </p>
@@ -582,7 +582,7 @@ export default function Stations() {
                         e.stopPropagation();
                         setLocation(`/map?station=${station.id}`);
                       }}
-                      className="luxury-dark-btn-primary flex-1 py-2.5"
+                      className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold text-sm hover:opacity-90 transition-opacity inline-flex items-center justify-center"
                     >
                       <Navigation className="w-4 h-4 mr-2" />
                       {tx('directions', language)}
@@ -592,7 +592,7 @@ export default function Stations() {
                         e.stopPropagation();
                         setLocation(`/booking?station=${station.id}`);
                       }}
-                      className="luxury-dark-btn-ghost flex-1 py-2.5 border border-[rgba(232,230,240,0.1)]"
+                      className="flex-1 py-2.5 border border-[#E8E3D9] rounded-xl text-sm text-[#1A1A1A] hover:bg-[#F7F4EE] transition-colors"
                     >
                       {tx('bookNow', language)}
                     </button>
@@ -605,11 +605,11 @@ export default function Stations() {
       </div>
 
       <Dialog open={!!selectedStation} onOpenChange={() => setSelectedStation(null)}>
-        <DialogContent className="bg-[#1a1825] border border-[rgba(232,230,240,0.1)] text-[#e8e6f0] max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-white border border-[#E8E3D9] text-[#1A1A1A] max-w-3xl max-h-[90vh] overflow-y-auto">
           {selectedStation && (
             <>
               <DialogHeader>
-                <DialogTitle className="luxury-dark-heading-lg text-[#e8e6f0] mb-4">
+                <DialogTitle className="text-xl font-semibold text-[#1A1A1A] mb-4">
                   {selectedStation.name}
                 </DialogTitle>
               </DialogHeader>
@@ -624,63 +624,63 @@ export default function Stations() {
 
               <div className="space-y-6">
                 <div>
-                  <h4 className="luxury-dark-heading-sm text-[#e8e6f0] mb-2">{tx('location', language)}</h4>
-                  <p className="luxury-dark-text-body flex items-start gap-2">
+                  <h4 className="text-sm font-semibold text-[#1A1A1A] mb-2">{tx('location', language)}</h4>
+                  <p className="text-gray-500 text-base flex items-start gap-2">
                     <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0 text-cyan-400" />
                     {selectedStation.address}
                   </p>
-                  <p className="text-cyan-300 font-semibold mt-2 ml-7">
+                  <p className="text-cyan-600 font-semibold mt-2 ml-7">
                     {selectedStation.distance} {tx('fromYourLocation', language)}
                   </p>
                 </div>
 
-                <div className="luxury-dark-surface p-4 rounded-xl">
-                  <h4 className="luxury-dark-heading-sm text-[#e8e6f0] mb-2">{tx('operatingHours', language)}</h4>
-                  <p className="luxury-dark-text-body flex items-center gap-2">
+                <div className="bg-[#F7F4EE] border border-[#E8E3D9] p-4 rounded-xl">
+                  <h4 className="text-sm font-semibold text-[#1A1A1A] mb-2">{tx('operatingHours', language)}</h4>
+                  <p className="text-gray-500 text-base flex items-center gap-2">
                     <Clock className="w-5 h-5 text-cyan-400" />
                     {selectedStation.hours}
                   </p>
                 </div>
 
-                <div className="luxury-dark-surface p-4 rounded-xl">
-                  <h4 className="luxury-dark-heading-sm text-[#e8e6f0] mb-2">{tx('currentStatus', language)}</h4>
+                <div className="bg-[#F7F4EE] border border-[#E8E3D9] p-4 rounded-xl">
+                  <h4 className="text-sm font-semibold text-[#1A1A1A] mb-2">{tx('currentStatus', language)}</h4>
                   <div className="flex items-center gap-3">
                     {selectedStation.status === "open" && (
-                      <span className="luxury-dark-badge luxury-dark-badge-success">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
                         <CheckCircle2 className="w-4 h-4" />
                         {tx('openNow', language)}
                       </span>
                     )}
                     {selectedStation.status === "busy" && (
-                      <span className="luxury-dark-badge-gold">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">
                         <Users className="w-4 h-4" />
                         {tx('busy', language)}
                       </span>
                     )}
                     {selectedStation.status === "closed" && (
-                      <span className="luxury-dark-badge">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
                         <XCircle className="w-4 h-4" />
                         {tx('temporarilyClosed', language)}
                       </span>
                     )}
-                    <span className="luxury-dark-text-small">{selectedStation.availability}</span>
+                    <span className="text-sm text-[#7A7068]">{selectedStation.availability}</span>
                   </div>
                 </div>
 
                 <div>
-                  <h4 className="luxury-dark-heading-sm text-[#e8e6f0] mb-4">{tx('amenities', language)}</h4>
+                  <h4 className="text-sm font-semibold text-[#1A1A1A] mb-4">{tx('amenities', language)}</h4>
                   <div className="grid grid-cols-2 gap-3">
                     {selectedStation.amenities.map((amenity) => {
                       const Icon = amenityIcons[amenity];
                       return (
                         <div
                           key={amenity}
-                          className="flex items-center gap-3 luxury-dark-surface p-3 rounded-xl"
+                          className="flex items-center gap-3 bg-[#F7F4EE] border border-[#E8E3D9] p-3 rounded-xl"
                         >
                           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/15 flex items-center justify-center flex-shrink-0">
                             <Icon className="w-5 h-5 text-cyan-400" />
                           </div>
-                          <span className="luxury-dark-text-small">{getAmenityLabel(amenity, language)}</span>
+                          <span className="text-sm text-[#7A7068]">{getAmenityLabel(amenity, language)}</span>
                         </div>
                       );
                     })}
@@ -693,7 +693,7 @@ export default function Stations() {
                       setLocation(`/map?station=${selectedStation.id}`);
                       setSelectedStation(null);
                     }}
-                    className="luxury-dark-btn-primary flex-1 py-3"
+                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold text-sm hover:opacity-90 transition-opacity inline-flex items-center justify-center"
                   >
                     <Navigation className="w-5 h-5 mr-2" />
                     {tx('getDirections', language)}
@@ -703,7 +703,7 @@ export default function Stations() {
                       setLocation(`/booking?station=${selectedStation.id}`);
                       setSelectedStation(null);
                     }}
-                    className="luxury-dark-btn-ghost flex-1 py-3 border border-[rgba(232,230,240,0.15)]"
+                    className="flex-1 py-3 border border-[#E8E3D9] rounded-xl text-sm text-[#1A1A1A] hover:bg-[#F7F4EE] transition-colors"
                   >
                     {tx('bookNow', language)}
                   </button>
