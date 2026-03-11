@@ -20,6 +20,7 @@
  * - No Cloud Storage dependency for verification flow
  */
 
+import crypto from 'crypto';
 import { kycMemoryProcessor, type KYCDocumentInput, type KYCProcessingResult } from './KYCMemoryProcessor';
 import { kycAnomalyDetector, type AnomalyResult } from './KYCAnomalyDetector';
 import { kycAuditTrail } from './KYCAuditTrail';
@@ -62,7 +63,7 @@ export class KYCOrchestrator {
 
   async processSubmission(input: KYCSubmissionInput): Promise<KYCVerificationResult> {
     const startTime = Date.now();
-    const verificationId = `kyc-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    const verificationId = `kyc-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
 
     logger.info(`[KYC2026:Orchestrator] Starting verification ${verificationId}`, {
       userId: input.userId,

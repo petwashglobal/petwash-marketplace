@@ -11,7 +11,7 @@ import multer from "multer";
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-router.get("/config/tax-rates", async (req: Request, res: Response) => {
+router.get("/tax-rates", async (req: Request, res: Response) => {
   try {
     const asOfDateStr = req.query.asOfDate as string | undefined;
     const asOfDate = asOfDateStr ? new Date(asOfDateStr) : undefined;
@@ -36,7 +36,7 @@ router.get("/config/tax-rates", async (req: Request, res: Response) => {
  * OCR Smart-Fill Endpoint
  * Camera-First UI/UX Mandate: Extract receipt data automatically
  */
-router.post("/expenses/ocr-receipt", upload.single('receipt'), async (req: Request, res: Response) => {
+router.post("/ocr-receipt", upload.single('receipt'), async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     
@@ -87,7 +87,7 @@ router.post("/expenses/ocr-receipt", upload.single('receipt'), async (req: Reque
   }
 });
 
-router.post("/expenses", async (req: Request, res: Response) => {
+router.post("/", async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     
@@ -176,7 +176,7 @@ router.post("/expenses", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/expenses", async (req: Request, res: Response) => {
+router.get("/", async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     
@@ -221,7 +221,7 @@ router.get("/expenses", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/expenses/pending-approval", async (req: Request, res: Response) => {
+router.get("/pending-approval", async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     
@@ -267,7 +267,7 @@ router.get("/expenses/pending-approval", async (req: Request, res: Response) => 
   }
 });
 
-router.patch("/expenses/:id/approve", async (req: Request, res: Response) => {
+router.patch("/:id/approve", async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     
@@ -325,7 +325,7 @@ router.patch("/expenses/:id/approve", async (req: Request, res: Response) => {
   }
 });
 
-router.patch("/expenses/:id/reject", async (req: Request, res: Response) => {
+router.patch("/:id/reject", async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     
@@ -391,7 +391,7 @@ router.patch("/expenses/:id/reject", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/expenses/seed-tax-rates", async (req: Request, res: Response) => {
+router.post("/seed-tax-rates", async (req: Request, res: Response) => {
   try {
     await taxRateService.seedInitialTaxRates();
     

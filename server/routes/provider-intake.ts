@@ -7,7 +7,7 @@ import { providerIntakeQueue } from '@shared/schema';
 import { eq, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { sendProviderEnrollmentConfirmation } from '../email/luxury-email-service';
 import { logProviderApplication } from '../services/googleSheetsIntegration';
 
@@ -312,7 +312,7 @@ router.post('/submit', async (req, res) => {
   try {
     const data = submitApplicationSchema.parse(req.body);
     
-    const intakeId = `INTAKE-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    const intakeId = `INTAKE-${Date.now()}-${randomUUID().replace(/-/g, '').substring(0, 6).toUpperCase()}`;
     
     // AUTO-APPROVAL: Applications are automatically accepted when users 
     // meet requirements. They proceed to biometric verification next.

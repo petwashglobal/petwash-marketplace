@@ -25,7 +25,7 @@ export class QRCodeService {
     // Generate unique 12-digit barcode number with timestamp and voucher ID
     const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
     const paddedVoucherId = voucherId.toString().padStart(4, '0'); // 4-digit voucher ID
-    const randomSuffix = Math.floor(Math.random() * 100).toString().padStart(2, '0'); // 2-digit random
+    const randomSuffix = crypto.randomInt(0, 100).toString().padStart(2, '0');
     
     return `${timestamp}${paddedVoucherId}${randomSuffix}`;
   }

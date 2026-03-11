@@ -13,7 +13,7 @@ import {
   insertProviderStageTransitionSchema
 } from '@shared/schema-enterprise';
 import { eq, desc, and, sql } from 'drizzle-orm';
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
 import { sendProviderEnrollmentConfirmation } from '../email/luxury-email-service';
@@ -64,7 +64,7 @@ function sha256(data: string): string {
 // Helper: Generate secure token
 function generateToken(): string {
   return createHash('sha256')
-    .update(Date.now().toString() + Math.random().toString())
+    .update(Date.now().toString() + randomBytes(32).toString('hex'))
     .digest('hex')
     .substring(0, 64);
 }

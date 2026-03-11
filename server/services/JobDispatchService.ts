@@ -20,6 +20,7 @@
  * Real-time updates via Firestore listeners for instant UX
  */
 
+import crypto from 'crypto';
 import admin from "../lib/firebase-admin";
 import { db } from "../db";
 import { jobOffers, operatorPresence } from "@shared/schema";
@@ -797,7 +798,7 @@ export class JobDispatchService {
   private static async writeAudit(type: string, jobOfferId: string, operatorId?: string, meta?: any): Promise<void> {
     try {
       const firestore = admin.firestore();
-      const id = `${type}_${jobOfferId}_${Date.now()}_${Math.floor(Math.random() * 9999)}`;
+      const id = `${type}_${jobOfferId}_${Date.now()}_${crypto.randomInt(0, 10000)}`;
       await firestore.collection("dispatch_audit").doc(id).set({
         type,
         jobOfferId,

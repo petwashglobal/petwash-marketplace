@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 import { IncomingMessage } from 'http';
@@ -567,7 +568,7 @@ export function broadcastStationStatusChange(stationId: number, status: any) {
 }
 
 function generateClientId(): string {
-  return `client_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  return `client_${Date.now()}_${crypto.randomBytes(5).toString('hex')}`;
 }
 
 export function getActiveConnectionsCount(): number {

@@ -13,6 +13,7 @@
  * Uses existing: stationsService (1689 lines of IoT control)
  */
 
+import crypto from 'crypto';
 import {
   BaseLuxuryBookingEngine,
   type AvailabilityStrategy,
@@ -184,7 +185,7 @@ class K9000PostConfirmationStrategy implements PostConfirmationStrategy {
 
   private generateUnlockToken(bookingId: string): string {
     // Generate secure 6-digit unlock code
-    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    const token = crypto.randomInt(100000, 1000000).toString();
     return `K9-${token}-${bookingId.slice(-4)}`;
   }
 }

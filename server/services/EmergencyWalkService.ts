@@ -16,6 +16,7 @@
  * - Payment: Nayax Israel ONLY
  */
 
+import crypto from 'crypto';
 import { db } from '../db';
 import { walkBookings, users } from '@shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
@@ -131,7 +132,7 @@ export class EmergencyWalkService {
       });
 
       // Step 5: Create walk booking with "emergency" flag
-      const bookingId = `EMERG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const bookingId = `EMERG-${Date.now()}-${crypto.randomBytes(5).toString('hex')}`;
       const estimatedStartTime = new Date();
       estimatedStartTime.setMinutes(
         estimatedStartTime.getMinutes() + matchedWalker.estimatedArrivalMinutes

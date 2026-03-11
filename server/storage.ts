@@ -5407,7 +5407,7 @@ export class DatabaseStorage implements IStorage {
     const existing = await this.getProviderApplicationByUser(userId);
     if (existing) return existing;
     
-    const appId = `APP-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`;
+    const appId = `APP-${new Date().getFullYear()}-${crypto.randomInt(0, 1000000).toString().padStart(6, '0')}`;
     const [app] = await db.insert(providerApplications).values({
       applicationId: appId,
       userId,

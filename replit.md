@@ -320,3 +320,24 @@ The following composite indexes were created via REST API and may still be build
 ### Other Stale Data
 - `client/src/lib/i18n.ts` — privilege club milestone date `'2025'` → `'2026'`
 - `server/routes/ceo-wallet.ts` — default launch date `'November 7, 2025'` → `'November 7, 2026'`
+
+## Routing & Security Hardening (March 2026 Session 8)
+
+### Route Double-Nesting Fixes
+The following route files had hardcoded `/api/` prefixes in their route handlers while also being mounted under `/api/...` paths, causing all routes to become inaccessible (double-nested):
+- **`security-status.ts`**: `router.get('/api/security/status')` → `router.get('/status')`, mount changed `/api/security-status` → `/api/security`. Effective path: `/api/security/status` ✓
+- **`send-report.ts`**: `router.post('/api/send-platform-report')` → `router.post('/send-platform-report')`. Effective path: `/api/send-report/send-platform-report` ✓
+- **`walk-payment-flow.ts`**: All 6 routes had `/api/` prefix while mounted at `/api/walk-payment-flow`. Rewrote file: stripped all prefixes, mount changed to `/api`, removed broken `walk_slot_holds` DB dependency (table doesn't exist), replaced with graceful validation. Effective paths: `/api/payments/nayax/walk-session`, `/api/payments/nayax/redirect/:sessionId`, `/api/payments/nayax/webhook`, `/api/payments/nayax/webhook-simulate`, `/api/walks/by-payment/:sessionId` ✓
+- **`expenses.ts`**: All 7 expense routes had `/expenses/` prefix while mounted at `/api/expenses` (e.g. `/expenses/ocr-receipt` → `/api/expenses/expenses/ocr-receipt`). Stripped all `/expenses/` prefixes. Also renamed `/config/tax-rates` → `/tax-rates`. Added `app.use('/api/config', ...)` mount so frontend's `/api/config/tax-rates` now resolves correctly ✓
+
+### Missing Backend Routes Added
+- **`/api/accounting/summary`** (GET): Returns monthly metrics (totalRevenue, platformFees, providerPayouts, escrowHeld), taxes (VAT at 18%), and compliance status. Used by `AccountingDashboard.tsx`
+- **`/api/accounting/export/transactions`** (POST): Returns stub response (Google Sheets export pending integration)
+- **`/api/accounting/export/compliance`** (POST): Returns stub response
+- **`/api/accounting/export/escrow`** (POST): Returns stub response
+
+### Security: Math.random() → Cryptographic APIs
+Replaced ALL `Math.random()` usage in security-sensitive code with `crypto` module equivalents. Total: 17 instances across 13 files:
+- **IDs & tokens (UUID/hex)**: `webauthn/service.ts` (challenge key), `KYCOrchestrator.ts` (verification ID), `voucherService.ts` (transaction ID), `websocket.ts` (client ID), `ProviderIntakeService.ts` (intake ID + invite code), `EmergencyWalkService.ts` (booking ID), `provider-intake.ts` (intake ID), `email/luxury-email-service.ts` (gift code), `observanceEvaluator.ts` (voucher code), `routes.ts` (contact ID)
+- **Numeric IDs (randomInt)**: `ElectronicInvoicingService.ts` (invoice numbers ×2), `K9000StationBookingEngine.ts` (unlock token), `JobDispatchService.ts` (audit ID), `accounting.ts` (expense ID), `storage.ts` (application ID), `qrCode.ts` (barcode suffix)
+- **Hash input entropy**: `provider-applications.ts` (SHA-256 token now seeded with `randomBytes(32)` instead of `Math.random()`)

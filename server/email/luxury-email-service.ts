@@ -2,6 +2,7 @@
  * Luxury Email Service - 2025
  * High-end email sending with beautiful templates
  */
+import crypto from 'crypto';
 
 import { MailService } from '@sendgrid/mail';
 import { logger } from '../lib/logger';
@@ -456,7 +457,7 @@ export async function sendEGiftActivation(
     language?: 'he' | 'en';
   }
 ): Promise<boolean> {
-  const giftCode = options?.giftCode || `PW-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+  const giftCode = options?.giftCode || `PW-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
   const serialNumber = options?.serialNumber || `PWG${Date.now().toString(36).substring(0, 8).toUpperCase()}`;
   const expiresAt = options?.expiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toLocaleDateString(
     options?.language === 'he' ? 'he-IL' : 'en-US',

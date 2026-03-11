@@ -9699,6 +9699,7 @@ self.addEventListener('notificationclick', (event) => {
   
   // HR & Employee Management
   app.use('/api/expenses', adminLimiter, expensesRoutes);
+  app.use('/api/config', apiLimiter, expensesRoutes);
   app.use('/api/contractor', adminLimiter, contractorRoutes);
   app.use('/api/contracts', adminLimiter, contractsRoutes);
   app.use('/api/signatures', apiLimiter, signaturesRoutes);
@@ -10957,7 +10958,7 @@ self.addEventListener('notificationclick', (event) => {
       logger.info('Contact form submission received', { name, email, subject });
       
       // Generate a unique contact ID without Firestore
-      const contactId = `contact-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      const contactId = `contact-${Date.now()}-${crypto.randomUUID().replace(/-/g, '').substring(0, 9)}`;
       
       // Send notification email to support team
       const { EmailService } = await import('./emailService');

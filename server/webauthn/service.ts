@@ -3,6 +3,7 @@
  * Consolidates device registry, signed cookies, and comprehensive security
  */
 
+import crypto from 'crypto';
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -523,7 +524,7 @@ export async function generateDiscoverableAuthenticationOptions(
       userVerification: 'required',
     });
     
-    const challengeKey = `disc_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    const challengeKey = `disc_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
     
     const challengeData: Omit<WebAuthnChallenge, 'csrfToken'> = {
       challenge: options.challenge,

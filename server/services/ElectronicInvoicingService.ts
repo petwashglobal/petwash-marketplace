@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { db } from '../db';
 import { electronicInvoices } from '@shared/schema';
 import { eq } from 'drizzle-orm';
@@ -39,7 +40,7 @@ class ElectronicInvoicingService {
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
-    const random = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
+    const random = crypto.randomInt(0, 10000).toString().padStart(4, '0');
     return `INV-${year}-${month}${day}-${random}`;
   }
 
@@ -48,7 +49,7 @@ class ElectronicInvoicingService {
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
-    const random = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
+    const random = crypto.randomInt(0, 10000).toString().padStart(4, '0');
     return `INV-${year}-${month}${day}-${random}`;
   }
 

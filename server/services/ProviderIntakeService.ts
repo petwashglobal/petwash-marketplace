@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { google } from 'googleapis';
 import { db } from '../db';
 import { providerIntakeQueue, providerInviteCodes } from '@shared/schema';
@@ -146,7 +147,7 @@ export class ProviderIntakeService {
           
           // Generate intake ID
           const year = new Date().getFullYear();
-          const randomNum = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+          const randomNum = crypto.randomInt(0, 1000000).toString().padStart(6, '0');
           const intakeId = `INT-${year}-${randomNum}`;
           
           // Insert into queue
@@ -251,7 +252,7 @@ export class ProviderIntakeService {
     
     // Generate invite code
     const codePrefix = intake.providerType.toUpperCase().slice(0, 4);
-    const randomCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const randomCode = crypto.randomBytes(6).toString('hex').toUpperCase();
     const inviteCode = `${codePrefix}-${randomCode}`;
     
     // Create invite code record

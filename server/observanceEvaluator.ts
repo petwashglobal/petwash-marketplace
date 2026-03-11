@@ -2,6 +2,7 @@
  * Observance Evaluator
  * Evaluates pet holidays/observances and sends inbox messages with promo codes
  */
+import crypto from 'crypto';
 
 import { db as adminDb } from './lib/firebase-admin';
 import { logger } from './lib/logger';
@@ -52,7 +53,7 @@ function matchesDateRule(rule: DateRule, date: Date): boolean {
  */
 function generateVoucherCode(template: string, uid: string): string {
   const year = new Date().getFullYear();
-  const random6 = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const random6 = crypto.randomBytes(4).toString('hex').substring(0, 6).toUpperCase();
   
   return template
     .replace('{YYYY}', year.toString())

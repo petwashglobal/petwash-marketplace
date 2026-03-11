@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { storage } from './storage';
 import { QRCodeService } from './qrCode';
 import type { InsertEVoucher, EVoucher, InsertEVoucherRedemption } from '@shared/schema';
@@ -93,7 +94,7 @@ export class VoucherService {
       }
 
       const washesRequested = request.washesRequested || 1;
-      const transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+      const transactionId = `TXN-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
       // 🔒 ATOMIC TRANSACTION: Get voucher, validate, update, and log in single transaction
       // CRITICAL: Prevents race condition where multiple requests could overdraw remaining washes
