@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import { createHash } from 'crypto';
 import { db } from "../db";
 import { z } from "zod";
 import {
@@ -361,7 +362,7 @@ router.post("/v1/bookings/:id/complete", async (req: Request, res: Response) => 
             booking: completedBooking,
             ledgerEntries,
             completedAt: new Date().toISOString(),
-            integrityHash: require('crypto').createHash('sha256').update(JSON.stringify(completedBooking)).digest('hex'),
+            integrityHash: createHash('sha256').update(JSON.stringify(completedBooking)).digest('hex'),
           }, null, 2);
           await backupFinancialDocument({
             documentType: 'ledger_export',

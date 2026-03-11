@@ -183,13 +183,13 @@ export function getFranchiseeSupport(franchiseeId: string): FranchiseeSupport {
     supplierNetwork: {
       approvedVendors: 12,
       bulkDiscountAvailable: true,
-      nextOrderDeadline: new Date('2025-11-15'),
+      nextOrderDeadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     },
     regionalManager: {
       name: 'David Levi',
       email: 'david.levi@petwash.co.il',
       phone: '+972-50-123-4567',
-      nextCheckIn: new Date('2025-11-10'),
+      nextCheckIn: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     },
   };
 }

@@ -928,7 +928,6 @@ IP Address: ${ipAddress || 'unknown'}
    * Generate SHA-256 checksum for audit record integrity verification
    */
   private generateAuditChecksum(data: Record<string, any>): string {
-    const crypto = require('crypto');
     const canonicalString = JSON.stringify(data, Object.keys(data).sort());
     return crypto.createHash('sha256').update(canonicalString).digest('hex').substring(0, 16);
   }

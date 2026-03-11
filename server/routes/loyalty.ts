@@ -964,7 +964,7 @@ router.post('/ai-rewards-message', async (req: Request, res: Response) => {
     const { GoogleGenAI } = await import('@google/genai');
     const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
     const result = await genAI.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       contents: [{
         role: 'user',
         parts: [{ text: `You are the PetWash™ loyalty program AI concierge. Write a warm, personalized 2-sentence message for a ${tier.toUpperCase()} tier member who has ${points} points and ${totalWashes} total washes. ${nextTierPoints > 0 ? `They need ${nextTierPoints} more points to reach the next tier.` : 'They are at the top tier!'} Be encouraging, celebratory, and mention their pet care dedication. Include one pet-themed emoji. Keep it under 40 words.` }]

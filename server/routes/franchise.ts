@@ -686,7 +686,7 @@ router.post('/:franchiseId/ai-narrative-report', requireFranchiseAuth, async (re
 
     const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
     const result = await genAI.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       contents: [{
         role: 'user',
         parts: [{ text: `You are a business intelligence analyst for PetWash™, a premium pet grooming franchise network in Israel. Generate a concise, motivating weekly narrative report for franchise partner "${franchiseId}". Data: ${statsContext}. The report should cover: 1) Performance highlights (2-3 sentences), 2) Key opportunities to grow (2-3 actionable bullets), 3) A motivating closing statement. Use a warm, professional tone. Keep it under 200 words. Write in English.` }]

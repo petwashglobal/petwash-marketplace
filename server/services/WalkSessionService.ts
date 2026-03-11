@@ -1,4 +1,5 @@
 import { db } from '../db';
+import crypto from 'crypto';
 import { walkBookings, users, walkBlockchainAudit } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
@@ -681,7 +682,6 @@ export class WalkSessionService {
    * Generate protocol stamp for audit compliance
    */
   private generateProtocolStamp(log: WalkSessionLog): string {
-    const crypto = require('crypto');
     const stampData = `${log.walkId}:${log.action}:${log.timestamp.toISOString()}:${JSON.stringify(log.data)}`;
     return crypto.createHash('sha256').update(stampData).digest('hex');
   }
@@ -690,7 +690,6 @@ export class WalkSessionService {
    * Generate blockchain hash for audit trail
    */
   private generateHash(data: any): string {
-    const crypto = require('crypto');
     return crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');
   }
 

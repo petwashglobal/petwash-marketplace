@@ -367,7 +367,7 @@ Respond in JSON:
             moderationResult: moderationResult.isApproved ? 'approved' : 'rejected',
             flags: moderationResult.flags,
             safetyScore: moderationResult.safetyScore,
-            aiModel: 'gemini-2.0-flash',
+            aiModel: 'gemini-2.5-flash',
             notes: `${moderationResult.explanation} | category: ${moderationResult.category}`,
           });
         } catch (logErr) {

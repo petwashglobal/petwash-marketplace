@@ -110,7 +110,6 @@ async function escalateToOps(consecutiveFailures: number, lastError: string) {
     });
     
     // Send email alert
-    const axios = require('axios');
     const opsEmail = process.env.OPS_ALERT_EMAIL || 'ops@petwash.co.il';
     
     await axios.post('http://localhost:5000/api/enterprise/alerts/send', {

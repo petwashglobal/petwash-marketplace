@@ -34,7 +34,7 @@ router.get('/alerts', async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.firebaseUser!.uid;
     // In production, fetch from loyalty profile
     const mockActivity = {
-      lastWashDate: new Date('2025-10-20'),
+      lastWashDate: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000),
       averageWashInterval: 21,
       petAge: 5,
       totalWashes: 12,

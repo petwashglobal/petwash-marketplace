@@ -12417,7 +12417,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
           petProfile: subscription.petProfile,
           recommendedProducts: aiResponse.recommendations,
           aiReasoning: aiResponse.reasoning,
-          aiModel: 'gemini-2.0-flash-exp',
+          aiModel: 'gemini-2.5-flash',
         })
         .returning();
 

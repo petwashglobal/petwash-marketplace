@@ -11,6 +11,7 @@
  * All telemetry stored in Firestore with 90-day retention.
  */
 
+import { randomBytes } from 'crypto';
 import { db } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 function parseUserAgent(ua: string): { family: string; os: { family: string; toVersion: () => string } } {
@@ -421,6 +422,6 @@ export class WalletTelemetryService {
    * Generate secure token for session tracking
    */
   private static generateSecureToken(): string {
-    return require('crypto').randomBytes(32).toString('base64url');
+    return randomBytes(32).toString('base64url');
   }
 }

@@ -67,7 +67,7 @@ async function checkPaymentIntent(
   try {
     const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
     const result = await genAI.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       contents: [{
         role: 'user',
         parts: [{ text: `You are analyzing a chat message in a pet care service app. Detect if the message implies a tip, payment, extra service request, or upgrade. Reply with JSON only: {"intent": true/false, "ctaType": "tip"|"upgrade"|"package"|null, "ctaText": "short friendly CTA (max 10 words)"|null}. Message: "${content.slice(0, 300)}"` }]
@@ -1083,7 +1083,7 @@ router.post('/:bookingId/upload', uploadMiddleware.single('image'), async (req: 
         const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
         const imageBytes = req.file.buffer.toString('base64');
         const result = await genAI.models.generateContent({
-          model: 'gemini-2.0-flash',
+          model: 'gemini-2.5-flash',
           contents: [
             { role: 'user', parts: [
               { inlineData: { mimeType: req.file.mimetype, data: imageBytes } },
@@ -1141,7 +1141,7 @@ router.post('/:bookingId/upload-audio', audioUploadMiddleware.single('audio'), a
       const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
       const audioBytes = req.file.buffer.toString('base64');
       const result = await genAI.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-flash',
         contents: [{
           role: 'user',
           parts: [
@@ -1213,7 +1213,7 @@ Summary (bullet points):`;
 
     const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
     const response = await genAI.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       contents: prompt,
     });
 
@@ -1276,7 +1276,7 @@ Draft a reply for the ${myRole}:`;
 
     const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
     const response = await genAI.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       contents: prompt,
     });
 
@@ -1315,7 +1315,7 @@ router.post('/:bookingId/messages/:messageId/translate', async (req, res) => {
 
     const genAI = new GoogleGenAI(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '');
     const result = await genAI.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       contents: [{
         role: 'user',
         parts: [{ text: `Translate the following message to ${targetName}. Return ONLY the translated text with no explanation, preamble, or quotation marks.\n\nMessage: ${msg.content}` }]
@@ -1490,7 +1490,7 @@ Used toilet: ${data.usedToilet ? 'Yes' : 'No'}
 Played: ${data.played ? 'Yes' : 'No'}
 Provider notes: ${data.notes || 'No additional notes'}
 Write a 2-3 sentence summary starting with the pet's session highlights. End with one warm reassuring sentence.`;
-      const result = await genAI.models.generateContent({ model: 'gemini-2.0-flash', contents: prompt });
+      const result = await genAI.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
       geminiSummary = result.text?.trim() ?? null;
     } catch (aiErr) {
       logger.warn('[CareLog] Gemini summary failed', aiErr);

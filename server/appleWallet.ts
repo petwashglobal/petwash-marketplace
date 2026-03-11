@@ -9,6 +9,7 @@
  * - Premium design matching banking cards
  */
 
+import crypto from 'crypto';
 import { PKPass } from 'passkit-generator';
 import QRCode from 'qrcode';
 import { db } from './lib/firebase-admin';
@@ -467,7 +468,6 @@ export class AppleWalletService {
    * Generate authentication token for pass updates
    */
   private static generateAuthToken(userId: string): string {
-    const crypto = require('crypto');
     return crypto
       .createHash('sha256')
       .update(`${userId}_${process.env.MOBILE_LINK_SECRET || 'secret'}`)

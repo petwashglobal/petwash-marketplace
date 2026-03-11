@@ -10,6 +10,7 @@
  * - Privacy-compliant (GDPR + Israeli Privacy Law)
  */
 
+import { createHash } from 'crypto';
 import { db as adminDb } from './lib/firebase-admin';
 import { logger } from './lib/logger';
 import { logAccess } from './log-retention-2025';
@@ -505,8 +506,7 @@ export function anonymizeInteraction(interaction: ChatInteraction): ChatInteract
 }
 
 function hashUserId(userId: string): string {
-  const crypto = require('crypto');
-  return crypto.createHash('sha256').update(userId).digest('hex').substring(0, 16);
+  return createHash('sha256').update(userId).digest('hex').substring(0, 16);
 }
 
 function anonymizeIP(ip: string): string {

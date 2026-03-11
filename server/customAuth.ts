@@ -1,4 +1,5 @@
 import { Express, Request, Response } from 'express';
+import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
@@ -31,7 +32,6 @@ export function setupCustomAuth(app: Express) {
     // Development-only fallback
     if (process.env.NODE_ENV === 'development') {
       logger.warn('[CustomAuth] Using development session secret - set SESSION_SECRET for production');
-      const crypto = require('crypto');
       return 'petwash-dev-custom-auth-' + crypto.createHash('sha256').update('petwash-custom-auth').digest('hex');
     }
     

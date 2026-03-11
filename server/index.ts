@@ -188,7 +188,7 @@ app.use(cookieParser());
 app.use(
   session({
     name: 'pw.sid', // Custom session cookie name (obscure default)
-    secret: process.env.SESSION_SECRET || process.env.COOKIE_SECRET || (isProduction ? (() => { throw new Error('SESSION_SECRET or COOKIE_SECRET must be set in production'); })() : require('crypto').randomBytes(32).toString('hex')),
+    secret: process.env.SESSION_SECRET || process.env.COOKIE_SECRET || (isProduction ? (() => { throw new Error('SESSION_SECRET or COOKIE_SECRET must be set in production'); })() : crypto.randomBytes(32).toString('hex')),
     resave: false,
     saveUninitialized: false,
     rolling: true, // Reset expiry on each request (keep active users logged in)
