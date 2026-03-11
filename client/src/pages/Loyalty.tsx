@@ -254,7 +254,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
           >
             <Button
               className="w-full sm:w-auto px-10 py-3.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity rounded-lg"
-              style={{ background: '#0a0a0a' }}
+              style={{ background: 'linear-gradient(90deg, #c9a96e, #d4af37)', color: '#0f0d08' }}
               onClick={() => setLocation('/privilege')}
             >
               {t('privilege.activateButton', language)}
@@ -589,7 +589,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
             </p>
             <Button
               className="px-12 py-4 text-sm font-semibold text-white hover:opacity-90 transition-opacity rounded-lg"
-              style={{ background: '#0a0a0a' }}
+              style={{ background: 'linear-gradient(90deg, #c9a96e, #d4af37)', color: '#0f0d08' }}
               onClick={() => setLocation('/privilege')}
             >
               {t('privilege.activateButton', language)}
@@ -667,7 +667,7 @@ export default function Loyalty() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="w-20 h-20 mx-auto mb-6 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0d0d0d 100%)', borderRadius: '2px' }}>
+            <div className="w-20 h-20 mx-auto mb-6 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #c9a96e 0%, #d4af37 100%)', borderRadius: '2px' }}>
               <Crown className="w-10 h-10 animate-pulse" style={{ color: gold }} />
             </div>
             <p className="text-gray-400 text-sm uppercase tracking-[0.2em]">{t('loyalty.loading', language)}</p>
@@ -924,7 +924,7 @@ export default function Loyalty() {
                       className="flex items-start gap-4 p-4" 
                       style={{ borderRadius: '2px', background: `${gold}08`, border: `1px solid ${gold}20` }}
                     >
-                      <div className="w-10 h-10 flex items-center justify-center flex-shrink-0" style={{ borderRadius: '2px', background: '#0a0a0a' }}>
+                      <div className="w-10 h-10 flex items-center justify-center flex-shrink-0" style={{ borderRadius: '2px', background: 'rgba(201,169,110,0.15)' }}>
                         <Crown className="w-5 h-5" style={{ color: gold }} />
                       </div>
                       <div>
@@ -937,7 +937,7 @@ export default function Loyalty() {
 
                 <Button
                   className="w-full mt-4 text-sm font-bold text-white"
-                  style={{ borderRadius: '2px', background: '#0a0a0a', padding: '14px 24px' }}
+                  style={{ borderRadius: '2px', background: 'linear-gradient(90deg, #c9a96e, #d4af37)', color: '#0f0d08', padding: '14px 24px' }}
                   onClick={() => {
                     trackEvent({
                       action: 'view_rewards_click',
@@ -1015,8 +1015,8 @@ export default function Loyalty() {
         <section className="py-16 border-t border-gray-100">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="space-y-6">
-              <div className="w-16 h-16 mx-auto flex items-center justify-center" style={{ background: '#0a0a0a', borderRadius: '2px' }}>
-                <Shield className="w-8 h-8" style={{ color: gold }} />
+              <div className="w-16 h-16 mx-auto flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #c9a96e, #d4af37)', borderRadius: '2px' }}>
+                <Shield className="w-8 h-8" style={{ color: '#0f0d08' }} />
               </div>
               <h2 className="text-2xl sm:text-3xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
                 {t('loyalty.title', language)}
@@ -1024,7 +1024,7 @@ export default function Loyalty() {
               <p className="text-gray-500 max-w-lg mx-auto">{t('loyalty.subtitle', language)}</p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
                 <Link href="/privilege">
-                  <Button className="px-8 py-3 text-sm font-bold text-white" style={{ borderRadius: '2px', background: '#0a0a0a' }}>
+                  <Button className="px-8 py-3 text-sm font-bold text-white" style={{ borderRadius: '2px', background: 'rgba(201,169,110,0.15)' }}>
                     <ArrowRight className="w-4 h-4 mr-2" />
                     {t('loyalty.signUp', language)}
                   </Button>

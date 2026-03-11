@@ -70,7 +70,7 @@ export default function LoyaltyBirthday() {
     <div
       dir={isHebrew || language === 'ar' ? 'rtl' : 'ltr'}
       className="min-h-screen"
-      style={{ background: '#0A0A0F' }}
+      style={{ background: '#FFFFFF' }}
     >
       <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <Link href="/loyalty">
@@ -81,48 +81,48 @@ export default function LoyaltyBirthday() {
         </Link>
 
         <div className="text-center mb-12">
-          <img src="/brand/petwash-logo-black-bg.png" alt="⁦Pet Wash™⁩" className="h-12 mx-auto mb-6 opacity-90" />
+          <img src="/brand/petwash-logo-white-bg.png" alt="⁦Pet Wash™⁩" className="h-12 mx-auto mb-6 opacity-90" />
           <div className="w-16 h-16 rounded-2xl bg-[rgba(236,72,153,0.1)] border border-[rgba(236,72,153,0.2)] flex items-center justify-center mx-auto mb-4">
             <Cake className="w-8 h-8 text-pink-400" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
+          <h1 className="text-4xl md:text-5xl font-bold text-[#1A1A1A] mb-3">
             {isHebrew ? 'הטבות יום הולדת' : 'Birthday Rewards'}
           </h1>
-          <p className="text-lg text-white/50 max-w-2xl mx-auto">
+          <p className="text-lg text-[#7A7068] max-w-2xl mx-auto">
             {isHebrew ? 'הפתעות אוטומטיות לחיות מחמד ובני אדם. חגגו את היום המיוחד שלכם!' : 'Automatic surprises for pets and humans. Celebrate your special day!'}
           </p>
         </div>
 
-        <div className="p-8 md:p-12 rounded-2xl bg-[rgba(232,230,240,0.03)] border border-[rgba(201,169,110,0.15)] backdrop-blur-xl text-center mb-12 shadow-[0_0_40px_rgba(201,169,110,0.05)]">
+        <div className="p-8 md:p-12 rounded-2xl bg-[#F7F4EE] border border-[rgba(201,169,110,0.15)] backdrop-blur-xl text-center mb-12 shadow-[0_0_40px_rgba(201,169,110,0.05)]">
           <div className="max-w-2xl mx-auto">
             <div className="w-20 h-20 rounded-2xl bg-[rgba(201,169,110,0.1)] border border-[rgba(201,169,110,0.2)] flex items-center justify-center mx-auto mb-6">
               <PartyPopper className="w-10 h-10 text-[#C9A96E]" />
             </div>
 
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold text-[#1A1A1A] mb-4">
               {isHebrew ? 'חגגו את היום המיוחד שלכם' : 'Celebrate Your Special Day'}
             </h2>
-            <p className="text-white/50 mb-8 leading-relaxed">
+            <p className="text-[#7A7068] mb-8 leading-relaxed">
               {isHebrew
                 ? 'כל יום הולדת מיוחד בפט וואש! אנחנו חוגגים אוטומטית גם לכם וגם לחיות המחמד שלכם עם הטבות בלעדיות, רחיצות חינם והפתעות מיוחדות.'
                 : 'Every birthday is special at Pet Wash! We automatically celebrate both you and your pets\' birthdays with exclusive rewards, free washes, and special surprises.'}
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-              <div className="p-4 rounded-xl bg-[rgba(232,230,240,0.04)] border border-[rgba(232,230,240,0.08)]">
+              <div className="p-4 rounded-xl bg-[#F7F4EE] border border-[#E8E3D9]">
                 <p className="text-3xl mb-2">🎂</p>
-                <p className="font-semibold text-white text-sm">{isHebrew ? 'יום ההולדת שלך' : 'Your Birthday'}</p>
-                <p className="text-white/40 text-xs">{isHebrew ? 'הטבות חברי מועדון' : 'Special member rewards'}</p>
+                <p className="font-semibold text-[#1A1A1A] text-sm">{isHebrew ? 'יום ההולדת שלך' : 'Your Birthday'}</p>
+                <p className="text-[#8A8078] text-xs">{isHebrew ? 'הטבות חברי מועדון' : 'Special member rewards'}</p>
               </div>
-              <div className="p-4 rounded-xl bg-[rgba(232,230,240,0.04)] border border-[rgba(232,230,240,0.08)]">
+              <div className="p-4 rounded-xl bg-[#F7F4EE] border border-[#E8E3D9]">
                 <p className="text-3xl mb-2">🐾</p>
-                <p className="font-semibold text-white text-sm">{isHebrew ? 'יום הולדת חיית מחמד' : "Pet's Birthday"}</p>
-                <p className="text-white/40 text-xs">{isHebrew ? 'חטיפים וצעצועים' : 'Treats & toys included'}</p>
+                <p className="font-semibold text-[#1A1A1A] text-sm">{isHebrew ? 'יום הולדת חיית מחמד' : "Pet's Birthday"}</p>
+                <p className="text-[#8A8078] text-xs">{isHebrew ? 'חטיפים וצעצועים' : 'Treats & toys included'}</p>
               </div>
-              <div className="p-4 rounded-xl bg-[rgba(232,230,240,0.04)] border border-[rgba(232,230,240,0.08)]">
+              <div className="p-4 rounded-xl bg-[#F7F4EE] border border-[#E8E3D9]">
                 <p className="text-3xl mb-2">✨</p>
-                <p className="font-semibold text-white text-sm">{isHebrew ? 'אוטומטי' : 'Automatic'}</p>
-                <p className="text-white/40 text-xs">{isHebrew ? 'ללא צורך בפעולה' : 'No action needed'}</p>
+                <p className="font-semibold text-[#1A1A1A] text-sm">{isHebrew ? 'אוטומטי' : 'Automatic'}</p>
+                <p className="text-[#8A8078] text-xs">{isHebrew ? 'ללא צורך בפעולה' : 'No action needed'}</p>
               </div>
             </div>
 
@@ -134,21 +134,21 @@ export default function LoyaltyBirthday() {
         </div>
 
         <div className="mb-12">
-          <h2 className="text-2xl font-bold text-white text-center mb-8">
+          <h2 className="text-2xl font-bold text-[#1A1A1A] text-center mb-8">
             {isHebrew ? 'הטבות יום הולדת לפי דרגה' : 'Birthday Rewards by Tier'}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {rewards.map((reward, idx) => (
               <div
                 key={idx}
-                className="p-6 rounded-2xl bg-[rgba(232,230,240,0.03)] border border-[rgba(232,230,240,0.08)] backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 hover:border-[rgba(236,72,153,0.3)] group"
+                className="p-6 rounded-2xl bg-[#F7F4EE] border border-[#E8E3D9] backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 hover:border-[rgba(236,72,153,0.3)] group"
               >
                 <div className="w-12 h-12 rounded-xl bg-[rgba(236,72,153,0.1)] flex items-center justify-center mb-4 transition-all duration-300 group-hover:bg-[rgba(236,72,153,0.2)]">
                   <reward.icon className="w-6 h-6 text-pink-400" />
                 </div>
-                <h3 className="text-white font-bold text-lg mb-1">{reward.title}</h3>
-                <p className="text-white/30 text-xs mb-3">{reward.subtitle}</p>
-                <p className="text-white/50 text-sm mb-4 leading-relaxed">{reward.description}</p>
+                <h3 className="text-[#1A1A1A] font-bold text-lg mb-1">{reward.title}</h3>
+                <p className="text-[#9A9088] text-xs mb-3">{reward.subtitle}</p>
+                <p className="text-[#7A7068] text-sm mb-4 leading-relaxed">{reward.description}</p>
                 <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-[rgba(201,169,110,0.1)] text-[#C9A96E] border border-[rgba(201,169,110,0.2)]">
                   {reward.tier}
                 </span>
@@ -157,8 +157,8 @@ export default function LoyaltyBirthday() {
           </div>
         </div>
 
-        <div className="p-8 rounded-2xl bg-[rgba(232,230,240,0.03)] border border-[rgba(232,230,240,0.08)] backdrop-blur-xl">
-          <h2 className="text-2xl font-bold text-white text-center mb-8">
+        <div className="p-8 rounded-2xl bg-[#F7F4EE] border border-[#E8E3D9] backdrop-blur-xl">
+          <h2 className="text-2xl font-bold text-[#1A1A1A] text-center mb-8">
             {isHebrew ? 'איך זה עובד' : 'How It Works'}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -167,9 +167,9 @@ export default function LoyaltyBirthday() {
                 <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#C9A96E] to-[#d4af37] text-[#0A0A0F] font-bold text-xl flex items-center justify-center mx-auto mb-4">
                   {step.num}
                 </div>
-                <h3 className="font-semibold text-white mb-1">{step.title}</h3>
-                <p className="text-white/30 text-xs mb-2">{step.subtitle}</p>
-                <p className="text-white/40 text-sm">{step.description}</p>
+                <h3 className="font-semibold text-[#1A1A1A] mb-1">{step.title}</h3>
+                <p className="text-[#9A9088] text-xs mb-2">{step.subtitle}</p>
+                <p className="text-[#8A8078] text-sm">{step.description}</p>
               </div>
             ))}
           </div>

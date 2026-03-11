@@ -69,7 +69,7 @@ export default function LoyaltyBenefits() {
     <div
       dir={isHebrew || language === 'ar' ? 'rtl' : 'ltr'}
       className="min-h-screen"
-      style={{ background: '#0A0A0F' }}
+      style={{ background: '#FFFFFF' }}
     >
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <Link href="/loyalty">
@@ -80,14 +80,14 @@ export default function LoyaltyBenefits() {
         </Link>
 
         <div className="text-center mb-12">
-          <img src="/brand/petwash-logo-black-bg.png" alt="⁦Pet Wash™⁩" className="h-12 mx-auto mb-6 opacity-90" />
+          <img src="/brand/petwash-logo-white-bg.png" alt="⁦Pet Wash™⁩" className="h-12 mx-auto mb-6 opacity-90" />
           <div className="inline-flex items-center gap-2 mb-4">
             <Sparkles className="w-6 h-6 text-[#C9A96E]" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
+          <h1 className="text-4xl md:text-5xl font-bold text-[#1A1A1A] mb-3">
             {isHebrew ? 'הטבות ופריבילגיות' : 'Benefits & Privileges'}
           </h1>
-          <p className="text-lg text-white/50 max-w-2xl mx-auto">
+          <p className="text-lg text-[#7A7068] max-w-2xl mx-auto">
             {isHebrew ? 'גלו את כל ההטבות הבלעדיות שמחכות לכם כחברי מועדון' : 'Discover all the exclusive benefits awaiting you as a club member'}
           </p>
         </div>
@@ -96,15 +96,15 @@ export default function LoyaltyBenefits() {
           {benefits.map((benefit, idx) => (
             <div
               key={idx}
-              className="p-6 rounded-2xl bg-[rgba(232,230,240,0.03)] border border-[rgba(232,230,240,0.08)] backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 hover:border-[rgba(201,169,110,0.3)] group"
+              className="p-6 rounded-2xl bg-[#F7F4EE] border border-[#E8E3D9] backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 hover:border-[rgba(201,169,110,0.3)] group"
             >
               <div className="w-12 h-12 rounded-xl bg-[rgba(201,169,110,0.1)] flex items-center justify-center mb-4 transition-all duration-300 group-hover:bg-[rgba(201,169,110,0.2)]">
                 <benefit.icon className="w-6 h-6 text-[#C9A96E]" />
               </div>
 
-              <h3 className="text-white font-bold text-lg mb-1">{benefit.title}</h3>
-              <p className="text-white/30 text-xs mb-3">{benefit.subtitle}</p>
-              <p className="text-white/50 text-sm mb-4 leading-relaxed">{benefit.description}</p>
+              <h3 className="text-[#1A1A1A] font-bold text-lg mb-1">{benefit.title}</h3>
+              <p className="text-[#9A9088] text-xs mb-3">{benefit.subtitle}</p>
+              <p className="text-[#7A7068] text-sm mb-4 leading-relaxed">{benefit.description}</p>
 
               <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-[rgba(201,169,110,0.1)] text-[#C9A96E] border border-[rgba(201,169,110,0.2)]">
                 {benefit.tier}
@@ -113,11 +113,11 @@ export default function LoyaltyBenefits() {
           ))}
         </div>
 
-        <div className="p-8 rounded-2xl bg-[rgba(232,230,240,0.03)] border border-[rgba(232,230,240,0.08)] backdrop-blur-xl text-center">
-          <h2 className="text-2xl font-bold text-white mb-3">
+        <div className="p-8 rounded-2xl bg-[#F7F4EE] border border-[#E8E3D9] backdrop-blur-xl text-center">
+          <h2 className="text-2xl font-bold text-[#1A1A1A] mb-3">
             {isHebrew ? 'מוכנים ליהנות מהטבות בלעדיות?' : 'Ready to enjoy exclusive benefits?'}
           </h2>
-          <p className="text-white/40 mb-6 max-w-xl mx-auto">
+          <p className="text-[#8A8078] mb-6 max-w-xl mx-auto">
             {isHebrew ? 'הצטרפו למועדון הנאמנות שלנו והתחילו לצבור נקודות והטבות מהרגע הראשון' : 'Join our loyalty club and start earning points and benefits from day one'}
           </p>
           <Link href="/loyalty">

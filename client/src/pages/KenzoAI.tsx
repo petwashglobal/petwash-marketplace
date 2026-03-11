@@ -152,7 +152,7 @@ export default function KenzoAI() {
     <div
       dir={isRTL ? 'rtl' : 'ltr'}
       className="min-h-screen flex flex-col"
-      style={{ background: '#0A0A0F', color: '#FFFFFF' }}
+      style={{ background: '#FFFFFF', color: '#1A1A1A' }}
     >
       <div className="w-full max-w-3xl mx-auto flex flex-col h-screen px-3 sm:px-4">
         {/* Header */}
@@ -166,7 +166,7 @@ export default function KenzoAI() {
               <span>{labels.back}</span>
             </button>
           </Link>
-          <img src="/brand/petwash-logo-black-bg.png" alt="⁦Pet Wash™⁩" className="h-8 opacity-90" />
+          <img src="/brand/petwash-logo-white-bg.png" alt="⁦Pet Wash™⁩" className="h-8 opacity-90" />
           <div className="flex items-center gap-2">
             <Globe className="w-4 h-4" style={{ color: '#C9A96E' }} />
             <Sparkles className="w-4 h-4" style={{ color: '#C9A96E' }} />
@@ -181,9 +181,9 @@ export default function KenzoAI() {
               onClick={() => setLanguage(lang.code)}
               className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
               style={{
-                background: language === lang.code ? 'rgba(201,169,110,0.25)' : 'rgba(255,255,255,0.05)',
-                color: language === lang.code ? '#C9A96E' : 'rgba(255,255,255,0.6)',
-                border: language === lang.code ? '1px solid rgba(201,169,110,0.5)' : '1px solid rgba(255,255,255,0.1)',
+                background: language === lang.code ? 'rgba(201,169,110,0.25)' : '#F7F4EE',
+                color: language === lang.code ? '#C9A96E' : '#6A6A6A',
+                border: language === lang.code ? '1px solid rgba(201,169,110,0.5)' : '1px solid #E8E3D9',
               }}
             >
               {lang.flag} {lang.label}
@@ -200,7 +200,7 @@ export default function KenzoAI() {
             size="md"
           />
           <h1 className="text-xl font-bold mt-2" style={{ color: '#C9A96E' }}>{labels.title}</h1>
-          <p className="text-xs opacity-60">{labels.subtitle}</p>
+          <p className="text-xs" style={{ color: '#7A7068' }}>{labels.subtitle}</p>
         </div>
 
         {/* Chat Messages */}
@@ -226,15 +226,15 @@ export default function KenzoAI() {
                 style={{
                   background: msg.role === 'user'
                     ? 'rgba(201,169,110,0.2)'
-                    : 'rgba(255,255,255,0.07)',
+                    : '#F7F4EE',
                   border: msg.role === 'user'
                     ? '1px solid rgba(201,169,110,0.3)'
-                    : '1px solid rgba(255,255,255,0.1)',
+                    : '1px solid #E8E3D9',
                   backdropFilter: 'blur(12px)',
                   borderRadius: msg.role === 'user'
                     ? (isRTL ? '20px 20px 20px 4px' : '20px 20px 4px 20px')
                     : (isRTL ? '20px 20px 4px 20px' : '20px 20px 20px 4px'),
-                  color: msg.role === 'user' ? '#C9A96E' : 'rgba(255,255,255,0.9)',
+                  color: msg.role === 'user' ? '#C9A96E' : '#1A1A1A',
                 }}
               >
                 {msg.text}
@@ -252,7 +252,7 @@ export default function KenzoAI() {
               </div>
               <div
                 className="px-4 py-3 rounded-2xl flex items-center gap-1"
-                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)' }}
+                style={{ background: '#F7F4EE', border: '1px solid #E8E3D9', backdropFilter: 'blur(12px)' }}
               >
                 <span className="text-xs opacity-50">{labels.thinking}</span>
                 <span className="flex gap-0.5">
@@ -302,20 +302,20 @@ export default function KenzoAI() {
             disabled={loading}
             className="flex-1 px-4 py-3 rounded-2xl text-sm outline-none transition-all placeholder:opacity-40"
             style={{
-              background: 'rgba(255,255,255,0.07)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              color: '#FFFFFF',
+              background: '#F7F4EE',
+              border: '1px solid #E8E3D9',
+              color: '#1A1A1A',
               backdropFilter: 'blur(12px)',
             }}
             onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(201,169,110,0.5)'; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = '#E8E3D9'; }}
           />
           <button
             type="submit"
             disabled={!input.trim() || loading}
             className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:scale-105 disabled:opacity-30 shrink-0"
             style={{
-              background: input.trim() ? 'rgba(201,169,110,0.3)' : 'rgba(255,255,255,0.05)',
+              background: input.trim() ? 'rgba(201,169,110,0.3)' : '#F7F4EE',
               border: '1px solid rgba(201,169,110,0.4)',
               color: '#C9A96E',
             }}

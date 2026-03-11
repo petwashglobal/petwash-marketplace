@@ -84,7 +84,7 @@ export default function LoyaltyRefer() {
     <div
       dir={isHebrew || language === 'ar' ? 'rtl' : 'ltr'}
       className="min-h-screen"
-      style={{ background: '#0A0A0F' }}
+      style={{ background: '#FFFFFF' }}
     >
       <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <Link href="/loyalty">
@@ -95,14 +95,14 @@ export default function LoyaltyRefer() {
         </Link>
 
         <div className="text-center mb-12">
-          <img src="/brand/petwash-logo-black-bg.png" alt="⁦Pet Wash™⁩" className="h-12 mx-auto mb-6 opacity-90" />
+          <img src="/brand/petwash-logo-white-bg.png" alt="⁦Pet Wash™⁩" className="h-12 mx-auto mb-6 opacity-90" />
           <div className="w-16 h-16 rounded-2xl bg-[rgba(139,92,246,0.1)] border border-[rgba(139,92,246,0.2)] flex items-center justify-center mx-auto mb-4">
             <Share2 className="w-8 h-8 text-purple-400" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
+          <h1 className="text-4xl md:text-5xl font-bold text-[#1A1A1A] mb-3">
             {isHebrew ? 'הזמנת חברים' : 'Refer a Friend'}
           </h1>
-          <p className="text-lg text-white/50 max-w-2xl mx-auto">
+          <p className="text-lg text-[#7A7068] max-w-2xl mx-auto">
             {isHebrew ? 'הזמינו חברים והרוויחו קרדיט רחיצה. שתפו את האהבה וקבלו תגמולים יחד!' : 'Invite friends and earn wash credits. Share the love and get rewarded together!'}
           </p>
         </div>
@@ -111,23 +111,23 @@ export default function LoyaltyRefer() {
           {stats.map((stat, idx) => (
             <div
               key={idx}
-              className="p-6 rounded-2xl bg-[rgba(232,230,240,0.03)] border border-[rgba(232,230,240,0.08)] backdrop-blur-xl text-center transition-all duration-300 hover:border-[rgba(139,92,246,0.3)]"
+              className="p-6 rounded-2xl bg-[#F7F4EE] border border-[#E8E3D9] backdrop-blur-xl text-center transition-all duration-300 hover:border-[rgba(139,92,246,0.3)]"
             >
               <div className="w-12 h-12 rounded-xl bg-[rgba(139,92,246,0.1)] flex items-center justify-center mx-auto mb-3">
                 <stat.icon className="w-6 h-6 text-purple-400" />
               </div>
-              <p className="text-white/40 text-sm mb-1">{stat.label}</p>
+              <p className="text-[#8A8078] text-sm mb-1">{stat.label}</p>
               <p className="text-3xl font-bold text-[#C9A96E]">{stat.value}</p>
             </div>
           ))}
         </div>
 
-        <div className="p-8 rounded-2xl bg-[rgba(232,230,240,0.03)] border border-[rgba(201,169,110,0.15)] backdrop-blur-xl mb-10 shadow-[0_0_40px_rgba(201,169,110,0.05)]">
-          <h2 className="text-2xl font-bold text-white text-center mb-6">
+        <div className="p-8 rounded-2xl bg-[#F7F4EE] border border-[rgba(201,169,110,0.15)] backdrop-blur-xl mb-10 shadow-[0_0_40px_rgba(201,169,110,0.05)]">
+          <h2 className="text-2xl font-bold text-[#1A1A1A] text-center mb-6">
             {isHebrew ? 'קוד ההפניה שלך' : 'Your Referral Code'}
           </h2>
           <div className="max-w-md mx-auto">
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-[rgba(232,230,240,0.05)] border border-[rgba(201,169,110,0.2)] mb-6">
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-[#F0EBE0] border border-[rgba(201,169,110,0.2)] mb-6">
               <code className="flex-1 text-2xl font-bold text-center text-[#C9A96E] tracking-[0.2em]">
                 {referralCode}
               </code>
@@ -146,40 +146,40 @@ export default function LoyaltyRefer() {
                   className="flex flex-col items-center gap-2 py-4 px-3 rounded-xl bg-[rgba(139,92,246,0.08)] border border-[rgba(139,92,246,0.15)] hover:bg-[rgba(139,92,246,0.15)] hover:border-[rgba(139,92,246,0.3)] transition-all duration-300"
                 >
                   <button.icon className="w-5 h-5 text-purple-400" />
-                  <span className="text-xs text-white/60">{button.label}</span>
+                  <span className="text-xs text-[#6A6A6A]">{button.label}</span>
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="p-8 rounded-2xl bg-[rgba(232,230,240,0.03)] border border-[rgba(232,230,240,0.08)] backdrop-blur-xl mb-10">
-          <h2 className="text-2xl font-bold text-white text-center mb-8">
+        <div className="p-8 rounded-2xl bg-[#F7F4EE] border border-[#E8E3D9] backdrop-blur-xl mb-10">
+          <h2 className="text-2xl font-bold text-[#1A1A1A] text-center mb-8">
             {isHebrew ? 'תגמולי הפניה' : 'Referral Rewards'}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
             {rewards.map((reward, idx) => (
               <div
                 key={idx}
-                className="p-6 rounded-xl bg-[rgba(232,230,240,0.04)] border border-[rgba(232,230,240,0.08)] text-center transition-all duration-300 hover:border-[rgba(201,169,110,0.3)] hover:scale-[1.02]"
+                className="p-6 rounded-xl bg-[#F7F4EE] border border-[#E8E3D9] text-center transition-all duration-300 hover:border-[rgba(201,169,110,0.3)] hover:scale-[1.02]"
               >
                 <div className="w-10 h-10 rounded-full bg-[rgba(201,169,110,0.1)] flex items-center justify-center mx-auto mb-3">
                   <TrendingUp className="w-5 h-5 text-[#C9A96E]" />
                 </div>
-                <p className="font-semibold text-white mb-1">{reward.friends}</p>
-                <p className="text-white/30 text-xs mb-2">{reward.friendsAlt}</p>
+                <p className="font-semibold text-[#1A1A1A] mb-1">{reward.friends}</p>
+                <p className="text-[#9A9088] text-xs mb-2">{reward.friendsAlt}</p>
                 <p className="text-2xl font-bold text-[#C9A96E] mb-1">{reward.reward}</p>
-                <p className="text-white/40 text-xs">{isHebrew ? 'נקודות' : 'Points'}</p>
-                <div className="mt-3 pt-3 border-t border-[rgba(232,230,240,0.08)]">
-                  <p className="text-white/50 text-sm">{reward.bonus}</p>
+                <p className="text-[#8A8078] text-xs">{isHebrew ? 'נקודות' : 'Points'}</p>
+                <div className="mt-3 pt-3 border-t border-[#E8E3D9]">
+                  <p className="text-[#7A7068] text-sm">{reward.bonus}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="p-8 rounded-2xl bg-[rgba(232,230,240,0.03)] border border-[rgba(232,230,240,0.08)] backdrop-blur-xl">
-          <h2 className="text-2xl font-bold text-white text-center mb-8">
+        <div className="p-8 rounded-2xl bg-[#F7F4EE] border border-[#E8E3D9] backdrop-blur-xl">
+          <h2 className="text-2xl font-bold text-[#1A1A1A] text-center mb-8">
             {isHebrew ? 'איך זה עובד' : 'How It Works'}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -187,22 +187,22 @@ export default function LoyaltyRefer() {
               <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#C9A96E] to-[#d4af37] text-[#0A0A0F] font-bold text-xl flex items-center justify-center mx-auto mb-4">
                 1
               </div>
-              <h3 className="font-semibold text-white mb-1">{isHebrew ? 'שתפו את הקוד' : 'Share Your Code'}</h3>
-              <p className="text-white/40 text-sm">{isHebrew ? 'שלחו את קוד ההפניה הייחודי שלכם לחברים ומשפחה' : 'Send your unique referral code to friends and family'}</p>
+              <h3 className="font-semibold text-[#1A1A1A] mb-1">{isHebrew ? 'שתפו את הקוד' : 'Share Your Code'}</h3>
+              <p className="text-[#8A8078] text-sm">{isHebrew ? 'שלחו את קוד ההפניה הייחודי שלכם לחברים ומשפחה' : 'Send your unique referral code to friends and family'}</p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#C9A96E] to-[#d4af37] text-[#0A0A0F] font-bold text-xl flex items-center justify-center mx-auto mb-4">
                 2
               </div>
-              <h3 className="font-semibold text-white mb-1">{isHebrew ? 'הם נרשמים' : 'They Sign Up'}</h3>
-              <p className="text-white/40 text-sm">{isHebrew ? 'החבר שלכם יוצר חשבון באמצעות הקוד שלכם' : 'Your friend creates an account using your code'}</p>
+              <h3 className="font-semibold text-[#1A1A1A] mb-1">{isHebrew ? 'הם נרשמים' : 'They Sign Up'}</h3>
+              <p className="text-[#8A8078] text-sm">{isHebrew ? 'החבר שלכם יוצר חשבון באמצעות הקוד שלכם' : 'Your friend creates an account using your code'}</p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#C9A96E] to-[#d4af37] text-[#0A0A0F] font-bold text-xl flex items-center justify-center mx-auto mb-4">
                 3
               </div>
-              <h3 className="font-semibold text-white mb-1">{isHebrew ? 'הרוויחו תגמולים' : 'Earn Rewards'}</h3>
-              <p className="text-white/40 text-sm">{isHebrew ? 'שניכם מקבלים נקודות בונוס ותגמולים' : 'Both of you receive bonus points and rewards'}</p>
+              <h3 className="font-semibold text-[#1A1A1A] mb-1">{isHebrew ? 'הרוויחו תגמולים' : 'Earn Rewards'}</h3>
+              <p className="text-[#8A8078] text-sm">{isHebrew ? 'שניכם מקבלים נקודות בונוס ותגמולים' : 'Both of you receive bonus points and rewards'}</p>
             </div>
           </div>
         </div>
