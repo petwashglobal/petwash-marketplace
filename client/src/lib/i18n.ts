@@ -30,6 +30,7 @@ export const translations: TranslationStrings = {
   'nav.privacy': { en: 'Privacy', he: 'פרטיות', ar: 'خصوصية', ru: 'Конфиденциальность', fr: 'Confidentialité', es: 'Privacidad' },
   'nav.terms': { en: 'Terms', he: 'תנאים', ar: 'الشروط', ru: 'Условия', fr: 'Conditions', es: 'Términos' },
   'nav.welcome': { en: 'Welcome', he: 'שלום', ar: 'مرحبا', ru: 'Добро пожаловать', fr: 'Bienvenue', es: 'Bienvenido' },
+  'nav.messages': { en: 'Messages', he: 'הודעות', ar: 'الرسائل', ru: 'Сообщения', fr: 'Messages', es: 'Mensajes' },
   // Header-specific
   'header.hello': { en: 'Hello', he: 'שלום', ar: 'مرحبا', ru: 'Привет', fr: 'Bonjour', es: 'Hola' },
   'header.logout': { en: 'Logout', he: 'התנתק', ar: 'تسجيل خروج', ru: 'Выйти', fr: 'Déconnexion', es: 'Cerrar sesión' },
