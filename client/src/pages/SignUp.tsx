@@ -467,14 +467,15 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
         logger.warn("Session cookie refresh failed (non-blocking)", refreshErr);
       }
 
-      // Show passkey prompt if supported, otherwise redirect
+      // Show passkey prompt if supported, otherwise redirect through consent journey
       if (isPasskeySupported()) {
         setShowPasskeyPrompt(true);
       } else {
         setTimeout(() => {
-          logger.debug("Navigating to dashboard");
+          logger.debug("Navigating to consent onboarding");
           window.scrollTo(0, 0);
-          navigate("/dashboard");
+          const consentDone = localStorage.getItem('petwash_consent_onboarding_complete');
+          navigate(consentDone ? "/dashboard" : "/consent-onboarding");
         }, 1800);
       }
 
@@ -512,9 +513,13 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       logger.error("No Firebase token available");
       setShowPasskeyPrompt(false);
       window.scrollTo(0, 0);
-      navigate("/dashboard");
+      const _consentDone = localStorage.getItem('petwash_consent_onboarding_complete');
+      navigate(_consentDone ? '/dashboard' : '/consent-onboarding');
       return;
     }
+
+    const consentDone = localStorage.getItem('petwash_consent_onboarding_complete');
+    const postConsentTarget = consentDone ? '/dashboard' : '/consent-onboarding';
 
     try {
       setPasskeyLoading(true);
@@ -548,7 +553,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       setShowPasskeyPrompt(false);
       setTimeout(() => {
         window.scrollTo(0, 0);
-        navigate("/dashboard");
+        navigate(postConsentTarget);
       }, 500);
     }
   };
@@ -564,9 +569,10 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       language,
     });
 
+    const consentDone = localStorage.getItem('petwash_consent_onboarding_complete');
     setShowPasskeyPrompt(false);
     window.scrollTo(0, 0);
-    navigate("/dashboard");
+    navigate(consentDone ? '/dashboard' : '/consent-onboarding');
   };
 
   return (

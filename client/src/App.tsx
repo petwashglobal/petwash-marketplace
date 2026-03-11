@@ -151,6 +151,8 @@ const MobileStationSheet = lazy(() => import("@/pages/MobileStationSheet"));
 const MobileOpsHub = lazy(() => import("@/pages/MobileOpsHub"));
 const OpsTodayPage = lazy(() => import("@/pages/OpsTodayPage"));
 const WelcomeConsent = lazy(() => import("@/pages/WelcomeConsent"));
+const ConsentOnboarding = lazy(() => import("@/pages/ConsentOnboarding"));
+const NotificationConsent = lazy(() => import("@/pages/NotificationConsent"));
 const OpsDashboard = lazy(() => import("@/pages/OpsDashboard"));
 const EnterpriseHQ = lazy(() => import("@/pages/EnterpriseHQ"));
 const FranchiseeDashboard = lazy(() => import("@/pages/FranchiseeDashboard"));
@@ -476,6 +478,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         <Route path="/welcome-consent">{() => <WelcomeConsent language={language} onLanguageChange={handleLanguageChange} />}</Route>
+        <Route path="/consent-onboarding">{() => <ConsentOnboarding language={language} />}</Route>
+        <Route path="/notification-consent">{() => <NotificationConsent language={language} />}</Route>
         
         {/* Firebase Auth Action Handler (password reset, email verification) */}
         <Route path="/auth/action">{() => <AuthAction />}</Route>
