@@ -8,7 +8,7 @@ const router = Router();
  * PetWash Shield™ Security Status API
  * Returns real-time status of all security systems
  */
-router.get('/api/security/status', validateFirebaseToken, async (req, res) => {
+router.get('/status', validateFirebaseToken, async (req, res) => {
   try {
     // Check Biometric Access (WebAuthn/Passkey system)
     const biometricAccess = {

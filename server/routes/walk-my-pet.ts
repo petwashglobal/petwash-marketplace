@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { randomInt } from 'crypto';
+import { randomInt, randomBytes } from 'crypto';
 import { db } from '../db';
 import { 
   walkerProfiles, 
@@ -118,7 +118,7 @@ router.patch('/walkers/location', requireAuth, async (req, res) => {
 });
 
 // Get walker profile
-router.get('/api/walkers/:walkerId', async (req, res) => {
+router.get('/walkers/:walkerId', async (req, res) => {
   try {
     const { walkerId } = req.params;
     
@@ -140,7 +140,7 @@ router.get('/api/walkers/:walkerId', async (req, res) => {
 });
 
 // Update walker profile
-router.patch('/api/walkers/:walkerId', async (req, res) => {
+router.patch('/walkers/:walkerId', async (req, res) => {
   try {
     const { walkerId } = req.params;
     const userId = req.body.userId || (req as any).user?.uid;
@@ -174,7 +174,7 @@ router.patch('/api/walkers/:walkerId', async (req, res) => {
 });
 
 // Search walkers by location (geolocation)
-router.post('/api/walkers/search', async (req, res) => {
+router.post('/walkers/search', async (req, res) => {
   try {
     const { latitude, longitude, radiusKm = 5, minRating = 0, hasBodyCamera, hasDroneAccess } = req.body;
 
@@ -239,7 +239,7 @@ router.post('/api/walkers/search', async (req, res) => {
 // =================== WALK BOOKING ===================
 
 // Create walk booking - USING LUXURY ENGINE
-router.post('/api/walks/book', requireAuth, async (req, res) => {
+router.post('/walks/book', requireAuth, async (req, res) => {
   try {
     const ownerId = req.body.ownerId || (req as any).user?.uid;
     if (!ownerId) {
@@ -683,7 +683,7 @@ router.get('/bookings/provider-pending', requireAuth, async (req, res) => {
 });
 
 // EMERGENCY/ASAP WALK REQUEST (Pet Wash™ "Book Now" model)
-router.post('/api/walks/emergency-request', requireAuth, async (req, res) => {
+router.post('/walks/emergency-request', requireAuth, async (req, res) => {
   try {
     const ownerId = req.body.ownerId || (req as any).user?.uid;
     if (!ownerId) {
@@ -737,8 +737,37 @@ router.post('/api/walks/emergency-request', requireAuth, async (req, res) => {
   }
 });
 
+// =================== SLOT HOLDS (Double-booking prevention) ===================
+const walkSlotHolds = new Map<string, { walkerId: string; expiresAt: number; estimatedAmount: number }>();
+
+router.post('/walks/holds', requireAuth, async (req, res) => {
+  try {
+    const { slotId, walkerId, estimatedAmount, walkDuration } = req.body;
+    if (!slotId || !walkerId) {
+      return res.status(400).json({ success: false, error: 'slotId and walkerId are required' });
+    }
+    // Check if slot already held by a different hold
+    for (const [hId, hold] of walkSlotHolds.entries()) {
+      if (hold.walkerId === walkerId && hold.expiresAt > Date.now()) {
+        return res.status(409).json({ success: false, error: 'Walker slot currently held by another booking' });
+      }
+    }
+    const holdId = `HOLD-${randomBytes(6).toString('hex').toUpperCase()}`;
+    const ttlMs = (walkDuration || 30) * 60 * 1000 + 5 * 60 * 1000; // walk duration + 5min buffer
+    walkSlotHolds.set(holdId, { walkerId, expiresAt: Date.now() + ttlMs, estimatedAmount: estimatedAmount || 0 });
+    // Clean up expired holds
+    for (const [k, v] of walkSlotHolds.entries()) {
+      if (v.expiresAt < Date.now()) walkSlotHolds.delete(k);
+    }
+    return res.json({ success: true, holdId, slotId, estimatedAmount: estimatedAmount || 0, expiresAt: new Date(Date.now() + ttlMs).toISOString() });
+  } catch (error: any) {
+    console.error('[Walk Holds] Error:', error);
+    res.status(500).json({ success: false, error: 'Failed to create slot hold' });
+  }
+});
+
 // Get booking details
-router.get('/api/walks/:bookingId', async (req, res) => {
+router.get('/walks/:bookingId', async (req, res) => {
   try {
     const { bookingId } = req.params;
     
@@ -778,7 +807,7 @@ router.get('/api/walks/:bookingId', async (req, res) => {
 });
 
 // Walker confirms booking
-router.post('/api/walks/:bookingId/confirm', async (req, res) => {
+router.post('/walks/:bookingId/confirm', async (req, res) => {
   try {
     const { bookingId } = req.params;
     const walkerId = req.body.walkerId;
@@ -841,7 +870,7 @@ router.post('/api/walks/:bookingId/confirm', async (req, res) => {
 });
 
 // Start walk (walker initiates)
-router.post('/api/walks/:bookingId/start', async (req, res) => {
+router.post('/walks/:bookingId/start', async (req, res) => {
   try {
     const { bookingId } = req.params;
     const { confirmationCode, latitude, longitude } = req.body;
@@ -909,7 +938,7 @@ router.post('/api/walks/:bookingId/start', async (req, res) => {
 // =================== GPS TRACKING ===================
 
 // Upload GPS point (walker's device streams location)
-router.post('/api/walks/:bookingId/gps', async (req, res) => {
+router.post('/walks/:bookingId/gps', async (req, res) => {
   try {
     const { bookingId } = req.params;
     const { latitude, longitude, accuracy, speed, heading, batteryLevel } = req.body;
@@ -988,7 +1017,7 @@ router.post('/api/walks/:bookingId/gps', async (req, res) => {
 });
 
 // Get live GPS tracking data
-router.get('/api/walks/:bookingId/gps/live', async (req, res) => {
+router.get('/walks/:bookingId/gps/live', async (req, res) => {
   try {
     const { bookingId } = req.params;
     const { limit = 50 } = req.query;
@@ -1010,7 +1039,7 @@ router.get('/api/walks/:bookingId/gps/live', async (req, res) => {
 // =================== WALK COMPLETION ===================
 
 // Complete walk
-router.post('/api/walks/:bookingId/complete', async (req, res) => {
+router.post('/walks/:bookingId/complete', async (req, res) => {
   try {
     const { bookingId } = req.params;
     const { completionNotes, healthData } = req.body;
@@ -1153,7 +1182,7 @@ router.post('/api/walks/:bookingId/complete', async (req, res) => {
 // =================== REVIEWS ===================
 
 // Submit walker review
-router.post('/api/walkers/:walkerId/review', async (req, res) => {
+router.post('/walkers/:walkerId/review', async (req, res) => {
   try {
     const { walkerId } = req.params;
     const ownerId = req.body.ownerId || (req as any).user?.uid;
@@ -1194,7 +1223,7 @@ router.post('/api/walkers/:walkerId/review', async (req, res) => {
 });
 
 // Get walker reviews
-router.get('/api/walkers/:walkerId/reviews', async (req, res) => {
+router.get('/walkers/:walkerId/reviews', async (req, res) => {
   try {
     const { walkerId } = req.params;
     const { limit = 20, offset = 0 } = req.query;
@@ -1217,7 +1246,7 @@ router.get('/api/walkers/:walkerId/reviews', async (req, res) => {
 // =================== USER BOOKINGS ===================
 
 // Get user's bookings (as owner)
-router.get('/api/users/:userId/walks', async (req, res) => {
+router.get('/users/:userId/walks', async (req, res) => {
   try {
     const { userId } = req.params;
     const { status } = req.query;
@@ -1242,7 +1271,7 @@ router.get('/api/users/:userId/walks', async (req, res) => {
 });
 
 // Get walker's bookings
-router.get('/api/walkers/:walkerId/walks', async (req, res) => {
+router.get('/walkers/:walkerId/walks', async (req, res) => {
   try {
     const { walkerId } = req.params;
     const { status } = req.query;
@@ -1269,7 +1298,7 @@ router.get('/api/walkers/:walkerId/walks', async (req, res) => {
 // =================== WALK-MY-PET API (Frontend Compatible) ===================
 
 // Get walker profile by numeric ID with reviews (for WalkerDetail.tsx)
-router.get('/api/walk-my-pet/walkers/:id', async (req, res) => {
+router.get('/walker-detail/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     
@@ -1330,7 +1359,7 @@ router.get('/api/walk-my-pet/walkers/:id', async (req, res) => {
   }
 });
 
-router.get('/api/walk-my-pet/walkers', async (req, res) => {
+router.get('/walkers-list', async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 12));

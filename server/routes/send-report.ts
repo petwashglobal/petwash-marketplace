@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 
 const router = Router();
 
-router.post('/api/send-platform-report', async (req: Request, res: Response) => {
+router.post('/send-platform-report', async (req: Request, res: Response) => {
   try {
     const report = readFileSync('/tmp/platform_status_report.txt', 'utf-8');
     

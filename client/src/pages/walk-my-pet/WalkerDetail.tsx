@@ -46,7 +46,7 @@ export default function WalkerDetail() {
     walker: Walker;
     reviews: WalkerReview[];
   }>({
-    queryKey: [`/api/walk-my-pet/walkers/${id}`],
+    queryKey: [`/api/walk-my-pet/walker-detail/${id}`],
   });
 
   const walker = walkerData?.walker;

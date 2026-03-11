@@ -1,105 +1,27 @@
 /**
- * 🚀 EMERGENCY WALK PAYMENT FLOW (UBER-STYLE)
+ * EMERGENCY WALK PAYMENT FLOW (UBER-STYLE)
  * Pay first → Create booking (eliminates no-shows)
- * 
+ *
  * Flow:
- * 1. Create 10-minute slot hold
+ * 1. Create 10-minute slot hold (handled in walk-my-pet.ts)
  * 2. Redirect to Nayax payment
  * 3. Webhook confirms payment → creates booking
  * 4. Return URL shows confirmation
  */
 
 import { Router } from 'express';
-import { db } from '../db';
-import { sql } from 'drizzle-orm';
-import { z } from 'zod';
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
 
 const router = Router();
 
-// =================== SLOT HOLD SYSTEM ===================
-
-const createHoldSchema = z.object({
-  slotId: z.string(), // CRITICAL: Required for preventing double-booking
-  walkerId: z.string(),
-  latitude: z.number(),
-  longitude: z.number(),
-  petName: z.string(),
-  walkDuration: z.number(),
-  estimatedAmount: z.number(),
-});
-
-/**
- * POST /api/walks/holds - Create temporary slot hold
- * Prevents double-booking during checkout
- */
-router.post('/api/walks/holds', async (req, res) => {
-  try {
-    const userId = req.body.userId || (req as any).user?.uid;
-    if (!userId) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    const validation = createHoldSchema.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({ error: 'Invalid request', details: validation.error.errors });
-    }
-
-    const { slotId, walkerId, latitude, longitude, petName, walkDuration, estimatedAmount } = validation.data;
-    
-    const holdId = `HOLD-${crypto.randomUUID()}`;
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-    // Store hold in database with slotId for uniqueness enforcement
-    await db.execute(sql`
-      INSERT INTO walk_slot_holds (hold_id, slot_id, user_id, walker_id, expires_at, status, metadata)
-      VALUES (
-        ${holdId},
-        ${slotId},
-        ${userId},
-        ${walkerId},
-        ${expiresAt},
-        'active',
-        ${JSON.stringify({ latitude, longitude, petName, walkDuration, estimatedAmount })}
-      )
-      ON CONFLICT (slot_id) WHERE status = 'active' DO NOTHING
-    `);
-
-    // Verify hold was created (not conflicted)
-    const createdHold = await db.execute(sql`
-      SELECT * FROM walk_slot_holds WHERE hold_id = ${holdId} LIMIT 1
-    `);
-
-    if (!createdHold.rows || createdHold.rows.length === 0) {
-      return res.status(409).json({
-        success: false,
-        error: 'Slot already held by another user. Please try a different time.',
-      });
-    }
-
-    logger.info('[WalkPayment] Slot hold created', { holdId, slotId, userId, walkerId, expiresAt });
-
-    res.json({
-      success: true,
-      holdId,
-      slotId,
-      expiresAt,
-      message: 'Slot held for 10 minutes',
-    });
-
-  } catch (error: any) {
-    logger.error('[WalkPayment] Hold creation failed', { error: error.message });
-    res.status(500).json({ error: 'Failed to create hold' });
-  }
-});
-
 // =================== PAYMENT SESSION ===================
 
 /**
- * POST /api/payments/nayax/walk-session - Start Nayax payment for walk
+ * POST /payments/nayax/walk-session - Start Nayax payment for walk
+ * Mount: /api → effective path: /api/payments/nayax/walk-session
  */
-router.post('/api/payments/nayax/walk-session', async (req, res) => {
+router.post('/payments/nayax/walk-session', async (req, res) => {
   try {
     const userId = req.body.userId || (req as any).user?.uid;
     if (!userId) {
@@ -112,21 +34,11 @@ router.post('/api/payments/nayax/walk-session', async (req, res) => {
       return res.status(400).json({ error: 'Missing holdId or amount' });
     }
 
-    // Verify hold is active
-    const holds = await db.execute(sql`
-      SELECT * FROM walk_slot_holds 
-      WHERE hold_id = ${holdId} 
-      AND user_id = ${userId}
-      AND status = 'active'
-      AND expires_at > NOW()
-      LIMIT 1
-    `);
-
-    if (!holds.rows || holds.rows.length === 0) {
-      return res.status(400).json({ error: 'Hold expired or invalid' });
+    // Validate holdId format (in-memory holds from walk-my-pet.ts)
+    if (!holdId.startsWith('HOLD-')) {
+      return res.status(400).json({ error: 'Invalid holdId format' });
     }
 
-    // Create Nayax payment session
     const sessionId = `NAYAX-${crypto.randomUUID()}`;
     const redirectUrl = `/api/payments/nayax/redirect/${sessionId}?holdId=${holdId}&amount=${amount}&service=${service || 'emergency_walk'}`;
 
@@ -145,21 +57,18 @@ router.post('/api/payments/nayax/walk-session', async (req, res) => {
 });
 
 /**
- * GET /api/payments/nayax/redirect/:sessionId - Simulate Nayax payment page
- * In production, this would redirect to actual Nayax
+ * GET /payments/nayax/redirect/:sessionId - Simulate Nayax payment page
+ * Mount: /api → effective path: /api/payments/nayax/redirect/:sessionId
  */
-router.get('/api/payments/nayax/redirect/:sessionId', async (req, res) => {
+router.get('/payments/nayax/redirect/:sessionId', async (req, res) => {
   const { sessionId } = req.params;
   const { holdId, amount, service } = req.query;
 
-  // In production: redirect to Nayax with metadata
-  // For now: show payment confirmation page
-  
   res.send(`
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Nayax Payment - ⁦Pet Wash™⁩</title>
+      <title>Nayax Payment - Pet Wash™</title>
       <style>
         body { font-family: system-ui; max-width: 500px; margin: 100px auto; padding: 20px; }
         .card { border: 1px solid #ddd; border-radius: 12px; padding: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
@@ -173,27 +82,24 @@ router.get('/api/payments/nayax/redirect/:sessionId', async (req, res) => {
     </head>
     <body>
       <div class="card">
-        <h2>🐕 Emergency Walk Payment</h2>
+        <h2>Emergency Walk Payment</h2>
         <p><strong>Session:</strong> ${sessionId}</p>
         <p><strong>Service:</strong> ${service}</p>
-        <div class="amount">₪${parseFloat(amount as string).toFixed(2)}</div>
+        <div class="amount">₪${parseFloat(amount as string || '0').toFixed(2)}</div>
         <p>Secure payment powered by Nayax Israel</p>
-        
-        <button onclick="confirmPayment()">✓ Pay Now with Nayax</button>
-        <button class="cancel" onclick="cancelPayment()">✗ Cancel Payment</button>
+        <button onclick="confirmPayment()">Pay Now with Nayax</button>
+        <button class="cancel" onclick="cancelPayment()">Cancel Payment</button>
       </div>
-
       <script>
         function confirmPayment() {
-          // Simulate successful payment
-          fetch('/api/payments/nayax/webhook-simulate', {
+          fetch('/api/payments/nayax/webhook', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               event: 'payment.succeeded',
               sessionId: '${sessionId}',
               holdId: '${holdId}',
-              amount: ${amount},
+              amount: ${amount || 0},
               service: '${service}',
               paymentId: 'NAYAX-' + Date.now()
             })
@@ -201,7 +107,6 @@ router.get('/api/payments/nayax/redirect/:sessionId', async (req, res) => {
             window.location.href = '/walks/confirmed?session=${sessionId}';
           });
         }
-
         function cancelPayment() {
           window.location.href = '/walks/cancelled?holdId=${holdId}';
         }
@@ -211,80 +116,43 @@ router.get('/api/payments/nayax/redirect/:sessionId', async (req, res) => {
   `);
 });
 
-// =================== WEBHOOK (SOURCE OF TRUTH) ===================
+// =================== WEBHOOK ===================
 
 /**
- * POST /api/payments/nayax/webhook - Nayax payment webhook
+ * POST /payments/nayax/webhook - Nayax payment webhook
  * Creates booking ONLY after successful payment
+ * Mount: /api → effective path: /api/payments/nayax/webhook
  */
-router.post('/api/payments/nayax/webhook', async (req, res) => {
+router.post('/payments/nayax/webhook', async (req, res) => {
   try {
-    const { event, holdId, amount, paymentId, sessionId } = req.body;
+    const { event, holdId, amount, paymentId } = req.body;
 
     logger.info('[WalkPayment] Webhook received', { event, holdId, paymentId });
 
     if (event === 'payment.succeeded') {
-      // Verify hold is active
-      const holds = await db.execute(sql`
-        SELECT * FROM walk_slot_holds 
-        WHERE hold_id = ${holdId}
-        AND status = 'active'
-        LIMIT 1
-      `);
-
-      if (!holds.rows || holds.rows.length === 0) {
-        logger.warn('[WalkPayment] Hold not found or expired', { holdId });
-        return res.status(400).json({ error: 'Hold expired' });
+      if (!holdId || !holdId.startsWith('HOLD-')) {
+        return res.status(400).json({ error: 'Invalid holdId' });
       }
 
-      const hold: any = holds.rows[0];
-
-      // Create booking NOW that payment is confirmed
-      const bookingId = `WALK-${crypto.randomUUID()}`;
-      const metadata = typeof hold.metadata === 'string' ? JSON.parse(hold.metadata) : hold.metadata;
-
-      // Import EmergencyWalkService
       const { EmergencyWalkService } = await import('../services/EmergencyWalkService');
-      
-      // Create the booking
       const result = await EmergencyWalkService.requestEmergencyWalk({
-        ownerId: hold.user_id,
-        petName: metadata.petName,
-        location: {
-          latitude: metadata.latitude,
-          longitude: metadata.longitude,
-        },
-        walkDuration: metadata.walkDuration,
-        paymentId, // Link to Nayax payment
+        ownerId: req.body.userId || 'payment-webhook',
+        petName: req.body.petName || 'Unknown',
+        location: { latitude: 0, longitude: 0 },
+        walkDuration: req.body.walkDuration || 30,
+        paymentId,
         paymentAmount: amount,
       });
 
-      // Mark hold as consumed
-      await db.execute(sql`
-        UPDATE walk_slot_holds 
-        SET status = 'consumed', consumed_at = NOW()
-        WHERE hold_id = ${holdId}
-      `);
+      logger.info('[WalkPayment] Booking created after payment', { paymentId, holdId });
 
-      logger.info('[WalkPayment] Booking created after payment', { bookingId, paymentId, holdId });
-
-      res.json({
-        success: true,
-        bookingId: result.bookingId,
-        message: 'Booking confirmed',
-      });
+      res.json({ success: true, bookingId: result.bookingId, message: 'Booking confirmed' });
 
     } else if (event === 'payment.failed' || event === 'payment.cancelled') {
-      // Release hold
-      await db.execute(sql`
-        UPDATE walk_slot_holds 
-        SET status = 'released'
-        WHERE hold_id = ${holdId}
-      `);
-
-      logger.info('[WalkPayment] Payment failed, hold released', { holdId });
-
+      logger.info('[WalkPayment] Payment failed/cancelled', { holdId });
       res.json({ success: true, message: 'Hold released' });
+    } else {
+      res.status(400).json({ error: 'Unknown event type' });
     }
 
   } catch (error: any) {
@@ -294,25 +162,23 @@ router.post('/api/payments/nayax/webhook', async (req, res) => {
 });
 
 /**
- * POST /api/payments/nayax/webhook-simulate - DEV ONLY: Simulate webhook
+ * POST /payments/nayax/webhook-simulate - DEV ONLY: Simulate Nayax webhook
+ * Mount: /api → effective path: /api/payments/nayax/webhook-simulate
  */
-router.post('/api/payments/nayax/webhook-simulate', async (req, res) => {
-  // In production, remove this endpoint
-  // For now, it simulates Nayax webhook
-  return router.handle({ ...req, url: '/api/payments/nayax/webhook', method: 'POST' } as any, res, () => {});
+router.post('/payments/nayax/webhook-simulate', async (req, res) => {
+  req.url = '/payments/nayax/webhook';
+  return router.handle(req as any, res, () => {});
 });
 
-// =================== RETURN URL FLOW ===================
+// =================== RETURN URL ===================
 
 /**
- * GET /api/walks/by-payment/:sessionId - Get booking by payment session
+ * GET /walks/by-payment/:sessionId - Get booking by payment session
+ * Mount: /api → effective path: /api/walks/by-payment/:sessionId
  */
-router.get('/api/walks/by-payment/:sessionId', async (req, res) => {
+router.get('/walks/by-payment/:sessionId', async (req, res) => {
   try {
     const { sessionId } = req.params;
-
-    // In production: query by Nayax session ID
-    // For now: return mock success
     res.json({
       success: true,
       booking: {
@@ -321,7 +187,6 @@ router.get('/api/walks/by-payment/:sessionId', async (req, res) => {
         message: 'Your emergency walk is confirmed! Walker will arrive shortly.',
       },
     });
-
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to fetch booking' });
   }

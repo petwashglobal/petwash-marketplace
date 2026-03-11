@@ -9265,9 +9265,6 @@ self.addEventListener('notificationclick', (event) => {
   
   // Stations Management routes
   app.use('/api/admin/stations', adminLimiter, requireAdminMfa, stationsRoutes);
-  app.use('/api/admin/alerts', adminLimiter, requireAdminMfa, stationsRoutes);
-  app.use('/api/admin/sheets', adminLimiter, requireAdminMfa, stationsRoutes);
-  app.use('/api/admin/health', adminLimiter, requireAdminMfa, stationsRoutes);
   
   // Enterprise Management routes (2026 Global Franchise System)
   app.use('/api/enterprise', adminLimiter, requireAdminMfa, enterpriseRoutes);
@@ -9508,7 +9505,7 @@ self.addEventListener('notificationclick', (event) => {
     });
   });
   app.use('/api/walk-my-pet', apiLimiter, walkMyPetRoutes);
-  app.use(apiLimiter, walkMyPetRoutes);
+  app.use('/api', apiLimiter, walkMyPetRoutes);
   
   // ⁦Walk My Pet™⁩ - Session Management (Check-in/Check-out, GPS, Vitals)
   app.use('/api/walk-session', apiLimiter, walkSessionRoutes);
@@ -9548,7 +9545,7 @@ self.addEventListener('notificationclick', (event) => {
   
   // Notifications, Chat, VAT Calculator, and Fee Configuration Services
   app.use('/api/notifications', apiLimiter, notificationsRoutes);
-  app.use('/api/chat', apiLimiter, chatRoutes);
+  app.use('/api/chat-v1', apiLimiter, chatRoutes);
   app.use('/api/vat', apiLimiter, vatRoutes);
   app.use('/api/fees', apiLimiter, feesRoutes);
   
@@ -9710,7 +9707,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/operations', adminLimiter, operationsRoutes);
   app.use('/api/deployment', adminLimiter, requireAdminMfa, deploymentRoutes);
   app.use('/api/metrics', adminLimiter, metricsRoutes);
-  app.use('/api/security-status', adminLimiter, securityStatusRoutes);
+  app.use('/api/security', adminLimiter, securityStatusRoutes);
   app.use('/api/send-report', adminLimiter, sendReportRoutes);
   app.use('/api/status', apiLimiter, statusRoutes);
   app.use('/api/synthetic', adminLimiter, syntheticRoutes);
@@ -9728,7 +9725,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/integrations', apiLimiter, integrationsRoutes);
   
   // Walk My Pet Payment Flow
-  app.use('/api/walk-payment-flow', apiLimiter, walkPaymentFlowRoutes);
+  app.use('/api', apiLimiter, walkPaymentFlowRoutes);
   
   
   // Production Website Monitoring (Gemini AI-powered)
