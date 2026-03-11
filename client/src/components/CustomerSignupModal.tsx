@@ -53,6 +53,7 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
   const [verificationTokens, setVerificationTokens] = useState<{ emailToken: string; smsToken: string } | null>(null);
   
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const isRTL = language === 'he';
   const [formData, setFormData] = useState<SignupFormData>({
     firstName: '',
     lastName: '',
@@ -441,12 +442,12 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
                       value={formData.password}
                       onChange={(e) => updateFormData('password', e.target.value)}
                       required
-                      className="mt-2 h-12 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300 bg-white/70 backdrop-blur-sm pr-12"
+                      className={`mt-2 h-12 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300 bg-white/70 backdrop-blur-sm ${isRTL ? 'pl-12' : 'pr-12'}`}
                     />
                     <Button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-4 flex items-center hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                      className={`absolute inset-y-0 ${isRTL ? 'left-0 pl-4' : 'right-0 pr-4'} flex items-center hover:bg-gray-100 rounded-lg transition-colors duration-200`}
                     >
                       {showPassword ? <EyeOff className="h-5 w-5 text-gray-500" /> : <Eye className="h-5 w-5 text-gray-500" />}
                     </Button>
@@ -463,12 +464,12 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
                       value={formData.confirmPassword}
                       onChange={(e) => updateFormData('confirmPassword', e.target.value)}
                       required
-                      className="mt-2 h-12 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300 bg-white/70 backdrop-blur-sm pr-12"
+                      className={`mt-2 h-12 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-300 bg-white/70 backdrop-blur-sm ${isRTL ? 'pl-12' : 'pr-12'}`}
                     />
                     <Button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute inset-y-0 right-0 pr-4 flex items-center hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                      className={`absolute inset-y-0 ${isRTL ? 'left-0 pl-4' : 'right-0 pr-4'} flex items-center hover:bg-gray-100 rounded-lg transition-colors duration-200`}
                     >
                       {showConfirmPassword ? <EyeOff className="h-5 w-5 text-gray-500" /> : <Eye className="h-5 w-5 text-gray-500" />}
                     </Button>

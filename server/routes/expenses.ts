@@ -27,7 +27,7 @@ router.get("/tax-rates", async (req: Request, res: Response) => {
     console.error("Error fetching tax rates:", error);
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: 'An internal error occurred',
     });
   }
 });
@@ -82,7 +82,7 @@ router.post("/ocr-receipt", upload.single('receipt'), async (req: Request, res: 
     console.error("Error processing receipt OCR:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to process receipt",
+      error: 'An internal error occurred',
     });
   }
 });
@@ -171,7 +171,7 @@ router.post("/", async (req: Request, res: Response) => {
     console.error("Error creating expense:", error);
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: 'An internal error occurred',
     });
   }
 });
@@ -216,7 +216,7 @@ router.get("/", async (req: Request, res: Response) => {
     console.error("Error fetching expenses:", error);
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: 'An internal error occurred',
     });
   }
 });
@@ -262,7 +262,7 @@ router.get("/pending-approval", async (req: Request, res: Response) => {
     console.error("Error fetching pending approvals:", error);
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: 'An internal error occurred',
     });
   }
 });
@@ -320,7 +320,7 @@ router.patch("/:id/approve", async (req: Request, res: Response) => {
     console.error("Error approving expense:", error);
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: 'An internal error occurred',
     });
   }
 });
@@ -386,7 +386,7 @@ router.patch("/:id/reject", async (req: Request, res: Response) => {
     console.error("Error rejecting expense:", error);
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: 'An internal error occurred',
     });
   }
 });
@@ -403,7 +403,7 @@ router.post("/seed-tax-rates", async (req: Request, res: Response) => {
     console.error("Error seeding tax rates:", error);
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: 'An internal error occurred',
     });
   }
 });

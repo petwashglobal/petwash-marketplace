@@ -237,7 +237,7 @@ export const dispatchLimiter = rateLimit({
 // Protects OTP and verification endpoints from brute force
 export const otpLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 3, // 3 requests per window
+  max: 5, // 5 requests per window (mobile network instability requires extra retries)
   message: 'Too many verification code requests',
   standardHeaders: true,
   legacyHeaders: false,
@@ -267,4 +267,4 @@ logger.info('   - Auth: 10 req/min per IP (login/register protection)');
 logger.info('   - KYC: 5 req/hour per user UID');
 logger.info('   - Booking: 20 req/15min per user UID');
 logger.info('   - Dispatch: 30 req/15min per user UID');
-logger.info('   - OTP: 3 req/5min per IP (verification code protection)');
+logger.info('   - OTP: 5 req/5min per IP (verification code protection)');

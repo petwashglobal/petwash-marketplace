@@ -252,7 +252,7 @@ export default function MobileOpsHub() {
       </div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 luxury-glass-card luxury-shadow-xl rounded-none md:rounded-t-2xl">
+      <div className="fixed bottom-0 left-0 right-0 z-50 luxury-glass-card luxury-shadow-xl rounded-none md:rounded-t-2xl" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="grid grid-cols-4 gap-1 px-2 py-3">
           <button
             onClick={() => setLocation('/mobile/ops')}

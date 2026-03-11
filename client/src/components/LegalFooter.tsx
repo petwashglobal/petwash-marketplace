@@ -359,7 +359,7 @@ Support Phone: 1-700-700-PET (738)
               <TabsContent value="privacy" className="mt-4">
                 <ScrollArea className="h-[500px] w-full pr-4">
                   <div className="prose prose-sm max-w-none text-black dark:text-white">
-                    <div className="whitespace-pre-wrap text-left" dir={language === 'he' ? 'rtl' : 'ltr'}>
+                    <div className="whitespace-pre-wrap" dir={language === 'he' ? 'rtl' : 'ltr'}>
                       {privacyContent[currentLang].content}
                     </div>
                   </div>
@@ -369,7 +369,7 @@ Support Phone: 1-700-700-PET (738)
               <TabsContent value="terms" className="mt-4">
                 <ScrollArea className="h-[500px] w-full pr-4">
                   <div className="prose prose-sm max-w-none text-black dark:text-white">
-                    <div className="whitespace-pre-wrap text-left" dir={language === 'he' ? 'rtl' : 'ltr'}>
+                    <div className="whitespace-pre-wrap" dir={language === 'he' ? 'rtl' : 'ltr'}>
                       {termsContent[currentLang].content}
                     </div>
                   </div>
@@ -379,7 +379,7 @@ Support Phone: 1-700-700-PET (738)
               <TabsContent value="disclaimer" className="mt-4">
                 <ScrollArea className="h-[500px] w-full pr-4">
                   <div className="prose prose-sm max-w-none text-black dark:text-white">
-                    <div className="whitespace-pre-wrap text-left" dir={language === 'he' ? 'rtl' : 'ltr'}>
+                    <div className="whitespace-pre-wrap" dir={language === 'he' ? 'rtl' : 'ltr'}>
                       {disclaimerContent[currentLang].content}
                     </div>
                   </div>

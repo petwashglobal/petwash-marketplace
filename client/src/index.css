@@ -980,6 +980,8 @@ input[type="checkbox"],
 input[type="radio"] {
   min-height: 48px;
   min-width: 48px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Small buttons/icons can have padding to reach 48px */

@@ -32,7 +32,7 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
 
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-[100dvh] bg-white">
       {/* Skip to Content for Accessibility */}
       <a 
         href="#main-content" 

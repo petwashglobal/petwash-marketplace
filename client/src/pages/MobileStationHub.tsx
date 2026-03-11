@@ -204,7 +204,7 @@ export default function MobileStationHub() {
       </div>
 
       {/* Bottom Info Bar */}
-      <div className="fixed bottom-0 left-0 right-0 luxury-glass-card luxury-shadow-lg px-4 py-3 rounded-none md:rounded-b-2xl">
+      <div className="fixed bottom-0 left-0 right-0 luxury-glass-card luxury-shadow-lg px-4 pt-3 rounded-none md:rounded-b-2xl" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom, 0px))' }}>
         <div className="flex items-center justify-between text-sm">
           <span className="luxury-text-small font-medium">
             {filteredStations.length} station{filteredStations.length !== 1 ? 's' : ''}

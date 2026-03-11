@@ -162,7 +162,7 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
           className="chat-widget-mobile fixed left-4 right-4 md:right-6 md:left-auto md:w-[420px] z-50 flex flex-col rounded-2xl shadow-2xl overflow-hidden"
           data-theme="dark"
           style={{
-            maxHeight: 'min(80vh, 600px)',
+            maxHeight: 'min(80dvh, 600px)',
             background: '#0D0D14',
             border: '1px solid rgba(255,255,255,0.1)',
           }}
