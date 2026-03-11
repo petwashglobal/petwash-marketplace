@@ -427,23 +427,6 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               </button>
             </div>
             <div className="pw-nav-item">
-              <button className="pw-nav-link" onClick={() => handleNavigate("/booking-chat/inbox")}
-                style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                {t("nav.messages", currentLanguage)}
-                {totalUnreadMessages > 0 && (
-                  <span style={{
-                    display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    minWidth: 17, height: 17, padding: "0 4px", borderRadius: 999,
-                    background: "linear-gradient(135deg, #0B57D0, #4E8DF7)",
-                    color: "#fff", fontSize: 10, fontWeight: 700, lineHeight: 1,
-                    boxShadow: "0 1px 4px rgba(11,87,208,0.35)",
-                  }}>
-                    {totalUnreadMessages > 99 ? "99+" : totalUnreadMessages}
-                  </span>
-                )}
-              </button>
-            </div>
-            <div className="pw-nav-item">
               <button className="pw-nav-link" onClick={() => handleNavigate("/egift")}>
                 {t("nav.giftCards", currentLanguage)}
               </button>
@@ -607,24 +590,6 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             <div className="pw-mobile-section-title">
               {t("section.loyalty", currentLanguage)}
             </div>
-            <button
-              className="pw-mobile-link"
-              onClick={() => handleNavigate("/booking-chat/inbox")}
-              style={{ display: "flex", alignItems: "center", gap: 8 }}
-            >
-              <span>{t("nav.messages", currentLanguage)}</span>
-              {totalUnreadMessages > 0 && (
-                <span style={{
-                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                  minWidth: 17, height: 17, padding: "0 4px", borderRadius: 999,
-                  background: "linear-gradient(135deg, #0B57D0, #4E8DF7)",
-                  color: "#fff", fontSize: 10, fontWeight: 700, lineHeight: 1,
-                  boxShadow: "0 1px 4px rgba(11,87,208,0.35)",
-                }}>
-                  {totalUnreadMessages > 99 ? "99+" : totalUnreadMessages}
-                </span>
-              )}
-            </button>
             {USER_MENU_ITEMS.map((item) => (
               <button
                 key={item.id}
