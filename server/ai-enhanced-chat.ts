@@ -79,7 +79,7 @@ export async function enhancedChatWithLearning(
       });
     } else if (learnedAnswer.confidence > 0.5) {
       // Medium confidence - use hybrid (learned + Gemini enhancement)
-      const geminiResponse = await chatWithPetWashAI(message, language, conversationHistory);
+      const geminiResponse = await chatWithPetWashAI(message, language, conversationHistory, chatSessionId);
       
       // Combine learned answer with Gemini's response
       finalAnswer = geminiResponse;
@@ -91,7 +91,7 @@ export async function enhancedChatWithLearning(
       });
     } else {
       // Low/no confidence - use Gemini with full conversation context
-      finalAnswer = await chatWithPetWashAI(message, language, conversationHistory);
+      finalAnswer = await chatWithPetWashAI(message, language, conversationHistory, chatSessionId);
       source = 'gemini';
       
       logger.info('[AI Chat] Using Gemini answer', {

@@ -1,5 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 import { logger } from './lib/logger';
+import {
+  checkPromptInjection,
+  redactOutboundPII,
+  logAITokenUsage,
+  incrementGeminiError,
+} from './middleware/aiSecurity';
 
 // DON'T DELETE THIS COMMENT
 // Follow these instructions when using this blueprint:
@@ -112,8 +118,20 @@ const KENZO_KNOWLEDGE_2026 = `
 export async function chatWithPetWashAI(
   message: string,
   language: 'he' | 'en' | 'ar' | 'es' | 'fr' | 'ru' = 'en',
-  conversationHistory?: Array<{ role: 'user' | 'model'; text: string }>
+  conversationHistory?: Array<{ role: 'user' | 'model'; text: string }>,
+  sessionId?: string
 ): Promise<string> {
+  // ── Item 5: Prompt injection check ────────────────────────────────────────
+  const injectionCheck = checkPromptInjection(message, sessionId);
+  if (injectionCheck.blocked) {
+    return injectionCheck.safeRefusal!;
+  }
+
+  // ── Item 6: Redact PII from outbound message before it reaches Gemini ─────
+  const { text: safeMessage } = redactOutboundPII(message);
+
+  const startMs = Date.now();
+
   try {
     const langInstructions: Record<string, string> = {
       he: `אתה Kenzo, הגולדן רטריבר הלבן המקסים של ⁦Pet Wash™⁩! 🐾 אתה השגריר הרשמי - חברותי, נלהב, ואוהב חיות מחמד.
@@ -162,10 +180,10 @@ ${KENZO_KNOWLEDGE_2026}`;
       }
     }
     
-    // Add current user message
+    // Add current user message (using PII-redacted version)
     contents.push({
       role: 'user',
-      parts: [{ text: message }]
+      parts: [{ text: safeMessage }]
     });
 
     const response = await ai.models.generateContent({
@@ -175,6 +193,21 @@ ${KENZO_KNOWLEDGE_2026}`;
       },
       contents,
     });
+
+    const latencyMs = Date.now() - startMs;
+
+    // ── Item 2: Log token usage ────────────────────────────────────────────
+    const usage = (response as any).usageMetadata ?? null;
+    logAITokenUsage({
+      model: 'gemini-2.5-flash',
+      promptTokenCount: usage?.promptTokenCount ?? null,
+      candidatesTokenCount: usage?.candidatesTokenCount ?? null,
+      totalTokenCount: usage?.totalTokenCount ?? null,
+      latencyMs,
+      sessionId,
+      endpoint: '/api/ai/chat',
+      timestamp: new Date(),
+    }).catch(() => {});
 
     // Extract text from response candidates
     if (response.candidates && response.candidates.length > 0) {
@@ -198,6 +231,7 @@ ${KENZO_KNOWLEDGE_2026}`;
     };
     return fallbackMessages[language] || fallbackMessages.en;
   } catch (error) {
+    incrementGeminiError();
     logger.error('Gemini chat error', error);
     throw new Error(`Failed to get AI response: ${error}`);
   }

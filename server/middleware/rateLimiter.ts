@@ -256,6 +256,49 @@ export const otpLimiter = rateLimit({
   }
 });
 
+// AI Chat rate limiter — per-minute layer
+// Public Kenzo/AI chat endpoints: 20 requests/minute per IP
+// Anonymous users are subject to this same cap (no stricter tier needed — admin routes use adminLimiter)
+export const aiChatLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => {
+    const ip = getClientIP(req);
+    return `ai_chat_min:${ip}`;
+  },
+  handler: (req: Request, res: Response) => {
+    logger.warn('[AI Rate Limit] Per-minute limit exceeded', { ip: getClientIP(req), path: req.path });
+    res.status(429).json({
+      error: 'AI_RATE_LIMIT_EXCEEDED',
+      message: 'Too many AI requests. Please wait a moment before trying again.',
+      retryAfter: Math.ceil(Date.now() / 1000) + 60
+    });
+  }
+});
+
+// AI Chat hourly hard cap — second layer
+// 60 AI requests/hour per IP regardless of per-minute bucket state
+export const aiChatHourlyLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => {
+    const ip = getClientIP(req);
+    return `ai_chat_hour:${ip}`;
+  },
+  handler: (req: Request, res: Response) => {
+    logger.warn('[AI Rate Limit] Hourly hard cap exceeded', { ip: getClientIP(req), path: req.path });
+    res.status(429).json({
+      error: 'AI_HOURLY_CAP_EXCEEDED',
+      message: 'You have reached the AI chat limit for this hour. Please try again later.',
+      retryAfter: Math.ceil(Date.now() / 1000) + 3600
+    });
+  }
+});
+
 logger.info('Rate limiters initialized');
 logger.info('Rate limits:');
 logger.info(`   - General API: ${isDevelopment ? '1000' : '200'} req/15min per IP (${isDevelopment ? 'dev mode' : 'production'})`);
@@ -268,3 +311,4 @@ logger.info('   - KYC: 5 req/hour per user UID');
 logger.info('   - Booking: 20 req/15min per user UID');
 logger.info('   - Dispatch: 30 req/15min per user UID');
 logger.info('   - OTP: 5 req/5min per IP (verification code protection)');
+logger.info('   - AI Chat: 20 req/min per IP + 60 req/hour hard cap (public Kenzo/AI endpoints)');

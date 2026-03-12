@@ -245,7 +245,8 @@ import { generateGiftCardCode as utilsGenerateGiftCardCode, calculateDiscount as
 import { IsraeliTaxService } from "@shared/israeliTax";
 import multer from 'multer';
 import crypto from 'crypto';
-import { apiLimiter, paymentLimiter, adminLimiter, uploadLimiter, webauthnLimiter, authLimiter, kycLimiter, bookingLimiter, dispatchLimiter, otpLimiter } from './middleware/rateLimiter';
+import { apiLimiter, paymentLimiter, adminLimiter, uploadLimiter, webauthnLimiter, authLimiter, kycLimiter, bookingLimiter, dispatchLimiter, otpLimiter, aiChatLimiter, aiChatHourlyLimiter } from './middleware/rateLimiter';
+import { incrementAIRequest, startAIMetricsFlusher } from './middleware/aiSecurity';
 import { loginRateLimitMiddleware, recordFailedLogin, clearLoginAttempts } from './middleware/loginRateLimiter';
 import { verifyAppCheckToken, verifyAppCheckTokenOptional } from './middleware/appCheckMiddleware';
 import { logger } from './lib/logger';
@@ -8724,7 +8725,8 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // AI Chat Assistant endpoint (Enhanced with Learning)
-  app.post('/api/ai/chat', async (req, res) => {
+  // Protected: 20 req/min + 60 req/hour hard cap per IP
+  app.post('/api/ai/chat', aiChatLimiter, aiChatHourlyLimiter, async (req, res) => {
     try {
       const { enhancedChatWithLearning } = await import('./ai-enhanced-chat');
       const { message, language, sessionId, userId, previousMessage, timeSpentOnPreviousAnswer } = req.body;
@@ -8732,6 +8734,9 @@ self.addEventListener('notificationclick', (event) => {
       if (!message) {
         return res.status(400).json({ error: "Message is required" });
       }
+
+      // Track AI request volume for monitoring
+      incrementAIRequest((req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown');
 
       const result = await enhancedChatWithLearning({
         message,
@@ -9556,7 +9561,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/fees', apiLimiter, feesRoutes);
   
   // Kenzo AI Chatbot (Gemini 2.5 Flash powered with Hebrew/English/Arabic support)
-  app.post('/api/v1/chat/message', apiLimiter, async (req, res) => {
+  // Protected: 20 req/min + 60 req/hour hard cap per IP
+  app.post('/api/v1/chat/message', aiChatLimiter, aiChatHourlyLimiter, async (req, res) => {
     try {
       const { enhancedChatWithLearning } = await import('./ai-enhanced-chat');
       const { text, sessionId, languageCode } = req.body;
@@ -14006,6 +14012,18 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // Wire K9000 LED automation to EventBus for smart triggers
   wireLedAutomation(eventBus);
   logger.info('[K9000 LED] Automation wired to EventBus successfully! 🚨💡');
+
+  // ==================== AI SECURITY STARTUP ====================
+  // Item 3: 90-day retention cleanup scheduler
+  const { scheduleAIChatCleanup } = await import('./ai-learning-system');
+  scheduleAIChatCleanup();
+
+  // Item 7: AI metrics flusher (every 15 min → Firestore)
+  startAIMetricsFlusher();
+
+  // Item 9: Persist AI provider compliance record on startup
+  const { persistAIComplianceRecord } = await import('./compliance/ai-provider-compliance');
+  persistAIComplianceRecord().catch(() => {});
 }
 
 

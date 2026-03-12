@@ -1,0 +1,135 @@
+Do these AI security and legal fixes now. No more general discussion. Implement them and report exact files changed.
+
+PRIORITY ORDER
+
+1. AI-specific rate limiter
+Add a dedicated limiter for all Gemini / Kenzo public chat endpoints.
+Target:
+- 20 requests per minute per IP for public AI chat
+- 60 requests per hour per IP hard cap
+- stricter cap for anonymous users than authenticated admins
+Apply it specifically to:
+- /api/chat
+- any public Gemini chat route
+Keep admin AI routes separate.
+
+2. Token usage logging
+For every Gemini response, read and store usage metadata if present:
+- promptTokenCount
+- candidatesTokenCount
+- totalTokenCount
+- model name
+- latency
+Store per request in a dedicated collection/table for monitoring and cost analysis.
+If usageMetadata is absent, log null safely.
+Add this to AI monitoring summaries.
+
+3. AI chat retention policy
+Implement storage limitation for ai_chat_interactions.
+Target retention:
+- 90 days default
+Fields to add:
+- createdAt
+- expiresAt
+Use Firestore TTL if available, otherwise a scheduled cleanup job.
+Also add a manual delete function by sessionId for support / privacy requests.
+
+4. Consent notice before Kenzo chat
+Before first public AI chat use, show a short notice:
+- messages may be processed by AI
+- do not enter payment details, ID numbers, or sensitive personal information
+- by continuing, the user agrees to processing under the Privacy Policy
+Store:
+- consentAcceptedAt
+- consentVersion
+- sessionId or anonymous device/session reference
+Do not block the whole site. Only gate first AI chat use.
+
+5. Server-side prompt injection filter
+Add a lightweight input filter before requests go to Gemini.
+Detect and block or flag common jailbreak patterns such as:
+- ignore previous instructions
+- reveal system prompt
+- system:
+- developer:
+- <INST>
+- jailbreak
+- bypass policy
+- act as
+- simulate admin
+Do not rely only on the Gemini system prompt.
+If triggered:
+- return a safe refusal
+- log a security event
+- increment abuse counter
+
+6. Sensitive data redaction before AI forwarding
+Before any message is sent to Gemini, redact:
+- email addresses
+- Israeli phone numbers
+- Israeli ID numbers
+- payment card-like sequences
+- access tokens / bearer tokens
+- API keys if pasted
+Do this on the outbound AI prompt path, not only on saved logs.
+
+7. AI monitoring improvements
+Extend monitoring to include:
+- requests per minute
+- token usage totals
+- top IPs by AI volume
+- blocked prompt-injection attempts
+- redaction counts
+- model error rates
+- cost estimate if possible
+Add alerts for:
+- unusual spike in AI requests
+- repeated blocked injection attempts
+- unusually high token consumption
+- Gemini API failure rate
+
+8. Privacy / deletion endpoint
+Add a controlled internal endpoint or admin tool to delete AI chat data by sessionId.
+This is required for privacy support operations.
+Log deletion actions in audit logs.
+
+9. DPA / provider documentation note
+Add a compliance note in the admin/compliance docs stating:
+- AI provider currently used
+- whether prompts are retained by provider
+- whether direct DPA exists
+- whether processing currently relies on Replit-managed integration
+This can be a config-backed compliance record, not just a comment in code.
+
+10. Verification
+After implementation send me:
+- exact files changed
+- exact routes protected
+- exact limiter thresholds
+- exact fields added to storage
+- exact retention mechanism used
+- exact prompt injection patterns implemented
+- exact before/after examples of redaction
+- exact monitoring fields added
+- proof that public AI chat still works
+- proof that abusive use is blocked
+- proof that token usage is being recorded
+
+IMPLEMENTATION NOTES
+
+A. Do not break existing Kenzo functionality.
+B. Do not send raw secrets or sensitive identifiers to Gemini.
+C. Keep admin AI insights routes protected by requireAdmin.
+D. Do not make cosmetic-only changes. These must be real backend protections.
+E. If any current route names differ, map them and list the actual route names.
+
+START with items 1, 2, 3, and 4 first.
+Those are the highest-value fixes.
+Then implement 5 and 6.
+Then 7, 8, and 9.
+
+I want the first delivery to include:
+- AI rate limiter
+- token usage logging
+- 90-day retention
+- first-use consent notice

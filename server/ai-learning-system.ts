@@ -77,13 +77,17 @@ export async function trackChatInteraction(
     const topic = detectTopic(interaction.userQuestion, interaction.language);
     
     // PRIVACY FILTER: Remove any potential PII before storing
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000); // 90-day retention
     const safeInteraction = {
       sessionId: interaction.sessionId, // Anonymous session ID only
       userQuestion: sanitizeText(interaction.userQuestion), // Remove any accidental PII
       aiResponse: sanitizeText(interaction.aiResponse),
       language: interaction.language,
       topic,
-      timestamp: new Date(),
+      timestamp: now,
+      createdAt: now,         // Item 3: retention field
+      expiresAt: expiresAt,   // Item 3: retention field (90 days from now)
       timeToRead: interaction.timeToRead,
       followUpQuestion: interaction.followUpQuestion ? sanitizeText(interaction.followUpQuestion) : undefined,
       satisfactionIndicator: interaction.satisfactionIndicator
@@ -553,4 +557,99 @@ function sanitizeText(text: string): string {
   sanitized = sanitized.replace(/517145033/g, '[COMPANY_NUMBER_REMOVED]');
   
   return sanitized;
+}
+
+// ─── Item 3: Manual deletion by sessionId (privacy/support requests) ────────
+
+/**
+ * Delete all ai_chat_interactions records for a given sessionId.
+ * Used for right-to-erasure requests and privacy support operations.
+ * Deletion is logged to audit trail.
+ */
+export async function deleteInteractionsBySessionId(
+  sessionId: string,
+  requestedBy: string = 'admin'
+): Promise<{ deleted: number }> {
+  try {
+    const snapshot = await adminDb
+      .collection('ai_chat_interactions')
+      .where('sessionId', '==', sessionId)
+      .get();
+
+    if (snapshot.empty) {
+      logger.info('[AI Privacy] No records found for sessionId', { sessionId: sessionId.substring(0, 8) });
+      return { deleted: 0 };
+    }
+
+    const batch = adminDb.batch();
+    snapshot.docs.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+
+    const deletedCount = snapshot.docs.length;
+
+    // Audit log
+    await adminDb.collection('ai_deletion_audit').add({
+      sessionId,
+      deletedCount,
+      requestedBy,
+      deletedAt: new Date(),
+    });
+
+    logger.info('[AI Privacy] Deleted AI chat records for sessionId', {
+      sessionId: sessionId.substring(0, 8),
+      deletedCount,
+      requestedBy,
+    });
+
+    return { deleted: deletedCount };
+  } catch (error) {
+    logger.error('[AI Privacy] Failed to delete interactions', error);
+    throw error;
+  }
+}
+
+// ─── Item 3: Scheduled cleanup of expired ai_chat_interactions ────────────
+
+/**
+ * Delete all ai_chat_interactions where expiresAt < now.
+ * Run daily via setInterval on server startup.
+ */
+export async function runAIChatExpiredCleanup(): Promise<{ deleted: number }> {
+  try {
+    const now = new Date();
+    const snapshot = await adminDb
+      .collection('ai_chat_interactions')
+      .where('expiresAt', '<', now)
+      .limit(500) // Process in batches to avoid timeout
+      .get();
+
+    if (snapshot.empty) {
+      logger.info('[AI Retention] No expired AI chat records to clean up');
+      return { deleted: 0 };
+    }
+
+    const batch = adminDb.batch();
+    snapshot.docs.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+
+    logger.info('[AI Retention] Deleted expired AI chat records', { deleted: snapshot.docs.length });
+    return { deleted: snapshot.docs.length };
+  } catch (error) {
+    logger.error('[AI Retention] Cleanup job failed', error);
+    return { deleted: 0 };
+  }
+}
+
+/**
+ * Start daily cleanup scheduler for AI chat retention (90-day policy).
+ * Call once on server startup.
+ */
+export function scheduleAIChatCleanup(): void {
+  // Run immediately on startup (catch any backlog)
+  setImmediate(() => runAIChatExpiredCleanup());
+
+  // Then run every 24 hours
+  setInterval(() => runAIChatExpiredCleanup(), 24 * 60 * 60 * 1000);
+
+  logger.info('[AI Retention] ✅ Daily cleanup scheduler started (90-day retention policy)');
 }

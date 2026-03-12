@@ -4,7 +4,8 @@
  */
 
 import express from 'express';
-import { getUserBehaviorInsights, getProblematicFAQs } from '../ai-learning-system';
+import { getUserBehaviorInsights, getProblematicFAQs, deleteInteractionsBySessionId } from '../ai-learning-system';
+import { getAIMetrics } from '../middleware/aiSecurity';
 import { logger } from '../lib/logger';
 import { db as adminDb } from '../lib/firebase-admin';
 import { requireAdmin } from '../adminAuth';
@@ -200,6 +201,99 @@ router.get('/satisfaction-trends', async (req, res) => {
       success: false,
       error: 'Failed to fetch satisfaction trends'
     });
+  }
+});
+
+/**
+ * DELETE /api/ai-insights/sessions/:sessionId
+ * Item 8: Privacy/deletion — delete all AI chat records for a sessionId.
+ * Requires admin auth. Logged to audit trail.
+ */
+router.delete('/sessions/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    if (!sessionId || sessionId.length < 4) {
+      return res.status(400).json({ success: false, error: 'Invalid sessionId' });
+    }
+
+    const adminUser = (req as any).user?.uid ?? 'admin';
+    const result = await deleteInteractionsBySessionId(sessionId, adminUser);
+
+    res.json({
+      success: true,
+      deleted: result.deleted,
+      sessionId,
+      deletedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    logger.error('[AI Insights] Failed to delete session', error);
+    res.status(500).json({ success: false, error: 'Deletion failed' });
+  }
+});
+
+/**
+ * GET /api/ai-insights/security-metrics
+ * Item 7: Live AI monitoring — requests, tokens, blocked injections, top IPs.
+ */
+router.get('/security-metrics', async (req, res) => {
+  try {
+    const metrics = getAIMetrics();
+    res.json({ success: true, metrics });
+  } catch (error) {
+    logger.error('[AI Insights] Failed to get security metrics', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch metrics' });
+  }
+});
+
+/**
+ * GET /api/ai-insights/token-usage
+ * Recent token usage records from Firestore.
+ */
+router.get('/token-usage', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
+    const snapshot = await adminDb
+      .collection('ai_token_usage')
+      .orderBy('timestamp', 'desc')
+      .limit(limit)
+      .get();
+
+    const records = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      timestamp: doc.data().timestamp?.toDate?.()?.toISOString() ?? null,
+    }));
+
+    res.json({ success: true, records, total: records.length });
+  } catch (error) {
+    logger.error('[AI Insights] Failed to get token usage', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch token usage' });
+  }
+});
+
+/**
+ * GET /api/ai-insights/security-events
+ * Recent prompt injection attempts logged to Firestore.
+ */
+router.get('/security-events', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+    const snapshot = await adminDb
+      .collection('ai_security_events')
+      .orderBy('timestamp', 'desc')
+      .limit(limit)
+      .get();
+
+    const events = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      timestamp: doc.data().timestamp?.toDate?.()?.toISOString() ?? null,
+    }));
+
+    res.json({ success: true, events, total: events.length });
+  } catch (error) {
+    logger.error('[AI Insights] Failed to get security events', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch security events' });
   }
 });
 

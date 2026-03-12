@@ -30,6 +30,18 @@ interface AiChatWidgetProps {
   onClose?: () => void;
 }
 
+const AI_CONSENT_KEY = 'aiChatConsentV1';
+const AI_CONSENT_VERSION = '1.0';
+
+function getStoredConsent(): { acceptedAt: string; consentVersion: string; sessionId: string } | null {
+  try {
+    const raw = localStorage.getItem(AI_CONSENT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetProps = {}) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   
@@ -43,6 +55,8 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
   const [sessionId, setSessionId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [language, setLanguage] = useState<'he' | 'en'>('he'); // Default Hebrew for Israeli market
+  // Item 4: Consent gate — true if user has previously accepted
+  const [consentGiven, setConsentGiven] = useState<boolean>(() => !!getStoredConsent());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -61,6 +75,18 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
       }
     ]);
   }, []);
+
+  // Item 4: Accept consent and store in localStorage
+  const handleConsentAccept = () => {
+    const sessionRef = `session-${nanoid(8)}`;
+    localStorage.setItem(AI_CONSENT_KEY, JSON.stringify({
+      acceptedAt: new Date().toISOString(),
+      consentVersion: AI_CONSENT_VERSION,
+      sessionId: sessionRef,
+    }));
+    setConsentGiven(true);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -206,8 +232,48 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
             </Button>
           </div>
 
-          {/* Messages Area */}
-          <ScrollArea className="flex-1 p-4" style={{ background: '#0D0D14' }}>
+          {/* Item 4: Consent Notice — shown once, stored in localStorage */}
+          {!consentGiven && (
+            <div
+              className="flex flex-col items-center justify-center gap-4 p-6 text-center"
+              style={{ background: '#12121F', flex: 1 }}
+              dir="rtl"
+            >
+              <div className="rounded-full bg-blue-600/20 p-4">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-blue-400">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 11c0-1.657 1.343-3 3-3s3 1.343 3 3-1.343 3-3 3-3-1.343-3-3z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-4" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="text-white font-semibold text-base mb-2">לפני שנתחיל 🐾</h4>
+                <p className="text-white/70 text-sm leading-relaxed">
+                  שיחות עם קנזו עוברות עיבוד על-ידי{' '}
+                  <span className="text-white/90">Google Gemini AI</span>{' '}
+                  לצורך מתן תשובות. ייתכן שמידע זה יישמר עד{' '}
+                  <span className="text-white/90">90 יום</span>{' '}
+                  לצורכי אבטחה ושיפור השירות בלבד — לא מועבר לצדדים שלישיים.
+                </p>
+                <p className="text-white/40 text-xs mt-3">
+                  אל תשתף פרטים אישיים מזהים (שם, מספר ת"ז, פרטי כרטיס אשראי).
+                </p>
+              </div>
+              <Button
+                onClick={handleConsentAccept}
+                className="w-full max-w-xs rounded-xl font-medium"
+                style={{
+                  background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
+                  color: '#fff',
+                }}
+              >
+                הבנתי, בואו נתחיל
+              </Button>
+            </div>
+          )}
+
+          {/* Messages Area — hidden until consent given */}
+          {consentGiven && <ScrollArea className="flex-1 p-4" style={{ background: '#0D0D14' }}>
             <div 
               className="space-y-4"
               role="log"
@@ -258,10 +324,10 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
 
               <div ref={messagesEndRef} />
             </div>
-          </ScrollArea>
+          </ScrollArea>}
 
-          {/* Input Area */}
-          <form
+          {/* Input Area — only shown after consent */}
+          {consentGiven && <form
             onSubmit={handleSubmit}
             className="p-3 border-t"
             style={{ background: '#111118', borderColor: 'rgba(255,255,255,0.1)' }}
@@ -319,7 +385,7 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
                 English
               </button>
             </div>
-          </form>
+          </form>}
         </div>
       )}
     </>
