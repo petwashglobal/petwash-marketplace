@@ -83,6 +83,7 @@ import providersRoutes from "./routes/providers";
 import marketplaceRoutes from "./routes/marketplace";
 import identityServiceRoutes from "./routes/identity-service";
 import nayaxWebhooksRoutes from "./routes/nayax-webhooks";
+import nayaxMonyxEventsRoutes from "./routes/nayax-monyx-events";
 import webauthnRoutes from "./routes/webauthn";
 import gpsTrackingRoutes from "./routes/gps-tracking";
 import fcmRoutes from "./routes/fcm";
@@ -9411,6 +9412,11 @@ self.addEventListener('notificationclick', (event) => {
   
   // Nayax Webhooks (terminal transactions, settlements, refunds) - NO rate limiting
   app.use('/api/webhooks', nayaxWebhooksRoutes);
+
+  // Nayax Monyx Transaction Events — Phase 2 webhook ingestion + loyalty award engine
+  // Endpoint: POST /api/webhooks/nayax-events
+  // Identity link: POST /api/webhooks/nayax-events/identity-link
+  app.use('/api/webhooks', nayaxMonyxEventsRoutes);
   
   // Section 14 Finance Guards — enforce transaction type integrity on all finance mutations
   // Block: payout without providerId, egift with providerId, direct_sale with payout, negative wallet, missing VAT

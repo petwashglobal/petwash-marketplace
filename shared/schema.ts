@@ -11741,6 +11741,43 @@ export type SessionCareLog = typeof sessionCareLogs.$inferSelect;
 
 export type ProviderSafetyNote = typeof providerSafetyNotes.$inferSelect;
 
+// ── Nayax Transaction Events (Monyx + all payment channels, Phase 2 webhook ingestion) ─────
+export const nayaxTransactionEvents = pgTable("nayax_transaction_events", {
+  id:                    serial("id").primaryKey(),
+  externalTransactionId: varchar("external_transaction_id").unique().notNull(), // Dedup key
+  machineId:             varchar("machine_id").notNull(),
+  terminalId:            varchar("terminal_id"),
+  stationId:             varchar("station_id"),
+  paymentChannel:        varchar("payment_channel").notNull(), // petwash_wallet_qr | monyx_qr | tap_card | apple_pay | google_pay | unknown
+  eventType:             varchar("event_type").notNull(),       // transaction | refund | cancel
+  approvalStatus:        varchar("approval_status").notNull(), // approved | declined | cancelled | refunded
+  amountGross:           decimal("amount_gross", { precision: 10, scale: 2 }).notNull(),
+  amountNet:             decimal("amount_net",   { precision: 10, scale: 2 }),
+  currency:              varchar("currency", { length: 3 }).default("ILS"),
+  transactionTime:       timestamp("transaction_time").notNull(),
+  customerPhoneHash:     varchar("customer_phone_hash"),           // SHA-256 hash, never raw phone
+  monyxCustomerId:       varchar("monyx_customer_id"),             // Nayax-assigned consumer ID
+  linkedPetwashUserId:   varchar("linked_petwash_user_id"),        // Firebase UID — set by identity mapping
+  rawPayload:            jsonb("raw_payload").notNull(),            // Full webhook body stored as-is
+  processedAt:           timestamp("processed_at"),
+  processingStatus:      varchar("processing_status").default("pending"), // pending | processed | failed | skipped
+  loyaltyAwarded:        boolean("loyalty_awarded").default(false),
+  loyaltyPointsAwarded:  integer("loyalty_points_awarded").default(0),
+  refundReversed:        boolean("refund_reversed").default(false),
+  createdAt:             timestamp("created_at").defaultNow(),
+}, (t) => ({
+  externalIdIdx:    uniqueIndex("nte_external_id_idx").on(t.externalTransactionId),
+  machineIdx:       index("nte_machine_idx").on(t.machineId),
+  stationIdx:       index("nte_station_idx").on(t.stationId),
+  userIdx:          index("nte_user_idx").on(t.linkedPetwashUserId),
+  channelIdx:       index("nte_channel_idx").on(t.paymentChannel),
+  statusIdx:        index("nte_status_idx").on(t.processingStatus),
+  transactionTimeIdx: index("nte_tx_time_idx").on(t.transactionTime),
+}));
+
+export type NayaxTransactionEvent    = typeof nayaxTransactionEvents.$inferSelect;
+export type InsertNayaxTransactionEvent = typeof nayaxTransactionEvents.$inferInsert;
+
 // ── Walk Slot Holds (DB-persisted, survives server restarts) ──────────────────
 export const walkSlotHolds = pgTable("walk_slot_holds", {
   id:              serial("id").primaryKey(),

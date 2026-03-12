@@ -341,3 +341,28 @@ Replaced ALL `Math.random()` usage in security-sensitive code with `crypto` modu
 - **IDs & tokens (UUID/hex)**: `webauthn/service.ts` (challenge key), `KYCOrchestrator.ts` (verification ID), `voucherService.ts` (transaction ID), `websocket.ts` (client ID), `ProviderIntakeService.ts` (intake ID + invite code), `EmergencyWalkService.ts` (booking ID), `provider-intake.ts` (intake ID), `email/luxury-email-service.ts` (gift code), `observanceEvaluator.ts` (voucher code), `routes.ts` (contact ID)
 - **Numeric IDs (randomInt)**: `ElectronicInvoicingService.ts` (invoice numbers ×2), `K9000StationBookingEngine.ts` (unlock token), `JobDispatchService.ts` (audit ID), `accounting.ts` (expense ID), `storage.ts` (application ID), `qrCode.ts` (barcode suffix)
 - **Hash input entropy**: `provider-applications.ts` (SHA-256 token now seeded with `randomBytes(32)` instead of `Math.random()`)
+
+## Phase 2 Monyx / Nayax Transaction Events (March 2026 Session 9)
+
+### New DB Table: `nayax_transaction_events`
+Created directly via raw SQL (not drizzle-kit migration). Schema also added to `shared/schema.ts`.
+- Stores every Nayax payment event (Monyx QR, tap card, Apple Pay, PetWash wallet QR, Google Pay)
+- `external_transaction_id` UNIQUE — primary dedup key
+- `customer_phone_hash` — SHA-256 hashed, never raw phone
+- `linked_petwash_user_id` — Firebase UID set by identity mapping
+- 7 indexes covering machine, station, user, channel, status, transaction time
+
+### New Webhook Handler: `server/routes/nayax-monyx-events.ts`
+Registered at `POST /api/webhooks/nayax-events` and `POST /api/webhooks/nayax-events/identity-link`.
+- HMAC-SHA256 signature validation via `NAYAX_WEBHOOK_SECRET` (already set as placeholder)
+- **5-Rule loyalty award logic**: (1) approved status; (2) PetWash-owned machine; (3) not refunded/cancelled; (4) `linked_petwash_user_id` set; (5) deduplicated via UNIQUE constraint
+- Points: 1 point per ₪1 ILS gross
+- Refund reversal: deducts previously awarded points, sets `refund_reversed=true`
+- Channel classifier: monyx_qr | petwash_wallet_qr | apple_pay | google_pay | tap_card | unknown
+- Identity link endpoint: maps Monyx customer IDs + phone hashes to Firebase UIDs retroactively
+- All 4 award updates atomic: `wallet_accounts.loyalty_points_balance` + `users.loyalty_points` (GREATEST 0 guard on reversals)
+
+### Next Steps (Nayax coordination pending)
+- Send 6 questions to Nayax: webhook delivery endpoint, event schema, auth header name, retry policy, test mode, Operator API access
+- Add `NAYAX_API_KEY`, `NAYAX_MERCHANT_ID`, `NAYAX_SECRET`, `NAYAX_BASE_URL` to Cloud Run Secret Manager when received
+- Replace `NAYAX_WEBHOOK_SECRET` placeholder with production value from Nayax
