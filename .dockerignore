@@ -1,4 +1,5 @@
-# .dockerignore
+# .dockerignore — PetWash Cloud Run build exclusions
+# NOTE: client/ and attached_assets/ must NOT be excluded — builder needs them
 node_modules
 .git
 .github
@@ -6,6 +7,10 @@ npm-debug.log
 dist
 build
 .env
+.env.*
 .replit
 replit.nix
 replit.md
+.local
+tmp
+coverage

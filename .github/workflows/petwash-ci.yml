@@ -1,8 +1,8 @@
-name: PetWash CI 2026 - Production Deploy
+name: PetWash CI 2026 — Production Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -10,16 +10,21 @@ env:
   REGION: me-west1
   SERVICE_NAME: petwash-api
   REPO_NAME: petwash-api
+  IMAGE: me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend
 
 jobs:
   deploy-backend:
+    name: Build & Deploy Backend (Cloud Run)
     runs-on: ubuntu-latest
     permissions:
-      contents: 'read'
-      id-token: 'write'
+      contents: read
+      id-token: write
+
+    outputs:
+      cloud_run_url: ${{ steps.deploy.outputs.url }}
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Authenticate to Google Cloud
@@ -28,32 +33,38 @@ jobs:
         with:
           credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
 
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Configure Docker Auth
-        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      - name: Build and Push
+      - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: |
-            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/backend:${{ github.sha }}
-            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/backend:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Deploy to Cloud Run
+        id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
-          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/backend:${{ github.sha }}
+          image: ${{ env.IMAGE }}:${{ github.sha }}
           flags: |
-            --cpu-boost
+            --cpu=2
             --memory=2Gi
+            --min-instances=1
+            --max-instances=20
             --timeout=600
             --allow-unauthenticated
             --port=8080
@@ -108,12 +119,26 @@ jobs:
             GCS_BACKUP_BUCKET=GCS_BACKUP_BUCKET:latest
             GCS_CODE_BUCKET=GCS_CODE_BUCKET:latest
             GCS_FIRESTORE_BUCKET=GCS_FIRESTORE_BUCKET:latest
+            SUPER_ADMIN_EMAILS=SUPER_ADMIN_EMAILS:latest
+
+      - name: Smoke test — backend health check
+        run: |
+          URL="${{ steps.deploy.outputs.url }}"
+          echo "Testing: $URL/api/health"
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 30 "$URL/api/health" || echo "000")
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Backend health check passed (HTTP $STATUS)"
+          else
+            echo "❌ Backend health check FAILED (HTTP $STATUS)"
+            exit 1
+          fi
 
   deploy-frontend:
+    name: Build & Deploy Frontend (Firebase Hosting)
     runs-on: ubuntu-latest
     needs: deploy-backend
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Node 20
@@ -123,11 +148,12 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Build production bundle
         run: npm run build
         env:
+          NODE_ENV: production
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
           VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
@@ -148,3 +174,16 @@ jobs:
 
       - name: Deploy to Firebase Hosting
         run: firebase deploy --only hosting:main --project signinpetwash --non-interactive
+
+      - name: Smoke test — live site check
+        run: |
+          sleep 20
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 30 "https://petwash.co.il/" || echo "000")
+          API=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 30 "https://petwash.co.il/api/health" || echo "000")
+          echo "Frontend: HTTP $STATUS | API via Firebase: HTTP $API"
+          if [ "$STATUS" = "200" ] && [ "$API" = "200" ]; then
+            echo "✅ Full stack live check passed"
+          else
+            echo "❌ Live check FAILED — frontend: $STATUS, API: $API"
+            exit 1
+          fi

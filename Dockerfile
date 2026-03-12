@@ -1,40 +1,45 @@
-# Stage 1: Build the application
+# ─────────────────────────────────────────────────────────────────────────────
+# PetWash™ — Cloud Run Backend Dockerfile
+# Architecture: Firebase Hosting (frontend) + Cloud Run (API backend)
+# Firebase routes /api/** → this container via firebase.json rewrites
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Stage 1: Build
 FROM node:20-slim AS builder
 WORKDIR /app
+
 COPY package*.json ./
-# Use --legacy-peer-deps to avoid dependency resolution conflicts in slim image
 RUN npm install --legacy-peer-deps
+
 COPY . .
-# Ensure the assets folder is explicitly copied for the build process
-COPY attached_assets ./attached_assets
-# Ensure build script runs pre-requisites
 RUN npm run build
 
-# Stage 2: Production runtime (minimal image)
-FROM node:20-alpine AS runner
+# Stage 2: Production runtime (minimal)
+FROM node:20-slim AS runner
 WORKDIR /app
 
-# Install system dependencies for native modules if needed
-RUN apk add --no-cache python3 make g++
+# Install dumb-init for proper signal handling (SIGTERM on Cloud Run scale-down)
+RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
 
+# Copy only what the server needs at runtime
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/server ./server
 COPY --from=builder /app/shared ./shared
-COPY --from=builder /app/src ./src
-COPY --from=builder /app/attached_assets ./attached_assets
 COPY --from=builder /app/tsconfig.json ./
 COPY --from=builder /app/drizzle.config.ts ./
 
-# Install ONLY production dependencies
-RUN npm install --omit=dev --legacy-peer-deps
+# Install production dependencies + tsx for TypeScript execution
+RUN npm install --omit=dev --legacy-peer-deps && npm install tsx
 
-# Ensure tsx is available for server execution
-RUN npm install -g tsx
+# Run as non-root user for security
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 petwash
+USER petwash
 
 EXPOSE 8080
 ENV NODE_ENV=production
 ENV PORT=8080
 
-# Use npx to ensure local version of tsx is used if available, or fallback to global
+# dumb-init ensures SIGTERM is passed to Node.js correctly (graceful shutdown)
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["npx", "tsx", "server/index.ts"]
