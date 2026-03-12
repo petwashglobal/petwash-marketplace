@@ -170,8 +170,6 @@ jobs:
 
       - name: Deploy to Firebase Hosting
         run: firebase deploy --only hosting:main --project signinpetwash --non-interactive
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_CI_TOKEN }}
 
       - name: Smoke test — live site check
         run: |
