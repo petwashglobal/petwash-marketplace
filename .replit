@@ -10,10 +10,9 @@ channel = "stable-24_05"
 packages = ["dig", "freetype", "git-lfs", "imagemagick", "jq", "k6", "lcms2", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "openjpeg", "openssl", "optipng", "pngquant", "psmisc", "tcl", "tk", "zlib"]
 
 [deployment]
-deploymentTarget = "vm"
+deploymentTarget = "cloudrun"
 build = ["npm", "run", "build"]
 run = ["npm", "run", "start"]
-publicDir = "dist/public"
 
 [workflows]
 runButton = "Project"
