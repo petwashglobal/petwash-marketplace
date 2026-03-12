@@ -1,0 +1,177 @@
+Implement a Gemini-based background watchdog for PetWash.
+
+Goal:
+Create an always-on AI operational watchdog that reads logs, errors, and critical platform events, classifies incidents, and produces actionable alerts and summaries for the team.
+
+This watchdog must NOT sit in the critical inline request path for bookings, payments, or auth.
+It must run asynchronously in the background.
+
+Architecture:
+Use a 3-tier model strategy:
+
+1. Gemini 2.5 Flash-Lite
+Use for high-volume cheap triage:
+- classify logs
+- severity scoring
+- deduplicate repeated errors
+- assign domain tags
+- detect new error patterns
+
+2. Gemini 2.5 Flash
+Use for operational summaries:
+- summarize grouped incidents
+- detect trends
+- explain likely affected product area
+- recommend next engineering action
+
+3. Gemini 2.5 Pro
+Use only for deep RCA and postmortem generation:
+- analyze stack traces
+- compare incident clusters
+- reason about likely code root cause
+- draft engineering remediation notes
+
+Watch these event sources:
+- production server logs
+- background job logs
+- payment logs
+- Nayax-related errors
+- wallet / eGift / escrow errors
+- booking expiry / reassignment failures
+- websocket / chat / typing / unread failures
+- signup / consent / auth failures
+- passkey / OTP / password login failures
+- push notification failures
+- location permission failures
+- frontend JS errors
+- DB errors including missing table / column / index
+- suspicious moderation / abuse spikes
+
+Required pipeline:
+1. Ingest logs/events
+2. Normalize into structured event records
+3. Group duplicates by fingerprint
+4. Send grouped payloads to Gemini
+5. Store Gemini result in watchdog_incidents table
+6. Trigger alerts for high severity incidents
+7. Expose results in admin dashboard
+
+Database table:
+watchdog_incidents
+Fields:
+- id
+- source
+- fingerprint
+- service
+- severity
+- title
+- summary
+- probableRootCause
+- recommendedAction
+- affectedRoutes
+- affectedUsersEstimate
+- firstSeenAt
+- lastSeenAt
+- occurrenceCount
+- modelUsed
+- rawSample
+- status
+- assignedTo nullable
+- createdAt
+- updatedAt
+
+Severity levels:
+- info
+- low
+- medium
+- high
+- critical
+
+Classification domains:
+- auth
+- payments
+- wallet
+- escrow
+- bookings
+- reassignment
+- provider
+- chat
+- websocket
+- notifications
+- location
+- media
+- admin
+- security
+- compliance
+- database
+- deployment
+
+Required outputs from Gemini:
+- 1 line incident title
+- short operational summary
+- severity classification
+- domain classification
+- probable root cause
+- recommended next action
+- whether human escalation is needed
+- whether issue affects money, security, or compliance
+
+Background jobs:
+1. Realtime triage worker
+- runs continuously on new events
+- uses Gemini 2.5 Flash-Lite
+
+2. Incident summarizer job
+- every 5 minutes
+- groups similar incidents
+- uses Gemini 2.5 Flash
+
+3. Daily postmortem draft job
+- once daily or on critical trigger
+- uses Gemini 2.5 Pro for highest-severity incidents only
+
+Rules:
+- do not send secrets, full tokens, raw card data, or sensitive personal data into prompts
+- redact emails, phones, tokens, passwords, CVV, PAN, biometric payloads, and raw ID numbers before sending to Gemini
+- keep prompts minimal and structured
+- never allow Gemini to execute code or mutate production state directly
+- Gemini may recommend, not act
+
+Alerting:
+For high / critical incidents:
+- create admin dashboard alert
+- optional Slack / email / push alert
+- include title, severity, domain, summary, recommended action
+
+Admin UI:
+Create a Watchdog panel with:
+- open incidents
+- grouped by severity
+- grouped by domain
+- newest first
+- affected service filters
+- “money impact” and “security impact” badges
+- AI summary card
+- raw log sample drawer
+- mark resolved / assign owner actions
+
+Integrations:
+- read production logs
+- read deployment logs
+- read crash logs
+- read background job logs
+- optionally read Crashlytics / Firebase logs if already wired
+
+Do not replace existing monitoring.
+This is an AI watchdog layer on top of existing logs and alerts.
+
+Deliver:
+- exact architecture
+- files added
+- DB schema added
+- worker jobs added
+- prompt templates
+- admin UI screens
+- redaction logic
+- sample incident outputs
+- cost-safe model routing logic
