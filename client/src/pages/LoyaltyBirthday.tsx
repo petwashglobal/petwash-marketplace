@@ -93,7 +93,7 @@ export default function LoyaltyBirthday() {
           </p>
         </div>
 
-        <div className="p-8 md:p-12 rounded-2xl bg-[#F7F4EE] border border-[rgba(201,169,110,0.15)] backdrop-blur-xl text-center mb-12 shadow-[0_0_40px_rgba(201,169,110,0.05)]">
+        <div className="p-8 md:p-12 rounded-2xl bg-white border border-[rgba(201,169,110,0.15)] backdrop-blur-xl text-center mb-12 shadow-[0_0_40px_rgba(201,169,110,0.05)]">
           <div className="max-w-2xl mx-auto">
             <div className="w-20 h-20 rounded-2xl bg-[rgba(201,169,110,0.1)] border border-[rgba(201,169,110,0.2)] flex items-center justify-center mx-auto mb-6">
               <PartyPopper className="w-10 h-10 text-[#C9A96E]" />
@@ -109,17 +109,17 @@ export default function LoyaltyBirthday() {
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-              <div className="p-4 rounded-xl bg-[#F7F4EE] border border-[#E8E3D9]">
+              <div className="p-4 rounded-xl bg-white border border-[#E8E3D9]">
                 <p className="text-3xl mb-2">🎂</p>
                 <p className="font-semibold text-[#1A1A1A] text-sm">{isHebrew ? 'יום ההולדת שלך' : 'Your Birthday'}</p>
                 <p className="text-[#8A8078] text-xs">{isHebrew ? 'הטבות חברי מועדון' : 'Special member rewards'}</p>
               </div>
-              <div className="p-4 rounded-xl bg-[#F7F4EE] border border-[#E8E3D9]">
+              <div className="p-4 rounded-xl bg-white border border-[#E8E3D9]">
                 <p className="text-3xl mb-2">🐾</p>
                 <p className="font-semibold text-[#1A1A1A] text-sm">{isHebrew ? 'יום הולדת חיית מחמד' : "Pet's Birthday"}</p>
                 <p className="text-[#8A8078] text-xs">{isHebrew ? 'חטיפים וצעצועים' : 'Treats & toys included'}</p>
               </div>
-              <div className="p-4 rounded-xl bg-[#F7F4EE] border border-[#E8E3D9]">
+              <div className="p-4 rounded-xl bg-white border border-[#E8E3D9]">
                 <p className="text-3xl mb-2">✨</p>
                 <p className="font-semibold text-[#1A1A1A] text-sm">{isHebrew ? 'אוטומטי' : 'Automatic'}</p>
                 <p className="text-[#8A8078] text-xs">{isHebrew ? 'ללא צורך בפעולה' : 'No action needed'}</p>
@@ -141,7 +141,7 @@ export default function LoyaltyBirthday() {
             {rewards.map((reward, idx) => (
               <div
                 key={idx}
-                className="p-6 rounded-2xl bg-[#F7F4EE] border border-[#E8E3D9] backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 hover:border-[rgba(236,72,153,0.3)] group"
+                className="p-6 rounded-2xl bg-white border border-[#E8E3D9] backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 hover:border-[rgba(236,72,153,0.3)] group"
               >
                 <div className="w-12 h-12 rounded-xl bg-[rgba(236,72,153,0.1)] flex items-center justify-center mb-4 transition-all duration-300 group-hover:bg-[rgba(236,72,153,0.2)]">
                   <reward.icon className="w-6 h-6 text-pink-400" />
@@ -157,7 +157,7 @@ export default function LoyaltyBirthday() {
           </div>
         </div>
 
-        <div className="p-8 rounded-2xl bg-[#F7F4EE] border border-[#E8E3D9] backdrop-blur-xl">
+        <div className="p-8 rounded-2xl bg-white border border-[#E8E3D9] backdrop-blur-xl">
           <h2 className="text-2xl font-bold text-[#1A1A1A] text-center mb-8">
             {isHebrew ? 'איך זה עובד' : 'How It Works'}
           </h2>

@@ -96,7 +96,7 @@ export default function LoyaltyBenefits() {
           {benefits.map((benefit, idx) => (
             <div
               key={idx}
-              className="p-6 rounded-2xl bg-[#F7F4EE] border border-[#E8E3D9] backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 hover:border-[rgba(201,169,110,0.3)] group"
+              className="p-6 rounded-2xl bg-white border border-[#E8E3D9] backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 hover:border-[rgba(201,169,110,0.3)] group"
             >
               <div className="w-12 h-12 rounded-xl bg-[rgba(201,169,110,0.1)] flex items-center justify-center mb-4 transition-all duration-300 group-hover:bg-[rgba(201,169,110,0.2)]">
                 <benefit.icon className="w-6 h-6 text-[#C9A96E]" />
@@ -113,7 +113,7 @@ export default function LoyaltyBenefits() {
           ))}
         </div>
 
-        <div className="p-8 rounded-2xl bg-[#F7F4EE] border border-[#E8E3D9] backdrop-blur-xl text-center">
+        <div className="p-8 rounded-2xl bg-white border border-[#E8E3D9] backdrop-blur-xl text-center">
           <h2 className="text-2xl font-bold text-[#1A1A1A] mb-3">
             {isHebrew ? 'מוכנים ליהנות מהטבות בלעדיות?' : 'Ready to enjoy exclusive benefits?'}
           </h2>

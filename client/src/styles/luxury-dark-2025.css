@@ -96,14 +96,14 @@
 }
 
 .luxury-dark-panel {
-  background: #F7F4EE;
+  background: #FFFFFF;
   border: 1px solid #E8E3D9;
   border-radius: 20px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
 }
 
 .luxury-dark-surface {
-  background: #F7F4EE;
+  background: #FFFFFF;
   border: 1px solid #E8E3D9;
   border-radius: 16px;
 }
@@ -320,7 +320,7 @@
 }
 
 .luxury-dark-btn-ghost:hover {
-  background: #F7F4EE;
+  background: #FFFFFF;
   border-color: #D4AF37;
 }
 
@@ -369,7 +369,7 @@
 }
 
 .luxury-credit-item:hover {
-  background: #F7F4EE;
+  background: #FFFFFF;
   border-color: rgba(212, 175, 55, 0.3);
   transform: translateY(-2px);
 }
@@ -524,7 +524,7 @@
 }
 
 .luxury-dark-scroll::-webkit-scrollbar-track {
-  background: #F7F4EE;
+  background: #FFFFFF;
 }
 
 .luxury-dark-scroll::-webkit-scrollbar-thumb {

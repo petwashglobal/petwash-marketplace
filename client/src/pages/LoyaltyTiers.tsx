@@ -107,7 +107,7 @@ export default function LoyaltyTiers() {
                   onClick={() => setSelectedTier(isExpanded ? null : tier.id)}
                   className={`
                     w-[280px] md:w-auto p-6 rounded-2xl transition-all duration-500 cursor-pointer
-                    bg-[#F7F4EE] border backdrop-blur-xl
+                    bg-white border backdrop-blur-xl
                     ${isActive
                       ? 'border-[#C9A96E] shadow-[0_0_30px_rgba(201,169,110,0.15)]'
                       : isExpanded
@@ -232,7 +232,7 @@ export default function LoyaltyTiers() {
           </div>
         </div>
 
-        <div className="mt-12 p-8 rounded-2xl bg-[#F7F4EE] border border-[#E8E3D9] backdrop-blur-xl">
+        <div className="mt-12 p-8 rounded-2xl bg-white border border-[#E8E3D9] backdrop-blur-xl">
           <h2 className="text-2xl font-bold text-[#1A1A1A] text-center mb-8">
             {isHebrew ? 'איך צוברים נקודות' : 'How to Earn Points'}
           </h2>

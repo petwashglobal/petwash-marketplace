@@ -611,7 +611,7 @@ function LuxuryGiftCard({
           </div>
         )}
 
-        <div className="relative overflow-hidden bg-[#F7F4EE]" style={{ aspectRatio: '1120 / 928' }}>
+        <div className="relative overflow-hidden bg-white" style={{ aspectRatio: '1120 / 928' }}>
           {occasion && (
             <div className="absolute top-2 start-2 z-[5]">
               <div className="flex items-center gap-1 px-2 py-0.5 rounded-full backdrop-blur-sm shadow-sm"

@@ -385,7 +385,7 @@ export default function Stations() {
                 placeholder={tx('searchPlaceholder', language)}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 pr-4 py-6 text-lg bg-[#F7F4EE] border-[#E8E3D9] text-[#1A1A1A] placeholder:text-[#AAAAAA] focus:border-cyan-500 rounded-xl"
+                className="pl-12 pr-4 py-6 text-lg bg-white border-[#E8E3D9] text-[#1A1A1A] placeholder:text-[#AAAAAA] focus:border-cyan-500 rounded-xl"
               />
             </div>
           </div>
@@ -592,7 +592,7 @@ export default function Stations() {
                         e.stopPropagation();
                         setLocation(`/booking?station=${station.id}`);
                       }}
-                      className="flex-1 py-2.5 border border-[#E8E3D9] rounded-xl text-sm text-[#1A1A1A] hover:bg-[#F7F4EE] transition-colors"
+                      className="flex-1 py-2.5 border border-[#E8E3D9] rounded-xl text-sm text-[#1A1A1A] hover:bg-white transition-colors"
                     >
                       {tx('bookNow', language)}
                     </button>
@@ -634,7 +634,7 @@ export default function Stations() {
                   </p>
                 </div>
 
-                <div className="bg-[#F7F4EE] border border-[#E8E3D9] p-4 rounded-xl">
+                <div className="bg-white border border-[#E8E3D9] p-4 rounded-xl">
                   <h4 className="text-sm font-semibold text-[#1A1A1A] mb-2">{tx('operatingHours', language)}</h4>
                   <p className="text-gray-500 text-base flex items-center gap-2">
                     <Clock className="w-5 h-5 text-cyan-400" />
@@ -642,7 +642,7 @@ export default function Stations() {
                   </p>
                 </div>
 
-                <div className="bg-[#F7F4EE] border border-[#E8E3D9] p-4 rounded-xl">
+                <div className="bg-white border border-[#E8E3D9] p-4 rounded-xl">
                   <h4 className="text-sm font-semibold text-[#1A1A1A] mb-2">{tx('currentStatus', language)}</h4>
                   <div className="flex items-center gap-3">
                     {selectedStation.status === "open" && (
@@ -675,7 +675,7 @@ export default function Stations() {
                       return (
                         <div
                           key={amenity}
-                          className="flex items-center gap-3 bg-[#F7F4EE] border border-[#E8E3D9] p-3 rounded-xl"
+                          className="flex items-center gap-3 bg-white border border-[#E8E3D9] p-3 rounded-xl"
                         >
                           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/15 flex items-center justify-center flex-shrink-0">
                             <Icon className="w-5 h-5 text-cyan-400" />
@@ -703,7 +703,7 @@ export default function Stations() {
                       setLocation(`/booking?station=${selectedStation.id}`);
                       setSelectedStation(null);
                     }}
-                    className="flex-1 py-3 border border-[#E8E3D9] rounded-xl text-sm text-[#1A1A1A] hover:bg-[#F7F4EE] transition-colors"
+                    className="flex-1 py-3 border border-[#E8E3D9] rounded-xl text-sm text-[#1A1A1A] hover:bg-white transition-colors"
                   >
                     {tx('bookNow', language)}
                   </button>

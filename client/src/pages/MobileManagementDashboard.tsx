@@ -198,7 +198,7 @@ export default function MobileManagementDashboard() {
                 'p-2.5 rounded-xl transition-colors',
                 activeView === 'providers'
                   ? 'bg-[#C9A96E]/20 text-[#C9A96E]'
-                  : 'bg-[#F7F4EE] text-[#8A8078]'
+                  : 'bg-white text-[#8A8078]'
               )}
               data-testid="toggle-providers-view"
             >
@@ -206,7 +206,7 @@ export default function MobileManagementDashboard() {
             </Button>
             <Button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2.5 rounded-xl bg-[#F7F4EE] text-[#8A8078] hover:text-[#333333] transition-colors"
+              className="p-2.5 rounded-xl bg-white text-[#8A8078] hover:text-[#333333] transition-colors"
               data-testid="button-mobile-menu"
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -221,7 +221,7 @@ export default function MobileManagementDashboard() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={activeView === 'providers' ? (isHebrew ? 'חפש ספקים...' : 'Search providers...') : (isHebrew ? 'חיפוש...' : 'Search...')}
-              className="pl-10 h-11 bg-[#F7F4EE] border-[#E8E3D9] text-[#1A1A1A] placeholder:text-[#AAAAAA] rounded-xl"
+              className="pl-10 h-11 bg-white border-[#E8E3D9] text-[#1A1A1A] placeholder:text-[#AAAAAA] rounded-xl"
               data-testid="input-search"
             />
           </div>
@@ -324,7 +324,7 @@ export default function MobileManagementDashboard() {
                   </div>
                 ))}
               </div>
-              <div className="border-t border-[#E8E3D9] p-3 bg-[#F7F4EE]">
+              <div className="border-t border-[#E8E3D9] p-3 bg-white">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-[#8A8078]">{isHebrew ? 'תחנה פופולרית:' : 'Top Station:'}</span>
                   <span className="text-[#1A1A1A] font-medium flex items-center gap-1">
@@ -434,7 +434,7 @@ export default function MobileManagementDashboard() {
                             <MessageSquare className="h-4 w-4 text-[#C9A96E]" />
                           </Button>
                         ) : (
-                          <div className="w-10 h-10 rounded-xl bg-[#F7F4EE] flex items-center justify-center" title={isHebrew ? 'אין אימייל זמין' : 'No email available'}>
+                          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center" title={isHebrew ? 'אין אימייל זמין' : 'No email available'}>
                             <MessageSquare className="h-4 w-4 text-[#DDDDDD]" />
                           </div>
                         )}
@@ -496,7 +496,7 @@ export default function MobileManagementDashboard() {
                 value={messageSubject}
                 onChange={(e) => setMessageSubject(e.target.value)}
                 placeholder={isHebrew ? 'נושא ההודעה...' : 'Message subject...'}
-                className="h-12 bg-[#F7F4EE] border-[#E8E3D9] text-[#1A1A1A] placeholder:text-[#8A8078]"
+                className="h-12 bg-white border-[#E8E3D9] text-[#1A1A1A] placeholder:text-[#8A8078]"
                 required
               />
             </div>
@@ -505,7 +505,7 @@ export default function MobileManagementDashboard() {
                 {isHebrew ? 'עדיפות' : 'Priority'}
               </label>
               <Select value={messagePriority} onValueChange={(val: any) => setMessagePriority(val)}>
-                <SelectTrigger className="h-12 bg-[#F7F4EE] border-[#E8E3D9] text-[#1A1A1A]">
+                <SelectTrigger className="h-12 bg-white border-[#E8E3D9] text-[#1A1A1A]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-[#E8E3D9]">
@@ -523,7 +523,7 @@ export default function MobileManagementDashboard() {
                 value={messageBody}
                 onChange={(e) => setMessageBody(e.target.value)}
                 placeholder={isHebrew ? 'כתוב את ההודעה שלך...' : 'Write your message...'}
-                className="min-h-[140px] bg-[#F7F4EE] border-[#E8E3D9] text-[#1A1A1A] placeholder:text-[#8A8078]"
+                className="min-h-[140px] bg-white border-[#E8E3D9] text-[#1A1A1A] placeholder:text-[#8A8078]"
                 required
               />
             </div>
@@ -534,7 +534,7 @@ export default function MobileManagementDashboard() {
             <div className="flex justify-end gap-3 pt-2">
               <Button
                 type="button"
-                className="border border-[#E8E3D9] text-[#1A1A1A] hover:bg-[#F7F4EE] rounded-xl px-5 py-3"
+                className="border border-[#E8E3D9] text-[#1A1A1A] hover:bg-white rounded-xl px-5 py-3"
                 onClick={() => setShowMessageDialog(false)}
               >
                 {isHebrew ? 'ביטול' : 'Cancel'}
@@ -575,7 +575,7 @@ export default function MobileManagementDashboard() {
                 </div>
                 <Button
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 rounded-lg hover:bg-[#F7F4EE] text-[#8A8078]"
+                  className="p-2 rounded-lg hover:bg-white text-[#8A8078]"
                   data-testid="button-close-menu"
                 >
                   <X className="h-5 w-5" />
@@ -603,7 +603,7 @@ export default function MobileManagementDashboard() {
                   return (
                     <Link key={section.id} href={section.route || '#'}>
                       <div
-                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-[#F7F4EE] transition-colors cursor-pointer"
+                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-white transition-colors cursor-pointer"
                         onClick={() => setMobileMenuOpen(false)}
                         data-testid={`menu-${section.id}`}
                       >

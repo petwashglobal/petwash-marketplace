@@ -355,7 +355,7 @@ export default function MobileStationSheet() {
             {/* KPI Grid */}
             <div className="p-4 space-y-3">
               {/* Today's Washes */}
-              <div className="p-4 rounded-lg bg-[#F7F4EE] border border-[#E8E3D9]">
+              <div className="p-4 rounded-lg bg-white border border-[#E8E3D9]">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[13px] text-[#8A8078]">Today's Washes</span>
                   <span className="text-[11px] px-1.5 py-0.5 rounded bg-[#F0EBE0] text-[#7A7068]">Live</span>
@@ -370,7 +370,7 @@ export default function MobileStationSheet() {
               </div>
 
               {/* 7-Day Trend */}
-              <div className="p-4 rounded-lg bg-[#F7F4EE] border border-[#E8E3D9]">
+              <div className="p-4 rounded-lg bg-white border border-[#E8E3D9]">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[13px] text-[#8A8078]">7-Day Volume</span>
                   <span className="text-[11px] text-[#7A7068]">—</span>
@@ -385,7 +385,7 @@ export default function MobileStationSheet() {
               </div>
 
               {/* Low Stock Items */}
-              <div className="p-4 rounded-lg bg-[#F7F4EE] border border-[#E8E3D9]">
+              <div className="p-4 rounded-lg bg-white border border-[#E8E3D9]">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[13px] text-[#8A8078]">Low Stock Items</span>
                   {Object.values(inventory).filter(item => item.qty <= item.reorderLevel).length > 0 && (
@@ -409,7 +409,7 @@ export default function MobileStationSheet() {
               </div>
 
               {/* Upcoming Renewals */}
-              <div className="p-4 rounded-lg bg-[#F7F4EE] border border-[#E8E3D9]">
+              <div className="p-4 rounded-lg bg-white border border-[#E8E3D9]">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[13px] text-[#8A8078]">Renewals (30d)</span>
                   {(() => {
@@ -438,7 +438,7 @@ export default function MobileStationSheet() {
               </div>
 
               {/* Station Details */}
-              <div className="mt-6 p-4 rounded-lg bg-[#F7F4EE] border border-[#E8E3D9]">
+              <div className="mt-6 p-4 rounded-lg bg-white border border-[#E8E3D9]">
                 <h4 className="text-[13px] font-semibold text-[#1A1A1A] mb-3">Station Details</h4>
                 <div className="space-y-2 text-[13px]">
                   <div className="flex justify-between">
@@ -594,7 +594,7 @@ export default function MobileStationSheet() {
 
                         {/* Notes */}
                         {item.notes && (
-                          <div className="mt-3 p-2 rounded bg-[#F7F4EE] border border-[#E8E3D9]">
+                          <div className="mt-3 p-2 rounded bg-white border border-[#E8E3D9]">
                             <p className="text-[13px] text-[#7A7068]">{item.notes}</p>
                           </div>
                         )}
@@ -645,7 +645,7 @@ export default function MobileStationSheet() {
                 
                 {/* Insurance */}
                 {station.utilities?.insurance ? (
-                  <div className="p-3 rounded-lg bg-[#F7F4EE] border border-[#E8E3D9]">
+                  <div className="p-3 rounded-lg bg-white border border-[#E8E3D9]">
                     <h5 className="text-[13px] font-medium text-[#1A1A1A] mb-2">Insurance</h5>
                     <div className="space-y-1.5 text-[13px]">
                       <div className="flex justify-between">
@@ -674,14 +674,14 @@ export default function MobileStationSheet() {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-3 rounded-lg bg-[#F7F4EE]/50 border border-[#E8E3D9]/50">
+                  <div className="p-3 rounded-lg bg-white/50 border border-[#E8E3D9]/50">
                     <p className="text-[13px] text-[#8A8078]">No insurance data</p>
                   </div>
                 )}
 
                 {/* Electricity */}
                 {station.utilities?.electricity ? (
-                  <div className="p-3 rounded-lg bg-[#F7F4EE] border border-[#E8E3D9]">
+                  <div className="p-3 rounded-lg bg-white border border-[#E8E3D9]">
                     <h5 className="text-[13px] font-medium text-[#1A1A1A] mb-2">Electricity</h5>
                     <div className="space-y-1.5 text-[13px]">
                       <div className="flex justify-between">
@@ -703,14 +703,14 @@ export default function MobileStationSheet() {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-3 rounded-lg bg-[#F7F4EE]/50 border border-[#E8E3D9]/50">
+                  <div className="p-3 rounded-lg bg-white/50 border border-[#E8E3D9]/50">
                     <p className="text-[13px] text-[#8A8078]">No electricity data</p>
                   </div>
                 )}
 
                 {/* Water */}
                 {station.utilities?.water ? (
-                  <div className="p-3 rounded-lg bg-[#F7F4EE] border border-[#E8E3D9]">
+                  <div className="p-3 rounded-lg bg-white border border-[#E8E3D9]">
                     <h5 className="text-[13px] font-medium text-[#1A1A1A] mb-2">Water</h5>
                     <div className="space-y-1.5 text-[13px]">
                       <div className="flex justify-between">
@@ -726,7 +726,7 @@ export default function MobileStationSheet() {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-3 rounded-lg bg-[#F7F4EE]/50 border border-[#E8E3D9]/50">
+                  <div className="p-3 rounded-lg bg-white/50 border border-[#E8E3D9]/50">
                     <p className="text-[13px] text-[#8A8078]">No water data</p>
                   </div>
                 )}
@@ -744,7 +744,7 @@ export default function MobileStationSheet() {
                 </div>
                 
                 {councilContact && (councilContact.name || councilContact.contactPerson) ? (
-                  <div className="p-3 rounded-lg bg-[#F7F4EE] border border-[#E8E3D9] space-y-3">
+                  <div className="p-3 rounded-lg bg-white border border-[#E8E3D9] space-y-3">
                     {councilContact.name && (
                       <div>
                         <p className="text-[12px] text-[#8A8078] mb-1">Council Name</p>
@@ -797,7 +797,7 @@ export default function MobileStationSheet() {
                     )}
                   </div>
                 ) : (
-                  <div className="p-3 rounded-lg bg-[#F7F4EE]/50 border border-[#E8E3D9]/50">
+                  <div className="p-3 rounded-lg bg-white/50 border border-[#E8E3D9]/50">
                     <p className="text-[13px] text-[#8A8078]">No council contact information</p>
                   </div>
                 )}

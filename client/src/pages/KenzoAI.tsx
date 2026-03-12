@@ -181,7 +181,7 @@ export default function KenzoAI() {
               onClick={() => setLanguage(lang.code)}
               className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
               style={{
-                background: language === lang.code ? 'rgba(201,169,110,0.25)' : '#F7F4EE',
+                background: language === lang.code ? 'rgba(201,169,110,0.25)' : '#FFFFFF',
                 color: language === lang.code ? '#C9A96E' : '#6A6A6A',
                 border: language === lang.code ? '1px solid rgba(201,169,110,0.5)' : '1px solid #E8E3D9',
               }}
@@ -226,7 +226,7 @@ export default function KenzoAI() {
                 style={{
                   background: msg.role === 'user'
                     ? 'rgba(201,169,110,0.2)'
-                    : '#F7F4EE',
+                    : '#FFFFFF',
                   border: msg.role === 'user'
                     ? '1px solid rgba(201,169,110,0.3)'
                     : '1px solid #E8E3D9',
@@ -252,7 +252,7 @@ export default function KenzoAI() {
               </div>
               <div
                 className="px-4 py-3 rounded-2xl flex items-center gap-1"
-                style={{ background: '#F7F4EE', border: '1px solid #E8E3D9', backdropFilter: 'blur(12px)' }}
+                style={{ background: '#FFFFFF', border: '1px solid #E8E3D9', backdropFilter: 'blur(12px)' }}
               >
                 <span className="text-xs opacity-50">{labels.thinking}</span>
                 <span className="flex gap-0.5">
@@ -302,7 +302,7 @@ export default function KenzoAI() {
             disabled={loading}
             className="flex-1 px-4 py-3 rounded-2xl text-sm outline-none transition-all placeholder:opacity-40"
             style={{
-              background: '#F7F4EE',
+              background: '#FFFFFF',
               border: '1px solid #E8E3D9',
               color: '#1A1A1A',
               backdropFilter: 'blur(12px)',
@@ -315,7 +315,7 @@ export default function KenzoAI() {
             disabled={!input.trim() || loading}
             className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:scale-105 disabled:opacity-30 shrink-0"
             style={{
-              background: input.trim() ? 'rgba(201,169,110,0.3)' : '#F7F4EE',
+              background: input.trim() ? 'rgba(201,169,110,0.3)' : '#FFFFFF',
               border: '1px solid rgba(201,169,110,0.4)',
               color: '#C9A96E',
             }}

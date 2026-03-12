@@ -111,7 +111,7 @@ export default function LoyaltyRefer() {
           {stats.map((stat, idx) => (
             <div
               key={idx}
-              className="p-6 rounded-2xl bg-[#F7F4EE] border border-[#E8E3D9] backdrop-blur-xl text-center transition-all duration-300 hover:border-[rgba(139,92,246,0.3)]"
+              className="p-6 rounded-2xl bg-white border border-[#E8E3D9] backdrop-blur-xl text-center transition-all duration-300 hover:border-[rgba(139,92,246,0.3)]"
             >
               <div className="w-12 h-12 rounded-xl bg-[rgba(139,92,246,0.1)] flex items-center justify-center mx-auto mb-3">
                 <stat.icon className="w-6 h-6 text-purple-400" />
@@ -122,7 +122,7 @@ export default function LoyaltyRefer() {
           ))}
         </div>
 
-        <div className="p-8 rounded-2xl bg-[#F7F4EE] border border-[rgba(201,169,110,0.15)] backdrop-blur-xl mb-10 shadow-[0_0_40px_rgba(201,169,110,0.05)]">
+        <div className="p-8 rounded-2xl bg-white border border-[rgba(201,169,110,0.15)] backdrop-blur-xl mb-10 shadow-[0_0_40px_rgba(201,169,110,0.05)]">
           <h2 className="text-2xl font-bold text-[#1A1A1A] text-center mb-6">
             {isHebrew ? 'קוד ההפניה שלך' : 'Your Referral Code'}
           </h2>
@@ -153,7 +153,7 @@ export default function LoyaltyRefer() {
           </div>
         </div>
 
-        <div className="p-8 rounded-2xl bg-[#F7F4EE] border border-[#E8E3D9] backdrop-blur-xl mb-10">
+        <div className="p-8 rounded-2xl bg-white border border-[#E8E3D9] backdrop-blur-xl mb-10">
           <h2 className="text-2xl font-bold text-[#1A1A1A] text-center mb-8">
             {isHebrew ? 'תגמולי הפניה' : 'Referral Rewards'}
           </h2>
@@ -161,7 +161,7 @@ export default function LoyaltyRefer() {
             {rewards.map((reward, idx) => (
               <div
                 key={idx}
-                className="p-6 rounded-xl bg-[#F7F4EE] border border-[#E8E3D9] text-center transition-all duration-300 hover:border-[rgba(201,169,110,0.3)] hover:scale-[1.02]"
+                className="p-6 rounded-xl bg-white border border-[#E8E3D9] text-center transition-all duration-300 hover:border-[rgba(201,169,110,0.3)] hover:scale-[1.02]"
               >
                 <div className="w-10 h-10 rounded-full bg-[rgba(201,169,110,0.1)] flex items-center justify-center mx-auto mb-3">
                   <TrendingUp className="w-5 h-5 text-[#C9A96E]" />
@@ -178,7 +178,7 @@ export default function LoyaltyRefer() {
           </div>
         </div>
 
-        <div className="p-8 rounded-2xl bg-[#F7F4EE] border border-[#E8E3D9] backdrop-blur-xl">
+        <div className="p-8 rounded-2xl bg-white border border-[#E8E3D9] backdrop-blur-xl">
           <h2 className="text-2xl font-bold text-[#1A1A1A] text-center mb-8">
             {isHebrew ? 'איך זה עובד' : 'How It Works'}
           </h2>
