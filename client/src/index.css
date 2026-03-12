@@ -2196,8 +2196,8 @@ html[lang="en"] *,
   display: flex;
   align-items: flex-start;
   gap: 1.25rem;
-  background: linear-gradient(145deg, rgba(20, 20, 20, 0.97) 0%, rgba(8, 8, 8, 0.99) 100%) !important;
-  border: 1px solid rgba(212, 175, 55, 0.25) !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(212, 175, 55, 0.2) !important;
   position: relative;
 }
 
@@ -2207,7 +2207,7 @@ html[lang="en"] *,
   top: 0;
   left: 0;
   right: 0;
-  height: 1px;
+  height: 2px;
   background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.4), transparent);
 }
 
@@ -2227,14 +2227,12 @@ html[lang="en"] *,
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(145deg, rgba(212, 175, 55, 0.12) 0%, rgba(212, 175, 55, 0.04) 100%);
-  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: linear-gradient(145deg, rgba(212, 175, 55, 0.12) 0%, rgba(212, 175, 55, 0.05) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.25);
   border-radius: 1rem;
   position: relative;
   z-index: 1;
-  box-shadow: 
-    0 4px 16px rgba(212, 175, 55, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.12);
 }
 
 .luxury-feature-text {
@@ -2303,14 +2301,12 @@ html[lang="en"] *,
   position: relative;
   border-radius: 1.25rem;
   overflow: hidden;
-  border: 2px solid rgba(212, 175, 55, 0.35);
-  background: linear-gradient(145deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%);
+  border: 2px solid rgba(212, 175, 55, 0.3);
+  background: #ffffff;
   padding: 3px;
   box-shadow: 
-    0 25px 60px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(212, 175, 55, 0.15),
-    0 0 40px rgba(212, 175, 55, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 12px 40px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(212, 175, 55, 0.1);
 }
 
 .luxury-tech-image img {
@@ -2324,8 +2320,8 @@ html[lang="en"] *,
   bottom: 0;
   left: 0;
   right: 0;
-  height: 40%;
-  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.7) 100%);
+  height: 30%;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.12) 100%);
   pointer-events: none;
   border-radius: 0 0 1rem 1rem;
   z-index: 1;
