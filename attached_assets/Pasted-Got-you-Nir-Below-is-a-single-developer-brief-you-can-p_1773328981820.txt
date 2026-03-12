@@ -1,0 +1,450 @@
+Got you Nir. Below is a single developer brief you can paste directly to your developer.
+It explains the full architecture, security logic, Nayax integration, wallet logic, QR flow, taxes, commissions and redemption system so nothing is misunderstood.
+
+⸻
+
+PET PLATFORM – PAYMENT, WALLET & QR SYSTEM ARCHITECTURE
+
+(Developer Implementation Guide – Israel 2026)
+
+1. System Overview
+
+The platform must integrate four core components:
+	1.	Mobile App / Web App
+	2.	Platform Backend (API + Wallet + Ledger)
+	3.	Nayax Payment & Machine Control
+	4.	K9000 Station Hardware (QR reader + terminal)
+
+The platform controls:
+
+• user accounts
+• wallet balances
+• gift credits
+• discounts
+• loyalty rewards
+• provider commissions
+• tax calculations
+• machine activation
+
+Nayax handles:
+
+• card payments
+• Apple Pay / Google Pay
+• QR scanning hardware
+• payment settlement
+• machine communication
+
+⸻
+
+2. Hardware at Station
+
+Each station contains:
+
+• Nayax payment terminal
+• Nayax QR / barcode scanner
+• K9000 machine controller
+
+Supported activation methods:
+	1.	Card tap
+	2.	Apple Pay / Google Pay
+	3.	Mobile wallet QR scan
+	4.	Gift code QR scan
+	5.	Discount QR scan
+
+The QR scanner must be the primary activation method for app users.
+
+⸻
+
+3. User Activation Flow
+
+Wallet Activation Flow
+
+User opens the mobile app.
+
+User presses:
+
+START WASH
+
+The app generates a dynamic QR code token.
+
+User scans QR at Nayax reader.
+
+Reader sends token to backend validation.
+
+If approved → backend sends command to Nayax → machine starts.
+
+Flow:
+
+APP
+→ QR TOKEN
+→ NAYAX READER
+→ BACKEND VALIDATION
+→ MACHINE START
+
+⸻
+
+4. QR Token Security (CRITICAL)
+
+QR codes must NEVER contain money values.
+
+QR codes must contain secure authorization tokens only.
+
+Example token structure:
+
+{
+user_id: UUID
+machine_id: ID
+session_id: UUID
+timestamp: UNIX
+nonce: RANDOM
+signature: HMAC-SHA256
+}
+
+Security rules:
+
+• token valid for 30 seconds
+• one-time use only
+• cryptographically signed
+• backend validation required
+
+This prevents:
+
+• QR reuse
+• screenshot fraud
+• token forgery
+
+⸻
+
+5. Wallet System
+
+The platform must maintain an internal user wallet ledger.
+
+Wallet features:
+
+• top-up funds
+• gift credits
+• redeem credits
+• refunds
+• loyalty rewards
+• discount credits
+
+Example wallet balance:
+
+Wallet balance = 100₪
+
+After wash costing 25₪:
+
+Wallet balance = 75₪
+
+Wallet must always display VAT included prices.
+
+⸻
+
+6. Gift System
+
+User can purchase a gift wash or gift credit.
+
+Example:
+
+Gift purchase = 100₪
+
+System creates:
+
+gift_id
+wallet_credit = 100₪
+
+Recipient receives:
+
+• QR code
+• redemption link
+• wallet credit
+
+When scanned at machine:
+
+Backend validates gift token.
+
+If valid → machine activates.
+
+Gift tokens must:
+
+• expire
+• be single use
+• be cryptographically signed
+
+⸻
+
+7. Discount System
+
+Platform must support discount campaigns.
+
+Example types:
+
+• fixed discount (10₪)
+• percentage discount (20%)
+• free wash
+• first wash promotion
+
+Discount flow:
+
+User scans QR → backend applies discount → final price calculated → wallet charged.
+
+⸻
+
+8. Loyalty System
+
+Loyalty example:
+
+5 washes → 1 free wash
+
+Implementation:
+
+user_wash_counter
+
+When counter reaches threshold:
+
+reward_credit added to wallet.
+
+User redeems reward via QR.
+
+⸻
+
+9. Subscription Model (Optional)
+
+Example subscription:
+
+Monthly plan = 4 washes
+
+Backend stores:
+
+subscription_id
+remaining_washes
+expiration_date
+
+QR scan checks subscription.
+
+If remaining_washes > 0 → machine starts.
+
+⸻
+
+10. Payment Methods
+
+Supported payment flows:
+	1.	Direct card payment via Nayax terminal
+	2.	Apple Pay / Google Pay
+	3.	Wallet balance
+	4.	Gift credit
+	5.	Discounted wallet payment
+
+Backend must track all transactions regardless of method.
+
+⸻
+
+11. Financial Ledger (CRITICAL)
+
+Every transaction must be recorded in the platform ledger.
+
+Transaction record structure:
+
+transaction_id
+user_id
+machine_id
+gross_amount
+vat_amount
+net_amount
+commission_amount
+processor_fee
+provider_payout
+timestamp
+payment_method
+
+This ensures accurate accounting.
+
+⸻
+
+12. VAT Logic (Israel 2026)
+
+VAT = 18%
+
+All prices shown to customers must be VAT included.
+
+Example:
+
+Customer price = 100₪
+
+Calculation:
+
+Net service = 84.75₪
+VAT = 15.25₪
+Total = 100₪
+
+Formula:
+
+net = gross / 1.18
+vat = gross − net
+
+⸻
+
+13. Nayax Processing Fee
+
+Nayax processing fee estimated ~1%.
+
+Example:
+
+Customer pays = 100₪
+
+Nayax fee ≈ 1₪
+
+Revenue calculation:
+
+Net revenue = gross − vat − processor_fee
+
+Example:
+
+100 − 15.25 − 1 = 83.75₪
+
+⸻
+
+14. Platform Commission Logic
+
+For marketplace services (pet sitter, academy etc.)
+
+Platform commission = 15%
+
+Example:
+
+Service price = 100₪
+
+Commission = 15₪
+Provider payout = 85₪
+
+VAT applies to platform commission.
+
+Commission VAT = 2.70₪
+
+⸻
+
+15. Machine Activation API
+
+Backend must call Nayax API to activate machine.
+
+Example flow:
+	1.	QR scanned
+	2.	backend verifies token
+	3.	backend checks wallet balance
+	4.	backend authorizes payment
+	5.	backend calls Nayax machine API
+
+Machine receives:
+
+machine_id
+activation_command
+wash_program
+
+⸻
+
+16. Fraud Protection
+
+Mandatory protections:
+
+• QR tokens expire in 30 seconds
+• tokens single-use only
+• machine session ID validation
+• rate limit scans
+• replay protection
+• wallet double-spend protection
+
+Wallet transactions must use atomic database transactions.
+
+⸻
+
+17. Database Tables
+
+Required tables:
+
+users
+wallet_accounts
+wallet_transactions
+machines
+machine_sessions
+gifts
+discount_codes
+subscriptions
+loyalty_rewards
+transactions
+providers
+provider_payouts
+
+⸻
+
+18. Monitoring & Logs
+
+System must log:
+
+• machine activations
+• wallet deductions
+• payment approvals
+• QR validation attempts
+• fraud detection events
+
+Logs must be immutable.
+
+⸻
+
+19. Settlement Flow
+
+Daily reconciliation must calculate:
+
+total_gross_sales
+total_vat
+total_nayax_fees
+total_commissions
+total_provider_payouts
+net_platform_revenue
+
+⸻
+
+20. Final Architecture
+
+Platform Backend = business logic
+
+Handles:
+
+users
+wallet
+loyalty
+gifts
+discounts
+subscriptions
+accounting
+
+Nayax handles:
+
+payment processing
+card transactions
+terminal communication
+machine control
+
+Machine hardware handles:
+
+QR scanning
+program execution
+
+⸻
+
+Final Principle
+
+The platform must guarantee:
+
+User charge ≤ wallet balance
+
+All customer prices must be VAT included.
+
+All payments must be fully traceable in the ledger.
+
+All QR tokens must be secure, time-limited, and single-use.
+
+⸻
+
+If you want, Nir, I can also prepare something extremely useful for your developer:
+
+a full technical system diagram (like Uber / Lime architecture) showing backend, Nayax, wallet, QR tokens and machine control so they build it perfectly the first time.
