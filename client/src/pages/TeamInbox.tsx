@@ -467,7 +467,7 @@ export default function TeamInbox() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
                           <Avatar className="mt-1">
-                            <AvatarFallback className="bg-gray-200">
+                            <AvatarFallback className="bg-gray-100">
                               {conv.type === 'group' ? <Users className="w-4 h-4" /> : conv.title?.[0] || 'T'}
                             </AvatarFallback>
                           </Avatar>
@@ -704,7 +704,7 @@ export default function TeamInbox() {
                       <div
                         key={index}
                         data-testid={`attached-file-${index}`}
-                        className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2"
+                        className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2"
                       >
                         {getFileIcon(file.type)}
                         <span className="text-sm truncate max-w-xs">{file.name}</span>

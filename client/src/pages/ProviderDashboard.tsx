@@ -341,7 +341,7 @@ export default function ProviderDashboard() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="bg-white/60 backdrop-blur-sm border border-gray-100 animate-pulse p-6" style={{ borderRadius: '2px' }}>
-                <div className="h-20 bg-gray-100/50" style={{ borderRadius: '2px' }} />
+                <div className="h-20 bg-white/30" style={{ borderRadius: '2px' }} />
               </div>
             ))}
           </div>
@@ -616,7 +616,7 @@ export default function ProviderDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[...Array(3)].map((_, i) => (
                     <div key={i} className="bg-white/60 border border-gray-100 animate-pulse p-6" style={{ borderRadius: '2px' }}>
-                      <div className="h-20 bg-gray-100/50" style={{ borderRadius: '2px' }} />
+                      <div className="h-20 bg-white/30" style={{ borderRadius: '2px' }} />
                     </div>
                   ))}
                 </div>

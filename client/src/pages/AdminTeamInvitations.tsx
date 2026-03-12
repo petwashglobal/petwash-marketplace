@@ -140,7 +140,7 @@ const departmentInfo = {
   subcontractors: { 
     icon: Briefcase, 
     color: 'text-slate-600',
-    bgColor: 'bg-slate-50',
+    bgColor: 'bg-white',
     label: { en: 'Subcontractors', he: 'קבלנים משנה' },
     description: { en: 'External contractors', he: 'קבלנים חיצוניים' }
   },
