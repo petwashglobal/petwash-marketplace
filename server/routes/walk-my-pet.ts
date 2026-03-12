@@ -16,12 +16,13 @@ import {
   octopusInvoices,
   bookingRequests,
   providerApprovalQueue,
+  walkSlotHolds,
   type InsertWalkerProfile,
   type InsertWalkBooking,
   type InsertWalkGpsTracking,
   type InsertWalkerReview
 } from '../../shared/schema';
-import { eq, and, gte, lte, sql, desc, asc, isNotNull } from 'drizzle-orm';
+import { eq, and, gte, lte, lt, sql, desc, asc, isNotNull } from 'drizzle-orm';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { requireLoyaltyMember } from '../middleware/loyalty';
@@ -737,8 +738,7 @@ router.post('/walks/emergency-request', requireAuth, async (req, res) => {
   }
 });
 
-// =================== SLOT HOLDS (Double-booking prevention) ===================
-const walkSlotHolds = new Map<string, { walkerId: string; expiresAt: number; estimatedAmount: number }>();
+// =================== SLOT HOLDS (DB-persisted, double-booking prevention) ===================
 
 router.post('/walks/holds', requireAuth, async (req, res) => {
   try {
@@ -746,20 +746,28 @@ router.post('/walks/holds', requireAuth, async (req, res) => {
     if (!slotId || !walkerId) {
       return res.status(400).json({ success: false, error: 'slotId and walkerId are required' });
     }
-    // Check if slot already held by a different hold
-    for (const [hId, hold] of walkSlotHolds.entries()) {
-      if (hold.walkerId === walkerId && hold.expiresAt > Date.now()) {
-        return res.status(409).json({ success: false, error: 'Walker slot currently held by another booking' });
-      }
+    const now = new Date();
+    // Purge expired holds first (lazy cleanup)
+    await db.delete(walkSlotHolds).where(lt(walkSlotHolds.expiresAt, now));
+    // Check if walker slot is already held by an active hold
+    const [existing] = await db.select()
+      .from(walkSlotHolds)
+      .where(and(eq(walkSlotHolds.walkerId, walkerId), gte(walkSlotHolds.expiresAt, now)))
+      .limit(1);
+    if (existing) {
+      return res.status(409).json({ success: false, error: 'Walker slot currently held by another booking' });
     }
     const holdId = `HOLD-${randomBytes(6).toString('hex').toUpperCase()}`;
     const ttlMs = (walkDuration || 30) * 60 * 1000 + 5 * 60 * 1000; // walk duration + 5min buffer
-    walkSlotHolds.set(holdId, { walkerId, expiresAt: Date.now() + ttlMs, estimatedAmount: estimatedAmount || 0 });
-    // Clean up expired holds
-    for (const [k, v] of walkSlotHolds.entries()) {
-      if (v.expiresAt < Date.now()) walkSlotHolds.delete(k);
-    }
-    return res.json({ success: true, holdId, slotId, estimatedAmount: estimatedAmount || 0, expiresAt: new Date(Date.now() + ttlMs).toISOString() });
+    const expiresAt = new Date(Date.now() + ttlMs);
+    await db.insert(walkSlotHolds).values({
+      holdId,
+      slotId,
+      walkerId,
+      estimatedAmount: String(estimatedAmount || 0),
+      expiresAt,
+    });
+    return res.json({ success: true, holdId, slotId, estimatedAmount: estimatedAmount || 0, expiresAt: expiresAt.toISOString() });
   } catch (error: any) {
     console.error('[Walk Holds] Error:', error);
     res.status(500).json({ success: false, error: 'Failed to create slot hold' });

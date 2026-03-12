@@ -11740,3 +11740,17 @@ export type InsertSessionCareLog = z.infer<typeof insertSessionCareLogSchema>;
 export type SessionCareLog = typeof sessionCareLogs.$inferSelect;
 
 export type ProviderSafetyNote = typeof providerSafetyNotes.$inferSelect;
+
+// ── Walk Slot Holds (DB-persisted, survives server restarts) ──────────────────
+export const walkSlotHolds = pgTable("walk_slot_holds", {
+  id:              serial("id").primaryKey(),
+  holdId:          varchar("hold_id").unique().notNull(),        // HOLD-XXXXXX
+  slotId:          varchar("slot_id").notNull(),                 // walker:date:time key
+  walkerId:        varchar("walker_id").notNull(),
+  estimatedAmount: decimal("estimated_amount", { precision: 10, scale: 2 }).default("0"),
+  expiresAt:       timestamp("expires_at").notNull(),
+  createdAt:       timestamp("created_at").defaultNow(),
+}, (t) => ({
+  walkerIdx:  index("wsh_walker_idx").on(t.walkerId),
+  expiryIdx:  index("wsh_expiry_idx").on(t.expiresAt),
+}));

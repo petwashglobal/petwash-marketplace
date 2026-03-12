@@ -472,7 +472,8 @@ if (isProduction) {
     );
     
     await Promise.race([routeRegistrationPromise, routeTimeoutPromise]);
-    
+    healthState.app.routesReady = true;
+
     // 5. Serve static files - CONDITIONAL based on environment
     // DEVELOPMENT: Use Vite dev server with HMR for hot reloading
     // PRODUCTION: Serve pre-built static files from dist/public
