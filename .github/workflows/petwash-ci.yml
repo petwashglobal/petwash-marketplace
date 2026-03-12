@@ -66,60 +66,56 @@ jobs:
             --min-instances=1
             --max-instances=20
             --timeout=600
-            --allow-unauthenticated
             --port=8080
             --execution-environment=gen2
+            --ingress=all
             --set-env-vars=NODE_ENV=production
           secrets: |
             BASE_URL=BASE_URL:latest
-            FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest
-            GOOGLE_DIALOGFLOW_PROJECT_ID=GOOGLE_DIALOGFLOW_PROJECT_ID:latest
-            WEBAUTHN_RP_ID=WEBAUTHN_RP_ID:latest
-            SENTRY_ENV=SENTRY_ENV:latest
             DATABASE_URL=DATABASE_URL:latest
+            FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest
+            FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest
             JWT_SECRET=JWT_SECRET:latest
             JWT_REFRESH_SECRET=JWT_REFRESH_SECRET:latest
             COOKIE_SECRET=COOKIE_SECRET:latest
             SESSION_SECRET=SESSION_SECRET:latest
             SENDGRID_API_KEY=SENDGRID_API_KEY:latest
-            FIREBASE_SERVICE_ACCOUNT_KEY=FIREBASE_SERVICE_ACCOUNT_KEY:latest
-            TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest
-            TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest
-            TWILIO_PHONE_NUMBER=TWILIO_PHONE_NUMBER:latest
             GEMINI_API_KEY=GEMINI_API_KEY:latest
             GOOGLE_MAPS_API_KEY=GOOGLE_MAPS_API_KEY:latest
             GOOGLE_SERVICE_ACCOUNT_JSON=GOOGLE_SERVICE_ACCOUNT_JSON:latest
             GOOGLE_APPLICATION_CREDENTIALS_JSON=GOOGLE_SERVICE_ACCOUNT_JSON:latest
-            GOOGLE_TRANSLATE_API_KEY=GOOGLE_TRANSLATE_API_KEY:latest
-            GOOGLE_WEATHER_API_KEY=GOOGLE_WEATHER_API_KEY:latest
-            GOOGLE_AGENT_ID=GOOGLE_AGENT_ID:latest
-            GOOGLE_AGENT_LOCATION=GOOGLE_AGENT_LOCATION:latest
-            GOOGLE_BUSINESS_CLIENT_ID=GOOGLE_BUSINESS_CLIENT_ID:latest
-            GOOGLE_BUSINESS_CLIENT_SECRET=GOOGLE_BUSINESS_CLIENT_SECRET:latest
-            GOOGLE_BUSINESS_REFRESH_TOKEN=GOOGLE_BUSINESS_REFRESH_TOKEN:latest
-            GOOGLE_BUSINESS_ACCOUNT_ID=GOOGLE_BUSINESS_ACCOUNT_ID:latest
+            TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest
+            TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest
+            TWILIO_PHONE_NUMBER=TWILIO_PHONE_NUMBER:latest
+            WEBAUTHN_RP_ID=WEBAUTHN_RP_ID:latest
+            WEBAUTHN_COOKIE_SECRET=WEBAUTHN_COOKIE_SECRET:latest
+            RECAPTCHA_SECRET_KEY=RECAPTCHA_SECRET_KEY:latest
             MOBILE_LINK_SECRET=MOBILE_LINK_SECRET:latest
             WALLET_LINK_SECRET=WALLET_LINK_SECRET:latest
-            BIOMETRIC_BUCKET_NAME=BIOMETRIC_BUCKET_NAME:latest
-            BIOMETRIC_PREFIX=BIOMETRIC_PREFIX:latest
-            WEBAUTHN_COOKIE_SECRET=WEBAUTHN_COOKIE_SECRET:latest
-            NAYAX_WEBHOOK_SECRET=NAYAX_WEBHOOK_SECRET:latest
             VOUCHER_SALT=VOUCHER_SALT:latest
             VOUCHER_ES256_PRIVATE_KEY_PEM=VOUCHER_ES256_PRIVATE_KEY_PEM:latest
             VOUCHER_ES256_PUBLIC_KEY_PEM=VOUCHER_ES256_PUBLIC_KEY_PEM:latest
-            RECAPTCHA_SECRET_KEY=RECAPTCHA_SECRET_KEY:latest
             KYC_SALT=KYC_SALT:latest
             GMAIL_TOKEN_ENCRYPTION_KEY=GMAIL_TOKEN_ENCRYPTION_KEY:latest
+            BIOMETRIC_BUCKET_NAME=BIOMETRIC_BUCKET_NAME:latest
+            BIOMETRIC_PREFIX=BIOMETRIC_PREFIX:latest
             HUBSPOT_FORM_GUID=HUBSPOT_FORM_GUID:latest
             HUBSPOT_PORTAL_ID=HUBSPOT_PORTAL_ID:latest
-            SENTRY_DSN=SENTRY_DSN:latest
-            METRICS_AUTH_TOKEN=METRICS_AUTH_TOKEN:latest
-            ALERTS_SLACK_WEBHOOK=ALERTS_SLACK_WEBHOOK:latest
-            CS_BACKUP_BUCKET=CS_BACKUP_BUCKET:latest
+            NAYAX_WEBHOOK_SECRET=NAYAX_WEBHOOK_SECRET:latest
+            GOOGLE_TRANSLATE_API_KEY=GOOGLE_TRANSLATE_API_KEY:latest
+            GOOGLE_WEATHER_API_KEY=GOOGLE_WEATHER_API_KEY:latest
             GCS_BACKUP_BUCKET=GCS_BACKUP_BUCKET:latest
-            GCS_CODE_BUCKET=GCS_CODE_BUCKET:latest
-            GCS_FIRESTORE_BUCKET=GCS_FIRESTORE_BUCKET:latest
             SUPER_ADMIN_EMAILS=SUPER_ADMIN_EMAILS:latest
+
+      - name: Grant public access (allow unauthenticated)
+        continue-on-error: true
+        run: |
+          gcloud run services add-iam-policy-binding ${{ env.SERVICE_NAME }} \
+            --member="allUsers" \
+            --role="roles/run.invoker" \
+            --region=${{ env.REGION }} \
+            --quiet
+          echo "✅ Public access granted"
 
       - name: Smoke test — backend health check
         run: |
