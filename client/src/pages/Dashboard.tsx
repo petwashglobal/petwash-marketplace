@@ -711,7 +711,7 @@ export default function Dashboard() {
                   >
                     <CalendarCheck className="w-4 h-4 flex-shrink-0" style={{ color: '#c9a96e' }} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium" style={{ color: '#111111' }} truncate">{booking.platform}</p>
+                      <p className="text-sm font-medium truncate" style={{ color: '#111111' }}>{booking.platform}</p>
                       <p className="text-[10px]" style={{ color: '#666666' }}>
                         {new Date(booking.startDate).toLocaleDateString(language === 'he' ? 'he-IL' : 'en-IL', { day: 'numeric', month: 'short' })}
                         {' · '}
@@ -745,7 +745,7 @@ export default function Dashboard() {
                   <div className="px-5 py-4 flex items-center gap-3">
                     <Shield className="w-4 h-4 flex-shrink-0" style={{ color: '#c9a96e' }} />
                     <div className="flex-1">
-                      <p className="text-sm font-medium" style={{ color: '#111111' }}">
+                      <p className="text-sm font-medium" style={{ color: '#111111' }}>
                         {language === 'he' ? 'כספת מסמכים משפטיים' : 'Legal Document Vault'}
                       </p>
                       <p className="text-[10px]" style={{ color: '#666666' }}>
