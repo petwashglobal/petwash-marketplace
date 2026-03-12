@@ -384,14 +384,14 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="min-h-screen relative" style={{ backgroundColor: '#FFFFFF' }}>
-        <div className="relative z-10 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto px-5 sm:px-6 pt-4 pb-10">
+        <div className="relative z-10 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto px-5 sm:px-6 pt-5 pb-10">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className="flex flex-col items-center mb-5"
           >
-            <div className="relative w-36 sm:w-44 md:w-48 h-auto mb-2">
+            <div className="relative w-28 sm:w-32 md:w-36 h-auto mb-1">
               <img
                 src={diamondLogo}
                 alt="PetWash™"
@@ -400,13 +400,13 @@ export default function Dashboard() {
               />
             </div>
             <p
-              className="text-base sm:text-lg tracking-[0.18em] font-light"
+              className="text-sm tracking-[0.2em] font-light"
               style={{ ...goldText, fontFamily: "'Playfair Display', 'Didot', Georgia, serif" }}
             >
               {tx('privilege', language)}
             </p>
             <h1
-              className="text-2xl sm:text-3xl font-light mt-1"
+              className="text-2xl sm:text-3xl font-light mt-0.5"
               style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.01em', color: '#111111' }}
             >
               {userName || tx('privilege', language)}

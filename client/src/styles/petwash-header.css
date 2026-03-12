@@ -11,11 +11,9 @@
   position: sticky;
   top: 0;
   z-index: 9999;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  background: #FFFFFF;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
 }
 
 .pw-header-inner {
