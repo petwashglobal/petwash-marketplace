@@ -461,17 +461,15 @@ if (isProduction) {
     
     // 4. Register all API routes FIRST (critical for dev mode)
     // MUST be BEFORE Vite middleware or production static files
-    // CRITICAL: Add timeout to prevent indefinite hangs in Cloud Run
-    const ROUTE_REGISTRATION_TIMEOUT = 120000; // 120 seconds max (large app needs time)
+    // NOTE: No artificial timeout here — Cloud Run's own startup timeout (600s, set via --timeout flag)
+    // is the safety net. A 120s Promise.race was causing premature failure in production:
+    // routes.ts is ~14 000 lines with many GCP service initialisations that legitimately take >120s
+    // on a cold start. The race silently tripped the catch block, left routesReady=false and
+    // serverReady=false, making every non-health route return 503 indefinitely.
     console.log('[Server] Loading routes module (dynamic import)...');
     const { registerRoutes } = await import("./routes");
     console.log('[Server] Routes module loaded, registering routes...');
-    const routeRegistrationPromise = registerRoutes(app);
-    const routeTimeoutPromise = new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error('Route registration timed out after 120 seconds')), ROUTE_REGISTRATION_TIMEOUT)
-    );
-    
-    await Promise.race([routeRegistrationPromise, routeTimeoutPromise]);
+    await registerRoutes(app);
     healthState.app.routesReady = true;
 
     // 5. Serve static files - CONDITIONAL based on environment
@@ -644,11 +642,17 @@ if (isProduction) {
     console.log(`🏥 [Server] API Health endpoint: /api/health`);
     console.log('--------------------------------------------------');
   } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack : undefined;
     console.error('--------------------------------------------------');
-    console.error("❌ [FATAL] Server startup failed:", error);
+    console.error("❌ [FATAL] Server startup failed:", errMsg);
+    if (errStack) console.error("   Stack:", errStack);
     console.error('--------------------------------------------------');
+    // Surface the failure in /api/health so it is visible without needing Cloud Run logs
+    (healthState.app as any).startupError = errMsg;
+    (healthState.app as any).startupErrorAt = new Date().toISOString();
     if (isProduction) {
-      console.error('⚠️ [Production] Keeping server alive for health checks - routes may be unavailable');
+      console.error('⚠️ [Production] Keeping server alive for health checks — routesReady=false, all API routes may return 503');
       serverReady = false;
     } else {
       process.exit(1);

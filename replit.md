@@ -366,3 +366,20 @@ Registered at `POST /api/webhooks/nayax-events` and `POST /api/webhooks/nayax-ev
 - Send 6 questions to Nayax: webhook delivery endpoint, event schema, auth header name, retry policy, test mode, Operator API access
 - Add `NAYAX_API_KEY`, `NAYAX_MERCHANT_ID`, `NAYAX_SECRET`, `NAYAX_BASE_URL` to Cloud Run Secret Manager when received
 - Replace `NAYAX_WEBHOOK_SECRET` placeholder with production value from Nayax
+
+## routesReady Fix (March 2026 Session 9 — same session)
+
+### Root Cause
+Production Cloud Run revision `petwash-api-00281-jbz` showed `routesReady: false` indefinitely.
+The 120-second `Promise.race` timeout in `server/index.ts` was firing before `registerRoutes(app)` completed.
+routes.ts is ~14,000 lines with many GCP service initialisations that legitimately take >120s on a cold start.
+When the timeout fired, the outer try-catch ran in production mode, silently set `serverReady = false`,
+left `routesReady = false`, and the health endpoint continued to return HTTP 200 (misleadingly).
+All non-health API routes were returning 503 `SERVICE_STARTING` indefinitely.
+
+### Fix Applied (server/index.ts)
+- Removed `Promise.race([routeRegistrationPromise, routeTimeoutPromise])` and the 120s timeout entirely
+- Replaced with direct `await registerRoutes(app)` — Cloud Run's `--timeout=600` is the real safety net
+- Added explicit `startupError` + `startupErrorAt` fields to `healthState.app` in the catch block
+  so any future startup failure is visible in `/api/health` without needing Cloud Run log access
+- Dev verification confirmed: `routesReady: true` immediately after the fix
