@@ -304,9 +304,10 @@ function tx(key: string, lang: string): string {
   return dashText[key]?.[lang] || dashText[key]?.en || key;
 }
 
-const goldText = { color: '#B8972F' };
-const cardBorder = '1px solid #e5e7eb';
-const cardShadow = '0 1px 3px rgba(0, 0, 0, 0.04)';
+const goldText = { color: '#B8941F' };
+const cardBorder = '1px solid rgba(212, 175, 55, 0.2)';
+const cardShadow = '0 2px 16px rgba(0, 0, 0, 0.07), 0 0 0 0.5px rgba(212, 175, 55, 0.08)';
+const divider = '1px solid rgba(212, 175, 55, 0.12)';
 
 function LuxuryCard({ children, className = '', delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
   return (
@@ -382,31 +383,31 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="min-h-screen relative bg-white">
-        <div className="relative z-10 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto px-5 sm:px-6 pt-6 pb-10">
+      <div className="min-h-screen relative" style={{ backgroundColor: '#FFFFFF' }}>
+        <div className="relative z-10 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto px-5 sm:px-6 pt-4 pb-10">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="flex flex-col items-center mb-6"
+            className="flex flex-col items-center mb-5"
           >
-            <div className="relative w-64 sm:w-72 md:w-80 lg:w-96 h-auto mb-1">
+            <div className="relative w-36 sm:w-44 md:w-48 h-auto mb-2">
               <img
                 src={diamondLogo}
                 alt="PetWash™"
                 className="w-full h-auto"
-                style={{ filter: 'brightness(1.08) contrast(1.1)' }}
+                style={{ filter: 'brightness(1.05) contrast(1.08)' }}
               />
             </div>
             <p
-              className="text-lg sm:text-xl tracking-[0.15em] font-light"
+              className="text-base sm:text-lg tracking-[0.18em] font-light"
               style={{ ...goldText, fontFamily: "'Playfair Display', 'Didot', Georgia, serif" }}
             >
               {tx('privilege', language)}
             </p>
             <h1
-              className="text-2xl sm:text-3xl text-gray-900 font-light mt-1"
-              style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.01em' }}
+              className="text-2xl sm:text-3xl font-light mt-1"
+              style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.01em', color: '#111111' }}
             >
               {userName || tx('privilege', language)}
             </h1>
@@ -418,12 +419,12 @@ export default function Dashboard() {
                 <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
                   {tx('balance', language)}
                 </p>
-                <p className="text-xl sm:text-2xl font-light text-gray-800 mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
                   <span className="text-sm" style={goldText}>&#8362;</span>{totalBalance}
                 </p>
-                <p className="text-[9px] sm:text-[10px] text-gray-400">{tx('currentBalance', language)}</p>
-                <div className="mt-3 pt-2 border-t border-gray-100">
-                  <p className="text-[9px] tracking-[0.1em] uppercase text-gray-400">ILS</p>
+                <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('currentBalance', language)}</p>
+                <div className="mt-3 pt-2" style={{ borderTop: divider }}>
+                  <p className="text-[9px] tracking-[0.1em] uppercase" style={{ color: '#888888' }}>ILS</p>
                 </div>
               </div>
             </LuxuryCard>
@@ -433,11 +434,11 @@ export default function Dashboard() {
                 <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
                   {tx('points', language)}
                 </p>
-                <p className="text-xl sm:text-2xl font-light text-gray-800 mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
                   {loyaltyPoints.toLocaleString()}
                 </p>
-                <p className="text-[9px] sm:text-[10px] text-gray-400">{tx('availablePoints', language)}</p>
-                <div className="mt-3 pt-2 border-t border-gray-100">
+                <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('availablePoints', language)}</p>
+                <div className="mt-3 pt-2" style={{ borderTop: divider }}>
                   <p className="text-[9px] tracking-[0.1em] uppercase" style={goldText}>
                     {tierLabel} {tx('member', language)}
                   </p>
@@ -452,7 +453,7 @@ export default function Dashboard() {
                 <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
                   {tx('savedCarers', language)}
                 </p>
-                <p className="text-xl sm:text-2xl font-light text-gray-800" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <p className="text-xl sm:text-2xl font-light" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
                   0
                 </p>
               </div>
@@ -463,10 +464,10 @@ export default function Dashboard() {
                 <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
                   {tx('lifetimeValue', language)}
                 </p>
-                <p className="text-xl sm:text-2xl font-light text-gray-800 mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
                   <span className="text-sm" style={goldText}>&#8362;</span>{giftBalance}
                 </p>
-                <p className="text-[9px] sm:text-[10px] text-gray-400">{tx('totalSpending', language)}</p>
+                <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('totalSpending', language)}</p>
               </div>
             </LuxuryCard>
           </div>
@@ -477,19 +478,19 @@ export default function Dashboard() {
                 <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
                   {tx('savedCards', language)}
                 </p>
-                <p className="text-xl sm:text-2xl font-light text-gray-800 mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
                   0
                 </p>
-                <p className="text-[9px] sm:text-[10px] text-gray-400">{tx('paymentMethods', language)}</p>
+                <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('paymentMethods', language)}</p>
               </div>
             </LuxuryCard>
 
             <LuxuryCard delay={0.45}>
-              <div className="px-4 py-4 sm:px-5 sm:py-5 text-center">
-                <p className="text-xl sm:text-2xl font-light text-gray-300 mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>
-                  0
+              <div className="px-4 py-4 sm:px-5 sm:py-5 text-center flex flex-col items-center justify-center h-full">
+                <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#CCCCCC' }}>
+                  —
                 </p>
-                <p className="text-[9px] sm:text-[10px] tracking-wide" style={goldText}>{tx('comingSoon', language)}</p>
+                <p className="text-[9px] sm:text-[10px] tracking-[0.15em] uppercase" style={goldText}>{tx('comingSoon', language)}</p>
               </div>
             </LuxuryCard>
           </div>
@@ -509,10 +510,10 @@ export default function Dashboard() {
             >
               <div className="px-5 py-4 sm:py-5 flex items-center justify-between">
                 <div>
-                  <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
+                  <p className="text-sm sm:text-base font-medium mb-0.5" style={{ color: '#111111' }}>
                     ⁦Pet Wash™⁩ Station
                   </p>
-                  <p className="text-[10px] text-gray-500">{tx('findStation', language)}</p>
+                  <p className="text-[10px]" style={{ color: '#666666' }}>{tx('findStation', language)}</p>
                 </div>
                 <span
                   className="px-3 py-1 text-[9px] tracking-[0.15em] uppercase font-bold rounded-full text-white"
@@ -536,7 +537,7 @@ export default function Dashboard() {
             >
               <div className="px-5 py-4 sm:py-5 flex items-center justify-between">
                 <div>
-                  <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
+                  <p className="text-sm sm:text-base font-medium mb-0.5" style={{ color: '#111111' }}>
                     ⁦Walk My Pet™⁩
                   </p>
                   <p className="text-[10px] tracking-wide" style={goldText}>{tx('comingSoon', language)}</p>
@@ -561,10 +562,10 @@ export default function Dashboard() {
 
               <div className="px-5 py-4 flex items-center justify-between">
                 <div>
-                  <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
+                  <p className="text-sm sm:text-base font-medium mb-0.5" style={{ color: '#111111' }}>
                     {tx('petSitting', language)}
                   </p>
-                  <p className="text-[10px] text-gray-500">⁦The Sitter Suite™⁩</p>
+                  <p className="text-[10px]" style={{ color: '#666666' }}>⁦The Sitter Suite™⁩</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
               </div>
@@ -585,10 +586,10 @@ export default function Dashboard() {
 
               <div className="px-5 py-4 flex items-center justify-between">
                 <div>
-                  <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
+                  <p className="text-sm sm:text-base font-medium mb-0.5" style={{ color: '#111111' }}>
                     {tx('dogWalking', language)}
                   </p>
-                  <p className="text-[10px] text-gray-500">⁦Walk My Pet™⁩</p>
+                  <p className="text-[10px]" style={{ color: '#666666' }}>⁦Walk My Pet™⁩</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
               </div>
@@ -610,7 +611,7 @@ export default function Dashboard() {
 
               <div className="px-5 py-4 flex items-center justify-between">
                 <div>
-                  <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
+                  <p className="text-sm sm:text-base font-medium mb-0.5" style={{ color: '#111111' }}>
                     {tx('petTransport', language)}
                   </p>
                   <p className="text-[10px] tracking-wide" style={goldText}>⁦PetTrek™⁩ · {tx('comingSoon', language)}</p>
@@ -633,10 +634,10 @@ export default function Dashboard() {
 
               <div className="px-5 py-4 flex items-center justify-between">
                 <div>
-                  <p className="text-sm sm:text-base font-medium text-gray-800 mb-0.5">
+                  <p className="text-sm sm:text-base font-medium mb-0.5" style={{ color: '#111111' }}>
                     {tx('giftCards', language)}
                   </p>
-                  <p className="text-[10px] text-gray-500">e-Gift</p>
+                  <p className="text-[10px]" style={{ color: '#666666' }}>e-Gift</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
               </div>
@@ -669,8 +670,8 @@ export default function Dashboard() {
                         )}
                       </div>
                       <div className="px-2 py-2 text-center">
-                        <p className="text-[10px] font-medium text-gray-800 truncate">{pet.name}</p>
-                        <p className="text-[9px] text-gray-400 truncate">{pet.species || pet.breed || ''}</p>
+                        <p className="text-[10px] font-medium truncate" style={{ color: '#111111' }}>{pet.name}</p>
+                        <p className="text-[9px] truncate" style={{ color: '#888888' }}>{pet.species || pet.breed || ''}</p>
                       </div>
                     </div>
                   </Link>
@@ -710,8 +711,8 @@ export default function Dashboard() {
                   >
                     <CalendarCheck className="w-4 h-4 flex-shrink-0" style={{ color: '#c9a96e' }} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-800 font-medium truncate">{booking.platform}</p>
-                      <p className="text-[10px] text-gray-400">
+                      <p className="text-sm font-medium" style={{ color: '#111111' }} truncate">{booking.platform}</p>
+                      <p className="text-[10px]" style={{ color: '#666666' }}>
                         {new Date(booking.startDate).toLocaleDateString(language === 'he' ? 'he-IL' : 'en-IL', { day: 'numeric', month: 'short' })}
                         {' · '}
                         <span className="capitalize">{booking.status}</span>
@@ -744,10 +745,10 @@ export default function Dashboard() {
                   <div className="px-5 py-4 flex items-center gap-3">
                     <Shield className="w-4 h-4 flex-shrink-0" style={{ color: '#c9a96e' }} />
                     <div className="flex-1">
-                      <p className="text-sm text-gray-800 font-medium">
+                      <p className="text-sm font-medium" style={{ color: '#111111' }}">
                         {language === 'he' ? 'כספת מסמכים משפטיים' : 'Legal Document Vault'}
                       </p>
-                      <p className="text-[10px] text-gray-400">
+                      <p className="text-[10px]" style={{ color: '#666666' }}>
                         {activityData.stampCount} {language === 'he' ? 'רשומות חתומות · 7 שנות שמירה' : 'signed records · 7-year retention'}
                       </p>
                     </div>
@@ -785,10 +786,10 @@ export default function Dashboard() {
                     className="px-5 py-3.5 flex items-center justify-between transition-colors cursor-pointer"
                     style={{
                       background: '#FFFFFF',
-                      borderBottom: idx < 6 ? '1px solid rgba(229,231,235,1)' : 'none',
+                      borderBottom: idx < 6 ? divider : 'none',
                     }}
                   >
-                    <p className="text-sm text-gray-800">
+                    <p className="text-sm" style={{ color: '#111111' }}>
                       {item.label}
                       {item.badge && item.badge > 0 ? (
                         <span className="ml-2 px-2 py-0.5 text-[9px] tracking-wider uppercase font-semibold rounded-full text-white"
