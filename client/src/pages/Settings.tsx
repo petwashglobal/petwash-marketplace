@@ -647,7 +647,7 @@ export default function Settings() {
                     <h2 className="luxury-dark-heading-lg text-lg text-red-400 mb-2">
                       {t('settings.dangerZone', language)}
                     </h2>
-                    <p className="luxury-dark-text-body text-sm text-red-300/60">
+                    <p className="luxury-dark-text-body text-sm text-red-600/70">
                       {t('settings.irreversibleActions', language)}
                     </p>
                   </div>
@@ -905,7 +905,7 @@ export default function Settings() {
                       <AlertCircle className="h-5 w-5 text-amber-400" />
                     </div>
                     <div className="flex-1">
-                      <p className="luxury-dark-text-body text-amber-300/70">
+                      <p className="luxury-dark-text-body text-amber-600/80">
                         {t('settings.browserNoPasskey', language)}
                       </p>
                     </div>
@@ -922,7 +922,7 @@ export default function Settings() {
 
       {/* Delete Device Confirmation Dialog */}
       <AlertDialog open={!!deletingDevice} onOpenChange={() => setDeletingDevice(null)}>
-        <AlertDialogContent className="!bg-[#12121a] !border-[#E8E3D9] rounded-2xl">
+        <AlertDialogContent className="!bg-white !border-[#E8E3D9] rounded-2xl">
           <AlertDialogHeader>
             <div className="flex items-center gap-3 mb-2">
               <div className="p-3 rounded-xl bg-red-500/15">
@@ -962,7 +962,7 @@ export default function Settings() {
           setLegalConsentChecked(false);
         }
       }}>
-        <AlertDialogContent className="max-w-2xl !bg-[#12121a] !border-red-500/20 rounded-2xl">
+        <AlertDialogContent className="max-w-2xl !bg-white !border-red-500/20 rounded-2xl">
           <AlertDialogHeader>
             <div className="flex items-center gap-4 mb-2">
               <div className="p-4 rounded-xl bg-red-500/15">
@@ -983,7 +983,7 @@ export default function Settings() {
                   <p className="luxury-dark-heading-sm text-red-400 mb-2">
                     {t('settings.deleteAccountWarning', language)}
                   </p>
-                  <p className="luxury-dark-text-body text-red-300/60">
+                  <p className="luxury-dark-text-body text-red-600/70">
                     {t('settings.followingDeleted', language)}
                   </p>
                 </div>
@@ -1058,7 +1058,7 @@ export default function Settings() {
                   <p className="luxury-dark-heading-lg text-red-400 mb-4">
                     {t('settings.lastChance', language)}
                   </p>
-                  <p className="luxury-dark-text-body text-red-300/70 font-semibold">
+                  <p className="luxury-dark-text-body text-red-600 font-semibold">
                     {t('settings.finalWarning', language)}
                   </p>
                 </div>
@@ -1105,7 +1105,7 @@ export default function Settings() {
                       className="mt-1 w-5 h-5 rounded border-amber-500/40 accent-red-500"
                       data-testid="checkbox-legal-consent"
                     />
-                    <span className="luxury-dark-text-small text-amber-200/80 leading-relaxed">
+                    <span className="luxury-dark-text-small text-amber-800 leading-relaxed">
                       {language === 'he'
                         ? 'אני מאשר/ת בזאת כי אני מבקש/ת למחוק את חשבוני לצמיתות. אני מבין/ה שפעולה זו אינה ניתנת לביטול ושכל הנתונים האישיים שלי יימחקו בהתאם לחוק הגנת הפרטיות הישראלי 2025. Pet Wash™ תשמור רישומים חוקיים של בקשה זו למשך 90 יום.'
                         : 'I hereby confirm that I am requesting permanent deletion of my account. I understand this action is irreversible and all my personal data will be deleted in accordance with the Israeli Privacy Protection Law 2025. Pet Wash™ will retain legal records of this request for 90 days.'}
