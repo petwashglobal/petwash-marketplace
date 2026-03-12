@@ -35,6 +35,12 @@ RUN npm install --omit=dev --legacy-peer-deps && npm install tsx
 
 # Run as non-root user for security
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 petwash
+
+# Pre-create writable directories needed at runtime, owned by the app user
+# /app/uploads — compliance-identity.ts creates this at module load (UPLOAD_ROOT)
+# /app/uploads/identity — ID document storage sub-directory
+RUN mkdir -p /app/uploads/identity && chown -R petwash:nodejs /app/uploads
+
 USER petwash
 
 EXPOSE 8080
