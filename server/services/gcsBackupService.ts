@@ -23,21 +23,25 @@ const TEMP_DIR = '/tmp/petwash-backups';
 let storage: Storage | null = null;
 
 // Initialize storage client - PRODUCTION: Environment variables ONLY
+// Accepts GOOGLE_APPLICATION_CREDENTIALS_JSON (preferred) or legacy GOOGLE_APPLICATION_CREDENTIALS
 function getStorageClient(): Storage {
   if (!storage) {
-    const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-    
+    const credentialsJson =
+      process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+      process.env.GOOGLE_SERVICE_ACCOUNT_JSON ||
+      process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+      process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
     if (!credentialsJson) {
-      throw new Error('[GCS] GOOGLE_APPLICATION_CREDENTIALS environment variable not set. Configure it in Replit Secrets.');
+      throw new Error('[GCS] No Google credentials found. Set GOOGLE_APPLICATION_CREDENTIALS_JSON in Replit Secrets.');
     }
     
     try {
-      // Parse JSON credentials from environment variable
       const credentials = JSON.parse(credentialsJson);
       storage = new Storage({ credentials });
       logger.info('[GCS] Storage client initialized from environment variable (secure)');
     } catch (error) {
-      throw new Error(`[GCS] Failed to parse GOOGLE_APPLICATION_CREDENTIALS: ${error instanceof Error ? error.message : 'Invalid JSON'}`);
+      throw new Error(`[GCS] Failed to parse Google credentials JSON: ${error instanceof Error ? error.message : 'Invalid JSON'}`);
     }
   }
   
@@ -345,18 +349,21 @@ export async function performFirestoreExport(): Promise<{
  * Check if GCS backups are configured - PRODUCTION: Environment variables ONLY
  */
 export function isGcsConfigured(): boolean {
-  const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  
+  const credentialsJson =
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+    process.env.GOOGLE_SERVICE_ACCOUNT_JSON ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+    process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
   if (!credentialsJson) {
     return false;
   }
   
-  // Verify it's valid JSON
   try {
     JSON.parse(credentialsJson);
     return true;
   } catch {
-    logger.error('[GCS] GOOGLE_APPLICATION_CREDENTIALS is not valid JSON');
+    logger.error('[GCS] Google credentials env var is not valid JSON');
     return false;
   }
 }

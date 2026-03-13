@@ -9,56 +9,76 @@ import {
 import { eq, and, gte, lte } from 'drizzle-orm';
 
 let connectionSettings: any;
+let serviceAccountAuth: any = null;
 
-async function getAccessToken() {
-  if (connectionSettings && connectionSettings.settings.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
-    return connectionSettings.settings.access_token;
+const GOOGLE_CALENDAR_SCOPES = [
+  'https://www.googleapis.com/auth/calendar',
+];
+
+/**
+ * Production: service account auth. Development: Replit OAuth connector.
+ */
+async function getUncachableGoogleCalendarClient() {
+  // Production path: use Google service account JSON (any of the 3 known env vars)
+  const serviceAccountJson =
+    process.env.GOOGLE_SERVICE_ACCOUNT_JSON ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+    process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
+  if (serviceAccountJson) {
+    try {
+      if (!serviceAccountAuth) {
+        const credentials = JSON.parse(serviceAccountJson);
+        serviceAccountAuth = new google.auth.GoogleAuth({
+          credentials,
+          scopes: GOOGLE_CALENDAR_SCOPES,
+        });
+      }
+      return google.calendar({ version: 'v3', auth: serviceAccountAuth });
+    } catch (err) {
+      console.warn('[GoogleCalendar] Service account parse failed, falling back to connector', err);
+      serviceAccountAuth = null;
+    }
   }
-  
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
+
+  // Development path: Replit OAuth connector
+  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
+  const xReplitToken = process.env.REPL_IDENTITY
+    ? 'repl ' + process.env.REPL_IDENTITY
+    : process.env.WEB_REPL_RENEWAL
+    ? 'depl ' + process.env.WEB_REPL_RENEWAL
     : null;
 
   if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
+    throw new Error('Google Calendar: no service account credentials and no Replit connector token available');
   }
 
-  connectionSettings = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=google-calendar',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
+  if (!connectionSettings || !connectionSettings.settings?.expires_at || new Date(connectionSettings.settings.expires_at).getTime() <= Date.now()) {
+    connectionSettings = await fetch(
+      'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=google-calendar',
+      {
+        headers: {
+          'Accept': 'application/json',
+          'X_REPLIT_TOKEN': xReplitToken
+        }
       }
-    }
-  ).then(res => res.json()).then(data => data.items?.[0]);
+    ).then(res => res.json()).then(data => data.items?.[0]);
+  }
 
-  const accessToken = connectionSettings?.settings?.access_token || connectionSettings.settings?.oauth?.credentials?.access_token;
-
+  const accessToken = connectionSettings?.settings?.access_token || connectionSettings?.settings?.oauth?.credentials?.access_token;
   if (!connectionSettings || !accessToken) {
     throw new Error('Google Calendar not connected');
   }
-  return accessToken;
-}
-
-async function getUncachableGoogleCalendarClient() {
-  const accessToken = await getAccessToken();
 
   const oauth2Client = new google.auth.OAuth2();
-  oauth2Client.setCredentials({
-    access_token: accessToken
-  });
-
+  oauth2Client.setCredentials({ access_token: accessToken });
   return google.calendar({ version: 'v3', auth: oauth2Client });
 }
 
 export class GoogleCalendarIntegrationService {
   async isConfigured(): Promise<boolean> {
     try {
-      await getAccessToken();
+      await getUncachableGoogleCalendarClient();
       return true;
     } catch {
       return false;

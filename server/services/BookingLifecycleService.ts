@@ -345,6 +345,7 @@ class BookingLifecycleService {
           walk_my_pet: GoogleSheetsService.logWalkerBooking,
           pettrek: GoogleSheetsService.logPetTrekBooking,
           k9000: GoogleSheetsService.logK9000Booking,
+          academy: GoogleSheetsService.logAcademyBooking,
         };
 
         const logFn = platformBookingLoggers[input.platformId] || GoogleSheetsService.logSitterBooking;

@@ -146,12 +146,39 @@ let sheetsClient: GoogleSheetsClient | null = null;
 
 // Replit connector - Google Sheets OAuth token management
 let connectionSettings: any;
+let serviceAccountAuth: any = null;
 
-async function getAccessToken(): Promise<string> {
-  if (connectionSettings && connectionSettings.settings?.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
-    return connectionSettings.settings.access_token;
+const GOOGLE_SHEETS_SCOPES = [
+  'https://www.googleapis.com/auth/spreadsheets',
+];
+
+/**
+ * Production: service account auth. Development: Replit OAuth connector.
+ */
+async function getUncachableGoogleSheetsClient() {
+  // Production path: use Google service account JSON (any of the 3 known env vars)
+  const serviceAccountJson =
+    process.env.GOOGLE_SERVICE_ACCOUNT_JSON ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+    process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
+  if (serviceAccountJson) {
+    try {
+      if (!serviceAccountAuth) {
+        const credentials = JSON.parse(serviceAccountJson);
+        serviceAccountAuth = new google.auth.GoogleAuth({
+          credentials,
+          scopes: GOOGLE_SHEETS_SCOPES,
+        });
+      }
+      return google.sheets({ version: 'v4', auth: serviceAccountAuth });
+    } catch (err) {
+      logger.warn('[GoogleSheets] Service account parse failed, falling back to connector', err);
+      serviceAccountAuth = null;
+    }
   }
 
+  // Development path: Replit OAuth connector
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
     ? 'repl ' + process.env.REPL_IDENTITY
@@ -160,29 +187,26 @@ async function getAccessToken(): Promise<string> {
     : null;
 
   if (!xReplitToken) {
-    throw new Error('Replit connector token not available');
+    throw new Error('Google Sheets: no service account credentials and no Replit connector token available');
   }
 
-  connectionSettings = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=google-sheet',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
+  if (!connectionSettings || !connectionSettings.settings?.expires_at || new Date(connectionSettings.settings.expires_at).getTime() <= Date.now()) {
+    connectionSettings = await fetch(
+      'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=google-sheet',
+      {
+        headers: {
+          'Accept': 'application/json',
+          'X_REPLIT_TOKEN': xReplitToken
+        }
       }
-    }
-  ).then(res => res.json()).then(data => data.items?.[0]);
+    ).then(res => res.json()).then(data => data.items?.[0]);
+  }
 
   const accessToken = connectionSettings?.settings?.access_token || connectionSettings?.settings?.oauth?.credentials?.access_token;
-
   if (!connectionSettings || !accessToken) {
     throw new Error('Google Sheets not connected via Replit connector');
   }
-  return accessToken;
-}
 
-async function getUncachableGoogleSheetsClient() {
-  const accessToken = await getAccessToken();
   const oauth2Client = new google.auth.OAuth2();
   oauth2Client.setCredentials({ access_token: accessToken });
   return google.sheets({ version: 'v4', auth: oauth2Client });
