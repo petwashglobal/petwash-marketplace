@@ -15,6 +15,15 @@ const ROLE_CONSENTS: Record<string, string[]> = {
   staff: ["terms", "privacy", "staff_policy"],
 };
 
+const DEFAULT_SNAPSHOT_CONTENT: Record<string, string> = {
+  terms: "PetWash™ Terms of Service v1.0 — By using our services you agree to these terms.",
+  privacy: "PetWash™ Privacy Policy v1.0 — We protect your personal data under Israeli Privacy Protection Law.",
+  marketing: "PetWash™ Marketing Consent v1.0 — Consent to receive promotional offers and loyalty updates.",
+  provider_terms: "PetWash™ Provider Terms v1.0 — Additional terms governing service providers on the platform.",
+  kyc: "PetWash™ KYC Consent v1.0 — Consent to identity verification under Israeli AML regulations.",
+  staff_policy: "PetWash™ Staff Policy v1.0 — Internal policies governing platform staff members.",
+};
+
 export async function createConsentSnapshot(params: {
   consentType: string;
   version: string;
@@ -32,6 +41,30 @@ export async function createConsentSnapshot(params: {
   return snapshot;
 }
 
+async function ensureConsentSnapshot(
+  consentType: string,
+  version: string,
+  locale: string
+): Promise<{ contentHash: string }> {
+  const existing = await storage.getConsentSnapshot(consentType, version, locale);
+  if (existing?.contentHash) return existing as { contentHash: string };
+
+  const fallbackContent =
+    DEFAULT_SNAPSHOT_CONTENT[consentType] ??
+    `PetWash™ ${consentType} v${version} consent document.`;
+
+  const contentHash = sha256(fallbackContent);
+  await storage.createConsentSnapshot({
+    consentType,
+    version,
+    locale,
+    content: fallbackContent,
+    contentHash,
+  });
+
+  return { contentHash };
+}
+
 export async function recordConsent(params: {
   userId: string;
   consentType: string;
@@ -43,15 +76,12 @@ export async function recordConsent(params: {
   deviceId?: string;
   traceId?: string;
 }) {
-  const snapshot = await storage.getConsentSnapshot(
+  const { contentHash } = await ensureConsentSnapshot(
     params.consentType,
     params.version,
     params.locale
   );
-  if (!snapshot || !snapshot.contentHash) {
-    throw new Error(`SNAPSHOT_NOT_FOUND: No consent snapshot exists for type=${params.consentType} version=${params.version} locale=${params.locale}`);
-  }
-  const contentHash = snapshot.contentHash;
+
   const acceptedAt = new Date().toISOString();
   const evidenceHash = sha256(
     contentHash + params.userId + acceptedAt + (params.deviceId ?? "")

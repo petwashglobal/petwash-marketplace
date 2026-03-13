@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { getApiUrl } from '@/lib/apiConfig';
 import {
   FileText, Upload, CheckCircle2, Clock, AlertTriangle, X,
   ExternalLink, Shield, Info, ChevronDown, ChevronUp,
@@ -54,6 +55,7 @@ export default function POSDocuments() {
   const [signingDoc, setSigningDoc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const handleAccept = (id: string) => {
     setAccepted(prev => ({ ...prev, [id]: true }));
@@ -75,10 +77,40 @@ export default function POSDocuments() {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0 && uploadingDoc) {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !uploadingDoc) return;
+    e.target.value = '';
+
+    const docMeta = UPLOAD_DOCS.find(d => d.id === uploadingDoc);
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('documentType', uploadingDoc);
+      formData.append('title', docMeta?.label ?? uploadingDoc);
+      formData.append('description', docMeta?.sub ?? '');
+      formData.append('isConfidential', 'true');
+      formData.append('accessLevel', '5');
+
+      const response = await fetch(getApiUrl('/api/documents/upload'), {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `Upload failed (${response.status})`);
+      }
+
       setUploadStatus(prev => ({ ...prev, [uploadingDoc]: 'uploaded' }));
-      toast({ title: 'Document uploaded', description: 'Your document is under review (1-2 business days).' });
+      toast({ title: 'Document uploaded', description: 'Your document is under review (1–2 business days).' });
+    } catch (error: any) {
+      toast({ title: 'Upload failed', description: error.message || 'Please try again.', variant: 'destructive' });
+    } finally {
+      setUploading(false);
       setUploadingDoc(null);
     }
   };
@@ -252,12 +284,30 @@ export default function POSDocuments() {
                     </span>
                   )}
                 </div>
-                <button onClick={() => handleUploadClick(doc.id)}
+                <button
+                  onClick={() => handleUploadClick(doc.id)}
+                  disabled={uploading && uploadingDoc === doc.id}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors shrink-0 ${
-                    status === 'uploaded' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-500 text-white hover:bg-amber-600'
+                    uploading && uploadingDoc === doc.id
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : status === 'uploaded'
+                        ? 'bg-green-50 text-green-700 border border-green-200'
+                        : 'bg-amber-500 text-white hover:bg-amber-600'
                   }`}>
-                  <Upload className="w-3.5 h-3.5" />
-                  {status === 'uploaded' ? 'Replace' : 'Upload'}
+                  {uploading && uploadingDoc === doc.id ? (
+                    <>
+                      <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                      </svg>
+                      Uploading…
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-3.5 h-3.5" />
+                      {status === 'uploaded' ? 'Replace' : 'Upload'}
+                    </>
+                  )}
                 </button>
               </div>
             );
