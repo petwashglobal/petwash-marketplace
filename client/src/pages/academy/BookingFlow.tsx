@@ -10,6 +10,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { vatCalculator } from "@/lib/vatCalculator";
 import { getActivePaymentMethod } from "@/lib/paymentConfig";
 import { CreditWalletCard } from "@/components/wallet/CreditWalletCard";
+import { PrestigePassPaymentOption } from "@/components/PrestigePassPaymentOption";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 
 type BookingStep = "details" | "summary" | "confirmation";
@@ -423,6 +424,17 @@ export default function AcademyBookingFlow() {
                   });
                 }}
               />
+            )}
+
+            {/* PrestigePass Payment Option */}
+            {user && pricing.totalCharged > 0 && (
+              <div className="mb-4">
+                <PrestigePassPaymentOption
+                  bookingId={bookingId || `PENDING-ACADEMY-${user.uid.slice(0, 8)}`}
+                  serviceType="academy"
+                  amountGross={Math.round(pricing.totalCharged * 100)}
+                />
+              </div>
             )}
 
             <div className="flex gap-4 luxury-stagger-item">

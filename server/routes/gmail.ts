@@ -49,6 +49,26 @@ async function getUncachableGmailClient() {
   return google.gmail({ version: 'v1', auth: oauth2Client });
 }
 
+export async function sendViaGmail(opts: { to: string; subject: string; html: string }): Promise<boolean> {
+  try {
+    const gmail = await getUncachableGmailClient();
+    const rawMessage = [
+      `To: ${opts.to}`,
+      `Subject: ${opts.subject}`,
+      `Content-Type: text/html; charset=utf-8`,
+      `MIME-Version: 1.0`,
+      '',
+      opts.html,
+    ].join('\r\n');
+    const encodedMessage = Buffer.from(rawMessage).toString('base64url');
+    await gmail.users.messages.send({ userId: 'me', requestBody: { raw: encodedMessage } });
+    return true;
+  } catch (err) {
+    logger.error('[Gmail] sendViaGmail failed:', err);
+    return false;
+  }
+}
+
 async function requireFirebaseAuth(req: Request, res: Response, next: NextFunction) {
   try {
     const sessionCookie = req.cookies?.pw_session;

@@ -26,7 +26,7 @@ import { Router, Request, Response } from 'express';
 import { createHmac, randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import rateLimit from 'express-rate-limit';
-import { db as firestoreDb } from '../lib/firebase-admin';
+import { db as firestoreDb, auth as firebaseAuth } from '../lib/firebase-admin';
 import { db } from '../db';
 import { walletAccounts, creditTransactions } from '@shared/schema';
 import { eq, desc } from 'drizzle-orm';
@@ -35,6 +35,7 @@ import { z } from 'zod';
 import { EmailService } from '../emailService';
 import { buildPrestigePassLuxuryEmail } from '../email/templates/prestige-pass-luxury-2026';
 import { buildWalletUrls } from '../lib/walletPassToken';
+import { sendViaGmail } from './gmail';
 import QRCode from 'qrcode';
 import {
   getWalletBalances,
@@ -1069,12 +1070,19 @@ router.post('/send-luxury-demo', async (req: Request, res: Response) => {
     };
     const subject = subjectMap[d.tier] ?? '🐾 הכרטיס הפרסטיז שלך — PetWash™';
 
-    const sent = await EmailService.send({ to: d.email, subject, html });
-    logger.info('[PrestigePass] Luxury demo email sent', { to: d.email, tier: d.tier, sent });
+    let sent = await EmailService.send({ to: d.email, subject, html });
+    let channel = 'sendgrid';
+    if (!sent) {
+      logger.info('[PrestigePass] SendGrid failed, trying Gmail fallback', { to: d.email });
+      sent = await sendViaGmail({ to: d.email, subject, html });
+      channel = sent ? 'gmail' : 'none';
+    }
+    logger.info('[PrestigePass] Luxury demo email sent', { to: d.email, tier: d.tier, sent, channel });
 
     return res.json({
       ok: true,
       sent,
+      channel,
       to: d.email,
       tier: d.tier,
       walletPassConfigured: !!(appleWalletUrl && googleWalletUrl),
@@ -1436,6 +1444,118 @@ router.post('/admin/reissue', async (req: Request, res: Response) => {
   } catch (err) {
     logger.error('[PrestigePass] /admin/reissue error:', err);
     return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// POST /admin/send-founder-pass
+// Looks up Nir Hadad's actual pass data and sends wallet email
+// to his dedicated PetWash email (nir.h@petwash.co.il)
+// Requires X-Admin-Secret header
+// ─────────────────────────────────────────────────────────
+router.post('/admin/send-founder-pass', async (req: Request, res: Response) => {
+  try {
+    const adminSecret = process.env.ADMIN_SECRET || process.env.PRESTIGE_ADMIN_SECRET;
+    const provided    = req.headers['x-admin-secret'];
+    if (!adminSecret || provided !== adminSecret) {
+      return res.status(403).json({ ok: false, error: 'Forbidden' });
+    }
+
+    const FOUNDER_EMAIL   = 'nirhadad1@gmail.com';
+    const DEDICATED_EMAIL = 'nir.h@petwash.co.il';
+    const BASE_URL        = process.env.APP_BASE_URL || process.env.BASE_URL || 'https://petwash.co.il';
+
+    // 1. Look up UID by Firebase Auth email
+    let uid: string;
+    try {
+      const userRecord = await firebaseAuth.getUserByEmail(FOUNDER_EMAIL);
+      uid = userRecord.uid;
+    } catch (e) {
+      logger.warn('[PrestigePass] /admin/send-founder-pass — user not found in Firebase Auth', { FOUNDER_EMAIL });
+      return res.status(404).json({ ok: false, error: `Firebase user not found for ${FOUNDER_EMAIL}` });
+    }
+
+    // 2. Get pass from Firestore
+    const passDoc = await firestoreDb.collection('prestige_passes').doc(uid).get();
+    const pass    = passDoc.exists ? passDoc.data()! : null;
+    const tier    = (pass?.tier as string) || 'black';
+    const cardNumber = (pass?.cardNumber as string) || uid.slice(-8).toUpperCase();
+    const memberSinceYear = pass?.createdAt
+      ? new Date(pass.createdAt).getFullYear()
+      : 2024;
+
+    // 3. Get wallet balances from PostgreSQL
+    const [wallet] = await db
+      .select()
+      .from(walletAccounts)
+      .where(eq(walletAccounts.userId, uid))
+      .limit(1);
+
+    const cashWalletILS       = (wallet?.cashWalletBalanceCents ?? 0) / 100;
+    const freeWashesRemaining = wallet?.washPackageCredits ?? wallet?.packageServiceUnitsRemaining ?? 0;
+    const loyaltyPoints       = wallet?.loyaltyPointsBalance ?? 0;
+
+    // 4. Generate QR code
+    const qrPayload  = JSON.stringify({ type: 'PRESTIGE_PASS', userId: uid, tier, ts: Date.now() });
+    const qrDataUrl  = await QRCode.toDataURL(qrPayload, { width: 200, margin: 1, color: { dark: '#D4AF37', light: '#000000' } });
+
+    // 5. Build signed wallet URLs
+    const { appleWalletUrl, googleWalletUrl } = buildWalletUrls(uid, BASE_URL);
+
+    // 6. Build and send the luxury email
+    const html = buildPrestigePassLuxuryEmail({
+      firstName:            'ניר',
+      lastName:             'הדד',
+      email:                DEDICATED_EMAIL,
+      tier,
+      cardNumber,
+      loyaltyPoints,
+      cashWalletILS,
+      eGiftBalanceILS:      0,
+      freeWashesRemaining,
+      memberSinceYear,
+      qrDataUrl,
+      appleWalletUrl,
+      googleWalletUrl,
+      appBaseUrl:           BASE_URL,
+      language:             'he',
+    });
+
+    const tierSubjects: Record<string, string> = {
+      black:    '⬛ כרטיס הפרסטיז השחור שלך מוכן — PetWash™',
+      diamond:  '💎 כרטיס הפרסטיז יהלום שלך מוכן — PetWash™',
+      royal:    '👑 כרטיס הפרסטיז רויאל שלך מוכן — PetWash™',
+      emerald:  '💚 כרטיס הפרסטיז אמרלד שלך מוכן — PetWash™',
+      platinum: '💠 כרטיס הפרסטיז פלטינום שלך מוכן — PetWash™',
+      gold:     '🥇 כרטיס הפרסטיז זהב שלך מוכן — PetWash™',
+      silver:   '🥈 כרטיס הפרסטיז כסף שלך מוכן — PetWash™',
+      pearl:    '🪨 כרטיס הפרסטיז פנינה שלך מוכן — PetWash™',
+    };
+    const subject = tierSubjects[tier] ?? '🐾 הכרטיס הפרסטיז שלך — PetWash™';
+
+    let sent = await EmailService.send({ to: DEDICATED_EMAIL, subject, html });
+    let channel = 'sendgrid';
+    if (!sent) {
+      logger.info('[PrestigePass] SendGrid failed, trying Gmail fallback', { to: DEDICATED_EMAIL });
+      sent = await sendViaGmail({ to: DEDICATED_EMAIL, subject, html });
+      channel = sent ? 'gmail' : 'none';
+    }
+    logger.info('[PrestigePass] Founder pass email sent', { to: DEDICATED_EMAIL, uid, tier, sent, channel });
+
+    return res.json({
+      ok:   true,
+      sent,
+      to:   DEDICATED_EMAIL,
+      uid,
+      tier,
+      loyaltyPoints,
+      cashWalletILS,
+      freeWashesRemaining,
+      walletLinksIncluded: !!(appleWalletUrl && googleWalletUrl),
+    });
+  } catch (err) {
+    logger.error('[PrestigePass] /admin/send-founder-pass error:', err);
+    return res.status(500).json({ ok: false, error: String(err) });
   }
 });
 
