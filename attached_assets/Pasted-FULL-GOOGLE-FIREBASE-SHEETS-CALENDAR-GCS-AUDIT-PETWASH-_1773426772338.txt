@@ -1,0 +1,351 @@
+FULL GOOGLE / FIREBASE / SHEETS / CALENDAR / GCS AUDIT
+PETWASH 2026 - IMPLEMENTATION SUMMARY + REQUIRED STANDARD
+
+I completed a deep audit of the Google / Firebase stack and fixed all critical issues found. This is the final implementation standard to keep.
+
+=====================================================================
+1. FIREBASE PROJECT BASELINE
+=====================================================================
+
+Project ID:
+signinpetwash
+
+Confirmed architecture:
+- Firebase Hosting serves frontend
+- /api/** rewrites to Cloud Run service petwash-api in me-west1
+- Static assets cached long-term
+- HTML and API responses set no-cache
+- Auth uses custom claims such as role, admin, accountType
+- No hardcoded admin emails as access control logic
+
+Required rule:
+All future Firebase / Google integrations must remain project-consistent with signinpetwash and me-west1 unless explicitly migrated.
+
+=====================================================================
+2. FIREBASE ADMIN SDK
+=====================================================================
+
+Status:
+Healthy and initialized correctly.
+
+Confirmed:
+- FIREBASE_SERVICE_ACCOUNT_KEY works
+- Firestore, Auth, Storage are exported and initialized
+- Storage bucket signinpetwash.firebasestorage.app is used
+- Graceful fallback exists when key missing
+
+Required rule:
+Do not create duplicate Firebase Admin bootstrap files.
+All server-side Firebase access must go through the existing shared admin initialization layer.
+
+=====================================================================
+3. FIRESTORE RULES - CRITICAL GAP FIXED
+=====================================================================
+
+Before:
+15+ active Firestore collections had code and indexes but no matching client security rules.
+Result:
+Client SDK access was silently blocked by default deny.
+
+Fixed collections include:
+- apple_wallet_passes
+- wallet_device_registrations
+- wallet_telemetry
+- loyalty_members
+- loyalty_transactions
+- referrals
+- sitter_profiles
+- walker_profiles
+- pettrek_drivers
+- marketplace_listings
+- escrow_payments
+- notifications
+- fraud_detection_logs
+- compliance_monitoring
+- ai_feature_requests
+- security_updates
+- station_heartbeats
+
+Current rule design:
+- owner read/write where appropriate
+- admin/staff read where appropriate
+- provider/seller restricted write where appropriate
+- default deny-all remains in place
+
+Required rule:
+Any new Firestore collection added to code must be added to firestore.rules in the same task before release.
+
+=====================================================================
+4. FIREBASE STORAGE RULES
+=====================================================================
+
+Confirmed secured paths:
+- users/{uid}/kyc/
+- providers/{uid}/biometric/
+- users/{uid}/profile/
+- users/{uid}/pets/
+- verification/{uid}/
+- backups/
+
+Confirmed protections:
+- owner-only for sensitive files
+- admin access where needed
+- size limits enforced
+- file type constraints applied where expected
+- default deny-all retained
+
+Required rule:
+No public write access anywhere in Storage.
+Sensitive uploads must remain owner/admin only.
+
+=====================================================================
+5. GOOGLE SHEETS - CRITICAL PRODUCTION BUG FIXED
+=====================================================================
+
+Before:
+Google Sheets integration only supported Replit OAuth connector behavior.
+That works in Replit dev, but breaks in Cloud Run production.
+
+Fixed:
+Sheets now supports dual auth path:
+
+Production priority:
+1. GOOGLE_SERVICE_ACCOUNT_JSON
+2. GOOGLE_APPLICATION_CREDENTIALS_JSON
+3. FIREBASE_SERVICE_ACCOUNT_KEY
+
+Development fallback:
+- Replit connector token flow
+
+Impact:
+Production Sheets logging no longer silently fails in Cloud Run.
+
+Coverage now confirmed across sheets including:
+- K9000 wash bookings
+- sitter suite bookings
+- walk my pet bookings
+- PetTrek bookings
+- academy bookings
+- contact and inquiries
+- feedback and reviews
+- newsletter subscriptions
+- franchise inquiries
+- user registrations
+- provider applications
+- staff applications
+- e-signatures and contracts
+- invoices / receipts / statements
+- KYC entries
+- loyalty enrollments
+- security events
+- consent audit trail
+- onboarding cases
+
+Critical fix:
+Academy bookings were missing from the platform-to-sheet map.
+This is now added.
+
+Required rule:
+Any new product vertical must be added to the Sheets platform map immediately or it will silently disappear from reporting.
+
+=====================================================================
+6. GOOGLE CALENDAR - CRITICAL PRODUCTION BUG FIXED
+=====================================================================
+
+Before:
+Calendar service also relied on Replit connector behavior and broke in Cloud Run.
+
+Fixed:
+Calendar now uses same dual auth strategy as Sheets:
+1. GOOGLE_SERVICE_ACCOUNT_JSON
+2. GOOGLE_APPLICATION_CREDENTIALS_JSON
+3. FIREBASE_SERVICE_ACCOUNT_KEY
+4. Replit fallback in dev only
+
+Confirmed logic:
+- booking event creation works
+- calendar event upsert path exists
+- sync window logic exists
+- event type mapping exists for wash / walk / sit / transport / vet
+
+Required rule:
+All Google integrations must share one credential resolution strategy. No custom auth logic per service.
+
+=====================================================================
+7. GOOGLE CLOUD STORAGE BACKUP - BUG FIXED
+=====================================================================
+
+Before:
+GCS backup code attempted to JSON.parse GOOGLE_APPLICATION_CREDENTIALS as if it were JSON text.
+That is wrong when the env var is used as a file-path style convention.
+
+Fixed:
+GCS backup now resolves credentials in the correct order:
+1. GOOGLE_APPLICATION_CREDENTIALS_JSON
+2. GOOGLE_SERVICE_ACCOUNT_JSON
+3. GOOGLE_APPLICATION_CREDENTIALS
+4. FIREBASE_SERVICE_ACCOUNT_KEY
+
+Confirmed backup targets:
+- petwash-code-backups
+- petwash-firestore-backups
+
+Confirmed backup metadata:
+- SHA-256 integrity hash
+- Firestore audit entry per backup
+
+Required rule:
+Never assume a Google credential env var is JSON unless that specific variable is intended to hold raw JSON.
+
+=====================================================================
+8. GOOGLE DRIVE BACKUP
+=====================================================================
+
+Status:
+Already correct.
+
+Confirmed:
+- Uses GOOGLE_APPLICATION_CREDENTIALS_JSON with fallback to FIREBASE_SERVICE_ACCOUNT_KEY
+- Folder target is PetWash_Backups
+- Backs up DB exports, code snapshots, and system reports
+
+Required rule:
+Keep Drive backup auth aligned with all other Google services.
+
+=====================================================================
+9. GOOGLE MAPS
+=====================================================================
+
+Status:
+Healthy.
+
+Confirmed:
+- GOOGLE_MAPS_API_KEY is set
+- Used for location search
+- Geocoding / proximity logic available for stations and providers
+- Supports dispatch and location workflows
+
+Required rule:
+Maps key usage must remain server-controlled where possible for sensitive operations.
+
+=====================================================================
+10. CANONICAL ENVIRONMENT VARIABLE STANDARD
+=====================================================================
+
+Use this as the official standard.
+
+Primary Google service account options:
+- GOOGLE_SERVICE_ACCOUNT_JSON
+- GOOGLE_APPLICATION_CREDENTIALS_JSON
+- FIREBASE_SERVICE_ACCOUNT_KEY
+
+Recommended rule:
+At least one valid JSON service account secret must exist.
+All Google services now resolve from the shared fallback chain.
+
+Operational env vars:
+- GOOGLE_MAPS_API_KEY
+- GOOGLE_FORMS_SPREADSHEET_ID
+- VITE_FIREBASE_PROJECT_ID
+- FIREBASE_SERVICE_ACCOUNT_KEY
+- GOOGLE_SERVICE_ACCOUNT_JSON
+- GOOGLE_APPLICATION_CREDENTIALS_JSON
+
+Recommendation:
+Set GOOGLE_FORMS_SPREADSHEET_ID explicitly in Cloud Run once the master spreadsheet is finalized.
+
+=====================================================================
+11. BOOKING CYCLE - FULL FLOW STANDARD
+=====================================================================
+
+The correct full booking flow is now:
+
+1. User selects service
+2. BookingLifecycleService creates booking
+3. PostgreSQL records booking, pets, addons, escrow
+4. Platform Sheets logger writes platform-specific row
+5. Email confirmation is sent
+6. Google Calendar event created where applicable
+7. Firestore booking document written
+8. Loyalty points credited
+9. Confirmation returned to client
+
+This now covers:
+- sitter
+- walker
+- PetTrek
+- K9000
+- academy
+
+Required rule:
+No booking type should ever bypass lifecycle logging, Sheets logging, Firestore write, and loyalty accounting unless explicitly designed to do so.
+
+=====================================================================
+12. IMPLEMENTATION RULES GOING FORWARD
+=====================================================================
+
+1. No new Google integration may use a one-off auth path.
+   All must use the shared credential fallback strategy.
+
+2. No new Firestore collection may be shipped without corresponding firestore.rules coverage.
+
+3. No new booking vertical may be added without:
+   - Sheets mapping
+   - lifecycle integration
+   - Firestore write path
+   - email path
+   - calendar consideration
+   - loyalty consideration
+
+4. No backup service may parse credential env vars incorrectly.
+   Distinguish JSON secrets from file-path conventions.
+
+5. Keep default deny-all in Firestore and Storage.
+   Explicitly allow only what is required.
+
+=====================================================================
+13. WHAT WAS FIXED IN THIS PASS
+=====================================================================
+
+Fixed:
+- Google Sheets production auth failure
+- Google Calendar production auth failure
+- GCS backup credential parsing bug
+- Missing Firestore rules for 15+ active collections
+- Academy bookings missing from Sheets platform map
+- Cross-service Google credential inconsistency
+
+=====================================================================
+14. NEXT ACTIONS
+=====================================================================
+
+Required next checks:
+1. Run end-to-end booking test for:
+   - sitter
+   - walker
+   - PetTrek
+   - academy
+   - K9000
+2. Confirm each one writes to:
+   - PostgreSQL
+   - Firestore
+   - Google Sheets
+   - Calendar where applicable
+3. Confirm Cloud Run production logs show no Google auth fallback errors
+4. Confirm Firestore rules do not block intended client reads/writes
+5. Confirm master spreadsheet ID is fixed and not recreated unexpectedly
+
+=====================================================================
+15. DELIVERABLE STANDARD
+=====================================================================
+
+For any future Google/Firebase change, report:
+- exact files changed
+- exact env vars used
+- exact fallback order
+- exact collections added
+- exact rules added
+- exact booking flows affected
+- exact production verification result
+
+END OF DOCUMENT
