@@ -407,6 +407,7 @@ export const navigationTree: MenuItem[] = [
     label: '⁦PetTrek™⁩',
     labelHe: '⁦PetTrek™⁩',
     icon: Car,
+    comingSoon: true,
     children: [
       {
         id: 'pettrek-customer-dashboard',

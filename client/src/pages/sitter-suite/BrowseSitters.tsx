@@ -25,6 +25,8 @@ interface Provider {
   suburb: string | null;
   postalCode: string | null;
   distanceKm: number | null;
+  distanceMeters?: number | null;
+  proximityLabel?: string | null;
   rating: number | null;
   reviewCount: number;
   pricing: {
@@ -274,6 +276,8 @@ export default function BrowseSitters() {
     if (searchParams?.location) params.set('city', searchParams.location);
     if (searchParams?.lat !== null && searchParams?.lat !== undefined) params.set('lat', String(searchParams.lat));
     if (searchParams?.lng !== null && searchParams?.lng !== undefined) params.set('lng', String(searchParams.lng));
+    if (searchParams?.street) params.set('street', searchParams.street);
+    if (searchParams?.streetNumber) params.set('streetNumber', searchParams.streetNumber);
     params.set('sortBy', sortBy);
     if (maxPrice < 500) params.set('maxPrice', String(maxPrice));
     if (minRating > 0) params.set('minRating', String(minRating));
@@ -617,14 +621,29 @@ export default function BrowseSitters() {
               {providers.map((provider, index) => {
                 const pricePerNight = provider.pricing.perNight ? parseFloat(provider.pricing.perNight) : 0;
                 
+                const proximityBadge = (() => {
+                  if (provider.proximityLabel === 'same_building') return isHebrew ? 'אותו מבנה' : 'Same building';
+                  if (provider.proximityLabel === 'same_street') return isHebrew ? 'אותה רחוב' : 'Same street';
+                  if (provider.proximityLabel === 'nearby') return isHebrew ? 'קרוב' : 'Nearby';
+                  if (provider.proximityLabel?.endsWith('m')) {
+                    const meters = parseInt(provider.proximityLabel);
+                    return `${meters} ${isHebrew ? 'מ\'' : 'm'}`;
+                  }
+                  if (provider.distanceMeters !== null && provider.distanceMeters !== undefined && provider.distanceMeters < 1000) {
+                    return `${provider.distanceMeters} ${isHebrew ? 'מ\'' : 'm'}`;
+                  }
+                  if (provider.distanceKm !== null) return `${provider.distanceKm} ${isHebrew ? 'ק״מ' : 'km'}`;
+                  return undefined;
+                })();
+                
                 return (
                   <ProviderCard
                     key={`${provider.id}-${provider.serviceType}-${index}`}
                     id={provider.id}
                     name={provider.displayName || 'Provider'}
                     photo={provider.profilePhotoUrl}
-                    location={provider.distanceKm !== null 
-                      ? `${provider.suburb || provider.location || ''} (${provider.distanceKm} ${isHebrew ? 'ק״מ' : 'km'})`
+                    location={proximityBadge
+                      ? `${provider.suburb || provider.location || ''} · ${proximityBadge}`
                       : provider.location || ''
                     }
                     rating={provider.rating || 0}
@@ -632,7 +651,7 @@ export default function BrowseSitters() {
                     price={pricePerNight}
                     priceUnit="night"
                     priceUnitHe="לילה"
-                    distance={provider.distanceKm !== null ? `${provider.distanceKm} ${isHebrew ? 'ק״מ' : 'km'}` : undefined}
+                    distance={proximityBadge}
                     verified={true}
                     theme="pink"
                     bio={provider.bio || undefined}

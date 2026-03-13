@@ -21,6 +21,8 @@ interface Walker {
   displayName: string;
   serviceArea: string;
   distanceKm?: number | null;
+  distanceMeters?: number | null;
+  proximityLabel?: string | null;
   bio: string;
   hourlyRate: number;
   rating: number;
@@ -193,6 +195,8 @@ export default function BrowseWalkers() {
     if (searchParams?.location) params.set('city', searchParams.location);
     if (searchParams?.lat !== null && searchParams?.lat !== undefined) params.set('lat', String(searchParams.lat));
     if (searchParams?.lng !== null && searchParams?.lng !== undefined) params.set('lng', String(searchParams.lng));
+    if (searchParams?.street) params.set('street', searchParams.street);
+    if (searchParams?.streetNumber) params.set('streetNumber', searchParams.streetNumber);
     params.set('sortBy', sortBy);
     if (maxPrice < 300) params.set('maxPrice', String(maxPrice));
     if (minRating > 0) params.set('minRating', String(minRating));
@@ -221,10 +225,10 @@ export default function BrowseWalkers() {
         id: p.id || Math.random(),
         businessName: p.displayName || '',
         displayName: p.displayName || 'Walker',
-        serviceArea: p.distanceKm !== null && p.distanceKm !== undefined
-          ? `${p.location || ''} (${p.distanceKm} km)`.trim()
-          : p.location || '',
+        serviceArea: p.location || '',
         distanceKm: p.distanceKm ?? null,
+        distanceMeters: p.distanceMeters ?? null,
+        proximityLabel: p.proximityLabel ?? null,
         bio: p.bio || '',
         hourlyRate: p.pricing?.perHour ? parseFloat(p.pricing.perHour) : 50,
         rating: p.rating || 4.5,
@@ -462,21 +466,39 @@ export default function BrowseWalkers() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {displayWalkers.map((walker) => (
+              {displayWalkers.map((walker) => {
+                const proximityBadge = (() => {
+                  if (walker.proximityLabel === 'same_building') return isHebrew ? 'אותו מבנה' : 'Same building';
+                  if (walker.proximityLabel === 'same_street') return isHebrew ? 'אותה רחוב' : 'Same street';
+                  if (walker.proximityLabel === 'nearby') return isHebrew ? 'קרוב' : 'Nearby';
+                  if (walker.proximityLabel?.endsWith('m')) {
+                    const meters = parseInt(walker.proximityLabel);
+                    return `${meters} ${isHebrew ? 'מ\'' : 'm'}`;
+                  }
+                  if (walker.distanceMeters !== null && walker.distanceMeters !== undefined && walker.distanceMeters < 1000) {
+                    return `${walker.distanceMeters} ${isHebrew ? 'מ\'' : 'm'}`;
+                  }
+                  if (walker.distanceKm !== null && walker.distanceKm !== undefined) {
+                    return `${walker.distanceKm} ${isHebrew ? 'ק״מ' : 'km'}`;
+                  }
+                  return undefined;
+                })();
+                return (
                 <ProviderCard
                   key={walker.id}
                   id={walker.id}
                   name={walker.displayName}
                   photo={walker.photoUrl}
-                  location={walker.serviceArea}
+                  location={proximityBadge
+                    ? `${walker.serviceArea} · ${proximityBadge}`
+                    : walker.serviceArea
+                  }
                   rating={walker.rating}
                   reviewCount={walker.totalReviews}
                   price={walker.hourlyRate}
                   priceUnit="hour"
                   priceUnitHe="שעה"
-                  distance={walker.distanceKm !== null && walker.distanceKm !== undefined
-                    ? `${walker.distanceKm} ${isHebrew ? 'ק״מ' : 'km'}`
-                    : undefined}
+                  distance={proximityBadge}
                   verified={walker.verified}
                   theme="emerald"
                   bio={walker.bio || undefined}
@@ -488,7 +510,8 @@ export default function BrowseWalkers() {
                   ]}
                   onClick={() => setLocation(`/walk-my-pet/walkers/${walker.id}`)}
                 />
-              ))}
+                );
+              })}
             </div>
           )}
 

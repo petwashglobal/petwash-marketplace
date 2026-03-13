@@ -1137,6 +1137,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/pettrek/hub">
           {() => <PlatformComingSoon platformName="PetTrek™" platformNameHe="PetTrek™" icon={<Car className="h-12 w-12" />} accentColor="from-violet-500 to-purple-600" />}
         </Route>
+        <Route path="/pettrek/browse">
+          {() => <PlatformComingSoon platformName="PetTrek™" platformNameHe="PetTrek™" icon={<Car className="h-12 w-12" />} accentColor="from-violet-500 to-purple-600" />}
+        </Route>
+        <Route path="/pettrek/booking/:driverId">
+          {() => <PlatformComingSoon platformName="PetTrek™" platformNameHe="PetTrek™" icon={<Car className="h-12 w-12" />} accentColor="from-violet-500 to-purple-600" />}
+        </Route>
+        <Route path="/pettrek/:rest*">
+          {() => <PlatformComingSoon platformName="PetTrek™" platformNameHe="PetTrek™" icon={<Car className="h-12 w-12" />} accentColor="from-violet-500 to-purple-600" />}
+        </Route>
         
         {/* ⁦The Sitter Suite™⁩ - Comprehensive Booking Flow (6-step process with Israeli VAT) */}
         <Route path="/sitter-suite/book/:sitterId">

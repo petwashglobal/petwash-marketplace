@@ -297,6 +297,7 @@ function GooglePlacesLocationInput({
   value,
   onChange,
   onCoordsChange,
+  onAddressDetails,
   placeholder,
   focusRing,
   focusBorder,
@@ -304,6 +305,7 @@ function GooglePlacesLocationInput({
   value: string;
   onChange: (value: string) => void;
   onCoordsChange?: (lat: number | null, lng: number | null) => void;
+  onAddressDetails?: (details: { street: string; streetNumber: string }) => void;
   placeholder: string;
   focusRing: string;
   focusBorder: string;
@@ -378,6 +380,9 @@ function GooglePlacesLocationInput({
         const data = await res.json();
         if (data.lat && data.lng) onCoordsChange?.(data.lat, data.lng);
         if (data.formattedAddress) onChange(data.formattedAddress);
+        if (data.street || data.streetNumber) {
+          onAddressDetails?.({ street: data.street || '', streetNumber: data.streetNumber || '' });
+        }
       }
     } catch {
     }
@@ -558,6 +563,8 @@ export interface SearchParams {
   location: string;
   lat: number | null;
   lng: number | null;
+  street?: string;
+  streetNumber?: string;
   service: ServiceType;
   petType: PetType;
   petCount: number;
@@ -607,6 +614,8 @@ export function ProviderSearch({
   const [location, setLocation] = useState(initialLocation || '');
   const [searchLat, setSearchLat] = useState<number | null>(initialLat ?? null);
   const [searchLng, setSearchLng] = useState<number | null>(initialLng ?? null);
+  const [searchStreet, setSearchStreet] = useState<string>('');
+  const [searchStreetNumber, setSearchStreetNumber] = useState<string>('');
   const [selectedService, setSelectedService] = useState<ServiceType>(
     platform === 'walk-my-pet' ? 'dog-walking' : 
     platform === 'pettrek' ? 'pet-taxi' : 
@@ -675,6 +684,8 @@ export function ProviderSearch({
         location: actualLocation,
         lat: searchLat,
         lng: searchLng,
+        street: searchStreet || undefined,
+        streetNumber: searchStreetNumber || undefined,
         service: selectedService,
         petType,
         petCount,
@@ -763,11 +774,17 @@ export function ProviderSearch({
                 if (!val) {
                   setSearchLat(null);
                   setSearchLng(null);
+                  setSearchStreet('');
+                  setSearchStreetNumber('');
                 }
               }}
               onCoordsChange={(lat, lng) => {
                 setSearchLat(lat);
                 setSearchLng(lng);
+              }}
+              onAddressDetails={(details) => {
+                setSearchStreet(details.street);
+                setSearchStreetNumber(details.streetNumber);
               }}
               placeholder={isHebrew ? 'הזן כתובת, שכונה או עיר' : 'Enter address, suburb or city'}
               focusRing={t.focusRing}

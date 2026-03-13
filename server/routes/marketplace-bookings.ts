@@ -699,6 +699,8 @@ router.get('/search/providers', async (req, res) => {
       city,
       lat,
       lng,
+      street,
+      streetNumber,
       radius = 50,
       minRating = 0,
       maxPrice,
@@ -939,9 +941,42 @@ router.get('/search/providers', async (req, res) => {
       const profile = profileMap.get(provider.providerId);
       
       let distanceKm: number | null = null;
+      let distanceMeters: number | null = null;
+      let proximityLabel: string | null = null;
+      const searchStreet = (street as string | undefined)?.trim().toLowerCase() || null;
+      const searchBuildingNum = (streetNumber as string | undefined)?.trim() || null;
+      const providerStreetAddress = (profile?.streetAddress || '').toLowerCase();
+
       if (searchLat !== null && searchLng !== null && profile?.latitude && profile?.longitude) {
-        distanceKm = haversineDistanceKm(searchLat, searchLng, profile.latitude, profile.longitude);
-        distanceKm = Math.round(distanceKm * 10) / 10;
+        const rawKm = haversineDistanceKm(searchLat, searchLng, profile.latitude, profile.longitude);
+        distanceMeters = Math.round(rawKm * 1000);
+        distanceKm = distanceMeters < 100
+          ? Math.round(rawKm * 1000) / 1000   // sub-100m: three decimal places for sorting precision
+          : Math.round(rawKm * 10) / 10;       // ≥100m: one decimal place
+
+        // Hyper-local proximity tier labels
+        const sameBuilding =
+          distanceMeters <= 50 ||
+          (searchBuildingNum && searchStreet &&
+            providerStreetAddress.includes(searchBuildingNum) &&
+            providerStreetAddress.includes(searchStreet));
+        const sameStreet =
+          !sameBuilding &&
+          distanceMeters <= 300 &&
+          searchStreet &&
+          providerStreetAddress.includes(searchStreet);
+
+        if (sameBuilding) {
+          proximityLabel = 'same_building';
+        } else if (sameStreet) {
+          proximityLabel = 'same_street';
+        } else if (distanceMeters <= 500) {
+          proximityLabel = 'nearby';
+        } else if (distanceMeters < 1000) {
+          proximityLabel = `${distanceMeters}m`;
+        } else {
+          proximityLabel = null; // frontend will format km
+        }
       }
 
       results.push({
@@ -955,6 +990,8 @@ router.get('/search/providers', async (req, res) => {
         suburb: profile?.streetAddress ? profile.streetAddress.split(',')[0]?.trim() : null,
         postalCode: profile?.postalCode || null,
         distanceKm,
+        distanceMeters,
+        proximityLabel,
         serviceRadiusKm: profile?.serviceRadiusKm ?? null,
         rating: profile?.rating || null,
         reviewCount: profile?.reviewCount || 0,
@@ -1095,8 +1132,10 @@ router.get('/search/providers', async (req, res) => {
         // Primary: closest first (providers without coordinates go to the bottom)
         const distA = a.distanceKm ?? 9999;
         const distB = b.distanceKm ?? 9999;
-        if (Math.abs(distA - distB) > 0.5) return distA - distB; // More than 500m apart → sort by distance
-        // Within 500m of each other → sort by match score (rating, completeness)
+        // Hyper-local: providers more than 50m apart are sorted purely by distance.
+        // Only within 50m (same building/entrance) does rating break the tie.
+        if (Math.abs(distA - distB) > 0.05) return distA - distB;
+        // Within 50m (same building or adjacent entrance) → sort by match score
         return computeMatchScore(b) - computeMatchScore(a);
       }
       if (sortByStr === 'rating') {
