@@ -23,8 +23,8 @@ export class AppErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: { componentStack: string }) {
     this.setState({ error, errorInfo });
     
-    // Log to server
-    fetch(getApiUrl("/api/logError"), {
+    // Log to server — /api/errors/log is the correct endpoint
+    fetch(getApiUrl("/api/errors/log"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -32,11 +32,13 @@ export class AppErrorBoundary extends Component<Props, State> {
         message: error.message,
         stack: error.stack,
         componentStack: errorInfo.componentStack,
+        url: typeof window !== "undefined" ? window.location.href : "",
+        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
         timestamp: new Date().toISOString(),
       }),
     }).catch(() => {
       // Silent fail - don't throw in error boundary
-      console.error("Failed to log error to server", error);
+      console.error("[AppErrorBoundary] crash:", error.message, error.stack);
     });
   }
 

@@ -238,6 +238,7 @@ function WalletActionButton({
 
 export default function MyAccount() {
   const { user } = useFirebaseAuth();
+  const firebaseUser = user;
   const { language } = useLanguage();
   const { toast } = useToast();
   const isHebrew = language === 'he';
