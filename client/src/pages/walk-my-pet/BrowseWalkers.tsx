@@ -12,6 +12,7 @@ import { useSEO, pageSEO } from "@/lib/seo";
 import { useLanguage } from "@/lib/languageStore";
 import { ProviderSearch, ProviderCard, type SearchParams } from "@/components/marketplace/ProviderSearch";
 import ProviderRegistrationBanner from "@/components/ProviderRegistrationBanner";
+import LocationPermissionBanner from "@/components/LocationPermissionBanner";
 import { getApiUrl } from "@/lib/apiConfig";
 import { PetWalkWeatherAdvisor, CompactWeatherWidget } from "@/components/weather/CompactWeatherWidget";
 
@@ -301,6 +302,10 @@ export default function BrowseWalkers() {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+          <div className="mb-4">
+            <LocationPermissionBanner role="customer" />
+          </div>
+
           <PetWalkWeatherAdvisor className="mb-6" />
           
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">

@@ -192,4 +192,64 @@ router.get('/owner/active-walks', requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * Register a user's current device GPS location (passive stamp).
+ * Used for Uber-style provider/customer matching.
+ * POST /api/gps/user-location
+ * Body: { latitude, longitude, accuracy, role: 'customer'|'provider' }
+ */
+router.post('/user-location', requireAuth, async (req, res) => {
+  try {
+    const { latitude, longitude, accuracy, role = 'customer' } = req.body;
+    const userId = req.user!.uid;
+
+    if (latitude == null || longitude == null) {
+      return res.status(400).json({ error: 'latitude and longitude are required' });
+    }
+
+    const stamp = {
+      userId,
+      role,
+      latitude: Number(latitude),
+      longitude: Number(longitude),
+      accuracy: accuracy ? Number(accuracy) : null,
+      timestamp: new Date().toISOString(),
+      source: 'device_gps',
+    };
+
+    // Store in Firestore user_locations collection (TTL 24h logic handled client-side)
+    if (req.firestore) {
+      await req.firestore.collection('user_locations').doc(userId).set(stamp, { merge: false });
+    }
+
+    logger.info('[GPS] User location stamped', { userId, role, latitude, longitude });
+
+    res.json({ success: true, stamp });
+  } catch (error: any) {
+    logger.error('[GPS] User location stamp failed', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get live location stamps for admin/Octopus Brain panel.
+ * GET /api/gps/live-locations
+ */
+router.get('/live-locations', requireAuth, async (req, res) => {
+  try {
+    if (!req.firestore) return res.json({ success: true, locations: [] });
+
+    const snapshot = await req.firestore.collection('user_locations')
+      .orderBy('timestamp', 'desc')
+      .limit(50)
+      .get();
+
+    const locations = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    res.json({ success: true, locations, total: locations.length });
+  } catch (error: any) {
+    logger.error('[GPS] Live locations fetch failed', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

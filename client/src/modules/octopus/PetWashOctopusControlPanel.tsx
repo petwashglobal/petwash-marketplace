@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 /**
@@ -1151,6 +1151,351 @@ const K9000StatusStripWithData: React.FC<{
 };
 
 /* -----------------------------------------------------------
+   10. LOCATION DASHBOARD PANEL
+   ----------------------------------------------------------- */
+
+const LocationDashboardPanel: React.FC = () => {
+  const { data, isLoading } = useQuery({
+    queryKey: ['/api/gps/live-locations'],
+    refetchInterval: 15000,
+    retry: false,
+    queryFn: async () => {
+      const res = await fetch('/api/gps/live-locations', { credentials: 'include' });
+      if (!res.ok) return { success: false, locations: [] };
+      return res.json();
+    },
+  });
+
+  const locations: any[] = data?.locations ?? [];
+  const providers = locations.filter((l: any) => l.role === 'provider');
+  const customers = locations.filter((l: any) => l.role === 'customer');
+
+  function timeAgo(iso: string) {
+    const diff = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (diff < 1) return 'Just now';
+    if (diff === 1) return '1 min ago';
+    if (diff < 60) return `${diff} min ago`;
+    return `${Math.round(diff / 60)}h ago`;
+  }
+
+  return (
+    <CardShell className="col-span-12 xl:col-span-6">
+      <SectionTitle
+        title="Live Device Locations"
+        subtitle="GPS stamps — customer & provider proximity registry"
+      />
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-slate-400 text-sm py-4">
+          <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+          Loading live locations...
+        </div>
+      ) : locations.length === 0 ? (
+        <div className="py-8 text-center">
+          <div className="text-2xl mb-2">📍</div>
+          <p className="text-slate-500 text-sm">No GPS stamps yet.</p>
+          <p className="text-slate-400 text-xs mt-1">
+            Stamps appear here when users open Browse Sitters or Browse Walkers.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-3 mb-4">
+            <div className="flex-1 bg-blue-50 rounded-xl px-4 py-3 text-center border border-blue-100">
+              <div className="text-xl font-bold text-blue-700">{customers.length}</div>
+              <div className="text-xs text-blue-500 mt-0.5">Customers online</div>
+            </div>
+            <div className="flex-1 bg-emerald-50 rounded-xl px-4 py-3 text-center border border-emerald-100">
+              <div className="text-xl font-bold text-emerald-700">{providers.length}</div>
+              <div className="text-xs text-emerald-500 mt-0.5">Providers online</div>
+            </div>
+            <div className="flex-1 bg-slate-50 rounded-xl px-4 py-3 text-center border border-slate-200">
+              <div className="text-xl font-bold text-slate-700">{locations.length}</div>
+              <div className="text-xs text-slate-500 mt-0.5">Total stamped</div>
+            </div>
+          </div>
+          <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+            {locations.map((loc: any) => (
+              <div key={loc.id} className="flex items-center gap-3 px-3 py-2 rounded-xl border border-slate-100 bg-white hover:bg-slate-50 transition-colors">
+                <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
+                  loc.role === 'provider'
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {loc.role === 'provider' ? '🐾' : '👤'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-700 truncate">{loc.userId?.slice(0, 12)}…</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                      loc.role === 'provider'
+                        ? 'bg-emerald-100 text-emerald-600'
+                        : 'bg-blue-100 text-blue-600'
+                    }`}>{loc.role}</span>
+                    {loc.source === 'device_gps' && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-600 font-medium">GPS</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-400 mt-0.5">
+                    {loc.latitude?.toFixed(5)}, {loc.longitude?.toFixed(5)}
+                    {loc.accuracy ? ` · ±${Math.round(loc.accuracy)}m` : ''}
+                  </div>
+                </div>
+                <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">{timeAgo(loc.timestamp)}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </CardShell>
+  );
+};
+
+/* -----------------------------------------------------------
+   11. LIVE MULTI-PET BOOKING DEMO PANEL
+       Tel Aviv scenario: Michal, 2 dogs (large + small), 1 week
+   ----------------------------------------------------------- */
+
+type DemoPhase =
+  | 'idle'
+  | 'request_in'
+  | 'matching'
+  | 'providers_notified'
+  | 'race'
+  | 'accepted'
+  | 'confirmed';
+
+interface DemoProvider {
+  id: string;
+  name: string;
+  distanceKm: string;
+  rating: number;
+  responseTimer: number;
+  accepted: boolean;
+  declined: boolean;
+}
+
+const DEMO_PROVIDERS: DemoProvider[] = [
+  { id: 'p1', name: 'דניאל כהן', distanceKm: '1.8', rating: 4.9, responseTimer: 14, accepted: false, declined: false },
+  { id: 'p2', name: 'יפית לוי', distanceKm: '0.6', rating: 4.8, responseTimer: 9, accepted: false, declined: false },
+];
+
+const BOOKING_REQUEST = {
+  customer: 'מיכל אברהם',
+  location: 'תל אביב — רח׳ בן גוריון 42',
+  dates: '2 מרץ — 9 מרץ 2026 (7 לילות)',
+  pets: [
+    { name: 'מקס', size: 'גדול', breed: 'לברדור', pricePerNight: 160 },
+    { name: 'פתית', size: 'קטן', breed: 'בישון פריזה', pricePerNight: 110 },
+  ],
+  totalNights: 7,
+  vatRate: 0.18,
+};
+
+const LiveBookingDemoPanel: React.FC = () => {
+  const [phase, setPhase] = useState<DemoPhase>('idle');
+  const [providers, setProviders] = useState<DemoProvider[]>(DEMO_PROVIDERS.map(p => ({ ...p })));
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const basePrice = BOOKING_REQUEST.pets.reduce((s, p) => s + p.pricePerNight, 0) * BOOKING_REQUEST.totalNights;
+  const vat = Math.round(basePrice * BOOKING_REQUEST.vatRate);
+  const total = basePrice + vat;
+
+  function clearTimer() {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+  }
+
+  function resetDemo() {
+    clearTimer();
+    setPhase('idle');
+    setCountdown(null);
+    setProviders(DEMO_PROVIDERS.map(p => ({ ...p })));
+  }
+
+  function runDemo() {
+    resetDemo();
+    setTimeout(() => setPhase('request_in'), 400);
+    setTimeout(() => setPhase('matching'), 1800);
+    setTimeout(() => setPhase('providers_notified'), 3200);
+
+    // Start countdown race at 4s
+    setTimeout(() => {
+      setPhase('race');
+      let secs = 30;
+      setCountdown(secs);
+      timerRef.current = setInterval(() => {
+        secs -= 1;
+        setCountdown(secs);
+        // Provider p2 (faster, 9s) accepts first
+        if (secs === 30 - 9) {
+          clearTimer();
+          setProviders(prev => prev.map(p =>
+            p.id === 'p2' ? { ...p, accepted: true }
+            : p.id === 'p1' ? { ...p, declined: true }
+            : p
+          ));
+          setPhase('accepted');
+          setTimeout(() => setPhase('confirmed'), 1800);
+        }
+      }, 1000);
+    }, 4000);
+  }
+
+  useEffect(() => () => clearTimer(), []);
+
+  const phaseBadge: Record<DemoPhase, { label: string; color: string }> = {
+    idle: { label: 'Standby', color: 'bg-slate-100 text-slate-500' },
+    request_in: { label: '📨 Request In', color: 'bg-blue-100 text-blue-700' },
+    matching: { label: '🔍 Matching Providers', color: 'bg-amber-100 text-amber-700' },
+    providers_notified: { label: '🔔 Providers Notified', color: 'bg-violet-100 text-violet-700' },
+    race: { label: '⚡ Race to Accept', color: 'bg-orange-100 text-orange-700 animate-pulse' },
+    accepted: { label: '✅ Accepted!', color: 'bg-emerald-100 text-emerald-700' },
+    confirmed: { label: '🎉 Booking Confirmed', color: 'bg-emerald-100 text-emerald-700' },
+  };
+
+  const badge = phaseBadge[phase];
+
+  return (
+    <CardShell className="col-span-12 xl:col-span-6">
+      <div className="flex items-start justify-between mb-4">
+        <SectionTitle
+          title="Live Booking Demo"
+          subtitle="Tel Aviv · 2 dogs (large + small) · 1 week — Uber-style matching"
+        />
+        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 ${badge.color}`}>
+          {badge.label}
+        </span>
+      </div>
+
+      {/* Booking card */}
+      <div className={`rounded-2xl border p-4 mb-4 transition-all duration-500 ${
+        phase === 'idle' ? 'border-slate-200 bg-slate-50/50 opacity-50' : 'border-blue-200 bg-blue-50/40 opacity-100'
+      }`}>
+        <div className="flex items-center gap-2 mb-3">
+          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-fuchsia-400 to-pink-500 flex items-center justify-center text-white text-sm font-bold">מ</div>
+          <div>
+            <div className="text-sm font-semibold text-slate-800">{BOOKING_REQUEST.customer}</div>
+            <div className="text-xs text-slate-500">{BOOKING_REQUEST.location}</div>
+          </div>
+          <div className="ms-auto text-xs text-slate-400">{BOOKING_REQUEST.dates}</div>
+        </div>
+
+        {/* Pets */}
+        <div className="flex gap-2 mb-3">
+          {BOOKING_REQUEST.pets.map(pet => (
+            <div key={pet.name} className="flex-1 rounded-xl bg-white border border-slate-200 px-3 py-2">
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="text-base">{pet.size === 'גדול' ? '🐕' : '🐩'}</span>
+                <span className="text-xs font-semibold text-slate-700">{pet.name}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                  pet.size === 'גדול'
+                    ? 'bg-amber-100 text-amber-700'
+                    : 'bg-sky-100 text-sky-700'
+                }`}>{pet.size}</span>
+              </div>
+              <div className="text-xs text-slate-500">{pet.breed}</div>
+              <div className="text-xs font-semibold text-slate-700 mt-1">
+                ₪{pet.pricePerNight} × {BOOKING_REQUEST.totalNights} = ₪{pet.pricePerNight * BOOKING_REQUEST.totalNights}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Price breakdown */}
+        <div className="bg-white rounded-xl border border-slate-100 px-3 py-2 text-xs space-y-1">
+          {BOOKING_REQUEST.pets.map(p => (
+            <div key={p.name} className="flex justify-between text-slate-600">
+              <span>{p.name} ({p.size}) × {BOOKING_REQUEST.totalNights} לילות</span>
+              <span>₪{p.pricePerNight * BOOKING_REQUEST.totalNights}</span>
+            </div>
+          ))}
+          <div className="flex justify-between text-slate-400 border-t border-slate-100 pt-1 mt-1">
+            <span>מע״מ 18%</span><span>₪{vat}</span>
+          </div>
+          <div className="flex justify-between font-bold text-slate-800 text-sm border-t border-slate-200 pt-1 mt-1">
+            <span>סה״כ לתשלום</span><span>₪{total}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Providers race */}
+      <div className="space-y-2 mb-4">
+        {providers.map(prov => (
+          <div key={prov.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all duration-500 ${
+            prov.accepted
+              ? 'border-emerald-300 bg-emerald-50'
+              : prov.declined
+                ? 'border-red-100 bg-red-50 opacity-50'
+                : phase === 'race' || phase === 'providers_notified'
+                  ? 'border-amber-200 bg-amber-50'
+                  : 'border-slate-200 bg-white'
+          }`}>
+            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-xs font-bold shrink-0">
+              {prov.name.charAt(0)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-800">{prov.name}</span>
+                <span className="text-[10px] text-slate-400">⭐ {prov.rating}</span>
+                <span className="text-[10px] text-slate-400">📍 {prov.distanceKm} ק״מ</span>
+              </div>
+              <div className="text-xs text-slate-400 mt-0.5">
+                {prov.accepted
+                  ? '✅ קיבל את ההזמנה'
+                  : prov.declined
+                    ? '❌ הגיע אחרון'
+                    : (phase === 'race' || phase === 'providers_notified')
+                      ? `⏱ זמן תגובה אנונימי ~${prov.responseTimer}s`
+                      : 'ממתין להזמנה...'}
+              </div>
+            </div>
+            {(phase === 'race') && !prov.accepted && !prov.declined && countdown !== null && (
+              <div className="text-lg font-bold text-orange-500 tabular-nums shrink-0">
+                {countdown}s
+              </div>
+            )}
+            {prov.accepted && <span className="text-xl shrink-0">🏆</span>}
+          </div>
+        ))}
+      </div>
+
+      {/* CTA */}
+      {phase === 'idle' && (
+        <button
+          onClick={runDemo}
+          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-slate-800 to-slate-900 text-white text-sm font-semibold hover:from-slate-700 hover:to-slate-800 transition-all shadow-md"
+        >
+          ▶ הפעל סימולציית הזמנה חיה
+        </button>
+      )}
+      {phase === 'confirmed' && (
+        <div className="space-y-2">
+          <div className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold text-center">
+            🎉 הזמנה אושרה — מיכל + מקס + פתית + יפית
+          </div>
+          <button
+            onClick={resetDemo}
+            className="w-full py-2 rounded-xl border border-slate-200 text-slate-600 text-xs hover:bg-slate-50 transition-colors"
+          >
+            🔄 הפעל מחדש
+          </button>
+        </div>
+      )}
+      {phase !== 'idle' && phase !== 'confirmed' && (
+        <div className="flex items-center justify-center gap-2 py-2 text-xs text-slate-400">
+          <div className="w-3 h-3 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+          {phase === 'request_in' && 'מעבד בקשת הזמנה...'}
+          {phase === 'matching' && 'מחפש ספקים קרובים ב-תל אביב...'}
+          {phase === 'providers_notified' && 'מודיע לספקים...'}
+          {phase === 'race' && 'ספקים מגיבים...'}
+          {phase === 'accepted' && 'מאשר הזמנה...'}
+        </div>
+      )}
+    </CardShell>
+  );
+};
+
+/* -----------------------------------------------------------
    12. MAIN OCTOPUS CONTROL PANEL WRAPPER
    ----------------------------------------------------------- */
 
@@ -1237,6 +1582,8 @@ export const PetWashOctopusControlPanel: React.FC = () => {
           stationData={metricsData?.metrics?.stations}
           isLoading={metricsLoading}
         />
+        <LocationDashboardPanel />
+        <LiveBookingDemoPanel />
       </main>
     </div>
   );
