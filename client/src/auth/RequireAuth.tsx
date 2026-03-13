@@ -1,16 +1,8 @@
-import { useEffect } from "react";
-import { useLocation } from "wouter";
+import { Redirect } from "wouter";
 import { useFirebaseAuth } from "./AuthProvider";
 
 export default function RequireAuth({ children }: { children: JSX.Element }) {
   const { user, loading } = useFirebaseAuth();
-  const [, setLocation] = useLocation();
-
-  useEffect(() => {
-    if (!loading && !user) {
-      setLocation("/signin");
-    }
-  }, [loading, user, setLocation]);
 
   if (loading) {
     return (
@@ -21,7 +13,7 @@ export default function RequireAuth({ children }: { children: JSX.Element }) {
   }
 
   if (!user) {
-    return null;
+    return <Redirect to="/signin" />;
   }
 
   return children;

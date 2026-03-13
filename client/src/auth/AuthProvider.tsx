@@ -165,10 +165,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Popup-only auth — no redirect fallback. Redirect fails on iOS/Safari because
       // sessionStorage is partitioned between origins, breaking Firebase's state handshake.
       unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-        setUser(firebaseUser);
-        setLoading(false);
-
         if (firebaseUser) {
+          // Ensure server session is created BEFORE marking auth as ready,
+          // so API calls using session cookies don't race ahead of the cookie.
           if (sessionCreatedForUid.current !== firebaseUser.uid) {
             await ensureServerSession(firebaseUser);
             sessionCreatedForUid.current = firebaseUser.uid;
@@ -190,10 +189,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setClaims(DEFAULT_CLAIMS);
           }
           setClaimsLoading(false);
+          // Now that session + claims are ready, reveal the user to the app
+          setUser(firebaseUser);
+          setLoading(false);
         } else {
           sessionCreatedForUid.current = null;
           setClaims(DEFAULT_CLAIMS);
           setClaimsLoading(false);
+          setUser(null);
+          setLoading(false);
         }
       });
 

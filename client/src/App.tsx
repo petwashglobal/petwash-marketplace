@@ -397,18 +397,24 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
       <Switch>
         {/* Public routes */}
         <Route path="/">
-          {() => user ? (
-            <Home language={language} onLanguageChange={handleLanguageChange} />
-          ) : (
-            <Landing language={language} onLanguageChange={handleLanguageChange} />
-          )}
+          {() => {
+            if (loading) return <PageLoader />;
+            return user ? (
+              <Home language={language} onLanguageChange={handleLanguageChange} />
+            ) : (
+              <Landing language={language} onLanguageChange={handleLanguageChange} />
+            );
+          }}
         </Route>
         <Route path="/home">
-          {() => user ? (
-            <Home language={language} onLanguageChange={handleLanguageChange} />
-          ) : (
-            <Landing language={language} onLanguageChange={handleLanguageChange} />
-          )}
+          {() => {
+            if (loading) return <PageLoader />;
+            return user ? (
+              <Home language={language} onLanguageChange={handleLanguageChange} />
+            ) : (
+              <Landing language={language} onLanguageChange={handleLanguageChange} />
+            );
+          }}
         </Route>
         <Route path="/signin">
           {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
@@ -420,13 +426,25 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/booking-chat/inbox">
-          {() => <BookingChatInbox />}
+          {() => (
+            <RequireAuth>
+              <BookingChatInbox />
+            </RequireAuth>
+          )}
         </Route>
         <Route path="/booking-chat/:bookingId">
-          {() => <BookingChat />}
+          {() => (
+            <RequireAuth>
+              <BookingChat />
+            </RequireAuth>
+          )}
         </Route>
         <Route path="/admin/booking-chat/:bookingId">
-          {() => <AdminBookingChat />}
+          {() => (
+            <RoleProtectedRoute minRole="staff">
+              <AdminBookingChat />
+            </RoleProtectedRoute>
+          )}
         </Route>
         <Route path="/signin-advanced">
           {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
@@ -441,14 +459,56 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <SignUp language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         
-        {/* Post-login role routing pages */}
-        <Route path="/choose-role">{() => <ChooseRole />}</Route>
-        <Route path="/complete-profile">{() => <CompleteProfile />}</Route>
-        <Route path="/provider/pending">{() => <ProviderPending />}</Route>
-        <Route path="/provider/rejected">{() => <ProviderRejected />}</Route>
-        <Route path="/staff/pending">{() => <StaffPending />}</Route>
-        <Route path="/staff/rejected">{() => <StaffRejected />}</Route>
-        <Route path="/access-pending">{() => <AccessPending />}</Route>
+        {/* Post-login role routing pages — all require auth */}
+        <Route path="/choose-role">
+          {() => (
+            <RequireAuth>
+              <ChooseRole />
+            </RequireAuth>
+          )}
+        </Route>
+        <Route path="/complete-profile">
+          {() => (
+            <RequireAuth>
+              <CompleteProfile />
+            </RequireAuth>
+          )}
+        </Route>
+        <Route path="/provider/pending">
+          {() => (
+            <RequireAuth>
+              <ProviderPending />
+            </RequireAuth>
+          )}
+        </Route>
+        <Route path="/provider/rejected">
+          {() => (
+            <RequireAuth>
+              <ProviderRejected />
+            </RequireAuth>
+          )}
+        </Route>
+        <Route path="/staff/pending">
+          {() => (
+            <RequireAuth>
+              <StaffPending />
+            </RequireAuth>
+          )}
+        </Route>
+        <Route path="/staff/rejected">
+          {() => (
+            <RequireAuth>
+              <StaffRejected />
+            </RequireAuth>
+          )}
+        </Route>
+        <Route path="/access-pending">
+          {() => (
+            <RequireAuth>
+              <AccessPending />
+            </RequireAuth>
+          )}
+        </Route>
         <Route path="/blocked">{() => <BlockedPage />}</Route>
         <Route path="/verify-email">{() => <VerifyEmail />}</Route>
 
@@ -500,9 +560,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <PrestigeClub />}
         </Route>
 
-        {/* PetWash Prestige Pass Wallet — luxury digital pass with live QR */}
+        {/* PetWash Prestige Pass Wallet — luxury digital pass with live QR (auth required) */}
         <Route path="/prestige-pass">
-          {() => <PrestigePassWallet />}
+          {() => (
+            <RequireAuth>
+              <PrestigePassWallet />
+            </RequireAuth>
+          )}
         </Route>
 
         {/* PetWash Privilege - Public registration */}
@@ -788,12 +852,14 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* UNIFIED MARKETPLACE - Booking Flow (All Platforms) */}
+        {/* UNIFIED MARKETPLACE - Booking Flow (All Platforms) — requires auth to book */}
         <Route path="/marketplace/book/:platform/:id">
           {() => (
-            <Suspense fallback={<PageLoader />}>
-              <MarketplaceBookingFlow />
-            </Suspense>
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <MarketplaceBookingFlow />
+              </Suspense>
+            </RequireAuth>
           )}
         </Route>
         
@@ -864,9 +930,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* ⁦Pet Wash Academy™⁩ - Booking Flow (6-step unified payment integration) */}
         <Route path="/academy/book/:trainerId">
           {() => (
-            <Suspense fallback={<PageLoader />}>
-              <AcademyBookingFlow />
-            </Suspense>
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <AcademyBookingFlow />
+              </Suspense>
+            </RequireAuth>
           )}
         </Route>
         
