@@ -580,6 +580,94 @@ export default function PrestigePassWallet() {
           </div>
         </div>
 
+        {/* ── Online Services ── */}
+        <div style={{ padding:'20px 20px 0' }}>
+          <div style={{
+            background:'#ffffff',
+            border:'1.5px solid rgba(212,175,55,0.2)',
+            borderRadius:'20px',
+            padding:'20px',
+            boxShadow:'0 4px 24px rgba(0,0,0,0.04)',
+          }}>
+            <h3 style={{ fontSize:'0.85rem', fontWeight:700, color:'#7A7068', letterSpacing:'0.1em', textTransform:'uppercase', margin:'0 0 4px' }}>
+              {he ? 'שירותים מקוונים' : 'Online Services'}
+            </h3>
+            <p style={{ fontSize:'0.78rem', color:'#7A7068', margin:'4px 0 14px', lineHeight:1.5 }}>
+              {he
+                ? 'ניתן לשלם בארנק הפרסטיז עבור שירותים מקוונים — מסרק, מוביל, מאלף ועוד.'
+                : 'Use your Prestige Pass balance to pay for online bookings — grooming, transport, academy and more.'}
+            </p>
+
+            {/* Available for online use */}
+            <div style={{
+              display:'flex', alignItems:'center', justifyContent:'space-between',
+              background:'rgba(212,175,55,0.05)',
+              border:'1px solid rgba(212,175,55,0.15)',
+              borderRadius:'12px',
+              padding:'14px 16px',
+              marginBottom:'14px',
+            }}>
+              <div>
+                <p style={{ margin:0, fontSize:'0.68rem', fontWeight:600, color:'#7A7068', letterSpacing:'0.08em', textTransform:'uppercase' }}>
+                  {he ? 'זמין לשימוש מקוון' : 'Available for online use'}
+                </p>
+                <p style={{ margin:'4px 0 0', fontSize:'1.4rem', fontWeight:800, color:'#B8941F', lineHeight:1 }}>
+                  {fmt(balances.cashWalletCents + balances.egiftBalanceCents + balances.promoBalanceCents)}
+                </p>
+              </div>
+              <div style={{ textAlign: he ? 'left' : 'right' }}>
+                <p style={{ margin:0, fontSize:'0.68rem', color:'#7A7068' }}>{he ? 'כולל:' : 'Includes:'}</p>
+                {balances.promoBalanceCents > 0 && (
+                  <p style={{ margin:'2px 0 0', fontSize:'0.7rem', color:'#f59e0b' }}>
+                    {fmt(balances.promoBalanceCents)} {he ? 'מבצע' : 'promo'}
+                  </p>
+                )}
+                {balances.egiftBalanceCents > 0 && (
+                  <p style={{ margin:'2px 0 0', fontSize:'0.7rem', color:'#D4AF37' }}>
+                    {fmt(balances.egiftBalanceCents)} eGift
+                  </p>
+                )}
+                {balances.cashWalletCents > 0 && (
+                  <p style={{ margin:'2px 0 0', fontSize:'0.7rem', color:'#1A1A1A' }}>
+                    {fmt(balances.cashWalletCents)} {he ? 'ארנק' : 'wallet'}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Accepted services chips */}
+            <div style={{ display:'flex', flexWrap:'wrap', gap:'8px' }}>
+              {[
+                { icon:'🛁', en:'Grooming',   he:'מסרק' },
+                { icon:'🚐', en:'Transport',  he:'הסעות' },
+                { icon:'🎓', en:'Academy',    he:'אקדמיה' },
+                { icon:'🐕', en:'Walker',     he:'מטייל' },
+                { icon:'🏠', en:'Sitter',     he:'מסיטר' },
+              ].map((s) => (
+                <div key={s.en} style={{
+                  display:'flex', alignItems:'center', gap:'5px',
+                  background:'rgba(212,175,55,0.06)',
+                  border:'1px solid rgba(212,175,55,0.2)',
+                  borderRadius:'100px',
+                  padding:'5px 12px',
+                  fontSize:'0.75rem',
+                  fontWeight:600,
+                  color:'#5A4A38',
+                }}>
+                  <span>{s.icon}</span>
+                  <span>{he ? s.he : s.en}</span>
+                </div>
+              ))}
+            </div>
+
+            <p style={{ margin:'14px 0 0', fontSize:'0.7rem', color:'#B0A898', lineHeight:1.5 }}>
+              {he
+                ? 'הקרדיט מנוכה אוטומטית בעת ההזמנה — ראשון פג: קרדיט מבצע, אז eGift, אז ארנק.'
+                : 'Balance is deducted automatically at checkout — promo first, then eGift, then wallet.'}
+            </p>
+          </div>
+        </div>
+
         {/* ── Balances ── */}
         <div style={{ padding:'24px 20px 0' }}>
           <div style={{
@@ -643,8 +731,8 @@ export default function PrestigePassWallet() {
               <p style={{ margin:0, fontSize:'0.72rem', color:'#7A7068', lineHeight:1.5 }}>
                 <strong style={{ color:'#B8941F' }}>{he ? 'סדר מימוש: ' : 'Redemption order: '}</strong>
                 {he
-                  ? 'שובר שטיפה → קרדיט מבצע → eGift → חבילה → ארנק → כרטיס'
-                  : 'Voucher → Promo → eGift → Package → Wallet → Card'}
+                  ? 'קרדיט מבצע → eGift → חבילה → ארנק → כרטיס'
+                  : 'Promo → eGift → Package → Wallet → Card'}
               </p>
             </div>
           </div>
@@ -756,9 +844,11 @@ export default function PrestigePassWallet() {
                     <Clock size={14} color="#D4AF37" />
                     <div>
                       <p style={{ margin:0, fontSize:'0.82rem', fontWeight:600, color:'#1A1A1A' }}>
-                        {e.creditType === 'wash_package' ? (he ? 'שטיפה' : 'Wash')
-                         : e.creditType === 'egift' ? 'eGift'
+                        {e.creditType === 'wash_package'  ? (he ? 'שטיפה' : 'Wash')
+                         : e.creditType === 'egift'        ? 'eGift'
                          : e.creditType === 'promo_credit' ? (he ? 'קרדיט מבצע' : 'Promo')
+                         : e.creditType === 'online_redeem' ? (he ? 'שירות מקוון' : 'Online Service')
+                         : e.creditType === 'referral_credit' ? (he ? 'הפניה' : 'Referral')
                          : (he ? 'עסקה' : 'Transaction')}
                       </p>
                       <p style={{ margin:0, fontSize:'0.7rem', color:'#7A7068' }}>

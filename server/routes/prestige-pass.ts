@@ -2,14 +2,24 @@
  * PetWash Prestige Pass — Backend Routes
  *
  * Endpoints:
- *   GET  /api/prestige-pass/wallet          — get all 6 balances + pass metadata
- *   POST /api/prestige-pass/token/generate  — generate signed short-lived QR token
+ *   GET  /api/prestige-pass/me              — spec-compliant summary (userId, tier, balances)
+ *   GET  /api/prestige-pass/wallet          — full wallet data + pass metadata
+ *   POST /api/prestige-pass/token/generate  — generate signed short-lived QR token (kiosk)
  *   POST /api/prestige-pass/token/redeem    — kiosk validates + applies smart deduction
+ *   POST /api/prestige-pass/redeem-online   — online booking payment via Prestige Pass balance
  *   GET  /api/prestige-pass/history         — last 20 redemption events
- *   GET  /api/prestige-pass/apple-wallet        — Apple Wallet pass.json (cert-ready structure)
- *   GET  /api/prestige-pass/google-wallet       — Google Wallet JWT for prestige pass
- *   POST /api/prestige-pass/activate            — enroll + send wallet email (Google + Apple buttons)
+ *   POST /api/prestige-pass/topup           — add to cash wallet (from payment)
+ *   GET  /api/prestige-pass/apple-wallet    — Apple Wallet pass.json (cert-ready structure)
+ *   GET  /api/prestige-pass/google-wallet   — Google Wallet JWT for prestige pass
+ *   POST /api/prestige-pass/activate        — enroll + send wallet email (Google + Apple buttons)
  *   POST /api/prestige-pass/resend-wallet-email — resend wallet email to logged-in user
+ *
+ * Deduction order (spec-compliant):
+ *   1. Promo credits (expires first)
+ *   2. eGift balance
+ *   3. Package washes (kiosk free-wash path)
+ *   4. Cash wallet balance
+ *   5. Card fallback (shortfall returned to client)
  */
 
 import { Router, Request, Response } from 'express';
@@ -243,64 +253,155 @@ const redeemSchema = z.object({
   amountCents: z.number().min(0).optional(),
 });
 
-// Smart redemption order (returns which source was used)
+// ─────────────────────────────────────────────────────────
+// DEDUCTION ORDER ENGINE (spec-compliant, pure function)
+// Order: promo → gift/egift → package_wash → cash_wallet → card_fallback
+// Supports partial multi-source deduction across all balance types.
+// ─────────────────────────────────────────────────────────
+interface DeductionBreakdown {
+  promo:        number;   // promo credits used (cents)
+  gift:         number;   // egift balance used (cents)
+  package:      number;   // package wash units used (count)
+  wallet:       number;   // cash wallet used (cents)
+  cardFallback: number;   // remaining shortfall requiring card (cents)
+  totalCovered: number;   // total cents covered by wallet sources
+  ok:           boolean;  // fully covered without card
+  shortfall:    number;   // cents still unpaid
+  washDeducted: boolean;  // true if a wash unit was consumed (kiosk free-wash)
+}
+
+function computeDeductionOrder(
+  balances: {
+    promoBalanceCents:   number;
+    egiftBalanceCents:   number;
+    washPackageCredits:  number;
+    cashWalletCents:     number;
+  },
+  amountCents: number,
+  isKioskFreeWash: boolean,
+): DeductionBreakdown {
+  // Special path: free kiosk wash from package (amount = 0 + wash credit available)
+  if (isKioskFreeWash && balances.washPackageCredits > 0) {
+    return {
+      promo: 0, gift: 0, package: 1, wallet: 0,
+      cardFallback: 0, totalCovered: 0,
+      ok: true, shortfall: 0, washDeducted: true,
+    };
+  }
+
+  let remaining = amountCents;
+
+  // 1. Promo credits (expires first)
+  const promoUse = Math.min(balances.promoBalanceCents, remaining);
+  remaining -= promoUse;
+
+  // 2. eGift balance
+  const giftUse = Math.min(balances.egiftBalanceCents, remaining);
+  remaining -= giftUse;
+
+  // 3. Package wash (1 unit = wash value; skip for non-wash online services)
+  const packageUse = 0; // package wash units used as monetary value only for kiosk path
+  // remaining unchanged (package units are discrete, not converted to cents here)
+
+  // 4. Cash wallet
+  const walletUse = Math.min(balances.cashWalletCents, remaining);
+  remaining -= walletUse;
+
+  const cardFallback = Math.max(0, remaining);
+  const totalCovered = promoUse + giftUse + walletUse;
+
+  return {
+    promo:        promoUse,
+    gift:         giftUse,
+    package:      packageUse,
+    wallet:       walletUse,
+    cardFallback,
+    totalCovered,
+    ok:           cardFallback === 0,
+    shortfall:    cardFallback,
+    washDeducted: false,
+  };
+}
+
+// Apply computed deduction to DB/Firestore atomically
+async function applyDeductionToStorage(
+  userId: string,
+  breakdown: DeductionBreakdown,
+  wallet: typeof walletAccounts.$inferSelect | undefined,
+  passRef: any,
+  passData: { cashWalletCents: number },
+): Promise<void> {
+  const dbUpdates: Partial<typeof walletAccounts.$inferSelect> = {};
+
+  if (breakdown.washDeducted && (wallet?.washPackageCredits ?? 0) > 0) {
+    dbUpdates.washPackageCredits = (wallet!.washPackageCredits - 1);
+  }
+  if (breakdown.promo > 0 && wallet) {
+    dbUpdates.promoBalanceCents = Math.max(0, (wallet.promoBalanceCents ?? 0) - breakdown.promo);
+  }
+  if (breakdown.gift > 0 && wallet) {
+    dbUpdates.egiftBalanceCents = Math.max(0, (wallet.egiftBalanceCents ?? 0) - breakdown.gift);
+  }
+
+  if (Object.keys(dbUpdates).length > 0) {
+    await db.update(walletAccounts).set(dbUpdates).where(eq(walletAccounts.userId, userId));
+  }
+
+  if (breakdown.wallet > 0) {
+    const newCash = Math.max(0, (passData.cashWalletCents ?? 0) - breakdown.wallet);
+    await passRef.update({ cashWalletCents: newCash });
+  }
+}
+
+// Backwards-compatible wrapper for the kiosk path
 async function applySmartRedemption(
   userId: string,
   amountCents: number,
   walletId: string,
-): Promise<{ source: string; deductedCents: number; washDeducted: boolean }> {
-  const passRef = firestoreDb.collection('prestige_passes').doc(userId);
-  const passDoc = await passRef.get();
+): Promise<{ source: string; deductedCents: number; washDeducted: boolean; breakdown: DeductionBreakdown }> {
+  const passRef  = firestoreDb.collection('prestige_passes').doc(userId);
+  const passDoc  = await passRef.get();
   const passData = passDoc.exists ? passDoc.data()! : { cashWalletCents: 0 };
 
   const [wallet] = await db.select().from(walletAccounts).where(eq(walletAccounts.userId, userId)).limit(1);
 
-  // 1. Free wash voucher (package wash, no cost)
-  if ((wallet?.washPackageCredits || 0) > 0 && amountCents === 0) {
-    await db.update(walletAccounts)
-      .set({ washPackageCredits: (wallet!.washPackageCredits - 1) })
-      .where(eq(walletAccounts.userId, userId));
-    return { source: 'package_wash', deductedCents: 0, washDeducted: true };
+  const isKioskFreeWash = amountCents === 0 && (wallet?.washPackageCredits ?? 0) > 0;
+
+  const breakdown = computeDeductionOrder(
+    {
+      promoBalanceCents:  wallet?.promoBalanceCents  ?? 0,
+      egiftBalanceCents:  wallet?.egiftBalanceCents  ?? 0,
+      washPackageCredits: wallet?.washPackageCredits ?? 0,
+      cashWalletCents:    passData.cashWalletCents   ?? 0,
+    },
+    amountCents,
+    isKioskFreeWash,
+  );
+
+  if (breakdown.cardFallback >= amountCents && !breakdown.washDeducted) {
+    return { source: 'card_required', deductedCents: 0, washDeducted: false, breakdown };
   }
 
-  // 2. Package wash (if requesting wash session = amountCents 0)
-  if ((wallet?.washPackageCredits || 0) > 0 && amountCents === 0) {
-    await db.update(walletAccounts)
-      .set({ washPackageCredits: (wallet!.washPackageCredits - 1) })
-      .where(eq(walletAccounts.userId, userId));
-    return { source: 'package_wash', deductedCents: 0, washDeducted: true };
-  }
+  await applyDeductionToStorage(userId, breakdown, wallet, passRef, passData as { cashWalletCents: number });
 
-  // 3. Expiring promo credit
-  if ((wallet?.promoBalanceCents || 0) >= amountCents) {
-    await db.update(walletAccounts)
-      .set({ promoBalanceCents: (wallet!.promoBalanceCents - amountCents) })
-      .where(eq(walletAccounts.userId, userId));
-    return { source: 'promo_credit', deductedCents: amountCents, washDeducted: false };
-  }
+  const source = breakdown.washDeducted
+    ? 'package_wash'
+    : breakdown.totalCovered < amountCents
+      ? 'partial_mixed'
+      : breakdown.promo > 0 && breakdown.gift === 0 && breakdown.wallet === 0
+        ? 'promo_credit'
+        : breakdown.gift > 0 && breakdown.promo === 0 && breakdown.wallet === 0
+          ? 'egift'
+          : breakdown.wallet > 0 && breakdown.promo === 0 && breakdown.gift === 0
+            ? 'cash_wallet'
+            : 'mixed';
 
-  // 4. eGift balance
-  if ((wallet?.egiftBalanceCents || 0) >= amountCents) {
-    await db.update(walletAccounts)
-      .set({ egiftBalanceCents: (wallet!.egiftBalanceCents - amountCents) })
-      .where(eq(walletAccounts.userId, userId));
-    return { source: 'egift', deductedCents: amountCents, washDeducted: false };
-  }
-
-  // 5. Cash wallet (Firestore stored)
-  if ((passData.cashWalletCents || 0) >= amountCents) {
-    await passRef.update({ cashWalletCents: (passData.cashWalletCents - amountCents) });
-    return { source: 'cash_wallet', deductedCents: amountCents, washDeducted: false };
-  }
-
-  // 6. Partial: use all available, return shortfall
-  const available = (passData.cashWalletCents || 0) + (wallet?.egiftBalanceCents || 0) + (wallet?.promoBalanceCents || 0);
-  if (available > 0) {
-    return { source: 'partial_mixed', deductedCents: available, washDeducted: false };
-  }
-
-  // 7. Card payment fallback — kiosk must handle this
-  return { source: 'card_required', deductedCents: 0, washDeducted: false };
+  return {
+    source,
+    deductedCents: breakdown.totalCovered,
+    washDeducted:  breakdown.washDeducted,
+    breakdown,
+  };
 }
 
 router.post('/token/redeem', redeemLimiter, async (req: Request, res: Response) => {
@@ -812,6 +913,165 @@ router.post('/activate', async (req: Request, res: Response) => {
     });
   } catch (err) {
     logger.error('[PrestigePass] /activate error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// GET /me — spec-compliant summary alias (mirrors /wallet)
+// Returns: { userId, tier, balances: { promo, gift, wallet, washes, loyaltyPoints } }
+// ─────────────────────────────────────────────────────────
+router.get('/me', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    const userId  = session?.user?.uid;
+    if (!userId) return res.status(401).json({ authenticated: false, error: 'Auth required' });
+
+    const [wallet] = await db
+      .select()
+      .from(walletAccounts)
+      .where(eq(walletAccounts.userId, userId))
+      .limit(1);
+
+    const passDoc  = await firestoreDb.collection('prestige_passes').doc(userId).get();
+    const passData = passDoc.exists ? passDoc.data()! : { cashWalletCents: 0, tier: 'new' };
+
+    const tier = wallet?.loyaltyTier || passData.tier || 'new';
+
+    return res.json({
+      userId,
+      tier,
+      balances: {
+        promo:         wallet?.promoBalanceCents    ?? 0,
+        gift:          wallet?.egiftBalanceCents    ?? 0,
+        wallet:        passData.cashWalletCents     ?? 0,
+        washes:        wallet?.washPackageCredits   ?? 0,
+        loyaltyPoints: wallet?.loyaltyPointsBalance ?? 0,
+      },
+    });
+  } catch (err) {
+    logger.error('[PrestigePass] /me error:', err);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// POST /redeem-online — online service redemption
+// Called from booking checkout when user selects "Pay with Prestige Pass"
+// Applies deduction order: promo → gift → package → wallet → card_fallback
+// ─────────────────────────────────────────────────────────
+const redeemOnlineSchema = z.object({
+  bookingId:   z.string().min(1).max(200),
+  serviceType: z.enum([
+    'pet_sitter', 'dog_walker', 'pet_transport', 'academy',
+    'grooming', 'vet', 'daycare', 'other',
+  ]),
+  amountGross: z.number().min(1).max(500_000),   // in agorot (ILS cents)
+});
+
+router.post('/redeem-online', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    const userId  = session?.user?.uid;
+    if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
+
+    const parsed = redeemOnlineSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: 'Invalid input', details: parsed.error.flatten() });
+    }
+    const { bookingId, serviceType, amountGross } = parsed.data;
+
+    // Load wallet + pass balances
+    const passRef  = firestoreDb.collection('prestige_passes').doc(userId);
+    const passDoc  = await passRef.get();
+    const passData = passDoc.exists ? passDoc.data()! : { cashWalletCents: 0 };
+
+    const [wallet] = await db
+      .select()
+      .from(walletAccounts)
+      .where(eq(walletAccounts.userId, userId))
+      .limit(1);
+
+    const balanceSnapshot = {
+      promoBalanceCents:  wallet?.promoBalanceCents  ?? 0,
+      egiftBalanceCents:  wallet?.egiftBalanceCents  ?? 0,
+      washPackageCredits: wallet?.washPackageCredits ?? 0,
+      cashWalletCents:    passData.cashWalletCents   ?? 0,
+    };
+
+    const totalAvailable =
+      balanceSnapshot.promoBalanceCents +
+      balanceSnapshot.egiftBalanceCents +
+      balanceSnapshot.cashWalletCents;
+
+    if (totalAvailable < amountGross) {
+      return res.status(402).json({
+        ok:         false,
+        error:      'Insufficient balance',
+        available:  totalAvailable,
+        required:   amountGross,
+        shortfall:  amountGross - totalAvailable,
+      });
+    }
+
+    // Compute deduction breakdown (online path — no free-wash shortcut)
+    const breakdown = computeDeductionOrder(balanceSnapshot, amountGross, false);
+
+    if (!breakdown.ok) {
+      return res.status(402).json({
+        ok:        false,
+        error:     'Insufficient balance',
+        shortfall: breakdown.shortfall,
+      });
+    }
+
+    // Apply deductions to DB + Firestore
+    await applyDeductionToStorage(userId, breakdown, wallet, passRef, passData as { cashWalletCents: number });
+
+    // Record in credit transactions ledger
+    const walletId = wallet?.walletId || `WALLET-${userId.slice(0, 8)}`;
+    const txnId    = `TXN-ONL-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString('hex').toUpperCase()}`;
+
+    await db.insert(creditTransactions).values({
+      transactionId:  txnId,
+      walletId,
+      creditType:     'online_redeem',
+      transactionType: 'redeem',
+      amountCents:    -amountGross,
+      amountUnits:    null,
+      metadata: {
+        bookingId,
+        serviceType,
+        amountGross,
+        breakdown: {
+          promo:  breakdown.promo,
+          gift:   breakdown.gift,
+          wallet: breakdown.wallet,
+          cardFallback: breakdown.cardFallback,
+        },
+      } as any,
+    });
+
+    logger.info('[PrestigePass] Online redemption completed', {
+      userId, bookingId, serviceType, amountGross,
+      promo: breakdown.promo, gift: breakdown.gift, wallet: breakdown.wallet,
+    });
+
+    return res.json({
+      ok:              true,
+      bookingConfirmed: true,
+      txnId,
+      amountGross,
+      deductionBreakdown: {
+        promo:        breakdown.promo,
+        gift:         breakdown.gift,
+        wallet:       breakdown.wallet,
+        cardFallback: breakdown.cardFallback,
+        totalCovered: breakdown.totalCovered,
+      },
+    });
+  } catch (err) {
+    logger.error('[PrestigePass] /redeem-online error:', err);
     return res.status(500).json({ ok: false, error: 'Internal error' });
   }
 });
