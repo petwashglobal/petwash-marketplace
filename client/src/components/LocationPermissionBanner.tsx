@@ -1,5 +1,5 @@
 import { MapPin, Navigation, X, AlertTriangle, CheckCircle2, Wifi } from 'lucide-react';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/lib/languageStore';
 import { useLocationService, type LocationPermissionState } from '@/hooks/useLocationService';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
