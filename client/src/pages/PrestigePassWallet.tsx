@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import prestigeCardBlack from '@assets/prestige-card-black.png';
 import prestigeCardGold from '@assets/prestige-card-gold.png';
 import prestigeLogoDiamond from '@assets/prestige-logo-diamond.png';
+import { PremiumMemberCard } from '@/components/PremiumMemberCard';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface WalletData {
@@ -278,7 +279,14 @@ export default function PrestigePassWallet() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Fetch wallet state
-  const { data: walletData, isLoading, error } = useQuery<{ ok: boolean; pass: WalletData['pass']; balances: WalletData['balances'] }>({
+  const { data: walletData, isLoading, error } = useQuery<{
+    ok: boolean;
+    pass: WalletData['pass'];
+    balances: WalletData['balances'];
+    displayName?: string;
+    cardId?: string;
+    cardDisplay?: string;
+  }>({
     queryKey: ['/api/prestige-pass/wallet'],
     refetchInterval: 30_000,
   });
@@ -423,9 +431,18 @@ export default function PrestigePassWallet() {
           </h1>
         </div>
 
-        {/* ── Floating card ── */}
-        <div style={{ padding:'0 20px', marginTop:'-80px', position:'relative', zIndex:10 }}>
-          <LuxuryCard wallet={wallet} language={language} />
+        {/* ── Premium card ── */}
+        <div style={{ padding: '0 20px', marginTop: '-80px', position: 'relative', zIndex: 10 }}>
+          <PremiumMemberCard
+            ownerName={walletData?.displayName || pass.userId.slice(0, 10)}
+            balanceCents={
+              balances.cashWalletCents +
+              balances.egiftBalanceCents +
+              balances.promoBalanceCents
+            }
+            cardDisplay={walletData?.cardDisplay || `PW • ${pass.serialNumber.slice(-8, -4)} ${pass.serialNumber.slice(-4)}`}
+            cardId={walletData?.cardId || `PW-${pass.serialNumber.slice(-8)}`}
+          />
         </div>
 
         {/* ── Tier badge ── */}

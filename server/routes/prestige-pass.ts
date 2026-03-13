@@ -180,8 +180,20 @@ router.get('/wallet', async (req: Request, res: Response) => {
     const tier    = wallet?.loyaltyTier || passData.tier || 'new';
     const variant = TIER_VARIANT[tier] || 'gold';
 
+    // Derive display card number from serialNumber (e.g. PWL-M9XK2Z-ABCD → take last 8 alphanum chars)
+    const rawSerial   = (passData.serialNumber as string) || '';
+    const alphaOnly   = rawSerial.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+    const raw8        = alphaOnly.length >= 8 ? alphaOnly.slice(-8) : alphaOnly.padEnd(8, '0');
+    const cardId      = `PW-${raw8}`;
+    const cardDisplay = `PW • ${raw8.slice(0, 4)} ${raw8.slice(4, 8)}`;
+
+    const displayName = (session?.user?.displayName as string | undefined) || (passData.firstName as string | undefined) || undefined;
+
     return res.json({
       ok: true,
+      displayName,
+      cardId,
+      cardDisplay,
       pass: {
         serialNumber:  passData.serialNumber,
         userId,
@@ -844,11 +856,25 @@ router.get('/me', async (req: Request, res: Response) => {
       .limit(1);
 
     const passDoc  = await firestoreDb.collection('prestige_passes').doc(userId).get();
-    const tier = wallet?.loyaltyTier || passDoc.data()?.tier || 'new';
+    const passData = passDoc.data() || {};
+    const tier = wallet?.loyaltyTier || passData.tier || 'new';
+
+    // Derive a stable card number: PW- + last 8 chars of userId (uppercase)
+    const rawId    = (passData.cardNumber as string) || userId.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
+    const cardId   = `PW-${rawId}`;
+    // Formatted for display: PW • XXXX XXXX
+    const cardDisplay = rawId.length >= 8
+      ? `PW • ${rawId.slice(0,4)} ${rawId.slice(4,8)}`
+      : `PW • ${rawId}`;
+
+    const displayName = (session?.user?.displayName as string | undefined) || passData.firstName as string | undefined || undefined;
 
     return res.json({
       userId,
       tier,
+      displayName,
+      cardId,
+      cardDisplay,
       balances: {
         promo:         wallet?.promoBalanceCents        ?? 0,
         gift:          wallet?.egiftBalanceCents        ?? 0,
