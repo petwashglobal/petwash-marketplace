@@ -60,6 +60,8 @@ export default function JoinAsTrainer() {
     city: "",
     postalCode: "",
     country: "Israel",
+    lat: null as number | null,
+    lng: null as number | null,
     bio: "",
     yearsOfExperience: 1,
     specialties: [] as string[],
@@ -107,6 +109,8 @@ export default function JoinAsTrainer() {
       update("streetAddress", streetParts.join(" ") || val);
       update("postalCode", details.postalCode || "");
       update("country", details.country || "Israel");
+      update("lat", details.lat ?? null);
+      update("lng", details.lng ?? null);
     }
   }
 
@@ -153,6 +157,8 @@ export default function JoinAsTrainer() {
         streetAddress: form.streetAddress,
         postalCode: form.postalCode || null,
         country: form.country,
+        latitude: form.lat ? String(form.lat) : null,
+        longitude: form.lng ? String(form.lng) : null,
         bio: form.bio,
         specialties: form.specialties,
         yearsOfExperience: form.yearsOfExperience,

@@ -11,6 +11,7 @@ import {
   pets,
   sitterProfiles,
   walkerProfiles,
+  trainers,
   users,
   BOOKING_STATUS_TRANSITIONS,
   type BookingLifecycleStatus
@@ -765,6 +766,7 @@ router.get('/search/providers', async (req, res) => {
       streetAddress: string | null;
       latitude: number | null;
       longitude: number | null;
+      serviceRadiusKm: number | null;
       rating: number | null;
       reviewCount: number;
     }
@@ -803,6 +805,7 @@ router.get('/search/providers', async (req, res) => {
               streetAddress: p.streetAddress || null,
               latitude: p.latitude ? parseFloat(p.latitude) : null,
               longitude: p.longitude ? parseFloat(p.longitude) : null,
+              serviceRadiusKm: null,
               rating: p.rating ? parseFloat(p.rating) : null,
               reviewCount: p.totalBookings || 0,
             });
@@ -822,6 +825,9 @@ router.get('/search/providers', async (req, res) => {
             bio: walkerProfiles.bio,
             profilePhotoUrl: walkerProfiles.profilePhotoUrl,
             city: walkerProfiles.city,
+            currentLatitude: walkerProfiles.currentLatitude,
+            currentLongitude: walkerProfiles.currentLongitude,
+            serviceRadiusKm: walkerProfiles.serviceRadiusKm,
             rating: walkerProfiles.averageRating,
             totalWalks: walkerProfiles.totalWalks,
           })
@@ -836,8 +842,9 @@ router.get('/search/providers', async (req, res) => {
               city: p.city,
               postalCode: null,
               streetAddress: null,
-              latitude: null,
-              longitude: null,
+              latitude: p.currentLatitude ? parseFloat(p.currentLatitude) : null,
+              longitude: p.currentLongitude ? parseFloat(p.currentLongitude) : null,
+              serviceRadiusKm: p.serviceRadiusKm ?? 5,
               rating: p.rating ? parseFloat(p.rating) : null,
               reviewCount: p.totalWalks || 0,
             };
@@ -847,6 +854,43 @@ router.get('/search/providers', async (req, res) => {
         }
       } catch (err: any) {
         logger.warn('[MarketplaceBookings] Walker profile enrichment error', { error: err?.message });
+      }
+
+      try {
+        if (!normalizedPlatform || normalizedPlatform === 'academy' || normalizedPlatform === 'groomers') {
+          const trainerProfiles = await db.select({
+            userId: trainers.userId,
+            firstName: trainers.firstName,
+            lastName: trainers.lastName,
+            bio: trainers.bio,
+            profilePhotoUrl: trainers.profilePhotoUrl,
+            serviceArea: trainers.serviceArea,
+            rating: trainers.averageRating,
+            totalSessions: trainers.totalSessions,
+          })
+          .from(trainers)
+          .where(sql`${trainers.userId} IN (${sql.join(idParams, sql`, `)})`);
+
+          trainerProfiles.forEach(p => {
+            if (!profileMap.has(p.userId)) {
+              profileMap.set(p.userId, {
+                displayName: `${p.firstName} ${p.lastName || ''}`.trim(),
+                bio: p.bio,
+                profilePhotoUrl: p.profilePhotoUrl,
+                city: p.serviceArea || null,
+                postalCode: null,
+                streetAddress: null,
+                latitude: null,
+                longitude: null,
+                serviceRadiusKm: null,
+                rating: p.rating ? parseFloat(p.rating) : null,
+                reviewCount: p.totalSessions || 0,
+              });
+            }
+          });
+        }
+      } catch (err: any) {
+        logger.warn('[MarketplaceBookings] Trainer profile enrichment error', { error: err?.message });
       }
 
       try {
@@ -873,6 +917,7 @@ router.get('/search/providers', async (req, res) => {
                 streetAddress: null,
                 latitude: null,
                 longitude: null,
+                serviceRadiusKm: null,
                 rating: null,
                 reviewCount: 0,
               });
@@ -910,6 +955,7 @@ router.get('/search/providers', async (req, res) => {
         suburb: profile?.streetAddress ? profile.streetAddress.split(',')[0]?.trim() : null,
         postalCode: profile?.postalCode || null,
         distanceKm,
+        serviceRadiusKm: profile?.serviceRadiusKm ?? null,
         rating: profile?.rating || null,
         reviewCount: profile?.reviewCount || 0,
         pricing: {
@@ -970,13 +1016,19 @@ router.get('/search/providers', async (req, res) => {
 
     let filteredResults = results;
 
-    // If lat/lng provided, filter by radius and sort by distance (closest first)
+    // Geo-proximity matching: closest providers first, respecting each provider's own service radius
     if (searchLat !== null && searchLng !== null) {
       filteredResults = results.filter(r => {
         if (r.distanceKm === null) {
-          // Keep providers without coordinates but rank them last
+          // Provider has no coordinates — keep but rank last
           return true;
         }
+        // Walkers travel to the customer — match only if customer is within the walker's own service radius
+        // (the "Uber driver is near you" model: walker sets their territory, customer must be inside it)
+        if (r.serviceRadiusKm !== null && r.serviceRadiusKm > 0) {
+          return r.distanceKm <= r.serviceRadiusKm;
+        }
+        // Sitters / trainers / stations — use customer's search radius preference
         return r.distanceKm <= searchRadius;
       });
     } else if (cityStr && cityStr.trim().length > 0) {
@@ -1007,32 +1059,45 @@ router.get('/search/providers', async (req, res) => {
       });
     }
 
-    const sortByStr = (sortBy as string) || 'bestMatch';
+    // When the customer provided coordinates, default to proximity-first ordering
+    const hasCoords = searchLat !== null && searchLng !== null;
+    const sortByStr = (sortBy as string) || (hasCoords ? 'distance' : 'bestMatch');
     
     const computeMatchScore = (provider: typeof filteredResults[0]) => {
       let score = 0;
       const rating = provider.rating || 0;
-      score += (rating / 5) * 40;
-      const reviews = Math.min(provider.reviewCount, 100);
-      score += (reviews / 100) * 20;
-      if (provider.distanceKm !== null) {
-        const distScore = Math.max(0, 1 - (provider.distanceKm / 50));
-        score += distScore * 30;
+      if (hasCoords) {
+        // Proximity-first: south Tel Aviv providers beat north Tel Aviv providers for a south Tel Aviv customer
+        // Distance is 60% of score — closest provider wins; rating breaks ties (30%), completeness (10%)
+        if (provider.distanceKm !== null) {
+          const maxDist = Math.max(searchRadius, provider.serviceRadiusKm || searchRadius, 1);
+          const distScore = Math.max(0, 1 - (provider.distanceKm / maxDist));
+          score += distScore * 60;
+        }
+        // No coordinates → treat as very far away (score 0 for distance, appears last)
+        score += (rating / 5) * 30;
+        if (provider.bio && provider.bio.length > 50) score += 5;
+        if (provider.profilePhotoUrl) score += 5;
+      } else {
+        // No coordinates: rating-first mode
+        score += (rating / 5) * 40;
+        const reviews = Math.min(provider.reviewCount, 100);
+        score += (reviews / 100) * 20;
+        score += 30; // No distance penalty
+        if (provider.bio && provider.bio.length > 50) score += 5;
+        if (provider.profilePhotoUrl) score += 5;
       }
-      if (provider.bio && provider.bio.length > 50) score += 5;
-      if (provider.profilePhotoUrl) score += 5;
       return score;
     };
 
     filteredResults.sort((a, b) => {
-      if (sortByStr === 'bestMatch') {
-        return computeMatchScore(b) - computeMatchScore(a);
-      }
-      if (sortByStr === 'distance' || sortByStr === 'proximity') {
+      if (sortByStr === 'distance' || sortByStr === 'proximity' || sortByStr === 'bestMatch') {
+        // Primary: closest first (providers without coordinates go to the bottom)
         const distA = a.distanceKm ?? 9999;
         const distB = b.distanceKm ?? 9999;
-        if (distA !== distB) return distA - distB;
-        return (b.rating || 0) - (a.rating || 0);
+        if (Math.abs(distA - distB) > 0.5) return distA - distB; // More than 500m apart → sort by distance
+        // Within 500m of each other → sort by match score (rating, completeness)
+        return computeMatchScore(b) - computeMatchScore(a);
       }
       if (sortByStr === 'rating') {
         return (b.rating || 0) - (a.rating || 0);

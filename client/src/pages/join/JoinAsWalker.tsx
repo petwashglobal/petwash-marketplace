@@ -53,6 +53,8 @@ export default function JoinAsWalker() {
     city: "",
     postalCode: "",
     country: "Israel",
+    lat: null as number | null,
+    lng: null as number | null,
     serviceRadiusKm: 5,
     maxDogsPerWalk: 3,
     specializations: [] as string[],
@@ -87,6 +89,8 @@ export default function JoinAsWalker() {
       update("streetAddress", streetParts.join(" ") || val);
       update("postalCode", details.postalCode || "");
       update("country", details.country || "Israel");
+      update("lat", details.lat ?? null);
+      update("lng", details.lng ?? null);
     }
   }
 
@@ -131,6 +135,8 @@ export default function JoinAsWalker() {
         streetAddress: form.streetAddress,
         postalCode: form.postalCode || null,
         country: form.country,
+        currentLatitude: form.lat ? String(form.lat) : null,
+        currentLongitude: form.lng ? String(form.lng) : null,
         serviceRadiusKm: form.serviceRadiusKm,
         specializations: form.specializations,
         yearsOfExperience: form.yearsOfExperience,

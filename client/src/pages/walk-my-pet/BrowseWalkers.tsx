@@ -20,6 +20,7 @@ interface Walker {
   businessName: string;
   displayName: string;
   serviceArea: string;
+  distanceKm?: number | null;
   bio: string;
   hourlyRate: number;
   rating: number;
@@ -220,7 +221,10 @@ export default function BrowseWalkers() {
         id: p.id || Math.random(),
         businessName: p.displayName || '',
         displayName: p.displayName || 'Walker',
-        serviceArea: p.location || '',
+        serviceArea: p.distanceKm !== null && p.distanceKm !== undefined
+          ? `${p.location || ''} (${p.distanceKm} km)`.trim()
+          : p.location || '',
+        distanceKm: p.distanceKm ?? null,
         bio: p.bio || '',
         hourlyRate: p.pricing?.perHour ? parseFloat(p.pricing.perHour) : 50,
         rating: p.rating || 4.5,
@@ -470,6 +474,9 @@ export default function BrowseWalkers() {
                   price={walker.hourlyRate}
                   priceUnit="hour"
                   priceUnitHe="שעה"
+                  distance={walker.distanceKm !== null && walker.distanceKm !== undefined
+                    ? `${walker.distanceKm} ${isHebrew ? 'ק״מ' : 'km'}`
+                    : undefined}
                   verified={walker.verified}
                   theme="emerald"
                   bio={walker.bio || undefined}

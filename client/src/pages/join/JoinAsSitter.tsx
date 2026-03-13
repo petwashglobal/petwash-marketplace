@@ -59,6 +59,8 @@ export default function JoinAsSitter() {
     city: "",
     postalCode: "",
     country: "Israel",
+    lat: null as number | null,
+    lng: null as number | null,
     homeType: "apartment",
     yardSize: "none",
     smokingStatus: "non_smoker",
@@ -95,6 +97,8 @@ export default function JoinAsSitter() {
       update("streetAddress", streetParts.join(" ") || val);
       update("postalCode", details.postalCode || "");
       update("country", details.country || "Israel");
+      update("lat", details.lat ?? null);
+      update("lng", details.lng ?? null);
     }
   }
 
@@ -140,6 +144,8 @@ export default function JoinAsSitter() {
         city: form.city,
         postalCode: form.postalCode || null,
         country: form.country,
+        latitude: form.lat ? String(form.lat) : null,
+        longitude: form.lng ? String(form.lng) : null,
         homeType: form.homeType,
         yardSize: form.yardSize,
         smokingStatus: form.smokingStatus,
