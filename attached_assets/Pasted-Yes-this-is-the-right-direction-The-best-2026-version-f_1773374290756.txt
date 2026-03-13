@@ -1,0 +1,253 @@
+Yes - this is the right direction.
+
+The best 2026 version for PetWash is:
+
+luxury card look on the phone, but technically a dynamic digital membership / gift / wallet pass, not a fake bank card.
+
+Best logic
+
+Use one Prestige Pass per user with these live elements:
+	•	unique user ID
+	•	tier
+	•	current credit balance
+	•	wash package balance
+	•	eGift balance
+	•	loyalty points
+	•	expiry / renewal if relevant
+	•	dynamic redeem code for kiosk use
+	•	last activity / recent history in app, not on the card face
+
+Best visual model
+
+Make it look like a premium card:
+	•	black metal edition
+	•	brushed gold edition
+	•	white / platinum edition for top tier
+	•	embossed PetWash mark
+	•	subtle chip graphic for luxury feel only
+	•	no fake card number layout
+	•	no banking language
+	•	no Visa / Mastercard style confusion
+
+So it should feel like:
+Cartier membership card + Apple Wallet pass + premium hotel key card
+
+QR or barcode?
+
+Primary: dynamic QR
+Fallback: barcode only if scanner compatibility requires it
+
+Why QR is better:
+	•	holds more data
+	•	scans better from modern phone screens
+	•	better for signed dynamic tokens
+	•	easier to rotate every 30 to 60 seconds
+	•	better for redemption, eGift, one-time offers, kiosk actions
+
+Barcode is still useful only as fallback if:
+	•	Nayax scanner reads 1D codes more reliably in sunlight
+	•	you want compatibility with older readers
+	•	you want a backup pass format
+
+Best setup
+	•	dynamic QR for redemption
+	•	short human-readable member code under it
+	•	optional Code 128 fallback if hardware testing shows a need
+
+Best redemption flow at K9000 dual machine
+
+User arrives at station.
+	1.	opens PetWash Prestige pass or app
+	2.	taps Redeem / Start Wash
+	3.	pass/app shows dynamic QR token
+	4.	user scans phone at Nayax / kiosk scanner
+	5.	backend validates:
+	•	token signature
+	•	expiry
+	•	machine ID
+	•	user status
+	•	available credit / wash package / eGift
+	6.	backend decides:
+	•	start left bay
+	•	start right bay
+	•	deduct one wash
+	•	deduct partial credit
+	•	reject if insufficient balance
+	7.	machine starts
+	8.	pass balance updates
+
+Best wallet / pass structure
+
+What should be on the front
+	•	PetWash logo
+	•	member name
+	•	tier name
+	•	current available balance or wash count
+	•	dynamic QR
+	•	subtle member ID
+
+What should be on the back / details
+	•	unique user ID
+	•	expiry if any
+	•	gift balance
+	•	package balance
+	•	terms
+	•	support contact
+	•	nearest station shortcut
+	•	last 3 redemptions only if useful
+
+Do not overload the pass with too much history.
+Full history should live inside the app / website account.
+
+Best money logic
+
+Separate balances internally:
+	•	cash_wallet_balance
+	•	gift_balance
+	•	promo_balance
+	•	package_washes_remaining
+	•	loyalty_points
+	•	tier_status
+
+When user scans, redemption order should be smart and predictable:
+	1.	free wash voucher if present
+	2.	expiring promo credit
+	3.	gift balance
+	4.	package wash
+	5.	cash wallet
+	6.	card payment fallback
+
+That is the cleanest customer experience.
+
+Best tier logic
+
+Use luxury tiers, for example:
+	•	Prestige Silver
+	•	Prestige Gold
+	•	Prestige Black
+
+Tier should affect:
+	•	bonus credit on top-up
+	•	birthday wash
+	•	priority promos
+	•	partner perks
+	•	maybe lower provider booking commission offers or bundled services
+
+Tier should not change the scan flow.
+Only benefits and styling change.
+
+Best eGift logic
+
+eGift should be giftable by:
+	•	SMS
+	•	email
+	•	direct link
+	•	Apple Wallet / Google Wallet add flow
+
+Recipient gets:
+	•	luxury digital card/pass
+	•	unique claim link
+	•	optional message
+	•	balance or number of washes
+	•	expiry if you want one
+
+Best flow:
+	•	buyer purchases 500₪ gift
+	•	recipient receives pass
+	•	recipient scans at kiosk
+	•	balance reduces live after each use
+
+Best provider / public split
+
+Use the same system engine, but different pass classes.
+
+Public member pass
+	•	washes
+	•	gift credit
+	•	loyalty
+	•	tier
+	•	coupons
+
+Provider pass
+	•	provider ID
+	•	staff / technician / partner role
+	•	special pricing or free maintenance washes
+	•	restricted permissions
+	•	service access if needed
+
+Do not mix public and provider permissions on one pass type.
+
+Best security logic
+
+Never put real balance logic directly inside the QR.
+
+QR should contain only a signed short-lived token like:
+	•	session ID
+	•	user ID reference
+	•	machine context
+	•	issued at
+	•	expires at
+	•	nonce
+	•	signature
+
+Best practice:
+	•	token valid 30 to 60 seconds
+	•	one-time use
+	•	anti-replay check
+	•	machine-specific if needed
+	•	backend verifies everything
+
+Best scanner logic for the dual machine
+
+For K9000 dual bay, after scan the system should know exactly which side to activate.
+
+Best options:
+	•	user taps left or right bay in app before showing QR
+	•	or scanner event is tied to the bay terminal physically
+	•	or after scan the station screen asks left / right quickly
+
+Best is physical mapping:
+	•	left reader = left bay
+	•	right reader = right bay
+
+Less friction, less confusion.
+
+Best luxury user experience
+
+The pass should feel effortless:
+	•	no full app required for first redemption
+	•	Add to Apple Wallet / Google Wallet immediately after purchase
+	•	location reminder near station
+	•	live update after redemption
+	•	elegant animation in app
+	•	pure white backgrounds in app
+	•	metallic black / gold pass style
+	•	clean typography
+	•	zero clutter
+
+My strongest recommendation
+
+For PetWash:
+	•	Use a premium digital pass that looks like a luxury card
+	•	Use dynamic QR as primary redeem format
+	•	Keep barcode only as fallback
+	•	Keep history in app, not on the pass face
+	•	Use one wallet engine with separate balances
+	•	Use separate pass types for public members and providers
+	•	Map each scan to a specific K9000 bay
+	•	Make Apple Wallet / Google Wallet first-class, not optional
+
+Best final product name
+
+Use something like:
+	•	PetWash Prestige Pass
+	•	PetWash Black
+	•	PetWash Gold
+	•	PetWash Gift Pass
+	•	PetWash Partner Pass
+
+Not “credit card”.
+
+Because legally and visually it should be a membership / wallet / gift pass, just styled like a luxury card.
+
+Here is a developer-ready block you can paste:

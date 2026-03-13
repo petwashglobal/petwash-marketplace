@@ -140,6 +140,7 @@ const FranchiseMarketing = lazy(() => import("@/pages/franchise/FranchiseMarketi
 const AdminInbox = lazy(() => import("@/pages/AdminInbox"));
 const WalletDownload = lazy(() => import("@/pages/WalletDownload"));
 const MyWallet = lazy(() => import("@/pages/MyWallet"));
+const PrestigePassWallet = lazy(() => import("@/pages/PrestigePassWallet"));
 const K9000Redeem = lazy(() => import("@/pages/K9000Redeem"));
 const MyAccount = lazy(() => import("@/pages/MyAccount"));
 const AdminStations = lazy(() => import("@/pages/AdminStations"));
@@ -497,6 +498,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* PetWash Prestige Club - Luxury Loyalty Landing */}
         <Route path="/prestige-club">
           {() => <PrestigeClub />}
+        </Route>
+
+        {/* PetWash Prestige Pass Wallet — luxury digital pass with live QR */}
+        <Route path="/prestige-pass">
+          {() => <PrestigePassWallet />}
         </Route>
 
         {/* PetWash Privilege - Public registration */}

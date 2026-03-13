@@ -24,6 +24,7 @@ import { createLedRouter, wireLedAutomation } from "./iot/ledController";
 import { eventBus } from "./services/EventBus";
 import walletRoutes from "./routes/wallet";
 import googleWalletRoutes from "./routes/google-wallet";
+import prestigePassRoutes from "./routes/prestige-pass";
 import googleServicesRoutes from "./routes/google-services";
 import gmailRoutes from "./routes/gmail";
 import mobileAuthRoutes from "./routes/mobile-auth";
@@ -9306,6 +9307,10 @@ self.addEventListener('notificationclick', (event) => {
   // Apple Wallet Pass Generation (VIP Cards & E-Vouchers)
   app.use('/api/wallet', apiLimiter, requireOnboardingComplete, walletRoutes);
   app.use('/api/google-wallet', apiLimiter, googleWalletRoutes);
+
+  // PetWash Prestige Pass — QR tokens, kiosk redemption, Apple/Google Wallet
+  app.use('/api/prestige-pass', apiLimiter, prestigePassRoutes);
+  logger.info('[Routes] ✅ Prestige Pass routes registered (QR, redemption, wallet passes)');
   
   // Credit Wallet & E-Gift Redemption (Unified credits across all platforms)
   const creditWalletRoutes = await import('./routes/credit-wallet');
