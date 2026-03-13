@@ -3,6 +3,7 @@ import { WashPackages } from '@/components/WashPackages';
 import { LoyaltyProgram } from '@/components/LoyaltyProgram';
 import { type Language, t } from '@/lib/i18n';
 import { useState } from 'react';
+import petwashStationPhoto from '@assets/petwash-station-real.png';
 
 const MetallicIcon = ({ children, size = 28 }: { children: React.ReactNode; size?: number }) => (
   <div className="metallic-icon-wrapper">
@@ -195,130 +196,13 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
                   </span>
                 </div>
 
-                {/* ── SVG Kiosk Illustration ── */}
+                {/* ── Real Station Photo ── */}
                 <div style={{ display:'flex', justifyContent:'center', alignItems:'center' }}>
-                  <svg viewBox="0 0 420 280" xmlns="http://www.w3.org/2000/svg" style={{ width:'100%', maxWidth:'420px', height:'auto' }} aria-label="K9000 Dual-Bay Self-Wash Station">
-                    <defs>
-                      <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#e8e8e8" />
-                        <stop offset="40%" stopColor="#f4f4f4" />
-                        <stop offset="100%" stopColor="#d0d0d0" />
-                      </linearGradient>
-                      <linearGradient id="goldBar" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#c9a96e" />
-                        <stop offset="30%" stopColor="#f0d060" />
-                        <stop offset="60%" stopColor="#d4af37" />
-                        <stop offset="100%" stopColor="#c9a96e" />
-                      </linearGradient>
-                      <linearGradient id="bayGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#2a2a2a" />
-                        <stop offset="100%" stopColor="#1a1a1a" />
-                      </linearGradient>
-                      <linearGradient id="screenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#1a3a5c" />
-                        <stop offset="100%" stopColor="#0d2237" />
-                      </linearGradient>
-                      <linearGradient id="floorGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#d4d4d4" />
-                        <stop offset="100%" stopColor="#b8b8b8" />
-                      </linearGradient>
-                      <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-                        <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="rgba(0,0,0,0.15)" />
-                      </filter>
-                      <filter id="goldGlow2">
-                        <feGaussianBlur stdDeviation="2" result="blur" />
-                        <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-                      </filter>
-                    </defs>
-
-                    {/* Ground shadow */}
-                    <ellipse cx="210" cy="272" rx="170" ry="8" fill="rgba(0,0,0,0.08)" />
-
-                    {/* Main kiosk body */}
-                    <rect x="30" y="60" width="360" height="205" rx="12" fill="url(#bodyGrad)" filter="url(#shadow)" />
-
-                    {/* Gold LED bar across top */}
-                    <rect x="30" y="60" width="360" height="10" rx="5" fill="url(#goldBar)" opacity="0.9" filter="url(#goldGlow2)" />
-
-                    {/* Side panels */}
-                    <rect x="30" y="70" width="18" height="195" rx="4" fill="#c8c8c8" />
-                    <rect x="372" y="70" width="18" height="195" rx="4" fill="#c8c8c8" />
-
-                    {/* LEFT BAY */}
-                    <rect x="52" y="85" width="148" height="160" rx="8" fill="url(#bayGrad)" />
-                    {/* bay inner frame */}
-                    <rect x="56" y="89" width="140" height="152" rx="6" fill="#222" stroke="rgba(212,175,55,0.35)" strokeWidth="1.5" />
-                    {/* water spray graphic inside bay */}
-                    <path d="M 90 145 Q 120 110 150 145" stroke="#4a9eff" strokeWidth="2" fill="none" opacity="0.5" strokeLinecap="round" />
-                    <path d="M 80 155 Q 120 118 160 155" stroke="#4a9eff" strokeWidth="1.5" fill="none" opacity="0.35" strokeLinecap="round" />
-                    <path d="M 95 170 Q 120 148 145 170" stroke="#4a9eff" strokeWidth="1.5" fill="none" opacity="0.25" strokeLinecap="round" />
-                    {/* paw print in bay */}
-                    <circle cx="126" cy="138" r="6" fill="rgba(212,175,55,0.12)" />
-                    <circle cx="113" cy="130" r="3.5" fill="rgba(212,175,55,0.12)" />
-                    <circle cx="126" cy="127" r="3.5" fill="rgba(212,175,55,0.12)" />
-                    <circle cx="139" cy="130" r="3.5" fill="rgba(212,175,55,0.12)" />
-                    {/* LEFT BAY label */}
-                    <text x="126" y="226" textAnchor="middle" fill="#d4af37" fontSize="8" fontWeight="600" fontFamily="Inter, sans-serif" letterSpacing="1">
-                      {language === 'he' ? 'תא שטיפה א׳' : 'BAY 01'}
-                    </text>
-
-                    {/* CENTER CONTROL PANEL */}
-                    <rect x="205" y="85" width="10" height="160" rx="3" fill="#b8b8b8" />
-                    <rect x="198" y="100" width="24" height="130" rx="6" fill="#1a1a1a" />
-                    {/* touch screen */}
-                    <rect x="200" y="102" width="20" height="80" rx="4" fill="url(#screenGrad)" />
-                    {/* screen content lines */}
-                    <rect x="203" y="108" width="14" height="2" rx="1" fill="rgba(212,175,55,0.7)" />
-                    <rect x="203" y="113" width="10" height="1.5" rx="1" fill="rgba(255,255,255,0.3)" />
-                    <rect x="203" y="117" width="12" height="1.5" rx="1" fill="rgba(255,255,255,0.3)" />
-                    <rect x="203" y="121" width="8" height="1.5" rx="1" fill="rgba(255,255,255,0.2)" />
-                    {/* QR code placeholder */}
-                    <rect x="204" y="128" width="12" height="12" rx="2" fill="rgba(255,255,255,0.08)" stroke="rgba(212,175,55,0.4)" strokeWidth="1" />
-                    <rect x="206" y="130" width="3" height="3" rx="0.5" fill="rgba(255,255,255,0.3)" />
-                    <rect x="211" y="130" width="3" height="3" rx="0.5" fill="rgba(255,255,255,0.3)" />
-                    <rect x="206" y="135" width="3" height="3" rx="0.5" fill="rgba(255,255,255,0.3)" />
-                    {/* control buttons */}
-                    <circle cx="210" cy="195" r="5" fill="rgba(212,175,55,0.2)" stroke="rgba(212,175,55,0.6)" strokeWidth="1" />
-                    <circle cx="210" cy="210" r="4" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
-
-                    {/* RIGHT BAY */}
-                    <rect x="220" y="85" width="148" height="160" rx="8" fill="url(#bayGrad)" />
-                    <rect x="224" y="89" width="140" height="152" rx="6" fill="#222" stroke="rgba(212,175,55,0.35)" strokeWidth="1.5" />
-                    {/* water spray graphic */}
-                    <path d="M 258 145 Q 288 110 318 145" stroke="#4a9eff" strokeWidth="2" fill="none" opacity="0.5" strokeLinecap="round" />
-                    <path d="M 248 155 Q 288 118 328 155" stroke="#4a9eff" strokeWidth="1.5" fill="none" opacity="0.35" strokeLinecap="round" />
-                    <path d="M 263 170 Q 288 148 313 170" stroke="#4a9eff" strokeWidth="1.5" fill="none" opacity="0.25" strokeLinecap="round" />
-                    {/* paw print in bay */}
-                    <circle cx="294" cy="138" r="6" fill="rgba(212,175,55,0.12)" />
-                    <circle cx="281" cy="130" r="3.5" fill="rgba(212,175,55,0.12)" />
-                    <circle cx="294" cy="127" r="3.5" fill="rgba(212,175,55,0.12)" />
-                    <circle cx="307" cy="130" r="3.5" fill="rgba(212,175,55,0.12)" />
-                    {/* RIGHT BAY label */}
-                    <text x="294" y="226" textAnchor="middle" fill="#d4af37" fontSize="8" fontWeight="600" fontFamily="Inter, sans-serif" letterSpacing="1">
-                      {language === 'he' ? 'תא שטיפה ב׳' : 'BAY 02'}
-                    </text>
-
-                    {/* TOP BRAND TEXT */}
-                    <text x="210" y="50" textAnchor="middle" fill="#1A1A1A" fontSize="13" fontWeight="700" fontFamily="Inter, sans-serif" letterSpacing="0.05em">PetWash™</text>
-                    <text x="210" y="34" textAnchor="middle" fill="#d4af37" fontSize="9" fontWeight="600" fontFamily="Inter, sans-serif" letterSpacing="0.12em">K9000</text>
-
-                    {/* Spec indicators at bottom */}
-                    {/* IP67 badge */}
-                    <rect x="48" y="252" width="46" height="16" rx="8" fill="rgba(212,175,55,0.12)" stroke="rgba(212,175,55,0.4)" strokeWidth="1" />
-                    <text x="71" y="263" textAnchor="middle" fill="#B8941F" fontSize="7.5" fontWeight="700" fontFamily="Inter, sans-serif">IP67</text>
-                    {/* Outdoor badge */}
-                    <rect x="102" y="252" width="62" height="16" rx="8" fill="rgba(212,175,55,0.12)" stroke="rgba(212,175,55,0.4)" strokeWidth="1" />
-                    <text x="133" y="263" textAnchor="middle" fill="#B8941F" fontSize="7.5" fontWeight="700" fontFamily="Inter, sans-serif">{language === 'he' ? 'חוצות' : 'OUTDOOR'}</text>
-                    {/* AI badge */}
-                    <rect x="172" y="252" width="76" height="16" rx="8" fill="rgba(212,175,55,0.12)" stroke="rgba(212,175,55,0.4)" strokeWidth="1" />
-                    <text x="210" y="263" textAnchor="middle" fill="#B8941F" fontSize="7.5" fontWeight="700" fontFamily="Inter, sans-serif">AI CONTROL</text>
-                    {/* 24/7 badge */}
-                    <rect x="256" y="252" width="46" height="16" rx="8" fill="rgba(212,175,55,0.12)" stroke="rgba(212,175,55,0.4)" strokeWidth="1" />
-                    <text x="279" y="263" textAnchor="middle" fill="#B8941F" fontSize="7.5" fontWeight="700" fontFamily="Inter, sans-serif">24/7</text>
-                    {/* Self-clean badge */}
-                    <rect x="310" y="252" width="78" height="16" rx="8" fill="rgba(212,175,55,0.12)" stroke="rgba(212,175,55,0.4)" strokeWidth="1" />
-                    <text x="349" y="263" textAnchor="middle" fill="#B8941F" fontSize="7.5" fontWeight="700" fontFamily="Inter, sans-serif">{language === 'he' ? 'עצמי-נקי' : 'SELF-CLEAN'}</text>
-                  </svg>
+                  <img
+                    src={petwashStationPhoto}
+                    alt={language === 'he' ? 'תחנת PetWash K9000 — Quick.Easy.24/7' : 'PetWash K9000 Station — Quick.Easy.24/7'}
+                    style={{ width:'100%', maxWidth:'480px', height:'auto', borderRadius:'0.75rem', display:'block' }}
+                  />
                 </div>
 
                 {/* Product caption */}
