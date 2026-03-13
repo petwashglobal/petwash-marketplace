@@ -389,6 +389,24 @@ export async function registerRoutes(app: Express): Promise<void> {
       return next();
     }
 
+    // ✅ K9000 IoT hardware bypass — kiosks authenticate via machine secret in body, not Firebase
+    // The validateK9000MachineIP + validateMachineSecretKey middleware inside the router
+    // handles full verification; we simply let the request through the RBAC layer here.
+    if (path.startsWith('/api/k9000') && req.body) {
+      const MACHINE_SECRET_KEY = process.env.MACHINE_SECRET_KEY;
+      const provided = req.body?.machineSecret || req.body?.token;
+      if (MACHINE_SECRET_KEY && provided === MACHINE_SECRET_KEY) {
+        logger.info('[RBAC Guard] K9000 machine secret bypass granted', { ip: req.ip, path });
+        return next();
+      }
+      // No valid machine secret — if also no Firebase user, block (prevents unauthenticated access)
+      // unless MACHINE_SECRET_KEY is unconfigured (dev mode — k9000Security will also skip validation)
+      if (!MACHINE_SECRET_KEY) {
+        logger.warn('[RBAC Guard] K9000 route: MACHINE_SECRET_KEY unconfigured — passing to k9000Security middleware (dev mode)');
+        return next();
+      }
+    }
+
     // 🔐 SECURITY: Unauthenticated requests MUST NOT reach internal routes
     if (!req.firebaseUser?.uid) {
       logger.warn(`[RBAC Guard] Unauthenticated request blocked to internal route: ${path}`, { ip: req.ip });
@@ -9299,14 +9317,17 @@ self.addEventListener('notificationclick', (event) => {
   // Document Management routes (Secure K9000 documents)
   app.use('/api/documents', adminLimiter, documentsRoutes);
   
+  // K9000 IoT Hardware Wash Activation (IP-secured, machine-to-server)
+  // MUST be registered FIRST — IoT routes use machine-secret auth (not Firebase).
+  // The supplier/dashboard routers apply validateFirebaseToken globally; registering
+  // them first would block unauthenticated kiosk hardware from reaching IoT endpoints.
+  app.use('/api/k9000', k9000IotRoutes);
+
   // K9000 Supplier & Inventory routes
   app.use('/api/k9000', adminLimiter, k9000SupplierRoutes);
   
   // K9000 Backend Dashboard (Admin control panel for station management)
   app.use('/api/k9000', optionalFirebaseToken, adminLimiter, k9000DashboardRoutes);
-  
-  // K9000 IoT Hardware Wash Activation (IP-secured, machine-to-server)
-  app.use('/api/k9000', k9000IotRoutes);
   
   // K9000 LED Control Routes (7-Star Luxury Visual UX)
   const ledRouter = createLedRouter({ requireAuth, requireAdmin });

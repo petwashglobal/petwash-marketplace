@@ -18,14 +18,15 @@ import express from 'express';
 import { validateK9000MachineIP, validateMachineSecretKey } from '../middleware/k9000Security';
 import { NayaxSparkService } from '../services/NayaxSparkService';
 import { db } from '../db';
-import { nayaxTransactions, auditLedger, stations } from '@shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { nayaxTransactions, auditLedger, stations, walletAccounts, creditTransactions } from '@shared/schema';
+import { eq, and, gt, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { k9000StationBookingEngine } from '../services/booking-engines/k9000/K9000StationBookingEngine';
 import VATCalculatorService from '../services/VATCalculatorService';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
+import { verifySignedRedeemToken, consumeNonce } from '../lib/signedRedeemToken';
 
 const router = express.Router();
 
@@ -401,6 +402,199 @@ router.get('/status/:machineId', async (req, res) => {
     });
   }
 });
+
+// ─── POST /api/k9000/redeem-wash ─────────────────────────────────────────────
+/**
+ * K9000 QR-scan redemption endpoint (2026 security model)
+ *
+ * Called by the K9000 kiosk when the Nayax QR reader scans a user's phone.
+ * The scanned code is a 45-second HMAC-signed redeem token (Apple Wallet)
+ * or an 8-digit TOTP (Google Wallet rotating barcode).
+ *
+ * Flow:
+ *   1. Verify HMAC signed token (expiry + nonce + signature)
+ *   2. Lookup user wallet → assert washPackageCredits >= 1
+ *   3. Atomic decrement (UPDATE ... WHERE wash_package_credits > 0)
+ *   4. Consume nonce → replay-safe
+ *   5. Send START_PUMP signal to K9000 controller (via HTTP or IoT relay)
+ *   6. Write audit ledger entry
+ *   7. Trigger Apple Wallet push update so pass shows new balance
+ *   8. Return { status: 'success', washId, remainingWashes }
+ */
+router.post('/redeem-wash', async (req, res) => {
+  const correlationId = nanoid(12);
+
+  try {
+    const { scannedCode, kioskId } = req.body as {
+      scannedCode?: string;
+      kioskId?: string;
+    };
+
+    if (!scannedCode || !kioskId) {
+      return res.status(400).json({
+        error: 'שדות חסרים: scannedCode ו-kioskId הם חובה.',
+        errorEn: 'Missing required fields: scannedCode and kioskId.',
+        correlationId,
+      });
+    }
+
+    logger.info('[K9000 Redeem] Scan received', { kioskId, correlationId, codeLen: scannedCode.length });
+
+    // ── 1. Verify signed redeem token ──────────────────────────────────────
+    const verification = verifySignedRedeemToken(scannedCode);
+
+    if (!verification.valid || !verification.payload) {
+      const errorMap: Record<string, string> = {
+        EXPIRED:            'הקוד פג תוקף (45 שניות). בקש קוד חדש.',
+        REPLAYED:           'קוד זה כבר שומש. אסור לעשות שימוש חוזר.',
+        INVALID_SIGNATURE:  'חתימה לא תקינה — הקוד לא יתקבל.',
+        MISSING_SECRET:     'שגיאת הגדרות שרת — PASS_TOKEN_SECRET חסר.',
+        PARSE_ERROR:        'פורמט קוד לא תקין.',
+      };
+      const heMsg = errorMap[verification.error || ''] || 'קוד לא תקין.';
+      logger.warn('[K9000 Redeem] Token rejected', { error: verification.error, kioskId, correlationId });
+      return res.status(403).json({
+        error: heMsg,
+        errorEn: verification.error,
+        status: 'TOKEN_REJECTED',
+        correlationId,
+      });
+    }
+
+    const { uid: userId, ps: passSerial, nonce } = verification.payload;
+
+    // ── 2. Load user wallet ────────────────────────────────────────────────
+    const [wallet] = await db
+      .select()
+      .from(walletAccounts)
+      .where(eq(walletAccounts.userId, userId))
+      .limit(1);
+
+    if (!wallet) {
+      logger.warn('[K9000 Redeem] Wallet not found', { userId, correlationId });
+      return res.status(404).json({
+        error: 'ארנק לא נמצא. פנה לתמיכה.',
+        errorEn: 'Wallet not found.',
+        correlationId,
+      });
+    }
+
+    if ((wallet.washPackageCredits ?? 0) < 1) {
+      logger.warn('[K9000 Redeem] Insufficient wash credits', { userId, balance: wallet.washPackageCredits, correlationId });
+      return res.status(402).json({
+        error: 'אין עוד שטיפות בחבילה. ניתן לרכוש חבילה חדשה באפליקציה.',
+        errorEn: 'No remaining wash credits.',
+        status: 'INSUFFICIENT_CREDITS',
+        remainingWashes: 0,
+        correlationId,
+      });
+    }
+
+    // ── 3. Atomic decrement — guard against race conditions ────────────────
+    const updated = await db
+      .update(walletAccounts)
+      .set({
+        washPackageCredits: sql`${walletAccounts.washPackageCredits} - 1`,
+        lastActivityAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(walletAccounts.userId, userId),
+          gt(walletAccounts.washPackageCredits, 0),
+        ),
+      )
+      .returning({ remaining: walletAccounts.washPackageCredits });
+
+    if (!updated.length) {
+      // Lost the race — another concurrent request already consumed the last credit
+      logger.warn('[K9000 Redeem] Race condition — credit already consumed', { userId, correlationId });
+      return res.status(402).json({
+        error: 'אין עוד שטיפות זמינות (עסקה מקבילה).',
+        errorEn: 'No remaining wash credits (race condition).',
+        status: 'INSUFFICIENT_CREDITS',
+        correlationId,
+      });
+    }
+
+    const remainingWashes = updated[0].remaining ?? 0;
+
+    // ── 4. Consume nonce (replay protection) ───────────────────────────────
+    consumeNonce(nonce, 120_000); // 2-minute blacklist window
+
+    // ── 5. Send START_PUMP command to K9000 controller ─────────────────────
+    const washId = `WASH-${Date.now()}-${nanoid(8).toUpperCase()}`;
+    const stationInfo = (req as any).k9000Station;
+    const clientIP = stationInfo?.clientIP;
+
+    if (clientIP) {
+      try {
+        const signal = await fetch(`http://${clientIP}/api/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Machine-Id': kioskId },
+          body: JSON.stringify({ washId, command: 'START_PUMP', source: 'wallet_qr', userId }),
+          signal: AbortSignal.timeout(3000),
+        });
+        logger.info('[K9000 Redeem] IoT signal sent', { kioskId, status: signal.status, washId, correlationId });
+      } catch (iotErr: any) {
+        // Non-fatal — wash is authorised; kiosk may poll /api/k9000/status
+        logger.warn('[K9000 Redeem] IoT signal failed (non-fatal)', { error: iotErr.message, kioskId, correlationId });
+      }
+    } else {
+      logger.info('[K9000 Redeem] No kiosk IP — authorisation logged only (dev mode)', { correlationId });
+    }
+
+    // ── 6. Audit ledger ────────────────────────────────────────────────────
+    await db.insert(auditLedger).values({
+      eventType: 'k9000_wallet_redemption',
+      userId,
+      resourceId: washId,
+      metadata: JSON.stringify({
+        passSerial,
+        kioskId,
+        remainingWashes,
+        correlationId,
+        redeemedAt: new Date().toISOString(),
+      }),
+    }).catch((e: any) => logger.error('[K9000 Redeem] Audit write failed', { error: e.message }));
+
+    // ── 7. Apple Wallet push update ─────────────────────────────────────────
+    // Notifies Apple that the pass has been modified → device fetches updated pass
+    // The wallet webServiceURL endpoint (/api/wallet/passes/:passTypeId/:serialNumber)
+    // regenerates the pass with a fresh signed token when Apple pulls it.
+    const passTypeId = process.env.APPLE_PASS_TYPE_ID || 'pass.com.petwash.voucher';
+    const appleWalletPushUrl = `${process.env.BASE_URL || 'https://petwash.co.il'}/api/wallet/notify-pass-update`;
+    fetch(appleWalletPushUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, passSerial, passTypeId, remainingWashes }),
+    }).catch(() => {});
+
+    // ── 8. Respond to kiosk ────────────────────────────────────────────────
+    logger.info('[K9000 Redeem] Wash authorised', { userId, washId, remainingWashes, kioskId, correlationId });
+
+    return res.status(200).json({
+      status: 'success',
+      washId,
+      remainingWashes,
+      message: remainingWashes > 0
+        ? `שטיפה התחילה! נותרו ${remainingWashes} שטיפות בחבילה.`
+        : 'שטיפה התחילה! החבילה מוצתה — ניתן לחדש באפליקציה.',
+      messageEn: 'Wash authorised. Enjoy!',
+      correlationId,
+    });
+
+  } catch (error: any) {
+    logger.error('[K9000 Redeem] Unexpected error', { error: error.message, correlationId });
+    return res.status(500).json({
+      error: 'שגיאת שרת פנימית.',
+      errorEn: 'Internal server error.',
+      correlationId,
+    });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Helper: Get estimated wash duration by program

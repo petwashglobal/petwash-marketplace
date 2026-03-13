@@ -1,0 +1,151 @@
+const { PKPass } = require("passkit-generator");
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
+
+const APPLE_CERT_PASSWORD = process.env.APPLE_CERT_PASSWORD;
+const PASS_TOKEN_SECRET = process.env.PASS_TOKEN_SECRET;
+
+if (!APPLE_CERT_PASSWORD) {
+  throw new Error("Missing APPLE_CERT_PASSWORD");
+}
+
+if (!PASS_TOKEN_SECRET) {
+  throw new Error("Missing PASS_TOKEN_SECRET");
+}
+
+function loadFile(filePath) {
+  const fullPath = path.resolve(filePath);
+  if (!fs.existsSync(fullPath)) {
+    throw new Error(`Missing file: ${fullPath}`);
+  }
+  return fs.readFileSync(fullPath);
+}
+
+/**
+ * Create a short-lived signed redeem token.
+ * This is better than a plain TOTP because:
+ * - includes expiry
+ * - includes nonce
+ * - can be tied to pass serial / user
+ * - backend can mark it as used once redeemed
+ */
+function generateSignedRedeemToken({ userId, passSerial, machineId = null, ttlSeconds = 45 }) {
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    uid: String(userId),
+    ps: String(passSerial),
+    mid: machineId ? String(machineId) : null,
+    iat: now,
+    exp: now + ttlSeconds,
+    nonce: crypto.randomUUID(),
+    v: 1,
+  };
+
+  const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = crypto
+    .createHmac("sha256", PASS_TOKEN_SECRET)
+    .update(payloadBase64)
+    .digest("base64url");
+
+  return `${payloadBase64}.${signature}`;
+}
+
+async function generateApplePass({
+  userId,
+  washBalance,
+  memberTier = "Prestige",
+  stationLocations = [],
+}) {
+  const passSerial = `USER_${userId}`;
+
+  const pass = await PKPass.from(
+    {
+      model: "./models/petwash.pass",
+      certificates: {
+        wwdr: loadFile("./certs/wwdr.pem"),
+        signerCert: loadFile("./certs/signerCert.pem"),
+        signerKey: loadFile("./certs/signerKey.pem"),
+        signerKeyPassphrase: APPLE_CERT_PASSWORD,
+      },
+    },
+    {
+      serialNumber: passSerial,
+      description: "PetWash.co.il Prestige Pass",
+      organizationName: "PetWash.co.il",
+      passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID,
+      teamIdentifier: process.env.APPLE_TEAM_ID,
+      foregroundColor: "rgb(255,255,255)",
+      backgroundColor: "rgb(18,18,18)",
+      labelColor: "rgb(212,175,55)",
+      sharingProhibited: true,
+    }
+  );
+
+  // IMPORTANT:
+  // The QR content should not contain raw balance or trust logic.
+  // It only carries a short-lived signed token.
+  const secureToken = generateSignedRedeemToken({
+    userId,
+    passSerial,
+    ttlSeconds: 45,
+  });
+
+  // Some versions of passkit-generator prefer pass.barcodes = [...]
+  // Some support setBarcodes(). Keep whichever matches your installed version.
+  pass.setBarcodes({
+    message: secureToken,
+    format: "PKBarcodeFormatQR",
+    messageEncoding: "iso-8859-1",
+    altText: `Member ${userId}`,
+  });
+
+  // Header / primary / secondary / auxiliary fields
+  pass.headerFields.add({
+    key: "tier",
+    label: "TIER",
+    value: memberTier,
+  });
+
+  pass.primaryFields.add({
+    key: "balance",
+    label: "WASHES",
+    value: Number(washBalance),
+  });
+
+  pass.secondaryFields.add({
+    key: "memberId",
+    label: "MEMBER ID",
+    value: String(userId),
+  });
+
+  pass.auxiliaryFields.add({
+    key: "support",
+    label: "SUPPORT",
+    value: "petwash.co.il",
+  });
+
+  // Add multiple relevant locations, not just one hardcoded point
+  for (const loc of stationLocations.slice(0, 10)) {
+    if (
+      typeof loc.latitude === "number" &&
+      typeof loc.longitude === "number"
+    ) {
+      pass.pushLocation({
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        relevantText: loc.relevantText || "PetWash station nearby",
+      });
+    }
+  }
+
+  // Optional metadata for backend correlation
+  pass.setRelevantDate(new Date());
+
+  return pass.getAsBuffer();
+}
+
+module.exports = {
+  generateApplePass,
+  generateSignedRedeemToken,
+};

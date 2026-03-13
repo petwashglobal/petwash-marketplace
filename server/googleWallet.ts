@@ -225,18 +225,44 @@ export class GoogleWalletService {
       const classId = `${issuerId}.petwash_voucher`;
       const objectId = `${issuerId}.${data.voucherId}_${Date.now()}`;
 
+      // TOTP secret for this pass — per-voucher, stored in env or derived from issuer key
+      const totpSecret = process.env.GOOGLE_WALLET_TOTP_SECRET || process.env.PASS_TOKEN_SECRET || '';
+
       // Create generic object (voucher type)
       const genericObject = {
         id: objectId,
         classId: classId,
         state: 'ACTIVE',
-        
-        // Barcode for redemption
+
+        // Static fallback barcode (used on older Android / low-signal situations)
         barcode: {
           type: 'QR_CODE',
           value: data.qrCode,
-          alternateText: data.voucherId
+          alternateText: data.voucherId,
         },
+
+        // 2026 Rotating barcode — prevents screenshot abuse.
+        // Rotates every 60 seconds using TOTP_SHA1.
+        // K9000 scanner calls /api/k9000/verify-rotating-qr to validate.
+        ...(totpSecret ? {
+          rotatingBarcode: {
+            type: 'QR_CODE',
+            totpDetails: {
+              algorithm: 'TOTP_SHA1',
+              periodMillis: '60000',
+              parameters: [{
+                key: totpSecret,
+                valueLength: '8',
+              }],
+            },
+            renderEncoding: 'UTF_8',
+            initialRotatingBarcodeValues: {
+              startDateTime: new Date().toISOString(),
+              values: [],
+              periodMillis: '60000',
+            },
+          },
+        } : {}),
 
         // Card details
         cardTitle: {

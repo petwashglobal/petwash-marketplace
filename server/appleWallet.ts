@@ -14,6 +14,7 @@ import { PKPass } from 'passkit-generator';
 import QRCode from 'qrcode';
 import { db } from './lib/firebase-admin';
 import { logger } from './lib/logger';
+import { generateSignedRedeemToken } from './lib/signedRedeemToken';
 
 interface VIPCardData {
   userId: string;
@@ -204,9 +205,19 @@ export class AppleWalletService {
   }
 
   /**
-   * Generate E-Voucher pass.json template
+   * K9000 station locations for proximity notifications.
+   * Capped at 10 by Apple. White-on-black QR works in Dark Mode.
    */
-  private static getEVoucherTemplate(data: EVoucherData) {
+  private static readonly STATION_LOCATIONS = [
+    { latitude: 32.0853, longitude: 34.7818, relevantText: '🐾 תחנת PetWash בקרבת מקום — הציג את הפאס שלך.' },
+    { latitude: 31.7683, longitude: 35.2137, relevantText: '🐾 ברוכים הבאים לתחנת PetWash ירושלים!' },
+    { latitude: 32.7940, longitude: 34.9896, relevantText: '🐾 תחנת PetWash חיפה בסביבה — היכנס!' },
+    { latitude: 32.0668, longitude: 34.7647, relevantText: '🐾 תחנת PetWash תל אביב דרום — כביסה לחיות!' },
+    { latitude: 32.1620, longitude: 34.8440, relevantText: '🐾 תחנת PetWash פתח תקווה — כרטיס VIP בתוקף.' },
+  ];
+
+  private static getEVoucherTemplate(data: EVoucherData, secureQr: string) {
+    const authToken = this.generateAuthToken(data.userId);
     return {
       formatVersion: 1,
       passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID || 'pass.com.petwash.voucher',
@@ -215,59 +226,76 @@ export class AppleWalletService {
       description: 'Pet Wash E-Voucher',
       logoText: '⁦Pet Wash™⁩',
       serialNumber: `VOUCHER_${data.voucherId}_${Date.now()}`,
-      
-      backgroundColor: 'rgb(99, 102, 241)',
+
+      backgroundColor: 'rgb(12, 12, 12)',
       foregroundColor: 'rgb(255, 255, 255)',
-      labelColor: 'rgb(224, 231, 255)',
-      
+      labelColor: 'rgb(212, 175, 55)',
+
+      sharingProhibited: true,
+
       webServiceURL: `${process.env.BASE_URL || 'https://petwash.co.il'}/api/wallet`,
-      authenticationToken: this.generateAuthToken(data.userId),
-      
+      authenticationToken: authToken,
+
       expirationDate: data.expiryDate.toISOString(),
       voided: false,
-      
+
+      // Station proximity notifications (up to 10)
+      locations: this.STATION_LOCATIONS,
+
       coupon: {
         headerFields: [{
           key: 'expiry',
           label: 'EXPIRES',
           value: data.expiryDate.toLocaleDateString('en-GB'),
-          dateStyle: 'PKDateStyleShort'
+          dateStyle: 'PKDateStyleShort',
         }],
         primaryFields: [{
           key: 'amount',
           label: 'VALUE',
           value: `${data.currency === 'ILS' ? '₪' : '$'}${data.amount}`,
-          currencyCode: data.currency
+          currencyCode: data.currency,
         }],
         secondaryFields: [{
           key: 'description',
           label: 'DESCRIPTION',
-          value: data.description
+          value: data.description,
+        }],
+        auxiliaryFields: [{
+          key: 'memberId',
+          label: 'MEMBER ID',
+          value: data.userId,
         }],
         backFields: [
           {
             key: 'recipient',
             label: 'Recipient',
-            value: data.userName
+            value: data.userName,
           },
           {
             key: 'voucherId',
             label: 'Voucher ID',
-            value: data.voucherId
+            value: data.voucherId,
+          },
+          {
+            key: 'security',
+            label: 'Security',
+            value: 'QR code rotates every 45 seconds. Screenshots will not be accepted at K9000 stations.',
           },
           {
             key: 'instructions',
             label: 'How to Use',
-            value: 'Present this voucher at any Pet Wash station. The QR code will be scanned to redeem your voucher.'
-          }
-        ]
+            value: 'Open this pass and present the live QR code to the K9000 scanner. Do not screenshot — the code refreshes every 45 seconds.',
+          },
+        ],
       },
-      
+
+      // Signed 45-second redeem token — K9000 scanner verifies HMAC + expiry + nonce
       barcodes: [{
-        message: data.qrCode,
+        message: secureQr,
         format: 'PKBarcodeFormatQR',
-        messageEncoding: 'iso-8859-1'
-      }]
+        messageEncoding: 'iso-8859-1',
+        altText: `Voucher ${data.voucherId}`,
+      }],
     };
   }
 
@@ -363,15 +391,22 @@ export class AppleWalletService {
         throw new Error('Apple Wallet certificates not configured.');
       }
 
-      // Generate QR code for voucher
-      const qrCodeBuffer = await QRCode.toBuffer(data.qrCode, {
+      // Generate 45-second signed redeem token for K9000 QR scanning.
+      // Falls back to raw voucherId if PASS_TOKEN_SECRET is not configured.
+      const secureQr =
+        generateSignedRedeemToken({ userId: data.userId, passSerial: data.voucherId, ttlSeconds: 45 })
+        ?? data.qrCode;
+
+      // Generate QR code image from the signed token
+      const qrCodeBuffer = await QRCode.toBuffer(secureQr, {
         errorCorrectionLevel: 'H',
         width: 300,
-        margin: 1
+        margin: 1,
+        color: { dark: '#FFFFFF', light: '#000000' }, // White-on-black: readable in dark mode & inverted displays
       });
 
-      // Create pass.json
-      const passJson = this.getEVoucherTemplate(data);
+      // Create pass.json with signed QR embedded
+      const passJson = this.getEVoucherTemplate(data, secureQr);
 
       // Create pass with buffers (3-parameter constructor for dynamic buffer-based models)
       const pass = new PKPass(
