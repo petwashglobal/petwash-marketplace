@@ -281,6 +281,13 @@ export default function PrestigePassWallet() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Fetch wallet state
+  const [washEvent, setWashEvent] = useState<{
+    bay: string; stationId: string | null; deductedCents: number; newBalanceCents: number; source: string;
+  } | null>(null);
+  const [petEditOpen, setPetEditOpen] = useState(false);
+  const [petForm, setPetForm] = useState({ petName: '', petType: 'dog', petBreed: '', petNotes: '' });
+  const [savingPet, setSavingPet] = useState(false);
+
   const { data: walletData, isLoading, error } = useQuery<{
     ok: boolean;
     pass: WalletData['pass'];
@@ -288,6 +295,7 @@ export default function PrestigePassWallet() {
     displayName?: string;
     cardId?: string;
     cardDisplay?: string;
+    pet?: { petName: string | null; petType: string | null; petBreed: string | null; petNotes: string | null };
   }>({
     queryKey: ['/api/prestige-pass/wallet'],
     refetchInterval: 30_000,
@@ -336,6 +344,34 @@ export default function PrestigePassWallet() {
     if (wallet) generateQr();
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [wallet?.pass.userId]);
+
+  // ── SSE: subscribe to real-time K9000 wash events ──────────────────────────
+  useEffect(() => {
+    if (!wallet?.pass.userId) return;
+    const es = new EventSource('/api/prestige-pass/session/stream');
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.type === 'wash_started') {
+          setWashEvent(data);
+          queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/wallet'] });
+        }
+      } catch { /* malformed event */ }
+    };
+    return () => es.close();
+  }, [wallet?.pass.userId]);
+
+  // Pre-populate pet form from existing wallet data
+  useEffect(() => {
+    if (walletData?.pet) {
+      setPetForm({
+        petName:  walletData.pet.petName  ?? '',
+        petType:  walletData.pet.petType  ?? 'dog',
+        petBreed: walletData.pet.petBreed ?? '',
+        petNotes: walletData.pet.petNotes ?? '',
+      });
+    }
+  }, [walletData?.pet?.petName]);
 
   // Fetch transaction history
   const { data: historyData } = useQuery<{ ok: boolean; events: any[] }>({
@@ -433,6 +469,29 @@ export default function PrestigePassWallet() {
           </h1>
         </div>
 
+        {/* ── Wash-started SSE banner ── */}
+        {washEvent && (
+          <div style={{
+            position: 'sticky', top: 0, zIndex: 100,
+            background: 'linear-gradient(90deg, #16a34a, #22c55e)',
+            padding: '12px 20px',
+            display: 'flex', alignItems: 'center', gap: '12px',
+          }}>
+            <div style={{ fontSize: '24px' }}>🚿</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#FFFFFF' }}>
+                {he ? 'השטיפה התחילה!' : 'Wash started!'} {washEvent.bay !== 'any' ? `— ${washEvent.bay === 'left' ? (he ? 'תא שמאל' : 'Left bay') : (he ? 'תא ימין' : 'Right bay')}` : ''}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.85)', marginTop: '1px' }}>
+                {he
+                  ? `₪${((washEvent.deductedCents) / 100).toFixed(0)} נוכו • יתרה חדשה: ₪${(washEvent.newBalanceCents / 100).toFixed(0)}`
+                  : `₪${(washEvent.deductedCents / 100).toFixed(0)} deducted • New balance: ₪${(washEvent.newBalanceCents / 100).toFixed(0)}`}
+              </div>
+            </div>
+            <button onClick={() => setWashEvent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.7)', fontSize: '20px', padding: 0, lineHeight: 1 }}>×</button>
+          </div>
+        )}
+
         {/* ── Premium card ── */}
         <div style={{ padding: '0 20px', marginTop: '-80px', position: 'relative', zIndex: 10 }}>
           <PremiumMemberCard
@@ -444,6 +503,8 @@ export default function PrestigePassWallet() {
             }
             cardDisplay={walletData?.cardDisplay || `PW • ${pass.serialNumber.slice(-8, -4)} ${pass.serialNumber.slice(-4)}`}
             cardId={walletData?.cardId || `PW-${pass.serialNumber.slice(-8)}`}
+            petName={walletData?.pet?.petName}
+            petType={walletData?.pet?.petType ?? undefined}
           />
         </div>
 
@@ -684,6 +745,112 @@ export default function PrestigePassWallet() {
                 ? 'הקרדיט מנוכה אוטומטית בעת ההזמנה — ראשון פג: קרדיט מבצע, אז eGift, אז ארנק.'
                 : 'Balance is deducted automatically at checkout — promo first, then eGift, then wallet.'}
             </p>
+          </div>
+        </div>
+
+        {/* ── Pet Profile Card ── */}
+        <div style={{ padding: '16px 20px 0' }}>
+          <div style={{
+            background: '#FFFFFF', border: '1.5px solid rgba(212,175,55,0.2)',
+            borderRadius: '16px', padding: '16px 18px', boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+          }}>
+            <div
+              onClick={() => setPetEditOpen(o => !o)}
+              style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+            >
+              <span style={{ fontSize: '20px' }}>
+                {walletData?.pet?.petName ? '🐾' : '➕'}
+              </span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1A1A1A' }}>
+                  {walletData?.pet?.petName
+                    ? `${walletData.pet.petName}${walletData.pet.petBreed ? ` · ${walletData.pet.petBreed}` : ''}`
+                    : (he ? 'הוסף פרטי חיית מחמד' : 'Add your pet to the card')}
+                </div>
+                {walletData?.pet?.petNotes && (
+                  <div style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 600, marginTop: '1px' }}>
+                    ⚠ {walletData.pet.petNotes}
+                  </div>
+                )}
+                {!walletData?.pet?.petName && (
+                  <div style={{ fontSize: '0.7rem', color: '#9E9E9E', marginTop: '1px' }}>
+                    {he ? 'מוצג על הכרטיס ולצוות' : 'Shown on card · visible to staff at scan'}
+                  </div>
+                )}
+              </div>
+              <span style={{ color: '#D4AF37', fontWeight: 700, fontSize: '0.8rem' }}>
+                {petEditOpen ? '▲' : '▼'}
+              </span>
+            </div>
+
+            {petEditOpen && (
+              <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {[
+                  { key: 'petName',  label: he ? 'שם' : 'Pet name',    placeholder: 'e.g. Bella' },
+                  { key: 'petBreed', label: he ? 'גזע' : 'Breed',       placeholder: 'e.g. Golden Retriever' },
+                  { key: 'petNotes', label: he ? 'הערות לצוות' : 'Staff notes', placeholder: 'e.g. Sensitive skin — use gentle shampoo' },
+                ].map(({ key, label, placeholder }) => (
+                  <div key={key}>
+                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: '#9E9E9E', marginBottom: '4px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</label>
+                    <input
+                      value={(petForm as any)[key]}
+                      onChange={e => setPetForm(f => ({ ...f, [key]: e.target.value }))}
+                      placeholder={placeholder}
+                      style={{
+                        width: '100%', padding: '10px 12px', borderRadius: '10px',
+                        border: '1.5px solid rgba(212,175,55,0.25)', fontSize: '0.88rem',
+                        outline: 'none', boxSizing: 'border-box', color: '#1A1A1A',
+                      }}
+                    />
+                  </div>
+                ))}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: '#9E9E9E', marginBottom: '4px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                    {he ? 'סוג' : 'Pet type'}
+                  </label>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {(['dog', 'cat', 'rabbit', 'bird', 'other'] as const).map(t => (
+                      <button
+                        key={t}
+                        onClick={() => setPetForm(f => ({ ...f, petType: t }))}
+                        style={{
+                          padding: '6px 12px', borderRadius: '100px', border: 'none', cursor: 'pointer',
+                          background: petForm.petType === t ? 'rgba(212,175,55,0.15)' : 'rgba(0,0,0,0.04)',
+                          outline: petForm.petType === t ? '1.5px solid #D4AF37' : '1.5px solid transparent',
+                          color: petForm.petType === t ? '#B8941F' : '#7A7068',
+                          fontWeight: petForm.petType === t ? 700 : 400,
+                          fontSize: '0.75rem',
+                        }}
+                      >
+                        {t === 'dog' ? '🐶' : t === 'cat' ? '🐱' : t === 'rabbit' ? '🐰' : t === 'bird' ? '🐦' : '🐾'} {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  disabled={savingPet || !petForm.petName.trim()}
+                  onClick={async () => {
+                    setSavingPet(true);
+                    try {
+                      const r = await apiRequest('POST', '/api/prestige-pass/pet', petForm);
+                      const d = await r.json();
+                      if (d.ok) {
+                        queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/wallet'] });
+                        setPetEditOpen(false);
+                        toast({ title: he ? '🐾 נשמר!' : '🐾 Saved!', description: he ? `${petForm.petName} נוסף לכרטיס שלך` : `${petForm.petName} added to your card` });
+                      }
+                    } finally { setSavingPet(false); }
+                  }}
+                  style={{
+                    padding: '11px', borderRadius: '10px', border: 'none',
+                    background: petForm.petName.trim() ? '#D4AF37' : 'rgba(212,175,55,0.3)',
+                    color: '#FFFFFF', fontWeight: 700, fontSize: '0.88rem', cursor: savingPet ? 'wait' : 'pointer',
+                  }}
+                >
+                  {savingPet ? (he ? 'שומר…' : 'Saving…') : (he ? 'שמור פרופיל חיית מחמד' : 'Save pet profile')}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

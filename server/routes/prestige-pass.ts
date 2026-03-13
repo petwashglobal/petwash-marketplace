@@ -48,6 +48,11 @@ import {
 
 const router = Router();
 
+// ── SSE Registry — real-time push to user's open wallet tab ──────────────────
+// When K9000 redeems a token → we push "wash_started" to the user instantly.
+// Keyed by Firebase userId. Per-process (no Redis needed at this scale).
+const sseClients = new Map<string, Response>();
+
 // ─────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────
@@ -189,11 +194,27 @@ router.get('/wallet', async (req: Request, res: Response) => {
 
     const displayName = (session?.user?.displayName as string | undefined) || (passData.firstName as string | undefined) || undefined;
 
+    // Persist cardId + userId to Firestore so /staff/lookup can find this user by card scan
+    if (!passData.cardId || passData.cardId !== cardId) {
+      firestoreDb.collection('prestige_passes').doc(userId).set(
+        { cardId, userId, updatedAt: new Date().toISOString() },
+        { merge: true },
+      ).catch(() => { /* non-blocking */ });
+    }
+
+    const pet = {
+      petName:  (passData.petName  as string | undefined) || null,
+      petType:  (passData.petType  as string | undefined) || null,
+      petBreed: (passData.petBreed as string | undefined) || null,
+      petNotes: (passData.petNotes as string | undefined) || null,
+    };
+
     return res.json({
       ok: true,
       displayName,
       cardId,
       cardDisplay,
+      pet,
       pass: {
         serialNumber:  passData.serialNumber,
         userId,
@@ -398,6 +419,22 @@ router.post('/token/redeem', redeemLimiter, async (req: Request, res: Response) 
       jti, userId, stationId, bay: effectiveBay,
       source: result.source, deducted: result.deductedCents,
     });
+
+    // ── Real-time SSE push → user's open wallet tab sees "Wash started" instantly ──
+    const sseRes = sseClients.get(userId);
+    if (sseRes) {
+      try {
+        sseRes.write(`data: ${JSON.stringify({
+          type:            'wash_started',
+          bay:             effectiveBay,
+          stationId:       stationId || null,
+          deductedCents:   result.deductedCents,
+          newBalanceCents: result.newCashWalletCents ?? 0,
+          source:          result.source,
+          timestamp:       new Date().toISOString(),
+        })}\n\n`);
+      } catch { /* client already disconnected */ }
+    }
 
     return res.json({
       ok:           true,
@@ -1303,6 +1340,215 @@ router.post('/claim-gift', async (req: Request, res: Response) => {
     });
   } catch (err) {
     logger.error('[PrestigePass] /claim-gift error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// GET /session/stream — SSE: real-time K9000 wash events
+// Client subscribes; K9000 /token/redeem pushes events here
+// ─────────────────────────────────────────────────────────
+router.get('/session/stream', (req: Request, res: Response) => {
+  const session = (req as any).session;
+  const userId  = session?.user?.uid;
+  if (!userId) { res.status(401).end(); return; }
+
+  res.setHeader('Content-Type',  'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection',    'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  // Register this response so /token/redeem can push to it
+  sseClients.set(userId, res);
+  res.write(`: connected\n\n`);
+
+  // Keepalive ping every 20s (prevents proxy timeout)
+  const ping = setInterval(() => { res.write(`: ping\n\n`); }, 20_000);
+
+  req.on('close', () => {
+    clearInterval(ping);
+    sseClients.delete(userId);
+  });
+});
+
+// ─────────────────────────────────────────────────────────
+// POST /pet — save / update primary pet profile
+// Body: { petName, petType, petBreed, petNotes }
+// Auth: session required
+// ─────────────────────────────────────────────────────────
+const petSchema = z.object({
+  petName:  z.string().min(1).max(60),
+  petType:  z.enum(['dog', 'cat', 'rabbit', 'bird', 'other']).default('dog'),
+  petBreed: z.string().max(80).optional().default(''),
+  petNotes: z.string().max(300).optional().default(''),
+});
+
+router.post('/pet', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    const userId  = session?.user?.uid;
+    if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
+
+    const parsed = petSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input', details: parsed.error.flatten() });
+
+    const { petName, petType, petBreed, petNotes } = parsed.data;
+
+    await firestoreDb.collection('prestige_passes').doc(userId).set(
+      { petName, petType, petBreed, petNotes, petUpdatedAt: new Date().toISOString() },
+      { merge: true },
+    );
+
+    return res.json({ ok: true, pet: { petName, petType, petBreed, petNotes } });
+  } catch (err) {
+    logger.error('[PrestigePass] /pet error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// POST /staff/lookup — Staff POS: scan card QR → get profile
+// Body: { cardId }  e.g. "PW-45872043" or "petwash://card/PW-45872043"
+// Auth: session required (staff user)
+// ─────────────────────────────────────────────────────────
+router.post('/staff/lookup', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.uid) return res.status(401).json({ ok: false, error: 'Auth required' });
+
+    let { cardId } = req.body as { cardId?: string };
+    if (!cardId) return res.status(400).json({ ok: false, error: 'cardId required' });
+
+    // Strip deep-link prefix if present
+    cardId = cardId.replace(/^petwash:\/\/card\//i, '').trim().toUpperCase();
+
+    // Find pass doc in Firestore by stored cardId field
+    const snap = await firestoreDb.collection('prestige_passes')
+      .where('cardId', '==', cardId)
+      .limit(1)
+      .get();
+
+    if (snap.empty) {
+      return res.status(404).json({ ok: false, error: 'Card not found. Ask customer to open their wallet and refresh.' });
+    }
+
+    const passData = snap.docs[0].data();
+    const userId   = passData.userId || snap.docs[0].id;
+
+    // Load wallet balances
+    const [wallet] = await db.select().from(walletAccounts).where(eq(walletAccounts.userId, userId)).limit(1);
+
+    const totalLiquid = (wallet?.cashWalletBalanceCents ?? 0) +
+                        (wallet?.egiftBalanceCents ?? 0) +
+                        (wallet?.promoBalanceCents ?? 0);
+
+    // Get display name from Firebase Auth
+    let displayName: string | null = null;
+    try {
+      const authUser = await firebaseAuth.getUser(userId);
+      displayName = authUser.displayName || null;
+    } catch { /* ignore */ }
+
+    return res.json({
+      ok: true,
+      customer: {
+        userId,
+        displayName: displayName || passData.firstName || '—',
+        tier:        wallet?.loyaltyTier || passData.tier || 'new',
+        serialNumber: passData.serialNumber,
+        cardId,
+        memberSince: passData.issuedAt || null,
+      },
+      pet: {
+        petName:  passData.petName  || null,
+        petType:  passData.petType  || 'dog',
+        petBreed: passData.petBreed || null,
+        petNotes: passData.petNotes || null,
+      },
+      balances: {
+        cashWalletCents:   wallet?.cashWalletBalanceCents ?? 0,
+        egiftCents:        wallet?.egiftBalanceCents       ?? 0,
+        promoCents:        wallet?.promoBalanceCents       ?? 0,
+        packageWashes:     wallet?.washPackageCredits      ?? 0,
+        loyaltyPoints:     wallet?.loyaltyPointsBalance    ?? 0,
+        totalLiquidCents:  totalLiquid,
+      },
+    });
+  } catch (err) {
+    logger.error('[PrestigePass] /staff/lookup error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// POST /staff/charge — Staff POS: deduct service from pass
+// Body: { cardId, serviceType, amountCents, staffNote? }
+// Auth: session required (staff user)
+// ─────────────────────────────────────────────────────────
+const staffChargeSchema = z.object({
+  cardId:      z.string().min(1),
+  serviceType: z.enum(['grooming', 'full_wash', 'quick_wash', 'vet', 'academy', 'retail', 'transport', 'other']),
+  amountCents: z.number().int().min(100).max(100_000),
+  staffNote:   z.string().max(200).optional(),
+});
+
+router.post('/staff/charge', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.uid) return res.status(401).json({ ok: false, error: 'Auth required' });
+    const staffUserId = session.user.uid;
+
+    const parsed = staffChargeSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input', details: parsed.error.flatten() });
+
+    let { cardId, serviceType, amountCents, staffNote } = parsed.data;
+    cardId = cardId.replace(/^petwash:\/\/card\//i, '').trim().toUpperCase();
+
+    // Find customer by cardId
+    const snap = await firestoreDb.collection('prestige_passes')
+      .where('cardId', '==', cardId)
+      .limit(1).get();
+    if (snap.empty) return res.status(404).json({ ok: false, error: 'Card not found' });
+
+    const targetUserId = snap.docs[0].data().userId || snap.docs[0].id;
+
+    // Check balance
+    const walletBal = await getWalletBalances(targetUserId);
+    if (!walletBal) return res.status(404).json({ ok: false, error: 'Wallet not found' });
+
+    const totalAvail = walletBal.cashWalletBalanceCents + walletBal.egiftBalanceCents + walletBal.promoBalanceCents;
+    if (totalAvail < amountCents) {
+      return res.status(402).json({
+        ok: false,
+        error: 'Insufficient balance',
+        available: totalAvail,
+        required:  amountCents,
+        shortfall: amountCents - totalAvail,
+      });
+    }
+
+    const bookingId = `STAFF-POS-${staffUserId.slice(0, 6)}-${Date.now()}`;
+    const result = await applyDeduction({
+      userId:      targetUserId,
+      amountCents,
+      isKioskWash: false,
+      serviceType: serviceType as any,
+      bookingId,
+      description: `Staff POS charge — ${serviceType}${staffNote ? `: ${staffNote}` : ''}`,
+    });
+
+    logger.info('[PrestigePass] Staff POS charge', { cardId, targetUserId, serviceType, amountCents, staffUserId });
+
+    return res.json({
+      ok:              true,
+      deductedCents:   result.deductedCents,
+      newBalanceCents: result.newCashWalletCents,
+      source:          result.source,
+      bookingId,
+    });
+  } catch (err) {
+    logger.error('[PrestigePass] /staff/charge error:', err);
     return res.status(500).json({ ok: false, error: 'Internal error' });
   }
 });
