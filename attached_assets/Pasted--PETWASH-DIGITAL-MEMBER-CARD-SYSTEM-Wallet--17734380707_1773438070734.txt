@@ -1,0 +1,431 @@
+========================================================
+PETWASH DIGITAL MEMBER CARD SYSTEM
+Wallet / QR / Balance / Loyalty Architecture
+========================================================
+
+
+OVERVIEW
+--------------------------------------------------------
+The PetWash Member Card is a digital identity card that
+acts as a customer wallet, loyalty card, and service
+access key across the entire PetWash ecosystem.
+
+The card can be used for:
+
+• K9000 self wash stations
+• grooming services
+• pet sitter services
+• dog walking
+• pet transportation
+• academy / training
+• retail products
+• online bookings
+
+The card works via QR code and is compatible with:
+
+• Apple Wallet
+• Google Wallet
+• Mobile App
+• Staff POS scanner
+• K9000 machine scanner
+
+
+--------------------------------------------------------
+CARD VISUAL STRUCTURE
+--------------------------------------------------------
+
+Displayed on the card:
+
+Logo: PetWash
+
+Membership Tier
+Example:
+Premium Member
+
+Customer Name
+Example:
+Nir Hadad
+
+Pet Name (Primary Pet)
+Example:
+Bella 🐶
+
+Wallet Balance
+Example:
+₪1,000
+
+Member ID
+Example:
+PW-4587-2043
+
+QR Code
+Used for scanning by machines, POS systems,
+or online login.
+
+
+--------------------------------------------------------
+QR CODE CONTENT
+--------------------------------------------------------
+
+The QR code should NOT contain personal data.
+
+It contains only a secure card identifier.
+
+Example:
+
+PW-45872043
+
+or
+
+petwash://card/PW-45872043
+
+
+When scanned, the system queries the backend.
+
+
+--------------------------------------------------------
+SCAN FLOW
+--------------------------------------------------------
+
+1. QR code scanned
+2. Backend retrieves customer profile
+3. System displays wallet and pet data
+
+
+Example system response:
+
+Customer: Nir Hadad
+Primary Pet: Bella
+Balance: ₪1000
+Member Tier: Premium
+Last Wash: 12 Feb 2026
+
+
+--------------------------------------------------------
+DIGITAL WALLET BALANCE SYSTEM
+--------------------------------------------------------
+
+The PetWash card operates as a prepaid wallet.
+
+Balance can be used across ALL services.
+
+Supported uses:
+
+• K9000 self wash
+• grooming services
+• pet sitter
+• dog walking
+• pet academy training
+• transportation service
+• retail store items
+• online booking payments
+
+
+Example transaction:
+
+Service: Full Wash
+Price: ₪150
+
+Balance before: ₪1000
+Balance after: ₪850
+
+
+Wallet balance updates instantly in:
+
+• mobile app
+• Apple Wallet
+• Google Wallet
+• POS system
+
+
+--------------------------------------------------------
+PET PROFILE INTEGRATION
+--------------------------------------------------------
+
+Each card links to a primary pet profile.
+
+Example backend structure:
+
+pet_name: Bella
+pet_type: Dog
+breed: Golden Retriever
+special_notes: Sensitive shampoo
+
+
+When staff scans card they see:
+
+Bella 🐶
+Golden Retriever
+Sensitive shampoo
+
+
+This improves service personalization.
+
+
+--------------------------------------------------------
+WASH HISTORY / SERVICE HISTORY
+--------------------------------------------------------
+
+Backend records all activity.
+
+Example:
+
+12 Feb 2026 — Full Wash — ₪150
+02 Feb 2026 — Self Wash — ₪70
+21 Jan 2026 — Grooming — ₪220
+
+
+Used for:
+
+• customer support
+• service tracking
+• loyalty rewards
+• analytics
+
+
+--------------------------------------------------------
+ONLINE PLATFORM INTEGRATION
+--------------------------------------------------------
+
+The card works across all PetWash platforms.
+
+Example login detection:
+
+User logs in
+
+System identifies card:
+
+PW-45872043
+
+Balance displayed:
+
+Balance: ₪850
+
+
+Checkout option appears:
+
+Pay with PetWash Balance
+
+
+--------------------------------------------------------
+APPLE WALLET / GOOGLE WALLET UPDATES
+--------------------------------------------------------
+
+Wallet card updates dynamically.
+
+Example:
+
+Before wash
+Balance: ₪1000
+
+After wash
+Balance: ₪850
+
+Updated automatically in wallet.
+
+
+--------------------------------------------------------
+OPTIONAL CREDIT EXPIRY SYSTEM
+--------------------------------------------------------
+
+If business rules require expiration.
+
+Example field:
+
+credit_expiry_date
+
+
+Example display:
+
+Valid Until
+01 May 2026
+
+
+Note:
+Many companies prefer NO expiry to improve
+customer trust.
+
+
+--------------------------------------------------------
+LOYALTY TRACKING
+--------------------------------------------------------
+
+Customer behavior metrics stored.
+
+Example fields:
+
+visits_last_30_days
+lifetime_spend
+services_used
+
+
+Example:
+
+Customer: Nir Hadad
+Visits: 17
+Lifetime Spend: ₪4,800
+
+
+Triggers loyalty rewards such as:
+
+VIP discounts
+free washes
+special promotions
+
+
+--------------------------------------------------------
+NOTIFICATION SYSTEM
+--------------------------------------------------------
+
+Automated wallet notifications.
+
+Examples:
+
+Bella hasn’t had a wash in 3 weeks 🐶
+Book at PetWash today.
+
+or
+
+Your PetWash balance is below ₪200
+Top up now.
+
+
+--------------------------------------------------------
+STAFF POS INTERFACE
+--------------------------------------------------------
+
+When the card is scanned staff see:
+
+Customer: Nir Hadad
+Pet: Bella 🐶
+Balance: ₪850
+
+
+Quick service buttons:
+
+Full Wash — ₪150
+Quick Wash — ₪90
+Grooming — ₪220
+Add Service
+
+
+After selecting service:
+
+System deducts wallet balance automatically.
+
+
+--------------------------------------------------------
+K9000 MACHINE INTEGRATION
+--------------------------------------------------------
+
+QR code can unlock self-wash machine.
+
+Customer scans QR at machine.
+
+Machine requests backend verification.
+
+Example flow:
+
+Scan QR
+Verify balance
+Start wash session
+Deduct cost automatically
+
+
+Example:
+
+Session price: ₪70
+
+Balance before: ₪850
+Balance after: ₪780
+
+
+--------------------------------------------------------
+API STRUCTURE (EXAMPLE)
+--------------------------------------------------------
+
+GET /wallet/card/{card_id}
+
+Returns:
+
+customer profile
+pet profile
+balance
+membership tier
+
+
+POST /wallet/charge
+
+Deduct balance for service.
+
+
+POST /wallet/topup
+
+Add funds to wallet.
+
+
+GET /wallet/history
+
+Return service and payment history.
+
+
+GET /wallet/pet-profile
+
+Return pet details.
+
+
+--------------------------------------------------------
+DATA STRUCTURE (EXAMPLE)
+--------------------------------------------------------
+
+Customer
+
+customer_id
+name
+membership_tier
+wallet_balance
+primary_pet_id
+
+
+Pet
+
+pet_id
+pet_name
+pet_type
+breed
+notes
+
+
+Wallet Transaction
+
+transaction_id
+customer_id
+service_type
+amount
+date
+
+
+--------------------------------------------------------
+CORE CONCEPT
+--------------------------------------------------------
+
+The PetWash card is NOT just a gift card.
+
+It is a unified system linking:
+
+customer
+pet
+wallet balance
+services
+loyalty program
+history
+online platform access
+
+
+This creates a seamless ecosystem across
+machines, services, and digital platforms.
+
+
+========================================================
+END OF SPECIFICATION
+========================================================
