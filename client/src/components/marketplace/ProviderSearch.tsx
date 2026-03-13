@@ -424,19 +424,22 @@ function GooglePlacesLocationInput({
       },
       (error) => {
         setIsGettingLocation(false);
+        let msg: string;
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            setLocationError(mapsLang === 'iw' ? 'הגישה למיקום נדחתה' : 'Location permission denied');
+            msg = mapsLang === 'iw' ? 'הגישה למיקום נדחתה — הקלד כתובת ידנית' : 'Location denied — type an address manually';
             break;
           case error.POSITION_UNAVAILABLE:
-            setLocationError(mapsLang === 'iw' ? 'המיקום אינו זמין' : 'Location unavailable');
+            msg = mapsLang === 'iw' ? 'המיקום אינו זמין' : 'Location unavailable';
             break;
           case error.TIMEOUT:
-            setLocationError(mapsLang === 'iw' ? 'בקשת המיקום פגה' : 'Location request timed out');
+            msg = mapsLang === 'iw' ? 'בקשת המיקום פגה' : 'Location request timed out';
             break;
           default:
-            setLocationError(mapsLang === 'iw' ? 'לא ניתן לקבל מיקום' : 'Unable to get location');
+            msg = mapsLang === 'iw' ? 'לא ניתן לקבל מיקום' : 'Unable to get location';
         }
+        setLocationError(msg);
+        setTimeout(() => setLocationError(null), 5000);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
@@ -460,6 +463,7 @@ function GooglePlacesLocationInput({
         onChange={(e) => {
           const newValue = e.target.value;
           onChange(newValue);
+          setLocationError(null);
           if (!newValue) {
             setPredictions([]);
             setShowCitySuggestions(false);
