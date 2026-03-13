@@ -33,6 +33,9 @@ import { eq, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import { EmailService } from '../emailService';
+import { buildPrestigePassLuxuryEmail } from '../email/templates/prestige-pass-luxury-2026';
+import { buildWalletUrls } from '../lib/walletPassToken';
+import QRCode from 'qrcode';
 
 const router = Router();
 
@@ -1133,6 +1136,93 @@ router.post('/resend-wallet-email', async (req: Request, res: Response) => {
   } catch (err) {
     logger.error('[PrestigePass] /resend-wallet-email error:', err);
     return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// POST /send-luxury-demo — generate + send the luxury pass email (admin use)
+// ─────────────────────────────────────────────────────────
+const luxuryDemoSchema = z.object({
+  email:           z.string().email().default('nir.h@petwash.co.il'),
+  firstName:       z.string().default('ניר'),
+  lastName:        z.string().default('הכהן'),
+  tier:            z.enum(['pearl','silver','gold','platinum','diamond','emerald','royal','black']).default('black'),
+  loyaltyPoints:   z.number().default(12_400),
+  cashWalletILS:   z.number().default(850),
+  eGiftBalanceILS: z.number().default(300),
+  freeWashesRemaining: z.number().default(3),
+  memberSinceYear: z.number().default(2023),
+  nextTierName:    z.string().optional(),
+  nextTierPointsNeeded: z.number().optional(),
+  language:        z.enum(['he','en']).default('he'),
+});
+
+router.post('/send-luxury-demo', async (req: Request, res: Response) => {
+  try {
+    const parsed = luxuryDemoSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ ok: false, errors: parsed.error.flatten() });
+    const d = parsed.data;
+
+    const BASE_URL = process.env.BASE_URL || 'https://petwash.co.il';
+
+    // Generate QR code for K9000 demo (real kiosk format)
+    const qrPayload = JSON.stringify({
+      type:   'PRESTIGE_PASS',
+      userId: 'admin-demo',
+      tier:   d.tier,
+      ts:     Date.now(),
+    });
+    const qrDataUrl = await QRCode.toDataURL(qrPayload, { width: 200, margin: 1, color: { dark: '#D4AF37', light: '#000000' } });
+
+    // Generate secure wallet pass URLs
+    const { appleWalletUrl, googleWalletUrl } = buildWalletUrls('prestige-demo-nir', BASE_URL);
+
+    // Build the luxury email HTML
+    const html = buildPrestigePassLuxuryEmail({
+      firstName: d.firstName,
+      lastName: d.lastName,
+      email: d.email,
+      tier: d.tier,
+      cardNumber: 'PW7731',
+      loyaltyPoints: d.loyaltyPoints,
+      cashWalletILS: d.cashWalletILS,
+      eGiftBalanceILS: d.eGiftBalanceILS,
+      freeWashesRemaining: d.freeWashesRemaining,
+      memberSinceYear: d.memberSinceYear,
+      nextTierName: d.nextTierName,
+      nextTierPointsNeeded: d.nextTierPointsNeeded,
+      qrDataUrl,
+      appleWalletUrl,
+      googleWalletUrl,
+      appBaseUrl: BASE_URL,
+      language: d.language,
+    });
+
+    const subjectMap: Record<string, string> = {
+      black: '⬛ כרטיס הפרסטיז השחור שלך מוכן — PetWash™',
+      diamond: '💎 כרטיס הפרסטיז יהלום שלך מוכן — PetWash™',
+      royal: '👑 כרטיס הפרסטיז רויאל שלך מוכן — PetWash™',
+      emerald: '💚 כרטיס הפרסטיז אמרלד שלך מוכן — PetWash™',
+      platinum: '💠 כרטיס הפרסטיז פלטינום שלך מוכן — PetWash™',
+      gold: '🥇 כרטיס הפרסטיז זהב שלך מוכן — PetWash™',
+      silver: '🥈 כרטיס הפרסטיז כסף שלך מוכן — PetWash™',
+      pearl: '🪨 כרטיס הפרסטיז פנינה שלך מוכן — PetWash™',
+    };
+    const subject = subjectMap[d.tier] ?? '🐾 הכרטיס הפרסטיז שלך — PetWash™';
+
+    const sent = await EmailService.send({ to: d.email, subject, html });
+    logger.info('[PrestigePass] Luxury demo email sent', { to: d.email, tier: d.tier, sent });
+
+    return res.json({
+      ok: true,
+      sent,
+      to: d.email,
+      tier: d.tier,
+      walletPassConfigured: !!(appleWalletUrl && googleWalletUrl),
+    });
+  } catch (err) {
+    logger.error('[PrestigePass] /send-luxury-demo error:', err);
+    return res.status(500).json({ ok: false, error: String(err) });
   }
 });
 
