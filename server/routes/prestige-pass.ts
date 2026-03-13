@@ -45,6 +45,11 @@ import {
   adminManualCredit,
   type DeductionBreakdown,
 } from '../services/WalletEngine';
+import {
+  isJtiConsumed,
+  logFraudEvent,
+  checkVelocity,
+} from '../services/WalletLedger';
 
 const router = Router();
 
@@ -319,17 +324,36 @@ const redeemSchema = z.object({
 // ─────────────────────────────────────────────────────────
 
 // Wrapper for the kiosk path — uses WalletEngine (PostgreSQL-only, atomic)
+interface SmartRedemptionCtx {
+  jti?:             string;
+  idempotencyKey?:  string;
+  ipAddress?:       string | null;
+  userAgent?:       string | null;
+  staffId?:         string;
+  endpoint?:        string;
+}
+
 async function applySmartRedemption(
   userId: string,
   amountCents: number,
   serviceType: string,
   machineId?: string,
   bayId?: string,
-): Promise<{ source: string; deductedCents: number; washDeducted: boolean; breakdown: DeductionBreakdown; txnId: string }> {
+  ctx?: SmartRedemptionCtx,
+): Promise<{
+  source:             string;
+  deductedCents:      number;
+  newCashWalletCents: number;
+  washDeducted:       boolean;
+  breakdown:          DeductionBreakdown;
+  txnId:              string;
+  idempotent:         boolean;
+}> {
   const walletBalances = await getWalletBalances(userId);
   if (!walletBalances) {
     return {
-      source: 'no_wallet', deductedCents: 0, washDeducted: false, txnId: '',
+      source: 'no_wallet', deductedCents: 0, newCashWalletCents: 0,
+      washDeducted: false, txnId: '', idempotent: false,
       breakdown: { promo: 0, gift: 0, package: 0, wallet: 0, cardFallback: amountCents,
         totalCovered: 0, ok: false, shortfall: amountCents, washDeducted: false, serviceDeducted: false },
     };
@@ -345,33 +369,31 @@ async function applySmartRedemption(
       cardFallback: amountCents, totalCovered: 0,
       ok: false, shortfall: amountCents, washDeducted: false, serviceDeducted: false,
     };
-    return { source: 'card_required', deductedCents: 0, washDeducted: false, txnId: '', breakdown: emptyBreakdown };
+    return { source: 'card_required', deductedCents: 0, newCashWalletCents: walletBalances.cashWalletBalanceCents, washDeducted: false, txnId: '', breakdown: emptyBreakdown, idempotent: false };
   }
 
   const result = await applyDeduction({
     userId, amountCents, isKioskWash,
     serviceType, machineId, bayId,
     description: `Prestige Pass ${isKioskWash ? 'free wash' : 'kiosk'} — ${machineId || 'terminal'}`,
+    // Anti-fraud context — thread through from request
+    jti:             ctx?.jti,
+    idempotencyKey:  ctx?.idempotencyKey,
+    ipAddress:       ctx?.ipAddress,
+    userAgent:       ctx?.userAgent,
+    staffId:         ctx?.staffId,
+    endpoint:        ctx?.endpoint ?? `prestige-pass/${serviceType}`,
   });
 
-  const source = result.breakdown.washDeducted
-    ? 'package_wash'
-    : result.breakdown.totalCovered < amountCents
-      ? 'partial_mixed'
-      : result.breakdown.promo > 0 && result.breakdown.gift === 0 && result.breakdown.wallet === 0
-        ? 'promo_credit'
-        : result.breakdown.gift > 0 && result.breakdown.promo === 0 && result.breakdown.wallet === 0
-          ? 'egift'
-          : result.breakdown.wallet > 0 && result.breakdown.promo === 0 && result.breakdown.gift === 0
-            ? 'cash_wallet'
-            : 'mixed';
-
+  // result.source is already computed by WalletEngine.applyDeduction()
   return {
-    source,
-    deductedCents: result.breakdown.totalCovered,
-    washDeducted:  result.breakdown.washDeducted,
-    txnId:         result.txnId,
-    breakdown:     result.breakdown,
+    source:             result.source,
+    deductedCents:      result.deductedCents,
+    newCashWalletCents: result.newCashWalletCents,
+    washDeducted:       result.breakdown.washDeducted,
+    txnId:              result.txnId,
+    breakdown:          result.breakdown,
+    idempotent:         result.idempotent,
   };
 }
 
@@ -388,13 +410,33 @@ router.post('/token/redeem', redeemLimiter, async (req: Request, res: Response) 
     }
 
     const { jti, sub: userId, wid: walletId } = payload;
+    const clientIp  = req.ip ?? req.socket?.remoteAddress ?? null;
+    const clientUa  = (req.headers['user-agent'] as string) ?? null;
+    const idemKey   = (req.headers['x-idempotency-key'] as string) || `jti:${jti}`;
 
-    // 2. Anti-replay check in Firestore
+    // 2a. Anti-replay check in PostgreSQL (primary guard — cannot be cleared)
+    const pgJtiUsed = await isJtiConsumed(jti);
+    if (pgJtiUsed) {
+      await logFraudEvent({
+        userId, action: 'jti_replay_postgresql', riskScore: 95, outcome: 'blocked',
+        reason: `JTI ${jti} already consumed in PostgreSQL registry`,
+        ipAddress: clientIp, userAgent: clientUa,
+      });
+      logger.warn('[PrestigePass] Replay blocked (PostgreSQL JTI registry)', { jti, userId });
+      return res.status(409).json({ ok: false, error: 'Token already used (anti-replay)' });
+    }
+
+    // 2b. Anti-replay check in Firestore (secondary layer)
     const tokenRef = firestoreDb.collection('prestige_qr_tokens').doc(jti);
     const tokenDoc = await tokenRef.get();
 
     if (!tokenDoc.exists || tokenDoc.data()?.used === true) {
-      logger.warn('[PrestigePass] Replay attack blocked', { jti, userId });
+      await logFraudEvent({
+        userId, action: 'jti_replay_firestore', riskScore: 95, outcome: 'blocked',
+        reason: `JTI ${jti} already consumed in Firestore`,
+        ipAddress: clientIp, userAgent: clientUa,
+      });
+      logger.warn('[PrestigePass] Replay attack blocked (Firestore)', { jti, userId });
       return res.status(409).json({ ok: false, error: 'Token already used (anti-replay)' });
     }
 
@@ -404,7 +446,7 @@ router.post('/token/redeem', redeemLimiter, async (req: Request, res: Response) 
       ? (stationId?.includes('L') ? 'left' : 'right')
       : requestedBay;
 
-    // 4. Mark token as used (atomic)
+    // 4. Mark token as used in Firestore (atomic)
     await tokenRef.update({
       used:      true,
       usedAt:    new Date().toISOString(),
@@ -412,12 +454,19 @@ router.post('/token/redeem', redeemLimiter, async (req: Request, res: Response) 
       bay:       effectiveBay,
     });
 
-    // 5. Apply smart redemption (WalletEngine writes ledger entry atomically)
-    const result = await applySmartRedemption(userId, amountCents, 'k9000', stationId, effectiveBay);
+    // 5. Apply smart redemption — threads jti + ip + ua + idempotencyKey into
+    //    WalletLedger for full anti-fraud protection (JTI PG registration happens inside tx)
+    const result = await applySmartRedemption(userId, amountCents, 'k9000', stationId, effectiveBay, {
+      jti,
+      idempotencyKey: idemKey,
+      ipAddress:      clientIp,
+      userAgent:      clientUa,
+      endpoint:       'prestige-pass/token/redeem',
+    });
 
     logger.info('[PrestigePass] Token redeemed', {
       jti, userId, stationId, bay: effectiveBay,
-      source: result.source, deducted: result.deductedCents,
+      source: result.source, deducted: result.deductedCents, idempotent: result.idempotent,
     });
 
     // ── Real-time SSE push → user's open wallet tab sees "Wash started" instantly ──
@@ -429,7 +478,7 @@ router.post('/token/redeem', redeemLimiter, async (req: Request, res: Response) 
           bay:             effectiveBay,
           stationId:       stationId || null,
           deductedCents:   result.deductedCents,
-          newBalanceCents: result.newCashWalletCents ?? 0,
+          newBalanceCents: result.newCashWalletCents,
           source:          result.source,
           timestamp:       new Date().toISOString(),
         })}\n\n`);
@@ -1529,16 +1578,28 @@ router.post('/staff/charge', async (req: Request, res: Response) => {
     }
 
     const bookingId = `STAFF-POS-${staffUserId.slice(0, 6)}-${Date.now()}`;
+    const clientIp  = req.ip ?? req.socket?.remoteAddress ?? null;
+    const clientUa  = (req.headers['user-agent'] as string) ?? null;
+
     const result = await applyDeduction({
-      userId:      targetUserId,
+      userId:          targetUserId,
       amountCents,
-      isKioskWash: false,
-      serviceType: serviceType as any,
+      isKioskWash:     false,
+      serviceType:     serviceType as any,
       bookingId,
-      description: `Staff POS charge — ${serviceType}${staffNote ? `: ${staffNote}` : ''}`,
+      description:     `Staff POS charge — ${serviceType}${staffNote ? `: ${staffNote}` : ''}`,
+      // Anti-fraud context
+      idempotencyKey:  `STAFF-${staffUserId}-${bookingId}`,
+      ipAddress:       clientIp,
+      userAgent:       clientUa,
+      staffId:         staffUserId,
+      endpoint:        'prestige-pass/staff/charge',
     });
 
-    logger.info('[PrestigePass] Staff POS charge', { cardId, targetUserId, serviceType, amountCents, staffUserId });
+    logger.info('[PrestigePass] Staff POS charge', {
+      cardId, targetUserId, serviceType, amountCents, staffUserId,
+      deducted: result.deductedCents, source: result.source,
+    });
 
     return res.json({
       ok:              true,

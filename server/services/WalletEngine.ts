@@ -27,6 +27,7 @@ import { walletAccounts, creditTransactions } from '@shared/schema';
 import { eq, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { randomBytes } from 'crypto';
+import { deductFromWallet, topUpWithLedger } from './WalletLedger';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,21 +57,33 @@ export interface DeductionBreakdown {
 }
 
 export interface DeductionContext {
-  userId:       string;
-  amountCents:  number;        // 0 for kiosk free-wash
-  isKioskWash:  boolean;       // true enables wash-unit path
-  serviceType?: string;        // 'sitter' | 'walker' | 'academy' | 'k9000'
-  bookingId?:   string;
-  machineId?:   string;
-  bayId?:       string;
-  description?: string;
+  userId:           string;
+  amountCents:      number;        // 0 for kiosk free-wash
+  isKioskWash:      boolean;       // true enables wash-unit path
+  serviceType?:     string;        // 'sitter' | 'walker' | 'academy' | 'k9000'
+  bookingId?:       string;
+  machineId?:       string;
+  bayId?:           string;
+  description?:     string;
+  // Anti-fraud fields (pass these from every endpoint that calls applyDeduction)
+  idempotencyKey?:  string;        // X-Idempotency-Key header or jti-derived key
+  jti?:             string;        // JWT ID from QR token
+  ipAddress?:       string | null;
+  userAgent?:       string | null;
+  staffId?:         string;        // if action initiated by staff POS
+  endpoint?:        string;
 }
 
 export interface DeductionResult {
-  txnId:       string;
-  walletId:    string;
-  breakdown:   DeductionBreakdown;
-  balanceAfter: WalletBalances;
+  txnId:              string;
+  walletId:           string;
+  breakdown:          DeductionBreakdown;
+  balanceAfter:       WalletBalances;
+  // Convenience shorthand fields used by prestige-pass.ts routes
+  newCashWalletCents: number;
+  deductedCents:      number;
+  source:             string;
+  idempotent:         boolean;
 }
 
 // ─── Pure computation — no side effects ──────────────────────────────────────
@@ -182,99 +195,84 @@ export async function getOrCreateWallet(userId: string): Promise<WalletBalances>
  * Returns full breakdown + updated balances.
  */
 export async function applyDeduction(ctx: DeductionContext): Promise<DeductionResult> {
-  const balances = await getWalletBalances(ctx.userId);
+  // ── Delegate to WalletLedger for full anti-fraud protection ─────────────────
+  // This provides: DB transaction + FOR UPDATE lock + idempotency + hash chain +
+  // JTI registry + velocity limiting + fraud logging + double-entry ledger.
+  const ledgerResult = await deductFromWallet({
+    userId:          ctx.userId,
+    amountCents:     ctx.amountCents,
+    isKioskWash:     ctx.isKioskWash,
+    serviceType:     ctx.serviceType,
+    bookingId:       ctx.bookingId,
+    machineId:       ctx.machineId,
+    bayId:           ctx.bayId,
+    description:     ctx.description,
+    idempotencyKey:  ctx.idempotencyKey,
+    jti:             ctx.jti,
+    ipAddress:       ctx.ipAddress,
+    userAgent:       ctx.userAgent,
+    staffId:         ctx.staffId,
+    endpoint:        ctx.endpoint,
+  });
 
-  if (!balances) {
-    throw new Error(`[WalletEngine] No wallet found for user ${ctx.userId}`);
+  // Keep creditTransactions as a compatibility / reporting layer
+  // (WalletLedger is the truth; creditTransactions is the legacy reporting view)
+  try {
+    const serviceLabel = ctx.isKioskWash ? 'kiosk_wash' : (ctx.serviceType || 'online');
+    const txnId        = `TXN-${ctx.isKioskWash ? 'KSK' : 'ONL'}-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString('hex').toUpperCase()}`;
+    await db.insert(creditTransactions).values({
+      transactionId:     txnId,
+      walletId:          ledgerResult.walletId,
+      creditType:        ledgerResult.breakdown.washDeducted ? 'wash_package' : 'mixed_redeem',
+      transactionType:   'redeem',
+      amountCents:       ledgerResult.breakdown.washDeducted ? null : -(ledgerResult.breakdown.totalCovered),
+      amountUnits:       ledgerResult.breakdown.washDeducted ? -1 : null,
+      balanceAfterCents: ledgerResult.balanceAfterCents.cashWallet + ledgerResult.balanceAfterCents.egift + ledgerResult.balanceAfterCents.promo,
+      sourceType:        'redemption',
+      platform:          serviceLabel,
+      serviceType:       ctx.serviceType,
+      bookingId:         ctx.bookingId,
+      initiatedBy:       ctx.staffId ? 'staff' : 'user',
+      initiatedByUserId: ctx.userId,
+      description:       ctx.description || `Prestige Pass redemption — ${serviceLabel}`,
+      metadata:          { machineId: ctx.machineId, bayId: ctx.bayId, ledgerEntryId: ledgerResult.txnId, breakdown: ledgerResult.breakdown } as any,
+    });
+  } catch (err) {
+    // Non-fatal: WalletLedger is truth, creditTransactions is reporting
+    logger.warn('[WalletEngine] creditTransactions compatibility write failed (non-fatal)', err);
   }
 
-  const breakdown = computeDeductionOrder(
-    balances,
-    ctx.amountCents,
-    ctx.isKioskWash,
-  );
-
-  // Build atomic PostgreSQL update
-  const updates: Partial<typeof walletAccounts.$inferSelect> = {
-    updatedAt: new Date(),
-    lastActivityAt: new Date(),
+  // Build backward-compatible balanceAfter shape
+  const balanceAfter: WalletBalances = {
+    cashWalletBalanceCents:       ledgerResult.balanceAfterCents.cashWallet,
+    egiftBalanceCents:            ledgerResult.balanceAfterCents.egift,
+    promoBalanceCents:            ledgerResult.balanceAfterCents.promo,
+    washPackageCredits:           ledgerResult.balanceAfterCents.washPackages,
+    packageServiceUnitsRemaining: 0,
+    referralBalanceCents:         0,
+    loyaltyPointsBalance:         0,
+    loyaltyTier:                  'bronze',
+    walletId:                     ledgerResult.walletId,
   };
 
-  if (breakdown.washDeducted) {
-    updates.washPackageCredits = Math.max(0, balances.washPackageCredits - 1);
-  }
-  if (breakdown.promo > 0) {
-    updates.promoBalanceCents = Math.max(0, balances.promoBalanceCents - breakdown.promo);
-  }
-  if (breakdown.gift > 0) {
-    updates.egiftBalanceCents = Math.max(0, balances.egiftBalanceCents - breakdown.gift);
-  }
-  if (breakdown.wallet > 0) {
-    updates.cashWalletBalanceCents = Math.max(0, balances.cashWalletBalanceCents - breakdown.wallet);
-  }
-
-  if (Object.keys(updates).length > 2) {
-    await db.update(walletAccounts).set(updates).where(eq(walletAccounts.userId, ctx.userId));
-  }
-
-  // Write immutable ledger entry
-  const txnId = `TXN-${ctx.isKioskWash ? 'KSK' : 'ONL'}-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString('hex').toUpperCase()}`;
-
-  const serviceLabel = ctx.isKioskWash ? 'kiosk_wash' : (ctx.serviceType || 'online');
-
-  await db.insert(creditTransactions).values({
-    transactionId:   txnId,
-    walletId:        balances.walletId,
-    creditType:      breakdown.washDeducted ? 'wash_package' : 'mixed_redeem',
-    transactionType: 'redeem',
-    amountCents:     breakdown.washDeducted ? null : -(breakdown.totalCovered),
-    amountUnits:     breakdown.washDeducted ? -1 : null,
-    balanceAfterCents: breakdown.washDeducted ? null : Math.max(0,
-      (balances.cashWalletBalanceCents + balances.egiftBalanceCents + balances.promoBalanceCents)
-      - breakdown.totalCovered,
-    ),
-    balanceAfterUnits: breakdown.washDeducted
-      ? Math.max(0, balances.washPackageCredits - 1)
-      : null,
-    sourceType:  'redemption',
-    platform:    serviceLabel,
-    serviceType: ctx.serviceType,
-    bookingId:   ctx.bookingId,
-    initiatedBy: 'user',
-    initiatedByUserId: ctx.userId,
-    description: ctx.description || `Prestige Pass redemption — ${serviceLabel}`,
-    metadata: {
-      machineId:  ctx.machineId,
-      bayId:      ctx.bayId,
-      breakdown: {
-        promo:        breakdown.promo,
-        gift:         breakdown.gift,
-        package:      breakdown.package,
-        wallet:       breakdown.wallet,
-        cardFallback: breakdown.cardFallback,
-      },
-    } as any,
-  });
-
-  const balanceAfter = await getWalletBalances(ctx.userId);
-
-  logger.info('[WalletEngine] Deduction applied', {
-    userId: ctx.userId,
-    txnId,
-    serviceType: ctx.serviceType,
-    amountCents: ctx.amountCents,
-    promo: breakdown.promo,
-    gift: breakdown.gift,
-    wallet: breakdown.wallet,
-    washDeducted: breakdown.washDeducted,
-    cardFallback: breakdown.cardFallback,
-  });
+  // Determine source label for routes
+  const bd = ledgerResult.breakdown;
+  const source = bd.washDeducted ? 'package_wash'
+    : bd.totalCovered < ctx.amountCents ? 'partial_mixed'
+    : bd.promo > 0 && bd.gift === 0 && bd.wallet === 0 ? 'promo_credit'
+    : bd.gift > 0 && bd.promo === 0 && bd.wallet === 0 ? 'egift'
+    : bd.wallet > 0 && bd.promo === 0 && bd.gift === 0 ? 'cash_wallet'
+    : 'mixed';
 
   return {
-    txnId,
-    walletId: balances.walletId,
-    breakdown,
-    balanceAfter: balanceAfter!,
+    txnId:              ledgerResult.txnId,
+    walletId:           ledgerResult.walletId,
+    breakdown:          ledgerResult.breakdown,
+    balanceAfter,
+    newCashWalletCents: ledgerResult.balanceAfterCents.cashWallet,
+    deductedCents:      ledgerResult.breakdown.totalCovered,
+    source,
+    idempotent:         ledgerResult.idempotent,
   };
 }
 
@@ -286,35 +284,44 @@ export async function topUpCashWallet(
   amountCents: number,
   sourceType: string,
   sourceId?: string,
+  opts?: { idempotencyKey?: string; ipAddress?: string | null; userAgent?: string | null },
 ): Promise<{ txnId: string; newBalanceCents: number }> {
-  const wallet = await getOrCreateWallet(userId);
+  await getOrCreateWallet(userId);
 
-  await db
-    .update(walletAccounts)
-    .set({
-      cashWalletBalanceCents: sql`${walletAccounts.cashWalletBalanceCents} + ${amountCents}`,
-      updatedAt: new Date(),
-      lastActivityAt: new Date(),
-    })
-    .where(eq(walletAccounts.userId, userId));
-
-  const txnId = `TXN-TOP-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString('hex').toUpperCase()}`;
-
-  await db.insert(creditTransactions).values({
-    transactionId:    txnId,
-    walletId:         wallet.walletId,
-    creditType:       'cash_wallet',
-    transactionType:  'issue',
-    amountCents:      amountCents,
-    balanceAfterCents: wallet.cashWalletBalanceCents + amountCents,
+  // ── Use WalletLedger for atomic top-up with double-entry + idempotency ──────
+  const ledgerResult = await topUpWithLedger({
+    userId,
+    amountCents,
     sourceType,
     sourceId,
-    initiatedBy: 'user',
-    initiatedByUserId: userId,
-    description: `Cash wallet top-up — ₪${(amountCents / 100).toFixed(2)}`,
+    idempotencyKey: opts?.idempotencyKey,
+    ipAddress:      opts?.ipAddress ?? null,
+    userAgent:      opts?.userAgent ?? null,
   });
 
-  return { txnId, newBalanceCents: wallet.cashWalletBalanceCents + amountCents };
+  // Compatibility write to creditTransactions (reporting layer)
+  try {
+    const txnId = `TXN-TOP-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString('hex').toUpperCase()}`;
+    const [current] = await db.select({ walletId: walletAccounts.walletId })
+      .from(walletAccounts).where(eq(walletAccounts.userId, userId)).limit(1);
+    await db.insert(creditTransactions).values({
+      transactionId:     txnId,
+      walletId:          current?.walletId ?? ledgerResult.txnId,
+      creditType:        'cash_wallet',
+      transactionType:   'issue',
+      amountCents,
+      balanceAfterCents: ledgerResult.newBalanceCents,
+      sourceType,
+      sourceId,
+      initiatedBy:       'user',
+      initiatedByUserId: userId,
+      description:       `Cash wallet top-up — ₪${(amountCents / 100).toFixed(2)}`,
+    });
+  } catch (err) {
+    logger.warn('[WalletEngine] creditTransactions topUp compat write failed (non-fatal)', err);
+  }
+
+  return { txnId: ledgerResult.txnId, newBalanceCents: ledgerResult.newBalanceCents };
 }
 
 /**

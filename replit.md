@@ -418,6 +418,40 @@ Premium dark/gold UI payment component. Shows balance breakdown, deduction previ
 - `client/src/pages/walk-my-pet/BookingFlow.tsx` (before Payment Method Disclosure, ~line 561)
 Uses pending booking ref (`PENDING-SITTER-{uid}` / `PENDING-WALKER-{uid}`) when booking doesn't exist yet.
 
+### Anti-Fraud Architecture — Production 2026 (WalletLedger.ts)
+
+All wallet mutations now route through `server/services/WalletLedger.ts` which implements 9 protection layers:
+
+**5 new PostgreSQL tables (created March 2026):**
+- `wallet_ledger_entries` — append-only double-entry ledger (24 columns, SHA-256 hash chain). NEVER updated/deleted.
+- `wallet_idempotency_keys` — prevents duplicate processing; stores request hash + full response for replay
+- `wallet_jti_registry` — PostgreSQL secondary layer for JTI anti-replay (primary = Firestore)
+- `wallet_fraud_log` — immutable audit trail for all suspicious/blocked events
+- `wallet_holds` — hold-before-capture for online bookings (active → captured/released/expired)
+
+**9 Protection Layers:**
+1. Append-only double-entry ledger (`wallet_ledger_entries`)
+2. Idempotency keys — outer fast-path + inner tx-level guard
+3. PostgreSQL JTI registry — dual layer on top of Firestore
+4. Fraud log — every blocked event, admin credit, and velocity breach
+5. In-memory velocity limiter — 10 ops/60s per user (sliding window)
+6. DB transaction + `SELECT FOR UPDATE` — serializes concurrent deductions per wallet
+7. Atomic `UPDATE WHERE balance >= amount` — floor guard, mathematically impossible to go negative
+8. SHA-256 hash chain — `entry_hash = SHA256(prevHash|walletId|direction|amount|currency|idempKey|ts)`
+9. Holds before capture for online bookings
+
+**WalletEngine.ts integration:**
+- `applyDeduction()` now delegates to `WalletLedger.deductFromWallet()` internally
+- `topUpCashWallet()` now delegates to `WalletLedger.topUpWithLedger()` internally
+- `DeductionResult` extended with `newCashWalletCents`, `deductedCents`, `source`, `idempotent` convenience fields
+- `DeductionContext` extended with `idempotencyKey`, `jti`, `ipAddress`, `userAgent`, `staffId`, `endpoint`
+- `creditTransactions` kept as compatibility/reporting layer (WalletLedger is truth)
+
+**prestige-pass.ts updates:**
+- `/token/redeem` — dual JTI check (PostgreSQL first, then Firestore); threads `jti`, `ipAddress`, `userAgent`, `X-Idempotency-Key` header into `applySmartRedemption`
+- `/staff/charge` — passes `staffId`, `ipAddress`, `userAgent` to `applyDeduction`; result fields now correct
+- `applySmartRedemption()` — returns `newCashWalletCents` for SSE push; accepts `SmartRedemptionCtx` anti-fraud params
+
 ### Pending Items
 - Legacy Firestore `cashWalletCents` → PostgreSQL migration for existing users
 - Cloud Run secrets: `PASS_TOKEN_SECRET`, `GOOGLE_WALLET_TOTP_SECRET`, `MACHINE_SECRET_KEY`, `APNS_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_WALLET_CREDENTIALS_JSON`, `PRESTIGE_QR_SECRET`, `GOOGLE_FORMS_SPREADSHEET_ID`, `ADMIN_SECRET`

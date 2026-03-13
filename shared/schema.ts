@@ -10640,6 +10640,167 @@ export const insertRedemptionSessionSchema = createInsertSchema(redemptionSessio
 export type InsertRedemptionSession = z.infer<typeof insertRedemptionSessionSchema>;
 export type RedemptionSession = typeof redemptionSessions.$inferSelect;
 
+// ══════════════════════════════════════════════════════════════════════════════
+// WALLET ANTI-FRAUD ARCHITECTURE — Production 2026
+// Implements: append-only ledger · double-entry · hash chain · idempotency ·
+//             JTI registry · velocity limits · fraud log · holds
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ─── 1. wallet_ledger_entries — the TRUE source of financial truth ─────────────
+// Append-only. Every financial event writes ≥2 rows (double-entry).
+// No updates or deletes. Corrections only via reversal entries.
+export const walletLedgerEntries = pgTable("wallet_ledger_entries", {
+  id:              serial("id").primaryKey(),
+  entryId:         varchar("entry_id",        { length: 80  }).unique().notNull(),
+  walletId:        varchar("wallet_id",        { length: 80  }).notNull(),
+  userId:          varchar("user_id",          { length: 128 }).notNull(),
+
+  // Double-entry fields
+  eventType:       varchar("event_type",       { length: 50 }).notNull(),
+  // topup | redeem_kiosk | redeem_online | refund | admin_credit | admin_debit
+  // hold_create | hold_capture | hold_release | egift_issue | egift_claim | reversal
+  direction:       varchar("direction",        { length: 10 }).notNull(), // debit | credit
+  amountCents:     integer("amount_cents").default(0).notNull(),
+  currency:        varchar("currency",         { length: 3  }).default("ILS").notNull(),
+  bucket:          varchar("bucket",           { length: 40 }).notNull(),
+  // cash_wallet | egift | promo | wash_package | loyalty | payment_clearing | service_revenue | provider_payout
+
+  // Counterparty (who is on the other side of this entry)
+  counterpartyType: varchar("counterparty_type", { length: 50 }),
+  counterpartyId:   varchar("counterparty_id",   { length: 128 }),
+
+  // Reference IDs
+  idempotencyKey:  varchar("idempotency_key",  { length: 128 }),
+  jti:             varchar("jti",              { length: 128 }),
+  sessionId:       varchar("session_id",       { length: 80 }),
+  bookingId:       varchar("booking_id",       { length: 120 }),
+  kioskId:         varchar("kiosk_id",         { length: 80 }),
+  providerId:      varchar("provider_id",      { length: 128 }),
+
+  // Actor
+  createdBy:       varchar("created_by",       { length: 128 }).notNull(),
+
+  // Context
+  ipAddress:       varchar("ip_address",       { length: 45 }),
+  userAgent:       varchar("user_agent",       { length: 500 }),
+  metadata:        jsonb("metadata").default(sql`'{}'::jsonb`),
+
+  // Cryptographic hash chain (near-blockchain integrity)
+  previousHash:    varchar("previous_hash",    { length: 64 }).notNull(),
+  entryHash:       varchar("entry_hash",       { length: 64 }).notNull(),
+
+  createdAt:       timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_wle_wallet_id").on(table.walletId),
+  index("idx_wle_user_id").on(table.userId),
+  index("idx_wle_booking").on(table.bookingId),
+  index("idx_wle_idem").on(table.idempotencyKey),
+  index("idx_wle_jti").on(table.jti),
+  index("idx_wle_event_type").on(table.eventType),
+  index("idx_wle_created").on(table.createdAt),
+]);
+
+// ─── 2. wallet_idempotency_keys — prevents double-processing ──────────────────
+// One row per idempotency key; stores the full response so duplicate requests
+// return the exact same result without re-processing.
+export const walletIdempotencyKeys = pgTable("wallet_idempotency_keys", {
+  id:              serial("id").primaryKey(),
+  idempotencyKey:  varchar("idempotency_key",  { length: 128 }).unique().notNull(),
+  endpoint:        varchar("endpoint",         { length: 100 }).notNull(),
+  requestHash:     varchar("request_hash",     { length: 64  }),
+  responseJson:    text("response_json"),
+  status:          varchar("status",           { length: 20  }).default("success"),
+  createdAt:       timestamp("created_at").defaultNow().notNull(),
+  expiresAt:       timestamp("expires_at"),
+}, (table) => [
+  index("idx_wik_key").on(table.idempotencyKey),
+  index("idx_wik_expires").on(table.expiresAt),
+]);
+
+// ─── 3. wallet_jti_registry — PostgreSQL-backed JTI replay protection ─────────
+// Secondary layer to Firestore. A JTI consumed here can NEVER be reused,
+// even if Firestore is unavailable.
+export const walletJtiRegistry = pgTable("wallet_jti_registry", {
+  jti:             varchar("jti",              { length: 128 }).primaryKey(),
+  tokenType:       varchar("token_type",       { length: 50  }).notNull(), // kiosk_qr | egift | pass | topup
+  walletId:        varchar("wallet_id",        { length: 80  }).notNull(),
+  userId:          varchar("user_id",          { length: 128 }).notNull(),
+  firstSeenAt:     timestamp("first_seen_at").defaultNow().notNull(),
+  consumedAt:      timestamp("consumed_at"),
+  endpoint:        varchar("endpoint",         { length: 100 }),
+  status:          varchar("status",           { length: 20  }).default("seen").notNull(),
+  // seen | consumed | rejected
+  ipAddress:       varchar("ip_address",       { length: 45  }),
+}, (table) => [
+  index("idx_wjr_wallet").on(table.walletId),
+  index("idx_wjr_user").on(table.userId),
+  index("idx_wjr_status").on(table.status),
+]);
+
+// ─── 4. wallet_fraud_log — immutable audit trail for all suspicious events ─────
+export const walletFraudLog = pgTable("wallet_fraud_log", {
+  id:              serial("id").primaryKey(),
+  eventId:         varchar("event_id",         { length: 80  }).unique().notNull(),
+  actorType:       varchar("actor_type",        { length: 30  }).notNull(), // user | staff | admin | system
+  actorId:         varchar("actor_id",          { length: 128 }).notNull(),
+  action:          varchar("action",            { length: 80  }).notNull(),
+  targetWalletId:  varchar("target_wallet_id",  { length: 80  }),
+  targetGiftId:    varchar("target_gift_id",    { length: 80  }),
+  requestId:       varchar("request_id",        { length: 80  }),
+  ipAddress:       varchar("ip_address",        { length: 45  }),
+  userAgent:       varchar("user_agent",        { length: 500 }),
+  deviceId:        varchar("device_id",         { length: 128 }),
+  riskScore:       integer("risk_score").default(0),        // 0–100
+  outcome:         varchar("outcome",           { length: 20  }).notNull(), // allowed | flagged | blocked
+  reason:          text("reason"),
+  metadata:        jsonb("metadata").default(sql`'{}'::jsonb`),
+  createdAt:       timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_wfl_actor").on(table.actorId),
+  index("idx_wfl_wallet").on(table.targetWalletId),
+  index("idx_wfl_outcome").on(table.outcome),
+  index("idx_wfl_created").on(table.createdAt),
+  index("idx_wfl_action").on(table.action),
+]);
+
+// ─── 5. wallet_holds — hold-before-capture for online bookings ────────────────
+// Online booking holds funds without immediately debiting, preventing ghost
+// bookings and race conditions. Captured on service confirmation.
+export const walletHolds = pgTable("wallet_holds", {
+  id:              serial("id").primaryKey(),
+  holdId:          varchar("hold_id",          { length: 80  }).unique().notNull(),
+  walletId:        varchar("wallet_id",        { length: 80  }).notNull(),
+  userId:          varchar("user_id",          { length: 128 }).notNull(),
+  amountCents:     integer("amount_cents").notNull(),
+  currency:        varchar("currency",         { length: 3   }).default("ILS").notNull(),
+  holdType:        varchar("hold_type",        { length: 30  }).notNull(), // booking | topup | admin
+  serviceType:     varchar("service_type",     { length: 50  }),
+  bookingId:       varchar("booking_id",       { length: 120 }),
+  providerId:      varchar("provider_id",      { length: 128 }),
+  status:          varchar("status",           { length: 20  }).default("active").notNull(),
+  // active | captured | released | expired | cancelled
+  idempotencyKey:  varchar("idempotency_key",  { length: 128 }),
+  expiresAt:       timestamp("expires_at").notNull(),
+  capturedAt:      timestamp("captured_at"),
+  releasedAt:      timestamp("released_at"),
+  ipAddress:       varchar("ip_address",       { length: 45  }),
+  createdAt:       timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_wh_wallet").on(table.walletId),
+  index("idx_wh_user").on(table.userId),
+  index("idx_wh_booking").on(table.bookingId),
+  index("idx_wh_status").on(table.status),
+  index("idx_wh_expires").on(table.expiresAt),
+]);
+
+// Drizzle types
+export type WalletLedgerEntry    = typeof walletLedgerEntries.$inferSelect;
+export type InsertWalletLedger   = typeof walletLedgerEntries.$inferInsert;
+export type WalletIdempotencyKey = typeof walletIdempotencyKeys.$inferSelect;
+export type WalletJtiRegistry    = typeof walletJtiRegistry.$inferSelect;
+export type WalletFraudLog       = typeof walletFraudLog.$inferSelect;
+export type WalletHold           = typeof walletHolds.$inferSelect;
+
 export const googleFormsConfig = pgTable("google_forms_config", {
   id: serial("id").primaryKey(),
   formType: varchar("form_type", { length: 50 }).notNull().unique(),
