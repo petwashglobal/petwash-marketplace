@@ -560,6 +560,58 @@ router.get('/:voucherId/status', async (req, res) => {
   }
 });
 
+// ─── WALLET ERROR PAGE (HTML — shown when user clicks expired/invalid link) ───
+function walletErrorPage(opts: {
+  title: string;
+  titleHe: string;
+  body: string;
+  bodyHe: string;
+  code: number;
+  icon: string;
+}): string {
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>${opts.titleHe} — PetWash™</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;
+       display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+  .card{max-width:440px;width:100%;background:#0d0d0d;border:1px solid #1e1e1e;border-radius:20px;
+        padding:40px 36px;text-align:center;box-shadow:0 0 60px rgba(212,175,55,.08)}
+  .icon{font-size:52px;margin-bottom:20px}
+  .brand{font-size:10px;letter-spacing:5px;color:#D4AF37;text-transform:uppercase;margin-bottom:16px}
+  h1{font-size:20px;font-weight:700;color:#fff;margin-bottom:10px}
+  p{font-size:13px;color:#777;line-height:1.7;margin-bottom:20px}
+  .divider{width:40px;height:1px;background:#D4AF37;margin:0 auto 20px;opacity:.3}
+  .hint{font-size:12px;color:#555;line-height:1.6;background:#111;border-radius:10px;padding:14px 16px;margin-bottom:24px}
+  a.btn{display:inline-block;background:linear-gradient(135deg,#D4AF37,#B8941F);color:#000;
+        font-size:12px;font-weight:700;text-decoration:none;padding:12px 32px;border-radius:8px;
+        letter-spacing:2px;text-transform:uppercase}
+  .support{font-size:11px;color:#333;margin-top:20px}
+  .support a{color:#555;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">${opts.icon}</div>
+  <div class="brand">PetWash™ Prestige</div>
+  <h1>${opts.titleHe}</h1>
+  <p>${opts.bodyHe}</p>
+  <div class="divider"></div>
+  <div class="hint">
+    🔑 הQR-קוד שבמייל המקורי תמיד פועל — הוא אינו תלוי בפג תוקף הקישור הזה.
+    <br/>פשוט פתח את מייל קבלת הכרטיס ושמור את ה-QR.
+  </div>
+  <a class="btn" href="https://petwash.co.il/my-wallet">הארנק שלי</a>
+  <div class="support">שאלות? <a href="mailto:support@petwash.co.il">support@petwash.co.il</a></div>
+</div>
+</body>
+</html>`;
+}
+
 // 🍎 APPLE WALLET PASS FOR E-GIFT CARD
 // Public endpoint - uses secure token from email link (no auth required)
 router.get('/:voucherId/wallet/apple', walletPassLimiter, async (req, res) => {
@@ -572,13 +624,23 @@ router.get('/:voucherId/wallet/apple', walletPassLimiter, async (req, res) => {
     // Verify secure token
     if (!token || typeof token !== 'string') {
       logger.warn('[E-Gift Wallet] Missing token', { voucherId, correlationId });
-      return res.status(401).json({ error: 'Missing or invalid token' });
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(401).send(walletErrorPage({
+        title: 'Missing token', titleHe: 'קישור לא תקין',
+        body: 'Token missing.', bodyHe: 'הקישור חסר פרמטר אבטחה. בקש קישור חדש מהמייל המקורי.',
+        code: 401, icon: '🔒',
+      }));
     }
     
     const verifiedVoucherId = verifyWalletPassToken(token);
     if (!verifiedVoucherId || verifiedVoucherId !== voucherId) {
-      logger.warn('[E-Gift Wallet] Invalid token', { voucherId, correlationId });
-      return res.status(401).json({ error: 'Invalid or expired token' });
+      logger.warn('[E-Gift Wallet] Invalid/expired token', { voucherId, correlationId });
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(401).send(walletErrorPage({
+        title: 'Link expired', titleHe: 'קישור פג תוקף',
+        body: 'Token invalid or expired.', bodyHe: 'קישור ה-Wallet פג תוקף (בתוקף 72 שעות). הQR-קוד במייל המקורי עדיין תקף — השתמש/י בו לממש.',
+        code: 401, icon: '⏰',
+      }));
     }
     
     // Fetch voucher from database
@@ -588,25 +650,42 @@ router.get('/:voucherId/wallet/apple', walletPassLimiter, async (req, res) => {
       .where(eq(eVouchers.id, voucherId));
     
     if (!voucher) {
-      return res.status(404).json({ error: 'Gift card not found' });
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(404).send(walletErrorPage({
+        title: 'Not found', titleHe: 'כרטיס לא נמצא',
+        body: 'Gift card not found.', bodyHe: 'לא נמצא כרטיס מתנה עם מזהה זה. פנה לתמיכה.',
+        code: 404, icon: '🎁',
+      }));
     }
     
     // Check if voucher is still valid
     if (voucher.status === 'REDEEMED') {
-      return res.status(400).json({ error: 'This gift card has already been redeemed' });
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(400).send(walletErrorPage({
+        title: 'Already redeemed', titleHe: 'כרטיס מומש',
+        body: 'Already redeemed.', bodyHe: 'כרטיס המתנה כבר מומש. כל קנייה אחת — אחת בלבד.',
+        code: 400, icon: '✅',
+      }));
     }
     
     if (voucher.status === 'EXPIRED' || (voucher.expiresAt && new Date(voucher.expiresAt) < new Date())) {
-      return res.status(400).json({ error: 'This gift card has expired' });
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(400).send(walletErrorPage({
+        title: 'Card expired', titleHe: 'כרטיס פג תוקף',
+        body: 'Gift card expired.', bodyHe: 'כרטיס המתנה פג תוקפו. פנה לתמיכה לחידוש.',
+        code: 400, icon: '📅',
+      }));
     }
     
     // Check if Apple Wallet is configured
     if (!AppleWalletService.hasValidCertificates()) {
       logger.warn('[E-Gift Wallet] Apple Wallet not configured', { correlationId });
-      return res.status(503).json({ 
-        error: 'Apple Wallet is temporarily unavailable',
-        message: 'Please use the QR code to redeem your gift card at any K9000 station'
-      });
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(503).send(walletErrorPage({
+        title: 'Apple Wallet unavailable', titleHe: 'Apple Wallet אינו זמין כרגע',
+        body: 'Apple Wallet temporarily unavailable.', bodyHe: 'Apple Wallet אינו זמין כרגע. השתמש/י בקוד QR מהמייל לממש ישירות בתחנת K9000.',
+        code: 503, icon: '🍎',
+      }));
     }
     
     // Generate QR code data for voucher redemption
@@ -662,13 +741,23 @@ router.get('/:voucherId/wallet/google', walletPassLimiter, async (req, res) => {
     // Verify secure token
     if (!token || typeof token !== 'string') {
       logger.warn('[E-Gift Wallet] Missing token', { voucherId, correlationId });
-      return res.status(401).json({ error: 'Missing or invalid token' });
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(401).send(walletErrorPage({
+        title: 'Missing token', titleHe: 'קישור לא תקין',
+        body: 'Token missing.', bodyHe: 'הקישור חסר פרמטר אבטחה. בקש קישור חדש מהמייל המקורי.',
+        code: 401, icon: '🔒',
+      }));
     }
     
     const verifiedVoucherId = verifyWalletPassToken(token);
     if (!verifiedVoucherId || verifiedVoucherId !== voucherId) {
-      logger.warn('[E-Gift Wallet] Invalid token', { voucherId, correlationId });
-      return res.status(401).json({ error: 'Invalid or expired token' });
+      logger.warn('[E-Gift Wallet] Invalid/expired token', { voucherId, correlationId });
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(401).send(walletErrorPage({
+        title: 'Link expired', titleHe: 'קישור פג תוקף',
+        body: 'Token invalid or expired.', bodyHe: 'קישור ה-Wallet פג תוקף (בתוקף 72 שעות). הQR-קוד במייל המקורי עדיין תקף — השתמש/י בו לממש.',
+        code: 401, icon: '⏰',
+      }));
     }
     
     // Fetch voucher from database
@@ -678,25 +767,42 @@ router.get('/:voucherId/wallet/google', walletPassLimiter, async (req, res) => {
       .where(eq(eVouchers.id, voucherId));
     
     if (!voucher) {
-      return res.status(404).json({ error: 'Gift card not found' });
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(404).send(walletErrorPage({
+        title: 'Not found', titleHe: 'כרטיס לא נמצא',
+        body: 'Gift card not found.', bodyHe: 'לא נמצא כרטיס מתנה עם מזהה זה. פנה לתמיכה.',
+        code: 404, icon: '🎁',
+      }));
     }
     
     // Check if voucher is still valid
     if (voucher.status === 'REDEEMED') {
-      return res.status(400).json({ error: 'This gift card has already been redeemed' });
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(400).send(walletErrorPage({
+        title: 'Already redeemed', titleHe: 'כרטיס מומש',
+        body: 'Already redeemed.', bodyHe: 'כרטיס המתנה כבר מומש. כל קנייה אחת — אחת בלבד.',
+        code: 400, icon: '✅',
+      }));
     }
     
     if (voucher.status === 'EXPIRED' || (voucher.expiresAt && new Date(voucher.expiresAt) < new Date())) {
-      return res.status(400).json({ error: 'This gift card has expired' });
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(400).send(walletErrorPage({
+        title: 'Card expired', titleHe: 'כרטיס פג תוקף',
+        body: 'Gift card expired.', bodyHe: 'כרטיס המתנה פג תוקפו. פנה לתמיכה לחידוש.',
+        code: 400, icon: '📅',
+      }));
     }
     
     // Check if Google Wallet is configured
     if (!GoogleWalletService.hasValidCredentials()) {
       logger.warn('[E-Gift Wallet] Google Wallet not configured', { correlationId });
-      return res.status(503).json({ 
-        error: 'Google Wallet is temporarily unavailable',
-        message: 'Please use the QR code to redeem your gift card at any K9000 station'
-      });
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(503).send(walletErrorPage({
+        title: 'Google Wallet unavailable', titleHe: 'Google Wallet אינו זמין כרגע',
+        body: 'Google Wallet temporarily unavailable.', bodyHe: 'Google Wallet אינו זמין כרגע. השתמש/י בקוד QR מהמייל לממש ישירות בתחנת K9000.',
+        code: 503, icon: '🔵',
+      }));
     }
     
     // Generate QR code data for voucher redemption
