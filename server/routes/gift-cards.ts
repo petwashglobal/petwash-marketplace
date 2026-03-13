@@ -13,6 +13,11 @@ import { AppleWalletService } from '../appleWallet';
 import { GoogleWalletService } from '../googleWallet';
 import rateLimit from 'express-rate-limit';
 import { generateEGiftPurchaseConfirmation, type SeasonalTheme } from '../email/templates/egift-purchase-confirmation-2026';
+import {
+  generateWalletPassToken,
+  verifyWalletPassToken,
+  buildWalletUrls,
+} from '../lib/walletPassToken';
 
 // Wallet pass download rate limiter (prevents brute-force token guessing)
 const walletPassLimiter = rateLimit({
@@ -22,86 +27,6 @@ const walletPassLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-
-// 🔐 WALLET PASS TOKEN SECRET (FAIL CLOSED - no fallback for security)
-const WALLET_TOKEN_SECRET = process.env.WALLET_LINK_SECRET || process.env.COOKIE_SECRET;
-
-/**
- * Check if wallet pass feature is properly configured
- * Returns false if secret is missing (fail closed)
- */
-function isWalletPassConfigured(): boolean {
-  return Boolean(WALLET_TOKEN_SECRET && WALLET_TOKEN_SECRET.length >= 32);
-}
-
-/**
- * Generate secure, time-limited wallet pass token
- * Uses HMAC to prevent tampering
- * SECURITY: Returns null if secret not configured (fail closed)
- */
-function generateWalletPassToken(voucherId: string, expiresInHours = 72): { token: string; expiresAt: number } | null {
-  // SECURITY: Fail closed - refuse to generate token without proper secret
-  if (!isWalletPassConfigured()) {
-    logger.error('[Wallet Token] Cannot generate token - WALLET_LINK_SECRET or COOKIE_SECRET not configured (min 32 chars required)');
-    return null;
-  }
-  
-  const expiresAt = Date.now() + (expiresInHours * 60 * 60 * 1000);
-  const payload = `${voucherId}|${expiresAt}`;
-  const signature = crypto
-    .createHmac('sha256', WALLET_TOKEN_SECRET!)
-    .update(payload)
-    .digest('base64url');
-  
-  return {
-    token: `${Buffer.from(payload).toString('base64url')}.${signature}`,
-    expiresAt
-  };
-}
-
-/**
- * Verify wallet pass token
- * Returns voucherId if valid, null if invalid/expired
- * SECURITY: Returns null if secret not configured (fail closed)
- */
-function verifyWalletPassToken(token: string): string | null {
-  // SECURITY: Fail closed - refuse to verify without proper secret
-  if (!isWalletPassConfigured()) {
-    logger.error('[Wallet Token] Cannot verify token - WALLET_LINK_SECRET or COOKIE_SECRET not configured');
-    return null;
-  }
-  
-  try {
-    const [payloadB64, signature] = token.split('.');
-    if (!payloadB64 || !signature) return null;
-    
-    const payload = Buffer.from(payloadB64, 'base64url').toString();
-    const [voucherId, expiresAtStr] = payload.split('|');
-    const expiresAt = parseInt(expiresAtStr, 10);
-    
-    // Check expiration
-    if (Date.now() > expiresAt) {
-      logger.warn('[Wallet Token] Token expired', { voucherId });
-      return null;
-    }
-    
-    // Verify signature
-    const expectedSignature = crypto
-      .createHmac('sha256', WALLET_TOKEN_SECRET!)
-      .update(payload)
-      .digest('base64url');
-    
-    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
-      logger.warn('[Wallet Token] Invalid signature', { voucherId });
-      return null;
-    }
-    
-    return voucherId;
-  } catch (error) {
-    logger.error('[Wallet Token] Verification error', error);
-    return null;
-  }
-}
 
 const router = Router();
 

@@ -14,6 +14,8 @@ interface EGiftPurchaseConfirmationParams {
   deliveryMethod: string;
   seasonalTheme?: SeasonalTheme;
   language: 'he' | 'en';
+  appleWalletUrl?: string | null;
+  googleWalletUrl?: string | null;
 }
 
 interface ThemeConfig {
@@ -183,6 +185,8 @@ export function generateEGiftPurchaseConfirmation(params: EGiftPurchaseConfirmat
     personalMessage,
     deliveryMethod,
     language,
+    appleWalletUrl,
+    googleWalletUrl,
   } = params;
 
   const seasonalTheme = params.seasonalTheme || detectSeasonalTheme();
@@ -390,18 +394,73 @@ export function generateEGiftPurchaseConfirmation(params: EGiftPurchaseConfirmat
         </div>
       </div>
 
-      <!-- CTA -->
+      <!-- CTA — Apple Wallet + Google Wallet + My Wallet -->
       <div class="fi d5" style="padding:32px 40px;text-align:center;background:white;border-top:1px solid #f0ede8;">
-        <p style="font-size:12px;color:#888;margin:0 0 20px;line-height:1.7;max-width:360px;display:inline-block;">
-          ${isHe
-            ? 'תוכל/י לעקוב אחר מימוש כרטיס המתנה בחשבון שלך.'
-            : 'You can track the gift card redemption status in your account.'}
+        <p style="font-size:13px;color:#555;margin:0 0 8px;font-weight:600;letter-spacing:0.5px;">
+          ${isHe ? '📲 הוסף לארנק הדיגיטלי שלך' : '📲 Add your gift card to your digital wallet'}
         </p>
-        <div>
-          <a href="https://petwash.co.il/my-wallet" style="display:inline-block;padding:14px 44px;border:1px solid #1a1a1a;color:#1a1a1a;text-decoration:none;font-size:10px;letter-spacing:4px;text-transform:uppercase;font-weight:500;">
-            ${isHe ? 'הארנק שלי' : 'My Wallet'}
+        <p style="font-size:11px;color:#999;margin:0 0 22px;line-height:1.6;max-width:360px;display:inline-block;">
+          ${isHe
+            ? 'לחץ/י על הכפתור המתאים — הגישה לכרטיס תמיד תהיה ביד.'
+            : 'Tap the button below — your gift card will always be one tap away.'}
+        </p>
+
+        <!-- Wallet buttons row -->
+        <div style="display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
+
+          ${appleWalletUrl ? `
+          <!-- Apple Wallet button — official badge style -->
+          <a href="${appleWalletUrl}" style="display:inline-block;text-decoration:none;" target="_blank" rel="noopener">
+            <img
+              src="https://developer.apple.com/wallet/add-to-apple-wallet-guidelines/downloads/Add_to_Apple_Wallet_rgb_US_UK.svg"
+              alt="Add to Apple Wallet"
+              width="160"
+              height="52"
+              style="display:block;border-radius:8px;"
+              onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block';"
+            />
+            <span style="display:none;padding:13px 24px;background:#000;color:#fff;border-radius:8px;font-size:13px;font-weight:600;letter-spacing:0.3px;">
+              🍎 ${isHe ? 'הוסף ל-Apple Wallet' : 'Add to Apple Wallet'}
+            </span>
           </a>
+          ` : ''}
+
+          ${googleWalletUrl ? `
+          <!-- Google Wallet button — official badge style -->
+          <a href="${googleWalletUrl}" style="display:inline-block;text-decoration:none;" target="_blank" rel="noopener">
+            <img
+              src="https://wallet.google.com/intl/en_us/images/google-wallet-badge.svg"
+              alt="Add to Google Wallet"
+              width="160"
+              height="52"
+              style="display:block;border-radius:8px;"
+              onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block';"
+            />
+            <span style="display:none;padding:13px 24px;background:#1a73e8;color:#fff;border-radius:8px;font-size:13px;font-weight:600;letter-spacing:0.3px;">
+              🔵 ${isHe ? 'הוסף ל-Google Wallet' : 'Add to Google Wallet'}
+            </span>
+          </a>
+          ` : ''}
+
+          ${!appleWalletUrl && !googleWalletUrl ? `
+          <!-- Fallback if passes not configured -->
+          <p style="font-size:11px;color:#bbb;margin:0;">
+            ${isHe ? 'כרטיסי ארנק יהיו זמינים בקרוב' : 'Wallet passes coming soon'}
+          </p>
+          ` : ''}
+
         </div>
+
+        <!-- Divider -->
+        <div style="width:40px;height:1px;background:#e8e4df;margin:0 auto 18px;"></div>
+
+        <!-- My Wallet link -->
+        <p style="font-size:11px;color:#aaa;margin:0 0 12px;">
+          ${isHe ? 'צפה במצב המימוש בחשבון שלך' : 'Track redemption status in your account'}
+        </p>
+        <a href="https://petwash.co.il/my-wallet" style="display:inline-block;padding:12px 36px;border:1px solid #1a1a1a;color:#1a1a1a;text-decoration:none;font-size:10px;letter-spacing:4px;text-transform:uppercase;font-weight:500;">
+          ${isHe ? 'הארנק שלי' : 'My Wallet'}
+        </a>
       </div>
 
       <!-- Footer -->
