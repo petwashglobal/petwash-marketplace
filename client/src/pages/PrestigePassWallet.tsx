@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocation } from 'wouter';
 import { Layout } from '@/components/Layout';
 import { useLanguage } from '@/lib/languageStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { QRCodeSVG } from 'qrcode.react';
-import { Shield, RefreshCw, Wallet, ChevronLeft, ChevronRight, CreditCard, Zap, Gift, Star, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Shield, RefreshCw, Wallet, ChevronLeft, ChevronRight, CreditCard, Zap, Gift, Star, Clock, CheckCircle, AlertCircle, Home, MapPin, BookOpen, Droplets, ArrowUpCircle, Monitor, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import prestigeCardBlack from '@assets/prestige-card-black.png';
@@ -272,6 +273,7 @@ export default function PrestigePassWallet() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const [, navigate]                  = useLocation();
   const [selectedBay, setSelectedBay] = useState<'left' | 'right' | 'any'>('any');
   const [qrToken, setQrToken]         = useState<QrToken | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(QR_TTL);
@@ -682,6 +684,344 @@ export default function PrestigePassWallet() {
                 ? 'הקרדיט מנוכה אוטומטית בעת ההזמנה — ראשון פג: קרדיט מבצע, אז eGift, אז ארנק.'
                 : 'Balance is deducted automatically at checkout — promo first, then eGift, then wallet.'}
             </p>
+          </div>
+        </div>
+
+        {/* ── Smart Pass Panel ── */}
+        <div style={{ padding:'24px 20px 0' }}>
+
+          {/* K9000 Machine Activation Card */}
+          {(() => {
+            const K9000_MIN_CENTS = 3900; // ₪39 basic self-service wash
+            const K9000_FULL_CENTS = 7900; // ₪79 premium full-service
+            const shortfall = Math.max(0, K9000_MIN_CENTS - totalLiquid);
+            const hasPackage = balances.packageWashesLeft > 0;
+            const canWash    = hasPackage || totalLiquid >= K9000_MIN_CENTS;
+            const canWashFull = hasPackage || totalLiquid >= K9000_FULL_CENTS;
+
+            return (
+              <div style={{
+                background: '#ffffff',
+                border: `1.5px solid ${canWash ? 'rgba(34,197,94,0.3)' : 'rgba(212,175,55,0.2)'}`,
+                borderRadius: '20px',
+                padding: '20px',
+                boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
+                marginBottom: '16px',
+              }}>
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                  <div style={{
+                    width: '38px', height: '38px', borderRadius: '10px',
+                    background: canWash ? 'rgba(34,197,94,0.1)' : 'rgba(212,175,55,0.08)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Droplets size={20} color={canWash ? '#22c55e' : '#D4AF37'} />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#1A1A1A' }}>
+                      {he ? 'תחנת K9000' : 'K9000 Dog Wash Station'}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#9E9E9E', marginTop: '1px' }}>
+                      {he ? 'מכונת שטיפה אוטומטית' : 'Automated self-service kiosk'}
+                    </div>
+                  </div>
+                  {/* Status pill */}
+                  <div style={{
+                    marginLeft: 'auto',
+                    padding: '4px 10px',
+                    borderRadius: '100px',
+                    background: canWash ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.08)',
+                    border: `1px solid ${canWash ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.2)'}`,
+                  }}>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: canWash ? '#16a34a' : '#dc2626' }}>
+                      {canWash ? (he ? '✓ מוכן' : '✓ Ready') : (he ? '✗ אין מספיק' : '✗ Insufficient')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Balance vs price */}
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr',
+                  gap: '8px', marginBottom: '14px',
+                }}>
+                  <div style={{
+                    background: 'rgba(212,175,55,0.05)', borderRadius: '10px', padding: '10px 12px',
+                    border: '1px solid rgba(212,175,55,0.1)',
+                  }}>
+                    <div style={{ fontSize: '0.65rem', color: '#9E9E9E', fontWeight: 600, marginBottom: '2px' }}>
+                      {he ? 'יתרה זמינה' : 'Your Balance'}
+                    </div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: canWash ? '#16a34a' : '#dc2626' }}>
+                      {hasPackage
+                        ? `${balances.packageWashesLeft} ${he ? 'שטיפות' : 'washes'}`
+                        : `₪${(totalLiquid / 100).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`}
+                    </div>
+                  </div>
+                  <div style={{
+                    background: 'rgba(0,0,0,0.02)', borderRadius: '10px', padding: '10px 12px',
+                    border: '1px solid rgba(0,0,0,0.06)',
+                  }}>
+                    <div style={{ fontSize: '0.65rem', color: '#9E9E9E', fontWeight: 600, marginBottom: '2px' }}>
+                      {he ? 'מחיר שטיפה' : 'Wash Price'}
+                    </div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1A1A1A' }}>
+                      {he ? 'מ-₪39' : 'from ₪39'}
+                    </div>
+                  </div>
+                </div>
+
+                {canWash ? (
+                  /* CAN WASH — prompt them to scan */
+                  <div style={{
+                    background: 'rgba(34,197,94,0.06)', borderRadius: '12px', padding: '12px 14px',
+                    border: '1px solid rgba(34,197,94,0.2)', display: 'flex', alignItems: 'center', gap: '10px',
+                  }}>
+                    <CheckCircle size={18} color="#16a34a" style={{ flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#16a34a' }}>
+                        {hasPackage
+                          ? (he ? 'יש לך חבילת שטיפות — סרוק את קוד ה-QR למעלה' : 'Package wash ready — scan QR above to start machine')
+                          : canWashFull
+                            ? (he ? 'יתרה מלאה — סרוק את קוד ה-QR למעלה להפעלה' : 'Full balance — scan QR above to activate any wash')
+                            : (he ? 'יתרה לשטיפה בסיסית — סרוק QR למעלה' : 'Balance covers basic wash — scan QR above to activate')}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#9E9E9E', marginTop: '2px' }}>
+                        {he ? 'הקוד תקף 45 שניות • ניכוי אוטומטי בסיום' : '45-second token • auto-deducted on completion'}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* CANNOT WASH — show 3 options */
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{
+                      background: 'rgba(239,68,68,0.05)', borderRadius: '10px', padding: '10px 12px',
+                      border: '1px solid rgba(239,68,68,0.15)', marginBottom: '4px',
+                    }}>
+                      <span style={{ fontSize: '0.78rem', color: '#dc2626', fontWeight: 600 }}>
+                        {he
+                          ? `חסרים ₪${(shortfall / 100).toFixed(0)} להפעלת מכונה דרך הכרטיס`
+                          : `₪${(shortfall / 100).toFixed(0)} short to activate machine via pass`}
+                      </span>
+                    </div>
+
+                    {/* Option 1: Top Up */}
+                    <button
+                      onClick={() => toast({ title: he ? 'טעינת ארנק' : 'Top Up Wallet', description: he ? 'עמוד הטעינה יהיה זמין בקרוב' : 'Top-up page coming soon — contact support to add funds.' })}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        background: 'rgba(212,175,55,0.08)', border: '1.5px solid rgba(212,175,55,0.3)',
+                        borderRadius: '12px', padding: '12px 14px', cursor: 'pointer', textAlign: 'left',
+                      }}
+                    >
+                      <ArrowUpCircle size={18} color="#D4AF37" style={{ flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#B8941F' }}>
+                          {he ? `טען ₪${(shortfall / 100).toFixed(0)} ויותר` : `Top up ₪${(shortfall / 100).toFixed(0)}+`}
+                        </div>
+                        <div style={{ fontSize: '0.68rem', color: '#9E9E9E' }}>
+                          {he ? 'הוסף כסף לארנק הפרסטיז שלך' : 'Add credit to your Prestige wallet'}
+                        </div>
+                      </div>
+                      <ChevronRight size={16} color="#D4AF37" style={{ marginLeft: 'auto' }} />
+                    </button>
+
+                    {/* Option 2: Pay at Nayax Terminal */}
+                    <button
+                      onClick={() => toast({
+                        title: he ? 'תשלום בטרמינל Nayax' : 'Pay at Nayax Terminal',
+                        description: he
+                          ? 'הניח כרטיס אשראי, Apple Pay או Google Pay ישירות על קורא הכרטיסים שבמכונה.'
+                          : 'Tap your card, Apple Pay, or Google Pay directly on the machine\'s card reader.',
+                      })}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        background: '#ffffff', border: '1.5px solid rgba(0,0,0,0.1)',
+                        borderRadius: '12px', padding: '12px 14px', cursor: 'pointer', textAlign: 'left',
+                      }}
+                    >
+                      <Monitor size={18} color="#1A1A1A" style={{ flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1A1A1A' }}>
+                          {he ? 'שלם ישירות בטרמינל Nayax' : 'Pay at Nayax terminal'}
+                        </div>
+                        <div style={{ fontSize: '0.68rem', color: '#9E9E9E' }}>
+                          {he ? 'Apple Pay • Google Pay • כרטיס אשראי' : 'Apple Pay • Google Pay • Credit card'}
+                        </div>
+                      </div>
+                      <ChevronRight size={16} color="#9E9E9E" style={{ marginLeft: 'auto' }} />
+                    </button>
+
+                    {/* Option 3: Buy Wash Package */}
+                    <button
+                      onClick={() => toast({ title: he ? 'חבילת שטיפות' : 'Wash Package', description: he ? 'רכישת חבילות שטיפה תהיה זמינה בקרוב' : 'Wash package purchase coming soon.' })}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        background: '#ffffff', border: '1.5px solid rgba(0,0,0,0.1)',
+                        borderRadius: '12px', padding: '12px 14px', cursor: 'pointer', textAlign: 'left',
+                      }}
+                    >
+                      <Package size={18} color="#8b5cf6" style={{ flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1A1A1A' }}>
+                          {he ? 'רכוש חבילת שטיפות' : 'Buy wash package'}
+                        </div>
+                        <div style={{ fontSize: '0.68rem', color: '#9E9E9E' }}>
+                          {he ? '3 שטיפות ב-₪99 • 5 שטיפות ב-₪149' : '3 washes ₪99 • 5 washes ₪149'}
+                        </div>
+                      </div>
+                      <ChevronRight size={16} color="#9E9E9E" style={{ marginLeft: 'auto' }} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Online Service Booking Panel */}
+          <div style={{
+            background: '#ffffff',
+            border: '1.5px solid rgba(212,175,55,0.2)',
+            borderRadius: '20px',
+            padding: '20px',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
+          }}>
+            <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#7A7068', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 14px' }}>
+              {he ? 'הזמן שירות עם הכרטיס' : 'Book a service with your pass'}
+            </h3>
+
+            {(() => {
+              const services = [
+                {
+                  id: 'sitter',
+                  icon: <Home size={18} />,
+                  label:   { en: 'Pet Sitter / Boarding', he: 'פנסיון ומטפל לחיות' },
+                  detail:  { en: 'Overnight care from ₪80/night', he: 'טיפול לילי מ-₪80/לילה' },
+                  fromCents: 8000,
+                  path: '/sitter-suite',
+                  color: '#8b5cf6',
+                },
+                {
+                  id: 'walker',
+                  icon: <MapPin size={18} />,
+                  label:   { en: 'Dog Walker', he: 'מטייל כלבים' },
+                  detail:  { en: 'Walks from ₪65/session', he: 'טיולים מ-₪65 לטיול' },
+                  fromCents: 6500,
+                  path: '/walk-my-pet',
+                  color: '#0ea5e9',
+                },
+                {
+                  id: 'academy',
+                  icon: <BookOpen size={18} />,
+                  label:   { en: 'Academy — Training', he: 'אקדמיה — אימון' },
+                  detail:  { en: 'Courses from ₪200', he: 'קורסים מ-₪200' },
+                  fromCents: 20000,
+                  path: '/academy',
+                  color: '#f59e0b',
+                },
+              ];
+
+              return services.map((svc) => {
+                const canBook   = totalLiquid >= svc.fromCents;
+                const partial   = totalLiquid > 0 && !canBook;
+                const shortfall = Math.max(0, svc.fromCents - totalLiquid);
+                const shortILS  = (shortfall / 100).toFixed(0);
+
+                return (
+                  <div
+                    key={svc.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                      padding: '13px 0',
+                      borderBottom: '1px solid rgba(212,175,55,0.08)',
+                    }}
+                  >
+                    {/* Icon */}
+                    <div style={{
+                      width: '36px', height: '36px', borderRadius: '9px',
+                      background: `${svc.color}14`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                      color: svc.color,
+                    }}>
+                      {svc.icon}
+                    </div>
+
+                    {/* Label + detail */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1A1A1A' }}>
+                        {he ? svc.label.he : svc.label.en}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#9E9E9E', marginTop: '1px' }}>
+                        {he ? svc.detail.he : svc.detail.en}
+                      </div>
+                      {/* Status line */}
+                      {canBook ? (
+                        <div style={{ fontSize: '0.68rem', color: '#16a34a', fontWeight: 600, marginTop: '3px' }}>
+                          {he ? '✓ ניתן להזמין עם יתרה' : '✓ Covered by your pass balance'}
+                        </div>
+                      ) : partial ? (
+                        <div style={{ fontSize: '0.68rem', color: '#f59e0b', fontWeight: 600, marginTop: '3px' }}>
+                          {he
+                            ? `⚠ חסרים ₪${shortILS} — הפרש יחויב מכרטיס`
+                            : `⚠ ₪${shortILS} short — remainder charged to card`}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '0.68rem', color: '#dc2626', fontWeight: 600, marginTop: '3px' }}>
+                          {he ? '✗ אין יתרה — יש לטעון כרטיס' : '✗ No balance — top up to book with pass'}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action button */}
+                    <button
+                      onClick={() => navigate(svc.path)}
+                      style={{
+                        flexShrink: 0,
+                        padding: '8px 14px',
+                        borderRadius: '100px',
+                        border: canBook
+                          ? '1.5px solid rgba(34,197,94,0.4)'
+                          : partial
+                            ? '1.5px solid rgba(245,158,11,0.4)'
+                            : '1.5px solid rgba(212,175,55,0.3)',
+                        background: canBook
+                          ? 'rgba(34,197,94,0.08)'
+                          : partial
+                            ? 'rgba(245,158,11,0.06)'
+                            : 'rgba(212,175,55,0.05)',
+                        color: canBook ? '#16a34a' : partial ? '#d97706' : '#B8941F',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: '4px',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {canBook
+                        ? (he ? 'הזמן' : 'Book')
+                        : partial
+                          ? (he ? 'הזמן →' : 'Book →')
+                          : (he ? 'טעינה' : 'Top Up')}
+                      <ChevronRight size={13} />
+                    </button>
+                  </div>
+                );
+              });
+            })()}
+
+            {/* Footnote: how partial payment works */}
+            <div style={{
+              marginTop: '12px', padding: '10px 12px',
+              background: 'rgba(212,175,55,0.04)',
+              borderRadius: '10px', border: '1px solid rgba(212,175,55,0.12)',
+            }}>
+              <p style={{ margin: 0, fontSize: '0.68rem', color: '#9E9E9E', lineHeight: 1.5 }}>
+                <strong style={{ color: '#B8941F' }}>{he ? 'איך עובד: ' : 'How it works: '}</strong>
+                {he
+                  ? 'יתרת הכרטיס מנוכה קודם. הפרש (אם יש) יחויב מכרטיס אשראי מקושר. K9000 דורש כיסוי מלא מהכרטיס — אחרת שלם ב-Nayax.'
+                  : 'Pass balance is deducted first. Any remainder is charged to your linked card. K9000 requires full pass coverage — otherwise pay at the Nayax terminal.'}
+              </p>
+            </div>
           </div>
         </div>
 
