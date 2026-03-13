@@ -18,11 +18,12 @@ import express from 'express';
 import { validateK9000MachineIP, validateMachineSecretKey } from '../middleware/k9000Security';
 import { NayaxSparkService } from '../services/NayaxSparkService';
 import { db } from '../db';
-import { nayaxTransactions, auditLedger } from '@shared/schema';
+import { nayaxTransactions, auditLedger, stations } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { k9000StationBookingEngine } from '../services/booking-engines/k9000/K9000StationBookingEngine';
+import VATCalculatorService from '../services/VATCalculatorService';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
 
@@ -152,7 +153,40 @@ router.post('/wash/start_cycle', async (req, res) => {
         status: 'PAYMENT_REQUIRED',
       });
     }
-    
+
+    // === IDEMPOTENCY CHECK: prevent double-activation for same transaction ===
+    if (transactionId) {
+      const existingWash = await db
+        .select({ id: auditLedger.id, metadata: auditLedger.metadata })
+        .from(auditLedger)
+        .where(eq(auditLedger.eventType, 'k9000_wash_activated'))
+        .limit(50);
+
+      const duplicate = existingWash.find((row) => {
+        try {
+          const meta = typeof row.metadata === 'string'
+            ? JSON.parse(row.metadata)
+            : row.metadata;
+          return meta?.transactionId === transactionId;
+        } catch {
+          return false;
+        }
+      });
+
+      if (duplicate) {
+        logger.warn('[K9000 Wash] Duplicate activation attempt blocked', {
+          transactionId,
+          existingAuditId: duplicate.id,
+        });
+        return res.status(409).json({
+          error: 'עסקה זו כבר שימשה להפעלת עמדת שטיפה.',
+          errorEn: 'This payment has already been used to start a wash cycle.',
+          status: 'ALREADY_ACTIVATED',
+          transactionId,
+        });
+      }
+    }
+
     // === STEP 2: SEND ACTIVATION COMMAND TO K9000 ===
     // In production, this would send a command to the K9000 controller
     // For now, we'll simulate and log the wash start
@@ -257,6 +291,39 @@ router.post('/wash/start_cycle', async (req, res) => {
       });
     }
     
+    // === STEP 4.7: RECORD REVENUE (100% PETWASH — NO PROVIDER SPLIT) ===
+    try {
+      const nayaxRow = transactionId
+        ? await db
+            .select({ amount: nayaxTransactions.amount })
+            .from(nayaxTransactions)
+            .where(eq(nayaxTransactions.id, transactionId))
+            .limit(1)
+        : [];
+
+      const chargeILS = nayaxRow.length > 0 ? parseFloat(nayaxRow[0].amount) : 0;
+
+      if (!isFreeWash && chargeILS > 0) {
+        await VATCalculatorService.recordK9000Transaction({
+          washId,
+          machineId,
+          transactionId: transactionId ?? undefined,
+          chargeILS,
+          washType,
+          isFreeWash,
+          customerUid: customerUid ?? undefined,
+          stationId: stationInfo?.stationId ?? undefined,
+        });
+      } else {
+        logger.info('[K9000 Revenue] Free wash — no revenue entry needed', { washId });
+      }
+    } catch (revenueError: any) {
+      logger.error('[K9000 Revenue] Failed to record revenue', {
+        washId,
+        error: revenueError.message,
+      });
+    }
+
     // === STEP 5: SEND SUCCESS RESPONSE ===
     
     res.status(200).json({

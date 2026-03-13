@@ -39,7 +39,22 @@ const router = Router();
 // ─────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────
-const QR_SECRET = process.env.PRESTIGE_QR_SECRET || 'prestige-qr-hmac-secret-2026-replace-in-prod';
+const _RAW_QR_SECRET = process.env.PRESTIGE_QR_SECRET;
+if (!_RAW_QR_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[Prestige Pass] FATAL: PRESTIGE_QR_SECRET env var is not set. ' +
+      'QR tokens are HMAC-signed — a missing secret allows anyone to forge valid tokens. ' +
+      'Set PRESTIGE_QR_SECRET in Cloud Run secrets before deploying.'
+    );
+  } else {
+    logger.warn(
+      '[Prestige Pass] PRESTIGE_QR_SECRET not set — using insecure dev-only fallback. ' +
+      'NEVER run without this secret in production.'
+    );
+  }
+}
+const QR_SECRET = _RAW_QR_SECRET ?? 'dev-only-insecure-prestige-qr-secret-do-not-use-in-prod';
 const QR_TTL_SECONDS = 45;
 
 // Tier → card variant

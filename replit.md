@@ -240,6 +240,12 @@ The following composite indexes were created via REST API and may still be build
 - **EGiftVatMode type**: `deferred_liability | taxable_sale` — default `deferred_liability` pending CPA confirmation
 - **MoneyFlowSummary**: includes `totalWalletRedemptions`, `totalWalletRedemptionValueILS`, `totalPlatformRevenue`
 - **VAT fix**: marketplace bookings now compute VAT as `platform_fee × 18%` (was hardcoded 0)
+- **Transaction engine architect audit (2026-03-13)** — 5 issues found and fixed:
+  1. **[CRITICAL] Escrow ownership gap** — `POST /:escrowId/release|refund|dispute` and `GET /:escrowId` now enforce that caller is the customer or provider of that specific escrow; 403 returned otherwise. `GET /booking/:bookingId` filters results to caller's own escrows only.
+  2. **[CRITICAL] Prestige QR secret forgeable** — `PRESTIGE_QR_SECRET` env var now fails-fast with a startup `throw` in `NODE_ENV=production`; logs a `WARN` in dev with a clearly non-production fallback string.
+  3. **[HIGH] K9000 double-charge** — `POST /api/k9000/wash/start_cycle` now checks `auditLedger` for any existing `k9000_wash_activated` event with the same `transactionId` before activating; returns HTTP 409 `ALREADY_ACTIVATED` if found.
+  4. **[HIGH] K9000 revenue split** — `VATCalculatorService.calculateK9000Revenue()` and `recordK9000Transaction()` added. Every paid K9000 wash now writes to `k9000_revenue_ledger` Firestore collection with `netToProvider: 0`, `netToPlatform: netRevenue`, `revenueOwner: "petwash"`. VAT back-calculated from consumer-inclusive price: `vat = price × (0.18/1.18)`.
+  5. **[HIGH] K9000 schema import gap** — `stations` table was used but not imported in `server/routes/k9000.ts`; fixed.
 - **EscrowService**: `disputeEscrowPayment` sets `autoReleaseBlocked: true`; `autoReleaseExpiredHolds` skips disputed/blocked holds
 - **Section 14 Finance Guards** (`server/middleware/financeGuards.ts`): 5 hard-block guards
   1. `requireProviderIdForPayout` — blocks `provider_payout` without `providerId`

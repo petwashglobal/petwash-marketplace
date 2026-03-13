@@ -1,9 +1,34 @@
 import express from "express";
-import EscrowService from "../services/EscrowService";
+import EscrowService, { type EscrowPayment } from "../services/EscrowService";
 import { requireAuth } from "../customAuth";
 import { requireAdmin } from "../adminAuth";
+import { logger } from "../lib/logger";
 
 const router = express.Router();
+
+async function assertEscrowParticipant(
+  escrowId: string,
+  callerId: string
+): Promise<EscrowPayment> {
+  const escrow = await EscrowService.getEscrowPayment(escrowId);
+  if (!escrow) {
+    const err: any = new Error("Escrow not found");
+    err.status = 404;
+    throw err;
+  }
+  if (escrow.customerId !== callerId && escrow.providerId !== callerId) {
+    logger.warn("[Escrow] Unauthorized access attempt", {
+      escrowId,
+      callerId,
+      customerId: escrow.customerId,
+      providerId: escrow.providerId,
+    });
+    const err: any = new Error("Forbidden: you are not a party to this escrow");
+    err.status = 403;
+    throw err;
+  }
+  return escrow;
+}
 
 router.post("/create", requireAuth, async (req, res) => {
   try {
@@ -21,21 +46,29 @@ router.post("/create", requireAuth, async (req, res) => {
 
     res.json({ escrow });
   } catch (error: any) {
-    console.error("[Escrow] Error creating:", error);
-    res.status(500).json({ error: error.message });
+    logger.error("[Escrow] Error creating", { error: error.message });
+    res.status(error.status ?? 500).json({ error: error.message });
   }
 });
 
 router.post("/:escrowId/release", requireAuth, async (req, res) => {
   try {
     const { escrowId } = req.params;
-    const releasedBy = req.user!.uid;
+    const callerId = req.user!.uid;
 
-    await EscrowService.releaseEscrowPayment(escrowId, releasedBy);
+    const escrow = await assertEscrowParticipant(escrowId, callerId);
+
+    if (escrow.customerId !== callerId) {
+      return res.status(403).json({
+        error: "Only the customer who created this escrow can release it",
+      });
+    }
+
+    await EscrowService.releaseEscrowPayment(escrowId, callerId);
     res.json({ success: true });
   } catch (error: any) {
-    console.error("[Escrow] Error releasing:", error);
-    res.status(500).json({ error: error.message });
+    logger.error("[Escrow] Error releasing", { error: error.message });
+    res.status(error.status ?? 500).json({ error: error.message });
   }
 });
 
@@ -43,13 +76,15 @@ router.post("/:escrowId/refund", requireAuth, async (req, res) => {
   try {
     const { escrowId } = req.params;
     const { reason } = req.body;
-    const refundedBy = req.user!.uid;
+    const callerId = req.user!.uid;
 
-    await EscrowService.refundEscrowPayment(escrowId, reason, refundedBy);
+    await assertEscrowParticipant(escrowId, callerId);
+
+    await EscrowService.refundEscrowPayment(escrowId, reason, callerId);
     res.json({ success: true });
   } catch (error: any) {
-    console.error("[Escrow] Error refunding:", error);
-    res.status(500).json({ error: error.message });
+    logger.error("[Escrow] Error refunding", { error: error.message });
+    res.status(error.status ?? 500).json({ error: error.message });
   }
 });
 
@@ -57,13 +92,15 @@ router.post("/:escrowId/dispute", requireAuth, async (req, res) => {
   try {
     const { escrowId } = req.params;
     const { reason } = req.body;
-    const disputedBy = req.user!.uid;
+    const callerId = req.user!.uid;
 
-    await EscrowService.disputeEscrowPayment(escrowId, reason, disputedBy);
+    await assertEscrowParticipant(escrowId, callerId);
+
+    await EscrowService.disputeEscrowPayment(escrowId, reason, callerId);
     res.json({ success: true });
   } catch (error: any) {
-    console.error("[Escrow] Error disputing:", error);
-    res.status(500).json({ error: error.message });
+    logger.error("[Escrow] Error disputing", { error: error.message });
+    res.status(error.status ?? 500).json({ error: error.message });
   }
 });
 
@@ -73,7 +110,7 @@ router.get("/payments", requireAuth, async (req, res) => {
     const payments = await EscrowService.getUserPayments(userId);
     res.json({ payments });
   } catch (error: any) {
-    console.error("[Escrow] Error fetching payments:", error);
+    logger.error("[Escrow] Error fetching payments", { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });
@@ -81,21 +118,30 @@ router.get("/payments", requireAuth, async (req, res) => {
 router.get("/:escrowId", requireAuth, async (req, res) => {
   try {
     const { escrowId } = req.params;
-    const escrow = await EscrowService.getEscrowPayment(escrowId);
+    const callerId = req.user!.uid;
+
+    const escrow = await assertEscrowParticipant(escrowId, callerId);
     res.json({ escrow });
   } catch (error: any) {
-    console.error("[Escrow] Error fetching:", error);
-    res.status(500).json({ error: error.message });
+    logger.error("[Escrow] Error fetching", { error: error.message });
+    res.status(error.status ?? 500).json({ error: error.message });
   }
 });
 
 router.get("/booking/:bookingId", requireAuth, async (req, res) => {
   try {
     const { bookingId } = req.params;
+    const callerId = req.user!.uid;
+
     const escrows = await EscrowService.getEscrowsByBooking(bookingId);
-    res.json({ escrows });
+
+    const permitted = escrows.filter(
+      (e) => e.customerId === callerId || e.providerId === callerId
+    );
+
+    res.json({ escrows: permitted });
   } catch (error: any) {
-    console.error("[Escrow] Error fetching by booking:", error);
+    logger.error("[Escrow] Error fetching by booking", { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });
@@ -105,7 +151,7 @@ router.post("/admin/auto-release", requireAdmin, async (req, res) => {
     const releasedCount = await EscrowService.autoReleaseExpiredHolds();
     res.json({ releasedCount });
   } catch (error: any) {
-    console.error("[Escrow] Error auto-releasing:", error);
+    logger.error("[Escrow] Error auto-releasing", { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });

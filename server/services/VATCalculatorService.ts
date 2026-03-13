@@ -285,6 +285,97 @@ class VATCalculatorService {
       platformBreakdown: consolidated,
     };
   }
+
+  /**
+   * K9000 automated wash revenue calculation.
+   *
+   * K9000 is 100% PetWash-owned hardware. There is no provider split.
+   * Israeli consumer prices are VAT-inclusive, so we back-calculate:
+   *   vatAmount     = chargeILS × (vatRate / (1 + vatRate))
+   *   netRevenue    = chargeILS - vatAmount
+   *   netToProvider = 0
+   *   netToPlatform = netRevenue
+   */
+  calculateK9000Revenue(chargeILS: number): {
+    chargeILS: number;
+    vatAmount: number;
+    netRevenue: number;
+    vatRate: number;
+    netToProvider: 0;
+    netToPlatform: number;
+    revenueOwner: 'petwash';
+  } {
+    const vatAmount = chargeILS * (ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE));
+    const netRevenue = chargeILS - vatAmount;
+
+    return {
+      chargeILS,
+      vatAmount: Math.round(vatAmount * 100) / 100,
+      netRevenue: Math.round(netRevenue * 100) / 100,
+      vatRate: ISRAELI_VAT_RATE,
+      netToProvider: 0,
+      netToPlatform: Math.round(netRevenue * 100) / 100,
+      revenueOwner: 'petwash',
+    };
+  }
+
+  async recordK9000Transaction(params: {
+    washId: string;
+    machineId: string;
+    transactionId?: string;
+    chargeILS: number;
+    washType: string;
+    isFreeWash: boolean;
+    customerUid?: string;
+    stationId?: string;
+  }): Promise<{ entryId: string; vatAmount: number; netRevenue: number }> {
+    const calc = this.calculateK9000Revenue(params.chargeILS);
+
+    const entryId = `K9-${new Date().getFullYear()}-${nanoid(8).toUpperCase()}`;
+    const entry = {
+      id: entryId,
+      platform: 'k9000' as const,
+      washId: params.washId,
+      machineId: params.machineId,
+      transactionId: params.transactionId ?? null,
+      date: new Date(),
+      chargeILS: calc.chargeILS,
+      vatAmount: calc.vatAmount,
+      netRevenue: calc.netRevenue,
+      netToProvider: 0,
+      netToPlatform: calc.netToPlatform,
+      vatRate: ISRAELI_VAT_RATE,
+      washType: params.washType,
+      isFreeWash: params.isFreeWash,
+      customerUid: params.customerUid ?? null,
+      stationId: params.stationId ?? null,
+      currency: 'ILS',
+      revenueOwner: 'petwash',
+      status: params.isFreeWash ? 'free' : 'completed',
+    };
+
+    try {
+      await this.firestore
+        .collection('k9000_revenue_ledger')
+        .doc(entryId)
+        .set(entry);
+
+      logger.info('[K9000 Revenue] Recorded', {
+        entryId,
+        chargeILS: calc.chargeILS,
+        vatAmount: calc.vatAmount,
+        netRevenue: calc.netRevenue,
+        isFreeWash: params.isFreeWash,
+      });
+    } catch (err: any) {
+      logger.error('[K9000 Revenue] Failed to record to Firestore', {
+        entryId,
+        error: err.message,
+      });
+    }
+
+    return { entryId, vatAmount: calc.vatAmount, netRevenue: calc.netRevenue };
+  }
 }
 
 export default new VATCalculatorService();
