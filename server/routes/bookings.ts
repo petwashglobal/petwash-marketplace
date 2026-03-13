@@ -62,7 +62,8 @@ router.post("/create", requireAuth, async (req, res) => {
       });
     }
 
-    const vatCalc = VATCalculatorService.calculateVAT(booking.baseAmount);
+    const grossCollectedILS = VATCalculatorService.grossFromProviderShare(booking.baseAmount);
+    const vatCalc = VATCalculatorService.calculateMarketplaceVAT(grossCollectedILS);
 
     // Fetch provider details to enrich booking
     const providerDoc = await db.collection("providers").doc(booking.providerId).get();
@@ -84,11 +85,11 @@ router.post("/create", requireAuth, async (req, res) => {
       timeSlot: booking.timeSlot,
       duration: booking.duration,
       petIds: booking.petIds,
-      baseAmount: vatCalc.baseAmount,
-      commission: vatCalc.commission,
-      vat: vatCalc.vatOnCommission,
-      totalAmount: vatCalc.totalCharged,
-      totalPrice: vatCalc.totalCharged,
+      baseAmount: vatCalc.providerGross,
+      commission: vatCalc.platformFeeGross,
+      vat: vatCalc.vatOnPlatformFee,
+      totalAmount: vatCalc.grossCollectedILS,
+      totalPrice: vatCalc.grossCollectedILS,
       currency: "ILS",
       status: "confirmed", // Mark as confirmed after payment
       createdAt: new Date(),
@@ -102,7 +103,7 @@ router.post("/create", requireAuth, async (req, res) => {
         bookingRef.id,
         customerId,
         booking.providerId,
-        vatCalc.totalCharged,
+        vatCalc.grossCollectedILS,
         undefined,
         { bookingPlatform: booking.platform }
       );
@@ -127,7 +128,7 @@ router.post("/create", requireAuth, async (req, res) => {
       userId: customerId,
       type: "booking",
       title: "Booking Confirmed!",
-      message: `Your ${booking.platform} booking has been confirmed for ${new Date(booking.serviceDate).toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' })}. Total: ₪${vatCalc.totalCharged.toFixed(2)}`,
+      message: `Your ${booking.platform} booking has been confirmed for ${new Date(booking.serviceDate).toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' })}. Total: ₪${vatCalc.grossCollectedILS.toFixed(2)}`,
       priority: "high",
       channel: "all",
       data: { bookingId: bookingRef.id, platform: booking.platform },

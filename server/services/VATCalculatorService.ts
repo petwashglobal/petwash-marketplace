@@ -1,17 +1,40 @@
 /**
- * VAT Calculator Service for Israeli Tax Compliance
- * Israeli VAT Rate: 18% (effective January 1, 2025)
- * 
- * FLAT 15% commission on ALL third-party providers across ALL platforms.
- * This matches industry standard marketplace commission.
- * 
- * Fee Model (all platforms):
- * - Provider sets base rate
- * - Customer pays: Base + 15% platform fee + 18% VAT on platform fee
- * - Provider receives: 85% of base (after 15% commission deduction)
- * - Platform keeps: 15% commission + VAT collected
- * 
- * Dual-save: Records to both Firestore (real-time) and PostgreSQL (legal compliance)
+ * VAT Calculator Service — Israeli Tax Compliance (מע"מ)
+ * ========================================================
+ * Israeli VAT rate: 18% (effective 1 January 2025, per Tax Authority circular)
+ * Company VAT number: 516788400  (Pet Wash Ltd)
+ *
+ * TWO LEGALLY DISTINCT SALE MODES:
+ *
+ * ── MODE A: DIRECT SALE ─────────────────────────────────────────────────────
+ * Used for: K9000 automated wash, eGift card purchase
+ * PetWash is the sole seller. Nayax collects the FULL consumer price.
+ * Israeli consumer prices must be VAT-inclusive (Consumer Protection Law §17a).
+ * PetWash owes VAT on the FULL amount collected.
+ *
+ *   grossCollectedILS (VAT-inclusive)
+ *   vatOwed            = grossCollectedILS × (18 / 118)   ← back-calc from gross
+ *   netRevenue         = grossCollectedILS − vatOwed
+ *   providerShare      = 0
+ *
+ * ── MODE B: MARKETPLACE (Wolt / Uber model) ─────────────────────────────────
+ * Used for: Sitter Suite, Walk My Pet, PetTrek, Pet Wash Hub, Paw Finder, PlushLab
+ * PetWash is an indirect agent (סוכן בלתי מגולה).
+ * Customer pays ONE total amount; PetWash keeps its commission; provider receives the rest.
+ * PetWash ONLY owes VAT on its own commission portion.
+ * Provider MUST issue PetWash a חשבונית מס (tax invoice) for their share so PetWash
+ * can claim input-VAT credit — resulting in net VAT obligation = VAT on commission only.
+ * If provider is עוסק פטור they cannot issue a tax invoice; flag is set accordingly.
+ *
+ *   grossCollectedILS (VAT-inclusive, what Nayax charges the customer)
+ *   platformFeeGross   = grossCollectedILS × commissionRate   (e.g. 15%)
+ *   providerGross      = grossCollectedILS × (1 − commissionRate)
+ *   vatOnPlatformFee   = platformFeeGross  × (18 / 118)       ← PetWash's VAT liability
+ *   platformNetRevenue = platformFeeGross  − vatOnPlatformFee
+ *   vatInProviderShare = providerGross     × (18 / 118)       ← offset by provider invoice
+ *   providerNet        = providerGross     − vatInProviderShare
+ *
+ * Dual-save: Firestore (real-time dashboard) + PostgreSQL digital_receipts (legal archive)
  */
 
 import admin from "../lib/firebase-admin";
@@ -34,16 +57,41 @@ const PLATFORM_COMMISSION_RATES: Record<string, number> = {
   'enterprise': 0.15,
 };
 
-export interface VATCalculation {
-  baseAmount: number;
-  commission: number;
-  vatOnCommission: number;
-  totalCharged: number;
-  vatRate: number;
-  commissionRate: number;
-  netToProvider: number;
-  netToPlatform: number;
+function ils(n: number): number {
+  return Math.round(n * 100) / 100;
 }
+
+function vatFromGross(gross: number): number {
+  return ils(gross * (ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE)));
+}
+
+// ─── Exported types ──────────────────────────────────────────────────────────
+
+export interface DirectSaleVAT {
+  mode: 'direct';
+  grossCollectedILS: number;
+  vatOwed: number;
+  netRevenue: number;
+  vatRate: number;
+  providerShare: 0;
+  requiresProviderTaxInvoice: false;
+}
+
+export interface MarketplaceVAT {
+  mode: 'marketplace';
+  grossCollectedILS: number;
+  commissionRate: number;
+  platformFeeGross: number;
+  vatOnPlatformFee: number;
+  platformNetRevenue: number;
+  providerGross: number;
+  vatInProviderShare: number;
+  providerNet: number;
+  vatRate: number;
+  requiresProviderTaxInvoice: true;
+}
+
+export type VATBreakdown = DirectSaleVAT | MarketplaceVAT;
 
 export interface PLedgerEntry {
   id: string;
@@ -51,14 +99,17 @@ export interface PLedgerEntry {
   transactionId: string;
   bookingId?: string;
   date: Date;
-  baseAmount: number;
-  commission: number;
-  vat: number;
-  totalRevenue: number;
-  netToProvider: number;
-  netToPlatform: number;
+  grossCollectedILS: number;
+  platformFeeGross: number;
+  vatOnPlatformFee: number;
+  platformNetRevenue: number;
+  providerGross: number;
+  providerNet: number;
+  commissionRate: number;
+  vatRate: number;
   currency: "ILS" | "USD" | "EUR" | "GBP";
   status: "pending" | "completed" | "refunded";
+  requiresProviderTaxInvoice: boolean;
   metadata?: any;
 }
 
@@ -66,37 +117,82 @@ class VATCalculatorService {
   private firestore = admin.firestore();
 
   getCommissionRate(platform: string): number {
-    return PLATFORM_COMMISSION_RATES[platform] || PLATFORM_COMMISSION_RATE;
+    return PLATFORM_COMMISSION_RATES[platform] ?? PLATFORM_COMMISSION_RATE;
   }
 
-  calculateVAT(baseAmount: number, commissionRate: number = PLATFORM_COMMISSION_RATE): VATCalculation {
-    const commission = baseAmount * commissionRate;
-    const vatOnCommission = commission * ISRAELI_VAT_RATE;
-    const totalCharged = baseAmount + commission + vatOnCommission;
-    const netToProvider = baseAmount;
-    const netToPlatform = commission + vatOnCommission;
-
+  // ── MODE A: Direct sale (K9000, eGift purchase) ────────────────────────────
+  calculateDirectSaleVAT(grossCollectedILS: number): DirectSaleVAT {
+    const gross = ils(grossCollectedILS);
+    const vatOwed = vatFromGross(gross);
     return {
-      baseAmount,
-      commission,
-      vatOnCommission,
-      totalCharged,
+      mode: 'direct',
+      grossCollectedILS: gross,
+      vatOwed,
+      netRevenue: ils(gross - vatOwed),
       vatRate: ISRAELI_VAT_RATE,
-      commissionRate,
-      netToProvider,
-      netToPlatform,
+      providerShare: 0,
+      requiresProviderTaxInvoice: false,
     };
   }
 
+  // ── MODE B: Marketplace / agent model (Wolt-style provider services) ────────
+  // Input: grossCollectedILS = the total the customer actually paid (Nayax charge)
+  calculateMarketplaceVAT(
+    grossCollectedILS: number,
+    commissionRate: number = PLATFORM_COMMISSION_RATE
+  ): MarketplaceVAT {
+    const gross = ils(grossCollectedILS);
+    const platformFeeGross = ils(gross * commissionRate);
+    const providerGross = ils(gross - platformFeeGross);
+    const vatOnPlatformFee = vatFromGross(platformFeeGross);
+    const vatInProviderShare = vatFromGross(providerGross);
+    return {
+      mode: 'marketplace',
+      grossCollectedILS: gross,
+      commissionRate,
+      platformFeeGross,
+      vatOnPlatformFee,
+      platformNetRevenue: ils(platformFeeGross - vatOnPlatformFee),
+      providerGross,
+      vatInProviderShare,
+      providerNet: ils(providerGross - vatInProviderShare),
+      vatRate: ISRAELI_VAT_RATE,
+      requiresProviderTaxInvoice: true,
+    };
+  }
+
+  // ── Convenience: provider's net → gross (for callers that only know provider rate) ─
+  // Given the provider's share (= 85% of gross when commission is 15%), back-calculate gross.
+  // grossCollected = providerNetAmount / (1 - commissionRate)
+  grossFromProviderShare(
+    providerNetILS: number,
+    commissionRate: number = PLATFORM_COMMISSION_RATE
+  ): number {
+    return ils(providerNetILS / (1 - commissionRate));
+  }
+
+  // ── K9000 direct sale (already correct, kept for symmetry) ─────────────────
+  calculateK9000Revenue(chargeILS: number): DirectSaleVAT & { revenueOwner: 'petwash'; chargeILS: number } {
+    const base = this.calculateDirectSaleVAT(chargeILS);
+    return {
+      ...base,
+      chargeILS: base.grossCollectedILS,
+      revenueOwner: 'petwash',
+    };
+  }
+
+  // ── Record marketplace provider transaction ────────────────────────────────
+  // providerShareILS: the amount the provider is receiving (their net portion before their own VAT)
   async recordTransaction(
     platform: PLedgerEntry["platform"],
     transactionId: string,
-    baseAmount: number,
+    providerShareILS: number,
     bookingId?: string,
     metadata?: any
   ): Promise<PLedgerEntry> {
-    const platformRate = this.getCommissionRate(platform);
-    const vatCalc = this.calculateVAT(baseAmount, platformRate);
+    const commissionRate = this.getCommissionRate(platform);
+    const grossCollectedILS = this.grossFromProviderShare(providerShareILS, commissionRate);
+    const calc = this.calculateMarketplaceVAT(grossCollectedILS, commissionRate);
 
     const entryId = `PL-${new Date().getFullYear()}-${nanoid(8).toUpperCase()}`;
     const entry: PLedgerEntry = {
@@ -105,14 +201,17 @@ class VATCalculatorService {
       transactionId,
       bookingId,
       date: new Date(),
-      baseAmount: vatCalc.baseAmount,
-      commission: vatCalc.commission,
-      vat: vatCalc.vatOnCommission,
-      totalRevenue: vatCalc.totalCharged,
-      netToProvider: vatCalc.netToProvider,
-      netToPlatform: vatCalc.netToPlatform,
+      grossCollectedILS: calc.grossCollectedILS,
+      platformFeeGross: calc.platformFeeGross,
+      vatOnPlatformFee: calc.vatOnPlatformFee,
+      platformNetRevenue: calc.platformNetRevenue,
+      providerGross: calc.providerGross,
+      providerNet: calc.providerNet,
+      commissionRate: calc.commissionRate,
+      vatRate: ISRAELI_VAT_RATE,
       currency: "ILS",
       status: "completed",
+      requiresProviderTaxInvoice: true,
       metadata,
     };
 
@@ -132,9 +231,9 @@ class VATCalculatorService {
       const issuedAt = new Date();
       const auditHash = createHash('sha256').update(JSON.stringify({
         receiptNumber,
-        totalAmount: vatCalc.totalCharged,
-        vatAmount: vatCalc.vatOnCommission,
-        customerEmail: `platform-${platform}@internal`,
+        grossCollectedILS: calc.grossCollectedILS,
+        vatOnPlatformFee: calc.vatOnPlatformFee,
+        platformFeeGross: calc.platformFeeGross,
         issuedAt: issuedAt.toISOString(),
         companyTaxId: '516788400',
       })).digest('hex');
@@ -148,14 +247,14 @@ class VATCalculatorService {
         customerName: `PetWash ${platform} Platform`,
         serviceDescription: `P&L ledger entry - ${platform} - Transaction ${transactionId}`,
         serviceDescriptionHe: `רשומת רווח והפסד - ${platform} - עסקה ${transactionId}`,
-        subtotalAmount: vatCalc.baseAmount.toFixed(2),
+        subtotalAmount: calc.platformNetRevenue.toFixed(2),
         vatRate: (ISRAELI_VAT_RATE * 100).toFixed(2),
-        vatAmount: vatCalc.vatOnCommission.toFixed(2),
-        platformFeeAmount: vatCalc.commission.toFixed(2),
-        totalAmount: vatCalc.totalCharged.toFixed(2),
+        vatAmount: calc.vatOnPlatformFee.toFixed(2),
+        platformFeeAmount: calc.platformFeeGross.toFixed(2),
+        totalAmount: calc.grossCollectedILS.toFixed(2),
         currency: 'ILS',
-        providerPayoutAmount: vatCalc.netToProvider.toFixed(2),
-        brokerCommissionAmount: vatCalc.commission.toFixed(2),
+        providerPayoutAmount: calc.providerNet.toFixed(2),
+        brokerCommissionAmount: calc.platformFeeGross.toFixed(2),
         paymentMethod: 'internal_ledger',
         paymentStatus: 'completed',
         companyName: 'Pet Wash Ltd',
@@ -167,18 +266,81 @@ class VATCalculatorService {
         issuedAt,
       });
     } catch (pgError: any) {
-      logger.error('[VATCalculator] PostgreSQL dual-save FAILED - legal compliance gap', {
+      logger.error('[VATCalculator] PostgreSQL dual-save FAILED — legal compliance gap', {
         platform,
         transactionId,
         error: pgError.message,
       });
     }
 
-    logger.info(`[VATCalculator] Transaction recorded: ${platform} - ₪${vatCalc.totalCharged.toFixed(2)} (rate: ${(platformRate * 100).toFixed(1)}%)`);
-    
+    logger.info(
+      `[VATCalculator] Marketplace TX recorded: ${platform} — ` +
+      `gross ₪${calc.grossCollectedILS.toFixed(2)}, ` +
+      `platform fee ₪${calc.platformFeeGross.toFixed(2)}, ` +
+      `VAT obligation ₪${calc.vatOnPlatformFee.toFixed(2)}, ` +
+      `provider net ₪${calc.providerNet.toFixed(2)}`
+    );
+
     return entry;
   }
 
+  // ── K9000 direct-sale revenue recording ─────────────────────────────────────
+  async recordK9000Transaction(params: {
+    washId: string;
+    machineId: string;
+    transactionId?: string;
+    chargeILS: number;
+    washType: string;
+    isFreeWash: boolean;
+    customerUid?: string;
+    stationId?: string;
+  }): Promise<{ entryId: string; vatOwed: number; netRevenue: number }> {
+    const calc = this.calculateDirectSaleVAT(params.chargeILS);
+
+    const entryId = `K9-${new Date().getFullYear()}-${nanoid(8).toUpperCase()}`;
+    const entry = {
+      id: entryId,
+      saleMode: 'direct',
+      platform: 'k9000',
+      washId: params.washId,
+      machineId: params.machineId,
+      transactionId: params.transactionId ?? null,
+      date: new Date(),
+      grossCollectedILS: calc.grossCollectedILS,
+      vatOwed: calc.vatOwed,
+      netRevenue: calc.netRevenue,
+      providerShare: 0,
+      vatRate: ISRAELI_VAT_RATE,
+      washType: params.washType,
+      isFreeWash: params.isFreeWash,
+      customerUid: params.customerUid ?? null,
+      stationId: params.stationId ?? null,
+      currency: 'ILS',
+      revenueOwner: 'petwash',
+      requiresProviderTaxInvoice: false,
+      status: params.isFreeWash ? 'free' : 'completed',
+    };
+
+    try {
+      await this.firestore.collection('k9000_revenue_ledger').doc(entryId).set(entry);
+      logger.info('[K9000 Revenue] Direct sale recorded', {
+        entryId,
+        grossCollectedILS: calc.grossCollectedILS,
+        vatOwed: calc.vatOwed,
+        netRevenue: calc.netRevenue,
+        isFreeWash: params.isFreeWash,
+      });
+    } catch (err: any) {
+      logger.error('[K9000 Revenue] Failed to record to Firestore', {
+        entryId,
+        error: err.message,
+      });
+    }
+
+    return { entryId, vatOwed: calc.vatOwed, netRevenue: calc.netRevenue };
+  }
+
+  // ── P&L reports (unchanged) ─────────────────────────────────────────────────
   async getPlatformPL(
     platform: PLedgerEntry["platform"],
     startDate: Date,
@@ -200,16 +362,11 @@ class VATCalculatorService {
 
     const entries = snapshot.docs.map((doc) => doc.data() as PLedgerEntry);
 
-    const totalRevenue = entries.reduce((sum, e) => sum + e.totalRevenue, 0);
-    const totalVAT = entries.reduce((sum, e) => sum + e.vat, 0);
-    const totalCommission = entries.reduce((sum, e) => sum + e.commission, 0);
-    const netProfit = entries.reduce((sum, e) => sum + e.netToPlatform, 0);
-
     return {
-      totalRevenue,
-      totalVAT,
-      totalCommission,
-      netProfit,
+      totalRevenue: entries.reduce((s, e) => s + (e.grossCollectedILS ?? 0), 0),
+      totalVAT: entries.reduce((s, e) => s + (e.vatOnPlatformFee ?? 0), 0),
+      totalCommission: entries.reduce((s, e) => s + (e.platformFeeGross ?? 0), 0),
+      netProfit: entries.reduce((s, e) => s + (e.platformNetRevenue ?? 0), 0),
       transactionCount: entries.length,
     };
   }
@@ -218,29 +375,12 @@ class VATCalculatorService {
     startDate: Date,
     endDate: Date
   ): Promise<{
-    [platform: string]: {
-      revenue: number;
-      vat: number;
-      commission: number;
-      netProfit: number;
-      transactions: number;
-    };
-    total: {
-      revenue: number;
-      vat: number;
-      commission: number;
-      netProfit: number;
-      transactions: number;
-    };
+    [platform: string]: { revenue: number; vat: number; commission: number; netProfit: number; transactions: number };
+    total: { revenue: number; vat: number; commission: number; netProfit: number; transactions: number };
   }> {
     const platforms: PLedgerEntry["platform"][] = [
-      "sitter-suite",
-      "walk-my-pet",
-      "pettrek",
-      "pet-wash-hub",
-      "paw-finder",
-      "plush-lab",
-      "enterprise",
+      "sitter-suite", "walk-my-pet", "pettrek",
+      "pet-wash-hub", "paw-finder", "plush-lab", "enterprise",
     ];
 
     const results: any = { total: { revenue: 0, vat: 0, commission: 0, netProfit: 0, transactions: 0 } };
@@ -255,7 +395,6 @@ class VATCalculatorService {
           netProfit: pl.netProfit,
           transactions: pl.transactionCount,
         };
-
         results.total.revenue += pl.totalRevenue;
         results.total.vat += pl.totalVAT;
         results.total.commission += pl.totalCommission;
@@ -275,106 +414,13 @@ class VATCalculatorService {
   }> {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59);
-
     const consolidated = await this.getConsolidatedPL(startDate, endDate);
-
     return {
       reportPeriod: `${month}/${year}`,
       totalVATCollected: consolidated.total.vat,
       totalCommission: consolidated.total.commission,
       platformBreakdown: consolidated,
     };
-  }
-
-  /**
-   * K9000 automated wash revenue calculation.
-   *
-   * K9000 is 100% PetWash-owned hardware. There is no provider split.
-   * Israeli consumer prices are VAT-inclusive, so we back-calculate:
-   *   vatAmount     = chargeILS × (vatRate / (1 + vatRate))
-   *   netRevenue    = chargeILS - vatAmount
-   *   netToProvider = 0
-   *   netToPlatform = netRevenue
-   */
-  calculateK9000Revenue(chargeILS: number): {
-    chargeILS: number;
-    vatAmount: number;
-    netRevenue: number;
-    vatRate: number;
-    netToProvider: 0;
-    netToPlatform: number;
-    revenueOwner: 'petwash';
-  } {
-    const vatAmount = chargeILS * (ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE));
-    const netRevenue = chargeILS - vatAmount;
-
-    return {
-      chargeILS,
-      vatAmount: Math.round(vatAmount * 100) / 100,
-      netRevenue: Math.round(netRevenue * 100) / 100,
-      vatRate: ISRAELI_VAT_RATE,
-      netToProvider: 0,
-      netToPlatform: Math.round(netRevenue * 100) / 100,
-      revenueOwner: 'petwash',
-    };
-  }
-
-  async recordK9000Transaction(params: {
-    washId: string;
-    machineId: string;
-    transactionId?: string;
-    chargeILS: number;
-    washType: string;
-    isFreeWash: boolean;
-    customerUid?: string;
-    stationId?: string;
-  }): Promise<{ entryId: string; vatAmount: number; netRevenue: number }> {
-    const calc = this.calculateK9000Revenue(params.chargeILS);
-
-    const entryId = `K9-${new Date().getFullYear()}-${nanoid(8).toUpperCase()}`;
-    const entry = {
-      id: entryId,
-      platform: 'k9000' as const,
-      washId: params.washId,
-      machineId: params.machineId,
-      transactionId: params.transactionId ?? null,
-      date: new Date(),
-      chargeILS: calc.chargeILS,
-      vatAmount: calc.vatAmount,
-      netRevenue: calc.netRevenue,
-      netToProvider: 0,
-      netToPlatform: calc.netToPlatform,
-      vatRate: ISRAELI_VAT_RATE,
-      washType: params.washType,
-      isFreeWash: params.isFreeWash,
-      customerUid: params.customerUid ?? null,
-      stationId: params.stationId ?? null,
-      currency: 'ILS',
-      revenueOwner: 'petwash',
-      status: params.isFreeWash ? 'free' : 'completed',
-    };
-
-    try {
-      await this.firestore
-        .collection('k9000_revenue_ledger')
-        .doc(entryId)
-        .set(entry);
-
-      logger.info('[K9000 Revenue] Recorded', {
-        entryId,
-        chargeILS: calc.chargeILS,
-        vatAmount: calc.vatAmount,
-        netRevenue: calc.netRevenue,
-        isFreeWash: params.isFreeWash,
-      });
-    } catch (err: any) {
-      logger.error('[K9000 Revenue] Failed to record to Firestore', {
-        entryId,
-        error: err.message,
-      });
-    }
-
-    return { entryId, vatAmount: calc.vatAmount, netRevenue: calc.netRevenue };
   }
 }
 
