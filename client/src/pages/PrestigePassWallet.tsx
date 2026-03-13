@@ -335,6 +335,20 @@ export default function PrestigePassWallet() {
 
   const events = historyData?.events?.slice(0, 3) || [];
 
+  // Resend wallet email (Google + Apple buttons) to user's email
+  const resendEmailMutation = useMutation({
+    mutationFn: () => apiRequest('POST', '/api/prestige-pass/resend-wallet-email', {}),
+    onSuccess: async (resp) => {
+      const data = await resp.json();
+      if (data.ok) {
+        toast({ title: he ? 'נשלח!' : 'Sent!', description: he ? 'הפאס נשלח למייל שלך עם כפתורי Apple/Google Wallet.' : 'Wallet pass sent to your email with Apple & Google Wallet buttons.' });
+      } else {
+        toast({ title: he ? 'שגיאה' : 'Error', description: data.error, variant: 'destructive' });
+      }
+    },
+    onError: () => toast({ title: he ? 'שגיאת רשת' : 'Network error', variant: 'destructive' }),
+  });
+
   if (isLoading) {
     return (
       <Layout>
@@ -695,6 +709,29 @@ export default function PrestigePassWallet() {
               >
                 <GoogleIcon />
                 {he ? 'הוסף ל-Google Wallet' : 'Add to Google Wallet'}
+              </button>
+
+              {/* Send to Email — Google + Apple buttons in email body */}
+              <button
+                onClick={() => resendEmailMutation.mutate()}
+                disabled={resendEmailMutation.isPending}
+                style={{
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:'10px',
+                  background:'transparent',
+                  color:'#D4AF37',
+                  border:'1.5px solid rgba(212,175,55,0.5)',
+                  borderRadius:'12px',
+                  padding:'13px 20px',
+                  fontWeight:700,
+                  fontSize:'0.9rem',
+                  cursor: resendEmailMutation.isPending ? 'wait' : 'pointer',
+                  opacity: resendEmailMutation.isPending ? 0.7 : 1,
+                }}
+              >
+                {resendEmailMutation.isPending ? '...' : '✉'}
+                {he
+                  ? (resendEmailMutation.isPending ? 'שולח...' : 'שלח לי למייל (עם כפתורי Wallet)')
+                  : (resendEmailMutation.isPending ? 'Sending…' : 'Email me wallet links')}
               </button>
             </div>
           </div>
