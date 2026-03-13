@@ -9,8 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Check, GraduationCap, Star, MapPin, DollarSign, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, GraduationCap, Star, MapPin, DollarSign, Loader2, ChevronLeft, ChevronRight, CreditCard } from "lucide-react";
 import { FaGoogle } from "react-icons/fa";
+import { PhoneInput } from "@/components/PhoneInput";
+import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 
 const SPECIALTIES = [
   { id: "obedience", label: "Basic Obedience", labelHe: "ציות בסיסי", emoji: "🎯" },
@@ -47,15 +49,29 @@ export default function JoinAsTrainer() {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const [form, setForm] = useState({
-    firstName: "", lastName: "", email: user?.email || "", phone: "", city: "",
-    bio: "", yearsOfExperience: 1,
+    firstName: "",
+    lastName: "",
+    email: user?.email || "",
+    phone: "",
+    dateOfBirth: "",
+    idNumber: "",
+    addressDisplay: "",
+    streetAddress: "",
+    city: "",
+    postalCode: "",
+    country: "Israel",
+    bio: "",
+    yearsOfExperience: 1,
     specialties: [] as string[],
     certificationNames: "",
     serviceTypes: [] as string[],
-    serviceArea: "", hourlyRate: 150,
+    serviceArea: "",
+    hourlyRate: 150,
     languages: ["he"] as string[],
-    groupSessionsAvailable: false, maxGroupSize: 5,
-    agreeToTerms: false, agreeToBackground: false,
+    groupSessionsAvailable: false,
+    maxGroupSize: 5,
+    agreeToTerms: false,
+    agreeToBackground: false,
   });
 
   function update(field: string, value: unknown) {
@@ -83,13 +99,34 @@ export default function JoinAsTrainer() {
     });
   }
 
+  function handleAddressSelect(val: string, details?: PlaceDetails) {
+    update("addressDisplay", val);
+    if (details) {
+      update("city", details.city || "");
+      const streetParts = [details.street, details.streetNumber].filter(Boolean);
+      update("streetAddress", streetParts.join(" ") || val);
+      update("postalCode", details.postalCode || "");
+      update("country", details.country || "Israel");
+    }
+  }
+
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
-      setForm(prev => ({ ...prev, email: result.user.email || "", firstName: result.user.displayName?.split(" ")[0] || "", lastName: result.user.displayName?.split(" ").slice(1).join(" ") || "" }));
-      await apiRequest("POST", "/api/auth/session", { uid: result.user.uid, email: result.user.email, displayName: result.user.displayName, photoURL: result.user.photoURL });
+      setForm(prev => ({
+        ...prev,
+        email: result.user.email || "",
+        firstName: result.user.displayName?.split(" ")[0] || "",
+        lastName: result.user.displayName?.split(" ").slice(1).join(" ") || "",
+      }));
+      await apiRequest("POST", "/api/auth/session", {
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: result.user.displayName,
+        photoURL: result.user.photoURL,
+      });
     } catch {
       toast({ title: "Sign-in failed", description: "Could not sign in with Google.", variant: "destructive" });
     } finally {
@@ -110,6 +147,12 @@ export default function JoinAsTrainer() {
         lastName: form.lastName,
         email: form.email,
         phone: form.phone,
+        dateOfBirth: form.dateOfBirth,
+        idNumber: form.idNumber,
+        city: form.city,
+        streetAddress: form.streetAddress,
+        postalCode: form.postalCode || null,
+        country: form.country,
         bio: form.bio,
         specialties: form.specialties,
         yearsOfExperience: form.yearsOfExperience,
@@ -173,16 +216,82 @@ export default function JoinAsTrainer() {
           {step === 1 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-slate-800 mb-4">Your Personal Information</h2>
+
               <div className="grid grid-cols-2 gap-4">
-                <div><Label>First Name *</Label><Input value={form.firstName} onChange={e => update("firstName", e.target.value)} placeholder="Avi" className="mt-1" /></div>
-                <div><Label>Last Name *</Label><Input value={form.lastName} onChange={e => update("lastName", e.target.value)} placeholder="Ben-David" className="mt-1" /></div>
+                <div>
+                  <Label>First Name *</Label>
+                  <Input value={form.firstName} onChange={e => update("firstName", e.target.value)} placeholder="Avi" className="mt-1" />
+                </div>
+                <div>
+                  <Label>Last Name *</Label>
+                  <Input value={form.lastName} onChange={e => update("lastName", e.target.value)} placeholder="Ben-David" className="mt-1" />
+                </div>
               </div>
-              <div><Label>Email *</Label><Input type="email" value={form.email} onChange={e => update("email", e.target.value)} placeholder="avi@example.com" className="mt-1" /></div>
-              <div><Label>Phone Number *</Label><Input value={form.phone} onChange={e => update("phone", e.target.value)} placeholder="+972 50 000 0000" className="mt-1" /></div>
-              <div><Label>City / Base Location *</Label><Input value={form.city} onChange={e => update("city", e.target.value)} placeholder="Jerusalem" className="mt-1" /></div>
+
+              <div>
+                <Label>Email *</Label>
+                <Input type="email" value={form.email} onChange={e => update("email", e.target.value)} placeholder="avi@example.com" className="mt-1" />
+              </div>
+
+              <div>
+                <Label>Phone Number * / מספר טלפון</Label>
+                <div className="mt-1">
+                  <PhoneInput
+                    value={form.phone}
+                    onChange={(val: string) => update("phone", val)}
+                    defaultCountry="IL"
+                    placeholder="+972 50 000 0000"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Date of Birth * / תאריך לידה</Label>
+                  <Input
+                    type="date"
+                    value={form.dateOfBirth}
+                    onChange={e => update("dateOfBirth", e.target.value)}
+                    max={new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="flex items-center gap-1">
+                    <CreditCard className="h-3.5 w-3.5" />
+                    Israeli ID / Passport * / ת.ז.
+                  </Label>
+                  <Input
+                    value={form.idNumber}
+                    onChange={e => update("idNumber", e.target.value)}
+                    placeholder="123456789"
+                    className="mt-1"
+                    inputMode="numeric"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label>Base Location * / מיקום בסיס</Label>
+                <div className="mt-1">
+                  <GooglePlacesAutocomplete
+                    value={form.addressDisplay}
+                    onChange={handleAddressSelect}
+                    placeholder="Start typing your city or address / הזן עיר או כתובת..."
+                  />
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Used to match you with clients in your area. Only your city is shown publicly.</p>
+              </div>
+
               <div>
                 <Label>Professional Bio</Label>
-                <textarea value={form.bio} onChange={e => update("bio", e.target.value)} placeholder="Tell potential clients about your training philosophy, experience, and approach..." rows={4} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+                <textarea
+                  value={form.bio}
+                  onChange={e => update("bio", e.target.value)}
+                  placeholder="Tell potential clients about your training philosophy, experience, and approach..."
+                  rows={4}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
               </div>
             </div>
           )}
@@ -214,7 +323,13 @@ export default function JoinAsTrainer() {
               </div>
               <div>
                 <Label>Certifications & Qualifications</Label>
-                <textarea value={form.certificationNames} onChange={e => update("certificationNames", e.target.value)} placeholder="List your certifications, diplomas, or notable training credentials (e.g., CPDT-KA, Karen Pryor Academy, etc.)" rows={3} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+                <textarea
+                  value={form.certificationNames}
+                  onChange={e => update("certificationNames", e.target.value)}
+                  placeholder="List your certifications, diplomas, or notable training credentials (e.g., CPDT-KA, Karen Pryor Academy, etc.)"
+                  rows={3}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
                 <p className="text-xs text-slate-500 mt-1">You'll be able to upload certificate documents after your application is accepted.</p>
               </div>
             </div>
@@ -303,8 +418,19 @@ export default function JoinAsTrainer() {
             )}
             {step < 4 ? (
               <Button onClick={() => {
-                if (step === 1 && (!form.firstName || !form.lastName || !form.email || !form.phone || !form.city)) {
-                  toast({ title: "Please fill in all required fields", variant: "destructive" }); return;
+                if (step === 1) {
+                  if (!form.firstName || !form.lastName || !form.email || !form.phone) {
+                    toast({ title: "Please fill in name, email, and phone", variant: "destructive" }); return;
+                  }
+                  if (!form.dateOfBirth) {
+                    toast({ title: "Date of birth is required / נדרש תאריך לידה", variant: "destructive" }); return;
+                  }
+                  if (!form.idNumber) {
+                    toast({ title: "Israeli ID / Passport number is required / נדרשת תעודת זהות", variant: "destructive" }); return;
+                  }
+                  if (!form.city) {
+                    toast({ title: "Please select your base location", variant: "destructive" }); return;
+                  }
                 }
                 if (step === 2 && form.specialties.length === 0) {
                   toast({ title: "Please select at least one specialty", variant: "destructive" }); return;

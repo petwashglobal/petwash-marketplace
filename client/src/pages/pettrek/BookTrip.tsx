@@ -540,9 +540,13 @@ export default function BookTrip() {
                             <span className="font-medium text-orange-600">₪{fareEstimate.surgeFare.toFixed(2)}</span>
                           </div>
                         )}
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">{isHebrew ? 'מע"מ (17%)' : 'VAT (17%)'}</span>
-                          <span className="font-medium">₪{pricing.vatOnCommission.toFixed(2)}</span>
+                        <div className="flex justify-between text-xs text-gray-500 pl-3 border-l-2 border-purple-100">
+                          <span>{isHebrew ? 'כולל עמלת PetWash (15%)' : 'Incl. PetWash fee (15%)'}</span>
+                          <span>₪{pricing.commission.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs text-gray-400 pl-3 border-l-2 border-purple-100">
+                          <span>{isHebrew ? 'מהם מע"מ (18/118)' : 'Of which VAT (18/118)'}</span>
+                          <span>₪{pricing.vatOnCommission.toFixed(2)}</span>
                         </div>
 
                         <div className="border-t border-purple-200 pt-3 mt-3">
@@ -675,12 +679,12 @@ export default function BookTrip() {
                         <span>₪{fareEstimate.surgeFare.toFixed(2)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between luxury-text-small">
-                      <span>{isHebrew ? 'עמלת פלטפורמה (15%)' : 'Platform fee (15%)'}</span>
+                    <div className="flex justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-purple-100">
+                      <span>{isHebrew ? 'כולל עמלת PetWash (15%)' : 'Incl. PetWash fee (15%)'}</span>
                       <span>₪{pricing.commission.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between luxury-text-small">
-                      <span>{isHebrew ? 'מע"מ' : 'VAT'}</span>
+                    <div className="flex justify-between luxury-text-small opacity-60 pl-3 border-l-2 border-purple-100">
+                      <span>{isHebrew ? 'מהם מע"מ (18/118)' : 'Of which VAT (18/118)'}</span>
                       <span>₪{pricing.vatOnCommission.toFixed(2)}</span>
                     </div>
                     

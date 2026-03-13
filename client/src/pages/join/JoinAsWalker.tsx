@@ -10,8 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Check, Dog, MapPin, Wrench, BadgeDollarSign, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, Dog, MapPin, Wrench, BadgeDollarSign, Loader2, ChevronLeft, ChevronRight, CreditCard } from "lucide-react";
 import { FaGoogle } from "react-icons/fa";
+import { PhoneInput } from "@/components/PhoneInput";
+import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 
 const SPECIALIZATIONS = [
   { id: "large_breeds", label: "Large Breeds", labelHe: "גזעים גדולים" },
@@ -40,13 +42,30 @@ export default function JoinAsWalker() {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const [form, setForm] = useState({
-    firstName: "", lastName: "", email: user?.email || "", phone: "", city: "",
-    serviceRadiusKm: 5, maxDogsPerWalk: 3,
+    firstName: "",
+    lastName: "",
+    email: user?.email || "",
+    phone: "",
+    dateOfBirth: "",
+    idNumber: "",
+    addressDisplay: "",
+    streetAddress: "",
+    city: "",
+    postalCode: "",
+    country: "Israel",
+    serviceRadiusKm: 5,
+    maxDogsPerWalk: 3,
     specializations: [] as string[],
-    yearsOfExperience: 1, certifications: [] as string[],
-    hasFirstAidKit: false, hasBodyCamera: false, hasCarTransport: false,
-    baseHourlyRate: 80, minimumMinutes: 30, bio: "",
-    agreeToTerms: false, agreeToBackground: false,
+    yearsOfExperience: 1,
+    certifications: [] as string[],
+    hasFirstAidKit: false,
+    hasBodyCamera: false,
+    hasCarTransport: false,
+    baseHourlyRate: 80,
+    minimumMinutes: 30,
+    bio: "",
+    agreeToTerms: false,
+    agreeToBackground: false,
   });
 
   function update(field: string, value: unknown) {
@@ -60,13 +79,34 @@ export default function JoinAsWalker() {
     });
   }
 
+  function handleAddressSelect(val: string, details?: PlaceDetails) {
+    update("addressDisplay", val);
+    if (details) {
+      update("city", details.city || "");
+      const streetParts = [details.street, details.streetNumber].filter(Boolean);
+      update("streetAddress", streetParts.join(" ") || val);
+      update("postalCode", details.postalCode || "");
+      update("country", details.country || "Israel");
+    }
+  }
+
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
-      setForm(prev => ({ ...prev, email: result.user.email || "", firstName: result.user.displayName?.split(" ")[0] || "", lastName: result.user.displayName?.split(" ").slice(1).join(" ") || "" }));
-      await apiRequest("POST", "/api/auth/session", { uid: result.user.uid, email: result.user.email, displayName: result.user.displayName, photoURL: result.user.photoURL });
+      setForm(prev => ({
+        ...prev,
+        email: result.user.email || "",
+        firstName: result.user.displayName?.split(" ")[0] || "",
+        lastName: result.user.displayName?.split(" ").slice(1).join(" ") || "",
+      }));
+      await apiRequest("POST", "/api/auth/session", {
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: result.user.displayName,
+        photoURL: result.user.photoURL,
+      });
     } catch {
       toast({ title: "Sign-in failed", description: "Could not sign in with Google. Try again.", variant: "destructive" });
     } finally {
@@ -81,8 +121,16 @@ export default function JoinAsWalker() {
     try {
       await apiRequest("POST", "/api/walk-my-pet/walkers/register", {
         userId: user.uid,
-        firstName: form.firstName, lastName: form.lastName,
-        email: form.email, phone: form.phone, city: form.city,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.email,
+        phone: form.phone,
+        dateOfBirth: form.dateOfBirth,
+        idNumber: form.idNumber,
+        city: form.city,
+        streetAddress: form.streetAddress,
+        postalCode: form.postalCode || null,
+        country: form.country,
         serviceRadiusKm: form.serviceRadiusKm,
         specializations: form.specializations,
         yearsOfExperience: form.yearsOfExperience,
@@ -94,7 +142,6 @@ export default function JoinAsWalker() {
         minimumMinutes: form.minimumMinutes,
         bio: form.bio,
         verificationStatus: "pending",
-        country: "IL",
         currency: "ILS",
         displayName: `${form.firstName} ${form.lastName}`,
         isAvailable: false,
@@ -124,7 +171,7 @@ export default function JoinAsWalker() {
             <Dog className="h-4 w-4" /> Walk My Pet™
           </div>
           <h1 className="text-3xl font-bold text-slate-800 mb-2">Become a Dog Walker</h1>
-          <p className="text-slate-600">Set your own schedule, walk dogs in your neighborhood, and earn on your terms.</p>
+          <p className="text-slate-600">Set your own schedule, walk dogs in your neighbourhood, and earn on your terms.</p>
         </div>
 
         <div className="flex items-center justify-between mb-8">
@@ -155,16 +202,82 @@ export default function JoinAsWalker() {
           {step === 1 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-slate-800 mb-4">Your Personal Information</h2>
+
               <div className="grid grid-cols-2 gap-4">
-                <div><Label>First Name *</Label><Input value={form.firstName} onChange={e => update("firstName", e.target.value)} placeholder="Yael" className="mt-1" /></div>
-                <div><Label>Last Name *</Label><Input value={form.lastName} onChange={e => update("lastName", e.target.value)} placeholder="Cohen" className="mt-1" /></div>
+                <div>
+                  <Label>First Name *</Label>
+                  <Input value={form.firstName} onChange={e => update("firstName", e.target.value)} placeholder="Yael" className="mt-1" />
+                </div>
+                <div>
+                  <Label>Last Name *</Label>
+                  <Input value={form.lastName} onChange={e => update("lastName", e.target.value)} placeholder="Cohen" className="mt-1" />
+                </div>
               </div>
-              <div><Label>Email *</Label><Input type="email" value={form.email} onChange={e => update("email", e.target.value)} placeholder="yael@example.com" className="mt-1" /></div>
-              <div><Label>Phone Number *</Label><Input value={form.phone} onChange={e => update("phone", e.target.value)} placeholder="+972 50 000 0000" className="mt-1" /></div>
-              <div><Label>City *</Label><Input value={form.city} onChange={e => update("city", e.target.value)} placeholder="Tel Aviv" className="mt-1" /></div>
+
+              <div>
+                <Label>Email *</Label>
+                <Input type="email" value={form.email} onChange={e => update("email", e.target.value)} placeholder="yael@example.com" className="mt-1" />
+              </div>
+
+              <div>
+                <Label>Phone Number * / מספר טלפון</Label>
+                <div className="mt-1">
+                  <PhoneInput
+                    value={form.phone}
+                    onChange={(val: string) => update("phone", val)}
+                    defaultCountry="IL"
+                    placeholder="+972 50 000 0000"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Date of Birth * / תאריך לידה</Label>
+                  <Input
+                    type="date"
+                    value={form.dateOfBirth}
+                    onChange={e => update("dateOfBirth", e.target.value)}
+                    max={new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="flex items-center gap-1">
+                    <CreditCard className="h-3.5 w-3.5" />
+                    Israeli ID / Passport * / ת.ז.
+                  </Label>
+                  <Input
+                    value={form.idNumber}
+                    onChange={e => update("idNumber", e.target.value)}
+                    placeholder="123456789"
+                    className="mt-1"
+                    inputMode="numeric"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label>Home Address * / כתובת בית</Label>
+                <div className="mt-1">
+                  <GooglePlacesAutocomplete
+                    value={form.addressDisplay}
+                    onChange={handleAddressSelect}
+                    placeholder="Start typing your address / הזן כתובת..."
+                  />
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Used to define your walking radius. Only your neighbourhood is shown publicly.</p>
+              </div>
+
               <div>
                 <Label>Tell us about yourself</Label>
-                <textarea value={form.bio} onChange={e => update("bio", e.target.value)} placeholder="Share your love for dogs and your walking experience..." rows={3} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none" />
+                <textarea
+                  value={form.bio}
+                  onChange={e => update("bio", e.target.value)}
+                  placeholder="Share your love for dogs and your walking experience..."
+                  rows={3}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+                />
               </div>
             </div>
           )}
@@ -293,8 +406,19 @@ export default function JoinAsWalker() {
             )}
             {step < 4 ? (
               <Button onClick={() => {
-                if (step === 1 && (!form.firstName || !form.lastName || !form.email || !form.phone || !form.city)) {
-                  toast({ title: "Please fill in all required fields", variant: "destructive" }); return;
+                if (step === 1) {
+                  if (!form.firstName || !form.lastName || !form.email || !form.phone) {
+                    toast({ title: "Please fill in name, email, and phone", variant: "destructive" }); return;
+                  }
+                  if (!form.dateOfBirth) {
+                    toast({ title: "Date of birth is required / נדרש תאריך לידה", variant: "destructive" }); return;
+                  }
+                  if (!form.idNumber) {
+                    toast({ title: "Israeli ID / Passport number is required / נדרשת תעודת זהות", variant: "destructive" }); return;
+                  }
+                  if (!form.city) {
+                    toast({ title: "Please select your home address", variant: "destructive" }); return;
+                  }
                 }
                 setStep(s => (s + 1) as Step);
               }} className="bg-blue-600 hover:bg-blue-700">

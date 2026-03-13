@@ -570,14 +570,14 @@ export default function SitterBookingFlow() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-slate-600">
                   <span>₪{(sitter.pricePerDayCents / 100).toFixed(0)}/יום x {totalDays || 0} ימים</span>
-                  <span>₪{pricing.baseAmount.toFixed(2)}</span>
+                  <span>₪{pricing.grossCollectedILS.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-slate-600">
-                  <span>עמלת פלטפורמה (15%)</span>
+                <div className="flex justify-between text-slate-500 text-xs pl-3 border-l-2 border-slate-100">
+                  <span>כולל עמלת PetWash (15%)</span>
                   <span>₪{pricing.commission.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-slate-600">
-                  <span>מע״מ על עמלה (18%)</span>
+                <div className="flex justify-between text-slate-500 text-xs pl-3 border-l-2 border-slate-100">
+                  <span>מהם מע״מ (18/118)</span>
                   <span>₪{pricing.vatOnCommission.toFixed(2)}</span>
                 </div>
                 <div className="pt-3 mt-2 border-t border-slate-100 flex justify-between">
@@ -642,11 +642,11 @@ export default function SitterBookingFlow() {
               <div className="font-semibold text-slate-900 mb-3">פירוט מחיר</div>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-slate-600">
-                  <span>סכום בסיס ({totalDays} ימים)</span>
-                  <span>₪{pricing.baseAmount.toFixed(2)}</span>
+                  <span>מחיר השירות ({totalDays} ימים)</span>
+                  <span>₪{pricing.grossCollectedILS.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-slate-600">
-                  <span>עמלה + מע״מ</span>
+                <div className="flex justify-between text-slate-500 text-xs pl-3 border-l-2 border-slate-100">
+                  <span>כולל עמלת PetWash + מע״מ</span>
                   <span>₪{(pricing.commission + pricing.vatOnCommission).toFixed(2)}</span>
                 </div>
                 <div className="pt-3 mt-2 border-t border-slate-100 flex justify-between">

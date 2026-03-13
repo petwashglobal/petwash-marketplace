@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { Check, Home, Heart, DollarSign, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, Home, Heart, DollarSign, Loader2, ChevronLeft, ChevronRight, CreditCard } from "lucide-react";
 import { FaGoogle } from "react-icons/fa";
+import { PhoneInput } from "@/components/PhoneInput";
+import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 
 const PET_TYPES = [
   { id: "dogs", label: "Dogs", emoji: "🐕" },
@@ -47,16 +48,32 @@ export default function JoinAsSitter() {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const [form, setForm] = useState({
-    firstName: "", lastName: "", email: user?.email || "", phone: "",
-    dateOfBirth: "", streetAddress: "", city: "", stateProvince: "Israel", postalCode: "", country: "Israel",
-    homeType: "apartment", yardSize: "none",
-    smokingStatus: "non_smoker", hasOtherPets: false, otherPetsDetails: "",
+    firstName: "",
+    lastName: "",
+    email: user?.email || "",
+    phone: "",
+    dateOfBirth: "",
+    idNumber: "",
+    addressDisplay: "",
+    streetAddress: "",
+    city: "",
+    postalCode: "",
+    country: "Israel",
+    homeType: "apartment",
+    yardSize: "none",
+    smokingStatus: "non_smoker",
+    hasOtherPets: false,
+    otherPetsDetails: "",
     yearsOfExperience: 1,
     acceptedPetTypes: [] as string[],
-    maxPetsAccepted: 2, overnightAccepted: true, dropInAccepted: true, daycareAccepted: false,
+    maxPetsAccepted: 2,
+    overnightAccepted: true,
+    dropInAccepted: true,
+    daycareAccepted: false,
     pricePerDayCents: 15000,
     bio: "",
-    agreeToTerms: false, agreeToPrivacy: false,
+    agreeToTerms: false,
+    agreeToPrivacy: false,
   });
 
   function update(field: string, value: unknown) {
@@ -70,13 +87,34 @@ export default function JoinAsSitter() {
     });
   }
 
+  function handleAddressSelect(val: string, details?: PlaceDetails) {
+    update("addressDisplay", val);
+    if (details) {
+      update("city", details.city || "");
+      const streetParts = [details.street, details.streetNumber].filter(Boolean);
+      update("streetAddress", streetParts.join(" ") || val);
+      update("postalCode", details.postalCode || "");
+      update("country", details.country || "Israel");
+    }
+  }
+
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
-      setForm(prev => ({ ...prev, email: result.user.email || "", firstName: result.user.displayName?.split(" ")[0] || "", lastName: result.user.displayName?.split(" ").slice(1).join(" ") || "" }));
-      await apiRequest("POST", "/api/auth/session", { uid: result.user.uid, email: result.user.email, displayName: result.user.displayName, photoURL: result.user.photoURL });
+      setForm(prev => ({
+        ...prev,
+        email: result.user.email || "",
+        firstName: result.user.displayName?.split(" ")[0] || "",
+        lastName: result.user.displayName?.split(" ").slice(1).join(" ") || "",
+      }));
+      await apiRequest("POST", "/api/auth/session", {
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: result.user.displayName,
+        photoURL: result.user.photoURL,
+      });
     } catch {
       toast({ title: "Sign-in failed", description: "Could not sign in with Google.", variant: "destructive" });
     } finally {
@@ -94,13 +132,13 @@ export default function JoinAsSitter() {
         userId: user.uid,
         firstName: form.firstName,
         lastName: form.lastName,
-        dateOfBirth: form.dateOfBirth || "1990-01-01",
+        dateOfBirth: form.dateOfBirth,
+        idNumber: form.idNumber,
         email: form.email,
         phone: form.phone,
         streetAddress: form.streetAddress,
         city: form.city,
-        stateProvince: form.stateProvince,
-        postalCode: form.postalCode || "00000",
+        postalCode: form.postalCode || null,
         country: form.country,
         homeType: form.homeType,
         yardSize: form.yardSize,
@@ -169,25 +207,91 @@ export default function JoinAsSitter() {
           {step === 1 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-slate-800 mb-4">Your Personal Information</h2>
+
               <div className="grid grid-cols-2 gap-4">
-                <div><Label>First Name *</Label><Input value={form.firstName} onChange={e => update("firstName", e.target.value)} placeholder="Noa" className="mt-1" /></div>
-                <div><Label>Last Name *</Label><Input value={form.lastName} onChange={e => update("lastName", e.target.value)} placeholder="Levi" className="mt-1" /></div>
+                <div>
+                  <Label>First Name *</Label>
+                  <Input value={form.firstName} onChange={e => update("firstName", e.target.value)} placeholder="Noa" className="mt-1" />
+                </div>
+                <div>
+                  <Label>Last Name *</Label>
+                  <Input value={form.lastName} onChange={e => update("lastName", e.target.value)} placeholder="Levi" className="mt-1" />
+                </div>
               </div>
-              <div><Label>Email *</Label><Input type="email" value={form.email} onChange={e => update("email", e.target.value)} placeholder="noa@example.com" className="mt-1" /></div>
-              <div><Label>Phone Number *</Label><Input value={form.phone} onChange={e => update("phone", e.target.value)} placeholder="+972 50 000 0000" className="mt-1" /></div>
+
+              <div>
+                <Label>Email *</Label>
+                <Input type="email" value={form.email} onChange={e => update("email", e.target.value)} placeholder="noa@example.com" className="mt-1" />
+              </div>
+
+              <div>
+                <Label>Phone Number * / מספר טלפון</Label>
+                <div className="mt-1">
+                  <PhoneInput
+                    value={form.phone}
+                    onChange={(val: string) => update("phone", val)}
+                    defaultCountry="IL"
+                    placeholder="+972 50 000 0000"
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
-                <div><Label>City *</Label><Input value={form.city} onChange={e => update("city", e.target.value)} placeholder="Tel Aviv" className="mt-1" /></div>
-                <div><Label>Street Address</Label><Input value={form.streetAddress} onChange={e => update("streetAddress", e.target.value)} placeholder="Dizengoff St 10" className="mt-1" /></div>
+                <div>
+                  <Label>Date of Birth * / תאריך לידה</Label>
+                  <Input
+                    type="date"
+                    value={form.dateOfBirth}
+                    onChange={e => update("dateOfBirth", e.target.value)}
+                    max={new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="flex items-center gap-1">
+                    <CreditCard className="h-3.5 w-3.5" />
+                    Israeli ID / Passport * / ת.ז.
+                  </Label>
+                  <Input
+                    value={form.idNumber}
+                    onChange={e => update("idNumber", e.target.value)}
+                    placeholder="123456789"
+                    className="mt-1"
+                    inputMode="numeric"
+                  />
+                </div>
               </div>
+
+              <div>
+                <Label>Home Address * / כתובת בית</Label>
+                <div className="mt-1">
+                  <GooglePlacesAutocomplete
+                    value={form.addressDisplay}
+                    onChange={handleAddressSelect}
+                    placeholder="Start typing your address / הזן כתובת..."
+                  />
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Exact address stays private — only your neighbourhood is shown publicly.</p>
+              </div>
+
               <div>
                 <Label>About You</Label>
-                <textarea value={form.bio} onChange={e => update("bio", e.target.value)} placeholder="Tell pet owners about yourself, your experience, and your love for animals..." rows={3} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+                <textarea
+                  value={form.bio}
+                  onChange={e => update("bio", e.target.value)}
+                  placeholder="Tell pet owners about yourself, your experience, and your love for animals..."
+                  rows={3}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
               </div>
+
               <div>
                 <Label>Years of Pet Care Experience</Label>
                 <div className="flex gap-3 mt-2">
                   {[0, 1, 2, 3, 5, 10].map(n => (
-                    <button key={n} onClick={() => update("yearsOfExperience", n)} className={`px-3 py-2 rounded-lg text-sm font-medium border-2 transition-all ${form.yearsOfExperience === n ? "bg-purple-600 text-white border-purple-600" : "border-slate-300 text-slate-600 hover:border-purple-400"}`}>{n === 0 ? "New" : `${n}+`}</button>
+                    <button key={n} onClick={() => update("yearsOfExperience", n)} className={`px-3 py-2 rounded-lg text-sm font-medium border-2 transition-all ${form.yearsOfExperience === n ? "bg-purple-600 text-white border-purple-600" : "border-slate-300 text-slate-600 hover:border-purple-400"}`}>
+                      {n === 0 ? "New" : `${n}+`}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -318,8 +422,19 @@ export default function JoinAsSitter() {
             )}
             {step < 4 ? (
               <Button onClick={() => {
-                if (step === 1 && (!form.firstName || !form.lastName || !form.email || !form.phone || !form.city)) {
-                  toast({ title: "Please fill in all required fields", variant: "destructive" }); return;
+                if (step === 1) {
+                  if (!form.firstName || !form.lastName || !form.email || !form.phone) {
+                    toast({ title: "Please fill in name, email, and phone", variant: "destructive" }); return;
+                  }
+                  if (!form.dateOfBirth) {
+                    toast({ title: "Date of birth is required / נדרש תאריך לידה", variant: "destructive" }); return;
+                  }
+                  if (!form.idNumber) {
+                    toast({ title: "Israeli ID / Passport number is required / נדרשת תעודת זהות", variant: "destructive" }); return;
+                  }
+                  if (!form.city) {
+                    toast({ title: "Please select your home address", variant: "destructive" }); return;
+                  }
                 }
                 setStep(s => (s + 1) as Step);
               }} className="bg-purple-600 hover:bg-purple-700">

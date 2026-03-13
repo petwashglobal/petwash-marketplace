@@ -451,15 +451,15 @@ export default function WalkBookingFlow() {
             {/* Pricing Summary */}
             <div className="mb-6 luxury-glass-card luxury-shadow-xl luxury-hover-glow luxury-stagger-item p-6">
               <div className="mb-3 flex items-center justify-between luxury-text-body">
-                <span>סכום בסיס</span>
-                <span>₪{pricing.baseAmount.toFixed(2)}</span>
+                <span>מחיר השירות</span>
+                <span>₪{pricing.grossCollectedILS.toFixed(2)}</span>
               </div>
-              <div className="mb-3 flex items-center justify-between luxury-text-body">
-                <span>עמלת פלטפורמה (15%)</span>
+              <div className="mb-1 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-purple-100">
+                <span>כולל עמלת PetWash (15%)</span>
                 <span>₪{pricing.commission.toFixed(2)}</span>
               </div>
-              <div className="mb-4 flex items-center justify-between luxury-text-body">
-                <span>מע״מ על עמלה (18%)</span>
+              <div className="mb-4 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-purple-100">
+                <span>מהם מע״מ (18/118)</span>
                 <span>₪{pricing.vatOnCommission.toFixed(2)}</span>
               </div>
               <div className="pt-4 border-t border-purple-100 flex items-center justify-between">
@@ -509,11 +509,11 @@ export default function WalkBookingFlow() {
             <div className="mb-6 luxury-glass-card luxury-shadow-xl luxury-hover-glow luxury-stagger-item p-6">
               <div className="mb-4 luxury-heading-sm">פירוט מחיר</div>
               <div className="mb-2 flex items-center justify-between luxury-text-small">
-                <span>סכום בסיס</span>
-                <span>₪{pricing.baseAmount.toFixed(2)}</span>
+                <span>מחיר השירות</span>
+                <span>₪{pricing.grossCollectedILS.toFixed(2)}</span>
               </div>
-              <div className="mb-2 flex items-center justify-between luxury-text-small">
-                <span>עמלה + מע״מ</span>
+              <div className="mb-2 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-purple-100">
+                <span>כולל עמלת PetWash + מע״מ</span>
                 <span>₪{(pricing.commission + pricing.vatOnCommission).toFixed(2)}</span>
               </div>
               <div className="pt-4 border-t border-purple-100 flex items-center justify-between">
