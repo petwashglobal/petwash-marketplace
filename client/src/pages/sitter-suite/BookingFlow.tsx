@@ -11,6 +11,7 @@ import { getActivePaymentMethod, PAYMENTS_CONFIG } from "@/lib/paymentConfig";
 import { GooglePlacesAutocomplete, PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { OwnerInstructionsForm, useOwnerInstructions, type OwnerInstructions } from "@/components/booking/OwnerInstructionsForm";
 import { CreditWalletCard } from "@/components/wallet/CreditWalletCard";
+import { PrestigePassPaymentOption } from "@/components/PrestigePassPaymentOption";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { Calendar } from "@/components/ui/calendar";
 import type { DateRange } from "react-day-picker";
@@ -681,6 +682,15 @@ export default function SitterBookingFlow() {
                     cashDueCents: redemption.cashDueCents,
                   });
                 }}
+              />
+            )}
+
+            {/* PrestigePass Payment Option */}
+            {user && pricing.totalCharged > 0 && (
+              <PrestigePassPaymentOption
+                bookingId={bookingId || `PENDING-SITTER-${user.uid.slice(0, 8)}`}
+                serviceType="pet_sitter"
+                amountGross={Math.round(pricing.totalCharged * 100)}
               />
             )}
 

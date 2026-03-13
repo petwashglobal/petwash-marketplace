@@ -12,6 +12,7 @@ import { getActivePaymentMethod, PAYMENTS_CONFIG } from "@/lib/paymentConfig";
 import { WeatherConsentDialog, useWeatherConsent } from "@/components/weather/WeatherConsentDialog";
 import { OwnerInstructionsForm, useOwnerInstructions } from "@/components/booking/OwnerInstructionsForm";
 import { CreditWalletCard } from "@/components/wallet/CreditWalletCard";
+import { PrestigePassPaymentOption } from "@/components/PrestigePassPaymentOption";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 
 type BookingStep = "details" | "summary" | "pending_match" | "confirmation";
@@ -550,6 +551,17 @@ export default function WalkBookingFlow() {
                       cashDueCents: redemption.cashDueCents,
                     });
                   }}
+                />
+              </div>
+            )}
+
+            {/* PrestigePass Payment Option */}
+            {user && pricing.totalCharged > 0 && (
+              <div className="mb-4">
+                <PrestigePassPaymentOption
+                  bookingId={bookingId || `PENDING-WALKER-${user.uid.slice(0, 8)}`}
+                  serviceType="dog_walker"
+                  amountGross={Math.round(pricing.totalCharged * 100)}
                 />
               </div>
             )}

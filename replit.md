@@ -389,3 +389,37 @@ All non-health API routes were returning 503 `SERVICE_STARTING` indefinitely.
 - Added explicit `startupError` + `startupErrorAt` fields to `healthState.app` in the catch block
   so any future startup failure is visible in `/api/health` without needing Cloud Run log access
 - Dev verification confirmed: `routesReady: true` immediately after the fix
+
+## Prestige Pass / Wallet Engine Refactor (March 2026 — Multi-session)
+
+### WalletEngine.ts (`server/services/WalletEngine.ts`)
+Shared atomic wallet service extracted from prestige-pass.ts. All wallet deductions now go through one place:
+- `computeDeductionOrder(amountCents, balances)` — applies deduction order: promo → egift → package_wash (kiosk) → cash_wallet → card_fallback
+- `applyDeduction(db, userId, amountGross, serviceType, bookingId)` — atomic PostgreSQL transaction; returns breakdown with each source used
+- `topUpCashWallet`, `creditWashPackage`, `adminManualCredit`, `getWalletBalances`, `getOrCreateWallet`
+
+### Schema: `wallet_accounts` table additions
+- `cashWalletBalanceCents` (int, default 0) — moved from Firestore `cashWalletCents` to PostgreSQL for atomicity
+- `packageServiceUnitsRemaining` (int, default 0) — kiosk wash package counter
+- Both added via raw `ALTER TABLE` (schema.ts updated accordingly)
+
+### prestige-pass.ts refactored
+- Removed inline deduction engine; imports WalletEngine for all deductions
+- All balance reads/writes use PostgreSQL `cashWalletBalanceCents` (Firestore `cashWalletCents` is legacy-read-only)
+- New endpoints added: `POST /generate-wallet-links`, `POST /issue-gift`, `POST /claim-gift`, `POST /revoke-pass`, `POST /admin/manual-credit`, `POST /admin/reissue`
+- Admin endpoints require `X-Admin-Secret` header matching `ADMIN_SECRET` or `PRESTIGE_ADMIN_SECRET` env var
+
+### PrestigePassPaymentOption.tsx (`client/src/components/PrestigePassPaymentOption.tsx`)
+Premium dark/gold UI payment component. Shows balance breakdown, deduction preview, applies wallet payment via `/api/prestige-pass/redeem-online`.
+
+### Booking Flow Wiring
+`PrestigePassPaymentOption` inserted into checkout summary step of:
+- `client/src/pages/sitter-suite/BookingFlow.tsx` (before Payment Method Disclosure, ~line 691)
+- `client/src/pages/walk-my-pet/BookingFlow.tsx` (before Payment Method Disclosure, ~line 561)
+Uses pending booking ref (`PENDING-SITTER-{uid}` / `PENDING-WALKER-{uid}`) when booking doesn't exist yet.
+
+### Pending Items
+- Legacy Firestore `cashWalletCents` → PostgreSQL migration for existing users
+- Cloud Run secrets: `PASS_TOKEN_SECRET`, `GOOGLE_WALLET_TOTP_SECRET`, `MACHINE_SECRET_KEY`, `APNS_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_WALLET_CREDENTIALS_JSON`, `PRESTIGE_QR_SECRET`, `GOOGLE_FORMS_SPREADSHEET_ID`, `ADMIN_SECRET`
+- Apple Wallet production pass path
+- Google Wallet production pass path

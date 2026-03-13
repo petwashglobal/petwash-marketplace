@@ -10478,8 +10478,10 @@ export const walletAccounts = pgTable("wallet_accounts", {
   userId: varchar("user_id").notNull(),
   
   // Aggregate balances (cached for performance, recalculated from transactions)
+  cashWalletBalanceCents: integer("cash_wallet_balance_cents").default(0).notNull(), // Paid-in cash balance (was in Firestore — now PostgreSQL for atomicity)
   egiftBalanceCents: integer("egift_balance_cents").default(0).notNull(),
   washPackageCredits: integer("wash_package_credits").default(0).notNull(), // Number of wash sessions
+  packageServiceUnitsRemaining: integer("package_service_units_remaining").default(0).notNull(), // Non-wash service units (grooming, walk, etc.)
   loyaltyPointsBalance: integer("loyalty_points_balance").default(0).notNull(),
   promoBalanceCents: integer("promo_balance_cents").default(0).notNull(),
   referralBalanceCents: integer("referral_balance_cents").default(0).notNull(),

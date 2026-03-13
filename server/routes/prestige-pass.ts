@@ -36,6 +36,14 @@ import { EmailService } from '../emailService';
 import { buildPrestigePassLuxuryEmail } from '../email/templates/prestige-pass-luxury-2026';
 import { buildWalletUrls } from '../lib/walletPassToken';
 import QRCode from 'qrcode';
+import {
+  getWalletBalances,
+  getOrCreateWallet,
+  applyDeduction,
+  topUpCashWallet,
+  adminManualCredit,
+  type DeductionBreakdown,
+} from '../services/WalletEngine';
 
 const router = Router();
 
@@ -183,7 +191,7 @@ router.get('/wallet', async (req: Request, res: Response) => {
         issuedAt:      passData.issuedAt,
       },
       balances: {
-        cashWalletCents:      passData.cashWalletCents || 0,
+        cashWalletCents:      wallet?.cashWalletBalanceCents || 0,
         egiftBalanceCents:    wallet?.egiftBalanceCents || 0,
         promoBalanceCents:    wallet?.promoBalanceCents || 0,
         packageWashesLeft:    wallet?.washPackageCredits || 0,
@@ -272,153 +280,64 @@ const redeemSchema = z.object({
 });
 
 // ─────────────────────────────────────────────────────────
-// DEDUCTION ORDER ENGINE (spec-compliant, pure function)
-// Order: promo → gift/egift → package_wash → cash_wallet → card_fallback
-// Supports partial multi-source deduction across all balance types.
+// NOTE: Deduction engine is now in WalletEngine.ts (PostgreSQL-only, atomic).
+// DeductionBreakdown type imported from WalletEngine.
 // ─────────────────────────────────────────────────────────
-interface DeductionBreakdown {
-  promo:        number;   // promo credits used (cents)
-  gift:         number;   // egift balance used (cents)
-  package:      number;   // package wash units used (count)
-  wallet:       number;   // cash wallet used (cents)
-  cardFallback: number;   // remaining shortfall requiring card (cents)
-  totalCovered: number;   // total cents covered by wallet sources
-  ok:           boolean;  // fully covered without card
-  shortfall:    number;   // cents still unpaid
-  washDeducted: boolean;  // true if a wash unit was consumed (kiosk free-wash)
-}
 
-function computeDeductionOrder(
-  balances: {
-    promoBalanceCents:   number;
-    egiftBalanceCents:   number;
-    washPackageCredits:  number;
-    cashWalletCents:     number;
-  },
-  amountCents: number,
-  isKioskFreeWash: boolean,
-): DeductionBreakdown {
-  // Special path: free kiosk wash from package (amount = 0 + wash credit available)
-  if (isKioskFreeWash && balances.washPackageCredits > 0) {
-    return {
-      promo: 0, gift: 0, package: 1, wallet: 0,
-      cardFallback: 0, totalCovered: 0,
-      ok: true, shortfall: 0, washDeducted: true,
-    };
-  }
-
-  let remaining = amountCents;
-
-  // 1. Promo credits (expires first)
-  const promoUse = Math.min(balances.promoBalanceCents, remaining);
-  remaining -= promoUse;
-
-  // 2. eGift balance
-  const giftUse = Math.min(balances.egiftBalanceCents, remaining);
-  remaining -= giftUse;
-
-  // 3. Package wash (1 unit = wash value; skip for non-wash online services)
-  const packageUse = 0; // package wash units used as monetary value only for kiosk path
-  // remaining unchanged (package units are discrete, not converted to cents here)
-
-  // 4. Cash wallet
-  const walletUse = Math.min(balances.cashWalletCents, remaining);
-  remaining -= walletUse;
-
-  const cardFallback = Math.max(0, remaining);
-  const totalCovered = promoUse + giftUse + walletUse;
-
-  return {
-    promo:        promoUse,
-    gift:         giftUse,
-    package:      packageUse,
-    wallet:       walletUse,
-    cardFallback,
-    totalCovered,
-    ok:           cardFallback === 0,
-    shortfall:    cardFallback,
-    washDeducted: false,
-  };
-}
-
-// Apply computed deduction to DB/Firestore atomically
-async function applyDeductionToStorage(
-  userId: string,
-  breakdown: DeductionBreakdown,
-  wallet: typeof walletAccounts.$inferSelect | undefined,
-  passRef: any,
-  passData: { cashWalletCents: number },
-): Promise<void> {
-  const dbUpdates: Partial<typeof walletAccounts.$inferSelect> = {};
-
-  if (breakdown.washDeducted && (wallet?.washPackageCredits ?? 0) > 0) {
-    dbUpdates.washPackageCredits = (wallet!.washPackageCredits - 1);
-  }
-  if (breakdown.promo > 0 && wallet) {
-    dbUpdates.promoBalanceCents = Math.max(0, (wallet.promoBalanceCents ?? 0) - breakdown.promo);
-  }
-  if (breakdown.gift > 0 && wallet) {
-    dbUpdates.egiftBalanceCents = Math.max(0, (wallet.egiftBalanceCents ?? 0) - breakdown.gift);
-  }
-
-  if (Object.keys(dbUpdates).length > 0) {
-    await db.update(walletAccounts).set(dbUpdates).where(eq(walletAccounts.userId, userId));
-  }
-
-  if (breakdown.wallet > 0) {
-    const newCash = Math.max(0, (passData.cashWalletCents ?? 0) - breakdown.wallet);
-    await passRef.update({ cashWalletCents: newCash });
-  }
-}
-
-// Backwards-compatible wrapper for the kiosk path
+// Wrapper for the kiosk path — uses WalletEngine (PostgreSQL-only, atomic)
 async function applySmartRedemption(
   userId: string,
   amountCents: number,
-  walletId: string,
-): Promise<{ source: string; deductedCents: number; washDeducted: boolean; breakdown: DeductionBreakdown }> {
-  const passRef  = firestoreDb.collection('prestige_passes').doc(userId);
-  const passDoc  = await passRef.get();
-  const passData = passDoc.exists ? passDoc.data()! : { cashWalletCents: 0 };
-
-  const [wallet] = await db.select().from(walletAccounts).where(eq(walletAccounts.userId, userId)).limit(1);
-
-  const isKioskFreeWash = amountCents === 0 && (wallet?.washPackageCredits ?? 0) > 0;
-
-  const breakdown = computeDeductionOrder(
-    {
-      promoBalanceCents:  wallet?.promoBalanceCents  ?? 0,
-      egiftBalanceCents:  wallet?.egiftBalanceCents  ?? 0,
-      washPackageCredits: wallet?.washPackageCredits ?? 0,
-      cashWalletCents:    passData.cashWalletCents   ?? 0,
-    },
-    amountCents,
-    isKioskFreeWash,
-  );
-
-  if (breakdown.cardFallback >= amountCents && !breakdown.washDeducted) {
-    return { source: 'card_required', deductedCents: 0, washDeducted: false, breakdown };
+  serviceType: string,
+  machineId?: string,
+  bayId?: string,
+): Promise<{ source: string; deductedCents: number; washDeducted: boolean; breakdown: DeductionBreakdown; txnId: string }> {
+  const walletBalances = await getWalletBalances(userId);
+  if (!walletBalances) {
+    return {
+      source: 'no_wallet', deductedCents: 0, washDeducted: false, txnId: '',
+      breakdown: { promo: 0, gift: 0, package: 0, wallet: 0, cardFallback: amountCents,
+        totalCovered: 0, ok: false, shortfall: amountCents, washDeducted: false, serviceDeducted: false },
+    };
   }
 
-  await applyDeductionToStorage(userId, breakdown, wallet, passRef, passData as { cashWalletCents: number });
+  const isKioskWash = amountCents === 0 && walletBalances.washPackageCredits > 0;
 
-  const source = breakdown.washDeducted
+  // Quick pre-check: skip deduction engine if wallet has nothing to contribute
+  const totalMonetary = walletBalances.promoBalanceCents + walletBalances.egiftBalanceCents + walletBalances.cashWalletBalanceCents;
+  if (!isKioskWash && totalMonetary === 0 && amountCents > 0) {
+    const emptyBreakdown: DeductionBreakdown = {
+      promo: 0, gift: 0, package: 0, wallet: 0,
+      cardFallback: amountCents, totalCovered: 0,
+      ok: false, shortfall: amountCents, washDeducted: false, serviceDeducted: false,
+    };
+    return { source: 'card_required', deductedCents: 0, washDeducted: false, txnId: '', breakdown: emptyBreakdown };
+  }
+
+  const result = await applyDeduction({
+    userId, amountCents, isKioskWash,
+    serviceType, machineId, bayId,
+    description: `Prestige Pass ${isKioskWash ? 'free wash' : 'kiosk'} — ${machineId || 'terminal'}`,
+  });
+
+  const source = result.breakdown.washDeducted
     ? 'package_wash'
-    : breakdown.totalCovered < amountCents
+    : result.breakdown.totalCovered < amountCents
       ? 'partial_mixed'
-      : breakdown.promo > 0 && breakdown.gift === 0 && breakdown.wallet === 0
+      : result.breakdown.promo > 0 && result.breakdown.gift === 0 && result.breakdown.wallet === 0
         ? 'promo_credit'
-        : breakdown.gift > 0 && breakdown.promo === 0 && breakdown.wallet === 0
+        : result.breakdown.gift > 0 && result.breakdown.promo === 0 && result.breakdown.wallet === 0
           ? 'egift'
-          : breakdown.wallet > 0 && breakdown.promo === 0 && breakdown.gift === 0
+          : result.breakdown.wallet > 0 && result.breakdown.promo === 0 && result.breakdown.gift === 0
             ? 'cash_wallet'
             : 'mixed';
 
   return {
     source,
-    deductedCents: breakdown.totalCovered,
-    washDeducted:  breakdown.washDeducted,
-    breakdown,
+    deductedCents: result.breakdown.totalCovered,
+    washDeducted:  result.breakdown.washDeducted,
+    txnId:         result.txnId,
+    breakdown:     result.breakdown,
   };
 }
 
@@ -459,28 +378,8 @@ router.post('/token/redeem', redeemLimiter, async (req: Request, res: Response) 
       bay:       effectiveBay,
     });
 
-    // 5. Apply smart redemption
-    const result = await applySmartRedemption(userId, amountCents, walletId);
-
-    // 6. Log to credit transactions ledger
-    if (result.deductedCents > 0 || result.washDeducted) {
-      const txnId = `TXN-PREST-${Date.now().toString(36).toUpperCase()}`;
-      await db.insert(creditTransactions).values({
-        transactionId:  txnId,
-        walletId,
-        creditType:     result.source === 'package_wash' ? 'wash_package'
-                        : result.source === 'egift'      ? 'egift'
-                        : result.source === 'promo_credit' ? 'promo_credit'
-                        : 'referral_credit',
-        transactionType: 'redeem',
-        amountCents:     result.deductedCents > 0 ? -result.deductedCents : null,
-        amountUnits:     result.washDeducted ? -1 : null,
-        metadata: {
-          jti, stationId, bay: effectiveBay,
-          redemptionSource: result.source,
-        } as any,
-      });
-    }
+    // 5. Apply smart redemption (WalletEngine writes ledger entry atomically)
+    const result = await applySmartRedemption(userId, amountCents, 'k9000', stationId, effectiveBay);
 
     logger.info('[PrestigePass] Token redeemed', {
       jti, userId, stationId, bay: effectiveBay,
@@ -542,7 +441,7 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
     const [wallet] = await db.select().from(walletAccounts).where(eq(walletAccounts.userId, userId)).limit(1);
 
     const tier    = wallet?.loyaltyTier || 'new';
-    const balance = ((passData.cashWalletCents || 0) + (wallet?.egiftBalanceCents || 0)) / 100;
+    const balance = ((wallet?.cashWalletBalanceCents || 0) + (wallet?.egiftBalanceCents || 0)) / 100;
     const washes  = wallet?.washPackageCredits || 0;
 
     // Apple Wallet pass.json structure
@@ -647,23 +546,15 @@ router.post('/topup', async (req: Request, res: Response) => {
     if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input' });
     const { amountCents, source, reference } = parsed.data;
 
-    const passRef = firestoreDb.collection('prestige_passes').doc(userId);
-    const passDoc = await passRef.get();
-    const current = passDoc.exists ? (passDoc.data()!.cashWalletCents || 0) : 0;
-    const newBalance = current + amountCents;
+    const { txnId, newBalanceCents } = await topUpCashWallet(userId, amountCents, source, reference);
 
-    if (passDoc.exists) {
-      await passRef.update({ cashWalletCents: newBalance });
-    } else {
-      await passRef.set({ userId, cashWalletCents: newBalance, issuedAt: new Date().toISOString() });
-    }
-
-    logger.info('[PrestigePass] Top-up applied', { userId, amountCents, source, newBalance });
+    logger.info('[PrestigePass] Top-up applied', { userId, amountCents, source, txnId, newBalanceCents });
 
     return res.json({
-      ok:             true,
-      cashWalletCents: newBalance,
-      added:          amountCents,
+      ok:              true,
+      cashWalletCents: newBalanceCents,
+      added:           amountCents,
+      txnId,
     });
   } catch (err) {
     logger.error('[PrestigePass] /topup error:', err);
@@ -895,7 +786,7 @@ router.post('/activate', async (req: Request, res: Response) => {
       });
     }
 
-    const passData = (await passRef.get()).data()!;
+    const [activateWallet] = await db.select().from(walletAccounts).where(eq(walletAccounts.userId, userId)).limit(1);
     const recipientEmail = email || session?.user?.email;
 
     // Send wallet email with both wallet buttons
@@ -906,8 +797,8 @@ router.post('/activate', async (req: Request, res: Response) => {
         tierDisplay,
         cardNumber:          passCardNumber,
         appBaseUrl,
-        cashWalletCents:     passData.cashWalletCents || 0,
-        freeWashesRemaining: passData.freeWashesRemaining || 0,
+        cashWalletCents:     activateWallet?.cashWalletBalanceCents || 0,
+        freeWashesRemaining: activateWallet?.washPackageCredits || 0,
       });
 
       const sent = await EmailService.send({
@@ -952,19 +843,17 @@ router.get('/me', async (req: Request, res: Response) => {
       .limit(1);
 
     const passDoc  = await firestoreDb.collection('prestige_passes').doc(userId).get();
-    const passData = passDoc.exists ? passDoc.data()! : { cashWalletCents: 0, tier: 'new' };
-
-    const tier = wallet?.loyaltyTier || passData.tier || 'new';
+    const tier = wallet?.loyaltyTier || passDoc.data()?.tier || 'new';
 
     return res.json({
       userId,
       tier,
       balances: {
-        promo:         wallet?.promoBalanceCents    ?? 0,
-        gift:          wallet?.egiftBalanceCents    ?? 0,
-        wallet:        passData.cashWalletCents     ?? 0,
-        washes:        wallet?.washPackageCredits   ?? 0,
-        loyaltyPoints: wallet?.loyaltyPointsBalance ?? 0,
+        promo:         wallet?.promoBalanceCents        ?? 0,
+        gift:          wallet?.egiftBalanceCents        ?? 0,
+        wallet:        wallet?.cashWalletBalanceCents   ?? 0,
+        washes:        wallet?.washPackageCredits       ?? 0,
+        loyaltyPoints: wallet?.loyaltyPointsBalance     ?? 0,
       },
     });
   } catch (err) {
@@ -999,93 +888,61 @@ router.post('/redeem-online', async (req: Request, res: Response) => {
     }
     const { bookingId, serviceType, amountGross } = parsed.data;
 
-    // Load wallet + pass balances
-    const passRef  = firestoreDb.collection('prestige_passes').doc(userId);
-    const passDoc  = await passRef.get();
-    const passData = passDoc.exists ? passDoc.data()! : { cashWalletCents: 0 };
-
-    const [wallet] = await db
-      .select()
-      .from(walletAccounts)
-      .where(eq(walletAccounts.userId, userId))
-      .limit(1);
-
-    const balanceSnapshot = {
-      promoBalanceCents:  wallet?.promoBalanceCents  ?? 0,
-      egiftBalanceCents:  wallet?.egiftBalanceCents  ?? 0,
-      washPackageCredits: wallet?.washPackageCredits ?? 0,
-      cashWalletCents:    passData.cashWalletCents   ?? 0,
-    };
+    // Load wallet balances from PostgreSQL only
+    const walletBalances = await getWalletBalances(userId);
+    if (!walletBalances) {
+      return res.status(404).json({ ok: false, error: 'No wallet account found. Please activate your Prestige Pass first.' });
+    }
 
     const totalAvailable =
-      balanceSnapshot.promoBalanceCents +
-      balanceSnapshot.egiftBalanceCents +
-      balanceSnapshot.cashWalletCents;
+      walletBalances.promoBalanceCents +
+      walletBalances.egiftBalanceCents +
+      walletBalances.cashWalletBalanceCents;
 
     if (totalAvailable < amountGross) {
       return res.status(402).json({
-        ok:         false,
-        error:      'Insufficient balance',
-        available:  totalAvailable,
-        required:   amountGross,
-        shortfall:  amountGross - totalAvailable,
+        ok:        false,
+        error:     'Insufficient balance',
+        available: totalAvailable,
+        required:  amountGross,
+        shortfall: amountGross - totalAvailable,
       });
     }
 
-    // Compute deduction breakdown (online path — no free-wash shortcut)
-    const breakdown = computeDeductionOrder(balanceSnapshot, amountGross, false);
+    // Atomic deduction via WalletEngine (PostgreSQL only — no Firestore split)
+    const result = await applyDeduction({
+      userId,
+      amountCents:  amountGross,
+      isKioskWash:  false,
+      serviceType,
+      bookingId,
+      description: `Online redemption — ${serviceType}`,
+    });
 
-    if (!breakdown.ok) {
+    if (!result.breakdown.ok && result.breakdown.cardFallback > 0) {
       return res.status(402).json({
         ok:        false,
         error:     'Insufficient balance',
-        shortfall: breakdown.shortfall,
+        shortfall: result.breakdown.shortfall,
       });
     }
 
-    // Apply deductions to DB + Firestore
-    await applyDeductionToStorage(userId, breakdown, wallet, passRef, passData as { cashWalletCents: number });
-
-    // Record in credit transactions ledger
-    const walletId = wallet?.walletId || `WALLET-${userId.slice(0, 8)}`;
-    const txnId    = `TXN-ONL-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString('hex').toUpperCase()}`;
-
-    await db.insert(creditTransactions).values({
-      transactionId:  txnId,
-      walletId,
-      creditType:     'online_redeem',
-      transactionType: 'redeem',
-      amountCents:    -amountGross,
-      amountUnits:    null,
-      metadata: {
-        bookingId,
-        serviceType,
-        amountGross,
-        breakdown: {
-          promo:  breakdown.promo,
-          gift:   breakdown.gift,
-          wallet: breakdown.wallet,
-          cardFallback: breakdown.cardFallback,
-        },
-      } as any,
-    });
-
     logger.info('[PrestigePass] Online redemption completed', {
       userId, bookingId, serviceType, amountGross,
-      promo: breakdown.promo, gift: breakdown.gift, wallet: breakdown.wallet,
+      promo: result.breakdown.promo, gift: result.breakdown.gift, wallet: result.breakdown.wallet,
     });
 
     return res.json({
-      ok:              true,
+      ok:               true,
       bookingConfirmed: true,
-      txnId,
+      txnId:            result.txnId,
       amountGross,
       deductionBreakdown: {
-        promo:        breakdown.promo,
-        gift:         breakdown.gift,
-        wallet:       breakdown.wallet,
-        cardFallback: breakdown.cardFallback,
-        totalCovered: breakdown.totalCovered,
+        promo:        result.breakdown.promo,
+        gift:         result.breakdown.gift,
+        wallet:       result.breakdown.wallet,
+        cardFallback: result.breakdown.cardFallback,
+        totalCovered: result.breakdown.totalCovered,
       },
     });
   } catch (err) {
@@ -1113,13 +970,15 @@ router.post('/resend-wallet-email', async (req: Request, res: Response) => {
     const tierDisplay = TIER_DISPLAY[tierKey]?.en || 'Prestige Pearl';
     const appBaseUrl  = process.env.APP_BASE_URL || 'https://petwash.co.il';
 
+    const [resendWallet] = await db.select().from(walletAccounts).where(eq(walletAccounts.userId, userId)).limit(1);
+
     const html = buildPrestigeWalletEmail({
       firstName:           session?.user?.displayName?.split(' ')[0] || 'לקוח יקר',
       tierDisplay,
       cardNumber:          pass.cardNumber || userId.slice(-8).toUpperCase(),
       appBaseUrl,
-      cashWalletCents:     pass.cashWalletCents || 0,
-      freeWashesRemaining: pass.freeWashesRemaining || 0,
+      cashWalletCents:     resendWallet?.cashWalletBalanceCents || 0,
+      freeWashesRemaining: resendWallet?.washPackageCredits || 0,
     });
 
     const sent = await EmailService.send({
@@ -1223,6 +1082,360 @@ router.post('/send-luxury-demo', async (req: Request, res: Response) => {
   } catch (err) {
     logger.error('[PrestigePass] /send-luxury-demo error:', err);
     return res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// POST /generate-wallet-links — Apple + Google pass URLs
+// Returns signed URLs the client embeds in "Add to Wallet" buttons
+// ─────────────────────────────────────────────────────────
+router.post('/generate-wallet-links', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    const userId  = session?.user?.uid;
+    if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
+
+    const BASE_URL = process.env.APP_BASE_URL || process.env.BASE_URL || 'https://petwash.co.il';
+    const { appleWalletUrl, googleWalletUrl } = buildWalletUrls(userId, BASE_URL);
+
+    return res.json({
+      ok:             true,
+      appleWalletUrl,
+      googleWalletUrl,
+      applePassUrl:   `${BASE_URL}/api/prestige-pass/apple-wallet`,
+      googlePassUrl:  `${BASE_URL}/api/prestige-pass/google-wallet`,
+    });
+  } catch (err) {
+    logger.error('[PrestigePass] /generate-wallet-links error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// POST /issue-gift — issue an eGift card to another user
+// Debits sender (or creates gift from admin/promo), credits recipient's egift balance
+// Body: { recipientEmail, amountCents, message? }
+// ─────────────────────────────────────────────────────────
+const issueGiftSchema = z.object({
+  recipientEmail: z.string().email(),
+  amountCents:    z.number().int().min(100).max(1_000_000), // 1 ILS min
+  message:        z.string().max(500).optional(),
+  senderId:       z.string().optional(), // admin path: override sender
+});
+
+router.post('/issue-gift', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    const senderId = session?.user?.uid;
+    if (!senderId) return res.status(401).json({ ok: false, error: 'Auth required' });
+
+    const parsed = issueGiftSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input', details: parsed.error.flatten() });
+    const { recipientEmail, amountCents, message } = parsed.data;
+
+    // Generate unique gift code
+    const giftCode    = `PW-GIFT-${randomBytes(6).toString('hex').toUpperCase()}`;
+    const giftId      = `GIFT-${Date.now().toString(36).toUpperCase()}`;
+    const expiresAt   = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year
+
+    // Store gift in Firestore (pending claim)
+    await firestoreDb.collection('egift_cards').doc(giftId).set({
+      giftId,
+      giftCode,
+      senderId,
+      senderEmail:      session?.user?.email || null,
+      recipientEmail,
+      amountCents,
+      message:          message || null,
+      status:           'pending',
+      issuedAt:         new Date().toISOString(),
+      expiresAt:        expiresAt.toISOString(),
+      claimedAt:        null,
+      claimedByUserId:  null,
+    });
+
+    // Send gift email to recipient
+    try {
+      await EmailService.send({
+        to:      recipientEmail,
+        subject: `🎁 קיבלת כרטיס מתנה מ-PetWash™ — ₪${(amountCents / 100).toFixed(0)}`,
+        html: `
+          <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;background:#fff;border-radius:16px;border:1px solid #e5e7eb">
+            <h2 style="color:#D4AF37;font-size:24px;margin-bottom:8px">🎁 כרטיס מתנה מ-PetWash™</h2>
+            <p style="color:#374151;font-size:16px">קיבלת כרטיס מתנה בשווי <strong>₪${(amountCents / 100).toFixed(0)}</strong>!</p>
+            ${message ? `<p style="color:#6b7280;font-style:italic">"${message}"</p>` : ''}
+            <div style="background:#f9fafb;border-radius:12px;padding:16px;text-align:center;margin:24px 0">
+              <p style="color:#6b7280;font-size:14px;margin:0 0 8px">קוד המתנה שלך</p>
+              <code style="font-size:28px;font-weight:bold;color:#1f2937;letter-spacing:4px">${giftCode}</code>
+            </div>
+            <p style="color:#6b7280;font-size:13px">לחץ על הקישור כדי לממש: <a href="https://petwash.co.il/wallet?claim=${giftCode}">לחץ כאן</a></p>
+            <p style="color:#9ca3af;font-size:12px">תוקף: ${expiresAt.toLocaleDateString('he-IL')}</p>
+          </div>
+        `,
+      });
+    } catch (emailErr) {
+      logger.warn('[PrestigePass] Gift email failed (non-fatal)', { giftId, recipientEmail, emailErr });
+    }
+
+    logger.info('[PrestigePass] Gift issued', { giftId, giftCode, senderId, recipientEmail, amountCents });
+
+    return res.json({
+      ok:       true,
+      giftId,
+      giftCode,
+      amountCents,
+      recipientEmail,
+      expiresAt: expiresAt.toISOString(),
+    });
+  } catch (err) {
+    logger.error('[PrestigePass] /issue-gift error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// POST /claim-gift — redeem a gift code, credit egift balance
+// Body: { giftCode }
+// ─────────────────────────────────────────────────────────
+const claimGiftSchema = z.object({
+  giftCode: z.string().min(8).max(64),
+});
+
+router.post('/claim-gift', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    const userId  = session?.user?.uid;
+    const email   = session?.user?.email;
+    if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
+
+    const parsed = claimGiftSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid gift code' });
+    const { giftCode } = parsed.data;
+
+    // Look up gift card by code
+    const snapshot = await firestoreDb.collection('egift_cards')
+      .where('giftCode', '==', giftCode.toUpperCase().trim())
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({ ok: false, error: 'Gift code not found' });
+    }
+
+    const giftDoc = snapshot.docs[0];
+    const gift    = giftDoc.data();
+
+    if (gift.status === 'claimed') {
+      return res.status(409).json({ ok: false, error: 'Gift code already claimed' });
+    }
+    if (gift.status === 'expired' || new Date(gift.expiresAt) < new Date()) {
+      await giftDoc.ref.update({ status: 'expired' });
+      return res.status(410).json({ ok: false, error: 'Gift code has expired' });
+    }
+    if (gift.senderId === userId) {
+      return res.status(403).json({ ok: false, error: 'You cannot claim your own gift' });
+    }
+    if (gift.recipientEmail && gift.recipientEmail !== email) {
+      return res.status(403).json({ ok: false, error: 'This gift was sent to a different email address' });
+    }
+
+    // Credit egift balance
+    const wallet = await getOrCreateWallet(userId);
+    const { txnId } = await adminManualCredit({
+      userId,
+      creditType:   'egift',
+      amountCents:  gift.amountCents,
+      reason:       `Gift claim — code ${giftCode}`,
+      adminUserId:  'system',
+    });
+
+    // Mark gift as claimed
+    await giftDoc.ref.update({
+      status:          'claimed',
+      claimedAt:       new Date().toISOString(),
+      claimedByUserId: userId,
+      claimTxnId:      txnId,
+    });
+
+    logger.info('[PrestigePass] Gift claimed', { giftId: gift.giftId, userId, amountCents: gift.amountCents, txnId });
+
+    return res.json({
+      ok:          true,
+      claimed:     true,
+      txnId,
+      amountCents: gift.amountCents,
+      newEgiftBalance: wallet.egiftBalanceCents + gift.amountCents,
+      message:     `₪${(gift.amountCents / 100).toFixed(0)} זוכו לארנק ה-eGift שלך!`,
+    });
+  } catch (err) {
+    logger.error('[PrestigePass] /claim-gift error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// POST /revoke-pass — admin: deactivate a Prestige Pass
+// Body: { targetUserId, reason }
+// Requires admin session (enforced via adminSecret header in dev; Firebase custom claim in prod)
+// ─────────────────────────────────────────────────────────
+const revokePassSchema = z.object({
+  targetUserId: z.string().min(1),
+  reason:       z.string().min(1).max(500),
+});
+
+router.post('/revoke-pass', async (req: Request, res: Response) => {
+  try {
+    const adminSecret = req.headers['x-admin-secret'];
+    const ADMIN_SECRET = process.env.ADMIN_SECRET || process.env.PRESTIGE_ADMIN_SECRET;
+    if (!ADMIN_SECRET || adminSecret !== ADMIN_SECRET) {
+      return res.status(403).json({ ok: false, error: 'Admin authorization required' });
+    }
+
+    const parsed = revokePassSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input' });
+    const { targetUserId, reason } = parsed.data;
+
+    // Deactivate in Firestore (pass metadata)
+    const passRef = firestoreDb.collection('prestige_passes').doc(targetUserId);
+    await passRef.update({
+      status:    'revoked',
+      revokedAt: new Date().toISOString(),
+      revokedReason: reason,
+    });
+
+    // Deactivate wallet account in PostgreSQL
+    await db
+      .update(walletAccounts)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(walletAccounts.userId, targetUserId));
+
+    logger.warn('[PrestigePass] Pass revoked', { targetUserId, reason });
+
+    return res.json({
+      ok:           true,
+      revoked:      true,
+      targetUserId,
+      reason,
+      revokedAt:    new Date().toISOString(),
+    });
+  } catch (err) {
+    logger.error('[PrestigePass] /revoke-pass error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// POST /admin/manual-credit — admin: add credits to any balance bucket
+// Body: { targetUserId, creditType, amountCents?, units?, reason }
+// ─────────────────────────────────────────────────────────
+const adminCreditSchema = z.object({
+  targetUserId: z.string().min(1),
+  creditType:   z.enum(['promo', 'egift', 'cash', 'wash_package']),
+  amountCents:  z.number().int().min(1).optional(),
+  units:        z.number().int().min(1).optional(),
+  reason:       z.string().min(1).max(500),
+});
+
+router.post('/admin/manual-credit', async (req: Request, res: Response) => {
+  try {
+    const adminSecret = req.headers['x-admin-secret'];
+    const ADMIN_SECRET = process.env.ADMIN_SECRET || process.env.PRESTIGE_ADMIN_SECRET;
+    if (!ADMIN_SECRET || adminSecret !== ADMIN_SECRET) {
+      return res.status(403).json({ ok: false, error: 'Admin authorization required' });
+    }
+
+    const session = (req as any).session;
+    const adminUserId = session?.user?.uid || 'admin';
+
+    const parsed = adminCreditSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input', details: parsed.error.flatten() });
+    const { targetUserId, creditType, amountCents, units, reason } = parsed.data;
+
+    if (creditType !== 'wash_package' && !amountCents) {
+      return res.status(400).json({ ok: false, error: 'amountCents required for monetary credit types' });
+    }
+    if (creditType === 'wash_package' && !units) {
+      return res.status(400).json({ ok: false, error: 'units required for wash_package credit type' });
+    }
+
+    const { txnId } = await adminManualCredit({ userId: targetUserId, creditType, amountCents, units, reason, adminUserId });
+
+    logger.info('[PrestigePass] Admin manual credit applied', { targetUserId, creditType, amountCents, units, txnId, reason });
+
+    const updatedBalances = await getWalletBalances(targetUserId);
+
+    return res.json({
+      ok:      true,
+      txnId,
+      targetUserId,
+      creditType,
+      amountCents,
+      units,
+      balancesAfter: updatedBalances,
+    });
+  } catch (err) {
+    logger.error('[PrestigePass] /admin/manual-credit error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// POST /admin/reissue — admin: reissue pass (new serial, reset Firestore metadata)
+// Body: { targetUserId, tier? }
+// ─────────────────────────────────────────────────────────
+const adminReissueSchema = z.object({
+  targetUserId: z.string().min(1),
+  tier:         z.string().optional(),
+  reason:       z.string().max(500).optional(),
+});
+
+router.post('/admin/reissue', async (req: Request, res: Response) => {
+  try {
+    const adminSecret = req.headers['x-admin-secret'];
+    const ADMIN_SECRET = process.env.ADMIN_SECRET || process.env.PRESTIGE_ADMIN_SECRET;
+    if (!ADMIN_SECRET || adminSecret !== ADMIN_SECRET) {
+      return res.status(403).json({ ok: false, error: 'Admin authorization required' });
+    }
+
+    const parsed = adminReissueSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input' });
+    const { targetUserId, tier, reason } = parsed.data;
+
+    const newSerial = `PWL-${Date.now().toString(36).toUpperCase()}-${randomBytes(2).toString('hex').toUpperCase()}`;
+    const passRef   = firestoreDb.collection('prestige_passes').doc(targetUserId);
+    const existing  = await passRef.get();
+    const existingData = existing.exists ? existing.data()! : {};
+
+    await passRef.set({
+      ...existingData,
+      userId:        targetUserId,
+      serialNumber:  newSerial,
+      tier:          tier || existingData.tier || 'new',
+      status:        'active',
+      reissuedAt:    new Date().toISOString(),
+      reissueReason: reason || 'admin_reissue',
+      revokedAt:     null,
+      revokedReason: null,
+    }, { merge: true });
+
+    // Re-activate wallet if it was deactivated
+    await db
+      .update(walletAccounts)
+      .set({ isActive: true, updatedAt: new Date() })
+      .where(eq(walletAccounts.userId, targetUserId));
+
+    logger.info('[PrestigePass] Pass reissued by admin', { targetUserId, newSerial, tier, reason });
+
+    return res.json({
+      ok:          true,
+      reissued:    true,
+      targetUserId,
+      newSerial,
+      tier:        tier || existingData.tier || 'new',
+    });
+  } catch (err) {
+    logger.error('[PrestigePass] /admin/reissue error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal error' });
   }
 });
 
