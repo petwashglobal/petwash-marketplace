@@ -1316,25 +1316,29 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // POST /api/consent/biometric - Save biometric authentication consent (REQUIRED by Apple/Google)
-  app.post('/api/consent/biometric', async (req, res) => {
+  // SECURITY: requireAuth enforces that only authenticated users can record biometric consent.
+  // Passkey registration always requires an active session — anonymous biometric consent is meaningless.
+  app.post('/api/consent/biometric', requireAuth, async (req: any, res) => {
     try {
-      const { type, timestamp, consented, userAgent, platform } = req.body;
+      const { type, timestamp, consented, userAgent: clientUserAgent, platform } = req.body;
       const ip = getClientIP(req);
+      const userId = req.user?.uid || req.userId;
+      const userEmail = req.user?.email || null;
       
-      // Get Firebase user ID if authenticated
-      const firebaseUser = (req as any).firebaseUser;
-      const userId = firebaseUser?.uid || null;
-      
+      if (!type || typeof consented !== 'boolean') {
+        return res.status(400).json({ ok: false, error: 'Missing required fields: type, consented' });
+      }
+
       // Create biometric consent record with audit trail
       const consentRecord = {
-        userId: userId || 'anonymous',
-        email: firebaseUser?.email || null,
+        userId,
+        email: userEmail,
         consentType: 'biometric',
         biometricType: type, // 'passkey', 'faceid', 'touchid', 'windowshello'
         consented,
         timestamp: timestamp || new Date().toISOString(),
         ip,
-        userAgent,
+        userAgent: clientUserAgent || req.headers['user-agent'] || 'unknown',
         platform,
         source: 'web',
       };
@@ -1343,9 +1347,9 @@ self.addEventListener('notificationclick', (event) => {
       await firestoreDb.collection('biometric_consent').add(consentRecord);
       
       logger.info('[Biometric Consent] Saved biometric authentication consent', {
-        userId: userId || 'anonymous',
+        userId,
         type,
-        consented
+        consented,
       });
       
       res.json({ ok: true });
@@ -1356,20 +1360,24 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // POST /api/consent/wallet - Save wallet pass consent (REQUIRED by Apple/Google)
-  app.post('/api/consent/wallet', async (req, res) => {
+  // SECURITY: requireAuth enforces that only authenticated users can record wallet consent.
+  // Apple/Google Wallet passes are bound to a specific user account — anonymous wallet consent is invalid.
+  app.post('/api/consent/wallet', requireAuth, async (req: any, res) => {
     try {
       const { passType, platform, timestamp, consented } = req.body;
       const ip = getClientIP(req);
       const userAgent = req.headers['user-agent'] || 'unknown';
-      
-      // Get Firebase user ID if authenticated
-      const firebaseUser = (req as any).firebaseUser;
-      const userId = firebaseUser?.uid || null;
+      const userId = req.user?.uid || req.userId;
+      const userEmail = req.user?.email || null;
+
+      if (!passType || !platform || typeof consented !== 'boolean') {
+        return res.status(400).json({ ok: false, error: 'Missing required fields: passType, platform, consented' });
+      }
       
       // Create wallet consent record with audit trail
       const consentRecord = {
-        userId: userId || 'anonymous',
-        email: firebaseUser?.email || null,
+        userId,
+        email: userEmail,
         consentType: 'wallet',
         passType, // 'vip', 'business', 'voucher'
         platform, // 'apple', 'google'
@@ -1384,10 +1392,10 @@ self.addEventListener('notificationclick', (event) => {
       await firestoreDb.collection('wallet_consent').add(consentRecord);
       
       logger.info('[Wallet Consent] Saved wallet pass consent', {
-        userId: userId || 'anonymous',
+        userId,
         passType,
         platform,
-        consented
+        consented,
       });
       
       res.json({ ok: true });

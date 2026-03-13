@@ -72,6 +72,7 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
       await fetch(getApiUrl('/api/consent/onboarding'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(consentPayload),
       });
     } catch (err) {
