@@ -108,6 +108,7 @@ jobs:
             GOOGLE_WEATHER_API_KEY=GOOGLE_WEATHER_API_KEY:latest
             GCS_BACKUP_BUCKET=GCS_BACKUP_BUCKET:latest
             SUPER_ADMIN_EMAILS=SUPER_ADMIN_EMAILS:latest
+            GOOGLE_FORMS_SPREADSHEET_ID=GOOGLE_FORMS_SPREADSHEET_ID:latest
 
       - name: Grant public access (allow unauthenticated)
         continue-on-error: true
