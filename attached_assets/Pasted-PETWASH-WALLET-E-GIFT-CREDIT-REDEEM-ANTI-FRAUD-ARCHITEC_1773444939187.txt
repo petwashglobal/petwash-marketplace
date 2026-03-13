@@ -1,0 +1,448 @@
+PETWASH WALLET / E-GIFT / CREDIT / REDEEM ANTI-FRAUD ARCHITECTURE
+2026 production protection standard
+
+GOAL
+Protect PetWash funds, wallet balances, e-gifts, loyalty credits, online services, and kiosk redeems against:
+- double spend
+- replay
+- race conditions
+- fake topups
+- forged QR tokens
+- stolen links
+- manual admin misuse
+- API abuse
+- refund fraud
+- provider abuse
+- internal ledger tampering
+
+CORE PRINCIPLE
+Never store “truth” in a mutable balance field alone.
+Truth must come from an append-only ledger.
+
+1. SYSTEM OF RECORD
+Use 3 layers:
+
+A. wallet_accounts
+Current derived balance view for fast reads
+
+B. wallet_ledger_entries
+Append-only immutable journal
+Every credit, debit, hold, release, redeem, refund, reversal goes here
+
+C. wallet_audit_chain
+Cryptographic hash chain over the ledger so tampering is detectable
+
+2. DOUBLE-ENTRY RULE
+Every financial event creates at least 2 ledger entries.
+
+Examples:
+
+Customer topup 1000 ILS
+- debit: payment clearing account
+- credit: customer wallet liability
+
+Customer redeems 150 ILS wash
+- debit: customer wallet liability
+- credit: PetWash service revenue pending settlement
+
+Gift card issued 500 ILS
+- debit: cash / processor clearing
+- credit: gift liability
+
+Gift redeemed 200 ILS
+- debit: gift liability
+- credit: service revenue pending settlement
+
+Never write “balance = balance - amount” without ledger entries.
+
+3. APPEND-ONLY LEDGER TABLE
+Required table: wallet_ledger_entries
+
+Columns:
+- id
+- account_id
+- wallet_id
+- event_type
+- direction (debit / credit)
+- amount
+- currency
+- source_type
+- source_id
+- counterparty_type
+- counterparty_id
+- idempotency_key
+- jti
+- session_id
+- booking_id
+- kiosk_id
+- provider_id
+- created_by
+- created_at
+- previous_hash
+- entry_hash
+- metadata_json
+
+Rules:
+- no updates allowed after insert
+- no deletes allowed
+- correction only via reversal entries
+- DB trigger should reject update/delete except from break-glass superadmin role, and even then write forensic event
+
+4. HASH CHAIN
+Each ledger row should hash the previous row.
+
+entry_hash = SHA256(
+  previous_hash +
+  account_id +
+  event_type +
+  direction +
+  amount +
+  currency +
+  idempotency_key +
+  created_at +
+  metadata_json
+)
+
+This gives near-blockchain immutability without blockchain overhead.
+
+Store:
+- previous_hash
+- entry_hash
+
+Daily job:
+- verify full chain integrity
+- alert immediately if mismatch
+
+5. IDEMPOTENCY KEYS
+Every write endpoint must require idempotency.
+
+Examples:
+- /wallet/topup
+- /wallet/redeem
+- /wallet/refund
+- /wallet/gift/send
+- /wallet/gift/claim
+- /wallet/transfer
+- /wallet/provider-payout
+
+Client sends:
+X-Idempotency-Key: uuid
+
+Server behavior:
+- if key unseen -> process normally
+- if same key + same payload -> return previous result
+- if same key + different payload -> reject as fraud/error
+
+Store in table:
+wallet_idempotency_keys
+- id
+- idempotency_key
+- endpoint
+- request_hash
+- response_hash
+- status
+- created_at
+- expires_at
+
+6. QR / PASS / E-GIFT TOKEN PROTECTION
+Every wallet QR / pass / gift link must use:
+- signed token
+- short expiry
+- JTI unique ID
+- audience
+- scope
+- optional machine binding
+- optional device binding
+
+Token payload example:
+{
+  "sub": "wallet_redeem",
+  "uid": "user_123",
+  "wid": "wallet_456",
+  "jti": "uuid",
+  "scope": "kiosk_redeem",
+  "kioskId": "k9000_left_001",
+  "iat": 1710000000,
+  "exp": 1710000045
+}
+
+Rules:
+- verify signature
+- reject expired token
+- reject reused jti
+- reject wrong audience/scope
+- reject wrong kiosk if bound
+- consume jti only after successful authorization path
+- store jti in replay table
+
+Replay table:
+wallet_jti_registry
+- jti
+- token_type
+- wallet_id
+- first_seen_at
+- consumed_at
+- endpoint
+- status
+
+7. HOLDS BEFORE CAPTURE
+For online booking, do not immediately finalize balance if service is not confirmed.
+
+Flow:
+- place hold
+- confirm booking
+- capture hold
+or
+- release hold if booking fails / times out
+
+Tables / event types:
+- hold_created
+- hold_captured
+- hold_released
+- hold_expired
+
+This prevents race conditions and ghost bookings.
+
+8. BALANCE COMPUTATION
+Displayed balance should be derived from settled ledger state:
+
+available_balance =
+credits
+- debits
+- active_holds
+- pending_reversals
+
+Do not trust cached wallet_balance if ledger disagrees.
+
+Fast path:
+- maintain denormalized wallet_accounts.balance
+- reconcile against ledger on each write and via scheduled jobs
+
+9. DB TRANSACTION RULE
+Every wallet mutation must happen in one DB transaction:
+- lock account row FOR UPDATE
+- validate available funds
+- create ledger entries
+- update denormalized balance
+- mark idempotency result
+- mark JTI consumed if relevant
+- commit
+
+If anything fails -> rollback all
+
+10. ADMIN PROTECTION
+Admin actions are highest fraud risk.
+
+For admin credit / debit / refund:
+- require elevated role
+- require reason code
+- require second-factor check
+- require dual approval above threshold
+- write immutable audit log
+- send alert to owner / finance Slack / email
+
+Threshold examples:
+- > 250 ILS manual credit -> manager approval
+- > 1000 ILS manual debit/refund -> dual approval
+
+11. E-GIFT PROTECTION
+E-gifts need separate lifecycle tracking.
+
+States:
+- created
+- paid
+- delivered
+- claimed
+- partially_redeemed
+- fully_redeemed
+- expired
+- cancelled
+- reversed
+
+Rules:
+- claim token single-use
+- claim link signed and expiring
+- recipient claim writes immutable ledger event
+- sender cannot reclaim after claim unless support reversal path with approval
+- partial redemption supported by ledger, not mutable string flags
+
+12. PROVIDER PROTECTION
+For sitter / walker / academy / transport:
+- customer wallet redeem creates service liability / revenue split event
+- provider payout is separate settlement event
+- provider cannot self-mark paid
+- payout only from settled bookings
+- reversal after provider payout creates debt / clawback workflow
+
+13. RISK ENGINE
+Before approving any high-risk wallet event, score it.
+
+Inputs:
+- IP reputation
+- geo mismatch
+- device fingerprint
+- velocity
+- new device
+- impossible travel
+- repeated failed JTI
+- repeated claim attempts
+- unusual redeem size
+- multiple wallets linked to same device
+- admin-created wallet then immediate redemption
+- provider and customer shared device / bank / IP anomaly
+
+Actions:
+- low risk -> allow
+- medium -> allow and flag
+- high -> require OTP / step-up auth
+- critical -> block and alert
+
+14. RATE LIMITS
+Apply strict limits:
+
+Gift claim:
+- 5 per hour per IP
+- 3 per hour per device
+- 10 per day per account
+
+Wallet redeem:
+- 10 per 10 min per account
+- 10 per 10 min per IP
+- 5 failed token attempts per 15 min then temporary block
+
+Admin wallet actions:
+- extremely low thresholds
+- mandatory alert on every manual balance adjustment
+
+15. OTP / STEP-UP AUTH
+Require OTP / passkey confirmation for:
+- large topup
+- large redeem
+- payout detail changes
+- gift resend
+- suspicious new device redemption
+- account recovery
+- high-risk admin action
+
+16. RECONCILIATION
+Run daily automated reconciliation against:
+- card processor settlements
+- Nayax transactions
+- booking engine
+- wallet ledger
+- gift issuance
+- refunds
+
+Produce exceptions for:
+- wallet debit without matching service
+- service without matching ledger debit
+- gift paid but not issued
+- gift claimed twice
+- negative balance
+- processor amount mismatch
+- orphan hold > threshold
+
+17. IMMUTABLE AUDIT EVENTS
+Every sensitive action also writes to wallet_fraud_log / wallet_audit_events:
+
+Fields:
+- event_id
+- actor_type
+- actor_id
+- action
+- target_wallet_id
+- target_gift_id
+- request_id
+- ip
+- user_agent
+- device_id
+- geo
+- risk_score
+- outcome
+- reason
+- created_at
+- previous_hash
+- event_hash
+
+18. NOTIFICATION RULES
+Alert immediately for:
+- replay attempt
+- negative balance attempt
+- repeated failed claims
+- admin manual credit/debit
+- chain integrity mismatch
+- reconciliation mismatch
+- large refund
+- multi-device abuse pattern
+
+19. NO SILENT CORRECTIONS
+Never patch balances manually in DB.
+If wrong:
+- create reversal ledger entry
+- create compensating entry
+- keep full trail
+
+20. REQUIRED ENDPOINT BEHAVIOR
+All of these must use:
+- auth
+- idempotency
+- DB transaction
+- risk scoring
+- immutable ledger
+- audit chain
+
+Endpoints:
+- POST /wallet/topup
+- POST /wallet/redeem
+- POST /wallet/redeem-online
+- POST /wallet/redeem-kiosk
+- POST /wallet/gift/send
+- POST /wallet/gift/claim
+- POST /wallet/refund
+- POST /wallet/hold
+- POST /wallet/release
+- POST /wallet/provider-settlement
+- POST /wallet/admin-adjustment
+
+21. MINIMUM TABLES REQUIRED
+- wallet_accounts
+- wallet_ledger_entries
+- wallet_audit_chain
+- wallet_idempotency_keys
+- wallet_jti_registry
+- wallet_holds
+- wallet_fraud_log
+- gift_cards
+- gift_card_claims
+- wallet_reconciliation_runs
+- wallet_reconciliation_exceptions
+- admin_approval_requests
+
+22. CRITICAL RULE
+Balance shown in UI is convenience.
+Ledger is truth.
+
+23. BEST PRACTICE SUMMARY
+Use:
+- append-only ledger
+- double-entry accounting
+- hash chaining
+- idempotency
+- JTI replay protection
+- holds before capture
+- step-up auth
+- reconciliation
+- immutable audit logs
+- admin dual control
+
+This gives PetWash near-blockchain integrity without the complexity, cost, and slowness of real blockchain.
+
+IMPLEMENTATION PRIORITY
+1. append-only ledger
+2. idempotency keys
+3. JTI registry
+4. holds system
+5. hash chain
+6. risk scoring
+7. reconciliation jobs
+8. admin dual approval
