@@ -15,7 +15,11 @@
  */
 
 import express from 'express';
-import { validateK9000MachineIP, validateMachineSecretKey } from '../middleware/k9000Security';
+import {
+  validateK9000MachineIP,
+  validateK9000HmacHeaders,
+  validateKioskAllowlist,
+} from '../middleware/k9000Security';
 import { NayaxSparkService } from '../services/NayaxSparkService';
 import { db } from '../db';
 import { nayaxTransactions, auditLedger, stations, walletAccounts, creditTransactions } from '@shared/schema';
@@ -30,9 +34,12 @@ import { verifySignedRedeemToken, consumeNonce } from '../lib/signedRedeemToken'
 
 const router = express.Router();
 
-// Apply security middleware to ALL K9000 endpoints
+// ── Security layers applied to ALL K9000 endpoints ──────────────────────────
+// Layer 1: IP allowlist (blocks non-kiosk IPs in production)
 router.use(validateK9000MachineIP);
-router.use(validateMachineSecretKey);
+// Layer 2: Signed HMAC headers  (X-K9000-ID, X-K9000-TS, X-K9000-SIGN)
+//          replaces body-only machine secret — stale-timestamp rejection included
+router.use(validateK9000HmacHeaders);
 
 /**
  * POST /api/k9000/wash/start_cycle
@@ -421,7 +428,8 @@ router.get('/status/:machineId', async (req, res) => {
  *   7. Trigger Apple Wallet push update so pass shows new balance
  *   8. Return { status: 'success', washId, remainingWashes }
  */
-router.post('/redeem-wash', async (req, res) => {
+// Layer 3 (redeem-wash only): DB allowlist — kioskId must be registered + active
+router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
   const correlationId = nanoid(12);
 
   try {
@@ -545,18 +553,41 @@ router.post('/redeem-wash', async (req, res) => {
     }
 
     // ── 6. Audit ledger ────────────────────────────────────────────────────
-    await db.insert(auditLedger).values({
-      eventType: 'k9000_wallet_redemption',
-      userId,
-      resourceId: washId,
-      metadata: JSON.stringify({
+    try {
+      // blockNumber must be unique — take current max and increment atomically
+      const blockResult = await db
+        .select({ maxBlock: sql<number>`COALESCE(MAX(${auditLedger.blockNumber}), 0)` })
+        .from(auditLedger);
+      const nextBlock = (blockResult[0]?.maxBlock ?? 0) + 1;
+
+      const auditMeta = {
         passSerial,
         kioskId,
         remainingWashes,
         correlationId,
         redeemedAt: new Date().toISOString(),
-      }),
-    }).catch((e: any) => logger.error('[K9000 Redeem] Audit write failed', { error: e.message }));
+      };
+      const crypto = await import('crypto');
+      const hashInput = `${nextBlock}:${userId}:${washId}:${JSON.stringify(auditMeta)}`;
+      const currentHash = crypto.createHash('sha256').update(hashInput).digest('hex');
+
+      await db.insert(auditLedger).values({
+        eventType: 'k9000_wallet_redemption',
+        userId,
+        entityType: 'wash_package',
+        entityId:   washId,
+        action:     'redeemed',
+        blockNumber: nextBlock,
+        currentHash,
+        previousHash: null,
+        previousState: { washPackageCredits: remainingWashes + 1 },
+        newState:      { washPackageCredits: remainingWashes },
+        metadata: auditMeta,
+      });
+      logger.info('[K9000 Redeem] Audit ledger written', { washId, blockNumber: nextBlock, correlationId });
+    } catch (auditErr: any) {
+      logger.error('[K9000 Redeem] Audit write failed (non-fatal)', { error: auditErr.message, correlationId });
+    }
 
     // ── 7. Apple Wallet push update ─────────────────────────────────────────
     // Notifies Apple that the pass has been modified → device fetches updated pass
