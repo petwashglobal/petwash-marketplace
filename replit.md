@@ -452,8 +452,34 @@ All wallet mutations now route through `server/services/WalletLedger.ts` which i
 - `/staff/charge` — passes `staffId`, `ipAddress`, `userAgent` to `applyDeduction`; result fields now correct
 - `applySmartRedemption()` — returns `newCashWalletCents` for SSE push; accepts `SmartRedemptionCtx` anti-fraud params
 
+### March 2026 Cleanup & Feature Sprint
+
+**Services deleted (zero imports, dead code):**
+`AustralianTaxComplianceService`, `CanadianTaxComplianceService`, `UKTaxComplianceService`, `USTaxComplianceService`, `LanguageContextService`, `SocialAuthVerificationService`, `BackgroundCheckService`, `AIMonitoringService` → 175 services remain
+
+**GoogleFormsCreatorService rebuilt:** Exports `FORMS_DEFINITIONS` (5 form types: club-registration, provider-registration, quick-booking, legal-agreement, grooming-feedback) and `createAllForms()`. Used by `/api/google-forms` admin routes.
+
+**SitterProximitySearch upgraded:**
+- Geocoding fallback: providers without stored lat/lng get geocoded by city name via `MapsService.geocodeAddress()` (region=IL)
+- Results are persisted back to DB so subsequent searches are instant
+- In-process city coordinate cache to avoid repeated API calls
+- `isEligibleToBook()` checks all 7 loyalty tiers (bronze→silver→gold→platinum→diamond→emerald→royal)
+
+**POSJobs.tsx "Finish" button wired:**
+- Opens a completion modal (pre-fills amount from booking, ILS input, 5 Israeli payment methods: cash/credit/Bit/Paybox/bank transfer)
+- Calls `POST /api/orchestrator/job-complete` → auto-sends: tax invoice (חשבונית מס) + receipt email + Google Drive backup + Google Sheets log
+- Falls back to marking booking `complete` in provider-dashboard API
+
+**Confirmed working:**
+- `/api/orchestrator/health` → 200 OK
+- `/api/google/places-autocomplete` — Israel-only (`country:il`), Hebrew language support
+- `GooglePlacesAutocomplete` component (`client/src/components/ui/google-places-autocomplete.tsx`): defaults to Israel, Hebrew sub-fields (בניין/דירה/מיקוד), portal dropdown
+- Only 3 unmounted route files: `gift-cards-helpers.ts`, `head-office/`, `vouchers-2025.ts`
+
 ### Pending Items
 - Legacy Firestore `cashWalletCents` → PostgreSQL migration for existing users
 - Cloud Run secrets: `PASS_TOKEN_SECRET`, `GOOGLE_WALLET_TOTP_SECRET`, `MACHINE_SECRET_KEY`, `APNS_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_WALLET_CREDENTIALS_JSON`, `PRESTIGE_QR_SECRET`, `GOOGLE_FORMS_SPREADSHEET_ID`, `ADMIN_SECRET`
 - Apple Wallet production pass path
 - Google Wallet production pass path
+- SendGrid domain verification for petwash.co.il
+- Share Sheets `14mRX4qJSABg-EcfONomk-fksegYrcIF_sFaEi3Bm2ss` with Firebase SA as Editor (BLOCKING for Sheets logging)

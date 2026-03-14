@@ -160,6 +160,7 @@ import franchiseMgmtRoutes from "./routes/franchise-mgmt";
 import geminiWatchdogRoutes from "./routes/gemini-watchdog";
 import globalFormsRoutes from "./routes/globalForms";
 import globalServicesRoutes from "./routes/globalServices";
+import petwashOrchestratorRoutes from "./routes/petwatch-orchestrator";
 import inboxRoutes from "./routes/inbox";
 import integrationsRoutes from "./routes/integrations";
 import messagesRoutes from "./routes/messages";
@@ -9753,6 +9754,7 @@ self.addEventListener('notificationclick', (event) => {
   
   // Global Services
   app.use('/api/global-forms', apiLimiter, globalFormsRoutes);
+  app.use('/api/orchestrator', apiLimiter, petwashOrchestratorRoutes);
   app.use('/api/global-services', apiLimiter, globalServicesRoutes);
   app.use('/api/integrations', apiLimiter, integrationsRoutes);
   

@@ -13,6 +13,7 @@ import { validateFirebaseToken } from '../franchiseAuth';
 import { requireAdminRole } from '../lib/adminCheck';
 import { EmailService } from '../emailService';
 import { sendFranchiseApplicationConfirmation } from '../email/luxury-email-service';
+import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
 
 const router = Router();
 
@@ -530,15 +531,15 @@ router.post('/club-registration', async (req, res) => {
       data.firstName, data.lastName, data.email, data.phone,
       data.city || '', data.petName || '', data.petType || '', data.how || '',
     ]);
-    try {
-      await EmailService.sendEmail({
-        to: data.email,
-        subject: `Welcome to PetWash™ Prestige Club ${data.plan.charAt(0).toUpperCase() + data.plan.slice(1)}! 👑`,
-        html: `<p>Hi ${data.firstName}, your <strong>${data.plan.toUpperCase()}</strong> membership is being activated! Member ID: <strong>${memberId}</strong></p>`,
-        text: `Hi ${data.firstName}, welcome to the PetWash™ Prestige Club! Member ID: ${memberId}`,
-      });
-    } catch (emailErr) { logger.warn('Club registration email failed', emailErr); }
     res.json({ success: true, memberId });
+    setImmediate(() => {
+      petWashOrchestrator.handleClubRegistration({
+        memberId, plan: data.plan,
+        firstName: data.firstName, lastName: data.lastName,
+        email: data.email, phone: data.phone,
+        city: data.city, petName: data.petName, petType: data.petType,
+      }).catch(err => logger.warn('[GlobalForms] Club orchestrator failed', err));
+    });
   } catch (err) {
     logger.error('Club registration failed', err);
     res.status(400).json({ error: 'Registration failed' });
@@ -575,15 +576,19 @@ router.post('/provider-registration', async (req, res) => {
       data.selfieUrl ? 'YES' : 'NO', data.idDocUrl ? 'YES' : 'NO',
       data.certDocUrl ? 'YES' : 'NO', 'PENDING',
     ]);
-    try {
-      await EmailService.sendEmail({
-        to: 'providers@petwash.co.il',
-        subject: `New Provider Application: ${data.firstName} ${data.lastName} – ${data.platform}`,
-        html: `<p>Application ID: <strong>${applicationId}</strong><br>Platform: ${data.platform}<br>Email: ${data.email}<br>Phone: ${data.phone}<br>City: ${data.city || '—'}<br>Selfie: ${data.selfieUrl ? '✅' : '❌'} | ID Doc: ${data.idDocUrl ? '✅' : '❌'}</p>`,
-        text: `New provider application ${applicationId} from ${data.firstName} ${data.lastName}`,
-      });
-    } catch (emailErr) { logger.warn('Provider application email failed', emailErr); }
     res.json({ success: true, applicationId });
+    setImmediate(() => {
+      petWashOrchestrator.handleProviderRegistration({
+        applicationId, platform: data.platform,
+        firstName: data.firstName, lastName: data.lastName,
+        email: data.email, phone: data.phone,
+        idNumber: data.idNumber, city: data.city,
+        businessName: data.businessName, vatNumber: data.vatNumber,
+        experienceYears: data.experienceYears, selfieUrl: data.selfieUrl,
+        idDocUrl: data.idDocUrl, certDocUrl: data.certDocUrl,
+        bankName: data.bankName, availability: data.availability, bio: data.bio,
+      }).catch(err => logger.warn('[GlobalForms] Provider orchestrator failed', err));
+    });
   } catch (err) {
     logger.error('Provider registration failed', err);
     res.status(400).json({ error: 'Registration failed' });
@@ -615,15 +620,18 @@ router.post('/quick-booking', async (req, res) => {
       data.date, data.time, data.firstName, data.email, data.phone,
       data.city || '', data.petName || '', data.petSize || '', 'PENDING',
     ]);
-    try {
-      await EmailService.sendEmail({
-        to: data.email,
-        subject: `PetWash™ Booking Confirmed – ${data.serviceType} on ${data.date}`,
-        html: `<p>Hi ${data.firstName}, your booking is confirmed!<br><strong>Ref: ${bookingRef}</strong><br>Service: ${data.serviceType}<br>Date: ${data.date} at ${data.time}<br>Address: ${data.address || data.city || '—'}</p>`,
-        text: `Booking confirmed: ${bookingRef} – ${data.serviceType} on ${data.date} at ${data.time}`,
-      });
-    } catch (emailErr) { logger.warn('Quick booking email failed', emailErr); }
     res.json({ success: true, bookingRef });
+    setImmediate(() => {
+      petWashOrchestrator.handleBookingSubmission({
+        bookingRef, platform: data.platform, serviceType: data.serviceType,
+        date: data.date, time: data.time,
+        firstName: data.firstName, lastName: data.lastName,
+        email: data.email, phone: data.phone,
+        address: data.address, city: data.city,
+        petName: data.petName, petSize: data.petSize,
+        specialRequests: data.specialRequests,
+      }).catch(err => logger.warn('[GlobalForms] Booking orchestrator failed', err));
+    });
   } catch (err) {
     logger.error('Quick booking failed', err);
     res.status(400).json({ error: 'Booking failed' });
@@ -653,21 +661,18 @@ router.post('/legal-agreement', async (req, res) => {
       data.department || '', data.representingCompany || '', data.companyRegNumber || '',
       'SIGNED', req.ip || '',
     ]);
-    try {
-      await EmailService.sendEmail({
-        to: data.email,
-        subject: `PetWash™ Agreement Signed – ${data.agreementTitle || data.agreementId}`,
-        html: `<p>Hi ${data.fullName},<br>You have digitally signed the <strong>${data.agreementTitle || data.agreementId}</strong>.<br>Signature ID: <strong>${signatureId}</strong><br>Signed: ${data.signedAt}<br><br>This acceptance is legally binding under the Israeli Electronic Signature Law 5761-2001.</p>`,
-        text: `Agreement signed: ${signatureId} – ${data.agreementTitle}`,
-      });
-      await EmailService.sendEmail({
-        to: 'legal@petwash.co.il',
-        subject: `New E-Signature: ${data.fullName} – ${data.agreementTitle}`,
-        html: `<p>SIG ID: ${signatureId}<br>Name: ${data.fullName}<br>ID: ${data.idNumber}<br>Email: ${data.email}<br>Agreement: ${data.agreementTitle} ${data.agreementVersion}<br>Company: ${data.representingCompany || '—'}</p>`,
-        text: `New signature ${signatureId} from ${data.fullName}`,
-      });
-    } catch (emailErr) { logger.warn('Legal agreement email failed', emailErr); }
     res.json({ success: true, signatureId });
+    setImmediate(() => {
+      petWashOrchestrator.handleLegalAgreementSigning({
+        signatureId, agreementId: data.agreementId,
+        agreementTitle: data.agreementTitle || data.agreementId,
+        agreementVersion: data.agreementVersion || '1.0',
+        fullName: data.fullName, idNumber: data.idNumber, email: data.email,
+        department: data.department, company: data.representingCompany,
+        signedAt: data.signedAt,
+        agreementContent: `Agreement: ${data.agreementTitle || data.agreementId} | Version: ${data.agreementVersion || '1.0'} | Signed by: ${data.fullName} | Date: ${data.signedAt}`,
+      }).catch(err => logger.warn('[GlobalForms] Legal agreement orchestrator failed', err));
+    });
   } catch (err) {
     logger.error('Legal agreement signing failed', err);
     res.status(400).json({ error: 'Signing failed' });

@@ -2,12 +2,17 @@
  * Proximity-Based Sitter Search Engine
  * Like Uber - finds nearest sitters based on user location
  * Loyalty members only
+ *
+ * Geocoding fallback: if a sitter's DB record has no lat/lng,
+ * the city name is geocoded via Google Maps and the result is
+ * cached back to the DB so the next search is instant.
  */
 
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { sitterProfiles } from '@shared/schema';
 import { eq } from 'drizzle-orm';
+import { geocodeAddress } from './location/MapsService';
 
 interface Location {
   latitude: number;
@@ -27,36 +32,94 @@ interface SitterSearchResult {
   services: string[];
 }
 
+/** In-process cache: city → coordinates (avoids re-geocoding same city repeatedly) */
+const cityCoordCache = new Map<string, { lat: number; lng: number } | null>();
+
 export class SitterProximitySearch {
   /**
-   * Haversine formula - calculates distance between two GPS coordinates
-   * Returns distance in kilometers
+   * Haversine formula — calculates distance between two GPS coordinates
+   * Returns distance in kilometres
    */
-  private calculateDistance(
-    lat1: number,
-    lon1: number,
-    lat2: number,
-    lon2: number
-  ): number {
-    const R = 6371; // Earth's radius in km
+  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371;
     const dLat = this.toRadians(lat2 - lat1);
     const dLon = this.toRadians(lon2 - lon1);
-    
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(this.toRadians(lat1)) *
-      Math.cos(this.toRadians(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-    
+        Math.cos(this.toRadians(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c;
-    
-    return Math.round(distance * 10) / 10; // Round to 1 decimal
+    return Math.round(R * c * 10) / 10;
   }
 
-  private toRadians(degrees: number): number {
-    return degrees * (Math.PI / 180);
+  private toRadians(d: number): number {
+    return d * (Math.PI / 180);
+  }
+
+  /**
+   * Resolve coordinates for a sitter:
+   * 1. Use stored lat/lng if already present.
+   * 2. Geocode city name via Google Maps and persist result to DB.
+   * 3. Returns null if both fail.
+   */
+  private async resolveCoordinates(
+    sitter: typeof sitterProfiles.$inferSelect
+  ): Promise<{ lat: number; lng: number } | null> {
+    if (sitter.latitude && sitter.longitude) {
+      return { lat: Number(sitter.latitude), lng: Number(sitter.longitude) };
+    }
+
+    if (!sitter.city) return null;
+
+    const cacheKey = sitter.city.trim().toLowerCase();
+    if (cityCoordCache.has(cacheKey)) {
+      return cityCoordCache.get(cacheKey) ?? null;
+    }
+
+    try {
+      const searchAddress = `${sitter.city}, Israel`;
+      logger.info('[Proximity Search] Geocoding city for sitter', {
+        sitterId: sitter.id,
+        city: sitter.city,
+      });
+
+      const result = await geocodeAddress(searchAddress);
+      if (!result) {
+        cityCoordCache.set(cacheKey, null);
+        return null;
+      }
+
+      const coords = { lat: result.lat, lng: result.lng };
+      cityCoordCache.set(cacheKey, coords);
+
+      // Persist coordinates back to DB so next search is instant
+      await db
+        .update(sitterProfiles)
+        .set({
+          latitude: coords.lat.toString(),
+          longitude: coords.lng.toString(),
+        })
+        .where(eq(sitterProfiles.id, sitter.id));
+
+      logger.info('[Proximity Search] Geocoded and persisted coordinates', {
+        sitterId: sitter.id,
+        city: sitter.city,
+        lat: coords.lat,
+        lng: coords.lng,
+      });
+
+      return coords;
+    } catch (err: any) {
+      logger.warn('[Proximity Search] Geocoding failed for sitter city', {
+        sitterId: sitter.id,
+        city: sitter.city,
+        error: err.message,
+      });
+      cityCoordCache.set(cacheKey, null);
+      return null;
+    }
   }
 
   /**
@@ -75,7 +138,6 @@ export class SitterProximitySearch {
         serviceType,
       });
 
-      // Query active/verified sitters from database
       const activeSitters = await db
         .select()
         .from(sitterProfiles)
@@ -85,47 +147,51 @@ export class SitterProximitySearch {
         totalCount: activeSitters.length,
       });
 
-      // Calculate distances and filter by radius
-      const sittersWithDistance = activeSitters
-        .map(sitter => {
-          // Skip sitters without lat/lng coordinates
-          if (!sitter.latitude || !sitter.longitude) {
-            return null;
-          }
+      // Resolve coordinates for every sitter in parallel
+      const coordResults = await Promise.all(
+        activeSitters.map(s => this.resolveCoordinates(s))
+      );
 
-          const distance = this.calculateDistance(
-            userLocation.latitude,
-            userLocation.longitude,
-            Number(sitter.latitude),
-            Number(sitter.longitude)
-          );
+      const sittersWithDistance: SitterSearchResult[] = [];
 
-          return {
-            id: sitter.id,
-            fullName: `${sitter.firstName} ${sitter.lastName}`,
-            city: sitter.city,
-            bio: sitter.bio || '',
-            rating: Number(sitter.rating) || 0,
-            totalReviews: sitter.totalBookings, // Use totalBookings as totalReviews proxy
-            pricePerDay: sitter.pricePerDayCents / 100,
-            distanceKm: distance,
-            profilePhotoUrl: sitter.profilePictureUrl,
-            services: sitter.specializations || [],
-          };
-        })
-        .filter((sitter): sitter is SitterSearchResult => sitter !== null) // Type guard to filter out nulls
-        .filter(sitter => sitter.distanceKm <= radiusKm) // Within radius
-        .filter(sitter => {
-          // Optional: filter by service type if provided
-          if (!serviceType) return true;
-          return sitter.services.includes(serviceType);
-        })
-        .sort((a, b) => a.distanceKm - b.distanceKm); // Sort by nearest first
+      for (let i = 0; i < activeSitters.length; i++) {
+        const sitter = activeSitters[i];
+        const coords = coordResults[i];
+        if (!coords) continue;
+
+        const distance = this.calculateDistance(
+          userLocation.latitude,
+          userLocation.longitude,
+          coords.lat,
+          coords.lng
+        );
+
+        if (distance > radiusKm) continue;
+
+        if (serviceType && !(sitter.specializations || []).includes(serviceType)) continue;
+
+        sittersWithDistance.push({
+          id: sitter.id,
+          fullName: `${sitter.firstName} ${sitter.lastName}`,
+          city: sitter.city,
+          bio: sitter.bio || '',
+          rating: Number(sitter.rating) || 0,
+          totalReviews: sitter.totalBookings,
+          pricePerDay: sitter.pricePerDayCents / 100,
+          distanceKm: distance,
+          profilePhotoUrl: sitter.profilePictureUrl,
+          services: sitter.specializations || [],
+        });
+      }
+
+      sittersWithDistance.sort((a, b) => a.distanceKm - b.distanceKm);
 
       logger.info('[Proximity Search] Found sitters', {
         count: sittersWithDistance.length,
         radiusKm,
         serviceType,
+        geocodedCount: coordResults.filter(Boolean).length,
+        skippedCount: coordResults.filter(c => !c).length,
       });
 
       return sittersWithDistance;
@@ -137,23 +203,18 @@ export class SitterProximitySearch {
 
   /**
    * Check if user is verified loyalty member (required for booking)
-   * 7-star loyalty system: bronze, silver, gold, platinum, diamond, emerald, royal
+   * 7-star loyalty system: bronze → silver → gold → platinum → diamond → emerald → royal
    */
   async isEligibleToBook(userId: string, loyaltyTier: string | null): Promise<boolean> {
-    // Loyalty member verification
     if (!loyaltyTier) {
       logger.warn('[Eligibility] User not a loyalty member', { userId });
       return false;
     }
-
-    // All loyalty tiers can book (7-star system: bronze, silver, gold, platinum, diamond, emerald, royal)
     const validTiers = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'emerald', 'royal'];
     const isValid = validTiers.includes(loyaltyTier.toLowerCase());
-
     if (!isValid) {
       logger.warn('[Eligibility] Invalid loyalty tier', { userId, loyaltyTier });
     }
-
     return isValid;
   }
 }
