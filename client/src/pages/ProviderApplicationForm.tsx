@@ -1458,7 +1458,7 @@ export default function ProviderApplicationForm() {
                   ) : (
                     <button
                       type="submit"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !captchaToken}
                       className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white rounded-2xl font-semibold shadow-xl shadow-emerald-500/25 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
                       data-testid="button-submit"
                     >

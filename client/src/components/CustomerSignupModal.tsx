@@ -571,7 +571,7 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
           <div className="pt-4">
             <Button
               type="submit"
-              disabled={signupMutation.isPending}
+              disabled={signupMutation.isPending || !captchaToken}
               className="w-full h-16 bg-gradient-to-r from-[#0a2540] via-[#1a365d] to-[#0a2540] hover:from-[#081c30] hover:via-[#152d4d] hover:to-[#081c30] text-white rounded-2xl text-xl font-bold shadow-2xl transform hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3"
             >
               {signupMutation.isPending ? (

@@ -100,7 +100,14 @@ async function verifyWithEnterprise(
     });
 
     if (!tokenProperties.valid) {
-      return { success: false, score, reason: tokenProperties.invalidReason, source: 'enterprise' };
+      const invalidReason = tokenProperties.invalidReason || '';
+      // In dev, Replit domain isn't in reCAPTCHA console — DNSNAME_MISMATCH is expected
+      if (process.env.NODE_ENV !== 'production' &&
+          (invalidReason === 'DNSNAME_MISMATCH' || invalidReason === '' || !invalidReason)) {
+        logger.warn('[ReCaptcha Enterprise] Dev domain mismatch — allowing through', { invalidReason });
+        return { success: true, score: 0.7, source: 'enterprise' };
+      }
+      return { success: false, score, reason: invalidReason, source: 'enterprise' };
     }
 
     if (score < 0.3) {

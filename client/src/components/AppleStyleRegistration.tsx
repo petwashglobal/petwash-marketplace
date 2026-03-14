@@ -544,7 +544,7 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
           {/* Submit Button */}
           <Button
             type="submit"
-            disabled={registrationMutation.isPending || !formData.acceptsTerms || !formData.acceptsPrivacy}
+            disabled={registrationMutation.isPending || !formData.acceptsTerms || !formData.acceptsPrivacy || !captchaToken}
             className="w-full bg-black text-white hover:bg-gray-800 py-4 text-xl font-semibold rounded-xl transition-colors shadow-lg"
           >
             {registrationMutation.isPending

@@ -167,30 +167,44 @@ export function SecurityCheckpoint({
       const token = await executeReCaptcha(action);
 
       if (token) {
-        const serverResult = await verifyReCaptchaOnServer(token, action);
-        if (serverResult.success) {
-          setStatus('verified');
-          onVerified(token);
-        } else {
-          setStatus('failed');
-          onFailed?.();
-        }
-      } else {
-        // No token returned — only allow in dev (domain not yet in reCAPTCHA console)
         if (import.meta.env.DEV) {
-          logger.warn('[SecurityCheckpoint] No token in dev mode — using bypass. Add *.replit.dev to reCAPTCHA console.');
+          // Dev: send 'bypass' so backend accepts without calling Enterprise (DNSNAME_MISMATCH on Replit)
+          // Production (petwash.co.il) enforces full Enterprise verification
+          logger.warn('[SecurityCheckpoint] Dev mode — checkpoint verified, proceeding with dev token');
           setStatus('verified');
           onVerified('bypass');
         } else {
-          logger.error('[SecurityCheckpoint] No token in production — blocking submission');
+          const serverResult = await verifyReCaptchaOnServer(token, action);
+          if (serverResult.success) {
+            setStatus('verified');
+            onVerified(token);
+          } else {
+            setStatus('failed');
+            onFailed?.();
+          }
+        }
+      } else {
+        // No token at all — use bypass in dev, hard block in production
+        if (import.meta.env.DEV) {
+          logger.warn('[SecurityCheckpoint] No token in dev — using bypass');
+          setStatus('verified');
+          onVerified('bypass');
+        } else {
+          logger.error('[SecurityCheckpoint] No token in production — blocking');
           setStatus('failed');
           onFailed?.();
         }
       }
     } catch (error) {
       logger.error('[SecurityCheckpoint] Verification failed:', error);
-      setStatus('failed');
-      onFailed?.();
+      if (import.meta.env.DEV) {
+        logger.warn('[SecurityCheckpoint] Dev fallback — using bypass after error');
+        setStatus('verified');
+        onVerified('bypass');
+      } else {
+        setStatus('failed');
+        onFailed?.();
+      }
     } finally {
       setAnimating(false);
       busyRef.current = false;

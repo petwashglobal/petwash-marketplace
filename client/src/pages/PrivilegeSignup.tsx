@@ -879,7 +879,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                       {t('privilege.next', language)}{isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                     </Button>
                   ) : (
-                    <Button type="button" onClick={handleSubmit} disabled={loading} className="flex items-center gap-2 font-bold text-white" style={{ borderRadius: '2px', background: 'linear-gradient(90deg, #c9a96e, #d4af37)' }}>
+                    <Button type="button" onClick={handleSubmit} disabled={loading || !captchaToken} className="flex items-center gap-2 font-bold text-white" style={{ borderRadius: '2px', background: captchaToken ? 'linear-gradient(90deg, #c9a96e, #d4af37)' : 'linear-gradient(90deg, #9ca3af, #6b7280)' }}>
                       {loading ? (
                         <span className="flex items-center gap-2">
                           <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}><Sparkles className="w-4 h-4" /></motion.div>

@@ -851,7 +851,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
               id="createBtn"
               type="submit" 
               className="luxury-btn-primary luxury-shadow-xl w-full h-14 text-base font-medium"
-              disabled={loading || !formData.acceptedTerms}
+              disabled={loading || !formData.acceptedTerms || !captchaToken}
               data-testid="button-createAccount"
             >
               {loading ? (

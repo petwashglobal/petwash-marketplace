@@ -567,9 +567,9 @@ export function OnboardingVerification({
               />
               <Button
                 onClick={sendSmsCode}
-                disabled={loading || !phone}
+                disabled={loading || !phone || !smsCaptchaToken}
                 className="w-full h-12 text-base font-semibold text-white"
-                style={{ background: 'linear-gradient(135deg, #1a1a1a, #374151)', borderRadius: '2px' }}
+                style={{ background: smsCaptchaToken ? 'linear-gradient(135deg, #1a1a1a, #374151)' : 'linear-gradient(135deg, #9ca3af, #6b7280)', borderRadius: '2px' }}
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                   <span className="flex items-center gap-2">
