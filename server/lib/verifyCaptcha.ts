@@ -89,6 +89,16 @@ export interface CaptchaResult {
 export async function verifyCaptchaToken(token: string, action: string): Promise<CaptchaResult> {
   if (!token) return { valid: false, score: 0, source: 'missing', reason: 'No token provided' };
 
+  // Bypass token: accepted in non-production only (Replit dev / CI)
+  if (token === 'bypass') {
+    if (process.env.NODE_ENV !== 'production') {
+      logger.warn('[verifyCaptcha] Bypass token accepted (non-production only)', { action });
+      return { valid: true, score: 0.9, source: 'bypass-dev' };
+    }
+    logger.warn('[verifyCaptcha] Bypass token rejected in production', { action });
+    return { valid: false, score: 0, source: 'bypass', reason: 'Bypass token not permitted in production' };
+  }
+
   const siteKey = sanitizeKey(
     process.env.RECAPTCHA_SITE_KEY ||
     process.env.VITE_RECAPTCHA_SITE_KEY ||

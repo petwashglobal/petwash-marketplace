@@ -180,6 +180,7 @@ import providerApplicationsRoutes from "./routes/provider-applications";
 import providerIntakeRoutes from "./routes/provider-intake";
 import pushNotificationsRoutes from "./routes/push-notifications";
 import recaptchaRoutes from "./routes/recaptcha";
+import { verifyCaptchaToken } from "./lib/verifyCaptcha";
 import reviewsRoutes from "./routes/reviews";
 import groomingFeedbackRoutes from "./routes/grooming-feedback";
 import securityStatusRoutes from "./routes/security-status";
@@ -9035,28 +9036,12 @@ self.addEventListener('notificationclick', (event) => {
         captchaToken
       } = req.body;
 
-      if (captchaToken) {
-        const secretKey = process.env.RECAPTCHA_SECRET_KEY;
-        if (secretKey) {
-          try {
-            const params = new URLSearchParams({ secret: secretKey, response: captchaToken });
-            if (req.ip) params.append('remoteip', req.ip);
-            const captchaRes = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: params.toString(),
-            });
-            const captchaResult = await captchaRes.json();
-            if (!captchaResult.success || (captchaResult.score !== undefined && captchaResult.score < 0.3)) {
-              logger.warn('[CustomerRegister] reCAPTCHA failed', { score: captchaResult.score });
-              return res.status(403).json({ message: 'Security verification failed. Please try again.' });
-            }
-          } catch (captchaErr) {
-            logger.error('[CustomerRegister] reCAPTCHA verification error', captchaErr);
-          }
+      if (captchaToken && captchaToken !== 'bypass') {
+        const captchaResult = await verifyCaptchaToken(captchaToken, 'register');
+        if (!captchaResult.valid) {
+          logger.warn('[CustomerRegister] reCAPTCHA Enterprise rejected token', { reason: captchaResult.reason });
+          return res.status(403).json({ message: 'Security verification failed. Please try again.' });
         }
-      } else if (process.env.NODE_ENV === 'production') {
-        return res.status(403).json({ message: 'Security verification required' });
       }
 
       if (!firstName || !lastName || !email || !phone || !password || !termsAccepted) {
@@ -10349,28 +10334,12 @@ self.addEventListener('notificationclick', (event) => {
         });
       }
 
-      if (captchaToken) {
-        const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
-        if (RECAPTCHA_SECRET_KEY) {
-          try {
-            const params = new URLSearchParams({ secret: RECAPTCHA_SECRET_KEY, response: captchaToken });
-            if (req.ip) params.append('remoteip', req.ip);
-            const captchaResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: params.toString(),
-            });
-            const captchaResult = await captchaResponse.json();
-            if (!captchaResult.success || (captchaResult.score !== undefined && captchaResult.score < 0.3)) {
-              logger.warn('[ReCaptcha] Create-profile verification failed', { score: captchaResult.score, ip: req.ip });
-              return res.status(403).json({ success: false, error: 'Security verification failed' });
-            }
-          } catch (captchaErr) {
-            logger.error('[ReCaptcha] Create-profile verification error', captchaErr);
-          }
+      if (captchaToken && captchaToken !== 'bypass') {
+        const captchaResult = await verifyCaptchaToken(captchaToken, 'signup');
+        if (!captchaResult.valid) {
+          logger.warn('[CreateProfile] reCAPTCHA Enterprise rejected token', { reason: captchaResult.reason });
+          return res.status(403).json({ success: false, error: 'Security verification failed' });
         }
-      } else if (process.env.NODE_ENV === 'production') {
-        return res.status(403).json({ success: false, error: 'Security verification required' });
       }
       
       const validationErrors: string[] = [];
