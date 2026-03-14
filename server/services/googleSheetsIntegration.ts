@@ -33,6 +33,17 @@ const SHEETS = {
   SECURITY_EVENTS: 'Security Events',
   CONSENT_AUDIT: 'Consent Audit Trail',
   ONBOARDING_CASES: 'Onboarding Cases',
+  HR_JOB_APPLICATIONS: 'HR Job Applications',
+  PARTNER_INQUIRIES: 'Partner Inquiries',
+  SUPPLIER_INQUIRIES: 'Supplier Inquiries',
+  SALES_LEADS: 'Sales Leads',
+  REFUND_REQUESTS: 'Refund Requests',
+  DISPUTE_CASES: 'Dispute Cases',
+  PET_PROFILES: 'Pet Profiles',
+  PROMO_CODES: 'Promo & Coupon Usage',
+  PUSH_NOTIFICATIONS: 'Push Notification Log',
+  SMS_LOG: 'SMS Delivery Log',
+  API_ERRORS: 'API Error Log',
 } as const;
 
 interface GoogleSheetsClient {
@@ -139,6 +150,69 @@ const SHEET_HEADERS: Record<string, string[]> = {
     'Timestamp', 'Verification ID', 'User ID', 'First Name', 'Last Name', 'Email',
     'Document Type', 'Country', 'Selfie URL', 'ID Photo URL',
     'Biometric Score', 'Biometric Match Status', 'Verification Status', 'Manual Review Required'
+  ],
+  [SHEETS.HR_JOB_APPLICATIONS]: [
+    'Timestamp', 'Application ID', 'First Name', 'Last Name', 'Email', 'Phone',
+    'Position', 'Department', 'Experience (Years)', 'City', 'Country',
+    'CV URL', 'Cover Letter', 'Referral Source', 'Interview Date',
+    'Interview Score', 'Decision', 'Offer Sent', 'Start Date', 'Notes'
+  ],
+  [SHEETS.PARTNER_INQUIRIES]: [
+    'Timestamp', 'Inquiry ID', 'Company Name', 'Contact Name', 'Email', 'Phone',
+    'Partnership Type', 'Country', 'City', 'Business Description',
+    'Proposed Value', 'Website', 'Status', 'Assigned To', 'Follow-Up Date', 'Notes'
+  ],
+  [SHEETS.SUPPLIER_INQUIRIES]: [
+    'Timestamp', 'Inquiry ID', 'Company Name', 'Contact Name', 'Email', 'Phone',
+    'Category', 'Products / Services', 'Country', 'City',
+    'Tax ID', 'Website', 'Estimated Monthly Value (₪)',
+    'Status', 'Assigned To', 'Response Date', 'Notes'
+  ],
+  [SHEETS.SALES_LEADS]: [
+    'Timestamp', 'Lead ID', 'Lead Type', 'Company / Name', 'Email', 'Phone',
+    'Source', 'Service Interest', 'City', 'Country',
+    'Estimated Value (₪)', 'Stage', 'Assigned To',
+    'Next Action', 'Next Action Date', 'Close Probability %',
+    'Won Date', 'Lost Reason', 'Status'
+  ],
+  [SHEETS.REFUND_REQUESTS]: [
+    'Timestamp', 'Request ID', 'Booking ID', 'Customer Name', 'Email', 'Phone',
+    'Service Type', 'Original Amount (₪)', 'Refund Amount (₪)',
+    'Reason', 'Evidence URL', 'Status',
+    'Reviewed By', 'Decision Date', 'Refund Method', 'Notes'
+  ],
+  [SHEETS.DISPUTE_CASES]: [
+    'Timestamp', 'Case ID', 'Booking ID', 'Customer ID', 'Provider ID',
+    'Service Type', 'Amount in Dispute (₪)', 'Customer Claim',
+    'Provider Response', 'Evidence URLs', 'Assigned To',
+    'Status', 'Resolution', 'Resolution Date', 'Compensation (₪)', 'Notes'
+  ],
+  [SHEETS.PET_PROFILES]: [
+    'Timestamp', 'Pet ID', 'Owner ID', 'Owner Name', 'Pet Name',
+    'Species', 'Breed', 'Age', 'Weight (kg)', 'Gender',
+    'Microchip Number', 'Vet Name', 'Vet Phone', 'Allergies',
+    'Medical Notes', 'Vaccinations', 'Last Vet Visit', 'Photo URL', 'Status'
+  ],
+  [SHEETS.PROMO_CODES]: [
+    'Timestamp', 'Code', 'Campaign', 'Discount Type', 'Discount Value',
+    'Min Order (₪)', 'Max Discount (₪)', 'Used By User ID',
+    'Platform', 'Booking ID', 'Original Amount (₪)',
+    'Discount Applied (₪)', 'Final Amount (₪)', 'Expiry Date', 'Status'
+  ],
+  [SHEETS.PUSH_NOTIFICATIONS]: [
+    'Timestamp', 'Notification ID', 'Title', 'Body', 'Platform',
+    'Target Audience', 'Recipients Count', 'Delivered Count',
+    'Opened Count', 'Open Rate %', 'Deep Link', 'Sent By', 'Status'
+  ],
+  [SHEETS.SMS_LOG]: [
+    'Timestamp', 'Message ID', 'Phone Number', 'Type',
+    'Message Preview', 'Provider', 'Status',
+    'Delivery Time (ms)', 'Cost (₪)', 'User ID', 'Error Code'
+  ],
+  [SHEETS.API_ERRORS]: [
+    'Timestamp', 'Error ID', 'Endpoint', 'Method', 'Status Code',
+    'Error Message', 'User ID', 'IP Address', 'Response Time (ms)',
+    'Request Size (KB)', 'Service', 'Resolved', 'Notes'
   ],
 };
 
@@ -392,6 +466,69 @@ async function initializeSheetHeaders(sheets: any, spreadsheetId: string, only?:
     ],
     [SHEETS.ONBOARDING_CASES]: [
       'Timestamp', 'User ID', 'Case Type', 'Status', 'Current Step'
+    ],
+    [SHEETS.HR_JOB_APPLICATIONS]: [
+      'Timestamp', 'Application ID', 'First Name', 'Last Name', 'Email', 'Phone',
+      'Position', 'Department', 'Experience (Years)', 'City', 'Country',
+      'CV URL', 'Cover Letter', 'Referral Source', 'Interview Date',
+      'Interview Score', 'Decision', 'Offer Sent', 'Start Date', 'Notes'
+    ],
+    [SHEETS.PARTNER_INQUIRIES]: [
+      'Timestamp', 'Inquiry ID', 'Company Name', 'Contact Name', 'Email', 'Phone',
+      'Partnership Type', 'Country', 'City', 'Business Description',
+      'Proposed Value', 'Website', 'Status', 'Assigned To', 'Follow-Up Date', 'Notes'
+    ],
+    [SHEETS.SUPPLIER_INQUIRIES]: [
+      'Timestamp', 'Inquiry ID', 'Company Name', 'Contact Name', 'Email', 'Phone',
+      'Category', 'Products / Services', 'Country', 'City',
+      'Tax ID', 'Website', 'Estimated Monthly Value (₪)',
+      'Status', 'Assigned To', 'Response Date', 'Notes'
+    ],
+    [SHEETS.SALES_LEADS]: [
+      'Timestamp', 'Lead ID', 'Lead Type', 'Company / Name', 'Email', 'Phone',
+      'Source', 'Service Interest', 'City', 'Country',
+      'Estimated Value (₪)', 'Stage', 'Assigned To',
+      'Next Action', 'Next Action Date', 'Close Probability %',
+      'Won Date', 'Lost Reason', 'Status'
+    ],
+    [SHEETS.REFUND_REQUESTS]: [
+      'Timestamp', 'Request ID', 'Booking ID', 'Customer Name', 'Email', 'Phone',
+      'Service Type', 'Original Amount (₪)', 'Refund Amount (₪)',
+      'Reason', 'Evidence URL', 'Status',
+      'Reviewed By', 'Decision Date', 'Refund Method', 'Notes'
+    ],
+    [SHEETS.DISPUTE_CASES]: [
+      'Timestamp', 'Case ID', 'Booking ID', 'Customer ID', 'Provider ID',
+      'Service Type', 'Amount in Dispute (₪)', 'Customer Claim',
+      'Provider Response', 'Evidence URLs', 'Assigned To',
+      'Status', 'Resolution', 'Resolution Date', 'Compensation (₪)', 'Notes'
+    ],
+    [SHEETS.PET_PROFILES]: [
+      'Timestamp', 'Pet ID', 'Owner ID', 'Owner Name', 'Pet Name',
+      'Species', 'Breed', 'Age', 'Weight (kg)', 'Gender',
+      'Microchip Number', 'Vet Name', 'Vet Phone', 'Allergies',
+      'Medical Notes', 'Vaccinations', 'Last Vet Visit', 'Photo URL', 'Status'
+    ],
+    [SHEETS.PROMO_CODES]: [
+      'Timestamp', 'Code', 'Campaign', 'Discount Type', 'Discount Value',
+      'Min Order (₪)', 'Max Discount (₪)', 'Used By User ID',
+      'Platform', 'Booking ID', 'Original Amount (₪)',
+      'Discount Applied (₪)', 'Final Amount (₪)', 'Expiry Date', 'Status'
+    ],
+    [SHEETS.PUSH_NOTIFICATIONS]: [
+      'Timestamp', 'Notification ID', 'Title', 'Body', 'Platform',
+      'Target Audience', 'Recipients Count', 'Delivered Count',
+      'Opened Count', 'Open Rate %', 'Deep Link', 'Sent By', 'Status'
+    ],
+    [SHEETS.SMS_LOG]: [
+      'Timestamp', 'Message ID', 'Phone Number', 'Type',
+      'Message Preview', 'Provider', 'Status',
+      'Delivery Time (ms)', 'Cost (₪)', 'User ID', 'Error Code'
+    ],
+    [SHEETS.API_ERRORS]: [
+      'Timestamp', 'Error ID', 'Endpoint', 'Method', 'Status Code',
+      'Error Message', 'User ID', 'IP Address', 'Response Time (ms)',
+      'Request Size (KB)', 'Service', 'Resolved', 'Notes'
     ],
   };
 

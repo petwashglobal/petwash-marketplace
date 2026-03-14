@@ -27,10 +27,22 @@ const ai = GEMINI_API_KEY ? new GoogleGenAI({
 const ACCOUNTING_SHEETS = {
   TRANSACTIONS: 'Booking Transactions',
   REVENUE: 'Revenue Summary',
+  REVENUE_BY_PLATFORM: 'Revenue by Platform',
+  REVENUE_BY_REGION: 'Revenue by Region',
+  FINANCIAL_FORECAST: 'Financial Forecast',
   VAT_REPORT: 'VAT Report',
+  EXPENSE_TRACKING: 'Expense Tracking',
   PROVIDER_PAYOUTS: 'Provider Payouts',
   ESCROW_TRACKING: 'Escrow Status',
   COMPLIANCE: 'Tax Compliance',
+  HR_STAFF: 'HR & Staff Records',
+  STAFF_SCHEDULES: 'Staff Schedules',
+  SUPPLIER_DIRECTORY: 'Supplier Directory',
+  PURCHASE_ORDERS: 'Purchase Orders',
+  SALES_PIPELINE: 'Sales Pipeline',
+  ACTIVITY_LOGS: 'Activity Logs',
+  ERROR_LOGS: 'Error Logs',
+  SYSTEM_HEALTH: 'System Health',
 } as const;
 
 interface ExportResult {
@@ -197,6 +209,69 @@ async function initializeAccountingHeaders(ssId: string, only?: string[]) {
     [ACCOUNTING_SHEETS.COMPLIANCE]: [
       'Period', 'Report Type', 'Due Date', 'Amount (₪)',
       'Status', 'Submitted Date', 'Reference Number', 'Notes'
+    ],
+    [ACCOUNTING_SHEETS.REVENUE_BY_PLATFORM]: [
+      'Period', 'K9000 Wash (₪)', 'Sitter Suite (₪)', 'Walk My Pet (₪)',
+      'PetTrek (₪)', 'Academy (₪)', 'Total (₪)', 'K9000 %', 'Sitter %', 'Walker %', 'PetTrek %', 'Academy %'
+    ],
+    [ACCOUNTING_SHEETS.REVENUE_BY_REGION]: [
+      'Period', 'City', 'Region', 'Bookings Count', 'Gross Revenue (₪)',
+      'Platform Fees (₪)', 'Net Revenue (₪)', 'Top Service', 'Growth %'
+    ],
+    [ACCOUNTING_SHEETS.FINANCIAL_FORECAST]: [
+      'Month', 'Projected Bookings', 'Projected Revenue (₪)', 'Projected Fees (₪)',
+      'Projected Payouts (₪)', 'Projected VAT (₪)', 'Actual Revenue (₪)',
+      'Variance (₪)', 'Variance %', 'Forecast Confidence', 'Notes'
+    ],
+    [ACCOUNTING_SHEETS.EXPENSE_TRACKING]: [
+      'Date', 'Expense ID', 'Category', 'Subcategory', 'Vendor', 'Description',
+      'Amount (₪)', 'VAT Included', 'VAT Amount (₪)', 'Net Amount (₪)',
+      'Payment Method', 'Receipt URL', 'Approved By', 'Status', 'Tax Deductible'
+    ],
+    [ACCOUNTING_SHEETS.HR_STAFF]: [
+      'Staff ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Role',
+      'Department', 'Employment Type', 'Start Date', 'End Date',
+      'Salary (₪)', 'Hourly Rate (₪)', 'ID Number', 'Tax File',
+      'Bank Account', 'Branch', 'Contract URL', 'Status', 'Manager'
+    ],
+    [ACCOUNTING_SHEETS.STAFF_SCHEDULES]: [
+      'Date', 'Staff ID', 'Staff Name', 'Role', 'Shift Start', 'Shift End',
+      'Hours Worked', 'Location', 'Platform', 'Break (Mins)',
+      'Overtime Hours', 'Hourly Rate (₪)', 'Shift Total (₪)', 'Notes', 'Approved'
+    ],
+    [ACCOUNTING_SHEETS.SUPPLIER_DIRECTORY]: [
+      'Supplier ID', 'Company Name', 'Contact Name', 'Email', 'Phone',
+      'Category', 'Products / Services', 'Country', 'City', 'Address',
+      'Tax ID', 'Payment Terms', 'Currency', 'Bank Details',
+      'Contract Start', 'Contract End', 'Contract URL',
+      'Rating', 'Status', 'Notes'
+    ],
+    [ACCOUNTING_SHEETS.PURCHASE_ORDERS]: [
+      'PO Date', 'PO Number', 'Supplier ID', 'Supplier Name', 'Item Description',
+      'Quantity', 'Unit Price (₪)', 'Total (₪)', 'VAT (₪)', 'Grand Total (₪)',
+      'Delivery Date', 'Received Date', 'Invoice Number',
+      'Payment Status', 'Payment Date', 'Category', 'Notes'
+    ],
+    [ACCOUNTING_SHEETS.SALES_PIPELINE]: [
+      'Date', 'Lead ID', 'Lead Type', 'Company / Name', 'Email', 'Phone',
+      'Source', 'Service Interest', 'City', 'Estimated Value (₪)',
+      'Stage', 'Next Action', 'Next Action Date',
+      'Assigned To', 'Close Probability %', 'Won Date', 'Lost Reason', 'Status'
+    ],
+    [ACCOUNTING_SHEETS.ACTIVITY_LOGS]: [
+      'Timestamp', 'User ID', 'User Email', 'Role', 'Action', 'Entity',
+      'Entity ID', 'IP Address', 'Device', 'Platform',
+      'Before Value', 'After Value', 'Result', 'Notes'
+    ],
+    [ACCOUNTING_SHEETS.ERROR_LOGS]: [
+      'Timestamp', 'Error ID', 'Severity', 'Service', 'Endpoint',
+      'Error Code', 'Message', 'Stack Trace', 'User ID',
+      'IP Address', 'Request Body', 'Resolved', 'Resolution Notes'
+    ],
+    [ACCOUNTING_SHEETS.SYSTEM_HEALTH]: [
+      'Timestamp', 'Service', 'Status', 'Response Time (ms)',
+      'CPU %', 'Memory %', 'Active Connections', 'Errors Last Hour',
+      'Uptime %', 'Last Incident', 'Notes'
     ],
   };
 
