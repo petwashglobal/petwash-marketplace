@@ -73,13 +73,23 @@ export function computeEntryHash(
 }
 
 // ─── Idempotency ──────────────────────────────────────────────────────────────
-export async function getIdempotencyResult(key: string): Promise<string | null> {
+// Compute a canonical request fingerprint to detect same-key / different-payload abuse.
+// Scoped to (userId, endpoint, amountCents, serviceType) so two different users
+// cannot share an idempotency key and one receive the other's cached result.
+export function computeRequestHash(userId: string, amountCents: number, serviceType?: string, endpoint?: string): string {
+  const canonical = [userId, String(amountCents), serviceType ?? '', endpoint ?? ''].join('|');
+  return createHash('sha256').update(canonical).digest('hex');
+}
+
+export async function getIdempotencyResult(key: string): Promise<{ responseJson: string; requestHash: string | null } | null> {
   try {
-    const [row] = await db.select({ responseJson: walletIdempotencyKeys.responseJson })
+    const [row] = await db
+      .select({ responseJson: walletIdempotencyKeys.responseJson, requestHash: walletIdempotencyKeys.requestHash })
       .from(walletIdempotencyKeys)
       .where(eq(walletIdempotencyKeys.idempotencyKey, key))
       .limit(1);
-    return row?.responseJson ?? null;
+    if (!row?.responseJson) return null;
+    return { responseJson: row.responseJson, requestHash: row.requestHash ?? null };
   } catch { return null; }
 }
 
@@ -163,12 +173,41 @@ export interface LedgerTopUpResult {
 
 // ─── Core: atomic deduction with full protection ──────────────────────────────
 export async function deductFromWallet(ctx: LedgerDeductCtx): Promise<LedgerDeductResult> {
-  // ── Layer 2: Idempotency fast-path (outside transaction for speed) ──────────
+  // ── Layer 0: Input validation — reject before any DB hit ────────────────────
+  // Negative or non-integer amountCents can produce negative balances via arithmetic.
+  // Exception: isKioskWash with amountCents=0 is a valid "free wash" operation.
+  if (!(ctx.isKioskWash && ctx.amountCents === 0)) {
+    if (!Number.isFinite(ctx.amountCents) || !Number.isInteger(ctx.amountCents) || ctx.amountCents <= 0) {
+      throw new Error(`INVALID_AMOUNT: amountCents must be a positive integer; got ${ctx.amountCents}`);
+    }
+  }
+  if (!ctx.userId || typeof ctx.userId !== 'string' || ctx.userId.length < 3) {
+    throw new Error('INVALID_CONTEXT: userId is required');
+  }
+
+  // ── Layer 2: Idempotency fast-path with request hash verification ───────────
+  // The requestHash scopes the idempotency key to (userId, amountCents, serviceType, endpoint).
+  // If the same key arrives with different parameters → 409 (key misuse, not replay).
+  const reqHash = computeRequestHash(ctx.userId, ctx.amountCents, ctx.serviceType, ctx.endpoint);
   if (ctx.idempotencyKey) {
     const cached = await getIdempotencyResult(ctx.idempotencyKey);
     if (cached) {
+      if (cached.requestHash && cached.requestHash !== reqHash) {
+        // Same idempotency key, different payload — this is key misuse, not a safe replay
+        await logFraudEvent({
+          userId:    ctx.userId,
+          action:    'idempotency_key_misuse',
+          ipAddress: ctx.ipAddress,
+          userAgent: ctx.userAgent,
+          riskScore: 80,
+          outcome:   'blocked',
+          reason:    `Idempotency key ${ctx.idempotencyKey} reused with different request parameters`,
+          metadata:  { storedHash: cached.requestHash, incomingHash: reqHash },
+        });
+        throw new Error('IDEMPOTENCY_CONFLICT: Same idempotency key used with different request parameters. Use a new key for different operations.');
+      }
       logger.info('[WalletLedger] Idempotent hit (fast-path)', { key: ctx.idempotencyKey });
-      return { ...(JSON.parse(cached) as LedgerDeductResult), idempotent: true };
+      return { ...(JSON.parse(cached.responseJson) as LedgerDeductResult), idempotent: true };
     }
   }
 
@@ -216,11 +255,16 @@ export async function deductFromWallet(ctx: LedgerDeductCtx): Promise<LedgerDedu
     // ── Layer 2b: Idempotency check INSIDE transaction ────────────────────────
     // Handles concurrent identical requests that both passed the fast-path check.
     if (ctx.idempotencyKey) {
-      const [existingKey]: any[] = await (tx as any).select({ responseJson: walletIdempotencyKeys.responseJson })
+      const [existingKey]: any[] = await (tx as any)
+        .select({ responseJson: walletIdempotencyKeys.responseJson, requestHash: walletIdempotencyKeys.requestHash })
         .from(walletIdempotencyKeys)
         .where(eq(walletIdempotencyKeys.idempotencyKey, ctx.idempotencyKey))
         .limit(1);
       if (existingKey?.responseJson) {
+        // Verify hash — different payload with same key is misuse, not replay
+        if (existingKey.requestHash && existingKey.requestHash !== reqHash) {
+          throw new Error('IDEMPOTENCY_CONFLICT: Same idempotency key used with different request parameters.');
+        }
         logger.info('[WalletLedger] Idempotent hit (in-tx)', { key: ctx.idempotencyKey });
         return { ...(JSON.parse(existingKey.responseJson) as LedgerDeductResult), idempotent: true };
       }
@@ -361,31 +405,42 @@ export async function deductFromWallet(ctx: LedgerDeductCtx): Promise<LedgerDedu
       await (tx as any).insert(walletIdempotencyKeys).values({
         idempotencyKey: idemKey,
         endpoint:       ctx.endpoint ?? 'wallet/deduct',
-        requestHash:    createHash('sha256').update(JSON.stringify({
-          userId: ctx.userId, amountCents: ctx.amountCents, serviceType: ctx.serviceType,
-        })).digest('hex'),
+        requestHash:    reqHash,   // canonical (userId|amountCents|serviceType|endpoint)
         responseJson:   JSON.stringify(txnResult),
         status:         'success',
         expiresAt:      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       }).onConflictDoNothing();
     }
 
-    // ── Layer 3b: Consume JTI in PostgreSQL (secondary layer) ─────────────────
+    // ── Layer 3b: Consume JTI in PostgreSQL — first-writer-wins ─────────────────
+    // INSERT ... ON CONFLICT DO NOTHING — if this returns 0 rows, the JTI was already
+    // consumed by a concurrent request that won the race. Upsert is intentionally NOT
+    // used: once consumed = consumed. This is the hard guarantee.
     if (ctx.jti) {
-      await (tx as any).insert(walletJtiRegistry).values({
-        jti:        ctx.jti,
-        tokenType:  'kiosk_qr',
-        walletId,
-        userId:     ctx.userId,
-        firstSeenAt: now,
-        consumedAt: now,
-        endpoint:   ctx.endpoint ?? 'wallet/redeem',
-        status:     'consumed',
-        ipAddress:  ctx.ipAddress ?? null,
-      }).onConflictDoUpdate({
-        target: [walletJtiRegistry.jti],
-        set:    { consumedAt: now, status: 'consumed' },
-      });
+      const jtiInsertRes: any = await (tx as any).execute(sql`
+        INSERT INTO wallet_jti_registry
+          (jti, token_type, wallet_id, user_id, first_seen_at, consumed_at, endpoint, status, ip_address)
+        VALUES
+          (${ctx.jti}, 'kiosk_qr', ${walletId}, ${ctx.userId}, ${now}, ${now},
+           ${ctx.endpoint ?? 'wallet/redeem'}, 'consumed', ${ctx.ipAddress ?? null})
+        ON CONFLICT (jti) DO NOTHING
+        RETURNING jti
+      `);
+      const jtiRows = jtiInsertRes?.rows ?? jtiInsertRes ?? [];
+      if (jtiRows.length === 0) {
+        // JTI already consumed by a concurrent transaction — abort
+        await logFraudEvent({
+          userId:    ctx.userId,
+          action:    'jti_concurrent_replay_blocked',
+          targetWalletId: walletId,
+          ipAddress: ctx.ipAddress,
+          userAgent: ctx.userAgent,
+          riskScore: 95,
+          outcome:   'blocked',
+          reason:    `JTI ${ctx.jti} consumed by a concurrent request — race condition blocked`,
+        });
+        throw new Error('JTI_ALREADY_CONSUMED: Token was already consumed by a concurrent request.');
+      }
     }
 
     logger.info('[WalletLedger] Deduction committed', {

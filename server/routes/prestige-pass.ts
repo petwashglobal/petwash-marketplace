@@ -53,6 +53,23 @@ import {
 
 const router = Router();
 
+// ─── Wallet error → HTTP status mapper ────────────────────────────────────────
+// Translates structured error codes from WalletLedger/WalletEngine into proper
+// HTTP responses. All codes are uppercase prefixes before the first colon.
+function walletErrorResponse(res: Response, err: unknown): Response {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (msg.startsWith('INVALID_AMOUNT'))       return res.status(400).json({ ok: false, error: 'Invalid amount', detail: msg });
+  if (msg.startsWith('INVALID_CONTEXT'))      return res.status(400).json({ ok: false, error: 'Invalid request context', detail: msg });
+  if (msg.startsWith('IDEMPOTENCY_CONFLICT')) return res.status(409).json({ ok: false, error: 'Idempotency key reused with different payload. Use a fresh key.', detail: msg });
+  if (msg.startsWith('JTI_ALREADY_CONSUMED')) return res.status(409).json({ ok: false, error: 'Token already used — concurrent replay blocked', detail: msg });
+  if (msg.startsWith('VELOCITY_EXCEEDED'))    return res.status(429).json({ ok: false, error: 'Too many requests. Please wait 60 seconds.', detail: msg });
+  if (msg.startsWith('INSUFFICIENT_FUNDS'))   return res.status(402).json({ ok: false, error: 'Insufficient balance', detail: msg });
+  if (msg.startsWith('WALLET_NOT_FOUND'))     return res.status(404).json({ ok: false, error: 'Wallet not found', detail: msg });
+  if (msg.startsWith('HOLD_DECLINED'))        return res.status(402).json({ ok: false, error: 'Transaction held', detail: msg });
+  // Fallback: unexpected error
+  return res.status(500).json({ ok: false, error: 'Internal error' });
+}
+
 // ── SSE Registry — real-time push to user's open wallet tab ──────────────────
 // When K9000 redeems a token → we push "wash_started" to the user instantly.
 // Keyed by Firebase userId. Per-process (no Redis needed at this scale).
@@ -495,7 +512,7 @@ router.post('/token/redeem', redeemLimiter, async (req: Request, res: Response) 
     });
   } catch (err) {
     logger.error('[PrestigePass] /token/redeem error:', err);
-    return res.status(500).json({ ok: false, error: 'Internal error' });
+    return walletErrorResponse(res, err);
   }
 });
 
@@ -1060,7 +1077,7 @@ router.post('/redeem-online', async (req: Request, res: Response) => {
     });
   } catch (err) {
     logger.error('[PrestigePass] /redeem-online error:', err);
-    return res.status(500).json({ ok: false, error: 'Internal error' });
+    return walletErrorResponse(res, err);
   }
 });
 
@@ -1610,7 +1627,7 @@ router.post('/staff/charge', async (req: Request, res: Response) => {
     });
   } catch (err) {
     logger.error('[PrestigePass] /staff/charge error:', err);
-    return res.status(500).json({ ok: false, error: 'Internal error' });
+    return walletErrorResponse(res, err);
   }
 });
 
