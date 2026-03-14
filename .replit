@@ -26,10 +26,6 @@ author = "agent"
 task = "workflow.run"
 args = "Start application"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Sync to GitHub"
-
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
@@ -41,17 +37,6 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
-
-[[workflows.workflow]]
-name = "Sync to GitHub"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "bash scripts/sync-github.sh"
-
-[workflows.workflow.metadata]
-outputType = "console"
 
 [agent]
 integrations = ["javascript_database:1.0.0", "javascript_auth_all_persistence:1.0.0", "firebase_barebones_javascript:1.0.0", "javascript_log_in_with_replit:1.0.0", "hubspot:1.0.0", "javascript_gemini_ai_integrations:1.0.0", "google-mail:1.0.0", "google-sheet:1.0.0", "google-calendar:1.0.0", "github:1.0.0", "spotify:1.0.0", "sendgrid:1.0.0"]
