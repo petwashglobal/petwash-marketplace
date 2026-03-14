@@ -1,1 +1,0 @@
-import{j as m}from"./vendor-react-BTCoxCBT.js";import{e as o}from"./card-B4VdtzqX.js";function n({className:e,...t}){return m.jsx("div",{className:o("animate-pulse rounded-md bg-muted",e),...t})}export{n as S};

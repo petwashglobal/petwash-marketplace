@@ -1,5 +1,4 @@
 import { ArrowRight, ArrowLeft } from 'lucide-react';
-import logoPath from '@assets/logo.png';
 
 interface MobileFormShellProps {
   title: string;
@@ -34,7 +33,7 @@ export function MobileFormShell({
               <ArrowLeft className="w-4 h-4" />
             </button>
           )}
-          <img src={logoPath} alt="PetWash" className="h-7 w-auto" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          <span className="text-xl">🐾</span>
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline gap-2">
               {emoji && <span className="text-lg">{emoji}</span>}
