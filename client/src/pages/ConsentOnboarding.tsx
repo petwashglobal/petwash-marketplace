@@ -10,7 +10,7 @@ interface ConsentOnboardingProps {
 
 export default function ConsentOnboarding({ language = 'he' }: ConsentOnboardingProps) {
   const [, navigate] = useLocation();
-  const [marketingConsent, setMarketingConsent] = useState(true);
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const isRTL = language === 'he' || language === 'ar';

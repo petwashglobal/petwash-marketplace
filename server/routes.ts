@@ -9684,6 +9684,10 @@ self.addEventListener('notificationclick', (event) => {
   const providerDashboardRoutes = (await import('./routes/provider-dashboard')).default;
   app.use('/api/provider-dashboard', apiLimiter, providerDashboardRoutes);
 
+  // Provider phone OTP verification (no CAPTCHA — user is already authenticated)
+  const { providerPhoneRouter } = await import('./routes/provider-phone');
+  app.use('/api/provider/phone', apiLimiter, providerPhoneRouter);
+
   // Provider Availability Calendar (Uber-style online/offline per day, bulk block, calendar sync)
   const providerAvailabilityRoutes = (await import('./routes/provider-availability')).default;
   app.use('/api/provider-availability', apiLimiter, providerAvailabilityRoutes);

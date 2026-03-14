@@ -3,6 +3,7 @@ import { storage } from "../storage";
 import { logger } from "../lib/logger";
 import { ALLOWED_INTENTS, type UserStatus, type UserRole } from "@shared/schema";
 import { logAuditEvent } from "../middleware/auditLog";
+import { EmailService } from "../emailService";
 
 const ADMIN_APPROVER_EMAIL = "nir.h@petwash.co.il";
 
@@ -241,6 +242,51 @@ export async function postLoginDecider(req: Request, res: Response) {
               city: (user as any)?.city || '',
               country: (user as any)?.country || 'IL',
             } as any);
+
+            // Send provider welcome email
+            const providerName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'שותף חדש';
+            const providerEmail = user?.email;
+            if (providerEmail) {
+              const welcomeHtml = `<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#000;">
+                <table width="100%" cellpadding="0" cellspacing="0" style="background:#000;">
+                  <tr><td align="center" style="padding:32px 20px;">
+                    <table width="520" cellpadding="0" cellspacing="0">
+                      <tr><td style="text-align:center;padding-bottom:28px;">
+                        <h1 style="color:#E7C978;font-size:28px;font-weight:300;letter-spacing:0.15em;margin:0;">🐾 PetWash™</h1>
+                        <p style="color:#666;font-size:12px;letter-spacing:0.1em;margin:6px 0 0;">PROVIDER NETWORK</p>
+                      </td></tr>
+                      <tr><td style="background:linear-gradient(135deg,#1a1a1a,#0d0d0d);border:1px solid #2a2a2a;border-radius:16px;padding:32px;">
+                        <p style="color:#ccc;font-size:15px;margin:0 0 8px;">Hi <strong style="color:#fff;">${providerName}</strong>,</p>
+                        <p style="color:#888;font-size:13px;margin:0 0 24px;" dir="rtl">ברוך הבא לרשת הספקים של PetWash™ — תודה שנרשמת!</p>
+                        <div style="background:#111;border-radius:12px;padding:20px;margin-bottom:24px;">
+                          <p style="color:#E7C978;font-size:13px;font-weight:600;margin:0 0 12px;letter-spacing:0.05em;">📋 הצעדים הבאים שלך:</p>
+                          <table width="100%" cellpadding="0" cellspacing="0">
+                            <tr><td style="padding:6px 0;"><span style="color:#00C851;font-weight:700;">✅</span> <span style="color:#ccc;font-size:13px;">נרשמת בהצלחה</span></td></tr>
+                            <tr><td style="padding:6px 0;"><span style="color:#E7C978;font-weight:700;">📱</span> <span style="color:#ccc;font-size:13px;">אמת את מספר הטלפון שלך (SMS)</span></td></tr>
+                            <tr><td style="padding:6px 0;"><span style="color:#E7C978;font-weight:700;">📄</span> <span style="color:#ccc;font-size:13px;">השלם את פרופיל הספק שלך</span></td></tr>
+                            <tr><td style="padding:6px 0;"><span style="color:#E7C978;font-weight:700;">🪪</span> <span style="color:#ccc;font-size:13px;">העלה תעודת זהות ואישורים</span></td></tr>
+                            <tr><td style="padding:6px 0;"><span style="color:#C6A35B;font-weight:700;">⏳</span> <span style="color:#888;font-size:13px;">המתן לאישור הצוות שלנו (24–48 שעות)</span></td></tr>
+                          </table>
+                        </div>
+                        <p style="text-align:center;">
+                          <a href="https://petwash.co.il/provider-onboarding" style="background:linear-gradient(135deg,#C6A35B,#E7C978);color:#000;font-weight:700;padding:14px 32px;border-radius:24px;text-decoration:none;display:inline-block;font-size:14px;">השלם את הפרופיל שלך ←</a>
+                        </p>
+                        <p style="color:#555;font-size:12px;text-align:center;margin:20px 0 0;">שאלות? שלח מייל ל-<a href="mailto:providers@petwash.co.il" style="color:#C6A35B;">providers@petwash.co.il</a> או התקשר ל-1-800-PETWASH</p>
+                      </td></tr>
+                      <tr><td style="text-align:center;padding-top:20px;">
+                        <p style="color:#333;font-size:11px;margin:0;">PetWash™ Ltd · 1 Rothschild Blvd, Tel Aviv · petwash.co.il</p>
+                      </td></tr>
+                    </table>
+                  </td></tr>
+                </table>
+              </body></html>`;
+
+              EmailService.send({
+                to: providerEmail,
+                subject: `🐾 ברוך הבא לרשת הספקים של PetWash™, ${providerName}!`,
+                html: welcomeHtml,
+              }).catch(err => logger.warn('[PostLogin] Provider welcome email failed', { err: String(err), providerEmail }));
+            }
           }
         }
 

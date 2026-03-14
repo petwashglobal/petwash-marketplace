@@ -107,9 +107,9 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
   const [docFile, setDocFile] = useState<File | null>(null);
   const [referralSource, setReferralSource] = useState('');
   const [referralCode, setReferralCode] = useState('');
-  const [marketingConsent, setMarketingConsent] = useState(true);
-  const [smsConsent, setSmsConsent] = useState(true);
-  const [termsConsent, setTermsConsent] = useState(true);
+  const [marketingConsent, setMarketingConsent] = useState(false);
+  const [smsConsent, setSmsConsent] = useState(false);
+  const [termsConsent, setTermsConsent] = useState(false);
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);

@@ -29,7 +29,6 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { getApiUrl } from '@/lib/apiConfig';
-import { PhoneInput } from '@/components/PhoneInput';
 
 export default function ProviderOnboarding() {
   const { user } = useFirebaseAuth();
@@ -57,6 +56,13 @@ export default function ProviderOnboarding() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneCountryCode, setPhoneCountryCode] = useState('+972');
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [phoneOtpId, setPhoneOtpId] = useState<string | null>(null);
+  const [phoneOtpCode, setPhoneOtpCode] = useState('');
+  const [phoneOtpSending, setPhoneOtpSending] = useState(false);
+  const [phoneOtpVerifying, setPhoneOtpVerifying] = useState(false);
+  const [phoneOtpError, setPhoneOtpError] = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('IL');
@@ -110,6 +116,78 @@ export default function ProviderOnboarding() {
   const [loading, setLoading] = useState(false);
   const [applicationSubmitted, setApplicationSubmitted] = useState(false);
   const [biometricScore, setBiometricScore] = useState<number | null>(null);
+
+  // ── Phone OTP Verification Handlers ──────────────────────────────────
+  const COUNTRY_CODES = [
+    { code: '+972', label: '🇮🇱 +972', name: 'Israel' },
+    { code: '+1',   label: '🇺🇸 +1',   name: 'USA / Canada' },
+    { code: '+44',  label: '🇬🇧 +44',  name: 'UK' },
+    { code: '+61',  label: '🇦🇺 +61',  name: 'Australia' },
+    { code: '+49',  label: '🇩🇪 +49',  name: 'Germany' },
+    { code: '+33',  label: '🇫🇷 +33',  name: 'France' },
+    { code: '+7',   label: '🇷🇺 +7',   name: 'Russia' },
+    { code: '+91',  label: '🇮🇳 +91',  name: 'India' },
+    { code: '+55',  label: '🇧🇷 +55',  name: 'Brazil' },
+  ];
+
+  const sendPhoneOtp = async () => {
+    setPhoneOtpError('');
+    if (!phoneNumber.trim() || phoneNumber.trim().length < 7) {
+      setPhoneOtpError(isHebrew ? 'הזן מספר טלפון תקין' : 'Enter a valid phone number');
+      return;
+    }
+    setPhoneOtpSending(true);
+    try {
+      const fullPhone = `${phoneCountryCode}${phoneNumber.replace(/^0/, '').replace(/\s+/g, '')}`;
+      const token = await user?.getIdToken();
+      const res = await fetch(getApiUrl('/api/provider/phone/send-otp'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+        body: JSON.stringify({ phone: fullPhone, channel: 'sms' }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setPhoneOtpError(data.message || (isHebrew ? 'שליחת קוד נכשלה' : 'Failed to send code'));
+        return;
+      }
+      setPhoneOtpId(data.otpId);
+      toast({ title: isHebrew ? '📱 קוד נשלח ב-SMS!' : '📱 SMS code sent!', description: isHebrew ? `נשלח ל-${fullPhone}` : `Sent to ${fullPhone}` });
+    } catch {
+      setPhoneOtpError(isHebrew ? 'שגיאת רשת' : 'Network error');
+    } finally {
+      setPhoneOtpSending(false);
+    }
+  };
+
+  const verifyPhoneOtp = async () => {
+    setPhoneOtpError('');
+    if (!phoneOtpId || phoneOtpCode.length !== 6) {
+      setPhoneOtpError(isHebrew ? 'הזן קוד בן 6 ספרות' : 'Enter the 6-digit code');
+      return;
+    }
+    setPhoneOtpVerifying(true);
+    try {
+      const token = await user?.getIdToken();
+      const res = await fetch(getApiUrl('/api/provider/phone/verify-otp'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+        body: JSON.stringify({ otpId: phoneOtpId, code: phoneOtpCode }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setPhoneOtpError(data.message || (isHebrew ? 'קוד שגוי' : 'Wrong code'));
+        return;
+      }
+      setPhoneVerified(true);
+      toast({ title: isHebrew ? '✅ טלפון אומת בהצלחה!' : '✅ Phone verified!', description: isHebrew ? 'מספר הטלפון שלך אומת' : 'Your phone number is now verified' });
+    } catch {
+      setPhoneOtpError(isHebrew ? 'שגיאת רשת' : 'Network error');
+    } finally {
+      setPhoneOtpVerifying(false);
+    }
+  };
 
   const t = {
     title: isHebrew ? 'הצטרפו לצוות Pet Wash' : 'Join the Pet Wash Team',
@@ -584,14 +662,87 @@ export default function ProviderOnboarding() {
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="phone">{t.phone}</Label>
-                  <PhoneInput
-                    value={phoneNumber}
-                    onChange={setPhoneNumber}
-                    language={isHebrew ? 'he' : 'en'}
-                    defaultCountry="IL"
-                  />
+                {/* Phone with country code + OTP verification */}
+                <div className="space-y-2">
+                  <Label>{t.phone} {phoneVerified && <span className="text-green-600 text-xs font-semibold ml-1">✅ {isHebrew ? 'מאומת' : 'Verified'}</span>}</Label>
+                  {!phoneVerified && (
+                    <>
+                      <div className="flex gap-2">
+                        <Select value={phoneCountryCode} onValueChange={setPhoneCountryCode} disabled={!!phoneOtpId}>
+                          <SelectTrigger className="w-[110px] h-12 bg-white border border-gray-200 rounded-xl text-sm flex-shrink-0">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {COUNTRY_CODES.map(({ code, label, name }) => (
+                              <SelectItem key={code} value={code}>{label} {name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          value={phoneNumber}
+                          onChange={(e) => setPhoneNumber(e.target.value.replace(/[^\d\s\-]/g, ''))}
+                          placeholder={isHebrew ? 'מספר טלפון' : 'Phone number'}
+                          disabled={!!phoneOtpId}
+                          className="flex-1 h-12 bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
+                          inputMode="tel"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={sendPhoneOtp}
+                          disabled={phoneOtpSending || !!phoneOtpId || !phoneNumber.trim()}
+                          className="h-12 px-4 text-sm border-[#C6A35B] text-[#C6A35B] hover:bg-[#C6A35B]/10 whitespace-nowrap flex-shrink-0"
+                        >
+                          {phoneOtpSending ? <Loader2 className="w-4 h-4 animate-spin" /> : (isHebrew ? 'שלח קוד' : 'Send Code')}
+                        </Button>
+                      </div>
+                      {phoneOtpId && (
+                        <div className="flex gap-2 items-center animate-in slide-in-from-top-2">
+                          <Input
+                            value={phoneOtpCode}
+                            onChange={(e) => setPhoneOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            placeholder={isHebrew ? 'קוד SMS בן 6 ספרות' : '6-digit SMS code'}
+                            inputMode="numeric"
+                            maxLength={6}
+                            className="flex-1 h-12 bg-white !text-gray-900 border-2 border-[#C6A35B]/40 rounded-xl placeholder:text-gray-400 text-center text-lg font-mono tracking-widest"
+                          />
+                          <Button
+                            type="button"
+                            onClick={verifyPhoneOtp}
+                            disabled={phoneOtpVerifying || phoneOtpCode.length !== 6}
+                            className="h-12 px-5 bg-gradient-to-r from-[#C6A35B] to-[#E7C978] text-black font-bold rounded-xl whitespace-nowrap"
+                          >
+                            {phoneOtpVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : (isHebrew ? 'אמת' : 'Verify')}
+                          </Button>
+                          <button
+                            type="button"
+                            onClick={() => { setPhoneOtpId(null); setPhoneOtpCode(''); setPhoneOtpError(''); }}
+                            className="text-gray-400 hover:text-gray-600 text-sm underline whitespace-nowrap"
+                          >
+                            {isHebrew ? 'שנה' : 'Change'}
+                          </button>
+                        </div>
+                      )}
+                      {phoneOtpError && (
+                        <p className="text-red-500 text-xs flex items-center gap-1">
+                          <span>⚠️</span> {phoneOtpError}
+                        </p>
+                      )}
+                      {!phoneOtpId && (
+                        <p className="text-gray-400 text-xs">
+                          {isHebrew ? 'יש לאמת את מספר הטלפון לפני המשך' : 'Phone verification required before proceeding'}
+                        </p>
+                      )}
+                    </>
+                  )}
+                  {phoneVerified && (
+                    <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                      <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+                      <span className="text-green-700 text-sm font-medium">
+                        {phoneCountryCode}{phoneNumber} {isHebrew ? '— אומת בהצלחה' : '— verified successfully'}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -662,7 +813,7 @@ export default function ProviderOnboarding() {
                   <Button 
                     onClick={() => setStep(2)} 
                     className="luxury-btn-primary luxury-shadow-xl flex-1"
-                    disabled={!firstName || !lastName || !phoneNumber || !idNumber || !city || providerTypes.length === 0}
+                    disabled={!firstName || !lastName || !phoneNumber || !phoneVerified || !idNumber || !city || providerTypes.length === 0}
                     data-testid="button-next-step2"
                   >
                     {t.next}
