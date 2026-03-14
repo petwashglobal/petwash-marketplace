@@ -1,0 +1,218 @@
+Create assessments for websites
+
+This page explains how to create an assessment to allow your backend to verify the authenticity of the token that reCAPTCHA sends. reCAPTCHA sends an encrypted response, the reCAPTCHA response token (also known as token), when the end user triggers an HTML action.
+
+For any type of reCAPTCHA key integration (checkbox or score), you must create an assessment to assess the results of execute() in your backend by submitting the generated token to the assessment endpoint. reCAPTCHA processes the submitted token and reports the token's validity and score.
+
+Important: For maximum security for your application, you should create assessments only on your backend. Otherwise, attackers can forge the request sent from the browser and make your application vulnerable to abuse and fraudulent activities.
+The first 10,000 reCAPTCHA monthly assessments are free. To continue creating assessments after you reach the free monthly usage limit (10,000 assessments per month), you must enable billing for your Google Cloud project. For more information about billing for reCAPTCHA, see Billing information.
+
+Before you begin
+
+Prepare your environment for reCAPTCHA.
+Ensure that you have the following Identity and Access Management role: reCAPTCHA Enterprise Agent (roles/recaptchaenterprise.agent).
+Install score-based keys, checkbox keys, or policy-based challenge keys on your website.
+Set up authentication to reCAPTCHA.
+The authentication method you choose depends on the environment where reCAPTCHA is set up. The following table helps you choose the appropriate authentication method and the supported interface to set up authentication:
+
+Environment	Interface	Authentication method
+Google Cloud	
+REST
+Client libraries
+Use attached service accounts.
+On-premises or a different cloud provider	REST	Use API keys or Workload Identity Federation.
+If you want to use API keys, then we recommend securing the API keys by applying API key restrictions.
+Client libraries	
+Use the following:
+
+For Python or Java, use API keys or Workload Identity Federation.
+If you want to use API keys, then we recommend securing the API keys by applying API key restrictions.
+For other languages, use Workload Identity Federation.
+Retrieve a token
+
+Retrieve a token from web pages in one of the following ways:
+
+The resolved value of the promise returned by the call to grecaptcha.enterprise.execute().
+Use the g-recaptcha-response POST parameter when a user submits a form on your site.
+As a string argument to your callback function if data-callback is specified in either the g-recaptcha HTML tag attribute or the callback parameter in the grecaptcha.enterprise.render method.
+You can access each user's token only once. If you need to assess a subsequent action that a user takes on your site, or if a token expires before an assessment is created, you must call execute() again to generate a new token.
+
+Note: Each token can be used only once, and it expires after two minutes.
+Create an assessment
+
+After you set up authentication, create an assessment by sending a request to the reCAPTCHA Enterprise API or by using the reCAPTCHA Client Libraries.
+
+To improve detection, we recommend that you pass the following additional values when creating assessments:
+
+userAgent: The user agent is included in the HTTP request in the request header. For more information, see Learn about the User-Agent request header in the Mozilla Developer Network documentation.
+userIpAddress: The IP address of the user sending a request to your backend is available in the HTTP request. If you use a proxy server, the IP address is available in the X-Forwarded-For request header. For more information about getting the IP address, see X-Forwarded-For.
+ja4: JA4 is an open source method for fingerprinting TLS clients. For more information about how to create a JA4 fingerprint, see the JA4 documentation on GitHub.
+ja3: JA3 is an open source method for fingerprinting TLS clients. For more information about how to create a JA3 fingerprint, see the JA3 documentation on GitHub.
+This helps in protecting your website and mobile applications against advanced attack patterns and human-led abuse.
+
+The way you create an assessment is the same for score-based keys, checkbox keys, and policy-based challenge keys.
+
+REST API
+C#
+Go
+Java
+More
+Create an assessment by sending a request to the reCAPTCHA API. You can use either the gcloud CLI or API key for authentication.
+
+Use the gcloud CLI
+
+Create an assessment using the projects.assessments.create method. Send this request to the v1 API endpoint.
+
+Before using any of the request data, make the following replacements:
+
+PROJECT_ID: your Google Cloud project ID
+TOKEN: token returned from the grecaptcha.enterprise.execute() call
+KEY_ID: the reCAPTCHA key associated with the site or app. For more information, see reCAPTCHA keys.
+USER_AGENT: the user agent in the request from the user's device.
+USER_IP_ADDRESS: the IP address in the request from the user's device.
+JA4: JA4 fingerprint for the TLS client. We recommend using FoxIO-LLC/ja4 for computing the JA4 fingerprint.
+JA3: JA3 fingerprint for the TLS client. We recommend using salesforce/ja3 for computing the JA3 fingerprint.
+USER_ACTION: the user-initiated action that you specified for action in the grecaptcha.enterprise.execute() call, such as login.
+For more information, see Action names.
+
+Note: Actions are not supported for the checkbox key integrations that render widgets explicitly.
+HTTP method and URL:
+
+
+
+POST https://recaptchaenterprise.googleapis.com/v1/projects/PROJECT_ID/assessments
+Request JSON body:
+
+
+
+{
+  "event": {
+    "token": "TOKEN",
+    "siteKey": "KEY_ID",
+    "userAgent": "USER_AGENT",
+    "userIpAddress": "USER_IP_ADDRESS",
+    "ja4": "JA4",
+    "ja3": "JA3",
+    "expectedAction": "USER_ACTION"
+  }
+}
+To send your request, choose one of these options:
+
+curl
+PowerShell
+Note: The following command assumes that you have logged in to the gcloud CLI with your user account by running gcloud init or gcloud auth login , or by using Cloud Shell, which automatically logs you into the gcloud CLI . You can check the currently active account by running gcloud auth list.
+Save the request body in a file named request.json, and execute the following command:
+
+
+
+curl -X POST \
+     -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+     -H "Content-Type: application/json; charset=utf-8" \
+     -d @request.json \
+     "https://recaptchaenterprise.googleapis.com/v1/projects/PROJECT_ID/assessments"
+You should receive a JSON response similar to the following:
+
+
+{
+  "tokenProperties": {
+    "valid": true,
+    "hostname": "www.google.com",
+    "action": "homepage",
+    "createTime": "2019-03-28T12:24:17.894Z"
+  },
+  "riskAnalysis": {
+    "score": 0.1,
+    "reasons": ["AUTOMATION"]
+  },
+ "event": {
+    "token": "TOKEN",
+    "siteKey": "KEY_ID",
+    "userAgent": "USER_AGENT",
+    "userIpAddress": "USER_IP_ADDRESS",
+    "ja4": "JA4",
+    "ja3": "JA3",
+    "expectedAction": "USER_ACTION"
+  },
+  "name": "projects/PROJECT_NUMBER/assessments/b6ac310000000000"
+}
+Note: For integrations with actions, verify that the return value of action matches expectedAction when calling the projects.assessments.createmethod. If there is a mismatch, it indicates that an attacker is attempting to falsify actions. You can take actions against the user interaction, such as adding additional verifications or blocking the interaction to prevent any fraudulent activities.
+We recommend using any JSON parsers in the non-strict parsing mode to prevent any outages if any additional fields are introduced to the JSON response.
+
+Use an API key
+
+Create an assessment using the projects.assessments.create method. Send this request to the v1 API endpoint.
+
+Note: If you are using the v1beta1 version of the API, we recommend using the v1 version because the new features, such as reCAPTCHA account defender, are available only on v1 version. For migrating from v1beta1 to v1, see Migrate from v1beta API to v1 API.
+Before using any of the request data, make the following replacements:
+
+API_KEY: API key associated with the current project
+PROJECT_ID: your Google Cloud project ID
+TOKEN: token returned from the grecaptcha.enterprise.execute() call
+KEY_ID: the reCAPTCHA key associated with the site or app. For more information, see reCAPTCHA keys.
+USER_AGENT: the user agent in the request from the user's device.
+USER_IP_ADDRESS: the IP address in the request from the user's device.
+JA3: JA3 fingerprint for the SSL client. We recommend using salesforce/ja3 for computing JA3.
+USER_ACTION: the user-initiated action that you specified for action in the grecaptcha.enterprise.execute() call, such as login.
+For more information, see Action names.
+
+Note: Actions are not supported for the checkbox key integrations that render widgets explicitly.
+HTTP method and URL:
+
+
+
+POST https://recaptchaenterprise.googleapis.com/v1/projects/PROJECT_ID/assessments?key=API_KEY
+Request JSON body:
+
+
+
+{
+  "event": {
+    "token": "TOKEN",
+    "siteKey": "KEY_ID",
+    "userAgent": "USER_AGENT",
+    "userIpAddress": "USER_IP_ADDRESS",
+    "ja3": "JA3",
+    "expectedAction": "USER_ACTION"
+  }
+}
+To send your request, choose one of these options:
+
+curl
+PowerShell
+Note: Create an API key to authenticate with the API.
+Save the request body in a file named request.json, and execute the following command:
+
+
+
+curl -X POST \
+     -H "Content-Type: application/json; charset=utf-8" \
+     -d @request.json \
+     "https://recaptchaenterprise.googleapis.com/v1/projects/PROJECT_ID/assessments?key=API_KEY"
+You should receive a JSON response similar to the following:
+
+
+{
+  "tokenProperties": {
+    "valid": true,
+    "hostname": "www.google.com",
+    "action": "homepage",
+    "createTime": "2019-03-28T12:24:17.894Z"
+  },
+  "riskAnalysis": {
+    "score": 0.1,
+    "reasons": ["AUTOMATION"]
+  },
+  "event": {
+    "token": "TOKEN",
+    "siteKey": "KEY_ID",
+    "userAgent": "USER_AGENT",
+    "userIpAddress": "USER_IP_ADDRESS",
+    "ja3": "JA3",
+    "expectedAction": "USER_ACTION"
+  },
+  "name": "projects/PROJECT_NUMBER/assessments/b6ac310000000000"
+}
+Note: For integrations with actions, verify that the return value of action matches expectedAction when calling the projects.assessments.createmethod. If there is a mismatch, it indicates that an attacker is attempting to falsify actions. You can take actions against the user interaction, such as adding additional verifications or blocking the interaction to prevent any fraudulent activities.
+We recommend using any JSON parsers in the non-strict parsing mode to prevent any outages if any additional fields are introduced to the JSON response.
+
+Note: Your assessment's response might show score=0.9 and reason=LOW_CONFIDENCE. This is because when you integrate a newly created key on your frontend, reCAPTCHA takes some time to return accurate risk analysis. Therefore, for the accurate risk analysis, after creating and integrating keys on your frontend, we recommend you to wait for 48 hours before taking any action on the returned scores.
