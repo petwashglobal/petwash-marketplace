@@ -644,6 +644,112 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
 });
 
 // ─────────────────────────────────────────────────────────
+// GET /google-wallet — Google Wallet JWT pass (auth-guarded)
+// ─────────────────────────────────────────────────────────
+router.get('/google-wallet', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    const userId  = session?.user?.uid;
+    if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
+
+    const passDoc = await firestoreDb.collection('prestige_passes').doc(userId).get();
+    const passData = passDoc.exists ? passDoc.data()! : {};
+    const [wallet] = await db.select().from(walletAccounts).where(eq(walletAccounts.userId, userId)).limit(1);
+
+    const tier        = wallet?.loyaltyTier || 'new';
+    const balance     = ((wallet?.cashWalletBalanceCents || 0) + (wallet?.egiftBalanceCents || 0)) / 100;
+    const washes      = wallet?.washPackageCredits || 0;
+    const serialNumber = passData.serialNumber || `PWL-${userId.slice(0, 8).toUpperCase()}`;
+    const tierDisplay  = TIER_DISPLAY[tier]?.en || 'Prestige Pearl';
+
+    const issuerId   = process.env.GOOGLE_WALLET_ISSUER_ID;
+    const classId    = process.env.GOOGLE_WALLET_CLASS_ID || `petwash.prestige`;
+    const saKeyRaw   = process.env.GOOGLE_WALLET_SA_KEY;
+
+    if (!issuerId || !saKeyRaw) {
+      return res.status(200).json({
+        ok: true,
+        configured: false,
+        message: 'Google Wallet pass structure ready — set GOOGLE_WALLET_ISSUER_ID and GOOGLE_WALLET_SA_KEY in Cloud Run secrets to activate',
+        passObject: {
+          id:          `${issuerId || 'ISSUER_ID'}.${serialNumber}`,
+          classId:     `${issuerId || 'ISSUER_ID'}.${classId}`,
+          cardTitle:   { defaultValue: { language: 'en', value: 'PetWash Prestige Pass' } },
+          subheader:   { defaultValue: { language: 'en', value: tierDisplay } },
+          header:      { defaultValue: { language: 'en', value: `₪${balance.toFixed(0)}` } },
+          logo:        { sourceUri: { uri: 'https://petwash.co.il/logo.png' } },
+          hexBackgroundColor: tier === 'black' || tier === 'elite' || tier === 'diamond' ? '#0F0F0F' : '#B48728',
+          barcode: {
+            type:    'QR_CODE',
+            value:   `PETWASH:${userId}:${serialNumber}`,
+            alternateText: serialNumber,
+          },
+          textModulesData: [
+            { id: 'washes',  header: 'WASH CREDITS', body: washes > 0 ? `${washes} washes` : '—' },
+            { id: 'member',  header: 'MEMBER', body: session?.user?.displayName || 'Member' },
+          ],
+        },
+      });
+    }
+
+    // Build a real Google Wallet "save" link using RS256-signed JWT
+    const { createSign } = await import('crypto');
+    let saKey: { client_email: string; private_key: string };
+    try {
+      saKey = JSON.parse(saKeyRaw);
+    } catch {
+      logger.error('[PrestigePass] GOOGLE_WALLET_SA_KEY is not valid JSON');
+      return res.status(500).json({ ok: false, error: 'Wallet service misconfigured' });
+    }
+
+    const objectId = `${issuerId}.${serialNumber}`;
+    const now      = Math.floor(Date.now() / 1000);
+
+    const payload = {
+      iss: saKey.client_email,
+      aud: 'google',
+      origins: ['https://petwash.co.il'],
+      typ: 'savetowallet',
+      iat: now,
+      payload: {
+        genericObjects: [{
+          id:      objectId,
+          classId: `${issuerId}.${classId}`,
+          cardTitle:   { defaultValue: { language: 'en', value: 'PetWash Prestige Pass' } },
+          subheader:   { defaultValue: { language: 'en', value: tierDisplay } },
+          header:      { defaultValue: { language: 'en', value: `₪${balance.toFixed(0)}` } },
+          logo:        { sourceUri: { uri: 'https://petwash.co.il/logo.png' } },
+          hexBackgroundColor: tier === 'black' || tier === 'elite' || tier === 'diamond' ? '#0F0F0F' : '#B48728',
+          barcode: {
+            type:    'QR_CODE',
+            value:   `PETWASH:${userId}:${serialNumber}`,
+            alternateText: serialNumber,
+          },
+          textModulesData: [
+            { id: 'washes',  header: 'WASH CREDITS', body: washes > 0 ? `${washes} washes` : '—' },
+            { id: 'member',  header: 'MEMBER', body: session?.user?.displayName || 'Member' },
+          ],
+        }],
+      },
+    };
+
+    const header  = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+    const body    = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const signer  = createSign('RSA-SHA256');
+    signer.update(`${header}.${body}`);
+    const sig     = signer.sign(saKey.private_key, 'base64url');
+    const jwt     = `${header}.${body}.${sig}`;
+
+    const saveUrl = `https://pay.google.com/gp/v/save/${jwt}`;
+
+    return res.json({ ok: true, configured: true, saveUrl, jwt });
+  } catch (err) {
+    logger.error('[PrestigePass] /google-wallet error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────
 // POST /topup — add to cash wallet (triggers from payment)
 // ─────────────────────────────────────────────────────────
 const topupSchema = z.object({
