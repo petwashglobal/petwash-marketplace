@@ -847,7 +847,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                 onVerified={(token) => setCaptchaToken(token)}
                 onFailed={() => setCaptchaToken(null)}
                 language={language}
-                action="register"
+                action="signup"
               />
             </div>
 
