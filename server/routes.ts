@@ -522,13 +522,13 @@ export async function registerRoutes(app: Express): Promise<void> {
         : (process.env.VITE_FIREBASE_AUTH_DOMAIN || 'signinpetwash.firebaseapp.com');
 
       const config = {
-        apiKey: process.env.VITE_FIREBASE_API_KEY,
+        apiKey: process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY || 'AIzaSyDzbXi3-hnitnEtaTOQqakoxOetGvOCP0E',
         authDomain,
-        projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-        storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
-        messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-        appId: process.env.VITE_FIREBASE_APP_ID,
-        measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-B5W5GHJ5EN'
+        projectId: process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'signinpetwash',
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET || 'signinpetwash.firebasestorage.app',
+        messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '136197986889',
+        appId: process.env.VITE_FIREBASE_APP_ID || '1:136197986889:web:51bc2ff5f721d22da67d98',
+        measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-B30RXHEX6R'
       };
       
       // Validate required fields
@@ -751,13 +751,13 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get('/firebase-messaging-sw.js', (req, res) => {
     try {
       const firebaseConfig = {
-        apiKey: process.env.VITE_FIREBASE_API_KEY,
-        authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
-        projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-        storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
-        messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-        appId: process.env.VITE_FIREBASE_APP_ID,
-        measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-B5W5GHJ5EN'
+        apiKey: process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY || 'AIzaSyDzbXi3-hnitnEtaTOQqakoxOetGvOCP0E',
+        authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || 'signinpetwash.firebaseapp.com',
+        projectId: process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'signinpetwash',
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET || 'signinpetwash.firebasestorage.app',
+        messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '136197986889',
+        appId: process.env.VITE_FIREBASE_APP_ID || '1:136197986889:web:51bc2ff5f721d22da67d98',
+        measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-B30RXHEX6R'
       };
 
       // Validate required fields

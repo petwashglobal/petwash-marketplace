@@ -59,8 +59,27 @@ jobs:
           }
 
           # PRESTIGE_QR_SECRET — QR token signing key for Prestige Pass
-          # Generated once; stable across redeploys once created in Secret Manager.
           ensure_secret "PRESTIGE_QR_SECRET" "$(openssl rand -hex 32)"
+
+          # RECAPTCHA_SITE_KEY — reCAPTCHA Enterprise site key (server-side)
+          ensure_secret "RECAPTCHA_SITE_KEY" "6LfPr3ksAAAAAAk-gDoRZk6T3bA_t9UNavopPTDJ"
+
+          # FIREBASE_WEB_API_KEY — Firebase client-side API key (public, safe to store)
+          ensure_secret "FIREBASE_WEB_API_KEY" "AIzaSyDzbXi3-hnitnEtaTOQqakoxOetGvOCP0E"
+
+          # ACCOUNTING_SPREADSHEET_ID — BookingExportService will auto-create spreadsheet if CREATE_NEW
+          ensure_secret "ACCOUNTING_SPREADSHEET_ID" "CREATE_NEW"
+
+          # GCS bucket names — fallback values matching hardcoded defaults in server code
+          ensure_secret "CONTRACTOR_DOCS_BUCKET"        "petwash-contractor-documents"
+          ensure_secret "GCS_DOCUMENTS_BUCKET"          "petwash-secure-documents"
+          ensure_secret "GCS_FINANCIAL_BUCKET"          "petwash-secure-documents"
+          ensure_secret "GCS_LOGS_BUCKET"               "petwash-logs-retention"
+          ensure_secret "GCS_MESSAGE_ATTACHMENTS_BUCKET" "petwash-message-attachments"
+          ensure_secret "GCS_STAMPS_BUCKET"             "petwash-legal-stamps"
+          ensure_secret "GCS_CODE_BUCKET"               "petwash-code-backups"
+          ensure_secret "GCS_FIRESTORE_BUCKET"          "petwash-firestore-backups"
+          ensure_secret "FIREBASE_STORAGE_BUCKET"       "signinpetwash.firebasestorage.app"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -136,9 +155,19 @@ jobs:
             GCS_BACKUP_BUCKET=GCS_BACKUP_BUCKET:latest
             SUPER_ADMIN_EMAILS=SUPER_ADMIN_EMAILS:latest
             GOOGLE_FORMS_SPREADSHEET_ID=GOOGLE_FORMS_SPREADSHEET_ID:latest
-            # Prestige Pass — QR token signing secret (REQUIRED — without this, production
-            # uses an insecure dev fallback. Create in GCP Secret Manager as PRESTIGE_QR_SECRET.)
             PRESTIGE_QR_SECRET=PRESTIGE_QR_SECRET:latest
+            RECAPTCHA_SITE_KEY=RECAPTCHA_SITE_KEY:latest
+            FIREBASE_WEB_API_KEY=FIREBASE_WEB_API_KEY:latest
+            ACCOUNTING_SPREADSHEET_ID=ACCOUNTING_SPREADSHEET_ID:latest
+            CONTRACTOR_DOCS_BUCKET=CONTRACTOR_DOCS_BUCKET:latest
+            GCS_DOCUMENTS_BUCKET=GCS_DOCUMENTS_BUCKET:latest
+            GCS_FINANCIAL_BUCKET=GCS_FINANCIAL_BUCKET:latest
+            GCS_LOGS_BUCKET=GCS_LOGS_BUCKET:latest
+            GCS_MESSAGE_ATTACHMENTS_BUCKET=GCS_MESSAGE_ATTACHMENTS_BUCKET:latest
+            GCS_STAMPS_BUCKET=GCS_STAMPS_BUCKET:latest
+            GCS_CODE_BUCKET=GCS_CODE_BUCKET:latest
+            GCS_FIRESTORE_BUCKET=GCS_FIRESTORE_BUCKET:latest
+            FIREBASE_STORAGE_BUCKET=FIREBASE_STORAGE_BUCKET:latest
 
       - name: Grant public access (allow unauthenticated)
         continue-on-error: true

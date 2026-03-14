@@ -11,7 +11,11 @@ function sanitizeKey(raw: string): string {
   return raw.trim();
 }
 
-const RECAPTCHA_SITE_KEY = sanitizeKey(process.env.VITE_RECAPTCHA_SITE_KEY || '');
+const RECAPTCHA_SITE_KEY = sanitizeKey(
+  process.env.RECAPTCHA_SITE_KEY ||
+  process.env.VITE_RECAPTCHA_SITE_KEY ||
+  ''
+);
 const RECAPTCHA_SECRET_KEY = sanitizeKey(process.env.RECAPTCHA_SECRET_KEY || '');
 const GCP_API_KEY = (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || '').trim().startsWith('AIza')
   ? (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || '').trim()
