@@ -136,6 +136,16 @@ const redeemLimiter = rateLimit({
   validate: { xForwardedForHeader: false, ip: false, default: false },
 });
 
+const walletEmailLimiter = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000,
+  max: 5,
+  message: { ok: false, error: 'Maximum 5 wallet email resends per day reached. Try again tomorrow.' },
+  keyGenerator: (req) => (req as any).session?.user?.uid || req.ip || 'anon',
+  validate: { xForwardedForHeader: false, ip: false, default: false },
+  standardHeaders: false,
+  legacyHeaders: false,
+});
+
 // ─────────────────────────────────────────────────────────
 // QR TOKEN HELPERS
 // ─────────────────────────────────────────────────────────
@@ -1190,7 +1200,9 @@ router.post('/redeem-online', async (req: Request, res: Response) => {
 // ─────────────────────────────────────────────────────────
 // POST /resend-wallet-email — resend to logged-in user
 // ─────────────────────────────────────────────────────────
-router.post('/resend-wallet-email', async (req: Request, res: Response) => {
+const WALLET_EMAIL_COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes between successive sends per user
+
+router.post('/resend-wallet-email', walletEmailLimiter, async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
     const userId  = session?.user?.uid;
@@ -1201,7 +1213,23 @@ router.post('/resend-wallet-email', async (req: Request, res: Response) => {
     const passDoc = await passRef.get();
     if (!passDoc.exists) return res.status(404).json({ ok: false, error: 'No Prestige Pass found' });
 
-    const pass       = passDoc.data()!;
+    const pass = passDoc.data()!;
+
+    // Enforce 15-minute cooldown between wallet email resends per user
+    if (pass.emailSentAt) {
+      const lastSentMs = new Date(pass.emailSentAt).getTime();
+      const msSinceLast = Date.now() - lastSentMs;
+      if (msSinceLast < WALLET_EMAIL_COOLDOWN_MS) {
+        const waitSecs = Math.ceil((WALLET_EMAIL_COOLDOWN_MS - msSinceLast) / 1000);
+        const waitMins = Math.ceil(waitSecs / 60);
+        return res.status(429).json({
+          ok: false,
+          error: `Wait ${waitMins} more minute${waitMins !== 1 ? 's' : ''} before resending your wallet email.`,
+          retryAfterSecs: waitSecs,
+        });
+      }
+    }
+
     const tierKey    = pass.tier || 'new';
     const tierDisplay = TIER_DISPLAY[tierKey]?.en || 'Prestige Pearl';
     const appBaseUrl  = process.env.APP_BASE_URL || 'https://petwash.co.il';

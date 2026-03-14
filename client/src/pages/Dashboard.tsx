@@ -342,11 +342,15 @@ export default function Dashboard() {
       title: he ? 'נשלח בהצלחה' : 'Email sent',
       description: he ? 'קישור להורדת הכרטיס נשלח לאימייל שלך' : 'Your pass download link was emailed to you',
     }),
-    onError: () => toast({
-      title: he ? 'שגיאה' : 'Error',
-      description: he ? 'לא ניתן לשלוח — נסה שוב' : 'Could not send email — please try again',
-      variant: 'destructive',
-    }),
+    onError: (error: any) => {
+      const serverMsg = error?.body?.error || error?.message;
+      const isCooldown = error?.status === 429 || (typeof serverMsg === 'string' && serverMsg.toLowerCase().includes('wait'));
+      toast({
+        title: isCooldown ? (he ? 'נסה מאוחר יותר' : 'Too many requests') : (he ? 'שגיאה' : 'Error'),
+        description: serverMsg || (he ? 'לא ניתן לשלוח — נסה שוב' : 'Could not send email — please try again'),
+        variant: 'destructive',
+      });
+    },
   });
 
   const { data: profileData } = useQuery({
