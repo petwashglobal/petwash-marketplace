@@ -268,7 +268,27 @@ router.post("/:bookingId/confirm", requireAuth, async (req, res) => {
     const userId = req.user!.uid;
 
     const bookingDoc = await db.collection("bookings").doc(bookingId).get();
-    const booking = bookingDoc.data();
+    if (!bookingDoc.exists) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+    const booking = bookingDoc.data()!;
+
+    // SECURITY: Only the assigned provider, the booking owner, or an admin can confirm
+    const isBookingProvider = booking.providerId === userId;
+    const isBookingOwner = booking.userId === userId || booking.customerId === userId;
+    const isSuperAdmin = !!(req as any).firebaseUser?.claims?.role &&
+      ['admin', 'super_admin'].includes((req as any).firebaseUser?.claims?.role);
+
+    if (!isBookingProvider && !isBookingOwner && !isSuperAdmin) {
+      logger.warn('[Bookings] Unauthorized confirm attempt', { userId, bookingId, providerId: booking.providerId, customerId: booking.userId });
+      return res.status(403).json({ error: "Forbidden — you are not the assigned provider or booking owner" });
+    }
+
+    // SECURITY: Only confirm bookings in pending/awaiting_confirmation state
+    const confirmableStates = ['pending', 'awaiting_confirmation', 'payment_held'];
+    if (booking.status && !confirmableStates.includes(booking.status)) {
+      return res.status(409).json({ error: `Cannot confirm a booking with status: ${booking.status}` });
+    }
 
     await db.collection("bookings").doc(bookingId).update({
       status: "confirmed",

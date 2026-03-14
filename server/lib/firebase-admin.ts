@@ -22,18 +22,27 @@ if (!admin.apps.length) {
       console.log('✅ Firebase Admin SDK initialized with service account');
     } catch (error) {
       console.error('❌ Failed to parse Firebase service account key:', error);
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('FATAL: Invalid FIREBASE_SERVICE_ACCOUNT_KEY in production. Server cannot start without valid credentials.');
+      }
       firebaseApp = admin.initializeApp({
         projectId: FIREBASE_PROJECT_ID,
         storageBucket: FIREBASE_STORAGE_BUCKET,
       });
-      console.log('⚠️ Firebase Admin SDK initialized without credentials');
+      console.log('⚠️ Firebase Admin SDK initialized without credentials (dev mode only)');
     }
   } else {
+    if (process.env.NODE_ENV === 'production') {
+      // In production, Google Cloud Run provides Application Default Credentials via service account
+      // Ensure the Cloud Run service account has the correct IAM roles (firebase-adminsdk)
+      console.log('ℹ️ Production: using Application Default Credentials (Cloud Run service account)');
+    } else {
+      console.warn('⚠️ FIREBASE_SERVICE_ACCOUNT_KEY not set — Firebase Admin SDK using ambient ADC (dev/emulator mode)');
+    }
     firebaseApp = admin.initializeApp({
       projectId: FIREBASE_PROJECT_ID,
       storageBucket: FIREBASE_STORAGE_BUCKET,
     });
-    console.log('⚠️ Firebase Admin SDK initialized without service account key');
   }
 } else {
   firebaseApp = admin.apps[0]!;
