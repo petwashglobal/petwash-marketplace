@@ -495,6 +495,56 @@ export default function Dashboard() {
             </LuxuryCard>
           </div>
 
+          {/* ── Prestige Pass Featured Entry ───────────────────────────────── */}
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.48 }}
+            onClick={() => setLocation('/prestige-pass')}
+            className="w-full rounded-2xl overflow-hidden mb-4 group"
+            style={{
+              background: 'linear-gradient(135deg, #0a0a0a 0%, #1c1c1c 50%, #0f0f0f 100%)',
+              border: '1px solid rgba(212,175,55,0.35)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 0 0 1px rgba(212,175,55,0.1)',
+              cursor: 'pointer',
+              textAlign: 'left',
+            }}
+          >
+            {/* Gold shimmer top bar */}
+            <div style={{ height: '2px', background: 'linear-gradient(90deg,#c9a96e,#f0d060,#d4af37,#c9a96e)' }} />
+            <div className="px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {/* Decorative mini-chip */}
+                <div style={{
+                  width: '28px', height: '20px', borderRadius: '3px',
+                  background: '#c9a96e',
+                  flexShrink: 0,
+                  display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr 1fr',
+                  gap: '2px', padding: '3px',
+                }}>
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '1px' }} />
+                  ))}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: '#ffffff', letterSpacing: '0.02em' }}>
+                    {language === 'he' ? 'כרטיס פרסטיז' : 'Prestige Pass'}
+                  </p>
+                  <p className="text-[10px]" style={{ color: 'rgba(212,175,55,0.7)', letterSpacing: '0.06em' }}>
+                    {language === 'he' ? 'ארנק • QR • מועדון נאמנות' : 'Wallet · QR code · Loyalty club'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                  style={{ background: 'rgba(212,175,55,0.15)', color: '#D4AF37', border: '1px solid rgba(212,175,55,0.3)' }}>
+                  {language === 'he' ? 'פתח' : 'Open'}
+                </span>
+                <ChevronRight className="w-4 h-4 opacity-40 group-hover:opacity-80 transition-opacity" style={{ color: '#D4AF37' }} />
+              </div>
+            </div>
+          </motion.button>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-5">
             <motion.button
               initial={{ opacity: 0, y: 10 }}
