@@ -795,6 +795,69 @@ router.post('/topup', async (req: Request, res: Response) => {
 });
 
 // ─────────────────────────────────────────────────────────
+// EMAIL HELPER — pre-generate Google Wallet save URL for embedding in email
+// Returns null silently if the secrets aren't configured yet
+// ─────────────────────────────────────────────────────────
+async function buildGoogleWalletSaveUrl(opts: {
+  userId: string;
+  serialNumber: string;
+  tier: string;
+  balanceILS: number;
+  washes: number;
+  displayName: string;
+}): Promise<string | null> {
+  try {
+    const issuerId  = process.env.GOOGLE_WALLET_ISSUER_ID;
+    const classId   = process.env.GOOGLE_WALLET_CLASS_ID || 'petwash.prestige';
+    const saKeyRaw  = process.env.GOOGLE_WALLET_SA_KEY;
+    if (!issuerId || !saKeyRaw) return null;
+
+    let saKey: { client_email: string; private_key: string };
+    try { saKey = JSON.parse(saKeyRaw); } catch { return null; }
+
+    const { createSign } = await import('crypto');
+    const tierDisplay = TIER_DISPLAY[opts.tier]?.en || 'Prestige Pearl';
+    const darkBg = ['black', 'elite', 'diamond', 'vip'].includes(opts.tier);
+    const objectId = `${issuerId}.${opts.serialNumber}`;
+    const now = Math.floor(Date.now() / 1000);
+
+    const payload = {
+      iss: saKey.client_email,
+      aud: 'google',
+      origins: ['https://petwash.co.il'],
+      typ: 'savetowallet',
+      iat: now,
+      payload: {
+        genericObjects: [{
+          id: objectId,
+          classId: `${issuerId}.${classId}`,
+          cardTitle:  { defaultValue: { language: 'en', value: 'PetWash Prestige Pass' } },
+          subheader:  { defaultValue: { language: 'en', value: tierDisplay } },
+          header:     { defaultValue: { language: 'en', value: `₪${opts.balanceILS.toFixed(0)}` } },
+          logo:       { sourceUri: { uri: 'https://petwash.co.il/logo.png' } },
+          hexBackgroundColor: darkBg ? '#0F0F0F' : '#B48728',
+          barcode:    { type: 'QR_CODE', value: `PETWASH:${opts.userId}:${opts.serialNumber}`, alternateText: opts.serialNumber },
+          textModulesData: [
+            { id: 'washes', header: 'WASH CREDITS', body: opts.washes > 0 ? `${opts.washes} washes` : '—' },
+            { id: 'member', header: 'MEMBER', body: opts.displayName || 'Member' },
+          ],
+        }],
+      },
+    };
+
+    const header  = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+    const body    = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const signer  = createSign('RSA-SHA256');
+    signer.update(`${header}.${body}`);
+    const sig     = signer.sign(saKey.private_key, 'base64url');
+    return `https://pay.google.com/gp/v/save/${header}.${body}.${sig}`;
+  } catch (err) {
+    logger.warn('[PrestigePass] Could not pre-generate Google Wallet save URL for email', { err });
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────
 // EMAIL HELPER — Prestige Pass wallet email
 // ─────────────────────────────────────────────────────────
 function buildPrestigeWalletEmail(opts: {
@@ -804,12 +867,15 @@ function buildPrestigeWalletEmail(opts: {
   appBaseUrl: string;
   cashWalletCents: number;
   freeWashesRemaining: number;
+  googleWalletSaveUrl?: string | null;
 }): string {
-  const { firstName, tierDisplay, cardNumber, appBaseUrl, cashWalletCents, freeWashesRemaining } = opts;
+  const { firstName, tierDisplay, cardNumber, appBaseUrl, cashWalletCents, freeWashesRemaining, googleWalletSaveUrl } = opts;
   const cashDisplay = (cashWalletCents / 100).toFixed(2);
-  const walletUrl = `${appBaseUrl}/prestige-pass`;
-  const googleWalletUrl = `${appBaseUrl}/api/prestige-pass/google-wallet`;
-  const appleWalletUrl  = `${appBaseUrl}/api/prestige-pass/apple-wallet`;
+  // Both wallet buttons open the app's prestige-pass page where the user logs in and downloads.
+  // Google Wallet uses a pre-generated pay.google.com save URL when available.
+  const walletUrl      = `${appBaseUrl}/prestige-pass`;
+  const googleWalletUrl = googleWalletSaveUrl || walletUrl;
+  const appleWalletUrl  = walletUrl;
   const maskedCard = `•••• •••• ${cardNumber.slice(-4)}`;
 
   return `<!DOCTYPE html>
@@ -863,19 +929,19 @@ function buildPrestigeWalletEmail(opts: {
       <table role="presentation" cellspacing="0" cellpadding="0">
         <tr>
           <!-- Google Wallet -->
-          <td style="padding-left:0;padding-left:0;">
+          <td style="padding-left:0;">
             <a href="${googleWalletUrl}" target="_blank" style="display:inline-block;text-decoration:none;">
               <table role="presentation" cellspacing="0" cellpadding="0" style="background:#000000;border:1px solid #444;border-radius:8px;overflow:hidden;">
                 <tr>
                   <td style="padding:12px 20px;">
                     <table role="presentation" cellspacing="0" cellpadding="0">
                       <tr>
-                        <td style="padding-left:0;">
-                          <!-- Google G logo approximation in text (safe for email clients) -->
+                        <td>
+                          <!-- Google logo in text (email-safe) -->
                           <span style="font-size:18px;font-weight:900;color:#4285F4;font-family:Arial;">G</span><span style="font-size:18px;font-weight:900;color:#EA4335;">o</span><span style="font-size:18px;font-weight:900;color:#FBBC05;">o</span><span style="font-size:18px;font-weight:900;color:#4285F4;">g</span><span style="font-size:18px;font-weight:900;color:#34A853;">l</span><span style="font-size:18px;font-weight:900;color:#EA4335;">e</span>
                         </td>
-                        <td style="padding-right:12px;border-right:1px solid #333;"></td>
-                        <td style="padding-right:0;padding-right:12px;">
+                        <td style="padding:0 12px;border-right:1px solid #333;"></td>
+                        <td style="padding-right:12px;">
                           <div style="font-size:10px;color:#aaaaaa;letter-spacing:0.5px;">הוסף ל-</div>
                           <div style="font-size:15px;font-weight:700;color:#ffffff;letter-spacing:0.5px;">Google Wallet</div>
                         </td>
@@ -895,11 +961,11 @@ function buildPrestigeWalletEmail(opts: {
                   <td style="padding:12px 20px;">
                     <table role="presentation" cellspacing="0" cellpadding="0">
                       <tr>
-                        <td style="padding-left:0;">
+                        <td>
                           <span style="font-size:22px;color:#ffffff;font-family:'Apple Color Emoji',Arial;">&#63743;</span>
                         </td>
-                        <td style="padding-right:12px;border-right:1px solid #333;"></td>
-                        <td style="padding-right:0;padding-right:12px;">
+                        <td style="padding:0 12px;border-right:1px solid #333;"></td>
+                        <td style="padding-right:12px;">
                           <div style="font-size:10px;color:#aaaaaa;letter-spacing:0.5px;">הוסף ל-</div>
                           <div style="font-size:15px;font-weight:700;color:#ffffff;letter-spacing:0.5px;">Apple Wallet</div>
                         </td>
@@ -1023,14 +1089,29 @@ router.post('/activate', async (req: Request, res: Response) => {
 
     // Send wallet email with both wallet buttons
     if (recipientEmail) {
-      const appBaseUrl = process.env.APP_BASE_URL || 'https://petwash.co.il';
+      const appBaseUrl        = process.env.APP_BASE_URL || 'https://petwash.co.il';
+      const activateCash      = activateWallet?.cashWalletBalanceCents || 0;
+      const activateEgift     = activateWallet?.egiftBalanceCents || 0;
+      const activateWashes    = activateWallet?.washPackageCredits || 0;
+      const activateDisplay   = firstName || session?.user?.displayName || '';
+
+      const googleWalletSaveUrl = await buildGoogleWalletSaveUrl({
+        userId,
+        serialNumber: passCardNumber,
+        tier:         tierKey,
+        balanceILS:   (activateCash + activateEgift) / 100,
+        washes:       activateWashes,
+        displayName:  activateDisplay,
+      });
+
       const html = buildPrestigeWalletEmail({
-        firstName:           firstName || session?.user?.displayName?.split(' ')[0] || 'לקוח יקר',
+        firstName:           activateDisplay.split(' ')[0] || 'לקוח יקר',
         tierDisplay,
         cardNumber:          passCardNumber,
         appBaseUrl,
-        cashWalletCents:     activateWallet?.cashWalletBalanceCents || 0,
-        freeWashesRemaining: activateWallet?.washPackageCredits || 0,
+        cashWalletCents:     activateCash + activateEgift,
+        freeWashesRemaining: activateWashes,
+        googleWalletSaveUrl,
       });
 
       const sent = await EmailService.send({
@@ -1041,7 +1122,7 @@ router.post('/activate', async (req: Request, res: Response) => {
 
       if (sent) {
         await passRef.update({ emailSentAt: new Date().toISOString() });
-        logger.info('[PrestigePass] Wallet email sent', { userId, recipientEmail, tier: tierKey });
+        logger.info('[PrestigePass] Wallet email sent', { userId, recipientEmail, tier: tierKey, googleWalletReady: !!googleWalletSaveUrl });
       }
     }
 
@@ -1235,14 +1316,30 @@ router.post('/resend-wallet-email', walletEmailLimiter, async (req: Request, res
     const appBaseUrl  = process.env.APP_BASE_URL || 'https://petwash.co.il';
 
     const [resendWallet] = await db.select().from(walletAccounts).where(eq(walletAccounts.userId, userId)).limit(1);
+    const cashWalletCents = resendWallet?.cashWalletBalanceCents || 0;
+    const egiftCents      = resendWallet?.egiftBalanceCents || 0;
+    const washes          = resendWallet?.washPackageCredits || 0;
+    const cardNum         = pass.cardNumber || userId.slice(-8).toUpperCase();
+    const displayName     = session?.user?.displayName || '';
+
+    // Pre-generate Google Wallet save URL when secrets are configured
+    const googleWalletSaveUrl = await buildGoogleWalletSaveUrl({
+      userId,
+      serialNumber: pass.serialNumber || `PWL-${userId.slice(0, 8).toUpperCase()}`,
+      tier:         tierKey,
+      balanceILS:   (cashWalletCents + egiftCents) / 100,
+      washes,
+      displayName,
+    });
 
     const html = buildPrestigeWalletEmail({
-      firstName:           session?.user?.displayName?.split(' ')[0] || 'לקוח יקר',
+      firstName:           displayName.split(' ')[0] || 'לקוח יקר',
       tierDisplay,
-      cardNumber:          pass.cardNumber || userId.slice(-8).toUpperCase(),
+      cardNumber:          cardNum,
       appBaseUrl,
-      cashWalletCents:     resendWallet?.cashWalletBalanceCents || 0,
-      freeWashesRemaining: resendWallet?.washPackageCredits || 0,
+      cashWalletCents:     cashWalletCents + egiftCents,
+      freeWashesRemaining: washes,
+      googleWalletSaveUrl,
     });
 
     const sent = await EmailService.send({
@@ -1255,7 +1352,7 @@ router.post('/resend-wallet-email', walletEmailLimiter, async (req: Request, res
       await passRef.update({ emailSentAt: new Date().toISOString() });
     }
 
-    return res.json({ ok: true, emailSent: sent });
+    return res.json({ ok: true, emailSent: sent, googleWalletReady: !!googleWalletSaveUrl });
   } catch (err) {
     logger.error('[PrestigePass] /resend-wallet-email error:', err);
     return res.status(500).json({ ok: false, error: 'Internal error' });
