@@ -52,7 +52,7 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
   const [showVerification, setShowVerification] = useState(false);
   const [verificationTokens, setVerificationTokens] = useState<{ emailToken: string; smsToken: string } | null>(null);
   
-  const [captchaToken, setCaptchaToken] = useState<string | null>('bypass');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const isRTL = language === 'he';
   const [formData, setFormData] = useState<SignupFormData>({
     firstName: '',
@@ -97,7 +97,8 @@ export function CustomerSignupModal({ isOpen, onClose, language }: CustomerSignu
     e.preventDefault();
     
     if (!captchaToken) {
-      console.warn('[CustomerSignupModal] reCAPTCHA token missing — proceeding anyway');
+      toast({ title: language === 'he' ? 'אימות אבטחה נדרש' : 'Security check required', description: language === 'he' ? 'אנא לחץ על ״אני לא רובוט״ לפני ההמשך' : 'Please complete the security check before continuing', variant: 'destructive' });
+      return;
     }
 
     if (!formData.termsAccepted) {

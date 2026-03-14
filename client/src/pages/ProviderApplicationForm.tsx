@@ -176,7 +176,7 @@ export default function ProviderApplicationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
-  const [captchaToken, setCaptchaToken] = useState<string | null>('bypass');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const handleProfilePhotoChange = (e: { target: HTMLInputElement }) => {
     const file = e.target.files?.[0];
@@ -363,7 +363,8 @@ export default function ProviderApplicationForm() {
   const onSubmit = async (data: ApplicationForm) => {
     console.log('[ProviderApplication] Form submit triggered with data:', data);
     if (!captchaToken) {
-      console.warn('[ProviderApplicationForm] reCAPTCHA token missing — proceeding anyway');
+      toast({ title: language === 'he' ? 'אימות אבטחה נדרש' : 'Security check required', description: language === 'he' ? 'אנא לחץ על ״אני לא רובוט״ לפני שליחת הבקשה' : 'Please complete the security check before submitting', variant: 'destructive' });
+      return;
     }
     setIsSubmitting(true);
     try {
@@ -1375,6 +1376,7 @@ export default function ProviderApplicationForm() {
                 <div className="mt-8">
                   <SecurityCheckpoint
                     onVerified={(token) => setCaptchaToken(token)}
+                    onFailed={() => setCaptchaToken(null)}
                     language={language}
                     action="provider_apply"
                   />

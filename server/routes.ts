@@ -9037,12 +9037,14 @@ self.addEventListener('notificationclick', (event) => {
         captchaToken
       } = req.body;
 
-      if (captchaToken && captchaToken !== 'bypass') {
+      if (captchaToken) {
         const captchaResult = await verifyCaptchaToken(captchaToken, 'register');
         if (!captchaResult.valid) {
-          logger.warn('[CustomerRegister] reCAPTCHA Enterprise rejected token', { reason: captchaResult.reason });
+          logger.warn('[CustomerRegister] reCAPTCHA Enterprise rejected token', { reason: captchaResult.reason, source: captchaResult.source });
           return res.status(403).json({ message: 'Security verification failed. Please try again.' });
         }
+      } else {
+        return res.status(400).json({ message: 'Security verification token required.' });
       }
 
       if (!firstName || !lastName || !email || !phone || !password || !termsAccepted) {
@@ -10340,12 +10342,14 @@ self.addEventListener('notificationclick', (event) => {
         });
       }
 
-      if (captchaToken && captchaToken !== 'bypass') {
+      if (captchaToken) {
         const captchaResult = await verifyCaptchaToken(captchaToken, 'signup');
         if (!captchaResult.valid) {
-          logger.warn('[CreateProfile] reCAPTCHA Enterprise rejected token', { reason: captchaResult.reason });
+          logger.warn('[CreateProfile] reCAPTCHA Enterprise rejected token', { reason: captchaResult.reason, source: captchaResult.source });
           return res.status(403).json({ success: false, error: 'Security verification failed' });
         }
+      } else {
+        return res.status(400).json({ success: false, error: 'Security verification token required.' });
       }
       
       const validationErrors: string[] = [];

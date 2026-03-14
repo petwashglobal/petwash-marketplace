@@ -88,7 +88,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState<string | null>('bypass');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [activeActivityIndex, setActiveActivityIndex] = useState(0);
   const [animatedStats, setAnimatedStats] = useState({ members: 0, providers: 0, services: 0 });
 
@@ -216,7 +216,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
       case 4: return true;
       case 5:
         if (!termsConsent) { toast({ variant: 'destructive', title: t('privilege.required', language), description: t('privilege.termsConsent', language) }); return false; }
-        if (!captchaToken) { console.warn('[PrivilegeSignup] reCAPTCHA token missing — proceeding (add *.replit.dev to GCP Console)'); }
+        if (!captchaToken) { toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נדרש' : 'Security check required', description: language === 'he' ? 'אנא לחץ על ״אני לא רובוט״ לפני ההמשך' : 'Please complete the security check before continuing' }); return false; }
         return true;
       default: return true;
     }
@@ -861,7 +861,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                           </div>
                         </div>
                         <div className="pt-4">
-                          <SecurityCheckpoint onVerified={(token) => setCaptchaToken(token)} language={language} action="privilege_register" />
+                          <SecurityCheckpoint onVerified={(token) => setCaptchaToken(token)} onFailed={() => setCaptchaToken(null)} language={language} action="privilege_register" />
                         </div>
                       </div>
                     )}

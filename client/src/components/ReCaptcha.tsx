@@ -176,8 +176,16 @@ export function SecurityCheckpoint({
           onFailed?.();
         }
       } else {
-        setStatus('verified');
-        onVerified('bypass-no-key');
+        // No token returned — only allow in dev (domain not yet in reCAPTCHA console)
+        if (import.meta.env.DEV) {
+          logger.warn('[SecurityCheckpoint] No token in dev mode — using bypass. Add *.replit.dev to reCAPTCHA console.');
+          setStatus('verified');
+          onVerified('bypass');
+        } else {
+          logger.error('[SecurityCheckpoint] No token in production — blocking submission');
+          setStatus('failed');
+          onFailed?.();
+        }
       }
     } catch (error) {
       logger.error('[SecurityCheckpoint] Verification failed:', error);

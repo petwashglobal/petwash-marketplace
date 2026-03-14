@@ -149,7 +149,7 @@ export function OnboardingVerification({
   const [smsToken, setSmsToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [smsCaptchaToken, setSmsCaptchaToken] = useState<string | null>('bypass');
+  const [smsCaptchaToken, setSmsCaptchaToken] = useState<string | null>(null);
 
   const [linkPolling, setLinkPolling] = useState(false);
   const emailInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -296,7 +296,8 @@ export function OnboardingVerification({
       return;
     }
     if (!smsCaptchaToken) {
-      console.warn('[OnboardingVerification] reCAPTCHA token missing — proceeding anyway');
+      toast({ title: isRTL ? 'אימות אבטחה נדרש' : 'Security check required', description: isRTL ? 'אנא לחץ על ״אני לא רובוט״ לפני שליחת קוד האימות' : 'Please complete the security check before sending the verification code', variant: 'destructive' });
+      return;
     }
     setLoading(true);
     try {
@@ -560,6 +561,7 @@ export function OnboardingVerification({
               </div>
               <SecurityCheckpoint
                 onVerified={(token) => setSmsCaptchaToken(token)}
+                onFailed={() => setSmsCaptchaToken(null)}
                 language={language}
                 action="send_sms"
               />

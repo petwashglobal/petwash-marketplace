@@ -57,7 +57,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const { trackUserAuth, trackEvent } = useAnalytics();
   const { user, logout } = useFirebaseAuth();
   const [loading, setLoading] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState<string | null>('bypass');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [magicLinkMode, setMagicLinkMode] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
@@ -1085,7 +1085,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     e.preventDefault();
 
     if (!captchaToken) {
-      logger.warn('[SignIn] Proceeding without reCAPTCHA token — domain not yet authorized in GCP Console');
+      toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נדרש' : 'Security check required', description: language === 'he' ? 'אנא לחץ על ״אני לא רובוט״ לפני הכניסה' : 'Please complete the security check before signing in' });
+      return;
     }
     
     try {
@@ -1866,7 +1867,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               
               <SecurityCheckpoint
                 onVerified={(token) => setCaptchaToken(token)}
-                onFailed={() => { setCaptchaToken('bypass'); logger.warn('[SignIn] reCAPTCHA soft-failed — domain not yet authorized'); }}
+                onFailed={() => { setCaptchaToken(null); logger.warn('[SignIn] reCAPTCHA failed — submit blocked'); }}
                 language={language}
                 action="login"
               />

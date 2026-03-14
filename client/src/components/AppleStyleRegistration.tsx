@@ -72,7 +72,7 @@ const PET_TYPE_DATA = [
 ];
 
 export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrationComplete }: AppleStyleRegistrationProps) {
-  const [captchaToken, setCaptchaToken] = useState<string | null>('bypass');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [formData, setFormData] = useState<RegistrationData>({
     firstName: '',
     lastName: '',
@@ -186,7 +186,8 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
     
     // Validation
     if (!captchaToken) {
-      console.warn('[AppleStyleRegistration] reCAPTCHA token missing — proceeding anyway');
+      toast({ title: language === 'he' ? 'אימות אבטחה נדרש' : 'Security check required', description: language === 'he' ? 'אנא לחץ על ״אני לא רובוט״ לפני ההרשמה' : 'Please complete the security check before registering', variant: 'destructive' });
+      return;
     }
 
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.password) {

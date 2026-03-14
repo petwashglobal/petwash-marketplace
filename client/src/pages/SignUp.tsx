@@ -49,7 +49,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
   const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [firebaseToken, setFirebaseToken] = useState<string | null>(null);
-  const [captchaToken, setCaptchaToken] = useState<string | null>('bypass');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   
   const prefilledEmail = new URLSearchParams(window.location.search).get('email') || '';
   
@@ -250,7 +250,8 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     setTermsError(false);
     
     if (!captchaToken) {
-      logger.warn('[SignUp] Proceeding without reCAPTCHA token — domain not yet authorized in GCP Console');
+      toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נדרש' : 'Security check required', description: language === 'he' ? 'אנא השלם את אימות reCAPTCHA לפני ההרשמה' : 'Please complete the security check before signing up' });
+      return;
     }
 
     if (!formData.acceptedTerms) {
@@ -840,7 +841,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
             <div className="pt-2">
               <SecurityCheckpoint
                 onVerified={(token) => setCaptchaToken(token)}
-                onFailed={() => { setCaptchaToken('bypass'); logger.warn('[SignUp] reCAPTCHA soft-failed — add *.replit.dev to GCP Console key domains'); }}
+                onFailed={() => { setCaptchaToken(null); logger.warn('[SignUp] reCAPTCHA failed — submit blocked'); }}
                 language={language}
                 action="signup"
               />
