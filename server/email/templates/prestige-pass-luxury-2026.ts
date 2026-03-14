@@ -108,12 +108,13 @@ function maskCard(num: string): string {
 // Chip SVG (like a real EMV chip)
 // ──────────────────────────────────────────────────────────────────────────────
 function chipSvg(color: string): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="36" viewBox="0 0 48 36">
-  <rect width="48" height="36" rx="5" fill="${color}" opacity=".85"/>
-  <rect x="16" y="0" width="16" height="36" rx="2" fill="none" stroke="${color}" stroke-width="1.2" opacity=".4"/>
-  <rect x="0" y="10" width="48" height="16" rx="2" fill="none" stroke="${color}" stroke-width="1.2" opacity=".4"/>
-  <rect x="16" y="10" width="16" height="16" rx="1" fill="#000" opacity=".25"/>
-  <rect x="18" y="12" width="12" height="12" rx="1" fill="${color}" opacity=".3"/>
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="52" height="40" viewBox="0 0 52 40">
+  <rect width="52" height="40" rx="6" fill="${color}" opacity=".9"/>
+  <rect x="17" y="0" width="18" height="40" rx="2" fill="none" stroke="rgba(0,0,0,.25)" stroke-width="1"/>
+  <rect x="0" y="12" width="52" height="16" rx="2" fill="none" stroke="rgba(0,0,0,.25)" stroke-width="1"/>
+  <rect x="17" y="12" width="18" height="16" rx="2" fill="rgba(0,0,0,.3)"/>
+  <rect x="19" y="14" width="14" height="12" rx="1" fill="${color}" opacity=".25"/>
+  <rect x="22" y="17" width="8" height="6" rx="1" fill="rgba(0,0,0,.2)"/>
 </svg>`;
 }
 
@@ -121,12 +122,76 @@ function chipSvg(color: string): string {
 // CONTACTLESS ICON
 // ──────────────────────────────────────────────────────────────────────────────
 function contactlessIcon(color: string): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="30" viewBox="0 0 24 30" fill="none">
-  <path d="M5 15 A9 9 0 0 1 19 15" stroke="${color}" stroke-width="2" stroke-linecap="round" opacity=".9"/>
-  <path d="M8 15 A6 6 0 0 1 16 15" stroke="${color}" stroke-width="2" stroke-linecap="round" opacity=".7"/>
-  <path d="M11 15 A3 3 0 0 1 13 15" stroke="${color}" stroke-width="2" stroke-linecap="round" opacity=".5"/>
-  <circle cx="12" cy="15" r="1.5" fill="${color}" opacity=".85"/>
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28" fill="none">
+  <path d="M4 14 A12 12 0 0 1 24 14" stroke="${color}" stroke-width="2.2" stroke-linecap="round" opacity=".9"/>
+  <path d="M8 14 A8 8 0 0 1 20 14" stroke="${color}" stroke-width="2.2" stroke-linecap="round" opacity=".65"/>
+  <path d="M12 14 A4 4 0 0 1 16 14" stroke="${color}" stroke-width="2.2" stroke-linecap="round" opacity=".4"/>
+  <circle cx="14" cy="14" r="2" fill="${color}" opacity=".95"/>
 </svg>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// OFFICIAL APPLE WALLET BADGE
+// ──────────────────────────────────────────────────────────────────────────────
+function appleWalletBadge(url: string, isHe: boolean): string {
+  return `
+<a href="${url}" target="_blank" style="display:inline-block;text-decoration:none;">
+  <table role="presentation" cellspacing="0" cellpadding="0"
+         style="background:#000000;border-radius:14px;border:1px solid rgba(255,255,255,.15);
+                box-shadow:0 4px 20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.08);">
+    <tr>
+      <td style="padding:13px 22px 13px 18px;">
+        <table role="presentation" cellspacing="0" cellpadding="0">
+          <tr>
+            <td style="vertical-align:middle;padding-right:11px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="26" viewBox="0 0 814 1000" fill="#ffffff">
+                <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-37.5-154.8-95.6C33.3 756.3 11 658.7 11 563.7c0-214.2 139.4-327.3 276.8-327.3 71 0 130.1 46.4 174.9 46.4 42.7 0 109.6-49.5 186.7-49.5zm-154.3-100.3c31.7-37.6 54.4-89.9 54.4-142.2 0-7.1-.5-14.3-1.6-20.4-51.5 2-112 34.4-148.7 75.8-28.5 32.4-55.1 84.7-55.1 137.7 0 7.5 1.1 15 1.6 17.3 3.2.5 8.4 1.1 13.6 1.1 46.4 0 101.5-30.8 135.8-69.3z"/>
+              </svg>
+            </td>
+            <td style="vertical-align:middle;">
+              <div style="font-size:9px;color:rgba(255,255,255,.55);letter-spacing:1.5px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;line-height:1.2;margin-bottom:2px;">${isHe ? 'הוסף ל' : 'Add to'}</div>
+              <div style="font-size:17px;font-weight:700;color:#ffffff;letter-spacing:0.2px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;line-height:1.1;white-space:nowrap;">Apple Wallet</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</a>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// OFFICIAL GOOGLE WALLET BADGE
+// ──────────────────────────────────────────────────────────────────────────────
+function googleWalletBadge(url: string, isHe: boolean): string {
+  return `
+<a href="${url}" target="_blank" style="display:inline-block;text-decoration:none;">
+  <table role="presentation" cellspacing="0" cellpadding="0"
+         style="background:#1f1f1f;border-radius:14px;border:1px solid rgba(255,255,255,.12);
+                box-shadow:0 4px 20px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);">
+    <tr>
+      <td style="padding:13px 22px 13px 16px;">
+        <table role="presentation" cellspacing="0" cellpadding="0">
+          <tr>
+            <td style="vertical-align:middle;padding-right:11px;">
+              <!-- Google Wallet Icon (G with wallet colors) -->
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="12" fill="#fff" opacity=".07"/>
+                <text x="12" y="17" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" font-weight="800">
+                  <tspan fill="#4285F4">G</tspan>
+                </text>
+              </svg>
+            </td>
+            <td style="vertical-align:middle;">
+              <div style="font-size:9px;color:rgba(255,255,255,.45);letter-spacing:1.5px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;line-height:1.2;margin-bottom:2px;">${isHe ? 'שמור ב' : 'Save to'}</div>
+              <div style="font-size:17px;font-weight:700;color:#ffffff;letter-spacing:0.2px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;line-height:1.1;white-space:nowrap;">Google Wallet</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</a>`;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -153,34 +218,53 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>${isHe ? 'כרטיס הפרסטיז שלך — PetWash™' : 'Your Prestige Pass — PetWash™'}</title>
 </head>
-<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+<body style="margin:0;padding:0;background:#030303;font-family:'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;">
 
 <!-- OUTER WRAPPER -->
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#050505;">
-<tr><td align="center" style="padding:32px 12px;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0"
+       style="background:linear-gradient(180deg,#080808 0%,#030303 100%);">
+<tr><td align="center" style="padding:40px 12px 48px;">
 
 <!-- CONTENT CARD -->
-<table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;width:100%;background:#0a0a0a;border-radius:20px;border:1px solid #1e1e1e;overflow:hidden;">
+<table role="presentation" width="600" cellspacing="0" cellpadding="0"
+       style="max-width:600px;width:100%;background:#0c0c0c;
+              border-radius:24px;
+              border:1px solid #1c1c1c;
+              box-shadow:0 0 0 1px rgba(212,175,55,.06),0 40px 80px rgba(0,0,0,.9);
+              overflow:hidden;">
 
-  <!-- ═══════════ TOP GOLD BAND ═══════════ -->
+  <!-- ═══════════ TOP METALLIC BAND ═══════════ -->
   <tr>
-    <td style="background:linear-gradient(90deg,#0a0a0a 0%,#2a1f00 30%,#D4AF37 50%,#2a1f00 70%,#0a0a0a 100%);height:3px;font-size:0;line-height:0;">&nbsp;</td>
+    <td style="background:linear-gradient(90deg,
+               #030303 0%,
+               #1a1200 15%,
+               #8a6f00 28%,
+               #D4AF37 38%,
+               #F0D060 50%,
+               #D4AF37 62%,
+               #8a6f00 72%,
+               #1a1200 85%,
+               #030303 100%);
+               height:2px;font-size:0;line-height:0;">&nbsp;</td>
   </tr>
 
   <!-- ═══════════ HEADER ═══════════ -->
   <tr>
-    <td style="padding:28px 36px 20px;">
+    <td style="padding:32px 40px 22px;">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
         <tr>
           <td>
-            <div style="font-size:10px;letter-spacing:5px;color:#D4AF37;text-transform:uppercase;margin-bottom:4px;">PETWASH™</div>
-            <div style="font-size:11px;letter-spacing:3px;color:#555;text-transform:uppercase;">${isHe ? 'חבר פרסטיז' : 'PRESTIGE MEMBER'}</div>
+            <!-- Brand wordmark -->
+            <div style="font-size:9px;letter-spacing:7px;color:#D4AF37;text-transform:uppercase;margin-bottom:5px;font-weight:600;">P E T W A S H ™</div>
+            <div style="font-size:10px;letter-spacing:4px;color:#2e2e2e;text-transform:uppercase;">${isHe ? 'כרטיס חבר פרסטיז' : 'PRESTIGE MEMBERSHIP'}</div>
           </td>
           <td align="${isHe ? 'left' : 'right'}">
-            <div style="background:linear-gradient(135deg,${cfg.accentHex},${cfg.bandColor});-webkit-background-clip:text;color:transparent;font-size:22px;font-weight:900;letter-spacing:1px;">
-              ${cfg.emoji} ${cfg.discountPct}% OFF
+            <!-- Discount badge -->
+            <div style="display:inline-block;background:linear-gradient(135deg,rgba(212,175,55,.12),rgba(212,175,55,.04));
+                        border:1px solid rgba(212,175,55,.25);border-radius:8px;padding:7px 14px;text-align:center;">
+              <div style="font-size:20px;font-weight:900;color:${cfg.accentHex};letter-spacing:0.5px;line-height:1;">${cfg.discountPct}%</div>
+              <div style="font-size:8px;letter-spacing:3px;color:#4a4a4a;text-transform:uppercase;margin-top:2px;">${isHe ? 'הנחה' : 'DISCOUNT'}</div>
             </div>
-            <div style="font-size:10px;letter-spacing:2px;color:#666;text-transform:uppercase;margin-top:2px;">${isHe ? 'הנחה בכל קנייה' : 'on every purchase'}</div>
           </td>
         </tr>
       </table>
@@ -189,16 +273,18 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
 
   <!-- ═══════════ GREETING ═══════════ -->
   <tr>
-    <td style="padding:0 36px 24px;">
-      <p style="margin:0;font-size:15px;color:#ccc;line-height:1.7;">
+    <td style="padding:0 40px 28px;">
+      <!-- Thin divider -->
+      <div style="height:1px;background:linear-gradient(90deg,transparent,#1e1e1e,transparent);margin-bottom:24px;"></div>
+      <p style="margin:0 0 10px;font-size:16px;color:#c8c8c8;line-height:1.75;font-weight:300;letter-spacing:0.3px;">
         ${isHe
-          ? `שלום <strong style="color:#fff;">${p.firstName}</strong>, הכרטיס הפרסטיז שלך מוכן לשימוש מלא.`
-          : `Hello <strong style="color:#fff;">${p.firstName}</strong>, your Prestige Pass is ready to use.`
+          ? `שלום <strong style="color:#fff;font-weight:600;">${p.firstName}</strong>, הכרטיס הפרסטיז שלך מוכן לשימוש מלא.`
+          : `Hello <strong style="color:#fff;font-weight:600;">${p.firstName}</strong>, your Prestige Pass is ready.`
         }
       </p>
-      <p style="margin:8px 0 0;font-size:13px;color:#555;line-height:1.6;">
+      <p style="margin:0;font-size:12px;color:#3a3a3a;line-height:1.7;letter-spacing:0.5px;">
         ${isHe
-          ? 'שמור/י אותו ב-Apple Wallet או ב-Google Wallet — לגישה מיידית בכל תחנת K9000.'
+          ? 'שמור/י אותו ב-Apple Wallet או ב-Google Wallet — גישה מיידית בכל תחנת K9000.'
           : 'Save it to Apple Wallet or Google Wallet — instant access at every K9000 station.'
         }
       </p>
@@ -343,24 +429,24 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
 
   <!-- ═══════════ BALANCE BREAKDOWN ═══════════ -->
   <tr>
-    <td style="padding:4px 36px 24px;">
+    <td style="padding:4px 40px 28px;">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0"
-             style="background:#111;border:1px solid #1e1e1e;border-radius:12px;overflow:hidden;">
+             style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:16px;overflow:hidden;">
         <tr>
           <!-- Cash Wallet -->
-          <td align="center" style="padding:18px 12px;border-${isHe ? 'left' : 'right'}:1px solid #1e1e1e;">
-            <div style="font-size:9px;letter-spacing:2px;color:#555;text-transform:uppercase;margin-bottom:6px;">${isHe ? '💳 ארנק מזומן' : '💳 CASH WALLET'}</div>
-            <div style="font-size:22px;font-weight:800;color:#D4AF37;">₪${fmt(p.cashWalletILS)}</div>
+          <td align="center" style="padding:20px 8px;border-${isHe ? 'left' : 'right'}:1px solid #141414;">
+            <div style="font-size:8px;letter-spacing:3px;color:#3a3a3a;text-transform:uppercase;margin-bottom:8px;">${isHe ? 'ארנק מזומן' : 'CASH WALLET'}</div>
+            <div style="font-size:20px;font-weight:800;color:#D4AF37;letter-spacing:-0.5px;">₪${fmt(p.cashWalletILS)}</div>
           </td>
           <!-- eGift Balance -->
-          <td align="center" style="padding:18px 12px;border-${isHe ? 'left' : 'right'}:1px solid #1e1e1e;">
-            <div style="font-size:9px;letter-spacing:2px;color:#555;text-transform:uppercase;margin-bottom:6px;">${isHe ? '🎁 כרטיסי מתנה' : '🎁 E-GIFT CREDITS'}</div>
-            <div style="font-size:22px;font-weight:800;color:#F0D060;">₪${fmt(p.eGiftBalanceILS)}</div>
+          <td align="center" style="padding:20px 8px;border-${isHe ? 'left' : 'right'}:1px solid #141414;">
+            <div style="font-size:8px;letter-spacing:3px;color:#3a3a3a;text-transform:uppercase;margin-bottom:8px;">${isHe ? 'כרטיסי מתנה' : 'E-GIFT'}</div>
+            <div style="font-size:20px;font-weight:800;color:#E7C978;letter-spacing:-0.5px;">₪${fmt(p.eGiftBalanceILS)}</div>
           </td>
           <!-- Loyalty Points -->
-          <td align="center" style="padding:18px 12px;">
-            <div style="font-size:9px;letter-spacing:2px;color:#555;text-transform:uppercase;margin-bottom:6px;">${isHe ? '⭐ נקודות נאמנות' : '⭐ LOYALTY POINTS'}</div>
-            <div style="font-size:22px;font-weight:800;color:#fff;">${fmt(p.loyaltyPoints)}</div>
+          <td align="center" style="padding:20px 8px;">
+            <div style="font-size:8px;letter-spacing:3px;color:#3a3a3a;text-transform:uppercase;margin-bottom:8px;">${isHe ? 'נקודות' : 'POINTS'}</div>
+            <div style="font-size:20px;font-weight:800;color:#888;letter-spacing:-0.5px;">${fmt(p.loyaltyPoints)}</div>
           </td>
         </tr>
       </table>
@@ -370,7 +456,7 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
   <!-- ═══════════ TIER PROGRESS ═══════════ (only if not maxed) -->
   ${p.nextTierName && progressPct < 100 ? `
   <tr>
-    <td style="padding:0 36px 24px;">
+    <td style="padding:0 40px 24px;">
       <div style="font-size:10px;letter-spacing:2px;color:#555;text-transform:uppercase;margin-bottom:8px;">
         ${isHe
           ? `${progressPct}% בדרך אל ${p.nextTierName}`
@@ -393,9 +479,9 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
 
   <!-- ═══════════ K9000 INSTRUCTIONS ═══════════ -->
   <tr>
-    <td style="padding:0 36px 24px;">
+    <td style="padding:0 40px 28px;">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0"
-             style="background:#0d0d0d;border:1px solid #1e1e1e;border-radius:12px;border-${isHe ? 'right' : 'left'}:3px solid ${cfg.accentHex};overflow:hidden;">
+             style="background:#080808;border:1px solid #161616;border-radius:16px;border-${isHe ? 'right' : 'left'}:3px solid ${cfg.accentHex};overflow:hidden;">
         <tr>
           <td style="padding:16px 20px;">
             <div style="font-size:11px;letter-spacing:3px;color:${cfg.accentHex};text-transform:uppercase;margin-bottom:10px;">
@@ -424,110 +510,84 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
 
   <!-- ═══════════ WALLET BUTTONS ═══════════ -->
   <tr>
-    <td style="padding:0 36px 28px;">
-      <div style="font-size:11px;letter-spacing:3px;color:#333;text-transform:uppercase;text-align:center;margin-bottom:16px;">
-        ${isHe ? '📲 שמור ל-Wallet — גישה מיידית' : '📲 SAVE TO WALLET — INSTANT ACCESS'}
-      </div>
+    <td style="padding:0 36px 32px;">
+
+      <!-- Section label -->
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:20px;">
+        <tr>
+          <td style="border-top:1px solid #1a1a1a;"></td>
+          <td style="padding:0 16px;white-space:nowrap;">
+            <div style="font-size:9px;letter-spacing:4px;color:#3a3a3a;text-transform:uppercase;text-align:center;">
+              ${isHe ? 'שמור לארנק הנייד שלך' : 'SAVE TO YOUR MOBILE WALLET'}
+            </div>
+          </td>
+          <td style="border-top:1px solid #1a1a1a;"></td>
+        </tr>
+      </table>
+
+      <!-- Two badges side by side -->
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
         <tr>
-          <!-- Apple Wallet -->
-          <td align="center" style="padding:0 6px 0 0;">
-            <a href="${p.appleWalletUrl || `${appUrl}/api/prestige-pass/apple-wallet`}"
-               target="_blank" style="display:block;text-decoration:none;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0"
-                     style="background:#000;border:1px solid #333;border-radius:12px;">
-                <tr>
-                  <td style="padding:14px 20px;" align="center">
-                    <table role="presentation" cellspacing="0" cellpadding="0">
-                      <tr>
-                        <td>
-                          <!-- Apple logo approximation -->
-                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="24" viewBox="0 0 814 1000" fill="#fff">
-                            <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-37.5-154.8-95.6C33.3 756.3 11 658.7 11 563.7c0-214.2 139.4-327.3 276.8-327.3 71 0 130.1 46.4 174.9 46.4 42.7 0 109.6-49.5 186.7-49.5zm-154.3-100.3c31.7-37.6 54.4-89.9 54.4-142.2 0-7.1-.5-14.3-1.6-20.4-51.5 2-112 34.4-148.7 75.8-28.5 32.4-55.1 84.7-55.1 137.7 0 7.5 1.1 15 1.6 17.3 3.2.5 8.4 1.1 13.6 1.1 46.4 0 101.5-30.8 135.8-69.3z"/>
-                          </svg>
-                        </td>
-                        <td style="padding-${isHe ? 'right' : 'left'}:10px;">
-                          <div style="font-size:9px;color:#888;letter-spacing:2px;text-transform:uppercase;">${isHe ? 'הוסף ל' : 'Add to'}</div>
-                          <div style="font-size:16px;font-weight:700;color:#fff;letter-spacing:0.5px;">Apple Wallet</div>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-            </a>
+          <td align="center" style="padding:0 8px 0 0;">
+            ${appleWalletBadge(p.appleWalletUrl || `${appUrl}/prestige-pass`, isHe)}
           </td>
-
-          <!-- Google Wallet -->
-          <td align="center" style="padding:0 0 0 6px;">
-            <a href="${p.googleWalletUrl || `${appUrl}/api/prestige-pass/google-wallet`}"
-               target="_blank" style="display:block;text-decoration:none;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0"
-                     style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;">
-                <tr>
-                  <td style="padding:14px 20px;" align="center">
-                    <table role="presentation" cellspacing="0" cellpadding="0">
-                      <tr>
-                        <td>
-                          <!-- Google G -->
-                          <table role="presentation" cellspacing="0" cellpadding="0">
-                            <tr>
-                              <td style="font-size:18px;font-weight:900;color:#4285F4;font-family:Arial,sans-serif;line-height:1;">G</td>
-                              <td style="font-size:18px;font-weight:900;color:#EA4335;font-family:Arial,sans-serif;line-height:1;">o</td>
-                              <td style="font-size:18px;font-weight:900;color:#FBBC05;font-family:Arial,sans-serif;line-height:1;">o</td>
-                              <td style="font-size:18px;font-weight:900;color:#4285F4;font-family:Arial,sans-serif;line-height:1;">g</td>
-                              <td style="font-size:18px;font-weight:900;color:#34A853;font-family:Arial,sans-serif;line-height:1;">l</td>
-                              <td style="font-size:18px;font-weight:900;color:#EA4335;font-family:Arial,sans-serif;line-height:1;">e</td>
-                            </tr>
-                          </table>
-                        </td>
-                        <td style="padding-${isHe ? 'right' : 'left'}:10px;">
-                          <div style="font-size:9px;color:#666;letter-spacing:2px;text-transform:uppercase;">${isHe ? 'הוסף ל' : 'Add to'}</div>
-                          <div style="font-size:16px;font-weight:700;color:#fff;letter-spacing:0.5px;">Google Wallet</div>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-            </a>
+          <td align="center" style="padding:0 0 0 8px;">
+            ${googleWalletBadge(p.googleWalletUrl || `${appUrl}/prestige-pass`, isHe)}
           </td>
         </tr>
       </table>
+
+      <!-- Subtle note -->
+      <div style="font-size:10px;color:#2a2a2a;text-align:center;margin-top:14px;letter-spacing:1px;">
+        ${isHe ? 'גישה מיידית · QR מתחלף כל 45 שניות · ₪0 ביד' : 'Instant access · QR auto-rotates every 45 sec · ₪0 out of pocket'}
+      </div>
+
     </td>
   </tr>
 
   <!-- ═══════════ CTA ═══════════ -->
   <tr>
-    <td style="padding:0 36px 32px;">
+    <td style="padding:0 40px 36px;" align="center">
       <a href="${appUrl}/prestige-pass" target="_blank"
-         style="display:block;background:linear-gradient(135deg,#D4AF37 0%,#F0D060 50%,#B8941F 100%);
-                color:#0a0a0a;font-size:15px;font-weight:800;text-decoration:none;
-                padding:16px 36px;border-radius:10px;text-align:center;
-                letter-spacing:2px;text-transform:uppercase;">
-        ${isHe ? 'פתח את הפאס שלי &larr;' : '&rarr; Open My Pass'}
+         style="display:inline-block;
+                background:linear-gradient(135deg,#C6A35B 0%,#F0D060 40%,#E7C978 60%,#B8941F 100%);
+                color:#0a0800;font-size:12px;font-weight:800;text-decoration:none;
+                padding:17px 52px;border-radius:40px;text-align:center;
+                letter-spacing:4px;text-transform:uppercase;
+                box-shadow:0 0 30px rgba(212,175,55,.25),0 4px 20px rgba(0,0,0,.6);">
+        ${isHe ? '← פתח את הפאס שלי' : 'OPEN MY PASS →'}
       </a>
     </td>
   </tr>
 
-  <!-- ═══════════ BOTTOM GOLD LINE ═══════════ -->
+  <!-- ═══════════ BOTTOM METALLIC BAND ═══════════ -->
   <tr>
-    <td style="background:linear-gradient(90deg,#0a0a0a 0%,#D4AF37 30%,#F0D060 50%,#D4AF37 70%,#0a0a0a 100%);height:1px;font-size:0;">&nbsp;</td>
+    <td style="background:linear-gradient(90deg,
+               #030303 0%,
+               #1a1200 15%,
+               #8a6f00 28%,
+               #D4AF37 38%,
+               #F0D060 50%,
+               #D4AF37 62%,
+               #8a6f00 72%,
+               #1a1200 85%,
+               #030303 100%);
+               height:2px;font-size:0;">&nbsp;</td>
   </tr>
 
   <!-- ═══════════ FOOTER ═══════════ -->
   <tr>
-    <td style="padding:20px 36px;text-align:center;">
-      <p style="margin:0 0 4px;font-size:11px;color:#333;letter-spacing:2px;text-transform:uppercase;">PetWash™ · Premium Organic Pet Care</p>
-      <p style="margin:0 0 4px;font-size:11px;color:#333;">
-        <a href="https://petwash.co.il" style="color:#D4AF37;text-decoration:none;">petwash.co.il</a>
-        &nbsp;·&nbsp;
-        <a href="mailto:support@petwash.co.il" style="color:#D4AF37;text-decoration:none;">support@petwash.co.il</a>
+    <td style="padding:24px 40px;text-align:center;">
+      <p style="margin:0 0 6px;font-size:9px;letter-spacing:5px;color:#2a2a2a;text-transform:uppercase;">P E T W A S H ™ &nbsp;·&nbsp; PREMIUM ORGANIC PET CARE</p>
+      <p style="margin:0 0 6px;font-size:10px;color:#2a2a2a;">
+        <a href="https://petwash.co.il" style="color:#8a6f30;text-decoration:none;letter-spacing:1px;">petwash.co.il</a>
+        &nbsp;&nbsp;·&nbsp;&nbsp;
+        <a href="mailto:support@petwash.co.il" style="color:#8a6f30;text-decoration:none;">support@petwash.co.il</a>
       </p>
-      <p style="margin:12px 0 0;font-size:9px;color:#222;line-height:1.6;">
+      <p style="margin:14px 0 0;font-size:9px;color:#1e1e1e;line-height:1.7;letter-spacing:0.3px;">
         ${isHe
-          ? 'כרטיס זה מונפק ע"י PetWash Ltd. (ח.פ. 516458396). אינו ניתן להעברה. © 2024–2026 PetWash™'
-          : 'Issued by PetWash Ltd. (Co. 516458396). Non-transferable. © 2024–2026 PetWash™'
+          ? 'כרטיס זה מונפק ע"י PetWash Ltd. (ח.פ. 516458396) · אינו ניתן להעברה · © 2024–2026 PetWash™'
+          : 'Issued by PetWash Ltd. (Co. 516458396) · Non-transferable · © 2024–2026 PetWash™'
         }
       </p>
     </td>
