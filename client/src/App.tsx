@@ -102,6 +102,10 @@ const HRApplicationForm = lazy(() => import("@/pages/forms/HRApplicationForm"));
 const SalesLeadForm = lazy(() => import("@/pages/forms/SalesLeadForm"));
 const CustomerOnboardingForm = lazy(() => import("@/pages/forms/CustomerOnboardingForm"));
 const RefundForm = lazy(() => import("@/pages/forms/RefundForm"));
+const ClubRegistrationForm = lazy(() => import("@/pages/forms/ClubRegistrationForm"));
+const ProviderRegistrationForm = lazy(() => import("@/pages/forms/ProviderRegistrationForm"));
+const QuickBookingForm = lazy(() => import("@/pages/forms/QuickBookingForm"));
+const LegalAgreementForm = lazy(() => import("@/pages/forms/LegalAgreementForm"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
 const AdminLoginV2 = lazy(() => import("@/pages/admin/AdminLoginV2"));
 const AdminAccessDenied = lazy(() => import("@/pages/AdminAccessDenied"));
@@ -1793,6 +1797,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/forms/sales-lead" component={SalesLeadForm} />
         <Route path="/forms/onboarding" component={CustomerOnboardingForm} />
         <Route path="/forms/refund" component={RefundForm} />
+        <Route path="/forms/club" component={ClubRegistrationForm} />
+        <Route path="/forms/provider" component={ProviderRegistrationForm} />
+        <Route path="/forms/booking" component={QuickBookingForm} />
+        <Route path="/forms/legal" component={LegalAgreementForm} />
         <Route path="/gallery">{() => <Gallery language={language} onLanguageChange={handleLanguageChange} />}</Route>
         <Route path="/privacy">{() => <Redirect to="/privacy-policy" />}</Route>
         <Route path="/privacy-policy" component={PrivacyPolicy} />

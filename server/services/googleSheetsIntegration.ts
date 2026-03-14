@@ -44,6 +44,9 @@ const SHEETS = {
   PUSH_NOTIFICATIONS: 'Push Notification Log',
   SMS_LOG: 'SMS Delivery Log',
   API_ERRORS: 'API Error Log',
+  CLUB_MEMBERS: 'Club Members',
+  QUICK_BOOKINGS: 'Quick Bookings',
+  LEGAL_AGREEMENTS: 'Legal Agreements',
 } as const;
 
 interface GoogleSheetsClient {
@@ -213,6 +216,19 @@ const SHEET_HEADERS: Record<string, string[]> = {
     'Timestamp', 'Error ID', 'Endpoint', 'Method', 'Status Code',
     'Error Message', 'User ID', 'IP Address', 'Response Time (ms)',
     'Request Size (KB)', 'Service', 'Resolved', 'Notes'
+  ],
+  [SHEETS.CLUB_MEMBERS]: [
+    'Timestamp', 'Member ID', 'Plan', 'First Name', 'Last Name',
+    'Email', 'Phone', 'City', 'Pet Name', 'Pet Type', 'How Found', 'Status'
+  ],
+  [SHEETS.QUICK_BOOKINGS]: [
+    'Timestamp', 'Booking Ref', 'Platform', 'Service Type', 'Date', 'Time',
+    'First Name', 'Email', 'Phone', 'City', 'Pet Name', 'Pet Size', 'Status'
+  ],
+  [SHEETS.LEGAL_AGREEMENTS]: [
+    'Timestamp', 'Signature ID', 'Agreement ID', 'Version', 'Full Name',
+    'ID Number', 'Email', 'Department', 'Company', 'Company Reg No',
+    'Status', 'IP Address'
   ],
 };
 

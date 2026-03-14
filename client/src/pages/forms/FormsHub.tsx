@@ -1,123 +1,185 @@
-import { Link } from 'wouter';
-import { ArrowRight, ExternalLink } from 'lucide-react';
+import { useLocation } from 'wouter';
+import { Crown, Briefcase, Star, ScrollText, Calendar, FileText, RefreshCcw, Users, TrendingUp, Shield } from 'lucide-react';
+import logoPath from '@assets/logo.png';
 
-const FORMS = [
+interface FormCard {
+  emoji: string;
+  title: string;
+  titleHe: string;
+  description: string;
+  href: string;
+  color: string;
+  tag?: string;
+  tagColor?: string;
+  department: string;
+}
+
+const FORMS: FormCard[] = [
   {
+    emoji: '📅',
+    title: 'Quick Booking',
+    titleHe: 'הזמנה מהירה',
+    description: 'Book any service — K9000, Sitter Suite, Walk, Trek, Academy, Grooming',
+    href: '/forms/booking',
+    color: '#3B82F6',
+    tag: 'Most Popular',
+    tagColor: 'bg-blue-500/20 text-blue-300',
+    department: 'All Services',
+  },
+  {
+    emoji: '👑',
+    title: 'Join Prestige Club',
+    titleHe: 'הצטרפות למועדון',
+    description: 'Register for Gold, Platinum or Diamond membership with digital card',
+    href: '/forms/club',
+    color: '#C6A35B',
+    tag: 'New',
+    tagColor: 'bg-[#C6A35B]/20 text-[#E7C978]',
+    department: 'Club & Loyalty',
+  },
+  {
+    emoji: '🐾',
+    title: 'Become a Provider',
+    titleHe: 'הגש מועמדות כספק',
+    description: 'Apply to join our provider network — upload ID, selfie & certificates',
+    href: '/forms/provider',
+    color: '#10B981',
+    tag: 'ID + Selfie',
+    tagColor: 'bg-green-500/20 text-green-300',
+    department: 'Provider Relations',
+  },
+  {
+    emoji: '⭐',
+    title: 'Leave a Review',
+    titleHe: 'כתיבת ביקורת',
+    description: 'Rate your experience with K9000, Sitter Suite, or any platform',
     href: '/forms/review',
-    icon: '⭐',
-    title: 'Customer Review & Rating',
-    titleHe: 'ביקורת לקוח וציון',
-    desc: 'Rate your experience with any PetWash™ service — K9000, Sitter Suite, Walk My Pet, PetTrek, or Academy.',
-    tag: 'PUBLIC',
-    tagColor: 'text-green-400 bg-green-400/10',
+    color: '#F59E0B',
+    department: 'Customer Experience',
   },
   {
+    emoji: '🐕',
+    title: 'Pet Onboarding',
+    titleHe: 'רישום חיית מחמד',
+    description: 'Register your pet and upload health documents to your PetWash™ profile',
     href: '/forms/onboarding',
-    icon: '🐾',
-    title: 'Customer Onboarding & Pet Registration',
-    titleHe: 'אונבורדינג לקוחות ורישום חיית מחמד',
-    desc: 'New to PetWash™? Register your pet and complete your customer profile in 3 minutes.',
-    tag: 'PUBLIC',
-    tagColor: 'text-green-400 bg-green-400/10',
+    color: '#8B5CF6',
+    department: 'Customer Experience',
   },
   {
-    href: '/forms/refund',
-    icon: '↩️',
+    emoji: '↩️',
     title: 'Refund Request',
     titleHe: 'בקשת החזר כספי',
-    desc: 'Request a refund for any PetWash™ service. We review all requests within 2–5 business days.',
-    tag: 'SUPPORT',
-    tagColor: 'text-amber-400 bg-amber-400/10',
+    description: 'Request a refund for any PetWash™ service or product',
+    href: '/forms/refund',
+    color: '#EF4444',
+    department: 'Finance & Billing',
   },
   {
-    href: '/forms/sales-lead',
-    icon: '🤝',
+    emoji: '📜',
+    title: 'Legal Agreements',
+    titleHe: 'הסכמים משפטיים',
+    description: 'Sign Terms of Service, Provider Agreement, Club Membership & DPA',
+    href: '/forms/legal',
+    color: '#6366F1',
+    tag: 'E-Sign',
+    tagColor: 'bg-indigo-500/20 text-indigo-300',
+    department: 'Legal & Compliance',
+  },
+  {
+    emoji: '💼',
+    title: 'Job Application',
+    titleHe: 'מועמדות לעבודה',
+    description: 'Apply to join the PetWash™ team — upload CV and cover letter',
+    href: '/forms/hr-application',
+    color: '#F97316',
+    department: 'HR & People',
+  },
+  {
+    emoji: '🤝',
     title: 'Business Inquiry',
     titleHe: 'פנייה עסקית',
-    desc: 'Enterprise partnerships, API integrations, reseller programs, or white label licensing.',
-    tag: 'B2B',
-    tagColor: 'text-blue-400 bg-blue-400/10',
-  },
-  {
-    href: '/forms/hr-application',
-    icon: '💼',
-    title: 'Job Application',
-    titleHe: 'בקשת מועמדות לתפקיד',
-    desc: 'Join the PetWash™ team. Apply for open positions across all departments and regions.',
-    tag: 'CAREERS',
-    tagColor: 'text-purple-400 bg-purple-400/10',
-  },
-  {
-    href: '/franchise',
-    icon: '🏪',
-    title: 'Franchise Inquiry',
-    titleHe: 'פנייה לזיכיון',
-    desc: 'Interested in opening a PetWash™ location? Submit your franchise inquiry.',
-    tag: 'FRANCHISE',
-    tagColor: 'text-[#C6A35B] bg-[#C6A35B]/10',
-    external: true,
-  },
-  {
-    href: '/contact',
-    icon: '💬',
-    title: 'Contact & Support',
-    titleHe: 'צור קשר ותמיכה',
-    desc: 'General inquiries, technical support, billing questions. We respond within 24 hours.',
-    tag: 'SUPPORT',
-    tagColor: 'text-amber-400 bg-amber-400/10',
-    external: true,
-  },
-  {
-    href: '/become-provider',
-    icon: '🐕',
-    title: 'Provider Application',
-    titleHe: 'בקשת הצטרפות כספק',
-    desc: 'Apply to join our provider network as a dog sitter, dog walker, PetTrek driver, or K9000 operator.',
-    tag: 'PROVIDERS',
-    tagColor: 'text-orange-400 bg-orange-400/10',
-    external: true,
+    description: 'Partnership, franchise, B2B sales, and corporate pet care programs',
+    href: '/forms/sales-lead',
+    color: '#14B8A6',
+    department: 'Sales & Business Dev',
   },
 ];
 
+const DEPARTMENTS = [...new Set(FORMS.map(f => f.department))];
+
 export default function FormsHub() {
+  const [, nav] = useLocation();
+
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
-      <div className="border-b border-[#C6A35B]/20 bg-[#111]">
-        <div className="max-w-4xl mx-auto px-4 py-8 text-center">
-          <div className="text-4xl mb-3">📋</div>
-          <h1 className="text-3xl font-bold text-white mb-2">PetWash™ Forms</h1>
-          <p className="text-gray-400 text-sm">All public-facing forms — reviews, applications, refunds, and business inquiries</p>
-          <p className="text-[#C6A35B]/60 text-xs mt-1">כל הטפסים הציבוריים של PetWash™</p>
+    <div className="min-h-screen bg-[#0a0a0a] text-white" dir="ltr">
+      <div
+        className="bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/5 px-4 pb-4"
+        style={{ paddingTop: 'max(16px, env(safe-area-inset-top))' }}
+      >
+        <div className="max-w-lg mx-auto flex items-center gap-3 pt-3">
+          <img src={logoPath} alt="PetWash" className="h-8 w-auto" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          <div>
+            <h1 className="text-lg font-bold">PetWash™ Forms</h1>
+            <p className="text-[#C6A35B] text-xs" dir="rtl">כל הטפסים במקום אחד</p>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {FORMS.map(form => (
-            <Link key={form.href} href={form.href}>
-              <div className="group relative bg-[#111] border border-[#C6A35B]/15 hover:border-[#C6A35B]/40 rounded-xl p-5 cursor-pointer transition-all duration-200 hover:bg-[#161616]">
-                <div className="flex items-start justify-between mb-3">
-                  <span className="text-3xl">{form.icon}</span>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${form.tagColor}`}>{form.tag}</span>
-                    {form.external && <ExternalLink className="h-3 w-3 text-gray-600" />}
-                  </div>
-                </div>
-                <h3 className="font-semibold text-white text-base mb-0.5 group-hover:text-[#C6A35B] transition-colors">{form.title}</h3>
-                <p className="text-[#C6A35B]/50 text-xs mb-2">{form.titleHe}</p>
-                <p className="text-gray-500 text-sm leading-relaxed">{form.desc}</p>
-                <div className="mt-3 flex items-center gap-1 text-[#C6A35B]/40 group-hover:text-[#C6A35B]/70 text-xs font-medium transition-colors">
-                  Open form <ArrowRight className="h-3 w-3" />
-                </div>
-              </div>
-            </Link>
-          ))}
+      <div
+        className="max-w-lg mx-auto px-4 py-5 space-y-6"
+        style={{ paddingBottom: 'max(32px, env(safe-area-inset-bottom))' }}
+      >
+        <div className="flex items-center gap-3 bg-gradient-to-r from-[#C6A35B]/10 to-transparent border border-[#C6A35B]/20 rounded-2xl p-4">
+          <Shield className="w-6 h-6 text-[#C6A35B] shrink-0" />
+          <div>
+            <p className="text-white/80 text-sm font-medium">Secure · Encrypted · Compliant</p>
+            <p className="text-white/40 text-xs">Document upload, e-signature, Google Drive backup. VAT 18% on all services.</p>
+          </div>
         </div>
 
-        <div className="mt-10 text-center">
-          <p className="text-xs text-gray-700">All form submissions are processed securely and logged to our internal tracking system.</p>
-          <p className="text-xs text-gray-700 mt-0.5">All data is protected under Israeli Privacy Law 5742-1981 and GDPR.</p>
-          <Link href="/" className="text-[#C6A35B]/40 hover:text-[#C6A35B]/70 text-xs mt-4 inline-block transition-colors">← Back to PetWash™</Link>
+        {DEPARTMENTS.map(dept => {
+          const deptForms = FORMS.filter(f => f.department === dept);
+          return (
+            <div key={dept}>
+              <p className="text-xs font-bold text-white/30 uppercase tracking-widest px-1 mb-3">{dept}</p>
+              <div className="space-y-2">
+                {deptForms.map(form => (
+                  <button
+                    key={form.href}
+                    type="button"
+                    onClick={() => nav(form.href)}
+                    className="w-full flex items-center gap-4 p-4 bg-white/[0.03] border border-white/8 rounded-2xl text-left active:bg-white/[0.07] transition-all"
+                  >
+                    <div
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0"
+                      style={{ backgroundColor: `${form.color}18` }}
+                    >
+                      {form.emoji}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-white font-semibold text-sm">{form.title}</p>
+                        {form.tag && (
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${form.tagColor}`}>
+                            {form.tag}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[#C6A35B]/60 text-xs mt-0.5" dir="rtl">{form.titleHe}</p>
+                      <p className="text-white/35 text-xs mt-1 line-clamp-1">{form.description}</p>
+                    </div>
+                    <span className="text-white/20 text-xl shrink-0">›</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+
+        <div className="text-center pt-4">
+          <p className="text-white/20 text-xs">PetWash™ Ltd. · petwash.co.il</p>
+          <p className="text-white/15 text-xs mt-1">GDPR & Israeli Privacy Law compliant · Encrypted · Google Drive backup</p>
         </div>
       </div>
     </div>

@@ -505,6 +505,176 @@ router.get('/admin/sheets-url', validateFirebaseToken, requireAdminRole, async (
 });
 
 // =========================
+// CLUB REGISTRATION
+// =========================
+const clubRegistrationSchema = z.object({
+  firstName: z.string().min(2), lastName: z.string().min(2),
+  email: z.string().email(), phone: z.string().min(5),
+  plan: z.enum(['gold', 'platinum', 'diamond']),
+  dateOfBirth: z.string().optional(), idNumber: z.string().optional(),
+  address: z.string().optional(), city: z.string().optional(), postalCode: z.string().optional(),
+  petName: z.string().optional(), petType: z.string().optional(),
+  petBreed: z.string().optional(), petAge: z.string().optional(), petWeight: z.string().optional(),
+  vetName: z.string().optional(), vetPhone: z.string().optional(),
+  emergencyContact: z.string().optional(), emergencyPhone: z.string().optional(),
+  how: z.string().optional(), photoUrl: z.string().optional(),
+  acceptTerms: z.boolean(), acceptMarketing: z.boolean().optional(),
+});
+
+router.post('/club-registration', async (req, res) => {
+  try {
+    const data = clubRegistrationSchema.parse(req.body);
+    const memberId = `CLUB-${Date.now().toString(36).toUpperCase()}`;
+    await GoogleSheetsService.appendToSheet('Club Members', [
+      new Date().toISOString(), memberId, data.plan.toUpperCase(),
+      data.firstName, data.lastName, data.email, data.phone,
+      data.city || '', data.petName || '', data.petType || '', data.how || '',
+    ]);
+    try {
+      await EmailService.sendEmail({
+        to: data.email,
+        subject: `Welcome to PetWash™ Prestige Club ${data.plan.charAt(0).toUpperCase() + data.plan.slice(1)}! 👑`,
+        html: `<p>Hi ${data.firstName}, your <strong>${data.plan.toUpperCase()}</strong> membership is being activated! Member ID: <strong>${memberId}</strong></p>`,
+        text: `Hi ${data.firstName}, welcome to the PetWash™ Prestige Club! Member ID: ${memberId}`,
+      });
+    } catch (emailErr) { logger.warn('Club registration email failed', emailErr); }
+    res.json({ success: true, memberId });
+  } catch (err) {
+    logger.error('Club registration failed', err);
+    res.status(400).json({ error: 'Registration failed' });
+  }
+});
+
+// =========================
+// PROVIDER REGISTRATION
+// =========================
+const providerRegistrationSchema = z.object({
+  firstName: z.string().min(2), lastName: z.string().min(2),
+  email: z.string().email(), phone: z.string().min(5),
+  platform: z.string().min(2), experienceYears: z.string().optional(),
+  idNumber: z.string().optional(), dateOfBirth: z.string().optional(),
+  address: z.string().optional(), city: z.string().optional(), postalCode: z.string().optional(),
+  businessName: z.string().optional(), vatNumber: z.string().optional(),
+  certificationName: z.string().optional(), certificationBody: z.string().optional(),
+  selfieUrl: z.string().optional(), idDocUrl: z.string().optional(),
+  certDocUrl: z.string().optional(), portfolioUrl: z.string().optional(),
+  bankAccount: z.string().optional(), bankName: z.string().optional(),
+  availability: z.string().optional(), bio: z.string().optional(),
+  acceptTerms: z.boolean(), acceptBackground: z.boolean(),
+});
+
+router.post('/provider-registration', async (req, res) => {
+  try {
+    const data = providerRegistrationSchema.parse(req.body);
+    const applicationId = `PRV-${Date.now().toString(36).toUpperCase()}`;
+    await GoogleSheetsService.appendToSheet('Provider Applications', [
+      new Date().toISOString(), applicationId, data.platform,
+      data.firstName, data.lastName, data.email, data.phone,
+      data.city || '', data.businessName || '', data.vatNumber || '',
+      data.experienceYears || '', data.availability || '',
+      data.selfieUrl ? 'YES' : 'NO', data.idDocUrl ? 'YES' : 'NO',
+      data.certDocUrl ? 'YES' : 'NO', 'PENDING',
+    ]);
+    try {
+      await EmailService.sendEmail({
+        to: 'providers@petwash.co.il',
+        subject: `New Provider Application: ${data.firstName} ${data.lastName} – ${data.platform}`,
+        html: `<p>Application ID: <strong>${applicationId}</strong><br>Platform: ${data.platform}<br>Email: ${data.email}<br>Phone: ${data.phone}<br>City: ${data.city || '—'}<br>Selfie: ${data.selfieUrl ? '✅' : '❌'} | ID Doc: ${data.idDocUrl ? '✅' : '❌'}</p>`,
+        text: `New provider application ${applicationId} from ${data.firstName} ${data.lastName}`,
+      });
+    } catch (emailErr) { logger.warn('Provider application email failed', emailErr); }
+    res.json({ success: true, applicationId });
+  } catch (err) {
+    logger.error('Provider registration failed', err);
+    res.status(400).json({ error: 'Registration failed' });
+  }
+});
+
+// =========================
+// QUICK BOOKING
+// =========================
+const quickBookingSchema = z.object({
+  platform: z.string().min(2), serviceType: z.string().min(2),
+  date: z.string().min(8), time: z.string().min(4),
+  firstName: z.string().min(2), lastName: z.string().optional(),
+  email: z.string().email(), phone: z.string().min(5),
+  address: z.string().optional(), city: z.string().optional(),
+  lat: z.number().optional(), lng: z.number().optional(),
+  petName: z.string().optional(), petType: z.string().optional(),
+  petSize: z.string().optional(), petBreed: z.string().optional(),
+  petNotes: z.string().optional(), specialRequests: z.string().optional(),
+  coupon: z.string().optional(),
+});
+
+router.post('/quick-booking', async (req, res) => {
+  try {
+    const data = quickBookingSchema.parse(req.body);
+    const bookingRef = `BK-${Date.now().toString(36).toUpperCase()}`;
+    await GoogleSheetsService.appendToSheet('Quick Bookings', [
+      new Date().toISOString(), bookingRef, data.platform, data.serviceType,
+      data.date, data.time, data.firstName, data.email, data.phone,
+      data.city || '', data.petName || '', data.petSize || '', 'PENDING',
+    ]);
+    try {
+      await EmailService.sendEmail({
+        to: data.email,
+        subject: `PetWash™ Booking Confirmed – ${data.serviceType} on ${data.date}`,
+        html: `<p>Hi ${data.firstName}, your booking is confirmed!<br><strong>Ref: ${bookingRef}</strong><br>Service: ${data.serviceType}<br>Date: ${data.date} at ${data.time}<br>Address: ${data.address || data.city || '—'}</p>`,
+        text: `Booking confirmed: ${bookingRef} – ${data.serviceType} on ${data.date} at ${data.time}`,
+      });
+    } catch (emailErr) { logger.warn('Quick booking email failed', emailErr); }
+    res.json({ success: true, bookingRef });
+  } catch (err) {
+    logger.error('Quick booking failed', err);
+    res.status(400).json({ error: 'Booking failed' });
+  }
+});
+
+// =========================
+// LEGAL AGREEMENT / E-SIGN
+// =========================
+const legalAgreementSchema = z.object({
+  fullName: z.string().min(2), idNumber: z.string().min(5), email: z.string().email(),
+  department: z.string().optional(), representingCompany: z.string().optional(),
+  companyRegNumber: z.string().optional(),
+  agreementId: z.string().min(2), agreementTitle: z.string().optional(),
+  agreementVersion: z.string().optional(), signedAt: z.string(),
+  accepted: z.boolean(),
+});
+
+router.post('/legal-agreement', async (req, res) => {
+  try {
+    const data = legalAgreementSchema.parse(req.body);
+    if (!data.accepted) return res.status(400).json({ error: 'Agreement not accepted' });
+    const signatureId = `SIG-${Date.now().toString(36).toUpperCase()}`;
+    await GoogleSheetsService.appendToSheet('Legal Agreements', [
+      data.signedAt, signatureId, data.agreementId, data.agreementVersion || '',
+      data.fullName, data.idNumber, data.email,
+      data.department || '', data.representingCompany || '', data.companyRegNumber || '',
+      'SIGNED', req.ip || '',
+    ]);
+    try {
+      await EmailService.sendEmail({
+        to: data.email,
+        subject: `PetWash™ Agreement Signed – ${data.agreementTitle || data.agreementId}`,
+        html: `<p>Hi ${data.fullName},<br>You have digitally signed the <strong>${data.agreementTitle || data.agreementId}</strong>.<br>Signature ID: <strong>${signatureId}</strong><br>Signed: ${data.signedAt}<br><br>This acceptance is legally binding under the Israeli Electronic Signature Law 5761-2001.</p>`,
+        text: `Agreement signed: ${signatureId} – ${data.agreementTitle}`,
+      });
+      await EmailService.sendEmail({
+        to: 'legal@petwash.co.il',
+        subject: `New E-Signature: ${data.fullName} – ${data.agreementTitle}`,
+        html: `<p>SIG ID: ${signatureId}<br>Name: ${data.fullName}<br>ID: ${data.idNumber}<br>Email: ${data.email}<br>Agreement: ${data.agreementTitle} ${data.agreementVersion}<br>Company: ${data.representingCompany || '—'}</p>`,
+        text: `New signature ${signatureId} from ${data.fullName}`,
+      });
+    } catch (emailErr) { logger.warn('Legal agreement email failed', emailErr); }
+    res.json({ success: true, signatureId });
+  } catch (err) {
+    logger.error('Legal agreement signing failed', err);
+    res.status(400).json({ error: 'Signing failed' });
+  }
+});
+
+// =========================
 // HEALTH CHECK
 // =========================
 router.get('/health', (req, res) => {
