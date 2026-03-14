@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { contractGenerationService } from '../services/ContractGenerationService';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
+import { logger } from '../lib/logger';
 
 const router = Router();
 
@@ -47,6 +49,19 @@ router.post('/generate/offer-letter', validateFirebaseToken, async (req, res) =>
         signatureStatus: contract.signatureStatus,
       },
     });
+
+    setImmediate(() => petWashOrchestrator.handleContractGenerated({
+      contractId: contract.id,
+      contractNumber: contract.contractNumber,
+      contractType: 'offer_letter',
+      partyName: data.employeeName,
+      partyEmail: data.employeeEmail,
+      platform: data.department,
+      city: data.location,
+      salaryOrRate: data.salary,
+      currency: data.salaryCurrency,
+      effectiveDate: data.startDate,
+    }).catch(e => logger.warn('[Contracts] Orchestrator hook error', e)));
   } catch (error: any) {
     console.error('[Contracts] Error generating offer letter:', error);
     res.status(400).json({
@@ -73,6 +88,19 @@ router.post('/generate/contractor-agreement', validateFirebaseToken, async (req,
         signatureStatus: contract.signatureStatus,
       },
     });
+
+    setImmediate(() => petWashOrchestrator.handleContractGenerated({
+      contractId: contract.id,
+      contractNumber: contract.contractNumber,
+      contractType: 'contractor_agreement',
+      partyName: data.contractorName,
+      partyEmail: data.contractorEmail,
+      platform: data.contractorType,
+      city: data.serviceAreas?.[0] || '',
+      salaryOrRate: data.baseRate,
+      currency: data.currency,
+      effectiveDate: contract.effectiveDate,
+    }).catch(e => logger.warn('[Contracts] Orchestrator hook error', e)));
   } catch (error: any) {
     console.error('[Contracts] Error generating contractor agreement:', error);
     res.status(400).json({

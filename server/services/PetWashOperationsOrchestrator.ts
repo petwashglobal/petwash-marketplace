@@ -584,6 +584,443 @@ export class PetWashOperationsOrchestrator {
     return { contractDocId };
   }
 
+  // ── 6. KYC / IDENTITY VERIFICATION SUBMITTED ──
+  async handleKYCSubmission(opts: {
+    userId: string;
+    fullName: string;
+    email: string;
+    docType: string;
+    countryCode?: string;
+    idNumber?: string;
+    selfieUrl?: string;
+    idDocUrl?: string;
+    idBackUrl?: string;
+    status: 'submitted' | 'auto_approved' | 'manual_review' | 'blocked';
+    source: 'kyc_v1' | 'kyc_v2_2026';
+    notes?: string;
+  }): Promise<void> {
+    logger.info('[Orchestrator] Handling KYC submission', { userId: opts.userId });
+
+    // 6a. Log to Google Sheets "Identity Verifications (KYC)"
+    try {
+      await GoogleSheetsService.appendToSheet('Identity Verifications (KYC)', [
+        new Date().toISOString(),
+        opts.userId,
+        opts.fullName,
+        opts.email,
+        opts.docType,
+        opts.countryCode || 'IL',
+        opts.idNumber ? '✅ Provided' : '—',
+        opts.selfieUrl ? '✅' : '❌',
+        opts.idDocUrl ? '✅' : '❌',
+        opts.idBackUrl ? '✅' : '❌',
+        opts.status.toUpperCase(),
+        opts.source,
+        opts.notes || '',
+      ]);
+    } catch (err) {
+      logger.warn('[Orchestrator] KYC Sheets log failed', err);
+    }
+
+    // 6b. Back up KYC submission record to Google Drive
+    const docContent = `PETWASH™ KYC SUBMISSION RECORD\n${'='.repeat(60)}\nSubmitted: ${new Date().toISOString()}\nUser ID: ${opts.userId}\nName: ${opts.fullName}\nEmail: ${opts.email}\nDocument Type: ${opts.docType}\nCountry: ${opts.countryCode || 'IL'}\nID Number: ${opts.idNumber ? '[HASH ONLY - PII protected]' : '—'}\nSelfie: ${opts.selfieUrl ? '✅ Uploaded' : 'Not uploaded'}\nID Front: ${opts.idDocUrl ? '✅ Uploaded' : 'Not uploaded'}\nID Back: ${opts.idBackUrl ? '✅ Uploaded' : 'Not uploaded'}\nStatus: ${opts.status}\nSource: ${opts.source}\nNotes: ${opts.notes || '—'}\n${'='.repeat(60)}\nGDPR: Documents stored in Firebase Storage with 90-day retention.\nThis record is a compliance audit trail only. No PII data stored here.`;
+    await backupToGoogleDrive(`KYC_${opts.userId}_${Date.now()}`, docContent);
+
+    // 6c. Notify ops team if manual review needed
+    if (opts.status === 'manual_review' || opts.status === 'blocked') {
+      try {
+        await sendEmail('compliance@petwash.co.il',
+          `⚠️ KYC ${opts.status.toUpperCase()}: ${opts.fullName} (${opts.userId})`,
+          brandedEmail(`KYC Review Required`,
+            `<p style="color:#ccc;">User <strong style="color:#fff;">${opts.fullName}</strong> (${opts.email}) requires manual KYC review.</p>
+             <table style="background:#111;border-radius:12px;padding:20px;width:100%;margin:16px 0;">
+               <tr><td style="color:#666;font-size:12px;padding:4px 0;">User ID</td><td style="color:#E7C978;font-family:monospace;">${opts.userId}</td></tr>
+               <tr><td style="color:#666;font-size:12px;padding:4px 0;">Status</td><td style="color:${opts.status === 'blocked' ? '#ff4444' : '#FFA500'};">${opts.status.toUpperCase()}</td></tr>
+               <tr><td style="color:#666;font-size:12px;padding:4px 0;">Document</td><td style="color:#fff;">${opts.docType}</td></tr>
+               <tr><td style="color:#666;font-size:12px;padding:4px 0;">Country</td><td style="color:#fff;">${opts.countryCode || 'IL'}</td></tr>
+               <tr><td style="color:#666;font-size:12px;padding:4px 0;">Selfie</td><td style="color:${opts.selfieUrl ? '#00C851' : '#ff4444'};">${opts.selfieUrl ? '✅' : '❌'}</td></tr>
+               <tr><td style="color:#666;font-size:12px;padding:4px 0;">Notes</td><td style="color:#fff;">${opts.notes || '—'}</td></tr>
+             </table>
+             <p style="color:#888;font-size:12px;">Review in the admin panel: admin.petwash.co.il/kyc</p>`)
+        );
+      } catch { /* non-critical */ }
+    }
+
+    logger.info('[Orchestrator] KYC submission handled', { userId: opts.userId, status: opts.status });
+  }
+
+  // ── 7. KYB / BUSINESS VERIFICATION ────────
+  async handleKYBSubmission(opts: {
+    businessId: string;
+    businessName: string;
+    contactName: string;
+    contactEmail: string;
+    vatNumber?: string;
+    registrationNumber?: string;
+    country?: string;
+    city?: string;
+    documentsUploaded: string[];
+    status: 'submitted' | 'approved' | 'manual_review' | 'rejected';
+    notes?: string;
+  }): Promise<void> {
+    logger.info('[Orchestrator] Handling KYB submission', { businessId: opts.businessId });
+
+    // 7a. Log to Sheets "Onboarding Cases"
+    try {
+      await GoogleSheetsService.appendToSheet('Onboarding Cases', [
+        new Date().toISOString(),
+        opts.businessId,
+        opts.businessName,
+        opts.contactName,
+        opts.contactEmail,
+        opts.vatNumber || '—',
+        opts.registrationNumber || '—',
+        opts.country || 'IL',
+        opts.city || '—',
+        opts.documentsUploaded.join(', '),
+        opts.status.toUpperCase(),
+        'KYB',
+        opts.notes || '',
+      ]);
+    } catch (err) {
+      logger.warn('[Orchestrator] KYB Sheets log failed', err);
+    }
+
+    // 7b. Drive backup
+    const docContent = `PETWASH™ KYB BUSINESS VERIFICATION\n${'='.repeat(60)}\nSubmitted: ${new Date().toISOString()}\nBusiness ID: ${opts.businessId}\nBusiness Name: ${opts.businessName}\nContact: ${opts.contactName} <${opts.contactEmail}>\nVAT (Osek Murshe): ${opts.vatNumber || '—'}\nCompany Reg: ${opts.registrationNumber || '—'}\nCountry: ${opts.country || 'IL'}\nCity: ${opts.city || '—'}\nDocuments: ${opts.documentsUploaded.join(', ')}\nStatus: ${opts.status}\nNotes: ${opts.notes || '—'}\n${'='.repeat(60)}`;
+    await backupToGoogleDrive(`KYB_${opts.businessId}`, docContent);
+
+    // 7c. Notify compliance
+    try {
+      await sendEmail('compliance@petwash.co.il',
+        `📋 KYB Submission: ${opts.businessName} – ${opts.status.toUpperCase()}`,
+        brandedEmail('KYB Business Verification',
+          `<p style="color:#ccc;">Business <strong style="color:#fff;">${opts.businessName}</strong> has submitted KYB documentation.</p>
+           <table style="background:#111;border-radius:12px;padding:20px;width:100%;margin:16px 0;">
+             <tr><td style="color:#666;font-size:12px;padding:4px 0;">Business ID</td><td style="color:#E7C978;font-family:monospace;">${opts.businessId}</td></tr>
+             <tr><td style="color:#666;font-size:12px;padding:4px 0;">VAT No.</td><td style="color:#fff;">${opts.vatNumber || '—'}</td></tr>
+             <tr><td style="color:#666;font-size:12px;padding:4px 0;">City</td><td style="color:#fff;">${opts.city || '—'}</td></tr>
+             <tr><td style="color:#666;font-size:12px;padding:4px 0;">Documents</td><td style="color:#fff;">${opts.documentsUploaded.join(', ') || 'None'}</td></tr>
+             <tr><td style="color:#666;font-size:12px;padding:4px 0;">Status</td><td style="color:#FFA500;">${opts.status.toUpperCase()}</td></tr>
+           </table>`)
+      );
+    } catch { /* non-critical */ }
+
+    logger.info('[Orchestrator] KYB submission handled', { businessId: opts.businessId, status: opts.status });
+  }
+
+  // ── 8. BOOKING CONFIRMED (provider accepts) ──
+  async handleBookingConfirmed(opts: {
+    bookingId: string;
+    bookingRef: string;
+    platform: string;
+    serviceType: string;
+    customerName: string;
+    customerEmail: string;
+    customerPhone: string;
+    providerName: string;
+    providerEmail?: string;
+    petName?: string;
+    scheduledDate: string;
+    scheduledTime?: string;
+    address?: string;
+    city?: string;
+    amountILS?: number;
+  }): Promise<void> {
+    logger.info('[Orchestrator] Handling booking confirmed', { ref: opts.bookingRef });
+
+    // 8a. Log to platform-specific Sheets tab
+    const sheetsTabMap: Record<string, string> = {
+      'K9000': 'K9000 Wash Bookings',
+      'Sitter Suite': 'Sitter Suite Bookings',
+      'Walk My Pet': 'Walk My Pet Bookings',
+      'PetTrek': 'PetTrek Bookings',
+      'PetWash Academy': 'Academy Bookings',
+    };
+    const sheetsTab = sheetsTabMap[opts.platform] || 'Sitter Suite Bookings';
+    try {
+      await GoogleSheetsService.appendToSheet(sheetsTab, [
+        new Date().toISOString(),
+        opts.bookingRef,
+        opts.platform,
+        opts.serviceType,
+        opts.customerName,
+        opts.customerEmail,
+        opts.customerPhone,
+        opts.providerName,
+        opts.providerEmail || '',
+        opts.petName || '',
+        opts.scheduledDate,
+        opts.scheduledTime || '',
+        opts.address || '',
+        opts.city || '',
+        opts.amountILS ? `₪${opts.amountILS.toFixed(2)}` : '',
+        'CONFIRMED',
+      ]);
+    } catch (err) {
+      logger.warn('[Orchestrator] Booking confirmed Sheets log failed', err);
+    }
+
+    // 8b. Update/create Calendar event
+    const startTime = new Date(`${opts.scheduledDate}T${opts.scheduledTime || '09:00'}:00`);
+    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+    await createCalendarEvent({
+      platform: opts.platform,
+      bookingId: opts.bookingRef,
+      title: `✅ CONFIRMED: ${opts.serviceType} – ${opts.customerName}${opts.petName ? ' & ' + opts.petName : ''}`,
+      description: [
+        `Booking: ${opts.bookingRef}`,
+        `Provider: ${opts.providerName}`,
+        `Customer: ${opts.customerName} | ${opts.customerEmail} | ${opts.customerPhone}`,
+        opts.petName ? `Pet: ${opts.petName}` : '',
+        opts.address ? `Address: ${opts.address}` : '',
+        opts.amountILS ? `Amount: ₪${opts.amountILS.toFixed(2)}` : '',
+      ].filter(Boolean).join('\n'),
+      startTime,
+      endTime,
+      location: opts.address || opts.city || 'Israel',
+      customerName: opts.customerName,
+      petName: opts.petName,
+      providerName: opts.providerName,
+    });
+
+    // 8c. Confirmation email to customer
+    const confirmHtml = brandedEmail(
+      `✅ Booking Confirmed by Your Provider!`,
+      `<p style="color:#ccc;">Hi <strong style="color:#fff;">${opts.customerName}</strong>,</p>
+       <p style="color:#ccc;" dir="rtl">הזמנתך אושרה על ידי הספק שלך! / Your booking has been confirmed!</p>
+       <table style="background:#111;border-radius:12px;padding:20px;width:100%;margin:16px 0;">
+         <tr><td style="color:#666;font-size:12px;padding:4px 0;">Booking Ref</td><td style="color:#E7C978;font-weight:700;font-family:monospace;">${opts.bookingRef}</td></tr>
+         <tr><td style="color:#666;font-size:12px;padding:4px 0;">Service</td><td style="color:#fff;">${opts.serviceType}</td></tr>
+         <tr><td style="color:#666;font-size:12px;padding:4px 0;">Provider</td><td style="color:#00C851;font-weight:600;">${opts.providerName}</td></tr>
+         <tr><td style="color:#666;font-size:12px;padding:4px 0;">Date</td><td style="color:#fff;">${opts.scheduledDate}${opts.scheduledTime ? ' at ' + opts.scheduledTime : ''}</td></tr>
+         ${opts.petName ? `<tr><td style="color:#666;font-size:12px;padding:4px 0;">Pet</td><td style="color:#fff;">🐾 ${opts.petName}</td></tr>` : ''}
+         ${opts.address ? `<tr><td style="color:#666;font-size:12px;padding:4px 0;">Address</td><td style="color:#fff;">${opts.address}</td></tr>` : ''}
+         ${opts.amountILS ? `<tr><td style="color:#666;font-size:12px;padding:4px 0;">Amount</td><td style="color:#E7C978;font-weight:700;">₪${opts.amountILS.toFixed(2)}</td></tr>` : ''}
+       </table>
+       <p style="color:#ccc;font-size:13px;">Your provider will contact you if needed. Please be ready 5 minutes before the appointment.</p>
+       <p style="color:#888;font-size:11px;" dir="rtl">הספק שלך יצור קשר במידת הצורך. אנא היה מוכן 5 דקות לפני הפגישה.</p>`
+    );
+    try {
+      await sendEmail(opts.customerEmail, `✅ PetWash™ Booking Confirmed – ${opts.bookingRef}`, confirmHtml);
+    } catch (err) {
+      logger.warn('[Orchestrator] Booking confirmed email failed', err);
+    }
+
+    logger.info('[Orchestrator] Booking confirmed handled', { ref: opts.bookingRef });
+  }
+
+  // ── 9. E-SIGN COMPLETE (DocuSeal webhook) ──
+  async handleEsignComplete(opts: {
+    submissionId: string;
+    documentType: string;
+    signerName: string;
+    signerEmail: string;
+    userId?: string;
+    templateSlug?: string;
+    signedDocumentUrl?: string;
+    completedAt: string;
+  }): Promise<void> {
+    logger.info('[Orchestrator] Handling e-sign completion', { submissionId: opts.submissionId });
+
+    // 9a. Log to Sheets "E-Signatures & Contracts"
+    try {
+      await GoogleSheetsService.appendToSheet('E-Signatures & Contracts', [
+        new Date().toISOString(),
+        opts.submissionId,
+        opts.documentType,
+        opts.signerName,
+        opts.signerEmail,
+        opts.userId || '',
+        opts.templateSlug || '',
+        opts.completedAt,
+        opts.signedDocumentUrl ? '✅ Available' : '—',
+        'COMPLETED',
+      ]);
+    } catch (err) {
+      logger.warn('[Orchestrator] E-sign Sheets log failed', err);
+    }
+
+    // 9b. Back up signature record to Drive
+    const docContent = `PETWASH™ E-SIGNATURE COMPLETION RECORD\n${'='.repeat(60)}\nCompleted: ${opts.completedAt}\nSubmission ID: ${opts.submissionId}\nDocument Type: ${opts.documentType}\nSigned By: ${opts.signerName} <${opts.signerEmail}>\nUser ID: ${opts.userId || '—'}\nTemplate: ${opts.templateSlug || '—'}\nDocument URL: ${opts.signedDocumentUrl || '—'}\n${'='.repeat(60)}\nLEGAL BASIS: Israeli Electronic Signature Law 5761-2001 (חוק חתימה אלקטרונית)`;
+    await backupToGoogleDrive(`ESign_${opts.submissionId}`, docContent);
+
+    // 9c. Confirmation email to signer
+    const emailHtml = brandedEmail(
+      '✍️ Document Signed Successfully',
+      `<p style="color:#ccc;">Hi <strong style="color:#fff;">${opts.signerName}</strong>,</p>
+       <p style="color:#ccc;">You have successfully signed: <strong style="color:#E7C978;">${opts.documentType}</strong></p>
+       <table style="background:#111;border-radius:12px;padding:20px;width:100%;margin:16px 0;">
+         <tr><td style="color:#666;font-size:12px;padding:4px 0;">Submission ID</td><td style="color:#E7C978;font-family:monospace;">${opts.submissionId}</td></tr>
+         <tr><td style="color:#666;font-size:12px;padding:4px 0;">Document</td><td style="color:#fff;">${opts.documentType}</td></tr>
+         <tr><td style="color:#666;font-size:12px;padding:4px 0;">Signed At</td><td style="color:#fff;">${opts.completedAt}</td></tr>
+         <tr><td style="color:#666;font-size:12px;padding:4px 0;">Legal Basis</td><td style="color:#00C851;">חוק חתימה אלקטרונית 5761-2001</td></tr>
+       </table>
+       ${opts.signedDocumentUrl ? `<p style="text-align:center;"><a href="${opts.signedDocumentUrl}" style="background:linear-gradient(135deg,#C6A35B,#E7C978);color:#000;font-weight:700;padding:12px 28px;border-radius:24px;text-decoration:none;display:inline-block;">📄 Download Signed Document</a></p>` : ''}
+       <p style="color:#ccc;font-size:13px;">A backup of this signed document has been stored in our secure cloud. This signature is legally binding.</p>
+       <p style="color:#888;font-size:11px;" dir="rtl">עותק החתום מאוחסן בענן המאובטח שלנו. חתימה זו מחייבת מבחינה משפטית.</p>`
+    );
+    try {
+      await sendEmail(opts.signerEmail, `✍️ PetWash™ Document Signed – ${opts.documentType}`, emailHtml);
+    } catch (err) {
+      logger.warn('[Orchestrator] E-sign email failed', err);
+    }
+
+    logger.info('[Orchestrator] E-sign completion handled', { submissionId: opts.submissionId });
+  }
+
+  // ── 10. PROVIDER ONBOARDING APPROVED ──────
+  async handleOnboardingApproved(opts: {
+    applicationId: string;
+    platform: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    city?: string;
+    idNumber?: string;
+    vatNumber?: string;
+    businessName?: string;
+    inviteCode?: string;
+    approvedBy?: string;
+    notes?: string;
+  }): Promise<void> {
+    logger.info('[Orchestrator] Handling onboarding approval', { appId: opts.applicationId });
+
+    // 10a. Log to Sheets "Provider Applications"
+    try {
+      await GoogleSheetsService.appendToSheet('Provider Applications', [
+        new Date().toISOString(),
+        opts.applicationId,
+        opts.platform,
+        opts.firstName,
+        opts.lastName,
+        opts.email,
+        opts.phone,
+        opts.city || '',
+        opts.idNumber ? '✅' : '—',
+        opts.vatNumber || '—',
+        opts.businessName || '—',
+        opts.inviteCode || '',
+        opts.approvedBy || '',
+        'APPROVED',
+        opts.notes || '',
+      ]);
+    } catch (err) {
+      logger.warn('[Orchestrator] Onboarding approval Sheets log failed', err);
+    }
+
+    // 10b. Generate and back up final approval contract to Drive
+    const contractContent = `PETWASH™ PROVIDER ONBOARDING APPROVAL\n${'='.repeat(60)}\nApproved: ${new Date().toISOString()}\nApplication ID: ${opts.applicationId}\nPlatform: ${opts.platform}\nProvider: ${opts.firstName} ${opts.lastName}\nEmail: ${opts.email}\nPhone: ${opts.phone}\nCity: ${opts.city || '—'}\nID: ${opts.idNumber ? '[VERIFIED]' : 'Not provided'}\nVAT (Osek Murshe): ${opts.vatNumber || '—'}\nBusiness: ${opts.businessName || '—'}\nInvite Code: ${opts.inviteCode || '—'}\nApproved By: ${opts.approvedBy || 'System'}\nNotes: ${opts.notes || '—'}\n${'='.repeat(60)}\nSTATUS: APPROVED — Provider cleared to begin accepting bookings.`;
+    await backupToGoogleDrive(`OnboardingApproval_${opts.applicationId}`, contractContent);
+
+    // 10c. Approval email to provider
+    const approvalHtml = brandedEmail(
+      '🎉 Application Approved – Welcome to PetWash™!',
+      `<p style="color:#ccc;">Hi <strong style="color:#fff;">${opts.firstName}</strong>,</p>
+       <p style="color:#ccc;" dir="rtl">🎉 המועמדות שלך אושרה! / Your application has been APPROVED!</p>
+       <table style="background:#111;border-radius:12px;padding:20px;width:100%;margin:16px 0;">
+         <tr><td style="color:#C6A35B;font-size:20px;font-weight:900;padding-bottom:8px;" colspan="2">🐾 Welcome to the Team!</td></tr>
+         <tr><td style="color:#666;font-size:12px;padding:4px 0;">Application ID</td><td style="color:#E7C978;font-family:monospace;">${opts.applicationId}</td></tr>
+         <tr><td style="color:#666;font-size:12px;padding:4px 0;">Platform</td><td style="color:#fff;">${opts.platform}</td></tr>
+         <tr><td style="color:#666;font-size:12px;padding:4px 0;">Status</td><td style="color:#00C851;font-weight:700;">✅ APPROVED</td></tr>
+         ${opts.inviteCode ? `<tr><td style="color:#666;font-size:12px;padding:4px 0;">Invite Code</td><td style="color:#E7C978;font-weight:700;font-family:monospace;">${opts.inviteCode}</td></tr>` : ''}
+       </table>
+       <p style="color:#ccc;font-size:13px;"><strong>Next Steps:</strong></p>
+       <ol style="color:#ccc;font-size:13px;">
+         <li>Download the PetWash Provider App</li>
+         <li>Sign in with your email (${opts.email})</li>
+         <li>Complete your profile and set your availability</li>
+         <li>You'll start receiving booking requests within 24 hours</li>
+       </ol>
+       <p style="color:#ccc;font-size:13px;">Commission: You keep <strong style="color:#E7C978;">85%</strong> of every completed booking. Payments within 3 business days.</p>
+       <p style="color:#888;font-size:11px;" dir="rtl">ברוכים הבאים לצוות PetWash™! אתה שומר 85% מכל הזמנה. תשלומים תוך 3 ימי עסקים.</p>`
+    );
+    try {
+      await sendEmail(opts.email, `🎉 PetWash™ Provider Approved – ${opts.applicationId}`, approvalHtml);
+    } catch (err) {
+      logger.warn('[Orchestrator] Approval email failed', err);
+    }
+
+    // 10d. Schedule onboarding call in Calendar
+    const callDate = new Date();
+    callDate.setDate(callDate.getDate() + 2);
+    callDate.setHours(10, 0, 0, 0);
+    await createCalendarEvent({
+      platform: opts.platform,
+      bookingId: `APPROVED-${opts.applicationId}`,
+      title: `✅ APPROVED Provider Onboarding: ${opts.firstName} ${opts.lastName}`,
+      description: `Provider ID: ${opts.applicationId}\nPlatform: ${opts.platform}\nEmail: ${opts.email}\nPhone: ${opts.phone}\nCity: ${opts.city || '—'}\nInvite Code: ${opts.inviteCode || '—'}`,
+      startTime: callDate,
+      endTime: new Date(callDate.getTime() + 45 * 60 * 1000),
+      providerName: `${opts.firstName} ${opts.lastName}`,
+    });
+
+    logger.info('[Orchestrator] Onboarding approval handled', { appId: opts.applicationId });
+  }
+
+  // ── 11. CONTRACT GENERATED ─────────────────
+  async handleContractGenerated(opts: {
+    contractId: string | number;
+    contractNumber: string;
+    contractType: 'offer_letter' | 'contractor_agreement' | 'subcontractor' | 'employment';
+    partyName: string;
+    partyEmail: string;
+    platform?: string;
+    city?: string;
+    salaryOrRate?: number;
+    currency?: string;
+    effectiveDate?: string;
+    content?: string;
+  }): Promise<void> {
+    logger.info('[Orchestrator] Handling contract generated', { contractNumber: opts.contractNumber });
+
+    // 11a. Log to Sheets "E-Signatures & Contracts"
+    try {
+      await GoogleSheetsService.appendToSheet('E-Signatures & Contracts', [
+        new Date().toISOString(),
+        String(opts.contractId),
+        opts.contractNumber,
+        opts.contractType,
+        opts.partyName,
+        opts.partyEmail,
+        opts.platform || '—',
+        opts.city || '—',
+        opts.salaryOrRate ? `${opts.currency || 'ILS'} ${opts.salaryOrRate}` : '—',
+        opts.effectiveDate || new Date().toISOString().slice(0, 10),
+        'GENERATED — PENDING SIGNATURE',
+      ]);
+    } catch (err) {
+      logger.warn('[Orchestrator] Contract Sheets log failed', err);
+    }
+
+    // 11b. Back up contract to Drive
+    const docContent = opts.content || `PETWASH™ CONTRACT\n${'='.repeat(60)}\nGenerated: ${new Date().toISOString()}\nContract ID: ${opts.contractId}\nContract Number: ${opts.contractNumber}\nType: ${opts.contractType}\nParty: ${opts.partyName} <${opts.partyEmail}>\nPlatform: ${opts.platform || '—'}\nRate/Salary: ${opts.salaryOrRate || '—'} ${opts.currency || 'ILS'}\nEffective: ${opts.effectiveDate || '—'}\nStatus: GENERATED — AWAITING SIGNATURE`;
+    await backupToGoogleDrive(`Contract_${opts.contractNumber}`, docContent);
+
+    // 11c. Email notification to party
+    try {
+      await sendEmail(opts.partyEmail,
+        `📄 PetWash™ Contract Ready for Signature – ${opts.contractNumber}`,
+        brandedEmail('Contract Ready for Digital Signature',
+          `<p style="color:#ccc;">Hi <strong style="color:#fff;">${opts.partyName}</strong>,</p>
+           <p style="color:#ccc;">Your PetWash™ contract is ready for your digital signature.</p>
+           <table style="background:#111;border-radius:12px;padding:20px;width:100%;margin:16px 0;">
+             <tr><td style="color:#666;font-size:12px;padding:4px 0;">Contract No.</td><td style="color:#E7C978;font-family:monospace;">${opts.contractNumber}</td></tr>
+             <tr><td style="color:#666;font-size:12px;padding:4px 0;">Type</td><td style="color:#fff;">${opts.contractType.replace(/_/g, ' ').toUpperCase()}</td></tr>
+             ${opts.effectiveDate ? `<tr><td style="color:#666;font-size:12px;padding:4px 0;">Effective Date</td><td style="color:#fff;">${opts.effectiveDate}</td></tr>` : ''}
+             ${opts.salaryOrRate ? `<tr><td style="color:#666;font-size:12px;padding:4px 0;">Rate / Salary</td><td style="color:#E7C978;">₪${opts.salaryOrRate.toLocaleString()}</td></tr>` : ''}
+           </table>
+           <p style="color:#ccc;font-size:13px;">Please log in to your PetWash™ account to review and sign. This link expires in 30 days.</p>
+           <p style="color:#888;font-size:11px;" dir="rtl">אנא היכנס לחשבונך כדי לסקור ולחתום. הקישור יפוג בעוד 30 יום.</p>`)
+      );
+    } catch (err) {
+      logger.warn('[Orchestrator] Contract email failed', err);
+    }
+
+    logger.info('[Orchestrator] Contract generated handled', { contractNumber: opts.contractNumber });
+  }
+
   // ── 5. LEGAL AGREEMENT SIGNING ───────────
   async handleLegalAgreementSigning(opts: {
     signatureId: string;

@@ -18,6 +18,7 @@ import {
 import { logger } from '../lib/logger';
 import { loadUserRole, checkAccessLevel, type AuthenticatedRequest } from '../middleware/rbac';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
 
 const router = Router();
 
@@ -151,6 +152,18 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
       message: 'Document uploaded successfully. Under review.',
       filePath: fileName
     });
+
+    setImmediate(() => petWashOrchestrator.handleKYCSubmission({
+      userId: uid,
+      fullName: nameOnDoc || uid,
+      email: 'noreply@petwash.co.il',
+      docType: type,
+      countryCode: countryCode?.toUpperCase() || 'IL',
+      idNumber: idNumber ? '[hashed]' : undefined,
+      idDocUrl: fileName,
+      status: 'submitted',
+      source: 'kyc_v1',
+    }).catch(e => logger.warn('[KYC] Orchestrator hook error', e)));
   } catch (error: any) {
     logger.error('KYC upload error', error);
     res.status(500).json({ error: error.message || 'Upload failed' });

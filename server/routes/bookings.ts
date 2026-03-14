@@ -6,6 +6,8 @@ import EscrowService from "../services/EscrowService";
 import NotificationService from "../services/NotificationService";
 import ChatService from "../services/ChatService";
 import { ImmutableStampService } from "../services/ImmutableStampService";
+import { petWashOrchestrator } from "../services/PetWashOperationsOrchestrator";
+import { logger } from "../lib/logger";
 
 const router = express.Router();
 
@@ -265,6 +267,9 @@ router.post("/:bookingId/confirm", requireAuth, async (req, res) => {
     const { bookingId } = req.params;
     const userId = req.user!.uid;
 
+    const bookingDoc = await db.collection("bookings").doc(bookingId).get();
+    const booking = bookingDoc.data();
+
     await db.collection("bookings").doc(bookingId).update({
       status: "confirmed",
       confirmedAt: new Date(),
@@ -272,6 +277,27 @@ router.post("/:bookingId/confirm", requireAuth, async (req, res) => {
     });
 
     res.json({ success: true });
+
+    if (booking) {
+      const serviceDate = booking.serviceDate?.toDate?.() || new Date(booking.serviceDate || Date.now());
+      setImmediate(() => petWashOrchestrator.handleBookingConfirmed({
+        bookingId,
+        bookingRef: booking.bookingRef || bookingId,
+        platform: booking.platform || 'PetWash',
+        serviceType: booking.serviceType || booking.service || 'Pet Service',
+        customerName: `${booking.customerFirstName || ''} ${booking.customerLastName || ''}`.trim() || 'Customer',
+        customerEmail: booking.customerEmail || '',
+        customerPhone: booking.customerPhone || booking.phone || '',
+        providerName: booking.providerName || 'Provider',
+        providerEmail: booking.providerEmail,
+        petName: booking.petName,
+        scheduledDate: serviceDate.toISOString().slice(0, 10),
+        scheduledTime: booking.serviceTime || booking.time || '',
+        address: booking.address,
+        city: booking.city,
+        amountILS: booking.totalAmount || booking.priceILS,
+      }).catch(e => logger.warn('[Bookings] Orchestrator hook error', e)));
+    }
   } catch (error: any) {
     console.error("[Bookings] Error confirming:", error);
     res.status(500).json({ error: error.message });

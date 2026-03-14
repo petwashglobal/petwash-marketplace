@@ -5,6 +5,7 @@ import { db } from '../db';
 import { signingSessions } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
 
 const router = Router();
 
@@ -197,6 +198,20 @@ router.post('/webhook', async (req, res) => {
           updatedAt: new Date()
         })
         .where(eq(signingSessions.submissionId, event.data.id.toString()));
+
+      if (event.event_type === 'submission.completed') {
+        const submitter = event.data.submitters?.[0] || {};
+        setImmediate(() => petWashOrchestrator.handleEsignComplete({
+          submissionId: event.data.id.toString(),
+          documentType: event.data.template?.name || event.data.metadata?.documentType || 'Legal Document',
+          signerName: submitter.name || event.data.metadata?.signerName || 'Signer',
+          signerEmail: submitter.email || event.data.metadata?.signerEmail || '',
+          userId: event.data.metadata?.userId,
+          templateSlug: event.data.template?.slug,
+          signedDocumentUrl: event.data.documents?.[0]?.url,
+          completedAt: new Date().toISOString(),
+        }).catch(e => logger.warn('[ESign] Orchestrator hook error', e)));
+      }
     }
 
     res.json({ received: true });

@@ -7,6 +7,7 @@ import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
+import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
 import {
   kycOrchestrator,
   kycAuditTrail,
@@ -130,6 +131,21 @@ router.post(
         },
         processingDurationMs: result.processingDurationMs,
       });
+
+      setImmediate(() => petWashOrchestrator.handleKYCSubmission({
+        userId,
+        fullName: req.body.fullName || userId,
+        email: req.body.email || 'noreply@petwash.co.il',
+        docType: req.body.documentType || 'national_id',
+        countryCode: req.body.documentCountry || 'IL',
+        selfieUrl: '[Firebase Storage]',
+        idDocUrl: '[Firebase Storage]',
+        status: result.status === 'blocked' ? 'blocked'
+          : result.status === 'auto_approved' ? 'auto_approved'
+          : result.success ? 'submitted' : 'manual_review',
+        source: 'kyc_v2_2026',
+        notes: `Risk: ${result.riskLevel || '—'} | Face: ${result.faceMatchVerdict || '—'}`,
+      }).catch(e => logger.warn('[KYC2026] Orchestrator hook error', e)));
     } catch (error: any) {
       const traceId = (req as any).traceId || crypto.randomUUID();
       logger.error('[KYC2026:Route] Verification error:', error.message);

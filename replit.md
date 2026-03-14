@@ -470,8 +470,30 @@ All wallet mutations now route through `server/services/WalletLedger.ts` which i
 - Calls `POST /api/orchestrator/job-complete` → auto-sends: tax invoice (חשבונית מס) + receipt email + Google Drive backup + Google Sheets log
 - Falls back to marking booking `complete` in provider-dashboard API
 
+**Orchestrator v2.0 — 9 handlers, all Google-integrated (March 2026):**
+- `handleBookingSubmission` → Calendar + email + Drive
+- `handleJobCompletion` → חשבונית מס + קבלה + Drive + Sheets
+- `handleClubRegistration` → Welcome email + Drive + Sheets
+- `handleProviderRegistration` → Contract + email + Drive + Calendar
+- `handleLegalAgreementSigning` → Drive + email
+- `handleKYCSubmission` → Sheets (Identity Verifications) + Drive audit record + compliance email
+- `handleKYBSubmission` → Sheets (Onboarding Cases) + Drive + compliance email
+- `handleBookingConfirmed` → Calendar (confirmed event) + Sheets + customer confirmation email
+- `handleEsignComplete` → Drive backup + Sheets (E-Signatures) + signer email with doc link
+- `handleOnboardingApproved` → Drive contract + Sheets (Provider Applications) + Calendar + welcome email
+- `handleContractGenerated` → Drive + Sheets (E-Signatures) + party email
+
+**Route fire-and-forget wiring (all setImmediate, non-blocking):**
+- `kyc.ts` POST `/upload` → `handleKYCSubmission` (v1)
+- `kyc2026.ts` POST `/verify` → `handleKYCSubmission` (v2, with risk level + face match verdict)
+- `bookings.ts` POST `/:id/confirm` → `handleBookingConfirmed` (fetches full booking from Firestore)
+- `contracts.ts` POST `/generate/offer-letter` → `handleContractGenerated`
+- `contracts.ts` POST `/generate/contractor-agreement` → `handleContractGenerated`
+- `esign.ts` POST `/webhook` `submission.completed` → `handleEsignComplete`
+- `provider-intake.ts` POST `/:id/approve` → `handleOnboardingApproved` (fetches intake record)
+
 **Confirmed working:**
-- `/api/orchestrator/health` → 200 OK
+- `/api/orchestrator/health` → 200 OK (version 2.0, 9 handlers listed)
 - `/api/google/places-autocomplete` — Israel-only (`country:il`), Hebrew language support
 - `GooglePlacesAutocomplete` component (`client/src/components/ui/google-places-autocomplete.tsx`): defaults to Israel, Hebrew sub-fields (בניין/דירה/מיקוד), portal dropdown
 - Only 3 unmounted route files: `gift-cards-helpers.ts`, `head-office/`, `vouchers-2025.ts`

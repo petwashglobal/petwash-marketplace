@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
 import { providerIntakeService } from '../services/ProviderIntakeService';
 import { requireAuth } from '../customAuth';
 import { requireAdmin } from '../middleware/rbac';
@@ -172,12 +173,32 @@ router.post('/:intakeId/approve', requireAuth, requireAdmin, async (req, res) =>
     }
     
     const result = await providerIntakeService.approveAndInvite(intakeId, adminId, sendVia);
-    
+
+    const intake = await db.query.providerIntakeQueue.findFirst({
+      where: eq(providerIntakeQueue.intakeId, intakeId),
+    }).catch(() => null);
+
     res.json({
       success: true,
       message: 'Applicant approved and invited',
       inviteCode: result.inviteCode
     });
+
+    setImmediate(() => petWashOrchestrator.handleOnboardingApproved({
+      applicationId: intakeId,
+      platform: (intake as any)?.platform || 'PetWash',
+      firstName: (intake as any)?.firstName || '',
+      lastName: (intake as any)?.lastName || '',
+      email: (intake as any)?.email || '',
+      phone: (intake as any)?.phone || '',
+      city: (intake as any)?.city,
+      idNumber: (intake as any)?.idNumber,
+      vatNumber: (intake as any)?.vatNumber,
+      businessName: (intake as any)?.businessName,
+      inviteCode: result.inviteCode,
+      approvedBy: adminId,
+      notes,
+    }).catch(e => logger.warn('[ProviderIntake] Orchestrator hook error', e)));
   } catch (error: any) {
     logger.error('[Provider Intake] Approval failed:', error);
     res.status(500).json({ 
