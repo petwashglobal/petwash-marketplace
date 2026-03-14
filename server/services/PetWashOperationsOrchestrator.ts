@@ -149,6 +149,38 @@ function brandedEmail(title: string, bodyHtml: string): string {
 }
 
 // ─────────────────────────────────────────────
+// HELPER: Google Maps direction link
+// ─────────────────────────────────────────────
+function generateMapsLink(address?: string, city?: string): string | null {
+  const query = [address, city].filter(Boolean).join(', ');
+  if (!query || query.trim().length < 3) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query + ', Israel')}`;
+}
+
+// ─────────────────────────────────────────────
+// HELPER: Build a "Add to Google Calendar" URL
+// Works without an API key — opens Google Calendar directly
+// ─────────────────────────────────────────────
+function buildGoogleCalendarLink(opts: {
+  title: string;
+  description: string;
+  startTime: Date;
+  endTime: Date;
+  location?: string;
+}): string {
+  const fmt = (d: Date) => d.toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: opts.title,
+    dates: `${fmt(opts.startTime)}/${fmt(opts.endTime)}`,
+    details: opts.description,
+    ...(opts.location ? { location: opts.location } : {}),
+    sf: 'true',
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+// ─────────────────────────────────────────────
 // HELPER: Create a Google Calendar event safely
 // ─────────────────────────────────────────────
 async function createCalendarEvent(event: BookingCalendarEvent): Promise<string | null> {
@@ -323,6 +355,7 @@ export class PetWashOperationsOrchestrator {
     });
 
     // 1b. Branded confirmation email to customer
+    const mapsLink = generateMapsLink(data.address, data.city);
     const confirmHtml = brandedEmail(
       `Booking Confirmed – ${data.bookingRef}`,
       `<p style="color:#ccc;font-size:14px;">Hi <strong style="color:#fff;">${data.firstName}</strong>,</p>
@@ -335,7 +368,10 @@ export class PetWashOperationsOrchestrator {
          ${data.city ? `<tr><td style="color:#666;font-size:12px;padding:4px 0;">Location</td><td style="color:#fff;font-size:13px;">${data.city}</td></tr>` : ''}
          ${data.petName ? `<tr><td style="color:#666;font-size:12px;padding:4px 0;">Pet</td><td style="color:#fff;font-size:13px;">🐾 ${data.petName}</td></tr>` : ''}
        </table>
-       ${calendarLink ? `<p style="text-align:center;"><a href="${calendarLink}" style="background:linear-gradient(135deg,#C6A35B,#E7C978);color:#000;font-weight:700;padding:12px 28px;border-radius:24px;text-decoration:none;display:inline-block;">📅 Add to Google Calendar</a></p>` : ''}
+       <p style="text-align:center;margin:8px 0 4px;">
+         ${calendarLink ? `<a href="${calendarLink}" style="background:linear-gradient(135deg,#C6A35B,#E7C978);color:#000;font-weight:700;padding:12px 20px;border-radius:24px;text-decoration:none;display:inline-block;margin:4px;">📅 Add to Google Calendar</a>` : ''}
+         ${mapsLink ? `<a href="${mapsLink}" style="background:#1a73e8;color:#fff;font-weight:700;padding:12px 20px;border-radius:24px;text-decoration:none;display:inline-block;margin:4px;">📍 Get Directions</a>` : ''}
+       </p>
        <p style="color:#666;font-size:12px;">Free cancellation up to 2 hours before your appointment. Questions? Call 1-800-PETWASH or email support@petwash.co.il</p>
        <p style="color:#555;font-size:11px;" dir="rtl">אישור הזמנה – ${data.bookingRef} | ניתן לבטל עד שעתיים לפני השירות</p>`
     );
@@ -784,7 +820,17 @@ export class PetWashOperationsOrchestrator {
       providerName: opts.providerName,
     });
 
-    // 8c. Confirmation email to customer
+    // 8c. Confirmation email to customer — with Calendar + Maps
+    const calendarStartTime = new Date(`${opts.scheduledDate}T${opts.scheduledTime || '09:00'}:00`);
+    const calendarEndTime = new Date(calendarStartTime.getTime() + 60 * 60 * 1000);
+    const confirmedCalLink = buildGoogleCalendarLink({
+      title: `✅ ${opts.serviceType} – ${opts.customerName}`,
+      description: `Provider: ${opts.providerName}\nPet: ${opts.petName || '—'}\nRef: ${opts.bookingRef}\n\nManaged by PetWash™`,
+      startTime: calendarStartTime,
+      endTime: calendarEndTime,
+      location: [opts.address, opts.city, 'Israel'].filter(Boolean).join(', '),
+    });
+    const confirmedMapsLink = generateMapsLink(opts.address, opts.city);
     const confirmHtml = brandedEmail(
       `✅ Booking Confirmed by Your Provider!`,
       `<p style="color:#ccc;">Hi <strong style="color:#fff;">${opts.customerName}</strong>,</p>
@@ -798,6 +844,10 @@ export class PetWashOperationsOrchestrator {
          ${opts.address ? `<tr><td style="color:#666;font-size:12px;padding:4px 0;">Address</td><td style="color:#fff;">${opts.address}</td></tr>` : ''}
          ${opts.amountILS ? `<tr><td style="color:#666;font-size:12px;padding:4px 0;">Amount</td><td style="color:#E7C978;font-weight:700;">₪${opts.amountILS.toFixed(2)}</td></tr>` : ''}
        </table>
+       <p style="text-align:center;margin:12px 0 6px;">
+         <a href="${confirmedCalLink}" style="background:linear-gradient(135deg,#C6A35B,#E7C978);color:#000;font-weight:700;padding:12px 20px;border-radius:24px;text-decoration:none;display:inline-block;margin:4px;">📅 Add to Google Calendar</a>
+         ${confirmedMapsLink ? `<a href="${confirmedMapsLink}" style="background:#1a73e8;color:#fff;font-weight:700;padding:12px 20px;border-radius:24px;text-decoration:none;display:inline-block;margin:4px;">📍 Get Directions</a>` : ''}
+       </p>
        <p style="color:#ccc;font-size:13px;">Your provider will contact you if needed. Please be ready 5 minutes before the appointment.</p>
        <p style="color:#888;font-size:11px;" dir="rtl">הספק שלך יצור קשר במידת הצורך. אנא היה מוכן 5 דקות לפני הפגישה.</p>`
     );

@@ -834,6 +834,145 @@ router.post('/email-cards', requireAuth, async (req, res) => {
 });
 
 /**
+ * POST /api/wallet/admin-send
+ * Admin-only: Send wallet pass email to any user by email address
+ * 🔒 Requires valid Firebase token from SUPER_ADMIN email
+ * Used by CEO to trigger wallet pass delivery without logging in as target user
+ */
+const SUPER_ADMIN_EMAILS = ['nirhadad1@gmail.com', 'nir.h@petwash.co.il', 'ido.s@petwash.co.il'];
+
+router.post('/admin-send', async (req, res) => {
+  try {
+    // 1. Verify admin via Firebase Bearer token
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Bearer token required' });
+    }
+    const { auth: firebaseAuth } = await import('../lib/firebase-admin');
+    let callerEmail: string | undefined;
+    try {
+      const decoded = await firebaseAuth.verifyIdToken(authHeader.split('Bearer ')[1], true);
+      callerEmail = decoded.email;
+    } catch {
+      return res.status(401).json({ error: 'Invalid Firebase token' });
+    }
+    if (!callerEmail || !SUPER_ADMIN_EMAILS.includes(callerEmail.toLowerCase())) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    // 2. Determine target — default to caller (CEO sends themselves their own pass)
+    const { targetEmail = callerEmail } = req.body as { targetEmail?: string };
+
+    // 3. Look up target user in Firebase Auth then Firestore
+    let targetUid: string;
+    let userName = 'VIP Member';
+    let userTier = 'gold';
+    let userPoints = 0;
+    let userDiscount = 0;
+
+    try {
+      const targetUser = await firebaseAuth.getUserByEmail(targetEmail);
+      targetUid = targetUser.uid;
+      userName = targetUser.displayName || targetEmail.split('@')[0];
+    } catch {
+      return res.status(404).json({ error: `No Firebase user found for ${targetEmail}` });
+    }
+
+    // Load enriched profile from Firestore (best-effort)
+    try {
+      const userDoc = await db.collection('users').doc(targetUid).get();
+      if (userDoc.exists) {
+        const d = userDoc.data()!;
+        userName = d.displayName || d.firstName ? `${d.firstName || ''} ${d.lastName || ''}`.trim() : userName;
+        userTier = d.loyaltyTier || 'gold';
+        userPoints = d.loyaltyPoints || 0;
+        userDiscount = d.loyaltyDiscountPercent || 0;
+      }
+    } catch { /* non-blocking */ }
+
+    if (!process.env.SENDGRID_API_KEY) {
+      return res.status(503).json({ error: 'Email service not configured (SENDGRID_API_KEY missing)' });
+    }
+
+    if (!AppleWalletService.hasValidCertificates()) {
+      return res.status(503).json({ error: 'Apple Wallet certificates not configured' });
+    }
+
+    if (!WALLET_LINK_SECRET) {
+      return res.status(503).json({ error: 'WALLET_LINK_SECRET not configured' });
+    }
+
+    // 4. Generate secure wallet links (1h expiry)
+    const vipLink = generateSecureWalletLink({ userId: targetUid, passType: 'vip', expiresInMinutes: 120 });
+    const businessLink = generateSecureWalletLink({ userId: targetUid, passType: 'business', expiresInMinutes: 120 });
+
+    if (!vipLink || !businessLink) {
+      return res.status(503).json({ error: 'Could not generate wallet links' });
+    }
+
+    // 5. Store link records in Firestore
+    await Promise.all([
+      db.collection('wallet_links').doc(vipLink.linkId).set({
+        userId: targetUid, passType: 'vip', expiresAt: vipLink.expiresAt,
+        remainingUses: 5, createdAt: new Date(), createdFor: targetEmail, sentBy: callerEmail,
+      }),
+      db.collection('wallet_links').doc(businessLink.linkId).set({
+        userId: targetUid, passType: 'business', expiresAt: businessLink.expiresAt,
+        remainingUses: 5, createdAt: new Date(), createdFor: targetEmail, sentBy: callerEmail,
+      }),
+    ]);
+
+    // 6. Send email
+    const tierLabel = userTier === 'platinum' ? '💎 Platinum' : userTier === 'gold' ? '🥇 Gold' : userTier === 'silver' ? '🥈 Silver' : '🐾 Member';
+    await sgMail.send({
+      to: targetEmail,
+      from: 'noreply@petwash.co.il',
+      subject: `${userName} — Your PetWash™ Wallet Passes`,
+      html: `<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#000;">
+        <div style="max-width:520px;margin:0 auto;padding:32px 20px;">
+          <div style="text-align:center;margin-bottom:28px;">
+            <h1 style="color:#E7C978;font-size:28px;font-weight:300;letter-spacing:0.15em;margin:0;">🐾 PetWash™</h1>
+            <p style="color:#666;font-size:13px;letter-spacing:0.1em;margin:6px 0 0;">PREMIUM WALLET PASSES</p>
+          </div>
+          <div style="background:linear-gradient(135deg,#1a1a1a,#0d0d0d);border:1px solid #2a2a2a;border-radius:16px;padding:28px;margin-bottom:20px;">
+            <p style="color:#ccc;font-size:15px;margin:0 0 6px;">Hi <strong style="color:#fff;">${userName}</strong>,</p>
+            <p style="color:#888;font-size:13px;margin:0 0 20px;">Your exclusive wallet passes are ready. Tap to add them to your Apple Wallet.</p>
+            <div style="background:#111;border-radius:10px;padding:16px;margin-bottom:20px;">
+              <p style="color:#666;font-size:11px;letter-spacing:0.08em;margin:0 0 4px;">MEMBERSHIP TIER</p>
+              <p style="color:#E7C978;font-size:20px;font-weight:600;margin:0;">${tierLabel}</p>
+              ${userPoints ? `<p style="color:#aaa;font-size:13px;margin:4px 0 0;">${userPoints.toLocaleString()} points · ${userDiscount}% discount</p>` : ''}
+            </div>
+            <table style="width:100%;border-collapse:separate;border-spacing:8px;">
+              <tr>
+                <td style="width:50%;">
+                  <a href="${vipLink.fullUrl}" style="display:block;background:linear-gradient(135deg,#C6A35B,#E7C978);color:#000;font-weight:700;padding:14px 12px;border-radius:12px;text-decoration:none;text-align:center;font-size:14px;">
+                    ⭐ VIP Loyalty Card<br><span style="font-size:11px;font-weight:400;opacity:0.7;">Tap to add to Wallet</span>
+                  </a>
+                </td>
+                <td style="width:50%;">
+                  <a href="${businessLink.fullUrl}" style="display:block;background:linear-gradient(135deg,#1a1a1a,#333);color:#E7C978;font-weight:700;padding:14px 12px;border-radius:12px;text-decoration:none;text-align:center;font-size:14px;border:1px solid #444;">
+                    💼 Business Card<br><span style="font-size:11px;font-weight:400;opacity:0.7;">Tap to add to Wallet</span>
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="color:#555;font-size:11px;text-align:center;margin:16px 0 0;">Links expire in 2 hours · Valid on iPhone with iOS 15+</p>
+          </div>
+          <p style="color:#333;font-size:11px;text-align:center;margin:0;">PetWash™ Ltd · support@petwash.co.il · petwash.co.il</p>
+        </div>
+      </body></html>`,
+    });
+
+    logger.info('[Wallet API] Admin-send wallet pass', { targetEmail, callerEmail, vipLinkId: vipLink.linkId });
+    res.json({ success: true, message: `Wallet passes sent to ${targetEmail}`, targetEmail, vipLinkId: vipLink.linkId, businessLinkId: businessLink.linkId });
+
+  } catch (error) {
+    logger.error('[Wallet API] Admin-send error:', error);
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to send wallet pass' });
+  }
+});
+
+/**
  * GET /api/wallet/status
  * Check if Apple Wallet is configured
  */
