@@ -225,6 +225,8 @@ async function initializeSheetsClient(): Promise<GoogleSheetsClient | null> {
 
     if (spreadsheetId === 'CREATE_NEW') {
       spreadsheetId = await createMasterSpreadsheet(sheets);
+    } else {
+      await ensureFormTabs(sheets, spreadsheetId);
     }
 
     sheetsClient = { spreadsheetId, sheets };
@@ -234,6 +236,45 @@ async function initializeSheetsClient(): Promise<GoogleSheetsClient | null> {
   } catch (error: any) {
     logger.warn('[GoogleSheets] Connector not available:', error.message);
     return null;
+  }
+}
+
+/**
+ * Ensure all required form tracking tabs exist in an existing spreadsheet.
+ * Idempotent — safe to call on every startup.
+ */
+async function ensureFormTabs(sheets: any, spreadsheetId: string): Promise<void> {
+  try {
+    const meta = await sheets.spreadsheets.get({ spreadsheetId });
+    const existing = new Set<string>(
+      (meta.data.sheets || []).map((s: any) => s.properties?.title as string)
+    );
+    const missing = Object.values(SHEETS).filter(name => !existing.has(name));
+    if (missing.length === 0) {
+      logger.info('[GoogleSheets] All form tracking tabs already present');
+      return;
+    }
+    logger.info(`[GoogleSheets] Creating ${missing.length} missing tabs: ${missing.join(', ')}`);
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: missing.map(title => ({ addSheet: { properties: { title } } })),
+      },
+    });
+    await initializeSheetHeaders(sheets, spreadsheetId, missing);
+    logger.info('[GoogleSheets] ✅ Missing form tabs created and headers written');
+  } catch (err: any) {
+    logger.error('[GoogleSheets] ensureFormTabs error — check service account has Editor access', { error: err.message });
+  }
+}
+
+export async function setupFormsSpreadsheet(): Promise<boolean> {
+  try {
+    sheetsClient = null;
+    const client = await initializeSheetsClient();
+    return !!client;
+  } catch {
+    return false;
   }
 }
 
@@ -271,7 +312,7 @@ async function createMasterSpreadsheet(sheets: any): Promise<string> {
 /**
  * Initialize headers for all sheets
  */
-async function initializeSheetHeaders(sheets: any, spreadsheetId: string) {
+async function initializeSheetHeaders(sheets: any, spreadsheetId: string, only?: string[]) {
   const headerConfigs = {
     [SHEETS.K9000_BOOKINGS]: [
       'Timestamp', 'Booking ID', 'Customer Name', 'Email', 'Phone', 'Pet Name', 
@@ -356,6 +397,7 @@ async function initializeSheetHeaders(sheets: any, spreadsheetId: string) {
 
   try {
     for (const [sheetName, headers] of Object.entries(headerConfigs)) {
+      if (only && !only.includes(sheetName)) continue;
       const existing = await sheets.spreadsheets.values.get({
         spreadsheetId,
         range: `'${sheetName}'!A1:A1`,

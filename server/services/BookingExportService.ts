@@ -93,6 +93,8 @@ async function initializeAccountingSheets(): Promise<boolean> {
       spreadsheetId = await createAccountingSpreadsheet();
     } else {
       spreadsheetId = ACCOUNTING_SPREADSHEET_ID;
+      // Ensure all required tabs exist in the existing spreadsheet
+      await ensureAccountingTabs(spreadsheetId);
     }
 
     logger.info('[BookingExport] ✅ Accounting sheets initialized');
@@ -100,6 +102,42 @@ async function initializeAccountingSheets(): Promise<boolean> {
   } catch (error) {
     logger.error('[BookingExport] Initialization error:', error);
     return false;
+  }
+}
+
+/**
+ * Ensure all required tabs exist in an existing spreadsheet.
+ * Creates missing tabs and initialises their headers.
+ */
+async function ensureAccountingTabs(ssId: string): Promise<void> {
+  try {
+    const meta = await sheetsClient.spreadsheets.get({ spreadsheetId: ssId });
+    const existing = new Set<string>(
+      (meta.data.sheets || []).map((s: any) => s.properties?.title as string)
+    );
+
+    const missing = Object.values(ACCOUNTING_SHEETS).filter(name => !existing.has(name));
+
+    if (missing.length === 0) {
+      logger.info('[BookingExport] All accounting tabs already present');
+      return;
+    }
+
+    logger.info(`[BookingExport] Creating ${missing.length} missing tabs: ${missing.join(', ')}`);
+
+    await sheetsClient.spreadsheets.batchUpdate({
+      spreadsheetId: ssId,
+      requestBody: {
+        requests: missing.map(title => ({
+          addSheet: { properties: { title } },
+        })),
+      },
+    });
+
+    await initializeAccountingHeaders(ssId, missing);
+    logger.info('[BookingExport] ✅ Missing tabs created and headers written');
+  } catch (err: any) {
+    logger.error('[BookingExport] ensureAccountingTabs error — check service account has Editor access', { error: err.message });
   }
 }
 
@@ -130,7 +168,7 @@ async function createAccountingSpreadsheet(): Promise<string> {
 /**
  * Initialize headers for accounting sheets
  */
-async function initializeAccountingHeaders(ssId: string) {
+async function initializeAccountingHeaders(ssId: string, only?: string[]) {
   const headers = {
     [ACCOUNTING_SHEETS.TRANSACTIONS]: [
       'Transaction Date', 'Request ID', 'Service Type', 'Provider Type',
@@ -163,14 +201,13 @@ async function initializeAccountingHeaders(ssId: string) {
   };
 
   for (const [sheetName, headerRow] of Object.entries(headers)) {
+    if (only && !only.includes(sheetName)) continue;
     try {
       await sheetsClient.spreadsheets.values.append({
         spreadsheetId: ssId,
         range: `'${sheetName}'!A1`,
         valueInputOption: 'USER_ENTERED',
-        requestBody: {
-          values: [headerRow],
-        },
+        requestBody: { values: [headerRow] },
       });
     } catch (error) {
       logger.error(`[BookingExport] Error initializing headers for ${sheetName}:`, error);
@@ -564,4 +601,5 @@ export const BookingExportService = {
   exportComplianceReport,
   exportEscrowStatus,
   classifyTransactionWithAI,
+  setupSpreadsheet: initializeAccountingSheets,
 };

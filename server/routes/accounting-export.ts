@@ -14,6 +14,36 @@ import { z } from 'zod';
 const router = Router();
 
 // ============================================================================
+// SETUP
+// ============================================================================
+
+/**
+ * POST /api/accounting-exports/setup
+ * Ensure all accounting tabs exist in the configured spreadsheet with correct headers.
+ * Safe to call multiple times — only creates tabs that are missing.
+ */
+router.post('/setup', async (req: Request, res: Response) => {
+  try {
+    const ok = await BookingExportService.setupSpreadsheet();
+    if (ok) {
+      res.json({
+        success: true,
+        message: 'Accounting spreadsheet ready — all tabs verified/created',
+        spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${process.env.ACCOUNTING_SPREADSHEET_ID}`,
+      });
+    } else {
+      res.status(503).json({
+        success: false,
+        error: 'Setup failed — check ACCOUNTING_SPREADSHEET_ID and GOOGLE_SERVICE_ACCOUNT_JSON. Also make sure the service account has Editor access to the sheet.',
+      });
+    }
+  } catch (error: any) {
+    logger.error('[Accounting] Setup failed:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================================
 // EXPORT ENDPOINTS
 // ============================================================================
 
