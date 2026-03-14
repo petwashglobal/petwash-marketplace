@@ -67,8 +67,8 @@ jobs:
           # FIREBASE_WEB_API_KEY — Firebase client-side API key (public, safe to store)
           ensure_secret "FIREBASE_WEB_API_KEY" "AIzaSyDzbXi3-hnitnEtaTOQqakoxOetGvOCP0E"
 
-          # ACCOUNTING_SPREADSHEET_ID — BookingExportService will auto-create spreadsheet if CREATE_NEW
-          ensure_secret "ACCOUNTING_SPREADSHEET_ID" "CREATE_NEW"
+          # ACCOUNTING_SPREADSHEET_ID — BookingExportService accounting exports
+          ensure_secret "ACCOUNTING_SPREADSHEET_ID" "1dGgGUwiTI0htO0SvkzPEkXDWnjiOp8PUZRI3RDk_LJk"
 
           # GCS bucket names — fallback values matching hardcoded defaults in server code
           ensure_secret "CONTRACTOR_DOCS_BUCKET"        "petwash-contractor-documents"
