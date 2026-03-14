@@ -96,6 +96,12 @@ const Gallery = lazy(() => import("@/pages/Gallery"));
 const AdminLogin = lazy(() => import("@/pages/AdminLogin"));
 const AdminBackendPanel = lazy(() => import("@/pages/AdminBackendPanel"));
 const AdminGoogleForms = lazy(() => import("@/pages/AdminGoogleForms"));
+const FormsHub = lazy(() => import("@/pages/forms/FormsHub"));
+const ReviewForm = lazy(() => import("@/pages/forms/ReviewForm"));
+const HRApplicationForm = lazy(() => import("@/pages/forms/HRApplicationForm"));
+const SalesLeadForm = lazy(() => import("@/pages/forms/SalesLeadForm"));
+const CustomerOnboardingForm = lazy(() => import("@/pages/forms/CustomerOnboardingForm"));
+const RefundForm = lazy(() => import("@/pages/forms/RefundForm"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
 const AdminLoginV2 = lazy(() => import("@/pages/admin/AdminLoginV2"));
 const AdminAccessDenied = lazy(() => import("@/pages/AdminAccessDenied"));
@@ -1781,6 +1787,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/our-service">{() => <OurService language={language} onLanguageChange={handleLanguageChange} />}</Route>
         <Route path="/contact">{() => <Contact language={language} />}</Route>
+        <Route path="/forms" component={FormsHub} />
+        <Route path="/forms/review" component={ReviewForm} />
+        <Route path="/forms/hr-application" component={HRApplicationForm} />
+        <Route path="/forms/sales-lead" component={SalesLeadForm} />
+        <Route path="/forms/onboarding" component={CustomerOnboardingForm} />
+        <Route path="/forms/refund" component={RefundForm} />
         <Route path="/gallery">{() => <Gallery language={language} onLanguageChange={handleLanguageChange} />}</Route>
         <Route path="/privacy">{() => <Redirect to="/privacy-policy" />}</Route>
         <Route path="/privacy-policy" component={PrivacyPolicy} />

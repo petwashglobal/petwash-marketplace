@@ -1371,4 +1371,5 @@ export const GoogleSheetsService = {
   getPendingRetryCount,
   processStartupRetries,
   getReconciliationReport,
+  appendToSheet: (sheetName: string, data: Record<string, any>) => appendFormSubmission(sheetName, data),
 };

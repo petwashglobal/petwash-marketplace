@@ -256,6 +256,241 @@ router.post('/k9000/quick-booking', async (req, res) => {
 });
 
 // =========================
+// HR JOB APPLICATION
+// =========================
+const hrJobApplicationSchema = z.object({
+  firstName: z.string().min(2),
+  lastName: z.string().min(2),
+  email: z.string().email(),
+  phone: z.string().min(8),
+  address: z.string().optional(),
+  city: z.string().min(2),
+  country: z.string().min(2),
+  dateOfBirth: z.string().optional(),
+  position: z.string().min(2),
+  department: z.string().min(2),
+  yearsExperience: z.string(),
+  educationLevel: z.string(),
+  taxId: z.string().optional(),
+  linkedinUrl: z.string().optional(),
+  expectedSalary: z.string().optional(),
+  startDate: z.string().optional(),
+  coverLetter: z.string().min(50, 'Cover letter must be at least 50 characters'),
+  referencesAvailable: z.string().optional(),
+  referralSource: z.string().optional(),
+});
+
+router.post('/hr-application', async (req, res) => {
+  try {
+    const data = hrJobApplicationSchema.parse(req.body);
+    const appId = `HR-${Date.now()}`;
+    await GoogleSheetsService.appendToSheet('HR Job Applications', {
+      Timestamp: new Date().toISOString(),
+      'Application ID': appId,
+      'First Name': data.firstName,
+      'Last Name': data.lastName,
+      'Email': data.email,
+      'Phone': data.phone,
+      'Position': data.position,
+      'Department': data.department,
+      'Experience (Years)': data.yearsExperience,
+      'City': data.city,
+      'Country': data.country,
+      'Address': data.address || '',
+      'Education': data.educationLevel,
+      'Tax ID': data.taxId || '',
+      'LinkedIn': data.linkedinUrl || '',
+      'Expected Salary': data.expectedSalary || '',
+      'Cover Letter': data.coverLetter,
+      'References Available': data.referencesAvailable || '',
+      'Referral Source': data.referralSource || '',
+      'Start Date': data.startDate || '',
+      'Status': 'New',
+    });
+    await EmailService.send({
+      to: 'hr@petwash.co.il',
+      subject: `New Job Application: ${data.firstName} ${data.lastName} — ${data.position}`,
+      html: `<h2>New Job Application</h2><p><strong>${data.firstName} ${data.lastName}</strong> applied for <strong>${data.position}</strong> (${data.department})</p><p>Email: ${data.email} | Phone: ${data.phone}</p><p>City: ${data.city}, ${data.country}</p><p>Experience: ${data.yearsExperience}</p><p><strong>Cover Letter:</strong><br>${data.coverLetter.replace(/\n/g, '<br>')}</p>`,
+    }).catch(() => {});
+    res.json({ success: true, applicationId: appId, message: 'Application received! We will review it within 5 business days.', messageHe: 'הבקשה התקבלה! נבחן אותה תוך 5 ימי עסקים.' });
+  } catch (error) {
+    logger.error('[GlobalForms] HR application error:', error);
+    res.status(400).json({ error: 'Invalid application data' });
+  }
+});
+
+// =========================
+// SALES LEAD
+// =========================
+const salesLeadSchema = z.object({
+  contactName: z.string().min(2),
+  company: z.string().optional(),
+  email: z.string().email(),
+  phone: z.string().min(8),
+  address: z.string().optional(),
+  city: z.string().min(2),
+  country: z.string().min(2),
+  inquiryType: z.string(),
+  serviceInterest: z.string(),
+  estimatedVolume: z.string().optional(),
+  numberOfPets: z.string().optional(),
+  description: z.string().min(20),
+  bestContactTime: z.string().optional(),
+  referralSource: z.string().optional(),
+});
+
+router.post('/sales-lead', async (req, res) => {
+  try {
+    const data = salesLeadSchema.parse(req.body);
+    const leadId = `LEAD-${Date.now()}`;
+    await GoogleSheetsService.appendToSheet('Sales Leads', {
+      Timestamp: new Date().toISOString(),
+      'Lead ID': leadId,
+      'Lead Type': data.inquiryType,
+      'Company / Name': data.company || data.contactName,
+      'Email': data.email,
+      'Phone': data.phone,
+      'Source': data.referralSource || 'Web Form',
+      'Service Interest': data.serviceInterest,
+      'City': data.city,
+      'Country': data.country,
+      'Address': data.address || '',
+      'Description': data.description,
+      'Estimated Monthly Value (₪)': data.estimatedVolume || '',
+      'Number of Pets': data.numberOfPets || '',
+      'Stage': 'New Lead',
+      'Status': 'Open',
+    });
+    await EmailService.send({
+      to: 'sales@petwash.co.il',
+      subject: `New Sales Lead: ${data.contactName} — ${data.serviceInterest}`,
+      html: `<h2>New Sales Lead</h2><p><strong>${data.contactName}</strong>${data.company ? ` (${data.company})` : ''}</p><p>Email: ${data.email} | Phone: ${data.phone}</p><p>Interest: ${data.serviceInterest} | Type: ${data.inquiryType}</p><p>Volume: ${data.estimatedVolume || 'Not specified'}</p><p>${data.description}</p>`,
+    }).catch(() => {});
+    res.json({ success: true, leadId, message: 'Thank you! Our sales team will contact you within 24 hours.', messageHe: 'תודה! צוות המכירות שלנו יצור קשר תוך 24 שעות.' });
+  } catch (error) {
+    logger.error('[GlobalForms] Sales lead error:', error);
+    res.status(400).json({ error: 'Invalid lead data' });
+  }
+});
+
+// =========================
+// REFUND REQUEST
+// =========================
+const refundRequestSchema = z.object({
+  fullName: z.string().min(2),
+  email: z.string().email(),
+  phone: z.string().min(8),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  bookingId: z.string().min(2, 'Booking ID is required'),
+  serviceType: z.string(),
+  bookingDate: z.string().optional(),
+  amountPaid: z.string().min(1, 'Amount is required'),
+  refundAmount: z.string().min(1, 'Refund amount is required'),
+  reason: z.string(),
+  description: z.string().min(20),
+  refundMethod: z.string(),
+});
+
+router.post('/refund-request', async (req, res) => {
+  try {
+    const data = refundRequestSchema.parse(req.body);
+    const requestId = `REF-${Date.now()}`;
+    await GoogleSheetsService.appendToSheet('Refund Requests', {
+      Timestamp: new Date().toISOString(),
+      'Request ID': requestId,
+      'Booking ID': data.bookingId,
+      'Customer Name': data.fullName,
+      'Email': data.email,
+      'Phone': data.phone,
+      'Address': data.address || '',
+      'Service Type': data.serviceType,
+      'Booking Date': data.bookingDate || '',
+      'Original Amount (₪)': data.amountPaid,
+      'Refund Amount (₪)': data.refundAmount,
+      'Reason': data.reason,
+      'Description': data.description,
+      'Refund Method': data.refundMethod,
+      'Status': 'Pending Review',
+    });
+    await EmailService.send({
+      to: 'finance@petwash.co.il',
+      subject: `Refund Request ${requestId}: ${data.fullName} — ₪${data.refundAmount}`,
+      html: `<h2>Refund Request</h2><p>ID: <strong>${requestId}</strong></p><p>Customer: ${data.fullName} | ${data.email} | ${data.phone}</p><p>Booking: ${data.bookingId} | Service: ${data.serviceType}</p><p>Amount Paid: ₪${data.amountPaid} | Refund Requested: ₪${data.refundAmount}</p><p>Reason: ${data.reason}</p><p>${data.description}</p>`,
+    }).catch(() => {});
+    res.json({ success: true, requestId, message: `Refund request ${requestId} submitted. We'll review within 2-5 business days.`, messageHe: `בקשת ההחזר ${requestId} נשלחה. נבחן תוך 2-5 ימי עסקים.` });
+  } catch (error) {
+    logger.error('[GlobalForms] Refund request error:', error);
+    res.status(400).json({ error: 'Invalid refund request data' });
+  }
+});
+
+// =========================
+// CUSTOMER ONBOARDING & PET PROFILE
+// =========================
+const customerOnboardingSchema = z.object({
+  ownerFirstName: z.string().min(2),
+  ownerLastName: z.string().min(2),
+  email: z.string().email(),
+  phone: z.string().min(8),
+  address: z.string().min(5),
+  city: z.string().min(2),
+  country: z.string().min(2),
+  language: z.string().optional(),
+  petName: z.string().min(2),
+  species: z.string(),
+  breed: z.string().optional(),
+  age: z.string(),
+  weight: z.string().optional(),
+  gender: z.string().optional(),
+  microchipNumber: z.string().optional(),
+  vetName: z.string().optional(),
+  vetPhone: z.string().optional(),
+  allergies: z.string().optional(),
+  medicalNotes: z.string().optional(),
+  vaccinationsUpToDate: z.string(),
+  referralSource: z.string().optional(),
+});
+
+router.post('/customer-onboarding', async (req, res) => {
+  try {
+    const data = customerOnboardingSchema.parse(req.body);
+    const petId = `PET-${Date.now()}`;
+    await GoogleSheetsService.appendToSheet('Pet Profiles', {
+      Timestamp: new Date().toISOString(),
+      'Pet ID': petId,
+      'Owner ID': '',
+      'Owner Name': `${data.ownerFirstName} ${data.ownerLastName}`,
+      'Email': data.email,
+      'Phone': data.phone,
+      'Address': data.address,
+      'Pet Name': data.petName,
+      'Species': data.species,
+      'Breed': data.breed || '',
+      'Age': data.age,
+      'Weight (kg)': data.weight || '',
+      'Gender': data.gender || '',
+      'Microchip Number': data.microchipNumber || '',
+      'Vet Name': data.vetName || '',
+      'Vet Phone': data.vetPhone || '',
+      'Allergies': data.allergies || '',
+      'Medical Notes': data.medicalNotes || '',
+      'Vaccinations': data.vaccinationsUpToDate,
+      'Status': 'Active',
+    });
+    await EmailService.send({
+      to: data.email,
+      subject: `Welcome to PetWash™ — ${data.petName} is registered!`,
+      html: `<h2>Welcome to PetWash™! 🐾</h2><p>Hi ${data.ownerFirstName},</p><p>We've registered <strong>${data.petName}</strong> and your profile is now active.</p><p>You can now book services for ${data.petName} across all PetWash™ platforms.</p><p>Pet ID: <strong>${petId}</strong></p>`,
+    }).catch(() => {});
+    res.json({ success: true, petId, message: `Welcome to PetWash™! ${data.petName} is now registered.`, messageHe: `ברוכים הבאים ל-PetWash™! ${data.petName} נרשם בהצלחה.` });
+  } catch (error) {
+    logger.error('[GlobalForms] Customer onboarding error:', error);
+    res.status(400).json({ error: 'Invalid onboarding data' });
+  }
+});
+
+// =========================
 // GET GOOGLE SHEETS URL (Admin only)
 // =========================
 router.get('/admin/sheets-url', validateFirebaseToken, requireAdminRole, async (req: any, res) => {
