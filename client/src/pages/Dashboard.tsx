@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { Layout } from '@/components/Layout';
@@ -6,9 +6,11 @@ import { Link, useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { LogOut, ChevronRight, PawPrint, CalendarCheck, Clock, Shield, ArrowRight } from 'lucide-react';
+import { LogOut, ChevronRight, PawPrint, CalendarCheck, Clock, Shield, ArrowRight, Mail } from 'lucide-react';
 import type { ReactNode } from 'react';
 import diamondLogo from '@assets/IMG_3257_1771582024352.png';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 interface ActivitySummary {
   success: boolean;
@@ -331,6 +333,21 @@ export default function Dashboard() {
   const { user: firebaseUser, loading } = useFirebaseAuth();
   const { language } = useLanguage();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const he = language === 'he';
+
+  const sendWalletEmailMutation = useMutation({
+    mutationFn: () => apiRequest('POST', '/api/prestige-pass/resend-wallet-email', {}),
+    onSuccess: () => toast({
+      title: he ? 'נשלח בהצלחה' : 'Email sent',
+      description: he ? 'קישור להורדת הכרטיס נשלח לאימייל שלך' : 'Your pass download link was emailed to you',
+    }),
+    onError: () => toast({
+      title: he ? 'שגיאה' : 'Error',
+      description: he ? 'לא ניתן לשלוח — נסה שוב' : 'Could not send email — please try again',
+      variant: 'destructive',
+    }),
+  });
 
   const { data: profileData } = useQuery({
     queryKey: ['/api/simple-auth/me'],
@@ -495,55 +512,120 @@ export default function Dashboard() {
             </LuxuryCard>
           </div>
 
-          {/* ── Prestige Pass Featured Entry ───────────────────────────────── */}
-          <motion.button
+          {/* ── Prestige Pass Featured Card ─────────────────────────────────── */}
+          <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.48 }}
-            onClick={() => setLocation('/prestige-pass')}
-            className="w-full rounded-2xl overflow-hidden mb-4 group"
+            className="w-full rounded-2xl overflow-hidden mb-4"
             style={{
               background: 'linear-gradient(135deg, #0a0a0a 0%, #1c1c1c 50%, #0f0f0f 100%)',
               border: '1px solid rgba(212,175,55,0.35)',
               boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 0 0 1px rgba(212,175,55,0.1)',
-              cursor: 'pointer',
-              textAlign: 'left',
             }}
           >
             {/* Gold shimmer top bar */}
             <div style={{ height: '2px', background: 'linear-gradient(90deg,#c9a96e,#f0d060,#d4af37,#c9a96e)' }} />
-            <div className="px-5 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {/* Decorative mini-chip */}
-                <div style={{
-                  width: '28px', height: '20px', borderRadius: '3px',
-                  background: '#c9a96e',
+
+            {/* Tap-to-open row */}
+            <button
+              onClick={() => setLocation('/prestige-pass')}
+              className="w-full group"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <div className="px-5 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div style={{
+                    width: '28px', height: '20px', borderRadius: '3px',
+                    background: '#c9a96e', flexShrink: 0,
+                    display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr 1fr',
+                    gap: '2px', padding: '3px',
+                  }}>
+                    {[...Array(6)].map((_, i) => (
+                      <div key={i} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '1px' }} />
+                    ))}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: '#ffffff', letterSpacing: '0.02em' }}>
+                      {he ? 'כרטיס פרסטיז' : 'Prestige Pass'}
+                    </p>
+                    <p className="text-[10px]" style={{ color: 'rgba(212,175,55,0.7)', letterSpacing: '0.06em' }}>
+                      {he ? 'ארנק • QR • מועדון נאמנות' : 'Wallet · QR code · Loyalty club'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                    style={{ background: 'rgba(212,175,55,0.15)', color: '#D4AF37', border: '1px solid rgba(212,175,55,0.3)' }}>
+                    {he ? 'פתח' : 'Open'}
+                  </span>
+                  <ChevronRight className="w-4 h-4 opacity-40 group-hover:opacity-80 transition-opacity" style={{ color: '#D4AF37' }} />
+                </div>
+              </div>
+            </button>
+
+            {/* Divider */}
+            <div style={{ height: '1px', background: 'rgba(212,175,55,0.12)', marginInline: '16px' }} />
+
+            {/* Add to Mobile Wallet buttons */}
+            <div className="px-4 py-3 flex gap-2">
+              {/* Apple Wallet */}
+              <button
+                onClick={() => {
+                  toast({
+                    title: 'Apple Wallet',
+                    description: he
+                      ? 'לחץ "פתח" למעלה ואז "הוסף ל-Apple Wallet" בתוך הכרטיס'
+                      : 'Tap "Open" above, then "Add to Apple Wallet" inside your pass',
+                  });
+                }}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold"
+                style={{ background: '#1a1a1a', color: '#ffffff', border: '1px solid rgba(255,255,255,0.12)', cursor: 'pointer' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                </svg>
+                {he ? 'Apple Wallet' : 'Apple Wallet'}
+              </button>
+
+              {/* Google Wallet */}
+              <button
+                onClick={() => {
+                  toast({
+                    title: 'Google Wallet',
+                    description: he
+                      ? 'לחץ "פתח" למעלה ואז "הוסף ל-Google Wallet" בתוך הכרטיס'
+                      : 'Tap "Open" above, then "Add to Google Wallet" inside your pass',
+                  });
+                }}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold"
+                style={{ background: '#1565C0', color: '#ffffff', border: 'none', cursor: 'pointer' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81z"/>
+                </svg>
+                {he ? 'Google Wallet' : 'Google Wallet'}
+              </button>
+
+              {/* Send by email */}
+              <button
+                onClick={() => sendWalletEmailMutation.mutate()}
+                disabled={sendWalletEmailMutation.isPending}
+                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold"
+                style={{
+                  background: 'transparent',
+                  color: '#D4AF37',
+                  border: '1px solid rgba(212,175,55,0.4)',
+                  cursor: sendWalletEmailMutation.isPending ? 'wait' : 'pointer',
+                  opacity: sendWalletEmailMutation.isPending ? 0.6 : 1,
                   flexShrink: 0,
-                  display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr 1fr',
-                  gap: '2px', padding: '3px',
-                }}>
-                  {[...Array(6)].map((_, i) => (
-                    <div key={i} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '1px' }} />
-                  ))}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: '#ffffff', letterSpacing: '0.02em' }}>
-                    {language === 'he' ? 'כרטיס פרסטיז' : 'Prestige Pass'}
-                  </p>
-                  <p className="text-[10px]" style={{ color: 'rgba(212,175,55,0.7)', letterSpacing: '0.06em' }}>
-                    {language === 'he' ? 'ארנק • QR • מועדון נאמנות' : 'Wallet · QR code · Loyalty club'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                  style={{ background: 'rgba(212,175,55,0.15)', color: '#D4AF37', border: '1px solid rgba(212,175,55,0.3)' }}>
-                  {language === 'he' ? 'פתח' : 'Open'}
-                </span>
-                <ChevronRight className="w-4 h-4 opacity-40 group-hover:opacity-80 transition-opacity" style={{ color: '#D4AF37' }} />
-              </div>
+                }}
+              >
+                <Mail size={12} />
+                {sendWalletEmailMutation.isPending ? '...' : (he ? 'אימייל' : 'Email')}
+              </button>
             </div>
-          </motion.button>
+          </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-5">
             <motion.button
