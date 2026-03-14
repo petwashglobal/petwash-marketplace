@@ -131,26 +131,68 @@ function contactlessIcon(color: string): string {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Apple Wallet app icon SVG (colorful cards in a wallet)
+// ──────────────────────────────────────────────────────────────────────────────
+function appleWalletIcon(): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="46" height="46" viewBox="0 0 46 46">
+  <!-- App icon background -->
+  <rect width="46" height="46" rx="10" fill="#EDE8E0"/>
+  <!-- Back card (yellow) -->
+  <rect x="7" y="10" width="32" height="20" rx="3" fill="#F5C842" transform="rotate(-8 23 20)"/>
+  <!-- Middle card (green) -->
+  <rect x="7" y="13" width="32" height="20" rx="3" fill="#34C759" transform="rotate(-3 23 23)"/>
+  <!-- Front card / wallet body (light cream) -->
+  <rect x="6" y="18" width="34" height="22" rx="4" fill="#FAF7F2"/>
+  <!-- Card stripe on front -->
+  <rect x="6" y="24" width="34" height="7" fill="#E8E2D8"/>
+  <!-- Magnetic stripe detail -->
+  <rect x="10" y="26" width="14" height="3" rx="1.5" fill="#C8BFB0" opacity=".7"/>
+  <!-- Red accent card peeking top-right -->
+  <rect x="22" y="19" width="18" height="12" rx="2.5" fill="#FF3B30" opacity=".9" transform="rotate(4 31 25)"/>
+</svg>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Google Wallet app icon SVG (colorful cards on blue)
+// ──────────────────────────────────────────────────────────────────────────────
+function googleWalletIcon(): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="46" height="46" viewBox="0 0 46 46">
+  <!-- App icon background -->
+  <rect width="46" height="46" rx="10" fill="#1A73E8"/>
+  <!-- Back card (green) rotated left -->
+  <rect x="8" y="10" width="30" height="18" rx="3" fill="#34A853" transform="rotate(-10 23 19)"/>
+  <!-- Middle card (yellow) slight tilt -->
+  <rect x="8" y="14" width="30" height="18" rx="3" fill="#FBBC04" transform="rotate(-4 23 23)"/>
+  <!-- Front card (red) slight tilt right -->
+  <rect x="8" y="18" width="30" height="18" rx="3" fill="#EA4335" transform="rotate(2 23 27)"/>
+  <!-- Wallet body base (blue) straight -->
+  <rect x="7" y="22" width="32" height="18" rx="4" fill="#4285F4"/>
+  <!-- White chip/slot detail -->
+  <rect x="12" y="27" width="10" height="6" rx="2" fill="#fff" opacity=".25"/>
+  <!-- White line detail -->
+  <rect x="12" y="34" width="22" height="2" rx="1" fill="#fff" opacity=".2"/>
+</svg>`;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // OFFICIAL APPLE WALLET BADGE
 // ──────────────────────────────────────────────────────────────────────────────
 function appleWalletBadge(url: string, isHe: boolean): string {
   return `
 <a href="${url}" target="_blank" style="display:inline-block;text-decoration:none;">
   <table role="presentation" cellspacing="0" cellpadding="0"
-         style="background:#000000;border-radius:14px;border:1px solid rgba(255,255,255,.15);
-                box-shadow:0 4px 20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.08);">
+         style="background:#000000;border-radius:16px;border:1px solid rgba(255,255,255,.12);
+                box-shadow:0 6px 24px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.07);">
     <tr>
-      <td style="padding:13px 22px 13px 18px;">
+      <td style="padding:11px 24px 11px 14px;">
         <table role="presentation" cellspacing="0" cellpadding="0">
           <tr>
-            <td style="vertical-align:middle;padding-right:11px;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="26" viewBox="0 0 814 1000" fill="#ffffff">
-                <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-37.5-154.8-95.6C33.3 756.3 11 658.7 11 563.7c0-214.2 139.4-327.3 276.8-327.3 71 0 130.1 46.4 174.9 46.4 42.7 0 109.6-49.5 186.7-49.5zm-154.3-100.3c31.7-37.6 54.4-89.9 54.4-142.2 0-7.1-.5-14.3-1.6-20.4-51.5 2-112 34.4-148.7 75.8-28.5 32.4-55.1 84.7-55.1 137.7 0 7.5 1.1 15 1.6 17.3 3.2.5 8.4 1.1 13.6 1.1 46.4 0 101.5-30.8 135.8-69.3z"/>
-              </svg>
+            <td style="vertical-align:middle;padding-right:13px;">
+              ${appleWalletIcon()}
             </td>
             <td style="vertical-align:middle;">
-              <div style="font-size:9px;color:rgba(255,255,255,.55);letter-spacing:1.5px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;line-height:1.2;margin-bottom:2px;">${isHe ? 'הוסף ל' : 'Add to'}</div>
-              <div style="font-size:17px;font-weight:700;color:#ffffff;letter-spacing:0.2px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;line-height:1.1;white-space:nowrap;">Apple Wallet</div>
+              <div style="font-size:11px;color:rgba(255,255,255,.6);font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;line-height:1.3;margin-bottom:1px;">${isHe ? 'הוסף ל' : 'Add to'}</div>
+              <div style="font-size:20px;font-weight:700;color:#ffffff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;line-height:1.15;white-space:nowrap;letter-spacing:-0.3px;">Apple Wallet</div>
             </td>
           </tr>
         </table>
@@ -167,24 +209,18 @@ function googleWalletBadge(url: string, isHe: boolean): string {
   return `
 <a href="${url}" target="_blank" style="display:inline-block;text-decoration:none;">
   <table role="presentation" cellspacing="0" cellpadding="0"
-         style="background:#1f1f1f;border-radius:14px;border:1px solid rgba(255,255,255,.12);
-                box-shadow:0 4px 20px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);">
+         style="background:#1c1c1e;border-radius:16px;border:1px solid rgba(255,255,255,.1);
+                box-shadow:0 6px 24px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.05);">
     <tr>
-      <td style="padding:13px 22px 13px 16px;">
+      <td style="padding:11px 24px 11px 14px;">
         <table role="presentation" cellspacing="0" cellpadding="0">
           <tr>
-            <td style="vertical-align:middle;padding-right:11px;">
-              <!-- Google Wallet Icon (G with wallet colors) -->
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="12" fill="#fff" opacity=".07"/>
-                <text x="12" y="17" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" font-weight="800">
-                  <tspan fill="#4285F4">G</tspan>
-                </text>
-              </svg>
+            <td style="vertical-align:middle;padding-right:13px;">
+              ${googleWalletIcon()}
             </td>
             <td style="vertical-align:middle;">
-              <div style="font-size:9px;color:rgba(255,255,255,.45);letter-spacing:1.5px;text-transform:uppercase;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;line-height:1.2;margin-bottom:2px;">${isHe ? 'שמור ב' : 'Save to'}</div>
-              <div style="font-size:17px;font-weight:700;color:#ffffff;letter-spacing:0.2px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;line-height:1.1;white-space:nowrap;">Google Wallet</div>
+              <div style="font-size:11px;color:rgba(255,255,255,.5);font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;line-height:1.3;margin-bottom:1px;">${isHe ? 'הוסף ל' : 'Add to'}</div>
+              <div style="font-size:20px;font-weight:700;color:#ffffff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;line-height:1.15;white-space:nowrap;letter-spacing:-0.3px;">Google Wallet</div>
             </td>
           </tr>
         </table>

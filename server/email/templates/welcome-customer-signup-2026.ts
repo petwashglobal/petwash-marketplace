@@ -116,6 +116,95 @@ export function generateCustomerWelcomeEmail(data: CustomerWelcomeEmailData): { 
           </p>
         </div>
         
+        <!-- ══ PRESTIGE PASS WALLET SECTION ══ -->
+        <div style="background: #0a0a0a; border-radius: 16px; padding: 28px 28px 24px; margin: 32px 0; text-align: center;">
+
+          <!-- Gold top line -->
+          <div style="height: 2px; background: linear-gradient(90deg, transparent, #8a6f00 20%, #D4AF37 38%, #F0D060 50%, #D4AF37 62%, #8a6f00 80%, transparent); border-radius: 1px; margin-bottom: 22px;"></div>
+
+          <div style="font-size: 9px; letter-spacing: 6px; color: #D4AF37; text-transform: uppercase; margin-bottom: 4px; font-family: 'Helvetica Neue', Arial, sans-serif;">P E T W A S H ™</div>
+          <div style="font-size: 16px; font-weight: 600; color: #ffffff; margin: 6px 0 4px; font-family: 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.3px;">
+            ${isHebrew ? 'הכרטיס הדיגיטלי שלך מוכן' : 'Your Digital Member Pass is Ready'}
+          </div>
+          <div style="font-size: 11px; color: #3a3a3a; margin-bottom: 20px; font-family: 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.5px;">
+            ${isHebrew ? 'שמור לארנק שלך — גישה מיידית בכל תחנת K9000' : 'Save to your wallet — instant access at every K9000 station'}
+          </div>
+
+          <!-- Wallet badges side by side -->
+          <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
+            <tr>
+              <td style="padding: 0 6px 0 0;">
+                <!-- Apple Wallet badge -->
+                <a href="https://petwash.co.il/prestige-pass" target="_blank" style="display:inline-block;text-decoration:none;">
+                  <table role="presentation" cellspacing="0" cellpadding="0"
+                         style="background:#000000;border-radius:14px;border:1px solid rgba(255,255,255,.12);
+                                box-shadow:0 4px 16px rgba(0,0,0,.5);">
+                    <tr>
+                      <td style="padding:10px 20px 10px 13px;">
+                        <table role="presentation" cellspacing="0" cellpadding="0">
+                          <tr>
+                            <td style="vertical-align:middle;padding-right:12px;">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 46 46">
+                                <rect width="46" height="46" rx="10" fill="#EDE8E0"/>
+                                <rect x="7" y="10" width="32" height="20" rx="3" fill="#F5C842" transform="rotate(-8 23 20)"/>
+                                <rect x="7" y="13" width="32" height="20" rx="3" fill="#34C759" transform="rotate(-3 23 23)"/>
+                                <rect x="6" y="18" width="34" height="22" rx="4" fill="#FAF7F2"/>
+                                <rect x="6" y="24" width="34" height="7" fill="#E8E2D8"/>
+                                <rect x="10" y="26" width="14" height="3" rx="1.5" fill="#C8BFB0" opacity=".7"/>
+                                <rect x="22" y="19" width="18" height="12" rx="2.5" fill="#FF3B30" opacity=".9" transform="rotate(4 31 25)"/>
+                              </svg>
+                            </td>
+                            <td style="vertical-align:middle;">
+                              <div style="font-size:10px;color:rgba(255,255,255,.5);font-family:'Helvetica Neue',Arial,sans-serif;line-height:1.3;">${isHebrew ? 'הוסף ל' : 'Add to'}</div>
+                              <div style="font-size:17px;font-weight:700;color:#fff;font-family:'Helvetica Neue',Arial,sans-serif;line-height:1.2;white-space:nowrap;">Apple Wallet</div>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                </a>
+              </td>
+              <td style="padding: 0 0 0 6px;">
+                <!-- Google Wallet badge -->
+                <a href="https://petwash.co.il/prestige-pass" target="_blank" style="display:inline-block;text-decoration:none;">
+                  <table role="presentation" cellspacing="0" cellpadding="0"
+                         style="background:#1c1c1e;border-radius:14px;border:1px solid rgba(255,255,255,.1);
+                                box-shadow:0 4px 16px rgba(0,0,0,.45);">
+                    <tr>
+                      <td style="padding:10px 20px 10px 13px;">
+                        <table role="presentation" cellspacing="0" cellpadding="0">
+                          <tr>
+                            <td style="vertical-align:middle;padding-right:12px;">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 46 46">
+                                <rect width="46" height="46" rx="10" fill="#1A73E8"/>
+                                <rect x="8" y="10" width="30" height="18" rx="3" fill="#34A853" transform="rotate(-10 23 19)"/>
+                                <rect x="8" y="14" width="30" height="18" rx="3" fill="#FBBC04" transform="rotate(-4 23 23)"/>
+                                <rect x="8" y="18" width="30" height="18" rx="3" fill="#EA4335" transform="rotate(2 23 27)"/>
+                                <rect x="7" y="22" width="32" height="18" rx="4" fill="#4285F4"/>
+                                <rect x="12" y="27" width="10" height="6" rx="2" fill="#fff" opacity=".25"/>
+                                <rect x="12" y="34" width="22" height="2" rx="1" fill="#fff" opacity=".2"/>
+                              </svg>
+                            </td>
+                            <td style="vertical-align:middle;">
+                              <div style="font-size:10px;color:rgba(255,255,255,.45);font-family:'Helvetica Neue',Arial,sans-serif;line-height:1.3;">${isHebrew ? 'הוסף ל' : 'Add to'}</div>
+                              <div style="font-size:17px;font-weight:700;color:#fff;font-family:'Helvetica Neue',Arial,sans-serif;line-height:1.2;white-space:nowrap;">Google Wallet</div>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                </a>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Gold bottom line -->
+          <div style="height: 2px; background: linear-gradient(90deg, transparent, #8a6f00 20%, #D4AF37 38%, #F0D060 50%, #D4AF37 62%, #8a6f00 80%, transparent); border-radius: 1px; margin-top: 22px;"></div>
+        </div>
+        <!-- ══ END PRESTIGE PASS WALLET SECTION ══ -->
+
         <div style="margin: 36px 0;">
           <h3 style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #0f172a; margin: 0 0 24px; font-weight: 600; text-align: ${isHebrew ? 'right' : 'left'};">
             ${isHebrew ? '\u05D4\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD \u05E9\u05DC\u05E0\u05D5' : 'Our Services'}
