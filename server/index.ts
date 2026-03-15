@@ -1,5 +1,7 @@
+// Preserve GEMINI_API_KEY for Generative AI services even when GOOGLE_API_KEY (Maps) is also set.
+// The two keys serve different Google APIs and must coexist.
 if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
-  delete process.env.GEMINI_API_KEY;
+  process.env.GEMINI_AI_KEY = process.env.GEMINI_API_KEY; // stable alias for Gemini generative AI
 }
 
 // ── Startup secrets validation (fail fast with clear errors) ──────────────────

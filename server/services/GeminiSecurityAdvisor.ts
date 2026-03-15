@@ -61,13 +61,28 @@ interface SecurityAdvisory {
   reference: string | null;
 }
 
+/** Return the first candidate key that looks like a real API key (not a Replit placeholder) */
+function resolveGeminiKey(): string | null {
+  const DUMMY_PATTERN = /^_DUMMY|placeholder|fake|test_key/i;
+  // NOTE: server/index.ts sets GEMINI_AI_KEY as a stable alias for GEMINI_API_KEY
+  // to avoid conflicts with GOOGLE_API_KEY (Google Maps). Check GEMINI_AI_KEY first.
+  const candidates = [
+    process.env.GEMINI_AI_KEY,
+    process.env.GEMINI_API_KEY,
+    process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
+    process.env.GOOGLE_AI_API_KEY,
+  ];
+  for (const k of candidates) {
+    if (k && k.length > 16 && !DUMMY_PATTERN.test(k)) return k;
+  }
+  return null;
+}
+
 async function runSecurityCheck(): Promise<void> {
-  const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY
-    || process.env.GEMINI_API_KEY
-    || process.env.GOOGLE_AI_API_KEY;
+  const apiKey = resolveGeminiKey();
 
   if (!apiKey) {
-    logger.warn('[SecurityAdvisor] No Gemini API key found — skipping security check');
+    logger.warn('[SecurityAdvisor] No valid Gemini API key found — skipping security check (set GEMINI_API_KEY)');
     return;
   }
 

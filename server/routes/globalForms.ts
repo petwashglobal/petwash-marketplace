@@ -604,6 +604,9 @@ const quickBookingSchema = z.object({
   firstName: z.string().min(2), lastName: z.string().optional(),
   email: z.string().email(), phone: z.string().min(5),
   address: z.string().optional(), city: z.string().optional(),
+  // Israeli postal code (7 digits) + apartment/unit captured from Google Places autocomplete
+  postalCode: z.string().optional(),
+  apartment:  z.string().optional(),
   lat: z.number().optional(), lng: z.number().optional(),
   petName: z.string().optional(), petType: z.string().optional(),
   petSize: z.string().optional(), petBreed: z.string().optional(),
@@ -615,10 +618,16 @@ router.post('/quick-booking', async (req, res) => {
   try {
     const data = quickBookingSchema.parse(req.body);
     const bookingRef = `BK-${Date.now().toString(36).toUpperCase()}`;
+    // All address sub-fields stored in Sheets for full audit trail (§17b compliance)
     await GoogleSheetsService.appendToSheet('Quick Bookings', [
       new Date().toISOString(), bookingRef, data.platform, data.serviceType,
       data.date, data.time, data.firstName, data.email, data.phone,
-      data.city || '', data.petName || '', data.petSize || '', 'PENDING',
+      data.address || '',
+      data.apartment || '',
+      data.city || '',
+      data.postalCode || '',
+      String(data.lat ?? ''), String(data.lng ?? ''),
+      data.petName || '', data.petSize || '', 'PENDING',
     ]);
     res.json({ success: true, bookingRef });
     setImmediate(() => {
@@ -628,6 +637,8 @@ router.post('/quick-booking', async (req, res) => {
         firstName: data.firstName, lastName: data.lastName,
         email: data.email, phone: data.phone,
         address: data.address, city: data.city,
+        postalCode: data.postalCode,
+        apartment: data.apartment,
         petName: data.petName, petSize: data.petSize,
         specialRequests: data.specialRequests,
       }).catch(err => logger.warn('[GlobalForms] Booking orchestrator failed', err));
