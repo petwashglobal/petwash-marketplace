@@ -312,6 +312,14 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Track request metrics for performance monitoring
   app.use(trackRequestMetrics);
 
+  // ── Enhanced security headers (CSP, HSTS, X-Frame-Options, Permissions-Policy, FLoC opt-out)
+  const { enhancedSecurityHeaders } = await import('./middleware/securityHeaders');
+  app.use(enhancedSecurityHeaders);
+
+  // ── Gemini security intelligence advisor (CVE + advisory monitoring for all 3rd-party SDKs)
+  const { startSecurityAdvisor } = await import('./services/GeminiSecurityAdvisor');
+  startSecurityAdvisor();
+
   // Apply rate limiting - ORDER MATTERS!
   // Apply admin limiter to admin routes only
   app.use('/api/admin/', adminLimiter);

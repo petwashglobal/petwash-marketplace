@@ -39,7 +39,7 @@ export default function QuickBookingForm() {
   const [form, setForm] = useState({
     platform: '', serviceType: '',
     date: '', time: '',
-    address: '', city: '', lat: 0, lng: 0,
+    address: '', city: '', postalCode: '', apartment: '', lat: 0, lng: 0,
     firstName: '', lastName: '', email: '', phone: '',
     petName: '', petType: 'Dog', petSize: '', petBreed: '', petNotes: '',
     specialRequests: '',
@@ -192,9 +192,11 @@ export default function QuickBookingForm() {
                 value={form.address}
                 onChange={(v, d) => {
                   set('address', v);
-                  if (d?.city) set('city', d.city);
-                  if (d?.lat) set('lat', d.lat);
-                  if (d?.lng) set('lng', d.lng);
+                  if (d?.city)       set('city', d.city);
+                  if (d?.postalCode) set('postalCode', d.postalCode);
+                  if (d?.apartment)  set('apartment', d.apartment);
+                  if (d?.lat)        set('lat', d.lat);
+                  if (d?.lng)        set('lng', d.lng);
                 }}
                 placeholder="Search your address…"
                 country={['il']}

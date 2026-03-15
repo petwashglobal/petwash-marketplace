@@ -37,7 +37,8 @@ export type TransactionType =
   | "PROMO"
   | "ADMIN"
   | "REFUND"
-  | "PARTIAL_REFUND";
+  | "PARTIAL_REFUND"
+  | "CANCELLATION";   // Israeli law §17b — every cancellation must be stamped
 
 export type Currency = "ILS" | "USD" | "EUR" | "GBP" | "AUD" | "CAD";
 

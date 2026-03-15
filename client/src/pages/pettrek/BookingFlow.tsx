@@ -25,9 +25,15 @@ export default function PetTrekBookingFlow() {
   const [pickupAddress, setPickupAddress] = useState("");
   const [pickupLat, setPickupLat] = useState<number | null>(null);
   const [pickupLng, setPickupLng] = useState<number | null>(null);
+  const [pickupCity, setPickupCity] = useState("");
+  const [pickupPostalCode, setPickupPostalCode] = useState("");
+  const [pickupApartment, setPickupApartment] = useState("");
   const [dropoffAddress, setDropoffAddress] = useState("");
   const [dropoffLat, setDropoffLat] = useState<number | null>(null);
   const [dropoffLng, setDropoffLng] = useState<number | null>(null);
+  const [dropoffCity, setDropoffCity] = useState("");
+  const [dropoffPostalCode, setDropoffPostalCode] = useState("");
+  const [dropoffApartment, setDropoffApartment] = useState("");
   const [estimatedDistance, setEstimatedDistance] = useState(18); // km
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -101,9 +107,15 @@ export default function PetTrekBookingFlow() {
           pickupAddress,
           pickupLat,
           pickupLng,
+          pickupCity:       pickupCity       || undefined,
+          pickupPostalCode: pickupPostalCode || undefined,
+          pickupApartment:  pickupApartment  || undefined,
           dropoffAddress,
           dropoffLat,
           dropoffLng,
+          dropoffCity:       dropoffCity       || undefined,
+          dropoffPostalCode: dropoffPostalCode || undefined,
+          dropoffApartment:  dropoffApartment  || undefined,
           estimatedDistance,
           paymentMethod: getActivePaymentMethod(),
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -214,8 +226,11 @@ export default function PetTrekBookingFlow() {
                     value={pickupAddress}
                     onChange={(value, details) => {
                       setPickupAddress(value);
-                      if (details?.lat != null) setPickupLat(details.lat);
-                      if (details?.lng != null) setPickupLng(details.lng);
+                      if (details?.lat != null)  setPickupLat(details.lat);
+                      if (details?.lng != null)  setPickupLng(details.lng);
+                      if (details?.city)         setPickupCity(details.city);
+                      if (details?.postalCode)   setPickupPostalCode(details.postalCode);
+                      if (details?.apartment)    setPickupApartment(details.apartment);
                     }}
                     placeholder="רחוב, מספר, עיר"
                     country={['il', 'us', 'gb', 'au', 'ca']}
@@ -228,8 +243,11 @@ export default function PetTrekBookingFlow() {
                     value={dropoffAddress}
                     onChange={(value, details) => {
                       setDropoffAddress(value);
-                      if (details?.lat != null) setDropoffLat(details.lat);
-                      if (details?.lng != null) setDropoffLng(details.lng);
+                      if (details?.lat != null)  setDropoffLat(details.lat);
+                      if (details?.lng != null)  setDropoffLng(details.lng);
+                      if (details?.city)         setDropoffCity(details.city);
+                      if (details?.postalCode)   setDropoffPostalCode(details.postalCode);
+                      if (details?.apartment)    setDropoffApartment(details.apartment);
                     }}
                     placeholder="רחוב, מספר, עיר"
                     country={['il', 'us', 'gb', 'au', 'ca']}

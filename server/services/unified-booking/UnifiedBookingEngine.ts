@@ -526,6 +526,7 @@ export class UnifiedBookingEngine {
     cancelledByRole: Role,
     reason: string
   ): Promise<UnifiedBooking> {
+    const previousStatus = booking.status;
     booking.status = 'CANCELLED';
     booking.updatedAt = new Date();
 
@@ -542,16 +543,35 @@ export class UnifiedBookingEngine {
 
       await eventLogService.logStatusChange({
         bookingId: booking.id,
-        previousStatus: booking.status,
+        previousStatus,
         newStatus: 'CANCELLED',
         changedBy: cancelledBy,
         changedByRole: cancelledByRole,
         reason
       });
 
-      logger.info('[UnifiedBooking] Cancelled', {
+      // ── §17b MANDATORY CANCELLATION STAMP ─────────────────────────────────
+      // Israeli Consumer Protection Law requires every cancellation to be
+      // permanently recorded in the immutable transaction ledger, even when
+      // no money changes hands.  The stamp preserves: who cancelled, when,
+      // why, and the full service address captured at booking time.
+      const platformData = (booking as any).platformData as Record<string, any> | undefined;
+      await transactionStampService.stampCancellation({
         bookingId: booking.id,
-        reason
+        cancelledBy,
+        cancelledByRole,
+        reason,
+        originalServiceTime: booking.startTime?.toISOString?.() ?? undefined,
+        serviceAddress:    platformData?.serviceAddress    ?? platformData?.address    ?? undefined,
+        serviceCity:       platformData?.serviceCity       ?? platformData?.city       ?? undefined,
+        servicePostalCode: platformData?.servicePostalCode ?? platformData?.postalCode ?? undefined,
+      });
+
+      logger.info('[UnifiedBooking] Cancelled + stamped (§17b)', {
+        bookingId: booking.id,
+        cancelledBy,
+        cancelledByRole,
+        reason,
       });
 
       return booking;

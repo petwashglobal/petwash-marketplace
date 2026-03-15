@@ -85,6 +85,26 @@ const placesAutocompleteLimiter = rateLimit({
   },
 });
 
+// ── Details rate limiter — one place lookup per autocomplete selection ────────
+// Details should only be called once per selected prediction; 20/min per IP
+// is generous for normal use while blocking enumeration scraping.
+const placesDetailsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.ip || 'unknown',
+  validate: { xForwardedForHeader: false, ip: false, default: false },
+  handler: (req, res) => {
+    logger.warn('[Places Proxy] Details rate limit HIT - possible place enumeration', {
+      ip: req.ip,
+      origin: req.headers['origin'],
+      userAgent: (req.headers['user-agent'] as string)?.substring(0, 80),
+    });
+    res.status(429).json({ error: 'Too many address lookups, please slow down', reasonCode: 'DETAILS_RATE_LIMITED' });
+  },
+});
+
 // ── Fix 4: Per-session rate limiter (second limiter keyed by session UUID) ────
 // Limits one browser session to 50 req/min regardless of IP rotation.
 const placesSessionLimiter = rateLimit({
@@ -360,7 +380,7 @@ router.get('/places-autocomplete', placesAutocompleteLimiter, placesSessionLimit
  * Returns structured address components for form auto-fill.
  * Uses Places API v1 (X-Goog-FieldMask + X-Goog-Places-Session-Token) to close billing session.
  */
-router.get('/places-details', async (req, res) => {
+router.get('/places-details', placesDetailsLimiter, async (req, res) => {
   const traceId = randomUUID().slice(0, 12);
   try {
     const { placeId, language } = req.query;
@@ -461,7 +481,7 @@ router.get('/places-details', async (req, res) => {
  * GET /api/google/reverse-geocode - Convert GPS coordinates to a human-readable location name
  * Used by the "Use my location" button to show real address instead of hardcoded text
  */
-router.get('/reverse-geocode', async (req, res) => {
+router.get('/reverse-geocode', placesDetailsLimiter, async (req, res) => {
   const traceId = randomUUID().slice(0, 12);
   try {
     const { lat, lng, language } = req.query;

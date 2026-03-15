@@ -160,6 +160,47 @@ export class TransactionStampService {
       stampedBy: params.stampedBy
     });
   }
+
+  /**
+   * Stamp a cancellation event — MANDATORY under Israeli Consumer Protection Law §17b
+   * Every cancellation (user or provider-initiated) must be permanently recorded.
+   * Amount = 0 (no charge at stamp time; refund, if any, is a separate REFUND stamp).
+   */
+  async stampCancellation(params: {
+    bookingId: string;
+    cancelledBy: string;
+    cancelledByRole: string;
+    reason: string;
+    /** ISO-8601 timestamp of the original booking date/time, for law compliance */
+    originalServiceTime?: string;
+    /** Service address captured at booking time — preserved even after cancellation */
+    serviceAddress?: string;
+    serviceCity?: string;
+    servicePostalCode?: string;
+  }): Promise<UnifiedTransaction> {
+    const txn = await this.stamp({
+      bookingId: params.bookingId,
+      amount: 0,
+      type: 'CANCELLATION',
+      provider: 'SYSTEM',
+      providerRef: `cancelled_by:${params.cancelledBy}|role:${params.cancelledByRole}|reason:${params.reason.slice(0, 120)}`,
+      stampedBy: params.cancelledBy,
+    });
+
+    logger.info('[TransactionStamp] Cancellation stamped (§17b compliance)', {
+      transactionId: txn.id,
+      bookingId: params.bookingId,
+      cancelledBy: params.cancelledBy,
+      cancelledByRole: params.cancelledByRole,
+      reason: params.reason,
+      originalServiceTime: params.originalServiceTime,
+      serviceAddress: params.serviceAddress,
+      serviceCity: params.serviceCity,
+      servicePostalCode: params.servicePostalCode,
+    });
+
+    return txn;
+  }
 }
 
 export const transactionStampService = new TransactionStampService();

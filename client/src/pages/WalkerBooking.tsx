@@ -61,6 +61,9 @@ export default function WalkerBooking() {
   const [pickupAddress, setPickupAddress] = useState<string>('');
   const [pickupLat, setPickupLat] = useState<string>('');
   const [pickupLon, setPickupLon] = useState<string>('');
+  const [pickupCity, setPickupCity] = useState<string>('');
+  const [pickupPostalCode, setPickupPostalCode] = useState<string>('');
+  const [pickupApartment, setPickupApartment] = useState<string>('');
   const [petName, setPetName] = useState<string>('');
   const [petBreed, setPetBreed] = useState<string>('');
   const [petWeight, setPetWeight] = useState<string>('');
@@ -150,6 +153,9 @@ export default function WalkerBooking() {
       pickupLatitude: parseFloat(pickupLat),
       pickupLongitude: parseFloat(pickupLon),
       pickupAddress,
+      pickupCity:       pickupCity       || undefined,
+      pickupPostalCode: pickupPostalCode || undefined,
+      pickupApartment:  pickupApartment  || undefined,
       petName,
       petBreed,
       petWeight: petWeight ? parseFloat(petWeight) : null,
@@ -359,6 +365,9 @@ export default function WalkerBooking() {
                           setPickupLat(details.lat.toString());
                           setPickupLon(details.lng.toString());
                         }
+                        if (details?.city)       setPickupCity(details.city);
+                        if (details?.postalCode) setPickupPostalCode(details.postalCode);
+                        if (details?.apartment)  setPickupApartment(details.apartment);
                       }}
                       placeholder={t('booking.location.enterAddress')}
                       country={['il', 'us', 'gb', 'au', 'ca']}
