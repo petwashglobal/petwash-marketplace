@@ -619,8 +619,9 @@ router.post('/quick-booking', async (req, res) => {
     const data = quickBookingSchema.parse(req.body);
     const bookingRef = `BK-${Date.now().toString(36).toUpperCase()}`;
     // All address sub-fields stored in Sheets for full audit trail (§17b compliance)
+    // NOTE: appendFormSubmissionDirect auto-prepends a timestamp — do not include one here.
     await GoogleSheetsService.appendToSheet('Quick Bookings', [
-      new Date().toISOString(), bookingRef, data.platform, data.serviceType,
+      bookingRef, data.platform, data.serviceType,
       data.date, data.time, data.firstName, data.email, data.phone,
       data.address || '',
       data.apartment || '',

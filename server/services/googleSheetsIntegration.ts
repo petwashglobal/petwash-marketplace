@@ -223,7 +223,9 @@ const SHEET_HEADERS: Record<string, string[]> = {
   ],
   [SHEETS.QUICK_BOOKINGS]: [
     'Timestamp', 'Booking Ref', 'Platform', 'Service Type', 'Date', 'Time',
-    'First Name', 'Email', 'Phone', 'City', 'Pet Name', 'Pet Size', 'Status'
+    'First Name', 'Email', 'Phone',
+    'Street Address', 'Apartment', 'City', 'Postal Code', 'Lat', 'Lng',
+    'Pet Name', 'Pet Size', 'Status'
   ],
   [SHEETS.LEGAL_AGREEMENTS]: [
     'Timestamp', 'Signature ID', 'Agreement ID', 'Version', 'Full Name',
