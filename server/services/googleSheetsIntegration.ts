@@ -278,8 +278,9 @@ async function getUncachableGoogleSheetsClient() {
     ? 'depl ' + process.env.WEB_REPL_RENEWAL
     : null;
 
-  if (!xReplitToken) {
-    throw new Error('Google Sheets: no service account credentials and no Replit connector token available');
+  if (!xReplitToken || !hostname) {
+    logger.warn('[GoogleSheets] Replit connector not available — Google Sheets integration disabled. Configure GOOGLE_SERVICE_ACCOUNT_JSON for Cloud Run.');
+    return null;
   }
 
   if (!connectionSettings || !connectionSettings.settings?.expires_at || new Date(connectionSettings.settings.expires_at).getTime() <= Date.now()) {

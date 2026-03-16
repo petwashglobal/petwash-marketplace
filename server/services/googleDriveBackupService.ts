@@ -40,6 +40,9 @@ async function getAuthClient() {
   
   // Development: Use Replit Connectors OAuth flow
   const accessToken = await getAccessTokenFromReplit();
+  if (!accessToken) {
+    throw new Error('Google Drive auth not available — no service account and no Replit connector. Drive backup is disabled in this environment.');
+  }
   const oauth2Client = new google.auth.OAuth2();
   oauth2Client.setCredentials({ access_token: accessToken });
   return oauth2Client;
@@ -58,7 +61,8 @@ async function getAccessTokenFromReplit() {
     : null;
 
   if (!xReplitToken || !hostname) {
-    throw new Error('Replit connector tokens not available - use service account in production');
+    logger.warn('[GoogleDriveBackup] Replit connector not available — Google Drive backup disabled. Configure GOOGLE_SERVICE_ACCOUNT_JSON for Cloud Run.');
+    return null;
   }
 
   connectionSettings = await fetch(

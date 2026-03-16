@@ -9,17 +9,19 @@ import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import { logger } from './lib/logger';
 
-if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
+// Replit OAuth is optional — only active inside the Replit runtime environment.
+// When REPLIT_DOMAINS is absent (Cloud Run, Docker, CI) the module loads safely
+// and setupAuth() becomes a no-op. All other auth mechanisms (Firebase, etc.) continue.
+const REPLIT_DOMAINS = process.env.REPLIT_DOMAINS;
+
+if (!REPLIT_DOMAINS) {
+  logger.warn('[ReplitAuth] REPLIT_DOMAINS not set — Replit OAuth disabled. Firebase auth is the active identity provider.');
 }
 
-// Configure domains for Firebase Hosting (pointing to 199.36.158.100)
 const authorizedDomains = [
   "petwash.co.il",
   "www.petwash.co.il"
 ].filter(Boolean);
-
-logger.info('PRODUCTION AUTH - A Record Domains:', authorizedDomains);
 
 const getOidcConfig = memoize(
   async () => {
@@ -32,7 +34,7 @@ const getOidcConfig = memoize(
 );
 
 export function getSession() {
-  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  const sessionTtl = 7 * 24 * 60 * 60 * 1000;
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
@@ -65,9 +67,7 @@ function updateUserSession(
   user.expires_at = user.claims?.exp;
 }
 
-async function upsertUser(
-  claims: any,
-) {
+async function upsertUser(claims: any) {
   await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
@@ -83,6 +83,28 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Replit OAuth only available inside Replit runtime
+  if (!REPLIT_DOMAINS) {
+    logger.info('[ReplitAuth] Skipping Replit OAuth setup — not running in Replit environment.');
+
+    // Register stub routes so /api/login, /api/callback, /api/logout don't 404
+    app.get("/api/login", (_req, res) => {
+      res.status(503).json({ error: 'Replit OAuth not available in this environment. Use Firebase authentication.' });
+    });
+    app.get("/api/callback", (_req, res) => {
+      res.redirect('/');
+    });
+    app.get("/api/logout", (_req, res) => {
+      res.redirect('/');
+    });
+
+    passport.serializeUser((user: Express.User, cb) => cb(null, user));
+    passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+    return;
+  }
+
+  logger.info('[ReplitAuth] Registering Replit OAuth strategies', { authorizedDomains });
+
   const config = await getOidcConfig();
 
   const verify: VerifyFunction = async (
@@ -95,8 +117,6 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
-  logger.info('PRODUCTION AUTH - A Record Domains:', authorizedDomains);
-  
   for (const domain of authorizedDomains) {
     const strategy = new Strategy(
       {

@@ -21,6 +21,7 @@ import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
 import bookingLifecycleService from '../services/BookingLifecycleService';
 import { EmailService } from '../emailService';
+import { NayaxOnlinePaymentService } from '../services/NayaxOnlinePaymentService';
 
 const router = Router();
 
@@ -367,42 +368,51 @@ router.post('/:quoteId/checkout', async (req, res) => {
       });
     }
 
-    // In production, we would generate a Nayax payment URL here
-    // For now, return demo mode response
-    const isNayaxConfigured = process.env.NAYAX_API_KEY && process.env.NAYAX_MERCHANT_ID;
-    
-    if (isNayaxConfigured) {
-      // TODO: Generate real Nayax payment URL
-      // const paymentUrl = await nayaxService.createPaymentSession({
-      //   amountCents: quote.totalCents,
-      //   bookingId,
-      //   returnUrl: `${process.env.APP_URL}/bookings/${bookingId}/success`,
-      //   cancelUrl: `${process.env.APP_URL}/bookings/${bookingId}/cancel`
-      // });
-      return res.json({
-        success: true,
+    // Generate Nayax payment session (real or demo depending on env vars)
+    const customerName = customer
+      ? `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || customer.displayName
+      : undefined;
+
+    const paymentSession = await NayaxOnlinePaymentService.createPaymentSession({
+      bookingId,
+      bookingNumber,
+      amountCents: quote.totalCents || 0,
+      currency: 'ILS',
+      customerEmail: customer?.email,
+      customerName: customerName || undefined,
+      description: `PetWash™ ${platformName} — ${providerName} — הזמנה ${bookingNumber}`,
+    });
+
+    if (!paymentSession.success) {
+      logger.error('[MarketplaceBookings] Payment session creation failed', {
+        bookingId,
+        error: paymentSession.error,
+      });
+      return res.status(502).json({
+        success: false,
+        error: 'Failed to create payment session. Please try again.',
         bookingId,
         bookingNumber,
         invoiceNumber,
-        paymentUrl: `/payment/nayax/${bookingId}` // Placeholder
       });
     }
 
-    // Demo mode - booking created without payment
-    logger.info('[MarketplaceBookings] Checkout completed (demo mode)', { 
-      bookingId,
-      bookingNumber,
-      quoteId,
-      userId,
-      invoiceNumber
-    });
-
-    res.json({ 
-      success: true, 
+    const mode = paymentSession.demoMode ? 'demo' : 'live';
+    logger.info(`[MarketplaceBookings] Checkout complete — payment session created (${mode})`, {
       bookingId,
       bookingNumber,
       invoiceNumber,
-      message: 'Booking created successfully (demo mode - payment skipped)'
+      paymentMode: mode,
+    });
+
+    res.json({
+      success: true,
+      bookingId,
+      bookingNumber,
+      invoiceNumber,
+      paymentUrl: paymentSession.paymentUrl,
+      paymentSessionId: paymentSession.sessionId,
+      paymentMode: mode,
     });
 
   } catch (error: any) {

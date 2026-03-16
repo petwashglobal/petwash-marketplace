@@ -16,7 +16,8 @@ async function getAccessToken() {
     : null;
 
   if (!xReplitToken || !hostname) {
-    throw new Error('Calendar connector not available');
+    logger.warn('[CalendarIntegration] Replit connector not available — Google Calendar integration disabled. Configure GOOGLE_SERVICE_ACCOUNT_JSON for Cloud Run.');
+    return null;
   }
 
   connectionSettings = await fetch(
@@ -32,13 +33,14 @@ async function getAccessToken() {
   const accessToken = connectionSettings?.settings?.access_token || connectionSettings?.settings?.oauth?.credentials?.access_token;
 
   if (!connectionSettings || !accessToken) {
-    throw new Error('Google Calendar not connected');
+    return null;
   }
   return accessToken;
 }
 
 async function getCalendarClient() {
   const accessToken = await getAccessToken();
+  if (!accessToken) return null;
   const oauth2Client = new google.auth.OAuth2();
   oauth2Client.setCredentials({ access_token: accessToken });
   return google.calendar({ version: 'v3', auth: oauth2Client });

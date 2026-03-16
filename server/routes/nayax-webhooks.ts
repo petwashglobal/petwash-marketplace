@@ -20,9 +20,10 @@ import crypto from 'crypto';
 import { logger } from '../lib/logger';
 import PaymentGatewayService, { type WebhookPayload } from '../services/PaymentGatewayService';
 import { db } from '../db';
-import { paymentIntents } from '@shared/schema';
+import { paymentIntents, bookings, bookingStatusHistory } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { createIPAllowlist } from '../middleware/ipAllowlist';
+import { NayaxOnlinePaymentService } from '../services/NayaxOnlinePaymentService';
 
 const router = express.Router();
 
@@ -311,6 +312,123 @@ router.post(
     } catch (error) {
       logger.error('[NayaxWebhook] Refund error', error);
       res.status(500).json({ error: 'Refund processing failed' });
+    }
+  }
+);
+
+/**
+ * POST /api/webhooks/nayax/payment
+ *
+ * Handles online payment confirmation from Nayax hosted payment pages.
+ * Called by NayaxOnlinePaymentService.createPaymentSession() return flow.
+ *
+ * Payload (JSON):
+ *   event        — "payment.success" | "payment.failed" | "payment.pending"
+ *   sessionId    — Nayax session ID
+ *   bookingId    — PetWash booking UUID
+ *   transactionId — Nayax transaction reference
+ *   amountCents  — Amount charged in agorot
+ *   currency     — "ILS"
+ *   timestamp    — ISO 8601
+ *
+ * Security: HMAC-SHA256 via X-Nayax-Signature header (NAYAX_WEBHOOK_SECRET).
+ *           When secret is not set the signature check is skipped (dev/demo mode).
+ */
+router.post(
+  '/nayax/payment',
+  captureRawBody,
+  async (req, res) => {
+    try {
+      // captureRawBody stores raw bytes — parse to string and then JSON
+      const rawBodyBuffer: Buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
+      const rawBody = rawBodyBuffer.toString('utf8');
+
+      // Parse JSON body for handler use
+      let parsedBody: any;
+      try {
+        parsedBody = JSON.parse(rawBody);
+      } catch {
+        return res.status(400).json({ error: 'Invalid JSON payload' });
+      }
+
+      const signature = (req.headers['x-nayax-signature'] as string) || '';
+
+      if (signature && !NayaxOnlinePaymentService.verifyWebhookSignature(rawBody, signature)) {
+        logger.warn('[NayaxPaymentWebhook] Invalid signature — request rejected');
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+
+      const payload = parsedBody as {
+        event: string;
+        sessionId: string;
+        bookingId: string;
+        transactionId: string;
+        amountCents: number;
+        currency: string;
+        timestamp: string;
+      };
+
+      logger.info('[NayaxPaymentWebhook] Online payment event received', {
+        event: payload.event,
+        bookingId: payload.bookingId,
+        transactionId: payload.transactionId,
+        amountCents: payload.amountCents,
+      });
+
+      if (!payload.bookingId) {
+        return res.status(400).json({ error: 'Missing bookingId in webhook payload' });
+      }
+
+      if (payload.event === 'payment.success') {
+        // Update booking status to pending provider confirmation
+        await db
+          .update(bookings)
+          .set({
+            status: 'pending_confirmation',
+            updatedAt: new Date(),
+            platformData: parsedBody._platformData || undefined,
+          } as any)
+          .where(eq(bookings.id, payload.bookingId));
+
+        // Record status change in history
+        await db.insert(bookingStatusHistory).values({
+          bookingId: payload.bookingId,
+          fromStatus: 'pending_payment' as any,
+          toStatus: 'pending_confirmation' as any,
+          changedBy: 'nayax_webhook',
+          reason: `Nayax payment confirmed — txId: ${payload.transactionId}`,
+          metadata: {
+            nayaxTransactionId: payload.transactionId,
+            nayaxSessionId: payload.sessionId,
+            amountCents: payload.amountCents,
+            currency: payload.currency,
+            webhookTimestamp: payload.timestamp,
+          },
+        });
+
+        logger.info('[NayaxPaymentWebhook] Booking updated to pending_confirmation', {
+          bookingId: payload.bookingId,
+          transactionId: payload.transactionId,
+        });
+
+      } else if (payload.event === 'payment.failed') {
+        await db
+          .update(bookings)
+          .set({ status: 'payment_failed', updatedAt: new Date() } as any)
+          .where(eq(bookings.id, payload.bookingId));
+
+        logger.warn('[NayaxPaymentWebhook] Payment failed — booking marked payment_failed', {
+          bookingId: payload.bookingId,
+        });
+      }
+
+      // Always return 200 to prevent Nayax retries for handled events
+      return res.status(200).json({ received: true, bookingId: payload.bookingId });
+
+    } catch (error: any) {
+      logger.error('[NayaxPaymentWebhook] Unhandled error', { error: error.message });
+      // Return 500 so Nayax retries
+      return res.status(500).json({ error: 'Internal server error' });
     }
   }
 );

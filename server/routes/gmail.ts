@@ -8,7 +8,7 @@ const router = Router();
 // Replit connector - Gmail OAuth token management
 let connectionSettings: any;
 
-async function getGmailAccessToken(): Promise<string> {
+async function getGmailAccessToken(): Promise<string | null> {
   if (connectionSettings && connectionSettings.settings?.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
     return connectionSettings.settings.access_token;
   }
@@ -20,8 +20,9 @@ async function getGmailAccessToken(): Promise<string> {
     ? 'depl ' + process.env.WEB_REPL_RENEWAL
     : null;
 
-  if (!xReplitToken) {
-    throw new Error('Replit connector token not available');
+  if (!xReplitToken || !hostname) {
+    logger.warn('[Gmail] Replit connector not available — Gmail integration requires REPLIT_CONNECTORS_HOSTNAME. Configure Google OAuth credentials for Cloud Run.');
+    return null;
   }
 
   connectionSettings = await fetch(
@@ -44,6 +45,7 @@ async function getGmailAccessToken(): Promise<string> {
 
 async function getUncachableGmailClient() {
   const accessToken = await getGmailAccessToken();
+  if (!accessToken) return null;
   const oauth2Client = new google.auth.OAuth2();
   oauth2Client.setCredentials({ access_token: accessToken });
   return google.gmail({ version: 'v1', auth: oauth2Client });
@@ -52,6 +54,10 @@ async function getUncachableGmailClient() {
 export async function sendViaGmail(opts: { to: string; subject: string; html: string }): Promise<boolean> {
   try {
     const gmail = await getUncachableGmailClient();
+    if (!gmail) {
+      logger.warn('[Gmail] sendViaGmail skipped — connector not available in this environment');
+      return false;
+    }
     const rawMessage = [
       `To: ${opts.to}`,
       `Subject: ${opts.subject}`,

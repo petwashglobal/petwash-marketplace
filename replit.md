@@ -73,6 +73,42 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **CI/CD Pipeline**: Automated GitHub Actions deployment (`.github/workflows/petwash-ci.yml`) with a 5-guard protection system.
 - **CRITICAL DEPLOYMENT RULE**: Replit URLs are for development only and must not be connected to production domains. Production domains point to Firebase Hosting.
 
+### Stabilization Changes (March 2026)
+Addresses Phase 1 of the formal stabilization plan:
+
+**Fixed: Duplicate API route** — `GET /api/locations` was registered twice in routes.ts (lines 4033 + 8829). The dead copy at 8829 (which used `super-app-schema` DB join) was removed. The live route at 4033 (using `stationsService.getAllStations()`) remains.
+
+**Fixed: replitAuth.ts startup crash** — The module previously threw `Error("REPLIT_DOMAINS not provided")` at import time, crashing the server on Cloud Run/Docker. Now gracefully disables Replit OAuth with a warning and registers 503 stub routes for `/api/login`, `/api/callback`, `/api/logout`. Firebase Auth is the production identity provider.
+
+**Fixed: Replit connector graceful degradation** — Five services used `REPLIT_CONNECTORS_HOSTNAME` + `X_REPLIT_TOKEN` to proxy Google APIs and would crash requests in non-Replit environments:
+  - `server/routes/gmail.ts` — `getGmailAccessToken()` now returns `null` (logs warning, `sendViaGmail` returns `false`)
+  - `server/services/CalendarIntegrationService.ts` — returns `null`, caller methods return `null`/`false`
+  - `server/services/GoogleCalendarIntegrationService.ts` — returns `null`
+  - `server/services/googleSheetsIntegration.ts` — returns `null`
+  - `server/services/googleDriveBackupService.ts` — throws descriptive error (caught by existing try-catch in backup routes)
+  - Added `server/lib/replitConnector.ts` — shared utility for Replit connector auth with clear Cloud Run migration docs.
+
+**Fixed: Marketplace booking payment (Blocker 1)** — The checkout endpoint had a `TODO: Generate real Nayax payment URL` comment and returned a hardcoded placeholder path. Now:
+  - `server/services/NayaxOnlinePaymentService.ts` — new service for hosted Nayax payment pages. Calls `https://api.nayax.com/online-payment/v1/sessions`. HMAC-SHA256 webhook verification. Demo mode when `NAYAX_API_KEY` + `NAYAX_MERCHANT_ID` absent.
+  - `server/routes/marketplace-bookings.ts` — checkout endpoint now calls `NayaxOnlinePaymentService.createPaymentSession()` and returns real `paymentUrl` + `paymentSessionId`.
+  - `server/routes/nayax-webhooks.ts` — added `POST /api/webhooks/nayax/payment` handler. Verifies signature, updates booking to `pending_confirmation` on success, records status history.
+
+**Required env vars for live marketplace payments:**
+```
+NAYAX_API_KEY         — merchant API key
+NAYAX_MERCHANT_ID     — merchant account ID
+NAYAX_WEBHOOK_SECRET  — HMAC secret for webhook verification (optional, strongly recommended for production)
+NAYAX_ONLINE_API_URL  — (optional) override, default: https://api.nayax.com/online-payment/v1
+APP_URL               — public base URL (e.g. https://petwash.co.il)
+```
+
+**For Cloud Run deployment (replace Replit connectors):**
+```
+GOOGLE_SERVICE_ACCOUNT_JSON  — Google service account JSON for Drive/Sheets/Docs backup
+GOOGLE_CLIENT_ID             — OAuth client ID for Gmail integration
+GOOGLE_CLIENT_SECRET         — OAuth client secret for Gmail integration
+```
+
 ### Core Features & Design Decisions
 - **Frontend**: React 18, TypeScript, Wouter, TanStack Query, shadcn/ui (Radix UI), Tailwind CSS, Vite. Emphasizes responsive, mobile-first, luxury design with glassmorphism and Apple-style animations, supporting bilingual direction-aware layouts. iOS PWA support is included.
 - **Backend**: Node.js, Express.js, Neon serverless PostgreSQL with Drizzle ORM, Redis caching.
