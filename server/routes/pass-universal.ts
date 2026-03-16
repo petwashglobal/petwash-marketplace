@@ -134,8 +134,12 @@ router.get('/:token', async (req: Request, res: Response) => {
 </body>
 </html>`);
   } catch (err: any) {
-    if (err?.message === 'TOKEN_EXPIRED') return res.status(410).send('<h2>Link expired — please request a new one from the PetWash app</h2>');
-    if (err?.message === 'INVALID_SIGNATURE') return res.status(403).send('<h2>Invalid link</h2>');
+    const msg = err?.message || '';
+    if (msg === 'TOKEN_EXPIRED')               return res.status(410).send('<h2>Link expired — please request a new one from the PetWash app</h2>');
+    if (msg === 'INVALID_SIGNATURE')           return res.status(403).send('<h2>Invalid link</h2>');
+    if (msg === 'INVALID_TOKEN_FORMAT')        return res.status(403).send('<h2>Invalid link</h2>');
+    if (msg === 'INVALID_PURPOSE')             return res.status(403).send('<h2>Invalid link</h2>');
+    if (msg === 'TOKEN_SECRET_NOT_CONFIGURED') return res.status(503).json({ ok: false, error: 'PASS_LINK_SECRET not configured on server' });
     logger.error('[PassUniversal] Universal link error', { err });
     return res.status(500).send('Internal error');
   }
