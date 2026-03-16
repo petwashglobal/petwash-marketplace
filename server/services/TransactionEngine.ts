@@ -80,6 +80,66 @@ function getVerticalConfig(vertical: string): VerticalConfig {
   };
 }
 
+// ── Document Requirements (Spec Sections 3–8) ────────────────────────────────
+//
+// These rules are the core legal logic of the Israeli spec.
+// Every transaction type has a fixed set of required documents.
+// NEVER deviate from this table without legal approval.
+//
+// Section 3: DIRECT_MACHINE_PAYMENT → vat_required=true,  invoice_required=true
+// Section 4: WALLET_TOPUP           → vat_required=false, receipt_required=true
+// Section 5: WALLET_USAGE           → vat_required=true,  invoice_required=true
+// Section 6: GIFT_PURCHASE          → vat_required=false, receipt_required=true
+// Section 7: GIFT_REDEEM            → vat_required=true,  invoice_required=true
+// Section 8: PROVIDER_SERVICE       → vat_required=true,  dual invoices required
+
+export interface DocumentRequirements {
+  vatRequired: boolean;        // VAT event occurs now — issue חשבונית מס
+  invoiceRequired: boolean;    // Tax invoice must be issued to customer
+  receiptRequired: boolean;    // Simple receipt issued (no VAT event — stored value)
+  commissionInvoiceRequired: boolean; // Pet Wash issues commission invoice TO provider
+}
+
+export function getDocumentRequirements(transactionType: string): DocumentRequirements {
+  switch (transactionType) {
+
+    // ── VAT NOW — tax invoice to customer ───────────────────────────────────
+    case TRANSACTION_TYPES.MACHINE_DIRECT_SALE:
+    case TRANSACTION_TYPES.WALLET_REDEEM_K9000:
+    case TRANSACTION_TYPES.WALLET_REDEEM_ONLINE:
+    case TRANSACTION_TYPES.WALLET_REDEMPTION:
+    case TRANSACTION_TYPES.DIRECT_PLATFORM_SALE:
+      return { vatRequired: true, invoiceRequired: true, receiptRequired: false, commissionInvoiceRequired: false };
+
+    // ── VAT NOW + commission invoice (provider booking) ─────────────────────
+    case TRANSACTION_TYPES.PROVIDER_BOOKING_CHARGE:
+    case TRANSACTION_TYPES.MARKETPLACE_BOOKING:
+      return { vatRequired: true, invoiceRequired: true, receiptRequired: false, commissionInvoiceRequired: true };
+
+    // ── NO VAT NOW — stored value / deferred liability ───────────────────────
+    // Receipt issued; VAT event fires at redemption
+    case TRANSACTION_TYPES.WALLET_TOPUP:
+    case TRANSACTION_TYPES.EGIFT_SALE:
+      return { vatRequired: false, invoiceRequired: false, receiptRequired: true, commissionInvoiceRequired: false };
+
+    // ── Other types — no customer-facing document ────────────────────────────
+    default:
+      return { vatRequired: false, invoiceRequired: false, receiptRequired: false, commissionInvoiceRequired: false };
+  }
+}
+
+// ── Spec-compatible transaction type aliases ──────────────────────────────────
+// The attached spec uses different names — map them for callers that follow the spec doc.
+export const SPEC_TRANSACTION_TYPE = {
+  DIRECT_MACHINE_PAYMENT: TRANSACTION_TYPES.MACHINE_DIRECT_SALE,
+  WALLET_USAGE:           TRANSACTION_TYPES.WALLET_REDEEM_K9000,
+  GIFT_PURCHASE:          TRANSACTION_TYPES.EGIFT_SALE,
+  GIFT_REDEEM:            TRANSACTION_TYPES.WALLET_REDEEM_ONLINE,
+  PROVIDER_SERVICE:       TRANSACTION_TYPES.PROVIDER_BOOKING_CHARGE,
+  PROVIDER_COMMISSION:    TRANSACTION_TYPES.PROVIDER_COMMISSION,
+  WALLET_TOPUP:           TRANSACTION_TYPES.WALLET_TOPUP,
+} as const;
+
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 
 /** Round to 2 decimal places (for display / storage pre-conversion) */
@@ -187,6 +247,9 @@ export async function processK9000DirectSale(params: FlowAParams): Promise<Payme
     vatRate: String(ISRAELI_VAT_RATE),
     vatMode: null,
     requiresProviderTaxInvoice: false,
+    paymentMethod: 'nayax_terminal',
+    paymentProcessor: 'nayax',
+    walletUsed: false,
     nayaxTransactionId: params.nayaxTransactionId,
     status: 'settled',
     settledAt: new Date(),
@@ -268,6 +331,9 @@ export async function processWalletTopUp(params: FlowBParams): Promise<PaymentRe
     vatRate: String(ISRAELI_VAT_RATE),
     vatMode: 'deferred_liability',
     requiresProviderTaxInvoice: false,
+    paymentMethod: 'nayax_terminal',
+    paymentProcessor: 'nayax',
+    walletUsed: false,
     nayaxTransactionId: params.nayaxTransactionId ?? null,
     walletLedgerEntryId: walletResult.txnId,
     status: 'credited_to_wallet',
@@ -360,6 +426,9 @@ export async function processWalletRedeemK9000(params: FlowCParams): Promise<Pay
     vatRate: String(ISRAELI_VAT_RATE),
     vatMode: 'deferred_liability',
     requiresProviderTaxInvoice: false,
+    paymentMethod: 'wallet',
+    paymentProcessor: 'internal',
+    walletUsed: true,
     bookingId: params.bookingId ?? null,
     walletLedgerEntryId: deduction.txnId,
     status: 'consumed',
@@ -484,6 +553,9 @@ export async function processProviderBooking(params: FlowDParams): Promise<Provi
     vatRate: String(ISRAELI_VAT_RATE),
     vatMode: config.vatMode,
     requiresProviderTaxInvoice,
+    paymentMethod: 'nayax_terminal',
+    paymentProcessor: 'nayax',
+    walletUsed: false,
     bookingId: params.bookingId,
     nayaxTransactionId: params.nayaxTransactionId ?? null,
     status: 'captured',

@@ -67,12 +67,27 @@ export const pwPayments = pgTable("pw_payments", {
   vatMode: varchar("vat_mode"),
   requiresProviderTaxInvoice: boolean("requires_provider_tax_invoice").notNull().default(false),
 
-  // ── References ──────────────────────────────────────────────────────────────
+  // ── Payment instrument (Section 10 spec) ────────────────────────────────────
+  /** credit_card | debit_card | wallet | egift | cash | nayax_nfc */
+  paymentMethod: varchar("payment_method"),
+  /** nayax | stripe | manual — defaults nayax per spec Section 9 */
+  paymentProcessor: varchar("payment_processor").default("nayax"),
+  /** true when any portion was covered by wallet/egift balance */
+  walletUsed: boolean("wallet_used").notNull().default(false),
+
+  // ── Invoice & receipt references (Section 10 spec) ───────────────────────────
+  /** חשבונית מס / tax invoice ID — issued when vat_required = true */
+  invoiceId: varchar("invoice_id"),
+  /** receipt ID — issued for WALLET_TOPUP and GIFT_PURCHASE (no VAT) */
+  receiptId: varchar("receipt_id"),                            // digital_receipts.receipt_number
+  /** Platform commission invoice issued TO provider (Section 8 Model B) */
+  commissionInvoiceId: varchar("commission_invoice_id"),
+
+  // ── Other references ─────────────────────────────────────────────────────────
   bookingId: varchar("booking_id"),
   nayaxTransactionId: varchar("nayax_transaction_id"),
   walletLedgerEntryId: varchar("wallet_ledger_entry_id"),
   generalLedgerEntryId: varchar("general_ledger_entry_id"),
-  receiptId: varchar("receipt_id"),                             // digital_receipts.receipt_number
 
   // ── State machine ────────────────────────────────────────────────────────────
   /**
@@ -128,12 +143,22 @@ export const pwProviderPayouts = pgTable("pw_provider_payouts", {
   commissionCents: integer("commission_cents").notNull(),       // Platform commission deducted
   commissionRate: varchar("commission_rate").notNull(),         // e.g. "0.15"
 
-  // ── Provider tax invoice requirement ────────────────────────────────────────
-  /** True if provider must issue PetWash a tax invoice (חשבונית מס) */
+  // ── Invoice tracking — Section 8 Model B dual-invoice requirement ────────────
+  /**
+   * Invoice 1: Provider → Pet Wash (provider's service invoice)
+   * Required when provider is NOT עוסק פטור.
+   */
   requiresTaxInvoice: boolean("requires_tax_invoice").notNull().default(true),
-  /** True if provider is עוסק פטור — cannot issue tax invoice */
   providerIsExempt: boolean("provider_is_exempt").notNull().default(false),
   providerTaxInvoiceId: varchar("provider_tax_invoice_id"),
+
+  /**
+   * Invoice 2: Pet Wash → Provider (platform commission invoice)
+   * Pet Wash charges the provider for the commission service.
+   * Required for all MARKETPLACE_COMMISSION bookings.
+   */
+  commissionInvoiceId: varchar("commission_invoice_id"),
+  commissionInvoiceIssuedAt: timestamp("commission_invoice_issued_at"),
 
   // ── State ───────────────────────────────────────────────────────────────────
   /** pending | held_in_escrow | ready_for_payout | paid | cancelled | reversed */
