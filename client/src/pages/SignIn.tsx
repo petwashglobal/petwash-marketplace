@@ -638,12 +638,29 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       const isReplitWebview = /Replit-Bonsai/i.test(navigator.userAgent);
       const isGenericWebview = /wv|WebView/i.test(navigator.userAgent) && !isReplitWebview;
       const isIOSDevice = isIOS();
+      const isGmailInApp = /GSA\//i.test(navigator.userAgent);
+      const isInstagramInApp = /Instagram/i.test(navigator.userAgent);
+      const isTikTokInApp = /BytedanceWebview|musical_ly/i.test(navigator.userAgent);
+      const isInAppBrowser = isGmailInApp || isInstagramInApp || isTikTokInApp || isGenericWebview;
       
       if (isReplitWebview) {
         logger.info(`[Auth] Replit webview detected - social login not supported, switching to phone mode`);
         setWebviewBlocked(true);
         setPhoneMode(true);
         setSocialLoading(null);
+        return;
+      }
+
+      if (isInAppBrowser && provider === 'google') {
+        logger.info(`[Auth] In-app browser detected - Google popup not supported, prompting to open in Safari`);
+        setSocialLoading(null);
+        toast({
+          title: language === 'he' ? 'פתחו ב-Safari' : 'Open in Safari',
+          description: language === 'he'
+            ? 'להתחברות עם Google, פתחו את petwash.co.il בדפדפן Safari'
+            : 'To sign in with Google, open petwash.co.il in Safari browser',
+        });
+        setPhoneMode(true);
         return;
       }
 
@@ -667,15 +684,18 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       }
       
       const idToken = await userCredential.user.getIdToken();
-      const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ idToken, traceId }),
-      });
-
-      if (!sessionResponse.ok) {
-        throw new Error('Failed to create session');
+      try {
+        const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ idToken, traceId }),
+        });
+        if (!sessionResponse.ok) {
+          logger.warn(`[Auth] Session cookie creation returned ${sessionResponse.status} — Firebase auth succeeded, AuthProvider will handle session`);
+        }
+      } catch (sessionErr) {
+        logger.warn('[Auth] Session cookie request failed (non-blocking):', sessionErr);
       }
 
       if (isNewUser) {

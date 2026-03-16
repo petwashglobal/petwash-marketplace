@@ -57,9 +57,16 @@ export default function Story() {
             </p>
           </div>
 
-          <div className="luxury-glass-card luxury-shadow-xl p-12 text-center luxury-bg-primary luxury-slide-up" style={{ animationDelay: '0.4s' }}>
-            <h2 className="text-3xl font-bold mb-4 text-white">Join Our Journey</h2>
-            <p className="text-white/90 text-lg leading-relaxed">
+          <div className="luxury-shadow-xl luxury-slide-up p-12 text-center"
+            style={{
+              animationDelay: '0.4s',
+              background: 'linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #333333 100%)',
+              borderRadius: '24px',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <h2 className="text-3xl font-bold mb-4" style={{ color: '#ffffff' }}>Join Our Journey</h2>
+            <p className="text-lg leading-relaxed" style={{ color: 'rgba(255,255,255,0.85)' }}>
               Be part of the pet care revolution. Together, we're making the world a better place for pets and their families.
             </p>
           </div>
