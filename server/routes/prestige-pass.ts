@@ -656,7 +656,7 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
         ownerName:          session?.user?.displayName || 'Member',
         tier:               (tier || 'new').toUpperCase(),
         availableCreditIls: balance,
-        qrToken:            `PETWASH:${userId}:PREVIEW`,
+        qrTokenVersion:     1,
       });
       return res.status(503).json({ ok: false, error: 'Apple Wallet certificates not yet configured', preview });
     }
@@ -667,7 +667,7 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
       ownerName:          session?.user?.displayName || 'Member',
       tier:               (tier || 'new').toUpperCase(),
       availableCreditIls: balance,
-      qrToken:            `PETWASH:${userId}:${serialNumber}`,
+      qrTokenVersion:     1,
     });
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
     res.setHeader('Content-Disposition', `attachment; filename="${serialNumber}.pkpass"`);
@@ -833,14 +833,13 @@ async function buildGoogleWalletSaveUrl(opts: {
   displayName: string;
 }): Promise<string | null> {
   try {
-    const qrToken = `PETWASH:${opts.userId}:${opts.serialNumber}`;
     return googleWalletBuildSaveUrl({
       passId:             opts.serialNumber,
       userId:             opts.userId,
       ownerName:          opts.displayName || 'Member',
       tier:               (opts.tier || 'new').toUpperCase(),
       availableCreditIls: opts.balanceILS,
-      qrToken,
+      qrTokenVersion:     1,
     });
   } catch (err) {
     logger.warn('[PrestigePass] Could not pre-generate Google Wallet save URL for email', { err });

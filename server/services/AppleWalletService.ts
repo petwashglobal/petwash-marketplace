@@ -1,11 +1,12 @@
 /**
  * PetWash™ Apple Wallet Service — 2026
  *
- * Architecture (from official Apple Wallet docs):
- *   - Best distribution: app (PKAddPassButton), email, web
- *   - Artifact: signed .pkpass (zip of pass.json + images + manifest + PKCS#7 sig)
- *   - Live updates: Apple pass update web service (webServiceURL + authenticationToken)
- *   - Pass type: storeCard (stored-value / loyalty pass)
+ * Generates a signed .pkpass bundle using passkit-generator@3.5.2.
+ * Uses PKPass.from() with the ./wallet/apple-model directory (file-based approach).
+ * The model directory contains pass.json (storeCard structure) + placeholder icon/logo PNGs.
+ *
+ * Pass type: storeCard (stored-value / loyalty / membership)
+ * Live updates: Apple pass update web service at BASE_URL/api/pass/apple/v1/...
  *
  * Env vars required:
  *   APPLE_PASS_TYPE_IDENTIFIER   — e.g. pass.il.petwash.prestige
@@ -14,12 +15,11 @@
  *   APPLE_SIGNER_KEY_PEM         — PEM of the signing private key
  *   APPLE_WWDR_PEM               — Apple WWDR (Worldwide Developer Relations) CA cert PEM
  *   APPLE_SIGNER_KEY_PASSPHRASE  — passphrase for the private key (optional)
- *
- * Also accepts P12 bundle via APPLE_PASS_CERT_P12 (base64) for backwards compat —
- * but PEM is preferred so no crypto conversion is needed at runtime.
  */
 
+import path from 'path';
 import { PKPass } from 'passkit-generator';
+import { buildQrRedeemToken } from '../lib/passTokens';
 import { logger } from '../lib/logger';
 
 const PASS_TYPE_IDENTIFIER  = process.env.APPLE_PASS_TYPE_IDENTIFIER  || 'pass.il.petwash.prestige';
@@ -30,6 +30,9 @@ const SIGNER_KEY_PEM        = process.env.APPLE_SIGNER_KEY_PEM;
 const SIGNER_KEY_PASSPHRASE = process.env.APPLE_SIGNER_KEY_PASSPHRASE || '';
 const BASE_URL              = process.env.BASE_URL || 'https://petwash.co.il';
 
+// Model directory relative to server working directory (repo root)
+const MODEL_PATH = path.resolve(process.cwd(), 'wallet/apple-model');
+
 export interface PassVisual {
   passId: string;
   userId: string;
@@ -38,7 +41,7 @@ export interface PassVisual {
   tier: string;
   availableCreditIls: number;
   validUntil?: string;
-  qrToken: string;
+  qrTokenVersion: number;
 }
 
 export function isAppleWalletConfigured(): boolean {
@@ -46,22 +49,7 @@ export function isAppleWalletConfigured(): boolean {
 }
 
 /**
- * Minimal 1×1 solid PNG helpers.
- * These are used as placeholder icons when custom branded PNGs are not yet
- * placed in server/assets/petwash.pass/. Replace by adding real 87×87,
- * 174×174, and 522×522 PNG files to that directory and loading them here.
- */
-const TRANSPARENT_PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
-  'base64',
-);
-const GOLD_PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwADhQGAWjR9awAAAABJRU5ErkJggg==',
-  'base64',
-);
-
-/**
- * Generate a signed .pkpass buffer ready to stream to the browser with
+ * Generate a signed .pkpass buffer ready to stream to the browser.
  * Content-Type: application/vnd.apple.pkpass
  */
 export async function generateAppleWalletPass(visual: PassVisual): Promise<Buffer> {
@@ -69,85 +57,88 @@ export async function generateAppleWalletPass(visual: PassVisual): Promise<Buffe
     throw new Error('APPLE_WALLET_NOT_CONFIGURED: set APPLE_TEAM_IDENTIFIER, APPLE_WWDR_PEM, APPLE_SIGNER_CERT_PEM, APPLE_SIGNER_KEY_PEM');
   }
 
-  const isDark = ['BLACK', 'ELITE', 'DIAMOND'].includes(visual.tier.toUpperCase());
+  const isDark  = ['BLACK', 'ELITE', 'DIAMOND'].includes(visual.tier.toUpperCase());
+  const qrToken = buildQrRedeemToken(visual.passId, visual.userId, visual.qrTokenVersion);
 
-  const certificates = {
-    wwdr:               WWDR_PEM!,
-    signerCert:         SIGNER_CERT_PEM!,
-    signerKey:          SIGNER_KEY_PEM!,
-    signerKeyPassphrase: SIGNER_KEY_PASSPHRASE,
-  };
-
-  const pass = new PKPass(
+  const pass = await PKPass.from(
     {
-      'icon.png':     GOLD_PNG,
-      'icon@2x.png':  GOLD_PNG,
-      'icon@3x.png':  GOLD_PNG,
-      'logo.png':     TRANSPARENT_PNG,
-      'logo@2x.png':  TRANSPARENT_PNG,
-      'logo@3x.png':  TRANSPARENT_PNG,
+      model: MODEL_PATH,
+      certificates: {
+        wwdr:               WWDR_PEM!,
+        signerCert:         SIGNER_CERT_PEM!,
+        signerKey:          SIGNER_KEY_PEM!,
+        signerKeyPassphrase: SIGNER_KEY_PASSPHRASE,
+      },
     },
-    certificates,
     {
-      formatVersion:        1,
-      passTypeIdentifier:   PASS_TYPE_IDENTIFIER,
       serialNumber:         visual.passId,
+      passTypeIdentifier:   PASS_TYPE_IDENTIFIER,
       teamIdentifier:       TEAM_IDENTIFIER!,
-      organizationName:     'PetWash Ltd',
+      organizationName:     'Pet Wash Ltd',
       description:          `PetWash ${visual.tier} Pass`,
       logoText:             'PetWash™',
-      backgroundColor:      isDark ? 'rgb(0,0,0)'   : 'rgb(255,255,255)',
-      foregroundColor:      isDark ? 'rgb(212,175,55)' : 'rgb(30,30,30)',
-      labelColor:           isDark ? 'rgb(212,175,55)' : 'rgb(120,90,20)',
-      // Apple pass update web service — sends APNs push when we PATCH the pass
+      backgroundColor:      isDark ? 'rgb(0,0,0)'      : 'rgb(255,255,255)',
+      foregroundColor:      isDark ? 'rgb(212,175,55)'  : 'rgb(26,26,26)',
+      labelColor:           isDark ? 'rgb(212,175,55)'  : 'rgb(120,90,20)',
+      // Apple pass update web service — Apple sends a push token here on device add
       webServiceURL:        `${BASE_URL}/api/pass/apple`,
-      authenticationToken:  visual.userId,   // Opaque token Apple sends back on each update request
+      authenticationToken:  visual.userId,
     },
   );
 
-  pass.type = 'storeCard';
-
+  // Primary: available credit
   pass.primaryFields.push({
     key:   'credit',
     label: 'Available Credit',
     value: `₪${visual.availableCreditIls.toFixed(0)}`,
-    textAlignment: 'PKTextAlignmentNatural',
   } as any);
 
+  // Secondary: member name (+ pet name if set)
   pass.secondaryFields.push({
-    key:   'owner',
-    label: visual.primaryPetName ? `${visual.ownerName} · ${visual.primaryPetName} 🐾` : 'Member',
+    key:   'member',
+    label: 'Member',
     value: visual.ownerName,
   } as any);
 
+  // Auxiliary: tier + member ID
   pass.auxiliaryFields.push({
-    key:   'member_id',
+    key:   'tier',
+    label: 'Tier',
+    value: `${visual.tier} Tier`,
+  } as any);
+
+  pass.auxiliaryFields.push({
+    key:   'memberId',
     label: 'Member ID',
     value: visual.passId,
   } as any);
 
-  pass.auxiliaryFields.push({
-    key:   'tier',
-    label: 'Tier',
-    value: visual.tier,
-  } as any);
+  // Back fields
+  if (visual.primaryPetName) {
+    pass.backFields.push({
+      key:   'pet',
+      label: 'Primary Pet',
+      value: visual.primaryPetName,
+    } as any);
+  }
 
   if (visual.validUntil) {
     pass.backFields.push({
-      key:   'expiry',
+      key:   'validUntil',
       label: 'Valid Until',
       value: visual.validUntil,
     } as any);
   }
 
   pass.backFields.push({
-    key:   'terms',
-    label: 'Terms',
-    value: 'This pass is non-transferable. Issued by PetWash Ltd (Ch.P. 516458396).',
+    key:   'support',
+    label: 'Support',
+    value: 'support@petwash.co.il',
   } as any);
 
+  // Barcode — 45-second signed QR redeem token (never the raw passId or userId)
   pass.setBarcodes({
-    message:         visual.qrToken,
+    message:         qrToken,
     format:          'PKBarcodeFormatQR',
     messageEncoding: 'iso-8859-1',
     altText:         visual.passId,
@@ -158,33 +149,34 @@ export async function generateAppleWalletPass(visual: PassVisual): Promise<Buffe
 }
 
 /**
- * Return the pass.json structure (without signing) for debugging / admin preview.
- * This is safe to return as JSON from an API endpoint.
+ * Return the pass.json structure (unsigned) for debugging and admin previews.
+ * Safe to return as JSON from an API endpoint when certs are not yet configured.
  */
 export function buildPassJson(visual: PassVisual): Record<string, unknown> {
+  const qrToken = `QR_REDEEM_TOKEN_${visual.passId}_PREVIEW`;
   return {
     formatVersion:        1,
     passTypeIdentifier:   PASS_TYPE_IDENTIFIER,
     serialNumber:         visual.passId,
-    teamIdentifier:       TEAM_IDENTIFIER || 'APPLE_TEAM_ID',
-    organizationName:     'PetWash Ltd',
+    teamIdentifier:       TEAM_IDENTIFIER || 'APPLE_TEAM_ID_NOT_SET',
+    organizationName:     'Pet Wash Ltd',
     description:          `PetWash ${visual.tier} Pass`,
     logoText:             'PetWash™',
+    webServiceURL:        `${BASE_URL}/api/pass/apple`,
+    authenticationToken:  visual.userId,
     storeCard: {
       primaryFields:   [{ key: 'credit',    label: 'Available Credit', value: `₪${visual.availableCreditIls.toFixed(0)}` }],
-      secondaryFields: [{ key: 'owner',     label: 'Member',           value: visual.ownerName }],
+      secondaryFields: [{ key: 'member',    label: 'Member',           value: visual.ownerName }],
       auxiliaryFields: [
-        { key: 'member_id', label: 'Member ID', value: visual.passId },
-        { key: 'tier',      label: 'Tier',      value: visual.tier },
+        { key: 'tier',     label: 'Tier',      value: `${visual.tier} Tier` },
+        { key: 'memberId', label: 'Member ID', value: visual.passId },
       ],
     },
     barcodes: [{
-      message:         visual.qrToken,
+      message:         qrToken,
       format:          'PKBarcodeFormatQR',
       messageEncoding: 'iso-8859-1',
       altText:         visual.passId,
     }],
-    webServiceURL:       `${BASE_URL}/api/wallet/apple`,
-    authenticationToken: visual.userId,
   };
 }

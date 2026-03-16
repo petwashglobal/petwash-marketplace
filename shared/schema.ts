@@ -11969,6 +11969,8 @@ export const petwashPassAccounts = pgTable("petwash_pass_accounts", {
   passId:              text("pass_id").unique().notNull(),              // PW-4587-2043
   userId:              text("user_id").unique().notNull(),              // Firebase UID
   ownerName:           text("owner_name").notNull(),
+  ownerEmail:          text("owner_email"),                            // For wallet link email delivery
+  ownerPhone:          text("owner_phone"),                            // For wallet link SMS delivery
   primaryPetName:      text("primary_pet_name"),
   tier:                text("tier").notNull().default("PREMIUM"),       // PREMIUM | GOLD | BLACK | PARTNER
   availableCreditIls:  decimal("available_credit_ils", { precision: 12, scale: 2 }).notNull().default("0"),
@@ -11988,6 +11990,44 @@ export const petwashPassAccounts = pgTable("petwash_pass_accounts", {
 export const insertPetwashPassAccountSchema = createInsertSchema(petwashPassAccounts).omit({ createdAt: true, updatedAt: true });
 export type InsertPetwashPassAccount = z.infer<typeof insertPetwashPassAccountSchema>;
 export type PetwashPassAccount = typeof petwashPassAccounts.$inferSelect;
+
+// ── Pass Nonce Registry ───────────────────────────────────────────────────────
+// Prevents replay attacks: each QR redeem token nonce is burned on first use.
+// K9000 kiosk atomically marks a nonce as used here before triggering the machine.
+export const petwashPassNonceRegistry = pgTable("petwash_pass_nonce_registry", {
+  id:        varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  nonce:     text("nonce").unique().notNull(),
+  passId:    text("pass_id").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt:    timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  nonceIdx:  index("ppnr_nonce_idx").on(t.nonce),
+  passIdx:   index("ppnr_pass_idx").on(t.passId),
+}));
+export type PetwashPassNonce = typeof petwashPassNonceRegistry.$inferSelect;
+
+// ── Pass Transaction Ledger ───────────────────────────────────────────────────
+// Immutable double-entry ledger of all pass debits / credits.
+// Used for audit trail, dispute resolution, and balance reconciliation.
+export const petwashPassTransactions = pgTable("petwash_pass_transactions", {
+  id:               varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  passId:           text("pass_id").notNull(),
+  userId:           text("user_id").notNull(),
+  sourceType:       text("source_type").notNull(),   // K9000 | ONLINE_BOOKING | TOPUP | GIFT | REFUND
+  sourceRef:        text("source_ref"),               // bookingId, kioskId, etc.
+  direction:        text("direction").notNull(),       // DEBIT | CREDIT
+  amountIls:        decimal("amount_ils", { precision: 12, scale: 2 }).notNull(),
+  balanceBeforeIls: decimal("balance_before_ils", { precision: 12, scale: 2 }).notNull(),
+  balanceAfterIls:  decimal("balance_after_ils",  { precision: 12, scale: 2 }).notNull(),
+  metadata:         text("metadata"),                 // JSON string: kiosk, bay, nonce, etc.
+  createdAt:        timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  passIdx:   index("ppt_pass_idx").on(t.passId),
+  userIdx:   index("ppt_user_idx").on(t.userId),
+  timeIdx:   index("ppt_time_idx").on(t.createdAt),
+}));
+export type PetwashPassTransaction = typeof petwashPassTransactions.$inferSelect;
 
 // ── Apple Wallet Device Registrations ─────────────────────────────────────────
 // Persists device push tokens for the Apple Wallet pass update web service.
