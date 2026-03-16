@@ -2170,4 +2170,90 @@ router.post('/admin/send-founder-pass', async (req: Request, res: Response) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /admin/send-demo-receipts
+// Sends two demo חשבונית מס קבלה emails to Nir:
+//   1. E-Gift Card purchase receipt
+//   2. Provider (Petsitter) service transaction receipt
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/admin/send-demo-receipts', async (req: Request, res: Response) => {
+  try {
+    const adminSecret = process.env.ADMIN_SECRET || process.env.COOKIE_SECRET;
+    const provided    = req.headers['x-admin-secret'];
+    if (!adminSecret || provided !== adminSecret) {
+      return res.status(403).json({ ok: false, error: 'Forbidden' });
+    }
+
+    const { buildEGiftReceipt, buildProviderTxReceipt } = await import('../email/templates/transaction-receipt-2026');
+
+    const now = new Date();
+    const TO  = 'nirhadad1@gmail.com';
+
+    // ── 1. E-Gift Card receipt ────────────────────────────────────────────────
+    const egiftHtml = buildEGiftReceipt({
+      invoiceNo:      'PW-INV-2026-003847',
+      txId:           'TXN-20260317-884729',
+      date:           now,
+      buyerName:      'ניר הדד',
+      buyerEmail:     TO,
+      recipientName:  'רונית הדד',
+      giftAmountIls:  500,
+      voucherId:      'PGIFT-500-HAD-2026',
+      paymentLast4:   '4521',
+      paymentBrand:   'Visa',
+      personalMessage: 'ליקירתי רונית — מתנה קטנה מהלב לבלות עם מאקס 🐶',
+      language:       'he',
+    });
+
+    const egiftResult = await EmailService.send({
+      to:      TO,
+      subject: '🎁 PetWash™ — חשבונית מס קבלה #PW-INV-2026-003847 — כרטיס מתנה ₪500',
+      html:    egiftHtml,
+    });
+
+    logger.info('[DemoReceipts] eGift receipt sent', { to: TO, ok: egiftResult });
+
+    // ── 2. Provider (Petsitter) transaction receipt ───────────────────────────
+    const providerHtml = buildProviderTxReceipt({
+      invoiceNo:       'PW-INV-2026-003848',
+      txId:            'TXN-20260317-993041',
+      date:            now,
+      serviceDate:     now,
+      serviceType:     'petsitter',
+      serviceDescHe:   'שמירה על כלב — מאקס, רועה גרמני',
+      serviceDescEn:   'Dog Sitting — Max, German Shepherd',
+      providerName:    'מיכל כהן',
+      providerBizNo:   '039291847',
+      petName:         'מאקס',
+      petBreed:        'רועה גרמני',
+      customerName:    'ניר הדד',
+      customerEmail:   TO,
+      grossChargedIls: 320,
+      platformFeeRate: 0.15,
+      paymentLast4:    '4521',
+      paymentBrand:    'Visa',
+      durationLabel:   '4 שעות',
+      language:        'he',
+    });
+
+    const providerResult = await EmailService.send({
+      to:      TO,
+      subject: '🏠 PetWash™ — חשבונית מס קבלה #PW-INV-2026-003848 — שמירה על כלב ₪320',
+      html:    providerHtml,
+    });
+
+    logger.info('[DemoReceipts] Provider receipt sent', { to: TO, ok: providerResult });
+
+    return res.json({
+      ok: true,
+      sent: { egift: egiftResult, provider: providerResult },
+      to:   TO,
+      invoices: ['PW-INV-2026-003847', 'PW-INV-2026-003848'],
+    });
+  } catch (err) {
+    logger.error('[DemoReceipts] error', err);
+    return res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
 export default router;
