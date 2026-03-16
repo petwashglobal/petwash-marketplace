@@ -26,6 +26,7 @@ import walletRoutes from "./routes/wallet";
 import googleWalletRoutes from "./routes/google-wallet";
 import prestigePassRoutes from "./routes/prestige-pass";
 import passUniversalRoutes from "./routes/pass-universal";
+import passRedeemRoutes    from "./routes/pass-redeem";
 import googleServicesRoutes from "./routes/google-services";
 import gmailRoutes from "./routes/gmail";
 import mobileAuthRoutes from "./routes/mobile-auth";
@@ -9346,6 +9347,10 @@ self.addEventListener('notificationclick', (event) => {
   // Mounts at /api/pass (universal link) and /api/pass/apple/v1/* (Apple wallet update service)
   app.use('/api/pass', apiLimiter, passUniversalRoutes);
   logger.info('[Routes] ✅ Universal pass + Apple update web service registered at /api/pass');
+
+  // Pass Redemption — K9000 kiosk QR redeem, online redeem, topup, balance, ledger
+  app.use('/api/pass', apiLimiter, passRedeemRoutes);
+  logger.info('[Routes] ✅ Pass redemption routes registered (/redeem, /redeem-online, /topup, /balance, /ledger)');
   
   // Credit Wallet & E-Gift Redemption (Unified credits across all platforms)
   const creditWalletRoutes = await import('./routes/credit-wallet');

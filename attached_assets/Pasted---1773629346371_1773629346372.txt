@@ -1,0 +1,831 @@
+/**************************************************************************************************
+PETWASH 2026 - WALLET / QR / KIOSK SECURITY ARCHITECTURE
+FULL COPY-PASTE REFERENCE
+---------------------------------------------------------------------------------------------------
+PURPOSE
+- Explain the correct 2026 architecture for PetWash Apple Wallet + Google Wallet + QR redemption
+- Show the secure token model
+- Show the DB tables needed
+- Show the redeem flow
+- Show the main checks the backend must do
+- Keep everything in one place for developer reference
+
+IMPORTANT
+- This is a security and architecture reference block
+- Replace placeholders with your real repo functions and DB calls
+- Do NOT trust static QR IDs for value redemption
+- Do NOT trust displayed balance on the pass
+- Backend is always the source of truth
+
+LATEST KEY DECISION
+- Old static barcode model was insecure
+- New model uses:
+  1. signed wallet-link token with 72h expiry for distribution
+  2. signed qr-redeem token with 45s expiry for scanning at kiosk
+  3. nonce registry to burn each redemption token on first use
+  4. immutable transactions ledger for every debit/credit event
+**************************************************************************************************/
+
+/* ================================================================================================
+SECTION 1 - SECURITY MODEL SUMMARY
+===================================================================================================
+
+OLD INSECURE MODEL
+------------------
+Barcode contained something static like:
+  PETWASH:userId:serial
+
+Problems:
+- replayable forever
+- screenshot reusable
+- easy cloning risk
+- no expiry
+- no one-time burn
+- no machine binding
+
+NEW SECURE MODEL
+----------------
+Use two token types:
+
+1. wallet-link token
+   - purpose: distributing the pass by email / SMS / dashboard / link
+   - signed
+   - expires in 72 hours
+   - if expired -> backend returns 410 Gone or similar
+
+2. qr-redeem token
+   - purpose: actual kiosk redemption
+   - signed
+   - expires in 45 seconds
+   - contains nonce
+   - nonce is burned on first successful use
+   - optional machineId / bayId binding
+   - optional tokenVersion to invalidate older passes
+
+This is the correct modern model for wallet-backed redemption.
+================================================================================================ */
+
+/* ================================================================================================
+SECTION 2 - CANONICAL PASS RECORD
+=================================================================================================== */
+
+type PassTier = "STANDARD" | "PREMIUM" | "GOLD" | "BLACK" | "PARTNER";
+type PassStatus = "ACTIVE" | "SUSPENDED" | "EXPIRED" | "CANCELLED";
+
+interface PetWashPassRecord {
+  passId: string;              // Example: PW-4587-2043
+  userId: string;              // Internal user ID
+  ownerName: string;           // Example: Nir Hadad
+  ownerEmail?: string;         // Needed for pass delivery
+  ownerPhone?: string;         // Needed for SMS delivery
+  primaryPetName?: string;     // Example: Bella
+  tier: PassTier;              // Example: PREMIUM
+  availableCreditIls: number;  // Example: 1000
+  validUntil?: string;         // Example: 2026-12-31
+  status: PassStatus;          // Example: ACTIVE
+  qrTokenVersion: number;      // Increment if pass needs forced invalidation
+  appleSerialNumber: string;   // Apple serial
+  googleObjectId: string;      // Google Wallet object ID
+  createdAt: string;
+  updatedAt: string;
+}
+
+/*
+RULE
+----
+This record is the source of truth.
+
+Apple Wallet view, Google Wallet view, kiosk redemption checks,
+dashboard display, and email/SMS links must all derive from this record.
+================================================================================================ */
+
+/* ================================================================================================
+SECTION 3 - DATABASE TABLES
+=================================================================================================== */
+
+/*
+TABLE 1 - petwash_pass_accounts
+-------------------------------
+Canonical pass account / wallet record
+
+Columns:
+- id UUID PK
+- pass_id TEXT UNIQUE NOT NULL
+- user_id TEXT UNIQUE NOT NULL
+- owner_name TEXT NOT NULL
+- owner_email TEXT
+- owner_phone TEXT
+- primary_pet_name TEXT
+- tier TEXT NOT NULL
+- available_credit_ils NUMERIC(12,2) NOT NULL DEFAULT 0
+- valid_until TIMESTAMPTZ NULL
+- status TEXT NOT NULL DEFAULT 'ACTIVE'
+- qr_token_version INTEGER NOT NULL DEFAULT 1
+- apple_serial_number TEXT UNIQUE NOT NULL
+- google_object_id TEXT UNIQUE NOT NULL
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+- updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+TABLE 2 - petwash_pass_nonce_registry
+-------------------------------------
+Stores each redemption nonce to prevent replay
+
+Columns:
+- id UUID PK
+- nonce TEXT UNIQUE NOT NULL
+- pass_id TEXT NOT NULL
+- expires_at TIMESTAMPTZ NOT NULL
+- used_at TIMESTAMPTZ NULL
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+Behavior:
+- first successful redeem burns nonce
+- second use of same nonce -> reject as replay
+
+TABLE 3 - petwash_pass_transactions
+-----------------------------------
+Immutable ledger of every credit/debit
+
+Columns:
+- id UUID PK
+- pass_id TEXT NOT NULL
+- user_id TEXT NOT NULL
+- source_type TEXT NOT NULL
+  Examples:
+    K9000
+    ONLINE_BOOKING
+    TOPUP
+    GIFT
+    PROMO
+    REFUND
+- source_ref TEXT NULL
+  Examples:
+    booking ID
+    wash session ID
+    payment ID
+- direction TEXT NOT NULL
+  Examples:
+    DEBIT
+    CREDIT
+- amount_ils NUMERIC(12,2) NOT NULL
+- balance_before_ils NUMERIC(12,2) NOT NULL
+- balance_after_ils NUMERIC(12,2) NOT NULL
+- metadata JSONB NULL
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+TABLE 4 - apple_wallet_device_registrations
+-------------------------------------------
+Needed for Apple pass update web service
+
+Columns:
+- id UUID PK
+- device_library_identifier TEXT NOT NULL
+- push_token TEXT NOT NULL
+- pass_type_identifier TEXT NOT NULL
+- serial_number TEXT NOT NULL
+- auth_token TEXT NOT NULL
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+WHY THESE TABLES MATTER
+-----------------------
+- pass account = source of truth
+- nonce registry = replay protection
+- ledger = financial / compliance / audit trail
+- Apple device registrations = live Apple Wallet updates
+================================================================================================ */
+
+/* ================================================================================================
+SECTION 4 - TOKEN PAYLOADS
+=================================================================================================== */
+
+interface WalletLinkTokenPayload {
+  passId: string;
+  userId: string;
+  tokenVersion: number;
+  purpose: "wallet-link";
+  nonce: string;
+  issuedAt: number;   // unix seconds
+  expiresAt: number;  // unix seconds
+}
+
+interface QrRedeemTokenPayload {
+  passId: string;
+  userId: string;
+  tokenVersion: number;
+  purpose: "qr-redeem";
+  nonce: string;
+  issuedAt: number;   // unix seconds
+  expiresAt: number;  // unix seconds
+  machineId?: string | null;
+  bayId?: "LEFT" | "RIGHT" | null;
+}
+
+/*
+BEST PRACTICE
+-------------
+wallet-link token
+- lifetime: 72 hours
+- use for email / SMS / dashboard links only
+
+qr-redeem token
+- lifetime: 45 seconds
+- use only for actual kiosk scan
+- may optionally be bound to machineId / bayId
+================================================================================================ */
+
+/* ================================================================================================
+SECTION 5 - TOKEN SIGNING / VERIFICATION REFERENCE
+=================================================================================================== */
+
+import crypto from "crypto";
+
+const PASS_LINK_SECRET = process.env.PASS_LINK_SECRET || "";
+const PRESTIGE_QR_SECRET = process.env.PRESTIGE_QR_SECRET || "";
+
+function b64url(input: Buffer | string): string {
+  return Buffer.from(input)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+function signCompactPayload(payload: object, secret: string): string {
+  const body = b64url(JSON.stringify(payload));
+  const sig = crypto.createHmac("sha256", secret).update(body).digest("base64url");
+  return `${body}.${sig}`;
+}
+
+function verifyCompactPayload<T>(token: string, secret: string): T {
+  const [body, sig] = token.split(".");
+  if (!body || !sig) throw new Error("INVALID_TOKEN_FORMAT");
+
+  const expected = crypto.createHmac("sha256", secret).update(body).digest("base64url");
+
+  // timing-safe compare is important
+  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
+    throw new Error("INVALID_SIGNATURE");
+  }
+
+  const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as T;
+
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAt = (payload as any).expiresAt;
+  if (typeof expiresAt !== "number" || expiresAt < now) {
+    throw new Error("TOKEN_EXPIRED");
+  }
+
+  return payload;
+}
+
+function buildWalletLinkToken(record: PetWashPassRecord): string {
+  const now = Math.floor(Date.now() / 1000);
+
+  const payload: WalletLinkTokenPayload = {
+    passId: record.passId,
+    userId: record.userId,
+    tokenVersion: record.qrTokenVersion,
+    purpose: "wallet-link",
+    nonce: crypto.randomUUID(),
+    issuedAt: now,
+    expiresAt: now + 60 * 60 * 24 * 3, // 72 hours
+  };
+
+  return signCompactPayload(payload, PASS_LINK_SECRET);
+}
+
+function buildQrRedeemToken(
+  record: PetWashPassRecord,
+  machineId?: string,
+  bayId?: "LEFT" | "RIGHT"
+): string {
+  const now = Math.floor(Date.now() / 1000);
+
+  const payload: QrRedeemTokenPayload = {
+    passId: record.passId,
+    userId: record.userId,
+    tokenVersion: record.qrTokenVersion,
+    purpose: "qr-redeem",
+    nonce: crypto.randomUUID(),
+    issuedAt: now,
+    expiresAt: now + 45,
+    machineId: machineId || null,
+    bayId: bayId || null,
+  };
+
+  return signCompactPayload(payload, PRESTIGE_QR_SECRET);
+}
+
+function verifyWalletLinkToken(token: string): WalletLinkTokenPayload {
+  const payload = verifyCompactPayload<WalletLinkTokenPayload>(token, PASS_LINK_SECRET);
+  if (payload.purpose !== "wallet-link") throw new Error("INVALID_PURPOSE");
+  return payload;
+}
+
+function verifyQrRedeemToken(token: string): QrRedeemTokenPayload {
+  const payload = verifyCompactPayload<QrRedeemTokenPayload>(token, PRESTIGE_QR_SECRET);
+  if (payload.purpose !== "qr-redeem") throw new Error("INVALID_PURPOSE");
+  return payload;
+}
+
+/* ================================================================================================
+SECTION 6 - APPLE WALLET NOTES
+=================================================================================================== */
+
+/*
+APPLE WALLET CORRECT MODEL
+--------------------------
+- Use proper wallet/apple-model directory
+- pass.json + icon/logo assets
+- generate signed .pkpass
+- use Apple pass update web service
+- do not embed raw passId as permanent redeem authority
+
+Recommended Apple model directory:
+wallet/
+  apple-model/
+    pass.json
+    icon.png
+    icon@2x.png
+    logo.png
+    logo@2x.png
+
+Recommended front fields:
+- Member
+- Tier
+- Available Credit
+
+Recommended back fields:
+- Member ID
+- Valid Until
+- Primary Pet
+- Support
+- verified digital pass wording
+
+Wallet barcode should contain:
+- short-lived qr-redeem token
+NOT:
+- static pass ID
+- static user ID
+- static serial
+
+APNs / Apple update flow:
+- register devices
+- store push token
+- notify devices on balance/status updates
+================================================================================================ */
+
+/* ================================================================================================
+SECTION 7 - GOOGLE WALLET NOTES
+=================================================================================================== */
+
+/*
+GOOGLE WALLET CORRECT MODEL
+---------------------------
+- use Generic Class + Generic Object
+- use google.auth.JWT with wallet issuer scope
+- signed save URL for web/email/SMS
+- Android SDK optional for native Android flow
+- can support rotating barcode / expiry notification
+
+Google payload should include:
+- header = owner name
+- subheader = tier
+- text modules = available credit, member id, valid until
+- barcode = short-lived qr-redeem token
+- optional rotatingBarcode section
+================================================================================================ */
+
+/* ================================================================================================
+SECTION 8 - UNIVERSAL PASS DISTRIBUTION
+=================================================================================================== */
+
+/*
+ONE UNIVERSAL LINK
+------------------
+Use:
+  https://petwash.co.il/pass/:signedWalletLinkToken
+
+Behavior:
+- iPhone / iPad / Mac -> redirect to Apple Wallet endpoint
+- Android -> redirect to Google Wallet save URL
+- Desktop -> show chooser page with both options
+
+WHY
+---
+This gives one safe delivery link for:
+- email
+- SMS
+- iMessage
+- WhatsApp
+- dashboard
+- static web page
+
+Do not send raw pass IDs in URLs.
+================================================================================================ */
+
+/* ================================================================================================
+SECTION 9 - EXPRESS ROUTES REFERENCE
+=================================================================================================== */
+
+import express from "express";
+const app = express();
+app.use(express.json());
+
+async function loadPassById(passId: string): Promise<PetWashPassRecord | null> {
+  // Replace with your DB lookup
+  return null;
+}
+
+async function loadPassByLinkToken(token: string): Promise<PetWashPassRecord | null> {
+  const payload = verifyWalletLinkToken(token);
+  return loadPassById(payload.passId);
+}
+
+app.get("/pass/:signedLinkToken", async (req, res) => {
+  const record = await loadPassByLinkToken(req.params.signedLinkToken);
+  if (!record) return res.status(404).send("Pass not found");
+
+  const ua = req.headers["user-agent"] || "";
+
+  if (/iPhone|iPad|Macintosh|Mac OS X/i.test(ua)) {
+    return res.redirect(`/wallet/apple/${encodeURIComponent(req.params.signedLinkToken)}`);
+  }
+
+  if (/Android/i.test(ua)) {
+    return res.redirect(`/wallet/google/${encodeURIComponent(req.params.signedLinkToken)}`);
+  }
+
+  return res.type("html").send(`
+    <!doctype html>
+    <html>
+      <body style="font-family:Arial,sans-serif;padding:40px;background:#fff;color:#111">
+        <h1>PetWash Pass</h1>
+        <p>Choose your wallet:</p>
+        <p><a href="/wallet/apple/${encodeURIComponent(req.params.signedLinkToken)}">Add to Apple Wallet</a></p>
+        <p><a href="/wallet/google/${encodeURIComponent(req.params.signedLinkToken)}">Add to Google Wallet</a></p>
+      </body>
+    </html>
+  `);
+});
+
+app.get("/wallet/apple/:signedLinkToken", async (req, res) => {
+  const record = await loadPassByLinkToken(req.params.signedLinkToken);
+  if (!record) return res.status(404).send("Pass not found");
+
+  // Replace with real Apple wallet service
+  const pkpassBuffer = Buffer.from("replace-with-real-pkpass");
+
+  res.setHeader("Content-Type", "application/vnd.apple.pkpass");
+  res.setHeader("Content-Disposition", `attachment; filename="${record.passId}.pkpass"`);
+  return res.send(pkpassBuffer);
+});
+
+app.get("/wallet/google/:signedLinkToken", async (req, res) => {
+  const record = await loadPassByLinkToken(req.params.signedLinkToken);
+  if (!record) return res.status(404).send("Pass not found");
+
+  // Replace with real Google Wallet signed save URL
+  const url = "https://pay.google.com/gp/v/save/replace-me";
+  return res.redirect(url);
+});
+
+/* ================================================================================================
+SECTION 10 - APPLE PASS UPDATE WEB SERVICE ROUTES
+=================================================================================================== */
+
+/*
+Apple expects routes for:
+- device register
+- list changed passes
+- device unregister
+- fetch updated pass
+*/
+
+app.post("/wallet/apple/webservice/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier/:serialNumber", async (_req, res) => {
+  // Save device registration to DB
+  return res.status(201).send();
+});
+
+app.get("/wallet/apple/webservice/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier", async (_req, res) => {
+  // Return changed serial numbers
+  return res.json({
+    lastUpdated: new Date().toISOString(),
+    serialNumbers: [],
+  });
+});
+
+app.delete("/wallet/apple/webservice/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier/:serialNumber", async (_req, res) => {
+  // Delete registration
+  return res.status(200).send();
+});
+
+app.get("/wallet/apple/webservice/v1/passes/:passTypeIdentifier/:serialNumber", async (_req, res) => {
+  // Return updated .pkpass
+  return res.status(501).send("Implement updated Apple pass fetch");
+});
+
+/* ================================================================================================
+SECTION 11 - NONCE REGISTRY LOGIC
+=================================================================================================== */
+
+/*
+Goal:
+- prevent reuse of qr-redeem token
+
+Flow:
+1. verify token signature and expiry
+2. check nonce not already used
+3. if unused -> mark used atomically
+4. continue with redeem
+5. if already used -> reject replay
+
+Use Redis or DB atomic transaction.
+
+Pseudo:
+*/
+
+async function assertNonceUnusedAndConsume(nonce: string, passId: string, expiresAtUnix: number) {
+  // Replace with real atomic logic
+  // Example DB rules:
+  // - insert nonce row if not exists
+  // - or update existing unused row to used_at now()
+  // - fail if already used
+}
+
+/* ================================================================================================
+SECTION 12 - K9000 REDEMPTION FLOW
+=================================================================================================== */
+
+interface WalletRedeemRequest {
+  scannedToken: string;
+  kioskId: string;
+  bayId?: "LEFT" | "RIGHT";
+  amountIls: number;
+}
+
+async function debitPassAtomically(
+  passId: string,
+  amountIls: number,
+  metadata: Record<string, any>
+): Promise<void> {
+  // DB transaction:
+  // 1. load pass with FOR UPDATE
+  // 2. validate status, expiry, funds
+  // 3. insert immutable petwash_pass_transactions row
+  // 4. update petwash_pass_accounts available_credit_ils
+}
+
+async function startK9000Machine(
+  kioskId: string,
+  bayId?: "LEFT" | "RIGHT"
+): Promise<void> {
+  // Nayax / kiosk / relay bridge
+}
+
+app.post("/wallet/redeem", async (req, res) => {
+  try {
+    const body = req.body as WalletRedeemRequest;
+    const payload = verifyQrRedeemToken(body.scannedToken);
+
+    if (payload.machineId && payload.machineId !== body.kioskId) {
+      return res.status(403).json({ error: "TOKEN_MACHINE_MISMATCH" });
+    }
+
+    if (payload.bayId && body.bayId && payload.bayId !== body.bayId) {
+      return res.status(403).json({ error: "TOKEN_BAY_MISMATCH" });
+    }
+
+    await assertNonceUnusedAndConsume(payload.nonce, payload.passId, payload.expiresAt);
+
+    const record = await loadPassById(payload.passId);
+    if (!record) return res.status(404).json({ error: "PASS_NOT_FOUND" });
+
+    if (record.status !== "ACTIVE") {
+      return res.status(403).json({ error: "PASS_NOT_ACTIVE" });
+    }
+
+    if (record.validUntil && new Date(record.validUntil).getTime() < Date.now()) {
+      return res.status(403).json({ error: "PASS_EXPIRED" });
+    }
+
+    if (record.availableCreditIls < body.amountIls) {
+      return res.status(402).json({ error: "INSUFFICIENT_BALANCE" });
+    }
+
+    await debitPassAtomically(record.passId, body.amountIls, {
+      source: "K9000",
+      kioskId: body.kioskId,
+      bayId: body.bayId || null,
+      nonce: payload.nonce,
+    });
+
+    await startK9000Machine(body.kioskId, body.bayId);
+
+    return res.json({
+      ok: true,
+      passId: record.passId,
+      debitedIls: body.amountIls,
+    });
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || "REDEEM_FAILED" });
+  }
+});
+
+/* ================================================================================================
+SECTION 13 - ONLINE SERVICE REDEEM
+=================================================================================================== */
+
+/*
+For sitter / walker / academy / transport:
+- no QR needed
+- backend directly debits pass
+- same ledger rules apply
+*/
+
+app.post("/wallet/redeem-online", async (req, res) => {
+  const {
+    userId,
+    passId,
+    bookingId,
+    serviceType,
+    amountIls,
+  } = req.body as {
+    userId: string;
+    passId: string;
+    bookingId: string;
+    serviceType: "SITTER" | "WALKER" | "ACADEMY" | "TRANSPORT";
+    amountIls: number;
+  };
+
+  const record = await loadPassById(passId);
+  if (!record) return res.status(404).json({ error: "PASS_NOT_FOUND" });
+  if (record.userId !== userId) return res.status(403).json({ error: "PASS_USER_MISMATCH" });
+  if (record.availableCreditIls < amountIls) return res.status(402).json({ error: "INSUFFICIENT_BALANCE" });
+
+  await debitPassAtomically(passId, amountIls, {
+    source: "ONLINE_BOOKING",
+    bookingId,
+    serviceType,
+  });
+
+  return res.json({
+    ok: true,
+    bookingId,
+    serviceType,
+    debitedIls: amountIls,
+  });
+});
+
+/* ================================================================================================
+SECTION 14 - TRANSACTIONS LEDGER RULES
+=================================================================================================== */
+
+/*
+Every debit/credit must create a petwash_pass_transactions row.
+
+Examples:
+
+TOPUP
+- direction: CREDIT
+- amount_ils: +500
+- balance_before_ils: 500
+- balance_after_ils: 1000
+
+K9000 REDEEM
+- direction: DEBIT
+- amount_ils: 70
+- balance_before_ils: 1000
+- balance_after_ils: 930
+
+ONLINE BOOKING
+- direction: DEBIT
+- amount_ils: 150
+- balance_before_ils: 930
+- balance_after_ils: 780
+
+This must be immutable.
+Do not overwrite ledger history.
+================================================================================================ */
+
+/* ================================================================================================
+SECTION 15 - EMAIL / SMS DELIVERY
+=================================================================================================== */
+
+/*
+Use signed wallet-link token, not raw passId.
+
+Email variables recommended:
+- name
+- member_id
+- credit_balance
+- expiry_date
+- apple_wallet_link
+- google_wallet_link
+- universal_pass_link
+*/
+
+function generateSignedPassLinkToken(passId: string): string {
+  return jwt.sign({ passId }, PASS_LINK_SECRET, { expiresIn: "72h" });
+}
+
+function buildPassLinks(passId: string) {
+  const token = generateSignedPassLinkToken(passId);
+
+  return {
+    universal: `${process.env.BASE_URL}/pass/${encodeURIComponent(token)}`,
+    apple: `${process.env.BASE_URL}/wallet/apple/${encodeURIComponent(token)}`,
+    google: `${process.env.BASE_URL}/wallet/google/${encodeURIComponent(token)}`,
+  };
+}
+
+/*
+Twilio / iMessage / WhatsApp style text:
+"PetWash: your digital pass is ready. Open here: <universalLink>"
+*/
+
+/* ================================================================================================
+SECTION 16 - APPLE / GOOGLE UPDATE TRIGGERS
+=================================================================================================== */
+
+/*
+When balance or status changes:
+1. update DB canonical pass record
+2. update Google Wallet object
+3. notify Apple Wallet devices through Apple update flow
+4. audit log change
+
+Apple live update requires:
+- device registrations stored
+- APNs / update mechanism configured
+
+Google live update requires:
+- patch or update genericObject
+================================================================================================ */
+
+/* ================================================================================================
+SECTION 17 - VISUAL / LEGAL FIELDS
+=================================================================================================== */
+
+/*
+Front visible fields:
+- PetWash
+- owner name
+- optional pet name
+- tier
+- Available Credit
+- Valid Until
+- Member ID
+- QR
+
+Back / details:
+- support email
+- website
+- verified digital pass wording
+- optional short legal wording
+
+Recommended wording:
+- "Verified digital pass"
+- "Backend-validated redemption only"
+- "Available Credit"
+- "Valid Until"
+
+Do NOT show:
+- coupon language
+- fake credit card numbers
+- static raw identifiers as authority
+================================================================================================ */
+
+/* ================================================================================================
+SECTION 18 - FINAL SAFETY CHECKLIST
+=================================================================================================== */
+
+/*
+BEFORE LAUNCH:
+[ ] PRESTIGE_QR_SECRET is real and not fallback
+[ ] PASS_LINK_SECRET is real and not fallback
+[ ] Apple pass certs are loaded from secrets
+[ ] Google Wallet issuer + service account configured
+[ ] universal pass route works on iPhone / Android / desktop
+[ ] nonce registry works
+[ ] replay attack rejected
+[ ] one real K9000 redeem tested
+[ ] one real online redeem tested
+[ ] ledger writes correctly
+[ ] email and SMS wallet delivery tested
+[ ] Apple device registration route works
+[ ] Google Wallet object update works
+================================================================================================ */
+
+/* ================================================================================================
+SECTION 19 - FINAL RULE
+=================================================================================================== */
+
+/*
+Backend is the authority.
+Wallet display is cosmetic.
+QR is temporary authority only.
+Ledger is permanent truth.
+Nonce burn is mandatory.
+Static raw QR is forbidden.
+*/
