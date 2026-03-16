@@ -1,39 +1,45 @@
 /**
- * PetWash™ — חשבונית מס קבלה / Tax Invoice-Receipt
- * Israeli legal standard: every transaction must include חשבונית מס קבלה
- * with VAT (מע"מ) 18% breakdown — required for government reporting.
+ * PetWash™ — חשבונית מס קבלה / Tax Invoice-Receipt  v2
  *
- * Two generators:
- *   buildEGiftReceipt()        — e-gift card purchase
- *   buildProviderTxReceipt()   — provider service (petsitter / walker / academy)
+ * Email-client rules followed (Gmail, Apple Mail, Outlook):
+ *   ✓ bgcolor="" attribute on every <table> and <td>  (not just CSS)
+ *   ✓ No min-height / vh units  (Gmail ignores them, creates blank space)
+ *   ✓ No @import  (stripped by Gmail before render)
+ *   ✓ All CSS inline  (never in <style> block for critical properties)
+ *   ✓ background-color: fallback before gradient  (Outlook safe)
+ *   ✓ No rgba()  (replaced with solid hex)
+ *   ✓ Hidden preheader  (prevents giant blank at top in Gmail app)
+ *   ✓ Table-based layout only  (no flexbox, no grid)
  */
 
-import { PETWASH_LOGO_BASE64 } from './logo-base64';
-
-// ─── Shared constants ────────────────────────────────────────────────────────
-const VAT_RATE       = 0.18;           // 18% מע"מ (Israel 2024+)
-const BUSINESS_REG   = '515895671';    // עוסק מורשה — Pet Wash Ltd
-const BUSINESS_NAME  = 'Pet Wash Ltd';
-const BUSINESS_NAME_HE = 'פט ווש בע"מ';
-const BUSINESS_ADDR  = 'תל אביב, ישראל';
-const SUPPORT_EMAIL  = 'support@petwash.co.il';
-const SUPPORT_PHONE  = '03-000-0000';
-
+// ─── Brand tokens ─────────────────────────────────────────────────────────────
 const GOLD     = '#C6A35B';
 const GOLD_LT  = '#E7C978';
-const GOLD_DK  = '#B8941F';
+const GOLD_DK  = '#A07830';
 const BLACK    = '#0a0a0a';
 const DARK     = '#111111';
-const SURFACE  = '#1a1a1a';
-const BORDER   = 'rgba(198,163,91,0.25)';
+const CARD     = '#181818';
+const SECTION  = '#141414';
+const DIVIDER  = '#2a2416';   // replaces rgba(gold, 0.25)
+const TEXT_PRI = '#EEEEEE';
+const TEXT_SEC = '#999999';
+const TEXT_DIM = '#555555';
 
-function vatBreakdown(totalIls: number): { net: number; vat: number; gross: number } {
-  const net   = +(totalIls / (1 + VAT_RATE)).toFixed(2);
-  const vat   = +(totalIls - net).toFixed(2);
-  return { net, vat, gross: totalIls };
+// ─── Israeli legal constants ──────────────────────────────────────────────────
+const VAT_RATE      = 0.18;
+const BUSINESS_REG  = '515895671';
+const BUSINESS_HE   = 'פט ווש בע"מ';
+const BUSINESS_EN   = 'Pet Wash Ltd';
+const SUPPORT_EMAIL = 'support@petwash.co.il';
+const SUPPORT_PHONE = '03-000-0000';
+
+function vatBreakdown(gross: number) {
+  const net = +(gross / (1 + VAT_RATE)).toFixed(2);
+  const vat = +(gross - net).toFixed(2);
+  return { net, vat, gross };
 }
 
-function fmtIls(n: number): string {
+function ils(n: number): string {
   return `₪${n.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
@@ -41,138 +47,221 @@ function fmtDate(d: Date): string {
   return d.toLocaleDateString('he-IL', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
-// ─── Shared header / footer ──────────────────────────────────────────────────
-function emailShell(bodyContent: string, invoiceNo: string): string {
+// ─── Shared shell ─────────────────────────────────────────────────────────────
+// The outer table MUST carry bgcolor for Gmail dark mode / light mode to work.
+// No min-height, no vh, no @import — these all cause the blank-top bug.
+function shell(preheaderText: string, invoiceNo: string, body: string): string {
   return `<!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="he" dir="rtl" xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta charset="UTF-8">
+<meta name="x-apple-disable-message-reformatting">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>PetWash™ — חשבונית מס קבלה ${invoiceNo}</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&display=swap');
-  body { margin:0; padding:0; background:#0a0a0a; font-family: -apple-system,Helvetica,Arial,sans-serif; }
-  * { box-sizing: border-box; }
+<!--[if mso]>
+<noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
+<![endif]-->
+<style type="text/css">
+  body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+  table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+  img { -ms-interpolation-mode: bicubic; border: 0; }
+  body { margin: 0 !important; padding: 0 !important; background-color: ${BLACK}; }
+  @media only screen and (max-width: 640px) {
+    .email-container { width: 100% !important; }
+    .mobile-pad { padding-left: 20px !important; padding-right: 20px !important; }
+    .hero-amount { font-size: 36px !important; }
+  }
 </style>
 </head>
-<body>
-<table width="100%" cellpadding="0" cellspacing="0" style="background:${BLACK};min-height:100vh;">
-  <tr><td align="center" style="padding:40px 16px;">
-    <table width="620" cellpadding="0" cellspacing="0" style="max-width:620px;width:100%;">
+<body style="margin:0;padding:0;background-color:${BLACK};">
 
-      <!-- TOP GOLD LINE -->
-      <tr><td style="height:3px;background:linear-gradient(90deg,${GOLD_DK},${GOLD_LT},${GOLD_DK});border-radius:3px 3px 0 0;"></td></tr>
+<!-- PREHEADER (hidden — prevents Gmail blank-top bug) -->
+<div style="display:none;font-size:1px;color:${BLACK};line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+  ${preheaderText} — PetWash™ חשבונית מס קבלה ${invoiceNo}
+</div>
 
-      <!-- HEADER -->
-      <tr><td style="background:${DARK};padding:32px 40px 24px;text-align:right;">
-        <table width="100%" cellpadding="0" cellspacing="0">
-          <tr>
-            <td>
-              <div style="font-size:10px;letter-spacing:3px;color:${GOLD};text-transform:uppercase;margin-bottom:4px;">חשבונית מס קבלה</div>
-              <div style="font-size:10px;letter-spacing:2px;color:#888;text-transform:uppercase;">Tax Invoice — Receipt</div>
-            </td>
-            <td align="left" style="width:120px;">
-              <div style="font-size:22px;font-weight:700;color:${GOLD};letter-spacing:-0.5px;">
-                🐾 PetWash™
-              </div>
-              <div style="font-size:9px;color:#666;letter-spacing:2px;text-transform:uppercase;">PRESTIGE PLATFORM</div>
-            </td>
-          </tr>
-        </table>
-      </td></tr>
+<!-- OUTER WRAPPER — bgcolor attr required for Gmail -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+  bgcolor="${BLACK}" style="background-color:${BLACK};">
+  <tr>
+    <td align="center" valign="top" style="background-color:${BLACK};padding:32px 16px;">
 
-      <!-- INVOICE BADGE -->
-      <tr><td style="background:linear-gradient(135deg,${SURFACE},#222);padding:0 40px 28px;">
-        <table width="100%" cellpadding="0" cellspacing="0">
-          <tr>
-            <td style="padding-top:24px;">
-              <div style="display:inline-block;background:linear-gradient(135deg,${GOLD_DK},${GOLD});padding:6px 18px;border-radius:20px;">
-                <span style="font-size:11px;font-weight:700;color:#000;letter-spacing:2px;text-transform:uppercase;">✓ אושר ושולם</span>
-              </div>
-            </td>
-            <td align="left" style="padding-top:24px;">
-              <div style="font-size:10px;color:#888;letter-spacing:1px;">CONFIRMED &amp; PAID</div>
-            </td>
-          </tr>
-        </table>
-      </td></tr>
+      <!-- INNER CARD — 620px max -->
+      <table class="email-container" role="presentation" width="620" cellpadding="0" cellspacing="0" border="0"
+        style="max-width:620px;width:100%;">
 
-      <!-- BODY CONTENT -->
-      ${bodyContent}
+        <!-- ══ GOLD TOP LINE ══ -->
+        <tr>
+          <td height="4" style="background-color:${GOLD};font-size:0;line-height:0;">&nbsp;</td>
+        </tr>
 
-      <!-- LEGAL FOOTER -->
-      <tr><td style="background:${SURFACE};padding:28px 40px;border-top:1px solid ${BORDER};">
-        <table width="100%" cellpadding="0" cellspacing="0">
-          <tr>
-            <td style="border-right:1px solid ${BORDER};padding-left:24px;">
-              <div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">פרטי עוסק</div>
-              <div style="font-size:10px;color:#aaa;line-height:1.7;">
-                ${BUSINESS_NAME_HE} / ${BUSINESS_NAME}<br>
-                עוסק מורשה מס׳ ${BUSINESS_REG}<br>
-                ${BUSINESS_ADDR}
-              </div>
-            </td>
-            <td style="padding-right:24px;" align="right">
-              <div style="font-size:9px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">יצירת קשר</div>
-              <div style="font-size:10px;color:#aaa;line-height:1.7;">
-                ${SUPPORT_EMAIL}<br>
-                ${SUPPORT_PHONE}<br>
-                <a href="https://petwash.co.il" style="color:${GOLD};text-decoration:none;">petwash.co.il</a>
-              </div>
-            </td>
-          </tr>
-        </table>
-        <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.05);font-size:8.5px;color:#555;line-height:1.6;text-align:center;">
-          מסמך זה מהווה חשבונית מס קבלה לפי תקנות מס ערך מוסף (מע"מ), תשל"ו-1976. שמור/י מסמך זה לצורך דיווח לרשות המסים.
-          <br>This document serves as a Tax Invoice-Receipt under Israeli VAT Regulations 1976. Retain for tax reporting purposes.
-        </div>
-      </td></tr>
+        <!-- ══ HEADER ══ -->
+        <tr>
+          <td bgcolor="${DARK}" style="background-color:${DARK};padding:28px 40px 20px;" class="mobile-pad">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td valign="middle">
+                  <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:3px;
+                    color:${GOLD};text-transform:uppercase;">חשבונית מס קבלה</p>
+                  <p style="margin:4px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:9px;letter-spacing:2px;
+                    color:${TEXT_DIM};text-transform:uppercase;">TAX INVOICE — RECEIPT</p>
+                </td>
+                <td valign="middle" align="left" width="160">
+                  <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:20px;font-weight:700;
+                    color:${GOLD};letter-spacing:-0.5px;">🐾 PetWash™</p>
+                  <p style="margin:3px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:8px;letter-spacing:3px;
+                    color:${TEXT_DIM};text-transform:uppercase;">PRESTIGE PLATFORM</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
 
-      <!-- BOTTOM GOLD LINE -->
-      <tr><td style="height:3px;background:linear-gradient(90deg,${GOLD_DK},${GOLD_LT},${GOLD_DK});border-radius:0 0 3px 3px;"></td></tr>
+        <!-- ══ STATUS BADGE ══ -->
+        <tr>
+          <td bgcolor="${CARD}" style="background-color:${CARD};padding:16px 40px 20px;" class="mobile-pad">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td bgcolor="${GOLD_DK}" style="background-color:${GOLD_DK};border-radius:20px;padding:6px 20px;">
+                  <span style="font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;
+                    color:#000000;letter-spacing:2px;text-transform:uppercase;">&#10003; אושר ושולם &nbsp;·&nbsp; CONFIRMED &amp; PAID</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
 
-    </table>
-  </td></tr>
+        <!-- ══ BODY CONTENT (injected) ══ -->
+        ${body}
+
+        <!-- ══ GOLD DIVIDER ══ -->
+        <tr>
+          <td height="1" bgcolor="${DIVIDER}" style="background-color:${DIVIDER};font-size:0;line-height:0;">&nbsp;</td>
+        </tr>
+
+        <!-- ══ LEGAL FOOTER ══ -->
+        <tr>
+          <td bgcolor="${DARK}" style="background-color:${DARK};padding:28px 40px;" class="mobile-pad">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td valign="top" style="padding-left:24px;border-left:none;border-right:2px solid ${DIVIDER};padding-right:0;padding-left:24px;">
+                  <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:9px;letter-spacing:2px;
+                    color:${TEXT_DIM};text-transform:uppercase;">פרטי עוסק</p>
+                  <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:10px;
+                    color:${TEXT_SEC};line-height:1.8;">
+                    ${BUSINESS_HE} / ${BUSINESS_EN}<br>
+                    עוסק מורשה מס׳ ${BUSINESS_REG}<br>
+                    תל אביב, ישראל
+                  </p>
+                </td>
+                <td width="24">&nbsp;</td>
+                <td valign="top" align="left">
+                  <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:9px;letter-spacing:2px;
+                    color:${TEXT_DIM};text-transform:uppercase;">יצירת קשר</p>
+                  <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:10px;
+                    color:${TEXT_SEC};line-height:1.8;">
+                    ${SUPPORT_EMAIL}<br>
+                    ${SUPPORT_PHONE}<br>
+                    <a href="https://petwash.co.il" style="color:${GOLD};text-decoration:none;">petwash.co.il</a>
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ══ VAT LEGAL DISCLAIMER ══ -->
+        <tr>
+          <td bgcolor="${BLACK}" style="background-color:${BLACK};padding:16px 40px 20px;" class="mobile-pad">
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:8.5px;color:${TEXT_DIM};
+              line-height:1.7;text-align:center;">
+              מסמך זה מהווה חשבונית מס קבלה לפי תקנות מס ערך מוסף (מע"מ), תשל"ו-1976.
+              שמור/י מסמך זה לצורך דיווח לרשות המסים.<br>
+              <span style="color:#333333;">This document serves as a Tax Invoice-Receipt under Israeli VAT Regulations 1976. Retain for tax reporting.</span>
+            </p>
+          </td>
+        </tr>
+
+        <!-- ══ GOLD BOTTOM LINE ══ -->
+        <tr>
+          <td height="4" style="background-color:${GOLD};font-size:0;line-height:0;">&nbsp;</td>
+        </tr>
+
+      </table>
+      <!-- /INNER CARD -->
+
+    </td>
+  </tr>
 </table>
+<!-- /OUTER WRAPPER -->
+
 </body>
 </html>`;
 }
 
-// ─── ROW helpers ─────────────────────────────────────────────────────────────
-function infoRow(labelHe: string, labelEn: string, value: string, highlight = false): string {
+// ─── Section helpers (email-safe) ────────────────────────────────────────────
+function sectionHeader(heText: string, enText: string): string {
   return `<tr>
-    <td style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-      <span style="font-size:11px;color:#888;">${labelHe}</span>
-      <span style="font-size:9px;color:#555;margin-right:4px;">${labelEn}</span>
-    </td>
-    <td align="left" style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-      <span style="font-size:${highlight ? '13' : '11'}px;font-weight:${highlight ? '700' : '400'};color:${highlight ? GOLD : '#ccc'};">${value}</span>
+    <td bgcolor="${SECTION}" style="background-color:${SECTION};padding:20px 40px 12px;" class="mobile-pad">
+      <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:9px;letter-spacing:3px;
+        color:${GOLD};text-transform:uppercase;">${heText} &nbsp;&#8212;&nbsp; ${enText}</p>
     </td>
   </tr>`;
 }
 
-function amountRow(labelHe: string, labelEn: string, amount: string, emphasis = false, isTotal = false): string {
+function detailRow(heLabel: string, enLabel: string, value: string): string {
+  return `<tr>
+    <td bgcolor="${SECTION}" style="background-color:${SECTION};padding:0 40px;" class="mobile-pad">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+        style="border-bottom:1px solid ${DIVIDER};">
+        <tr>
+          <td style="padding:10px 0;">
+            <span style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${TEXT_PRI};">${heLabel}</span>
+            <span style="font-family:Arial,Helvetica,sans-serif;font-size:9px;color:${TEXT_DIM};margin-right:6px;">${enLabel}</span>
+          </td>
+          <td align="left" style="padding:10px 0;">
+            <span style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${TEXT_SEC};">${value}</span>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>`;
+}
+
+function amountRow(heLabel: string, enLabel: string, amount: string, isTotal = false): string {
   if (isTotal) {
     return `<tr>
-      <td colspan="2" style="padding:0;"><div style="height:1px;background:linear-gradient(90deg,${GOLD_DK},${GOLD});margin:12px 0;"></div></td>
-    </tr>
-    <tr>
-      <td style="padding:10px 0 4px;">
-        <span style="font-size:13px;font-weight:700;color:${GOLD_LT};">${labelHe}</span>
-        <span style="font-size:9px;color:${GOLD};margin-right:4px;opacity:0.7;">${labelEn}</span>
-      </td>
-      <td align="left" style="padding:10px 0 4px;">
-        <span style="font-size:20px;font-weight:700;color:${GOLD};">${amount}</span>
+      <td bgcolor="${CARD}" style="background-color:${CARD};padding:0 40px;" class="mobile-pad">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td colspan="2" height="1" style="background-color:${GOLD};font-size:0;line-height:0;">&nbsp;</td></tr>
+          <tr>
+            <td style="padding:14px 0 8px;">
+              <span style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:${GOLD_LT};">${heLabel}</span>
+              <span style="font-family:Arial,Helvetica,sans-serif;font-size:9px;color:${GOLD};margin-right:6px;opacity:0.7;">${enLabel}</span>
+            </td>
+            <td align="left" style="padding:14px 0 8px;">
+              <span style="font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:700;color:${GOLD};">${amount}</span>
+            </td>
+          </tr>
+        </table>
       </td>
     </tr>`;
   }
   return `<tr>
-    <td style="padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-      <span style="font-size:11px;color:${emphasis ? '#ccc' : '#888'};">${labelHe}</span>
-      <span style="font-size:9px;color:#555;margin-right:4px;">${labelEn}</span>
-    </td>
-    <td align="left" style="padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-      <span style="font-size:12px;font-weight:${emphasis ? '600' : '400'};color:${emphasis ? '#ddd' : '#999'};">${amount}</span>
+    <td bgcolor="${CARD}" style="background-color:${CARD};padding:0 40px;" class="mobile-pad">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+        style="border-bottom:1px solid ${DIVIDER};">
+        <tr>
+          <td style="padding:9px 0;">
+            <span style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${TEXT_SEC};">${heLabel}</span>
+            <span style="font-family:Arial,Helvetica,sans-serif;font-size:9px;color:${TEXT_DIM};margin-right:6px;">${enLabel}</span>
+          </td>
+          <td align="left" style="padding:9px 0;">
+            <span style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:${TEXT_SEC};">${amount}</span>
+          </td>
+        </tr>
+      </table>
     </td>
   </tr>`;
 }
@@ -181,92 +270,120 @@ function amountRow(labelHe: string, labelEn: string, amount: string, emphasis = 
 // 1. E-GIFT CARD PURCHASE RECEIPT
 // ═══════════════════════════════════════════════════════════════════════════════
 export interface EGiftReceiptParams {
-  invoiceNo:       string;   // PW-INV-2026-003847
-  txId:            string;   // TXN-20260317-884729
+  invoiceNo:       string;
+  txId:            string;
   date:            Date;
   buyerName:       string;
   buyerEmail:      string;
   recipientName:   string;
-  giftAmountIls:   number;   // face value, e.g. 500
-  voucherId:       string;   // PGIFT-XXX
-  paymentLast4:    string;   // last 4 digits of card
-  paymentBrand:    string;   // Visa / Mastercard / Amex
+  giftAmountIls:   number;
+  voucherId:       string;
+  paymentLast4:    string;
+  paymentBrand:    string;
   personalMessage?: string;
   language?:       'he' | 'en';
 }
 
 export function buildEGiftReceipt(p: EGiftReceiptParams): string {
   const { net, vat, gross } = vatBreakdown(p.giftAmountIls);
-  const isHe = (p.language ?? 'he') === 'he';
 
   const body = `
-    <!-- GIFT CARD HERO -->
-    <tr><td style="background:linear-gradient(135deg,#0a0a0a 0%,${SURFACE} 50%,#0a0a0a 100%);padding:0 40px 32px;">
-      <table width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-          <td colspan="2" style="padding-bottom:20px;">
-            <div style="font-size:11px;letter-spacing:3px;color:${GOLD};text-transform:uppercase;margin-bottom:8px;">🎁 כרטיס מתנה / E-Gift Card</div>
-            <div style="font-size:32px;font-weight:700;color:#fff;letter-spacing:-1px;">${fmtIls(gross)}</div>
-            <div style="font-size:11px;color:#666;margin-top:4px;">מסופק מיידית • Digital delivery</div>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
+    <!-- HERO AMOUNT -->
+    <tr>
+      <td bgcolor="${BLACK}" style="background-color:${BLACK};padding:32px 40px 28px;text-align:right;" class="mobile-pad">
+        <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:3px;
+          color:${GOLD};text-transform:uppercase;">&#127873; כרטיס מתנה &nbsp;·&nbsp; E-GIFT CARD</p>
+        <p class="hero-amount" style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:52px;
+          font-weight:700;color:#FFFFFF;letter-spacing:-2px;line-height:1;">${ils(gross)}</p>
+        <p style="margin:8px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${TEXT_DIM};">
+          מסופק מיידית &nbsp;·&nbsp; Instant digital delivery
+        </p>
+      </td>
+    </tr>
 
-    <!-- TRANSACTION DETAILS -->
-    <tr><td style="background:${DARK};padding:28px 40px;">
-      <div style="font-size:10px;letter-spacing:2px;color:${GOLD};text-transform:uppercase;margin-bottom:16px;">פרטי עסקה — Transaction Details</div>
-      <table width="100%" cellpadding="0" cellspacing="0" dir="rtl">
-        ${infoRow('מס׳ חשבונית', 'Invoice No.', p.invoiceNo)}
-        ${infoRow('מס׳ עסקה', 'Transaction ID', p.txId)}
-        ${infoRow('תאריך', 'Date', fmtDate(p.date))}
-        ${infoRow('קונה', 'Buyer', `${p.buyerName} &lt;${p.buyerEmail}&gt;`)}
-        ${infoRow('מקבל', 'Recipient', p.recipientName)}
-        ${infoRow('מק״ט שובר', 'Voucher ID', p.voucherId, true)}
-        ${infoRow('תשלום', 'Payment', `${p.paymentBrand} ****${p.paymentLast4}`)}
-      </table>
-    </td></tr>
+    <!-- GOLD DIVIDER -->
+    <tr><td height="1" bgcolor="${DIVIDER}" style="background-color:${DIVIDER};font-size:0;">&nbsp;</td></tr>
+
+    <!-- TRANSACTION DETAILS HEADER -->
+    ${sectionHeader('פרטי עסקה', 'TRANSACTION DETAILS')}
+
+    <!-- DETAIL ROWS -->
+    ${detailRow('מס׳ חשבונית', 'Invoice No.', p.invoiceNo)}
+    ${detailRow('מס׳ עסקה', 'Transaction ID', p.txId)}
+    ${detailRow('תאריך', 'Date', fmtDate(p.date))}
+    ${detailRow('קונה', 'Buyer', `${p.buyerName} — ${p.buyerEmail}`)}
+    ${detailRow('מקבל המתנה', 'Recipient', p.recipientName)}
+    ${detailRow('מק״ט שובר', 'Voucher ID', `<strong style="color:${GOLD_LT};">${p.voucherId}</strong>`)}
+    ${detailRow('אמצעי תשלום', 'Payment', `${p.paymentBrand} ****${p.paymentLast4}`)}
+
+    <!-- SPACER -->
+    <tr><td bgcolor="${SECTION}" style="background-color:${SECTION};height:12px;font-size:0;">&nbsp;</td></tr>
+    <tr><td height="1" bgcolor="${DIVIDER}" style="background-color:${DIVIDER};font-size:0;">&nbsp;</td></tr>
 
     ${p.personalMessage ? `
     <!-- PERSONAL MESSAGE -->
-    <tr><td style="background:${SURFACE};padding:20px 40px;">
-      <div style="font-size:9px;letter-spacing:2px;color:#666;text-transform:uppercase;margin-bottom:10px;">הודעה אישית / Personal Message</div>
-      <div style="font-size:13px;color:#bbb;font-style:italic;line-height:1.6;border-right:3px solid ${GOLD};padding-right:14px;">"${p.personalMessage}"</div>
-    </td></tr>` : ''}
+    <tr>
+      <td bgcolor="${DARK}" style="background-color:${DARK};padding:20px 40px;" class="mobile-pad">
+        <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:9px;letter-spacing:2px;
+          color:${TEXT_DIM};text-transform:uppercase;">&#128140; הודעה אישית &nbsp;·&nbsp; PERSONAL MESSAGE</p>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+          <tr>
+            <td width="3" bgcolor="${GOLD}" style="background-color:${GOLD};">&nbsp;</td>
+            <td style="padding-right:16px;">
+              <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:13px;
+                color:${TEXT_PRI};font-style:italic;line-height:1.7;">"${p.personalMessage}"</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr><td height="1" bgcolor="${DIVIDER}" style="background-color:${DIVIDER};font-size:0;">&nbsp;</td></tr>` : ''}
 
-    <!-- VAT BREAKDOWN — mandatory for Israeli tax law -->
-    <tr><td style="background:${DARK};padding:28px 40px;border-top:1px solid ${BORDER};">
-      <div style="font-size:10px;letter-spacing:2px;color:${GOLD};text-transform:uppercase;margin-bottom:16px;">פירוט מחיר — Price Breakdown</div>
-      <table width="100%" cellpadding="0" cellspacing="0" dir="rtl">
-        ${amountRow('מחיר לפני מע"מ', 'Net (ex. VAT)', fmtIls(net))}
-        ${amountRow('מע"מ 18%', 'VAT 18%', fmtIls(vat))}
-        ${amountRow('סה"כ לתשלום', 'Total Paid', fmtIls(gross), false, true)}
-      </table>
-    </td></tr>
+    <!-- PRICE BREAKDOWN HEADER -->
+    <tr>
+      <td bgcolor="${CARD}" style="background-color:${CARD};padding:20px 40px 12px;" class="mobile-pad">
+        <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:9px;letter-spacing:3px;
+          color:${GOLD};text-transform:uppercase;">פירוט מחיר &nbsp;&#8212;&nbsp; PRICE BREAKDOWN</p>
+      </td>
+    </tr>
+
+    ${amountRow('מחיר לפני מע"מ', 'Net (ex. VAT)', ils(net))}
+    ${amountRow('מע"מ 18%', 'VAT 18%', ils(vat))}
+    ${amountRow('סה"כ שולם', 'TOTAL PAID', ils(gross), true)}
+
+    <tr><td bgcolor="${CARD}" style="background-color:${CARD};height:20px;font-size:0;">&nbsp;</td></tr>
+    <tr><td height="1" bgcolor="${DIVIDER}" style="background-color:${DIVIDER};font-size:0;">&nbsp;</td></tr>
 
     <!-- GIFT CARD VISUAL -->
-    <tr><td style="background:${BLACK};padding:24px 40px;">
-      <table width="100%" cellpadding="0" cellspacing="0">
-        <tr><td>
-          <div style="background:linear-gradient(135deg,#111 0%,#1e1a0a 50%,#111 100%);border:1px solid ${BORDER};border-radius:16px;padding:28px 32px;">
-            <div style="font-size:9px;letter-spacing:3px;color:${GOLD};text-transform:uppercase;margin-bottom:16px;">🐾 PetWash™ E-Gift</div>
-            <div style="font-size:28px;font-weight:700;color:${GOLD};">${fmtIls(gross)}</div>
-            <div style="margin-top:16px;font-family:monospace;font-size:13px;color:#888;letter-spacing:3px;">${p.voucherId}</div>
-            <div style="margin-top:8px;font-size:10px;color:#555;">תקף לכל השירותים ב-PetWash™ • Valid for all PetWash™ services</div>
-          </div>
-        </td></tr>
-      </table>
-    </td></tr>
+    <tr>
+      <td bgcolor="${BLACK}" style="background-color:${BLACK};padding:28px 40px;" class="mobile-pad">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td bgcolor="${CARD}" style="background-color:${CARD};border-radius:12px;padding:28px 32px;
+              border:1px solid ${DIVIDER};">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td>
+                    <p style="margin:0 0 12px;font-family:Arial,Helvetica,sans-serif;font-size:9px;
+                      letter-spacing:3px;color:${GOLD};text-transform:uppercase;">&#128062; PetWash™ E-Gift</p>
+                    <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:32px;
+                      font-weight:700;color:${GOLD};">${ils(gross)}</p>
+                    <p style="margin:12px 0 0;font-family:'Courier New',Courier,monospace;font-size:12px;
+                      color:${TEXT_DIM};letter-spacing:3px;">${p.voucherId}</p>
+                    <p style="margin:6px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:9px;
+                      color:${TEXT_DIM};">תקף לכל השירותים ב-PetWash™ &nbsp;·&nbsp; Valid for all PetWash™ services</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `;
 
-    <!-- VAT LEGAL NOTE -->
-    <tr><td style="background:${SURFACE};padding:16px 40px;border-top:1px solid ${BORDER};">
-      <div style="font-size:9px;color:#555;line-height:1.7;text-align:right;">
-        ⚠️ <strong style="color:#777;">הערת מס:</strong> מסמך זה כולל חשבונית מס קבלה בהתאם לחוק מע"מ.
-        מע"מ בשיעור 18% כלול במחיר. ${BUSINESS_NAME_HE}, עוסק מורשה ${BUSINESS_REG}.
-      </div>
-    </td></tr>`;
-
-  return emailShell(body, p.invoiceNo);
+  const preheader = `כרטיס מתנה ${ils(gross)} ל-${p.recipientName} אושר ושולם`;
+  return shell(preheader, p.invoiceNo, body);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -275,149 +392,151 @@ export function buildEGiftReceipt(p: EGiftReceiptParams): string {
 export type ProviderServiceType = 'petsitter' | 'pet_walker' | 'academy' | 'petwash';
 
 export interface ProviderTxReceiptParams {
-  invoiceNo:       string;    // PW-INV-2026-003848
+  invoiceNo:       string;
   txId:            string;
   date:            Date;
   serviceDate:     Date;
   serviceType:     ProviderServiceType;
-  serviceDescHe:   string;    // e.g. "שמירה על חיות — 4 שעות"
-  serviceDescEn:   string;    // e.g. "Pet Sitting — 4 hours"
-  providerName:    string;    // מיכל כהן
-  providerBizNo?:  string;    // עוסק מורשה / עוסק פטור of provider (if known)
-  petName:         string;    // Max
-  petBreed?:       string;    // German Shepherd
+  serviceDescHe:   string;
+  serviceDescEn:   string;
+  providerName:    string;
+  providerBizNo?:  string;
+  petName:         string;
+  petBreed?:       string;
   customerName:    string;
   customerEmail:   string;
-  grossChargedIls: number;    // what customer actually paid (incl. VAT)
-  platformFeeRate: number;    // e.g. 0.15 (15%)
+  grossChargedIls: number;
+  platformFeeRate: number;
   paymentLast4:    string;
   paymentBrand:    string;
-  durationLabel?:  string;    // "4 שעות", "60 דקות"
+  durationLabel?:  string;
   language?:       'he' | 'en';
 }
 
-const SERVICE_ICONS: Record<ProviderServiceType, string> = {
-  petsitter:   '🏠',
-  pet_walker:  '🦮',
-  academy:     '🎓',
-  petwash:     '🚿',
+const SVC_ICON: Record<ProviderServiceType, string> = {
+  petsitter:  '&#127968;',
+  pet_walker: '&#128054;',
+  academy:    '&#127891;',
+  petwash:    '&#128701;',
 };
-const SERVICE_LABEL_HE: Record<ProviderServiceType, string> = {
-  petsitter:   'שמירה על חיות',
-  pet_walker:  'טיול כלבים',
-  academy:     'אקדמיה לאילוף',
-  petwash:     'שטיפת חיות מחמד',
+const SVC_HE: Record<ProviderServiceType, string> = {
+  petsitter:  'שמירה על חיות',
+  pet_walker: 'טיול כלבים',
+  academy:    'אקדמיה לאילוף',
+  petwash:    'שטיפת חיות מחמד',
 };
-const SERVICE_LABEL_EN: Record<ProviderServiceType, string> = {
-  petsitter:   'Pet Sitting',
-  pet_walker:  'Dog Walking',
-  academy:     'Pet Academy Training',
-  petwash:     'Pet Wash',
+const SVC_EN: Record<ProviderServiceType, string> = {
+  petsitter:  'PET SITTING',
+  pet_walker: 'DOG WALKING',
+  academy:    'PET ACADEMY',
+  petwash:    'PET WASH',
 };
 
 export function buildProviderTxReceipt(p: ProviderTxReceiptParams): string {
   const { net, vat, gross } = vatBreakdown(p.grossChargedIls);
-  const platformFeeGross = +(p.grossChargedIls * p.platformFeeRate).toFixed(2);
-  const platformFeeNet   = +(platformFeeGross / (1 + VAT_RATE)).toFixed(2);
-  const platformFeeVat   = +(platformFeeGross - platformFeeNet).toFixed(2);
-  const providerPayout   = +(p.grossChargedIls - platformFeeGross).toFixed(2);
-  const icon = SERVICE_ICONS[p.serviceType];
-  const labelHe = SERVICE_LABEL_HE[p.serviceType];
-  const labelEn = SERVICE_LABEL_EN[p.serviceType];
+  const pfGross = +(p.grossChargedIls * p.platformFeeRate).toFixed(2);
+  const pfNet   = +(pfGross / (1 + VAT_RATE)).toFixed(2);
+  const pfVat   = +(pfGross - pfNet).toFixed(2);
+  const payout  = +(p.grossChargedIls - pfGross).toFixed(2);
+  const icon    = SVC_ICON[p.serviceType];
+  const labelHe = SVC_HE[p.serviceType];
+  const labelEn = SVC_EN[p.serviceType];
 
   const body = `
-    <!-- SERVICE HERO -->
-    <tr><td style="background:linear-gradient(135deg,#0a0a0a 0%,${SURFACE} 50%,#0a0a0a 100%);padding:0 40px 32px;">
-      <table width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-          <td>
-            <div style="font-size:11px;letter-spacing:3px;color:${GOLD};text-transform:uppercase;margin-bottom:8px;">${icon} ${labelHe} / ${labelEn}</div>
-            <div style="font-size:32px;font-weight:700;color:#fff;letter-spacing:-1px;">${fmtIls(gross)}</div>
-            <div style="font-size:11px;color:#666;margin-top:4px;">
-              ${p.serviceDescHe} • ${p.durationLabel ?? ''}
-            </div>
-          </td>
-          <td align="left" style="vertical-align:top;padding-top:8px;">
-            <div style="background:rgba(198,163,91,0.1);border:1px solid ${BORDER};border-radius:12px;padding:12px 16px;text-align:center;">
-              <div style="font-size:24px;">${icon}</div>
-              <div style="font-size:9px;color:${GOLD};letter-spacing:1px;margin-top:4px;">SERVICE</div>
-            </div>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
+    <!-- HERO AMOUNT -->
+    <tr>
+      <td bgcolor="${BLACK}" style="background-color:${BLACK};padding:32px 40px 28px;text-align:right;" class="mobile-pad">
+        <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:3px;
+          color:${GOLD};text-transform:uppercase;">${icon} ${labelHe} &nbsp;·&nbsp; ${labelEn}</p>
+        <p class="hero-amount" style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:52px;
+          font-weight:700;color:#FFFFFF;letter-spacing:-2px;line-height:1;">${ils(gross)}</p>
+        <p style="margin:8px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${TEXT_DIM};">
+          ${p.serviceDescHe}${p.durationLabel ? ` &nbsp;·&nbsp; ${p.durationLabel}` : ''}
+        </p>
+      </td>
+    </tr>
 
-    <!-- TRANSACTION & SERVICE DETAILS -->
-    <tr><td style="background:${DARK};padding:28px 40px;">
-      <div style="font-size:10px;letter-spacing:2px;color:${GOLD};text-transform:uppercase;margin-bottom:16px;">פרטי עסקה — Transaction Details</div>
-      <table width="100%" cellpadding="0" cellspacing="0" dir="rtl">
-        ${infoRow('מס׳ חשבונית', 'Invoice No.', p.invoiceNo)}
-        ${infoRow('מס׳ עסקה', 'Transaction ID', p.txId)}
-        ${infoRow('תאריך הנפקה', 'Issued', fmtDate(p.date))}
-        ${infoRow('תאריך שירות', 'Service Date', fmtDate(p.serviceDate))}
-        ${infoRow('שירות', 'Service', `${p.serviceDescHe} / ${p.serviceDescEn}`)}
-        ${infoRow('נותן שירות', 'Provider', p.providerName + (p.providerBizNo ? ` (ע.מ. ${p.providerBizNo})` : ''))}
-        ${infoRow('חיית מחמד', 'Pet', `${p.petName}${p.petBreed ? ` — ${p.petBreed}` : ''}`)}
-        ${infoRow('לקוח', 'Customer', `${p.customerName} &lt;${p.customerEmail}&gt;`)}
-        ${infoRow('תשלום', 'Payment', `${p.paymentBrand} ****${p.paymentLast4}`)}
-      </table>
-    </td></tr>
+    <!-- GOLD DIVIDER -->
+    <tr><td height="1" bgcolor="${DIVIDER}" style="background-color:${DIVIDER};font-size:0;">&nbsp;</td></tr>
 
-    <!-- FULL PRICE BREAKDOWN (platform fee + provider payout + VAT) -->
-    <tr><td style="background:${DARK};padding:28px 40px;border-top:1px solid ${BORDER};">
-      <div style="font-size:10px;letter-spacing:2px;color:${GOLD};text-transform:uppercase;margin-bottom:16px;">פירוט מחיר מלא — Full Price Breakdown</div>
-      <table width="100%" cellpadding="0" cellspacing="0" dir="rtl">
+    <!-- TRANSACTION DETAILS -->
+    ${sectionHeader('פרטי עסקה', 'TRANSACTION DETAILS')}
 
-        <!-- Total charged -->
-        ${amountRow('מחיר שירות לפני מע"מ', 'Service (net)', fmtIls(net))}
-        ${amountRow('מע"מ 18%', 'VAT 18%', fmtIls(vat))}
-        ${amountRow('סה"כ שולם', 'Total Paid', fmtIls(gross), true)}
+    ${detailRow('מס׳ חשבונית', 'Invoice No.', p.invoiceNo)}
+    ${detailRow('מס׳ עסקה', 'Transaction ID', p.txId)}
+    ${detailRow('תאריך הנפקה', 'Issued', fmtDate(p.date))}
+    ${detailRow('תאריך שירות', 'Service Date', fmtDate(p.serviceDate))}
+    ${detailRow('שירות', 'Service', `${p.serviceDescHe} / ${p.serviceDescEn}`)}
+    ${detailRow('נותן שירות', 'Provider', p.providerName + (p.providerBizNo ? ` &nbsp;(ע.מ. ${p.providerBizNo})` : ''))}
+    ${detailRow('חיית מחמד', 'Pet', `${p.petName}${p.petBreed ? ` — ${p.petBreed}` : ''}`)}
+    ${detailRow('לקוח', 'Customer', `${p.customerName} — ${p.customerEmail}`)}
+    ${detailRow('אמצעי תשלום', 'Payment', `${p.paymentBrand} ****${p.paymentLast4}`)}
 
-        <!-- Spacer -->
-        <tr><td colspan="2" style="height:16px;"></td></tr>
-        <tr><td colspan="2">
-          <div style="font-size:9px;letter-spacing:2px;color:#555;text-transform:uppercase;border-top:1px dashed rgba(255,255,255,0.08);padding-top:12px;">עמלת פלטפורמה / Platform Commission</div>
-        </td></tr>
+    <tr><td bgcolor="${SECTION}" style="background-color:${SECTION};height:12px;font-size:0;">&nbsp;</td></tr>
+    <tr><td height="1" bgcolor="${DIVIDER}" style="background-color:${DIVIDER};font-size:0;">&nbsp;</td></tr>
 
-        ${amountRow(`עמלת PetWash™ (${Math.round(p.platformFeeRate * 100)}%)`, `Platform fee`, fmtIls(platformFeeGross))}
-        ${amountRow('מע"מ על עמלה', 'VAT on fee', fmtIls(platformFeeVat))}
-        ${amountRow('תשלום לספק', 'Provider payout', fmtIls(providerPayout), false, true)}
-      </table>
-    </td></tr>
+    <!-- PRICE BREAKDOWN HEADER -->
+    <tr>
+      <td bgcolor="${CARD}" style="background-color:${CARD};padding:20px 40px 12px;" class="mobile-pad">
+        <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:9px;letter-spacing:3px;
+          color:${GOLD};text-transform:uppercase;">פירוט מחיר מלא &nbsp;&#8212;&nbsp; FULL PRICE BREAKDOWN</p>
+      </td>
+    </tr>
 
-    <!-- PROVIDER PAYOUT SUMMARY BOX -->
-    <tr><td style="background:${BLACK};padding:24px 40px;">
-      <table width="100%" cellpadding="0" cellspacing="0">
-        <tr><td>
-          <div style="background:linear-gradient(135deg,#111 0%,#1a1a0e 100%);border:1px solid ${BORDER};border-radius:16px;padding:24px 28px;">
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <td>
-                  <div style="font-size:9px;letter-spacing:2px;color:${GOLD};text-transform:uppercase;margin-bottom:6px;">ספק שירות / Provider</div>
-                  <div style="font-size:16px;font-weight:600;color:#eee;">${p.providerName}</div>
-                  ${p.providerBizNo ? `<div style="font-size:10px;color:#666;margin-top:2px;">ע.מ. ${p.providerBizNo}</div>` : ''}
-                </td>
-                <td align="left">
-                  <div style="font-size:9px;letter-spacing:2px;color:${GOLD};text-transform:uppercase;margin-bottom:6px;">יתרה לספק</div>
-                  <div style="font-size:22px;font-weight:700;color:${GOLD};">${fmtIls(providerPayout)}</div>
-                  <div style="font-size:9px;color:#555;">לאחר עמלת פלטפורמה</div>
-                </td>
-              </tr>
-            </table>
-          </div>
-        </td></tr>
-      </table>
-    </td></tr>
+    ${amountRow('מחיר שירות לפני מע"מ', 'Net (ex. VAT)', ils(net))}
+    ${amountRow('מע"מ 18%', 'VAT 18%', ils(vat))}
+    ${amountRow('סה"כ שולם', 'TOTAL PAID', ils(gross), true)}
 
-    <!-- VAT LEGAL NOTE -->
-    <tr><td style="background:${SURFACE};padding:16px 40px;border-top:1px solid ${BORDER};">
-      <div style="font-size:9px;color:#555;line-height:1.7;text-align:right;">
-        ⚠️ <strong style="color:#777;">הערת מס:</strong> מסמך זה מהווה חשבונית מס קבלה לפי חוק מע"מ.
-        מע"מ 18% כלול במחיר הכולל. עמלת הפלטפורמה כוללת מע"מ. 
-        ${BUSINESS_NAME_HE}, עוסק מורשה ${BUSINESS_REG}.
-        הכנסת הספק ממוסה בנפרד ואינה כלולה בחשבונית זו.
-      </div>
-    </td></tr>`;
+    <!-- PLATFORM FEE SUB-SECTION -->
+    <tr>
+      <td bgcolor="${CARD}" style="background-color:${CARD};padding:16px 40px 10px;" class="mobile-pad">
+        <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:8px;letter-spacing:2px;
+          color:${TEXT_DIM};text-transform:uppercase;border-top:1px dashed ${DIVIDER};padding-top:14px;">
+          עמלת פלטפורמה &nbsp;·&nbsp; PLATFORM COMMISSION
+        </p>
+      </td>
+    </tr>
 
-  return emailShell(body, p.invoiceNo);
+    ${amountRow(`עמלת PetWash™ (${Math.round(p.platformFeeRate * 100)}%)`, 'Platform fee', ils(pfGross))}
+    ${amountRow('מע"מ על עמלה', 'VAT on fee', ils(pfVat))}
+    ${amountRow('תשלום נטו לספק', 'PROVIDER PAYOUT', ils(payout), true)}
+
+    <tr><td bgcolor="${CARD}" style="background-color:${CARD};height:20px;font-size:0;">&nbsp;</td></tr>
+    <tr><td height="1" bgcolor="${DIVIDER}" style="background-color:${DIVIDER};font-size:0;">&nbsp;</td></tr>
+
+    <!-- PROVIDER PAYOUT BOX -->
+    <tr>
+      <td bgcolor="${BLACK}" style="background-color:${BLACK};padding:28px 40px;" class="mobile-pad">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td bgcolor="${CARD}" style="background-color:${CARD};border-radius:12px;
+              border:1px solid ${DIVIDER};padding:24px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td valign="middle">
+                    <p style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:9px;
+                      letter-spacing:2px;color:${GOLD};text-transform:uppercase;">ספק שירות &nbsp;·&nbsp; PROVIDER</p>
+                    <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:16px;
+                      font-weight:700;color:${TEXT_PRI};">${p.providerName}</p>
+                    ${p.providerBizNo ? `<p style="margin:2px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:10px;color:${TEXT_DIM};">ע.מ. ${p.providerBizNo}</p>` : ''}
+                  </td>
+                  <td valign="middle" align="left">
+                    <p style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:9px;
+                      letter-spacing:2px;color:${GOLD};text-transform:uppercase;">יתרה לספק</p>
+                    <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:28px;
+                      font-weight:700;color:${GOLD};">${ils(payout)}</p>
+                    <p style="margin:3px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:9px;
+                      color:${TEXT_DIM};">לאחר עמלת פלטפורמה</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `;
+
+  const preheader = `${labelHe} — ${p.petName} עם ${p.providerName} — ${ils(gross)} אושר ושולם`;
+  return shell(preheader, p.invoiceNo, body);
 }
