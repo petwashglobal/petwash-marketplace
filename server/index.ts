@@ -349,6 +349,44 @@ app.use((req, res, next) => {
     if (req.path === '/' || req.method === 'HEAD') {
       return res.status(200).send('<!DOCTYPE html><html><head><title>Pet Wash™</title></head><body><p>Starting up...</p></body></html>');
     }
+
+    // Wallet pass routes: return a retryable HTML page instead of raw JSON.
+    // Safari / iPhone would otherwise download the JSON as "google.json" and never open Wallet.
+    const isWalletPath =
+      (req.path.startsWith('/api/gift-cards/') && req.path.includes('/wallet/')) ||
+      req.path.startsWith('/api/pass/') ||
+      req.path.startsWith('/api/wallet/apple') ||
+      req.path.startsWith('/api/wallet/google') ||
+      req.path.startsWith('/api/prestige-pass/apple-wallet') ||
+      req.path.startsWith('/api/prestige-pass/google-wallet');
+
+    if (isWalletPath) {
+      const retryUrl = req.originalUrl;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Retry-After', '5');
+      return res.status(503).send(`<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="5;url=${retryUrl}">
+  <title>PetWash™ — טוען...</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; background: #000; color: #C6A35B;
+           text-align: center; padding: 60px 20px; }
+    h1   { font-size: 1.5rem; margin-bottom: 12px; }
+    p    { color: #fff; font-size: 0.95rem; line-height: 1.6; }
+    small{ color: #666; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+  <h1>🐾 PetWash™</h1>
+  <p>השרת מתחיל... הדף יתרענן אוטומטית בעוד <strong>5 שניות</strong>.</p>
+  <p><small>Server starting up — retrying automatically in 5s…</small></p>
+</body>
+</html>`);
+    }
+
     const traceId = (req as any).traceId || crypto.randomUUID();
     return res.status(503).json({
       error: 'SERVICE_STARTING',

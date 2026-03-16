@@ -34,7 +34,47 @@ import { logger } from '../lib/logger';
 import { z } from 'zod';
 import { EmailService } from '../emailService';
 import { buildPrestigePassLuxuryEmail } from '../email/templates/prestige-pass-luxury-2026';
-import { buildWalletUrls } from '../lib/walletPassToken';
+import { buildPassLinkToken } from '../lib/passTokens';
+import { petwashPassAccounts } from '@shared/schema';
+
+/**
+ * Look up the user's petwash_pass_accounts record and return a signed
+ * universal pass URL.  Both Apple and Google buttons can share the same
+ * link — the /api/pass/:token handler does UA detection on the device.
+ *
+ * Falls back to a null-safe tuple so callers can always destructure
+ * { appleWalletUrl, googleWalletUrl } without changing existing code.
+ */
+async function buildPrestigePassWalletUrls(
+  userId: string,
+  baseUrl: string
+): Promise<{ appleWalletUrl: string | null; googleWalletUrl: string | null }> {
+  try {
+    const [acc] = await db
+      .select({ passId: petwashPassAccounts.passId })
+      .from(petwashPassAccounts)
+      .where(eq(petwashPassAccounts.userId, userId))
+      .limit(1);
+
+    const passId = acc?.passId;
+    if (!passId) {
+      logger.warn('[PrestigePass] buildPrestigePassWalletUrls — no pass record for userId', { userId });
+      return { appleWalletUrl: null, googleWalletUrl: null };
+    }
+
+    const token = buildPassLinkToken({ passId, userId });
+    if (!token) {
+      logger.warn('[PrestigePass] buildPrestigePassWalletUrls — PASS_LINK_SECRET not configured');
+      return { appleWalletUrl: null, googleWalletUrl: null };
+    }
+
+    const url = `${baseUrl}/api/pass/${token}`;
+    return { appleWalletUrl: url, googleWalletUrl: url };
+  } catch (err) {
+    logger.error('[PrestigePass] buildPrestigePassWalletUrls error', err);
+    return { appleWalletUrl: null, googleWalletUrl: null };
+  }
+}
 import { sendViaGmail } from './gmail';
 import QRCode from 'qrcode';
 import {
@@ -1385,7 +1425,7 @@ router.post('/send-luxury-demo', async (req: Request, res: Response) => {
     const qrDataUrl = await QRCode.toDataURL(qrPayload, { width: 200, margin: 1, color: { dark: '#D4AF37', light: '#000000' } });
 
     // Generate secure wallet pass URLs
-    const { appleWalletUrl, googleWalletUrl } = buildWalletUrls('prestige-demo-nir', BASE_URL);
+    const { appleWalletUrl, googleWalletUrl } = await buildPrestigePassWalletUrls('vdiboz7IrUQEm2RbdO7VZLkBu552', BASE_URL);
 
     // Build the luxury email HTML
     const html = buildPrestigePassLuxuryEmail({
@@ -1454,7 +1494,7 @@ router.post('/generate-wallet-links', async (req: Request, res: Response) => {
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const BASE_URL = process.env.APP_BASE_URL || process.env.BASE_URL || 'https://petwash.co.il';
-    const { appleWalletUrl, googleWalletUrl } = buildWalletUrls(userId, BASE_URL);
+    const { appleWalletUrl, googleWalletUrl } = await buildPrestigePassWalletUrls(userId, BASE_URL);
 
     return res.json({
       ok:             true,
@@ -2071,7 +2111,7 @@ router.post('/admin/send-founder-pass', async (req: Request, res: Response) => {
     const qrDataUrl  = await QRCode.toDataURL(qrPayload, { width: 200, margin: 1, color: { dark: '#D4AF37', light: '#000000' } });
 
     // 5. Build signed wallet URLs
-    const { appleWalletUrl, googleWalletUrl } = buildWalletUrls(uid, BASE_URL);
+    const { appleWalletUrl, googleWalletUrl } = await buildPrestigePassWalletUrls(uid, BASE_URL);
 
     // 6. Build and send the luxury email
     const html = buildPrestigePassLuxuryEmail({

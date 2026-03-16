@@ -16,7 +16,6 @@ import { generateEGiftPurchaseConfirmation, type SeasonalTheme } from '../email/
 import {
   generateWalletPassToken,
   verifyWalletPassToken,
-  buildWalletUrls,
 } from '../lib/walletPassToken';
 
 // Wallet pass download rate limiter (prevents brute-force token guessing)
@@ -616,7 +615,15 @@ function walletErrorPage(opts: {
 // Public endpoint - uses secure token from email link (no auth required)
 router.get('/:voucherId/wallet/apple', walletPassLimiter, async (req, res) => {
   const correlationId = crypto.randomUUID();
-  
+
+  // UA detection — Android users who somehow land here get the Google pass instead
+  const ua = (req.headers['user-agent'] || '').toLowerCase();
+  if (/android/.test(ua)) {
+    const dest = `/api/gift-cards/${req.params.voucherId}/wallet/google${req.query.token ? `?token=${req.query.token}` : ''}`;
+    logger.info('[E-Gift Wallet] UA=Android on /wallet/apple — redirecting to /wallet/google', { correlationId });
+    return res.redirect(302, dest);
+  }
+
   try {
     const { voucherId } = req.params;
     const { token } = req.query;
@@ -733,7 +740,15 @@ router.get('/:voucherId/wallet/apple', walletPassLimiter, async (req, res) => {
 // Public endpoint - uses secure token from email link (no auth required)
 router.get('/:voucherId/wallet/google', walletPassLimiter, async (req, res) => {
   const correlationId = crypto.randomUUID();
-  
+
+  // UA detection — iPhone/iPad users get the Apple pass instead
+  const ua = (req.headers['user-agent'] || '').toLowerCase();
+  if (/iphone|ipad|ipod/.test(ua)) {
+    const dest = `/api/gift-cards/${req.params.voucherId}/wallet/apple${req.query.token ? `?token=${req.query.token}` : ''}`;
+    logger.info('[E-Gift Wallet] UA=iOS on /wallet/google — redirecting to /wallet/apple', { correlationId });
+    return res.redirect(302, dest);
+  }
+
   try {
     const { voucherId } = req.params;
     const { token } = req.query;
