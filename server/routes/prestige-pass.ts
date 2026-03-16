@@ -50,6 +50,16 @@ import {
   logFraudEvent,
   checkVelocity,
 } from '../services/WalletLedger';
+import {
+  buildSaveUrl as googleWalletBuildSaveUrl,
+  isGoogleWalletConfigured,
+  ensureClassExists as googleWalletEnsureClass,
+} from '../services/GoogleWalletService';
+import {
+  generateAppleWalletPass,
+  buildPassJson as applePassJson,
+  isAppleWalletConfigured,
+} from '../services/AppleWalletService';
 
 const router = Router();
 
@@ -637,16 +647,31 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
       authenticationToken: Buffer.from(userId).toString('base64').slice(0, 32),
     };
 
-    // Apple Wallet requires certificate signing to generate a valid .pkpass file.
-    // Without APPLE_PASS_CERT_P12, we return 503 so the frontend shows a clear "Coming Soon" message.
-    const certAvailable = !!process.env.APPLE_PASS_CERT_P12;
+    const serialNumber = passData.serialNumber || `PWL-${userId.slice(0, 8).toUpperCase()}`;
 
-    if (!certAvailable) {
-      return res.status(503).json({ ok: false, error: 'Apple Wallet not yet configured — coming soon!' });
+    if (!isAppleWalletConfigured()) {
+      const preview = applePassJson({
+        passId:             serialNumber,
+        userId,
+        ownerName:          session?.user?.displayName || 'Member',
+        tier:               (tier || 'new').toUpperCase(),
+        availableCreditIls: balance,
+        qrToken:            `PETWASH:${userId}:PREVIEW`,
+      });
+      return res.status(503).json({ ok: false, error: 'Apple Wallet certificates not yet configured', preview });
     }
 
-    // TODO: When cert is available, sign passJson with PKCS#7 and return as .pkpass zip bundle
-    return res.status(501).json({ ok: false, error: 'Apple Wallet cert signing not yet implemented — contact PetWash support' });
+    const pkpassBuffer = await generateAppleWalletPass({
+      passId:             serialNumber,
+      userId,
+      ownerName:          session?.user?.displayName || 'Member',
+      tier:               (tier || 'new').toUpperCase(),
+      availableCreditIls: balance,
+      qrToken:            `PETWASH:${userId}:${serialNumber}`,
+    });
+    res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
+    res.setHeader('Content-Disposition', `attachment; filename="${serialNumber}.pkpass"`);
+    return res.send(pkpassBuffer);
   } catch (err) {
     logger.error('[PrestigePass] /apple-wallet error:', err);
     return res.status(500).json({ ok: false, error: 'Internal error' });
@@ -796,7 +821,8 @@ router.post('/topup', async (req: Request, res: Response) => {
 
 // ─────────────────────────────────────────────────────────
 // EMAIL HELPER — pre-generate Google Wallet save URL for embedding in email
-// Returns null silently if the secrets aren't configured yet
+// Thin adapter over GoogleWalletService.buildSaveUrl.
+// Returns null silently if secrets aren't configured yet.
 // ─────────────────────────────────────────────────────────
 async function buildGoogleWalletSaveUrl(opts: {
   userId: string;
@@ -807,50 +833,15 @@ async function buildGoogleWalletSaveUrl(opts: {
   displayName: string;
 }): Promise<string | null> {
   try {
-    const issuerId  = process.env.GOOGLE_WALLET_ISSUER_ID;
-    const classId   = process.env.GOOGLE_WALLET_CLASS_ID || 'petwash.prestige';
-    const saKeyRaw  = process.env.GOOGLE_WALLET_SA_KEY;
-    if (!issuerId || !saKeyRaw) return null;
-
-    let saKey: { client_email: string; private_key: string };
-    try { saKey = JSON.parse(saKeyRaw); } catch { return null; }
-
-    const { createSign } = await import('crypto');
-    const tierDisplay = TIER_DISPLAY[opts.tier]?.en || 'Prestige Pearl';
-    const darkBg = ['black', 'elite', 'diamond', 'vip'].includes(opts.tier);
-    const objectId = `${issuerId}.${opts.serialNumber}`;
-    const now = Math.floor(Date.now() / 1000);
-
-    const payload = {
-      iss: saKey.client_email,
-      aud: 'google',
-      origins: ['https://petwash.co.il'],
-      typ: 'savetowallet',
-      iat: now,
-      payload: {
-        genericObjects: [{
-          id: objectId,
-          classId: `${issuerId}.${classId}`,
-          cardTitle:  { defaultValue: { language: 'en', value: 'PetWash Prestige Pass' } },
-          subheader:  { defaultValue: { language: 'en', value: tierDisplay } },
-          header:     { defaultValue: { language: 'en', value: `₪${opts.balanceILS.toFixed(0)}` } },
-          logo:       { sourceUri: { uri: 'https://petwash.co.il/logo.png' } },
-          hexBackgroundColor: darkBg ? '#0F0F0F' : '#B48728',
-          barcode:    { type: 'QR_CODE', value: `PETWASH:${opts.userId}:${opts.serialNumber}`, alternateText: opts.serialNumber },
-          textModulesData: [
-            { id: 'washes', header: 'WASH CREDITS', body: opts.washes > 0 ? `${opts.washes} washes` : '—' },
-            { id: 'member', header: 'MEMBER', body: opts.displayName || 'Member' },
-          ],
-        }],
-      },
-    };
-
-    const header  = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-    const body    = Buffer.from(JSON.stringify(payload)).toString('base64url');
-    const signer  = createSign('RSA-SHA256');
-    signer.update(`${header}.${body}`);
-    const sig     = signer.sign(saKey.private_key, 'base64url');
-    return `https://pay.google.com/gp/v/save/${header}.${body}.${sig}`;
+    const qrToken = `PETWASH:${opts.userId}:${opts.serialNumber}`;
+    return googleWalletBuildSaveUrl({
+      passId:             opts.serialNumber,
+      userId:             opts.userId,
+      ownerName:          opts.displayName || 'Member',
+      tier:               (opts.tier || 'new').toUpperCase(),
+      availableCreditIls: opts.balanceILS,
+      qrToken,
+    });
   } catch (err) {
     logger.warn('[PrestigePass] Could not pre-generate Google Wallet save URL for email', { err });
     return null;

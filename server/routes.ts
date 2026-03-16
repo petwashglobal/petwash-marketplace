@@ -25,6 +25,7 @@ import { eventBus } from "./services/EventBus";
 import walletRoutes from "./routes/wallet";
 import googleWalletRoutes from "./routes/google-wallet";
 import prestigePassRoutes from "./routes/prestige-pass";
+import passUniversalRoutes from "./routes/pass-universal";
 import googleServicesRoutes from "./routes/google-services";
 import gmailRoutes from "./routes/gmail";
 import mobileAuthRoutes from "./routes/mobile-auth";
@@ -9340,6 +9341,11 @@ self.addEventListener('notificationclick', (event) => {
   // PetWash Prestige Pass — QR tokens, kiosk redemption, Apple/Google Wallet
   app.use('/api/prestige-pass', apiLimiter, prestigePassRoutes);
   logger.info('[Routes] ✅ Prestige Pass routes registered (QR, redemption, wallet passes)');
+
+  // Universal Pass Distribution — UA-aware link + Apple update web service
+  // Mounts at /api/pass (universal link) and /api/pass/apple/v1/* (Apple wallet update service)
+  app.use('/api/pass', apiLimiter, passUniversalRoutes);
+  logger.info('[Routes] ✅ Universal pass + Apple update web service registered at /api/pass');
   
   // Credit Wallet & E-Gift Redemption (Unified credits across all platforms)
   const creditWalletRoutes = await import('./routes/credit-wallet');

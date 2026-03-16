@@ -505,3 +505,69 @@ All wallet mutations now route through `server/services/WalletLedger.ts` which i
 - Google Wallet production pass path
 - SendGrid domain verification for petwash.co.il
 - Share Sheets `14mRX4qJSABg-EcfONomk-fksegYrcIF_sFaEi3Bm2ss` with Firebase SA as Editor (BLOCKING for Sheets logging)
+
+## Apple Wallet + Google Wallet — Real Implementation (March 2026)
+
+### Architecture
+
+Full production-ready wallet pass system replacing all stubs.
+
+**Google Wallet: Generic Pass model (Class + Object)**
+- `server/services/GoogleWalletService.ts` — complete REST + JWT implementation
+- `buildSaveUrl(visual)` — signs a proper Generic Class + Generic Object JWT for `pay.google.com/gp/v/save/{jwt}` using RS256
+- `upsertObject(visual)` — REST API create/patch of the Generic Object for live balance pushes
+- `ensureClassExists()` — idempotent class creation (call once at startup)
+- `pushUpdate(visual)` — patches the object when balance/tier changes
+- Env vars: `GOOGLE_WALLET_ISSUER_ID` + `GOOGLE_WALLET_SA_KEY` (also accepts `GOOGLE_SERVICE_ACCOUNT_JSON`)
+- Rotating barcodes via `initialRotatingBarcodeValues` (45-second rotation cadence)
+- Expiry notifications via `expiryNotification.enableNotification: true`
+
+**Apple Wallet: Signed .pkpass (passkit-generator@3.5.2)**
+- `server/services/AppleWalletService.ts` — complete pkpass generation
+- `generateAppleWalletPass(visual)` → returns `Buffer` ready to stream as `application/vnd.apple.pkpass`
+- `buildPassJson(visual)` → returns JSON structure (for debugging when certs not set)
+- Pass type: `storeCard` (stored-value + loyalty)
+- `webServiceURL` = `${BASE_URL}/api/pass/apple` for live balance updates via APNs
+- Env vars: `APPLE_PASS_TYPE_IDENTIFIER`, `APPLE_TEAM_IDENTIFIER`, `APPLE_SIGNER_CERT_PEM`, `APPLE_SIGNER_KEY_PEM`, `APPLE_WWDR_PEM`, `APPLE_SIGNER_KEY_PASSPHRASE`
+
+### Universal Pass Distribution
+
+`server/routes/pass-universal.ts` mounted at both `/api/pass` and Apple update web service:
+
+- `GET /api/pass/:passId` — detects iOS/Android/desktop, redirects to correct wallet or shows HTML chooser page (both Hebrew/English aware)
+- `GET /api/pass/apple/pass/:passId` — serves signed `.pkpass` file for iOS download
+- `POST /api/pass/apple/v1/devices/:did/registrations/:ptid/:serial` — registers device for push updates (persists to `apple_wallet_device_registrations` table)
+- `DELETE /api/pass/apple/v1/devices/:did/registrations/:ptid/:serial` — unregisters device
+- `GET /api/pass/apple/v1/devices/:did/registrations/:ptid` — lists passes for device
+- `GET /api/pass/apple/v1/passes/:ptid/:serial` — serves latest pass when Apple requests update
+- `POST /api/pass/apple/v1/log` — Apple log endpoint (logs to server)
+
+### New DB Tables (March 2026)
+
+Created directly via SQL (drizzle-kit was too slow on 12k-line schema):
+
+**`petwash_pass_accounts`** — canonical pass record (one per user)
+- `passId` (unique) — human-readable ID e.g. `PW-4587-2043`
+- `userId` — Firebase UID (unique index)
+- `appleSerialNumber` — PKPass serialNumber (same as passId)
+- `googleObjectId` — `{issuerId}.{passId}`
+- `availableCreditIls` — cosmetic display field (source of truth: wallet_accounts)
+- `qrTokenVersion` — bumped to rotate/invalidate outstanding QR tokens
+
+**`apple_wallet_device_registrations`** — APNs push token registry
+- Unique on `(device_library_identifier, serial_number)` — upserted on each registration
+
+### prestige-pass.ts Refactor
+
+- Added imports for `GoogleWalletService` + `AppleWalletService`
+- `/apple-wallet` route: now calls `generateAppleWalletPass()` (real pkpass) or returns JSON preview on 503
+- `buildGoogleWalletSaveUrl()` internal helper: replaced with thin adapter over `GoogleWalletService.buildSaveUrl()`
+- New Google Wallet uses proper `genericClasses + genericObjects` structure (spec-compliant)
+- Old code used `genericObjects` only (non-compliant) — fixed
+
+### Pending to Go Live
+
+1. **Google Wallet**: Set `GOOGLE_WALLET_ISSUER_ID` + `GOOGLE_WALLET_SA_KEY` in Cloud Run secrets
+2. **Apple Wallet**: Set 5 Apple cert env vars in Cloud Run secrets (obtain pass cert from Apple Developer Portal, pass type `pass.il.petwash.prestige`)
+3. **APNs push** for live balance updates: requires `APNS_KEY_P8` + `APNS_KEY_ID` + `APNS_TEAM_ID` (implement `sendApnsPush()` in `AppleWalletService.ts`)
+4. **`petwashPassAccounts` population**: `/api/prestige-pass/activate` should also create a row in this table so `/api/pass/:passId` can serve the universal link

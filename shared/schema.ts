@@ -11954,3 +11954,57 @@ export const walkSlotHolds = pgTable("walk_slot_holds", {
   walkerIdx:  index("wsh_walker_idx").on(t.walkerId),
   expiryIdx:  index("wsh_expiry_idx").on(t.expiresAt),
 }));
+
+// ╔══════════════════════════════════════════════════════════════════════════════╗
+// ║  PETWASH PASS SYSTEM — Canonical wallet pass tables (2026)                  ║
+// ║  Source of truth for Apple Wallet + Google Wallet pass issuance             ║
+// ╚══════════════════════════════════════════════════════════════════════════════╝
+
+// ── Canonical Pass Record ──────────────────────────────────────────────────────
+// One row per user. Apple and Google passes are generated from this record.
+// availableCreditIls is a *cosmetic* display field — balance authority lives in
+// wallet_accounts (WalletEngine). Never trust the displayed credit for redemption.
+export const petwashPassAccounts = pgTable("petwash_pass_accounts", {
+  id:                  varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  passId:              text("pass_id").unique().notNull(),              // PW-4587-2043
+  userId:              text("user_id").unique().notNull(),              // Firebase UID
+  ownerName:           text("owner_name").notNull(),
+  primaryPetName:      text("primary_pet_name"),
+  tier:                text("tier").notNull().default("PREMIUM"),       // PREMIUM | GOLD | BLACK | PARTNER
+  availableCreditIls:  decimal("available_credit_ils", { precision: 12, scale: 2 }).notNull().default("0"),
+  validUntil:          timestamp("valid_until", { withTimezone: true }),
+  status:              text("status").notNull().default("ACTIVE"),      // ACTIVE | SUSPENDED | EXPIRED
+  qrTokenVersion:      integer("qr_token_version").notNull().default(1),
+  appleSerialNumber:   text("apple_serial_number").unique().notNull(),  // For pkpass serialNumber
+  googleObjectId:      text("google_object_id").unique().notNull(),     // issuerId.passId
+  createdAt:           timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt:           timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  userIdx:   index("ppa_user_idx").on(t.userId),
+  passIdx:   index("ppa_pass_idx").on(t.passId),
+  statusIdx: index("ppa_status_idx").on(t.status),
+}));
+
+export const insertPetwashPassAccountSchema = createInsertSchema(petwashPassAccounts).omit({ createdAt: true, updatedAt: true });
+export type InsertPetwashPassAccount = z.infer<typeof insertPetwashPassAccountSchema>;
+export type PetwashPassAccount = typeof petwashPassAccounts.$inferSelect;
+
+// ── Apple Wallet Device Registrations ─────────────────────────────────────────
+// Persists device push tokens for the Apple Wallet pass update web service.
+// Apple sends POST /v1/devices/:deviceId/registrations/:passTypeId/:serialNumber
+// on each device that adds the pass — we store it here to send APNS pushes when
+// the pass balance or tier changes.
+export const appleWalletDeviceRegistrations = pgTable("apple_wallet_device_registrations", {
+  id:                      varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  deviceLibraryIdentifier: text("device_library_identifier").notNull(),
+  pushToken:               text("push_token").notNull(),
+  passTypeIdentifier:      text("pass_type_identifier").notNull(),
+  serialNumber:            text("serial_number").notNull(),         // = passId (appleSerialNumber)
+  createdAt:               timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  serialIdx: index("awdr_serial_idx").on(t.serialNumber),
+  deviceIdx: index("awdr_device_idx").on(t.deviceLibraryIdentifier),
+  uniqueReg: uniqueIndex("awdr_unique_reg").on(t.deviceLibraryIdentifier, t.serialNumber),
+}));
+
+export type AppleWalletDeviceRegistration = typeof appleWalletDeviceRegistrations.$inferSelect;
