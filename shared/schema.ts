@@ -12048,3 +12048,6 @@ export const appleWalletDeviceRegistrations = pgTable("apple_wallet_device_regis
 }));
 
 export type AppleWalletDeviceRegistration = typeof appleWalletDeviceRegistrations.$inferSelect;
+
+// ── Unified Payment Tables (pw_payments, pw_provider_payouts) ────────────────
+export * from './schema-payments';

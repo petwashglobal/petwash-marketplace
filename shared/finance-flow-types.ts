@@ -37,6 +37,16 @@ export const TRANSACTION_TYPES = {
   REFUND:               'refund',                 // Generic refund (either flow)
   ADJUSTMENT:           'adjustment',             // Manual correction
   CHARGEBACK:           'chargeback',             // Disputed charge by card network
+
+  // Spec section 6 — additional required types
+  MACHINE_DIRECT_SALE:  'machine_direct_sale',   // K9000 anonymous Nayax sale
+  WALLET_REDEEM_K9000:  'wallet_redeem_k9000',   // Prestige Pass / wallet → K9000 machine
+  WALLET_REDEEM_ONLINE: 'wallet_redeem_online',  // Wallet redeemed for online service
+  PROVIDER_BOOKING_CHARGE: 'provider_booking_charge', // Customer charged for provider service
+  PROVIDER_COMMISSION:  'provider_commission',   // Platform commission entry
+  REVERSAL:             'reversal',              // Payment reversed (not a refund)
+  EXPIRY_BREAKAGE:      'expiry_breakage',       // Expired wallet/voucher recognised as revenue
+  CANCELLATION:         'cancellation',          // Booking cancelled (may or may not trigger refund)
 } as const;
 
 export type TransactionType = typeof TRANSACTION_TYPES[keyof typeof TRANSACTION_TYPES];
@@ -52,6 +62,8 @@ export function isMarketplaceFlow(type: TransactionType): boolean {
     TRANSACTION_TYPES.ESCROW_RELEASE,
     TRANSACTION_TYPES.ESCROW_REFUND,
     TRANSACTION_TYPES.PLATFORM_FEE,
+    TRANSACTION_TYPES.PROVIDER_BOOKING_CHARGE,
+    TRANSACTION_TYPES.PROVIDER_COMMISSION,
   ].includes(type as any);
 }
 
@@ -62,6 +74,9 @@ export function isDirectSaleFlow(type: TransactionType): boolean {
     TRANSACTION_TYPES.EGIFT_SALE,
     TRANSACTION_TYPES.WALLET_TOPUP,
     TRANSACTION_TYPES.WALLET_REDEMPTION,
+    TRANSACTION_TYPES.MACHINE_DIRECT_SALE,
+    TRANSACTION_TYPES.WALLET_REDEEM_K9000,
+    TRANSACTION_TYPES.WALLET_REDEEM_ONLINE,
   ].includes(type as any);
 }
 

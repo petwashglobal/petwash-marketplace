@@ -190,8 +190,27 @@ The following composite indexes were created via REST API and may still be build
 - **Provider card trust signals** (`ProviderSearch.tsx`): Added `instantBook` (green/grey badge), `available` (pulsing green dot / grey "Busy today"), `responseTime` ("Responds in ~2 hrs") props with defaults; `BrowseWalkers` and `BrowseSitters` pass these through
 - **Notification permission Apple compliance** (`useFCMNotifications.ts`, `NotificationPermissionPrompt.tsx`): `autoRequest` default changed `true→false` so push permission is never triggered on page load; prompt now hidden until `petwash_first_booking_complete` localStorage flag is set; flag is set when first booking confirmation completes in either flow
 
+## TransactionEngine — Central Payment Orchestrator (March 2026 Session 7)
+- **Engine**: `server/services/TransactionEngine.ts` — single orchestrator for all 4 monetary flows; delegates VAT math to `VATCalculatorService` and wallet ops to `WalletEngine` (no duplication)
+- **4 flows implemented**:
+  - **Flow A** `processK9000DirectSale()` — K9000 Nayax sale; VAT on full gross (MACHINE_DIRECT_SALE)
+  - **Flow B** `processWalletTopUp()` — wallet credit; VAT DEFERRED at top-up, event fires at redemption (WALLET_TOPUP)
+  - **Flow C** `processWalletRedeemK9000()` — Prestige Pass/wallet → K9000; VAT event triggered NOW (WALLET_REDEEM_K9000)
+  - **Flow D** `processProviderBooking()` — two sub-modes per `VERTICAL_CONFIG`:
+    - D1 `MARKETPLACE_COMMISSION` — VAT on platform commission only (Wolt/Uber model)
+    - D2 `PRINCIPAL` — VAT on full gross; provider is sub-contractor
+- **Mutations**: `processReversal()`, `processExpiryBreakage()` (breakage = platform revenue, VAT applied conservatively)
+- **Idempotency**: all flows check `idempotency_key` before inserting; duplicate calls return cached row
+- **Per-vertical config**: `VERTICAL_CONFIG` record in TransactionEngine.ts — one place for commissionRate, commercialModel, vatMode, processorFeeRate
+- **New DB tables** (created via direct SQL):
+  - `pw_payments` — one row per customer-facing money movement across ALL 4 flows; amounts in INTEGER CENTS
+  - `pw_provider_payouts` — one row per provider settlement; tracks escrow release time (+72h), requires_tax_invoice, provider_is_exempt
+  - Schema: `shared/schema-payments.ts` — includes Drizzle table defs, Zod insert schemas, type exports
+  - Tables imported into `db.ts` combinedSchema + re-exported from `schema.ts` tail for drizzle-kit visibility
+- **Finance-flow-types extended**: added `MACHINE_DIRECT_SALE`, `WALLET_REDEEM_K9000`, `WALLET_REDEEM_ONLINE`, `PROVIDER_BOOKING_CHARGE`, `PROVIDER_COMMISSION`, `REVERSAL`, `EXPIRY_BREAKAGE`, `CANCELLATION` (22 total transaction types); `isMarketplaceFlow` / `isDirectSaleFlow` guards updated
+
 ## Money Flow Classification System (March 2026 Session 6)
-- **Type system**: `shared/finance-flow-types.ts` — 14 `TRANSACTION_TYPES` constants, `isMarketplaceFlow` / `isDirectSaleFlow` / `hasProvider` guards, `MarketplaceFeeBreakdown`, `DirectSaleFeeBreakdown`, `ReceiptMetadata`, `MoneyFlowSummary` interfaces, `ISRAELI_TAX_2026` constants
+- **Type system**: `shared/finance-flow-types.ts` — 22 `TRANSACTION_TYPES` constants (extended in Session 7), `isMarketplaceFlow` / `isDirectSaleFlow` / `hasProvider` guards, `MarketplaceFeeBreakdown`, `DirectSaleFeeBreakdown`, `ReceiptMetadata`, `MoneyFlowSummary` interfaces, `ISRAELI_TAX_2026` constants
 - **Two flows — never mixed**:
   - Flow A (marketplace_booking): Customer → Processor → VAT(on fee) → PlatformFee → Escrow → ProviderPayout — provider exists, escrow exists, provider tax section shown
   - Flow B (direct_platform_sale / egift_sale / wallet_topup): Customer → Processor → VAT(on full sale) → PetWash Revenue — no provider, no escrow, no provider tax explanation

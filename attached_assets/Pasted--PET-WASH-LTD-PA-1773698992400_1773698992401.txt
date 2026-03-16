@@ -1,0 +1,380 @@
+/*
+===============================================================================
+PET WASH LTD – PAYMENT, TAX & INVOICE ARCHITECTURE
+Legal & Technical Specification for Development Team
+Version: 2026 – Israel Compliance
+
+Company:
+פט וואש בע״מ
+Pet Wash Ltd
+
+This document defines the legal, accounting, and payment logic for the
+Pet Wash platform, K9000 machines, Nayax payment terminals, wallet system,
+and service providers.
+
+This specification must be implemented exactly to comply with:
+• Israeli VAT Law – חוק מס ערך מוסף תשל"ו-1975
+• Israeli tax invoice regulations
+• Electronic invoicing requirements
+• Platform intermediary business models
+
+IMPORTANT:
+Nayax is ONLY a payment clearing processor.
+Nayax is NOT the seller of the service.
+
+Pet Wash Ltd remains the merchant and service provider
+for all direct machine services.
+
+===============================================================================
+SECTION 1 — CORE ACTORS IN SYSTEM
+===============================================================================
+
+ACTOR_1:
+Customer (Public user)
+Walk-in or registered user.
+
+ACTOR_2:
+Pet Wash Ltd
+Platform operator and machine owner.
+
+ACTOR_3:
+Nayax Israel
+Payment clearing provider.
+
+ACTOR_4:
+Service Providers
+Independent contractors using the platform.
+
+ACTOR_5:
+Pet Wash Wallet System
+Digital stored value for customers.
+
+===============================================================================
+SECTION 2 — TRANSACTION TYPES
+===============================================================================
+
+The system MUST support different transaction types.
+Each type has different tax and invoice rules.
+
+enum TRANSACTION_TYPE {
+
+  DIRECT_MACHINE_PAYMENT,      // walk-in payment via Nayax terminal
+  WALLET_TOPUP,                // user adds credit to account
+  WALLET_USAGE,                // credit used for washing
+  GIFT_PURCHASE,               // e-gift purchase
+  GIFT_REDEEM,                 // gift redemption
+  PROVIDER_SERVICE,            // service by provider
+  PROVIDER_COMMISSION          // platform commission
+}
+
+===============================================================================
+SECTION 3 — DIRECT MACHINE PAYMENT
+===============================================================================
+
+SCENARIO:
+A random person on the street washes a dog.
+
+Flow:
+
+1 Customer presses start on machine
+2 Nayax terminal charges credit card
+3 Nayax clears payment
+4 Pet Wash system records transaction
+5 Pet Wash issues tax invoice
+
+IMPORTANT LEGAL RULE:
+
+Merchant = Pet Wash Ltd
+Payment Processor = Nayax
+
+Nayax does NOT issue customer invoice.
+
+Example Invoice:
+
+Invoice Type:
+Tax Invoice + Receipt
+
+Seller:
+Pet Wash Ltd
+
+Description:
+Dog Wash Service – K9000 Station
+
+Price Example:
+
+Before VAT
+₪17.09
+
+VAT 18%
+₪3.08
+
+Total
+₪20.17
+
+System Logic:
+
+transaction_type = DIRECT_MACHINE_PAYMENT
+vat_required = true
+invoice_required = true
+merchant = PET_WASH
+
+===============================================================================
+SECTION 4 — WALLET CREDIT PURCHASE
+===============================================================================
+
+SCENARIO:
+Customer loads money to wallet.
+
+Example:
+User adds ₪200 credit.
+
+LEGAL CLASSIFICATION:
+
+Wallet top-up is NOT yet a service sale.
+It is a stored credit.
+
+Therefore:
+
+Issue RECEIPT only.
+
+Tax invoice will be issued only when service is consumed.
+
+Example Document:
+
+Document Type:
+Receipt
+
+Description:
+Wallet Credit Purchase
+
+Amount:
+₪200
+
+Legal Note:
+
+VAT invoice will be generated upon service usage.
+
+System Logic:
+
+transaction_type = WALLET_TOPUP
+vat_required = false
+invoice_required = false
+receipt_required = true
+
+===============================================================================
+SECTION 5 — WALLET SERVICE USAGE
+===============================================================================
+
+SCENARIO:
+Customer uses wallet to wash dog.
+
+Flow:
+
+1 Wallet balance decreases
+2 Service is delivered
+3 VAT invoice must be generated
+
+Example:
+
+Service price:
+₪20.17
+
+Before VAT
+₪17.09
+
+VAT
+₪3.08
+
+System Logic:
+
+transaction_type = WALLET_USAGE
+vat_required = true
+invoice_required = true
+
+===============================================================================
+SECTION 6 — E-GIFT PURCHASE
+===============================================================================
+
+SCENARIO:
+Customer buys gift credit.
+
+Example:
+Gift value ₪100.
+
+LEGAL RULE:
+
+Gift voucher purchase is NOT a taxable service
+until redemption.
+
+Therefore:
+
+Issue receipt only.
+
+VAT invoice will be issued when redeemed.
+
+System Logic:
+
+transaction_type = GIFT_PURCHASE
+vat_required = false
+invoice_required = false
+receipt_required = true
+
+===============================================================================
+SECTION 7 — GIFT REDEMPTION
+===============================================================================
+
+SCENARIO:
+User redeems gift.
+
+Service occurs.
+
+VAT invoice required.
+
+transaction_type = GIFT_REDEEM
+vat_required = true
+invoice_required = true
+
+===============================================================================
+SECTION 8 — PROVIDER SERVICE MODEL
+===============================================================================
+
+SCENARIO:
+Customer books a dog service provider.
+
+Example:
+
+Customer pays ₪100
+
+Possible models:
+
+MODEL A
+Pet Wash is merchant of record
+
+MODEL B
+Provider is merchant
+Pet Wash takes commission
+
+Recommended architecture:
+MODEL B (Platform Intermediary)
+
+Example:
+
+Customer pays ₪100
+
+Provider receives ₪80
+Pet Wash commission ₪20
+
+Invoices Required:
+
+1 Provider issues invoice to Pet Wash
+2 Pet Wash issues commission invoice to provider
+
+Provider Invoice Example:
+
+Service:
+Dog Grooming Service
+
+Amount
+₪80
+
+VAT
+₪14.40
+
+Total
+₪94.40
+
+Commission Invoice Example:
+
+Service:
+Platform Commission
+
+Amount
+₪20
+
+VAT
+₪3.60
+
+Total
+₪23.60
+
+System Logic:
+
+transaction_type = PROVIDER_SERVICE
+provider_payout = true
+commission_invoice = true
+
+===============================================================================
+SECTION 9 — NAYAX PAYMENT ARCHITECTURE
+===============================================================================
+
+Nayax responsibilities:
+
+• payment authorization
+• payment clearing
+• funds transfer to Pet Wash
+
+Nayax invoices Pet Wash for:
+
+• clearing fees
+• terminal service
+
+Example:
+
+Customer payment
+₪20
+
+Nayax fee
+₪0.60
+
+Pet Wash net
+₪19.40
+
+Nayax issues invoice to Pet Wash
+for clearing services.
+
+===============================================================================
+SECTION 10 — DATABASE STRUCTURE
+===============================================================================
+
+Transaction table must include:
+
+transaction_id
+transaction_type
+customer_id
+machine_id
+provider_id
+payment_method
+payment_processor
+gross_amount
+vat_amount
+net_amount
+wallet_used
+invoice_id
+receipt_id
+timestamp
+
+===============================================================================
+SECTION 11 — SECURITY RULES
+===============================================================================
+
+All financial actions must be:
+
+• logged
+• immutable
+• traceable
+
+Audit logs required.
+
+===============================================================================
+SECTION 12 — COMPLIANCE
+===============================================================================
+
+System must comply with:
+
+• Israeli VAT law
+• digital invoice requirements
+• tax authority reporting rules
+
+===============================================================================
+END OF DOCUMENT
+===============================================================================
