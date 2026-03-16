@@ -1,0 +1,226 @@
+/*
+=====================================================================
+PETWASH APPLE WALLET PASS SETUP – IMPLEMENTATION NOTES
+=====================================================================
+
+Context:
+While testing the Apple Wallet link on iPhone/iPad, the server returned:
+
+{
+  "error": "SERVICE STARTING",
+  "message": "Server is starting up, please retry in a moment",
+  "retryAfter": 5
+}
+
+Safari downloaded a file (google.json) instead of returning a .pkpass.
+
+This indicates the Apple Wallet pass endpoint did NOT generate the pass
+because the backend service was starting or the certificate setup is
+not completed yet.
+
+=====================================================================
+CURRENT STATUS
+=====================================================================
+
+✔ Apple Developer account ACTIVE
+✔ Apple Developer Program agreement SIGNED
+✔ Team created: Pet Wash Ltd
+✔ Apple Wallet Pass Type ID being created
+
+❌ Apple Wallet signing certificate NOT generated yet
+❌ Backend not yet configured to sign .pkpass files
+
+=====================================================================
+STEP 1 — CREATE APPLE PASS TYPE ID
+=====================================================================
+
+Apple Developer Console → Certificates, Identifiers & Profiles
+
+Create Pass Type ID:
+
+Description:
+PetWash Premium Wallet Pass
+
+Identifier:
+pass.com.petwash.member
+
+This identifier will be used by Apple Wallet to validate passes.
+
+=====================================================================
+STEP 2 — GENERATE APPLE PASS CERTIFICATE
+=====================================================================
+
+Apple requires a CSR (Certificate Signing Request).
+
+If using a Mac:
+Keychain Access → Certificate Assistant → Request a Certificate
+Save CSR file.
+
+Upload CSR to Apple Developer portal.
+
+Download generated certificate (.cer).
+
+Install in Keychain and export as:
+
+petwash-wallet-pass.p12
+
+=====================================================================
+STEP 3 — SERVER ENVIRONMENT VARIABLES
+=====================================================================
+
+Add these to backend environment configuration.
+
+APPLE_PASS_TYPE_IDENTIFIER=pass.com.petwash.member
+APPLE_TEAM_IDENTIFIER=<APPLE_TEAM_ID>
+APPLE_WALLET_CERT_PATH=/certs/petwash-wallet-pass.p12
+APPLE_WALLET_CERT_PASSWORD=<CERT_PASSWORD>
+
+Optional:
+
+APPLE_WALLET_WWDR_CERT=/certs/AppleWWDRCA.pem
+
+=====================================================================
+STEP 4 — IMPLEMENT APPLE WALLET ENDPOINT
+=====================================================================
+
+Route that generates Apple Wallet passes:
+
+GET /wallet/apple/:token
+
+Expected response headers:
+
+Content-Type: application/vnd.apple.pkpass
+Content-Disposition: attachment; filename=petwash.pkpass
+
+Return the generated .pkpass file.
+
+Example Node structure:
+
+app.get("/wallet/apple/:token", async (req, res) => {
+
+  const token = req.params.token;
+
+  // 1. validate token
+  const passRecord = await getPassFromToken(token);
+
+  // 2. generate QR redeem token
+  const qrToken = generateSignedRedeemToken(passRecord);
+
+  // 3. build Apple Wallet pass
+  const pkpassBuffer = await buildAppleWalletPass(passRecord, qrToken);
+
+  res.setHeader("Content-Type", "application/vnd.apple.pkpass");
+  res.setHeader("Content-Disposition", "attachment; filename=petwash.pkpass");
+
+  res.send(pkpassBuffer);
+
+});
+
+=====================================================================
+STEP 5 — APPLE WALLET PASS GENERATION
+=====================================================================
+
+Recommended Node library:
+
+passkit-generator
+
+Install:
+
+npm install passkit-generator
+
+Example usage:
+
+const { PKPass } = require("passkit-generator");
+
+async function buildAppleWalletPass(record, qrToken) {
+
+  const pass = await PKPass.from({
+    model: "./passModel",
+    certificates: {
+      wwdr: process.env.APPLE_WALLET_WWDR_CERT,
+      signerCert: process.env.APPLE_WALLET_CERT_PATH,
+      signerKey: process.env.APPLE_WALLET_CERT_PATH,
+      signerKeyPassphrase: process.env.APPLE_WALLET_CERT_PASSWORD
+    }
+  });
+
+  pass.primaryFields.add({
+    key: "owner",
+    label: "Member",
+    value: record.ownerName
+  });
+
+  pass.secondaryFields.add({
+    key: "credit",
+    label: "Available Credit",
+    value: `₪${record.availableCredit}`
+  });
+
+  pass.auxiliaryFields.add({
+    key: "memberId",
+    label: "Member ID",
+    value: record.passId
+  });
+
+  pass.setBarcodes({
+    message: qrToken,
+    format: "PKBarcodeFormatQR"
+  });
+
+  return pass.getAsBuffer();
+}
+
+=====================================================================
+STEP 6 — UNIVERSAL PASS LINK
+=====================================================================
+
+Recommended URL format:
+
+https://petwash.co.il/pass/<token>
+
+Logic:
+
+If iPhone → redirect to /wallet/apple/<token>
+If Android → redirect to /wallet/google/<token>
+Else → show wallet choice page
+
+=====================================================================
+STEP 7 — HANDLE SERVER STARTUP PROPERLY
+=====================================================================
+
+If the server is starting, DO NOT return raw JSON.
+
+Instead return HTTP 503:
+
+HTTP/1.1 503 Service Unavailable
+Retry-After: 5
+
+User message:
+
+"PetWash is starting. Please retry in a few seconds."
+
+=====================================================================
+STEP 8 — EXPECTED FINAL USER FLOW
+=====================================================================
+
+User receives link via:
+
+• Email
+• SMS
+• iMessage
+• WhatsApp
+• Website dashboard
+
+User opens:
+
+https://petwash.co.il/wallet/apple/<token>
+
+iPhone displays:
+
+Add to Apple Wallet
+
+User taps → Pass saved in Wallet.
+
+=====================================================================
+END
+=====================================================================
