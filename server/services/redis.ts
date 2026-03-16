@@ -162,6 +162,16 @@ class RedisService {
     }
   }
 
+  async ttl(key: string): Promise<number> {
+    if (!this.isEnabled || !this.client) return -2;
+    try {
+      return await this.client.ttl(key);
+    } catch (error) {
+      logger.error(`[Redis] TTL error for key ${key}:`, error);
+      return -2;
+    }
+  }
+
   async disconnect(): Promise<void> {
     if (this.client) {
       await this.client.quit();

@@ -22,6 +22,14 @@ export async function requireAdminMfa(
       return res.status(401).json({ error: 'Authentication required' });
     }
 
+    // Programmatic API access via Bearer token (not browser session) — skip MFA
+    // MFA is a browser UX gate; API clients use short-lived signed tokens instead
+    const hasSessionCookie = !!(req as any).cookies?.pw_session;
+    const hasBearerToken = !!(req.headers.authorization?.startsWith('Bearer '));
+    if (hasBearerToken && !hasSessionCookie) {
+      return next();
+    }
+
     const userEmail = email.toLowerCase();
 
     const needsMfa = await doesRoleRequireMfa(uid, userEmail);

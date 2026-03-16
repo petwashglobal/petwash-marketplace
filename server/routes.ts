@@ -327,6 +327,10 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Phase 1: App Check Monitor Mode for admin routes
   app.use('/api/admin/', verifyAppCheckTokenOptional);
 
+  // Parse Firebase Bearer tokens FIRST so req.firebaseUser is set for all subsequent middleware
+  const { optionalFirebaseToken: optFirebase } = await import('./middleware/firebase-auth');
+  app.use('/api/admin/', optFirebase);
+
   // 🔒 LATERAL MOVEMENT BARRIERS - Session hardening for admin + KYC routes
   const { ipRiskScoring, adminRouteHardening, sessionAgeGuard } = await import('./middleware/session-hardening');
   app.use('/api/admin/', ipRiskScoring());

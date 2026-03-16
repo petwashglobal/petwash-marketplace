@@ -59,6 +59,10 @@ async function cacheDel(key: string): Promise<void> {
   memDel(key);
 }
 async function cacheTtl(key: string): Promise<number> {
+  if (isRedisEnabled()) {
+    const redisTtl = await redis.ttl(key);
+    return redisTtl > 0 ? redisTtl : 0;
+  }
   return memTtl(key);
 }
 async function cacheIncr(key: string, ttlSec: number): Promise<number> {

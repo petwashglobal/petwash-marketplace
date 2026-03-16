@@ -60,6 +60,12 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 export function requireRole(...roles: string[]) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
+      // Firebase Bearer token users are deferred to route-level auth middleware
+      // (validateFirebaseToken + requireAdmin in each route handler)
+      if ((req as any).firebaseUser?.uid) {
+        return next();
+      }
+
       const userId = getUserId(req);
       if (!userId) {
         logger.debug('[requireRole] No userId found');
@@ -171,6 +177,7 @@ export async function requireProviderActive(req: Request, res: Response, next: N
  */
 export async function requireStaffApproved(req: Request, res: Response, next: NextFunction) {
   try {
+    if ((req as any).firebaseUser?.uid) return next();
     const userId = getUserId(req);
     if (!userId) {
       logger.debug('[requireStaffApproved] No userId found');
@@ -208,6 +215,7 @@ export async function requireStaffApproved(req: Request, res: Response, next: Ne
  */
 export async function requireMfaEnrolled(req: Request, res: Response, next: NextFunction) {
   try {
+    if ((req as any).firebaseUser?.uid) return next();
     const userId = getUserId(req);
     if (!userId) {
       logger.debug('[requireMfaEnrolled] No userId found');
