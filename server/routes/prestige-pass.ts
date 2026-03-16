@@ -637,16 +637,16 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
       authenticationToken: Buffer.from(userId).toString('base64').slice(0, 32),
     };
 
-    // Return JSON for now — actual .pkpass requires Apple cert signing
-    // When APPLE_PASS_CERT_P12 env var is set, the pass will be signed and returned as .pkpass
+    // Apple Wallet requires certificate signing to generate a valid .pkpass file.
+    // Without APPLE_PASS_CERT_P12, we return 503 so the frontend shows a clear "Coming Soon" message.
     const certAvailable = !!process.env.APPLE_PASS_CERT_P12;
 
-    if (certAvailable) {
-      // TODO: Sign with Apple certificate and return as application/vnd.apple.pkpass
-      return res.status(501).json({ ok: false, error: 'Apple Wallet cert not yet configured — contact PetWash support' });
+    if (!certAvailable) {
+      return res.status(503).json({ ok: false, error: 'Apple Wallet not yet configured — coming soon!' });
     }
 
-    res.json({ ok: true, passJson, certRequired: true, message: 'Pass structure ready — activate with Apple certificate' });
+    // TODO: When cert is available, sign passJson with PKCS#7 and return as .pkpass zip bundle
+    return res.status(501).json({ ok: false, error: 'Apple Wallet cert signing not yet implemented — contact PetWash support' });
   } catch (err) {
     logger.error('[PrestigePass] /apple-wallet error:', err);
     return res.status(500).json({ ok: false, error: 'Internal error' });

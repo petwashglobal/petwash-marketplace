@@ -58,9 +58,9 @@
 
 .luxury-bg-primary {
   background: linear-gradient(135deg, 
-    #000000 0%, 
-    #1a1a1a 50%,
-    #333333 100%
+    #B8941F 0%, 
+    #C6A35B 50%,
+    #D4AF37 100%
   ) !important;
 }
 
@@ -86,27 +86,27 @@
    =========================== */
 
 .luxury-icon-gold {
-  background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+  background: linear-gradient(135deg, #B8941F 0%, #D4AF37 100%);
 }
 
 .luxury-icon-gold-soft {
-  background: linear-gradient(135deg, #333333 0%, #555555 100%);
+  background: linear-gradient(135deg, #C6A35B 0%, #E7C978 100%);
 }
 
 .luxury-icon-gold-bright {
-  background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%);
+  background: linear-gradient(135deg, #D4AF37 0%, #E7C978 100%);
 }
 
 .luxury-gradient-gold {
-  background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #333333 100%);
+  background: linear-gradient(135deg, #B8941F 0%, #C6A35B 50%, #D4AF37 100%);
 }
 
 .luxury-gradient-gold-soft {
-  background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%);
+  background: linear-gradient(135deg, #C6A35B 0%, #E7C978 100%);
 }
 
 .luxury-gradient-gold-dark {
-  background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+  background: linear-gradient(135deg, #B8941F 0%, #C6A35B 100%);
 }
 
 /* ===========================
@@ -166,11 +166,11 @@
 }
 
 /* ===========================
-   PREMIUM BUTTONS - BLACK/WHITE GUCCI STYLE
+   PREMIUM BUTTONS - GOLD COUTURE STYLE
    =========================== */
 
 .luxury-btn-primary {
-  background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #333333 100%);
+  background: linear-gradient(135deg, #B8941F 0%, #C6A35B 50%, #D4AF37 100%);
   color: white;
   padding: 12px 32px;
   border-radius: 12px;
@@ -317,7 +317,7 @@
 }
 
 .luxury-gradient-text {
-  background: linear-gradient(135deg, #000000 0%, #333333 100%);
+  background: linear-gradient(135deg, #B8941F 0%, #D4AF37 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

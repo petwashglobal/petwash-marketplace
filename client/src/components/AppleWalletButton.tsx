@@ -149,12 +149,12 @@ export default function AppleWalletButton({
         onClick={handleAddToWallet}
         disabled={isLoading}
         className={`
-          bg-black text-white hover:bg-gray-900 
-          rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300
+          text-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300
           font-semibold flex items-center gap-3
           ${sizeClasses[size]}
           ${className}
         `}
+        style={{ background: 'linear-gradient(135deg, #B8941F, #D4AF37)' }}
         data-testid="button-add-to-wallet"
       >
         {isLoading ? (
@@ -282,7 +282,8 @@ export function AppleWalletBadge({
     <motion.button
       onClick={handleAddToWallet}
       disabled={isLoading}
-      className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-900 transition-all shadow-md hover:shadow-lg"
+      className="inline-flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-all shadow-md hover:shadow-lg"
+      style={{ background: 'linear-gradient(135deg, #B8941F, #D4AF37)' }}
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       data-testid="badge-add-to-wallet"

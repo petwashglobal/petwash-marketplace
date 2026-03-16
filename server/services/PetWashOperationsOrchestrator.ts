@@ -186,12 +186,12 @@ function brandedEmail(title: string, bodyHtml: string): string {
 
           <!-- footer -->
           <tr>
-            <td style="background:#0c0c12;border-top:1px solid #1a1a24;padding:20px 36px 24px;">
+            <td style="background:#ffffff;border-top:2px solid #D4AF37;padding:20px 36px 24px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td style="color:#3d3d52;font-size:10px;line-height:1.7;">
-                    <p style="margin:0 0 2px;color:#4a4a60;">PetWash™ Ltd. &nbsp;·&nbsp; 1 Rothschild Blvd, Tel Aviv 6688101 &nbsp;·&nbsp; <a href="mailto:support@petwash.co.il" style="color:#C6A35B;text-decoration:none;">support@petwash.co.il</a> &nbsp;·&nbsp; VAT 18%</p>
-                    <p style="margin:0;color:#38384a;" dir="rtl">פט ווש בע"מ &nbsp;·&nbsp; מספר ח.פ. 515234567 &nbsp;·&nbsp; מע&quot;מ כלול בכל מחיר &nbsp;·&nbsp; מורשה ומפוקח על ידי רשויות ישראל</p>
+                  <td style="font-size:10px;line-height:1.7;">
+                    <p style="margin:0 0 2px;color:#666666;">PetWash™ Ltd. &nbsp;·&nbsp; 1 Rothschild Blvd, Tel Aviv 6688101 &nbsp;·&nbsp; <a href="mailto:support@petwash.co.il" style="color:#B8941F;text-decoration:none;">support@petwash.co.il</a> &nbsp;·&nbsp; VAT 18%</p>
+                    <p style="margin:0;color:#888888;" dir="rtl">פט ווש בע"מ &nbsp;·&nbsp; מספר ח.פ. 515234567 &nbsp;·&nbsp; מע&quot;מ כלול בכל מחיר &nbsp;·&nbsp; מורשה ומפוקח על ידי רשויות ישראל</p>
                   </td>
                 </tr>
               </table>
