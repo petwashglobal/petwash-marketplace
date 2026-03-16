@@ -341,13 +341,15 @@ export class RegistrationOTPService {
 
       const record = JSON.parse(raw);
       record.attempts = (record.attempts || 0) + 1;
+      const recordPhone: string = record.phoneE164 || 'N/A';
+      const recordIntent: string = record.userTypeIntent || 'PUBLIC';
 
       if (record.attempts >= OTP_MAX_ATTEMPTS) {
         await cacheDel(otpRedisKey(otpId));
         if (record.phoneE164) {
           await cacheSet(lockoutKey(record.phoneE164), '1', OTP_LOCKOUT_SEC);
         }
-        await this.logVerificationEvent(otpId, 'OTP_LOCKED_OUT', 'max_attempts', traceId, opts);
+        await this.logVerificationEvent(otpId, 'OTP_LOCKED_OUT', 'max_attempts', traceId, opts, recordPhone, recordIntent);
         logger.warn('[RegistrationOTP] Phone locked out for 15 minutes', {
           otpId, phoneE164: record.phoneE164?.slice(0, 6) + '****', traceId
         });
@@ -359,7 +361,7 @@ export class RegistrationOTPService {
       const submittedHash = sha256(code);
       if (!constantTimeEqual(submittedHash, record.codeHash)) {
         const remaining = OTP_MAX_ATTEMPTS - record.attempts;
-        await this.logVerificationEvent(otpId, 'OTP_FAILED', 'invalid_code', traceId, opts);
+        await this.logVerificationEvent(otpId, 'OTP_FAILED', 'invalid_code', traceId, opts, recordPhone, recordIntent);
         logger.warn('[RegistrationOTP] Invalid code', {
           otpId,
           attempt: record.attempts,
@@ -377,7 +379,7 @@ export class RegistrationOTPService {
 
       await cacheDel(otpRedisKey(otpId));
 
-      await this.logVerificationEvent(otpId, 'OTP_VERIFIED', 'success', traceId, opts);
+      await this.logVerificationEvent(otpId, 'OTP_VERIFIED', 'success', traceId, opts, recordPhone, recordIntent);
 
       logger.info('[RegistrationOTP] OTP verified successfully', {
         otpId,
@@ -513,14 +515,17 @@ export class RegistrationOTPService {
     eventType: string,
     result: string | null,
     traceId: string,
-    opts: { ip?: string; userAgent?: string }
+    opts: { ip?: string; userAgent?: string },
+    phoneE164?: string,
+    userTypeIntent?: string
   ) {
     try {
+      const eventKey = `${otpId}_${eventType.toLowerCase()}_${Date.now()}`;
       await db.insert(otpEvents).values({
-        otpId: `${otpId}_${eventType.toLowerCase()}_${Date.now()}`,
+        otpId: eventKey,
         eventType,
-        phoneE164: 'N/A',
-        userTypeIntent: 'PUBLIC',
+        phoneE164: phoneE164 || 'N/A',
+        userTypeIntent: (userTypeIntent || 'PUBLIC') as any,
         result,
         ip: opts.ip || null,
         userAgent: opts.userAgent || null,

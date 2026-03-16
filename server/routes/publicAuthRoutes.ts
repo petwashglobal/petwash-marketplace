@@ -258,7 +258,7 @@ publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (
       logger.warn('[PublicAuth] Phone daily SMS cap reached', { phone: phone.slice(-4), ip: req.ip });
       // Track cap hit for bot rotation detection (many phones hitting cap = rotating bot)
       const { smsAbuseDetector } = await import('../services/SmsAbuseDetector');
-      smsAbuseDetector.trackCapHit(phone);
+      smsAbuseDetector.trackCapHit(phone).catch(() => {});
       return res.status(429).json({ ok: false, error: dailyCheck.message });
     }
 

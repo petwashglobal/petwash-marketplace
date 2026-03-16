@@ -1212,5 +1212,52 @@ router.post('/security/platform-monitor/scan', async (_req, res) => {
   }
 });
 
+/**
+ * GET /api/admin/sms/status
+ * View current SMS abuse detector counters and kill switch state
+ */
+router.get('/sms/status', validateFirebaseToken, requireAdmin, async (_req, res) => {
+  try {
+    const { smsAbuseDetector } = await import('../services/SmsAbuseDetector');
+    const status = await smsAbuseDetector.getStatus();
+    res.json({ ok: true, ...status });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get SMS abuse status' });
+  }
+});
+
+/**
+ * POST /api/admin/sms/kill-switch/clear
+ * Re-enable SMS after an emergency kill switch event (SUPER_ADMIN only)
+ */
+router.post('/sms/kill-switch/clear', validateFirebaseToken, requireAdmin, async (_req, res) => {
+  try {
+    const { smsAbuseDetector } = await import('../services/SmsAbuseDetector');
+    await smsAbuseDetector.clearKillSwitch();
+    const status = await smsAbuseDetector.getStatus();
+    res.json({ ok: true, message: 'SMS kill switch cleared — SMS re-enabled', ...status });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to clear kill switch' });
+  }
+});
+
+/**
+ * POST /api/admin/sms/kill-switch/activate
+ * Manually trigger the SMS kill switch (emergency stop)
+ */
+router.post('/sms/kill-switch/activate', validateFirebaseToken, requireAdmin, async (req, res) => {
+  try {
+    const { smsAbuseDetector } = await import('../services/SmsAbuseDetector');
+    const { redis } = await import('../services/redis');
+    await redis.setRaw('sms_abuse:kill', '1', 7 * 24 * 3600);
+    process.env.SMS_EMERGENCY_DISABLED = 'true';
+    const reason = (req as any).body?.reason || 'Manual admin activation';
+    logger.warn('[Admin] SMS kill switch manually activated', { reason, by: (req as any).user?.uid });
+    res.json({ ok: true, message: 'SMS kill switch activated — all SMS blocked', reason });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to activate kill switch' });
+  }
+});
+
 export default router;
 

@@ -255,8 +255,8 @@ class TwilioSMSService {
     message: string;
     expiresIn?: number;
   }> {
-    if (this.isEmergencyDisabled()) {
-      logger.warn('[TwilioSMS] 🚨 SMS_EMERGENCY_DISABLED=true — all SMS blocked', { phone: phone.slice(-4) });
+    if (await smsAbuseDetector.isKillSwitchActive()) {
+      logger.warn('[TwilioSMS] 🚨 Kill switch active — all SMS blocked', { phone: phone.slice(-4) });
       return { success: false, message: this.t('smsUnavailable', language) };
     }
     if (!checkGlobalDailyCap()) {
@@ -274,7 +274,9 @@ class TwilioSMSService {
 
     // Track IP→phone mapping for enumeration attack detection
     if (callerIp) {
-      smsAbuseDetector.trackIpPhoneCombo(callerIp, formattedPhone);
+      smsAbuseDetector.trackIpPhoneCombo(callerIp, formattedPhone).catch(err =>
+        logger.error('[TwilioSMS] trackIpPhoneCombo failed', { error: err?.message })
+      );
     }
     const code = this.generateCode();
     const expiresAt = new Date(Date.now() + VERIFICATION_CODE_EXPIRY_MINUTES * 60 * 1000);
@@ -517,8 +519,8 @@ class TwilioSMSService {
     messageId?: string;
     error?: string;
   }> {
-    if (this.isEmergencyDisabled()) {
-      logger.warn('[TwilioSMS] 🚨 SMS_EMERGENCY_DISABLED=true — WhatsApp blocked', { to: to.slice(-4) });
+    if (await smsAbuseDetector.isKillSwitchActive()) {
+      logger.warn('[TwilioSMS] 🚨 Kill switch active — WhatsApp blocked', { to: to.slice(-4) });
       return { success: false, error: 'SMS service temporarily suspended' };
     }
     if (!checkGlobalDailyCap()) {
@@ -561,8 +563,8 @@ class TwilioSMSService {
   }> {
     const auditCtx = { to: to.slice(0, 6) + '****', userId: meta?.userId, ip: meta?.ip, ua: meta?.ua?.slice(0, 80) };
 
-    if (this.isEmergencyDisabled()) {
-      logger.warn('[TwilioSMS] 🚨 SMS_EMERGENCY_DISABLED=true — sendSMS blocked', auditCtx);
+    if (await smsAbuseDetector.isKillSwitchActive()) {
+      logger.warn('[TwilioSMS] 🚨 Kill switch active — sendSMS blocked', auditCtx);
       return { success: false, error: 'SMS service temporarily suspended' };
     }
 

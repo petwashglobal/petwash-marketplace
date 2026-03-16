@@ -1,10 +1,9 @@
 /**
- * SMS Abuse Detector — Global Circuit Breaker
+ * SMS Abuse Detector — Global Circuit Breaker (Redis-backed)
  *
- * What the Twilio attack exposed: per-phone caps are useless when attackers
- * rotate thousands of different phone numbers. This module adds a GLOBAL
- * watchdog that monitors total SMS volume across ALL phones and ALL IPs,
- * auto-triggers the emergency kill switch, and emails the admin team.
+ * All state is persisted in Redis so counters survive server restarts.
+ * The emergency kill switch also lives in Redis — admin clears it via the
+ * admin panel or by calling smsAbuseDetector.clearKillSwitch().
  *
  * Thresholds (configurable via env vars):
  *   SMS_GLOBAL_HOURLY_LIMIT  — default 80  (auto-kill at this per hour)
@@ -15,9 +14,18 @@
  *   1. Volume spike — too many total SMS in an hour or day
  *   2. Phone enumeration — one IP targeting many different phone numbers
  *   3. Repeated daily-cap hits — many phones hitting their daily cap (bot rotation)
+ *
+ * Redis keys used:
+ *   sms_abuse:hourly        — rolling 1-hour INCR counter (TTL 7200s)
+ *   sms_abuse:daily         — rolling 24-hour INCR counter (TTL 172800s)
+ *   sms_abuse:kill          — emergency kill switch ('1'), cleared by admin
+ *   sms_abuse:alert:{type}  — dedup flag so each alert fires once per window
+ *   sms_abuse:ip_ph:{ip}    — comma-separated phones seen from this IP (TTL 3600s)
+ *   sms_abuse:cap_hits      — comma-separated phones that hit daily cap (TTL 3600s)
  */
 
 import { logger } from '../lib/logger';
+import { redis } from './redis';
 import sgMail from '@sendgrid/mail';
 
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '';
@@ -27,57 +35,80 @@ const FROM_EMAIL = 'security@petwash.co.il';
 const GLOBAL_HOURLY_LIMIT = parseInt(process.env.SMS_GLOBAL_HOURLY_LIMIT || '80', 10);
 const GLOBAL_DAILY_LIMIT = parseInt(process.env.SMS_GLOBAL_DAILY_LIMIT || '400', 10);
 const ALERT_THRESHOLD_PCT = parseInt(process.env.SMS_ALERT_THRESHOLD_PCT || '60', 10) / 100;
-
 const ENUMERATION_IP_PHONE_LIMIT = parseInt(process.env.SMS_ENUM_IP_LIMIT || '5', 10);
 
-interface WindowedCounter {
-  count: number;
-  windowStart: number;
-  windowMs: number;
+const KEY_HOURLY = 'sms_abuse:hourly';
+const KEY_DAILY = 'sms_abuse:daily';
+const KEY_KILL = 'sms_abuse:kill';
+const KEY_ALERT = (type: string) => `sms_abuse:alert:${type}`;
+const KEY_IP_PHONES = (ip: string) => `sms_abuse:ip_ph:${ip}`;
+const KEY_CAP_HITS = 'sms_abuse:cap_hits';
+
+async function redisIncr(key: string, ttlSec: number): Promise<number> {
+  try {
+    const val = await redis.incr(key);
+    if (val === 1) await redis.expire(key, ttlSec);
+    return val;
+  } catch {
+    return 0;
+  }
 }
 
-interface AlertState {
-  hourlyWarningSent: boolean;
-  dailyWarningSent: boolean;
-  hourlyKillSent: boolean;
-  dailyKillSent: boolean;
+async function redisGet(key: string): Promise<string | null> {
+  try {
+    return await redis.getRaw(key);
+  } catch {
+    return null;
+  }
+}
+
+async function redisSet(key: string, value: string, ttlSec: number): Promise<void> {
+  try {
+    await redis.setRaw(key, value, ttlSec);
+  } catch {
+    // non-critical
+  }
+}
+
+async function redisDel(key: string): Promise<void> {
+  try {
+    await redis.del(key);
+  } catch {
+    // non-critical
+  }
 }
 
 class SmsAbuseDetector {
-  private hourly: WindowedCounter = { count: 0, windowStart: Date.now(), windowMs: 60 * 60 * 1000 };
-  private daily: WindowedCounter = { count: 0, windowStart: Date.now(), windowMs: 24 * 60 * 60 * 1000 };
-  private alertState: AlertState = {
-    hourlyWarningSent: false,
-    dailyWarningSent: false,
-    hourlyKillSent: false,
-    dailyKillSent: false,
-  };
-
-  private ipPhoneMap = new Map<string, Set<string>>();
-  private capHitPhones = new Set<string>();
-  private capHitResetAt = 0;
-
-  private emergencyEnabled = false;
-
   constructor() {
     if (SENDGRID_API_KEY) {
       sgMail.setApiKey(SENDGRID_API_KEY);
     }
   }
 
-  private resetWindowIfNeeded(counter: WindowedCounter): void {
-    const now = Date.now();
-    if (now - counter.windowStart >= counter.windowMs) {
-      counter.count = 0;
-      counter.windowStart = now;
-      if (counter.windowMs === 60 * 60 * 1000) {
-        this.alertState.hourlyWarningSent = false;
-        this.alertState.hourlyKillSent = false;
-      } else {
-        this.alertState.dailyWarningSent = false;
-        this.alertState.dailyKillSent = false;
-      }
-    }
+  /**
+   * Check if the kill switch is currently active.
+   * Checks BOTH Redis (automatic/persisted) AND process.env (manual override).
+   */
+  async isKillSwitchActive(): Promise<boolean> {
+    const envFlag = (process.env.SMS_EMERGENCY_DISABLED || '').toLowerCase();
+    if (envFlag === 'true' || envFlag === '1') return true;
+    const redisFlag = await redisGet(KEY_KILL);
+    return redisFlag === '1';
+  }
+
+  /**
+   * Clear the kill switch — called by admin to restore SMS after a kill event.
+   */
+  async clearKillSwitch(): Promise<void> {
+    await redisDel(KEY_KILL);
+    delete process.env.SMS_EMERGENCY_DISABLED;
+    logger.info('[SmsAbuse] ✅ Kill switch cleared — SMS re-enabled');
+  }
+
+  private async triggerEmergencyKill(reason: string, hourly: number, daily: number): Promise<void> {
+    await redisSet(KEY_KILL, '1', 7 * 24 * 3600);
+    process.env.SMS_EMERGENCY_DISABLED = 'true';
+    logger.error(`[SmsAbuse] 🔴 EMERGENCY KILL SWITCH ACTIVATED: ${reason}`, { hourly, daily });
   }
 
   private async sendAlert(subject: string, body: string): Promise<void> {
@@ -98,8 +129,8 @@ class SmsAbuseDetector {
               <pre style="background:#fff;border:1px solid #e5e7eb;padding:12px;border-radius:6px;font-size:13px;white-space:pre-wrap">${body}</pre>
               <p style="color:#6b7280;font-size:13px;margin-top:16px">
                 Timestamp: ${new Date().toISOString()}<br>
-                System: PetWash™ SMS Abuse Detector<br>
-                Action required: Review Twilio console and disable SMS if compromised.
+                System: PetWash™ SMS Abuse Detector (Redis-backed)<br>
+                Action required: Review Twilio console and call clearKillSwitch() to re-enable.
               </p>
             </div>
           </div>`,
@@ -110,112 +141,157 @@ class SmsAbuseDetector {
     }
   }
 
-  private triggerEmergencyKill(reason: string): void {
-    process.env.SMS_EMERGENCY_DISABLED = 'true';
-    this.emergencyEnabled = true;
-    logger.error(`[SmsAbuse] 🔴 EMERGENCY KILL SWITCH ACTIVATED: ${reason}`, {
-      hourlyCount: this.hourly.count,
-      dailyCount: this.daily.count,
-    });
-  }
-
-  trackIpPhoneCombo(ip: string, phone: string): void {
+  /**
+   * Track IP → phone enumeration attacks.
+   * Stored in Redis so it persists across restarts.
+   */
+  async trackIpPhoneCombo(ip: string, phone: string): Promise<void> {
     if (!ip || !phone) return;
-    const phones = this.ipPhoneMap.get(ip) || new Set<string>();
-    phones.add(phone);
-    this.ipPhoneMap.set(ip, phones);
+    try {
+      const key = KEY_IP_PHONES(ip);
+      const raw = await redisGet(key);
+      const phones = new Set<string>(raw ? raw.split(',').filter(Boolean) : []);
+      phones.add(phone);
+      await redisSet(key, Array.from(phones).join(','), 3600);
 
-    if (phones.size >= ENUMERATION_IP_PHONE_LIMIT) {
-      const reason = `IP ${ip} targeted ${phones.size} unique phone numbers`;
-      logger.warn(`[SmsAbuse] 🚨 Phone enumeration detected: ${reason}`);
-      this.sendAlert(
-        `Phone Enumeration Attack Detected`,
-        `IP: ${ip}\nUnique phones targeted: ${phones.size}\nLimit: ${ENUMERATION_IP_PHONE_LIMIT}\n\nRecommendation: Block this IP at firewall level.`
-      );
-      setTimeout(() => this.ipPhoneMap.delete(ip), 60 * 60 * 1000);
+      if (phones.size >= ENUMERATION_IP_PHONE_LIMIT) {
+        const alertKey = KEY_ALERT(`enum:${ip}`);
+        const alerted = await redisGet(alertKey);
+        if (!alerted) {
+          await redisSet(alertKey, '1', 3600);
+          const reason = `IP ${ip} targeted ${phones.size} unique phone numbers`;
+          logger.warn(`[SmsAbuse] 🚨 Phone enumeration detected: ${reason}`);
+          await this.sendAlert(
+            'Phone Enumeration Attack Detected',
+            `IP: ${ip}\nUnique phones targeted: ${phones.size}\nLimit: ${ENUMERATION_IP_PHONE_LIMIT}\n\nRecommendation: Block this IP at firewall level.`
+          );
+        }
+      }
+    } catch (err: any) {
+      logger.error('[SmsAbuse] trackIpPhoneCombo error', { error: err?.message });
     }
   }
 
-  trackCapHit(phone: string): void {
-    const now = Date.now();
-    if (now > this.capHitResetAt) {
-      this.capHitPhones.clear();
-      this.capHitResetAt = now + 60 * 60 * 1000;
-    }
-    this.capHitPhones.add(phone);
-    if (this.capHitPhones.size >= 10) {
-      logger.warn('[SmsAbuse] 🚨 10+ different phones hit daily cap in 1 hour — bot rotation likely', {
-        uniquePhones: this.capHitPhones.size,
-      });
-      this.sendAlert(
-        'Possible Bot Phone Rotation',
-        `${this.capHitPhones.size} different phone numbers hit their daily SMS cap within the last hour.\n\nThis pattern is consistent with attackers rotating phone numbers to bypass per-phone limits.\n\nGlobal hourly count: ${this.hourly.count} / ${GLOBAL_HOURLY_LIMIT}\nGlobal daily count: ${this.daily.count} / ${GLOBAL_DAILY_LIMIT}`
-      );
+  async trackCapHit(phone: string): Promise<void> {
+    try {
+      const key = KEY_CAP_HITS;
+      const raw = await redisGet(key);
+      const phones = new Set<string>(raw ? raw.split(',').filter(Boolean) : []);
+      phones.add(phone);
+      await redisSet(key, Array.from(phones).join(','), 3600);
+
+      if (phones.size >= 10) {
+        const alertKey = KEY_ALERT('cap_rotation');
+        const alerted = await redisGet(alertKey);
+        if (!alerted) {
+          await redisSet(alertKey, '1', 3600);
+          logger.warn('[SmsAbuse] 🚨 10+ different phones hit daily cap in 1 hour — bot rotation likely', {
+            uniquePhones: phones.size,
+          });
+          const hourly = parseInt((await redisGet(KEY_HOURLY)) || '0', 10);
+          const daily = parseInt((await redisGet(KEY_DAILY)) || '0', 10);
+          await this.sendAlert(
+            'Possible Bot Phone Rotation',
+            `${phones.size} different phone numbers hit their daily SMS cap within the last hour.\n\nThis pattern is consistent with attackers rotating phone numbers to bypass per-phone limits.\n\nGlobal hourly count: ${hourly} / ${GLOBAL_HOURLY_LIMIT}\nGlobal daily count: ${daily} / ${GLOBAL_DAILY_LIMIT}`
+          );
+        }
+      }
+    } catch (err: any) {
+      logger.error('[SmsAbuse] trackCapHit error', { error: err?.message });
     }
   }
 
+  /**
+   * Called after every successful SMS dispatch. Increments Redis counters,
+   * fires alerts at threshold, and triggers the kill switch at the limits.
+   */
   async recordSent(): Promise<void> {
-    this.resetWindowIfNeeded(this.hourly);
-    this.resetWindowIfNeeded(this.daily);
+    try {
+      const hourly = await redisIncr(KEY_HOURLY, 7200);
+      const daily = await redisIncr(KEY_DAILY, 172800);
 
-    this.hourly.count++;
-    this.daily.count++;
+      const hourlyPct = hourly / GLOBAL_HOURLY_LIMIT;
+      const dailyPct = daily / GLOBAL_DAILY_LIMIT;
 
-    const hourlyPct = this.hourly.count / GLOBAL_HOURLY_LIMIT;
-    const dailyPct = this.daily.count / GLOBAL_DAILY_LIMIT;
+      if (hourly >= GLOBAL_HOURLY_LIMIT) {
+        const alertKey = KEY_ALERT('hourly_kill');
+        const alerted = await redisGet(alertKey);
+        if (!alerted) {
+          await redisSet(alertKey, '1', 7200);
+          await this.triggerEmergencyKill(`Global hourly limit: ${hourly}/${GLOBAL_HOURLY_LIMIT}`, hourly, daily);
+          await this.sendAlert(
+            '🔴 SMS EMERGENCY KILL ACTIVATED — Hourly Limit Exceeded',
+            `The global SMS hourly limit was exceeded.\n\nHourly count: ${hourly} / ${GLOBAL_HOURLY_LIMIT}\nDaily count: ${daily} / ${GLOBAL_DAILY_LIMIT}\n\n⚠️ Kill switch stored in Redis. Call smsAbuseDetector.clearKillSwitch() to re-enable.\n\nTo re-enable via API: POST /api/admin/sms/kill-switch/clear`
+          );
+        }
+      } else if (hourlyPct >= ALERT_THRESHOLD_PCT) {
+        const alertKey = KEY_ALERT('hourly_warn');
+        const alerted = await redisGet(alertKey);
+        if (!alerted) {
+          await redisSet(alertKey, '1', 7200);
+          await this.sendAlert(
+            `⚠️ SMS Warning — ${Math.round(hourlyPct * 100)}% of Hourly Limit`,
+            `Approaching global hourly SMS limit.\n\nHourly count: ${hourly} / ${GLOBAL_HOURLY_LIMIT} (${Math.round(hourlyPct * 100)}%)\nDaily count: ${daily} / ${GLOBAL_DAILY_LIMIT}\n\nMonitor closely. Auto-kill triggers at ${GLOBAL_HOURLY_LIMIT} SMS/hour.`
+          );
+        }
+      }
 
-    if (this.hourly.count >= GLOBAL_HOURLY_LIMIT && !this.alertState.hourlyKillSent) {
-      this.alertState.hourlyKillSent = true;
-      const reason = `Global hourly SMS limit reached: ${this.hourly.count}/${GLOBAL_HOURLY_LIMIT}`;
-      this.triggerEmergencyKill(reason);
-      await this.sendAlert(
-        '🔴 SMS EMERGENCY KILL ACTIVATED — Hourly Limit Exceeded',
-        `The global SMS hourly limit was exceeded.\n\nHourly count: ${this.hourly.count} / ${GLOBAL_HOURLY_LIMIT}\nDaily count: ${this.daily.count} / ${GLOBAL_DAILY_LIMIT}\n\n⚠️ SMS_EMERGENCY_DISABLED has been set to true. All outgoing SMS are now blocked.\n\nTo re-enable: Set SMS_EMERGENCY_DISABLED=false in the Replit environment secrets.`
-      );
-    } else if (hourlyPct >= ALERT_THRESHOLD_PCT && !this.alertState.hourlyWarningSent) {
-      this.alertState.hourlyWarningSent = true;
-      await this.sendAlert(
-        `⚠️ SMS Warning — ${Math.round(hourlyPct * 100)}% of Hourly Limit`,
-        `Approaching global hourly SMS limit.\n\nHourly count: ${this.hourly.count} / ${GLOBAL_HOURLY_LIMIT} (${Math.round(hourlyPct * 100)}%)\nDaily count: ${this.daily.count} / ${GLOBAL_DAILY_LIMIT}\n\nMonitor closely. Auto-kill will trigger at ${GLOBAL_HOURLY_LIMIT} SMS/hour.`
-      );
-    }
-
-    if (this.daily.count >= GLOBAL_DAILY_LIMIT && !this.alertState.dailyKillSent) {
-      this.alertState.dailyKillSent = true;
-      const reason = `Global daily SMS limit reached: ${this.daily.count}/${GLOBAL_DAILY_LIMIT}`;
-      this.triggerEmergencyKill(reason);
-      await this.sendAlert(
-        '🔴 SMS EMERGENCY KILL ACTIVATED — Daily Limit Exceeded',
-        `The global SMS daily limit was exceeded.\n\nDaily count: ${this.daily.count} / ${GLOBAL_DAILY_LIMIT}\nHourly count: ${this.hourly.count} / ${GLOBAL_HOURLY_LIMIT}\n\n⚠️ SMS_EMERGENCY_DISABLED has been set to true. All outgoing SMS are now blocked.\n\nTo re-enable: Set SMS_EMERGENCY_DISABLED=false in the Replit environment secrets.`
-      );
-    } else if (dailyPct >= ALERT_THRESHOLD_PCT && !this.alertState.dailyWarningSent) {
-      this.alertState.dailyWarningSent = true;
-      await this.sendAlert(
-        `⚠️ SMS Warning — ${Math.round(dailyPct * 100)}% of Daily Limit`,
-        `Approaching global daily SMS limit.\n\nDaily count: ${this.daily.count} / ${GLOBAL_DAILY_LIMIT} (${Math.round(dailyPct * 100)}%)\nHourly count: ${this.hourly.count} / ${GLOBAL_HOURLY_LIMIT}\n\nMonitor closely. Auto-kill will trigger at ${GLOBAL_DAILY_LIMIT} SMS/day.`
-      );
+      if (daily >= GLOBAL_DAILY_LIMIT) {
+        const alertKey = KEY_ALERT('daily_kill');
+        const alerted = await redisGet(alertKey);
+        if (!alerted) {
+          await redisSet(alertKey, '1', 172800);
+          await this.triggerEmergencyKill(`Global daily limit: ${daily}/${GLOBAL_DAILY_LIMIT}`, hourly, daily);
+          await this.sendAlert(
+            '🔴 SMS EMERGENCY KILL ACTIVATED — Daily Limit Exceeded',
+            `The global SMS daily limit was exceeded.\n\nDaily count: ${daily} / ${GLOBAL_DAILY_LIMIT}\nHourly count: ${hourly} / ${GLOBAL_HOURLY_LIMIT}\n\n⚠️ Kill switch stored in Redis. Call smsAbuseDetector.clearKillSwitch() to re-enable.\n\nTo re-enable via API: POST /api/admin/sms/kill-switch/clear`
+          );
+        }
+      } else if (dailyPct >= ALERT_THRESHOLD_PCT) {
+        const alertKey = KEY_ALERT('daily_warn');
+        const alerted = await redisGet(alertKey);
+        if (!alerted) {
+          await redisSet(alertKey, '1', 172800);
+          await this.sendAlert(
+            `⚠️ SMS Warning — ${Math.round(dailyPct * 100)}% of Daily Limit`,
+            `Approaching global daily SMS limit.\n\nDaily count: ${daily} / ${GLOBAL_DAILY_LIMIT} (${Math.round(dailyPct * 100)}%)\nHourly count: ${hourly} / ${GLOBAL_HOURLY_LIMIT}\n\nMonitor closely. Auto-kill triggers at ${GLOBAL_DAILY_LIMIT} SMS/day.`
+          );
+        }
+      }
+    } catch (err: any) {
+      logger.error('[SmsAbuse] recordSent error', { error: err?.message });
     }
   }
 
-  getStatus(): {
+  async getStatus(): Promise<{
     hourlyCount: number;
     hourlyLimit: number;
     dailyCount: number;
     dailyLimit: number;
-    emergencyEnabled: boolean;
+    killSwitchActive: boolean;
+    killSwitchSource: string;
     hourlyPct: number;
     dailyPct: number;
-  } {
-    this.resetWindowIfNeeded(this.hourly);
-    this.resetWindowIfNeeded(this.daily);
+  }> {
+    const [hourlyRaw, dailyRaw, killRaw] = await Promise.all([
+      redisGet(KEY_HOURLY),
+      redisGet(KEY_DAILY),
+      redisGet(KEY_KILL),
+    ]);
+    const hourly = parseInt(hourlyRaw || '0', 10);
+    const daily = parseInt(dailyRaw || '0', 10);
+    const envFlag = (process.env.SMS_EMERGENCY_DISABLED || '').toLowerCase();
+    const killSwitchActive = killRaw === '1' || envFlag === 'true' || envFlag === '1';
+    const killSwitchSource = killRaw === '1' ? 'redis' : envFlag === 'true' ? 'env' : 'none';
     return {
-      hourlyCount: this.hourly.count,
+      hourlyCount: hourly,
       hourlyLimit: GLOBAL_HOURLY_LIMIT,
-      dailyCount: this.daily.count,
+      dailyCount: daily,
       dailyLimit: GLOBAL_DAILY_LIMIT,
-      emergencyEnabled: this.emergencyEnabled || (process.env.SMS_EMERGENCY_DISABLED || '') === 'true',
-      hourlyPct: Math.round((this.hourly.count / GLOBAL_HOURLY_LIMIT) * 100),
-      dailyPct: Math.round((this.daily.count / GLOBAL_DAILY_LIMIT) * 100),
+      killSwitchActive,
+      killSwitchSource,
+      hourlyPct: Math.round((hourly / GLOBAL_HOURLY_LIMIT) * 100),
+      dailyPct: Math.round((daily / GLOBAL_DAILY_LIMIT) * 100),
     };
   }
 }

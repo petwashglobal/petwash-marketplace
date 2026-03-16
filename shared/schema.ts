@@ -11501,7 +11501,7 @@ export type InsertSecurityEvent = z.infer<typeof insertSecurityEventSchema>;
 // OTP Events - Fintech-grade evidence tracking for phone verification
 export const otpEvents = pgTable("otp_events", {
   id: serial("id").primaryKey(),
-  otpId: varchar("otp_id", { length: 50 }).unique().notNull(), // UUID
+  otpId: varchar("otp_id", { length: 100 }).notNull(), // UUID or event-scoped key
   eventType: varchar("event_type", { length: 30 }).notNull(), // OTP_SENT, OTP_VERIFIED, OTP_FAILED, OTP_EXPIRED
   phoneE164: varchar("phone_e164", { length: 20 }).notNull(),
   userId: varchar("user_id"), // nullable for pre-auth
