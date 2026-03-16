@@ -125,24 +125,89 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 // HELPER: Build a branded HTML email wrapper
 // ─────────────────────────────────────────────
 function brandedEmail(title: string, bodyHtml: string): string {
-  return `
-<!DOCTYPE html>
-<html dir="ltr">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title></head>
-<body style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;">
-    <tr><td style="padding:32px 24px 0;">
-      <div style="display:flex;align-items:center;gap:12px;border-bottom:1px solid #1a1a1a;padding-bottom:20px;margin-bottom:24px;">
-        <div style="font-size:24px;font-weight:900;background:linear-gradient(135deg,#C6A35B,#E7C978);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">PetWash™</div>
-        <div style="font-size:11px;color:#666;letter-spacing:2px;text-transform:uppercase;">Israel's Pet Care Platform</div>
-      </div>
-      <h2 style="color:#fff;font-size:20px;margin:0 0 16px;">${title}</h2>
-      ${bodyHtml}
-      <div style="margin-top:32px;padding-top:20px;border-top:1px solid #1a1a1a;color:#444;font-size:11px;">
-        <p style="margin:0;">PetWash™ Ltd. · 1 Rothschild Blvd, Tel Aviv · support@petwash.co.il · VAT 18%</p>
-        <p style="margin:4px 0 0;" dir="rtl">פט ווש בע"מ · מספר ח.פ. 515234567 · מע"מ כלול בכל מחיר</p>
-      </div>
-    </td></tr>
+  return `<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>${title}</title>
+</head>
+<body style="margin:0;padding:0;background:#0d0d0d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <!-- outer wrapper -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0d0d0d;min-height:100vh;">
+    <tr>
+      <td align="center" style="padding:32px 16px 48px;">
+
+        <!-- card -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;background:#111217;border-radius:16px;overflow:hidden;border:1px solid #1e1e26;">
+
+          <!-- gold top stripe -->
+          <tr>
+            <td style="background:linear-gradient(90deg,#B8941F,#C6A35B,#E7C978,#C6A35B,#B8941F);height:4px;font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+
+          <!-- header -->
+          <tr>
+            <td style="background:linear-gradient(160deg,#16151f 0%,#0f0e18 100%);padding:32px 36px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td>
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="padding-right:12px;">
+                          <div style="width:40px;height:40px;background:linear-gradient(135deg,#C6A35B,#E7C978);border-radius:10px;text-align:center;font-size:22px;line-height:40px;">🐾</div>
+                        </td>
+                        <td>
+                          <div style="font-size:22px;font-weight:900;color:#C6A35B;letter-spacing:0.5px;line-height:1.1;">PetWash™</div>
+                          <div style="font-size:10px;color:#6b6b80;letter-spacing:3px;text-transform:uppercase;margin-top:2px;">Israel's Pet Care Platform</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td align="right" style="vertical-align:middle;">
+                    <div style="font-size:10px;color:#3d3d52;letter-spacing:1px;text-transform:uppercase;">Secure · Private · Licensed</div>
+                  </td>
+                </tr>
+              </table>
+              <!-- divider -->
+              <div style="height:1px;background:linear-gradient(90deg,transparent,#2a2a3a,transparent);margin-top:24px;"></div>
+              <!-- title -->
+              <h1 style="color:#ffffff;font-size:20px;font-weight:700;margin:20px 0 0;letter-spacing:-0.3px;">${title}</h1>
+            </td>
+          </tr>
+
+          <!-- body -->
+          <tr>
+            <td style="padding:28px 36px 32px;">
+              ${bodyHtml}
+            </td>
+          </tr>
+
+          <!-- footer -->
+          <tr>
+            <td style="background:#0c0c12;border-top:1px solid #1a1a24;padding:20px 36px 24px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="color:#3d3d52;font-size:10px;line-height:1.7;">
+                    <p style="margin:0 0 2px;color:#4a4a60;">PetWash™ Ltd. &nbsp;·&nbsp; 1 Rothschild Blvd, Tel Aviv 6688101 &nbsp;·&nbsp; <a href="mailto:support@petwash.co.il" style="color:#C6A35B;text-decoration:none;">support@petwash.co.il</a> &nbsp;·&nbsp; VAT 18%</p>
+                    <p style="margin:0;color:#38384a;" dir="rtl">פט ווש בע"מ &nbsp;·&nbsp; מספר ח.פ. 515234567 &nbsp;·&nbsp; מע&quot;מ כלול בכל מחיר &nbsp;·&nbsp; מורשה ומפוקח על ידי רשויות ישראל</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- gold bottom stripe -->
+          <tr>
+            <td style="background:linear-gradient(90deg,#B8941F,#C6A35B,#E7C978,#C6A35B,#B8941F);height:2px;font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+
+        </table>
+        <!-- end card -->
+
+      </td>
+    </tr>
   </table>
 </body>
 </html>`;
@@ -356,25 +421,91 @@ export class PetWashOperationsOrchestrator {
 
     // 1b. Branded confirmation email to customer
     const mapsLink = generateMapsLink(data.address, data.city);
-    const confirmHtml = brandedEmail(
-      `Booking Confirmed – ${data.bookingRef}`,
-      `<p style="color:#ccc;font-size:14px;">Hi <strong style="color:#fff;">${data.firstName}</strong>,</p>
-       <p style="color:#ccc;font-size:14px;">Your <strong style="color:#E7C978;">${data.serviceType}</strong> booking is confirmed!</p>
-       <table style="background:#111;border-radius:12px;padding:20px;width:100%;margin:16px 0;">
-         <tr><td style="color:#666;font-size:12px;padding:4px 0;">Booking Ref</td><td style="color:#E7C978;font-weight:700;font-family:monospace;font-size:14px;">${data.bookingRef}</td></tr>
-         <tr><td style="color:#666;font-size:12px;padding:4px 0;">Platform</td><td style="color:#fff;font-size:13px;">${data.platform}</td></tr>
-         <tr><td style="color:#666;font-size:12px;padding:4px 0;">Service</td><td style="color:#fff;font-size:13px;">${data.serviceType}</td></tr>
-         <tr><td style="color:#666;font-size:12px;padding:4px 0;">Date & Time</td><td style="color:#fff;font-size:13px;">${data.date} at ${data.time}</td></tr>
-         ${data.city ? `<tr><td style="color:#666;font-size:12px;padding:4px 0;">Location</td><td style="color:#fff;font-size:13px;">${data.city}</td></tr>` : ''}
-         ${data.petName ? `<tr><td style="color:#666;font-size:12px;padding:4px 0;">Pet</td><td style="color:#fff;font-size:13px;">🐾 ${data.petName}</td></tr>` : ''}
-       </table>
-       <p style="text-align:center;margin:8px 0 4px;">
-         ${calendarLink ? `<a href="${calendarLink}" style="background:linear-gradient(135deg,#C6A35B,#E7C978);color:#000;font-weight:700;padding:12px 20px;border-radius:24px;text-decoration:none;display:inline-block;margin:4px;">📅 Add to Google Calendar</a>` : ''}
-         ${mapsLink ? `<a href="${mapsLink}" style="background:#1a73e8;color:#fff;font-weight:700;padding:12px 20px;border-radius:24px;text-decoration:none;display:inline-block;margin:4px;">📍 Get Directions</a>` : ''}
-       </p>
-       <p style="color:#666;font-size:12px;">Free cancellation up to 2 hours before your appointment. Questions? Call 1-800-PETWASH or email support@petwash.co.il</p>
-       <p style="color:#555;font-size:11px;" dir="rtl">אישור הזמנה – ${data.bookingRef} | ניתן לבטל עד שעתיים לפני השירות</p>`
-    );
+    const calendarGcalLink = calendarLink || '';
+    const confirmBody = `
+      <!-- greeting -->
+      <p style="color:#a0a0b8;font-size:15px;margin:0 0 4px;">שלום / Hi <strong style="color:#ffffff;">${data.firstName}</strong>,</p>
+      <p style="color:#a0a0b8;font-size:15px;margin:0 0 20px;">Your <strong style="color:#E7C978;">${data.serviceType}</strong> appointment is confirmed and ready.</p>
+
+      <!-- booking details card -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="background:#0c0c12;border:1px solid #1e1e2e;border-radius:12px;overflow:hidden;margin-bottom:24px;">
+        <!-- ref highlight row -->
+        <tr style="background:linear-gradient(90deg,#16141f,#1a1828);">
+          <td style="padding:14px 20px;border-bottom:1px solid #1e1e2e;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="color:#6b6b80;font-size:11px;letter-spacing:1px;text-transform:uppercase;vertical-align:middle;">Booking Reference</td>
+                <td align="right" style="vertical-align:middle;">
+                  <span style="background:linear-gradient(135deg,#C6A35B,#E7C978);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:monospace;font-size:15px;font-weight:900;letter-spacing:1px;">${data.bookingRef}</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <!-- detail rows -->
+        <tr>
+          <td style="padding:0 20px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr style="border-bottom:1px solid #18182a;">
+                <td style="color:#5a5a70;font-size:11px;letter-spacing:0.5px;text-transform:uppercase;padding:12px 0;width:36%;">Platform</td>
+                <td style="color:#d0d0e0;font-size:13px;font-weight:600;padding:12px 0 12px 8px;">${data.platform?.toUpperCase()}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #18182a;">
+                <td style="color:#5a5a70;font-size:11px;letter-spacing:0.5px;text-transform:uppercase;padding:12px 0;">Service</td>
+                <td style="color:#d0d0e0;font-size:13px;font-weight:600;padding:12px 0 12px 8px;">${data.serviceType}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #18182a;">
+                <td style="color:#5a5a70;font-size:11px;letter-spacing:0.5px;text-transform:uppercase;padding:12px 0;">Date &amp; Time</td>
+                <td style="color:#d0d0e0;font-size:13px;font-weight:600;padding:12px 0 12px 8px;">${data.date} at ${data.time}</td>
+              </tr>
+              ${data.city ? `<tr style="border-bottom:1px solid #18182a;">
+                <td style="color:#5a5a70;font-size:11px;letter-spacing:0.5px;text-transform:uppercase;padding:12px 0;">Location</td>
+                <td style="color:#d0d0e0;font-size:13px;font-weight:600;padding:12px 0 12px 8px;">${data.city}</td>
+              </tr>` : ''}
+              ${data.petName ? `<tr>
+                <td style="color:#5a5a70;font-size:11px;letter-spacing:0.5px;text-transform:uppercase;padding:12px 0;">Pet</td>
+                <td style="color:#d0d0e0;font-size:13px;font-weight:600;padding:12px 0 12px 8px;">🐾 ${data.petName}${data.petSize ? ` <span style="color:#5a5a70;font-size:11px;">(${data.petSize})</span>` : ''}</td>
+              </tr>` : ''}
+            </table>
+          </td>
+        </tr>
+      </table>
+
+      <!-- CTA buttons -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
+        <tr>
+          ${calendarGcalLink ? `<td style="padding-right:6px;width:50%;vertical-align:top;">
+            <a href="${calendarGcalLink}" target="_blank"
+               style="display:block;background:linear-gradient(135deg,#C6A35B,#D4AF37);color:#0a0a0a;font-weight:700;font-size:13px;padding:13px 16px;border-radius:10px;text-decoration:none;text-align:center;letter-spacing:0.3px;">
+              📅&nbsp; Add to Calendar
+            </a>
+          </td>` : '<td style="display:none;"></td>'}
+          ${mapsLink ? `<td style="padding-left:6px;width:50%;vertical-align:top;">
+            <a href="${mapsLink}" target="_blank"
+               style="display:block;background:#1565c0;color:#fff;font-weight:700;font-size:13px;padding:13px 16px;border-radius:10px;text-decoration:none;text-align:center;letter-spacing:0.3px;">
+              📍&nbsp; Get Directions
+            </a>
+          </td>` : '<td style="display:none;"></td>'}
+        </tr>
+      </table>
+
+      <!-- policy note -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="background:#111620;border:1px solid #1a2030;border-radius:8px;margin-bottom:8px;">
+        <tr>
+          <td style="padding:14px 16px;">
+            <p style="color:#6b6b80;font-size:12px;margin:0 0 4px;line-height:1.6;">
+              Free cancellation up to 2 hours before your appointment. Questions? <a href="tel:1-800-PETWASH" style="color:#C6A35B;text-decoration:none;">1-800-PETWASH</a> or <a href="mailto:support@petwash.co.il" style="color:#C6A35B;text-decoration:none;">support@petwash.co.il</a>
+            </p>
+            <p style="color:#44445a;font-size:11px;margin:0;line-height:1.6;" dir="rtl">
+              אישור הזמנה – ${data.bookingRef} &nbsp;|&nbsp; ניתן לבטל עד שעתיים לפני השירות
+            </p>
+          </td>
+        </tr>
+      </table>`;
+
+    const confirmHtml = brandedEmail(`Booking Confirmed – ${data.bookingRef}`, confirmBody);
 
     try {
       await sendEmail(data.email, `✅ PetWash™ Booking Confirmed – ${data.bookingRef}`, confirmHtml);
