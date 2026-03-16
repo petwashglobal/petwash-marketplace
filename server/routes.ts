@@ -8822,66 +8822,9 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // ========================================================================
-  // 📍 PUBLIC LOCATIONS API - K9000 Wash Stations for Customer Browsing
-  // ========================================================================
-  
-  app.get('/api/locations', apiLimiter, async (req, res) => {
-    try {
-      const { stations, locations } = await import('@shared/super-app-schema');
-      
-      // Query all active operational stations with their location data
-      const stationsData = await db
-        .select({
-          id: stations.id,
-          stationCode: stations.stationCode,
-          name: stations.name,
-          nameHe: stations.nameHe,
-          description: stations.description,
-          descriptionHe: stations.descriptionHe,
-          photoUrls: stations.photoUrls,
-          status: stations.status,
-          pricePerWash: stations.pricePerWash,
-          features: stations.features,
-          operatingHours: stations.operatingHours,
-          totalWashes: stations.totalWashes,
-          averageRating: sql<number>`5.0`, // Default rating, will be calculated from reviews
-          // Location data
-          address: locations.streetAddress,
-          city: locations.city,
-          district: locations.district,
-          postalCode: locations.postalCode,
-          latitude: locations.latitude,
-          longitude: locations.longitude,
-          phone: locations.phone,
-          email: locations.email,
-        })
-        .from(stations)
-        .innerJoin(locations, eq(stations.locationId, locations.id))
-        .where(
-          and(
-            eq(stations.isActive, true),
-            eq(stations.status, 'operational')
-          )
-        )
-        .orderBy(stations.name);
-
-      logger.info('[Locations API] Fetched K9000 stations', { count: stationsData.length });
-
-      res.json({
-        success: true,
-        locations: stationsData,
-        count: stationsData.length,
-      });
-    } catch (error: any) {
-      logger.error('[Locations API] Error fetching stations:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: 'Failed to fetch station locations',
-        message: error.message 
-      });
-    }
-  });
+  // NOTE: GET /api/locations is registered at line ~4033 via stationsService.
+  // The duplicate that was here (super-app-schema DB join version) was dead code —
+  // Express never reached it. Removed to eliminate the conflicting response shape.
 
   // ========================================================================
   // 🌐 PUBLIC AUTH ROUTES (Clean Console Mode - No 401 for logged-out users)
