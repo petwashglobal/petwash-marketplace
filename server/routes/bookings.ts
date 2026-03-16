@@ -8,6 +8,7 @@ import ChatService from "../services/ChatService";
 import { ImmutableStampService } from "../services/ImmutableStampService";
 import { petWashOrchestrator } from "../services/PetWashOperationsOrchestrator";
 import { logger } from "../lib/logger";
+import { BookingLockService } from "../services/BookingLockService";
 
 const router = express.Router();
 
@@ -399,7 +400,6 @@ router.post("/:bookingId/cancel", requireAuth, async (req, res) => {
 // =================== AVAILABILITY-BASED BOOKING SYSTEM (2025) ===================
 // 5-minute payment lock system for marketplace bookings
 // NOTE: router.get("/availability") is defined ABOVE /:bookingId to prevent route shadowing
-// import { BookingLockService } from "../services/BookingLockService"; // TODO: Re-enable when service is created
 
 /**
  * POST /api/bookings/lock

@@ -88,6 +88,14 @@ export class NayaxOnlinePaymentService {
   }
 
   /**
+   * Returns true when NAYAX_WEBHOOK_SECRET is set.
+   * In production, signature headers MUST be present when this is true.
+   */
+  static isSignatureEnforced(): boolean {
+    return !!NAYAX_WEBHOOK_SECRET;
+  }
+
+  /**
    * Create a hosted payment session.
    * Returns the payment URL to redirect the customer to.
    */

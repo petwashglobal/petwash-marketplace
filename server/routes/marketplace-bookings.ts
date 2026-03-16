@@ -6,7 +6,8 @@ import {
   bookingStatusHistory,
   escrowHoldings,
   providerRateCards,
-  providerAvailability,
+  availabilitySlots,
+  providers,
   quoteRequests,
   pets,
   sitterProfiles,
@@ -214,10 +215,10 @@ router.post('/:quoteId/checkout', async (req, res) => {
       });
     }
 
-    // Verify slot lock is still valid
+    // ── Verify slot lock — query availability_slots (the lock-aware table) ─────
     const [slot] = await db.select()
-      .from(providerAvailability)
-      .where(eq(providerAvailability.id, slotId))
+      .from(availabilitySlots)
+      .where(eq(availabilitySlots.id, slotId))
       .limit(1);
 
     if (!slot) {
@@ -227,22 +228,28 @@ router.post('/:quoteId/checkout', async (req, res) => {
       });
     }
 
-    // Verify slot belongs to the quoted provider
-    if (slot.providerId && String(slot.providerId) !== String(quote.providerId)) {
+    // Verify slot belongs to the quoted provider.
+    // availabilitySlots.providerId is a numeric FK to providers.id, while
+    // quote.providerId is the provider's Firebase UID (varchar).
+    // Bridge: look up providers.userId to compare apples-to-apples.
+    const [providerRow] = await db.select({ userId: providers.userId })
+      .from(providers)
+      .where(eq(providers.id, slot.providerId))
+      .limit(1);
+
+    if (providerRow && providerRow.userId !== quote.providerId) {
+      logger.warn('[MarketplaceBookings] Slot providerId mismatch', {
+        slotProviderId: slot.providerId,
+        slotProviderUid: providerRow.userId,
+        quoteProviderId: quote.providerId,
+      });
       return res.status(400).json({ 
         success: false, 
         error: 'Slot does not match the quoted provider' 
       });
     }
 
-    // Check if slot lock token matches and hasn't expired
-    if (slot.lockToken !== lockToken) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Slot reservation expired. Please select a new time.' 
-      });
-    }
-
+    // Soft expiry pre-check (fast path before the atomic UPDATE)
     if (slot.lockExpiresAt && new Date(slot.lockExpiresAt) < new Date()) {
       return res.status(400).json({ 
         success: false, 
@@ -250,15 +257,42 @@ router.post('/:quoteId/checkout', async (req, res) => {
       });
     }
 
+    // ── Atomic slot claim (race condition protection) ─────────────────────────
+    // Single UPDATE … WHERE lockToken = :lockToken AND status = 'held' RETURNING id
+    // If 0 rows → another concurrent request already claimed this slot, or token wrong.
+    // Eliminates the TOCTOU window between the SELECT above and the booking INSERT below.
+    const [claimed] = await db
+      .update(availabilitySlots)
+      .set({ status: 'booked', updatedAt: new Date() })
+      .where(
+        and(
+          eq(availabilitySlots.id, slotId),
+          eq(availabilitySlots.lockToken, lockToken),
+          eq(availabilitySlots.status, 'held')
+        )
+      )
+      .returning({ id: availabilitySlots.id });
+
+    if (!claimed) {
+      logger.warn('[MarketplaceBookings] Slot claim failed — lockToken mismatch or slot already booked', {
+        slotId,
+        userId,
+      });
+      return res.status(409).json({
+        success: false,
+        error: 'This time slot is no longer available. Please select a new time.',
+      });
+    }
+
     // Create the booking using the booking lifecycle service
     const bookingResult = await bookingLifecycleService.createBooking({
       customerId: userId,
       providerId: quote.providerId!,
-      providerProfileId: slot.profileId ? String(slot.profileId) : quote.providerId!,
+      providerProfileId: quote.providerId!,
       platformId: quote.platform as any,
       serviceType: quote.serviceType || 'standard',
-      startTime: new Date(slot.startTime!),
-      endTime: new Date(slot.endTime!),
+      startTime: new Date(slot.startTime),
+      endTime: new Date(slot.endTime),
       petIds: petIds || [],
       selectedAddons: [],
       specialRequests: specialInstructions || '',
@@ -269,15 +303,10 @@ router.post('/:quoteId/checkout', async (req, res) => {
     const bookingId = bookingResult.bookingId;
     const bookingNumber = bookingResult.bookingNumber;
 
-    // Mark the slot as booked (remove lock, mark confirmed)
-    await db.update(providerAvailability)
-      .set({ 
-        status: 'confirmed',
-        lockToken: null,
-        lockExpiresAt: null,
-        bookedBy: userId
-      })
-      .where(eq(providerAvailability.id, slotId));
+    // Stamp the slot with the confirmed bookingId (status already set to 'booked' atomically above)
+    await db.update(availabilitySlots)
+      .set({ bookingId, lockToken: null, lockExpiresAt: null, lockedByUid: null, updatedAt: new Date() })
+      .where(eq(availabilitySlots.id, slotId));
 
     // Create escrow record for 72-hour hold
     const escrowId = nanoid(16);
