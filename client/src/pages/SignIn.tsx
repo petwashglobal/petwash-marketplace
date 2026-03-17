@@ -1757,7 +1757,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                       ) : (
                         <>
                           {language === 'he' ? 'שלח קוד אימות' : 'Send Verification Code'}
-                          <ArrowRight className="w-4 h-4 ml-2" />
+                          {language === 'he'
+                            ? <ArrowLeft className="w-4 h-4 ms-2" />
+                            : <ArrowRight className="w-4 h-4 ms-2" />}
                         </>
                       )}
                     </Button>
@@ -1795,7 +1797,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                       ) : (
                         <>
                           {language === 'he' ? 'אמת והתחבר' : 'Verify & Sign In'}
-                          <ArrowRight className="w-4 h-4 ml-2" />
+                          {language === 'he'
+                            ? <ArrowLeft className="w-4 h-4 ms-2" />
+                            : <ArrowRight className="w-4 h-4 ms-2" />}
                         </>
                       )}
                     </Button>
@@ -1911,7 +1915,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 ) : (
                   <>
                     {t('signin.signInButton', language)}
-                    <ArrowRight className="w-4 h-4 ml-2" />
+                    {language === 'he'
+                      ? <ArrowLeft className="w-4 h-4 ms-2" />
+                      : <ArrowRight className="w-4 h-4 ms-2" />}
                   </>
                 )}
               </Button>

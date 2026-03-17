@@ -28,6 +28,7 @@ import {
   PawPrint,
   Star,
   ArrowRight,
+  ArrowLeft,
   Info
 } from 'lucide-react';
 import { FaGoogle } from 'react-icons/fa';
@@ -322,7 +323,9 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
                 {allRequiredConsentsGiven ? (
                   <>
                     {t('welcomeConsent.buttons.continue', language)}
-                    <ArrowRight className="w-5 h-5 ml-2" />
+                    {language === 'he'
+                      ? <ArrowLeft className="w-5 h-5 ms-2" />
+                      : <ArrowRight className="w-5 h-5 ms-2" />}
                   </>
                 ) : (
                   <>

@@ -53,6 +53,11 @@ const CSP_DIRECTIVES = [
     "https://media.twiliocdn.com",
     // Sentry
     "https://js.sentry-cdn.com",
+    // HubSpot tracking & forms
+    "https://js.hs-scripts.com",
+    "https://js.hubspot.com",
+    "https://js.hs-analytics.net",
+    "https://forms.hubspot.com",
     // Dev tunnels
     replitHosts,
     // Vite HMR (dev only)
@@ -74,6 +79,7 @@ const CSP_DIRECTIVES = [
     "font-src",
     "'self'",
     "https://fonts.gstatic.com",
+    "https://cdn.jsdelivr.net",
     "data:",
     replitHosts,
   ].filter(Boolean).join(" "),
@@ -119,6 +125,11 @@ const CSP_DIRECTIVES = [
     "https://media.twiliocdn.com",
     // Stripe
     "https://api.stripe.com",
+    // HubSpot analytics, forms, conversations
+    "https://*.hubspot.com",
+    "https://*.hubapi.com",
+    "https://track.hubspot.com",
+    "https://forms.hubspot.com",
     // Dev
     replitHosts,
     isDev ? "ws://localhost:*" : "",

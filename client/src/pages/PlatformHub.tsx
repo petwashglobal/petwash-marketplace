@@ -5,7 +5,7 @@ import {
   Home, Car, GraduationCap, Droplets,
   Shield, Clock, CreditCard, Star, Award, Phone,
   CheckCircle2, Heart, Camera, Map,
-  ChevronRight, Users, ArrowRight, Footprints
+  ChevronRight, Users, ArrowRight, ArrowLeft, Footprints
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -444,7 +444,9 @@ export default function PlatformHub() {
                       
                       <div className="flex items-center text-[#00C569] text-sm font-light group-hover:translate-x-2 transition-transform">
                         <span>{isHebrew ? 'גלה עוד' : 'Explore'}</span>
-                        <ArrowRight className="w-4 h-4 ml-2" />
+                        {isHebrew
+                          ? <ArrowLeft className="w-4 h-4 ms-2 group-hover:-translate-x-2 transition-transform" />
+                          : <ArrowRight className="w-4 h-4 ms-2" />}
                       </div>
                     </div>
                   </div>
