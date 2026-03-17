@@ -184,3 +184,117 @@ export const insertPwProviderPayoutSchema = createInsertSchema(pwProviderPayouts
 });
 export type InsertPwProviderPayout = z.infer<typeof insertPwProviderPayoutSchema>;
 export type PwProviderPayout = typeof pwProviderPayouts.$inferSelect;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// pw_tax_documents — First-class accounting documents (Spec Section 8)
+//
+// Every customer-facing or accounting document MUST have a row here.
+// Do NOT store documents only inside pw_payments.metadata JSON.
+//
+// document_type values:
+//   RECEIPT              — anonymous / one-time sale receipt (K9000 walk-in)
+//   TOPUP_RECEIPT        — stored-value top-up confirmation (no VAT event yet)
+//   TAX_INVOICE          — חשבונית מס (VAT invoice) for taxable service consumption
+//   CREDIT_NOTE          — זיכוי — issued on refund / reversal
+//   COMMISSION_INVOICE   — platform commission invoice to provider (marketplace)
+//   CHARGEBACK_NOTICE    — chargeback record + dispute audit trail
+//   ADJUSTMENT_NOTE      — manual adjustment memo with admin auth
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const pwTaxDocuments = pgTable("pw_tax_documents", {
+  id: serial("id").primaryKey(),
+
+  // ── Identity ────────────────────────────────────────────────────────────────
+  taxDocId:     varchar("tax_doc_id").unique().notNull(),   // TAX-{year}-{nanoid8}
+  documentType: varchar("document_type").notNull(),         // see enum above
+
+  // ── Links ───────────────────────────────────────────────────────────────────
+  relatedPaymentId: varchar("related_payment_id"),          // FK → pw_payments.payment_id
+  relatedPayoutId:  varchar("related_payout_id"),           // FK → pw_provider_payouts.payout_id
+  bookingId:        varchar("booking_id"),
+
+  // ── Parties ─────────────────────────────────────────────────────────────────
+  customerId:  varchar("customer_id"),
+  providerId:  varchar("provider_id"),
+  machineId:   varchar("machine_id"),
+
+  // ── Amounts (CENTS, ILS × 100) ───────────────────────────────────────────────
+  grossCents:   integer("gross_cents").notNull().default(0),
+  vatCents:     integer("vat_cents").notNull().default(0),
+  netCents:     integer("net_cents").notNull().default(0),
+  currency:     varchar("currency").notNull().default("ILS"),
+
+  // ── VAT metadata ────────────────────────────────────────────────────────────
+  vatRate:     varchar("vat_rate").default("0.18"),
+  vatNumber:   varchar("vat_number").default("516788400"), // Pet Wash company VAT — confirm with accountant
+
+  // ── External accounting reference ───────────────────────────────────────────
+  externalDocId:  varchar("external_doc_id"),              // e.g. DocuSeal / accounting system ID
+  sequenceNumber: integer("sequence_number"),               // monotonic invoice sequence for ITA
+
+  // ── Document content ────────────────────────────────────────────────────────
+  payload: jsonb("payload").notNull().default({}),          // full document snapshot
+
+  // ── State ───────────────────────────────────────────────────────────────────
+  status:   varchar("status").notNull().default("issued"),  // issued | voided | amended
+  issuedAt: timestamp("issued_at").defaultNow().notNull(),
+  voidedAt: timestamp("voided_at"),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  taxDocIdIdx:       uniqueIndex("idx_pw_tax_doc_id").on(t.taxDocId),
+  paymentIdx:        index("idx_pw_tax_payment").on(t.relatedPaymentId),
+  payoutIdx:         index("idx_pw_tax_payout").on(t.relatedPayoutId),
+  customerIdx:       index("idx_pw_tax_customer").on(t.customerId),
+  providerIdx:       index("idx_pw_tax_provider").on(t.providerId),
+  documentTypeIdx:   index("idx_pw_tax_doc_type").on(t.documentType),
+  statusIdx:         index("idx_pw_tax_status").on(t.status),
+}));
+
+export const insertPwTaxDocumentSchema = createInsertSchema(pwTaxDocuments).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertPwTaxDocument = z.infer<typeof insertPwTaxDocumentSchema>;
+export type PwTaxDocument = typeof pwTaxDocuments.$inferSelect;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// pw_reconciliation_reports — Daily reconciliation snapshots (Spec Section 15)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const pwReconciliationReports = pgTable("pw_reconciliation_reports", {
+  id: serial("id").primaryKey(),
+
+  reportId:   varchar("report_id").unique().notNull(),      // RECON-{date}-{nanoid6}
+  reportDate: varchar("report_date").notNull(),             // YYYY-MM-DD — the day being reconciled
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+
+  // ── Summary counters ────────────────────────────────────────────────────────
+  totalPayments:       integer("total_payments").notNull().default(0),
+  totalGrossCents:     integer("total_gross_cents").notNull().default(0),
+  totalVatCents:       integer("total_vat_cents").notNull().default(0),
+  totalProcessorFees:  integer("total_processor_fees").notNull().default(0),
+  totalProviderPayouts: integer("total_provider_payouts").notNull().default(0),
+  totalNetRevenue:     integer("total_net_revenue").notNull().default(0),
+
+  totalTaxDocs:        integer("total_tax_docs").notNull().default(0),
+  totalPayoutsCount:   integer("total_payouts_count").notNull().default(0),
+
+  // ── Discrepancy flags ───────────────────────────────────────────────────────
+  discrepancyCount:    integer("discrepancy_count").notNull().default(0),
+  criticalIssues:      integer("critical_issues").notNull().default(0),
+
+  // ── Full report payload ─────────────────────────────────────────────────────
+  payload:   jsonb("payload").notNull().default({}),
+
+  // ── Integrity chain ─────────────────────────────────────────────────────────
+  integrityHash:    varchar("integrity_hash"),
+  prevReportHash:   varchar("prev_report_hash"),
+
+  status: varchar("status").notNull().default("complete"),  // complete | partial | failed
+}, (t) => ({
+  reportIdIdx:   uniqueIndex("idx_pw_recon_report_id").on(t.reportId),
+  reportDateIdx: index("idx_pw_recon_date").on(t.reportDate),
+}));
+
+export type PwReconciliationReport = typeof pwReconciliationReports.$inferSelect;

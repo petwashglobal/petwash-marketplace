@@ -25,6 +25,11 @@ import { paymentIntents, bookings, superAppPayouts } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { nanoid } from "nanoid";
+import {
+  processK9000DirectSale,
+  processWalletTopUp,
+  processChargeback,
+} from './TransactionEngine';
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -63,6 +68,19 @@ export interface WebhookPayload {
   currency: string;
   status: string;
   timestamp: string;
+  /**
+   * K9000-specific fields (Spec §7 / Nayax K9000 integration):
+   *   customerMode: 'APP_USER' (logged-in) | 'PUBLIC_WALKIN' (anonymous card tap)
+   *   walletTopup: true when the customer is topping up their PetWash wallet at the kiosk
+   *   customerId: PetWash UID (present when customerMode === 'APP_USER')
+   */
+  customerMode?: 'APP_USER' | 'PUBLIC_WALKIN';
+  walletTopup?: boolean;
+  customerId?: string;
+  machineId?: string;
+  /** chargeback-specific fields */
+  chargebackTransactionId?: string;
+  chargebackReason?: string;
   metadata?: any;
 }
 
@@ -245,14 +263,82 @@ export class PaymentGatewayService {
         case 'payment.success':
         case 'transaction.completed':
           if (payload.terminalId) {
-            // Terminal payment (K9000 wash stations)
-            await this.processTerminalPayment(payload);
+            // ── K9000 terminal — branch by customer intent ──────────────────
+            const machineId = payload.machineId ?? payload.stationId ?? payload.terminalId;
+
+            if (payload.walletTopup === true) {
+              // Wallet top-up at the kiosk (Spec §7.3 — WALLET_TOPUP via K9000)
+              if (!payload.customerId) {
+                logger.warn('[PaymentGateway] walletTopup=true but no customerId — falling back to processTerminalPayment', { transactionId: payload.transactionId });
+                await this.processTerminalPayment(payload);
+              } else {
+                await processWalletTopUp({
+                  customerId: payload.customerId,
+                  grossILS: payload.amount,
+                  nayaxTransactionId: payload.transactionId,
+                  machineId,
+                  metadata: { source: 'k9000_terminal', ...payload.metadata },
+                });
+              }
+            } else if (payload.customerMode === 'PUBLIC_WALKIN') {
+              // Walk-in card tap — anonymous direct sale (Spec §7.1 — MACHINE_DIRECT_SALE)
+              await processK9000DirectSale({
+                grossILS: payload.amount,
+                nayaxTransactionId: payload.transactionId,
+                machineId,
+                customerId: payload.customerId,
+                metadata: { customerMode: 'PUBLIC_WALKIN', ...payload.metadata },
+              });
+            } else if (payload.customerId) {
+              // Logged-in APP_USER card tap at kiosk — still a direct sale
+              await processK9000DirectSale({
+                grossILS: payload.amount,
+                nayaxTransactionId: payload.transactionId,
+                machineId,
+                customerId: payload.customerId,
+                metadata: { customerMode: 'APP_USER', ...payload.metadata },
+              });
+            } else {
+              // Fallback: unknown K9000 transaction — use legacy path
+              await this.processTerminalPayment(payload);
+            }
           } else {
             // Marketplace/web payment success
             await this.handleMarketplacePaymentSuccess(payload);
           }
           return { processed: true };
-        
+
+        case 'payment.chargeback':
+        case 'transaction.chargeback': {
+          // ── Chargeback from card network (Spec §6 / §13) ─────────────────
+          if (!payload.chargebackTransactionId && !payload.transactionId) {
+            logger.warn('[PaymentGateway] Chargeback webhook missing transactionId', payload);
+            return { processed: true };
+          }
+          // Find the original PetWash payment by nayaxTransactionId
+          const { pwPayments: pwPay } = await import('@shared/schema-payments');
+          const { eq: drizzleEq } = await import('drizzle-orm');
+          const [original] = await db.select().from(pwPay)
+            .where(drizzleEq(pwPay.nayaxTransactionId, payload.chargebackTransactionId ?? payload.transactionId))
+            .limit(1);
+
+          if (!original) {
+            logger.warn('[PaymentGateway] Chargeback: original payment not found by nayaxTransactionId', {
+              nayaxTransactionId: payload.chargebackTransactionId ?? payload.transactionId,
+            });
+            return { processed: true };
+          }
+
+          await processChargeback({
+            originalPaymentId: original.paymentId,
+            chargebackTransactionId: payload.chargebackTransactionId ?? payload.transactionId,
+            reason: payload.chargebackReason ?? 'Chargeback received from card network',
+            reportedBy: 'nayax_webhook',
+            metadata: payload.metadata,
+          });
+          return { processed: true };
+        }
+
         case 'payment.failed':
           await this.handleMarketplacePaymentFailed(payload);
           return { processed: true };

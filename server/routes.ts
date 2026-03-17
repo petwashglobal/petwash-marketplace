@@ -47,6 +47,9 @@ import ceoWalletRoutes from "./routes/ceo-wallet";
 import sendInvestorEventEmailRoutes from "./routes/send-investor-event-email";
 import financeSettlementsRoutes from "./routes/finance/settlements";
 import transactionAuditRoutes from "./routes/finance/transaction-audit";
+import manualAdjustmentRoutes from "./routes/finance/manual-adjustment";
+import payoutReconciliationRoutes from "./routes/finance/payout-reconciliation";
+import { startDailyReconciliationJob, runReconciliationNow } from "./services/DailyReconciliationJob";
 import { allFinanceGuards } from "./middleware/financeGuards";
 import legalStampsRoutes from "./routes/legal-stamps";
 import userActivityRoutes from "./routes/user-activity";
@@ -9419,6 +9422,8 @@ self.addEventListener('notificationclick', (event) => {
   // Finance Settlements API (automated revenue sharing for partners/municipalities)
   app.use('/api/finance/settlements', apiLimiter, financeSettlementsRoutes);
   app.use('/api/finance/transaction-audit', adminLimiter, transactionAuditRoutes);
+  app.use('/api/admin/finance/adjustment', adminLimiter, manualAdjustmentRoutes);
+  app.use('/api/admin/finance/payout-reconciliation', adminLimiter, payoutReconciliationRoutes);
   
   // Thank you email route (management use)
   app.use('/api', adminLimiter, thankYouRoutes);
@@ -14003,6 +14008,50 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // Item 9: Persist AI provider compliance record on startup
   const { persistAIComplianceRecord } = await import('./compliance/ai-provider-compliance');
   persistAIComplianceRecord().catch(() => {});
+
+  // ── Daily reconciliation job (Spec §15) — runs at 00:05 Asia/Jerusalem ──
+  startDailyReconciliationJob();
+
+  // Admin: run reconciliation on-demand
+  app.post('/api/admin/finance/reconciliation/run-now', adminLimiter, async (req: any, res: any) => {
+    const role = req.user?.customClaims?.role ?? req.user?.role;
+    const adminSecret = req.headers['x-admin-secret'];
+    if (adminSecret !== process.env.ADMIN_SECRET && !['super_admin', 'finance'].includes(role)) {
+      return res.status(403).json({ error: 'Admin only' });
+    }
+    const { date } = req.query;
+    try {
+      await runReconciliationNow(date ? String(date) : undefined);
+      return res.json({ success: true, message: 'Reconciliation complete — check pw_reconciliation_reports' });
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Reconciliation failed', detail: err.message });
+    }
+  });
+
+  // Admin: record manual chargeback (if not already handled by Nayax webhook)
+  app.post('/api/admin/finance/chargeback', adminLimiter, async (req: any, res: any) => {
+    const role = req.user?.customClaims?.role ?? req.user?.role;
+    const adminSecret = req.headers['x-admin-secret'];
+    if (adminSecret !== process.env.ADMIN_SECRET && !['super_admin', 'finance'].includes(role)) {
+      return res.status(403).json({ error: 'Admin only' });
+    }
+    const { originalPaymentId, chargebackTransactionId, reason, reportedBy } = req.body;
+    if (!originalPaymentId || !chargebackTransactionId || !reason) {
+      return res.status(400).json({ error: 'originalPaymentId, chargebackTransactionId and reason are required' });
+    }
+    try {
+      const { processChargeback } = await import('./services/TransactionEngine');
+      const result = await processChargeback({
+        originalPaymentId,
+        chargebackTransactionId,
+        reason,
+        reportedBy: reportedBy ?? req.user?.uid ?? 'admin',
+      });
+      return res.status(201).json({ success: true, ...result });
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Chargeback recording failed', detail: err.message });
+    }
+  });
 }
 
 

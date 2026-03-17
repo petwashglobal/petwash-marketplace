@@ -39,6 +39,7 @@ import { TRANSACTION_TYPES } from '@shared/finance-flow-types';
 import VATCalculator, { ISRAELI_VAT_RATE } from './VATCalculatorService';
 import { applyDeduction, topUpCashWallet } from './WalletEngine';
 import { logger } from '../lib/logger';
+import { issueTaxDocument } from './TaxDocumentService';
 
 // ── Per-Vertical Commercial Model Config ─────────────────────────────────────
 
@@ -256,6 +257,18 @@ export async function processK9000DirectSale(params: FlowAParams): Promise<Payme
     metadata: params.metadata ?? null,
   }).returning();
 
+  // Issue first-class receipt document (Spec §5.1 / §8)
+  await issueTaxDocument({
+    documentType: 'RECEIPT',
+    relatedPaymentId: paymentId,
+    customerId: params.customerId ?? undefined,
+    machineId: params.machineId,
+    grossCents,
+    vatCents,
+    netCents: netRevenueCents,
+    payload: { transactionType: TRANSACTION_TYPES.MACHINE_DIRECT_SALE, nayaxTransactionId: params.nayaxTransactionId },
+  });
+
   logger.info('[TransactionEngine] Flow A settled', {
     paymentId,
     machineId: params.machineId,
@@ -275,6 +288,7 @@ export interface FlowBParams {
   customerId: string;
   grossILS: number;
   nayaxTransactionId?: string;
+  machineId?: string;           // K9000 terminal where top-up was initiated (optional)
   idempotencyKey?: string;
   metadata?: Record<string, unknown>;
 }
@@ -340,6 +354,23 @@ export async function processWalletTopUp(params: FlowBParams): Promise<PaymentRe
     settledAt: new Date(),
     metadata: params.metadata ?? null,
   }).returning();
+
+  // Issue top-up receipt — no VAT event, stored-value liability (Spec §5.2 / §4.3)
+  await issueTaxDocument({
+    documentType: 'TOPUP_RECEIPT',
+    relatedPaymentId: paymentId,
+    customerId: params.customerId,
+    machineId: params.machineId,
+    grossCents,
+    vatCents: 0,
+    netCents: 0,
+    payload: {
+      transactionType: TRANSACTION_TYPES.WALLET_TOPUP,
+      vatMode: 'deferred_liability',
+      note: 'Stored value top-up. VAT event deferred to redemption.',
+      nayaxTransactionId: params.nayaxTransactionId,
+    },
+  });
 
   logger.info('[TransactionEngine] Flow B — wallet topped up', {
     paymentId,
@@ -435,6 +466,24 @@ export async function processWalletRedeemK9000(params: FlowCParams): Promise<Pay
     settledAt: new Date(),
     metadata: params.metadata ?? null,
   }).returning();
+
+  // Issue חשבונית מס — VAT event now triggered on redemption (Spec §5.3 / §2.3)
+  await issueTaxDocument({
+    documentType: 'TAX_INVOICE',
+    relatedPaymentId: paymentId,
+    customerId: params.customerId,
+    machineId: params.machineId,
+    bookingId: params.bookingId,
+    grossCents,
+    vatCents,
+    netCents: netRevenueCents,
+    payload: {
+      transactionType: TRANSACTION_TYPES.WALLET_REDEEM_K9000,
+      vatMode: 'deferred_liability_now_triggered',
+      isKioskWash: params.isKioskWash,
+      walletLedgerEntryId: deduction.txnId,
+    },
+  });
 
   logger.info('[TransactionEngine] Flow C — wallet redeemed at K9000', {
     paymentId,
@@ -583,6 +632,44 @@ export async function processProviderBooking(params: FlowDParams): Promise<Provi
     metadata: params.metadata ?? null,
   }).returning();
 
+  // Issue customer tax invoice (Spec §5.4)
+  await issueTaxDocument({
+    documentType: 'TAX_INVOICE',
+    relatedPaymentId: paymentId,
+    bookingId: params.bookingId,
+    customerId: params.customerId,
+    providerId: params.providerId,
+    grossCents,
+    vatCents,
+    netCents: netRevenueCents,
+    payload: {
+      transactionType: TRANSACTION_TYPES.PROVIDER_BOOKING_CHARGE,
+      commercialModel: config.commercialModel,
+      vertical: params.vertical,
+    },
+  });
+
+  // Issue commission invoice to provider (marketplace only — Spec §5.4 / §12)
+  if (config.commercialModel === 'MARKETPLACE_COMMISSION' && commissionCents > 0) {
+    const commissionVatCents = Math.round(commissionCents * (ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE)));
+    await issueTaxDocument({
+      documentType: 'COMMISSION_INVOICE',
+      relatedPaymentId: paymentId,
+      relatedPayoutId: payoutId,
+      bookingId: params.bookingId,
+      providerId: params.providerId,
+      grossCents: commissionCents,
+      vatCents: commissionVatCents,
+      netCents: commissionCents - commissionVatCents,
+      payload: {
+        transactionType: TRANSACTION_TYPES.PROVIDER_COMMISSION,
+        commissionRate: String(config.commissionRate),
+        providerPayoutCents,
+        providerIsExempt: params.providerIsExempt ?? false,
+      },
+    });
+  }
+
   logger.info('[TransactionEngine] Flow D — provider booking captured', {
     paymentId,
     payoutId,
@@ -648,6 +735,23 @@ export async function processReversal(params: {
     .set({ status: 'reversed', reversedAt: new Date() })
     .where(eq(pwPayments.paymentId, params.originalPaymentId));
 
+  // Issue credit note (Spec §13 — reversals create a credit note)
+  await issueTaxDocument({
+    documentType: 'CREDIT_NOTE',
+    relatedPaymentId: paymentId,
+    customerId: original.customerId ?? undefined,
+    providerId: original.providerId ?? undefined,
+    grossCents: Math.abs(original.grossCents ?? 0),
+    vatCents:   Math.abs(original.vatCents ?? 0),
+    netCents:   Math.abs(original.netRevenueCents ?? 0),
+    payload: {
+      transactionType: TRANSACTION_TYPES.REVERSAL,
+      originalPaymentId: params.originalPaymentId,
+      reason: params.reason,
+      initiatedBy: params.initiatedBy,
+    },
+  });
+
   logger.info('[TransactionEngine] Reversal processed', {
     originalPaymentId: params.originalPaymentId,
     reversalPaymentId: paymentId,
@@ -690,6 +794,21 @@ export async function processExpiryBreakage(params: {
     metadata: params.metadata ?? null,
   }).returning();
 
+  // Issue tax invoice for breakage recognised as revenue (Spec §4.4 note — deferred VAT now due)
+  await issueTaxDocument({
+    documentType: 'TAX_INVOICE',
+    relatedPaymentId: paymentId,
+    customerId: params.customerId,
+    grossCents: params.expiredCents,
+    vatCents,
+    netCents: params.expiredCents - vatCents,
+    payload: {
+      transactionType: TRANSACTION_TYPES.EXPIRY_BREAKAGE,
+      expirySource: params.expirySource,
+      note: 'Expired wallet/voucher balance recognised as revenue',
+    },
+  });
+
   logger.info('[TransactionEngine] Expiry breakage recognised', {
     paymentId,
     customerId: params.customerId,
@@ -697,6 +816,174 @@ export async function processExpiryBreakage(params: {
   });
 
   return toPaymentResult(row, false);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CHARGEBACK — Spec Section 6 (CHARGEBACK type) + Section 13
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface ChargebackParams {
+  originalPaymentId: string;
+  chargebackTransactionId: string;
+  reason: string;
+  reportedBy?: string;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Record a chargeback from the card network.
+ * - Negates the original payment amounts in pw_payments
+ * - Updates original payment status to 'chargeback'
+ * - Issues a CHARGEBACK_NOTICE tax document
+ */
+export async function processChargeback(params: ChargebackParams): Promise<{ chargebackPaymentId: string; taxDocId: string | null }> {
+  const [original] = await db
+    .select()
+    .from(pwPayments)
+    .where(eq(pwPayments.paymentId, params.originalPaymentId))
+    .limit(1);
+
+  if (!original) throw new Error(`[TransactionEngine] Chargeback: payment not found — ${params.originalPaymentId}`);
+  if (original.status === 'chargeback') throw new Error(`[TransactionEngine] Already chargebacked — ${params.originalPaymentId}`);
+
+  const paymentId = genPaymentId();
+
+  await db.insert(pwPayments).values({
+    paymentId,
+    transactionType: TRANSACTION_TYPES.CHARGEBACK,
+    vertical: original.vertical,
+    commercialModel: original.commercialModel,
+    customerId: original.customerId,
+    providerId: original.providerId,
+    machineId: original.machineId,
+    grossCents:          -(original.grossCents ?? 0),
+    vatCents:            -(original.vatCents ?? 0),
+    platformFeeCents:    -(original.platformFeeCents ?? 0),
+    processorFeeCents:   -(original.processorFeeCents ?? 0),
+    providerGrossCents:  -(original.providerGrossCents ?? 0),
+    providerPayoutCents: -(original.providerPayoutCents ?? 0),
+    netRevenueCents:     -(original.netRevenueCents ?? 0),
+    vatRate: original.vatRate ?? String(ISRAELI_VAT_RATE),
+    requiresProviderTaxInvoice: false,
+    bookingId: original.bookingId,
+    nayaxTransactionId: params.chargebackTransactionId,
+    status: 'chargeback',
+    metadata: {
+      originalPaymentId: params.originalPaymentId,
+      chargebackTransactionId: params.chargebackTransactionId,
+      reason: params.reason,
+      reportedBy: params.reportedBy,
+      ...(params.metadata ?? {}),
+    },
+  });
+
+  await db.update(pwPayments)
+    .set({ status: 'chargeback' })
+    .where(eq(pwPayments.paymentId, params.originalPaymentId));
+
+  const taxDocId = await issueTaxDocument({
+    documentType: 'CHARGEBACK_NOTICE',
+    relatedPaymentId: paymentId,
+    customerId: original.customerId ?? undefined,
+    providerId: original.providerId ?? undefined,
+    grossCents: Math.abs(original.grossCents ?? 0),
+    vatCents:   Math.abs(original.vatCents ?? 0),
+    netCents:   Math.abs(original.netRevenueCents ?? 0),
+    payload: {
+      transactionType: TRANSACTION_TYPES.CHARGEBACK,
+      originalPaymentId: params.originalPaymentId,
+      chargebackTransactionId: params.chargebackTransactionId,
+      reason: params.reason,
+    },
+  });
+
+  logger.warn('[TransactionEngine] Chargeback recorded', {
+    originalPaymentId: params.originalPaymentId,
+    chargebackPaymentId: paymentId,
+    grossCents: original.grossCents,
+    reason: params.reason,
+  });
+
+  return { chargebackPaymentId: paymentId, taxDocId };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MANUAL_ADJUSTMENT — Spec Section 6 (ADJUSTMENT type) + Section 14
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface ManualAdjustmentParams {
+  adjustmentCents: number;   // positive = credit to platform, negative = debit
+  reason: string;
+  adjustedBy: string;         // admin UID
+  customerId?: string;
+  providerId?: string;
+  relatedPaymentId?: string;
+  notes?: string;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Record a manual financial adjustment authorised by an admin.
+ * Every adjustment is permanently audited.
+ */
+export async function processManualAdjustment(params: ManualAdjustmentParams): Promise<{ adjustmentPaymentId: string; taxDocId: string | null }> {
+  const paymentId = genPaymentId();
+  const vatCents = params.adjustmentCents > 0
+    ? Math.round(params.adjustmentCents * (ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE)))
+    : 0;
+
+  await db.insert(pwPayments).values({
+    paymentId,
+    transactionType: TRANSACTION_TYPES.ADJUSTMENT,
+    vertical: 'manual',
+    commercialModel: 'PRINCIPAL',
+    customerId: params.customerId ?? null,
+    providerId: params.providerId ?? null,
+    grossCents: params.adjustmentCents,
+    vatCents,
+    platformFeeCents: params.adjustmentCents,
+    processorFeeCents: 0,
+    providerGrossCents: 0,
+    providerPayoutCents: 0,
+    netRevenueCents: params.adjustmentCents - vatCents,
+    vatRate: String(ISRAELI_VAT_RATE),
+    requiresProviderTaxInvoice: false,
+    status: 'settled',
+    settledAt: new Date(),
+    metadata: {
+      adjustedBy: params.adjustedBy,
+      reason: params.reason,
+      notes: params.notes,
+      relatedPaymentId: params.relatedPaymentId,
+      ...(params.metadata ?? {}),
+    },
+  });
+
+  const taxDocId = await issueTaxDocument({
+    documentType: 'ADJUSTMENT_NOTE',
+    relatedPaymentId: paymentId,
+    customerId: params.customerId,
+    providerId: params.providerId,
+    grossCents: Math.abs(params.adjustmentCents),
+    vatCents: Math.abs(vatCents),
+    netCents: Math.abs(params.adjustmentCents - vatCents),
+    payload: {
+      transactionType: TRANSACTION_TYPES.ADJUSTMENT,
+      adjustedBy: params.adjustedBy,
+      reason: params.reason,
+      notes: params.notes,
+      relatedPaymentId: params.relatedPaymentId,
+    },
+  });
+
+  logger.info('[TransactionEngine] Manual adjustment recorded', {
+    paymentId,
+    adjustmentCents: params.adjustmentCents,
+    adjustedBy: params.adjustedBy,
+    reason: params.reason,
+  });
+
+  return { adjustmentPaymentId: paymentId, taxDocId };
 }
 
 // ── Shape converters ─────────────────────────────────────────────────────────
