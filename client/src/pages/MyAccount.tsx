@@ -117,6 +117,8 @@ interface UserProfile {
   phone: string;
   address: string;
   street: string;
+  streetNumber?: string;
+  apartment?: string;
   city: string;
   postalCode: string;
   country: string;
@@ -900,7 +902,20 @@ export default function MyAccount() {
   }, [profileData]);
 
   const handleSaveProfile = () => {
-    updateProfileMutation.mutate(editedProfile);
+    // Build the combined address string from structured fields before saving
+    const parts: string[] = [];
+    if (editedProfile.street || editedProfile.streetNumber) {
+      const streetLine = [editedProfile.street, editedProfile.streetNumber].filter(Boolean).join(' ');
+      if (editedProfile.apartment) parts.push(`${streetLine}, ${editedProfile.apartment}`);
+      else parts.push(streetLine);
+    }
+    if (editedProfile.city) parts.push(editedProfile.city);
+    if (editedProfile.postalCode) parts.push(editedProfile.postalCode);
+    if (editedProfile.country && editedProfile.country !== 'ישראל' && editedProfile.country !== 'Israel') {
+      parts.push(editedProfile.country);
+    }
+    const combinedAddress = parts.length > 0 ? parts.join(', ') : editedProfile.address;
+    updateProfileMutation.mutate({ ...editedProfile, address: combinedAddress });
   };
 
   return (
@@ -1531,48 +1546,176 @@ export default function MyAccount() {
                     </div>
                   )}
 
-                  <div className="space-y-2 md:col-span-2">
-                    <Label className="text-gray-500 flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
+                  {/* ── Structured Address Form ── */}
+                  <div className="md:col-span-2 space-y-3">
+                    <Label className="text-gray-500 flex items-center gap-2 text-sm font-semibold">
+                      <MapPin className="w-4 h-4 text-amber-500" />
                       {isHebrew ? 'כתובת' : 'Address'}
                     </Label>
+
                     {isEditing ? (
-                      <GooglePlacesAutocomplete
-                        value={editedProfile.address || ''}
-                        onChange={(value, details) => {
-                          setEditedProfile({ 
-                            ...editedProfile, 
-                            address: value,
-                            street: details?.street || editedProfile.street,
-                            city: details?.city || editedProfile.city,
-                            postalCode: details?.postalCode || editedProfile.postalCode,
-                            country: details?.country || editedProfile.country,
-                            latitude: details?.lat ?? editedProfile.latitude,
-                            longitude: details?.lng ?? editedProfile.longitude,
-                          });
-                        }}
-                        onPlaceSelected={(place) => {
-                          setEditedProfile({ 
-                            ...editedProfile, 
-                            address: place.formattedAddress,
-                            street: place.street || editedProfile.street,
-                            city: place.city || editedProfile.city,
-                            postalCode: place.postalCode || editedProfile.postalCode,
-                            country: place.country || editedProfile.country,
-                            latitude: place.lat ?? editedProfile.latitude,
-                            longitude: place.lng ?? editedProfile.longitude,
-                          });
-                        }}
-                        placeholder={isHebrew ? 'הקלד כתובת...' : 'Start typing your address...'}
-                        country={['il', 'us', 'gb', 'au', 'ca']}
-                        showExtraFields={true}
-                        apartmentLabel={isHebrew ? 'דירה / קומה / כניסה' : 'Apt / Unit / Floor'}
-                        postalCodeLabel={isHebrew ? 'מיקוד' : 'Postal Code'}
-                        apartmentPlaceholder={isHebrew ? 'לדוגמה: דירה 4, קומה 2' : 'e.g. Apt 4, Floor 2'}
-                        postalCodePlaceholder={isHebrew ? 'לדוגמה: 6100000' : 'e.g. 6100000'}
-                      />
+                      <div className="space-y-3 p-4 rounded-2xl border border-amber-100 bg-amber-50/30">
+                        {/* Row 1: Google search bar */}
+                        <div className="relative">
+                          <GooglePlacesAutocomplete
+                            value={editedProfile.address || ''}
+                            onChange={(value, details) => {
+                              if (details) {
+                                setEditedProfile({
+                                  ...editedProfile,
+                                  address: details.formattedAddress,
+                                  street: details.street || editedProfile.street,
+                                  city: details.city || editedProfile.city,
+                                  postalCode: details.postalCode || editedProfile.postalCode,
+                                  country: details.country || editedProfile.country,
+                                  latitude: details.lat ?? editedProfile.latitude,
+                                  longitude: details.lng ?? editedProfile.longitude,
+                                });
+                              } else {
+                                setEditedProfile({ ...editedProfile, address: value });
+                              }
+                            }}
+                            onPlaceSelected={(place) => {
+                              setEditedProfile({
+                                ...editedProfile,
+                                address: place.formattedAddress,
+                                street: place.street || editedProfile.street,
+                                city: place.city || editedProfile.city,
+                                postalCode: place.postalCode || editedProfile.postalCode,
+                                country: place.country || editedProfile.country,
+                                latitude: place.lat ?? editedProfile.latitude,
+                                longitude: place.lng ?? editedProfile.longitude,
+                              });
+                            }}
+                            placeholder={isHebrew ? '🔍  חפש כתובת ב-Google...' : '🔍  Search address with Google...'}
+                            country={['il']}
+                            showExtraFields={false}
+                          />
+                          <p className="text-[10px] text-amber-600/70 mt-1 flex items-center gap-1">
+                            <span>⚡</span>
+                            {isHebrew
+                              ? 'בחר כתובת מהרשימה כדי למלא את השדות אוטומטית — או מלא ידנית למטה'
+                              : 'Pick from the list to auto-fill — or fill manually below'}
+                          </p>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-px bg-amber-200/60" />
+                          <span className="text-[10px] text-amber-500 font-semibold uppercase tracking-wide">
+                            {isHebrew ? 'פרטי כתובת' : 'Address Details'}
+                          </span>
+                          <div className="flex-1 h-px bg-amber-200/60" />
+                        </div>
+
+                        {/* Row 2: Street name + Building number */}
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="col-span-2 space-y-1">
+                            <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">
+                              {isHebrew ? 'שם רחוב' : 'Street Name'}
+                            </label>
+                            <Input
+                              value={editedProfile.street || ''}
+                              onChange={(e) => setEditedProfile({ ...editedProfile, street: e.target.value })}
+                              placeholder={isHebrew ? 'לדוגמה: הרצל' : 'e.g. Herzl St'}
+                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 focus:ring-amber-400/20 bg-white"
+                              style={{ fontSize: '16px' }}
+                              dir="rtl"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">
+                              {isHebrew ? 'מספר' : 'No.'}
+                            </label>
+                            <Input
+                              value={editedProfile.streetNumber || ''}
+                              onChange={(e) => setEditedProfile({ ...editedProfile, streetNumber: e.target.value } as any)}
+                              placeholder={isHebrew ? 'לדוג׳ 18' : 'e.g. 18'}
+                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 focus:ring-amber-400/20 bg-white"
+                              style={{ fontSize: '16px' }}
+                              dir="ltr"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Row 3: Apartment + City */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">
+                              {isHebrew ? 'דירה / קומה / כניסה' : 'Apt / Floor / Entrance'}
+                            </label>
+                            <Input
+                              value={editedProfile.apartment || ''}
+                              onChange={(e) => setEditedProfile({ ...editedProfile, apartment: e.target.value } as any)}
+                              placeholder={isHebrew ? 'דירה 4, קומה 2' : 'Apt 4, Floor 2'}
+                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 focus:ring-amber-400/20 bg-white"
+                              style={{ fontSize: '16px' }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">
+                              {isHebrew ? 'עיר / ישוב' : 'City / Town'}
+                            </label>
+                            <Input
+                              value={editedProfile.city || ''}
+                              onChange={(e) => setEditedProfile({ ...editedProfile, city: e.target.value })}
+                              placeholder={isHebrew ? 'תל אביב' : 'Tel Aviv'}
+                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 focus:ring-amber-400/20 bg-white"
+                              style={{ fontSize: '16px' }}
+                              dir="rtl"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Row 4: Postal code + Country */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">
+                              {isHebrew ? 'מיקוד' : 'Postal Code'}
+                            </label>
+                            <Input
+                              value={editedProfile.postalCode || ''}
+                              onChange={(e) => setEditedProfile({ ...editedProfile, postalCode: e.target.value })}
+                              placeholder={isHebrew ? 'לדוגמה: 6291302' : 'e.g. 6291302'}
+                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 focus:ring-amber-400/20 bg-white font-mono"
+                              style={{ fontSize: '16px' }}
+                              inputMode="numeric"
+                              dir="ltr"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">
+                              {isHebrew ? 'מדינה' : 'Country'}
+                            </label>
+                            <Input
+                              value={editedProfile.country || 'ישראל'}
+                              onChange={(e) => setEditedProfile({ ...editedProfile, country: e.target.value })}
+                              placeholder={isHebrew ? 'ישראל' : 'Israel'}
+                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 focus:ring-amber-400/20 bg-white"
+                              style={{ fontSize: '16px' }}
+                            />
+                          </div>
+                        </div>
+                      </div>
                     ) : (
-                      <p className="text-gray-900 text-lg">{profile.address || '-'}</p>
+                      /* Display mode — show structured address */
+                      <div className="space-y-0.5">
+                        {(profile.street || profile.city) ? (
+                          <>
+                            <p className="text-gray-900 font-medium">
+                              {[profile.street, (profile as any).streetNumber].filter(Boolean).join(' ')}
+                              {(profile as any).apartment && `, ${(profile as any).apartment}`}
+                            </p>
+                            <p className="text-gray-500 text-sm">
+                              {[profile.city, profile.postalCode, profile.country].filter(Boolean).join(' · ')}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-gray-400 text-sm italic">
+                            {isHebrew ? 'לא הוזנה כתובת' : 'No address saved yet'}
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1775,61 +1918,137 @@ export default function MyAccount() {
 
               {/* Address Settings */}
               <div className="pw-section-card">
-                <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-3">
-                  <MapPin className="w-5 h-5 text-gray-400" />
-                  {isHebrew ? 'כתובת' : 'Address'}
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-gray-600 mb-2 block">
-                      {isHebrew ? 'רחוב וכתובת' : 'Street Address'}
-                    </Label>
-                    <GooglePlacesAutocomplete
-                      value={editedProfile?.address || ''}
-                      onChange={(value, details) => {
-                        setEditedProfile((prev: any) => ({ 
-                          ...prev, 
-                          address: value,
-                          street: details?.street || prev?.street,
-                          city: details?.city || prev?.city,
-                          postalCode: details?.postalCode || prev?.postalCode,
-                          country: details?.country || prev?.country,
-                          latitude: details?.lat ?? prev?.latitude,
-                          longitude: details?.lng ?? prev?.longitude,
-                        }));
-                      }}
-                      onPlaceSelected={(place) => {
-                        setEditedProfile((prev: any) => ({ 
-                          ...prev, 
-                          address: place.formattedAddress,
-                          street: place.street || prev?.street,
-                          city: place.city || prev?.city,
-                          postalCode: place.postalCode || prev?.postalCode,
-                          country: place.country || prev?.country,
-                          latitude: place.lat ?? prev?.latitude,
-                          longitude: place.lng ?? prev?.longitude,
-                        }));
-                      }}
-                      placeholder={isHebrew ? 'הקלד כתובת...' : 'Start typing your address...'}
-                      country={['il', 'us', 'gb', 'au', 'ca']}
-                      showExtraFields={true}
-                      apartmentLabel={isHebrew ? 'דירה / קומה / כניסה' : 'Apt / Unit / Floor'}
-                      postalCodeLabel={isHebrew ? 'מיקוד' : 'Postal Code'}
-                      apartmentPlaceholder={isHebrew ? 'לדוגמה: דירה 4, קומה 2' : 'e.g. Apt 4, Floor 2'}
-                      postalCodePlaceholder={isHebrew ? 'לדוגמה: 6100000' : 'e.g. 6100000'}
-                    />
+                <div className="pw-section-header">
+                  <div className="pw-section-icon-box">
+                    <MapPin className="w-5 h-5 text-amber-400" />
                   </div>
                   <div>
-                    <Label className="text-gray-600 mb-2 block">
-                      {isHebrew ? 'עיר' : 'City'}
-                    </Label>
-                    <Input
-                      value={editedProfile?.city || ''}
-                      onChange={(e) => setEditedProfile((prev: any) => ({ ...prev, city: e.target.value }))}
-                      placeholder={isHebrew ? 'שם העיר' : 'City name'}
-                      className="bg-white border-gray-200 text-gray-900"
-                    />
+                    <p className="pw-section-title">{isHebrew ? 'כתובת מגורים' : 'Home Address'}</p>
+                    <p className="pw-section-desc">{isHebrew ? 'כתובת לשירותי איסוף ומשלוח' : 'Used for pickup & delivery services'}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 p-4 rounded-2xl border border-amber-100 bg-amber-50/30">
+                  {/* Google autocomplete search */}
+                  <GooglePlacesAutocomplete
+                    value={editedProfile?.address || ''}
+                    onChange={(value, details) => {
+                      if (details) {
+                        setEditedProfile((prev: any) => ({
+                          ...prev,
+                          address: details.formattedAddress,
+                          street: details.street || prev?.street,
+                          city: details.city || prev?.city,
+                          postalCode: details.postalCode || prev?.postalCode,
+                          country: details.country || prev?.country,
+                          latitude: details.lat ?? prev?.latitude,
+                          longitude: details.lng ?? prev?.longitude,
+                        }));
+                      } else {
+                        setEditedProfile((prev: any) => ({ ...prev, address: value }));
+                      }
+                    }}
+                    onPlaceSelected={(place) => {
+                      setEditedProfile((prev: any) => ({
+                        ...prev,
+                        address: place.formattedAddress,
+                        street: place.street || prev?.street,
+                        city: place.city || prev?.city,
+                        postalCode: place.postalCode || prev?.postalCode,
+                        country: place.country || prev?.country,
+                        latitude: place.lat ?? prev?.latitude,
+                        longitude: place.lng ?? prev?.longitude,
+                      }));
+                    }}
+                    placeholder={isHebrew ? '🔍  חפש כתובת ב-Google...' : '🔍  Search address with Google...'}
+                    country={['il']}
+                    showExtraFields={false}
+                  />
+                  <p className="text-[10px] text-amber-600/70 flex items-center gap-1">
+                    <span>⚡</span>
+                    {isHebrew
+                      ? 'בחר מהרשימה למילוי אוטומטי — או מלא ידנית'
+                      : 'Select from list to auto-fill — or type manually'}
+                  </p>
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-px bg-amber-200/60" />
+                    <span className="text-[10px] text-amber-500 font-semibold uppercase tracking-wide">
+                      {isHebrew ? 'פרטי כתובת' : 'Address Fields'}
+                    </span>
+                    <div className="flex-1 h-px bg-amber-200/60" />
+                  </div>
+
+                  {/* Street + Number */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="col-span-2 space-y-1">
+                      <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">{isHebrew ? 'שם רחוב' : 'Street Name'}</label>
+                      <Input
+                        value={editedProfile?.street || ''}
+                        onChange={(e) => setEditedProfile((prev: any) => ({ ...prev, street: e.target.value }))}
+                        placeholder={isHebrew ? 'הרצל' : 'e.g. Herzl St'}
+                        className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 bg-white"
+                        style={{ fontSize: '16px' }} dir="rtl"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">{isHebrew ? 'מספר' : 'No.'}</label>
+                      <Input
+                        value={(editedProfile as any)?.streetNumber || ''}
+                        onChange={(e) => setEditedProfile((prev: any) => ({ ...prev, streetNumber: e.target.value }))}
+                        placeholder="18"
+                        className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 bg-white"
+                        style={{ fontSize: '16px' }} dir="ltr"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Apartment + City */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">{isHebrew ? 'דירה / קומה' : 'Apt / Floor'}</label>
+                      <Input
+                        value={(editedProfile as any)?.apartment || ''}
+                        onChange={(e) => setEditedProfile((prev: any) => ({ ...prev, apartment: e.target.value }))}
+                        placeholder={isHebrew ? 'דירה 4, קומה 2' : 'Apt 4, Floor 2'}
+                        className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 bg-white"
+                        style={{ fontSize: '16px' }}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">{isHebrew ? 'עיר' : 'City'}</label>
+                      <Input
+                        value={editedProfile?.city || ''}
+                        onChange={(e) => setEditedProfile((prev: any) => ({ ...prev, city: e.target.value }))}
+                        placeholder={isHebrew ? 'תל אביב' : 'Tel Aviv'}
+                        className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 bg-white"
+                        style={{ fontSize: '16px' }} dir="rtl"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Postal + Country */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">{isHebrew ? 'מיקוד' : 'Postal Code'}</label>
+                      <Input
+                        value={editedProfile?.postalCode || ''}
+                        onChange={(e) => setEditedProfile((prev: any) => ({ ...prev, postalCode: e.target.value }))}
+                        placeholder="6291302"
+                        className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 bg-white font-mono"
+                        style={{ fontSize: '16px' }} inputMode="numeric" dir="ltr"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">{isHebrew ? 'מדינה' : 'Country'}</label>
+                      <Input
+                        value={editedProfile?.country || 'ישראל'}
+                        onChange={(e) => setEditedProfile((prev: any) => ({ ...prev, country: e.target.value }))}
+                        placeholder={isHebrew ? 'ישראל' : 'Israel'}
+                        className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 bg-white"
+                        style={{ fontSize: '16px' }}
+                      />
+                    </div>
                   </div>
                 </div>
 

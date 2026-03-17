@@ -196,24 +196,42 @@ function isAllowedPlacesOrigin(req: any): boolean {
   // request to Cloud Run (the CDN layer strips both headers for same-origin
   // requests). Fall back to x-forwarded-host which Firebase always sets.
   if (!source) {
+    // Check x-forwarded-host (Firebase Hosting sets this)
     const forwardedHost = (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0]?.trim();
     if (forwardedHost) {
       const fwHostname = forwardedHost.split(':')[0].toLowerCase();
       if (isAllowedHostname(fwHostname, [...defaultAllowed, ...envAllowed])) {
         return true;
       }
-      logger.warn('[Places Proxy] x-forwarded-host not in allowlist', { fwHostname });
-      return false;
+    }
+
+    // Cloud Run internal: check x-forwarded-for for Cloud Run internal IPs,
+    // or accept if running in Cloud Run (K_SERVICE env var is set by Cloud Run).
+    // Firebase Hosting → Cloud Run rewrites always strip origin but set K_SERVICE.
+    if (process.env.K_SERVICE) {
+      // Running in Cloud Run — accept same-origin requests that have no origin header.
+      // This is the standard behaviour for Firebase Hosting → Cloud Run rewrites.
+      logger.info('[Places Proxy] Cloud Run origin-less request accepted (Firebase Hosting rewrite)', {
+        service: process.env.K_SERVICE,
+        fwHost: forwardedHost || 'none',
+      });
+      return true;
     }
 
     // True server-to-server call — require internal secret
     const secret = process.env.INTERNAL_SERVICE_SECRET;
-    if (!secret) {
-      logger.warn('[Places Proxy] No-origin request blocked: INTERNAL_SERVICE_SECRET not configured');
-      return false;
+    if (secret) {
+      const provided = req.headers['x-internal-secret'] as string | undefined;
+      if (provided && provided === secret) return true;
     }
-    const provided = req.headers['x-internal-secret'] as string | undefined;
-    return !!provided && provided === secret;
+
+    // Development without K_SERVICE — allow localhost
+    if (process.env.NODE_ENV === 'development') {
+      return true;
+    }
+
+    logger.warn('[Places Proxy] No-origin request blocked — set K_SERVICE or INTERNAL_SERVICE_SECRET');
+    return false;
   }
 
   // Parse the URL — extract only the hostname to prevent path/query bypass attacks.
