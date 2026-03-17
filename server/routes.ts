@@ -67,6 +67,7 @@ import launchEventRoutes from "./routes/launch-event";
 import socialCircleRoutes from "./routes/social-circle";
 import giftCardsRoutes from "./routes/gift-cards";
 import campaignsRoutes from "./routes/campaigns";
+import captchaProbeRoutes from "./routes/captcha-probe";
 import meetingsRoutes from "./routes/meetings";
 import unifiedVouchersRoutes from "./routes/unified-vouchers";
 import esignRoutes from "./routes/esign";
@@ -9535,6 +9536,9 @@ self.addEventListener('notificationclick', (event) => {
   
   // Meetings with Attendee Notifications (WhatsApp + Email)
   app.use('/api/meetings', adminLimiter, meetingsRoutes);
+
+  // reCAPTCHA Enterprise probe — owner diagnostics (no auth, no SMS; rate-limited by apiLimiter)
+  app.use('/api/captcha-probe', apiLimiter, captchaProbeRoutes);
   
   // Management Dashboard (CEO/CFO only - comprehensive business analytics)
   app.use('/api/management', adminLimiter, managementDashboardRoutes);
