@@ -289,7 +289,13 @@ export default function MyAccount() {
   // Pet profile state
   const [showPetForm, setShowPetForm] = useState(false);
   const [editingPet, setEditingPet] = useState<any | null>(null);
-  const emptyPet = { name: '', species: 'dog', breed: '', birthday: '', vaccineDates: {} };
+  const emptyPet = {
+    name: '', species: 'dog', breed: '', birthday: '', vaccineDates: {},
+    weight: '', color: '', microchip: '',
+    allergies: '', favoriteFoods: '', dislikedFoods: '',
+    habits: '', routine: '',
+    vetName: '', vetPhone: '', notes: '',
+  };
   const [petFormData, setPetFormData] = useState<any>(emptyPet);
 
   const { data: walletData, isLoading: walletLoading } = useQuery<{ success: boolean; wallet: WalletSummary }>({
@@ -433,7 +439,14 @@ export default function MyAccount() {
   function handleOpenPetForm(pet?: any) {
     if (pet) {
       setEditingPet(pet);
-      setPetFormData({ name: pet.name || '', species: pet.species || 'dog', breed: pet.breed || '', birthday: pet.birthday || '', vaccineDates: pet.vaccineDates || {} });
+      setPetFormData({
+        name: pet.name || '', species: pet.species || 'dog', breed: pet.breed || '',
+        birthday: pet.birthday || '', vaccineDates: pet.vaccineDates || {},
+        weight: pet.weight || '', color: pet.color || '', microchip: pet.microchip || '',
+        allergies: pet.allergies || '', favoriteFoods: pet.favoriteFoods || '', dislikedFoods: pet.dislikedFoods || '',
+        habits: pet.habits || '', routine: pet.routine || '',
+        vetName: pet.vetName || '', vetPhone: pet.vetPhone || '', notes: pet.notes || '',
+      });
     } else {
       setEditingPet(null);
       setPetFormData(emptyPet);
@@ -2544,6 +2557,90 @@ export default function MyAccount() {
                               </div>
                             </div>
                           )}
+
+                          {/* Allergies — always prominent if filled */}
+                          {pet.allergies && (
+                            <div className="px-4 py-3 border-t border-red-100 bg-red-50">
+                              <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider mb-1.5">⚠️ {isHebrew ? 'אלרגיות' : 'Allergies'}</p>
+                              <p className="text-xs text-red-700 leading-relaxed">{pet.allergies}</p>
+                            </div>
+                          )}
+
+                          {/* Food preferences */}
+                          {(pet.favoriteFoods || pet.dislikedFoods) && (
+                            <div className="px-4 py-3 border-t border-gray-100 bg-white">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">🍽️ {isHebrew ? 'העדפות אוכל' : 'Food Preferences'}</p>
+                              <div className="space-y-1.5">
+                                {pet.favoriteFoods && (
+                                  <div className="flex gap-2 text-xs">
+                                    <span className="text-green-600 font-semibold whitespace-nowrap">❤️ {isHebrew ? 'אוהב:' : 'Loves:'}</span>
+                                    <span className="text-gray-600">{pet.favoriteFoods}</span>
+                                  </div>
+                                )}
+                                {pet.dislikedFoods && (
+                                  <div className="flex gap-2 text-xs">
+                                    <span className="text-gray-400 font-semibold whitespace-nowrap">🚫 {isHebrew ? 'לא אוהב:' : 'Avoids:'}</span>
+                                    <span className="text-gray-500">{pet.dislikedFoods}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Habits & Routine */}
+                          {(pet.habits || pet.routine) && (
+                            <div className="px-4 py-3 border-t border-gray-100 bg-white">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">🐾 {isHebrew ? 'אישיות ושגרה' : 'Personality & Routine'}</p>
+                              <div className="space-y-2">
+                                {pet.habits && (
+                                  <div>
+                                    <p className="text-[10px] font-semibold text-gray-400 mb-0.5">{isHebrew ? 'הרגלים' : 'Habits'}</p>
+                                    <p className="text-xs text-gray-600 leading-relaxed">{pet.habits}</p>
+                                  </div>
+                                )}
+                                {pet.routine && (
+                                  <div>
+                                    <p className="text-[10px] font-semibold text-gray-400 mb-0.5">{isHebrew ? 'שגרת יום' : 'Daily Routine'}</p>
+                                    <p className="text-xs text-gray-600 leading-relaxed">{pet.routine}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Physical details row */}
+                          {(pet.weight || pet.color || pet.microchip) && (
+                            <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/50">
+                              <div className="flex flex-wrap gap-3 text-xs">
+                                {pet.weight && <span className="text-gray-500">⚖️ {pet.weight} kg</span>}
+                                {pet.color && <span className="text-gray-500">🎨 {pet.color}</span>}
+                                {pet.microchip && <span className="text-gray-500">🔖 {pet.microchip}</span>}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Vet info */}
+                          {(pet.vetName || pet.vetPhone) && (
+                            <div className="px-4 py-3 border-t border-gray-100 bg-white">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">🏥 {isHebrew ? 'וטרינר' : 'Vet'}</p>
+                              <div className="flex items-center gap-4 text-xs">
+                                {pet.vetName && <span className="text-gray-700 font-medium">{pet.vetName}</span>}
+                                {pet.vetPhone && (
+                                  <a href={`tel:${pet.vetPhone}`} className="text-blue-600 hover:underline font-medium">
+                                    📞 {pet.vetPhone}
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Notes */}
+                          {pet.notes && (
+                            <div className="px-4 py-3 border-t border-gray-100 bg-white">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">📝 {isHebrew ? 'הערות' : 'Notes'}</p>
+                              <p className="text-xs text-gray-500 leading-relaxed">{pet.notes}</p>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -2675,6 +2772,168 @@ export default function MyAccount() {
                             </div>
                           ))}
                         </div>
+                      </div>
+
+                      {/* ── Physical Details ── */}
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">
+                          📋 {isHebrew ? 'פרטים פיזיים' : 'Physical Details'}
+                        </label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1">{isHebrew ? 'משקל (ק"ג)' : 'Weight (kg)'}</label>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              value={petFormData.weight}
+                              onChange={e => setPetFormData((p: any) => ({ ...p, weight: e.target.value }))}
+                              className="w-full border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-black transition-colors"
+                              placeholder="e.g. 4.5"
+                              style={{ fontSize: '16px' }}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1">{isHebrew ? 'צבע / סימנים' : 'Color / Markings'}</label>
+                            <input
+                              type="text"
+                              value={petFormData.color}
+                              onChange={e => setPetFormData((p: any) => ({ ...p, color: e.target.value }))}
+                              className="w-full border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-black transition-colors"
+                              placeholder={isHebrew ? 'לבן עם כתמים' : 'White with spots'}
+                              style={{ fontSize: '16px' }}
+                            />
+                          </div>
+                        </div>
+                        <div className="mt-3">
+                          <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1">{isHebrew ? 'מספר שבב / מיקרוצ\'יפ' : 'Microchip Number'}</label>
+                          <input
+                            type="text"
+                            value={petFormData.microchip}
+                            onChange={e => setPetFormData((p: any) => ({ ...p, microchip: e.target.value }))}
+                            className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors"
+                            placeholder={isHebrew ? '15 ספרות...' : '15-digit chip number...'}
+                            style={{ fontSize: '16px' }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* ── Allergies & Food ── */}
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">
+                          🍽️ {isHebrew ? 'אלרגיות ואוכל' : 'Allergies & Food'}
+                        </label>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-[10px] font-semibold text-red-400 uppercase tracking-wide block mb-1">⚠️ {isHebrew ? 'אלרגיות (חשוב!)' : 'Allergies (important!)'}</label>
+                            <textarea
+                              value={petFormData.allergies}
+                              onChange={e => setPetFormData((p: any) => ({ ...p, allergies: e.target.value }))}
+                              rows={2}
+                              className="w-full border-2 border-red-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-red-400 transition-colors resize-none"
+                              placeholder={isHebrew ? 'לדוגמה: עוף, חיטה, חמאת בוטנים...' : 'e.g. Chicken, wheat, peanut butter...'}
+                              style={{ fontSize: '16px' }}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-semibold text-green-600 uppercase tracking-wide block mb-1">❤️ {isHebrew ? 'אוכל אהוב' : 'Favorite Foods'}</label>
+                            <textarea
+                              value={petFormData.favoriteFoods}
+                              onChange={e => setPetFormData((p: any) => ({ ...p, favoriteFoods: e.target.value }))}
+                              rows={2}
+                              className="w-full border-2 border-green-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-green-400 transition-colors resize-none"
+                              placeholder={isHebrew ? 'לדוגמה: טונה, גבינה, ירקות...' : 'e.g. Tuna, cheese, carrots...'}
+                              style={{ fontSize: '16px' }}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1">🚫 {isHebrew ? 'לא אוהב לאכול' : 'Dislikes / Avoids'}</label>
+                            <textarea
+                              value={petFormData.dislikedFoods}
+                              onChange={e => setPetFormData((p: any) => ({ ...p, dislikedFoods: e.target.value }))}
+                              rows={2}
+                              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors resize-none"
+                              placeholder={isHebrew ? 'לדוגמה: לא אוהב ירקות ירוקים...' : 'e.g. Hates broccoli, dry food...'}
+                              style={{ fontSize: '16px' }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ── Personality & Routine ── */}
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">
+                          🐾 {isHebrew ? 'אישיות ושגרה' : 'Personality & Routine'}
+                        </label>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1">{isHebrew ? 'הרגלים ואופי' : 'Habits & Personality'}</label>
+                            <textarea
+                              value={petFormData.habits}
+                              onChange={e => setPetFormData((p: any) => ({ ...p, habits: e.target.value }))}
+                              rows={3}
+                              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors resize-none"
+                              placeholder={isHebrew ? 'לדוגמה: אוהב לישון ביום, פחדן מרעשים חזקים, חייב לשחק כדור כל יום...' : 'e.g. Loves afternoon naps, scared of thunder, needs ball play every day...'}
+                              style={{ fontSize: '16px' }}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1">{isHebrew ? 'שגרת יום' : 'Daily Routine'}</label>
+                            <textarea
+                              value={petFormData.routine}
+                              onChange={e => setPetFormData((p: any) => ({ ...p, routine: e.target.value }))}
+                              rows={3}
+                              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors resize-none"
+                              placeholder={isHebrew ? 'לדוגמה: 7:00 ארוחת בוקר, 8:00 טיול, 13:00 ארוחת צהריים, 19:00 ערב...' : 'e.g. 7am breakfast, 8am walk, 1pm nap, 6pm dinner, 9pm sleep...'}
+                              style={{ fontSize: '16px' }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ── Vet Info ── */}
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">
+                          🏥 {isHebrew ? 'פרטי וטרינר' : 'Vet Details'}
+                        </label>
+                        <div className="grid grid-cols-1 gap-3">
+                          <div>
+                            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1">{isHebrew ? 'שם הוטרינר' : 'Vet Name'}</label>
+                            <input
+                              type="text"
+                              value={petFormData.vetName}
+                              onChange={e => setPetFormData((p: any) => ({ ...p, vetName: e.target.value }))}
+                              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors"
+                              placeholder={isHebrew ? 'ד"ר...' : 'Dr. Smith...'}
+                              style={{ fontSize: '16px' }}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1">{isHebrew ? 'טלפון וטרינר' : 'Vet Phone'}</label>
+                            <input
+                              type="tel"
+                              value={petFormData.vetPhone}
+                              onChange={e => setPetFormData((p: any) => ({ ...p, vetPhone: e.target.value }))}
+                              className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors"
+                              placeholder="03-123-4567"
+                              style={{ fontSize: '16px' }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ── General Notes ── */}
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
+                          📝 {isHebrew ? 'הערות כלליות' : 'General Notes'}
+                        </label>
+                        <textarea
+                          value={petFormData.notes}
+                          onChange={e => setPetFormData((p: any) => ({ ...p, notes: e.target.value }))}
+                          rows={3}
+                          className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors resize-none"
+                          placeholder={isHebrew ? 'כל מידע נוסף שחשוב לדעת...' : 'Any other important info...'}
+                          style={{ fontSize: '16px' }}
+                        />
                       </div>
                     </div>
 
