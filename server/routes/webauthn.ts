@@ -27,15 +27,19 @@ import { logger } from "../lib/logger";
 import * as Sentry from "@sentry/node";
 import { ensureWebAuthnSession, setWebAuthnCsrfToken, verifyWebAuthnCsrfToken } from "../webauthn/csrfProtection";
 
+import { sql } from "drizzle-orm";
+import { db as pgDb } from "../db";
+import { userConsents } from "@shared/schema";
+
 const router = express.Router();
 const db = admin.firestore();
 
 // WebAuthn Configuration
 const RP_NAME = "Pet Wash Group";
-const RP_ID = process.env.NODE_ENV === "production" ? "petwash.co.il" : "localhost";
+const RP_ID = process.env.NODE_ENV === "production" ? "petwash.co.il" : (process.env.REPL_SLUG ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : "localhost");
 const ORIGIN = process.env.NODE_ENV === "production"
   ? "https://petwash.co.il"
-  : (process.env.BASE_URL || "http://localhost:5000");
+  : (process.env.BASE_URL || (process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : "http://localhost:5000"));
 
 /**
  * POST /webauthn/register/options
@@ -47,6 +51,25 @@ router.post("/register/options", requireAuth, setWebAuthnCsrfToken, async (req, 
   try {
     const userId = req.user!.uid;
     const userEmail = req.user!.email || "user@petwash.co.il";
+
+    // Verify biometric consent exists and is current (v2025.1)
+    const consentResult = await pgDb.execute(sql`
+      SELECT accepted, consent_version 
+      FROM user_consents 
+      WHERE user_id = ${userId} 
+      AND consent_type = 'biometric_auth'
+      ORDER BY accepted_at DESC 
+      LIMIT 1
+    `);
+
+    const latestConsent = consentResult.rows[0] as any;
+    if (!latestConsent || !latestConsent.accepted || latestConsent.consent_version !== '2025.1') {
+      return res.status(403).json({ 
+        error: "Biometric consent required", 
+        code: "CONSENT_REQUIRED",
+        requiredVersion: "2025.1"
+      });
+    }
 
     // Get existing authenticators
     const authenticatorsSnapshot = await db

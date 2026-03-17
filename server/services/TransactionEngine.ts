@@ -34,7 +34,7 @@
 import { nanoid } from 'nanoid';
 import { db } from '../db';
 import { pwPayments, pwProviderPayouts } from '@shared/schema-payments';
-import { eq } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { TRANSACTION_TYPES } from '@shared/finance-flow-types';
 import VATCalculator, { ISRAELI_VAT_RATE } from './VATCalculatorService';
 import { applyDeduction, topUpCashWallet } from './WalletEngine';
@@ -162,12 +162,24 @@ function genPayoutId(): string {
 }
 
 // ── Idempotency guard ──────────────────────────────────────────────────────────
-
-async function findByIdempotencyKey(key: string): Promise<typeof pwPayments.$inferSelect | null> {
+//
+// SECURITY (Architect finding — HIGH):
+//   idempotency_key is now composite-scoped per (customer_id, key).
+//   The old global-unique lookup allowed cross-user key collisions.
+//   Authenticated flows MUST pass customerId; anonymous flows use key-only.
+//
+async function findByIdempotencyKey(
+  key: string,
+  customerId?: string | null,
+): Promise<typeof pwPayments.$inferSelect | null> {
   const [existing] = await db
     .select()
     .from(pwPayments)
-    .where(eq(pwPayments.idempotencyKey, key))
+    .where(
+      customerId
+        ? and(eq(pwPayments.idempotencyKey, key), eq(pwPayments.customerId, customerId))
+        : and(eq(pwPayments.idempotencyKey, key), sql`customer_id IS NULL`),
+    )
     .limit(1);
   return existing ?? null;
 }
@@ -213,7 +225,7 @@ export interface FlowAParams {
  */
 export async function processK9000DirectSale(params: FlowAParams): Promise<PaymentResult> {
   if (params.idempotencyKey) {
-    const cached = await findByIdempotencyKey(params.idempotencyKey);
+    const cached = await findByIdempotencyKey(params.idempotencyKey, params.customerId);
     if (cached) {
       logger.info('[TransactionEngine] Flow A — idempotent hit', { key: params.idempotencyKey });
       return toPaymentResult(cached, true);
@@ -300,7 +312,7 @@ export interface FlowBParams {
  */
 export async function processWalletTopUp(params: FlowBParams): Promise<PaymentResult> {
   if (params.idempotencyKey) {
-    const cached = await findByIdempotencyKey(params.idempotencyKey);
+    const cached = await findByIdempotencyKey(params.idempotencyKey, params.customerId);
     if (cached) {
       logger.info('[TransactionEngine] Flow B — idempotent hit', { key: params.idempotencyKey });
       return toPaymentResult(cached, true);
@@ -406,7 +418,7 @@ export interface FlowCParams {
  */
 export async function processWalletRedeemK9000(params: FlowCParams): Promise<PaymentResult> {
   if (params.idempotencyKey) {
-    const cached = await findByIdempotencyKey(params.idempotencyKey);
+    const cached = await findByIdempotencyKey(params.idempotencyKey, params.customerId);
     if (cached) {
       logger.info('[TransactionEngine] Flow C — idempotent hit', { key: params.idempotencyKey });
       return toPaymentResult(cached, true);
@@ -530,7 +542,7 @@ export interface FlowDParams {
  */
 export async function processProviderBooking(params: FlowDParams): Promise<ProviderBookingResult> {
   if (params.idempotencyKey) {
-    const cached = await findByIdempotencyKey(params.idempotencyKey);
+    const cached = await findByIdempotencyKey(params.idempotencyKey, params.customerId);
     if (cached) {
       logger.info('[TransactionEngine] Flow D — idempotent hit', { key: params.idempotencyKey });
       // Find associated payout
@@ -582,107 +594,126 @@ export async function processProviderBooking(params: FlowDParams): Promise<Provi
     ? toCents(ils(params.grossILS * config.commissionRate * (1 - ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE)))) - processorFeeCents
     : grossCents - vatCents - processorFeeCents;
 
-  // ── Insert pw_payments ───────────────────────────────────────────────────────
-  const [payRow] = await db.insert(pwPayments).values({
-    paymentId,
-    idempotencyKey: params.idempotencyKey ?? null,
-    transactionType: TRANSACTION_TYPES.PROVIDER_BOOKING_CHARGE,
-    vertical: params.vertical,
-    commercialModel: config.commercialModel,
-    customerId: params.customerId,
-    providerId: params.providerId,
-    machineId: null,
-    grossCents,
-    vatCents,
-    platformFeeCents,
-    processorFeeCents,
-    providerGrossCents,
-    providerPayoutCents,
-    netRevenueCents,
-    vatRate: String(ISRAELI_VAT_RATE),
-    vatMode: config.vatMode,
-    requiresProviderTaxInvoice,
-    paymentMethod: 'nayax_terminal',
-    paymentProcessor: 'nayax',
-    walletUsed: false,
-    bookingId: params.bookingId,
-    nayaxTransactionId: params.nayaxTransactionId ?? null,
-    status: 'captured',
-    metadata: params.metadata ?? null,
-  }).returning();
+  // ── Atomic: inserts + tax documents in a single DB transaction ───────────────
+  // CRITICAL (Architect finding): pw_payments and pw_provider_payouts must
+  // rollback atomically if either required tax document cannot be issued.
+  // issueTaxDocument uses the global db connection, so if it fails (returns null)
+  // we throw inside the transaction, which rolls back both insert rows.
+  return await db.transaction(async (tx) => {
+    const escrowReleaseAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // +72h
 
-  // ── Insert pw_provider_payouts ───────────────────────────────────────────────
-  const escrowReleaseAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // +72h
-
-  const [payoutRow] = await db.insert(pwProviderPayouts).values({
-    payoutId,
-    paymentId,
-    providerId: params.providerId,
-    vertical: params.vertical,
-    commercialModel: config.commercialModel,
-    grossCents: providerGrossCents,
-    vatInShareCents: toCents(ils((providerGrossCents / 100) * (ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE)))),
-    netCents: providerPayoutCents,
-    commissionCents,
-    commissionRate: String(config.commissionRate),
-    requiresTaxInvoice: requiresProviderTaxInvoice,
-    providerIsExempt: params.providerIsExempt ?? false,
-    status: 'held_in_escrow',
-    escrowReleaseAt,
-    metadata: params.metadata ?? null,
-  }).returning();
-
-  // Issue customer tax invoice (Spec §5.4)
-  await issueTaxDocument({
-    documentType: 'TAX_INVOICE',
-    relatedPaymentId: paymentId,
-    bookingId: params.bookingId,
-    customerId: params.customerId,
-    providerId: params.providerId,
-    grossCents,
-    vatCents,
-    netCents: netRevenueCents,
-    payload: {
+    // ── Insert pw_payments ─────────────────────────────────────────────────────
+    const [payRow] = await tx.insert(pwPayments).values({
+      paymentId,
+      idempotencyKey: params.idempotencyKey ?? null,
       transactionType: TRANSACTION_TYPES.PROVIDER_BOOKING_CHARGE,
-      commercialModel: config.commercialModel,
       vertical: params.vertical,
-    },
-  });
-
-  // Issue commission invoice to provider (marketplace only — Spec §5.4 / §12)
-  if (config.commercialModel === 'MARKETPLACE_COMMISSION' && commissionCents > 0) {
-    const commissionVatCents = Math.round(commissionCents * (ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE)));
-    await issueTaxDocument({
-      documentType: 'COMMISSION_INVOICE',
-      relatedPaymentId: paymentId,
-      relatedPayoutId: payoutId,
-      bookingId: params.bookingId,
+      commercialModel: config.commercialModel,
+      customerId: params.customerId,
       providerId: params.providerId,
-      grossCents: commissionCents,
-      vatCents: commissionVatCents,
-      netCents: commissionCents - commissionVatCents,
+      machineId: null,
+      grossCents,
+      vatCents,
+      platformFeeCents,
+      processorFeeCents,
+      providerGrossCents,
+      providerPayoutCents,
+      netRevenueCents,
+      vatRate: String(ISRAELI_VAT_RATE),
+      vatMode: config.vatMode,
+      requiresProviderTaxInvoice,
+      paymentMethod: 'nayax_terminal',
+      paymentProcessor: 'nayax',
+      walletUsed: false,
+      bookingId: params.bookingId,
+      nayaxTransactionId: params.nayaxTransactionId ?? null,
+      status: 'captured',
+      metadata: params.metadata ?? null,
+    }).returning();
+
+    // ── Insert pw_provider_payouts ─────────────────────────────────────────────
+    const [payoutRow] = await tx.insert(pwProviderPayouts).values({
+      payoutId,
+      paymentId,
+      providerId: params.providerId,
+      vertical: params.vertical,
+      commercialModel: config.commercialModel,
+      grossCents: providerGrossCents,
+      vatInShareCents: toCents(ils((providerGrossCents / 100) * (ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE)))),
+      netCents: providerPayoutCents,
+      commissionCents,
+      commissionRate: String(config.commissionRate),
+      requiresTaxInvoice: requiresProviderTaxInvoice,
+      providerIsExempt: params.providerIsExempt ?? false,
+      status: 'held_in_escrow',
+      escrowReleaseAt,
+      metadata: params.metadata ?? null,
+    }).returning();
+
+    // Issue customer tax invoice (Spec §5.4)
+    const customerTaxDocId = await issueTaxDocument({
+      documentType: 'TAX_INVOICE',
+      relatedPaymentId: paymentId,
+      bookingId: params.bookingId,
+      customerId: params.customerId,
+      providerId: params.providerId,
+      grossCents,
+      vatCents,
+      netCents: netRevenueCents,
       payload: {
-        transactionType: TRANSACTION_TYPES.PROVIDER_COMMISSION,
-        commissionRate: String(config.commissionRate),
-        providerPayoutCents,
-        providerIsExempt: params.providerIsExempt ?? false,
+        transactionType: TRANSACTION_TYPES.PROVIDER_BOOKING_CHARGE,
+        commercialModel: config.commercialModel,
+        vertical: params.vertical,
       },
     });
-  }
+    if (!customerTaxDocId) {
+      throw new Error(
+        `[TransactionEngine] Flow D aborted: customer TAX_INVOICE could not be issued for payment ${paymentId}. ` +
+        'DB transaction rolled back — no off-books financial event recorded.',
+      );
+    }
 
-  logger.info('[TransactionEngine] Flow D — provider booking captured', {
-    paymentId,
-    payoutId,
-    vertical: params.vertical,
-    commercialModel: config.commercialModel,
-    grossCents,
-    vatCents,
-    commissionCents,
-    providerPayoutCents,
-    escrowReleaseAt,
+    // Issue commission invoice to provider (marketplace only — Spec §5.4 / §12)
+    if (config.commercialModel === 'MARKETPLACE_COMMISSION' && commissionCents > 0) {
+      const commissionVatCents = Math.round(commissionCents * (ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE)));
+      const commissionTaxDocId = await issueTaxDocument({
+        documentType: 'COMMISSION_INVOICE',
+        relatedPaymentId: paymentId,
+        relatedPayoutId: payoutId,
+        bookingId: params.bookingId,
+        providerId: params.providerId,
+        grossCents: commissionCents,
+        vatCents: commissionVatCents,
+        netCents: commissionCents - commissionVatCents,
+        payload: {
+          transactionType: TRANSACTION_TYPES.PROVIDER_COMMISSION,
+          commissionRate: String(config.commissionRate),
+          providerPayoutCents,
+          providerIsExempt: params.providerIsExempt ?? false,
+        },
+      });
+      if (!commissionTaxDocId) {
+        throw new Error(
+          `[TransactionEngine] Flow D aborted: COMMISSION_INVOICE could not be issued for payout ${payoutId}. ` +
+          'DB transaction rolled back — no off-books financial event recorded.',
+        );
+      }
+    }
+
+    logger.info('[TransactionEngine] Flow D — provider booking captured', {
+      paymentId,
+      payoutId,
+      vertical: params.vertical,
+      commercialModel: config.commercialModel,
+      grossCents,
+      vatCents,
+      commissionCents,
+      providerPayoutCents,
+      escrowReleaseAt,
+    });
+
+    return toProviderBookingResult(payRow, payoutRow, false);
   });
-
-  return toProviderBookingResult(payRow, payoutRow, false);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -694,71 +725,107 @@ export async function processReversal(params: {
   originalPaymentId: string;
   reason: string;
   initiatedBy: string;
+  idempotencyKey?: string;
 }): Promise<{ reversalPaymentId: string }> {
-  const [original] = await db
-    .select()
-    .from(pwPayments)
-    .where(eq(pwPayments.paymentId, params.originalPaymentId))
-    .limit(1);
+  // Idempotency check is intentionally inside the transaction so it can be
+  // scoped by original.customerId — the composite index requires (customer_id, key).
+  return await db.transaction(async (tx) => {
+    const [original] = await tx
+      .select()
+      .from(pwPayments)
+      .where(eq(pwPayments.paymentId, params.originalPaymentId))
+      .for('update')
+      .limit(1);
 
-  if (!original) throw new Error(`[TransactionEngine] Reversal: payment not found — ${params.originalPaymentId}`);
-  if (original.status === 'reversed') throw new Error(`[TransactionEngine] Already reversed — ${params.originalPaymentId}`);
+    if (params.idempotencyKey && original) {
+      const [cached] = await tx
+        .select()
+        .from(pwPayments)
+        .where(
+          and(
+            eq(pwPayments.idempotencyKey, params.idempotencyKey),
+            original.customerId
+              ? eq(pwPayments.customerId, original.customerId)
+              : sql`customer_id IS NULL`,
+          ),
+        )
+        .limit(1);
+      if (cached) {
+        logger.info('[TransactionEngine] Reversal — idempotent hit', { key: params.idempotencyKey });
+        return { reversalPaymentId: cached.paymentId };
+      }
+    }
 
-  // Negate original amounts for the reversal entry
-  const paymentId = genPaymentId();
+    if (!original) throw new Error(`[TransactionEngine] Reversal: payment not found — ${params.originalPaymentId}`);
+    if (original.status === 'reversed') throw new Error(`[TransactionEngine] Already reversed — ${params.originalPaymentId}`);
+    if (original.status === 'chargeback') throw new Error(`[TransactionEngine] Cannot reverse: payment already chargebacked — ${params.originalPaymentId}`);
 
-  await db.insert(pwPayments).values({
-    paymentId,
-    transactionType: TRANSACTION_TYPES.REVERSAL,
-    vertical: original.vertical,
-    commercialModel: original.commercialModel,
-    customerId: original.customerId,
-    providerId: original.providerId,
-    machineId: original.machineId,
-    grossCents:          -(original.grossCents ?? 0),
-    vatCents:            -(original.vatCents ?? 0),
-    platformFeeCents:    -(original.platformFeeCents ?? 0),
-    processorFeeCents:   -(original.processorFeeCents ?? 0),
-    providerGrossCents:  -(original.providerGrossCents ?? 0),
-    providerPayoutCents: -(original.providerPayoutCents ?? 0),
-    netRevenueCents:     -(original.netRevenueCents ?? 0),
-    vatRate: original.vatRate ?? String(ISRAELI_VAT_RATE),
-    requiresProviderTaxInvoice: false,
-    bookingId: original.bookingId,
-    status: 'reversed',
-    reversedAt: new Date(),
-    metadata: { originalPaymentId: params.originalPaymentId, reason: params.reason, initiatedBy: params.initiatedBy },
-  });
+    // Negate original amounts for the reversal entry
+    const paymentId = genPaymentId();
 
-  // Mark original as reversed
-  await db.update(pwPayments)
-    .set({ status: 'reversed', reversedAt: new Date() })
-    .where(eq(pwPayments.paymentId, params.originalPaymentId));
-
-  // Issue credit note (Spec §13 — reversals create a credit note)
-  await issueTaxDocument({
-    documentType: 'CREDIT_NOTE',
-    relatedPaymentId: paymentId,
-    customerId: original.customerId ?? undefined,
-    providerId: original.providerId ?? undefined,
-    grossCents: Math.abs(original.grossCents ?? 0),
-    vatCents:   Math.abs(original.vatCents ?? 0),
-    netCents:   Math.abs(original.netRevenueCents ?? 0),
-    payload: {
+    const [reversalRow] = await tx.insert(pwPayments).values({
+      paymentId,
+      idempotencyKey: params.idempotencyKey ?? null,
       transactionType: TRANSACTION_TYPES.REVERSAL,
+      vertical: original.vertical,
+      commercialModel: original.commercialModel,
+      customerId: original.customerId,
+      providerId: original.providerId,
+      machineId: original.machineId,
+      grossCents:          -(original.grossCents ?? 0),
+      vatCents:            -(original.vatCents ?? 0),
+      platformFeeCents:    -(original.platformFeeCents ?? 0),
+      processorFeeCents:   -(original.processorFeeCents ?? 0),
+      providerGrossCents:  -(original.providerGrossCents ?? 0),
+      providerPayoutCents: -(original.providerPayoutCents ?? 0),
+      netRevenueCents:     -(original.netRevenueCents ?? 0),
+      vatRate: original.vatRate ?? String(ISRAELI_VAT_RATE),
+      requiresProviderTaxInvoice: false,
+      bookingId: original.bookingId,
+      status: 'reversed',
+      reversedAt: new Date(),
+      metadata: { originalPaymentId: params.originalPaymentId, reason: params.reason, initiatedBy: params.initiatedBy },
+    }).returning();
+
+    // Mark original as reversed
+    await tx.update(pwPayments)
+      .set({ status: 'reversed', reversedAt: new Date() })
+      .where(eq(pwPayments.paymentId, params.originalPaymentId));
+
+    // Issue credit note (Spec §13 — reversals create a credit note).
+    // CRITICAL (Architect finding): if the tax document cannot be issued, the
+    // entire DB transaction must rollback — the reversal row and the original-
+    // payment status update must not survive without an audit trail.
+    const reversalTaxDocId = await issueTaxDocument({
+      documentType: 'CREDIT_NOTE',
+      relatedPaymentId: paymentId,
+      customerId: original.customerId ?? undefined,
+      providerId: original.providerId ?? undefined,
+      grossCents: Math.abs(original.grossCents ?? 0),
+      vatCents:   Math.abs(original.vatCents ?? 0),
+      netCents:   Math.abs(original.netRevenueCents ?? 0),
+      payload: {
+        transactionType: TRANSACTION_TYPES.REVERSAL,
+        originalPaymentId: params.originalPaymentId,
+        reason: params.reason,
+        initiatedBy: params.initiatedBy,
+      },
+    });
+    if (!reversalTaxDocId) {
+      throw new Error(
+        `[TransactionEngine] Reversal aborted: tax document (CREDIT_NOTE) could not be issued for payment ${paymentId}. ` +
+        'DB transaction rolled back — no off-books financial event recorded.',
+      );
+    }
+
+    logger.info('[TransactionEngine] Reversal processed', {
       originalPaymentId: params.originalPaymentId,
+      reversalPaymentId: paymentId,
       reason: params.reason,
-      initiatedBy: params.initiatedBy,
-    },
-  });
+    });
 
-  logger.info('[TransactionEngine] Reversal processed', {
-    originalPaymentId: params.originalPaymentId,
-    reversalPaymentId: paymentId,
-    reason: params.reason,
+    return { reversalPaymentId: paymentId };
   });
-
-  return { reversalPaymentId: paymentId };
 }
 
 /** Record expiry of unredeemed wallet / voucher balance as platform revenue */
@@ -836,75 +903,110 @@ export interface ChargebackParams {
  * - Updates original payment status to 'chargeback'
  * - Issues a CHARGEBACK_NOTICE tax document
  */
-export async function processChargeback(params: ChargebackParams): Promise<{ chargebackPaymentId: string; taxDocId: string | null }> {
-  const [original] = await db
-    .select()
-    .from(pwPayments)
-    .where(eq(pwPayments.paymentId, params.originalPaymentId))
-    .limit(1);
+export async function processChargeback(params: ChargebackParams & { idempotencyKey?: string }): Promise<{ chargebackPaymentId: string; taxDocId: string | null }> {
+  // Idempotency check is intentionally inside the transaction so it can be
+  // scoped by original.customerId — the composite index requires (customer_id, key).
+  return await db.transaction(async (tx) => {
+    const [original] = await tx
+      .select()
+      .from(pwPayments)
+      .where(eq(pwPayments.paymentId, params.originalPaymentId))
+      .for('update')
+      .limit(1);
 
-  if (!original) throw new Error(`[TransactionEngine] Chargeback: payment not found — ${params.originalPaymentId}`);
-  if (original.status === 'chargeback') throw new Error(`[TransactionEngine] Already chargebacked — ${params.originalPaymentId}`);
+    if (params.idempotencyKey && original) {
+      const [cached] = await tx
+        .select()
+        .from(pwPayments)
+        .where(
+          and(
+            eq(pwPayments.idempotencyKey, params.idempotencyKey),
+            original.customerId
+              ? eq(pwPayments.customerId, original.customerId)
+              : sql`customer_id IS NULL`,
+          ),
+        )
+        .limit(1);
+      if (cached) {
+        logger.info('[TransactionEngine] Chargeback — idempotent hit', { key: params.idempotencyKey });
+        const taxDoc = await getTaxDocByPaymentId(cached.paymentId);
+        return { chargebackPaymentId: cached.paymentId, taxDocId: taxDoc?.taxDocId ?? null };
+      }
+    }
 
-  const paymentId = genPaymentId();
+    if (!original) throw new Error(`[TransactionEngine] Chargeback: payment not found — ${params.originalPaymentId}`);
+    if (original.status === 'chargeback') throw new Error(`[TransactionEngine] Already chargebacked — ${params.originalPaymentId}`);
+    if (original.status === 'reversed') throw new Error(`[TransactionEngine] Cannot chargeback: payment already reversed — ${params.originalPaymentId}`);
 
-  await db.insert(pwPayments).values({
-    paymentId,
-    transactionType: TRANSACTION_TYPES.CHARGEBACK,
-    vertical: original.vertical,
-    commercialModel: original.commercialModel,
-    customerId: original.customerId,
-    providerId: original.providerId,
-    machineId: original.machineId,
-    grossCents:          -(original.grossCents ?? 0),
-    vatCents:            -(original.vatCents ?? 0),
-    platformFeeCents:    -(original.platformFeeCents ?? 0),
-    processorFeeCents:   -(original.processorFeeCents ?? 0),
-    providerGrossCents:  -(original.providerGrossCents ?? 0),
-    providerPayoutCents: -(original.providerPayoutCents ?? 0),
-    netRevenueCents:     -(original.netRevenueCents ?? 0),
-    vatRate: original.vatRate ?? String(ISRAELI_VAT_RATE),
-    requiresProviderTaxInvoice: false,
-    bookingId: original.bookingId,
-    nayaxTransactionId: params.chargebackTransactionId,
-    status: 'chargeback',
-    metadata: {
-      originalPaymentId: params.originalPaymentId,
-      chargebackTransactionId: params.chargebackTransactionId,
-      reason: params.reason,
-      reportedBy: params.reportedBy,
-      ...(params.metadata ?? {}),
-    },
-  });
+    const paymentId = genPaymentId();
 
-  await db.update(pwPayments)
-    .set({ status: 'chargeback' })
-    .where(eq(pwPayments.paymentId, params.originalPaymentId));
-
-  const taxDocId = await issueTaxDocument({
-    documentType: 'CHARGEBACK_NOTICE',
-    relatedPaymentId: paymentId,
-    customerId: original.customerId ?? undefined,
-    providerId: original.providerId ?? undefined,
-    grossCents: Math.abs(original.grossCents ?? 0),
-    vatCents:   Math.abs(original.vatCents ?? 0),
-    netCents:   Math.abs(original.netRevenueCents ?? 0),
-    payload: {
+    const [chargebackRow] = await tx.insert(pwPayments).values({
+      paymentId,
+      idempotencyKey: params.idempotencyKey ?? null,
       transactionType: TRANSACTION_TYPES.CHARGEBACK,
+      vertical: original.vertical,
+      commercialModel: original.commercialModel,
+      customerId: original.customerId,
+      providerId: original.providerId,
+      machineId: original.machineId,
+      grossCents:          -(original.grossCents ?? 0),
+      vatCents:            -(original.vatCents ?? 0),
+      platformFeeCents:    -(original.platformFeeCents ?? 0),
+      processorFeeCents:   -(original.processorFeeCents ?? 0),
+      providerGrossCents:  -(original.providerGrossCents ?? 0),
+      providerPayoutCents: -(original.providerPayoutCents ?? 0),
+      netRevenueCents:     -(original.netRevenueCents ?? 0),
+      vatRate: original.vatRate ?? String(ISRAELI_VAT_RATE),
+      requiresProviderTaxInvoice: false,
+      bookingId: original.bookingId,
+      nayaxTransactionId: params.chargebackTransactionId,
+      status: 'chargeback',
+      metadata: {
+        originalPaymentId: params.originalPaymentId,
+        chargebackTransactionId: params.chargebackTransactionId,
+        reason: params.reason,
+        reportedBy: params.reportedBy,
+        ...(params.metadata ?? {}),
+      },
+    }).returning();
+
+    await tx.update(pwPayments)
+      .set({ status: 'chargeback' })
+      .where(eq(pwPayments.paymentId, params.originalPaymentId));
+
+    // CRITICAL (Architect finding): if the tax document cannot be issued, the
+    // entire DB transaction must rollback — no off-books chargeback allowed.
+    const taxDocId = await issueTaxDocument({
+      documentType: 'CHARGEBACK_NOTICE',
+      relatedPaymentId: paymentId,
+      customerId: original.customerId ?? undefined,
+      providerId: original.providerId ?? undefined,
+      grossCents: Math.abs(original.grossCents ?? 0),
+      vatCents:   Math.abs(original.vatCents ?? 0),
+      netCents:   Math.abs(original.netRevenueCents ?? 0),
+      payload: {
+        transactionType: TRANSACTION_TYPES.CHARGEBACK,
+        originalPaymentId: params.originalPaymentId,
+        chargebackTransactionId: params.chargebackTransactionId,
+        reason: params.reason,
+      },
+    });
+    if (!taxDocId) {
+      throw new Error(
+        `[TransactionEngine] Chargeback aborted: tax document (CHARGEBACK_NOTICE) could not be issued for payment ${paymentId}. ` +
+        'DB transaction rolled back — no off-books financial event recorded.',
+      );
+    }
+
+    logger.warn('[TransactionEngine] Chargeback recorded', {
       originalPaymentId: params.originalPaymentId,
-      chargebackTransactionId: params.chargebackTransactionId,
+      chargebackPaymentId: paymentId,
+      grossCents: original.grossCents,
       reason: params.reason,
-    },
-  });
+    });
 
-  logger.warn('[TransactionEngine] Chargeback recorded', {
-    originalPaymentId: params.originalPaymentId,
-    chargebackPaymentId: paymentId,
-    grossCents: original.grossCents,
-    reason: params.reason,
+    return { chargebackPaymentId: paymentId, taxDocId };
   });
-
-  return { chargebackPaymentId: paymentId, taxDocId };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -927,63 +1029,69 @@ export interface ManualAdjustmentParams {
  * Every adjustment is permanently audited.
  */
 export async function processManualAdjustment(params: ManualAdjustmentParams): Promise<{ adjustmentPaymentId: string; taxDocId: string | null }> {
-  const paymentId = genPaymentId();
-  const vatCents = params.adjustmentCents > 0
-    ? Math.round(params.adjustmentCents * (ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE)))
-    : 0;
+  return await db.transaction(async (tx) => {
+    const paymentId = genPaymentId();
+    const vatCents = params.adjustmentCents > 0
+      ? Math.round(params.adjustmentCents * (ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE)))
+      : 0;
 
-  await db.insert(pwPayments).values({
-    paymentId,
-    transactionType: TRANSACTION_TYPES.ADJUSTMENT,
-    vertical: 'manual',
-    commercialModel: 'PRINCIPAL',
-    customerId: params.customerId ?? null,
-    providerId: params.providerId ?? null,
-    grossCents: params.adjustmentCents,
-    vatCents,
-    platformFeeCents: params.adjustmentCents,
-    processorFeeCents: 0,
-    providerGrossCents: 0,
-    providerPayoutCents: 0,
-    netRevenueCents: params.adjustmentCents - vatCents,
-    vatRate: String(ISRAELI_VAT_RATE),
-    requiresProviderTaxInvoice: false,
-    status: 'settled',
-    settledAt: new Date(),
-    metadata: {
-      adjustedBy: params.adjustedBy,
-      reason: params.reason,
-      notes: params.notes,
-      relatedPaymentId: params.relatedPaymentId,
-      ...(params.metadata ?? {}),
-    },
-  });
-
-  const taxDocId = await issueTaxDocument({
-    documentType: 'ADJUSTMENT_NOTE',
-    relatedPaymentId: paymentId,
-    customerId: params.customerId,
-    providerId: params.providerId,
-    grossCents: Math.abs(params.adjustmentCents),
-    vatCents: Math.abs(vatCents),
-    netCents: Math.abs(params.adjustmentCents - vatCents),
-    payload: {
+    const [row] = await tx.insert(pwPayments).values({
+      paymentId,
       transactionType: TRANSACTION_TYPES.ADJUSTMENT,
+      vertical: 'manual',
+      commercialModel: 'PRINCIPAL',
+      customerId: params.customerId ?? null,
+      providerId: params.providerId ?? null,
+      grossCents: params.adjustmentCents,
+      vatCents,
+      platformFeeCents: params.adjustmentCents,
+      processorFeeCents: 0,
+      providerGrossCents: 0,
+      providerPayoutCents: 0,
+      netRevenueCents: params.adjustmentCents - vatCents,
+      vatRate: String(ISRAELI_VAT_RATE),
+      requiresProviderTaxInvoice: false,
+      status: 'settled',
+      settledAt: new Date(),
+      metadata: {
+        adjustedBy: params.adjustedBy,
+        reason: params.reason,
+        notes: params.notes,
+        relatedPaymentId: params.relatedPaymentId,
+        ...(params.metadata ?? {}),
+      },
+    }).returning();
+
+    const taxDocId = await issueTaxDocument({
+      documentType: 'ADJUSTMENT_NOTE',
+      relatedPaymentId: paymentId,
+      customerId: params.customerId,
+      providerId: params.providerId,
+      grossCents: Math.abs(params.adjustmentCents),
+      vatCents: Math.abs(vatCents),
+      netCents: Math.abs(params.adjustmentCents - vatCents),
+      payload: {
+        transactionType: TRANSACTION_TYPES.ADJUSTMENT,
+        adjustedBy: params.adjustedBy,
+        reason: params.reason,
+        notes: params.notes,
+        relatedPaymentId: params.relatedPaymentId,
+      },
+    });
+
+    if (!taxDocId) {
+      throw new Error('[TransactionEngine] Manual adjustment failed: could not issue required tax document (ADJUSTMENT_NOTE)');
+    }
+
+    logger.info('[TransactionEngine] Manual adjustment recorded', {
+      paymentId,
+      adjustmentCents: params.adjustmentCents,
       adjustedBy: params.adjustedBy,
       reason: params.reason,
-      notes: params.notes,
-      relatedPaymentId: params.relatedPaymentId,
-    },
-  });
+    });
 
-  logger.info('[TransactionEngine] Manual adjustment recorded', {
-    paymentId,
-    adjustmentCents: params.adjustmentCents,
-    adjustedBy: params.adjustedBy,
-    reason: params.reason,
+    return { adjustmentPaymentId: paymentId, taxDocId };
   });
-
-  return { adjustmentPaymentId: paymentId, taxDocId };
 }
 
 // ── Shape converters ─────────────────────────────────────────────────────────

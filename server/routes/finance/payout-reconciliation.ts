@@ -17,14 +17,14 @@ import { pwPayments, pwProviderPayouts, pwTaxDocuments } from '@shared/schema-pa
 import { eq, and, gte, lte, isNull, sql, inArray } from 'drizzle-orm';
 import { TRANSACTION_TYPES } from '@shared/finance-flow-types';
 import { logger } from '../../lib/logger';
+import { timingSafeAdminSecretMatch } from '../../middleware/adminAuth';
 
 const router = Router();
 
 // ── Auth helper ───────────────────────────────────────────────────────────────
 
 function isAdmin(req: any): boolean {
-  const adminSecret = req.headers['x-admin-secret'];
-  if (adminSecret && adminSecret === process.env.ADMIN_SECRET) return true;
+  if (timingSafeAdminSecretMatch(req)) return true;
   const role = req.user?.role ?? req.user?.customClaims?.role;
   return ['super_admin', 'finance'].includes(role);
 }

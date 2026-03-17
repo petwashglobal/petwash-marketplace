@@ -14,6 +14,7 @@ import { requireAuth } from '../../customAuth';
 import { processManualAdjustment } from '../../services/TransactionEngine';
 import { ImmutableStampService } from '../../services/ImmutableStampService';
 import { logger } from '../../lib/logger';
+import { timingSafeAdminSecretMatch } from '../../middleware/adminAuth';
 
 const router = Router();
 
@@ -30,8 +31,7 @@ router.post('/', requireAuth, async (req, res) => {
   try {
     // Role check — super_admin or finance role only
     const role = (req.user as any)?.role ?? (req.user as any)?.customClaims?.role;
-    const adminSecret = req.headers['x-admin-secret'];
-    const isAdminSecret = adminSecret && adminSecret === process.env.ADMIN_SECRET;
+    const isAdminSecret = timingSafeAdminSecretMatch(req);
     const isAuthorizedRole = ['super_admin', 'finance'].includes(role);
 
     if (!isAdminSecret && !isAuthorizedRole) {

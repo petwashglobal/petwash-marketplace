@@ -263,6 +263,7 @@ import { applySecurityAndOneTap } from './security/productionHardeningAndOneTap'
 import { requireOnboardingComplete } from './middleware/onboardingGate';
 import { logSecurityEvent } from './services/securityEvents';
 import { checkFailedBurst, alertPasskeyRevoked, alertNewDeviceIfUnusual, getClientIP, getCityFromIP } from './services/alerts';
+import { timingSafeAdminSecretMatch } from './middleware/adminAuth';
 import { hashPassword, verifyPassword } from './simpleAuth';
 
 export async function registerRoutes(app: Express): Promise<void> {
@@ -14021,8 +14022,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // Admin: run reconciliation on-demand
   app.post('/api/admin/finance/reconciliation/run-now', adminLimiter, async (req: any, res: any) => {
     const role = req.user?.customClaims?.role ?? req.user?.role;
-    const adminSecret = req.headers['x-admin-secret'];
-    if (adminSecret !== process.env.ADMIN_SECRET && !['super_admin', 'finance'].includes(role)) {
+    if (!timingSafeAdminSecretMatch(req) && !['super_admin', 'finance'].includes(role)) {
       return res.status(403).json({ error: 'Admin only' });
     }
     const { date } = req.query;
@@ -14037,8 +14037,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // Admin: record manual chargeback (if not already handled by Nayax webhook)
   app.post('/api/admin/finance/chargeback', adminLimiter, async (req: any, res: any) => {
     const role = req.user?.customClaims?.role ?? req.user?.role;
-    const adminSecret = req.headers['x-admin-secret'];
-    if (adminSecret !== process.env.ADMIN_SECRET && !['super_admin', 'finance'].includes(role)) {
+    if (!timingSafeAdminSecretMatch(req) && !['super_admin', 'finance'].includes(role)) {
       return res.status(403).json({ error: 'Admin only' });
     }
     const { originalPaymentId, chargebackTransactionId, reason, reportedBy } = req.body;

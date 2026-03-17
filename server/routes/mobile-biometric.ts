@@ -28,6 +28,10 @@ import { verifyAppCheckToken } from '../middleware/appCheckMiddleware';
 import { Timestamp } from 'firebase-admin/firestore';
 import crypto from 'crypto';
 
+import { sql } from 'drizzle-orm';
+import { db as pgDb } from '../db';
+import { userConsents } from '@shared/schema';
+
 const router = Router();
 
 // Configuration following NIST SP 800-63B standards
@@ -58,6 +62,25 @@ router.post('/register/options', validateFirebaseToken, verifyAppCheckToken, asy
     const { uid, email } = req.firebaseUser!;
     const { deviceInfo } = req.body; // { platform: 'ios'|'android', osVersion, deviceName }
     
+    // Verify biometric consent (v2025.1)
+    const consentResult = await pgDb.execute(sql`
+      SELECT accepted, consent_version 
+      FROM user_consents 
+      WHERE user_id = ${uid} 
+      AND consent_type = 'biometric_auth'
+      ORDER BY accepted_at DESC 
+      LIMIT 1
+    `);
+
+    const latestConsent = consentResult.rows[0] as any;
+    if (!latestConsent || !latestConsent.accepted || latestConsent.consent_version !== '2025.1') {
+      return res.status(403).json({ 
+        error: "Biometric consent required", 
+        code: "CONSENT_REQUIRED",
+        requiredVersion: "2025.1"
+      });
+    }
+
     logger.info('[Mobile Biometric] Registration options requested', { uid, email, deviceInfo });
     
     // Get existing credentials to exclude
