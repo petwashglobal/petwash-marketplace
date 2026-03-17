@@ -94,6 +94,8 @@ import { PhoneInput } from '@/components/PhoneInput';
 import { NativeDateSelect } from '@/components/ui/native-date-select';
 import { GooglePlacesAutocomplete, type PlaceDetails } from '@/components/ui/google-places-autocomplete';
 import '@/styles/luxury-dark-2025.css';
+import { IsraeliTaxInvoice, buildInvoiceFromTransaction } from '@/components/IsraeliTaxInvoice';
+import { PetIntakeForm } from '@/components/PetIntakeForm';
 
 interface WalletSummary {
   walletId: string;
@@ -627,6 +629,25 @@ export default function MyAccount() {
     },
   });
 
+  // ── Documents: intake forms + invoices ──
+  const [intakeFormOpen, setIntakeFormOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
+
+  const { data: intakeFormsData, isLoading: intakeFormsLoading } = useQuery<{ forms: any[] }>({
+    queryKey: ['/api/pets/intake-forms'],
+    enabled: !!user && activeTab === 'documents',
+  });
+
+  const { data: myTransactions, isLoading: transactionsLoading } = useQuery<any[]>({
+    queryKey: ['/api/user/transactions'],
+    enabled: !!user && activeTab === 'documents',
+  });
+
+  const { data: mySignedDocs } = useQuery<{ documents: any[] }>({
+    queryKey: ['/api/signatures/documents'],
+    enabled: !!user && activeTab === 'documents',
+  });
+
   const { data: accountStatus } = useQuery<{
     status: string;
     frozenAt?: string;
@@ -1070,50 +1091,57 @@ export default function MyAccount() {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full bg-white border border-gray-100 rounded-2xl p-1 grid grid-cols-6">
+            <TabsList className="w-full bg-white border border-gray-100 rounded-2xl p-1 grid grid-cols-7">
               <TabsTrigger 
                 value="profile" 
-                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900"
+                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 flex-col gap-0.5 h-auto py-2 text-[10px]"
               >
-                <User className="w-4 h-4 mr-2" />
+                <User className="w-4 h-4" />
                 {isHebrew ? 'פרופיל' : 'Profile'}
               </TabsTrigger>
               <TabsTrigger 
                 value="preferences"
-                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900"
+                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 flex-col gap-0.5 h-auto py-2 text-[10px]"
               >
-                <Settings className="w-4 h-4 mr-2" />
-                {isHebrew ? 'העדפות' : 'Preferences'}
+                <Settings className="w-4 h-4" />
+                {isHebrew ? 'העדפות' : 'Prefs'}
               </TabsTrigger>
               <TabsTrigger 
                 value="notifications"
-                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900"
+                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 flex-col gap-0.5 h-auto py-2 text-[10px]"
               >
-                <Bell className="w-4 h-4 mr-2" />
-                {isHebrew ? 'התראות' : 'Notifications'}
+                <Bell className="w-4 h-4" />
+                {isHebrew ? 'התראות' : 'Alerts'}
               </TabsTrigger>
               <TabsTrigger 
                 value="security"
-                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900"
+                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 flex-col gap-0.5 h-auto py-2 text-[10px]"
               >
-                <Shield className="w-4 h-4 mr-2" />
+                <Shield className="w-4 h-4" />
                 {isHebrew ? 'אבטחה' : 'Security'}
               </TabsTrigger>
               <TabsTrigger 
                 value="pets"
-                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900"
+                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 flex-col gap-0.5 h-auto py-2 text-[10px]"
               >
-                <Dog className="w-4 h-4 mr-2" />
-                {isHebrew ? 'חיות מחמד' : 'Pets'}
+                <Dog className="w-4 h-4" />
+                {isHebrew ? 'חיות' : 'Pets'}
+              </TabsTrigger>
+              <TabsTrigger
+                value="documents"
+                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 flex-col gap-0.5 h-auto py-2 text-[10px]"
+              >
+                <FileText className="w-4 h-4" />
+                {isHebrew ? 'מסמכים' : 'Docs'}
               </TabsTrigger>
               <TabsTrigger
                 value="inbox"
-                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 relative"
+                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 flex-col gap-0.5 h-auto py-2 text-[10px] relative"
               >
-                <Inbox className="w-4 h-4 mr-2" />
+                <Inbox className="w-4 h-4" />
                 {isHebrew ? 'הודעות' : 'Inbox'}
                 {(inboxData?.messages?.filter((m: any) => !m.readAt).length ?? 0) > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black text-white text-[9px] font-bold flex items-center justify-center">
+                  <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-black text-white text-[8px] font-bold flex items-center justify-center">
                     {inboxData!.messages.filter((m: any) => !m.readAt).length > 9 ? '9+' : inboxData!.messages.filter((m: any) => !m.readAt).length}
                   </span>
                 )}
@@ -3238,6 +3266,184 @@ export default function MyAccount() {
                     </div>
                   </div>
                 </div>
+              )}
+            </TabsContent>
+
+            {/* ── DOCUMENTS TAB ── */}
+            <TabsContent value="documents" className="mt-6 space-y-5">
+
+              {/* ── Tax Invoices (חשבוניות מס) ── */}
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
+                      <span className="text-lg">🧾</span>
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-gray-900">{isHebrew ? 'חשבוניות מס קבלה' : 'Tax Invoices'}</h3>
+                      <p className="text-xs text-gray-400">{isHebrew ? 'כל החשבוניות שלך בפורמט ישראלי רשמי' : 'All invoices in official Israeli format'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {transactionsLoading ? (
+                  <div className="py-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-gray-300" /></div>
+                ) : !myTransactions || myTransactions.length === 0 ? (
+                  <div className="rounded-2xl border-2 border-dashed border-gray-100 p-8 text-center">
+                    <div className="text-4xl mb-2">📄</div>
+                    <p className="text-sm text-gray-500">{isHebrew ? 'אין חשבוניות עדיין' : 'No invoices yet'}</p>
+                    <p className="text-xs text-gray-400 mt-1">{isHebrew ? 'לאחר ביצוע הזמנה, חשבוניות יופיעו כאן' : 'After completing a booking, invoices will appear here'}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {myTransactions.map((tx: any) => (
+                      <div key={tx.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-base">🧾</div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800">
+                              {tx.serviceNameHe || tx.serviceName || (isHebrew ? 'שירות PetWash™' : 'PetWash™ Service')}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {tx.createdAt ? new Date(tx.createdAt).toLocaleDateString(isHebrew ? 'he-IL' : 'en-US') : ''} · ₪{parseFloat(tx.totalAmount || tx.amount || 0).toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setSelectedInvoice(tx)}
+                          style={{ background: '#000' }}
+                          className="text-white text-xs font-semibold px-3 py-1.5 rounded-xl"
+                        >
+                          {isHebrew ? 'הצג' : 'View'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Expanded invoice viewer */}
+                {selectedInvoice && (
+                  <div className="mt-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-bold text-gray-700">{isHebrew ? 'חשבונית מס מלאה' : 'Full Tax Invoice'}</h4>
+                      <button onClick={() => setSelectedInvoice(null)} className="text-xs text-gray-400 hover:text-gray-600">
+                        {isHebrew ? 'סגור' : 'Close'} ✕
+                      </button>
+                    </div>
+                    <IsraeliTaxInvoice
+                      language={isHebrew ? 'he' : 'en'}
+                      data={buildInvoiceFromTransaction(
+                        selectedInvoice,
+                        profile?.displayName || user?.displayName || (isHebrew ? 'לקוח' : 'Customer'),
+                        profile?.phone,
+                        profile?.email || user?.email || undefined,
+                      )}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* ── Signed Agreements ── */}
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-2xl bg-green-50 flex items-center justify-center">
+                    <span className="text-lg">✍️</span>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900">{isHebrew ? 'הסכמים חתומים' : 'Signed Agreements'}</h3>
+                    <p className="text-xs text-gray-400">{isHebrew ? 'מסמכים שחתמת בפלטפורמה' : 'Documents you signed on the platform'}</p>
+                  </div>
+                </div>
+                {!mySignedDocs || mySignedDocs.documents.length === 0 ? (
+                  <div className="rounded-2xl border-2 border-dashed border-gray-100 p-6 text-center">
+                    <div className="text-3xl mb-2">📋</div>
+                    <p className="text-sm text-gray-500">{isHebrew ? 'אין הסכמים חתומים' : 'No signed agreements'}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {mySignedDocs.documents.map((doc: any) => (
+                      <div key={doc.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50">
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">📄</span>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800">{doc.documentTitle}</p>
+                            <p className="text-xs text-gray-400">{doc.signedDate ? new Date(doc.signedDate).toLocaleDateString(isHebrew ? 'he-IL' : 'en-US') : ''}</p>
+                          </div>
+                        </div>
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> {isHebrew ? 'חתום' : 'Signed'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Pet Intake Forms (Health Declarations) ── */}
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center">
+                      <span className="text-lg">🐾</span>
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-gray-900">{isHebrew ? 'טפסי קבלה — הצהרות בריאות' : 'Intake Forms — Health Declarations'}</h3>
+                      <p className="text-xs text-gray-400">{isHebrew ? 'נדרש לפני כל שירות' : 'Required before every service'}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIntakeFormOpen(true)}
+                    style={{ background: '#000' }}
+                    className="text-white text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5"
+                  >
+                    <span>+</span> {isHebrew ? 'טופס חדש' : 'New Form'}
+                  </button>
+                </div>
+
+                {intakeFormsLoading ? (
+                  <div className="py-4 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-gray-300" /></div>
+                ) : !intakeFormsData?.forms || intakeFormsData.forms.length === 0 ? (
+                  <div className="rounded-2xl border-2 border-dashed border-gray-100 p-6 text-center">
+                    <div className="text-3xl mb-2">📝</div>
+                    <p className="text-sm text-gray-500">{isHebrew ? 'טרם הוגשו טפסי קבלה' : 'No intake forms submitted yet'}</p>
+                    <p className="text-xs text-gray-400 mt-1">{isHebrew ? 'לחץ על "טופס חדש" להגשת הצהרת בריאות לפני השירות הבא' : 'Click "New Form" to submit a health declaration before your next service'}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {intakeFormsData.forms.map((f: any) => (
+                      <div key={f.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50">
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">🐾</span>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800">{f.petName}</p>
+                            <p className="text-xs text-gray-400">
+                              {f.submittedAt ? new Date(f.submittedAt).toLocaleDateString(isHebrew ? 'he-IL' : 'en-US') : ''} · {isHebrew ? 'חתם:' : 'Signed:'} {f.signatureName}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                          {f.status === 'submitted' ? (isHebrew ? 'הוגש' : 'Submitted') : f.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Intake form modal */}
+              {intakeFormOpen && (
+                <PetIntakeForm
+                  open={intakeFormOpen}
+                  onClose={() => setIntakeFormOpen(false)}
+                  onComplete={() => {
+                    setIntakeFormOpen(false);
+                    queryClient.invalidateQueries({ queryKey: ['/api/pets/intake-forms'] });
+                    toast({ title: isHebrew ? '✅ הצהרת הבריאות הוגשה!' : '✅ Health declaration submitted!' });
+                  }}
+                  petName={(pets?.[0] as any)?.name || (isHebrew ? 'חיית המחמד שלי' : 'My Pet')}
+                  petSpecies={(pets?.[0] as any)?.species}
+                  language={isHebrew ? 'he' : 'en'}
+                />
               )}
             </TabsContent>
 

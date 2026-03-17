@@ -223,4 +223,49 @@ router.get('/admin/all', validateFirebaseToken, isAdmin, async (req, res) => {
   }
 });
 
+// ============================================
+// PET INTAKE FORM (pre-booking health declaration)
+// ============================================
+router.post('/intake-form', validateFirebaseToken, async (req, res) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const data = req.body;
+    if (!data.signatureName || !data.consentToTreatment || !data.consentToEmergencyVet) {
+      return res.status(400).json({ error: 'Missing required consents or signature' });
+    }
+    const submissionId = `intake_${uid}_${Date.now()}`;
+    await firestore.collection('pet_intake_forms').doc(submissionId).set({
+      uid,
+      submissionId,
+      ...data,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] || '',
+      submittedAt: new Date(),
+      status: 'submitted',
+    });
+    logger.info('[PetIntake] Form submitted', { uid, submissionId, petName: data.petName });
+    return res.json({ ok: true, submissionId });
+  } catch (error) {
+    logger.error('[PetIntake] Error', error);
+    return res.status(500).json({ error: 'Failed to submit intake form' });
+  }
+});
+
+// GET user's intake form history
+router.get('/intake-forms', validateFirebaseToken, async (req, res) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const snap = await firestore.collection('pet_intake_forms')
+      .where('uid', '==', uid)
+      .orderBy('submittedAt', 'desc')
+      .limit(20)
+      .get();
+    const forms = snap.docs.map(d => ({ id: d.id, ...d.data(), submittedAt: d.data().submittedAt?.toDate() }));
+    return res.json({ forms });
+  } catch (error) {
+    logger.error('[PetIntake] Error fetching', error);
+    return res.status(500).json({ error: 'Failed to fetch intake forms' });
+  }
+});
+
 export default router;

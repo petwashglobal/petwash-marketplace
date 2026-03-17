@@ -242,4 +242,33 @@ router.patch('/profile', async (req, res) => {
   }
 });
 
+// GET /api/user/transactions — past transactions with invoice data
+router.get('/transactions', async (req, res) => {
+  const user = (req as any).firebaseUser || (req as any).user;
+  if (!user?.uid) return res.status(401).json({ error: 'Unauthorized' });
+  const uid = user.uid;
+  try {
+    const firestore = admin.firestore();
+    const snap = await firestore.collection('transactions')
+      .where('userId', '==', uid)
+      .orderBy('createdAt', 'desc')
+      .limit(50)
+      .get();
+    const transactions = snap.docs.map(d => {
+      const data = d.data();
+      return {
+        id: d.id,
+        ...data,
+        invoiceNumber: data.invoiceNumber || `PW-${new Date().getFullYear()}-${d.id.slice(-6).toUpperCase()}`,
+        createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+        completedAt: data.completedAt?.toDate?.()?.toISOString() || data.completedAt,
+      };
+    });
+    return res.json(transactions);
+  } catch (err: any) {
+    logger.error('[UserProfile] Transactions fetch error', err.message);
+    return res.status(500).json({ error: 'Failed to fetch transactions' });
+  }
+});
+
 export default router;
