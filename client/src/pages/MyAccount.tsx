@@ -122,6 +122,16 @@ interface UserProfile {
   birthdate: string;
   photoURL: string;
   preferredLanguage: string;
+  // Extended personal details
+  gender?: string;
+  idNumber?: string;
+  carPlate?: string;
+  carPlate2?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  // Security / consent preferences
+  twoFactorEnabled?: boolean;
+  marketingConsent?: boolean;
   notificationPreferences: {
     pushEnabled: boolean;
     emailEnabled: boolean;
@@ -579,6 +589,41 @@ export default function MyAccount() {
         title: isHebrew ? 'הפרופיל עודכן' : 'Profile Updated',
         description: isHebrew ? 'השינויים נשמרו בהצלחה' : 'Your changes have been saved',
       });
+    },
+  });
+
+  // ── WebAuthn / Passkey (inline in Security tab) ──
+  const { data: passkeysData, isLoading: passkeysLoading } = useQuery<{ ok: boolean; credentials: any[] }>({
+    queryKey: ['/api/webauthn/credentials'],
+    enabled: !!user,
+  });
+  const passkeys = passkeysData?.credentials || [];
+
+  const registerPasskeyMutation = useMutation({
+    mutationFn: async () => {
+      const { getApiUrl } = await import('@/lib/apiConfig');
+      const optionsRes = await fetch(getApiUrl('/api/webauthn/register/options'), { method: 'POST', credentials: 'include' });
+      if (!optionsRes.ok) throw new Error('Failed to get registration options');
+      const { options, challengeKey } = await optionsRes.json();
+      const { startRegistration } = await import('@simplewebauthn/browser');
+      const attResp = await startRegistration(options);
+      return apiRequest('POST', '/api/webauthn/register/verify', { response: attResp, challengeKey });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/webauthn/credentials'] });
+      toast({ title: isHebrew ? '✅ Face ID / Passkey נרשם בהצלחה!' : '✅ Passkey registered successfully!' });
+    },
+    onError: (e: any) => {
+      if (e?.name === 'NotAllowedError' || e?.message?.includes('cancelled')) return;
+      toast({ title: isHebrew ? 'הרישום נכשל' : 'Registration failed', variant: 'destructive' });
+    },
+  });
+
+  const revokePasskeyMutation = useMutation({
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/webauthn/credentials/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/webauthn/credentials'] });
+      toast({ title: isHebrew ? 'מכשיר הוסר' : 'Device removed' });
     },
   });
 
@@ -1222,6 +1267,157 @@ export default function MyAccount() {
                     )}
                   </div>
 
+                  {/* ── Gender ── */}
+                  <div className="space-y-2">
+                    <Label className="text-gray-500 flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      {isHebrew ? 'מגדר' : 'Gender'}
+                    </Label>
+                    {isEditing ? (
+                      <select
+                        value={editedProfile.gender || ''}
+                        onChange={e => setEditedProfile({ ...editedProfile, gender: e.target.value })}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black"
+                        style={{ fontSize: '16px' }}
+                      >
+                        <option value="">{isHebrew ? 'בחר...' : 'Select...'}</option>
+                        <option value="male">{isHebrew ? 'זכר' : 'Male'}</option>
+                        <option value="female">{isHebrew ? 'נקבה' : 'Female'}</option>
+                        <option value="other">{isHebrew ? 'אחר' : 'Other'}</option>
+                        <option value="prefer_not">{isHebrew ? 'מעדיף לא לציין' : 'Prefer not to say'}</option>
+                      </select>
+                    ) : (
+                      <p className="text-gray-900 text-lg">
+                        {profile.gender === 'male' ? (isHebrew ? 'זכר' : 'Male')
+                          : profile.gender === 'female' ? (isHebrew ? 'נקבה' : 'Female')
+                          : profile.gender === 'other' ? (isHebrew ? 'אחר' : 'Other')
+                          : profile.gender === 'prefer_not' ? (isHebrew ? 'מעדיף לא לציין' : 'Prefer not to say')
+                          : '-'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* ── Israeli ID ── */}
+                  <div className="space-y-2">
+                    <Label className="text-gray-500 flex items-center gap-2">
+                      <Shield className="w-4 h-4" />
+                      {isHebrew ? 'תעודת זהות' : 'ID Number'}
+                    </Label>
+                    {isEditing ? (
+                      <Input
+                        value={editedProfile.idNumber || ''}
+                        onChange={e => setEditedProfile({ ...editedProfile, idNumber: e.target.value })}
+                        className="bg-white border-gray-200 text-gray-900"
+                        placeholder={isHebrew ? '9 ספרות...' : '9-digit ID...'}
+                        maxLength={9}
+                        inputMode="numeric"
+                        style={{ fontSize: '16px' }}
+                      />
+                    ) : (
+                      <p className="text-gray-900 text-lg">{profile.idNumber || '-'}</p>
+                    )}
+                  </div>
+
+                  {/* ── Car Plates ── */}
+                  <div className="space-y-2">
+                    <Label className="text-gray-500 flex items-center gap-2">
+                      🚗 {isHebrew ? 'לוחית רישוי ראשונה' : 'Car Plate 1'}
+                    </Label>
+                    {isEditing ? (
+                      <Input
+                        value={editedProfile.carPlate || ''}
+                        onChange={e => setEditedProfile({ ...editedProfile, carPlate: e.target.value.toUpperCase() })}
+                        className="bg-white border-gray-200 text-gray-900 font-mono tracking-widest"
+                        placeholder={isHebrew ? 'למשל 12-345-67' : 'e.g. 12-345-67'}
+                        style={{ fontSize: '16px' }}
+                      />
+                    ) : (
+                      <p className="text-gray-900 text-lg font-mono">{profile.carPlate || '-'}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-gray-500 flex items-center gap-2">
+                      🚙 {isHebrew ? 'לוחית רישוי שנייה' : 'Car Plate 2'}
+                    </Label>
+                    {isEditing ? (
+                      <Input
+                        value={editedProfile.carPlate2 || ''}
+                        onChange={e => setEditedProfile({ ...editedProfile, carPlate2: e.target.value.toUpperCase() })}
+                        className="bg-white border-gray-200 text-gray-900 font-mono tracking-widest"
+                        placeholder={isHebrew ? 'רכב נוסף (אם יש)' : 'Second vehicle (optional)'}
+                        style={{ fontSize: '16px' }}
+                      />
+                    ) : (
+                      <p className="text-gray-900 text-lg font-mono">{profile.carPlate2 || '-'}</p>
+                    )}
+                  </div>
+
+                  {/* ── Emergency Contact ── */}
+                  <div className="space-y-2">
+                    <Label className="text-gray-500 flex items-center gap-2">
+                      🆘 {isHebrew ? 'איש קשר לחירום — שם' : 'Emergency Contact — Name'}
+                    </Label>
+                    {isEditing ? (
+                      <Input
+                        value={editedProfile.emergencyContactName || ''}
+                        onChange={e => setEditedProfile({ ...editedProfile, emergencyContactName: e.target.value })}
+                        className="bg-white border-gray-200 text-gray-900"
+                        placeholder={isHebrew ? 'שם...' : 'Full name...'}
+                        style={{ fontSize: '16px' }}
+                      />
+                    ) : (
+                      <p className="text-gray-900 text-lg">{profile.emergencyContactName || '-'}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-gray-500 flex items-center gap-2">
+                      📞 {isHebrew ? 'טלפון איש קשר לחירום' : 'Emergency Contact — Phone'}
+                    </Label>
+                    {isEditing ? (
+                      <Input
+                        type="tel"
+                        value={editedProfile.emergencyContactPhone || ''}
+                        onChange={e => setEditedProfile({ ...editedProfile, emergencyContactPhone: e.target.value })}
+                        className="bg-white border-gray-200 text-gray-900"
+                        placeholder="050-000-0000"
+                        style={{ fontSize: '16px' }}
+                      />
+                    ) : (
+                      <p className="text-gray-900 text-lg">
+                        {profile.emergencyContactPhone
+                          ? <a href={`tel:${profile.emergencyContactPhone}`} className="text-blue-600 hover:underline">{profile.emergencyContactPhone}</a>
+                          : '-'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* ── Marketing Consent ── */}
+                  {isEditing && (
+                    <div className="md:col-span-2 flex items-start gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50">
+                      <input
+                        type="checkbox"
+                        id="marketingConsent"
+                        checked={editedProfile.marketingConsent ?? false}
+                        onChange={e => setEditedProfile({ ...editedProfile, marketingConsent: e.target.checked })}
+                        className="mt-0.5 w-4 h-4 rounded border-gray-300 accent-black cursor-pointer"
+                      />
+                      <label htmlFor="marketingConsent" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
+                        {isHebrew
+                          ? 'אני מסכים לקבל הצעות שיווקיות, מבצעים וחדשות מ-PetWash™ בדוא"ל ו-SMS. ניתן לבטל בכל עת.'
+                          : 'I agree to receive marketing offers, promotions and news from PetWash™ by email & SMS. You can unsubscribe anytime.'}
+                      </label>
+                    </div>
+                  )}
+                  {!isEditing && (
+                    <div className="md:col-span-2 flex items-center gap-2 text-sm text-gray-500">
+                      {profile.marketingConsent
+                        ? <><CheckCircle2 className="w-4 h-4 text-green-500" /> {isHebrew ? 'הסכמה שיווקית: כן' : 'Marketing consent: Yes'}</>
+                        : <><X className="w-4 h-4 text-gray-300" /> {isHebrew ? 'הסכמה שיווקית: לא' : 'Marketing consent: No'}</>}
+                    </div>
+                  )}
+
                   {/* ── Seasonal Promo Card ── */}
                   {seasonalPromo?.active && seasonalPromo.code && (
                     <div className="md:col-span-2 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-sky-50 p-5 space-y-3">
@@ -1672,72 +1868,157 @@ export default function MyAccount() {
               </div>
             </TabsContent>
 
-            <TabsContent value="security" className="mt-6 space-y-6">
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
-                <h3 className="text-xl font-semibold text-gray-900 mb-6">
-                  {isHebrew ? 'אבטחה והתחברות' : 'Security & Login'}
-                </h3>
+            <TabsContent value="security" className="mt-6 space-y-5">
 
-                <div className="space-y-4">
-                  <a 
-                    href="/settings/security"
-                    className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 transition-colors cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-4">
-                      <Shield className="w-5 h-5 text-gray-400" />
-                      <div>
-                        <p className="text-gray-900 font-medium">{isHebrew ? 'Face ID / Passkeys' : 'Face ID / Passkeys'}</p>
-                        <p className="text-gray-500 text-sm">{isHebrew ? 'ניהול אימות ביומטרי' : 'Manage biometric authentication'}</p>
+              {/* ── Face ID / Passkeys ── */}
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-2xl bg-gray-900 flex items-center justify-center">
+                    <span className="text-lg">🔑</span>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900">{isHebrew ? 'Face ID / Passkeys' : 'Face ID / Passkeys'}</h3>
+                    <p className="text-xs text-gray-400">{isHebrew ? 'כניסה מהירה עם טביעת אצבע או זיהוי פנים — ללא סיסמה' : 'Sign in instantly with fingerprint or face — no password needed'}</p>
+                  </div>
+                </div>
+
+                {passkeysLoading ? (
+                  <div className="py-4 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-gray-300" /></div>
+                ) : passkeys.length === 0 ? (
+                  <div className="rounded-2xl border-2 border-dashed border-gray-100 p-6 text-center mb-4">
+                    <div className="text-4xl mb-2">🔐</div>
+                    <p className="text-sm font-medium text-gray-500">{isHebrew ? 'עדיין לא רשומה שיטת כניסה ביומטרית' : 'No biometric login registered yet'}</p>
+                    <p className="text-xs text-gray-400 mt-1">{isHebrew ? 'לחץ על הכפתור למטה כדי לרשום את המכשיר שלך' : 'Tap the button below to register this device'}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 mb-4">
+                    {passkeys.map((pk: any) => (
+                      <div key={pk.id} className="flex items-center justify-between px-4 py-3 rounded-xl border border-gray-100 bg-gray-50">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">{pk.deviceIcon || '📱'}</span>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800">{pk.deviceName || (isHebrew ? 'מכשיר' : 'Device')}</p>
+                            <p className="text-xs text-gray-400">
+                              {pk.lastUsedAt ? `${isHebrew ? 'נוצל לאחרונה' : 'Last used'}: ${new Date(pk.lastUsedAt).toLocaleDateString(isHebrew ? 'he-IL' : 'en-US')}` : (isHebrew ? 'טרם נוצל' : 'Never used')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {pk.trustScore !== undefined && (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${pk.trustScore >= 75 ? 'bg-green-100 text-green-700' : pk.trustScore >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                              {pk.trustScore}%
+                            </span>
+                          )}
+                          <button
+                            onClick={() => revokePasskeyMutation.mutate(pk.id)}
+                            disabled={revokePasskeyMutation.isPending}
+                            className="p-1.5 rounded-lg text-red-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                            title={isHebrew ? 'הסר מכשיר' : 'Remove device'}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-600 transition-colors" />
-                  </a>
+                    ))}
+                  </div>
+                )}
 
-                  <a 
-                    href="/settings"
-                    className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 transition-colors cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-4">
-                      <Settings className="w-5 h-5 text-gray-400" />
-                      <div>
-                        <p className="text-gray-900 font-medium">{isHebrew ? 'הגדרות מתקדמות' : 'Advanced Settings'}</p>
-                        <p className="text-gray-500 text-sm">{isHebrew ? 'PIN, מכשירים מהימנים ועוד' : 'PIN, trusted devices & more'}</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-600 transition-colors" />
-                  </a>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => registerPasskeyMutation.mutate()}
+                  onKeyDown={e => e.key === 'Enter' && registerPasskeyMutation.mutate()}
+                  style={{ background: registerPasskeyMutation.isPending ? '#6b7280' : '#000000', cursor: 'pointer' }}
+                  className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-white font-semibold text-sm transition-all"
+                >
+                  {registerPasskeyMutation.isPending
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> {isHebrew ? 'ממתין לאישור...' : 'Waiting for approval...'}</>
+                    : <><span className="text-base">🔐</span> {isHebrew ? 'רשום Face ID / טביעת אצבע למכשיר זה' : 'Register Face ID / Fingerprint for this device'}</>}
+                </div>
+                {passkeys.length > 0 && (
+                  <p className="text-center text-xs text-green-600 font-medium mt-2.5 flex items-center justify-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    {isHebrew ? `${passkeys.length} מכשיר${passkeys.length > 1 ? 'ים' : ''} רשומ${passkeys.length > 1 ? 'ים' : ''} — הכניסה הביומטרית פעילה` : `${passkeys.length} device${passkeys.length > 1 ? 's' : ''} registered — biometric login active`}
+                  </p>
+                )}
+              </div>
 
-                  <a 
+              {/* ── Two-Factor Authentication ── */}
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900">{isHebrew ? 'אימות דו-שלבי (2FA)' : 'Two-Step Verification (2FA)'}</h3>
+                    <p className="text-xs text-gray-400">{isHebrew ? 'דרוש קוד SMS נוסף לכל הזמנה ותשלום' : 'Require an extra SMS code for every booking & payment'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-gray-50">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {isHebrew ? 'הפעל אימות דו-שלבי' : 'Enable Two-Step Verification'}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {profile.twoFactorEnabled
+                        ? (isHebrew ? '✅ פעיל — נדרש קוד SMS לפני כל תשלום' : '✅ Active — SMS code required before every payment')
+                        : (isHebrew ? 'מכובה — הפעל להגנה נוספת' : 'Off — enable for extra protection')}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={profile.twoFactorEnabled ?? false}
+                    onCheckedChange={(checked) => {
+                      updateProfileMutation.mutate({ twoFactorEnabled: checked });
+                    }}
+                    className="data-[state=checked]:bg-gray-900"
+                  />
+                </div>
+
+                {profile.twoFactorEnabled && (
+                  <div className="mt-3 flex items-start gap-2 text-xs text-blue-700 bg-blue-50 rounded-xl px-4 py-3">
+                    <Shield className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      {isHebrew
+                        ? `קוד יישלח אל ${phoneStatus?.phone || profile?.phone || 'הטלפון שלך'} לפני כל הזמנה ותשלום.`
+                        : `A code will be sent to ${phoneStatus?.phone || profile?.phone || 'your phone'} before every booking and payment.`}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Account Actions ── */}
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+                <h3 className="text-base font-bold text-gray-900 mb-4">{isHebrew ? 'פרטיות ומכשירים' : 'Privacy & Devices'}</h3>
+                <div className="space-y-2">
+                  <a
                     href="/my-devices"
-                    className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 transition-colors cursor-pointer group"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 border border-gray-100 cursor-pointer group hover:bg-gray-100 transition-colors"
                   >
                     <div className="flex items-center gap-4">
                       <CreditCard className="w-5 h-5 text-gray-400" />
                       <div>
-                        <p className="text-gray-900 font-medium">{isHebrew ? 'המכשירים שלי' : 'My Devices'}</p>
-                        <p className="text-gray-500 text-sm">{isHebrew ? 'נהל מכשירים מחוברים' : 'Manage connected devices'}</p>
+                        <p className="text-sm font-semibold text-gray-800">{isHebrew ? 'המכשירים שלי' : 'My Devices'}</p>
+                        <p className="text-xs text-gray-500">{isHebrew ? 'ניהול מכשירים מחוברים לחשבון' : 'Manage devices connected to your account'}</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-600 transition-colors" />
+                    <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-600 transition-colors" />
                   </a>
 
                   <Button
                     onClick={() => exportDataMutation.mutate()}
                     disabled={exportDataMutation.isPending}
-                    className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 transition-colors cursor-pointer group w-full"
+                    variant="ghost"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 border border-gray-100 cursor-pointer group w-full h-auto hover:bg-gray-100"
                   >
                     <div className="flex items-center gap-4">
                       <Download className="w-5 h-5 text-gray-400" />
                       <div className="text-start">
-                        <p className="text-gray-900 font-medium">{isHebrew ? 'הורד את הנתונים שלי' : 'Download My Data'}</p>
-                        <p className="text-gray-500 text-sm">{isHebrew ? 'ייצוא כל המידע (GDPR)' : 'Export all your data (GDPR)'}</p>
+                        <p className="text-sm font-semibold text-gray-800">{isHebrew ? 'הורד את הנתונים שלי' : 'Download My Data'}</p>
+                        <p className="text-xs text-gray-500">{isHebrew ? 'ייצוא כל המידע (GDPR)' : 'Export all your data (GDPR)'}</p>
                       </div>
                     </div>
-                    {exportDataMutation.isPending ? (
-                      <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-                    ) : (
-                      <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-600 transition-colors" />
-                    )}
+                    {exportDataMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-600 transition-colors" />}
                   </Button>
                 </div>
               </div>
