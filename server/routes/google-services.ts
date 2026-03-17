@@ -177,8 +177,36 @@ function isAllowedPlacesOrigin(req: any): boolean {
   const referer = req.headers['referer'] as string | undefined;
   const source = origin || referer || '';
 
-  // Internal server-to-server calls (no browser origin/referer present)
+  const envAllowed = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
+    : [];
+
+  const defaultAllowed = [
+    'petwash.co.il',
+    'petwashglobal.com',
+    'signinpetwash.web.app',
+    'signinpetwash.firebaseapp.com',
+    'replit.dev',
+    'repl.co',
+    'localhost',
+    '127.0.0.1',
+  ];
+
+  // No Origin or Referer — this happens when Firebase Hosting proxies the
+  // request to Cloud Run (the CDN layer strips both headers for same-origin
+  // requests). Fall back to x-forwarded-host which Firebase always sets.
   if (!source) {
+    const forwardedHost = (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0]?.trim();
+    if (forwardedHost) {
+      const fwHostname = forwardedHost.split(':')[0].toLowerCase();
+      if (isAllowedHostname(fwHostname, [...defaultAllowed, ...envAllowed])) {
+        return true;
+      }
+      logger.warn('[Places Proxy] x-forwarded-host not in allowlist', { fwHostname });
+      return false;
+    }
+
+    // True server-to-server call — require internal secret
     const secret = process.env.INTERNAL_SERVICE_SECRET;
     if (!secret) {
       logger.warn('[Places Proxy] No-origin request blocked: INTERNAL_SERVICE_SECRET not configured');
@@ -197,21 +225,6 @@ function isAllowedPlacesOrigin(req: any): boolean {
     logger.warn('[Places Proxy] Unparseable origin rejected', { source: source.substring(0, 80) });
     return false;
   }
-
-  const envAllowed = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
-    : [];
-
-  const defaultAllowed = [
-    'petwash.co.il',
-    'petwashglobal.com',
-    'signinpetwash.web.app',
-    'signinpetwash.firebaseapp.com',
-    'replit.dev',
-    'repl.co',
-    'localhost',
-    '127.0.0.1',
-  ];
 
   return isAllowedHostname(hostname, [...defaultAllowed, ...envAllowed]);
 }

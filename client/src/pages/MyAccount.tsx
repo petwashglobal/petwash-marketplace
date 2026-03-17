@@ -235,14 +235,18 @@ function WalletActionButton({
   const [, setLocation] = useLocation();
   
   return (
-    <Button 
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => setLocation(href)}
-      className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm text-center hover:shadow-md hover:border-gray-200 transition-all duration-300 group"
+      onKeyDown={(e) => e.key === 'Enter' && setLocation(href)}
+      style={{ background: '#ffffff', cursor: 'pointer' }}
+      className="flex flex-col items-center p-5 rounded-2xl border border-gray-100 shadow-sm text-center hover:shadow-md hover:border-gray-200 transition-all duration-300 group w-full"
     >
-      <Icon className="w-5 h-5 text-gray-400 mx-auto mb-3 group-hover:text-stone-700 transition-colors" />
+      <Icon className="w-5 h-5 text-gray-400 mb-3 group-hover:text-stone-700 transition-colors" />
       <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">{label}</p>
-      <ChevronRight className="w-4 h-4 mx-auto mt-2 text-gray-300 group-hover:text-gray-500 transition-colors" />
-    </Button>
+      <ChevronRight className="w-4 h-4 mt-2 text-gray-300 group-hover:text-gray-500 transition-colors" />
+    </div>
   );
 }
 
