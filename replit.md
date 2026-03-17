@@ -626,3 +626,49 @@ Created directly via SQL (drizzle-kit was too slow on 12k-line schema):
 2. **Apple Wallet**: Set 5 Apple cert env vars in Cloud Run secrets (obtain pass cert from Apple Developer Portal, pass type `pass.il.petwash.prestige`)
 3. **APNs push** for live balance updates: requires `APNS_KEY_P8` + `APNS_KEY_ID` + `APNS_TEAM_ID` (implement `sendApnsPush()` in `AppleWalletService.ts`)
 4. **`petwashPassAccounts` population**: `/api/prestige-pass/activate` should also create a row in this table so `/api/pass/:passId` can serve the universal link
+
+## 360° Security Hardening (March 2026 — Session 9)
+
+Full security audit + three-engineer hardening sprint. All findings closed.
+
+### Finding 1 — CRITICAL: Tax Document Atomicity (Off-Books Financial Events)
+
+Every regulated financial event (`processReversal`, `processChargeback`, `processProviderBooking`) now throws and DB-rolls-back if `issueTaxDocument()` returns null. No payment row can survive without its corresponding tax document.
+
+- `processReversal`: `reversalTaxDocId` checked — throws inside `db.transaction()` → reversal row + original status update both rollback
+- `processChargeback`: `taxDocId` checked — throws inside `db.transaction()` → chargeback row + original status update both rollback
+- `processProviderBooking`: Entire body wrapped in `db.transaction(async (tx) => {...})` using `tx.insert()`. Both `customerTaxDocId` and `commissionTaxDocId` checked — throws rollback both `pw_payments` and `pw_provider_payouts`
+- `processManualAdjustment`: Already guarded by engineer T002
+
+### Finding 2 — HIGH: Cross-User Idempotency Key Collision
+
+**Database (production):**
+- Dropped global `UNIQUE(idempotency_key)` constraint (`pw_payments_idempotency_key_key`)
+- Created `idx_pw_pay_idem_customer`: `UNIQUE(customer_id, idempotency_key) WHERE customer_id IS NOT NULL`
+- Created `idx_pw_pay_idem_anon`: `UNIQUE(idempotency_key) WHERE customer_id IS NULL`
+
+**Code (`server/services/TransactionEngine.ts`):**
+- `findByIdempotencyKey(key, customerId?)` — scoped lookup with composite index
+- Flows A, B, C, D: pass `params.customerId` to scope checks per authenticated user
+- `processReversal` + `processChargeback`: idempotency check moved **inside the DB transaction**, runs after `SELECT ... FOR UPDATE` on the original payment, then scopes by `original.customerId`
+
+### Finding 3 — MEDIUM: Admin Secret Timing Attack
+
+**New `server/middleware/adminAuth.ts`:**
+- `timingSafeAdminSecretMatch(req)`: SHA-256 hashes both values then uses `crypto.timingSafeEqual()` — constant time regardless of where strings differ. Fail-closed if `ADMIN_SECRET` env var is unset.
+- Applied to all 4 admin secret check sites: `manual-adjustment.ts`, `payout-reconciliation.ts`, `routes.ts` (2 endpoints)
+
+### T002: Double-Refund & Wallet Hardening (Engineer)
+- `processReversal` + `processChargeback`: `SELECT ... FOR UPDATE` on original payment, status guards reject `reversed → reversed`, `chargeback → reversed`, `reversed → chargeback`
+- WalletEngine delegates to `WalletLedger.deductFromWallet()` which uses `SELECT ... FOR UPDATE` + JTI deduplication + velocity limits
+- `processManualAdjustment`: throws on null `taxDocId` before returning — DB transaction rollback guaranteed
+
+### T003: Passkey / Face ID + Consent Hardening (Engineer)
+- `server/routes/webauthn.ts`: `userVerification: "required"` on both registration + authentication options; consent gate checks `user_consents` for `biometric_auth` before issuing registration options
+- `server/routes/mobile-biometric.ts`: `MOBILE_CONFIG.userVerification = 'required'`; same consent gate pattern; `expectedOrigin` validated against `rpID`
+- Consent version centralized: `server/lib/consentConstants.ts` exports `CURRENT_BIOMETRIC_CONSENT_VERSION = '2025.1'` — both files import from there; update one place to enforce new terms globally
+
+### Cleanup
+- Deleted `server/middleware/security.ts.LEGACY_DO_NOT_USE`
+- Removed dead `userConsents` imports from `webauthn.ts` and `mobile-biometric.ts` (both use raw SQL for the consent check)
+- Dropped stale global idempotency DB constraint

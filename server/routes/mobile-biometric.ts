@@ -30,7 +30,7 @@ import crypto from 'crypto';
 
 import { sql } from 'drizzle-orm';
 import { db as pgDb } from '../db';
-import { userConsents } from '@shared/schema';
+import { CURRENT_BIOMETRIC_CONSENT_VERSION } from '../lib/consentConstants';
 
 const router = Router();
 
@@ -73,11 +73,11 @@ router.post('/register/options', validateFirebaseToken, verifyAppCheckToken, asy
     `);
 
     const latestConsent = consentResult.rows[0] as any;
-    if (!latestConsent || !latestConsent.accepted || latestConsent.consent_version !== '2025.1') {
+    if (!latestConsent || !latestConsent.accepted || latestConsent.consent_version !== CURRENT_BIOMETRIC_CONSENT_VERSION) {
       return res.status(403).json({ 
         error: "Biometric consent required", 
         code: "CONSENT_REQUIRED",
-        requiredVersion: "2025.1"
+        requiredVersion: CURRENT_BIOMETRIC_CONSENT_VERSION,
       });
     }
 
