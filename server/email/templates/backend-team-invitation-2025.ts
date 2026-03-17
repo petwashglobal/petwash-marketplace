@@ -22,8 +22,6 @@ export function generateBackendTeamInvitation(data: BackendInvitationData): { su
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Welcome to Pet Wash Backend Team</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=Playfair+Display:wght@700;900&display=swap');
-    
     * {
       margin: 0;
       padding: 0;
@@ -31,7 +29,7 @@ export function generateBackendTeamInvitation(data: BackendInvitationData): { su
     }
     
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
       padding: 40px 20px;
     }
@@ -61,16 +59,9 @@ export function generateBackendTeamInvitation(data: BackendInvitationData): { su
       width: 200%;
       height: 200%;
       background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-      animation: pulse 15s ease-in-out infinite;
-    }
-    
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); opacity: 0.5; }
-      50% { transform: scale(1.1); opacity: 0.8; }
-    }
-    
+    }    
     .logo {
-      font-family: 'Playfair Display', serif;
+      font-family: Georgia, 'Times New Roman', serif;
       font-size: 42px;
       font-weight: 900;
       color: #FFFFFF;

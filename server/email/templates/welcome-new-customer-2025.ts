@@ -26,8 +26,6 @@ export function generateWelcomeEmail(data: WelcomeEmailData): { subject: string;
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Welcome to Pet Wash</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Varela+Round&display=swap');
-    
     * {
       margin: 0;
       padding: 0;
@@ -35,7 +33,7 @@ export function generateWelcomeEmail(data: WelcomeEmailData): { subject: string;
     }
     
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
       background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 50%, #FCD34D 100%);
       padding: 30px 20px;
     }
@@ -67,7 +65,7 @@ export function generateWelcomeEmail(data: WelcomeEmailData): { subject: string;
     }
     
     .logo {
-      font-family: 'Varela Round', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
       font-size: 38px;
       font-weight: 700;
       color: #FFFFFF;
@@ -79,12 +77,6 @@ export function generateWelcomeEmail(data: WelcomeEmailData): { subject: string;
       font-size: 100px;
       margin: 20px 0;
       filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.2));
-      animation: bounce 2s ease-in-out infinite;
-    }
-    
-    @keyframes bounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-20px); }
     }
     
     .tagline {

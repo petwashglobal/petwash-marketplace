@@ -101,13 +101,7 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes shimmer { 0% { background-position:-200% center; } 100% { background-position:200% center; } }
-    @keyframes breathe { 0%,100% { box-shadow:0 8px 32px ${t.glowColor}; } 50% { box-shadow:0 12px 48px ${t.glowColor}, 0 0 80px ${t.glowColor}; } }
-    @keyframes goldShine { 0% { background-position:0% 50%; } 50% { background-position:100% 50%; } 100% { background-position:0% 50%; } }
-    @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-4px); } }
-    .fi { animation: fadeIn 0.8s ease both; }
+  <style>    .fi { animation: fadeIn 0.8s ease both; }
     .d1 { animation-delay:0.1s; } .d2 { animation-delay:0.2s; } .d3 { animation-delay:0.3s; } .d4 { animation-delay:0.4s; } .d5 { animation-delay:0.5s; }
   </style>
 </head>

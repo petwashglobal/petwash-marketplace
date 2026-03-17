@@ -62,12 +62,10 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${c.subject}</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
-        
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: #FFFFFF;
             padding: 0;
             margin: 0;
@@ -83,26 +81,17 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
         .header {
             background: linear-gradient(135deg, #7C3AED 0%, #EC4899 50%, #F59E0B 100%);
             background-size: 200% 200%;
-            animation: gradientShift 8s ease infinite;
             padding: 80px 40px;
             text-align: center;
             position: relative;
             overflow: hidden;
-        }
-        
-        @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-        
+        }        
         /* Floating particles animation */
         .header::before {
             content: '🐾';
             position: absolute;
             font-size: 60px;
             opacity: 0.15;
-            animation: float 6s ease-in-out infinite;
             top: 20%;
             left: 10%;
         }
@@ -112,31 +101,16 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
             position: absolute;
             font-size: 50px;
             opacity: 0.15;
-            animation: float 7s ease-in-out infinite;
             top: 60%;
             right: 15%;
-            animation-delay: 2s;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-30px) rotate(15deg); }
-        }
-        
+        }        
         .logo {
             font-size: 80px;
             margin-bottom: 20px;
-            animation: bounce 2s ease-in-out infinite;
             filter: drop-shadow(0 10px 40px rgba(0,0,0,0.2));
-        }
-        
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-15px); }
-        }
-        
+        }        
         .brand-name {
-            font-family: 'Playfair Display', serif;
+            font-family: Georgia, 'Times New Roman', serif;
             font-size: 52px;
             font-weight: 900;
             color: #FFFFFF;
@@ -167,7 +141,7 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
         }
         
         .headline {
-            font-family: 'Playfair Display', serif;
+            font-family: Georgia, 'Times New Roman', serif;
             font-size: 48px;
             font-weight: 700;
             background: linear-gradient(135deg, #7C3AED, #EC4899);
@@ -203,14 +177,7 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
             max-width: 100%;
             border-radius: 20px;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-            animation: fadeInScale 1.5s ease-out;
-        }
-        
-        @keyframes fadeInScale {
-            0% { opacity: 0; transform: scale(0.9); }
-            100% { opacity: 1; transform: scale(1); }
-        }
-        
+        }        
         /* Features Grid */
         .features {
             display: grid;
@@ -226,7 +193,6 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
             border-left: 4px solid #7C3AED;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
-            animation: slideIn 0.6s ease-out backwards;
         }
         
         .feature-item:nth-child(1) { animation-delay: 0.1s; }
@@ -235,13 +201,7 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
         .feature-item:nth-child(4) { animation-delay: 0.4s; }
         .feature-item:nth-child(5) { animation-delay: 0.5s; }
         .feature-item:nth-child(6) { animation-delay: 0.6s; }
-        .feature-item:nth-child(7) { animation-delay: 0.7s; }
-        
-        @keyframes slideIn {
-            0% { opacity: 0; transform: translateX(-30px); }
-            100% { opacity: 1; transform: translateX(0); }
-        }
-        
+        .feature-item:nth-child(7) { animation-delay: 0.7s; }        
         .feature-icon {
             font-size: 28px;
             margin-${['he', 'ar'].includes(lang) ? 'left' : 'right'}: 15px;
@@ -269,14 +229,14 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
             content: '"';
             position: absolute;
             font-size: 200px;
-            font-family: 'Playfair Display', serif;
+            font-family: Georgia, 'Times New Roman', serif;
             color: rgba(255, 255, 255, 0.1);
             top: -40px;
             left: 20px;
         }
         
         .quote {
-            font-family: 'Playfair Display', serif;
+            font-family: Georgia, 'Times New Roman', serif;
             font-size: 24px;
             line-height: 1.6;
             color: #FFFFFF;
@@ -302,14 +262,7 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
             border-radius: 50px;
             box-shadow: 0 20px 40px rgba(124, 58, 237, 0.3);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
-            animation: pulse 2s ease-in-out infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 20px 40px rgba(124, 58, 237, 0.3); }
-            50% { box-shadow: 0 25px 50px rgba(124, 58, 237, 0.5); }
-        }
-        
+        }        
         /* Launch Date */
         .launch-date {
             text-align: center;
@@ -334,7 +287,7 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
         }
         
         .date-value {
-            font-family: 'Playfair Display', serif;
+            font-family: Georgia, 'Times New Roman', serif;
             font-size: 36px;
             font-weight: 700;
         }

@@ -70,8 +70,6 @@ export function generateInvestorLaunchEventEmail(data: InvestorLaunchEventData):
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${c.subject}</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;900&family=Playfair+Display:wght@400;700;900&display=swap');
-        
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
@@ -90,33 +88,18 @@ export function generateInvestorLaunchEventEmail(data: InvestorLaunchEventData):
         .header {
             background: linear-gradient(135deg, #7C3AED 0%, #EC4899 50%, #F59E0B 100%);
             background-size: 200% 200%;
-            animation: gradientFlow 8s ease infinite;
             padding: 80px 40px;
             text-align: center;
             position: relative;
             overflow: hidden;
-        }
-        
-        @keyframes gradientFlow {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-        
+        }        
         .logo {
             font-size: 100px;
             margin-bottom: 20px;
-            animation: float 3s ease-in-out infinite;
             filter: drop-shadow(0 15px 40px rgba(0,0,0,0.3));
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
-        }
-        
+        }        
         .brand {
-            font-family: 'Playfair Display', serif;
+            font-family: Georgia, 'Times New Roman', serif;
             font-size: 54px;
             font-weight: 900;
             color: #FFFFFF;
@@ -137,7 +120,7 @@ export function generateInvestorLaunchEventEmail(data: InvestorLaunchEventData):
         }
         
         .headline {
-            font-family: 'Playfair Display', serif;
+            font-family: Georgia, 'Times New Roman', serif;
             font-size: 52px;
             font-weight: 700;
             background: linear-gradient(135deg, #7C3AED, #EC4899);
@@ -269,14 +252,7 @@ export function generateInvestorLaunchEventEmail(data: InvestorLaunchEventData):
             border-radius: 50px;
             box-shadow: 0 20px 50px rgba(124, 58, 237, 0.4);
             transition: all 0.3s ease;
-            animation: pulse 2.5s ease-in-out infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 20px 50px rgba(124, 58, 237, 0.4); }
-            50% { box-shadow: 0 25px 60px rgba(124, 58, 237, 0.6); }
-        }
-        
+        }        
         .footer {
             background: #F8F9FA;
             padding: 40px;

@@ -218,12 +218,7 @@ export function generateEGiftPurchaseConfirmation(params: EGiftPurchaseConfirmat
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes shimmer { 0% { background-position:-200% center; } 100% { background-position:200% center; } }
-    @keyframes breathe { 0%,100% { box-shadow:0 8px 32px rgba(0,0,0,0.25); } 50% { box-shadow:0 16px 48px rgba(0,0,0,0.35), 0 0 40px ${theme.accent}15; } }
-    @keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.03); } }
-    .fi { animation: fadeIn 0.8s ease both; }
-    .d1 { animation-delay:0.1s; } .d2 { animation-delay:0.2s; } .d3 { animation-delay:0.3s; } .d4 { animation-delay:0.4s; } .d5 { animation-delay:0.5s; }
+    .d1 { animation-delay:0.1s; } .d2 { animation-delay:0.2s; } .d3 { animation-delay:0.3s; } .d4 { animation-delay:0.4s; }
   </style>
 </head>
 <body style="margin:0;padding:0;background:#f5f3ef;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">

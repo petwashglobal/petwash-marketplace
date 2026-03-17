@@ -82,13 +82,7 @@ export function generateEGiftActivationEmail(params: EGiftActivationParams): { s
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes shimmer { 0% { background-position:-200% center; } 100% { background-position:200% center; } }
-    @keyframes breathe { 0%,100% { box-shadow:0 12px 40px rgba(0,0,0,0.3); } 50% { box-shadow:0 20px 60px rgba(0,0,0,0.4), 0 0 60px ${tier.accent}20; } }
-    @keyframes goldShine { 0%,100% { opacity:0.3; } 50% { opacity:0.6; } }
-    @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-3px); } }
-    .fi { animation: fadeIn 0.8s ease both; }
-    .d1 { animation-delay:0.1s; } .d2 { animation-delay:0.2s; } .d3 { animation-delay:0.3s; } .d4 { animation-delay:0.4s; } .d5 { animation-delay:0.5s; } .d6 { animation-delay:0.6s; }
+    .d1 { animation-delay:0.1s; } .d2 { animation-delay:0.2s; } .d3 { animation-delay:0.3s; } .d4 { animation-delay:0.4s; } .d5 { animation-delay:0.5s; }
   </style>
 </head>
 <body style="margin:0;padding:0;background:#f5f3ef;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
