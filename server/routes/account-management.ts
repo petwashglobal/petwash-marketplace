@@ -142,6 +142,50 @@ router.post('/delete-request', async (req, res) => {
   }
 });
 
+// DELETE /api/account/delete
+// Called by ConsentOnboarding when user declines consent and wants immediate account removal.
+// Does not require the full confirmation flow — just a valid Firebase session.
+router.delete('/delete', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const sessionCookie = (req as any).cookies?.pw_session;
+
+    let uid: string;
+    try {
+      if (authHeader?.startsWith('Bearer ')) {
+        const decodedToken = await admin.auth().verifyIdToken(authHeader.split('Bearer ')[1], true);
+        uid = decodedToken.uid;
+      } else if (sessionCookie) {
+        const decodedCookie = await admin.auth().verifySessionCookie(sessionCookie, true);
+        uid = decodedCookie.uid;
+      } else {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+    } catch {
+      return res.status(401).json({ error: 'Invalid or expired session' });
+    }
+
+    // Mark account as scheduled for deletion in DB
+    await db.update(users).set({
+      userStatus: 'pending_deletion',
+      updatedAt: new Date(),
+    } as any).where(eq(users.id, uid));
+
+    // Immediately disable the Firebase account so the user cannot log back in
+    try {
+      await admin.auth().updateUser(uid, { disabled: true });
+    } catch (fbErr) {
+      logger.warn('[AccountManagement] Could not disable Firebase account during consent-decline delete', { uid, fbErr });
+    }
+
+    logger.info('[AccountManagement] Consent-decline account deletion initiated', { uid });
+    res.json({ ok: true, message: 'Account deletion initiated. Your data will be removed within 30 days.' });
+  } catch (error: any) {
+    logger.error('[AccountManagement] Consent-decline delete error:', error);
+    res.status(500).json({ error: 'Failed to process account deletion' });
+  }
+});
+
 router.post('/cancel-deletion', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;

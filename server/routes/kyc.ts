@@ -170,11 +170,30 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
   }
 });
 
-// Get user's KYC status
+// Get user's KYC status — requires Firebase auth; users can only query their own UID
 router.get('/status/:uid', async (req: Request, res: Response) => {
   try {
     const { uid } = req.params;
-    
+
+    // Authenticate — extract and verify Firebase token
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    let callerUid: string;
+    try {
+      const decoded = await auth.verifyIdToken(authHeader.split('Bearer ')[1], true);
+      callerUid = decoded.uid;
+    } catch {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    // Users can only check their own KYC status; admins can check any
+    // (admin check relies on the separate /admin/* routes with requireAdmin)
+    if (callerUid !== uid) {
+      return res.status(403).json({ error: 'Forbidden — you can only check your own KYC status' });
+    }
+
     const kycDoc = await getKYCDocument(uid);
     
     if (!kycDoc) {

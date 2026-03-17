@@ -9345,6 +9345,11 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/compliance', adminLimiter, complianceRoutes);
   
   // 🇮🇱 Israeli Contractor Compliance - Tax verification, commission calculation, independence scoring (prevents employee misclassification)
+  // NOTE: Intentionally mounted at same /api/israeli-compliance prefix as israeliCompliance2025Routes above (line 9219).
+  // Express falls through when paths don't match the first module. Both modules cover non-overlapping sub-paths.
+  // ⚠️ KNOWN RISK: Routes in israeliContractorComplianceRoutes (submit-tax-registration, calculate-independence,
+  // run-monthly-audit) have no token-level auth guard. They rely on providerId in request body for scoping.
+  // TODO: Add internal Bearer token verification to the sensitive write routes in israeli-contractor-compliance.ts
   app.use('/api/israeli-compliance', apiLimiter, israeliContractorComplianceRoutes);
   
   // Performance Monitoring - Database, API, and system metrics
