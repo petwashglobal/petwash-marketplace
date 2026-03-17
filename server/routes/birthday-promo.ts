@@ -297,4 +297,204 @@ router.post('/validate', async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SEASONAL PROMO CODES  (twice a year: Summer + Winter)
+// ─────────────────────────────────────────────────────────────────────────────
+
+type Season = 'summer' | 'winter';
+
+interface SeasonWindow {
+  name: Season;
+  label: { en: string; he: string };
+  startMonth: number; // 1-indexed
+  startDay: number;
+  endMonth: number;
+  endDay: number;
+  discountPercent: number;
+}
+
+const SEASONS: SeasonWindow[] = [
+  {
+    name: 'summer',
+    label: { en: 'Summer ☀️', he: 'קיץ ☀️' },
+    startMonth: 6, startDay: 1,
+    endMonth: 8, endDay: 31,
+    discountPercent: 15,
+  },
+  {
+    name: 'winter',
+    label: { en: 'Winter ❄️', he: 'חורף ❄️' },
+    startMonth: 12, startDay: 15,
+    endMonth: 2, endDay: 28,  // wraps across year boundary
+    discountPercent: 15,
+  },
+];
+
+function getCurrentSeason(now: Date): SeasonWindow | null {
+  const m = now.getMonth() + 1; // 1-indexed
+  const d = now.getDate();
+
+  for (const s of SEASONS) {
+    if (s.name === 'winter') {
+      // Dec 15 → Dec 31 OR Jan 1 → Feb 28
+      if ((m === 12 && d >= 15) || m === 1 || (m === 2 && d <= 28)) return s;
+    } else {
+      if (m > s.startMonth || (m === s.startMonth && d >= s.startDay)) {
+        if (m < s.endMonth || (m === s.endMonth && d <= s.endDay)) return s;
+      }
+    }
+  }
+  return null;
+}
+
+function getSeasonExpiry(season: SeasonWindow, year: number): string {
+  if (season.name === 'winter') {
+    const endYear = new Date().getMonth() + 1 >= 12 ? year + 1 : year;
+    return `${endYear}-02-28`;
+  }
+  return `${year}-0${season.endMonth}-${season.endDay}`;
+}
+
+/**
+ * GET /api/promo/seasonal
+ * Returns (or creates) the current season's promo code for the authenticated user.
+ * Returns { active: false } outside of season windows.
+ * Rules:
+ *  - One code per uid per season per year
+ *  - Only active during season window
+ *  - 15% discount
+ *  - Same anti-abuse as birthday code
+ */
+router.get('/seasonal', async (req, res) => {
+  try {
+    const sessionCookie = req.cookies?.pw_session;
+    if (!sessionCookie) return res.status(401).json({ error: 'Authentication required' });
+
+    const decoded = await firebaseAuth.verifySessionCookie(sessionCookie, true);
+    const uid = decoded.uid;
+
+    const now = new Date();
+    const season = getCurrentSeason(now);
+
+    if (!season) {
+      return res.json({ active: false, message: 'No active season promotion right now' });
+    }
+
+    const currentYear = now.getFullYear();
+    const docKey = `${uid}_${season.name}_${currentYear}`;
+    const promoRef = firestoreDb.collection('seasonal_promos').doc(docKey);
+    const promoDoc = await promoRef.get();
+
+    if (promoDoc.exists) {
+      const data = promoDoc.data()!;
+      return res.json({
+        active: true,
+        season: season.name,
+        label: season.label,
+        code: data.code,
+        claimed: data.claimed || false,
+        expiresAt: data.expiresAt,
+        discountPercent: data.discountPercent,
+      });
+    }
+
+    // Generate new code
+    const random = randomBytes(3).toString('hex').toUpperCase().substring(0, 4);
+    const userPart = createHash('sha256').update(uid).digest('hex').toUpperCase().substring(0, 4);
+    const prefix = season.name === 'summer' ? 'SUM' : 'WIN';
+    const yy = String(currentYear).slice(-2);
+    const code = `PW-${prefix}-${random}${userPart}-${yy}`;
+
+    const expiresAt = getSeasonExpiry(season, currentYear);
+
+    const promoData = {
+      uid,
+      email: decoded.email || '',
+      season: season.name,
+      code,
+      discountPercent: season.discountPercent,
+      claimed: false,
+      claimedAt: null,
+      claimedIp: null,
+      claimedUserAgentHash: null,
+      createdAt: now.toISOString(),
+      expiresAt,
+      year: currentYear,
+    };
+
+    await promoRef.set(promoData);
+    logger.info('[SeasonalPromo] Generated new code', { uid, code, season: season.name, expiresAt });
+
+    // Send notification (inbox + email) — fire and forget
+    const userDoc = await firestoreDb.collection('users').doc(uid).get();
+    const profile = userDoc.data() || {};
+    if (profile.email || decoded.email) {
+      const { sendPromoCode } = await import('../lib/notificationDispatcher');
+      sendPromoCode({
+        uid,
+        email: profile.email || decoded.email,
+        locale: profile.preferredLanguage === 'en' ? 'en' : 'he',
+        code,
+        discountPercent: season.discountPercent,
+        expiresAt,
+        reason: season.name,
+      }).catch(err => logger.error('[SeasonalPromo] Notification failed', err));
+    }
+
+    return res.json({
+      active: true,
+      season: season.name,
+      label: season.label,
+      code,
+      claimed: false,
+      expiresAt,
+      discountPercent: season.discountPercent,
+    });
+  } catch (error) {
+    logger.error('[SeasonalPromo] Error', error);
+    return res.status(500).json({ error: 'Failed to generate seasonal promo code' });
+  }
+});
+
+/**
+ * POST /api/promo/seasonal/claim
+ * Same pattern as birthday claim.
+ */
+router.post('/seasonal/claim', async (req, res) => {
+  try {
+    const sessionCookie = req.cookies?.pw_session;
+    if (!sessionCookie) return res.status(401).json({ error: 'Authentication required' });
+
+    const decoded = await firebaseAuth.verifySessionCookie(sessionCookie, true);
+    const uid = decoded.uid;
+    const { code, season } = req.body;
+
+    if (!code || !season) return res.status(400).json({ error: 'code and season required' });
+
+    const currentYear = new Date().getFullYear();
+    const docKey = `${uid}_${season}_${currentYear}`;
+    const promoRef = firestoreDb.collection('seasonal_promos').doc(docKey);
+    const promoDoc = await promoRef.get();
+
+    if (!promoDoc.exists) return res.status(404).json({ error: 'No seasonal promo found' });
+
+    const data = promoDoc.data()!;
+
+    if (data.code !== code) return res.status(400).json({ error: 'Invalid code' });
+    if (data.claimed) return res.status(409).json({ error: 'already_claimed', messageHe: 'הקוד כבר נוצל' });
+    if (new Date() > new Date(data.expiresAt)) return res.status(410).json({ error: 'expired', messageHe: 'הקוד פג תוקף' });
+
+    const ip = req.ip || 'unknown';
+    const uaHash = createHash('sha256').update(req.headers['user-agent'] || '').digest('hex').substring(0, 16);
+
+    await promoRef.update({ claimed: true, claimedAt: new Date().toISOString(), claimedIp: ip, claimedUserAgentHash: uaHash });
+
+    logger.info('[SeasonalPromo] Claimed', { uid, code, season });
+    return res.json({ ok: true, discountPercent: data.discountPercent, messageHe: 'הקוד הוחל בהצלחה!' });
+  } catch (error) {
+    logger.error('[SeasonalPromo] Claim error', error);
+    return res.status(500).json({ error: 'Failed to claim' });
+  }
+});
+
 export default router;

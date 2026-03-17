@@ -55,6 +55,10 @@ import {
   Plus,
   Pencil,
   Copy,
+  Inbox,
+  PartyPopper,
+  Cake,
+  Timer,
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import {
@@ -249,6 +253,9 @@ export default function MyAccount() {
   const { toast } = useToast();
   const isHebrew = language === 'he';
   
+  const [activeTab, setActiveTab] = useState('profile');
+  const [inboxFilter, setInboxFilter] = useState<'all'|'receipt'|'promo'|'voucher'|'system'>('all');
+  const [inboxExpanded, setInboxExpanded] = useState<Record<string, boolean>>({});
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({});
   
@@ -290,6 +297,41 @@ export default function MyAccount() {
     queryKey: ['/api/user/profile'],
     enabled: !!user,
   });
+
+  // Seasonal promo code
+  const { data: seasonalPromo } = useQuery<{
+    active: boolean; season?: string; label?: { en: string; he: string };
+    code?: string; claimed?: boolean; expiresAt?: string; discountPercent?: number;
+  }>({
+    queryKey: ['/api/promo/seasonal'],
+    enabled: !!user,
+    retry: false,
+  });
+
+  // User inbox messages
+  const { data: inboxData } = useQuery<{ messages: any[] }>({
+    queryKey: ['/api/inbox/user'],
+    enabled: !!user,
+  });
+
+  // Birthday countdown helper
+  function daysUntilBirthday(birthday: string): number {
+    if (!birthday) return -1;
+    const today = new Date();
+    const [, monthStr, dayStr] = birthday.split('-');
+    const thisYear = new Date(today.getFullYear(), parseInt(monthStr, 10) - 1, parseInt(dayStr, 10));
+    if (thisYear < today) thisYear.setFullYear(today.getFullYear() + 1);
+    return Math.ceil((thisYear.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  }
+
+  function nextBirthdayDate(birthday: string): string {
+    if (!birthday) return '';
+    const today = new Date();
+    const [, monthStr, dayStr] = birthday.split('-');
+    const candidate = new Date(today.getFullYear(), parseInt(monthStr, 10) - 1, parseInt(dayStr, 10));
+    if (candidate < today) candidate.setFullYear(today.getFullYear() + 1);
+    return candidate.toLocaleDateString('he-IL', { day: 'numeric', month: 'long' });
+  }
 
   // Birthday promo code
   const { data: birthdayPromo, refetch: refetchBirthdayPromo } = useQuery<{
@@ -936,8 +978,8 @@ export default function MyAccount() {
             />
           </div>
 
-          <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="w-full bg-white border border-gray-100 rounded-2xl p-1 grid grid-cols-5">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="w-full bg-white border border-gray-100 rounded-2xl p-1 grid grid-cols-6">
               <TabsTrigger 
                 value="profile" 
                 className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900"
@@ -972,6 +1014,18 @@ export default function MyAccount() {
               >
                 <Dog className="w-4 h-4 mr-2" />
                 {isHebrew ? 'חיות מחמד' : 'Pets'}
+              </TabsTrigger>
+              <TabsTrigger
+                value="inbox"
+                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 relative"
+              >
+                <Inbox className="w-4 h-4 mr-2" />
+                {isHebrew ? 'הודעות' : 'Inbox'}
+                {(inboxData?.messages?.filter((m: any) => !m.readAt).length ?? 0) > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black text-white text-[9px] font-bold flex items-center justify-center">
+                    {inboxData!.messages.filter((m: any) => !m.readAt).length > 9 ? '9+' : inboxData!.messages.filter((m: any) => !m.readAt).length}
+                  </span>
+                )}
               </TabsTrigger>
             </TabsList>
 
@@ -1122,6 +1176,44 @@ export default function MyAccount() {
                     )}
                   </div>
 
+                  {/* ── Seasonal Promo Card ── */}
+                  {seasonalPromo?.active && seasonalPromo.code && (
+                    <div className="md:col-span-2 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-sky-50 p-5 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-blue-500" />
+                        <span className="text-sm font-semibold text-blue-700">
+                          {isHebrew ? seasonalPromo.label?.he : seasonalPromo.label?.en}
+                          {' '}— {seasonalPromo.discountPercent}%{' '}
+                          {isHebrew ? 'הנחה' : 'off'}
+                        </span>
+                      </div>
+                      {seasonalPromo.claimed ? (
+                        <p className="text-xs text-gray-500 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                          {isHebrew ? 'הקוד נוצל' : 'Code already used'}
+                        </p>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <code className="flex-1 bg-white border border-blue-200 rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-gray-900 tracking-widest">
+                              {seasonalPromo.code}
+                            </code>
+                            <Button
+                              size="sm" variant="outline"
+                              className="rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50 shrink-0"
+                              onClick={() => { navigator.clipboard.writeText(seasonalPromo.code!); toast({ title: isHebrew ? 'הקוד הועתק!' : 'Code copied!' }); }}
+                            >
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          <p className="text-xs text-gray-400">
+                            {isHebrew ? `תקף עד ${seasonalPromo.expiresAt} · חד-פעמי · אישי ולא ניתן להעברה` : `Valid until ${seasonalPromo.expiresAt} · Single use · Personal, non-transferable`}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  )}
+
                   {/* ── Birthday Promo Code Card ── */}
                   {birthdayPromo && !('error' in birthdayPromo) && (
                     <div className="md:col-span-2 rounded-2xl border border-pink-100 bg-gradient-to-br from-pink-50 to-rose-50 p-5 space-y-3">
@@ -1218,6 +1310,65 @@ export default function MyAccount() {
                   </div>
                 </div>
               </div>
+
+              {/* ── Inbox Preview Card ── */}
+              {inboxData?.messages && inboxData.messages.length > 0 && (
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <Bell className="w-5 h-5 text-gray-500" />
+                      {isHebrew ? 'הודעות אחרונות' : 'Recent Messages'}
+                      {inboxData.messages.filter((m: any) => !m.readAt).length > 0 && (
+                        <span className="bg-black text-white text-xs rounded-full px-2 py-0.5">
+                          {inboxData.messages.filter((m: any) => !m.readAt).length}
+                        </span>
+                      )}
+                    </h3>
+                    <button
+                      onClick={() => setActiveTab('inbox')}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      {isHebrew ? 'כל ההודעות' : 'View all'}
+                    </button>
+                  </div>
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+                    {inboxData.messages.slice(0, 5).map((msg: any) => {
+                      const typeLabels: Record<string, string> = {
+                        receipt: isHebrew ? 'קבלה' : 'Receipt',
+                        promo: isHebrew ? 'מבצע' : 'Promo',
+                        system: isHebrew ? 'מערכת' : 'System',
+                        voucher: isHebrew ? 'שובר' : 'Voucher',
+                      };
+                      const typeColors: Record<string, string> = {
+                        receipt: 'bg-green-100 text-green-700',
+                        promo:   'bg-pink-100 text-pink-700',
+                        system:  'bg-gray-100 text-gray-600',
+                        voucher: 'bg-blue-100 text-blue-700',
+                      };
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`flex items-start gap-3 rounded-xl p-3 transition-colors ${msg.readAt ? 'bg-white hover:bg-gray-50' : 'bg-gray-50 hover:bg-gray-100'}`}
+                        >
+                          <span className={`shrink-0 text-xs font-medium rounded-full px-2 py-0.5 mt-0.5 ${typeColors[msg.type] || 'bg-gray-100 text-gray-600'}`}>
+                            {typeLabels[msg.type] || msg.type}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm truncate ${msg.readAt ? 'text-gray-600 font-normal' : 'text-gray-900 font-medium'}`}>
+                              {msg.title}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {msg.createdAt ? new Date(msg.createdAt).toLocaleDateString('he-IL') : ''}
+                            </p>
+                          </div>
+                          {!msg.readAt && <span className="w-2 h-2 rounded-full bg-black shrink-0 mt-1.5" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
             </TabsContent>
 
             <TabsContent value="preferences" className="mt-6 space-y-6">
@@ -2155,6 +2306,74 @@ export default function MyAccount() {
 
             {/* ── PETS TAB ── */}
             <TabsContent value="pets" className="mt-6 space-y-4">
+
+              {/* ── Birthday Countdown Hub ── */}
+              {(() => {
+                const birthdayEntries: { id: string; name: string; birthday: string; emoji: string; isOwner?: boolean }[] = [];
+                if (profile?.birthdate) birthdayEntries.push({ id: 'owner', name: isHebrew ? 'יום ההולדת שלי' : 'My Birthday', birthday: profile.birthdate, emoji: '🎂', isOwner: true });
+                (petsData?.pets || []).forEach((p: any) => { if (p.birthday) birthdayEntries.push({ id: p.id, name: p.name, birthday: p.birthday, emoji: p.species === 'cat' ? '🐱' : p.species === 'bird' ? '🐦' : p.species === 'fish' ? '🐠' : p.species === 'rabbit' ? '🐰' : '🐶' }); });
+                const sorted = birthdayEntries.sort((a, b) => daysUntilBirthday(a.birthday) - daysUntilBirthday(b.birthday));
+
+                if (sorted.length === 0) return null;
+                return (
+                  <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                    <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Cake className="w-5 h-5 text-pink-500" />
+                      {isHebrew ? 'ימי הולדת קרובים' : 'Upcoming Birthdays'}
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {sorted.map(entry => {
+                        const days = daysUntilBirthday(entry.birthday);
+                        const dateStr = nextBirthdayDate(entry.birthday);
+                        const isToday = days === 0 || days === 365;
+                        const isSoon = days <= 14;
+                        const calUrl = (() => {
+                          const [, m, d] = entry.birthday.split('-');
+                          const today = new Date();
+                          const yr = today.getFullYear() + (daysUntilBirthday(entry.birthday) > 300 ? 1 : 0);
+                          const dateStr = `${yr}${m.padStart(2,'0')}${d.padStart(2,'0')}`;
+                          const title = encodeURIComponent(`יום הולדת של ${entry.name} 🎂`);
+                          return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateStr}/${dateStr}`;
+                        })();
+                        return (
+                          <div key={entry.id} className={`rounded-xl border p-4 flex flex-col gap-2 ${isToday ? 'border-pink-300 bg-pink-50' : isSoon ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-gray-50'}`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-2xl">{entry.emoji}</span>
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-900">{entry.name}</p>
+                                  <p className="text-xs text-gray-500">{dateStr}</p>
+                                </div>
+                              </div>
+                              {isToday ? (
+                                <span className="flex items-center gap-1 text-xs font-semibold text-pink-600 bg-pink-100 rounded-full px-2 py-0.5">
+                                  <PartyPopper className="w-3 h-3" />
+                                  {isHebrew ? 'היום!' : 'Today!'}
+                                </span>
+                              ) : (
+                                <span className={`flex items-center gap-1 text-xs font-semibold rounded-full px-2 py-0.5 ${isSoon ? 'text-amber-700 bg-amber-100' : 'text-gray-600 bg-gray-200'}`}>
+                                  <Timer className="w-3 h-3" />
+                                  {isHebrew ? `עוד ${days} ימים` : `${days}d`}
+                                </span>
+                              )}
+                            </div>
+                            <a
+                              href={calUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1"
+                            >
+                              <CalendarCheck className="w-3 h-3" />
+                              {isHebrew ? 'הוסף ליומן Google' : 'Add to Google Calendar'}
+                            </a>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="bg-white rounded-2xl border border-gray-100 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
@@ -2364,6 +2583,133 @@ export default function MyAccount() {
                   </div>
                 </div>
               )}
+            </TabsContent>
+
+            {/* ── INBOX TAB ── */}
+            <TabsContent value="inbox" className="mt-6 space-y-4">
+              <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                    <Inbox className="w-5 h-5 text-gray-500" />
+                    {isHebrew ? 'תיבת ההודעות שלי' : 'My Inbox'}
+                    {(inboxData?.messages?.filter((m: any) => !m.readAt).length ?? 0) > 0 && (
+                      <span className="bg-black text-white text-xs font-bold rounded-full px-2 py-0.5">
+                        {inboxData!.messages.filter((m: any) => !m.readAt).length} {isHebrew ? 'חדש' : 'new'}
+                      </span>
+                    )}
+                  </h3>
+                  <div className="flex gap-2">
+                    {(['all', 'receipt', 'promo', 'voucher', 'system'] as const).map(f => (
+                      <button
+                        key={f}
+                        onClick={() => setInboxFilter(f)}
+                        className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${inboxFilter === f ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                      >
+                        {f === 'all' ? (isHebrew ? 'הכל' : 'All')
+                          : f === 'receipt' ? (isHebrew ? 'קבלות' : 'Receipts')
+                          : f === 'promo' ? (isHebrew ? 'מבצעים' : 'Promos')
+                          : f === 'voucher' ? (isHebrew ? 'שוברים' : 'Vouchers')
+                          : (isHebrew ? 'מערכת' : 'System')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {!inboxData ? (
+                  <div className="py-10 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-gray-300" /></div>
+                ) : (inboxData.messages?.length === 0) ? (
+                  <div className="py-14 text-center text-gray-400">
+                    <Inbox className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                    <p className="text-sm">{isHebrew ? 'אין הודעות עדיין' : 'No messages yet'}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
+                    {(inboxData.messages || [])
+                      .filter((m: any) => inboxFilter === 'all' || m.type === inboxFilter)
+                      .map((msg: any) => {
+                        const typeLabels: Record<string, string> = {
+                          receipt: isHebrew ? 'קבלה' : 'Receipt',
+                          promo:   isHebrew ? 'מבצע' : 'Promo',
+                          system:  isHebrew ? 'מערכת' : 'System',
+                          voucher: isHebrew ? 'שובר' : 'Voucher',
+                        };
+                        const typeColors: Record<string, string> = {
+                          receipt: 'bg-green-100 text-green-700 border-green-200',
+                          promo:   'bg-pink-100 text-pink-700 border-pink-200',
+                          system:  'bg-gray-100 text-gray-600 border-gray-200',
+                          voucher: 'bg-blue-100 text-blue-700 border-blue-200',
+                        };
+
+                        return (
+                          <div
+                            key={msg.id}
+                            className={`rounded-xl border p-4 transition-all cursor-pointer ${msg.readAt ? 'border-gray-100 hover:border-gray-200' : 'border-gray-200 bg-gray-50 hover:bg-white'}`}
+                            onClick={async () => {
+                              setInboxExpanded(prev => ({ ...prev, [msg.id]: !prev[msg.id] }));
+                              if (!msg.readAt) {
+                                try {
+                                  await apiRequest('PATCH', `/api/inbox/user/${msg.id}/read`);
+                                  queryClient.invalidateQueries({ queryKey: ['/api/inbox/user'] });
+                                } catch {}
+                              }
+                            }}
+                          >
+                            <div className="flex items-start gap-3">
+                              <span className={`shrink-0 text-xs font-medium rounded-full px-2 py-0.5 border mt-0.5 ${typeColors[msg.type] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                {typeLabels[msg.type] || msg.type}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm ${msg.readAt ? 'text-gray-700 font-normal' : 'text-gray-900 font-semibold'}`}>
+                                  {msg.title}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                  {msg.createdAt ? new Date(msg.createdAt).toLocaleString('he-IL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {!msg.readAt && <span className="w-2 h-2 rounded-full bg-black" />}
+                                <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${inboxExpanded[msg.id] ? 'rotate-90' : ''}`} />
+                              </div>
+                            </div>
+                            {inboxExpanded[msg.id] && (
+                              <div className="mt-3 pt-3 border-t border-gray-100">
+                                <div
+                                  className="text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none"
+                                  dangerouslySetInnerHTML={{ __html: msg.bodyHtml || '' }}
+                                />
+                                {msg.meta?.voucherCode && (
+                                  <div className="mt-3 flex items-center gap-2">
+                                    <code className="flex-1 bg-gray-100 rounded-lg px-3 py-2 text-sm font-mono font-bold tracking-widest text-gray-900 text-center">
+                                      {msg.meta.voucherCode}
+                                    </code>
+                                    <Button
+                                      size="sm" variant="outline"
+                                      className="rounded-lg shrink-0"
+                                      onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(msg.meta.voucherCode!); toast({ title: isHebrew ? 'הקוד הועתק!' : 'Code copied!' }); }}
+                                    >
+                                      <Copy className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                )}
+                                {msg.ctaUrl && msg.ctaText && (
+                                  <a
+                                    href={msg.ctaUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-3 inline-block bg-black text-white text-xs font-medium rounded-lg px-4 py-2 hover:bg-gray-800 transition-colors"
+                                    onClick={e => e.stopPropagation()}
+                                  >
+                                    {msg.ctaText}
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
             </TabsContent>
 
           </Tabs>
