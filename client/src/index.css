@@ -927,6 +927,10 @@ textarea:focus-visible {
 }
 
 /* iOS Fix: Remove gray hairline and borders */
+html {
+  scroll-behavior: smooth;
+}
+
 html, 
 body {
   margin: 0;
@@ -973,13 +977,17 @@ textarea::placeholder {
 
 /* Ensure 48px minimum touch targets for accessibility */
 button, 
-a, 
 .clickable,
 [role="button"],
 input[type="checkbox"],
 input[type="radio"] {
   min-height: 48px;
-  min-width: 48px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Anchor tags: tap-highlight only; no forced min-height/width which breaks inline text and captures swipe gestures */
+a {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }

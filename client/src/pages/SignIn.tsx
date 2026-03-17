@@ -1354,33 +1354,41 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   return (
     <Layout language={language} onLanguageChange={onLanguageChange}>
       <div className="min-h-screen bg-white">
-        <div className="flex items-center justify-center px-4 sm:px-6 md:px-8 py-8 sm:py-12">
+        <div className="flex flex-col items-center px-4 sm:px-6 md:px-8 py-8 sm:py-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
           className="w-full max-w-lg lg:max-w-xl"
         >
-          <div className="bg-white p-6 sm:p-10 lg:p-12 space-y-6 relative border border-neutral-200 rounded-sm shadow-[0_2px_20px_rgba(0,0,0,0.06)]">
-          <button
-            onClick={() => navigatePostLogin()}
-            className="absolute top-4 right-4 p-2 rounded-full hover:bg-neutral-100 transition-colors z-10"
-            aria-label={t('common.close', language)}
-            data-testid="button-close-signin"
-          >
-            <X className="w-4 h-4 text-neutral-400" />
-          </button>
-
+          <div className="bg-white space-y-6 relative border border-neutral-900 shadow-[0_4px_24px_rgba(0,0,0,0.12)] overflow-hidden">
+          <div className="bg-black px-6 sm:px-10 lg:px-12 pt-5 pb-4 flex items-center justify-between">
+            <div />
+            <div className="flex-1 text-center">
+              <h1 className="text-lg sm:text-xl font-light tracking-[0.2em] text-white uppercase" style={{ fontFamily: "'Cormorant Garamond','Playfair Display',serif" }}>
+                PetWash™
+              </h1>
+            </div>
+            <button
+              onClick={() => navigatePostLogin()}
+              className="p-1 rounded hover:bg-white/10 transition-colors"
+              aria-label={t('common.close', language)}
+              data-testid="button-close-signin"
+            >
+              <X className="w-4 h-4 text-white/60" />
+            </button>
+          </div>
+          <div className="px-6 sm:px-10 lg:px-12 pb-6 sm:pb-10 lg:pb-12 space-y-6 relative">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1, duration: 0.4 }}
-            className="text-center space-y-3 pt-2"
+            className="text-center space-y-1 pt-2"
           >
-            <h1 className="text-2xl sm:text-3xl font-light tracking-wide text-neutral-900 uppercase" style={{ fontFamily: "'Cormorant Garamond', 'Playfair Display', serif", letterSpacing: '0.15em' }}>
+            <h2 className="text-xl sm:text-2xl font-light tracking-wide text-neutral-900 uppercase" style={{ fontFamily: "'Cormorant Garamond', 'Playfair Display', serif", letterSpacing: '0.12em' }}>
               {t('signin.welcomeBack', language)}
-            </h1>
-            <p className="text-neutral-500 text-sm tracking-wider uppercase" style={{ letterSpacing: '0.12em' }}>
+            </h2>
+            <p className="text-neutral-600 text-xs tracking-wider uppercase" style={{ letterSpacing: '0.1em' }}>
               {t('signin.signInContinue', language)}
             </p>
           </motion.div>
@@ -1450,7 +1458,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
               <div className="relative flex items-center py-2">
                 <div className="flex-1 border-t border-neutral-200" />
-                <span className="px-3 text-xs text-neutral-400 tracking-wider uppercase">
+                <span className="px-3 text-xs text-neutral-500 tracking-wider uppercase">
                   {language === 'he' ? 'או' : 'or'}
                 </span>
                 <div className="flex-1 border-t border-neutral-200" />
@@ -1473,7 +1481,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             >
               <button
                 onClick={() => { setSelectedIntent(null); localStorage.removeItem('signup_intent'); }}
-                className="text-xs text-neutral-400 hover:text-neutral-700 tracking-wider uppercase transition-colors flex items-center gap-1"
+                className="text-xs text-neutral-600 hover:text-neutral-900 tracking-wider uppercase transition-colors flex items-center gap-1"
                 data-testid="button-change-intent"
               >
                 <ArrowLeft className="w-3 h-3" />
@@ -1661,7 +1669,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               <div className="w-full border-t border-neutral-200"></div>
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="px-4 bg-white text-neutral-400 uppercase tracking-widest">
+              <span className="px-4 bg-white text-neutral-500 uppercase tracking-widest">
                 {t('signin.or', language)}
               </span>
             </div>
@@ -1780,7 +1788,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                         dir="ltr"
                         data-testid="input-verification-code"
                       />
-                      <p className="text-[11px] text-neutral-400 text-center tracking-wide">
+                      <p className="text-[11px] text-neutral-600 text-center tracking-wide">
                         {language === 'he' ? 'הזן את הקוד בן 6 הספרות שנשלח ל-SMS' : 'Enter the 6-digit code sent to your phone'}
                       </p>
                     </div>
@@ -1810,7 +1818,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                         setConfirmationResult(null);
                         setVerificationCode('');
                       }}
-                      className="w-full text-xs text-neutral-400 hover:text-neutral-700 tracking-wider uppercase py-2 transition-colors"
+                      className="w-full text-xs text-neutral-600 hover:text-neutral-900 tracking-wider uppercase py-2 transition-colors"
                       data-testid="button-resend-code"
                     >
                       {language === 'he' ? 'שלח קוד חדש' : 'Resend Code'}
@@ -2073,7 +2081,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             >
               <button
                 onClick={() => setMagicLinkMode(true)}
-                className="text-xs text-neutral-400 hover:text-neutral-700 tracking-wider uppercase transition-colors"
+                className="text-xs text-neutral-600 hover:text-neutral-900 tracking-wider uppercase transition-colors"
                 data-testid="link-magic-link"
               >
                 {t('signin.preferMagicLink', language)}
@@ -2081,6 +2089,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             </motion.div>
           )}
 
+          </div>
           </div>
         </motion.div>
       </div>
