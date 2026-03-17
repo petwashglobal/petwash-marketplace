@@ -379,19 +379,18 @@ export async function signInWithPasskeyConditional(): Promise<boolean> {
       return false;
     }
 
-    // Get authentication options from server (requires email for new API)
-    const email = (document.querySelector('input[type="email"]') as HTMLInputElement)?.value;
-    if (!email) {
-      console.log('Conditional UI: No email entered yet');
-      return false;
-    }
+    // Conditional UI uses discoverable credentials — email is NOT required.
+    // The browser autofills the passkey from the RP ID alone (Face ID / fingerprint picker).
+    // Optionally hint with email if already entered, but never block on it.
+    const emailInput = document.querySelector('input[type="email"]') as HTMLInputElement | null;
+    const email = emailInput?.value?.trim() || undefined;
 
     const optionsResponse = await fetch(getApiUrl('/api/webauthn/login/options'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify(email ? { email } : {}),
       credentials: 'include',
     });
 
@@ -400,7 +399,7 @@ export async function signInWithPasskeyConditional(): Promise<boolean> {
       return false;
     }
 
-    const { options, challengeKey } = await optionsResponse.json();
+    const { options, challengeKey, discoverable } = await optionsResponse.json();
     
     // CONDITIONAL UI: This is the key to iPhone Face ID!
     // useBrowserAutofill: true enables mediation: "conditional"
@@ -410,6 +409,7 @@ export async function signInWithPasskeyConditional(): Promise<boolean> {
     });
 
     // Verify authentication with server
+    // Pass discoverable flag so server uses the correct verification path
     const verifyResponse = await fetch(getApiUrl('/api/webauthn/login/verify'), {
       method: 'POST',
       headers: {
@@ -419,6 +419,7 @@ export async function signInWithPasskeyConditional(): Promise<boolean> {
       body: JSON.stringify({
         challengeKey,
         response: credential,
+        discoverable: discoverable || false,
       }),
     });
 

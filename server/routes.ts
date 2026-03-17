@@ -92,7 +92,7 @@ import marketplaceRoutes from "./routes/marketplace";
 import identityServiceRoutes from "./routes/identity-service";
 import nayaxWebhooksRoutes from "./routes/nayax-webhooks";
 import nayaxMonyxEventsRoutes from "./routes/nayax-monyx-events";
-import webauthnRoutes from "./routes/webauthn";
+// import webauthnRoutes from "./routes/webauthn"; // v1 legacy — disabled, client uses /api/webauthn/* (inline handlers)
 import gpsTrackingRoutes from "./routes/gps-tracking";
 import fcmRoutes from "./routes/fcm";
 import enterpriseCorporateRoutes from "./routes/enterprise-corporate";
@@ -9644,8 +9644,9 @@ self.addEventListener('notificationclick', (event) => {
   // Identity Service V2 - Modern OAuth 2.1/OIDC Authentication (P0 PRIORITY)
   app.use('/auth', identityServiceRoutes);
 
-  // WebAuthn/Passkey - Biometric Authentication (Touch ID/Face ID)
-  app.use('/webauthn', webauthnLimiter, webauthnRoutes);
+  // WebAuthn/Passkey - Legacy router (v1) kept for reference only.
+  // All active biometric endpoints are served via /api/webauthn/* (inline handlers above).
+  // app.use('/webauthn', webauthnLimiter, webauthnRoutes); // DISABLED — dead code, client uses /api/webauthn
   
   // The PetWash Circle - Social Network (Instagram-style with AI moderation)
   // Note: Using /api/social prefix to avoid catching other /api routes

@@ -1681,7 +1681,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
-                  autoComplete="email"
+                  autoComplete="username webauthn"
                   className="h-12 text-sm rounded-none border border-neutral-200 bg-white focus:border-neutral-900 focus:ring-0 text-neutral-900 placeholder:text-neutral-400 transition-all"
                   data-testid="input-pin-email"
                 />
@@ -1852,7 +1852,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
-                  autoComplete="email"
+                  autoComplete="username webauthn"
                   className="h-12 text-sm rounded-none border border-neutral-200 bg-white focus:border-neutral-900 focus:ring-0 text-neutral-900 placeholder:text-neutral-400 transition-all"
                   data-testid="input-email"
                 />
