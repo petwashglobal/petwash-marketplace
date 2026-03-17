@@ -245,7 +245,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
       case 'admin': return '/dashboard';
       case 'management': return '/dashboard';
       case 'super_admin': return '/dashboard';
-      default: return '/dashboard';
+      default: return '/my-account';
     }
   };
 

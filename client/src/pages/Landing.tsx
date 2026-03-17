@@ -31,7 +31,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
       case 'admin':
       case 'management':
       case 'super_admin': return '/dashboard';
-      default: return '/home';
+      default: return '/my-account';
     }
   };
   const [heroAnimated, setHeroAnimated] = useState(false);
