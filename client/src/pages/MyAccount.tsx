@@ -401,6 +401,35 @@ export default function MyAccount() {
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateNoHyphens}/${dateNoHyphens}&details=${details}&crm=AVAILABLE`;
   }
 
+  function buildPetBirthdayCalendarUrl(petName: string, birthday: string, emoji: string): string {
+    const today = new Date();
+    const [, monthStr, dayStr] = birthday.split('-');
+    const month = parseInt(monthStr, 10) - 1;
+    const day = parseInt(dayStr, 10);
+    let year = today.getFullYear();
+    const next = new Date(year, month, day);
+    if (next < today) year += 1;
+    const dateStr = `${year}${monthStr}${dayStr}`;
+    const title = encodeURIComponent(`${emoji} יום הולדת של ${petName} 🎂`);
+    const details = encodeURIComponent(`PetWash™: יום הולדת של ${petName}! זמן לפינוק 🐾`);
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateStr}/${dateStr}&details=${details}&recur=RRULE:FREQ=YEARLY`;
+  }
+
+  const PET_SPECIES: { value: string; labelHe: string; labelEn: string; emoji: string }[] = [
+    { value: 'dog',     labelHe: 'כלב',      labelEn: 'Dog',      emoji: '🐶' },
+    { value: 'cat',     labelHe: 'חתול',     labelEn: 'Cat',      emoji: '🐱' },
+    { value: 'rabbit',  labelHe: 'ארנב',     labelEn: 'Rabbit',   emoji: '🐰' },
+    { value: 'bird',    labelHe: 'ציפור',    labelEn: 'Bird',     emoji: '🐦' },
+    { value: 'fish',    labelHe: 'דג',       labelEn: 'Fish',     emoji: '🐠' },
+    { value: 'hamster', labelHe: 'אוגר',     labelEn: 'Hamster',  emoji: '🐹' },
+    { value: 'turtle',  labelHe: 'צב',       labelEn: 'Turtle',   emoji: '🐢' },
+    { value: 'other',   labelHe: 'אחר',      labelEn: 'Other',    emoji: '🐾' },
+  ];
+
+  function getPetEmoji(species: string): string {
+    return PET_SPECIES.find(s => s.value === species)?.emoji ?? '🐾';
+  }
+
   function handleOpenPetForm(pet?: any) {
     if (pet) {
       setEditingPet(pet);
@@ -2378,170 +2407,246 @@ export default function MyAccount() {
                 );
               })()}
 
+              {/* ── My Pets — Luxury Cards ── */}
               <div className="bg-white rounded-2xl border border-gray-100 p-6">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-5">
                   <div>
-                    <h3 className="text-base font-semibold text-gray-900">{isHebrew ? 'חיות המחמד שלי 🐾' : 'My Pets 🐾'}</h3>
-                    <p className="text-sm text-gray-500 mt-0.5">{isHebrew ? 'נהל פרופילים, חיסונים ותזכורות' : 'Manage profiles, vaccines & reminders'}</p>
+                    <h3 className="text-base font-bold text-gray-900 tracking-tight">{isHebrew ? 'חיות המחמד שלי 🐾' : 'My Pets 🐾'}</h3>
+                    <p className="text-xs text-gray-400 mt-0.5">{isHebrew ? 'פרופיל · חיסונים · יומן הולדת' : 'Profile · Vaccines · Birthday Calendar'}</p>
                   </div>
-                  <Button
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleOpenPetForm()}
-                    size="sm"
-                    className="bg-black text-white hover:bg-gray-800 rounded-xl gap-1.5"
+                    onKeyDown={e => e.key === 'Enter' && handleOpenPetForm()}
+                    style={{ background: '#000000', cursor: 'pointer' }}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-medium"
                   >
                     <Plus className="w-4 h-4" />
                     {isHebrew ? 'הוסף חיה' : 'Add Pet'}
-                  </Button>
+                  </div>
                 </div>
 
                 {petsLoading ? (
-                  <div className="py-10 flex justify-center">
-                    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                  <div className="py-12 flex justify-center">
+                    <Loader2 className="w-7 h-7 animate-spin text-gray-300" />
                   </div>
                 ) : (!petsData?.pets || petsData.pets.length === 0) ? (
-                  <div className="py-10 text-center text-gray-400">
-                    <Dog className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                    <p className="text-sm">{isHebrew ? 'טרם נוספו חיות מחמד' : 'No pets added yet'}</p>
+                  <div className="py-12 text-center">
+                    <div className="w-20 h-20 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center mx-auto mb-4">
+                      <Dog className="w-10 h-10 text-gray-200" />
+                    </div>
+                    <p className="text-sm font-medium text-gray-400">{isHebrew ? 'טרם נוספו חיות מחמד' : 'No pets added yet'}</p>
+                    <p className="text-xs text-gray-300 mt-1">{isHebrew ? 'לחץ "הוסף חיה" כדי להתחיל' : 'Tap "Add Pet" to get started'}</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {petsData.pets.map((pet: any) => (
-                      <div key={pet.id} className="border border-gray-100 rounded-2xl p-4 bg-gray-50/60">
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <p className="font-semibold text-gray-900 text-sm">{pet.name}</p>
-                            <p className="text-xs text-gray-500 capitalize">{pet.species}{pet.breed ? ` — ${pet.breed}` : ''}</p>
-                            {pet.birthday && (
-                              <p className="text-xs text-gray-400 mt-0.5">
-                                🎂 {isHebrew ? 'יום הולדת:' : 'Birthday:'} {pet.birthday}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="rounded-xl h-8 px-3 text-xs"
-                              onClick={() => handleOpenPetForm(pet)}
-                            >
-                              <Pencil className="w-3 h-3 mr-1" />
-                              {isHebrew ? 'ערוך' : 'Edit'}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="rounded-xl h-8 px-3 text-xs text-red-500 border-red-200 hover:bg-red-50"
-                              onClick={() => deletePetMutation.mutate(pet.id)}
-                              disabled={deletePetMutation.isPending}
-                            >
-                              <Trash2 className="w-3 h-3 mr-1" />
-                              {isHebrew ? 'הסר' : 'Remove'}
-                            </Button>
-                          </div>
-                        </div>
-
-                        {pet.vaccineDates && Object.keys(pet.vaccineDates).length > 0 && (
-                          <div className="mt-3 border-t border-gray-100 pt-3">
-                            <p className="text-xs font-medium text-gray-600 mb-2">{isHebrew ? 'חיסונים' : 'Vaccines'}</p>
-                            <div className="grid grid-cols-1 gap-1.5">
-                              {Object.entries(pet.vaccineDates).map(([vKey, vVal]: [string, any]) => {
-                                const label = VACCINE_LABELS[vKey] ?? { en: vKey, he: vKey };
-                                return (
-                                  <div key={vKey} className="flex items-center justify-between bg-white rounded-xl px-3 py-2 text-xs border border-gray-100">
-                                    <span className="text-gray-700 font-medium">{isHebrew ? label.he : label.en}</span>
-                                    <div className="flex items-center gap-2 text-gray-500">
-                                      {vVal?.lastGiven && <span>{isHebrew ? 'ניתן:' : 'Given:'} {vVal.lastGiven}</span>}
-                                      {vVal?.dueDate && (
-                                        <>
-                                          <span className="text-amber-500">{isHebrew ? 'מועד:' : 'Due:'} {vVal.dueDate}</span>
-                                          <a
-                                            href={buildGoogleCalendarUrl(pet.name, isHebrew ? label.he : label.en, vVal.dueDate)}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-blue-500 hover:underline flex items-center gap-0.5"
-                                            title={isHebrew ? 'הוסף ליומן Google' : 'Add to Google Calendar'}
-                                          >
-                                            <CalendarCheck className="w-3 h-3" />
-                                          </a>
-                                        </>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
+                    {petsData.pets.map((pet: any) => {
+                      const emoji = getPetEmoji(pet.species);
+                      const bDays = pet.birthday ? daysUntilBirthday(pet.birthday) : -1;
+                      const bDate = pet.birthday ? nextBirthdayDate(pet.birthday) : '';
+                      const birthdayUrgent = bDays >= 0 && bDays <= 7;
+                      const birthdaySoon = bDays >= 0 && bDays <= 30;
+                      const hasVaccines = pet.vaccineDates && Object.keys(pet.vaccineDates).some(k => pet.vaccineDates[k]?.lastGiven || pet.vaccineDates[k]?.dueDate);
+                      return (
+                        <div key={pet.id} className="rounded-2xl border border-gray-100 overflow-hidden">
+                          {/* Card header */}
+                          <div className="flex items-center justify-between px-4 py-3.5 bg-gray-50/70">
+                            <div className="flex items-center gap-3">
+                              <div className="w-11 h-11 rounded-full bg-white border border-gray-100 shadow-sm flex items-center justify-center text-2xl select-none">
+                                {emoji}
+                              </div>
+                              <div>
+                                <p className="font-bold text-gray-900 text-sm leading-tight">{pet.name}</p>
+                                <p className="text-xs text-gray-400 capitalize">
+                                  {PET_SPECIES.find(s => s.value === pet.species)?.[isHebrew ? 'labelHe' : 'labelEn'] ?? pet.species}
+                                  {pet.breed ? ` · ${pet.breed}` : ''}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleOpenPetForm(pet)}
+                                className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:border-gray-300 transition-colors shadow-sm"
+                                title={isHebrew ? 'ערוך' : 'Edit'}
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => deletePetMutation.mutate(pet.id)}
+                                disabled={deletePetMutation.isPending}
+                                className="w-8 h-8 rounded-full bg-white border border-red-100 flex items-center justify-center text-red-300 hover:text-red-500 hover:border-red-300 transition-colors shadow-sm"
+                                title={isHebrew ? 'הסר' : 'Remove'}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           </div>
-                        )}
-                      </div>
-                    ))}
+
+                          {/* Birthday row */}
+                          {pet.birthday && (
+                            <div className={`flex items-center justify-between px-4 py-3 border-t ${birthdayUrgent ? 'bg-amber-50 border-amber-100' : birthdaySoon ? 'bg-orange-50/40 border-orange-100/60' : 'bg-white border-gray-100'}`}>
+                              <div className="flex items-center gap-2">
+                                <span className="text-base">{birthdayUrgent ? '🎉' : '🎂'}</span>
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-700">
+                                    {isHebrew ? 'יום הולדת' : 'Birthday'} · {bDate}
+                                  </p>
+                                  <p className={`text-[11px] font-medium ${birthdayUrgent ? 'text-amber-600' : birthdaySoon ? 'text-orange-500' : 'text-gray-400'}`}>
+                                    {bDays === 0 ? (isHebrew ? '🎊 היום!' : '🎊 Today!') : `${bDays} ${isHebrew ? 'ימים' : 'days'}`}
+                                  </p>
+                                </div>
+                              </div>
+                              <a
+                                href={buildPetBirthdayCalendarUrl(pet.name, pet.birthday, emoji)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5 hover:bg-blue-100 transition-colors"
+                                title={isHebrew ? 'הוסף ליומן Google (חוזר שנתי)' : 'Add to Google Calendar (yearly)'}
+                              >
+                                <CalendarCheck className="w-3.5 h-3.5" />
+                                {isHebrew ? 'יומן' : 'Calendar'}
+                              </a>
+                            </div>
+                          )}
+
+                          {/* Vaccines */}
+                          {hasVaccines && (
+                            <div className="px-4 py-3 border-t border-gray-100 bg-white">
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2.5">{isHebrew ? 'חיסונים' : 'Vaccines'}</p>
+                              <div className="space-y-2">
+                                {Object.entries(pet.vaccineDates).filter(([, vVal]: [string, any]) => vVal?.lastGiven || vVal?.dueDate).map(([vKey, vVal]: [string, any]) => {
+                                  const label = VACCINE_LABELS[vKey] ?? { en: vKey, he: vKey };
+                                  const isDueSoon = vVal?.dueDate && daysUntilBirthday(vVal.dueDate) <= 30;
+                                  return (
+                                    <div key={vKey} className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-xs border ${isDueSoon ? 'bg-amber-50 border-amber-100' : 'bg-gray-50 border-gray-100'}`}>
+                                      <span className="font-semibold text-gray-700">💉 {isHebrew ? label.he : label.en}</span>
+                                      <div className="flex items-center gap-2">
+                                        {vVal?.lastGiven && <span className="text-gray-400">{isHebrew ? 'ניתן' : 'Given'}: {vVal.lastGiven}</span>}
+                                        {vVal?.dueDate && (
+                                          <>
+                                            <span className={`font-medium ${isDueSoon ? 'text-amber-600' : 'text-gray-500'}`}>{isHebrew ? 'מועד' : 'Due'}: {vVal.dueDate}</span>
+                                            <a
+                                              href={buildGoogleCalendarUrl(pet.name, isHebrew ? label.he : label.en, vVal.dueDate)}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-blue-500 hover:text-blue-700"
+                                              title={isHebrew ? 'הוסף ליומן Google' : 'Add to Google Calendar'}
+                                            >
+                                              <CalendarCheck className="w-3.5 h-3.5" />
+                                            </a>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
 
+              {/* ── Pet Form Modal ── */}
               {showPetForm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-                  <div className="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-gray-900 text-base">
-                        {editingPet ? (isHebrew ? 'עריכת חיית מחמד' : 'Edit Pet') : (isHebrew ? 'הוספת חיית מחמד' : 'Add a Pet')}
-                      </h3>
-                      <button onClick={() => setShowPetForm(false)} className="text-gray-400 hover:text-gray-600">
-                        <X className="w-5 h-5" />
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4">
+                  <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-md max-h-[92vh] overflow-y-auto">
+                    {/* Modal header */}
+                    <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
+                      <div>
+                        <h3 className="font-bold text-gray-900 text-base">
+                          {editingPet ? (isHebrew ? '✏️ עריכת חיית מחמד' : '✏️ Edit Pet') : (isHebrew ? '🐾 הוספת חיית מחמד' : '🐾 Add a Pet')}
+                        </h3>
+                        <p className="text-xs text-gray-400 mt-0.5">{isHebrew ? 'מלא את פרטי החיה' : 'Fill in your pet\'s details'}</p>
+                      </div>
+                      <button onClick={() => setShowPetForm(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="px-6 py-5 space-y-5">
+                      {/* Name */}
                       <div>
-                        <label className="text-xs font-medium text-gray-600 block mb-1">{isHebrew ? 'שם החיה *' : 'Pet Name *'}</label>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1.5">{isHebrew ? 'שם החיה *' : 'Pet Name *'}</label>
                         <input
                           type="text"
                           value={petFormData.name}
                           onChange={e => setPetFormData((p: any) => ({ ...p, name: e.target.value }))}
-                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                          placeholder={isHebrew ? 'לדוגמה: מקס' : 'e.g. Max'}
+                          className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-black transition-colors"
+                          placeholder={isHebrew ? 'לדוגמה: מקס, בלה, קוקי...' : 'e.g. Max, Luna, Charlie...'}
+                          style={{ fontSize: '16px' }}
+                          dir="rtl"
+                          autoFocus
                         />
                       </div>
+
+                      {/* Species selector — icon grid */}
                       <div>
-                        <label className="text-xs font-medium text-gray-600 block mb-1">{isHebrew ? 'סוג החיה' : 'Species'}</label>
-                        <select
-                          value={petFormData.species}
-                          onChange={e => setPetFormData((p: any) => ({ ...p, species: e.target.value }))}
-                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black bg-white"
-                        >
-                          <option value="dog">{isHebrew ? 'כלב 🐶' : 'Dog 🐶'}</option>
-                          <option value="cat">{isHebrew ? 'חתול 🐱' : 'Cat 🐱'}</option>
-                          <option value="other">{isHebrew ? 'אחר' : 'Other'}</option>
-                        </select>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">{isHebrew ? 'סוג החיה' : 'Species'}</label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {PET_SPECIES.map(sp => (
+                            <button
+                              key={sp.value}
+                              type="button"
+                              onClick={() => setPetFormData((p: any) => ({ ...p, species: sp.value }))}
+                              className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all text-center ${petFormData.species === sp.value ? 'border-black bg-black/5' : 'border-gray-100 bg-gray-50 hover:border-gray-300'}`}
+                            >
+                              <span className="text-xl">{sp.emoji}</span>
+                              <span className="text-[10px] font-semibold text-gray-600">{isHebrew ? sp.labelHe : sp.labelEn}</span>
+                            </button>
+                          ))}
+                        </div>
                       </div>
+
+                      {/* Breed */}
                       <div>
-                        <label className="text-xs font-medium text-gray-600 block mb-1">{isHebrew ? 'גזע' : 'Breed'}</label>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1.5">{isHebrew ? 'גזע (אופציונלי)' : 'Breed (optional)'}</label>
                         <input
                           type="text"
                           value={petFormData.breed}
                           onChange={e => setPetFormData((p: any) => ({ ...p, breed: e.target.value }))}
-                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                          className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors"
                           placeholder={isHebrew ? 'לדוגמה: גולדן רטריבר' : 'e.g. Golden Retriever'}
+                          style={{ fontSize: '16px' }}
                         />
                       </div>
+
+                      {/* Birthday */}
                       <div>
-                        <label className="text-xs font-medium text-gray-600 block mb-1">{isHebrew ? 'יום הולדת' : 'Birthday'}</label>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
+                          🎂 {isHebrew ? 'יום הולדת' : 'Birthday'}
+                        </label>
                         <input
                           type="date"
                           value={petFormData.birthday}
                           onChange={e => setPetFormData((p: any) => ({ ...p, birthday: e.target.value }))}
-                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                          className="w-full border-2 border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-black transition-colors"
+                          style={{ fontSize: '16px' }}
                         />
+                        {petFormData.birthday && (
+                          <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
+                            <CalendarCheck className="w-3.5 h-3.5" />
+                            {isHebrew ? `יום הולדת הבא: ${nextBirthdayDate(petFormData.birthday)} (${daysUntilBirthday(petFormData.birthday)} ימים)` : `Next birthday: ${nextBirthdayDate(petFormData.birthday)} (${daysUntilBirthday(petFormData.birthday)} days)`}
+                          </p>
+                        )}
                       </div>
 
+                      {/* Vaccines */}
                       <div>
-                        <label className="text-xs font-medium text-gray-600 block mb-2">{isHebrew ? 'חיסונים' : 'Vaccine Dates'}</label>
-                        <div className="space-y-3">
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">
+                          💉 {isHebrew ? 'חיסונים ותזכורות' : 'Vaccines & Reminders'}
+                        </label>
+                        <div className="space-y-2.5">
                           {Object.entries(VACCINE_LABELS).map(([vKey, labels]) => (
-                            <div key={vKey} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                              <p className="text-xs font-semibold text-gray-700 mb-2">{isHebrew ? labels.he : labels.en}</p>
-                              <div className="grid grid-cols-2 gap-2">
+                            <div key={vKey} className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                              <p className="text-xs font-bold text-gray-700 mb-3">{isHebrew ? labels.he : labels.en}</p>
+                              <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                  <label className="text-[10px] text-gray-500 block mb-0.5">{isHebrew ? 'תאריך אחרון' : 'Last Given'}</label>
+                                  <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1">{isHebrew ? 'תאריך אחרון' : 'Last Given'}</label>
                                   <input
                                     type="date"
                                     value={petFormData.vaccineDates?.[vKey]?.lastGiven || ''}
@@ -2549,11 +2654,12 @@ export default function MyAccount() {
                                       ...p,
                                       vaccineDates: { ...p.vaccineDates, [vKey]: { ...(p.vaccineDates?.[vKey] || {}), lastGiven: e.target.value } }
                                     }))}
-                                    className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-black"
+                                    className="w-full border border-gray-200 rounded-xl px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-black bg-white"
+                                    style={{ fontSize: '14px' }}
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-[10px] text-gray-500 block mb-0.5">{isHebrew ? 'מועד הבא' : 'Due Date'}</label>
+                                  <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1">{isHebrew ? 'מועד הבא' : 'Due Date'}</label>
                                   <input
                                     type="date"
                                     value={petFormData.vaccineDates?.[vKey]?.dueDate || ''}
@@ -2561,7 +2667,8 @@ export default function MyAccount() {
                                       ...p,
                                       vaccineDates: { ...p.vaccineDates, [vKey]: { ...(p.vaccineDates?.[vKey] || {}), dueDate: e.target.value } }
                                     }))}
-                                    className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-black"
+                                    className="w-full border border-gray-200 rounded-xl px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-black bg-white"
+                                    style={{ fontSize: '14px' }}
                                   />
                                 </div>
                               </div>
@@ -2571,18 +2678,23 @@ export default function MyAccount() {
                       </div>
                     </div>
 
-                    <div className="flex gap-3 pt-2">
-                      <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setShowPetForm(false)}>
+                    {/* Sticky footer */}
+                    <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 flex gap-3">
+                      <button
+                        onClick={() => setShowPetForm(false)}
+                        className="flex-1 py-3 rounded-xl border-2 border-gray-100 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                      >
                         {isHebrew ? 'ביטול' : 'Cancel'}
-                      </Button>
-                      <Button
-                        className="flex-1 bg-black text-white hover:bg-gray-800 rounded-xl"
+                      </button>
+                      <button
                         onClick={handleSubmitPet}
                         disabled={addPetMutation.isPending || updatePetMutation.isPending || !petFormData.name.trim()}
+                        style={{ background: '#000000' }}
+                        className="flex-1 py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50 transition-opacity"
                       >
-                        {(addPetMutation.isPending || updatePetMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        {editingPet ? (isHebrew ? 'שמור שינויים' : 'Save Changes') : (isHebrew ? 'הוסף חיה' : 'Add Pet')}
-                      </Button>
+                        {(addPetMutation.isPending || updatePetMutation.isPending) && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {editingPet ? (isHebrew ? '✅ שמור שינויים' : '✅ Save Changes') : (isHebrew ? '🐾 הוסף חיה' : '🐾 Add Pet')}
+                      </button>
                     </div>
                   </div>
                 </div>

@@ -934,16 +934,18 @@
   position: fixed;
   top: 0;
   right: -100%;
-  left: auto !important; /* Force right-side positioning */
+  left: auto !important;
   width: 100%;
   max-width: 400px;
   height: 100vh;
+  height: 100dvh;
   background: white;
   box-shadow: -10px 0 30px rgba(0, 0, 0, 0.2);
   z-index: 10001;
   transition: right 0.3s ease;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .pw-mobile-drawer.open {
@@ -996,8 +998,12 @@
 
 .pw-mobile-menu-scroll {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 1rem;
+  padding-bottom: 3rem;
 }
 
 .pw-mobile-section {
