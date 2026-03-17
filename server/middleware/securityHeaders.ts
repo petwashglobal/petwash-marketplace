@@ -159,7 +159,12 @@ export function enhancedSecurityHeaders(req: Request, res: Response, next: NextF
   }
 
   // ── Content-Security-Policy ───────────────────────────────────────────────
-  res.setHeader('Content-Security-Policy', CSP_DIRECTIVES);
+  // Skip CSP in dev: Vite injects inline <script type="module"> blocks that CSP
+  // blocks even with 'unsafe-inline' (module scripts need a nonce in CSP L3).
+  // CSP is enforced in production where it matters for real user protection.
+  if (!isDev) {
+    res.setHeader('Content-Security-Policy', CSP_DIRECTIVES);
+  }
 
   // ── MIME sniffing ─────────────────────────────────────────────────────────
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -177,8 +182,12 @@ export function enhancedSecurityHeaders(req: Request, res: Response, next: NextF
   res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
 
   // ── Cross-Origin isolation ────────────────────────────────────────────────
+  // COEP: credentialless allows cross-origin assets without CORS headers
   res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  // COOP: same-origin-allow-popups lets signInWithPopup (Google/Apple/Facebook)
+  // post messages from the OAuth popup back to this page.
+  // 'same-origin' would silently block popup → message channel → blank auth.
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
   // RELAXED: cross-origin needed for Replit domain verification + CDN assets
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
 
