@@ -24,6 +24,8 @@ import { db } from '../db';
 import { pwTaxDocuments } from '@shared/schema-payments';
 import { sql, eq, and } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { allocateTaxSequenceNumber } from './TaxSequenceService';
+import { enqueueGoogleJob } from './AsyncJobWorker';
 
 export type TaxDocumentType =
   | 'RECEIPT'
@@ -63,22 +65,14 @@ export async function issueTaxDocument(params: IssueTaxDocumentParams): Promise<
   const taxDocId = genTaxDocId();
 
   try {
-    // Assign a monotonic sequence number per document type per calendar year
-    const year = new Date().getFullYear();
-    const countResult = await db
-      .select({ count: sql<number>`COUNT(*)` })
-      .from(pwTaxDocuments)
-      .where(
-        and(
-          eq(pwTaxDocuments.documentType, params.documentType),
-          sql`EXTRACT(YEAR FROM issued_at) = ${year}`
-        )
-      );
-    const sequenceNumber = (Number(countResult[0]?.count ?? 0)) + 1;
+    // Allocate a concurrent-safe monotonic sequence number (advisory lock pattern)
+    const { year, sequenceNumber } = await allocateTaxSequenceNumber(
+      params.documentType as any,
+    );
 
     await db.insert(pwTaxDocuments).values({
       taxDocId,
-      documentType: params.documentType,
+      documentType:     params.documentType,
       relatedPaymentId: params.relatedPaymentId ?? null,
       relatedPayoutId:  params.relatedPayoutId ?? null,
       bookingId:        params.bookingId ?? null,
@@ -89,11 +83,13 @@ export async function issueTaxDocument(params: IssueTaxDocumentParams): Promise<
       vatCents:         params.vatCents,
       netCents:         params.netCents,
       vatNumber:        COMPANY_VAT_NUMBER,
+      sequenceYear:     year,
       sequenceNumber,
       payload:          params.payload ?? {},
       status:           'issued',
       issuedAt:         new Date(),
-    });
+      // archiveStatus defaults to 'PENDING' — Drive upload queued below
+    } as any);
 
     logger.info('[TaxDocument] Document issued', {
       taxDocId,
@@ -101,8 +97,16 @@ export async function issueTaxDocument(params: IssueTaxDocumentParams): Promise<
       relatedPaymentId: params.relatedPaymentId,
       grossCents: params.grossCents,
       vatCents: params.vatCents,
+      sequenceYear: year,
       sequenceNumber,
     });
+
+    // Queue Drive PDF archival asynchronously — never blocks this call
+    enqueueGoogleJob({
+      jobType:    'ARCHIVE_TAX_DOCUMENT_TO_DRIVE',
+      entityType: 'TAX_DOCUMENT',
+      entityId:   taxDocId,
+    }).catch(() => {/* already logged inside enqueueGoogleJob */});
 
     return taxDocId;
   } catch (err: any) {

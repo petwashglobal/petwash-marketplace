@@ -977,8 +977,19 @@ export async function logContactForm(contact: {
   assignedTo?: string;
   responseSent?: boolean;
 }) {
+  // PII MINIMIZATION — Section 8.3 of Google Architecture Policy
+  // Full PII stays in PostgreSQL only. Sheets receives redacted fields.
+  const { minimizeExportPayload } = await import('./PiiMinimizer');
+  const redacted = minimizeExportPayload('SHEETS', {
+    name: contact.name,
+    email: contact.email,
+    phone: contact.phone,
+    subject: contact.subject,
+    message: contact.message,
+  });
   return appendFormSubmission(SHEETS.CONTACT_FORMS, {
-    ...contact,
+    ...redacted,
+    platform: contact.platform,
     status: contact.status || 'New',
     assignedTo: contact.assignedTo || '',
     responseSent: contact.responseSent || false,
@@ -1000,9 +1011,21 @@ export async function logFeedbackReview(review: {
   status?: string;
   published?: boolean;
 }) {
+  const { minimizeExportPayload } = await import('./PiiMinimizer');
+  const redacted = minimizeExportPayload('SHEETS', {
+    name: review.customerName,
+    email: review.email,
+  });
   return appendFormSubmission(SHEETS.FEEDBACK_REVIEWS, {
-    ...review,
-    status: review.status || 'Pending Review',
+    customerName: redacted.name,
+    email:        redacted.email,
+    platform:     review.platform,
+    serviceType:  review.serviceType,
+    rating:       review.rating,
+    reviewTitle:  review.reviewTitle,
+    reviewText:   review.reviewText,
+    wouldRecommend: review.wouldRecommend,
+    status:    review.status || 'Pending Review',
     published: review.published || false,
   });
 }
@@ -1019,9 +1042,18 @@ export async function logNewsletterSignup(signup: {
   status?: string;
   confirmed?: boolean;
 }) {
+  const { minimizeExportPayload } = await import('./PiiMinimizer');
+  const redacted = minimizeExportPayload('SHEETS', {
+    email: signup.email,
+    name:  signup.name,
+    ipAddress: signup.ipAddress,
+  });
   return appendFormSubmission(SHEETS.NEWSLETTER_SIGNUPS, {
-    ...signup,
-    status: signup.status || 'Pending Confirmation',
+    email:              redacted.email,
+    name:               redacted.name,
+    languagePreference: signup.languagePreference,
+    sourcePlatform:     signup.sourcePlatform,
+    status:    signup.status || 'Pending Confirmation',
     confirmed: signup.confirmed || false,
   });
 }

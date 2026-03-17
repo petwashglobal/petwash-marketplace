@@ -50,6 +50,7 @@ import transactionAuditRoutes from "./routes/finance/transaction-audit";
 import manualAdjustmentRoutes from "./routes/finance/manual-adjustment";
 import payoutReconciliationRoutes from "./routes/finance/payout-reconciliation";
 import { startDailyReconciliationJob, runReconciliationNow } from "./services/DailyReconciliationJob";
+import { startAsyncJobWorker } from "./services/AsyncJobWorker";
 import { allFinanceGuards } from "./middleware/financeGuards";
 import legalStampsRoutes from "./routes/legal-stamps";
 import userActivityRoutes from "./routes/user-activity";
@@ -14011,6 +14012,11 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   // ── Daily reconciliation job (Spec §15) — runs at 00:05 Asia/Jerusalem ──
   startDailyReconciliationJob();
+
+  // ── Async Google secondary job worker — polls pw_async_jobs every 30s ─────
+  // Handles: ARCHIVE_TAX_DOCUMENT_TO_DRIVE, EXPORT_RECONCILIATION_TO_SHEETS,
+  //          CREATE_CALENDAR_EVENT, SEND_GMAIL_FALLBACK (never blocks payments)
+  startAsyncJobWorker();
 
   // Admin: run reconciliation on-demand
   app.post('/api/admin/finance/reconciliation/run-now', adminLimiter, async (req: any, res: any) => {

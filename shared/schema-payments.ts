@@ -24,6 +24,7 @@ import {
   boolean,
   timestamp,
   jsonb,
+  text,
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -230,7 +231,8 @@ export const pwTaxDocuments = pgTable("pw_tax_documents", {
 
   // ── External accounting reference ───────────────────────────────────────────
   externalDocId:  varchar("external_doc_id"),              // e.g. DocuSeal / accounting system ID
-  sequenceNumber: integer("sequence_number"),               // monotonic invoice sequence for ITA
+  sequenceYear:   integer("sequence_year"),                 // ITA: calendar year of issuance
+  sequenceNumber: integer("sequence_number"),               // ITA: monotonic per type per year
 
   // ── Document content ────────────────────────────────────────────────────────
   payload: jsonb("payload").notNull().default({}),          // full document snapshot
@@ -239,6 +241,16 @@ export const pwTaxDocuments = pgTable("pw_tax_documents", {
   status:   varchar("status").notNull().default("issued"),  // issued | voided | amended
   issuedAt: timestamp("issued_at").defaultNow().notNull(),
   voidedAt: timestamp("voided_at"),
+
+  // ── Google Drive archival (Section 2.2 + 5 of Google Architecture Policy) ──
+  driveFileId:     text("drive_file_id"),                   // Google Drive file ID of PDF copy
+  driveFolderId:   text("drive_folder_id"),                 // Parent folder ID in Drive
+  pdfSha256:       text("pdf_sha256"),                      // SHA-256 of uploaded PDF (integrity)
+  archiveStatus:   text("archive_status").notNull().default("PENDING"), // PENDING|PROCESSING|ARCHIVED|FAILED
+  archiveAttempts: integer("archive_attempts").notNull().default(0),   // Upload attempt count
+  archivedAt:      timestamp("archived_at"),                // When successfully archived to Drive
+  retentionUntil:  timestamp("retention_until"),            // ITA 7-year retention deadline
+  lastError:       text("last_error"),                      // Last archival error message
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({

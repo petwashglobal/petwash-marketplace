@@ -1,6 +1,35 @@
 /**
- * Google Services Routes - 2025
- * Handles Google Business Profile, Google Maps Places API, and review management
+ * Google Services Routes — PetWash™
+ * ===================================
+ * Handles Google Maps Places API and Google Business Profile.
+ *
+ * GOOGLE ARCHITECTURE POLICY — Section 2.6 (Maps/Places)
+ * -------------------------------------------------------
+ * STATUS: KEEP — active production integration
+ *
+ * PURPOSE:
+ *   - Location autocomplete for booking/address input (Places Autocomplete API)
+ *   - Place details and reviews for K9000 station display (Places Details API)
+ *   - Business profile photo proxy with proper attribution
+ *
+ * SCOPE REQUIRED:
+ *   - GOOGLE_MAPS_API_KEY — restricted to Places API only (no broad access)
+ *   - API key should be restricted to server IP + referrer petwash.co.il in GCP Console
+ *
+ * FAILURE SEMANTICS:
+ *   - Google Maps is Google-OPTIONAL (Section 4.2 of policy)
+ *   - A Maps outage degrades location UX but never blocks payments or tax docs
+ *   - Rate limiting is enforced at the proxy level (placesAutocompleteLimiter, placesDetailsLimiter)
+ *   - Abuse detection: session token validation, IP-based limits
+ *
+ * CANONICAL DATA:
+ *   - Station locations (lat/lng, address) are stored in PostgreSQL
+ *   - Maps API is used for display and search only — never as the source of truth
+ *
+ * WHAT MAPS MUST NOT DO:
+ *   - Store payment or wallet data
+ *   - Be used as the booking source of truth
+ *   - Hold customer PII beyond the request/response lifecycle
  */
 
 import { Router } from 'express';

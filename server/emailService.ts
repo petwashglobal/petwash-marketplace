@@ -80,7 +80,23 @@ export class EmailService {
           : 'SendGrid API key is invalid, revoked, or does not have permissions for this sender address';
       }
       errorPayload.errorStack = error?.stack?.split('\n').slice(0, 3).join('\n');
-      logger.error('Failed to send system email', errorPayload);
+      logger.error('Failed to send system email via SendGrid — attempting Gmail fallback', errorPayload);
+
+      // GMAIL FALLBACK — Google Architecture Policy Section 10
+      // SendGrid is the primary transactional email authority.
+      // Gmail is the fallback only — invoked here if SendGrid throws.
+      // All production templates belong to SendGrid; Gmail sends raw HTML only.
+      try {
+        const { sendViaGmail } = await import('./routes/gmail');
+        const gmailSent = await sendViaGmail({ to: params.to, subject: params.subject, html: params.html });
+        if (gmailSent) {
+          logger.info('[EmailService] Gmail fallback succeeded', { to: params.to, subject: params.subject });
+          return true;
+        }
+      } catch (gmailErr: any) {
+        logger.warn('[EmailService] Gmail fallback also failed', { err: gmailErr?.message });
+      }
+
       return false;
     }
   }
