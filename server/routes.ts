@@ -95,6 +95,7 @@ import nayaxMonyxEventsRoutes from "./routes/nayax-monyx-events";
 // import webauthnRoutes from "./routes/webauthn"; // v1 legacy — disabled, client uses /api/webauthn/* (inline handlers)
 import gpsTrackingRoutes from "./routes/gps-tracking";
 import fcmRoutes from "./routes/fcm";
+import birthdayPromoRoutes from "./routes/birthday-promo";
 import enterpriseCorporateRoutes from "./routes/enterprise-corporate";
 import enterprisePolicyRoutes from "./routes/enterprise-policy";
 import enterpriseFranchiseRoutes from "./routes/enterprise-franchise";
@@ -9520,6 +9521,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/calendar', apiLimiter, calendarRoutes);
   app.use('/api/gps', apiLimiter, gpsTrackingRoutes);
   app.use('/api/fcm', apiLimiter, fcmRoutes);
+  app.use('/api/promo', apiLimiter, birthdayPromoRoutes);
   app.use('/api/gift-cards', requireOnboardingComplete, giftCardsRoutes);
   
   // Unified Voucher System 2026 - WASH_PACKAGE + PLATFORM_CREDIT with full ledger

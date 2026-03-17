@@ -54,6 +54,7 @@ import {
   ImagePlus,
   Plus,
   Pencil,
+  Copy,
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import {
@@ -289,6 +290,24 @@ export default function MyAccount() {
     queryKey: ['/api/user/profile'],
     enabled: !!user,
   });
+
+  // Birthday promo code
+  const { data: birthdayPromo, refetch: refetchBirthdayPromo } = useQuery<{
+    code: string; claimed: boolean; expiresAt: string; calendarLink: string; discountPercent: number; year: number;
+  } | { error: string }>({
+    queryKey: ['/api/promo/birthday'],
+    enabled: !!user,
+    retry: false,
+  });
+
+  const [promoCopied, setPromoCopied] = useState(false);
+
+  function handleCopyPromo(code: string) {
+    navigator.clipboard.writeText(code).then(() => {
+      setPromoCopied(true);
+      setTimeout(() => setPromoCopied(false), 2000);
+    });
+  }
 
   // Pets queries & mutations
   const { data: petsData, isLoading: petsLoading } = useQuery<{ pets: any[] }>({
@@ -1102,6 +1121,56 @@ export default function MyAccount() {
                       <p className="text-gray-900 text-lg">{profile.birthdate || '-'}</p>
                     )}
                   </div>
+
+                  {/* ── Birthday Promo Code Card ── */}
+                  {birthdayPromo && !('error' in birthdayPromo) && (
+                    <div className="md:col-span-2 rounded-2xl border border-pink-100 bg-gradient-to-br from-pink-50 to-rose-50 p-5 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-pink-500" />
+                        <span className="text-sm font-semibold text-pink-700">
+                          {isHebrew ? `🎂 קוד הנחה ליום הולדת ${birthdayPromo.year}` : `🎂 ${birthdayPromo.year} Birthday Discount`}
+                        </span>
+                        <Badge className="ml-auto bg-pink-100 text-pink-700 border-0 text-xs">
+                          {birthdayPromo.discountPercent}% {isHebrew ? 'הנחה' : 'off'}
+                        </Badge>
+                      </div>
+
+                      {birthdayPromo.claimed ? (
+                        <p className="text-xs text-gray-500 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                          {isHebrew ? 'הקוד נוצל' : 'Code already used'}
+                        </p>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <code className="flex-1 bg-white border border-pink-200 rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-gray-900 tracking-widest">
+                              {birthdayPromo.code}
+                            </code>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-xl border-pink-200 text-pink-600 hover:bg-pink-50 shrink-0"
+                              onClick={() => handleCopyPromo(birthdayPromo.code)}
+                            >
+                              {promoCopied ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-gray-400">
+                            {isHebrew ? `תקף עד ${birthdayPromo.expiresAt} · שימוש אחד בלבד · אישי ואינו ניתן להעברה` : `Valid until ${birthdayPromo.expiresAt} · Single use · Personal, non-transferable`}
+                          </p>
+                          <a
+                            href={birthdayPromo.calendarLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 text-xs text-blue-500 hover:underline"
+                          >
+                            <CalendarCheck className="w-3.5 h-3.5" />
+                            {isHebrew ? 'הוסף תזכורת ליומן Google' : 'Add reminder to Google Calendar'}
+                          </a>
+                        </>
+                      )}
+                    </div>
+                  )}
 
                   <div className="space-y-2 md:col-span-2">
                     <Label className="text-gray-500 flex items-center gap-2">
