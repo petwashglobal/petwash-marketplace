@@ -1,0 +1,660 @@
+/* ══════════════════════════════════════════════
+   PETWASH™ MY ACCOUNT — ULTRA LUXURY 2026
+   Fashion-brand level: Gucci / Dior / Bottega
+   Gold metallic, platinum shimmer, noir depth
+   ══════════════════════════════════════════════ */
+
+/* ── Gold Metallic Gradient Tokens ── */
+:root {
+  --gold-100: #fef9e7;
+  --gold-200: #f5d76e;
+  --gold-300: #e8c443;
+  --gold-400: #d4af37;
+  --gold-500: #c5973a;
+  --gold-600: #a97c20;
+  --gold-700: #8b6210;
+  --gold-dark: #3d2b00;
+
+  --platinum-light: #f4f4f6;
+  --platinum-mid: #dcdde1;
+  --platinum-dark: #b2b5be;
+
+  --noir-900: #0a0a0f;
+  --noir-800: #111118;
+  --noir-700: #1a1a24;
+  --noir-600: #22222f;
+  --noir-500: #2d2d3e;
+
+  --gold-gradient: linear-gradient(135deg, #c5973a 0%, #f5d76e 35%, #e8c443 55%, #d4af37 75%, #c5973a 100%);
+  --gold-gradient-v: linear-gradient(180deg, #f5d76e 0%, #d4af37 50%, #a97c20 100%);
+  --gold-gradient-subtle: linear-gradient(135deg, #fef9e7 0%, #f5d76e 40%, #fef9e7 100%);
+  --platinum-gradient: linear-gradient(135deg, #f4f4f6 0%, #dcdde1 40%, #f4f4f6 100%);
+  --noir-gradient: linear-gradient(135deg, #0a0a0f 0%, #1a1a24 50%, #111118 100%);
+  --card-noir-gradient: linear-gradient(145deg, #1a1a24 0%, #111118 100%);
+
+  --metallic-shimmer: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 70%
+  );
+
+  --gold-glow: 0 0 40px rgba(212, 175, 55, 0.25), 0 0 80px rgba(212, 175, 55, 0.08);
+  --gold-shadow: 0 8px 32px rgba(212, 175, 55, 0.15), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --card-shadow: 0 20px 60px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.06);
+  --card-shadow-hover: 0 24px 72px rgba(0, 0, 0, 0.16), 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* ══════════════════════════════════
+   PAGE BACKGROUND — Luxury Cream
+   ══════════════════════════════════ */
+.pw-account-page {
+  background: linear-gradient(180deg, #fafaf8 0%, #f5f3ee 30%, #fafaf8 100%);
+  min-height: 100vh;
+}
+
+/* ══════════════════════════════════
+   PAGE TITLE — Metallic Display
+   ══════════════════════════════════ */
+.pw-account-title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 300;
+  letter-spacing: -0.04em;
+  color: transparent;
+  background: linear-gradient(135deg, #1a1a24 0%, #3d3d4f 35%, #1a1a24 65%, #3d3d4f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  line-height: 1;
+}
+
+.pw-account-subtitle {
+  font-size: 0.9rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-500);
+  font-weight: 500;
+}
+
+/* ══════════════════════════════════
+   PROFILE HERO CARD
+   ══════════════════════════════════ */
+.pw-profile-hero {
+  background: linear-gradient(145deg, #111118 0%, #1a1a24 40%, #0f0f18 100%);
+  border-radius: 32px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  box-shadow: var(--gold-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.pw-profile-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--metallic-shimmer);
+  background-size: 200% 100%;
+  animation: shimmer-slow 8s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.pw-profile-hero::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.6), transparent);
+  pointer-events: none;
+}
+
+/* ── Avatar Ring ── */
+.pw-avatar-ring {
+  padding: 4px;
+  background: var(--gold-gradient);
+  border-radius: 50%;
+  box-shadow: var(--gold-glow);
+  position: relative;
+}
+
+.pw-avatar-ring-inner {
+  padding: 3px;
+  background: var(--noir-800);
+  border-radius: 50%;
+}
+
+/* ── Gold Tier Badge ── */
+.pw-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pw-tier-badge-gold {
+  background: var(--gold-gradient);
+  color: #3d2b00;
+  box-shadow: 0 2px 12px rgba(212, 175, 55, 0.4);
+}
+
+.pw-tier-badge-platinum {
+  background: var(--platinum-gradient);
+  color: #1a1a2e;
+  box-shadow: 0 2px 12px rgba(192, 189, 208, 0.4);
+}
+
+.pw-tier-badge-silver {
+  background: linear-gradient(135deg, #e8e8ec, #b2b5be, #e8e8ec);
+  color: #1a1a2e;
+}
+
+.pw-tier-badge-bronze {
+  background: linear-gradient(135deg, #cd7f32, #e8a85c, #cd7f32);
+  color: #fff;
+}
+
+/* ── Wallet Total Display ── */
+.pw-wallet-total-value {
+  font-size: clamp(2.2rem, 5vw, 3.2rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: transparent;
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  line-height: 1;
+}
+
+.pw-wallet-total-label {
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ── Loyalty Progress Bar ── */
+.pw-progress-track {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 100px;
+  overflow: hidden;
+  position: relative;
+}
+
+.pw-progress-fill {
+  height: 100%;
+  background: var(--gold-gradient);
+  border-radius: 100px;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.6);
+  transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.pw-progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%);
+  animation: progress-shine 2s ease-in-out infinite;
+}
+
+/* ══════════════════════════════════
+   STAT / BALANCE CARDS
+   ══════════════════════════════════ */
+.pw-stat-card {
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.05);
+  padding: 20px 16px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: default;
+}
+
+.pw-stat-card:hover {
+  box-shadow: var(--card-shadow-hover);
+  transform: translateY(-3px);
+  border-color: rgba(212, 175, 55, 0.25);
+}
+
+.pw-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--gold-gradient);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.pw-stat-card:hover::before {
+  opacity: 1;
+}
+
+.pw-stat-card-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  position: relative;
+}
+
+.pw-stat-card-icon-wrap-gold {
+  background: linear-gradient(135deg, #fef9e7, #f5d76e22);
+  box-shadow: 0 2px 10px rgba(212, 175, 55, 0.15);
+}
+
+.pw-stat-value {
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #111118;
+  line-height: 1;
+}
+
+.pw-stat-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #888;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* ══════════════════════════════════
+   ACTION BUTTONS — Metallic Black
+   ══════════════════════════════════ */
+.pw-action-btn {
+  background: linear-gradient(135deg, #111118 0%, #1a1a24 100%);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  border-radius: 20px;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #fff;
+  text-decoration: none;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.pw-action-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--metallic-shimmer);
+  background-size: 300% 100%;
+  transition: background-position 0.5s ease;
+}
+
+.pw-action-btn:hover {
+  border-color: rgba(212, 175, 55, 0.5);
+  box-shadow: var(--gold-shadow);
+  transform: translateY(-2px);
+}
+
+.pw-action-btn:hover::before {
+  background-position: 100%;
+}
+
+.pw-action-btn-icon-ring {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  transition: all 0.35s ease;
+}
+
+.pw-action-btn:hover .pw-action-btn-icon-ring {
+  background: rgba(212, 175, 55, 0.2);
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.3);
+}
+
+.pw-action-btn-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ══════════════════════════════════
+   LUXURY TABS
+   ══════════════════════════════════ */
+.pw-tabs-list {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 20px;
+  padding: 6px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.05);
+}
+
+.pw-tab-trigger {
+  border-radius: 14px;
+  padding: 10px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #888;
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.pw-tab-trigger[data-state='active'] {
+  background: linear-gradient(135deg, #111118 0%, #1a1a24 100%);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.pw-tab-trigger[data-state='active'] svg {
+  color: var(--gold-400);
+}
+
+/* ══════════════════════════════════
+   SECTION CARDS — Content Panels
+   ══════════════════════════════════ */
+.pw-section-card {
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.04);
+  padding: 28px;
+  transition: all 0.3s ease;
+}
+
+.pw-section-card:hover {
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.07);
+}
+
+.pw-section-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.pw-section-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #111118, #1a1a24);
+  flex-shrink: 0;
+}
+
+.pw-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111118;
+  letter-spacing: -0.01em;
+}
+
+.pw-section-desc {
+  font-size: 11px;
+  color: #999;
+  margin-top: 1px;
+  letter-spacing: 0.03em;
+}
+
+/* ── Row Items ── */
+.pw-row-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #fafafa;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.pw-row-item:hover {
+  background: #f5f3ee;
+  border-color: rgba(212, 175, 55, 0.2);
+}
+
+/* ── Gold Divider ── */
+.pw-gold-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.3), transparent);
+  margin: 8px 0;
+}
+
+/* ══════════════════════════════════
+   FORM INPUTS — Luxury Styled
+   ══════════════════════════════════ */
+.pw-input-luxury {
+  background: #fafaf8;
+  border: 1.5px solid #e8e3d9;
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-size: 15px;
+  color: #111118;
+  transition: all 0.25s ease;
+  width: 100%;
+  outline: none;
+}
+
+.pw-input-luxury:focus {
+  border-color: var(--gold-400);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+}
+
+/* ── Save Button — Gold ── */
+.pw-btn-gold {
+  background: var(--gold-gradient);
+  color: #3d2b00;
+  border: none;
+  border-radius: 14px;
+  padding: 12px 28px;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.3);
+  transition: all 0.25s ease;
+}
+
+.pw-btn-gold:hover {
+  box-shadow: 0 6px 24px rgba(212, 175, 55, 0.5);
+  transform: translateY(-1px);
+}
+
+/* ── Edit Button — Noir ── */
+.pw-btn-noir {
+  background: linear-gradient(135deg, #111118, #1a1a24);
+  color: #ffffff;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 14px;
+  padding: 12px 28px;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transition: all 0.25s ease;
+}
+
+.pw-btn-noir:hover {
+  border-color: rgba(212, 175, 55, 0.4);
+  box-shadow: var(--gold-shadow);
+}
+
+/* ══════════════════════════════════
+   ANIMATIONS
+   ══════════════════════════════════ */
+@keyframes shimmer-slow {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes progress-shine {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes gold-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(212, 175, 55, 0.2); }
+  50%       { box-shadow: 0 0 40px rgba(212, 175, 55, 0.4); }
+}
+
+/* ══════════════════════════════════
+   SECURITY CARD (Passkey)
+   ══════════════════════════════════ */
+.pw-passkey-register-btn {
+  background: linear-gradient(135deg, #111118 0%, #1a1a24 100%);
+  color: #fff;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  width: 100%;
+}
+
+.pw-passkey-register-btn:hover {
+  border-color: rgba(212, 175, 55, 0.55);
+  box-shadow: var(--gold-shadow);
+}
+
+/* ══════════════════════════════════
+   PET CARDS — Luxury Dossier
+   ══════════════════════════════════ */
+.pw-pet-card {
+  background: #fff;
+  border-radius: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pw-pet-card:hover {
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.10);
+  transform: translateY(-2px);
+}
+
+.pw-pet-card-header {
+  background: linear-gradient(135deg, #111118 0%, #1a1a24 100%);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.pw-pet-card-header::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.5), transparent);
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════
+   INVOICE / DOCUMENT CARDS
+   ══════════════════════════════════ */
+.pw-invoice-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #fafafa;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.pw-invoice-row:hover {
+  border-color: rgba(212, 175, 55, 0.2);
+  background: #fef9e7;
+}
+
+.pw-view-invoice-btn {
+  background: var(--gold-gradient);
+  color: #3d2b00;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.25);
+  transition: all 0.2s ease;
+}
+
+.pw-view-invoice-btn:hover {
+  box-shadow: 0 4px 14px rgba(212, 175, 55, 0.4);
+  transform: translateY(-1px);
+}
+
+/* ══════════════════════════════════
+   MOBILE RESPONSIVE
+   ══════════════════════════════════ */
+@media (max-width: 640px) {
+  .pw-profile-hero {
+    border-radius: 24px;
+    padding: 24px 20px !important;
+  }
+
+  .pw-account-title {
+    font-size: 2rem;
+  }
+
+  .pw-stat-card {
+    padding: 16px 10px;
+  }
+
+  .pw-stat-value {
+    font-size: 1.25rem;
+  }
+
+  .pw-action-btn {
+    padding: 16px 12px;
+    border-radius: 16px;
+  }
+}

@@ -94,6 +94,7 @@ import { PhoneInput } from '@/components/PhoneInput';
 import { NativeDateSelect } from '@/components/ui/native-date-select';
 import { GooglePlacesAutocomplete, type PlaceDetails } from '@/components/ui/google-places-autocomplete';
 import '@/styles/luxury-dark-2025.css';
+import '@/styles/my-account-luxury.css';
 import { IsraeliTaxInvoice, buildInvoiceFromTransaction } from '@/components/IsraeliTaxInvoice';
 import { PetIntakeForm } from '@/components/PetIntakeForm';
 
@@ -904,28 +905,33 @@ export default function MyAccount() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-white py-8 px-4" dir={isHebrew ? 'rtl' : 'ltr'}>
-        <div className="max-w-4xl mx-auto space-y-8">
+      <div className="pw-account-page min-h-screen py-8 px-4" dir={isHebrew ? 'rtl' : 'ltr'}>
+        <div className="max-w-4xl mx-auto space-y-6">
           
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-light tracking-tight text-gray-900">
+          <div className="text-center mb-6 pt-2">
+            <h1 className="pw-account-title mb-2">
               {isHebrew ? 'החשבון שלי' : 'My Account'}
             </h1>
-            <p className="text-gray-500 mt-2">
-              {isHebrew ? 'ניהול הפרופיל, הנקודות והזכויות שלך' : 'Manage your profile, points & privileges'}
+            <p className="pw-account-subtitle">
+              {isHebrew ? 'פרופיל · נקודות · הרשאות בלעדיות' : 'Profile · Points · Exclusive Privileges'}
             </p>
           </div>
 
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+          <div className="pw-profile-hero p-7 md:p-10">
 
             <div className="flex flex-col md:flex-row items-center gap-8">
-              <div className="relative group">
-                <Avatar className="w-32 h-32 border-4 border-gray-200 shadow-sm">
-                  <AvatarImage src={profile.photoURL} alt={profile.displayName} />
-                  <AvatarFallback className="text-4xl font-bold bg-white text-gray-700">
-                    {profile.displayName?.charAt(0) || 'P'}
-                  </AvatarFallback>
-                </Avatar>
+              <div className="relative group shrink-0">
+                {/* Gold metallic avatar ring */}
+                <div className="pw-avatar-ring">
+                  <div className="pw-avatar-ring-inner">
+                    <Avatar className="w-28 h-28">
+                      <AvatarImage src={profile.photoURL} alt={profile.displayName} />
+                      <AvatarFallback className="text-4xl font-bold bg-[#1a1a24] text-amber-300 w-full h-full flex items-center justify-center">
+                        <img src="/gold-user-icon.jpeg" alt="avatar" className="w-full h-full object-cover rounded-full opacity-90" />
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+                </div>
                 <input
                   ref={photoInputRef}
                   type="file"
@@ -951,7 +957,8 @@ export default function MyAccount() {
                   <Button
                     onClick={() => photoInputRef.current?.click()}
                     disabled={isUploadingPhoto}
-                    className="absolute -bottom-2 -left-2 p-2.5 rounded-full shadow-md bg-gray-900 text-white border-2 border-white hover:bg-gray-800 transition-all duration-200 cursor-pointer"
+                    className="absolute -bottom-2 -left-2 p-2.5 rounded-full shadow-md text-amber-900 border-2 border-[#1a1a24] transition-all duration-200 cursor-pointer"
+                    style={{ background: 'var(--gold-gradient)', boxShadow: 'var(--gold-shadow)' }}
                     title={isHebrew ? 'שנה תמונת פרופיל' : 'Change profile photo'}
                   >
                     {isUploadingPhoto ? (
@@ -962,186 +969,186 @@ export default function MyAccount() {
                   </Button>
                 ) : (
                   <div
-                    className="absolute -bottom-2 -left-2 p-2.5 rounded-full shadow-md bg-gray-400 text-white border-2 border-white cursor-not-allowed"
+                    className="absolute -bottom-2 -left-2 p-2.5 rounded-full shadow-md border-2 border-[#1a1a24] cursor-not-allowed"
+                    style={{ background: 'rgba(100,100,120,0.6)' }}
                     title={isHebrew ? 'אמתו אימייל וטלפון כדי להוסיף תמונה' : 'Verify email & phone to add photo'}
                   >
-                    <Lock className="w-4 h-4" />
+                    <Lock className="w-4 h-4 text-white/60" />
                   </div>
                 )}
                 {profile.photoURL && verificationStatus?.canUploadPhoto && (
                   <Button
                     onClick={handlePhotoDelete}
                     disabled={isUploadingPhoto}
-                    className="absolute -top-1 -left-1 p-1.5 rounded-full shadow-sm bg-white text-red-500 border border-gray-200 hover:bg-red-50 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                    className="absolute -top-1 -left-1 p-1.5 rounded-full shadow-sm bg-[#111118] text-red-400 border border-red-900/30 hover:bg-red-950 transition-all duration-200 opacity-0 group-hover:opacity-100"
                     title={isHebrew ? 'הסר תמונה' : 'Remove photo'}
                   >
                     <Trash2 className="w-3 h-3" />
                   </Button>
                 )}
-                <div className="absolute -bottom-2 -right-2 p-2 rounded-full shadow-sm bg-white border border-gray-200">
-                  <TierIcon className="w-5 h-5 text-gray-700" />
+                {/* Tier icon medallion */}
+                <div className="absolute -bottom-2 -right-2 p-2 rounded-full shadow-md"
+                  style={{ background: 'var(--gold-gradient)', boxShadow: 'var(--gold-glow)' }}>
+                  <TierIcon className="w-4 h-4 text-amber-900" />
                 </div>
               </div>
 
               <div className="flex-1 text-center md:text-start">
-                <h2 className="text-3xl font-semibold text-gray-900 mb-2">{profile.displayName || 'Pet Parent'}</h2>
-                <Badge className="text-sm px-4 py-2 font-medium bg-white text-gray-800 border border-gray-200">
-                  <TierIcon className="w-4 h-4 mr-2" />
+                <h2 className="text-2xl md:text-3xl font-semibold text-white mb-3 tracking-tight">
+                  {profile.displayName || (isHebrew ? 'בעל חיית מחמד' : 'Pet Parent')}
+                </h2>
+
+                {/* Gold tier badge */}
+                <span className={`pw-tier-badge ${
+                  wallet?.loyaltyTier === 'PLATINUM' ? 'pw-tier-badge-platinum'
+                  : wallet?.loyaltyTier === 'GOLD' ? 'pw-tier-badge-gold'
+                  : wallet?.loyaltyTier === 'SILVER' ? 'pw-tier-badge-silver'
+                  : 'pw-tier-badge-bronze'
+                }`}>
+                  <TierIcon className="w-3.5 h-3.5" />
                   {isHebrew ? tierInfo.labelHe : tierInfo.label}
-                </Badge>
-                
+                </span>
+
                 {tierInfo.discount > 0 && (
-                  <p className="text-stone-600 mt-3 text-sm font-medium">
-                    <Sparkles className="w-4 h-4 inline mr-1" />
-                    {isHebrew 
+                  <p className="text-amber-400/80 mt-3 text-xs font-medium flex items-center gap-1.5" style={{ justifyContent: isHebrew ? 'flex-start' : 'flex-start' }}>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {isHebrew
                       ? `${tierInfo.discount}% הנחה קבועה על כל השירותים`
                       : `${tierInfo.discount}% permanent discount on all services`}
                   </p>
                 )}
+
+                {/* Email & member since */}
+                <p className="text-white/40 text-xs mt-3 font-mono">{profile.email || user?.email}</p>
               </div>
 
+              {/* Wallet total — gold metallic */}
               {walletLoading ? (
-                <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-amber-400/50" />
               ) : (
-                <div className="text-center md:text-end">
-                  <p className="text-gray-500 text-sm mb-1">{isHebrew ? 'סך הזכויות שלך' : 'Total Credits'}</p>
-                  <p className="text-4xl font-bold text-gray-900">
+                <div className="text-center shrink-0">
+                  <p className="pw-wallet-total-label mb-1">{isHebrew ? 'סך הזכויות' : 'Total Credits'}</p>
+                  <p className="pw-wallet-total-value">
                     {formatCurrency(wallet?.totalCreditsValueCents || 0)}
                   </p>
                 </div>
               )}
             </div>
 
+            {/* Loyalty progress bar */}
             {nextTierInfo && (
-              <div className="mt-8 pt-6 border-t border-gray-100">
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-gray-500">
+              <div className="mt-8 pt-6" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="flex justify-between mb-2.5">
+                  <span className="text-xs text-white/40 tracking-wide uppercase">
                     {isHebrew ? 'התקדמות לדרגה הבאה' : 'Progress to next tier'}
                   </span>
-                  <span className="text-stone-700 font-medium">
-                    {wallet?.tierPointsThisYear || 0} / {nextTierInfo.pointsRequired} {isHebrew ? 'נקודות' : 'points'}
+                  <span className="text-xs font-semibold text-amber-400">
+                    {wallet?.tierPointsThisYear || 0} / {nextTierInfo.pointsRequired}
                   </span>
                 </div>
-                <Progress value={progressToNext} className="h-3 bg-gray-100" />
-                <p className="text-xs text-gray-500 mt-2 text-center">
-                  {isHebrew 
-                    ? `עוד ${pointsToNext} נקודות ל${isHebrew ? tierConfig[tierInfo.nextTier!].labelHe : tierConfig[tierInfo.nextTier!].label}`
+                <div className="pw-progress-track">
+                  <div className="pw-progress-fill" style={{ width: `${progressToNext}%` }} />
+                </div>
+                <p className="text-[10px] text-white/30 mt-2 text-center tracking-wide">
+                  {isHebrew
+                    ? `עוד ${pointsToNext} נקודות לדרגת ${tierConfig[tierInfo.nextTier!].labelHe}`
                     : `${pointsToNext} more points to ${tierConfig[tierInfo.nextTier!].label}`}
                 </p>
               </div>
             )}
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {/* ── Wallet Balance Cards ── */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {[
-              { label: isHebrew ? 'כרטיסי מתנה' : 'E-Gift Cards', value: formatCurrency(wallet?.egiftBalanceCents || 0), icon: Gift, color: 'from-pink-500 to-rose-600' },
-              { label: isHebrew ? 'חבילות שטיפה' : 'Wash Packages', value: wallet?.washPackageCredits || 0, icon: Sparkles, color: 'from-cyan-500 to-blue-600' },
-              { label: isHebrew ? 'נקודות נאמנות' : 'Loyalty Points', value: wallet?.loyaltyPointsBalance || 0, icon: Star, color: 'from-amber-500 to-orange-600' },
-              { label: isHebrew ? 'קרדיט מבצעים' : 'Promo Credits', value: formatCurrency(wallet?.promoBalanceCents || 0), icon: Gift, color: 'from-purple-500 to-violet-600' },
-              { label: isHebrew ? 'קרדיט הפניות' : 'Referral Credits', value: formatCurrency(wallet?.referralBalanceCents || 0), icon: User, color: 'from-emerald-500 to-green-600' },
+              { label: isHebrew ? 'כרטיסי מתנה' : 'Gift Cards', value: formatCurrency(wallet?.egiftBalanceCents || 0), icon: Gift, emoji: '🎁' },
+              { label: isHebrew ? 'חבילות שטיפה' : 'Wash Packs', value: wallet?.washPackageCredits || 0, icon: Sparkles, emoji: '✨' },
+              { label: isHebrew ? 'נקודות נאמנות' : 'Loyalty Pts', value: wallet?.loyaltyPointsBalance || 0, icon: Star, emoji: '⭐' },
+              { label: isHebrew ? 'קרדיט מבצעים' : 'Promo Credit', value: formatCurrency(wallet?.promoBalanceCents || 0), icon: Gift, emoji: '🏷️' },
+              { label: isHebrew ? 'קרדיט הפניות' : 'Referral', value: formatCurrency(wallet?.referralBalanceCents || 0), icon: User, emoji: '🤝' },
             ].map((item, idx) => (
-              <div 
-                key={idx}
-                className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm text-center hover:shadow-md transition-shadow duration-300"
-              >
-                <item.icon className="w-5 h-5 text-gray-400 mx-auto mb-3" />
-                <p className="text-2xl font-semibold text-gray-900">{item.value}</p>
-                <p className="text-xs text-gray-500 mt-1">{item.label}</p>
+              <div key={idx} className="pw-stat-card">
+                <div className="pw-stat-card-icon-wrap pw-stat-card-icon-wrap-gold">
+                  <span className="text-xl">{item.emoji}</span>
+                </div>
+                <p className="pw-stat-value">{item.value}</p>
+                <p className="pw-stat-label">{item.label}</p>
               </div>
             ))}
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <WalletActionButton 
-              icon={Wallet}
-              label={isHebrew ? 'הארנק שלי' : 'My Wallet'}
-              href="/my-wallet"
-              color="from-amber-500 to-yellow-600"
-            />
-            <WalletActionButton 
-              icon={QrCode}
-              label={isHebrew ? 'מימוש בתחנה' : 'Redeem at Station'}
-              href="/stations"
-              color="from-emerald-500 to-green-600"
-            />
-            <WalletActionButton 
-              icon={Award}
-              label={isHebrew ? 'תוכנית נאמנות' : 'Loyalty Program'}
-              href="/loyalty/dashboard"
-              color="from-purple-500 to-violet-600"
-            />
-            <WalletActionButton 
-              icon={Gift}
-              label={isHebrew ? 'קנה כרטיס מתנה' : 'Buy Gift Card'}
-              href="/buy-gift-card"
-              color="from-pink-500 to-rose-600"
-            />
-            <WalletActionButton 
-              icon={Crown}
-              label={isHebrew ? 'Prestige Club' : 'Prestige Club'}
-              href="/prestige-club"
-              color="from-stone-700 to-neutral-900"
-            />
-            <WalletActionButton 
-              icon={CalendarCheck}
-              label={isHebrew ? 'ההזמנות שלי' : 'My Bookings'}
-              href="/bookings"
-              color="from-blue-500 to-indigo-600"
-            />
+          {/* ── Quick Action Buttons — Luxury Noir ── */}
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+            {[
+              { icon: Wallet,       label: isHebrew ? 'הארנק שלי' : 'My Wallet',       href: '/my-wallet',        emoji: '💳' },
+              { icon: QrCode,       label: isHebrew ? 'מימוש בתחנה' : 'Redeem',        href: '/stations',         emoji: '📍' },
+              { icon: Award,        label: isHebrew ? 'נאמנות' : 'Loyalty',            href: '/loyalty/dashboard', emoji: '🏆' },
+              { icon: Gift,         label: isHebrew ? 'כרטיס מתנה' : 'Gift Card',      href: '/buy-gift-card',    emoji: '🎁' },
+              { icon: Crown,        label: isHebrew ? 'Prestige' : 'Prestige',          href: '/prestige-club',    emoji: '👑' },
+              { icon: CalendarCheck,label: isHebrew ? 'הזמנות' : 'Bookings',           href: '/bookings',         emoji: '📅' },
+            ].map((item, idx) => (
+              <a key={idx} href={item.href} className="pw-action-btn" style={{ textDecoration: 'none' }}>
+                <div className="pw-action-btn-icon-ring">
+                  <span className="text-lg">{item.emoji}</span>
+                </div>
+                <span className="pw-action-btn-label">{item.label}</span>
+              </a>
+            ))}
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full bg-white border border-gray-100 rounded-2xl p-1 grid grid-cols-7">
+            <TabsList className="pw-tabs-list w-full grid grid-cols-7">
               <TabsTrigger 
-                value="profile" 
-                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 flex-col gap-0.5 h-auto py-2 text-[10px]"
+                value="profile"
+                className="pw-tab-trigger"
               >
                 <User className="w-4 h-4" />
                 {isHebrew ? 'פרופיל' : 'Profile'}
               </TabsTrigger>
               <TabsTrigger 
                 value="preferences"
-                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 flex-col gap-0.5 h-auto py-2 text-[10px]"
+                className="pw-tab-trigger"
               >
                 <Settings className="w-4 h-4" />
                 {isHebrew ? 'העדפות' : 'Prefs'}
               </TabsTrigger>
               <TabsTrigger 
                 value="notifications"
-                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 flex-col gap-0.5 h-auto py-2 text-[10px]"
+                className="pw-tab-trigger"
               >
                 <Bell className="w-4 h-4" />
                 {isHebrew ? 'התראות' : 'Alerts'}
               </TabsTrigger>
               <TabsTrigger 
                 value="security"
-                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 flex-col gap-0.5 h-auto py-2 text-[10px]"
+                className="pw-tab-trigger"
               >
                 <Shield className="w-4 h-4" />
                 {isHebrew ? 'אבטחה' : 'Security'}
               </TabsTrigger>
               <TabsTrigger 
                 value="pets"
-                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 flex-col gap-0.5 h-auto py-2 text-[10px]"
+                className="pw-tab-trigger"
               >
                 <Dog className="w-4 h-4" />
                 {isHebrew ? 'חיות' : 'Pets'}
               </TabsTrigger>
               <TabsTrigger
                 value="documents"
-                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 flex-col gap-0.5 h-auto py-2 text-[10px]"
+                className="pw-tab-trigger"
               >
                 <FileText className="w-4 h-4" />
                 {isHebrew ? 'מסמכים' : 'Docs'}
               </TabsTrigger>
               <TabsTrigger
                 value="inbox"
-                className="rounded-xl text-gray-500 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-gray-900 flex-col gap-0.5 h-auto py-2 text-[10px] relative"
+                className="pw-tab-trigger relative"
               >
                 <Inbox className="w-4 h-4" />
                 {isHebrew ? 'הודעות' : 'Inbox'}
                 {(inboxData?.messages?.filter((m: any) => !m.readAt).length ?? 0) > 0 && (
-                  <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-black text-white text-[8px] font-bold flex items-center justify-center">
+                  <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full text-[8px] font-bold flex items-center justify-center"
+                    style={{ background: 'var(--gold-gradient)', color: '#3d2b00' }}>
                     {inboxData!.messages.filter((m: any) => !m.readAt).length > 9 ? '9+' : inboxData!.messages.filter((m: any) => !m.readAt).length}
                   </span>
                 )}
@@ -1190,47 +1197,37 @@ export default function MyAccount() {
                 </div>
               )}
 
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    {isHebrew ? 'פרטים אישיים' : 'Personal Details'}
-                  </h3>
+              <div className="pw-section-card">
+                <div className="pw-section-header">
+                  <div className="pw-section-icon-box">
+                    <User className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="pw-section-title">{isHebrew ? 'פרטים אישיים' : 'Personal Details'}</p>
+                    <p className="pw-section-desc">{isHebrew ? 'עדכן את פרטי הקשר שלך' : 'Update your contact information'}</p>
+                  </div>
                   {!isEditing ? (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="border-gray-200 text-gray-600 hover:bg-gray-100"
-                      onClick={() => setIsEditing(true)}
-                    >
-                      <Edit2 className="w-4 h-4 mr-2" />
+                    <button className="pw-btn-noir text-sm px-4 py-2 flex items-center gap-2"
+                      onClick={() => setIsEditing(true)}>
+                      <Edit2 className="w-4 h-4" />
                       {isHebrew ? 'עריכה' : 'Edit'}
-                    </Button>
+                    </button>
                   ) : (
                     <div className="flex gap-2">
-                      <Button 
-                        size="sm"
-                        className="bg-gray-900 text-white hover:bg-gray-800"
+                      <button className="pw-btn-gold text-sm px-4 py-2 flex items-center gap-2"
                         onClick={handleSaveProfile}
-                        disabled={updateProfileMutation.isPending}
-                      >
+                        disabled={updateProfileMutation.isPending}>
                         {updateProfileMutation.isPending ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                          <Check className="w-4 h-4 mr-2" />
+                          <Check className="w-4 h-4" />
                         )}
                         {isHebrew ? 'שמור' : 'Save'}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="border-gray-200 text-gray-500 hover:bg-gray-100"
-                        onClick={() => {
-                          setIsEditing(false);
-                          setEditedProfile(profile);
-                        }}
-                      >
+                      </button>
+                      <button className="pw-btn-noir text-sm px-3 py-2"
+                        onClick={() => { setIsEditing(false); setEditedProfile(profile); }}>
                         <X className="w-4 h-4" />
-                      </Button>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1583,7 +1580,7 @@ export default function MyAccount() {
 
               {/* ── Inbox Preview Card ── */}
               {inboxData?.messages && inboxData.messages.length > 0 && (
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+                <div className="pw-section-card">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                       <Bell className="w-5 h-5 text-gray-500" />
@@ -1643,7 +1640,7 @@ export default function MyAccount() {
 
             <TabsContent value="preferences" className="mt-6 space-y-6">
               {/* Language Settings */}
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+              <div className="pw-section-card">
                 <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-3">
                   <Globe className="w-5 h-5 text-gray-400" />
                   {isHebrew ? 'שפה ואזור' : 'Language & Region'}
@@ -1678,7 +1675,7 @@ export default function MyAccount() {
               </div>
 
               {/* Email Change Section */}
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+              <div className="pw-section-card">
                 <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-3">
                   <Mail className="w-5 h-5 text-gray-400" />
                   {isHebrew ? 'כתובת אימייל' : 'Email Address'}
@@ -1725,7 +1722,7 @@ export default function MyAccount() {
               </div>
 
               {/* Phone Verification Section */}
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+              <div className="pw-section-card">
                 <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-3">
                   <Phone className="w-5 h-5 text-gray-400" />
                   {isHebrew ? 'מספר טלפון' : 'Phone Number'}
@@ -1777,7 +1774,7 @@ export default function MyAccount() {
               </div>
 
               {/* Address Settings */}
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+              <div className="pw-section-card">
                 <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-3">
                   <MapPin className="w-5 h-5 text-gray-400" />
                   {isHebrew ? 'כתובת' : 'Address'}
@@ -1852,7 +1849,7 @@ export default function MyAccount() {
             </TabsContent>
 
             <TabsContent value="notifications" className="mt-6">
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+              <div className="pw-section-card">
                 <h3 className="text-xl font-semibold text-gray-900 mb-6">
                   {isHebrew ? 'העדפות התראות' : 'Notification Preferences'}
                 </h3>
@@ -1899,7 +1896,7 @@ export default function MyAccount() {
             <TabsContent value="security" className="mt-6 space-y-5">
 
               {/* ── Face ID / Passkeys ── */}
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+              <div className="pw-section-card">
                 <div className="flex items-center gap-3 mb-5">
                   <div className="w-10 h-10 rounded-2xl bg-gray-900 flex items-center justify-center">
                     <span className="text-lg">🔑</span>
@@ -1972,7 +1969,7 @@ export default function MyAccount() {
               </div>
 
               {/* ── Two-Factor Authentication ── */}
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+              <div className="pw-section-card">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
                     <Shield className="w-5 h-5 text-blue-600" />
@@ -2016,7 +2013,7 @@ export default function MyAccount() {
               </div>
 
               {/* ── Account Actions ── */}
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+              <div className="pw-section-card">
                 <h3 className="text-base font-bold text-gray-900 mb-4">{isHebrew ? 'פרטיות ומכשירים' : 'Privacy & Devices'}</h3>
                 <div className="space-y-2">
                   <a
@@ -2069,7 +2066,7 @@ export default function MyAccount() {
               </div>
 
               {/* Account Management - Freeze & Delete */}
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+              <div className="pw-section-card">
                 <h3 className="text-xl font-semibold text-gray-900 mb-6">
                   {isHebrew ? 'ניהול חשבון' : 'Account Management'}
                 </h3>
@@ -2671,7 +2668,7 @@ export default function MyAccount() {
 
                 if (sorted.length === 0) return null;
                 return (
-                  <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                  <div className="pw-section-card">
                     <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
                       <Cake className="w-5 h-5 text-pink-500" />
                       {isHebrew ? 'ימי הולדת קרובים' : 'Upcoming Birthdays'}
@@ -2730,7 +2727,7 @@ export default function MyAccount() {
               })()}
 
               {/* ── My Pets — Luxury Cards ── */}
-              <div className="bg-white rounded-2xl border border-gray-100 p-6">
+              <div className="pw-section-card">
                 <div className="flex items-center justify-between mb-5">
                   <div>
                     <h3 className="text-base font-bold text-gray-900 tracking-tight">{isHebrew ? 'חיות המחמד שלי 🐾' : 'My Pets 🐾'}</h3>
@@ -3273,7 +3270,7 @@ export default function MyAccount() {
             <TabsContent value="documents" className="mt-6 space-y-5">
 
               {/* ── Tax Invoices (חשבוניות מס) ── */}
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+              <div className="pw-section-card">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
@@ -3344,7 +3341,7 @@ export default function MyAccount() {
               </div>
 
               {/* ── Signed Agreements ── */}
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+              <div className="pw-section-card">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-2xl bg-green-50 flex items-center justify-center">
                     <span className="text-lg">✍️</span>
@@ -3380,7 +3377,7 @@ export default function MyAccount() {
               </div>
 
               {/* ── Pet Intake Forms (Health Declarations) ── */}
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+              <div className="pw-section-card">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center">
@@ -3449,7 +3446,7 @@ export default function MyAccount() {
 
             {/* ── INBOX TAB ── */}
             <TabsContent value="inbox" className="mt-6 space-y-4">
-              <div className="bg-white rounded-2xl border border-gray-100 p-6">
+              <div className="pw-section-card">
                 <div className="flex items-center justify-between mb-5">
                   <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
                     <Inbox className="w-5 h-5 text-gray-500" />
