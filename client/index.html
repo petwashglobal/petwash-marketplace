@@ -196,19 +196,20 @@
     <script type="module" src="/src/main.tsx"></script>
 
     <!-- Google Analytics 4 — lazy loaded after first user interaction or 3 seconds.
-         Measurement ID: G-B5W5GHJ5EN -->
+         Measurement ID: G-B30RXHEX6R (signinpetwash Firebase project — petwash.co.il)
+         NOTE: G-B5W5GHJ5EN was the old property (previous project). Do NOT add it back. -->
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'G-B5W5GHJ5EN', { send_page_view: false });
+      gtag('config', 'G-B30RXHEX6R', { send_page_view: false });
 
       var ga4Loaded = false;
       function loadGA4() {
         if (!ga4Loaded) {
           ga4Loaded = true;
           var s = document.createElement('script');
-          s.src = 'https://www.googletagmanager.com/gtag/js?id=G-B5W5GHJ5EN';
+          s.src = 'https://www.googletagmanager.com/gtag/js?id=G-B30RXHEX6R';
           s.async = true;
           document.head.appendChild(s);
         }
