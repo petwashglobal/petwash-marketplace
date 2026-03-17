@@ -40,8 +40,41 @@ function sanitizeRecaptchaKey(raw: string): string {
   return raw.trim();
 }
 
-const RECAPTCHA_SITE_KEY = sanitizeRecaptchaKey(import.meta.env.VITE_RECAPTCHA_SITE_KEY || '');
 const RECAPTCHA_TIMEOUT_MS = 8000;
+
+// ── Single source of truth: always read site key from backend ─────────────────
+// This guarantees frontend and backend ALWAYS use the exact same key.
+// VITE_RECAPTCHA_SITE_KEY is used only as a fast-path fallback when the
+// backend is temporarily unreachable; the backend key always wins if reachable.
+let _resolvedSiteKey: string | null = null;
+let _siteKeyPromise: Promise<string> | null = null;
+
+async function getResolvedSiteKey(): Promise<string> {
+  if (_resolvedSiteKey) return _resolvedSiteKey;
+  if (!_siteKeyPromise) {
+    _siteKeyPromise = (async () => {
+      try {
+        const resp = await fetch('/api/recaptcha/site-key');
+        if (resp.ok) {
+          const data = await resp.json();
+          const key = sanitizeRecaptchaKey(data.siteKey || '');
+          if (key) {
+            _resolvedSiteKey = key;
+            logger.info('[ReCaptcha] Site key loaded from backend (authoritative)');
+            return key;
+          }
+        }
+      } catch (_) {
+        logger.warn('[ReCaptcha] Could not reach /api/recaptcha/site-key — falling back to VITE env');
+      }
+      const fromEnv = sanitizeRecaptchaKey(import.meta.env.VITE_RECAPTCHA_SITE_KEY || '');
+      _resolvedSiteKey = fromEnv;
+      if (fromEnv) logger.warn('[ReCaptcha] Using VITE_RECAPTCHA_SITE_KEY fallback — ensure it matches backend RECAPTCHA_SITE_KEY');
+      return fromEnv;
+    })();
+  }
+  return _siteKeyPromise;
+}
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -55,36 +88,34 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
 }
 
-const loadReCaptchaScript = (): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    if (window.grecaptcha?.enterprise?.ready) {
-      resolve();
-      return;
-    }
+const loadReCaptchaScript = async (): Promise<void> => {
+  const siteKey = await getResolvedSiteKey();
 
-    const existingScript = document.querySelector('script[src*="recaptcha/enterprise.js"]') as HTMLScriptElement | null;
-    if (existingScript) {
-      if (existingScript.dataset.loaded === 'true') {
-        resolve();
-        return;
-      }
+  if (window.grecaptcha?.enterprise?.ready) {
+    return;
+  }
+
+  const existingScript = document.querySelector('script[src*="recaptcha/enterprise.js"]') as HTMLScriptElement | null;
+  if (existingScript) {
+    if (existingScript.dataset.loaded === 'true') return;
+    return new Promise((resolve, reject) => {
       const onLoad = () => { existingScript.dataset.loaded = 'true'; resolve(); };
       existingScript.addEventListener('load', onLoad, { once: true });
       existingScript.addEventListener('error', () => reject(new Error('Failed to load reCAPTCHA script')), { once: true });
-      return;
-    }
+    });
+  }
 
-    if (!RECAPTCHA_SITE_KEY) {
-      logger.warn('[ReCaptcha] No site key configured');
-      reject(new Error('No reCAPTCHA site key configured'));
-      return;
-    }
+  if (!siteKey) {
+    logger.warn('[ReCaptcha] No site key configured');
+    throw new Error('No reCAPTCHA site key configured');
+  }
 
-    const oldScript = document.querySelector('script[src*="recaptcha/api.js"]');
-    if (oldScript) oldScript.remove();
+  const oldScript = document.querySelector('script[src*="recaptcha/api.js"]');
+  if (oldScript) oldScript.remove();
 
+  return new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = `https://www.google.com/recaptcha/enterprise.js?render=${RECAPTCHA_SITE_KEY}`;
+    script.src = `https://www.google.com/recaptcha/enterprise.js?render=${siteKey}`;
     script.async = true;
     script.defer = true;
     script.onload = () => { script.dataset.loaded = 'true'; resolve(); };
@@ -95,7 +126,8 @@ const loadReCaptchaScript = (): Promise<void> => {
 
 export async function executeReCaptcha(action: string = 'submit'): Promise<string | null> {
   try {
-    if (!RECAPTCHA_SITE_KEY) {
+    const siteKey = await getResolvedSiteKey();
+    if (!siteKey) {
       logger.warn('[ReCaptcha] No site key - skipping verification');
       return null;
     }
@@ -111,7 +143,7 @@ export async function executeReCaptcha(action: string = 'submit'): Promise<strin
       new Promise<string>((resolve, reject) => {
         window.grecaptcha.enterprise.ready(async () => {
           try {
-            const t = await window.grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { action });
+            const t = await window.grecaptcha.enterprise.execute(siteKey, { action });
             resolve(t);
           } catch (err) {
             reject(err);

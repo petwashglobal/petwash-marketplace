@@ -24,6 +24,30 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
   if (warnings.length > 0) {
     console.warn('\n' + warnings.join('\n') + '\n');
   }
+
+  // ── reCAPTCHA key unification — fatal if frontend and backend keys diverge ──
+  function extractSiteKey(raw: string): string {
+    if (!raw) return '';
+    const m = raw.match(/6L[A-Za-z0-9_-]{38,}/);
+    return m ? m[0] : raw.trim();
+  }
+  const viteKey    = extractSiteKey(process.env.VITE_RECAPTCHA_SITE_KEY || '');
+  const backendKey = extractSiteKey(process.env.RECAPTCHA_SITE_KEY || '');
+  if (viteKey && backendKey && viteKey !== backendKey) {
+    const msg =
+      `[startup] FATAL: reCAPTCHA frontend/backend site key mismatch detected.\n` +
+      `  VITE_RECAPTCHA_SITE_KEY = ${viteKey.slice(0, 12)}... (frontend)\n` +
+      `  RECAPTCHA_SITE_KEY      = ${backendKey.slice(0, 12)}... (backend)\n` +
+      `  Frontend tokens will ALWAYS fail backend Enterprise verification.\n` +
+      `  Fix: set VITE_RECAPTCHA_SITE_KEY = RECAPTCHA_SITE_KEY (${backendKey})\n` +
+      `  The frontend now reads its site key from /api/recaptcha/site-key (backend-authoritative).`;
+    console.error('\n' + msg + '\n');
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('reCAPTCHA frontend/backend key mismatch — refusing to start in production');
+    }
+  } else if (!backendKey) {
+    console.error('[startup] FATAL: RECAPTCHA_SITE_KEY is not set — reCAPTCHA will not function');
+  }
 })();
 
 import path from "node:path";

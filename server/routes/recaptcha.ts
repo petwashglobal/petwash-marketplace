@@ -232,6 +232,13 @@ router.post('/verify', async (req, res) => {
   }
 });
 
+router.get('/site-key', (_req, res) => {
+  if (!RECAPTCHA_SITE_KEY) {
+    return res.status(503).json({ error: 'reCAPTCHA site key not configured on server' });
+  }
+  res.json({ siteKey: RECAPTCHA_SITE_KEY });
+});
+
 router.get('/config', (_req, res) => {
   const authMethod = detectAuthMethod();
   res.json({
