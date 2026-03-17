@@ -7,7 +7,7 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["dig", "freetype", "git-lfs", "imagemagick", "jq", "k6", "lcms2", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "openjpeg", "openssl", "optipng", "pngquant", "psmisc", "tcl", "tk", "zlib", "yakut"]
+packages = ["dig", "freetype", "git-lfs", "imagemagick", "jq", "k6", "lcms2", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "openjpeg", "openssl", "optipng", "pngquant", "psmisc", "tcl", "tk", "zlib", "yakut", "google-cloud-sdk-gce"]
 
 [deployment]
 deploymentTarget = "cloudrun"
