@@ -1,0 +1,85 @@
+Good progress.
+
+Now I need formal proof for each completed item before sign-off.
+
+Please provide all of the following in one response:
+
+1. Exact DB schema
+- full SQL or schema definitions for:
+  - pw_tax_documents
+  - pw_reconciliation_reports
+- list all indexes, constraints, foreign keys
+
+2. Exact route list
+- every new route added
+- HTTP method
+- full path
+- auth requirement
+- request body shape
+- response shape
+
+3. Exact code locations
+- file paths changed
+- function names added/modified
+- line references if possible
+
+4. Proof of tax document wiring
+Show the exact code path for:
+- Flow A K9000 direct sale -> RECEIPT
+- Flow B wallet top-up -> TOPUP_RECEIPT
+- Flow C wallet redeem -> TAX_INVOICE
+- Flow D provider booking -> TAX_INVOICE + COMMISSION_INVOICE
+- Reversal -> CREDIT_NOTE
+- Expiry breakage -> TAX_INVOICE
+- Chargeback -> CHARGEBACK_NOTICE
+
+5. Nayax branching proof
+Show the exact branching logic for:
+- walletTopup === true
+- customerMode === PUBLIC_WALKIN
+- APP_USER
+- unknown fallback
+Also provide one real or test payload example for each case.
+
+6. Chargeback proof
+- exact webhook event names handled
+- example payload
+- resulting transaction entries
+- resulting tax document entry
+
+7. Manual adjustment proof
+- exact admin endpoint
+- role check logic
+- immutable audit stamp proof
+- example request/response
+
+8. Daily reconciliation proof
+- scheduler startup code
+- timezone used
+- exact run time
+- list of all checks implemented
+- example reconciliation report row saved to DB
+- example run-now response
+
+9. Provider payout reconciliation proof
+- exact query logic
+- tolerance logic
+- missing invoice detection logic
+- example response
+
+10. Backward compatibility / migration notes
+- confirm no destructive migration was run
+- confirm old data still works
+- confirm old metadata-based docs remain readable
+
+11. Test evidence
+Please run and show:
+- one test for direct K9000 sale
+- one test for wallet top-up
+- one test for wallet redeem
+- one test for provider booking
+- one test for chargeback
+- one reconciliation run-now test
+
+12. Remaining gaps
+List anything still not complete, still mocked, still fallback, or still needs accountant confirmation.
