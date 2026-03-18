@@ -23,7 +23,7 @@ import { logger } from "@/lib/logger";
 import { signInWithPasskey, signInWithPasskeyConditional, isPasskeySupported, getBiometricMethodName, isChromeiOS, getBrowserName } from "@/auth/passkey";
 import { useAutoFaceID, storePasskeyEmail, clearPasskeyEmail, storeLastAuthMethod, getConsecutiveFailures } from "@/hooks/useAutoFaceID";
 import { FaceIDLoadingState } from "@/components/FaceIDLoadingState";
-import { ReCaptcha, SecurityCheckpoint } from "@/components/ReCaptcha";
+import { ReCaptcha, SecurityCheckpoint, executeReCaptcha } from "@/components/ReCaptcha";
 import { trackAuthError } from "@/lib/authErrorTracker";
 import { trustDevice, isDeviceTrusted } from "@/lib/deviceTrust";
 import { motion, AnimatePresence } from "framer-motion";
@@ -932,12 +932,17 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       const formattedPhone = phoneNumber.trim();
 
       logger.info('[PhoneAuth] Sending code to:', formattedPhone);
-      
+
+      const freshCaptchaToken = await executeReCaptcha('phone_login').catch(() => null);
+      if (!freshCaptchaToken) {
+        throw new Error(language === 'he' ? 'אימות אבטחה נכשל — נסה שוב' : 'Security check failed — please try again');
+      }
+
       const response = await fetch(getApiUrl('/api/auth/phone/send-code'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ phone: formattedPhone, language, captchaToken }),
+        body: JSON.stringify({ phone: formattedPhone, language, captchaToken: freshCaptchaToken }),
       });
 
       const result = await response.json();
