@@ -246,8 +246,8 @@ publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (
       return res.status(403).json({ ok: false, error: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed. Please refresh and try again.' });
     }
 
-    // Check per-phone lockout (too many failed verify attempts)
-    const lockout = twilioSMSService.checkPhoneLockout(phone, language);
+    // Check per-phone lockout (too many failed verify attempts) — checks Redis + memory
+    const lockout = await twilioSMSService.checkPhoneLockout(phone, language);
     if (lockout) {
       logger.warn('[PublicAuth] Phone locked out, rejecting send', { phone: phone.slice(-4), ip: req.ip });
       return res.status(429).json({ ok: false, error: lockout.message, lockedUntil: lockout.lockedUntil });
@@ -334,7 +334,7 @@ publicAuthRouter.post("/api/auth/phone/verify-code", phoneVerifyRateLimiter, asy
       });
     }
 
-    const result = twilioSMSService.verifyCode(phone, code, language);
+    const result = await twilioSMSService.verifyCode(phone, code, language);
     const normalizedPhone2 = phone.trim().startsWith('+') ? phone.trim() : '+' + phone.trim().replace(/[^\d]/g, '');
     const callerIp2 = req.ip || (req.headers['x-forwarded-for'] as string) || 'unknown';
 

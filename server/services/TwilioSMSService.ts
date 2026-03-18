@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { logger } from '../lib/logger';
 import crypto from 'crypto';
 import { smsAbuseDetector } from './SmsAbuseDetector';
+import { redis } from './redis';
 
 interface VerificationCode {
   code: string;
@@ -281,13 +282,28 @@ class TwilioSMSService {
     }
     const code = this.generateCode();
     const expiresAt = new Date(Date.now() + VERIFICATION_CODE_EXPIRY_MINUTES * 60 * 1000);
+    const OTP_TTL = VERIFICATION_CODE_EXPIRY_MINUTES * 60;
 
+    // Store in memory (immediate fallback if Redis is unavailable)
     verificationCodes.set(formattedPhone, {
       code,
       phone: formattedPhone,
       expiresAt,
       attempts: 0
     });
+
+    // ── Primary store: Redis (survives server restarts, shared across instances) ──
+    // Store HMAC of code — never raw code. Key: otp:login:code:{phone}
+    const hmacSecret = process.env.APP_SESSION_SECRET || process.env.COOKIE_SECRET || 'petwash-otp-hmac';
+    const codeHmac = crypto.createHmac('sha256', hmacSecret).update(code).digest('hex');
+    redis.set(
+      `otp:login:code:${formattedPhone}`,
+      { codeHmac, attempts: 0, expiresAtMs: expiresAt.getTime() },
+      OTP_TTL,
+    ).catch((err: any) =>
+      logger.warn('[TwilioSMS] Redis OTP store failed — memory fallback active', { error: err?.message })
+    );
+    // ─────────────────────────────────────────────────────────────────────────────
 
     const messageBody = this.smsBody(code, language);
 
@@ -350,16 +366,14 @@ class TwilioSMSService {
     }
   }
 
-  checkPhoneLockout(phone: string, language: string = 'he'): {
+  async checkPhoneLockout(phone: string, language: string = 'he'): Promise<{
     success: false;
     message: string;
     lockedUntil: number;
-  } | null {
+  } | null> {
     const formattedPhone = this.formatPhoneNumber(phone);
-    const lockExpiry = phoneLockouts.get(formattedPhone);
-    if (lockExpiry && Date.now() < lockExpiry) {
-      const remainMin = Math.ceil((lockExpiry - Date.now()) / 60000);
-      const lockMsg: Record<string, string> = {
+    const lockMsgFor = (remainMin: number): string => {
+      const msgs: Record<string, string> = {
         en: `Account locked. Try again in ${remainMin} minutes.`,
         he: `החשבון נעול. נסו שוב בעוד ${remainMin} דקות.`,
         ar: `الحساب مقفل. حاول مرة أخرى بعد ${remainMin} دقائق.`,
@@ -367,12 +381,23 @@ class TwilioSMSService {
         fr: `Compte verrouillé. Réessayez dans ${remainMin} minutes.`,
         ru: `Аккаунт заблокирован. Попробуйте через ${remainMin} минут.`,
       };
-      return {
-        success: false,
-        message: lockMsg[language] || lockMsg.en,
-        lockedUntil: lockExpiry,
-      };
+      return msgs[language] || msgs.en;
+    };
+
+    // Redis lockout check (persists across restarts)
+    const redisLockTtl = await redis.ttl(`otp:login:lockout:${formattedPhone}`).catch(() => -1);
+    if (redisLockTtl > 0) {
+      const remainMin = Math.ceil(redisLockTtl / 60);
+      return { success: false, message: lockMsgFor(remainMin), lockedUntil: Date.now() + redisLockTtl * 1000 };
     }
+
+    // Memory fallback
+    const lockExpiry = phoneLockouts.get(formattedPhone);
+    if (lockExpiry && Date.now() < lockExpiry) {
+      const remainMin = Math.ceil((lockExpiry - Date.now()) / 60000);
+      return { success: false, message: lockMsgFor(remainMin), lockedUntil: lockExpiry };
+    }
+
     return null;
   }
 
@@ -411,18 +436,18 @@ class TwilioSMSService {
     }
   }
 
-  verifyCode(phone: string, code: string, language: string = 'he'): {
+  async verifyCode(phone: string, code: string, language: string = 'he'): Promise<{
     success: boolean;
     message: string;
     verificationToken?: string;
     lockedUntil?: number;
-  } {
+  }> {
     const formattedPhone = this.formatPhoneNumber(phone);
+    const hmacSecret = process.env.APP_SESSION_SECRET || process.env.COOKIE_SECRET || 'petwash-otp-hmac';
+    const LOCKOUT_TTL = Math.floor(LOCKOUT_DURATION_MS / 1000);
 
-    const lockExpiry = phoneLockouts.get(formattedPhone);
-    if (lockExpiry && Date.now() < lockExpiry) {
-      const remainMin = Math.ceil((lockExpiry - Date.now()) / 60000);
-      const lockMsg: Record<string, string> = {
+    const lockMsg = (remainMin: number): string => {
+      const msgs: Record<string, string> = {
         en: `Account locked. Try again in ${remainMin} minutes.`,
         he: `החשבון נעול. נסו שוב בעוד ${remainMin} דקות.`,
         ar: `الحساب مقفل. حاول مرة أخرى بعد ${remainMin} دقائق.`,
@@ -430,77 +455,127 @@ class TwilioSMSService {
         fr: `Compte verrouillé. Réessayez dans ${remainMin} minutes.`,
         ru: `Аккаунт заблокирован. Попробуйте через ${remainMin} минут.`,
       };
-      logger.warn('[TwilioSMS] Phone locked out', { phone: formattedPhone.slice(0, 6) + '****', remainMin });
-      return {
-        success: false,
-        message: lockMsg[language] || lockMsg.en,
-        lockedUntil: lockExpiry,
-      };
+      return msgs[language] || msgs.en;
+    };
+
+    // ── 1. Check lockout — Redis first, memory fallback ───────────────────────
+    const redisLockTtl = await redis.ttl(`otp:login:lockout:${formattedPhone}`).catch(() => -1);
+    if (redisLockTtl > 0) {
+      const remainMin = Math.ceil(redisLockTtl / 60);
+      logger.warn('[TwilioSMS] Redis lockout active', { phone: formattedPhone.slice(0, 6) + '****', remainMin });
+      return { success: false, message: lockMsg(remainMin), lockedUntil: Date.now() + redisLockTtl * 1000 };
+    }
+    const memLockExpiry = phoneLockouts.get(formattedPhone);
+    if (memLockExpiry && Date.now() < memLockExpiry) {
+      const remainMin = Math.ceil((memLockExpiry - Date.now()) / 60000);
+      logger.warn('[TwilioSMS] Memory lockout active', { phone: formattedPhone.slice(0, 6) + '****', remainMin });
+      return { success: false, message: lockMsg(remainMin), lockedUntil: memLockExpiry };
     }
 
-    const stored = verificationCodes.get(formattedPhone);
+    // ── 2. Resolve code entry — Redis primary, memory Map fallback ────────────
+    type RedisEntry = { codeHmac: string; attempts: number; expiresAtMs: number };
+    const redisEntry = await redis.get<RedisEntry>(`otp:login:code:${formattedPhone}`).catch(() => null);
 
-    if (!stored) {
-      return {
-        success: false,
-        message: this.t('noCode', language)
-      };
-    }
+    if (redisEntry) {
+      // Redis path — survives restarts
+      if (Date.now() > redisEntry.expiresAtMs) {
+        await redis.del(`otp:login:code:${formattedPhone}`).catch(() => {});
+        verificationCodes.delete(formattedPhone);
+        return { success: false, message: this.t('codeExpired', language) };
+      }
 
-    if (new Date() > stored.expiresAt) {
+      if (redisEntry.attempts >= MAX_VERIFICATION_ATTEMPTS) {
+        await redis.del(`otp:login:code:${formattedPhone}`).catch(() => {});
+        verificationCodes.delete(formattedPhone);
+        await redis.setRaw(`otp:login:lockout:${formattedPhone}`, '1', LOCKOUT_TTL).catch(() => {});
+        phoneLockouts.set(formattedPhone, Date.now() + LOCKOUT_DURATION_MS);
+        logger.warn('[TwilioSMS] Max attempts — phone locked 15 min (Redis)', { phone: formattedPhone.slice(0, 6) + '****' });
+        const lockMsgs: Record<string, string> = {
+          en: 'Too many attempts. Locked for 15 minutes.',
+          he: 'חרגתם ממספר הניסיונות. נעול ל-15 דקות.',
+          ar: 'محاولات كثيرة. مقفل لمدة 15 دقيقة.',
+          es: 'Demasiados intentos. Bloqueado por 15 minutos.',
+          fr: 'Trop de tentatives. Verrouillé pour 15 minutes.',
+          ru: 'Слишком много попыток. Заблокировано на 15 минут.',
+        };
+        return { success: false, message: lockMsgs[language] || lockMsgs.en, lockedUntil: Date.now() + LOCKOUT_DURATION_MS };
+      }
+
+      const inputHmac = crypto.createHmac('sha256', hmacSecret).update(code).digest('hex');
+      const hmacA = Buffer.from(redisEntry.codeHmac, 'hex');
+      const hmacB = Buffer.from(inputHmac, 'hex');
+      const codeMatch = hmacA.length === hmacB.length && crypto.timingSafeEqual(hmacA, hmacB);
+
+      if (!codeMatch) {
+        redisEntry.attempts++;
+        await redis.set(
+          `otp:login:code:${formattedPhone}`,
+          redisEntry,
+          Math.ceil((redisEntry.expiresAtMs - Date.now()) / 1000),
+        ).catch(() => {});
+        // Mirror attempt count to memory fallback
+        const memEntry = verificationCodes.get(formattedPhone);
+        if (memEntry) memEntry.attempts = redisEntry.attempts;
+        return { success: false, message: this.invalidCodeMsg(MAX_VERIFICATION_ATTEMPTS - redisEntry.attempts, language) };
+      }
+
+      // Correct code — delete from both stores
+      await redis.del(`otp:login:code:${formattedPhone}`).catch(() => {});
       verificationCodes.delete(formattedPhone);
-      return {
-        success: false,
-        message: this.t('codeExpired', language)
-      };
-    }
 
-    if (stored.attempts >= MAX_VERIFICATION_ATTEMPTS) {
+    } else {
+      // ── Redis miss — fall back to in-memory Map (Redis was down during send) ──
+      logger.warn('[TwilioSMS] Redis miss — using in-memory OTP fallback', { phone: formattedPhone.slice(0, 6) + '****' });
+      const stored = verificationCodes.get(formattedPhone);
+
+      if (!stored) {
+        return { success: false, message: this.t('noCode', language) };
+      }
+      if (new Date() > stored.expiresAt) {
+        verificationCodes.delete(formattedPhone);
+        return { success: false, message: this.t('codeExpired', language) };
+      }
+      if (stored.attempts >= MAX_VERIFICATION_ATTEMPTS) {
+        verificationCodes.delete(formattedPhone);
+        phoneLockouts.set(formattedPhone, Date.now() + LOCKOUT_DURATION_MS);
+        await redis.setRaw(`otp:login:lockout:${formattedPhone}`, '1', LOCKOUT_TTL).catch(() => {});
+        const lockMsgs: Record<string, string> = {
+          en: 'Too many attempts. Locked for 15 minutes.',
+          he: 'חרגתם ממספר הניסיונות. נעול ל-15 דקות.',
+          ar: 'محاولات كثيرة. مقفل لمدة 15 دقيقة.',
+          es: 'Demasiados intentos. Bloqueado por 15 minutos.',
+          fr: 'Trop de tentatives. Verrouillé pour 15 minutes.',
+          ru: 'Слишком много попыток. Заблокировано на 15 минут.',
+        };
+        return { success: false, message: lockMsgs[language] || lockMsgs.en, lockedUntil: Date.now() + LOCKOUT_DURATION_MS };
+      }
+
+      const codeMatch = stored.code.length === code.length &&
+        crypto.timingSafeEqual(Buffer.from(stored.code), Buffer.from(code));
+      if (!codeMatch) {
+        stored.attempts++;
+        return { success: false, message: this.invalidCodeMsg(MAX_VERIFICATION_ATTEMPTS - stored.attempts, language) };
+      }
+
       verificationCodes.delete(formattedPhone);
-      phoneLockouts.set(formattedPhone, Date.now() + LOCKOUT_DURATION_MS);
-      logger.warn('[TwilioSMS] Max attempts reached, locking phone for 15min', { phone: formattedPhone.slice(0, 6) + '****' });
-      const lockMsg: Record<string, string> = {
-        en: 'Too many attempts. Locked for 15 minutes.',
-        he: 'חרגתם ממספר הניסיונות. נעול ל-15 דקות.',
-        ar: 'محاولات كثيرة. مقفل لمدة 15 دقيقة.',
-        es: 'Demasiados intentos. Bloqueado por 15 minutos.',
-        fr: 'Trop de tentatives. Verrouillé pour 15 minutes.',
-        ru: 'Слишком много попыток. Заблокировано на 15 минут.',
-      };
-      return {
-        success: false,
-        message: lockMsg[language] || lockMsg.en,
-        lockedUntil: Date.now() + LOCKOUT_DURATION_MS,
-      };
     }
 
-    const codeMatch = stored.code.length === code.length &&
-      crypto.timingSafeEqual(Buffer.from(stored.code), Buffer.from(code));
-    if (!codeMatch) {
-      stored.attempts++;
-      return {
-        success: false,
-        message: this.invalidCodeMsg(MAX_VERIFICATION_ATTEMPTS - stored.attempts, language)
-      };
-    }
-
-    verificationCodes.delete(formattedPhone);
-
+    // ── Success — issue JWT verification token ────────────────────────────────
     const secret = process.env.JWT_SECRET || process.env.COOKIE_SECRET || 'petwash-sms-verify-fallback';
     const verificationToken = jwt.sign(
       { phone: formattedPhone, type: 'sms-verified', nonce: crypto.randomBytes(8).toString('hex') },
       secret,
-      { expiresIn: `${VERIFICATION_TOKEN_EXPIRY_MINUTES}m` }
+      { expiresIn: `${VERIFICATION_TOKEN_EXPIRY_MINUTES}m` },
     );
 
-    logger.info('[TwilioSMS] Phone verified successfully, JWT token issued', {
-      phone: formattedPhone.slice(0, 6) + '****'
+    logger.info('[TwilioSMS] Phone verified successfully (Redis primary)', {
+      phone: formattedPhone.slice(0, 6) + '****',
     });
 
     return {
       success: true,
       message: this.t('verified', language),
-      verificationToken
+      verificationToken,
     };
   }
 

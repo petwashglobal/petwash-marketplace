@@ -405,7 +405,7 @@ router.post('/send-sms-code', verificationLimiter, async (req: Request, res: Res
       return res.status(429).json({ success: false, message: phoneCooldown.message });
     }
 
-    const lockResult = twilioSMSService.checkPhoneLockout(phone, language);
+    const lockResult = await twilioSMSService.checkPhoneLockout(phone, language);
     if (lockResult) {
       return res.status(429).json(lockResult);
     }
@@ -421,7 +421,7 @@ router.post('/send-sms-code', verificationLimiter, async (req: Request, res: Res
 router.post('/verify-sms-code', async (req: Request, res: Response, next) => {
   const { phone, language = 'he' } = req.body;
   if (phone) {
-    const lockResult = twilioSMSService.checkPhoneLockout(phone, language);
+    const lockResult = await twilioSMSService.checkPhoneLockout(phone, language);
     if (lockResult) {
       return res.status(429).json(lockResult);
     }
@@ -435,7 +435,7 @@ router.post('/verify-sms-code', async (req: Request, res: Response, next) => {
       return res.status(400).json({ success: false, message: 'Phone and code required' });
     }
 
-    const result = twilioSMSService.verifyCode(phone, code, language);
+    const result = await twilioSMSService.verifyCode(phone, code, language);
     if (!result.success && result.lockedUntil) {
       return res.status(429).json(result);
     }
