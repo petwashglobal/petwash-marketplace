@@ -364,21 +364,14 @@
         },
         {
           "@type": "FAQPage",
+          "@id": "https://petwash.co.il/daycare-calculator#faq",
           "mainEntity": [
-            {
-              "@type": "Question",
-              "name": "What are flash deals at Pet Wash?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Flash deals are limited-time discounts offered by PetWash providers — up to 40% off grooming, daycare, and walking services for a limited number of slots. New deals are posted weekly."
-              }
-            },
             {
               "@type": "Question",
               "name": "How does the daycare price calculator work?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Our AI-powered daycare calculator uses Gemini AI to compute the exact price for multiple pets (dogs and cats) over any number of days, applying multi-pet discounts, weekly discounts, flash deal savings, and Israeli VAT (18%)."
+                "text": "Our AI-powered daycare calculator computes the exact price for multiple pets (dogs and cats) over any number of days, applying multi-pet discounts, weekly discounts, and Israeli VAT (18%). The final price is always determined by our fixed business rules — AI is used only to generate a friendly explanation of the breakdown."
               }
             },
             {
@@ -386,7 +379,31 @@
               "name": "Can I book daycare for 2 dogs and 1 cat for a week?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Yes! PetWash supports multi-pet weekly bookings. Use our daycare calculator to see the exact price for 2 dogs + 1 cat for 7 days, including all applicable discounts and VAT."
+                "text": "Yes. PetWash™ supports multi-pet weekly bookings. Add each pet with their type and size, set 7 days, and the calculator applies all discounts automatically: 14% multi-pet discount for 3 pets, 12% weekly discount, plus VAT at 18%."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is the price I see here guaranteed?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "The calculator uses fixed daily rates and discount rules. The price shown is deterministic — identical inputs always produce the same result. The actual booking price may vary if your chosen provider has a different pricing tier."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What discounts are applied?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "2 pets: 8% multi-pet discount · 3 pets: 14% · 4 or more: 18%. Bookings of 7 or more days receive an additional 12% weekly discount. All prices include Israeli VAT at 18%."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What if the AI explanation is missing?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "The AI explanation is an optional summary powered by Gemini. If it is unavailable, the full price breakdown is still shown with all discounts and VAT listed line by line. The AI has no effect on the final price."
               }
             }
           ]

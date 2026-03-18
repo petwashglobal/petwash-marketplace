@@ -9338,7 +9338,14 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/promotions', apiLimiter, promotionsRoutes);
 
   // Provider Flash Deals — limited-time discount windows (Airbnb/dynamic pricing style)
-  app.use('/api/flash-deals', apiLimiter, flashDealsRoutes);
+  // Feature flag: FLASH_DEALS_ENABLED=true required to expose this API
+  if (process.env.FLASH_DEALS_ENABLED === 'true') {
+    app.use('/api/flash-deals', apiLimiter, flashDealsRoutes);
+    logger.info('[Routes] ✅ Flash Deals API enabled (FLASH_DEALS_ENABLED=true)');
+  } else {
+    app.use('/api/flash-deals', (_req, res) => res.status(503).json({ error: 'Flash Deals not yet available', code: 'FEATURE_DISABLED' }));
+    logger.info('[Routes] Flash Deals API disabled (set FLASH_DEALS_ENABLED=true to enable)');
+  }
 
   // Daycare Smart Price Calculator — Gemini AI powered multi-pet math with VAT
   app.use('/api/daycare-calculator', apiLimiter, daycareCalculatorRoutes);

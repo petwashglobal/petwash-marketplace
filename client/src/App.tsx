@@ -998,13 +998,16 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
 
         {/* Flash Deals — provider limited-time discount marketplace */}
-        <Route path="/flash-deals">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <FlashDeals />
-            </Suspense>
-          )}
-        </Route>
+        {/* Feature flag: VITE_FLASH_DEALS_ENABLED=true required */}
+        {import.meta.env.VITE_FLASH_DEALS_ENABLED === 'true' && (
+          <Route path="/flash-deals">
+            {() => (
+              <Suspense fallback={<PageLoader />}>
+                <FlashDeals />
+              </Suspense>
+            )}
+          </Route>
+        )}
 
         {/* Daycare Calculator — Gemini AI smart price calculator */}
         <Route path="/daycare-calculator">

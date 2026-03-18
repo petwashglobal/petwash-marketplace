@@ -405,17 +405,65 @@ export default function DaycareCalculator() {
               )}
 
               {/* Book CTA */}
-              <Link href="/flash-deals">
+              <Link href="/providers">
                 <button
                   style={{ touchAction: 'manipulation', backgroundColor: GOLD }}
                   className="w-full py-4 rounded-2xl text-white text-[12px] font-medium tracking-[0.08em] uppercase transition-all active:scale-[0.98]"
                 >
-                  Browse Deals for This Price
+                  Book a Daycare Provider
                 </button>
               </Link>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ── Visible FAQ section — matches JSON-LD FAQ schema in index.html ── */}
+        <section className="px-5 pb-12 pt-4">
+          <h2 className="text-[11px] font-medium tracking-[0.12em] uppercase text-gray-400 mb-4 text-center">
+            Frequently Asked Questions
+          </h2>
+          <div className="space-y-3">
+            {[
+              {
+                q: 'How does the daycare price calculator work?',
+                a: 'Our AI-powered daycare calculator computes the exact price for multiple pets (dogs and cats) over any number of days, applying multi-pet discounts, weekly discounts, and Israeli VAT (18%). The final price is always determined by our fixed business rules — AI is used only to generate a friendly explanation of the breakdown.',
+              },
+              {
+                q: 'Can I book daycare for 2 dogs and 1 cat for a week?',
+                a: 'Yes. PetWash™ supports multi-pet weekly bookings. Add each pet with their type and size, set 7 days, and the calculator applies all discounts automatically: 14% multi-pet discount for 3 pets, 12% weekly discount, plus VAT at 18%.',
+              },
+              {
+                q: 'Is the price I see here guaranteed?',
+                a: 'The calculator uses fixed daily rates and discount rules. The price shown is deterministic — identical inputs always produce the same result. The actual booking price may vary if your chosen provider has a different pricing tier.',
+              },
+              {
+                q: 'What discounts are applied?',
+                a: '2 pets: 8% multi-pet discount · 3 pets: 14% · 4 or more: 18%. Bookings of 7 or more days receive an additional 12% weekly discount. All prices include Israeli VAT at 18%.',
+              },
+              {
+                q: 'What if the AI explanation is missing?',
+                a: 'The AI explanation is an optional summary powered by Gemini. If it is unavailable, the full price breakdown is still shown with all discounts and VAT listed line by line. The AI has no effect on the final price.',
+              },
+            ].map(({ q, a }, i) => (
+              <details
+                key={i}
+                className="rounded-xl border border-gray-100 bg-white overflow-hidden"
+                style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
+              >
+                <summary
+                  className="px-4 py-3 text-[12px] font-medium text-gray-800 cursor-pointer list-none flex justify-between items-center gap-3"
+                  style={{ touchAction: 'manipulation' }}
+                >
+                  <span>{q}</span>
+                  <Info size={13} className="text-gray-300 shrink-0" />
+                </summary>
+                <div className="px-4 pb-3 text-[11px] text-gray-500 leading-relaxed border-t border-gray-50">
+                  {a}
+                </div>
+              </details>
+            ))}
+          </div>
+        </section>
       </main>
     </div>
   );

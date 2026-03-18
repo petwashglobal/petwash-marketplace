@@ -15,6 +15,13 @@ const router: Router = express.Router();
 // ── In-memory store (no new schema — avoids drizzle-kit push hang) ────────────
 // In production this would live in Redis. For now it's process-scoped but
 // works perfectly for a single Cloud Run instance.
+//
+// PRODUCTION ROADMAP (before enabling FLASH_DEALS_ENABLED=true):
+// 1. Replace DEALS_STORE (Map) with Redis hash — key: deal:{id}, field: json
+// 2. Replace CLAIMS_BY_USER (Map<Set>) with Redis set — key: claims:{dealId}:{userId}
+// 3. Add FLASH_DEALS_ENABLED=true env var in Cloud Run + Vite build (VITE_FLASH_DEALS_ENABLED)
+// 4. Replace demo-p* providerIds with real Firebase UIDs from the providers collection
+// 5. Add timezone: all validUntil dates must use TZ='Asia/Jerusalem' when shown to users
 interface FlashDeal {
   id: string;
   providerId: string;
@@ -35,6 +42,8 @@ interface FlashDeal {
 }
 
 const DEALS_STORE = new Map<string, FlashDeal>();
+// Per-user claim dedup: dealId → Set of userIds who have already claimed
+const CLAIMS_BY_USER = new Map<string, Set<string>>();
 
 function generateDealId(): string {
   return `DEAL-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
@@ -260,7 +269,7 @@ const claimSchema = z.object({
   numPets: z.number().int().min(1).max(3).default(1),
 });
 
-router.post('/:id/claim', async (req, res) => {
+router.post('/:id/claim', validateFirebaseToken, async (req: any, res) => {
   const deal = DEALS_STORE.get(req.params.id);
   if (!deal || !isDealActive(deal)) {
     return res.status(404).json({ error: 'Deal not found or no longer active' });
@@ -269,7 +278,15 @@ router.post('/:id/claim', async (req, res) => {
   const parsed = claimSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Validation failed', details: parsed.error.errors });
 
+  const authenticatedUserId = req.user.uid;
   const { numPets } = parsed.data;
+
+  // ── Per-user dedup: one claim per user per deal ──────────────────────────────
+  const dealClaims = CLAIMS_BY_USER.get(deal.id) ?? new Set<string>();
+  if (dealClaims.has(authenticatedUserId)) {
+    return res.status(409).json({ error: 'You have already claimed this deal', code: 'ALREADY_CLAIMED' });
+  }
+
   if (deal.slotsRemaining < numPets) {
     return res.status(409).json({ error: `Only ${deal.slotsRemaining} slot(s) remaining` });
   }
@@ -278,10 +295,13 @@ router.post('/:id/claim', async (req, res) => {
   if (deal.slotsRemaining === 0) deal.isActive = false;
   DEALS_STORE.set(deal.id, deal);
 
+  dealClaims.add(authenticatedUserId);
+  CLAIMS_BY_USER.set(deal.id, dealClaims);
+
   const discountedPrice = Math.round(deal.originalPrice * (1 - deal.discountPercent / 100));
   const totalSavings = Math.round(deal.originalPrice * (deal.discountPercent / 100)) * numPets;
 
-  logger.info(`[FlashDeals] Claimed deal ${deal.id} for ${numPets} pet(s). Remaining: ${deal.slotsRemaining}`);
+  logger.info(`[FlashDeals] Claimed deal ${deal.id} by user ${authenticatedUserId} for ${numPets} pet(s). Remaining: ${deal.slotsRemaining}`);
   res.json({
     success: true,
     claimedSlots: numPets,

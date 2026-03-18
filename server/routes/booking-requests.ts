@@ -585,6 +585,29 @@ router.post('/:requestId/pay', async (req, res) => {
       paymentHeldAt: new Date().toISOString(),
     }).catch(() => {});
 
+    // ── Non-blocking: Google Sheets sync on payment/confirmation ─────────────
+    setImmediate(async () => {
+      try {
+        const { logSitterBooking } = await import('../services/googleSheetsIntegration');
+        await logSitterBooking({
+          bookingId: requestId,
+          customerName: `${booking.ownerFirstName || ''} ${booking.ownerLastName || ''}`.trim() || 'Owner',
+          email: booking.ownerEmail || '',
+          phone: booking.ownerPhone || '',
+          petName: booking.petNames || '',
+          petType: booking.petType || 'pet',
+          sitterName: booking.providerName || booking.providerId || 'Provider',
+          startDate: booking.startDate?.toISOString?.()?.slice(0, 10) || String(booking.startDate),
+          endDate: booking.endDate?.toISOString?.()?.slice(0, 10) || String(booking.endDate),
+          durationDays: booking.totalDays || 1,
+          totalAmount: (booking.totalCents || 0) / 100,
+          status: 'payment_confirmed',
+        });
+      } catch (sheetsErr: any) {
+        logger.warn(`[BookingRequests] Google Sheets sync failed (pay) bookingId=${requestId} reason=${sheetsErr?.message}`);
+      }
+    });
+
     try {
       await calendarIntegrationService.createBookingEvent({
         platform: booking.providerType || 'pet-care',
@@ -711,6 +734,29 @@ router.post('/:requestId/complete', async (req, res) => {
       serviceStartedAt: booking.serviceStartedAt?.toISOString() || undefined,
       serviceCompletedAt: new Date().toISOString(),
     }).catch(() => {});
+
+    // ── Non-blocking: Google Sheets sync on service completion ────────────────
+    setImmediate(async () => {
+      try {
+        const { logSitterBooking } = await import('../services/googleSheetsIntegration');
+        await logSitterBooking({
+          bookingId: requestId,
+          customerName: `${booking.ownerFirstName || ''} ${booking.ownerLastName || ''}`.trim() || 'Owner',
+          email: booking.ownerEmail || '',
+          phone: booking.ownerPhone || '',
+          petName: booking.petNames || '',
+          petType: booking.petType || 'pet',
+          sitterName: booking.providerName || booking.providerId || 'Provider',
+          startDate: booking.startDate?.toISOString?.()?.slice(0, 10) || String(booking.startDate),
+          endDate: booking.endDate?.toISOString?.()?.slice(0, 10) || String(booking.endDate),
+          durationDays: booking.totalDays || 1,
+          totalAmount: (booking.totalCents || 0) / 100,
+          status: 'service_completed',
+        });
+      } catch (sheetsErr: any) {
+        logger.warn(`[BookingRequests] Google Sheets sync failed (complete) bookingId=${requestId} reason=${sheetsErr?.message}`);
+      }
+    });
     
     res.json({ 
       success: true, 
@@ -915,6 +961,29 @@ router.post('/:requestId/confirm', async (req, res) => {
       ownerConfirmedAt: new Date().toISOString(),
       paymentReleasedAt: new Date().toISOString(),
     }, { rating, review }).catch(() => {});
+
+    // ── Non-blocking: Google Sheets sync on owner confirmation / payment release ─
+    setImmediate(async () => {
+      try {
+        const { logSitterBooking } = await import('../services/googleSheetsIntegration');
+        await logSitterBooking({
+          bookingId: requestId,
+          customerName: `${booking.ownerFirstName || ''} ${booking.ownerLastName || ''}`.trim() || 'Owner',
+          email: booking.ownerEmail || '',
+          phone: booking.ownerPhone || '',
+          petName: booking.petNames || '',
+          petType: booking.petType || 'pet',
+          sitterName: booking.providerName || booking.providerId || 'Provider',
+          startDate: booking.startDate?.toISOString?.()?.slice(0, 10) || String(booking.startDate),
+          endDate: booking.endDate?.toISOString?.()?.slice(0, 10) || String(booking.endDate),
+          durationDays: booking.totalDays || 1,
+          totalAmount: (booking.totalCents || 0) / 100,
+          status: finalStatus === 'disputed' ? 'disputed' : 'payment_released',
+        });
+      } catch (sheetsErr: any) {
+        logger.warn(`[BookingRequests] Google Sheets sync failed (owner_confirm) bookingId=${requestId} reason=${sheetsErr?.message}`);
+      }
+    });
     
     res.json({
       success: true,
