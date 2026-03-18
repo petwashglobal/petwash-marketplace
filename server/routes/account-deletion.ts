@@ -31,7 +31,7 @@ async function getLastAuditHash(requestId: string): Promise<string | null> {
 
 async function appendAuditLog(entry: {
   requestId: string;
-  userId: number;
+  userId: string;
   action: string;
   details?: any;
   dataCategory?: string;
@@ -71,8 +71,8 @@ const deleteAccountSchema = z.object({
 router.post('/request', requireAuth, async (req: any, res) => {
   try {
     const data = deleteAccountSchema.parse(req.body);
-    const userEmail = req.session?.email || req.user?.email;
-    const userId = req.session?.userId || req.user?.id;
+    const userEmail = req.user?.email || (req as any).firebaseUser?.email;
+    const userId: string = (req as any).userId || req.user?.uid;
 
     if (!userEmail || !userId) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -189,7 +189,7 @@ router.post('/request', requireAuth, async (req: any, res) => {
 
 router.get('/status', requireAuth, async (req: any, res) => {
   try {
-    const userId = req.session?.userId || req.user?.id;
+    const userId: string = (req as any).userId || req.user?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -236,7 +236,7 @@ router.get('/status', requireAuth, async (req: any, res) => {
 
 router.post('/cancel', requireAuth, async (req: any, res) => {
   try {
-    const userId = req.session?.userId || req.user?.id;
+    const userId: string = (req as any).userId || req.user?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }

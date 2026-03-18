@@ -1999,7 +1999,7 @@ export const providerApplicationFormSchema = z.object({
 export const accountDeletionRequests = pgTable("account_deletion_requests", {
   id: serial("id").primaryKey(),
   requestId: varchar("request_id", { length: 64 }).unique().notNull(),
-  userId: integer("user_id").notNull(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
   userEmail: varchar("user_email", { length: 255 }).notNull(),
   userFullName: varchar("user_full_name", { length: 255 }).notNull(),
   userPhone: varchar("user_phone", { length: 50 }),
@@ -2034,7 +2034,7 @@ export const accountDeletionRequests = pgTable("account_deletion_requests", {
 export const accountDeletionAuditLog = pgTable("account_deletion_audit_log", {
   id: serial("id").primaryKey(),
   requestId: varchar("request_id", { length: 64 }).notNull(),
-  userId: integer("user_id").notNull(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
   action: varchar("action", { length: 100 }).notNull(),
   details: jsonb("details"),
   dataCategory: varchar("data_category", { length: 100 }),
