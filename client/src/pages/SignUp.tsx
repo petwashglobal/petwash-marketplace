@@ -30,7 +30,7 @@ import { registerPasskey, isPasskeySupported, getBiometricMethodName } from "@/a
 import { motion } from "framer-motion";
 import { getApiUrl } from '@/lib/apiConfig';
 import { PhoneInput } from '@/components/PhoneInput';
-import { SecurityCheckpoint } from '@/components/ReCaptcha';
+import { executeReCaptcha } from '@/components/ReCaptcha';
 
 interface SignUpProps {
   language: Language;
@@ -49,7 +49,6 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
   const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [firebaseToken, setFirebaseToken] = useState<string | null>(null);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   
   const prefilledEmail = new URLSearchParams(window.location.search).get('email') || '';
   
@@ -249,8 +248,10 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     // Clear any previous terms error
     setTermsError(false);
     
-    if (!captchaToken) {
-      toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נדרש' : 'Security check required', description: language === 'he' ? 'אנא השלם את אימות reCAPTCHA לפני ההרשמה' : 'Please complete the security check before signing up' });
+    const freshCaptchaToken = await executeReCaptcha('register');
+    if (!freshCaptchaToken) {
+      logger.error('[SignUp] executeReCaptcha returned null — blocking registration');
+      toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'לא ניתן לאמת את הבקשה, אנא רענן את הדף ונסה שוב' : 'Could not verify the request. Please refresh and try again.' });
       return;
     }
 
@@ -358,7 +359,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
           consentTimestamp,
           consentVersion,
           consentTextHash,
-          captchaToken,
+          captchaToken: freshCaptchaToken,
           traceId
         })
       });
@@ -838,20 +839,11 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
               )}
             </div>
 
-            <div className="pt-2">
-              <SecurityCheckpoint
-                onVerified={(token) => setCaptchaToken(token)}
-                onFailed={() => { setCaptchaToken(null); logger.warn('[SignUp] reCAPTCHA failed — submit blocked'); }}
-                language={language}
-                action="signup"
-              />
-            </div>
-
             <Button
               id="createBtn"
               type="submit" 
               className="luxury-btn-primary luxury-shadow-xl w-full h-14 text-base font-medium"
-              disabled={loading || !formData.acceptedTerms || !captchaToken}
+              disabled={loading || !formData.acceptedTerms}
               data-testid="button-createAccount"
             >
               {loading ? (

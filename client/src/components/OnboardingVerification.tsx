@@ -7,7 +7,7 @@ import { apiRequest } from '@/lib/queryClient';
 import type { Language } from '@/lib/i18n';
 import { Mail, Phone, CheckCircle2, ArrowRight, ArrowLeft, Shield, Loader2, RefreshCw, Link2 } from 'lucide-react';
 import { PhoneInput } from '@/components/PhoneInput';
-import { SecurityCheckpoint } from '@/components/ReCaptcha';
+import { executeReCaptcha } from '@/components/ReCaptcha';
 
 interface OnboardingVerificationProps {
   isOpen: boolean;
@@ -149,7 +149,6 @@ export function OnboardingVerification({
   const [smsToken, setSmsToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [smsCaptchaToken, setSmsCaptchaToken] = useState<string | null>(null);
 
   const [linkPolling, setLinkPolling] = useState(false);
   const emailInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -295,13 +294,14 @@ export function OnboardingVerification({
       toast({ title: isRTL ? 'אנא הזינו מספר טלפון תקין' : 'Please enter a valid phone number', variant: 'destructive' });
       return;
     }
-    if (!smsCaptchaToken) {
-      toast({ title: isRTL ? 'אימות אבטחה נדרש' : 'Security check required', description: isRTL ? 'אנא לחץ על ״אני לא רובוט״ לפני שליחת קוד האימות' : 'Please complete the security check before sending the verification code', variant: 'destructive' });
+    const freshCaptchaToken = await executeReCaptcha('send_sms');
+    if (!freshCaptchaToken) {
+      toast({ title: isRTL ? 'אימות אבטחה נכשל' : 'Security check failed', description: isRTL ? 'לא ניתן לאמת את הבקשה, אנא רענן את הדף ונסה שוב' : 'Could not verify request. Please refresh and try again.', variant: 'destructive' });
       return;
     }
     setLoading(true);
     try {
-      const res = await apiRequest('POST', '/api/onboarding-verification/send-sms-code', { phone, language, captchaToken: smsCaptchaToken });
+      const res = await apiRequest('POST', '/api/onboarding-verification/send-sms-code', { phone, language, captchaToken: freshCaptchaToken });
       const data = await res.json();
       if (data.success) {
         setStep('phone_code');
@@ -559,17 +559,11 @@ export function OnboardingVerification({
                   language={language}
                 />
               </div>
-              <SecurityCheckpoint
-                onVerified={(token) => setSmsCaptchaToken(token)}
-                onFailed={() => setSmsCaptchaToken(null)}
-                language={language}
-                action="send_sms"
-              />
               <Button
                 onClick={sendSmsCode}
-                disabled={loading || !phone || !smsCaptchaToken}
+                disabled={loading || !phone}
                 className="w-full h-12 text-base font-semibold text-white"
-                style={{ background: smsCaptchaToken ? 'linear-gradient(135deg, #1a1a1a, #374151)' : 'linear-gradient(135deg, #9ca3af, #6b7280)', borderRadius: '2px' }}
+                style={{ background: 'linear-gradient(135deg, #1a1a1a, #374151)', borderRadius: '2px' }}
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                   <span className="flex items-center gap-2">

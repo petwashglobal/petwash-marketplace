@@ -13,7 +13,7 @@ import { NativeDateSelect } from '@/components/ui/native-date-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
 import { PhoneInput } from '@/components/PhoneInput';
-import { SecurityCheckpoint } from '@/components/ReCaptcha';
+import { executeReCaptcha } from '@/components/ReCaptcha';
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { motion, AnimatePresence } from "framer-motion";
 import { getApiUrl } from '@/lib/apiConfig';
@@ -88,7 +88,6 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [activeActivityIndex, setActiveActivityIndex] = useState(0);
   const [animatedStats, setAnimatedStats] = useState({ members: 0, providers: 0, services: 0 });
 
@@ -216,7 +215,6 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
       case 4: return true;
       case 5:
         if (!termsConsent) { toast({ variant: 'destructive', title: t('privilege.required', language), description: t('privilege.termsConsent', language) }); return false; }
-        if (!captchaToken) { toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נדרש' : 'Security check required', description: language === 'he' ? 'אנא לחץ על ״אני לא רובוט״ לפני ההמשך' : 'Please complete the security check before continuing' }); return false; }
         return true;
       default: return true;
     }
@@ -251,7 +249,13 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
       formData.append('smsConsent', String(smsConsent));
       formData.append('termsConsent', String(termsConsent));
       formData.append('language', language);
-      if (captchaToken) formData.append('captchaToken', captchaToken);
+      const freshCaptchaToken = await executeReCaptcha('privilege_register');
+      if (!freshCaptchaToken) {
+        toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'לא ניתן לאמת את הבקשה, אנא רענן את הדף ונסה שוב' : 'Could not verify request. Please refresh and try again.' });
+        setLoading(false);
+        return;
+      }
+      formData.append('captchaToken', freshCaptchaToken);
       formData.append('traceId', traceId);
 
       const response = await fetch(getApiUrl('/api/privilege/register'), { method: 'POST', body: formData });
@@ -860,9 +864,6 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                             <Label htmlFor="privilege-terms" className="text-sm text-gray-500 cursor-pointer leading-snug">{t('privilege.termsConsent', language)} <span className="text-red-500">*</span></Label>
                           </div>
                         </div>
-                        <div className="pt-4">
-                          <SecurityCheckpoint onVerified={(token) => setCaptchaToken(token)} onFailed={() => setCaptchaToken(null)} language={language} action="privilege_register" />
-                        </div>
                       </div>
                     )}
                   </motion.div>
@@ -879,7 +880,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                       {t('privilege.next', language)}{isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                     </Button>
                   ) : (
-                    <Button type="button" onClick={handleSubmit} disabled={loading || !captchaToken} className="flex items-center gap-2 font-bold text-white" style={{ borderRadius: '2px', background: captchaToken ? 'linear-gradient(90deg, #c9a96e, #d4af37)' : 'linear-gradient(90deg, #9ca3af, #6b7280)' }}>
+                    <Button type="button" onClick={handleSubmit} disabled={loading} className="flex items-center gap-2 font-bold text-white" style={{ borderRadius: '2px', background: 'linear-gradient(90deg, #c9a96e, #d4af37)' }}>
                       {loading ? (
                         <span className="flex items-center gap-2">
                           <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}><Sparkles className="w-4 h-4" /></motion.div>

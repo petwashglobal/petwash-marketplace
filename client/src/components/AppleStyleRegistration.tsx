@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Language } from '@/lib/i18n';
 import { t } from '@/lib/i18n';
 import { PhoneInput } from '@/components/PhoneInput';
-import { SecurityCheckpoint } from '@/components/ReCaptcha';
+import { executeReCaptcha } from '@/components/ReCaptcha';
 
 interface AppleStyleRegistrationProps {
   isOpen: boolean;
@@ -72,7 +72,6 @@ const PET_TYPE_DATA = [
 ];
 
 export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrationComplete }: AppleStyleRegistrationProps) {
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [formData, setFormData] = useState<RegistrationData>({
     firstName: '',
     lastName: '',
@@ -111,7 +110,7 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
   };
 
   const registrationMutation = useMutation({
-    mutationFn: async (data: RegistrationData) => {
+    mutationFn: async (data: RegistrationData & { captchaToken?: string }) => {
       if (!data.acceptsTerms || !data.acceptsPrivacy) {
         throw new Error('Terms and privacy consent are required');
       }
@@ -127,7 +126,7 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
           formDataToSend.append('profilePicture', value);
         } else if (key === 'idDocument' && value) {
           formDataToSend.append('idDocument', value);
-        } else if (typeof value !== 'object') {
+        } else if (typeof value !== 'object' && key !== 'captchaToken') {
           formDataToSend.append(key, String(value));
         }
       });
@@ -136,8 +135,8 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
       formDataToSend.append('consentTextHash', consentTextHash);
       formDataToSend.append('acceptedTerms', String(data.acceptsTerms));
 
-      if (captchaToken) {
-        formDataToSend.append('captchaToken', captchaToken);
+      if (data.captchaToken) {
+        formDataToSend.append('captchaToken', data.captchaToken);
       }
 
       const response = await fetch(getApiUrl('/api/auth/register'), {
@@ -181,15 +180,9 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validation
-    if (!captchaToken) {
-      toast({ title: language === 'he' ? 'אימות אבטחה נדרש' : 'Security check required', description: language === 'he' ? 'אנא לחץ על ״אני לא רובוט״ לפני ההרשמה' : 'Please complete the security check before registering', variant: 'destructive' });
-      return;
-    }
-
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.password) {
       toast({
         title: t('registration.missingInfoTitle', language),
@@ -217,7 +210,13 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
       return;
     }
 
-    registrationMutation.mutate(formData);
+    const freshCaptchaToken = await executeReCaptcha('register');
+    if (!freshCaptchaToken) {
+      toast({ title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'לא ניתן לאמת את הבקשה, אנא רענן את הדף ונסה שוב' : 'Could not verify request. Please refresh and try again.', variant: 'destructive' });
+      return;
+    }
+
+    registrationMutation.mutate({ ...formData, captchaToken: freshCaptchaToken });
   };
 
   if (!isOpen) return null;
@@ -531,20 +530,10 @@ export function AppleStyleRegistration({ isOpen, onClose, language, onRegistrati
             </div>
           </div>
 
-          {/* Security Checkpoint */}
-          <div className="pt-2">
-            <SecurityCheckpoint
-              onVerified={(token) => setCaptchaToken(token)}
-              onFailed={() => setCaptchaToken(null)}
-              language={language}
-              action="register"
-            />
-          </div>
-
           {/* Submit Button */}
           <Button
             type="submit"
-            disabled={registrationMutation.isPending || !formData.acceptsTerms || !formData.acceptsPrivacy || !captchaToken}
+            disabled={registrationMutation.isPending || !formData.acceptsTerms || !formData.acceptsPrivacy}
             className="w-full bg-black text-white hover:bg-gray-800 py-4 text-xl font-semibold rounded-xl transition-colors shadow-lg"
           >
             {registrationMutation.isPending

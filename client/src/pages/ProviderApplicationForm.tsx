@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { SecurityCheckpoint } from '@/components/ReCaptcha';
+import { executeReCaptcha } from '@/components/ReCaptcha';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -176,7 +176,6 @@ export default function ProviderApplicationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const handleProfilePhotoChange = (e: { target: HTMLInputElement }) => {
     const file = e.target.files?.[0];
@@ -362,8 +361,9 @@ export default function ProviderApplicationForm() {
 
   const onSubmit = async (data: ApplicationForm) => {
     console.log('[ProviderApplication] Form submit triggered with data:', data);
-    if (!captchaToken) {
-      toast({ title: language === 'he' ? 'אימות אבטחה נדרש' : 'Security check required', description: language === 'he' ? 'אנא לחץ על ״אני לא רובוט״ לפני שליחת הבקשה' : 'Please complete the security check before submitting', variant: 'destructive' });
+    const freshCaptchaToken = await executeReCaptcha('provider_register');
+    if (!freshCaptchaToken) {
+      toast({ title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'לא ניתן לאמת את הבקשה, אנא רענן את הדף ונסה שוב' : 'Could not verify request. Please refresh and try again.', variant: 'destructive' });
       return;
     }
     setIsSubmitting(true);
@@ -377,7 +377,7 @@ export default function ProviderApplicationForm() {
         selectedPlatforms,
         intendedPricing: pricing,
         profilePhotoBase64: profilePhoto || undefined,
-        captchaToken,
+        captchaToken: freshCaptchaToken,
       };
       
       console.log('[ProviderApplication] Sending API request...');
@@ -1371,17 +1371,6 @@ export default function ProviderApplicationForm() {
                 </div>
               )}
 
-              {/* Security Checkpoint - only show on last step */}
-              {step === 5 && (
-                <div className="mt-8">
-                  <SecurityCheckpoint
-                    onVerified={(token) => setCaptchaToken(token)}
-                    onFailed={() => setCaptchaToken(null)}
-                    language={language}
-                    action="provider_apply"
-                  />
-                </div>
-              )}
 
               {/* Luxury Navigation Buttons */}
               <div className="flex items-center justify-between mt-10 pt-6 border-t border-gray-200">
@@ -1458,7 +1447,7 @@ export default function ProviderApplicationForm() {
                   ) : (
                     <button
                       type="submit"
-                      disabled={isSubmitting || !captchaToken}
+                      disabled={isSubmitting}
                       className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white rounded-2xl font-semibold shadow-xl shadow-emerald-500/25 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
                       data-testid="button-submit"
                     >
