@@ -30,7 +30,7 @@ import { nanoid } from 'nanoid';
 // Enterprise service integrations
 import EscrowService from '../services/EscrowService';
 import { createEarningRecord } from '../services/payoutLedger';
-import NotificationService from '../services/NotificationService';
+import { dispatchNotification } from '../lib/notificationDispatcher';
 import { logBookingEvent, type BookingEventPayload } from '../services/bookingEventLogger';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { EmailService } from '../emailService';
@@ -829,31 +829,40 @@ router.post('/:requestId/confirm', async (req, res) => {
       });
     }
     
-    // ENTERPRISE: Send notifications via NotificationService
+    // Send inbox + email + SMS notifications via dispatchNotification
+    const amountIls = (booking.subtotalCents / 100).toFixed(2);
     try {
-      await NotificationService.sendNotification({
-        userId: booking.providerId,
-        type: 'payment',
-        title: 'Payment Released! 💰',
-        message: `₪${(booking.subtotalCents / 100).toFixed(2)} has been released. It will be transferred to your bank within 72 hours.`,
-        priority: 'high',
-        channel: 'all',
-        data: { requestId, amount: booking.subtotalCents / 100 },
+      // Notify provider — payment released
+      await dispatchNotification({
+        uid: booking.providerId,
+        type: 'receipt',
+        title: '💰 תשלום שוחרר!',
+        bodyHtml: `<p>סכום של <strong>₪${amountIls}</strong> שוחרר עבור הזמנה <strong>${requestId}</strong>.</p><p>ההעברה תגיע לחשבונך תוך 72 שעות.</p>`,
+        channels: ['inbox'],
+        priority: 5,
+        meta: { bookingId: requestId, amount: parseFloat(amountIls), currency: 'ILS' },
       });
-      
-      await NotificationService.sendNotification({
-        userId: booking.ownerId,
-        type: 'booking',
-        title: 'Booking Completed! ✅',
-        message: rating 
-          ? `Thank you for your ${rating}-star review! We hope to see you again.`
-          : 'Thank you for using ⁦Pet Wash™⁩!',
-        priority: 'normal',
-        channel: 'push',
-        data: { requestId },
+    } catch (notifErr: any) {
+      logger.warn('[BookingRequests] Provider inbox notification failed', { error: notifErr.message });
+    }
+    try {
+      // Notify owner — booking completed
+      const ownerTitle = '✅ ההזמנה הושלמה!';
+      const ownerBody = rating
+        ? `<p>תודה על ביקורת ה-${rating} כוכבים! שמחים שנהנית מהשירות.</p>`
+        : '<p>תודה שבחרת ב-PetWash™! מחכים לראותך שוב בקרוב.</p>';
+      await dispatchNotification({
+        uid: booking.ownerId,
+        type: 'system',
+        title: ownerTitle,
+        bodyHtml: ownerBody,
+        ctaText: 'הזמן שוב',
+        ctaUrl: 'https://petwash.co.il/book',
+        channels: ['inbox'],
+        meta: { bookingId: requestId },
       });
-    } catch (notifError: any) {
-      logger.warn('[BookingRequests] Notification failed', { error: notifError.message });
+    } catch (notifErr: any) {
+      logger.warn('[BookingRequests] Owner inbox notification failed', { error: notifErr.message });
     }
 
     // ENTERPRISE: Send SMS confirmation — phone must come from the authenticated user, not req.body
@@ -868,7 +877,7 @@ router.post('/:requestId/confirm', async (req, res) => {
     const validEmail = ownerEmail && emailRegex.test(ownerEmail);
     if (validPhone && booking.ownerId === callerUserId) {
       try {
-        const smsBody = `Pet Wash™ Booking Confirmed!\n\nBooking: ${requestId}\nService: ${booking.serviceType}\nDates: ${booking.startDate ? new Date(booking.startDate).toLocaleDateString('en-AU') : 'N/A'} - ${booking.endDate ? new Date(booking.endDate).toLocaleDateString('en-AU') : 'N/A'}\nTotal: ₪${(booking.totalCents / 100).toFixed(2)}\nStatus: Completed & Confirmed\nPayout ETA: 72 hours\n\nThank you for choosing Pet Wash™!`;
+        const smsBody = `Pet Wash™ ההזמנה אושרה!\n\nמזהה: ${requestId}\nשירות: ${booking.serviceType}\nתאריכים: ${booking.startDate ? new Date(booking.startDate).toLocaleDateString('he-IL', { timeZone: ISRAEL_TIMEZONE }) : 'N/A'} - ${booking.endDate ? new Date(booking.endDate).toLocaleDateString('he-IL', { timeZone: ISRAEL_TIMEZONE }) : 'N/A'}\nסכום: ₪${(booking.totalCents / 100).toFixed(2)}\nסטטוס: אושר ✅\n\nתודה שבחרת ב-PetWash™!`;
         await twilioSMSService.sendSMS(ownerPhone, smsBody, { userId: callerUserId, ip: req.ip, ua: req.headers['user-agent'] });
         logger.info('[BookingRequests] Confirmation SMS sent', { requestId, phone: ownerPhone.slice(0, 6) + '****' });
       } catch (smsErr: any) {
@@ -894,8 +903,8 @@ router.post('/:requestId/confirm', async (req, res) => {
               <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
                 <tr><td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">Booking ID</td><td style="padding: 10px 0; text-align: right; font-weight: 600; border-bottom: 1px solid #f3f4f6;">${requestId}</td></tr>
                 <tr><td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">Service</td><td style="padding: 10px 0; text-align: right; font-weight: 600; border-bottom: 1px solid #f3f4f6;">${booking.serviceType}</td></tr>
-                <tr><td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">Start Date</td><td style="padding: 10px 0; text-align: right; font-weight: 600; border-bottom: 1px solid #f3f4f6;">${booking.startDate ? new Date(booking.startDate).toLocaleDateString('en-AU') : 'N/A'}</td></tr>
-                <tr><td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">End Date</td><td style="padding: 10px 0; text-align: right; font-weight: 600; border-bottom: 1px solid #f3f4f6;">${booking.endDate ? new Date(booking.endDate).toLocaleDateString('en-AU') : 'N/A'}</td></tr>
+                <tr><td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">תאריך התחלה</td><td style="padding: 10px 0; text-align: right; font-weight: 600; border-bottom: 1px solid #f3f4f6;">${booking.startDate ? new Date(booking.startDate).toLocaleDateString('he-IL', { timeZone: ISRAEL_TIMEZONE }) : 'N/A'}</td></tr>
+                <tr><td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">תאריך סיום</td><td style="padding: 10px 0; text-align: right; font-weight: 600; border-bottom: 1px solid #f3f4f6;">${booking.endDate ? new Date(booking.endDate).toLocaleDateString('he-IL', { timeZone: ISRAEL_TIMEZONE }) : 'N/A'}</td></tr>
                 <tr><td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">Pets</td><td style="padding: 10px 0; text-align: right; font-weight: 600; border-bottom: 1px solid #f3f4f6;">${booking.petCount}</td></tr>
                 <tr><td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">Subtotal</td><td style="padding: 10px 0; text-align: right; font-weight: 600; border-bottom: 1px solid #f3f4f6;">₪${(booking.subtotalCents / 100).toFixed(2)}</td></tr>
                 <tr><td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">Service Fee (15%)</td><td style="padding: 10px 0; text-align: right; font-weight: 600; border-bottom: 1px solid #f3f4f6;">₪${(booking.serviceFeeCents / 100).toFixed(2)}</td></tr>

@@ -278,6 +278,7 @@ export default function PrestigePassWallet() {
   const [qrToken, setQrToken]         = useState<QrToken | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(QR_TTL);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showTopUpDialog, setShowTopUpDialog] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Fetch wallet state
@@ -973,7 +974,7 @@ export default function PrestigePassWallet() {
 
                     {/* Option 1: Top Up */}
                     <button
-                      onClick={() => toast({ title: he ? 'טעינת ארנק' : 'Top Up Wallet', description: he ? 'עמוד הטעינה יהיה זמין בקרוב' : 'Top-up page coming soon — contact support to add funds.' })}
+                      onClick={() => setShowTopUpDialog(true)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '10px',
                         background: 'rgba(212,175,55,0.08)', border: '1.5px solid rgba(212,175,55,0.3)',
@@ -1020,7 +1021,7 @@ export default function PrestigePassWallet() {
 
                     {/* Option 3: Buy Wash Package */}
                     <button
-                      onClick={() => toast({ title: he ? 'חבילת שטיפות' : 'Wash Package', description: he ? 'רכישת חבילות שטיפה תהיה זמינה בקרוב' : 'Wash package purchase coming soon.' })}
+                      onClick={() => setShowTopUpDialog(true)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '10px',
                         background: '#ffffff', border: '1.5px solid rgba(0,0,0,0.1)',
@@ -1407,6 +1408,101 @@ export default function PrestigePassWallet() {
           </p>
         </div>
       </div>
+
+      {/* ── Top-Up / Wash Package Dialog ──────────────────────────────── */}
+      {showTopUpDialog && (
+        <div
+          onClick={() => setShowTopUpDialog(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9200,
+            background: 'rgba(0,0,0,0.55)', display: 'flex',
+            alignItems: 'flex-end', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff', borderRadius: '20px 20px 0 0',
+              padding: '28px 24px 40px', width: '100%', maxWidth: '480px',
+              boxShadow: '0 -4px 40px rgba(0,0,0,0.18)',
+            }}
+          >
+            {/* Drag handle */}
+            <div style={{ width: 40, height: 4, borderRadius: 2, background: '#ddd', margin: '0 auto 20px' }} />
+
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#1a1a1a', marginBottom: 6, textAlign: he ? 'right' : 'left' }}>
+              {he ? 'טעינת ארנק פרסטיז׳' : 'Top Up Prestige Pass'}
+            </h3>
+            <p style={{ fontSize: '0.88rem', color: '#666', marginBottom: 20, textAlign: he ? 'right' : 'left' }}>
+              {he
+                ? 'בחרו כמה תרצו לטעון — נציג שלנו יאשר את הטעינה תוך דקות.'
+                : 'Choose an amount — our team confirms the credit within minutes.'}
+            </p>
+
+            {/* Amount tiles */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 20 }}>
+              {[{ ils: 50, label: he ? '₪50' : '₪50' }, { ils: 100, label: he ? '₪100' : '₪100' }, { ils: 200, label: he ? '₪200' : '₪200', hot: true }, { ils: 300, label: '₪300' }, { ils: 500, label: '₪500' }, { ils: 1000, label: '₪1,000' }].map(opt => (
+                <a
+                  key={opt.ils}
+                  href={`https://wa.me/972543060770?text=${encodeURIComponent(he ? `שלום, אני רוצה לטעון ₪${opt.ils} לארנק פרסטיז׳ שלי` : `Hi, I'd like to top up my Prestige Pass with ₪${opt.ils}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    border: opt.hot ? '2px solid #C5A55A' : '1.5px solid #e5e7eb',
+                    borderRadius: 12, padding: '12px 8px', textDecoration: 'none',
+                    background: opt.hot ? 'rgba(197,165,90,0.07)' : '#fff',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#1a1a1a' }}>{opt.label}</span>
+                  {opt.hot && <span style={{ fontSize: '0.65rem', color: '#C5A55A', fontWeight: 700, marginTop: 2 }}>{he ? 'פופולרי' : 'Popular'}</span>}
+                </a>
+              ))}
+            </div>
+
+            {/* WhatsApp CTA */}
+            <a
+              href={`https://wa.me/972543060770?text=${encodeURIComponent(he ? 'שלום, אני רוצה לטעון את ארנק פרסטיז׳ שלי' : "Hi, I'd like to top up my Prestige Pass")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                background: '#25D366', borderRadius: 12, padding: '14px',
+                color: '#fff', fontWeight: 700, fontSize: '0.97rem',
+                textDecoration: 'none', marginBottom: 12,
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              {he ? 'צור קשר בוואטסאפ לטעינה' : 'Chat on WhatsApp to Top Up'}
+            </a>
+
+            {/* Phone */}
+            <a
+              href="tel:+972543060770"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                border: '1.5px solid #e5e7eb', borderRadius: 12, padding: '12px',
+                color: '#444', fontWeight: 600, fontSize: '0.92rem',
+                textDecoration: 'none', marginBottom: 16,
+              }}
+            >
+              {he ? '📞 התקשרו: 054-306-0770' : '📞 Call: 054-306-0770'}
+            </a>
+
+            <button
+              onClick={() => setShowTopUpDialog(false)}
+              style={{
+                width: '100%', padding: '12px', border: 'none', borderRadius: 12,
+                background: '#f3f4f6', color: '#666', fontWeight: 600, fontSize: '0.92rem',
+                cursor: 'pointer',
+              }}
+            >
+              {he ? 'סגור' : 'Close'}
+            </button>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

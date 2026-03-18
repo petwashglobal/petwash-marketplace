@@ -4,6 +4,11 @@ import { israeli2025SignatureService, type EnhancedSignatureRequest } from '../s
 import { requireAuth } from '../customAuth';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
+import { redis } from '../services/redis';
+import { twilioSMSService } from '../services/TwilioSMSService';
+import { EmailService } from '../emailService';
+
+const OTP_TTL_SECONDS = 300; // 5 minutes
 
 const router = Router();
 
@@ -255,20 +260,52 @@ router.post('/otp/send', requireAuth, async (req, res) => {
     
     // Generate 6-digit OTP
     const otp = randomInt(100000, 1000000).toString();
-    
-    // TODO: Send OTP via SMS/Email service
-    // For now, log it (in production, integrate with SMS/Email provider)
-    logger.info('[Israeli2025-ESign] OTP generated:', {
-      method,
-      phone,
-      email,
-      otp: process.env.NODE_ENV === 'development' ? otp : '***masked***',
-    });
-    
+    const uid = (req as any).user?.uid;
+
+    // Store OTP in Redis with 5-minute TTL (key per uid + method)
+    const redisKey = `esign_otp:${uid}:${method}`;
+    await redis.set(redisKey, otp, OTP_TTL_SECONDS);
+
+    // Send OTP via the appropriate channel
+    if (method === 'sms' && phone) {
+      try {
+        await twilioSMSService.sendSMS(
+          phone,
+          `PetWash™ קוד אימות: ${otp}\nתוקף הקוד 5 דקות. אל תשתף קוד זה עם אף אחד.`,
+          { userId: uid, ip: (req as any).ip, ua: (req as any).headers?.['user-agent'] },
+        );
+      } catch (smsErr: any) {
+        logger.error('[Israeli2025-ESign] SMS send failed:', smsErr.message);
+        return res.status(500).json({ error: 'SMS delivery failed', message: 'Could not send OTP via SMS. Please try email instead.' });
+      }
+    } else if (method === 'email' && email) {
+      try {
+        await EmailService.send({
+          to: email,
+          subject: 'PetWash™ — קוד אימות לחתימה דיגיטלית',
+          html: `
+            <div dir="rtl" style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#fff;border:1px solid #e5e7eb;border-radius:12px">
+              <h2 style="margin:0 0 8px;color:#111">PetWash™ — קוד אימות</h2>
+              <p style="color:#555;margin:0 0 24px;font-size:14px">השתמש בקוד הבא לאימות זהותך לחתימה דיגיטלית:</p>
+              <div style="background:#f5f5f5;border-radius:8px;padding:20px;text-align:center;margin-bottom:24px">
+                <span style="font-size:36px;font-weight:700;letter-spacing:8px;color:#111">${otp}</span>
+              </div>
+              <p style="color:#888;font-size:12px;margin:0">הקוד תקף ל-5 דקות. אל תשתף קוד זה עם אף אחד.</p>
+            </div>`,
+          text: `PetWash™ קוד אימות: ${otp}\nתוקף הקוד 5 דקות.`,
+        });
+      } catch (emailErr: any) {
+        logger.error('[Israeli2025-ESign] Email OTP send failed:', emailErr.message);
+        return res.status(500).json({ error: 'Email delivery failed', message: 'Could not send OTP via email.' });
+      }
+    }
+
+    logger.info('[Israeli2025-ESign] OTP sent', { method, uid, redisKey });
     res.json({
       success: true,
       message: `OTP sent via ${method}`,
-      // In development, return OTP for testing
+      expiresInSeconds: OTP_TTL_SECONDS,
+      // In development only, return OTP for testing
       ...(process.env.NODE_ENV === 'development' && { otp }),
     });
     
@@ -303,23 +340,32 @@ router.post('/otp/verify', requireAuth, async (req, res) => {
       });
     }
     
-    // TODO: Verify OTP from session/cache
-    // For now, accept any 6-digit code in development
-    const isValid = /^\d{6}$/.test(code);
-    
-    if (!isValid) {
+    const uid = req.user!.uid;
+    const redisKey = `esign_otp:${uid}:${method}`;
+
+    // Retrieve stored OTP from Redis
+    const storedOtp = await redis.get<string>(redisKey);
+
+    if (!storedOtp) {
       return res.status(400).json({
         success: false,
         valid: false,
-        message: 'Invalid OTP code',
+        message: 'OTP expired or not found. Please request a new code.',
       });
     }
-    
-    logger.info('[Israeli2025-ESign] OTP verified:', {
-      method,
-      userId: req.user!.uid,
-    });
-    
+
+    if (storedOtp !== code) {
+      return res.status(400).json({
+        success: false,
+        valid: false,
+        message: 'Invalid OTP code. Please check and try again.',
+      });
+    }
+
+    // Consume OTP — delete from Redis (one-time use)
+    await redis.del(redisKey);
+
+    logger.info('[Israeli2025-ESign] OTP verified', { method, uid });
     res.json({
       success: true,
       valid: true,

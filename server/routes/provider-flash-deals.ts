@@ -54,6 +54,18 @@ function isDealActive(deal: FlashDeal): boolean {
   return deal.isActive && deal.slotsRemaining > 0 && deal.validUntil > now && deal.validFrom <= now;
 }
 
+/** Format a date in Israel timezone for display */
+function formatIsraelDate(date: Date): string {
+  return date.toLocaleString('he-IL', {
+    timeZone: 'Asia/Jerusalem',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 // ── Seed realistic demo deals for a full week ─────────────────────────────────
 function seedDemoDeals() {
   if (DEALS_STORE.size > 0) return;
@@ -240,6 +252,8 @@ router.get('/', (req, res) => {
     urgencyLevel: d.slotsRemaining <= 2 ? 'critical' : d.slotsRemaining <= 5 ? 'high' : 'normal',
     hoursLeft: Math.max(0, Math.floor((d.validUntil.getTime() - Date.now()) / 3600000)),
     fillPercent: Math.round(((d.slotsTotal - d.slotsRemaining) / d.slotsTotal) * 100),
+    validFromFormatted: formatIsraelDate(d.validFrom),
+    validUntilFormatted: formatIsraelDate(d.validUntil),
   }));
 
   // Sort by urgency + discount
@@ -302,13 +316,26 @@ router.post('/:id/claim', validateFirebaseToken, async (req: any, res) => {
   const totalSavings = Math.round(deal.originalPrice * (deal.discountPercent / 100)) * numPets;
 
   logger.info(`[FlashDeals] Claimed deal ${deal.id} by user ${authenticatedUserId} for ${numPets} pet(s). Remaining: ${deal.slotsRemaining}`);
+
+  // Build a checkout URL that pre-fills the discounted price
+  const checkoutUrl = `/book?dealId=${deal.id}&serviceType=${deal.serviceType}&price=${discountedPrice}&discount=${deal.discountPercent}&provider=${encodeURIComponent(deal.providerName)}`;
+
   res.json({
     success: true,
     claimedSlots: numPets,
     slotsRemaining: deal.slotsRemaining,
     discountedPrice,
     totalSavings,
-    message: `Discount locked! Save ₪${totalSavings} on this booking.`,
+    message: `הנחה נעולה! חסכת ₪${totalSavings} בהזמנה זו.`,
+    checkoutUrl,
+    deal: {
+      id: deal.id,
+      headline: deal.headline,
+      headlineHe: deal.headlineHe,
+      serviceType: deal.serviceType,
+      providerName: deal.providerName,
+      validUntilFormatted: formatIsraelDate(deal.validUntil),
+    },
   });
 });
 
