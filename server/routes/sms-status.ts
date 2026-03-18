@@ -157,6 +157,24 @@ router.post('/sms-status', validateTwilioSignature, async (req: Request, res: Re
       return;
     }
 
+    // ── Dedup guard — one terminal otp_events row per MessageSid ──────────
+    // Twilio may retry callbacks. If a terminal row already exists for this
+    // SID (delivered or failed), skip the insert entirely.
+    const [existingTerminal] = await db
+      .select({ id: otpEvents.id })
+      .from(otpEvents)
+      .where(eq(otpEvents.otpId, `delivery:${MessageSid}`))
+      .limit(1);
+
+    if (existingTerminal) {
+      logger.warn('[SMSStatus] Duplicate terminal callback — otp_events insert skipped (idempotent)', {
+        messageSid: MessageSid,
+        status: normalizedStatus,
+      });
+      return;
+    }
+    // ──────────────────────────────────────────────────────────────────────
+
     await db.insert(otpEvents).values({
       otpId:             `delivery:${MessageSid}`,
       eventType:         isDelivered ? 'SMS_DELIVERED' : 'SMS_FAILED',
