@@ -23,7 +23,7 @@ import { logger } from "@/lib/logger";
 import { signInWithPasskey, signInWithPasskeyConditional, isPasskeySupported, getBiometricMethodName, isChromeiOS, getBrowserName } from "@/auth/passkey";
 import { useAutoFaceID, storePasskeyEmail, clearPasskeyEmail, storeLastAuthMethod, getConsecutiveFailures } from "@/hooks/useAutoFaceID";
 import { FaceIDLoadingState } from "@/components/FaceIDLoadingState";
-import { ReCaptcha, SecurityCheckpoint, executeReCaptcha } from "@/components/ReCaptcha";
+import { executeReCaptcha } from "@/components/ReCaptcha";
 import { trackAuthError } from "@/lib/authErrorTracker";
 import { trustDevice, isDeviceTrusted } from "@/lib/deviceTrust";
 import { motion, AnimatePresence } from "framer-motion";
@@ -57,7 +57,6 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const { trackUserAuth, trackEvent } = useAnalytics();
   const { user, logout } = useFirebaseAuth();
   const [loading, setLoading] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [magicLinkMode, setMagicLinkMode] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
@@ -1109,13 +1108,16 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const handleEmailPasswordSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!captchaToken) {
-      toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נדרש' : 'Security check required', description: language === 'he' ? 'אנא לחץ על ״אני לא רובוט״ לפני הכניסה' : 'Please complete the security check before signing in' });
-      return;
-    }
-    
     try {
       setLoading(true);
+
+      const captchaToken = await executeReCaptcha('login').catch(() => null);
+      if (!captchaToken) {
+        logger.error('[SignIn] executeReCaptcha returned null for email/password login — blocking submit');
+        toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'לא ניתן לאמת את הבקשה, אנא רענן את הדף ונסה שוב' : 'Could not verify the request. Please refresh and try again.' });
+        setLoading(false);
+        return;
+      }
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
       
       const idToken = await userCredential.user.getIdToken();
@@ -1910,16 +1912,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 </button>
               )}
               
-              <SecurityCheckpoint
-                onVerified={(token) => setCaptchaToken(token)}
-                onFailed={() => { setCaptchaToken(null); logger.warn('[SignIn] reCAPTCHA failed — submit blocked'); }}
-                language={language}
-                action="login"
-              />
-
               <Button
                 type="submit"
-                disabled={loading || !captchaToken}
+                disabled={loading}
                 className="w-full h-12 text-sm font-medium bg-neutral-900 hover:bg-neutral-800 text-white rounded-none tracking-wider uppercase transition-all border-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 data-testid="button-email-signin"
               >
