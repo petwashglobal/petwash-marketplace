@@ -317,8 +317,8 @@ router.post("/:bookingId/confirm", requireAuth, async (req, res) => {
           totalAmount: booking.totalAmount || 0,
           status: 'confirmed',
         });
-      } catch (sheetsErr) {
-        logger.warn('[Bookings] Google Sheets sync failed (non-blocking)', sheetsErr);
+      } catch (sheetsErr: any) {
+        logger.warn(`[Bookings] Google Sheets sync failed (non-blocking) bookingId=${bookingId} reason=${sheetsErr?.message || sheetsErr}`);
       }
     });
 

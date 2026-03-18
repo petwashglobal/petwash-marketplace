@@ -110,7 +110,10 @@ router.post('/calculate', async (req, res) => {
   let aiExplanation = null;
   try {
     const { GoogleGenAI } = await import('@google/genai');
-    const genAI = new GoogleGenAI({ apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || '' });
+    const genAI = new GoogleGenAI({
+      apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+      ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } } : {}),
+    });
 
     const petList = pets.map(p => `${p.name || p.type} (${p.size} ${p.type})`).join(', ');
     const prompt = language === 'he'
@@ -138,7 +141,7 @@ router.post('/calculate', async (req, res) => {
          Write a brief, friendly 2-3 sentence explanation in English summarizing this price breakdown and highlighting the total savings.`;
 
     const result = await genAI.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
     });
 
