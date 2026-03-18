@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { db } from '../db';
 import { washMachines, activationSessions } from '@shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { requireAuth } from '../customAuth';
 import { redis } from '../services/redis';
 import { logger } from '../lib/logger';
@@ -14,8 +14,11 @@ const router = Router();
 const APP_SESSION_SECRET = process.env.APP_SESSION_SECRET || 'petwash-session-secret-replace';
 const ACTIVATION_TOKEN_TTL_SECONDS = 120;
 const QR_MAX_AGE_SECONDS = 90;
-const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_MAX_IP = 10;
+const RATE_LIMIT_MAX_USER = 5;
 const RATE_LIMIT_WINDOW_SECONDS = 60;
+// Max time a session stays in 'running' before being auto-released
+const SESSION_MAX_RUN_SECONDS = 1800; // 30 minutes
 
 function createActivationToken(sessionId: string, userId: string, machineId: string): string {
   const raw = `${sessionId}:${userId}:${machineId}:${Date.now()}:${crypto.randomUUID()}`;
@@ -41,18 +44,51 @@ function getIp(req: Request): string {
   );
 }
 
-async function checkRateLimit(ip: string): Promise<boolean> {
-  const key = `qr:ratelimit:${ip}`;
+async function checkRateLimit(ip: string, userId: string): Promise<{ allowed: boolean; reason?: string }> {
   try {
-    const count = await redis.incr(key);
-    if (count === 1) {
-      await redis.expire(key, RATE_LIMIT_WINDOW_SECONDS);
-    }
-    return count <= RATE_LIMIT_MAX;
+    const ipKey = `qr:ratelimit:ip:${ip}`;
+    const uidKey = `qr:ratelimit:uid:${userId}`;
+    const [ipCount, uidCount] = await Promise.all([
+      redis.incr(ipKey),
+      redis.incr(uidKey),
+    ]);
+    if (ipCount === 1) await redis.expire(ipKey, RATE_LIMIT_WINDOW_SECONDS);
+    if (uidCount === 1) await redis.expire(uidKey, RATE_LIMIT_WINDOW_SECONDS);
+    if (ipCount > RATE_LIMIT_MAX_IP) return { allowed: false, reason: 'ip' };
+    if (uidCount > RATE_LIMIT_MAX_USER) return { allowed: false, reason: 'user' };
+    return { allowed: true };
   } catch {
-    return true;
+    return { allowed: true };
   }
 }
+
+/** Release isBusy on machines whose session has been 'running' past SESSION_MAX_RUN_SECONDS */
+async function releaseStuckSessions(): Promise<void> {
+  try {
+    const cutoff = new Date(Date.now() - SESSION_MAX_RUN_SECONDS * 1000);
+    const stuck = await db
+      .select()
+      .from(activationSessions)
+      .where(and(eq(activationSessions.status, 'running')));
+
+    for (const s of stuck) {
+      if (s.startedAt && new Date(s.startedAt) < cutoff) {
+        logger.warn('[QRActivation] Releasing stuck session', { sessionId: s.id, machineId: s.machineId });
+        await db.update(activationSessions)
+          .set({ status: 'failed', failureReason: 'Auto-released: session exceeded max run time', updatedAt: new Date() })
+          .where(eq(activationSessions.id, s.id));
+        await db.update(washMachines)
+          .set({ isBusy: false, updatedAt: new Date() })
+          .where(eq(washMachines.machineId, s.machineId));
+      }
+    }
+  } catch (err: any) {
+    logger.error('[QRActivation] releaseStuckSessions failed', { error: err.message });
+  }
+}
+
+// Run stuck session cleanup every 5 minutes
+setInterval(releaseStuckSessions, 5 * 60 * 1000);
 
 async function markNonceUsed(nonce: string): Promise<void> {
   await redis.setRaw(`qr:nonce:${nonce}`, '1', QR_MAX_AGE_SECONDS + 10);
@@ -135,11 +171,12 @@ router.post('/activate', requireAuth, async (req: any, res: Response) => {
   const userLoyaltyTier: string | undefined = req.firebaseUser?.loyaltyTier;
 
   try {
-    if (!await checkRateLimit(ip)) {
+    const rl = await checkRateLimit(ip, userId);
+    if (!rl.allowed) {
       return res.status(429).json({
         success: false,
         errorCode: 'RATE_LIMITED',
-        message: 'Too many attempts. Please try again shortly.',
+        message: 'Too many attempts. Please wait before trying again.',
       });
     }
 
@@ -216,6 +253,28 @@ router.post('/activate', requireAuth, async (req: any, res: Response) => {
         success: false,
         errorCode: 'MACHINE_BUSY',
         message: 'Machine is currently in use.',
+      });
+    }
+
+    // Block duplicate active sessions for this user+machine
+    const existingActive = await db
+      .select({ id: activationSessions.id, status: activationSessions.status })
+      .from(activationSessions)
+      .where(
+        and(
+          eq(activationSessions.userId, userId),
+          eq(activationSessions.machineId, machine.machineId),
+          inArray(activationSessions.status, ['created', 'authorized', 'running']),
+        ),
+      )
+      .limit(1);
+
+    if (existingActive.length > 0) {
+      return res.status(409).json({
+        success: false,
+        errorCode: 'SESSION_ALREADY_ACTIVE',
+        message: 'You already have an active session on this machine.',
+        existingSessionId: existingActive[0].id,
       });
     }
 
