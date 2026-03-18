@@ -25,14 +25,15 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
   const getDashboardPath = (): string => {
     if (!user) return '/signin';
     const role = claims?.role;
-    switch (role) {
-      case 'provider': return '/provider/dashboard';
-      case 'staff':
-      case 'admin':
-      case 'management':
-      case 'super_admin': return '/dashboard';
-      default: return '/my-account';
-    }
+    const ADMIN_ROLES = ['staff', 'admin', 'management', 'super_admin'];
+    if (role === 'provider') return '/provider/dashboard';
+    if (ADMIN_ROLES.includes(role ?? '')) return '/dashboard';
+    // Email-based fallback: if Firebase claim hasn't been written yet (first login
+    // or token not yet refreshed), use the email list that mirrors the server check.
+    const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || 'nirhadad1@gmail.com,nir.h@petwash.co.il,ceo@petwash.co.il')
+      .split(',').map((e: string) => e.trim().toLowerCase());
+    if (user.email && adminEmails.includes(user.email.toLowerCase())) return '/dashboard';
+    return '/my-account';
   };
   const [heroAnimated, setHeroAnimated] = useState(false);
   

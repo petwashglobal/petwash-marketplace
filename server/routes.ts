@@ -905,7 +905,28 @@ self.addEventListener('notificationclick', (event) => {
       logger.debug('[Session] Verifying ID token and creating session cookie');
       const { createSessionCookie } = await import('./lib/sessionCookies');
       await createSessionCookie(idToken, res);
-      
+
+      // Synchronously set role custom claim for super_admin users so that
+      // getIdTokenResult(true) on the client picks up the correct role immediately.
+      try {
+        const { isSuperAdmin: checkSuperAdmin } = await import('./middleware/rbac');
+        const decodedForClaims = await firebaseAdminModule.auth.verifyIdToken(idToken, true);
+        const emailForClaims = (decodedForClaims.email || '').toLowerCase();
+        if (checkSuperAdmin(emailForClaims)) {
+          const userRecForClaims = await firebaseAdminModule.auth.getUser(decodedForClaims.uid);
+          const existClaims = (userRecForClaims.customClaims || {}) as Record<string, any>;
+          if (existClaims.role !== 'super_admin') {
+            await firebaseAdminModule.auth.setCustomUserClaims(decodedForClaims.uid, {
+              ...existClaims,
+              role: 'super_admin',
+            });
+            logger.info(`[Session] 👑 Super admin role claim written for ${emailForClaims}`);
+          }
+        }
+      } catch (claimsErr) {
+        logger.warn('[Session] Failed to set super_admin role claim (non-blocking)', claimsErr);
+      }
+
       (async () => {
         try {
           const decoded = await firebaseAdminModule.auth.verifyIdToken(idToken, true);

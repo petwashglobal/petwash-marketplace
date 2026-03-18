@@ -239,14 +239,14 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
   const getDashboardPath = (): string => {
     if (!user) return '/signin';
     const role = claims?.role as UserRole;
-    switch (role) {
-      case 'provider': return '/provider/dashboard';
-      case 'staff': return '/dashboard';
-      case 'admin': return '/dashboard';
-      case 'management': return '/dashboard';
-      case 'super_admin': return '/dashboard';
-      default: return '/my-account';
-    }
+    const ADMIN_ROLES: UserRole[] = ['staff', 'admin', 'management', 'super_admin'];
+    if (role === 'provider') return '/provider/dashboard';
+    if (ADMIN_ROLES.includes(role)) return '/dashboard';
+    // Email-based fallback for when Firebase claim hasn't been written yet
+    const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || 'nirhadad1@gmail.com,nir.h@petwash.co.il,ceo@petwash.co.il')
+      .split(',').map((e: string) => e.trim().toLowerCase());
+    if (user.email && adminEmails.includes(user.email.toLowerCase())) return '/dashboard';
+    return '/my-account';
   };
 
   const [internalLanguage, setInternalLanguage] = useState<string>(detectInitialLanguage);
