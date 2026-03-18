@@ -7,9 +7,10 @@ import { logger } from "../lib/logger";
 import { verifyCaptchaToken } from "../lib/verifyCaptcha";
 import { twilioSMSService } from "../services/TwilioSMSService";
 import { db as firestoreDb, auth as fbAdminAuth } from '../lib/firebase-admin';
-import { sql } from 'drizzle-orm';
+import { sql, eq } from 'drizzle-orm';
 import { pool, db } from '../db';
-import { userConsents, authEvents } from '@shared/schema';
+import { userConsents, authEvents, users, smsEvidence } from '@shared/schema';
+import { storage } from '../storage';
 
 // Rate limiter: max 3 SMS send attempts per IP per 10 minutes
 const phoneSendRateLimiter = rateLimit({
@@ -601,7 +602,6 @@ publicAuthRouter.post("/api/accessibility-audit", async (req, res) => {
 import { registrationOTPService } from '../services/RegistrationOTPService';
 import { assignCustomerMembership } from '../services/MembershipService';
 import { renderWelcomeSMS, getTemplateId } from '../sms/templates/welcome-sms-templates';
-import { smsEvidence } from '@shared/schema';
 
 const otpSendSchema = z.object({
   phone: z.string().min(8).max(20),
@@ -752,28 +752,64 @@ publicAuthRouter.post('/api/auth/phone/otp/verify', async (req, res) => {
 
     const metadata = result.metadata;
     let membershipId: string | null = null;
+    let isNewUser = false;
 
     if (metadata) {
       const firebaseUser = await getFirebaseUserFromRequest(req);
       if (firebaseUser) {
+        // ── Step 1: Ensure the users row exists before any membership logic ──
+        // New mobile users (phone-only signup) have no users row yet — upsert it
+        // so that the membership UPDATE below actually finds a row.
+        try {
+          const [existing] = await db
+            .select({ id: users.id, membershipNumber: users.membershipNumber })
+            .from(users)
+            .where(eq(users.id, firebaseUser.uid))
+            .limit(1);
+
+          if (!existing) {
+            isNewUser = true;
+            await storage.upsertUser({
+              id: firebaseUser.uid,
+              email: firebaseUser.email || null,
+              phoneE164: metadata.phoneE164 !== 'N/A' ? metadata.phoneE164 : null,
+              phoneVerified: true,
+              authProvider: 'phone',
+              role: 'customer',
+              signupIntent: metadata.userTypeIntent === 'PROVIDER' ? 'provider' : metadata.userTypeIntent === 'STAFF_REQUEST' ? 'staff_request' : 'customer',
+            } as any);
+            logger.info('[PublicAuth] New mobile user row created', { uid: firebaseUser.uid, phone: metadata.phoneE164?.slice(0, 6) + '****' });
+          } else {
+            // Existing user — stamp phone_verified and phone_e164 if not already set
+            const updates: any = { phoneVerified: true };
+            if (metadata.phoneE164 !== 'N/A') updates.phoneE164 = metadata.phoneE164;
+            await db.update(users).set(updates).where(eq(users.id, firebaseUser.uid));
+          }
+        } catch (upsertErr) {
+          logger.error('[PublicAuth] User upsert on OTP verify failed (non-blocking)', upsertErr);
+        }
+
+        // ── Step 2: Assign membership (now the row is guaranteed to exist) ──
         if (metadata.userTypeIntent === 'PUBLIC') {
           membershipId = await assignCustomerMembership(firebaseUser.uid);
         }
       }
 
+      // ── Step 3: Welcome SMS (only for new users) ──
       try {
-        const firstName = firebaseUser?.displayName?.split(' ')[0] || '';
+        const firebaseUser2 = firebaseUser ?? await getFirebaseUserFromRequest(req);
+        const firstName = firebaseUser2?.displayName?.split(' ')[0] || '';
         const smsType = metadata.userTypeIntent === 'PROVIDER' ? 'PROVIDER' as const
           : metadata.userTypeIntent === 'STAFF_REQUEST' ? 'STAFF' as const
           : 'CUSTOMER' as const;
         const displayId = membershipId || 'pending';
-        if (firstName && metadata.phoneE164 && metadata.phoneE164 !== 'N/A') {
+        if (isNewUser && firstName && metadata.phoneE164 && metadata.phoneE164 !== 'N/A') {
           const smsBody = renderWelcomeSMS(smsType, { firstName, membershipId: displayId, language });
           const templateId = getTemplateId(smsType);
           const smsResult = await twilioSMSService.sendSMS(metadata.phoneE164, smsBody);
 
           await db.insert(smsEvidence).values({
-            userId: firebaseUser?.uid || null,
+            userId: firebaseUser2?.uid || null,
             membershipId: membershipId || null,
             messageType: 'WELCOME',
             templateId,
@@ -799,6 +835,7 @@ publicAuthRouter.post('/api/auth/phone/otp/verify', async (req, res) => {
       success: true,
       verified: true,
       membershipId,
+      isNewUser,
       message: language === 'he' ? 'הטלפון אומת בהצלחה' : 'Phone verified successfully',
     });
   } catch (err) {
