@@ -1,39 +1,37 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { db } from '../db';
-import { washMachines, activationSessions } from '@shared/schema';
+import { washMachines, activationSessions, activationAuditLog } from '@shared/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { requireAuth } from '../customAuth';
 import { redis } from '../services/redis';
 import { logger } from '../lib/logger';
-import { verifyQrSignature } from '../utils/generateQrPayload';
-import type { QrPayload } from '../utils/generateQrPayload';
+import {
+  verifyQrSignature,
+  assertValidQrPayload,
+  assertValidStaticStickerPayload,
+} from '../utils/generateQrPayload';
 
 const router = Router();
 
 const APP_SESSION_SECRET = process.env.APP_SESSION_SECRET || 'petwash-session-secret-replace';
-const ACTIVATION_TOKEN_TTL_SECONDS = 120;
-const QR_MAX_AGE_SECONDS = 90;
+const ACTIVATION_TOKEN_TTL_SECONDS = 120;  // 2 min window to tap "Start"
+const QR_MAX_AGE_SECONDS = 90;             // dynamic QR only
+const VEND_SENT_TIMEOUT_SECONDS = 60;      // rollback if machine never acked the vend
+const MACHINE_ACK_TIMEOUT_SECONDS = 300;   // rollback if acked but never started
+const SESSION_MAX_RUN_SECONDS = 1800;      // 30 min hard cap on running sessions
 const RATE_LIMIT_MAX_IP = 10;
 const RATE_LIMIT_MAX_USER = 5;
 const RATE_LIMIT_WINDOW_SECONDS = 60;
-// Max time a session stays in 'running' before being auto-released
-const SESSION_MAX_RUN_SECONDS = 1800; // 30 minutes
+
+// ── State machine ─────────────────────────────────────────────────────────────
+// created → authorized → vend_sent → machine_ack → running → completed
+//                     ↘ failed (any step)
+// ─────────────────────────────────────────────────────────────────────────────
 
 function createActivationToken(sessionId: string, userId: string, machineId: string): string {
   const raw = `${sessionId}:${userId}:${machineId}:${Date.now()}:${crypto.randomUUID()}`;
   return crypto.createHmac('sha256', APP_SESSION_SECRET).update(raw).digest('hex');
-}
-
-function assertValidQrPayload(input: any): input is QrPayload {
-  return (
-    input &&
-    typeof input.machineId === 'string' &&
-    typeof input.locationId === 'string' &&
-    typeof input.ts === 'number' &&
-    typeof input.nonce === 'string' &&
-    typeof input.sig === 'string'
-  );
 }
 
 function getIp(req: Request): string {
@@ -44,14 +42,39 @@ function getIp(req: Request): string {
   );
 }
 
+// ── Audit log ─────────────────────────────────────────────────────────────────
+async function audit(params: {
+  sessionId: string;
+  userId: string;
+  machineId: string;
+  event: string;
+  status?: string;
+  detail?: string;
+  errorCode?: string;
+  ip?: string;
+}): Promise<void> {
+  try {
+    await db.insert(activationAuditLog).values({
+      sessionId: params.sessionId,
+      userId:    params.userId,
+      machineId: params.machineId,
+      event:     params.event,
+      status:    params.status || null,
+      detail:    params.detail || null,
+      errorCode: params.errorCode || null,
+      ip:        params.ip || null,
+    });
+  } catch (err: any) {
+    logger.warn('[QRAudit] Insert failed (non-blocking)', { error: err.message });
+  }
+}
+
+// ── Rate limiter ──────────────────────────────────────────────────────────────
 async function checkRateLimit(ip: string, userId: string): Promise<{ allowed: boolean; reason?: string }> {
   try {
     const ipKey = `qr:ratelimit:ip:${ip}`;
     const uidKey = `qr:ratelimit:uid:${userId}`;
-    const [ipCount, uidCount] = await Promise.all([
-      redis.incr(ipKey),
-      redis.incr(uidKey),
-    ]);
+    const [ipCount, uidCount] = await Promise.all([redis.incr(ipKey), redis.incr(uidKey)]);
     if (ipCount === 1) await redis.expire(ipKey, RATE_LIMIT_WINDOW_SECONDS);
     if (uidCount === 1) await redis.expire(uidKey, RATE_LIMIT_WINDOW_SECONDS);
     if (ipCount > RATE_LIMIT_MAX_IP) return { allowed: false, reason: 'ip' };
@@ -62,77 +85,256 @@ async function checkRateLimit(ip: string, userId: string): Promise<{ allowed: bo
   }
 }
 
-/** Release isBusy on machines whose session has been 'running' past SESSION_MAX_RUN_SECONDS */
+// ── Stuck-session recovery (runs every 5 min) ─────────────────────────────────
 async function releaseStuckSessions(): Promise<void> {
   try {
-    const cutoff = new Date(Date.now() - SESSION_MAX_RUN_SECONDS * 1000);
+    const now = Date.now();
+    const runCutoff  = new Date(now - SESSION_MAX_RUN_SECONDS * 1000);
+    const vendCutoff = new Date(now - VEND_SENT_TIMEOUT_SECONDS * 1000);
+    const ackCutoff  = new Date(now - MACHINE_ACK_TIMEOUT_SECONDS * 1000);
+
     const stuck = await db
       .select()
       .from(activationSessions)
-      .where(and(eq(activationSessions.status, 'running')));
+      .where(inArray(activationSessions.status, ['running', 'vend_sent', 'machine_ack']));
 
     for (const s of stuck) {
-      if (s.startedAt && new Date(s.startedAt) < cutoff) {
-        logger.warn('[QRActivation] Releasing stuck session', { sessionId: s.id, machineId: s.machineId });
+      const createdAt = new Date(s.createdAt);
+      const vendSentAt = s.vendSentAt ? new Date(s.vendSentAt) : null;
+      const machineAckedAt = s.machineAckedAt ? new Date(s.machineAckedAt) : null;
+
+      let shouldRelease = false;
+      let reason = '';
+
+      if (s.status === 'running' && createdAt < runCutoff) {
+        shouldRelease = true;
+        reason = 'Auto-released: session exceeded 30-minute max run time';
+      } else if (s.status === 'vend_sent' && vendSentAt && vendSentAt < vendCutoff) {
+        shouldRelease = true;
+        reason = 'Auto-released: machine did not acknowledge vend within 60 seconds';
+      } else if (s.status === 'machine_ack' && machineAckedAt && machineAckedAt < ackCutoff) {
+        shouldRelease = true;
+        reason = 'Auto-released: machine acked but session never started within 5 minutes';
+      }
+
+      if (shouldRelease) {
+        logger.warn('[QRActivation] Releasing stuck session', {
+          sessionId: s.id, machineId: s.machineId, status: s.status, reason,
+        });
         await db.update(activationSessions)
-          .set({ status: 'failed', failureReason: 'Auto-released: session exceeded max run time', updatedAt: new Date() })
+          .set({ status: 'failed', failureReason: reason, updatedAt: new Date() })
           .where(eq(activationSessions.id, s.id));
         await db.update(washMachines)
           .set({ isBusy: false, updatedAt: new Date() })
           .where(eq(washMachines.machineId, s.machineId));
+        audit({
+          sessionId: s.id, userId: s.userId, machineId: s.machineId,
+          event: 'SESSION_AUTO_RELEASED', status: 'failed', detail: reason,
+        });
       }
     }
   } catch (err: any) {
     logger.error('[QRActivation] releaseStuckSessions failed', { error: err.message });
   }
 }
-
-// Run stuck session cleanup every 5 minutes
 setInterval(releaseStuckSessions, 5 * 60 * 1000);
 
+// ── Nonce helpers (dynamic QR only) ──────────────────────────────────────────
 async function markNonceUsed(nonce: string): Promise<void> {
   await redis.setRaw(`qr:nonce:${nonce}`, '1', QR_MAX_AGE_SECONDS + 10);
 }
-
 async function isNonceUsed(nonce: string): Promise<boolean> {
-  const val = await redis.getRaw(`qr:nonce:${nonce}`);
-  return val !== null;
+  return (await redis.getRaw(`qr:nonce:${nonce}`)) !== null;
 }
 
+// ── Idempotency helpers ───────────────────────────────────────────────────────
 async function getIdempotencyResult(key: string): Promise<any | null> {
   return redis.get(`qr:idem:${key}`);
 }
-
 async function setIdempotencyResult(key: string, result: any): Promise<void> {
   await redis.set(`qr:idem:${key}`, result, ACTIVATION_TOKEN_TTL_SECONDS);
 }
 
+// ── Price calculator ──────────────────────────────────────────────────────────
 function calculatePriceCents(machine: { priceCents: number }, loyaltyTier?: string): number {
   const discount = loyaltyTier === 'gold' ? 0.10 : loyaltyTier === 'platinum' ? 0.15 : 0;
   return Math.round(machine.priceCents * (1 - discount));
 }
 
-/* ──────────────────────────────────────────────────────────────────────────
+// ── Shared machine authorization logic ───────────────────────────────────────
+async function resolveAndAuthorize(params: {
+  machineId: string;
+  locationId: string;
+  userId: string;
+  userLoyaltyTier: string | undefined;
+  ip: string;
+  userAgent: string | null;
+  sourceType: 'static_sticker' | 'dynamic_qr' | 'admin_generated';
+  qrNonce: string;
+  idempotencyKey: string | undefined;
+  req: any;
+  res: Response;
+}): Promise<void> {
+  const { machineId, locationId, userId, userLoyaltyTier, ip, userAgent, sourceType, qrNonce, idempotencyKey, req, res } = params;
+
+  if (idempotencyKey) {
+    const cached = await getIdempotencyResult(idempotencyKey);
+    if (cached) { res.json(cached); return; }
+  }
+
+  const [machine] = await db
+    .select()
+    .from(washMachines)
+    .where(and(eq(washMachines.machineId, machineId), eq(washMachines.locationId, locationId)))
+    .limit(1);
+
+  if (!machine) {
+    audit({ sessionId: 'n/a', userId, machineId, event: 'MACHINE_NOT_FOUND', errorCode: 'MACHINE_NOT_FOUND', ip });
+    res.status(404).json({ success: false, errorCode: 'MACHINE_NOT_FOUND', message: 'Machine not found.' });
+    return;
+  }
+
+  if (!machine.isActive || !machine.isOnline) {
+    audit({ sessionId: 'n/a', userId, machineId, event: 'MACHINE_OFFLINE', errorCode: 'MACHINE_OFFLINE', ip });
+    res.status(409).json({ success: false, errorCode: 'MACHINE_OFFLINE', message: 'Machine is currently unavailable.' });
+    return;
+  }
+
+  if (machine.isBusy) {
+    audit({ sessionId: 'n/a', userId, machineId, event: 'MACHINE_BUSY_REJECTED', errorCode: 'MACHINE_BUSY', ip });
+    res.status(409).json({ success: false, errorCode: 'MACHINE_BUSY', message: 'Machine is currently in use.' });
+    return;
+  }
+
+  const existingActive = await db
+    .select({ id: activationSessions.id, status: activationSessions.status })
+    .from(activationSessions)
+    .where(and(
+      eq(activationSessions.userId, userId),
+      eq(activationSessions.machineId, machine.machineId),
+      inArray(activationSessions.status, ['created', 'authorized', 'vend_sent', 'machine_ack', 'running']),
+    ))
+    .limit(1);
+
+  if (existingActive.length > 0) {
+    res.status(409).json({
+      success: false,
+      errorCode: 'SESSION_ALREADY_ACTIVE',
+      message: 'You already have an active session on this machine.',
+      existingSessionId: existingActive[0].id,
+    });
+    return;
+  }
+
+  const priceCents = calculatePriceCents(machine, userLoyaltyTier);
+  const sessionId = crypto.randomUUID();
+  const activationToken = createActivationToken(sessionId, userId, machine.machineId);
+
+  await db.insert(activationSessions).values({
+    id: sessionId,
+    userId,
+    machineId: machine.machineId,
+    locationId: machine.locationId,
+    status: 'created',
+    sourceType,
+    activationToken,
+    priceCents,
+    currency: machine.currency,
+    qrNonce,
+    ip,
+    userAgent,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  await audit({ sessionId, userId, machineId: machine.machineId, event: 'SESSION_CREATED', status: 'created', detail: sourceType, ip });
+
+  const nayaxAuth = await authorizeNayaxSession({
+    nayaxTerminalId: machine.nayaxTerminalId,
+    nayaxMerchantId: machine.nayaxMerchantId,
+    machineId: machine.machineId,
+    userId,
+    sessionId,
+    amountCents: priceCents,
+    currency: machine.currency,
+  });
+
+  if (!nayaxAuth.success || !nayaxAuth.nayaxSessionId) {
+    await db.update(activationSessions)
+      .set({ status: 'failed', failureReason: nayaxAuth.message || 'Nayax authorization failed', updatedAt: new Date() })
+      .where(eq(activationSessions.id, sessionId));
+    await audit({ sessionId, userId, machineId: machine.machineId, event: 'PAYMENT_AUTH_FAILED', status: 'failed', detail: nayaxAuth.message, errorCode: 'PAYMENT_AUTH_FAILED', ip });
+    res.status(502).json({ success: false, errorCode: 'PAYMENT_AUTH_FAILED', message: 'Unable to authorize payment session.' });
+    return;
+  }
+
+  await db.update(activationSessions)
+    .set({ status: 'authorized', nayaxSessionId: nayaxAuth.nayaxSessionId, updatedAt: new Date() })
+    .where(eq(activationSessions.id, sessionId));
+
+  await audit({ sessionId, userId, machineId: machine.machineId, event: 'PAYMENT_AUTHORIZED', status: 'authorized', ip });
+
+  const result = {
+    success: true,
+    sessionId,
+    activationToken,
+    nayaxSessionId: nayaxAuth.nayaxSessionId,
+    machineId: machine.machineId,
+    locationId: machine.locationId,
+    machineName: machine.name,
+    machineNameHe: machine.nameHe,
+    address: machine.address,
+    priceCents,
+    currency: machine.currency,
+    startWindowSeconds: ACTIVATION_TOKEN_TTL_SECONDS,
+    estimatedProgramSeconds: machine.defaultProgramSeconds,
+    message: 'Session authorized. Ready to start.',
+  };
+
+  if (idempotencyKey) await setIdempotencyResult(idempotencyKey, result);
+
+  logger.info('[QRActivation] Session authorized', {
+    sessionId, machineId: machine.machineId, sourceType,
+    userId: userId.slice(0, 8) + '...',
+  });
+  res.json(result);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────────
    NAYAX AUTHORIZATION PLACEHOLDER
-   TODO: Replace with real Nayax/Lynx API integration.
+   TODO: Replace with real Nayax Spark API integration.
+   
+   Nayax Spark API field mapping:
+     POST /api/v1/transaction/authorize
+       terminal_id       ← machine.nayaxTerminalId
+       merchant_id       ← machine.nayaxMerchantId
+       external_id       ← sessionId (our UUID, for idempotency)
+       amount            ← amountCents / 100
+       currency          ← "ILS"
+     Response:
+       transaction_id    → nayaxSessionId (stored in activation_sessions.nayax_session_id)
+   
    This function must never fail silently in production.
    ────────────────────────────────────────────────────────────────────────── */
 async function authorizeNayaxSession(params: {
   nayaxTerminalId: string | null | undefined;
+  nayaxMerchantId: string | null | undefined;
   machineId: string;
   userId: string;
   sessionId: string;
   amountCents: number;
   currency: string;
 }): Promise<{ success: boolean; nayaxSessionId?: string; message?: string }> {
-  logger.info('[QRActivation] Nayax authorization placeholder called', {
+  logger.info('[QRActivation] Nayax authorization placeholder', {
     machineId: params.machineId,
     sessionId: params.sessionId,
     amountCents: params.amountCents,
+    hasTerminalId: !!params.nayaxTerminalId,
+    hasMerchantId: !!params.nayaxMerchantId,
   });
 
   if (!params.nayaxTerminalId) {
-    logger.warn('[QRActivation] No Nayax terminal ID — skipping payment auth (dev mode)');
+    logger.warn('[QRActivation] No Nayax terminal ID — dev mode authorization');
     return {
       success: true,
       nayaxSessionId: `nayax_dev_${crypto.randomUUID()}`,
@@ -140,32 +342,79 @@ async function authorizeNayaxSession(params: {
     };
   }
 
-  /* TODO: Implement real Nayax authorization:
-     1. POST to Nayax/Lynx vend authorization endpoint
-     2. Include terminal ID, amount, currency, session reference
-     3. Return Nayax session/transaction ID on success
+  /* TODO: Real Nayax Spark API call:
+       const response = await fetch(`${NAYAX_BASE_URL}/api/v1/transaction/authorize`, {
+         method: 'POST',
+         headers: { 'X-API-Key': NAYAX_API_KEY, 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+           terminal_id:   params.nayaxTerminalId,
+           merchant_id:   params.nayaxMerchantId,
+           external_id:   params.sessionId,
+           amount:        params.amountCents / 100,
+           currency:      params.currency,
+         }),
+       });
+       const data = await response.json();
+       return { success: response.ok, nayaxSessionId: data.transaction_id };
   */
   return {
     success: true,
     nayaxSessionId: `nayax_${crypto.randomUUID()}`,
-    message: 'Authorized (placeholder)',
+    message: 'Authorized (placeholder — real terminal present)',
   };
 }
 
-/* ──────────────────────────────────────────────────────────────────────────
-   MACHINE START PLACEHOLDER
-   TODO: Replace with real IoT / Nayax vend command.
+/* ──────────────────────────────────────────────────────────────────────────────
+   MACHINE START / VEND PLACEHOLDER
+   TODO: Replace with real Nayax Spark API vend command.
+   
+   Nayax vend field mapping:
+     POST /api/v1/transaction/vend
+       transaction_id  ← nayaxSessionId
+       product_code    ← machine wash program code (e.g. "DOGWASH_PREMIUM")
+       duration        ← machine.defaultProgramSeconds
+   
+   Nayax will physically trigger the machine via the terminal.
+   Machine acknowledgment arrives via webhook: POST /api/webhooks/nayax
+     event: "session.started" → call /api/qr/ack with sessionId
    ────────────────────────────────────────────────────────────────────────── */
-async function startMachineProgram(machineId: string, sessionId: string): Promise<{ success: boolean; message?: string }> {
-  logger.info('[QRActivation] Machine start placeholder called', { machineId, sessionId });
-  /* TODO: Send IoT command or Nayax vend command to the machine */
-  return { success: true, message: 'Machine start command sent (placeholder)' };
+async function sendVendCommand(params: {
+  machineId: string;
+  sessionId: string;
+  nayaxSessionId: string;
+  nayaxTerminalId: string | null | undefined;
+}): Promise<{ success: boolean; message?: string }> {
+  logger.info('[QRActivation] Vend command placeholder', {
+    machineId: params.machineId,
+    sessionId: params.sessionId,
+    nayaxSessionId: params.nayaxSessionId,
+  });
+
+  /* TODO: Real Nayax vend command:
+       const response = await fetch(`${NAYAX_BASE_URL}/api/v1/transaction/vend`, {
+         method: 'POST',
+         headers: { 'X-API-Key': NAYAX_API_KEY, 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+           transaction_id: params.nayaxSessionId,
+           product_code:   'DOGWASH_PREMIUM',
+         }),
+       });
+       return { success: response.ok };
+  */
+  return { success: true, message: 'Vend command sent (placeholder)' };
 }
 
-/* ──────────────────────────────────────────────────────────────────────────
-   POST /api/qr/activate  —  Verify QR + authorize session
+/* ──────────────────────────────────────────────────────────────────────────────
+   POST /api/qr/scan-sticker  ← PRODUCTION STATIC STICKER FLOW
+   
+   The permanent physical sticker contains only:
+     https://petwash.co.il/activate?m=<machineId>&l=<locationId>
+   
+   The app parses the URL and sends { machineId, locationId } to this route.
+   All authorization is performed server-side after Firebase auth.
+   No signature, timestamp, or nonce required from the sticker.
    ────────────────────────────────────────────────────────────────────────── */
-router.post('/activate', requireAuth, async (req: any, res: Response) => {
+router.post('/scan-sticker', requireAuth, async (req: any, res: Response) => {
   const ip = getIp(req);
   const userId: string = req.userId || req.user?.uid;
   const userLoyaltyTier: string | undefined = req.firebaseUser?.loyaltyTier;
@@ -180,10 +429,55 @@ router.post('/activate', requireAuth, async (req: any, res: Response) => {
       });
     }
 
+    if (!assertValidStaticStickerPayload(req.body)) {
+      return res.status(400).json({
+        success: false,
+        errorCode: 'INVALID_STICKER_PAYLOAD',
+        message: 'Invalid machine identity in QR code.',
+      });
+    }
+
+    const { machineId, locationId } = req.body;
     const idempotencyKey = (req.headers['idempotency-key'] as string | undefined)?.trim();
-    if (idempotencyKey) {
-      const cached = await getIdempotencyResult(idempotencyKey);
-      if (cached) return res.json(cached);
+
+    // Static stickers use a server-generated nonce (no QR nonce to replay)
+    const serverNonce = crypto.randomUUID();
+
+    await resolveAndAuthorize({
+      machineId,
+      locationId,
+      userId,
+      userLoyaltyTier,
+      ip,
+      userAgent: req.headers['user-agent'] || null,
+      sourceType: 'static_sticker',
+      qrNonce: serverNonce,
+      idempotencyKey,
+      req,
+      res,
+    });
+  } catch (error: any) {
+    logger.error('[QRActivation] /scan-sticker failed', { error: error.message, ip });
+    return res.status(500).json({ success: false, errorCode: 'SERVER_ERROR', message: 'Activation failed.' });
+  }
+});
+
+/* ──────────────────────────────────────────────────────────────────────────────
+   POST /api/qr/activate  ← DYNAMIC QR FLOW (testing / admin / generated QR)
+   ────────────────────────────────────────────────────────────────────────── */
+router.post('/activate', requireAuth, async (req: any, res: Response) => {
+  const ip = getIp(req);
+  const userId: string = req.userId || req.user?.uid;
+  const userLoyaltyTier: string | undefined = req.firebaseUser?.loyaltyTier;
+
+  try {
+    const rl = await checkRateLimit(ip, userId);
+    if (!rl.allowed) {
+      return res.status(429).json({
+        success: false,
+        errorCode: 'RATE_LIMITED',
+        message: 'Too many attempts. Please wait before trying again.',
+      });
     }
 
     const payload = req.body;
@@ -221,142 +515,36 @@ router.post('/activate', requireAuth, async (req: any, res: Response) => {
       });
     }
 
-    const [machine] = await db
-      .select()
-      .from(washMachines)
-      .where(
-        and(
-          eq(washMachines.machineId, payload.machineId),
-          eq(washMachines.locationId, payload.locationId),
-        ),
-      )
-      .limit(1);
+    const idempotencyKey = (req.headers['idempotency-key'] as string | undefined)?.trim();
 
-    if (!machine) {
-      return res.status(404).json({
-        success: false,
-        errorCode: 'MACHINE_NOT_FOUND',
-        message: 'Machine not found.',
-      });
-    }
-
-    if (!machine.isActive || !machine.isOnline) {
-      return res.status(409).json({
-        success: false,
-        errorCode: 'MACHINE_OFFLINE',
-        message: 'Machine is currently unavailable.',
-      });
-    }
-
-    if (machine.isBusy) {
-      return res.status(409).json({
-        success: false,
-        errorCode: 'MACHINE_BUSY',
-        message: 'Machine is currently in use.',
-      });
-    }
-
-    // Block duplicate active sessions for this user+machine
-    const existingActive = await db
-      .select({ id: activationSessions.id, status: activationSessions.status })
-      .from(activationSessions)
-      .where(
-        and(
-          eq(activationSessions.userId, userId),
-          eq(activationSessions.machineId, machine.machineId),
-          inArray(activationSessions.status, ['created', 'authorized', 'running']),
-        ),
-      )
-      .limit(1);
-
-    if (existingActive.length > 0) {
-      return res.status(409).json({
-        success: false,
-        errorCode: 'SESSION_ALREADY_ACTIVE',
-        message: 'You already have an active session on this machine.',
-        existingSessionId: existingActive[0].id,
-      });
-    }
-
-    const priceCents = calculatePriceCents(machine, userLoyaltyTier);
-    const sessionId = crypto.randomUUID();
-    const activationToken = createActivationToken(sessionId, userId, machine.machineId);
-
-    await db.insert(activationSessions).values({
-      id: sessionId,
-      userId,
-      machineId: machine.machineId,
-      locationId: machine.locationId,
-      status: 'created',
-      activationToken,
-      priceCents,
-      currency: machine.currency,
-      qrNonce: payload.nonce,
-      ip,
-      userAgent: req.headers['user-agent'] || null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    const nayaxAuth = await authorizeNayaxSession({
-      nayaxTerminalId: machine.nayaxTerminalId,
-      machineId: machine.machineId,
-      userId,
-      sessionId,
-      amountCents: priceCents,
-      currency: machine.currency,
-    });
-
-    if (!nayaxAuth.success || !nayaxAuth.nayaxSessionId) {
-      await db
-        .update(activationSessions)
-        .set({ status: 'failed', failureReason: nayaxAuth.message || 'Nayax authorization failed', updatedAt: new Date() })
-        .where(eq(activationSessions.id, sessionId));
-
-      return res.status(502).json({
-        success: false,
-        errorCode: 'PAYMENT_AUTH_FAILED',
-        message: 'Unable to authorize payment session.',
-      });
-    }
-
-    await db
-      .update(activationSessions)
-      .set({ status: 'authorized', nayaxSessionId: nayaxAuth.nayaxSessionId, updatedAt: new Date() })
-      .where(eq(activationSessions.id, sessionId));
-
+    // Mark nonce before authorization to prevent concurrent replay
     await markNonceUsed(payload.nonce);
 
-    const result = {
-      success: true,
-      sessionId,
-      activationToken,
-      nayaxSessionId: nayaxAuth.nayaxSessionId,
-      machineId: machine.machineId,
-      machineName: machine.name,
-      priceCents,
-      currency: machine.currency,
-      startWindowSeconds: ACTIVATION_TOKEN_TTL_SECONDS,
-      message: 'Session authorized. Ready to start.',
-    };
-
-    if (idempotencyKey) await setIdempotencyResult(idempotencyKey, result);
-
-    logger.info('[QRActivation] Session authorized', { sessionId, machineId: machine.machineId, userId: userId.slice(0, 8) + '...' });
-    return res.json(result);
-
+    await resolveAndAuthorize({
+      machineId: payload.machineId,
+      locationId: payload.locationId,
+      userId,
+      userLoyaltyTier,
+      ip,
+      userAgent: req.headers['user-agent'] || null,
+      sourceType: 'dynamic_qr',
+      qrNonce: payload.nonce,
+      idempotencyKey,
+      req,
+      res,
+    });
   } catch (error: any) {
     logger.error('[QRActivation] /activate failed', { error: error.message, ip });
-    return res.status(500).json({
-      success: false,
-      errorCode: 'SERVER_ERROR',
-      message: 'Activation failed.',
-    });
+    return res.status(500).json({ success: false, errorCode: 'SERVER_ERROR', message: 'Activation failed.' });
   }
 });
 
-/* ──────────────────────────────────────────────────────────────────────────
-   POST /api/qr/start  —  Start the machine
+/* ──────────────────────────────────────────────────────────────────────────────
+   POST /api/qr/start  —  Send vend command → transitions to 'vend_sent'
+   
+   State: authorized → vend_sent
+   The machine has 60 seconds to acknowledge (via webhook → /api/qr/ack).
+   If no ack arrives, releaseStuckSessions() auto-rolls back after 60s.
    ────────────────────────────────────────────────────────────────────────── */
 router.post('/start', requireAuth, async (req: any, res: Response) => {
   const userId: string = req.userId || req.user?.uid;
@@ -365,11 +553,7 @@ router.post('/start', requireAuth, async (req: any, res: Response) => {
     const { sessionId, activationToken } = req.body as { sessionId?: string; activationToken?: string };
 
     if (!sessionId || !activationToken) {
-      return res.status(400).json({
-        success: false,
-        errorCode: 'INVALID_START_REQUEST',
-        message: 'Missing session data.',
-      });
+      return res.status(400).json({ success: false, errorCode: 'INVALID_START_REQUEST', message: 'Missing session data.' });
     }
 
     const [session] = await db
@@ -393,11 +577,10 @@ router.post('/start', requireAuth, async (req: any, res: Response) => {
 
     const createdMs = new Date(session.createdAt).getTime();
     if (Date.now() - createdMs > ACTIVATION_TOKEN_TTL_SECONDS * 1000) {
-      await db
-        .update(activationSessions)
+      await db.update(activationSessions)
         .set({ status: 'failed', failureReason: 'Activation token expired', updatedAt: new Date() })
         .where(eq(activationSessions.id, sessionId));
-
+      await audit({ sessionId, userId, machineId: session.machineId, event: 'ACTIVATION_TOKEN_EXPIRED', status: 'failed' });
       return res.status(410).json({
         success: false,
         errorCode: 'ACTIVATION_TOKEN_EXPIRED',
@@ -411,42 +594,45 @@ router.post('/start', requireAuth, async (req: any, res: Response) => {
       .where(eq(washMachines.machineId, session.machineId))
       .limit(1);
 
-    if (!machine) {
-      return res.status(404).json({ success: false, errorCode: 'MACHINE_NOT_FOUND', message: 'Machine not found.' });
-    }
-    if (machine.isBusy) {
-      return res.status(409).json({ success: false, errorCode: 'MACHINE_BUSY', message: 'Machine is already in use.' });
+    if (!machine || machine.isBusy) {
+      const code = !machine ? 'MACHINE_NOT_FOUND' : 'MACHINE_BUSY';
+      await audit({ sessionId, userId, machineId: session.machineId, event: code, status: session.status, errorCode: code });
+      return res.status(409).json({ success: false, errorCode: code, message: !machine ? 'Machine not found.' : 'Machine is already in use.' });
     }
 
-    const startResult = await startMachineProgram(machine.machineId, sessionId);
+    // Send vend command — transitions to vend_sent immediately
+    const vendResult = await sendVendCommand({
+      machineId: machine.machineId,
+      sessionId,
+      nayaxSessionId: session.nayaxSessionId || '',
+      nayaxTerminalId: machine.nayaxTerminalId,
+    });
 
-    if (!startResult.success) {
-      await db
-        .update(activationSessions)
-        .set({ status: 'failed', failureReason: startResult.message || 'Machine start failed', updatedAt: new Date() })
+    if (!vendResult.success) {
+      await db.update(activationSessions)
+        .set({ status: 'failed', failureReason: vendResult.message || 'Vend command failed', updatedAt: new Date() })
         .where(eq(activationSessions.id, sessionId));
-
+      await audit({ sessionId, userId, machineId: machine.machineId, event: 'VEND_COMMAND_FAILED', status: 'failed', detail: vendResult.message, errorCode: 'MACHINE_START_FAILED' });
       return res.status(502).json({ success: false, errorCode: 'MACHINE_START_FAILED', message: 'Could not start machine.' });
     }
 
-    await db.update(washMachines)
-      .set({ isBusy: true, updatedAt: new Date() })
-      .where(eq(washMachines.machineId, machine.machineId));
-
-    const startedAt = new Date();
-    await db
-      .update(activationSessions)
-      .set({ status: 'running', startedAt, updatedAt: new Date() })
+    const vendSentAt = new Date();
+    await db.update(washMachines).set({ isBusy: true, updatedAt: new Date() }).where(eq(washMachines.machineId, machine.machineId));
+    await db.update(activationSessions)
+      .set({ status: 'vend_sent', vendSentAt, updatedAt: new Date() })
       .where(eq(activationSessions.id, sessionId));
 
-    logger.info('[QRActivation] Machine started', { sessionId, machineId: machine.machineId });
+    await audit({ sessionId, userId, machineId: machine.machineId, event: 'VEND_COMMAND_SENT', status: 'vend_sent', ip: getIp(req) });
+
+    logger.info('[QRActivation] Vend command sent — waiting for machine ack', { sessionId, machineId: machine.machineId });
 
     return res.json({
       success: true,
-      message: 'Machine started successfully.',
+      message: 'Vend command sent. Waiting for machine acknowledgment.',
       sessionId,
       machineId: machine.machineId,
-      startedAt: startedAt.toISOString(),
+      status: 'vend_sent',
+      ackTimeoutSeconds: VEND_SENT_TIMEOUT_SECONDS,
       estimatedSeconds: machine.defaultProgramSeconds,
     });
 
@@ -456,15 +642,109 @@ router.post('/start', requireAuth, async (req: any, res: Response) => {
   }
 });
 
-/* ──────────────────────────────────────────────────────────────────────────
-   POST /api/qr/complete  —  Mark session as completed
+/* ──────────────────────────────────────────────────────────────────────────────
+   POST /api/qr/ack  —  Machine acknowledged vend → transitions to 'machine_ack'
+   
+   State: vend_sent → machine_ack
+   Called by the Nayax webhook handler (POST /api/webhooks/nayax) when the
+   terminal fires event: "session.started" — that handler should call this
+   endpoint internally, or directly update the session status.
+   Also callable by the app if Nayax sends the ack signal to the app directly.
+   ────────────────────────────────────────────────────────────────────────── */
+router.post('/ack', requireAuth, async (req: any, res: Response) => {
+  const userId: string = req.userId || req.user?.uid;
+
+  try {
+    const { sessionId } = req.body as { sessionId?: string };
+    if (!sessionId) {
+      return res.status(400).json({ success: false, errorCode: 'MISSING_SESSION_ID', message: 'Missing sessionId.' });
+    }
+
+    const [session] = await db
+      .select()
+      .from(activationSessions)
+      .where(eq(activationSessions.id, sessionId))
+      .limit(1);
+
+    if (!session) {
+      return res.status(404).json({ success: false, errorCode: 'SESSION_NOT_FOUND' });
+    }
+    if (session.userId !== userId) {
+      return res.status(403).json({ success: false, errorCode: 'SESSION_USER_MISMATCH' });
+    }
+    if (!['vend_sent', 'machine_ack'].includes(session.status)) {
+      return res.status(409).json({ success: false, errorCode: 'INVALID_SESSION_STATE', message: `Cannot ack session in status: ${session.status}` });
+    }
+
+    const machineAckedAt = new Date();
+    await db.update(activationSessions)
+      .set({ status: 'machine_ack', machineAckedAt, updatedAt: new Date() })
+      .where(eq(activationSessions.id, sessionId));
+
+    await audit({ sessionId, userId, machineId: session.machineId, event: 'MACHINE_ACK_RECEIVED', status: 'machine_ack', ip: getIp(req) });
+
+    logger.info('[QRActivation] Machine acknowledged vend', { sessionId, machineId: session.machineId });
+
+    return res.json({ success: true, sessionId, status: 'machine_ack', ackedAt: machineAckedAt.toISOString() });
+
+  } catch (error: any) {
+    logger.error('[QRActivation] /ack failed', { error: error.message });
+    return res.status(500).json({ success: false, errorCode: 'SERVER_ERROR' });
+  }
+});
+
+/* ──────────────────────────────────────────────────────────────────────────────
+   POST /api/qr/running  —  Machine has physically started → 'running'
+   
+   State: machine_ack → running
+   Called by the Nayax webhook (event: "machine.started") or by the app.
+   ────────────────────────────────────────────────────────────────────────── */
+router.post('/running', requireAuth, async (req: any, res: Response) => {
+  const userId: string = req.userId || req.user?.uid;
+
+  try {
+    const { sessionId } = req.body as { sessionId?: string };
+    if (!sessionId) {
+      return res.status(400).json({ success: false, errorCode: 'MISSING_SESSION_ID' });
+    }
+
+    const [session] = await db
+      .select()
+      .from(activationSessions)
+      .where(eq(activationSessions.id, sessionId))
+      .limit(1);
+
+    if (!session) return res.status(404).json({ success: false, errorCode: 'SESSION_NOT_FOUND' });
+    if (session.userId !== userId) return res.status(403).json({ success: false, errorCode: 'SESSION_USER_MISMATCH' });
+    if (!['machine_ack', 'vend_sent'].includes(session.status)) {
+      return res.status(409).json({ success: false, errorCode: 'INVALID_SESSION_STATE', message: `Cannot mark running from status: ${session.status}` });
+    }
+
+    const startedAt = new Date();
+    await db.update(activationSessions)
+      .set({ status: 'running', startedAt, updatedAt: new Date() })
+      .where(eq(activationSessions.id, sessionId));
+
+    await audit({ sessionId, userId, machineId: session.machineId, event: 'MACHINE_RUNNING', status: 'running', ip: getIp(req) });
+
+    return res.json({ success: true, sessionId, status: 'running', startedAt: startedAt.toISOString() });
+
+  } catch (error: any) {
+    logger.error('[QRActivation] /running failed', { error: error.message });
+    return res.status(500).json({ success: false, errorCode: 'SERVER_ERROR' });
+  }
+});
+
+/* ──────────────────────────────────────────────────────────────────────────────
+   POST /api/qr/complete  —  Mark session completed → releases machine
+   
+   State: running → completed
    ────────────────────────────────────────────────────────────────────────── */
 router.post('/complete', requireAuth, async (req: any, res: Response) => {
   const userId: string = req.userId || req.user?.uid;
 
   try {
     const { sessionId } = req.body as { sessionId?: string };
-
     if (!sessionId) {
       return res.status(400).json({ success: false, errorCode: 'INVALID_COMPLETE_REQUEST', message: 'Missing sessionId.' });
     }
@@ -475,25 +755,22 @@ router.post('/complete', requireAuth, async (req: any, res: Response) => {
       .where(eq(activationSessions.id, sessionId))
       .limit(1);
 
-    if (!session) {
-      return res.status(404).json({ success: false, errorCode: 'SESSION_NOT_FOUND', message: 'Session not found.' });
-    }
-    if (session.userId !== userId) {
-      return res.status(403).json({ success: false, errorCode: 'SESSION_USER_MISMATCH', message: 'Session does not belong to you.' });
-    }
+    if (!session) return res.status(404).json({ success: false, errorCode: 'SESSION_NOT_FOUND' });
+    if (session.userId !== userId) return res.status(403).json({ success: false, errorCode: 'SESSION_USER_MISMATCH' });
     if (session.status !== 'running') {
       return res.status(409).json({ success: false, errorCode: 'SESSION_NOT_RUNNING', message: 'Session is not running.' });
     }
 
     const completedAt = new Date();
-    await db
-      .update(activationSessions)
+    await db.update(activationSessions)
       .set({ status: 'completed', completedAt, updatedAt: new Date() })
       .where(eq(activationSessions.id, sessionId));
 
     await db.update(washMachines)
       .set({ isBusy: false, updatedAt: new Date() })
       .where(eq(washMachines.machineId, session.machineId));
+
+    await audit({ sessionId, userId, machineId: session.machineId, event: 'SESSION_COMPLETED', status: 'completed', ip: getIp(req) });
 
     logger.info('[QRActivation] Session completed', { sessionId, machineId: session.machineId });
 
@@ -508,11 +785,11 @@ router.post('/complete', requireAuth, async (req: any, res: Response) => {
 
   } catch (error: any) {
     logger.error('[QRActivation] /complete failed', { error: error.message });
-    return res.status(500).json({ success: false, errorCode: 'SERVER_ERROR', message: 'Unable to complete session.' });
+    return res.status(500).json({ success: false, errorCode: 'SERVER_ERROR' });
   }
 });
 
-/* ──────────────────────────────────────────────────────────────────────────
+/* ──────────────────────────────────────────────────────────────────────────────
    GET /api/qr/session/:sessionId  —  Poll session status
    ────────────────────────────────────────────────────────────────────────── */
 router.get('/session/:sessionId', requireAuth, async (req: any, res: Response) => {
@@ -522,18 +799,10 @@ router.get('/session/:sessionId', requireAuth, async (req: any, res: Response) =
     const [session] = await db
       .select()
       .from(activationSessions)
-      .where(
-        and(
-          eq(activationSessions.id, req.params.sessionId),
-          eq(activationSessions.userId, userId),
-        ),
-      )
+      .where(and(eq(activationSessions.id, req.params.sessionId), eq(activationSessions.userId, userId)))
       .limit(1);
 
-    if (!session) {
-      return res.status(404).json({ success: false, errorCode: 'SESSION_NOT_FOUND' });
-    }
-
+    if (!session) return res.status(404).json({ success: false, errorCode: 'SESSION_NOT_FOUND' });
     return res.json({ success: true, session });
   } catch (error: any) {
     logger.error('[QRActivation] /session poll failed', { error: error.message });

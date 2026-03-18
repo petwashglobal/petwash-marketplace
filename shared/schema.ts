@@ -12086,7 +12086,9 @@ export const activationSessions = pgTable("activation_sessions", {
   userId:           varchar("user_id", { length: 255 }).notNull(),
   machineId:        varchar("machine_id", { length: 64 }).notNull(),
   locationId:       varchar("location_id", { length: 64 }).notNull(),
+  // created → authorized → vend_sent → machine_ack → running → completed | failed
   status:           varchar("status", { length: 30 }).default("created").notNull(),
+  sourceType:       varchar("source_type", { length: 30 }).default("dynamic_qr").notNull(), // static_sticker | dynamic_qr | admin_generated
   activationToken:  varchar("activation_token", { length: 128 }).notNull(),
   nayaxSessionId:   varchar("nayax_session_id", { length: 128 }),
   priceCents:       integer("price_cents").notNull(),
@@ -12094,6 +12096,8 @@ export const activationSessions = pgTable("activation_sessions", {
   qrNonce:          varchar("qr_nonce", { length: 64 }).notNull(),
   ip:               varchar("ip", { length: 64 }),
   userAgent:        text("user_agent"),
+  vendSentAt:       timestamp("vend_sent_at"),
+  machineAckedAt:   timestamp("machine_acked_at"),
   startedAt:        timestamp("started_at"),
   completedAt:      timestamp("completed_at"),
   failureReason:    text("failure_reason"),
@@ -12105,6 +12109,26 @@ export const activationSessions = pgTable("activation_sessions", {
   statusIdx:   index("as_status_idx").on(t.status),
   createdIdx:  index("as_created_idx").on(t.createdAt),
 }));
+
+// ── Activation Audit Log ──────────────────────────────────────────────────────
+export const activationAuditLog = pgTable("activation_audit_log", {
+  id:        serial("id").primaryKey(),
+  sessionId: varchar("session_id", { length: 64 }).notNull(),
+  userId:    varchar("user_id", { length: 255 }).notNull(),
+  machineId: varchar("machine_id", { length: 64 }).notNull(),
+  event:     varchar("event", { length: 50 }).notNull(),
+  status:    varchar("status", { length: 30 }),
+  detail:    text("detail"),
+  errorCode: varchar("error_code", { length: 50 }),
+  ip:        varchar("ip", { length: 64 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  sessionIdx: index("aal_session_idx").on(t.sessionId),
+  userIdx:    index("aal_user_idx").on(t.userId),
+  machineIdx: index("aal_machine_idx").on(t.machineId),
+  createdIdx: index("aal_created_idx").on(t.createdAt),
+}));
+export type ActivationAuditEntry = typeof activationAuditLog.$inferSelect;
 
 export type ActivationSession = typeof activationSessions.$inferSelect;
 export type InsertActivationSession = typeof activationSessions.$inferInsert;
