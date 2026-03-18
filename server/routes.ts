@@ -9721,7 +9721,10 @@ self.addEventListener('notificationclick', (event) => {
 
   app.use('/api/onboarding-verification', onboardingVerificationRoutes);
   app.use('/api/registration', completeRegistrationRoutes);
-  app.use('/api/sms', smsStatusRoutes);
+  // Twilio SMS delivery status callbacks — signature-validated
+  // Configure in Twilio console → Messaging → Services → Status Callback URL:
+  //   https://petwash.co.il/api/webhooks/twilio/sms-status
+  app.use('/api/webhooks/twilio', smsStatusRoutes);
   app.use('/api/provider-applications', validateFirebaseToken, apiLimiter, providerApplicationsRoutes);
   
   // DocuSeal E-Signature (FREE - Hebrew RTL Support)
