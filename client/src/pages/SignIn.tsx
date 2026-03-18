@@ -932,10 +932,13 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       logger.info('[PhoneAuth] Sending code to:', formattedPhone);
 
-      const freshCaptchaToken = await executeReCaptcha('phone_login').catch(() => null);
+      const freshCaptchaToken = await executeReCaptcha('phone_login');
       if (!freshCaptchaToken) {
+        logger.error('[PhoneAuth] executeReCaptcha returned null — request blocked. Check browser console for [ReCaptcha] logs above.');
         throw new Error(language === 'he' ? 'אימות אבטחה נכשל — נסה שוב' : 'Security check failed — please try again');
       }
+
+      logger.info('[PhoneAuth] reCAPTCHA token confirmed, sending request', { tokenLength: freshCaptchaToken.length, phone: formattedPhone.slice(-4) });
 
       const response = await fetch(getApiUrl('/api/auth/phone/send-code'), {
         method: 'POST',
