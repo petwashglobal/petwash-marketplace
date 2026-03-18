@@ -299,6 +299,29 @@ router.post("/:bookingId/confirm", requireAuth, async (req, res) => {
 
     res.json({ success: true });
 
+    // ── Non-blocking: Google Sheets sync + email notification ───────────────
+    setImmediate(async () => {
+      try {
+        const { logSitterBooking } = await import('../services/googleSheetsIntegration');
+        await logSitterBooking({
+          bookingId,
+          customerName: `${booking.customerFirstName || ''} ${booking.customerLastName || ''}`.trim() || 'Customer',
+          email: booking.customerEmail || '',
+          phone: booking.customerPhone || '',
+          petName: booking.petName || '',
+          petType: booking.petType || 'pet',
+          sitterName: booking.providerName || 'Provider',
+          startDate: booking.startDate || booking.serviceDate || '',
+          endDate: booking.endDate || booking.serviceDate || '',
+          durationDays: booking.durationDays || 1,
+          totalAmount: booking.totalAmount || 0,
+          status: 'confirmed',
+        });
+      } catch (sheetsErr) {
+        logger.warn('[Bookings] Google Sheets sync failed (non-blocking)', sheetsErr);
+      }
+    });
+
     if (booking) {
       const serviceDate = booking.serviceDate?.toDate?.() || new Date(booking.serviceDate || Date.now());
       setImmediate(() => petWashOrchestrator.handleBookingConfirmed({

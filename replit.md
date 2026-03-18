@@ -73,6 +73,30 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 - **CI/CD Pipeline**: Automated GitHub Actions deployment (`.github/workflows/petwash-ci.yml`) with a 5-guard protection system.
 - **CRITICAL DEPLOYMENT RULE**: Replit URLs are for development only and must not be connected to production domains. Production domains point to Firebase Hosting.
 
+### Feature Additions (March 2026)
+
+**Flash Deals Marketplace** — `server/routes/provider-flash-deals.ts` + `client/src/pages/FlashDeals.tsx`
+- In-memory store (Map) with 9 demo deals seeded at startup (2 dogs + 1 cat weekly scenarios)
+- Urgency scoring, slot-claim endpoint (`POST /api/flash-deals/:id/claim`)
+- Airbnb-style urgency UI, slot fill bar, pet/service filters, animated card grid
+- For multi-instance production: move store to Redis
+
+**Daycare Smart Calculator** — `server/routes/daycare-calculator.ts` + `client/src/pages/DaycareCalculator.tsx`
+- Multi-pet pricing (dogs + cats), multi-pet discount (8–18%), weekly discount (12%)
+- Flash deal stacking, VAT 18%, Gemini AI Hebrew/English explanation
+- `GET /api/daycare-calculator/rates` — public rate table
+- `POST /api/daycare-calculator/calculate` — compute + AI breakdown
+
+**Google Sheets Booking Sync** — wired non-blocking in `server/routes/bookings.ts` confirm route
+- On `POST /:bookingId/confirm`, calls `logSitterBooking` via `setImmediate` (non-blocking)
+- Failures are logged as WARN — never block the confirmation response
+
+**SEO 2026 Upgrade** — `client/index.html`
+- Expanded `@graph` JSON-LD: Organization + WebSite (SearchAction) + LocalBusiness (OfferCatalog) + MobileApplication + FAQPage
+- Flash Deals + Daycare Calculator FAQs for featured snippet eligibility
+- Twitter/OG cards updated: flash deals, daycare calculator, `@petwashltd` attribution
+- Keywords: flash deals pets, daycare calculator pets, K9000 pet wash, pet care app israel
+
 ### Stabilization Changes (March 2026)
 Addresses Phase 1 of the formal stabilization plan:
 

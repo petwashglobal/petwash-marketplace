@@ -233,6 +233,10 @@ const ContractorDashboard = lazy(() => import("@/pages/contractor/Dashboard"));
 // Provider Matching Flow
 const ProviderMatchScreen = lazy(() => import("@/pages/ProviderMatchScreen"));
 
+// Flash Deals + Daycare Calculator
+const FlashDeals = lazy(() => import("@/pages/FlashDeals"));
+const DaycareCalculator = lazy(() => import("@/pages/DaycareCalculator"));
+
 // ⁦Walk My Pet™⁩ - Premium Dog Walking
 const WalkMyPetOverview = lazy(() => import("@/pages/walk-my-pet/Overview"));
 const WalkMyPet = lazy(() => import("@/pages/walk-my-pet/BrowseWalkers"));
@@ -989,6 +993,24 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <Suspense fallback={<PageLoader />}>
               <ProviderMatchScreen />
+            </Suspense>
+          )}
+        </Route>
+
+        {/* Flash Deals — provider limited-time discount marketplace */}
+        <Route path="/flash-deals">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <FlashDeals />
+            </Suspense>
+          )}
+        </Route>
+
+        {/* Daycare Calculator — Gemini AI smart price calculator */}
+        <Route path="/daycare-calculator">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <DaycareCalculator />
             </Suspense>
           )}
         </Route>

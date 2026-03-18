@@ -105,6 +105,8 @@ import backupRoutes from "./routes/backup";
 import environmentRoutes from "./routes/environment";
 import translationRoutes from "./routes/translation";
 import promotionsRoutes from "./routes/promotions";
+import flashDealsRoutes from "./routes/provider-flash-deals";
+import daycareCalculatorRoutes from "./routes/daycare-calculator";
 import complianceRoutes from "./routes/compliance";
 import spotifyRoutes from "./routes/spotify";
 import monitoringRoutes, { trackRequestMetrics } from "./routes/monitoring";
@@ -9334,6 +9336,12 @@ self.addEventListener('notificationclick', (event) => {
   
   // Global Special Days Promotions (Black Friday, Cyber Monday, Valentine's, Mother's/Father's Day)
   app.use('/api/promotions', apiLimiter, promotionsRoutes);
+
+  // Provider Flash Deals — limited-time discount windows (Airbnb/dynamic pricing style)
+  app.use('/api/flash-deals', apiLimiter, flashDealsRoutes);
+
+  // Daycare Smart Price Calculator — Gemini AI powered multi-pet math with VAT
+  app.use('/api/daycare-calculator', apiLimiter, daycareCalculatorRoutes);
   
   // Privacy Settings - User privacy controls (OPT-IN tracking, GDPR compliance)
   app.use('/api/privacy', apiLimiter, privacySettingsRoutes);
