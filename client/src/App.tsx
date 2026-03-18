@@ -230,6 +230,9 @@ const JoinAsTrainer = lazy(() => import("@/pages/join/JoinAsTrainer"));
 // Contractor Dashboard - 2026 Lifecycle Management
 const ContractorDashboard = lazy(() => import("@/pages/contractor/Dashboard"));
 
+// Provider Matching Flow
+const ProviderMatchScreen = lazy(() => import("@/pages/ProviderMatchScreen"));
+
 // ⁦Walk My Pet™⁩ - Premium Dog Walking
 const WalkMyPetOverview = lazy(() => import("@/pages/walk-my-pet/Overview"));
 const WalkMyPet = lazy(() => import("@/pages/walk-my-pet/BrowseWalkers"));
@@ -981,9 +984,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
-        {/* ⁦Walk My Pet™⁩ - Specific routes BEFORE general routes to avoid catch-all */}
-        
-        {/* ⁦Walk My Pet™⁩ - Walker Dashboard (Uber-style for dog walkers) */}
+        {/* Provider Matching Flow — luxury real-time matching experience */}
+        <Route path="/find-provider">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <ProviderMatchScreen />
+            </Suspense>
+          )}
+        </Route>
+
         <Route path="/walk-my-pet/walker/dashboard">
           {() => (
             <RequireAuth>

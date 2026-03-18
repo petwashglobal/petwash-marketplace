@@ -551,7 +551,12 @@ if (isProduction) {
       });
       await setupVite(app, server);
       console.log('✅ [Vite] Dev server initialized - source files will hot-reload');
-      
+
+      // Wire provider matching WebSocket on the same port
+      import('./routes/matching-ws').then(({ setupMatchingWebSocket }) => {
+        setupMatchingWebSocket(server);
+      }).catch((e) => console.error('[MatchingWS] Setup failed', e));
+
       serverReady = true;
       healthState.app.routesReady = true;
       connectDbNonBlocking().catch(() => {});
@@ -696,6 +701,16 @@ if (isProduction) {
       });
     });
     
+    // Wire provider matching WebSocket (production path)
+    if (isProduction) {
+      const httpServer = (app as any)._server;
+      if (httpServer) {
+        import('./routes/matching-ws').then(({ setupMatchingWebSocket }) => {
+          setupMatchingWebSocket(httpServer);
+        }).catch((e) => console.error('[MatchingWS] Setup failed', e));
+      }
+    }
+
     serverReady = true;
     healthState.app.routesReady = true;
     connectDbNonBlocking().catch(() => {});
