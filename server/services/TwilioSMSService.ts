@@ -254,6 +254,7 @@ class TwilioSMSService {
     success: boolean;
     message: string;
     expiresIn?: number;
+    messageId?: string;
   }> {
     if (await smsAbuseDetector.isKillSwitchActive()) {
       logger.warn('[TwilioSMS] 🚨 Kill switch active — all SMS blocked', { phone: phone.slice(-4) });
@@ -293,13 +294,14 @@ class TwilioSMSService {
     try {
       const params = this.getSendParams(formattedPhone, messageBody);
       let usedSender = params.messagingServiceSid ? 'MessagingService' : (params.from || 'unknown');
+      let twilioMsg: { sid?: string };
       try {
-        await this.client!.messages.create(params);
+        twilioMsg = await this.client!.messages.create(params);
       } catch (alphaErr: any) {
         if (!params.messagingServiceSid && this.fromPhone && params.from !== this.fromPhone && (alphaErr.code === 21612 || alphaErr.code === 21659)) {
           logger.warn('[TwilioSMS] Alphanumeric sender not supported, falling back to phone number');
           usedSender = this.fromPhone;
-          await this.client!.messages.create({
+          twilioMsg = await this.client!.messages.create({
             body: messageBody,
             from: this.fromPhone,
             to: formattedPhone
@@ -309,14 +311,16 @@ class TwilioSMSService {
         }
       }
 
+      const messageId = twilioMsg?.sid || undefined;
+
       logger.info('[TwilioSMS] Verification code sent', { 
         phone: formattedPhone.slice(0, 6) + '****',
         from: usedSender,
-        expiresAt 
+        expiresAt,
+        sid: messageId,
       });
 
       this.incrementDailyPhoneCount(phone);
-      // Global circuit breaker: track this SMS against global hourly/daily limits
       smsAbuseDetector.recordSent().catch(err =>
         logger.error('[TwilioSMS] AbuseDetector.recordSent failed', { error: err?.message })
       );
@@ -324,7 +328,8 @@ class TwilioSMSService {
       return {
         success: true,
         message: this.t('codeSent', language),
-        expiresIn: VERIFICATION_CODE_EXPIRY_MINUTES * 60
+        expiresIn: VERIFICATION_CODE_EXPIRY_MINUTES * 60,
+        messageId,
       };
     } catch (error: any) {
       const errorDetails = {

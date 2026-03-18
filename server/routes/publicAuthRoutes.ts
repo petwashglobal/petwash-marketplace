@@ -9,7 +9,7 @@ import { twilioSMSService } from "../services/TwilioSMSService";
 import { db as firestoreDb, auth as fbAdminAuth } from '../lib/firebase-admin';
 import { sql, eq } from 'drizzle-orm';
 import { pool, db } from '../db';
-import { userConsents, authEvents, users, smsEvidence } from '@shared/schema';
+import { userConsents, authEvents, users, smsEvidence, otpEvents } from '@shared/schema';
 import { storage } from '../storage';
 
 // Rate limiter: max 3 SMS send attempts per IP per 10 minutes
@@ -265,7 +265,41 @@ publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (
 
     const callerIp = req.ip || (req.headers['x-forwarded-for'] as string) || 'unknown';
     const result = await twilioSMSService.sendVerificationCode(phone, language, callerIp);
-    
+
+    // ── Persist every SMS send attempt to DB ───────────────────────────────
+    const normalizedPhone = phone.trim().startsWith('+') ? phone.trim() : '+' + phone.trim().replace(/[^\d]/g, '');
+    const smsText = result.success
+      ? `[code hidden for security — send OK]`
+      : `[send failed: ${result.message}]`;
+    db.insert(smsEvidence).values({
+      messageType: 'OTP',
+      templateId: 'phone_login_v1',
+      templateVersion: '1.0',
+      toPhone: normalizedPhone,
+      renderedText: smsText,
+      contentHash: crypto.createHash('sha256').update(normalizedPhone + traceId).digest('hex'),
+      provider: 'twilio',
+      providerMessageId: result.messageId || null,
+      status: result.success ? 'sent' : 'failed',
+      failureReason: result.success ? null : result.message,
+      ip: callerIp,
+      userAgent: req.headers['user-agent'] || null,
+      traceId,
+    }).catch((dbErr: any) => logger.warn('[PublicAuth] sms_evidence insert failed (non-blocking)', { error: dbErr?.message }));
+
+    db.insert(otpEvents).values({
+      otpId: traceId,
+      eventType: 'OTP_SENT',
+      phoneE164: normalizedPhone,
+      userTypeIntent: 'PUBLIC',
+      provider: 'twilio',
+      providerMessageId: result.messageId || null,
+      ip: callerIp,
+      userAgent: req.headers['user-agent'] || null,
+      traceId,
+    }).catch((dbErr: any) => logger.warn('[PublicAuth] otp_events insert failed (non-blocking)', { error: dbErr?.message }));
+    // ──────────────────────────────────────────────────────────────────────
+
     return res.status(result.success ? 200 : 400).json({
       ok: result.success,
       message: result.message,
@@ -301,7 +335,23 @@ publicAuthRouter.post("/api/auth/phone/verify-code", phoneVerifyRateLimiter, asy
     }
 
     const result = twilioSMSService.verifyCode(phone, code, language);
-    
+    const normalizedPhone2 = phone.trim().startsWith('+') ? phone.trim() : '+' + phone.trim().replace(/[^\d]/g, '');
+    const callerIp2 = req.ip || (req.headers['x-forwarded-for'] as string) || 'unknown';
+
+    // ── Persist verification attempt to DB ────────────────────────────────
+    db.insert(otpEvents).values({
+      otpId: `verify_${traceId}`,
+      eventType: result.success ? 'OTP_VERIFIED' : 'OTP_FAILED',
+      phoneE164: normalizedPhone2,
+      userTypeIntent: 'PUBLIC',
+      result: result.success ? 'success' : 'invalid_code',
+      ip: callerIp2,
+      userAgent: req.headers['user-agent'] || null,
+      traceId,
+      verifiedAt: result.success ? new Date() : null,
+    }).catch((dbErr: any) => logger.warn('[PublicAuth] otp_events verify insert failed (non-blocking)', { error: dbErr?.message }));
+    // ──────────────────────────────────────────────────────────────────────
+
     if (!result.success) {
       return res.status(400).json({
         ok: false,
