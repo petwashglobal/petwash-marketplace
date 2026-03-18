@@ -12049,5 +12049,65 @@ export const appleWalletDeviceRegistrations = pgTable("apple_wallet_device_regis
 
 export type AppleWalletDeviceRegistration = typeof appleWalletDeviceRegistrations.$inferSelect;
 
+// ── Pet Wash Stations (QR-activated wash machines) ───────────────────────────
+export const washMachines = pgTable("wash_machines", {
+  id:                     serial("id").primaryKey(),
+  machineId:              varchar("machine_id", { length: 64 }).unique().notNull(),
+  locationId:             varchar("location_id", { length: 64 }).notNull(),
+  name:                   varchar("name", { length: 128 }).notNull(),
+  nameHe:                 varchar("name_he", { length: 128 }),
+  address:                text("address"),
+  latitude:               decimal("latitude", { precision: 10, scale: 7 }),
+  longitude:              decimal("longitude", { precision: 10, scale: 7 }),
+  nayaxTerminalId:        varchar("nayax_terminal_id", { length: 64 }),
+  nayaxMerchantId:        varchar("nayax_merchant_id", { length: 64 }),
+  isActive:               boolean("is_active").default(true).notNull(),
+  isOnline:               boolean("is_online").default(false).notNull(),
+  isBusy:                 boolean("is_busy").default(false).notNull(),
+  defaultProgramSeconds:  integer("default_program_seconds").default(900).notNull(),
+  priceCents:             integer("price_cents").default(3500).notNull(),
+  currency:               varchar("currency", { length: 8 }).default("ILS").notNull(),
+  lastHeartbeat:          timestamp("last_heartbeat"),
+  notes:                  text("notes"),
+  createdAt:              timestamp("created_at").defaultNow().notNull(),
+  updatedAt:              timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  machineIdIdx:  index("wm_machine_id_idx").on(t.machineId),
+  locationIdx:   index("wm_location_idx").on(t.locationId),
+  statusIdx:     index("wm_status_idx").on(t.isActive, t.isOnline),
+}));
+
+export type WashMachine = typeof washMachines.$inferSelect;
+export type InsertWashMachine = typeof washMachines.$inferInsert;
+
+// ── QR Activation Sessions ────────────────────────────────────────────────────
+export const activationSessions = pgTable("activation_sessions", {
+  id:               varchar("id", { length: 64 }).primaryKey(),
+  userId:           varchar("user_id", { length: 255 }).notNull(),
+  machineId:        varchar("machine_id", { length: 64 }).notNull(),
+  locationId:       varchar("location_id", { length: 64 }).notNull(),
+  status:           varchar("status", { length: 30 }).default("created").notNull(),
+  activationToken:  varchar("activation_token", { length: 128 }).notNull(),
+  nayaxSessionId:   varchar("nayax_session_id", { length: 128 }),
+  priceCents:       integer("price_cents").notNull(),
+  currency:         varchar("currency", { length: 8 }).default("ILS").notNull(),
+  qrNonce:          varchar("qr_nonce", { length: 64 }).notNull(),
+  ip:               varchar("ip", { length: 64 }),
+  userAgent:        text("user_agent"),
+  startedAt:        timestamp("started_at"),
+  completedAt:      timestamp("completed_at"),
+  failureReason:    text("failure_reason"),
+  createdAt:        timestamp("created_at").defaultNow().notNull(),
+  updatedAt:        timestamp("updated_at").defaultNow().notNull(),
+}, (t) => ({
+  userIdx:     index("as_user_idx").on(t.userId),
+  machineIdx:  index("as_machine_idx").on(t.machineId),
+  statusIdx:   index("as_status_idx").on(t.status),
+  createdIdx:  index("as_created_idx").on(t.createdAt),
+}));
+
+export type ActivationSession = typeof activationSessions.$inferSelect;
+export type InsertActivationSession = typeof activationSessions.$inferInsert;
+
 // ── Unified Payment Tables (pw_payments, pw_provider_payouts) ────────────────
 export * from './schema-payments';

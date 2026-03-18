@@ -122,6 +122,7 @@ const LeadManagement = lazy(() => import("@/pages/LeadManagement"));
 const CommunicationCenter = lazy(() => import("@/pages/CommunicationCenter"));
 const ReceiptPage = lazy(() => import("@/pages/ReceiptPage"));
 const FounderMember = lazy(() => import("@/pages/FounderMember"));
+const QrActivatePage = lazy(() => import("@/pages/QrActivatePage"));
 const ClaimVoucher = lazy(() => import("@/pages/ClaimVoucher"));
 const BuyGiftCard = lazy(() => import("@/pages/BuyGiftCard"));
 const Inbox = lazy(() => import("@/pages/Inbox"));
@@ -2371,6 +2372,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         
         <Route path="/receipt/:transactionId" component={ReceiptPage} />
         <Route path="/founder-member" component={FounderMember} />
+        <Route path="/wash/qr" component={QrActivatePage} />
         <Route path="/buy-gift-card">
           {() => <BuyGiftCard language={language} onLanguageChange={handleLanguageChange} />}
         </Route>

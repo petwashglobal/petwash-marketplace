@@ -86,6 +86,7 @@ import bookingsRoutes from "./routes/bookings";
 import superAppBookingsRoutes from "./routes/super-app-bookings";
 import privacySettingsRoutes from "./routes/privacy-settings";
 import accountDeletionRoutes from "./routes/account-deletion";
+import qrActivationRoutes from "./routes/qr-activation";
 import jobOffersRoutes from "./routes/job-offers";
 import providersRoutes from "./routes/providers";
 import marketplaceRoutes from "./routes/marketplace";
@@ -9376,6 +9377,9 @@ self.addEventListener('notificationclick', (event) => {
 
   // Account Deletion - GDPR/Israeli Privacy Law 2025 compliant account deletion with legal audit trail
   app.use('/api/account-deletion', apiLimiter, accountDeletionRoutes);
+
+  // QR Machine Activation — QR scan → Nayax auth → machine start flow
+  app.use('/api/qr', apiLimiter, qrActivationRoutes);
 
   // Compliance Control Tower - Authority documents, provider licenses, dispute resolution
   app.use('/api/compliance', adminLimiter, complianceRoutes);
