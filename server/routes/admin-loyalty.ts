@@ -263,6 +263,48 @@ router.get('/winback', requireAdmin, async (_req, res) => {
       GROUP BY channel
     `);
 
+    // Phase 6.13: Revenue vs Cost — join conversions to booking revenue by channel
+    const revenueByChannel = await db.execute<{
+      channel: string; conversions: number; revenue_ils: number;
+    }>(sql`
+      WITH last_channel AS (
+        SELECT DISTINCT ON (user_id, experiment_key)
+          user_id, experiment_key, channel
+        FROM experiment_events
+        WHERE experiment_key LIKE 'winback_%'
+          AND event = 'notification_sent'
+        ORDER BY user_id, experiment_key, created_at DESC
+      ),
+      converted AS (
+        SELECT wq.id, wq.user_id, wq.trigger, wq.converted_at,
+               COALESCE(lc.channel, 'inapp') AS channel
+        FROM winback_queue wq
+        LEFT JOIN last_channel lc
+          ON lc.user_id         = wq.user_id
+         AND lc.experiment_key  = 'winback_' || wq.trigger
+        WHERE wq.status = 'converted'
+          AND wq.converted_at IS NOT NULL
+      )
+      SELECT
+        c.channel,
+        COUNT(DISTINCT c.id)::int                                          AS conversions,
+        COALESCE(SUM(CAST(br.total_amount AS numeric)), 0)::float          AS revenue_ils
+      FROM converted c
+      LEFT JOIN booking_requests br
+        ON  br.owner_id  = c.user_id
+        AND br.status    IN ('completed','reviewed')
+        AND br.updated_at BETWEEN c.converted_at AND c.converted_at + interval '7 days'
+      GROUP BY c.channel
+    `);
+
+    // Phase 6.13: Control group stats
+    const controlStats = await db.execute<{ control_skipped: number }>(sql`
+      SELECT count(*)::int AS control_skipped
+      FROM experiment_events
+      WHERE event = 'control_skip'
+        AND experiment_key LIKE 'winback_%'
+    `);
+
     res.json({
       statusBreakdown,
       recent,
@@ -270,6 +312,8 @@ router.get('/winback', requireAdmin, async (_req, res) => {
       variantFunnel,
       channelStats:      channelStats.rows ?? [],
       channelConversion: channelConversion.rows ?? [],
+      revenueByChannel:  revenueByChannel.rows ?? [],
+      controlSkipped:    controlStats.rows[0]?.control_skipped ?? 0,
     });
   } catch (err: any) {
     logger.error('admin-loyalty GET /winback', err);

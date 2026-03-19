@@ -50,15 +50,18 @@ interface StatsData {
 
 interface ChannelStat   { channel: string; today_sent: number; total_sent: number }
 interface ChannelConv   { channel: string; sent: number; clicked: number; completed: number }
+interface RevenueRow    { channel: string; conversions: number; revenue_ils: number }
 
 interface WinbackData {
   statusBreakdown: { trigger: string; status: string; cnt: number }[];
   recent: { id: number; userId: string; trigger: string; status: string;
             scheduledAt: string; sentAt: string | null; convertedAt: string | null; variant: string | null }[];
-  conversion: { sent: number; converted: number; suppressed: number };
+  conversion:        { sent: number; converted: number; suppressed: number };
   variantFunnel:     { experimentKey: string; variant: string; channel: string; event: string; cnt: number }[];
   channelStats:      ChannelStat[];
   channelConversion: ChannelConv[];
+  revenueByChannel:  RevenueRow[];
+  controlSkipped:    number;
 }
 
 interface DecisionRow {
@@ -958,6 +961,17 @@ function WinbackTab() {
         );
       })()}
 
+      {/* Phase 6.13 — Control Group Indicator */}
+      {(data.controlSkipped ?? 0) > 0 && (
+        <div className="flex items-center gap-2.5 bg-violet-50 border border-violet-100 rounded-xl px-4 py-3 text-xs">
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-violet-100 text-violet-600 font-bold text-[10px] flex-shrink-0">10%</span>
+          <div>
+            <span className="font-semibold text-violet-700">קבוצת בקרה פעילה</span>
+            <span className="text-violet-500 mr-1.5">— {data.controlSkipped} משתמשים לא קיבלו winback (מדידת lift אמיתי)</span>
+          </div>
+        </div>
+      )}
+
       {/* Phase 6.12 — Channel Performance Table */}
       {(data.channelConversion?.length > 0 || data.channelStats?.length > 0) && (
         <SectionCard title="ביצועים לפי ערוץ">
@@ -1040,6 +1054,97 @@ function WinbackTab() {
           </table>
         </SectionCard>
       )}
+
+      {/* Phase 6.13 — Revenue vs Cost ROI Table */}
+      {(data.revenueByChannel?.length > 0 || data.channelStats?.length > 0) && (() => {
+        const COST_PER_MSG: Record<string, number> = { inapp: 0, sms: 0.045, whatsapp: 0.065 };
+        const CHANNELS = ['inapp', 'sms', 'whatsapp'] as const;
+        const LABEL: Record<string, string> = { inapp: 'In-App', sms: 'SMS', whatsapp: 'WhatsApp' };
+        const DOT: Record<string, string> = {
+          inapp: 'bg-blue-400', sms: 'bg-amber-400', whatsapp: 'bg-emerald-400',
+        };
+
+        const rows = CHANNELS.map(ch => {
+          const rev  = data.revenueByChannel?.find(r => r.channel === ch);
+          const stat = data.channelStats?.find(s => s.channel === ch);
+          const conversions = rev?.conversions  ?? 0;
+          const revenue     = rev?.revenue_ils  ?? 0;
+          const totalSent   = stat?.total_sent  ?? 0;
+          const cost        = totalSent * COST_PER_MSG[ch];
+          const profit      = revenue - cost;
+          const roi         = cost > 0 ? ((profit / cost) * 100).toFixed(0) : revenue > 0 ? '∞' : '—';
+          return { ch, conversions, revenue, cost, profit, roi };
+        });
+
+        const hasAnyData = rows.some(r => r.conversions > 0 || r.cost > 0);
+        if (!hasAnyData) return null;
+
+        const totalRevenue = rows.reduce((s, r) => s + r.revenue, 0);
+        const totalCost    = rows.reduce((s, r) => s + r.cost, 0);
+        const totalProfit  = totalRevenue - totalCost;
+
+        return (
+          <SectionCard title="הכנסות מול עלויות (ROI)">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-gray-400 border-b border-gray-100">
+                  <th className="text-right py-1.5 font-semibold">ערוץ</th>
+                  <th className="text-center py-1.5 font-semibold">המרות</th>
+                  <th className="text-center py-1.5 font-semibold text-emerald-600">הכנסה ₪</th>
+                  <th className="text-center py-1.5 font-semibold text-red-400">עלות $</th>
+                  <th className="text-center py-1.5 font-semibold text-blue-600">רווח</th>
+                  <th className="text-center py-1.5 font-semibold text-purple-500">ROI%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(({ ch, conversions, revenue, cost, profit, roi }) => (
+                  <tr key={ch} className="border-b border-gray-50 last:border-0">
+                    <td className="py-2 pr-2 font-medium text-gray-700 flex items-center gap-1.5">
+                      <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${DOT[ch]}`} />
+                      {LABEL[ch]}
+                    </td>
+                    <td className="py-2 text-center text-gray-600 font-mono">{conversions || '—'}</td>
+                    <td className="py-2 text-center text-emerald-600 font-mono font-medium">
+                      {revenue > 0 ? `₪${revenue.toFixed(0)}` : '—'}
+                    </td>
+                    <td className="py-2 text-center text-red-400 font-mono">
+                      {cost > 0 ? `$${cost.toFixed(2)}` : ch === 'inapp' ? 'חינם' : '—'}
+                    </td>
+                    <td className={`py-2 text-center font-mono font-bold ${profit >= 0 ? 'text-blue-600' : 'text-red-500'}`}>
+                      {revenue > 0 || cost > 0 ? `₪${profit.toFixed(0)}` : '—'}
+                    </td>
+                    <td className={`py-2 text-center font-bold ${roi === '∞' ? 'text-emerald-500' : roi === '—' ? 'text-gray-300' : Number(roi) >= 0 ? 'text-purple-600' : 'text-red-500'}`}>
+                      {roi !== '—' && roi !== '∞' ? `${roi}%` : roi}
+                    </td>
+                  </tr>
+                ))}
+                {/* Totals row */}
+                <tr className="bg-gray-50 border-t border-gray-200 font-bold text-gray-700">
+                  <td className="py-2 pr-2 text-xs">סה״כ</td>
+                  <td className="py-2 text-center text-xs font-mono">
+                    {rows.reduce((s, r) => s + r.conversions, 0) || '—'}
+                  </td>
+                  <td className="py-2 text-center text-xs font-mono text-emerald-700">
+                    {totalRevenue > 0 ? `₪${totalRevenue.toFixed(0)}` : '—'}
+                  </td>
+                  <td className="py-2 text-center text-xs font-mono text-red-500">
+                    {totalCost > 0 ? `$${totalCost.toFixed(2)}` : '—'}
+                  </td>
+                  <td className={`py-2 text-center text-xs font-mono ${totalProfit >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
+                    {totalRevenue > 0 || totalCost > 0 ? `₪${totalProfit.toFixed(0)}` : '—'}
+                  </td>
+                  <td className="py-2 text-center text-xs font-bold text-purple-700">
+                    {totalCost > 0 ? `${((totalProfit / totalCost) * 100).toFixed(0)}%` : totalRevenue > 0 ? '∞' : '—'}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p className="mt-2 text-[10px] text-gray-300 text-right">
+              עלויות מוערכות: SMS $0.045 / הודעה · WhatsApp $0.065 / הודעה · In-App חינם
+            </p>
+          </SectionCard>
+        );
+      })()}
 
       {/* Statistical decisions + action panel */}
       <ExperimentDecisionsPanel />

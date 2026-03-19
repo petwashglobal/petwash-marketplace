@@ -1,0 +1,172 @@
+PHASE 6.13 — REVENUE OPTIMIZATION LAYER
+
+GOAL  
+Move from a working system to a profit-optimizing machine by improving timing, incentives, channel strategy, and true measurement of incremental impact.
+
+This phase is not about building more infrastructure.  
+It is about extracting maximum value from what already exists.
+
+--------------------------------------------------
+
+1. SMART SEND TIMING
+
+Current state:
+Winbacks are triggered based on 14d / 30d / 60d rules.
+
+Upgrade:
+Send at the best time for each user instead of immediately.
+
+Logic:
+send_time = user.last_active_hour OR global peak window (18:00–21:00)
+
+If no user data:
+default to evening window.
+
+Impact:
+CTR improvement of approximately 20–40 percent.
+
+--------------------------------------------------
+
+2. CHANNEL ESCALATION OPTIMIZATION
+
+Current state:
+6 hours → SMS  
+24 hours → WhatsApp  
+
+Upgrade:
+Turn timing into an experiment layer.
+
+Variants:
+- 2h / 12h  
+- 6h / 24h  
+- 12h / 36h  
+
+Measure:
+- click rate  
+- completion rate  
+
+Goal:
+Find the optimal delay that maximizes conversion without increasing cost.
+
+--------------------------------------------------
+
+3. OFFER SIZING (CRITICAL FOR PROFIT)
+
+Current state:
+Same incentive for all users.
+
+Upgrade:
+Adjust incentive based on user value.
+
+Basic model:
+
+if lifetime_value > threshold:
+  give higher incentive
+else:
+  give lower incentive
+
+Goal:
+- avoid overpaying low-value users  
+- increase conversion for high-value users  
+
+--------------------------------------------------
+
+4. TRUE CONTROL GROUP (VERY IMPORTANT)
+
+Add a real baseline group.
+
+Implementation:
+10 percent of eligible users receive no winback.
+
+if hash(userId) % 10 == 0:
+  skip winback entirely
+
+Purpose:
+Measure real incremental lift.
+
+Without this:
+You cannot know if winbacks are actually working.
+
+--------------------------------------------------
+
+5. COST VS REVENUE VIEW
+
+You already track cost.
+
+Now calculate profit.
+
+Formula:
+
+profit = revenue_from_completed_bookings - channel_cost
+
+Display in admin:
+
+Channel | Revenue | Cost | Profit | ROI
+
+This enables:
+- clear decisions  
+- budget allocation  
+- scaling confidence  
+
+--------------------------------------------------
+
+6. OVER-MESSAGING PROTECTION
+
+Add global cap across all channels.
+
+Rule:
+Maximum 2 winbacks per 30 days per user.
+
+Implementation:
+
+if user.winbacks_last_30d >= 2:
+  skip send
+
+Goal:
+- prevent user fatigue  
+- reduce unsubscribe risk  
+- protect brand  
+
+--------------------------------------------------
+
+7. EXPECTED RESULTS (FIRST 2 WEEKS)
+
+You should observe:
+
+- SMS outperforming in-app significantly  
+- WhatsApp outperforming SMS for high-value users  
+- urgency messaging strongest on SMS  
+- social proof performing better in-app  
+- some users converting without incentives  
+
+These insights drive future optimization.
+
+--------------------------------------------------
+
+8. OPERATING PLAN
+
+Week 1:
+- run system with low caps  
+- monitor funnel daily  
+
+Week 2:
+- promote first winning variant  
+- adjust send timing  
+
+Week 3:
+- introduce LTV-based incentives  
+- compare ROI by channel  
+
+--------------------------------------------------
+
+FINAL STATE
+
+The system becomes:
+
+- multi-channel  
+- experiment-driven  
+- cost-aware  
+- self-optimizing  
+
+This is no longer just a feature.  
+It is a controlled revenue engine.

@@ -1,20 +1,18 @@
 /**
- * WINBACK PROCESSOR — Phase 6.12 (Multi-channel)
+ * WINBACK PROCESSOR — Phase 6.13 (Revenue Optimization)
  *
  * Three-pass run:
  *   Pass 1 (INITIAL): Pending rows → award credit + send in-app notification,
- *                     schedule SMS escalation at sentAt + 6h.
- *   Pass 2 (SMS ESC): Sent rows where sms_escalation_at <= now AND user has
- *                     not opened → send SMS via Twilio.
- *   Pass 3 (WA ESC):  Sent rows where whatsapp_escalation_at <= now AND user
- *                     has not clicked → send WhatsApp via Twilio.
+ *                     schedule SMS/WhatsApp escalation via timing variant.
+ *   Pass 2 (SMS ESC): Sent rows where sms_escalation_at <= now AND no 'opened' event.
+ *   Pass 3 (WA ESC):  Sent rows where whatsapp_escalation_at <= now AND no 'clicked' event.
  *
- * All three passes respect the same guardrails:
- *   - armed flag       (rule must be explicitly armed)
- *   - daily send cap   (per-trigger in-app cap from loyalty_rules)
- *   - frequency cap    (14-day global per-user)
- *   - paused variants  (from experiment_decisions)
- *   - winner override  (promoted variant replaces hash assignment)
+ * Phase 6.13 additions:
+ *   - True Control Group:       10% of users (hash % 10 === 0) receive NO winback.
+ *   - Over-messaging Protection: Max 2 winbacks per user per 30 days (all triggers).
+ *   - Smart Send Timing:        Defer send to 18:00–21:00 IL window if outside it.
+ *   - Channel Escalation A/B:   3 timing variants (t0: 6h/24h, t1: 2h/12h, t2: 12h/36h).
+ *   - Offer Sizing:             LTV-based credit multiplier (0.75× / 1.0× / 1.5×).
  */
 
 import { db } from '../db';
@@ -31,12 +29,71 @@ import {
   buildTrackingLink, Channel,
 } from '../services/winbackChannel';
 
-const BATCH_SIZE          = 50;
-const SMS_DELAY_HOURS     = 6;
-const WHATSAPP_DELAY_HOURS = 24;
+const BATCH_SIZE = 50;
 
 type WinbackTrigger = 'winback_14d' | 'winback_30d' | 'winback_60d';
 type Variant        = 'ctrl' | 'v1' | 'v2';
+
+// ── Phase 6.13: Control group ─────────────────────────────────────────────────
+
+/** Deterministic: 10% of users receive no winback to measure true incremental lift. */
+function isControlGroup(userId: string): boolean {
+  let h = 5381;
+  for (const c of userId) h = ((h * 33) ^ c.charCodeAt(0)) & 0x7fffffff;
+  return (h % 10) === 0;
+}
+
+// ── Phase 6.13: Channel timing variant (escalation A/B) ─────────────────────
+
+const TIMING_VARIANTS = [
+  { name: 't0', smsH: 6,  waH: 24 },  // baseline
+  { name: 't1', smsH: 2,  waH: 12 },  // aggressive
+  { name: 't2', smsH: 12, waH: 36 },  // patient
+] as const;
+
+function assignTimingVariant(userId: string) {
+  let h = 0x811c9dc5;
+  for (const c of userId) h = Math.imul(h ^ c.charCodeAt(0), 0x01000193) >>> 0;
+  return TIMING_VARIANTS[h % 3];
+}
+
+// ── Phase 6.13: Smart send timing ────────────────────────────────────────────
+
+/**
+ * Returns the next 18:00–21:00 Israel time window start (UTC+2, non-DST).
+ * If current IL hour is already 18–20, returns now immediately.
+ */
+function nextOptimalSendAt(): Date | null {
+  const now      = new Date();
+  const ilOffset = 2; // UTC+2 standard (close enough for scheduling)
+  const ilHour   = (now.getUTCHours() + ilOffset) % 24;
+
+  if (ilHour >= 18 && ilHour < 21) return null; // already in window → send now
+
+  const target = new Date(now);
+  // Set to 18:00 IL (= 16:00 UTC)
+  target.setUTCHours(16, 0, 0, 0);
+  if (target <= now) target.setUTCDate(target.getUTCDate() + 1); // tomorrow 18:00 IL
+  return target;
+}
+
+// ── Phase 6.13: LTV-based offer sizing ──────────────────────────────────────
+
+async function getLtvMultiplier(userId: string): Promise<{ multiplier: number; ltv: number }> {
+  try {
+    const res = await db.execute<{ ltv: number }>(sql`
+      SELECT COALESCE(SUM(CAST(total_amount AS numeric)), 0)::float AS ltv
+      FROM booking_requests
+      WHERE owner_id = ${userId}
+        AND status IN ('completed','reviewed')
+    `);
+    const ltv = res.rows[0]?.ltv ?? 0;
+    const multiplier = ltv >= 1000 ? 1.5 : ltv >= 200 ? 1.0 : 0.75;
+    return { multiplier, ltv };
+  } catch {
+    return { multiplier: 1.0, ltv: 0 };
+  }
+}
 
 // ── A/B variant assignment (deterministic hash) ───────────────────────────────
 
@@ -63,7 +120,7 @@ function buildNotifCopy(
   };
   const days    = dayLabel[trigger];
   const ctaText = 'הזמן עכשיו';
-  const ctaUrl  = trackLink; // tracked link replaces static URL
+  const ctaUrl  = trackLink;
 
   if (variant === 'v1') {
     return {
@@ -81,7 +138,6 @@ function buildNotifCopy(
       ctaText, ctaUrl,
     };
   }
-  // ctrl
   return {
     title:    `${name}, התגעגענו אליך! 🐾`,
     bodyHtml: `<p>עברו ${days} מאז הביקור האחרון.</p><p>הוספנו <strong>₪${creditIls} קרדיט</strong>.</p>`,
@@ -93,16 +149,22 @@ function buildNotifCopy(
 // ── Shared guard helpers ───────────────────────────────────────────────────────
 
 interface Guards {
-  ruleMap:       Map<string, { armed: boolean; dailySendCap: number | null; enabled: boolean }>;
-  decisionMap:   Map<string, { winnerVariant: string | null; promotedAt: Date | null; pausedVariants: string[] }>;
-  recentSentSet: Set<string>;
-  todaySent:     Map<string, number>;
-  batchSent:     Map<string, number>;
+  ruleMap:         Map<string, { armed: boolean; dailySendCap: number | null; enabled: boolean }>;
+  decisionMap:     Map<string, { winnerVariant: string | null; promotedAt: Date | null; pausedVariants: string[] }>;
+  recentSentSet:   Set<string>;   // sent within 14 days (frequency cap)
+  winbacks30dMap:  Map<string, number>; // Phase 6.13: count of winbacks per user in last 30 days
+  todaySent:       Map<string, number>;
+  batchSent:       Map<string, number>;
 }
 
 async function loadGuards(): Promise<Guards> {
   const ruleRows = await db
-    .select({ ruleKey: loyaltyRules.ruleKey, armed: loyaltyRules.armed, dailySendCap: loyaltyRules.dailySendCap, enabled: loyaltyRules.enabled })
+    .select({
+      ruleKey:     loyaltyRules.ruleKey,
+      armed:       loyaltyRules.armed,
+      dailySendCap: loyaltyRules.dailySendCap,
+      enabled:     loyaltyRules.enabled,
+    })
     .from(loyaltyRules);
 
   const decisionRows = await db.select().from(experimentDecisions);
@@ -119,19 +181,27 @@ async function loadGuards(): Promise<Guards> {
     WHERE status = 'sent' AND sent_at > now() - interval '14 days'
   `);
 
+  // Phase 6.13: Over-messaging protection — count per user in last 30 days
+  const recent30d = await db.execute<{ user_id: string; cnt: number }>(sql`
+    SELECT user_id, count(*)::int AS cnt FROM winback_queue
+    WHERE status IN ('sent','converted') AND sent_at > now() - interval '30 days'
+    GROUP BY user_id
+  `);
+
   return {
-    ruleMap:       new Map(ruleRows.map(r => [r.ruleKey, r])),
-    decisionMap:   new Map(decisionRows.map(d => [d.experimentKey, d])),
-    todaySent:     new Map((todaySentRes.rows ?? []).map(r => [r.trigger, r.cnt])),
-    batchSent:     new Map(),
-    recentSentSet: new Set((recentSent.rows ?? []).map(r => r.user_id)),
+    ruleMap:        new Map(ruleRows.map(r => [r.ruleKey, r])),
+    decisionMap:    new Map(decisionRows.map(d => [d.experimentKey, d])),
+    todaySent:      new Map((todaySentRes.rows ?? []).map(r => [r.trigger, r.cnt])),
+    batchSent:      new Map(),
+    recentSentSet:  new Set((recentSent.rows ?? []).map(r => r.user_id)),
+    winbacks30dMap: new Map((recent30d.rows ?? []).map(r => [r.user_id, r.cnt])),
   };
 }
 
 // ── PASS 1: Initial in-app send ───────────────────────────────────────────────
 
 async function runInitialPass(guards: Guards): Promise<{ awarded: number; errors: number }> {
-  const { ruleMap, decisionMap, recentSentSet, todaySent, batchSent } = guards;
+  const { ruleMap, decisionMap, recentSentSet, winbacks30dMap, todaySent, batchSent } = guards;
 
   const pendingRows = await db.execute<{
     id: number; user_id: string; trigger: WinbackTrigger;
@@ -163,16 +233,45 @@ async function runInitialPass(guards: Guards): Promise<{ awarded: number; errors
 
       if (!guardrail?.armed) { continue; }
 
+      // Phase 6.13: Daily send cap
       if (guardrail.dailySendCap != null) {
         const today = (todaySent.get(trigger) ?? 0) + (batchSent.get(trigger) ?? 0);
         if (today >= guardrail.dailySendCap) { continue; }
       }
 
+      // Phase 6.13: True control group — skip 10% to measure incremental lift
+      if (isControlGroup(userId)) {
+        await db.execute(sql`UPDATE winback_queue SET status = 'suppressed', pause_reason = 'control_group' WHERE id = ${queueId}`);
+        await db.insert(experimentEvents).values({
+          experimentKey: expKey, userId, variant: 'ctrl', event: 'control_skip', channel: 'inapp',
+        });
+        logger.info('[WinbackProcessor:P1] Control group skip', { userId, queueId });
+        continue;
+      }
+
+      // Phase 6.13: Over-messaging protection (max 2 per 30 days)
+      const winbacks30d = winbacks30dMap.get(userId) ?? 0;
+      if (winbacks30d >= 2) {
+        await db.execute(sql`UPDATE winback_queue SET status = 'suppressed', pause_reason = 'over_messaged' WHERE id = ${queueId}`);
+        logger.info('[WinbackProcessor:P1] Over-messaging skip', { userId, winbacks30d, queueId });
+        continue;
+      }
+
+      // 14-day frequency cap
       if (recentSentSet.has(userId)) {
         await db.execute(sql`UPDATE winback_queue SET status = 'suppressed' WHERE id = ${queueId}`);
         continue;
       }
 
+      // Phase 6.13: Smart send timing — defer to 18:00–21:00 IL window
+      const deferTo = nextOptimalSendAt();
+      if (deferTo) {
+        await db.execute(sql`UPDATE winback_queue SET scheduled_at = ${deferTo.toISOString()} WHERE id = ${queueId}`);
+        logger.info('[WinbackProcessor:P1] Deferred to optimal window', { userId, deferTo, queueId });
+        continue;
+      }
+
+      // Variant assignment
       let variant: Variant;
       if (decision?.promotedAt && decision.winnerVariant) {
         variant = decision.winnerVariant as Variant;
@@ -214,26 +313,32 @@ async function runInitialPass(guards: Guards): Promise<{ awarded: number; errors
         .from(users).where(eq(users.id, userId)).limit(1);
       if (!user) continue;
 
+      // Phase 6.13: Offer sizing — scale credit by LTV tier
+      const { multiplier, ltv } = await getLtvMultiplier(userId);
+      const rawCreditCents = Math.round(rule.rewardCents * multiplier);
+      const creditIls      = (rawCreditCents / 100).toFixed(0);
+
       await awardLoyaltyCredit({ userId, ruleKey: trigger, fingerprint: `${trigger}:${userId}` });
 
-      const creditIls  = (rule.rewardCents / 100).toFixed(0);
-      const trackLink  = buildTrackingLink({ userId, expKey, variant, channel: 'inapp' });
-      const copy       = buildNotifCopy(trigger, creditIls, user.firstName, variant, trackLink);
+      const trackLink = buildTrackingLink({ userId, expKey, variant, channel: 'inapp' });
+      const copy      = buildNotifCopy(trigger, creditIls, user.firstName, variant, trackLink);
 
       await dispatchNotification({
         uid: userId, email: user.email ?? undefined, phone: user.phone ?? undefined,
         locale: 'he', type: 'voucher',
         title: copy.title, bodyHtml: copy.bodyHtml, bodyText: copy.bodyText,
         ctaText: copy.ctaText, ctaUrl: copy.ctaUrl, priority: 2,
-        meta: { amount: rule.rewardCents / 100, currency: 'ILS' },
+        meta: { amount: rawCreditCents / 100, currency: 'ILS' },
         channels: ['inbox', 'email'],
       });
 
-      // Schedule SMS escalation 6h from now
+      // Phase 6.13: Timing variant for escalation delays
+      const timing = assignTimingVariant(userId);
       await db.execute(sql`
         UPDATE winback_queue
         SET status = 'sent', sent_at = now(), experiment_variant = ${variant},
-            sms_escalation_at = now() + interval '${sql.raw(String(SMS_DELAY_HOURS))} hours'
+            sms_escalation_at      = now() + (${timing.smsH} || ' hours')::interval,
+            whatsapp_escalation_at = now() + (${timing.waH}  || ' hours')::interval
         WHERE id = ${queueId}
       `);
 
@@ -243,7 +348,7 @@ async function runInitialPass(guards: Guards): Promise<{ awarded: number; errors
 
       awarded++;
       batchSent.set(trigger, (batchSent.get(trigger) ?? 0) + 1);
-      logger.info('[WinbackProcessor:P1] Sent', { userId, trigger, variant, queueId });
+      logger.info('[WinbackProcessor:P1] Sent', { userId, trigger, variant, timing: timing.name, ltv: ltv.toFixed(0), multiplier, queueId });
     } catch (err: any) {
       errors++;
       logger.error('[WinbackProcessor:P1] Row error', { queueId: row.id, error: err.message });
@@ -266,7 +371,6 @@ async function runSmsEscalationPass(): Promise<{ sent: number; skipped: number; 
       AND wq.sms_escalation_at IS NOT NULL
       AND wq.sms_escalation_at <= now()
       AND wq.sms_sent_at IS NULL
-      -- No 'opened' event recorded for this user + experiment
       AND NOT EXISTS (
         SELECT 1 FROM experiment_events ee
         WHERE ee.experiment_key = 'winback_' || wq.trigger
@@ -298,7 +402,8 @@ async function runSmsEscalationPass(): Promise<{ sent: number; skipped: number; 
       const [rule] = await db.select({ rewardCents: loyaltyRules.rewardCents })
         .from(loyaltyRules).where(eq(loyaltyRules.ruleKey, trigger)).limit(1);
 
-      const creditIls = rule ? (rule.rewardCents / 100).toFixed(0) : '10';
+      const { multiplier } = await getLtvMultiplier(userId);
+      const creditIls = rule ? ((Math.round(rule.rewardCents * multiplier)) / 100).toFixed(0) : '10';
 
       const result = await sendWinbackSms({
         userId, phone: user.phone, expKey, trigger,
@@ -307,10 +412,7 @@ async function runSmsEscalationPass(): Promise<{ sent: number; skipped: number; 
 
       if (result.sent) {
         await db.execute(sql`
-          UPDATE winback_queue
-          SET sms_sent_at = now(),
-              whatsapp_escalation_at = now() + interval '${sql.raw(String(WHATSAPP_DELAY_HOURS))} hours'
-          WHERE id = ${queueId}
+          UPDATE winback_queue SET sms_sent_at = now() WHERE id = ${queueId}
         `);
         await db.insert(experimentEvents).values({
           experimentKey: expKey, userId, variant: variant ?? 'ctrl',
@@ -321,12 +423,6 @@ async function runSmsEscalationPass(): Promise<{ sent: number; skipped: number; 
       } else {
         skipped++;
         logger.info('[WinbackProcessor:P2-SMS] SMS skipped', { userId, reason: result.reason });
-        // Still schedule WhatsApp regardless of SMS failure
-        await db.execute(sql`
-          UPDATE winback_queue
-          SET whatsapp_escalation_at = now() + interval '${sql.raw(String(WHATSAPP_DELAY_HOURS))} hours'
-          WHERE id = ${queueId} AND whatsapp_escalation_at IS NULL
-        `);
       }
     } catch (err: any) {
       errors++;
@@ -350,7 +446,6 @@ async function runWhatsAppEscalationPass(): Promise<{ sent: number; skipped: num
       AND wq.whatsapp_escalation_at IS NOT NULL
       AND wq.whatsapp_escalation_at <= now()
       AND wq.whatsapp_sent_at IS NULL
-      -- No 'clicked' event recorded for this user + experiment
       AND NOT EXISTS (
         SELECT 1 FROM experiment_events ee
         WHERE ee.experiment_key = 'winback_' || wq.trigger
@@ -382,7 +477,8 @@ async function runWhatsAppEscalationPass(): Promise<{ sent: number; skipped: num
       const [rule] = await db.select({ rewardCents: loyaltyRules.rewardCents })
         .from(loyaltyRules).where(eq(loyaltyRules.ruleKey, trigger)).limit(1);
 
-      const creditIls = rule ? (rule.rewardCents / 100).toFixed(0) : '10';
+      const { multiplier } = await getLtvMultiplier(userId);
+      const creditIls = rule ? ((Math.round(rule.rewardCents * multiplier)) / 100).toFixed(0) : '10';
 
       const result = await sendWinbackWhatsApp({
         userId, phone: user.phone, expKey, trigger,
@@ -416,7 +512,7 @@ async function runWhatsAppEscalationPass(): Promise<{ sent: number; skipped: num
 // ── Main entry point ──────────────────────────────────────────────────────────
 
 export async function runWinbackProcessor(): Promise<void> {
-  logger.info('[WinbackProcessor] Starting multi-channel run');
+  logger.info('[WinbackProcessor] Starting multi-channel run (Phase 6.13)');
 
   const guards = await loadGuards();
 
