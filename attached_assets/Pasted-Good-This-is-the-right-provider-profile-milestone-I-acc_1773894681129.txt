@@ -1,0 +1,106 @@
+Good. This is the right provider profile milestone.
+
+I accept this as a real step forward because the profile editor is no longer fake and the public marketplace can now reflect provider-controlled data.
+
+What is now good:
+- /api/provider-profile/me exists with GET and PATCH
+- auth gates are in place
+- strict allowlist is in place
+- POSProfile is wired to real persistence
+- completeness scoring exists
+- price and accepted pets can influence browse results
+- the dashboard now nudges providers to complete profile data
+
+That is the correct direction.
+
+Now I want the next phase done with the same proof standard and with one important correction:
+
+1. Proof standard
+Your SQL-based pipeline proof is useful, but it is not enough on its own.
+I still want one real authenticated provider flow proven through the actual API and UI, not only direct SQL mutation.
+
+Please send next:
+- one authenticated GET /api/provider-profile/me response
+- one authenticated PATCH /api/provider-profile/me success response
+- one authenticated PATCH with an unknown field returning 400 after auth
+- one UI save from POSProfile that changes price
+- one UI save from POSProfile that changes accepted pets
+- one browse result reflecting those saved changes
+
+2. Provider profile hardening
+Please confirm:
+- providers can edit only their own profile
+- admin/compliance fields remain read-only forever
+- acceptedPets validation is strict and enum-limited
+- priceFromCents validation prevents bad values, negative values, and nonsense input
+- areas/languages validation is also safe
+- completeness score uses only persisted fields, not temporary local state
+
+3. Provider dashboard next
+Now move the Provider OS from informative to operational.
+
+Build next in this order:
+
+A. Earnings maturity
+- this week
+- this month
+- pending payout
+- completed payout
+- per-booking earnings list
+- honest empty states if no payout data exists
+
+B. Requests and upcoming jobs clarity
+- new requests
+- accepted upcoming jobs
+- completed jobs
+- cancelled jobs separated clearly
+- unread requests/messages summary
+
+C. Availability editor
+- online / available / away
+- blocked dates
+- working hours or service windows
+- next available slot if possible
+
+D. Service settings and add-ons editor
+- per-service enable/disable
+- add-ons editing
+- public/private distinction clear
+- anything public should flow into browse/profile correctly
+
+E. Reviews visibility
+- provider sees reviews
+- rating breakdown if real data exists
+- no fake response feature unless business rules support it
+
+4. Important architecture issue
+You now have old and new provider systems side by side.
+I want a clear migration note from you:
+- what still reads from old providers/bookings tables
+- what now reads from provider_profiles/booking_requests
+- what the migration path is
+- what should be considered source of truth going forward
+
+I do not want this split to become long-term silent technical debt.
+
+5. Evidence required in the next pass
+Please send:
+- exact files changed
+- one authenticated API proof for GET and PATCH
+- one screenshot of POSProfile save success
+- one screenshot of the completeness bar
+- one screenshot of the dashboard completeness card
+- one real provider-side earnings view
+- one real provider-side upcoming jobs view
+- one real availability editor state
+
+6. Build order after that
+Do this in order:
+1. earnings maturity
+2. requests and upcoming jobs clarity
+3. availability editor
+4. service settings and add-ons editor
+5. reviews visibility
+6. migration/source-of-truth plan
+
+Do not jump ahead until the provider dashboard is genuinely useful day to day.

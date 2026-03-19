@@ -103,9 +103,10 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
   const todayJobs = bookings.filter((b: any) => b.status === 'confirmed');
 
   const available = stats?.isAvailable ?? isAvailable;
-  const availableBalance = earningsData?.availableBalance ?? stats?.pendingPayouts ?? 0;
-  const pendingBalance = earningsData?.pendingBalance ?? 0;
-  const monthTotal = earningsData?.monthTotal ?? stats?.totalEarnings ?? 0;
+  // earningsData fields are ILS decimals (NOT cents)
+  const paidBalance = earningsData?.earnings?.paidPayouts ?? 0;
+  const pendingBalance = earningsData?.earnings?.pendingPayouts ?? 0;
+  const monthTotal = earningsData?.earnings?.thisMonthEarnings ?? stats?.totalEarnings ?? 0;
 
   return (
     <div className="space-y-5">
@@ -134,9 +135,9 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
       {/* Finance strip */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Available', value: `₪${(availableBalance / 100).toFixed(0)}`, sub: 'Ready to withdraw', icon: Wallet, color: 'text-green-600', bg: 'bg-green-50' },
-          { label: 'Pending', value: `₪${(pendingBalance / 100).toFixed(0)}`, sub: 'In escrow', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'This month', value: `₪${(monthTotal / 100).toFixed(0)}`, sub: 'Total earnings', icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Paid out', value: `₪${paidBalance.toFixed(0)}`, sub: 'Received to date', icon: Wallet, color: 'text-green-600', bg: 'bg-green-50' },
+          { label: 'Pending', value: `₪${pendingBalance.toFixed(0)}`, sub: 'Awaiting payout', icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'This month', value: `₪${monthTotal.toFixed(0)}`, sub: 'Earnings MTD', icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
         ].map(card => {
           const Icon = card.icon;
           return (

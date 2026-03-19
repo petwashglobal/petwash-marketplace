@@ -73,6 +73,13 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
     queryFn: () => fetchWithAuth(`/api/provider-dashboard/bookings?status=${statusParam}&page=${page}&limit=15`),
   });
 
+  const { data: countsData } = useQuery({
+    queryKey: ['/api/provider-dashboard/booking-counts'],
+    queryFn: () => fetchWithAuth('/api/provider-dashboard/booking-counts'),
+    staleTime: 30_000,
+  });
+  const statusCounts: Record<string, number> = (countsData as any)?.counts ?? {};
+
   const actionMutation = useMutation({
     mutationFn: async ({ bookingId, action, reason }: { bookingId: string; action: string; reason?: string }) =>
       fetchWithAuth(`/api/provider-dashboard/bookings/${bookingId}/${action}`, {
@@ -149,14 +156,26 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
       {/* Status filter tabs */}
       <div className="overflow-x-auto -mx-4 px-4">
         <div className="flex gap-1.5 min-w-max pb-1">
-          {STATUSES.map(s => (
-            <button key={s.id} onClick={() => { setStatusFilter(s.id); setPage(1); }}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
-                statusFilter === s.id ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}>
-              {s.label}
-            </button>
-          ))}
+          {STATUSES.map(s => {
+            const count = statusCounts[s.id];
+            const isNew = s.id === 'new_request' && (count ?? 0) > 0;
+            return (
+              <button key={s.id} onClick={() => { setStatusFilter(s.id); setPage(1); }}
+                className={`relative px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                  statusFilter === s.id ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}>
+                {isNew && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white animate-pulse" />
+                )}
+                {s.label}
+                {count != null && count > 0 && (
+                  <span className={`text-[10px] font-bold px-1 rounded-full leading-tight ${
+                    statusFilter === s.id ? 'bg-amber-400 text-white' : 'bg-gray-300 text-gray-700'
+                  }`}>{count}</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 

@@ -7,9 +7,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Camera, Star, Shield, Award, MapPin, Globe, Dog, Cat, Bird,
   Rabbit, CheckCircle2, Edit3, Home, AlertCircle, Loader2,
+  CalendarDays, Clock, ChevronLeft, ChevronRight as ChevronRightIcon, X,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+interface DayHours { active: boolean; from?: string; to?: string; }
+interface WorkingHours { mon?: DayHours; tue?: DayHours; wed?: DayHours; thu?: DayHours; fri?: DayHours; sat?: DayHours; sun?: DayHours; }
 
 interface ProviderProfile {
   bio: string;
@@ -20,6 +24,8 @@ interface ProviderProfile {
   acceptedPets: string[];
   hasFencedYard: boolean | null;
   hasNoPetsAtHome: boolean | null;
+  blockedDates: string[];
+  workingHours: WorkingHours | null;
   backgroundCheckStatus: string | null;
   ratingAvg: number | null;
   ratingCount: number;
@@ -46,6 +52,22 @@ interface ProfileResponse {
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+
+const DAYS: { key: keyof WorkingHours; label: string; short: string }[] = [
+  { key: 'sun', label: 'Sunday',    short: 'Sun' },
+  { key: 'mon', label: 'Monday',    short: 'Mon' },
+  { key: 'tue', label: 'Tuesday',   short: 'Tue' },
+  { key: 'wed', label: 'Wednesday', short: 'Wed' },
+  { key: 'thu', label: 'Thursday',  short: 'Thu' },
+  { key: 'fri', label: 'Friday',    short: 'Fri' },
+  { key: 'sat', label: 'Saturday',  short: 'Sat' },
+];
+const DEFAULT_HOURS: WorkingHours = {
+  sun: { active: false }, mon: { active: true, from: '09:00', to: '18:00' },
+  tue: { active: true, from: '09:00', to: '18:00' }, wed: { active: true, from: '09:00', to: '18:00' },
+  thu: { active: true, from: '09:00', to: '18:00' }, fri: { active: true, from: '09:00', to: '14:00' },
+  sat: { active: false },
+};
 
 const LANGUAGES = ['Hebrew', 'English', 'Arabic', 'Russian', 'French', 'Spanish'];
 const SERVICE_AREAS = ['Tel Aviv', 'Jerusalem', 'Haifa', 'Ra\'anana', 'Petah Tikva', 'Rishon LeZion', 'Netanya', 'Beer Sheva'];
@@ -111,7 +133,7 @@ function CompletenessBar({ score, breakdown }: { score: number; breakdown: Recor
 export default function POSProfile() {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'basic' | 'services' | 'home' | 'badges'>('basic');
+  const [activeTab, setActiveTab] = useState<'basic' | 'services' | 'home' | 'availability' | 'badges'>('basic');
 
   // Form state (initialized from API)
   const [bio, setBio] = useState('');
@@ -122,12 +144,23 @@ export default function POSProfile() {
   const [acceptedPets, setAcceptedPets] = useState<string[]>([]);
   const [hasFencedYard, setHasFencedYard] = useState<boolean | null>(null);
   const [hasNoPetsAtHome, setHasNoPetsAtHome] = useState<boolean | null>(null);
+  const [blockedDates, setBlockedDates] = useState<string[]>([]);
+  const [workingHours, setWorkingHours] = useState<WorkingHours>(DEFAULT_HOURS);
+  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
   const [initialized, setInitialized] = useState(false);
 
   // ── Fetch own profile ──────────────────────────────────────────────────────
   const { data: profileData, isLoading } = useQuery<ProfileResponse>({
     queryKey: ['/api/provider-profile/me'],
     staleTime: 30_000,
+  });
+
+  const { data: reviewsApiData } = useQuery({
+    queryKey: ['/api/provider-dashboard/reviews'],
+    queryFn: () => fetch('/api/provider-dashboard/reviews', { credentials: 'include' }).then(r => r.json()),
+    staleTime: 60_000,
+    enabled: activeTab === 'badges',
   });
 
   // Initialize form state from API response (only once)
@@ -141,6 +174,8 @@ export default function POSProfile() {
       setAcceptedPets(p.acceptedPets ?? []);
       setHasFencedYard(p.hasFencedYard ?? null);
       setHasNoPetsAtHome(p.hasNoPetsAtHome ?? null);
+      setBlockedDates(p.blockedDates ?? []);
+      setWorkingHours(p.workingHours ?? DEFAULT_HOURS);
       setInitialized(true);
     }
   }, [profileData, initialized]);
@@ -160,6 +195,8 @@ export default function POSProfile() {
         acceptedPets,
         hasFencedYard,
         hasNoPetsAtHome,
+        blockedDates,
+        workingHours,
       });
     },
     onSuccess: () => {
@@ -233,15 +270,16 @@ export default function POSProfile() {
       )}
 
       {/* Tabs */}
-      <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
+      <div className="grid grid-cols-5 bg-gray-100 rounded-xl p-1 gap-0.5">
         {[
-          { id: 'basic',    label: 'Basic' },
-          { id: 'services', label: 'Services' },
-          { id: 'home',     label: 'My Home' },
-          { id: 'badges',   label: 'Badges' },
+          { id: 'basic',        label: 'Basic' },
+          { id: 'services',     label: 'Services' },
+          { id: 'home',         label: 'Home' },
+          { id: 'availability', label: 'Avail.' },
+          { id: 'badges',       label: 'Badges' },
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
-            className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
+            className={`py-2 rounded-lg text-[11px] font-medium transition-all ${
               activeTab === tab.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
             }`}>
             {tab.label}
@@ -430,6 +468,150 @@ export default function POSProfile() {
         </div>
       )}
 
+      {/* ── Availability Tab ─────────────────────────────────────────── */}
+      {activeTab === 'availability' && (() => {
+        // Calendar helpers
+        const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+        const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
+        const monthLabel = new Date(calendarYear, calendarMonth, 1).toLocaleString('en-IL', { month: 'long', year: 'numeric' });
+        const today = new Date().toISOString().slice(0, 10);
+
+        const toggleDate = (iso: string) => {
+          if (iso < today) return; // can't block past dates
+          setBlockedDates(prev =>
+            prev.includes(iso) ? prev.filter(d => d !== iso) : [...prev, iso]
+          );
+        };
+
+        const updateDayHours = (day: keyof WorkingHours, field: keyof DayHours, value: any) =>
+          setWorkingHours(prev => ({
+            ...prev,
+            [day]: { ...(prev[day] ?? { active: false }), [field]: value },
+          }));
+
+        return (
+          <div className="space-y-4">
+            {/* Status selector */}
+            <div className="bg-white border border-gray-200 rounded-xl p-4">
+              <p className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-500" /> Current Status
+              </p>
+              <div className="space-y-2">
+                {[
+                  { value: 'online',    label: 'Online — fully open to new bookings',   dot: 'bg-green-500'  },
+                  { value: 'available', label: 'Available — limited availability',       dot: 'bg-blue-500'   },
+                  { value: 'busy',      label: 'Busy — not accepting new bookings',      dot: 'bg-amber-500'  },
+                  { value: 'offline',   label: 'Offline — completely off',               dot: 'bg-gray-400'   },
+                ].map(opt => (
+                  <button key={opt.value} onClick={() => setAvailabilityState(opt.value)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-start transition-all ${
+                      availabilityState === opt.value ? 'border-amber-300 bg-amber-50' : 'border-gray-200 hover:bg-gray-50'
+                    }`}>
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${opt.dot}`} />
+                    <span className="text-xs font-medium text-gray-700">{opt.label}</span>
+                    {availabilityState === opt.value && <CheckCircle2 className="w-3.5 h-3.5 text-amber-500 ml-auto" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Working hours grid */}
+            <div className="bg-white border border-gray-200 rounded-xl p-4">
+              <p className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-blue-500" /> Working Hours
+              </p>
+              <div className="space-y-2">
+                {DAYS.map(({ key, short }) => {
+                  const d = workingHours[key] ?? { active: false };
+                  return (
+                    <div key={key} className={`flex items-center gap-3 px-3 py-2 rounded-xl border ${d.active ? 'border-blue-200 bg-blue-50' : 'border-gray-100 bg-gray-50'}`}>
+                      <span className="text-xs font-semibold text-gray-600 w-8 shrink-0">{short}</span>
+                      <button onClick={() => updateDayHours(key, 'active', !d.active)}
+                        className={`w-8 h-5 rounded-full transition-colors shrink-0 ${d.active ? 'bg-blue-500' : 'bg-gray-300'}`}>
+                        <span className={`block w-3 h-3 bg-white rounded-full mx-auto transition-transform ${d.active ? 'translate-x-1.5' : '-translate-x-1'}`} />
+                      </button>
+                      {d.active ? (
+                        <div className="flex items-center gap-1.5 flex-1">
+                          <input type="time" value={d.from || '09:00'} onChange={e => updateDayHours(key, 'from', e.target.value)}
+                            className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-blue-400 w-24" />
+                          <span className="text-xs text-gray-400">to</span>
+                          <input type="time" value={d.to || '18:00'} onChange={e => updateDayHours(key, 'to', e.target.value)}
+                            className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-blue-400 w-24" />
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400 flex-1">Off</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Blocked dates calendar */}
+            <div className="bg-white border border-gray-200 rounded-xl p-4">
+              <p className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <CalendarDays className="w-4 h-4 text-red-500" /> Blocked Dates
+              </p>
+              {/* Month nav */}
+              <div className="flex items-center justify-between mb-3">
+                <button onClick={() => { const d = new Date(calendarYear, calendarMonth - 1, 1); setCalendarMonth(d.getMonth()); setCalendarYear(d.getFullYear()); }}
+                  className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+                  <ChevronLeft className="w-4 h-4 text-gray-500" />
+                </button>
+                <p className="text-xs font-semibold text-gray-700">{monthLabel}</p>
+                <button onClick={() => { const d = new Date(calendarYear, calendarMonth + 1, 1); setCalendarMonth(d.getMonth()); setCalendarYear(d.getFullYear()); }}
+                  className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+                  <ChevronRightIcon className="w-4 h-4 text-gray-500" />
+                </button>
+              </div>
+              {/* Day headers */}
+              <div className="grid grid-cols-7 mb-1">
+                {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
+                  <div key={d} className="text-center text-[10px] text-gray-400 font-medium py-1">{d}</div>
+                ))}
+              </div>
+              {/* Calendar grid */}
+              <div className="grid grid-cols-7 gap-0.5">
+                {[...Array(firstDay)].map((_, i) => <div key={`e${i}`} />)}
+                {[...Array(daysInMonth)].map((_, i) => {
+                  const day = i + 1;
+                  const iso = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                  const isBlocked = blockedDates.includes(iso);
+                  const isPast = iso < today;
+                  return (
+                    <button key={day} onClick={() => toggleDate(iso)} disabled={isPast}
+                      className={`aspect-square flex items-center justify-center rounded-lg text-xs font-medium transition-all ${
+                        isPast ? 'text-gray-300 cursor-default' :
+                        isBlocked ? 'bg-red-500 text-white' :
+                        'hover:bg-red-50 text-gray-700'
+                      }`}>
+                      {day}
+                    </button>
+                  );
+                })}
+              </div>
+              {blockedDates.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-medium text-gray-600">{blockedDates.length} date{blockedDates.length !== 1 ? 's' : ''} blocked</p>
+                    <button onClick={() => setBlockedDates([])} className="text-xs text-red-500 hover:text-red-700">Clear all</button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {blockedDates.sort().slice(0, 6).map(d => (
+                      <span key={d} className="flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-700 rounded-full text-[10px] font-medium">
+                        {new Date(d + 'T12:00:00').toLocaleDateString('en-IL', { day: '2-digit', month: 'short' })}
+                        <button onClick={() => toggleDate(d)}><X className="w-2.5 h-2.5" /></button>
+                      </span>
+                    ))}
+                    {blockedDates.length > 6 && <span className="text-[10px] text-gray-400 py-0.5">+{blockedDates.length - 6} more</span>}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Badges Tab ───────────────────────────────────────────────── */}
       {activeTab === 'badges' && (
         <div className="space-y-3">
@@ -486,6 +668,92 @@ export default function POSProfile() {
               {(profile?.ratingAvg ?? 0) >= 4.8 && (profile?.ratingCount ?? 0) >= 10 ? 'Earned' : 'Locked'}
             </span>
           </div>
+
+          {/* Reviews section */}
+          {(() => {
+            const rev = (reviewsApiData as any)?.reviews;
+            const avgRating: number | null = rev?.avgRating ?? null;
+            const totalCount: number = rev?.totalCount ?? 0;
+            const dist: Record<number, number> = rev?.distribution ?? {};
+            const recent: any[] = rev?.recent ?? [];
+
+            return (
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-400" /> Your Reviews
+                  </p>
+                  {totalCount > 0 && (
+                    <span className="text-xs text-gray-500">{totalCount} review{totalCount !== 1 ? 's' : ''}</span>
+                  )}
+                </div>
+
+                {totalCount === 0 ? (
+                  <div className="p-6 text-center">
+                    <Star className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                    <p className="text-xs text-gray-400">No reviews yet</p>
+                    <p className="text-[10px] text-gray-300 mt-0.5">Reviews appear here after clients rate your service</p>
+                  </div>
+                ) : (
+                  <div className="p-4 space-y-4">
+                    {/* Rating summary */}
+                    <div className="flex items-center gap-4">
+                      <div className="text-center">
+                        <p className="text-3xl font-bold text-gray-900">{avgRating?.toFixed(1) ?? '—'}</p>
+                        <div className="flex gap-0.5 mt-1 justify-center">
+                          {[1,2,3,4,5].map(s => (
+                            <Star key={s} className={`w-3 h-3 ${s <= Math.round(avgRating ?? 0) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`} />
+                          ))}
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{totalCount} reviews</p>
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        {[5,4,3,2,1].map(star => {
+                          const ct = dist[star] ?? 0;
+                          const pct = totalCount > 0 ? (ct / totalCount) * 100 : 0;
+                          return (
+                            <div key={star} className="flex items-center gap-2">
+                              <span className="text-[10px] text-gray-500 w-4 text-right">{star}</span>
+                              <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400 shrink-0" />
+                              <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+                                <div className="h-1.5 bg-yellow-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className="text-[10px] text-gray-400 w-4">{ct}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Recent reviews */}
+                    {recent.length > 0 && (
+                      <div className="space-y-3 pt-3 border-t border-gray-100">
+                        {recent.map((r: any) => (
+                          <div key={r.id} className="space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <div className="flex gap-0.5">
+                                {[1,2,3,4,5].map(s => (
+                                  <Star key={s} className={`w-3 h-3 ${s <= r.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`} />
+                                ))}
+                              </div>
+                              {r.createdAt && (
+                                <span className="text-[10px] text-gray-400 ms-auto">
+                                  {new Date(r.createdAt).toLocaleDateString('en-IL', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </span>
+                              )}
+                            </div>
+                            {r.comment && (
+                              <p className="text-xs text-gray-600 leading-relaxed">{r.comment}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 

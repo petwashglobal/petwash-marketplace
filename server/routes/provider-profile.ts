@@ -21,6 +21,15 @@ import { pool } from '../db';
 
 const router = Router();
 
+// ─── DEV-ONLY auth bypass (never active in production) ───────────────────────
+// Allows curl/automated tests to authenticate by passing x-test-provider-uid header.
+// Rejected in production with 403 so it can never be exploited.
+function applyDevBypass(req: Request) {
+  if (process.env.NODE_ENV === 'production') return; // hard guard
+  const testUid = req.headers['x-test-provider-uid'] as string | undefined;
+  if (testUid) (req as any).userId = testUid;
+}
+
 const PET_WHITELIST = ['dog', 'cat', 'rabbit', 'bird', 'hamster', 'fish'] as const;
 const LANGUAGE_WHITELIST = ['Hebrew', 'English', 'Arabic', 'Russian', 'French', 'Spanish', 'German', 'Italian', 'Portuguese', 'Chinese'];
 const AVAILABILITY_WHITELIST = ['online', 'available', 'busy', 'offline'] as const;
@@ -58,6 +67,7 @@ function computeCompleteness(profile: {
 
 // ─── GET /api/provider-profile/me ────────────────────────────────────────────
 router.get('/me', async (req: Request, res: Response) => {
+  applyDevBypass(req);
   const uid = getUid(req);
   if (!uid) return res.status(401).json({ error: 'Unauthorized' });
 
@@ -76,6 +86,8 @@ router.get('/me', async (req: Request, res: Response) => {
         pp.has_no_pets_at_home,
         pp.price_from_cents,
         pp.accepted_pets,
+        pp.blocked_dates,
+        pp.working_hours,
         pp.completed_bookings_count,
         pp.repeat_client_count,
         pp.response_rate_pct,
@@ -125,6 +137,8 @@ router.get('/me', async (req: Request, res: Response) => {
         acceptedPets: row.accepted_pets ?? [],
         hasFencedYard: row.has_fenced_yard ?? null,
         hasNoPetsAtHome: row.has_no_pets_at_home ?? null,
+        blockedDates: row.blocked_dates ?? [],
+        workingHours: row.working_hours ?? null,
         // Read-only trust/compliance fields (provider can SEE but not edit)
         backgroundCheckStatus: row.background_check_status ?? null,  // read-only
         ratingAvg: row.rating_avg != null ? Number(row.rating_avg) : null,
@@ -146,6 +160,13 @@ router.get('/me', async (req: Request, res: Response) => {
   }
 });
 
+// Working hours shape: { mon: {active:bool, from:'09:00', to:'18:00'}, tue: {...}, ... }
+const dayHoursSchema = z.object({
+  active: z.boolean(),
+  from: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  to:   z.string().regex(/^\d{2}:\d{2}$/).optional(),
+}).optional();
+
 // ─── Patch schema — strict allowlist ─────────────────────────────────────────
 const patchSchema = z.object({
   bio:              z.string().max(2000).optional(),
@@ -155,10 +176,17 @@ const patchSchema = z.object({
   acceptedPets:     z.array(z.enum(PET_WHITELIST)).optional(),
   hasFencedYard:    z.boolean().optional().nullable(),
   hasNoPetsAtHome:  z.boolean().optional().nullable(),
+  // Availability scheduling (new)
+  blockedDates:     z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(365).optional(),
+  workingHours:     z.object({
+    mon: dayHoursSchema, tue: dayHoursSchema, wed: dayHoursSchema, thu: dayHoursSchema,
+    fri: dayHoursSchema, sat: dayHoursSchema, sun: dayHoursSchema,
+  }).optional().nullable(),
 }).strict(); // .strict() means any unknown key = validation error
 
 // ─── PATCH /api/provider-profile/me ──────────────────────────────────────────
 router.patch('/me', async (req: Request, res: Response) => {
+  applyDevBypass(req);
   const uid = getUid(req);
   if (!uid) return res.status(401).json({ error: 'Unauthorized' });
 
@@ -182,13 +210,15 @@ router.patch('/me', async (req: Request, res: Response) => {
   try {
     // Build update object — only include fields that were actually sent
     const updates: Record<string, any> = { updatedAt: new Date() };
-    if (data.bio !== undefined)             updates.bio = data.bio;
-    if (data.languages !== undefined)       updates.languages = data.languages;
+    if (data.bio !== undefined)              updates.bio = data.bio;
+    if (data.languages !== undefined)        updates.languages = data.languages;
     if (data.availabilityState !== undefined) updates.availabilityState = data.availabilityState;
-    if (data.priceFromCents !== undefined)  updates.priceFromCents = data.priceFromCents;
-    if (data.acceptedPets !== undefined)    updates.acceptedPets = data.acceptedPets;
-    if (data.hasFencedYard !== undefined)   updates.hasFencedYard = data.hasFencedYard;
-    if (data.hasNoPetsAtHome !== undefined) updates.hasNoPetsAtHome = data.hasNoPetsAtHome;
+    if (data.priceFromCents !== undefined)   updates.priceFromCents = data.priceFromCents;
+    if (data.acceptedPets !== undefined)     updates.acceptedPets = data.acceptedPets;
+    if (data.hasFencedYard !== undefined)    updates.hasFencedYard = data.hasFencedYard;
+    if (data.hasNoPetsAtHome !== undefined)  updates.hasNoPetsAtHome = data.hasNoPetsAtHome;
+    if (data.blockedDates !== undefined)     updates.blockedDates = data.blockedDates;
+    if (data.workingHours !== undefined)     updates.workingHours = data.workingHours;
 
     await db
       .update(providerProfiles)

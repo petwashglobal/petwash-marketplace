@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { bookings, providers, providerApplications } from '@shared/schema';
-import { eq, and, desc, sql, count } from 'drizzle-orm';
+import { bookings, providers, providerApplications, sitterReviews, sitterProfiles, walkerReviews, walkerProfiles } from '@shared/schema';
+import { eq, and, desc, sql, count, inArray } from 'drizzle-orm';
 import { auth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 
@@ -126,7 +126,12 @@ router.get('/bookings', async (req: Request, res: Response) => {
     ];
 
     if (status && status !== 'all') {
-      conditions.push(sql`${bookings.status} = ${status}`);
+      const statusList = (status as string).split(',').map(s => s.trim()).filter(Boolean);
+      if (statusList.length === 1) {
+        conditions.push(sql`${bookings.status} = ${statusList[0]}`);
+      } else if (statusList.length > 1) {
+        conditions.push(inArray(bookings.status, statusList));
+      }
     }
 
     const whereClause = sql`${sql.join(conditions, sql` AND `)}`;
@@ -215,12 +220,19 @@ router.get('/earnings', async (req: Request, res: Response) => {
       .orderBy(desc(bookings.completedAt));
 
     const now = new Date();
+    const thisWeekStart = new Date(now); thisWeekStart.setDate(now.getDate() - now.getDay()); thisWeekStart.setHours(0,0,0,0);
     const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    const r = (n: number) => Math.round(n * 100) / 100;
 
     const totalEarnings = allCompletedBookings.reduce((s, b) => s + parseFloat(b.providerPayout || '0'), 0);
     const pendingPayouts = allCompletedBookings.filter(b => b.payoutStatus === 'pending').reduce((s, b) => s + parseFloat(b.providerPayout || '0'), 0);
     const paidPayouts = allCompletedBookings.filter(b => b.payoutStatus === 'paid').reduce((s, b) => s + parseFloat(b.providerPayout || '0'), 0);
+
+    const thisWeekEarnings = allCompletedBookings
+      .filter(b => b.completedAt && new Date(b.completedAt) >= thisWeekStart)
+      .reduce((s, b) => s + parseFloat(b.providerPayout || '0'), 0);
 
     const thisMonthEarnings = allCompletedBookings
       .filter(b => b.completedAt && new Date(b.completedAt) >= thisMonthStart)
@@ -230,11 +242,13 @@ router.get('/earnings', async (req: Request, res: Response) => {
       .filter(b => b.completedAt && new Date(b.completedAt) >= lastMonthStart && new Date(b.completedAt) < thisMonthStart)
       .reduce((s, b) => s + parseFloat(b.providerPayout || '0'), 0);
 
-    const recentPayouts = allCompletedBookings.slice(0, 10).map(b => ({
+    const recentPayouts = allCompletedBookings.slice(0, 20).map(b => ({
       bookingNumber: b.bookingNumber,
-      amount: parseFloat(b.providerPayout || '0'),
+      amount: r(parseFloat(b.providerPayout || '0')),
+      gross: r(parseFloat(b.subtotal || '0')),
+      platformFee: r(parseFloat(b.platformFee || '0')),
       date: b.completedAt || b.createdAt,
-      payoutStatus: b.payoutStatus,
+      payoutStatus: b.payoutStatus || 'pending',
       serviceType: b.serviceType,
       platformId: b.platformId,
     }));
@@ -242,12 +256,14 @@ router.get('/earnings', async (req: Request, res: Response) => {
     res.json({
       success: true,
       earnings: {
-        totalEarnings: Math.round(totalEarnings * 100) / 100,
-        pendingPayouts: Math.round(pendingPayouts * 100) / 100,
-        paidPayouts: Math.round(paidPayouts * 100) / 100,
-        thisMonthEarnings: Math.round(thisMonthEarnings * 100) / 100,
-        lastMonthEarnings: Math.round(lastMonthEarnings * 100) / 100,
+        totalEarnings: r(totalEarnings),
+        pendingPayouts: r(pendingPayouts),
+        paidPayouts: r(paidPayouts),
+        thisWeekEarnings: r(thisWeekEarnings),
+        thisMonthEarnings: r(thisMonthEarnings),
+        lastMonthEarnings: r(lastMonthEarnings),
         recentPayouts,
+        totalJobs: allCompletedBookings.length,
       },
     });
   } catch (error) {
@@ -463,7 +479,13 @@ router.post('/bookings/:bookingId/complete', async (req: Request, res: Response)
   }
 });
 
+router.post('/availability', async (req: Request, res: Response) => {
+  return availabilityHandler(req, res);
+});
 router.patch('/availability', async (req: Request, res: Response) => {
+  return availabilityHandler(req, res);
+});
+async function availabilityHandler(req: Request, res: Response) {
   try {
     const user = await getAuthenticatedUser(req, res);
     if (!user) return;
@@ -489,6 +511,112 @@ router.patch('/availability', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('[ProviderDashboard] Availability update error', error);
     res.status(500).json({ error: 'Failed to update availability' });
+  }
+}
+
+// ── Booking counts per status (for tab badges) ─────────────────────────────
+router.get('/booking-counts', async (req: Request, res: Response) => {
+  try {
+    const user = await getAuthenticatedUser(req, res);
+    if (!user) return;
+
+    const providerRecords = await db.select({ id: providers.id }).from(providers).where(eq(providers.userId, user.uid));
+    const providerIds = providerRecords.map(p => p.id);
+
+    if (providerIds.length === 0) {
+      return res.json({ success: true, counts: { all: 0 } });
+    }
+
+    const providerFilter = sql`${bookings.providerId} = ANY(${sql`ARRAY[${sql.join(providerIds.map(id => sql`${id}`), sql`, `)}]`})`;
+
+    const rows = await db
+      .select({ status: bookings.status, total: count() })
+      .from(bookings)
+      .where(providerFilter)
+      .groupBy(bookings.status);
+
+    const counts: Record<string, number> = {};
+    let allTotal = 0;
+    for (const row of rows) {
+      if (row.status) {
+        counts[row.status] = Number(row.total);
+        allTotal += Number(row.total);
+      }
+    }
+    counts['all'] = allTotal;
+
+    res.json({ success: true, counts });
+  } catch (error) {
+    logger.error('[ProviderDashboard] Booking counts error', error);
+    res.status(500).json({ error: 'Failed to load booking counts' });
+  }
+});
+
+// ── Reviews endpoint ───────────────────────────────────────────────────────
+router.get('/reviews', async (req: Request, res: Response) => {
+  try {
+    const user = await getAuthenticatedUser(req, res);
+    if (!user) return;
+
+    const limit = Math.min(50, parseInt((req.query.limit as string) || '20') || 20);
+
+    // Sitter reviews
+    const sitterProfileRows = await db.select({ id: sitterProfiles.id }).from(sitterProfiles).where(eq(sitterProfiles.userId, user.uid));
+    const sitterProfileIds = sitterProfileRows.map(p => p.id);
+
+    let sitterReviewRows: any[] = [];
+    if (sitterProfileIds.length > 0) {
+      sitterReviewRows = await db
+        .select({ id: sitterReviews.id, rating: sitterReviews.rating, comment: sitterReviews.comment, createdAt: sitterReviews.createdAt })
+        .from(sitterReviews)
+        .where(inArray(sitterReviews.sitterId, sitterProfileIds))
+        .orderBy(desc(sitterReviews.createdAt))
+        .limit(limit);
+    }
+
+    // Walker reviews
+    const walkerProfileRows = await db.select({ walkerId: walkerProfiles.walkerId }).from(walkerProfiles).where(eq(walkerProfiles.userId, user.uid));
+    const walkerIds = walkerProfileRows.map(p => p.walkerId);
+
+    let walkerReviewRows: any[] = [];
+    if (walkerIds.length > 0) {
+      walkerReviewRows = await db
+        .select({ id: walkerReviews.id, rating: walkerReviews.overallRating, comment: walkerReviews.reviewText, createdAt: walkerReviews.createdAt })
+        .from(walkerReviews)
+        .where(inArray(walkerReviews.walkerId, walkerIds))
+        .orderBy(desc(walkerReviews.createdAt))
+        .limit(limit);
+    }
+
+    const allReviews = [...sitterReviewRows, ...walkerReviewRows]
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .slice(0, limit);
+
+    const totalCount = allReviews.length;
+    const avgRating = totalCount > 0
+      ? Math.round((allReviews.reduce((s, r) => s + (r.rating || 0), 0) / totalCount) * 10) / 10
+      : null;
+
+    const distribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    for (const r of allReviews) if (r.rating >= 1 && r.rating <= 5) distribution[r.rating]++;
+
+    res.json({
+      success: true,
+      reviews: {
+        avgRating,
+        totalCount,
+        distribution,
+        recent: allReviews.slice(0, 10).map(r => ({
+          id: r.id,
+          rating: r.rating,
+          comment: r.comment || null,
+          createdAt: r.createdAt,
+        })),
+      },
+    });
+  } catch (error) {
+    logger.error('[ProviderDashboard] Reviews error', error);
+    res.status(500).json({ error: 'Failed to load reviews' });
   }
 });
 

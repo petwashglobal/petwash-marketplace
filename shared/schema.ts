@@ -11495,6 +11495,9 @@ export const providerProfiles = pgTable("provider_profiles", {
   // ── Pricing + pet acceptance (DB-backed browse filters) ──
   priceFromCents: integer("price_from_cents"),               // lowest service price in agorot; null = not set
   acceptedPets: text("accepted_pets").array(),               // e.g. ['dog','cat']; null/empty = show for all
+  // ── Availability scheduling ──
+  blockedDates: text("blocked_dates").array(),               // ISO date strings e.g. ['2026-04-15']; null/empty = no blocked dates
+  workingHours: jsonb("working_hours"),                      // {mon:{from:'09:00',to:'18:00',active:true},...sun:{...}}
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
