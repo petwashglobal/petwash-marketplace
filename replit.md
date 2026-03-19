@@ -734,6 +734,91 @@ A booking is a CONTAINER. Not a single pet. The backend is the single source of 
 ### Pricing version
 Every quote carries `pricingVersion: "v1.0.0"` — stored in both the booking row and the audit log for reproducibility.
 
+## Competitive Deep-Review Build v2 (March 2026 — Airbnb + Rover + MadPaws micro-UX)
+
+### Research performed
+Full deep-dive across Rover.com, MadPaws.com.au, Airbnb.com and PetWash.co.il covering profile design, filter UX, notification center, provider cards, trust signals, scarcity widgets, and conversion micro-copy.
+
+### ProviderBrowseGrid.tsx — complete competitive upgrade
+**New ProviderCardData fields:**
+- `repeatClientCount` — violet chip "5 repeat clients" (Rover Star Sitter signal)
+- `responseRate` — drives "Responds quickly" emerald chip (≥90%)
+- `isNew` — rose "New" badge (Airbnb new-host pattern)
+- `isAvailableThisWeek` — green/gray availability dot on card image
+- `lastReviewSnippet` — italic review snippet under name (MadPaws social proof)
+- `hasFencedYard`, `hasNoPetsAtHome`, `hasBackgroundCheck`, `isSavedByUser`
+
+**Filter panel overhaul (Rover-inspired):**
+- **Pet Type chips** — Dog / Cat / Rabbit / Bird (horizontal Airbnb-style shortcuts in hero)
+- **Price range** — min + max dual inputs (was max-only)
+- **Rating** — pill selector (Any / 4+ / 4.5+ / 4.8+) not dropdown
+- **Trust & Safety toggles** — Background check 🛡️, Fenced yard 🏡, No other pets 🐾 (custom toggle switches)
+- **"Available Now" toggle** — green dot quick-filter in filter bar
+- **"New Providers" sort** — added to sort dropdown
+- **Active filter count badge** — red circle on Filters button
+
+**Card micro-UX (Airbnb/Rover level):**
+- Heart/Save button (top-right on image), filled rose when saved, state persisted in Set
+- "New" rose badge (Sparkles icon) on newly joined providers
+- Availability dot (green "Available" / gray "Limited") bottom-left of image
+- "Responds quickly" emerald chip (⚡ Zap icon)
+- "X repeat clients" violet chip (CheckCircle icon)
+- "Background checked" blue chip (🛡️)
+- Review snippet italic under name
+- Price moved to top-right of card content (right-aligned)
+
+### ProviderProfilePage.tsx — complete competitive upgrade
+**New props:** `repeatClientCount`, `responseRate`, `isNew`, `hasFencedYard`, `hasNoPetsAtHome`, `hasBackgroundCheck`, `bookingsThisMonth`, `joinedDate`
+
+**Hero section:**
+- "New to PetWash" rose badge (Sparkles) on hero image for newly joined providers
+- Save button now toggles with filled heart
+
+**Header stats row:**
+- "Responds quickly" emerald chip (⚡) — shown when responseRate ≥ 90%
+- "X repeat clients" violet chip (👥) — shown when repeatClientCount > 0
+- "Booked X× this month" orange trend signal — Airbnb scarcity pattern
+
+**Quick stats cards:** Now 5 cards (added Repeat/Response Rate)
+
+**"About my home" section (Rover feature — was missing entirely):**
+- Fenced yard ✅/❌
+- No other pets ✅/❌
+- Background checked ✅/❌
+- Only renders if any home setup prop is provided
+
+**Reviews:** Reviewer now has green avatar initial circle (Airbnb host profile style)
+
+**Sticky booking widget (Airbnb-style):**
+- Scarcity signal: "Booked X× this month — in high demand!" orange banner (shows when bookingsThisMonth ≥ 3)
+- Repeat clients count in quick info
+- Responds time bold
+- "Home details" summary card below widget
+
+### NotificationCenterPanel.tsx — complete competitive upgrade
+**Category tabs (Airbnb-style):**
+- All / Bookings / Messages — pill tabs with unread count badges
+- Filters `groups` in real-time as user switches tabs
+
+**Notification type differentiation:**
+- 7 types: `booking_request` (amber, Calendar, "Accept"), `booking_confirmed` (green, CheckCircle, "View"), `booking_cancelled` (red, AlertCircle), `message` (blue, MessageCircle, "Reply"), `review_received` (violet, Star, "View"), `meet_greet` (orange, Dog, "Details"), `reminder` (gray, Bell)
+- Each type gets its own color chip + icon in the notification row
+- Platform chip still shown alongside type chip
+
+**Inline action buttons (Airbnb CTAs inside notifications):**
+- Shown when notification has a `bookingId` and the type has an `actionLabel`
+- Color matches notification type (amber Accept, blue Reply, green View, orange Details)
+- Tapping the action navigates + marks read
+
+**Bell pulse animation:**
+- CSS keyframe `bell-pulse` — bell swings when new notifications arrive
+- `badge-glow` animation — badge glows blue for 2 cycles
+- Tracks prev count with useRef, only fires when count increases
+
+**Hebrew support:** Header text "התראות" (was hardcoded "Notifications")
+
+**PetTrek and Groomers platforms** added to PLATFORM_CONFIG (Car + Scissors icons)
+
 ## Competitive Parity Build (March 2026 — Rover + MadPaws gap analysis)
 
 ### New shared components

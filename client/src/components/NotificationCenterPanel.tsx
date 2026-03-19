@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { formatDistanceToNow } from "date-fns";
 import {
-  Bell, X, CheckCheck, Dog, Cat, PawPrint, ChevronRight, Inbox
+  Bell, X, CheckCheck, Dog, Cat, PawPrint, ChevronRight, Inbox,
+  MessageCircle, CheckCircle, Calendar, Star, Car, Scissors,
+  AlertCircle
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -21,6 +23,7 @@ interface NotifGroup {
   latestAt: string | null;
   ids: string[];
   actionUrl: string | null;
+  notificationType?: string | null;
 }
 
 interface GroupedNotifResponse {
@@ -28,35 +31,71 @@ interface GroupedNotifResponse {
   totalUnread: number;
 }
 
+type TabFilter = 'all' | 'bookings' | 'messages';
+
 // ─── Platform config ──────────────────────────────────────────────────────────
 const PLATFORM_CONFIG: Record<string, { label: string; color: string; Icon: any }> = {
   walk_my_pet:  { label: "Dog Walker", color: "#4F7942", Icon: Dog },
   sitter_suite: { label: "Pet Sitter", color: "#7B5EA7", Icon: Cat },
   petwash:      { label: "PetWash",    color: "#0B57D0", Icon: PawPrint },
   academy:      { label: "Academy",    color: "#B45309", Icon: PawPrint },
+  pettrek:      { label: "PetTrek",    color: "#0369A1", Icon: Car },
+  groomers:     { label: "Groomers",   color: "#7C3AED", Icon: Scissors },
 };
 
-function PlatformIcon({ platform }: { platform: string | null }) {
-  const cfg = PLATFORM_CONFIG[platform ?? ""] ?? { color: "#6B7280", Icon: PawPrint };
+// ─── Notification type config — Airbnb-style differentiation ─────────────────
+const TYPE_CONFIG: Record<string, { label: string; labelHe: string; color: string; Icon: any; actionLabel?: string; actionLabelHe?: string }> = {
+  booking_request:   { label: "Booking Request", labelHe: "בקשת הזמנה",     color: "#F59E0B", Icon: Calendar,    actionLabel: "Accept",   actionLabelHe: "אשר" },
+  booking_confirmed: { label: "Confirmed",        labelHe: "הזמנה אושרה",    color: "#10B981", Icon: CheckCircle, actionLabel: "View",     actionLabelHe: "צפה" },
+  booking_cancelled: { label: "Cancelled",        labelHe: "הזמנה בוטלה",    color: "#EF4444", Icon: AlertCircle },
+  message:           { label: "Message",          labelHe: "הודעה",          color: "#3B82F6", Icon: MessageCircle, actionLabel: "Reply",  actionLabelHe: "השב" },
+  review_received:   { label: "New Review",       labelHe: "ביקורת חדשה",    color: "#8B5CF6", Icon: Star,        actionLabel: "View",     actionLabelHe: "צפה" },
+  meet_greet:        { label: "Meet & Greet",     labelHe: "פגישת היכרות",   color: "#F97316", Icon: Dog,         actionLabel: "Details",  actionLabelHe: "פרטים" },
+  reminder:          { label: "Reminder",         labelHe: "תזכורת",         color: "#6B7280", Icon: Bell },
+};
+
+function resolveTypeConfig(notificationType: string | null | undefined, platform: string | null | undefined) {
+  if (notificationType && TYPE_CONFIG[notificationType]) return TYPE_CONFIG[notificationType];
+  const pCfg = PLATFORM_CONFIG[platform ?? ""];
+  if (pCfg) return { ...pCfg, label: pCfg.label, labelHe: pCfg.label, Icon: pCfg.Icon };
+  return { label: "Notification", labelHe: "הודעה", color: "#6B7280", Icon: PawPrint };
+}
+
+function PlatformIcon({ platform, notificationType }: { platform: string | null; notificationType?: string | null }) {
+  const cfg = resolveTypeConfig(notificationType, platform);
   const Icon = cfg.Icon;
   return (
-    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-      style={{ background: cfg.color + "12", border: `1.5px solid ${cfg.color}22` }}>
+    <div
+      className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+      style={{ background: cfg.color + "12", border: `1.5px solid ${cfg.color}22` }}
+    >
       <Icon size={18} style={{ color: cfg.color }} />
     </div>
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+function isBookingType(group: NotifGroup) {
+  const t = group.notificationType;
+  return !t || ['booking_request', 'booking_confirmed', 'booking_cancelled', 'meet_greet', 'reminder'].includes(t);
+}
+
+function isMessageType(group: NotifGroup) {
+  return group.notificationType === 'message';
+}
+
+// ─── Main Panel ───────────────────────────────────────────────────────────────
 interface NotificationCenterPanelProps {
   open: boolean;
   onClose: () => void;
+  language?: 'en' | 'he';
 }
 
-export function NotificationCenterPanel({ open, onClose }: NotificationCenterPanelProps) {
+export function NotificationCenterPanel({ open, onClose, language = 'en' }: NotificationCenterPanelProps) {
   const { user } = useFirebaseAuth();
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
+  const [activeTab, setActiveTab] = useState<TabFilter>('all');
+  const isHebrew = language === 'he';
 
   const { data, isLoading } = useQuery<GroupedNotifResponse>({
     queryKey: ["/api/booking-chat/notifications/grouped"],
@@ -67,7 +106,6 @@ export function NotificationCenterPanel({ open, onClose }: NotificationCenterPan
     mutationFn: async (payload: { bookingId?: string; ids?: string[] }) =>
       apiRequest("PUT", "/api/booking-chat/notifications/mark-read", payload),
     onSuccess: () => {
-      // Invalidate both notification panel AND inbox unread badge
       qc.invalidateQueries({ queryKey: ["/api/booking-chat/notifications/grouped"] });
       qc.invalidateQueries({ queryKey: ["/api/booking-chat/inbox"] });
     },
@@ -91,11 +129,28 @@ export function NotificationCenterPanel({ open, onClose }: NotificationCenterPan
     if (allIds.length) markReadMutation.mutate({ ids: allIds });
   }
 
+  const filteredGroups = (data?.groups ?? []).filter(g => {
+    if (activeTab === 'bookings') return isBookingType(g);
+    if (activeTab === 'messages') return isMessageType(g);
+    return true;
+  });
+
+  const bookingCount  = (data?.groups ?? []).filter(isBookingType).length;
+  const messageCount  = (data?.groups ?? []).filter(isMessageType).length;
+  const unreadBooking = (data?.groups ?? []).filter(g => isBookingType(g) && g.unreadCount > 0).length;
+  const unreadMessage = (data?.groups ?? []).filter(g => isMessageType(g) && g.unreadCount > 0).length;
+
+  const TABS: { key: TabFilter; label: string; labelHe: string; count: number; unread: number }[] = [
+    { key: 'all',      label: 'All',      labelHe: 'הכל',     count: data?.groups.length ?? 0, unread: data?.totalUnread ?? 0 },
+    { key: 'bookings', label: 'Bookings', labelHe: 'הזמנות',  count: bookingCount,              unread: unreadBooking },
+    { key: 'messages', label: 'Messages', labelHe: 'הודעות',  count: messageCount,              unread: unreadMessage },
+  ];
+
   return (
     <Sheet open={open} onOpenChange={v => { if (!v) onClose(); }}>
       <SheetContent
         side="bottom"
-        className="bg-white rounded-t-2xl max-h-[80vh] flex flex-col p-0"
+        className="bg-white rounded-t-2xl max-h-[85vh] flex flex-col p-0"
         style={{ border: "none" }}
       >
         {/* Handle bar */}
@@ -103,31 +158,68 @@ export function NotificationCenterPanel({ open, onClose }: NotificationCenterPan
           <div className="w-10 h-1 rounded-full bg-gray-200" />
         </div>
 
-        <SheetHeader className="px-5 pb-3 border-b border-gray-50 flex flex-row items-center justify-between shrink-0">
-          <SheetTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-            <Bell className="w-4 h-4 text-blue-500" />
-            Notifications
+        {/* Header */}
+        <SheetHeader className="px-5 pb-3 border-b border-gray-50 shrink-0">
+          <div className="flex items-center justify-between">
+            <SheetTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <Bell className="w-4 h-4 text-blue-500" />
+              {isHebrew ? 'התראות' : 'Notifications'}
+              {(data?.totalUnread ?? 0) > 0 && (
+                <span
+                  className="text-[11px] font-bold text-white px-1.5 py-0.5 rounded-full"
+                  style={{ background: "linear-gradient(135deg,#0B57D0,#4E8DF7)" }}
+                >
+                  {data!.totalUnread > 99 ? "99+" : data!.totalUnread}
+                </span>
+              )}
+            </SheetTitle>
             {(data?.totalUnread ?? 0) > 0 && (
-              <span className="text-[11px] font-bold text-white px-1.5 py-0.5 rounded-full"
-                style={{ background: "linear-gradient(135deg,#0B57D0,#4E8DF7)" }}>
-                {data!.totalUnread > 99 ? "99+" : data!.totalUnread}
-              </span>
+              <button
+                onClick={handleMarkAllRead}
+                disabled={markReadMutation.isPending}
+                className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 disabled:opacity-50"
+              >
+                <CheckCheck className="w-3 h-3" />
+                {isHebrew ? 'סמן הכל כנקרא' : 'Mark all read'}
+              </button>
             )}
-          </SheetTitle>
+          </div>
 
-          {(data?.totalUnread ?? 0) > 0 && (
-            <button
-              onClick={handleMarkAllRead}
-              disabled={markReadMutation.isPending}
-              className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 disabled:opacity-50"
-            >
-              <CheckCheck className="w-3 h-3" /> Mark all read
-            </button>
-          )}
+          {/* Category Tabs — Airbnb-style */}
+          <div className="flex gap-1 mt-3 -mb-3">
+            {TABS.map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold transition-all duration-200 ${
+                  activeTab === tab.key
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {isHebrew ? tab.labelHe : tab.label}
+                {tab.unread > 0 && (
+                  <span
+                    className={`text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center ${
+                      activeTab === tab.key ? 'bg-white/20 text-white' : 'text-white'
+                    }`}
+                    style={activeTab !== tab.key ? { background: "linear-gradient(135deg,#0B57D0,#4E8DF7)" } : {}}
+                  >
+                    {tab.unread}
+                  </span>
+                )}
+                {tab.unread === 0 && tab.count > 0 && (
+                  <span className={`text-[10px] ${activeTab === tab.key ? 'text-white/60' : 'text-gray-400'}`}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </SheetHeader>
 
         {/* List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pt-3">
           {isLoading && (
             <div className="px-5 py-4 space-y-4">
               {[1, 2, 3].map(i => (
@@ -142,31 +234,45 @@ export function NotificationCenterPanel({ open, onClose }: NotificationCenterPan
             </div>
           )}
 
-          {!isLoading && (!data?.groups.length) && (
+          {!isLoading && filteredGroups.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
               <div className="w-14 h-14 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center mb-4">
                 <Inbox className="w-7 h-7 text-gray-300" />
               </div>
-              <p className="text-sm font-semibold text-gray-400">You're all caught up</p>
-              <p className="text-xs text-gray-300 mt-1">No notifications in the last 30 days</p>
+              <p className="text-sm font-semibold text-gray-400">
+                {isHebrew ? 'כל ההתראות נקראו' : "You're all caught up"}
+              </p>
+              <p className="text-xs text-gray-300 mt-1">
+                {isHebrew
+                  ? 'אין התראות ב-30 הימים האחרונים'
+                  : 'No notifications in the last 30 days'}
+              </p>
             </div>
           )}
 
-          {!isLoading && data?.groups.map((group, idx) => {
+          {!isLoading && filteredGroups.map((group, idx) => {
+            const typeCfg = resolveTypeConfig(group.notificationType, group.platform);
             const platformCfg = PLATFORM_CONFIG[group.platform ?? ""] ?? { label: group.platform ?? "Other", color: "#6B7280" };
             const isUnread = group.unreadCount > 0;
+            const hasAction = !!typeCfg.actionLabel;
 
             return (
-              <button
+              <div
                 key={idx}
-                onClick={() => handleGroupTap(group)}
-                className={`w-full flex items-center gap-3 px-5 py-4 border-b border-gray-50 text-left transition-colors ${isUnread ? "bg-blue-50/60 hover:bg-blue-50" : "bg-white hover:bg-gray-50"}`}
+                className={`flex items-start gap-3 px-5 py-4 border-b border-gray-50 transition-colors ${
+                  isUnread ? "bg-blue-50/40" : "bg-white"
+                }`}
               >
-                <PlatformIcon platform={group.platform} />
+                {/* Platform Icon */}
+                <PlatformIcon platform={group.platform} notificationType={group.notificationType} />
 
-                <div className="flex-1 min-w-0">
+                {/* Content */}
+                <div
+                  className="flex-1 min-w-0 cursor-pointer"
+                  onClick={() => handleGroupTap(group)}
+                >
                   <div className="flex items-start justify-between gap-2">
-                    <span className={`text-sm leading-tight truncate ${isUnread ? "font-semibold text-gray-900" : "font-medium text-gray-600"}`}>
+                    <span className={`text-sm leading-tight ${isUnread ? "font-semibold text-gray-900" : "font-medium text-gray-600"}`}>
                       {group.latestTitle}
                     </span>
                     <span className="text-[10px] text-gray-300 shrink-0 mt-0.5">
@@ -174,14 +280,25 @@ export function NotificationCenterPanel({ open, onClose }: NotificationCenterPan
                     </span>
                   </div>
 
-                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
+                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
                     {group.latestBody}
                   </p>
 
-                  <div className="flex items-center gap-1.5 mt-1.5">
+                  {/* Type chip + platform + booking id */}
+                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                    {group.notificationType && TYPE_CONFIG[group.notificationType] && (
+                      <span
+                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                        style={{ color: typeCfg.color, background: typeCfg.color + "12", border: `1px solid ${typeCfg.color}22` }}
+                      >
+                        {isHebrew ? typeCfg.labelHe : typeCfg.label}
+                      </span>
+                    )}
                     {group.platform && (
-                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                        style={{ color: platformCfg.color, background: platformCfg.color + "12", border: `1px solid ${platformCfg.color}22` }}>
+                      <span
+                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                        style={{ color: platformCfg.color, background: platformCfg.color + "12", border: `1px solid ${platformCfg.color}22` }}
+                      >
                         {platformCfg.label}
                       </span>
                     )}
@@ -192,25 +309,41 @@ export function NotificationCenterPanel({ open, onClose }: NotificationCenterPan
                     )}
                     {group.totalCount > 1 && (
                       <span className="text-[10px] text-gray-400">
-                        · {group.totalCount} notifications
+                        · {group.totalCount} {isHebrew ? 'התראות' : 'notifications'}
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {isUnread && group.unreadCount > 1 && (
-                    <span className="text-[11px] font-bold text-white min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center"
-                      style={{ background: "linear-gradient(135deg,#0B57D0,#4E8DF7)" }}>
-                      {group.unreadCount}
-                    </span>
+                {/* Right side: unread badge + action button + chevron */}
+                <div className="flex flex-col items-end gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5">
+                    {isUnread && group.unreadCount > 1 && (
+                      <span
+                        className="text-[11px] font-bold text-white min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center"
+                        style={{ background: "linear-gradient(135deg,#0B57D0,#4E8DF7)" }}
+                      >
+                        {group.unreadCount}
+                      </span>
+                    )}
+                    {isUnread && group.unreadCount === 1 && (
+                      <div className="w-2 h-2 rounded-full bg-blue-500" />
+                    )}
+                    {group.bookingId && <ChevronRight className="w-3.5 h-3.5 text-gray-300" />}
+                  </div>
+
+                  {/* Action button — Airbnb inline CTA */}
+                  {hasAction && group.bookingId && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleGroupTap(group); }}
+                      className="text-[11px] font-semibold px-3 py-1 rounded-full border transition-all hover:opacity-80"
+                      style={{ color: typeCfg.color, borderColor: typeCfg.color + "44", background: typeCfg.color + "0D" }}
+                    >
+                      {isHebrew ? typeCfg.actionLabelHe : typeCfg.actionLabel}
+                    </button>
                   )}
-                  {isUnread && group.unreadCount === 1 && (
-                    <div className="w-2 h-2 rounded-full bg-blue-500" />
-                  )}
-                  {group.bookingId && <ChevronRight className="w-3.5 h-3.5 text-gray-300" />}
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -220,9 +353,16 @@ export function NotificationCenterPanel({ open, onClose }: NotificationCenterPan
 }
 
 // ─── Bell trigger badge (for embedding in headers) ────────────────────────────
-export function NotificationBell({ className = "" }: { className?: string }) {
+interface NotificationBellProps {
+  className?: string;
+  language?: 'en' | 'he';
+}
+
+export function NotificationBell({ className = "", language = 'en' }: NotificationBellProps) {
   const { user } = useFirebaseAuth();
   const [open, setOpen] = useState(false);
+  const [isPulsing, setIsPulsing] = useState(false);
+  const prevCount = useRef(0);
 
   const { data } = useQuery<GroupedNotifResponse>({
     queryKey: ["/api/booking-chat/notifications/grouped"],
@@ -232,23 +372,52 @@ export function NotificationBell({ className = "" }: { className?: string }) {
 
   const count = data?.totalUnread ?? 0;
 
+  // Pulse animation when new notifications arrive
+  useEffect(() => {
+    if (count > prevCount.current && prevCount.current !== 0) {
+      setIsPulsing(true);
+      const t = setTimeout(() => setIsPulsing(false), 2000);
+      return () => clearTimeout(t);
+    }
+    prevCount.current = count;
+  }, [count]);
+
   return (
     <>
+      <style>{`
+        @keyframes bell-pulse {
+          0%, 100% { transform: rotate(0deg) scale(1); }
+          15%       { transform: rotate(-15deg) scale(1.15); }
+          30%       { transform: rotate(12deg) scale(1.1); }
+          45%       { transform: rotate(-8deg) scale(1.05); }
+          60%       { transform: rotate(5deg) scale(1.02); }
+          75%       { transform: rotate(-3deg) scale(1); }
+        }
+        .bell-animate { animation: bell-pulse 0.6s ease-in-out; }
+        @keyframes badge-glow {
+          0%, 100% { box-shadow: 0 1px 4px rgba(11,87,208,0.4); }
+          50%       { box-shadow: 0 0 10px rgba(11,87,208,0.7), 0 0 20px rgba(11,87,208,0.3); }
+        }
+        .badge-glow { animation: badge-glow 1s ease-in-out 2; }
+      `}</style>
+
       <button
         onClick={() => setOpen(true)}
         className={`relative w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors ${className}`}
         aria-label={`Notifications${count > 0 ? ` (${count} unread)` : ""}`}
       >
-        <Bell className="w-5 h-5" />
+        <Bell className={`w-5 h-5 transition-transform ${isPulsing ? 'bell-animate' : ''}`} />
         {count > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full text-[10px] font-bold text-white flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg,#0B57D0,#4E8DF7)", boxShadow: "0 1px 4px rgba(11,87,208,0.4)" }}>
+          <span
+            className={`absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full text-[10px] font-bold text-white flex items-center justify-center ${isPulsing ? 'badge-glow' : ''}`}
+            style={{ background: "linear-gradient(135deg,#0B57D0,#4E8DF7)", boxShadow: "0 1px 4px rgba(11,87,208,0.4)" }}
+          >
             {count > 9 ? "9+" : count}
           </span>
         )}
       </button>
 
-      <NotificationCenterPanel open={open} onClose={() => setOpen(false)} />
+      <NotificationCenterPanel open={open} onClose={() => setOpen(false)} language={language} />
     </>
   );
 }
