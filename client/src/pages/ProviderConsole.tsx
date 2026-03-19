@@ -551,8 +551,9 @@ function BookingsTab() {
   const [activePlatform, setActivePlatform] = useState('walk_my_pet');
   const [subTab, setSubTab] = useState<'pending' | 'active' | 'completed' | 'cancelled' | 'disputed'>('pending');
 
-  const { data: walkBookings = [], isLoading } = useQuery<any[]>({
-    queryKey: ['/api/provider-dashboard/bookings'],
+  const { data: walkBookings = [], isLoading } = useQuery<any>({
+    queryKey: ['/api/provider-dashboard/v2/bookings'],
+    select: (data: any) => data?.bookings ?? [],
   });
 
   const filtered = walkBookings.filter((b: any) => {

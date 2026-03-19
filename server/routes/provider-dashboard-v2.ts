@@ -13,7 +13,7 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { bookingRequests } from '@shared/schema';
+import { bookingRequests, providers } from '@shared/schema';
 import { eq, sql, count, desc, inArray, and, gte, lte } from 'drizzle-orm';
 import { auth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
@@ -338,37 +338,127 @@ router.get('/earnings', async (req: Request, res: Response) => {
     const user = await getAuthenticatedUser(req, res);
     if (!user) return;
 
-    const result = await pool.query(
-      `SELECT
-        COALESCE(SUM(CASE WHEN payout_status = 'paid_out' THEN provider_payout_cents ELSE 0 END), 0)::bigint AS paid_payouts_cents,
-        COALESCE(SUM(CASE WHEN status IN ('completed','reviewed') AND payout_status != 'paid_out' THEN provider_payout_cents ELSE 0 END), 0)::bigint AS pending_payouts_cents,
-        COALESCE(SUM(CASE
-          WHEN status IN ('completed','reviewed')
-           AND EXTRACT(MONTH FROM service_completed_at) = EXTRACT(MONTH FROM NOW())
-           AND EXTRACT(YEAR  FROM service_completed_at) = EXTRACT(YEAR  FROM NOW())
-          THEN provider_payout_cents ELSE 0 END), 0)::bigint AS this_month_cents,
-        COUNT(CASE WHEN status IN ('completed','reviewed') THEN 1 END)::int AS completed_count
-       FROM booking_requests
-       WHERE provider_id = $1`,
-      [user.uid],
-    );
+    const [totals, recents] = await Promise.all([
+      pool.query(
+        `SELECT
+          COALESCE(SUM(CASE WHEN payout_status = 'paid_out' THEN provider_payout_cents ELSE 0 END), 0)::bigint AS paid_payouts_cents,
+          COALESCE(SUM(CASE WHEN status IN ('completed','reviewed') AND payout_status != 'paid_out' THEN provider_payout_cents ELSE 0 END), 0)::bigint AS pending_payouts_cents,
+          COALESCE(SUM(CASE
+            WHEN status IN ('completed','reviewed')
+             AND EXTRACT(MONTH FROM service_completed_at) = EXTRACT(MONTH FROM NOW())
+             AND EXTRACT(YEAR  FROM service_completed_at) = EXTRACT(YEAR  FROM NOW())
+            THEN provider_payout_cents ELSE 0 END), 0)::bigint AS this_month_cents,
+          COALESCE(SUM(CASE
+            WHEN status IN ('completed','reviewed')
+             AND EXTRACT(MONTH FROM service_completed_at) = EXTRACT(MONTH FROM NOW() - INTERVAL '1 month')
+             AND EXTRACT(YEAR  FROM service_completed_at) = EXTRACT(YEAR  FROM NOW() - INTERVAL '1 month')
+            THEN provider_payout_cents ELSE 0 END), 0)::bigint AS last_month_cents,
+          COALESCE(SUM(CASE WHEN status IN ('completed','reviewed') THEN provider_payout_cents ELSE 0 END), 0)::bigint AS total_earnings_cents,
+          COUNT(CASE WHEN status IN ('completed','reviewed') THEN 1 END)::int AS completed_count
+         FROM booking_requests
+         WHERE provider_id = $1`,
+        [user.uid],
+      ),
+      pool.query(
+        `SELECT
+          request_id, provider_payout_cents, service_completed_at, payout_status, service_type
+         FROM booking_requests
+         WHERE provider_id = $1 AND status IN ('completed','reviewed')
+         ORDER BY service_completed_at DESC NULLS LAST
+         LIMIT 5`,
+        [user.uid],
+      ),
+    ]);
 
-    const row = result.rows[0] ?? {};
-    const toILS = (c: number | string) => (Number(c) / 100).toFixed(2);
+    const row = totals.rows[0] ?? {};
+    const toILS = (c: number | string) => Number((Number(c) / 100).toFixed(2));
 
     res.json({
       success: true,
       earnings: {
-        paidPayouts:      toILS(row.paid_payouts_cents),
-        pendingPayouts:   toILS(row.pending_payouts_cents),
+        totalEarnings:     toILS(row.total_earnings_cents),
+        paidPayouts:       toILS(row.paid_payouts_cents),
+        pendingPayouts:    toILS(row.pending_payouts_cents),
         thisMonthEarnings: toILS(row.this_month_cents),
-        completedCount:   row.completed_count ?? 0,
+        lastMonthEarnings: toILS(row.last_month_cents),
+        completedCount:    row.completed_count ?? 0,
+        recentPayouts: recents.rows.map(r => ({
+          bookingNumber: r.request_id,
+          amount:        toILS(r.provider_payout_cents),
+          date:          r.service_completed_at,
+          payoutStatus:  r.payout_status ?? 'pending',
+          serviceType:   r.service_type,
+          platformId:    'booking_requests',
+        })),
       },
       _source: 'booking_requests',
     });
   } catch (error) {
     logger.error('[ProviderDashboardV2] /earnings error', error);
     res.status(500).json({ error: 'Failed to load earnings (v2)' });
+  }
+});
+
+// ── GET /api/provider-dashboard/v2/stats ──────────────────────────────────────
+// Aggregate stats from booking_requests (V2) + provider profile data.
+// Drop-in replacement for V1 /stats — identical response shape.
+router.get('/stats', async (req: Request, res: Response) => {
+  try {
+    const user = await getAuthenticatedUser(req, res);
+    if (!user) return;
+
+    const [countsResult, providerRecords] = await Promise.all([
+      pool.query(
+        `SELECT
+          COUNT(*)::int AS total,
+          COUNT(CASE WHEN status IN ('completed','reviewed') THEN 1 END)::int AS completed,
+          COUNT(CASE WHEN status IN ('confirmed','in_progress') THEN 1 END)::int AS active,
+          COUNT(CASE WHEN status IN ('cancelled','declined') THEN 1 END)::int AS cancelled,
+          COALESCE(SUM(CASE WHEN status IN ('completed','reviewed') THEN provider_payout_cents ELSE 0 END), 0)::bigint AS total_earnings_cents,
+          COALESCE(SUM(CASE WHEN status IN ('completed','reviewed') AND payout_status != 'paid_out' THEN provider_payout_cents ELSE 0 END), 0)::bigint AS pending_cents
+         FROM booking_requests
+         WHERE provider_id = $1`,
+        [user.uid],
+      ),
+      db.select().from(providers).where(eq(providers.userId, user.uid)),
+    ]);
+
+    const row = countsResult.rows[0] ?? {};
+    const totalBookings    = row.total     ?? 0;
+    const completedBookings = row.completed ?? 0;
+
+    const avgRating = providerRecords.length > 0
+      ? providerRecords.reduce((s, p) => s + parseFloat(p.averageRating || '0'), 0) / providerRecords.length
+      : 0;
+    const totalReviews = providerRecords.reduce((s, p) => s + (p.totalReviews || 0), 0);
+
+    res.json({
+      success: true,
+      stats: {
+        totalBookings,
+        completedBookings,
+        activeBookings:    row.active     ?? 0,
+        cancelledBookings: row.cancelled  ?? 0,
+        totalEarnings:     Number((Number(row.total_earnings_cents) / 100).toFixed(2)),
+        pendingPayouts:    Number((Number(row.pending_cents)        / 100).toFixed(2)),
+        averageRating:     Math.round(avgRating * 10) / 10,
+        totalReviews,
+        completionRate:    totalBookings > 0 ? Math.round((completedBookings / totalBookings) * 100) : 0,
+        platforms: providerRecords.map(p => ({
+          id:                 p.id,
+          platformId:         p.platformId,
+          businessName:       p.businessName,
+          isAvailable:        p.isAvailable,
+          isActive:           p.isActive,
+          verificationStatus: p.verificationStatus,
+        })),
+        isActive: providerRecords.some(p => p.isActive),
+      },
+      _source: 'booking_requests',
+    });
+  } catch (error) {
+    logger.error('[ProviderDashboardV2] /stats error', error);
+    res.status(500).json({ error: 'Failed to load stats (v2)' });
   }
 });
 

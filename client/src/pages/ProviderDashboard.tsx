@@ -188,9 +188,9 @@ export default function ProviderDashboard() {
   };
 
   const { data: statsData, isLoading: statsLoading } = useQuery<{ success: boolean; stats: ProviderStats }>({
-    queryKey: ['/api/provider-dashboard/stats'],
+    queryKey: ['/api/provider-dashboard/v2/stats'],
     enabled: !!user,
-    queryFn: () => fetchWithAuth('/api/provider-dashboard/stats'),
+    queryFn: () => fetchWithAuth('/api/provider-dashboard/v2/stats'),
   });
 
   const { data: bookingsData, isLoading: bookingsLoading } = useQuery<{
@@ -200,15 +200,15 @@ export default function ProviderDashboard() {
     page: number;
     totalPages: number;
   }>({
-    queryKey: ['/api/provider-dashboard/bookings', statusFilter, currentPage],
+    queryKey: ['/api/provider-dashboard/v2/bookings', statusFilter, currentPage],
     enabled: !!user,
-    queryFn: () => fetchWithAuth(`/api/provider-dashboard/bookings?status=${statusFilter}&page=${currentPage}&limit=15`),
+    queryFn: () => fetchWithAuth(`/api/provider-dashboard/v2/bookings?status=${statusFilter}&page=${currentPage}&limit=15`),
   });
 
   const { data: earningsData, isLoading: earningsLoading } = useQuery<{ success: boolean; earnings: EarningsData }>({
-    queryKey: ['/api/provider-dashboard/earnings'],
+    queryKey: ['/api/provider-dashboard/v2/earnings'],
     enabled: !!user,
-    queryFn: () => fetchWithAuth('/api/provider-dashboard/earnings'),
+    queryFn: () => fetchWithAuth('/api/provider-dashboard/v2/earnings'),
   });
 
   const { data: appStatusData } = useQuery<{
@@ -230,7 +230,7 @@ export default function ProviderDashboard() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/stats'] });
       toast({ title: '\u05D4\u05E1\u05D8\u05D8\u05D5\u05E1 \u05E2\u05D5\u05D3\u05DB\u05DF \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4' });
     },
     onError: () => {
@@ -247,9 +247,9 @@ export default function ProviderDashboard() {
     },
     onSuccess: (data) => {
       setProcessingBooking(null);
-      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/stats'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/earnings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/earnings'] });
 
       const actionLabels: Record<string, string> = {
         confirmed: '\u05D4\u05D4\u05D6\u05DE\u05E0\u05D4 \u05D0\u05D5\u05E9\u05E8\u05D4 \u05D1\u05D4\u05E6\u05DC\u05D7\u05D4',

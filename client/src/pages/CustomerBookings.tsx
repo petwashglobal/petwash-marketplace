@@ -7,7 +7,8 @@ import { Link, useLocation } from 'wouter';
 import {
   SlidersHorizontal, X, CalendarDays, PawPrint,
   ChevronLeft, ChevronRight, RefreshCw, HandshakeIcon,
-  XCircle, AlertTriangle, Banknote, Clock,
+  XCircle, AlertTriangle, Banknote, Clock, ChevronDown, ChevronUp,
+  CheckCircle2, CircleDot, Ban,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -121,6 +122,120 @@ interface Booking {
   statusHistory?: Array<{ status: string; timestamp: string; note?: string }>;
 }
 
+const TIMELINE_STEPS: Array<{
+  statuses: string[];
+  labelHe: string;
+  labelEn: string;
+  terminal?: boolean;
+}> = [
+  { statuses: ['pending'],                                    labelHe: 'בקשה נשלחה',      labelEn: 'Request sent'       },
+  { statuses: ['accepted', 'meet_greet_scheduled',
+               'meet_greet_completed', 'payment_pending'],   labelHe: 'ספק הגיב',         labelEn: 'Provider responded' },
+  { statuses: ['confirmed'],                                  labelHe: 'אושר',             labelEn: 'Confirmed'          },
+  { statuses: ['in_progress'],                                labelHe: 'השירות החל',       labelEn: 'Service started'    },
+  { statuses: ['completed', 'reviewed'],                      labelHe: 'הושלם',            labelEn: 'Completed'          },
+];
+
+const TERMINAL_STATUSES: Record<string, { labelHe: string; labelEn: string; icon: any; color: string }> = {
+  cancelled: { labelHe: 'בוטל',       labelEn: 'Cancelled', icon: Ban,         color: '#EF4444' },
+  declined:  { labelHe: 'נדחה',       labelEn: 'Declined',  icon: XCircle,     color: '#EF4444' },
+  disputed:  { labelHe: 'במחלוקת',    labelEn: 'Disputed',  icon: AlertTriangle, color: '#F97316' },
+};
+
+function StatusTimeline({
+  booking, isRTL,
+}: { booking: Booking; isRTL: boolean }) {
+  const history = booking.statusHistory ?? [];
+  const currentStatus = booking.status;
+  const isTerminal = currentStatus in TERMINAL_STATUSES;
+
+  const formatTs = (ts: string) => {
+    try {
+      return new Date(ts).toLocaleDateString(isRTL ? 'he-IL' : 'en-AU', {
+        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+      });
+    } catch { return ''; }
+  };
+
+  const getStepTimestamp = (stepStatuses: string[]) => {
+    const entry = history.find(h => stepStatuses.includes(h.status));
+    return entry?.timestamp ? formatTs(entry.timestamp) : null;
+  };
+
+  const stepReached = (stepStatuses: string[]) => {
+    const allStatusesInOrder = [
+      'pending', 'accepted', 'meet_greet_scheduled', 'meet_greet_completed',
+      'payment_pending', 'confirmed', 'in_progress', 'completed', 'reviewed',
+    ];
+    const currentIdx = allStatusesInOrder.indexOf(currentStatus);
+    return stepStatuses.some(s => {
+      const sIdx = allStatusesInOrder.indexOf(s);
+      return sIdx !== -1 && currentIdx >= sIdx;
+    }) || history.some(h => stepStatuses.includes(h.status));
+  };
+
+  const terminalInfo = isTerminal ? TERMINAL_STATUSES[currentStatus] : null;
+  const terminalTs = history.find(h => h.status === currentStatus)?.timestamp;
+
+  return (
+    <div className={`mt-3 pt-3 border-t border-gray-100 ${isRTL ? 'pr-1' : 'pl-1'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
+        {isRTL ? 'ציר זמן' : 'Timeline'}
+      </p>
+      <div className="space-y-0">
+        {TIMELINE_STEPS.map((step, i) => {
+          const reached = stepReached(step.statuses);
+          const ts = getStepTimestamp(step.statuses);
+          const isLast = i === TIMELINE_STEPS.length - 1;
+
+          return (
+            <div key={i} className={`flex items-stretch gap-2.5 ${isRTL ? 'flex-row-reverse' : ''}`}>
+              <div className="flex flex-col items-center">
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                  reached
+                    ? 'border-transparent bg-green-500'
+                    : 'border-gray-200 bg-white'
+                }`}>
+                  {reached && <CheckCircle2 size={12} className="text-white" />}
+                  {!reached && <CircleDot size={10} className="text-gray-300" />}
+                </div>
+                {(!isLast || isTerminal) && (
+                  <div className={`w-0.5 flex-1 min-h-[16px] ${reached ? 'bg-green-300' : 'bg-gray-100'}`} />
+                )}
+              </div>
+              <div className={`pb-2 flex-1 ${isRTL ? 'text-right' : 'text-left'}`}>
+                <p className={`text-xs font-medium leading-tight ${reached ? 'text-gray-800' : 'text-gray-400'}`}>
+                  {isRTL ? step.labelHe : step.labelEn}
+                </p>
+                {ts && <p className="text-[10px] text-gray-400">{ts}</p>}
+              </div>
+            </div>
+          );
+        })}
+
+        {isTerminal && terminalInfo && (
+          <div className={`flex items-start gap-2.5 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <div className="flex flex-col items-center">
+              <div
+                className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: `${terminalInfo.color}20`, border: `2px solid ${terminalInfo.color}` }}
+              >
+                <terminalInfo.icon size={10} style={{ color: terminalInfo.color }} />
+              </div>
+            </div>
+            <div className={`flex-1 ${isRTL ? 'text-right' : 'text-left'}`}>
+              <p className="text-xs font-semibold" style={{ color: terminalInfo.color }}>
+                {isRTL ? terminalInfo.labelHe : terminalInfo.labelEn}
+              </p>
+              {terminalTs && <p className="text-[10px] text-gray-400">{formatTs(terminalTs)}</p>}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ProviderAvatar({ name, size = 36 }: { name: string; size?: number }) {
   const initials = name
     .split(' ')
@@ -174,6 +289,8 @@ function BookingCard({
   cancelling?: boolean;
 }) {
   const [, navigate] = useLocation();
+  const [timelineOpen, setTimelineOpen] = useState(false);
+  const hasHistory = (booking.statusHistory ?? []).length > 0;
   const service = SERVICE_TYPES.find(s => s.id === booking.serviceType) || SERVICE_TYPES[0];
   const statusLabel = STATUS_LABELS[booking.status] || { he: booking.status, en: booking.status };
   const statusColor = STATUS_COLORS[booking.status] || 'bg-gray-100 text-gray-700';
@@ -310,31 +427,41 @@ function BookingCard({
           </div>
         </div>
 
-        {(showRebook || canCancel) && (
-          <div className={`mt-3 pt-3 border-t border-gray-100 flex items-center gap-2 ${isRTL ? 'justify-start flex-row-reverse' : 'justify-end'}`}>
-            {canCancel && (
-              <button
-                onClick={handleCancel}
-                disabled={cancelling}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50"
-              >
-                <XCircle size={12} />
-                {isRTL ? 'בטל הזמנה' : 'Cancel booking'}
-              </button>
-            )}
-            {showRebook && (
-              <button
-                onClick={handleRebook}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors"
-                style={{ borderColor: GOLD, color: GOLD, background: `${GOLD}10` }}
-              >
-                <RefreshCw size={12} />
-                {isRTL
-                  ? (booking.providerName ? `הזמן שוב עם ${booking.providerName}` : 'הזמן שוב')
-                  : (booking.providerName ? `Book ${booking.providerName} again` : 'Book Again')}
-              </button>
-            )}
-          </div>
+        <div className={`mt-3 pt-3 border-t border-gray-100 flex items-center gap-2 flex-wrap ${isRTL ? 'flex-row-reverse' : ''}`}>
+          {canCancel && (
+            <button
+              onClick={handleCancel}
+              disabled={cancelling}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50"
+            >
+              <XCircle size={12} />
+              {isRTL ? 'בטל הזמנה' : 'Cancel booking'}
+            </button>
+          )}
+          {showRebook && (
+            <button
+              onClick={handleRebook}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors"
+              style={{ borderColor: GOLD, color: GOLD, background: `${GOLD}10` }}
+            >
+              <RefreshCw size={12} />
+              {isRTL
+                ? (booking.providerName ? `הזמן שוב עם ${booking.providerName}` : 'הזמן שוב')
+                : (booking.providerName ? `Book ${booking.providerName} again` : 'Book Again')}
+            </button>
+          )}
+          <button
+            onClick={e => { e.preventDefault(); e.stopPropagation(); setTimelineOpen(o => !o); }}
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors ml-auto"
+          >
+            <Clock size={11} />
+            {isRTL ? 'ציר זמן' : 'Timeline'}
+            {timelineOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+          </button>
+        </div>
+
+        {timelineOpen && (
+          <StatusTimeline booking={booking} isRTL={isRTL} />
         )}
       </div>
     </Link>

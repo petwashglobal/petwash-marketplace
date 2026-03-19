@@ -318,74 +318,10 @@ router.get('/application-status', async (req: Request, res: Response) => {
   }
 });
 
-function providerOwnsBooking(providerIds: number[], bookingProviderId: string | number | null | undefined): boolean {
-  if (!bookingProviderId) return false;
-  const bookingPid = typeof bookingProviderId === 'string' ? parseInt(bookingProviderId, 10) : bookingProviderId;
-  return providerIds.includes(bookingPid);
-}
-
-// ── DEPRECATED: POST /bookings/:id/confirm ─────────────────────────────────
-// Previously: 308-redirected to /accept (which was itself a V1 route).
-// Now: direct 410 Gone pointing straight to the V2 successor route.
-// Removed the redirect chain — /accept is also deprecated (410) so chaining would just double-hop to an error.
-router.post('/bookings/:bookingId/confirm', (req: Request, res: Response) => {
-  const { bookingId } = req.params;
-  const v2url = `/api/provider-dashboard/v2/bookings/${bookingId}/accept`;
-  logger.warn('[ProviderDashboard][DEPRECATED] V1 /confirm called — returning 410', { bookingId, v2url });
-  res.setHeader('Deprecation', 'version="2026-03-19"');
-  res.setHeader('Sunset', 'Sat, 30 Apr 2026 00:00:00 GMT');
-  res.setHeader('Link', `<${v2url}>; rel="successor-version"`);
-  return res.status(410).json({
-    error: 'ROUTE_DEPRECATED',
-    message: `POST /bookings/${bookingId}/confirm (V1) is no longer active. Use the V2 route.`,
-    v2Route: v2url,
-    sunset: '2026-04-30',
-  });
-});
-
-// ── DEPRECATED V1 ACTION ROUTES ─────────────────────────────────────────────
-// These routes previously wrote to the `bookings` table.
-// They are superseded by POST /api/provider-dashboard/v2/bookings/:id/:action
-// which writes to `booking_requests` — the canonical provider booking system.
-//
-// Status: DEPRECATED as of 2026-03-19 (Phase 5 cleanup).
-// The UI (POSJobs + POSDashboard) no longer calls any of these endpoints.
-// They will return 410 Gone to any caller so migration is obvious.
-// Remove entirely after production cutover is confirmed.
-//
-// Caller guide: Use POST /api/provider-dashboard/v2/bookings/:id/<action>
-// Valid actions: accept | decline | cancel | start | complete | report
-// ─────────────────────────────────────────────────────────────────────────────
-
-function deprecatedV1Action(action: string) {
-  return (req: Request, res: Response) => {
-    const { bookingId } = req.params;
-    const v2url = `/api/provider-dashboard/v2/bookings/${bookingId}/${action}`;
-    logger.warn(`[ProviderDashboard][DEPRECATED] V1 action /${action} called — this route is dead`, {
-      action,
-      bookingId,
-      v2url,
-      ip: req.ip,
-      ua: req.headers['user-agent'],
-    });
-    res.setHeader('Deprecation', 'version="2026-03-19"');
-    res.setHeader('Sunset', 'Sat, 30 Apr 2026 00:00:00 GMT');
-    res.setHeader('Link', `<${v2url}>; rel="successor-version"`);
-    return res.status(410).json({
-      error: 'ROUTE_DEPRECATED',
-      message: `POST /bookings/${bookingId}/${action} (V1) is no longer active. Use the V2 route.`,
-      v2Route: v2url,
-      sunset: '2026-04-30',
-    });
-  };
-}
-
-router.post('/bookings/:bookingId/start',   deprecatedV1Action('start'));
-router.post('/bookings/:bookingId/complete', deprecatedV1Action('complete'));
-router.post('/bookings/:bookingId/accept',   deprecatedV1Action('accept'));
-router.post('/bookings/:bookingId/decline',  deprecatedV1Action('decline'));
-router.post('/bookings/:bookingId/cancel',   deprecatedV1Action('cancel'));
-router.post('/bookings/:bookingId/report',   deprecatedV1Action('report'));
+// ── V1 action routes REMOVED (Phase 6, 2026-03-19) ──────────────────────────
+// confirm / start / complete / accept / decline / cancel / report
+// All 7 were returning 410 with zero callers. Physically deleted.
+// V2 replacement: POST /api/provider-dashboard/v2/bookings/:id/:action
 
 // ── Upcoming confirmed jobs (next 7 days) ───────────────────────────────────
 router.get('/upcoming', async (req: Request, res: Response) => {
