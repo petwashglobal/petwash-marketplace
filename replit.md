@@ -734,6 +734,36 @@ A booking is a CONTAINER. Not a single pet. The backend is the single source of 
 ### Pricing version
 Every quote carries `pricingVersion: "v1.0.0"` — stored in both the booking row and the audit log for reproducibility.
 
+## Trust Metrics Infrastructure (March 2026)
+
+### Database schema additions (via executeSql — no drizzle migration)
+**`provider_profiles` new columns:**
+- `completed_bookings_count` integer — real count from booking_requests
+- `repeat_client_count` integer — null when < 2 completed bookings (never fake)
+- `response_rate_pct` integer — null when < 5 requests (never fake)
+- `avg_response_time_minutes` integer — null when < 5 requests (never fake)
+- `trust_metrics_updated_at` timestamp — last time cache was refreshed
+- `has_fenced_yard` boolean — nullable (provider may not have filled in)
+- `has_no_pets_at_home` boolean — nullable (provider may not have filled in)
+
+**`saved_providers` table:** id, user_id, provider_id, platform, created_at
+
+### Server utilities: `server/utils/providerTrustMetrics.ts`
+- `computeProviderTrustMetrics(providerId)` — queries booking_requests for real stats
+- `refreshAndCacheProviderTrustMetrics(providerId)` — computes + writes to DB
+- `formatResponseTime(minutes)` — human label (e.g. "within 1 hour")
+- Null thresholds enforced: `responseRatePct`/`avgResponseTimeMinutes` require ≥5 requests; `repeatClientCount` requires ≥2 bookings
+
+### API routes: `server/routes/provider-trust.ts`
+- `GET /api/providers/stats/:userId` — 6-hour cached trust stats with auto-refresh
+- `GET /api/providers/browse` — DB-backed filter search (minRating, fencedYardOnly, noPetsAtHomeOnly, backgroundCheckOnly, availableThisWeek, sortBy)
+- `GET /api/saved-providers` — list saved providers for current user
+- `POST /api/saved-providers/:providerId` — save a provider
+- `DELETE /api/saved-providers/:providerId` — unsave a provider
+
+### Booking completion hook
+`server/routes/booking-requests.ts` — on service completion (`status = 'completed'`), triggers `setImmediate(() => refreshAndCacheProviderTrustMetrics(booking.providerId))` non-blocking.
+
 ## Competitive Deep-Review Build v2 (March 2026 — Airbnb + Rover + MadPaws micro-UX)
 
 ### Research performed
@@ -767,33 +797,41 @@ Full deep-dive across Rover.com, MadPaws.com.au, Airbnb.com and PetWash.co.il co
 - Review snippet italic under name
 - Price moved to top-right of card content (right-aligned)
 
-### ProviderProfilePage.tsx — complete competitive upgrade
-**New props:** `repeatClientCount`, `responseRate`, `isNew`, `hasFencedYard`, `hasNoPetsAtHome`, `hasBackgroundCheck`, `bookingsThisMonth`, `joinedDate`
+### ProviderProfilePage.tsx — complete competitive upgrade (v2: real API data)
+**Required prop:** `providerId` (used to fetch live trust stats from `/api/providers/stats/:userId`)
+**Removed props (now API-sourced):** `repeatClientCount`, `responseRate`, `isNew`, `hasFencedYard`, `hasNoPetsAtHome`, `hasBackgroundCheck`, `completedBookings`
+
+**Trust data truth audit — nothing is faked:**
+- `completedBookingsCount` — real DB count from booking_requests
+- `repeatClientCount` — null hidden (requires ≥2 completed bookings)
+- `responseRatePct` — null hidden (requires ≥5 requests)
+- `avgResponseTimeMinutes / responseTimeLabel` — null hidden (requires ≥5 requests)
+- `hasBackgroundCheck` — from background_check_status = 'approved' in DB
+- `hasFencedYard / hasNoPetsAtHome` — from provider_profiles columns, null = hide
+- `isNew` — completedBookings < 3 (real count, not time-based)
+
+**Mobile sticky fixed bottom bar:**
+- On small screens: fixed bottom bar with price + message icon + "Check Availability" CTA
+- `pb-24 lg:pb-0` on root to prevent content hidden behind bar
+- Desktop: right-column sidebar unchanged (sticky top-8)
+
+**Save heart:**
+- Wired to `POST/DELETE /api/saved-providers/:providerId`
+- Optimistic update with rollback on error
+- Initial state loaded from `GET /api/saved-providers`
 
 **Hero section:**
-- "New to PetWash" rose badge (Sparkles) on hero image for newly joined providers
-- Save button now toggles with filled heart
+- "New to PetWash" badge — only when API confirms completedBookings < 3
+- Trust signals all conditional on non-null API data
 
-**Header stats row:**
-- "Responds quickly" emerald chip (⚡) — shown when responseRate ≥ 90%
-- "X repeat clients" violet chip (👥) — shown when repeatClientCount > 0
-- "Booked X× this month" orange trend signal — Airbnb scarcity pattern
+**About my home section:**
+- Only rendered when at least one of hasFencedYard/hasNoPetsAtHome/hasBackgroundCheck is non-null
+- Each row only shown when its value is non-null
 
-**Quick stats cards:** Now 5 cards (added Repeat/Response Rate)
-
-**"About my home" section (Rover feature — was missing entirely):**
-- Fenced yard ✅/❌
-- No other pets ✅/❌
-- Background checked ✅/❌
-- Only renders if any home setup prop is provided
-
-**Reviews:** Reviewer now has green avatar initial circle (Airbnb host profile style)
-
-**Sticky booking widget (Airbnb-style):**
-- Scarcity signal: "Booked X× this month — in high demand!" orange banner (shows when bookingsThisMonth ≥ 3)
-- Repeat clients count in quick info
-- Responds time bold
-- "Home details" summary card below widget
+**Booking widget (both desktop sidebar and mobile bar):**
+- Response time row hidden when null
+- Repeat clients row hidden when null or 0
+- Scarcity signal only when `bookingsThisMonth` prop ≥ 3 (caller must ensure this is real)
 
 ### NotificationCenterPanel.tsx — complete competitive upgrade
 **Category tabs (Airbnb-style):**

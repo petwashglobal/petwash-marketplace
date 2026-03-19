@@ -89,6 +89,7 @@ import accountDeletionRoutes from "./routes/account-deletion";
 import qrActivationRoutes from "./routes/qr-activation";
 import jobOffersRoutes from "./routes/job-offers";
 import providersRoutes from "./routes/providers";
+import providerTrustRoutes from "./routes/provider-trust";
 import marketplaceRoutes from "./routes/marketplace";
 import identityServiceRoutes from "./routes/identity-service";
 import nayaxWebhooksRoutes from "./routes/nayax-webhooks";
@@ -9664,6 +9665,9 @@ self.addEventListener('notificationclick', (event) => {
   
   // Provider Management (Sitters, Walkers, Drivers)
   app.use('/api/providers', apiLimiter, providersRoutes);
+
+  // Provider Trust Metrics, Browse (filter-backed), Saved Providers
+  app.use('/api', apiLimiter, providerTrustRoutes);
 
   // UNIFIED MARKETPLACE API - Aggregated search across all 6 platforms
   // Returns normalized discriminated-union types for frontend

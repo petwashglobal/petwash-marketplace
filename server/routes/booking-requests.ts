@@ -893,6 +893,16 @@ router.post('/:requestId/complete', async (req, res) => {
       serviceCompletedAt: new Date().toISOString(),
     }).catch(() => {});
 
+    // ── Non-blocking: Refresh provider trust metrics cache ───────────────────
+    setImmediate(async () => {
+      try {
+        const { refreshAndCacheProviderTrustMetrics } = await import('../utils/providerTrustMetrics');
+        await refreshAndCacheProviderTrustMetrics(booking.providerId);
+      } catch (metricsErr: any) {
+        logger.warn(`[BookingRequests] Trust metrics refresh failed for provider=${booking.providerId}: ${metricsErr?.message}`);
+      }
+    });
+
     // ── Non-blocking: Google Sheets sync on service completion ────────────────
     setImmediate(async () => {
       try {

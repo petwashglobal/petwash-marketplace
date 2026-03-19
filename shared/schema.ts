@@ -11483,6 +11483,15 @@ export const providerProfiles = pgTable("provider_profiles", {
   lastPresenceAt: timestamp("last_presence_at"),
   backgroundCheckStatus: varchar("background_check_status"),
   payoutAccountStatus: varchar("payout_account_status"),
+  // ── Trust metrics (computed from real booking data, null = insufficient data) ──
+  completedBookingsCount: integer("completed_bookings_count"),      // real count from booking_requests
+  repeatClientCount: integer("repeat_client_count"),               // distinct owners with ≥2 completed bookings
+  responseRatePct: integer("response_rate_pct"),                   // 0-100, % of requests responded within 24h
+  avgResponseTimeMinutes: integer("avg_response_time_minutes"),    // median minutes to first status change
+  trustMetricsUpdatedAt: timestamp("trust_metrics_updated_at"),   // when last computed
+  // ── Home setup (set by provider, null = not answered yet) ──
+  hasFencedYard: boolean("has_fenced_yard"),
+  hasNoPetsAtHome: boolean("has_no_pets_at_home"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -11490,6 +11499,20 @@ export const providerProfiles = pgTable("provider_profiles", {
 ]);
 export type ProviderProfile = typeof providerProfiles.$inferSelect;
 export const insertProviderProfileSchema = createInsertSchema(providerProfiles).omit({ createdAt: true, updatedAt: true });
+
+// ── Saved providers (customer wishlist — persisted per Firebase UID) ──────────
+export const savedProviders = pgTable("saved_providers", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 128 }).notNull(),     // customer Firebase UID
+  providerId: varchar("provider_id", { length: 128 }).notNull(), // provider Firebase UID
+  platform: varchar("platform", { length: 32 }),             // sitter_suite, walk_my_pet, etc.
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_saved_providers_user").on(table.userId),
+  index("idx_saved_providers_pair").on(table.userId, table.providerId),
+]);
+export type SavedProvider = typeof savedProviders.$inferSelect;
+export const insertSavedProviderSchema = createInsertSchema(savedProviders).omit({ id: true, createdAt: true });
 
 export const providerAssets = pgTable("provider_assets", {
   id: serial("id").primaryKey(),
