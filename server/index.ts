@@ -623,6 +623,8 @@ if (isProduction) {
       console.log('[Cron] Initializing automated jobs...');
       const { startMonthlySettlementsCron } = await import("./cron/monthly-settlements");
       startMonthlySettlementsCron();
+      const { startWinbackCron } = await import("./cron/winback");
+      startWinbackCron();
       console.log('[Cron] All cron jobs initialized successfully');
     } catch (error) {
       console.error('[Cron] Failed to initialize cron jobs (non-fatal):', error);

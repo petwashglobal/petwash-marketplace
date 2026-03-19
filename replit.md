@@ -1150,3 +1150,51 @@ Auth: `validateFirebaseToken` from `server/middleware/firebase-auth` (sets `req.
 - Idempotency guaranteed by `reward_claims.unique_fingerprint` UNIQUE index
 - All amounts flow from `loyalty_rules` table (not hardcoded)
 - `users.loyalty_balance_cents` stays consistent as ledger cache
+
+---
+
+### Phase 6.4 — Win-back Queue Processing
+
+**New files:**
+| File | Role |
+|---|---|
+| `server/jobs/winback-populator.ts` | Nightly scan → inserts `winback_queue` rows |
+| `server/jobs/winback-processor.ts` | Processes pending queue → awards credit + notifies |
+| `server/cron/winback.ts` | Cron schedule wrapper (23:00 UTC populator, 23:30 UTC processor) |
+
+**Populator logic (`runWinbackPopulator`):**
+- Loops over 3 tiers: `winback_14d` (14–21 days dormant), `winback_30d` (30–37d), `winback_60d` (60–67d)
+- Uses `booking_requests.updated_at` on `completed`/`reviewed` status as completion timestamp
+- Deduplicates: skips insert if row already exists for same `(user_id, trigger)` with status not in `converted`/`suppressed`
+- Provider suppression: if most recent provider has `provider_profiles.is_winback_suppressed=true`, inserts with `status='suppressed'` immediately
+
+**Processor logic (`runWinbackProcessor`):**
+- Fetches up to 50 pending rows with `scheduled_at <= now()`
+- For each row:
+  1. Confirms user is still dormant (no newer completed booking since `last_booking_at`)
+  2. Looks up `loyalty_rules` by trigger key — skips if `enabled=false` (marks `suppressed`)
+  3. Awards credit via `awardLoyaltyCredit` (idempotent fingerprint: `winback_14d:{userId}` etc.)
+  4. Dispatches Hebrew notification via `dispatchNotification` (`inbox` + `email` channels)
+  5. Marks `status='sent'`, `sent_at=now()`
+- Per-row errors logged as ERROR and do not abort the batch
+
+**Notification copy (Hebrew, per tier):**
+- Title: `"{firstName}, התגעגענו אליך! 🐾"`
+- Body: announces time away (שבועיים / חודש / חודשיים) and credit amount
+- CTA: "הזמן עכשיו" → `https://petwash.co.il/marketplace`
+
+**Cron schedule (`startWinbackCron`):**
+- Wired in `server/index.ts` alongside `startMonthlySettlementsCron`
+- Runs daily: populator at 23:00 UTC, processor at 23:30 UTC (≈ 01:00–01:30 Israel time)
+- All cron errors caught and logged — never crash the server
+
+**Suppression rules live:**
+- Provider-level: `provider_profiles.is_winback_suppressed` → row inserted as `suppressed`
+- Rule-level: `loyalty_rules.enabled=false` for the tier → row marked `suppressed` at process time
+- User already re-engaged: newer completed booking detected → row marked `converted` at process time
+- Booking-completion hook (Phase 6.3) → also marks any `pending`/`sent` rows `converted` on first booking back
+
+**Key invariants:**
+- Win-back credit is awarded immediately on notification send (incentive to return), with tier expiry from `loyalty_rules.expiry_days`
+- Each tier fires at most once per user per lifecycle (dedup in populator + `reward_claims` idempotency)
+- All rules remain `enabled=false` until explicitly flipped — system is dormant until activation
