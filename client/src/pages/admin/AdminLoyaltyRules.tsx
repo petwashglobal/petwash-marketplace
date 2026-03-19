@@ -16,6 +16,7 @@ import {
   Settings2, BarChart2, Coins, RefreshCw, ClipboardList,
   ToggleLeft, ToggleRight, Loader2, AlertTriangle, ChevronRight, Check,
   TrendingUp, TrendingDown, Users, ArrowUpRight, ArrowDownRight,
+  Trophy, PauseCircle, PlayCircle, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,25 @@ interface WinbackData {
             scheduledAt: string; sentAt: string | null; convertedAt: string | null; variant: string | null }[];
   conversion: { sent: number; converted: number; suppressed: number };
   variantFunnel: { experimentKey: string; variant: string; event: string; cnt: number }[];
+}
+
+interface DecisionRow {
+  id:            number;
+  experimentKey: string;
+  winnerVariant: string | null;
+  pausedVariants: string[];
+  decidedAt:     string;
+  decidedBy:     string;
+  confidencePct: string | null;
+  upliftPct:     string | null;
+  promotedAt:    string | null;
+  notes:         string | null;
+  updatedAt:     string;
+}
+
+interface DecisionsData {
+  decisions: DecisionRow[];
+  funnel:    { experimentKey: string; variant: string; event: string; cnt: number }[];
 }
 
 interface LedgerEntry {
@@ -496,6 +516,258 @@ function AdjustmentsTab() {
   );
 }
 
+// ── Experiment Decisions Panel ────────────────────────────────────────────────
+
+const VARIANT_LABEL: Record<string, string> = {
+  ctrl: 'בקרה (control)',
+  v1:   'V1 — דחיפות',
+  v2:   'V2 — הוכחה חברתית',
+};
+const WINNER_CONFIDENCE = 95;
+const MIN_SAMPLE        = 100;
+
+function ConfidenceBar({ value }: { value: number }) {
+  const capped  = Math.min(Math.max(value, 0), 100);
+  const reached = capped >= WINNER_CONFIDENCE;
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${reached ? 'bg-emerald-500' : 'bg-blue-400'}`}
+          style={{ width: `${capped}%` }}
+        />
+      </div>
+      <span className={`text-[10px] font-bold tabular-nums ${reached ? 'text-emerald-600' : 'text-gray-500'}`}>
+        {capped.toFixed(1)}%
+      </span>
+    </div>
+  );
+}
+
+function ExperimentDecisionsPanel() {
+  const { toast }       = useToast();
+  const queryClient     = useQueryClient();
+  const QK              = ['/api/admin/loyalty/experiment-decisions'] as const;
+
+  const { data, isLoading, isError } = useQuery<DecisionsData>({
+    queryKey: QK,
+    staleTime: 30_000,
+  });
+
+  const evaluateMut = useMutation({
+    mutationFn: () => apiRequest('POST', '/api/admin/loyalty/experiment-decisions/evaluate', {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK });
+      toast({ title: 'הערכה הושלמה', description: 'נתוני הניסוי עודכנו.' });
+    },
+    onError: () => toast({ title: 'שגיאה', description: 'ההערכה נכשלה.', variant: 'destructive' }),
+  });
+
+  const promoteMut = useMutation({
+    mutationFn: (experimentKey: string) =>
+      apiRequest('POST', '/api/admin/loyalty/experiment-decisions/promote', { experimentKey }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK });
+      toast({ title: 'וריאנט מנצח הוצב!', description: 'כל שליחות עתידיות ישתמשו בוריאנט זה.' });
+    },
+    onError: (e: any) => toast({ title: 'שגיאה', description: e?.message ?? 'קידום נכשל.', variant: 'destructive' }),
+  });
+
+  const pauseMut = useMutation({
+    mutationFn: ({ experimentKey, variant, paused }: { experimentKey: string; variant: string; paused: boolean }) =>
+      apiRequest('POST', '/api/admin/loyalty/experiment-decisions/pause-variant', { experimentKey, variant, paused }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK });
+      toast({ title: 'עודכן', description: 'מצב הוריאנט שונה.' });
+    },
+    onError: () => toast({ title: 'שגיאה', description: 'שינוי מצב נכשל.', variant: 'destructive' }),
+  });
+
+  if (isLoading) return <div className="py-4 text-center text-xs text-gray-400">טוען החלטות…</div>;
+  if (isError || !data) return <div className="py-4 text-center text-xs text-red-400">שגיאה בטעינת החלטות</div>;
+
+  const { decisions, funnel } = data;
+
+  // Helper: count events per (expKey, variant, event)
+  function funnelCnt(expKey: string, variant: string, event: string) {
+    return funnel.find(r => r.experimentKey === expKey && r.variant === variant && r.event === event)?.cnt ?? 0;
+  }
+
+  const EXP_KEYS = ['winback_14d', 'winback_30d', 'winback_60d'];
+
+  return (
+    <SectionCard
+      title="ניסויי A/B — החלטות סטטיסטיות"
+      action={
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-xs h-7 gap-1"
+          onClick={() => evaluateMut.mutate()}
+          disabled={evaluateMut.isPending}
+        >
+          {evaluateMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+          הפעל הערכה
+        </Button>
+      }
+    >
+      <div className="space-y-6">
+        {EXP_KEYS.map(expKey => {
+          const decision  = decisions.find(d => d.experimentKey === expKey);
+          const variants  = ['ctrl', 'v1', 'v2'];
+
+          const ctrlSent  = funnelCnt(expKey, 'ctrl', 'notification_sent');
+          const hasData   = ctrlSent > 0;
+          const isPromoted = !!decision?.promotedAt;
+
+          return (
+            <div key={expKey}>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-bold text-gray-700">{expKey}</p>
+                {isPromoted ? (
+                  <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[10px] gap-1">
+                    <Trophy className="w-2.5 h-2.5" />
+                    {VARIANT_LABEL[decision!.winnerVariant ?? ''] ?? decision!.winnerVariant} — מוצב
+                  </Badge>
+                ) : decision?.winnerVariant ? (
+                  <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] gap-1">
+                    <Trophy className="w-2.5 h-2.5" />
+                    מנצח זוהה — ממתין לקידום
+                  </Badge>
+                ) : (
+                  <Badge className="bg-gray-50 text-gray-400 border-0 text-[10px]">בתהליך</Badge>
+                )}
+              </div>
+
+              {!hasData ? (
+                <p className="text-xs text-gray-300 italic">אין נתוני ניסוי עדיין</p>
+              ) : (
+                <div className="space-y-3">
+                  {/* Per-variant confidence rows */}
+                  {variants.map(variant => {
+                    const sent      = funnelCnt(expKey, variant, 'notification_sent');
+                    const completed = funnelCnt(expKey, variant, 'completed');
+                    const convRate  = sent > 0 ? ((completed / sent) * 100).toFixed(1) : '—';
+                    const isPaused  = (decision?.pausedVariants ?? []).includes(variant);
+                    const isWinner  = decision?.winnerVariant === variant;
+
+                    // Confidence from decision row (only meaningful for best challenger)
+                    const confidencePct = isWinner && decision?.confidencePct
+                      ? parseFloat(decision.confidencePct)
+                      : variant === 'ctrl' ? null
+                      : null;
+
+                    const sampleOk = sent >= MIN_SAMPLE;
+
+                    return (
+                      <div
+                        key={variant}
+                        className={`rounded-xl p-3 border ${
+                          isWinner && !isPromoted ? 'border-amber-200 bg-amber-50/40' :
+                          isPaused              ? 'border-red-100 bg-red-50/20' :
+                                                  'border-gray-100 bg-white'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-gray-700">
+                              {VARIANT_LABEL[variant] ?? variant}
+                            </span>
+                            {isWinner && <Trophy className="w-3 h-3 text-amber-500" />}
+                            {isPaused && (
+                              <span className="text-[9px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">
+                                מושהה
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                            <span>{sent} נשלחו</span>
+                            <span>·</span>
+                            <span className={`font-bold ${isWinner ? 'text-amber-600' : 'text-gray-600'}`}>
+                              {convRate}{convRate !== '—' ? '%' : ''} המרה
+                            </span>
+                            {!sampleOk && (
+                              <span className="text-orange-400">(דגימה קטנה)</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Confidence bar — only for challengers */}
+                        {variant !== 'ctrl' && confidencePct !== null && (
+                          <ConfidenceBar value={confidencePct} />
+                        )}
+                        {variant !== 'ctrl' && confidencePct === null && sampleOk && (
+                          <div className="text-[10px] text-gray-300 italic">
+                            הפעל הערכה לחישוב רמת ביטחון
+                          </div>
+                        )}
+
+                        {/* Pause / unpause toggle (not for ctrl, not if already promoted) */}
+                        {variant !== 'ctrl' && !isPromoted && (
+                          <div className="mt-2 flex justify-end">
+                            <button
+                              className={`flex items-center gap-1 text-[10px] font-medium transition-colors ${
+                                isPaused
+                                  ? 'text-emerald-600 hover:text-emerald-700'
+                                  : 'text-red-500 hover:text-red-600'
+                              }`}
+                              disabled={pauseMut.isPending}
+                              onClick={() => pauseMut.mutate({ experimentKey: expKey, variant, paused: !isPaused })}
+                            >
+                              {isPaused
+                                ? <><PlayCircle className="w-3 h-3" /> הפעל מחדש</>
+                                : <><PauseCircle className="w-3 h-3" /> השהה</>
+                              }
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Winner promotion button */}
+                  {decision?.winnerVariant && !isPromoted && (
+                    <div className="pt-1">
+                      <Button
+                        size="sm"
+                        className="w-full bg-amber-500 hover:bg-amber-600 text-white text-xs h-8 gap-1.5"
+                        onClick={() => promoteMut.mutate(expKey)}
+                        disabled={promoteMut.isPending}
+                      >
+                        {promoteMut.isPending
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <Trophy className="w-3.5 h-3.5" />
+                        }
+                        קדם את {VARIANT_LABEL[decision.winnerVariant] ?? decision.winnerVariant} כוריאנט ברירת מחדל
+                      </Button>
+                      {decision.confidencePct && decision.upliftPct && (
+                        <p className="text-[10px] text-center text-gray-400 mt-1.5">
+                          ביטחון {parseFloat(decision.confidencePct).toFixed(1)}% ·{' '}
+                          עלייה {parseFloat(decision.upliftPct) > 0 ? '+' : ''}{parseFloat(decision.upliftPct).toFixed(1)}% vs בקרה
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {isPromoted && (
+                    <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>
+                        {VARIANT_LABEL[decision!.winnerVariant!] ?? decision!.winnerVariant} מוצב ופעיל —
+                        כל שליחות חדשות ישתמשו בוריאנט זה.
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </SectionCard>
+  );
+}
+
 // ── Win-back Tab ──────────────────────────────────────────────────────────────
 
 function WinbackTab() {
@@ -639,6 +911,9 @@ function WinbackTab() {
         );
       })()}
 
+      {/* Statistical decisions + action panel */}
+      <ExperimentDecisionsPanel />
+
       {/* Recent entries */}
       <SectionCard title="רשומות אחרונות (50)">
         <div className="space-y-2">
@@ -749,10 +1024,13 @@ function KpiCard({ label, value, icon }: { label: string; value: string; icon: R
   );
 }
 
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+function SectionCard({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-      <p className="text-xs font-bold text-gray-700 mb-3">{title}</p>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-bold text-gray-700">{title}</p>
+        {action}
+      </div>
       {children}
     </div>
   );

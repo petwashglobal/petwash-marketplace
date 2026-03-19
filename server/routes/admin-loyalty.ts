@@ -19,8 +19,10 @@ import {
   users,
   rewardClaims,
   experimentEvents,
+  experimentDecisions,
 } from '../../shared/schema';
-import { eq, desc, sql, and, gte, count } from 'drizzle-orm';
+import { eq, desc, sql, and, gte, count, inArray } from 'drizzle-orm';
+import { runExperimentDecisionJob } from '../jobs/experiment-decision';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
 import { adjustLoyaltyBalance } from '../utils/loyaltyLedger';
@@ -310,6 +312,166 @@ router.get('/ledger', requireAdmin, async (req, res) => {
   } catch (err: any) {
     logger.error('admin-loyalty GET /ledger', err);
     res.status(500).json({ error: 'Failed to fetch ledger' });
+  }
+});
+
+// ── GET /experiment-decisions ────────────────────────────────────────────────
+// Returns all rows from experiment_decisions joined with per-variant funnel counts.
+router.get('/experiment-decisions', requireAdmin, async (_req, res) => {
+  try {
+    const decisions = await db
+      .select()
+      .from(experimentDecisions)
+      .orderBy(desc(experimentDecisions.updatedAt));
+
+    // Also pull per-variant funnel for the same experiment keys
+    const expKeys = decisions.map(d => d.experimentKey);
+    const funnel = expKeys.length > 0
+      ? await db
+          .select({
+            experimentKey: experimentEvents.experimentKey,
+            variant:       experimentEvents.variant,
+            event:         experimentEvents.event,
+            cnt:           count(),
+          })
+          .from(experimentEvents)
+          .where(inArray(experimentEvents.experimentKey, expKeys))
+          .groupBy(experimentEvents.experimentKey, experimentEvents.variant, experimentEvents.event)
+      : [];
+
+    res.json({ decisions, funnel });
+  } catch (err: any) {
+    logger.error('admin-loyalty GET /experiment-decisions', err);
+    res.status(500).json({ error: 'Failed to fetch decisions' });
+  }
+});
+
+// ── POST /experiment-decisions/evaluate ─────────────────────────────────────
+// Manually trigger the decision job (for admin testing / forcing a re-evaluation).
+router.post('/experiment-decisions/evaluate', requireAdmin, async (_req, res) => {
+  try {
+    await runExperimentDecisionJob();
+    res.json({ ok: true });
+  } catch (err: any) {
+    logger.error('admin-loyalty POST /experiment-decisions/evaluate', err);
+    res.status(500).json({ error: err.message || 'Evaluation failed' });
+  }
+});
+
+// ── POST /experiment-decisions/promote ──────────────────────────────────────
+// Promote the winner: sets promoted_at on the decision row.
+// After this, the winback processor will only assign the winner variant.
+const promoteSchema = z.object({
+  experimentKey: z.string().min(1),
+  notes:         z.string().max(500).optional(),
+});
+
+router.post('/experiment-decisions/promote', requireAdmin, async (req: any, res) => {
+  try {
+    const { experimentKey, notes } = promoteSchema.parse(req.body);
+    const adminEmail = req.firebaseUser?.email ?? 'admin';
+
+    const [decision] = await db
+      .select()
+      .from(experimentDecisions)
+      .where(eq(experimentDecisions.experimentKey, experimentKey))
+      .limit(1);
+
+    if (!decision) return res.status(404).json({ error: 'No decision record for this experiment' });
+    if (!decision.winnerVariant) return res.status(400).json({ error: 'No winner determined yet — run evaluation first' });
+    if (decision.promotedAt) return res.status(409).json({ error: 'Already promoted' });
+
+    await db
+      .update(experimentDecisions)
+      .set({
+        promotedAt: new Date(),
+        decidedBy:  adminEmail,
+        notes:      notes ?? decision.notes,
+        updatedAt:  new Date(),
+      })
+      .where(eq(experimentDecisions.experimentKey, experimentKey));
+
+    logger.info('admin-loyalty: winner promoted', { experimentKey, winner: decision.winnerVariant, adminEmail });
+    res.json({ ok: true, winnerVariant: decision.winnerVariant });
+  } catch (err: any) {
+    if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
+    logger.error('admin-loyalty POST /experiment-decisions/promote', err);
+    res.status(500).json({ error: err.message || 'Promote failed' });
+  }
+});
+
+// ── POST /experiment-decisions/pause-variant ─────────────────────────────────
+// Admin override: add or remove a variant from the paused_variants list.
+const pauseVariantSchema = z.object({
+  experimentKey: z.string().min(1),
+  variant:       z.enum(['ctrl', 'v1', 'v2']),
+  paused:        z.boolean(),
+  notes:         z.string().max(500).optional(),
+});
+
+router.post('/experiment-decisions/pause-variant', requireAdmin, async (req: any, res) => {
+  try {
+    const { experimentKey, variant, paused, notes } = pauseVariantSchema.parse(req.body);
+    const adminEmail = req.firebaseUser?.email ?? 'admin';
+
+    // Upsert the decision row
+    const [existing] = await db
+      .select({ pausedVariants: experimentDecisions.pausedVariants })
+      .from(experimentDecisions)
+      .where(eq(experimentDecisions.experimentKey, experimentKey))
+      .limit(1);
+
+    const currentPaused: string[] = existing?.pausedVariants ?? [];
+    const nextPaused = paused
+      ? Array.from(new Set([...currentPaused, variant]))
+      : currentPaused.filter(v => v !== variant);
+
+    await db
+      .insert(experimentDecisions)
+      .values({
+        experimentKey,
+        pausedVariants: nextPaused,
+        decidedBy:      adminEmail,
+        notes:          notes ?? null,
+        updatedAt:      new Date(),
+      })
+      .onConflictDoUpdate({
+        target: experimentDecisions.experimentKey,
+        set: {
+          pausedVariants: nextPaused,
+          decidedBy:      adminEmail,
+          notes:          notes ?? sql`experiment_decisions.notes`,
+          updatedAt:      new Date(),
+        },
+      });
+
+    // Stamp / clear paused_at on the winback_queue rows accordingly
+    if (paused) {
+      await db
+        .update(winbackQueue)
+        .set({ pausedAt: new Date(), pauseReason: 'admin' })
+        .where(and(
+          eq(winbackQueue.experimentVariant, variant),
+          sql`${winbackQueue.status} IN ('pending','sent')`,
+          sql`${winbackQueue.pausedAt} IS NULL`,
+        ));
+    } else {
+      await db
+        .update(winbackQueue)
+        .set({ pausedAt: null, pauseReason: null })
+        .where(and(
+          eq(winbackQueue.experimentVariant, variant),
+          eq(winbackQueue.pauseReason, 'admin'),
+          sql`${winbackQueue.status} IN ('pending','sent')`,
+        ));
+    }
+
+    logger.info('admin-loyalty: variant pause toggled', { experimentKey, variant, paused, adminEmail });
+    res.json({ ok: true, pausedVariants: nextPaused });
+  } catch (err: any) {
+    if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
+    logger.error('admin-loyalty POST /experiment-decisions/pause-variant', err);
+    res.status(500).json({ error: err.message || 'Pause-variant failed' });
   }
 });
 

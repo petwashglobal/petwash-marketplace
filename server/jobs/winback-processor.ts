@@ -16,11 +16,12 @@
  */
 
 import { db } from '../db';
-import { users, loyaltyRules, experimentEvents } from '@shared/schema';
+import { users, loyaltyRules, experimentEvents, experimentDecisions, winbackQueue } from '@shared/schema';
 import { eq, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { awardLoyaltyCredit } from '../utils/loyaltyLedger';
 import { dispatchNotification } from '../lib/notificationDispatcher';
+import { runExperimentDecisionJob } from './experiment-decision';
 
 const BATCH_SIZE = 50;
 
@@ -109,18 +110,42 @@ export async function runWinbackProcessor(): Promise<void> {
   let awarded   = 0;
   let errors    = 0;
 
-  // ── Fetch pending batch ───────────────────────────────────────────────────
+  // ── Load experiment_decisions — authoritative winner/pause state ──────────
+  // Key: experimentKey (e.g. 'winback_14d'), Value: decision row
+  const decisionRows = await db
+    .select()
+    .from(experimentDecisions);
+
+  const decisionMap = new Map(decisionRows.map(d => [d.experimentKey, d]));
+
+  logger.info('[WinbackProcessor] Experiment decisions loaded', {
+    count: decisionRows.length,
+    keys:  decisionRows.map(d => `${d.experimentKey}:winner=${d.winnerVariant ?? 'none'}`),
+  });
+
+  // ── Frequency cap: collect user IDs that already received a send in last 14d ──
+  const recentSent = await db.execute<{ user_id: string }>(sql`
+    SELECT DISTINCT user_id
+    FROM winback_queue
+    WHERE status = 'sent'
+      AND sent_at > now() - interval '14 days'
+  `);
+  const recentSentSet = new Set((recentSent.rows ?? []).map(r => r.user_id));
+
+  // ── Fetch pending batch (exclude paused rows) ─────────────────────────────
   const pendingRows = await db.execute<{
     id: number;
     user_id: string;
     trigger: WinbackTrigger;
     last_booking_at: Date | null;
     experiment_variant: string | null;
+    paused_at: Date | null;
   }>(sql`
-    SELECT id, user_id, trigger, last_booking_at, experiment_variant
+    SELECT id, user_id, trigger, last_booking_at, experiment_variant, paused_at
     FROM winback_queue
     WHERE status = 'pending'
       AND scheduled_at <= now()
+      AND paused_at IS NULL
     ORDER BY scheduled_at ASC
     LIMIT ${BATCH_SIZE}
   `);
@@ -137,9 +162,41 @@ export async function runWinbackProcessor(): Promise<void> {
     try {
       const { id: queueId, user_id: userId, trigger, last_booking_at, experiment_variant } = row;
 
-      // ── 0. Assign A/B variant (deterministic, idempotent) ─────────────────
-      const variant: Variant = (experiment_variant as Variant) ?? assignVariant(userId);
-      if (!experiment_variant) {
+      const expKey   = `winback_${trigger}` as const;
+      const decision = decisionMap.get(expKey);
+
+      // ── 0a. Frequency cap ─────────────────────────────────────────────────
+      if (recentSentSet.has(userId)) {
+        await db.execute(sql`
+          UPDATE winback_queue SET status = 'suppressed' WHERE id = ${queueId}
+        `);
+        logger.info('[WinbackProcessor] Frequency cap suppression', { userId, queueId });
+        continue;
+      }
+
+      // ── 0b. Assign A/B variant — winner override or deterministic hash ────
+      let variant: Variant;
+      if (decision?.promotedAt && decision.winnerVariant) {
+        // Winner has been promoted → everyone gets the winner variant
+        variant = decision.winnerVariant as Variant;
+      } else {
+        variant = (experiment_variant as Variant | null | undefined) ?? assignVariant(userId);
+      }
+
+      // ── 0c. Check if this variant is paused in experiment_decisions ───────
+      const pausedVariants: string[] = decision?.pausedVariants ?? [];
+      if (pausedVariants.includes(variant)) {
+        await db.execute(sql`
+          UPDATE winback_queue
+          SET paused_at = now(), pause_reason = 'losing'
+          WHERE id = ${queueId}
+        `);
+        logger.info('[WinbackProcessor] Variant paused, suppressing row', { userId, variant, expKey, queueId });
+        continue;
+      }
+
+      // ── 0d. Persist assigned variant if not already set ───────────────────
+      if (!experiment_variant || experiment_variant !== variant) {
         await db.execute(sql`
           UPDATE winback_queue
           SET experiment_variant = ${variant}
@@ -269,4 +326,12 @@ export async function runWinbackProcessor(): Promise<void> {
   }
 
   logger.info('[WinbackProcessor] Run complete', { processed, awarded, errors });
+
+  // ── Post-batch: run statistical decision job to update experiment_decisions ──
+  // Non-blocking — errors here should not affect the batch result.
+  if (awarded > 0) {
+    runExperimentDecisionJob().catch(err =>
+      logger.warn('[WinbackProcessor] Decision job post-run error (non-blocking)', { error: err.message }),
+    );
+  }
 }

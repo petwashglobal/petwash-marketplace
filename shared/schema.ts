@@ -12477,9 +12477,31 @@ export const winbackQueue = pgTable("winback_queue", {
   sentAt:             timestamp("sent_at"),
   convertedAt:        timestamp("converted_at"),
   experimentVariant:  text("experiment_variant"),
+  // Phase 6.10 — row-level suppression markers (authoritative source = experiment_decisions)
+  pausedAt:           timestamp("paused_at"),
+  pauseReason:        text("pause_reason"), // 'low_sample' | 'losing' | 'admin'
   createdAt:          timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   uniqueIndex("idx_winback_user_trigger").on(table.userId, table.trigger),
   index("idx_winback_status").on(table.status, table.scheduledAt),
 ]);
 export type WinbackQueueEntry = typeof winbackQueue.$inferSelect;
+
+// Experiment Decisions — authoritative winner/pause state per experiment key
+// One row per experimentKey; upserted on each evaluation run.
+export const experimentDecisions = pgTable("experiment_decisions", {
+  id:              serial("id").primaryKey(),
+  experimentKey:   text("experiment_key").notNull().unique(),
+  winnerVariant:   text("winner_variant"),                        // null = no winner yet
+  pausedVariants:  text("paused_variants").array().notNull().default(sql`'{}'::text[]`),
+  decidedAt:       timestamp("decided_at").notNull().defaultNow(),
+  decidedBy:       text("decided_by").notNull().default('auto'), // 'auto' | admin email
+  confidencePct:   decimal("confidence_pct", { precision: 5, scale: 2 }),
+  upliftPct:       decimal("uplift_pct",     { precision: 5, scale: 2 }),
+  promotedAt:      timestamp("promoted_at"),
+  notes:           text("notes"),
+  updatedAt:       timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_exp_decisions_key").on(table.experimentKey),
+]);
+export type ExperimentDecision = typeof experimentDecisions.$inferSelect;
