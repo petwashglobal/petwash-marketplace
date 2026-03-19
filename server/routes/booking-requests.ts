@@ -24,6 +24,8 @@ import {
   users,
   superAppNotifications,
   rebookTriggers,
+  referrals,
+  winbackQueue,
   createBookingRequestSchema,
   providerBookingResponseSchema,
   type BookingRequest
@@ -41,6 +43,7 @@ import { logBookingEvent, type BookingEventPayload } from '../services/bookingEv
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { scheduleRebookTrigger } from '../jobs/rebook-scheduler';
 import { EmailService } from '../emailService';
+import { awardLoyaltyCredit, getStreakCounts } from '../utils/loyaltyLedger';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
 
 const ISRAEL_TIMEZONE = 'Asia/Jerusalem';
@@ -1122,7 +1125,125 @@ router.post('/:requestId/confirm', async (req, res) => {
         error: earningError.message,
       });
     }
-    
+
+    // ── Phase 6.3: Loyalty triggers (non-blocking, fire-and-forget) ──────────
+    setImmediate(async () => {
+      try {
+        const ownerId = booking.ownerId;
+        const bId = booking.id;
+
+        // 1. Count owner's lifetime completed bookings
+        const [{ completedCount }] = await db
+          .select({ completedCount: sql<number>`count(*)::int` })
+          .from(bookingRequests)
+          .where(and(
+            eq(bookingRequests.ownerId, ownerId),
+            sql`status IN ('completed','reviewed')`,
+          ));
+
+        // 2. booking_2nd — exactly on the 2nd lifetime completed booking
+        if (completedCount === 2) {
+          await awardLoyaltyCredit({
+            userId: ownerId,
+            ruleKey: 'booking_2nd',
+            fingerprint: `booking_2nd:${ownerId}`,
+            bookingId: bId,
+          });
+        }
+
+        // 3. Streak checks
+        const streaks = await getStreakCounts(ownerId);
+
+        // streak_same_provider_3 — 3 consecutive completed with same provider
+        if (streaks.consecutiveSameProvider && streaks.consecutiveSameProvider.count === 3) {
+          await awardLoyaltyCredit({
+            userId: ownerId,
+            ruleKey: 'streak_same_provider_3',
+            fingerprint: `streak_same_provider_3:${ownerId}:${streaks.consecutiveSameProvider.providerId}`,
+            bookingId: bId,
+          });
+        }
+
+        // streak_walk_5 — 5th completed dog_walking booking
+        if (streaks.walkBookings === 5) {
+          await awardLoyaltyCredit({
+            userId: ownerId,
+            ruleKey: 'streak_walk_5',
+            fingerprint: `streak_walk_5:${ownerId}`,
+            bookingId: bId,
+          });
+        }
+
+        // streak_sit_5 — 5th completed pet_sitting booking
+        if (streaks.sitBookings === 5) {
+          await awardLoyaltyCredit({
+            userId: ownerId,
+            ruleKey: 'streak_sit_5',
+            fingerprint: `streak_sit_5:${ownerId}`,
+            bookingId: bId,
+          });
+        }
+
+        // 4. Referral completion — if this is invitee's 1st completed booking and they used a code
+        if (completedCount === 1) {
+          const [ownerRow] = await db
+            .select({ referredByCode: users.referredByCode })
+            .from(users)
+            .where(eq(users.id, ownerId))
+            .limit(1);
+
+          if (ownerRow?.referredByCode) {
+            // Find the referral record and credit the inviter if not already done
+            const [referral] = await db
+              .select()
+              .from(referrals)
+              .where(and(
+                eq(referrals.code, ownerRow.referredByCode),
+                sql`status NOT IN ('expired','abused')`,
+              ))
+              .limit(1);
+
+            if (referral && !referral.inviterCreditedAt) {
+              // Mark invitee as completing
+              await db
+                .update(referrals)
+                .set({ status: 'completed', completedAt: new Date(), inviteeUserId: ownerId })
+                .where(eq(referrals.id, referral.id));
+
+              // Credit inviter
+              await awardLoyaltyCredit({
+                userId: referral.inviterUserId,
+                ruleKey: 'referral_inviter',
+                fingerprint: `referral_inviter:${referral.inviterUserId}:${ownerId}`,
+                referralId: referral.id,
+                bookingId: bId,
+              });
+
+              // Mark inviter as credited
+              await db
+                .update(referrals)
+                .set({ inviterCreditedAt: new Date() })
+                .where(eq(referrals.id, referral.id));
+
+              logger.info('[Loyalty] Referral inviter credited', { inviterId: referral.inviterUserId, inviteeId: ownerId });
+            }
+          }
+        }
+
+        // 5. Win-back reset — cancel any pending win-back queue entries for this user
+        await db
+          .update(winbackQueue)
+          .set({ status: 'converted', convertedAt: new Date() })
+          .where(and(
+            eq(winbackQueue.userId, ownerId),
+            sql`status IN ('pending','sent')`,
+          ));
+
+      } catch (loyaltyErr: any) {
+        logger.warn('[Loyalty] Booking-complete trigger error (non-blocking)', { error: loyaltyErr.message, bookingId: booking.id });
+      }
+    });
+
     // Send inbox + email + SMS notifications via dispatchNotification
     const amountIls = (booking.subtotalCents / 100).toFixed(2);
     try {

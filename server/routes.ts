@@ -90,6 +90,7 @@ import qrActivationRoutes from "./routes/qr-activation";
 import jobOffersRoutes from "./routes/job-offers";
 import providersRoutes from "./routes/providers";
 import providerTrustRoutes from "./routes/provider-trust";
+import loyaltyCreditsRoutes from "./routes/loyalty-credits";
 import providerProfileRoutes from "./routes/provider-profile";
 import marketplaceRoutes from "./routes/marketplace";
 import identityServiceRoutes from "./routes/identity-service";
@@ -9680,6 +9681,9 @@ self.addEventListener('notificationclick', (event) => {
 
   // Provider Trust Metrics, Browse (filter-backed), Saved Providers
   app.use('/api', apiLimiter, providerTrustRoutes);
+
+  // Step 6: Loyalty Credits (ledger, balance, streaks, history)
+  app.use('/api/loyalty-credits', apiLimiter, loyaltyCreditsRoutes);
 
   // Provider Profile Self-Edit API (GET/PATCH own profile — strict allowlist)
   app.use('/api/provider-profile', apiLimiter, providerProfileRoutes);

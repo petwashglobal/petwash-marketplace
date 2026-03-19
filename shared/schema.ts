@@ -73,7 +73,10 @@ export const users = pgTable("users", {
   washBalance: integer("wash_balance").default(0).notNull(),
   giftCardBalance: decimal("gift_card_balance", { precision: 10, scale: 2 }).default("0").notNull(),
   loyaltyPoints: integer("loyalty_points").default(0).notNull(), // Points earned from purchases (1 point per ILS spent)
-  
+  loyaltyBalanceCents: integer("loyalty_balance_cents").notNull().default(0), // Cached loyalty credit balance in agorot (source of truth = loyalty_ledger)
+  referralCode: varchar("referral_code", { length: 8 }).unique(), // This user's shareable referral code (auto-generated on signup)
+  referredByCode: varchar("referred_by_code", { length: 8 }),     // Code used when user signed up (links to referrals.code)
+
   // PRIVACY CONTROLS (OPT-IN by default = false)
   analyticsConsent: boolean("analytics_consent").default(false), // GA4 tracking
   ipTrackingConsent: boolean("ip_tracking_consent").default(false), // IP geolocation
@@ -11513,6 +11516,8 @@ export const providerProfiles = pgTable("provider_profiles", {
   // ── Availability scheduling ──
   blockedDates: text("blocked_dates").array(),               // ISO date strings e.g. ['2026-04-15']; null/empty = no blocked dates
   workingHours: jsonb("working_hours"),                      // {mon:{from:'09:00',to:'18:00',active:true},...sun:{...}}
+  // ── Retention / win-back ──
+  isWinbackSuppressed: boolean("is_winback_suppressed").notNull().default(false), // provider opted out of win-back pings
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -12350,3 +12355,129 @@ export type InsertRebookTrigger = typeof rebookTriggers.$inferInsert;
 
 // ── Unified Payment Tables (pw_payments, pw_provider_payouts) ────────────────
 export * from './schema-payments';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STEP 6: Retention & Loyalty System
+// All money in cents (agorot). Ledger is append-only. Balance on users is cache.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Loyalty Rules — admin-configurable reward config; all amounts in agorot
+export const loyaltyRules = pgTable("loyalty_rules", {
+  ruleKey:         text("rule_key").primaryKey(),
+  enabled:         boolean("enabled").notNull().default(false),
+  rewardIlsCents:  integer("reward_ils_cents").notNull().default(0),
+  expiryDays:      integer("expiry_days"),          // null = never expires
+  minBookingIls:   integer("min_booking_ils"),       // minimum booking value to qualify
+  maxUsesPerUser:  integer("max_uses_per_user"),     // null = unlimited
+  description:     text("description"),
+  updatedAt:       timestamp("updated_at").notNull().defaultNow(),
+});
+export type LoyaltyRule = typeof loyaltyRules.$inferSelect;
+
+// Reward Claims — idempotency layer; unique_fingerprint prevents double-fire
+export const rewardClaims = pgTable("reward_claims", {
+  id:                serial("id").primaryKey(),
+  userId:            varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  ruleKey:           text("rule_key").notNull().references(() => loyaltyRules.ruleKey, { onDelete: 'restrict' }),
+  bookingId:         integer("booking_id"),
+  referralId:        integer("referral_id"),
+  uniqueFingerprint: text("unique_fingerprint").notNull().unique(), // e.g. "booking_2nd:user123" or "streak_walk_5:user123:5"
+  createdAt:         timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_reward_claims_user").on(table.userId),
+  index("idx_reward_claims_rule").on(table.ruleKey),
+]);
+export type RewardClaim = typeof rewardClaims.$inferSelect;
+
+// Loyalty Ledger — append-only event log; never update rows, only insert
+export const loyaltyLedger = pgTable("loyalty_ledger", {
+  id:                 serial("id").primaryKey(),
+  userId:             varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  eventType:          text("event_type").notNull(), // earn_booking | earn_streak | earn_referral | earn_winback | earn_welcome | redeem | expire | admin_adjust
+  amountIlsCents:     integer("amount_ils_cents").notNull(), // positive = credit, negative = debit/redeem
+  balanceAfterCents:  integer("balance_after_cents").notNull(), // running balance snapshot
+  bookingId:          integer("booking_id"),
+  referralId:         integer("referral_id"),
+  rewardClaimId:      integer("reward_claim_id").references(() => rewardClaims.id),
+  experimentVariant:  text("experiment_variant"),
+  expiresAt:          timestamp("expires_at"), // null = never expires
+  note:               text("note"),
+  createdAt:          timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_loyalty_ledger_user").on(table.userId),
+  index("idx_loyalty_ledger_expires").on(table.expiresAt),
+]);
+export type LoyaltyLedgerEntry = typeof loyaltyLedger.$inferSelect;
+
+// Referrals — tracks inviter/invitee pairs and reward status
+export const referrals = pgTable("referrals", {
+  id:                serial("id").primaryKey(),
+  inviterUserId:     varchar("inviter_user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  inviteeUserId:     varchar("invitee_user_id").references(() => users.id, { onDelete: 'set null' }),
+  inviteeEmail:      text("invitee_email"),
+  code:              varchar("code", { length: 8 }).notNull().unique(), // same as inviter's users.referral_code
+  status:            text("status").notNull().default('pending'), // pending | signed_up | completed | expired | abused
+  inviterCreditedAt: timestamp("inviter_credited_at"),
+  inviteeCreditedAt: timestamp("invitee_credited_at"),
+  createdAt:         timestamp("created_at").notNull().defaultNow(),
+  completedAt:       timestamp("completed_at"),
+}, (table) => [
+  index("idx_referrals_inviter").on(table.inviterUserId),
+  index("idx_referrals_code").on(table.code),
+]);
+export type Referral = typeof referrals.$inferSelect;
+
+// Experiments — A/B test definitions
+export const experiments = pgTable("experiments", {
+  id:          serial("id").primaryKey(),
+  key:         text("key").notNull().unique(),
+  description: text("description"),
+  variants:    jsonb("variants").notNull().default(sql`'[]'::jsonb`), // [{key,weight,label}]
+  enabled:     boolean("enabled").notNull().default(false),
+  createdAt:   timestamp("created_at").notNull().defaultNow(),
+});
+export type Experiment = typeof experiments.$inferSelect;
+
+// Experiment Assignments — stable variant per user (hash-based, written async)
+export const experimentAssignments = pgTable("experiment_assignments", {
+  id:            serial("id").primaryKey(),
+  experimentKey: text("experiment_key").notNull().references(() => experiments.key, { onDelete: 'cascade' }),
+  userId:        varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  variant:       text("variant").notNull(),
+  assignedAt:    timestamp("assigned_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("idx_exp_assign_unique").on(table.experimentKey, table.userId),
+]);
+export type ExperimentAssignment = typeof experimentAssignments.$inferSelect;
+
+// Experiment Events — conversion funnel tracking
+export const experimentEvents = pgTable("experiment_events", {
+  id:            serial("id").primaryKey(),
+  experimentKey: text("experiment_key").notNull(),
+  userId:        varchar("user_id").notNull(),
+  variant:       text("variant").notNull(),
+  event:         text("event").notNull(), // notification_sent | opened | clicked | booked | completed
+  bookingId:     integer("booking_id"),
+  createdAt:     timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_exp_events_key_user").on(table.experimentKey, table.userId),
+]);
+export type ExperimentEvent = typeof experimentEvents.$inferSelect;
+
+// Winback Queue — scheduled re-engagement offers (one row per user+tier)
+export const winbackQueue = pgTable("winback_queue", {
+  id:                 serial("id").primaryKey(),
+  userId:             varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  trigger:            text("trigger").notNull(), // 14d | 30d | 60d
+  status:             text("status").notNull().default('pending'), // pending | sent | suppressed | converted
+  lastBookingAt:      timestamp("last_booking_at"),
+  scheduledAt:        timestamp("scheduled_at").notNull(),
+  sentAt:             timestamp("sent_at"),
+  convertedAt:        timestamp("converted_at"),
+  experimentVariant:  text("experiment_variant"),
+  createdAt:          timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("idx_winback_user_trigger").on(table.userId, table.trigger),
+  index("idx_winback_status").on(table.status, table.scheduledAt),
+]);
+export type WinbackQueueEntry = typeof winbackQueue.$inferSelect;

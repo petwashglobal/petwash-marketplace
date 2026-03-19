@@ -1071,3 +1071,82 @@ Full deep-dive across Rover.com, MadPaws.com.au, Airbnb.com and PetWash.co.il co
 
 ### Test suite: 12/12 PASS
 All quote engine scenarios verified after each fix cycle.
+
+---
+
+## Step 6 — Loyalty Credits System (March 2026, Phases 6.1–6.3)
+
+### Phase 6.1 — DB Schema + Seed
+
+**Schema additions to existing tables:**
+- `users`: `loyalty_balance_cents integer DEFAULT 0`, `referral_code varchar`, `referred_by_code varchar`
+- `provider_profiles`: `is_winback_suppressed boolean DEFAULT false`
+
+**New tables created (all via `executeSql`):**
+| Table | Purpose |
+|---|---|
+| `loyalty_rules` | Rule catalogue (key, reward_cents, expiry_days, enabled) |
+| `reward_claims` | Idempotency guard (`unique_fingerprint` UNIQUE) |
+| `loyalty_ledger` | Append-only credit/debit log |
+| `referrals` | Referral tracking (inviter→invitee code lifecycle) |
+| `experiments` | A/B test definitions |
+| `experiment_assignments` | User↔variant assignments |
+| `experiment_events` | Conversion event log |
+| `winback_queue` | Re-engagement targeting queue |
+
+**9 rules seeded (all `enabled=false`):**
+`welcome(₪25/90d)`, `referral_inviter(₪50/180d)`, `booking_2nd(₪15/90d)`, `streak_same_provider_3(₪20/90d)`, `streak_walk_5(₪30/90d)`, `streak_sit_5(₪30/90d)`, `winback_14d(₪20/14d)`, `winback_30d(₪35/14d)`, `winback_60d(₪50/14d)`.
+
+**Drizzle schema updated** in `shared/schema.ts` with all new table types/insert schemas.
+
+---
+
+### Phase 6.2 — Ledger Service + Balance Endpoints
+
+**`server/utils/loyaltyLedger.ts`** — core service:
+- `awardLoyaltyCredit({ userId, ruleKey, fingerprint, bookingId?, referralId? })` — idempotent credit (checks `reward_claims`, appends ledger, updates `users.loyalty_balance_cents`, respects ₪300 cap)
+- `redeemLoyaltyCredit({ userId, amountCents, bookingId })` — debit (min ₪10, max 50% of order, appends ledger, updates balance)
+- `expireLoyaltyCredits()` — nightly sweep; expires rules past their `expiry_days` window by reversing outstanding credits
+- `getLoyaltyBalance(userId)` — returns balance in cents + ILS
+- `getLoyaltyHistory(userId, limit)` — paginated ledger entries
+- `getStreakCounts(userId)` — returns `{ walkBookings, sitBookings, consecutiveSameProvider: { providerId, count } }`
+
+**`server/routes/loyalty-credits.ts`** — REST endpoints:
+- `GET /api/loyalty-credits/balance` — current balance for authenticated user
+- `GET /api/loyalty-credits/history?limit=N` — ledger entries (default 20)
+- `GET /api/loyalty-credits/streaks` — streak counts
+
+Route mounted in `server/routes.ts`:
+```
+app.use('/api/loyalty-credits', apiLimiter, loyaltyCreditsRoutes);
+```
+
+Auth: `validateFirebaseToken` from `server/middleware/firebase-auth` (sets `req.firebaseUser`).
+
+---
+
+### Phase 6.3 — Booking Completion Triggers
+
+**Wired into `server/routes/booking-requests.ts`** immediately after `createEarningRecord` try/catch block, wrapped in `setImmediate` (non-blocking, fire-and-forget).
+
+**5 triggers fired on every booking completion:**
+
+1. **`booking_2nd`** — awards ₪15 credit exactly when `completedCount === 2` (2nd lifetime completed booking for owner). Fingerprint: `booking_2nd:{userId}`.
+
+2. **`streak_same_provider_3`** — awards ₪20 when `consecutiveSameProvider.count === 3`. Fingerprint includes `providerId` so each provider streak is independent.
+
+3. **`streak_walk_5`** — awards ₪30 on the 5th completed `dog_walking` booking. Fingerprint prevents re-award.
+
+4. **`streak_sit_5`** — awards ₪30 on the 5th completed `pet_sitting` booking. Fingerprint prevents re-award.
+
+5. **Referral completion** — fires on invitee's 1st ever completed booking (`completedCount === 1`). Looks up `users.referred_by_code`, finds the matching `referrals` row, credits the inviter (₪50 via `referral_inviter` rule), and marks `referrals.inviter_credited_at`.
+
+6. **Win-back reset** — any `winback_queue` rows for this user in `pending`/`sent` status are marked `converted` so they don't receive further re-engagement outreach.
+
+**Imports added to `booking-requests.ts`:** `awardLoyaltyCredit`, `getStreakCounts` from `loyaltyLedger`; `referrals`, `winbackQueue` from `@shared/schema`.
+
+**Invariants preserved:**
+- All triggers are non-blocking (errors logged as WARN, response unaffected)
+- Idempotency guaranteed by `reward_claims.unique_fingerprint` UNIQUE index
+- All amounts flow from `loyalty_rules` table (not hardcoded)
+- `users.loyalty_balance_cents` stays consistent as ledger cache
