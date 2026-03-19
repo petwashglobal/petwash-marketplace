@@ -2,8 +2,8 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLanguage } from '@/lib/languageStore';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
-import { Link } from 'wouter';
-import { SlidersHorizontal, X, CalendarDays, PawPrint, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Link, useLocation } from 'wouter';
+import { SlidersHorizontal, X, CalendarDays, PawPrint, ChevronLeft, ChevronRight, RefreshCw, HandshakeIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
@@ -60,6 +60,16 @@ const STATUS_LABELS: Record<string, { he: string; en: string }> = {
   cancelled:   { he: 'בוטל',      en: 'Cancelled'   },
 };
 
+const SERVICE_TO_ROUTE: Record<string, string> = {
+  k9000_wash:  '/k9000/booking',
+  pet_sitting: '/sitter-suite',
+  dog_walking: '/walk-my-pet',
+  grooming:    '/groomers',
+  pet_taxi:    '/pettrek',
+  daycare:     '/sitter-suite',
+  training:    '/marketplace',
+};
+
 interface Booking {
   requestId: string;
   status: string;
@@ -70,6 +80,27 @@ interface Booking {
   totalCents: number;
   currency: string;
   createdAt: string;
+  providerId?: string;
+  providerName?: string | null;
+  meetGreetDate?: string | null;
+  meetGreetLocation?: string | null;
+}
+
+function ProviderAvatar({ name, size = 36 }: { name: string; size?: number }) {
+  const initials = name
+    .split(' ')
+    .slice(0, 2)
+    .map(w => w[0])
+    .join('')
+    .toUpperCase();
+  return (
+    <div
+      className="flex items-center justify-center rounded-full font-bold text-white flex-shrink-0"
+      style={{ width: size, height: size, background: GOLD, fontSize: size * 0.35 }}
+    >
+      {initials || '?'}
+    </div>
+  );
 }
 
 function EmptyState({ tab, isRTL }: { tab: TabId; isRTL: boolean }) {
@@ -94,10 +125,12 @@ function EmptyState({ tab, isRTL }: { tab: TabId; isRTL: boolean }) {
   );
 }
 
-function BookingCard({ booking, isRTL }: { booking: Booking; isRTL: boolean }) {
+function BookingCard({ booking, isRTL, showRebook }: { booking: Booking; isRTL: boolean; showRebook?: boolean }) {
+  const [, navigate] = useLocation();
   const service = SERVICE_TYPES.find(s => s.id === booking.serviceType) || SERVICE_TYPES[0];
   const statusLabel = STATUS_LABELS[booking.status] || { he: booking.status, en: booking.status };
   const statusColor = STATUS_COLORS[booking.status] || 'bg-gray-100 text-gray-700';
+  const hasMeetGreet = !!(booking.meetGreetDate || booking.meetGreetLocation);
 
   const formatDate = (d: string) => {
     if (!d) return '—';
@@ -112,49 +145,88 @@ function BookingCard({ booking, isRTL }: { booking: Booking; isRTL: boolean }) {
     return `${symbol}${(cents / 100).toFixed(0)}`;
   };
 
+  const handleRebook = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const route = SERVICE_TO_ROUTE[booking.serviceType] || '/marketplace';
+    navigate(route);
+  };
+
   return (
     <Link href={`/booking/${booking.requestId}`}>
       <div
-        className="flex items-start gap-3 p-4 bg-white border border-gray-100 rounded-xl mb-3 active:bg-gray-50 transition-colors cursor-pointer"
+        className="p-4 bg-white border border-gray-100 rounded-2xl mb-3 active:bg-gray-50 transition-colors cursor-pointer shadow-sm hover:shadow-md transition-shadow"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
-        <div className="w-11 h-11 rounded-xl bg-gray-50 flex items-center justify-center text-xl flex-shrink-0">
-          {service.emoji}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <p className="font-semibold text-gray-900 text-sm">
-              {isRTL ? service.labelHe : service.labelEn}
-            </p>
-            <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${statusColor}`}>
-              {isRTL ? statusLabel.he : statusLabel.en}
-            </span>
-          </div>
-          <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
-            <CalendarDays size={11} />
-            <span>{formatDate(booking.startDate)}</span>
-            {booking.endDate && booking.startDate !== booking.endDate && (
-              <><span>–</span><span>{formatDate(booking.endDate)}</span></>
-            )}
-          </div>
-          {booking.petCount > 0 && (
-            <div className="flex items-center gap-1 mt-0.5 text-xs text-gray-500">
-              <PawPrint size={11} />
-              <span>{booking.petCount} {isRTL ? 'חיות' : booking.petCount === 1 ? 'pet' : 'pets'}</span>
+        <div className="flex items-start gap-3">
+          {booking.providerName ? (
+            <ProviderAvatar name={booking.providerName} size={44} />
+          ) : (
+            <div className="w-11 h-11 rounded-xl bg-gray-50 flex items-center justify-center text-xl flex-shrink-0">
+              {service.emoji}
             </div>
           )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                {booking.providerName && (
+                  <p className="font-semibold text-gray-900 text-sm leading-tight">{booking.providerName}</p>
+                )}
+                <p className={`text-xs text-gray-500 ${booking.providerName ? 'mt-0' : 'font-semibold text-gray-900 text-sm'}`}>
+                  {service.emoji} {isRTL ? service.labelHe : service.labelEn}
+                </p>
+              </div>
+              <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${statusColor}`}>
+                {isRTL ? statusLabel.he : statusLabel.en}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 mt-1.5 text-xs text-gray-500">
+              <CalendarDays size={11} />
+              <span>{formatDate(booking.startDate)}</span>
+              {booking.endDate && booking.startDate !== booking.endDate && (
+                <><span>–</span><span>{formatDate(booking.endDate)}</span></>
+              )}
+            </div>
+            {booking.petCount > 0 && (
+              <div className="flex items-center gap-1 mt-0.5 text-xs text-gray-500">
+                <PawPrint size={11} />
+                <span>{booking.petCount} {isRTL ? 'חיות' : booking.petCount === 1 ? 'pet' : 'pets'}</span>
+              </div>
+            )}
+            {hasMeetGreet && (
+              <div className="flex items-center gap-1 mt-1.5">
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 flex items-center gap-1">
+                  <HandshakeIcon size={10} />
+                  {isRTL ? 'פגישת היכרות מתוכננת' : 'Meet & Greet scheduled'}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            {booking.totalCents > 0 && (
+              <p className="text-sm font-semibold" style={{ color: GOLD }}>
+                {formatPrice(booking.totalCents, booking.currency || 'ILS')}
+              </p>
+            )}
+            {isRTL
+              ? <ChevronLeft size={16} className="text-gray-300" />
+              : <ChevronRight size={16} className="text-gray-300" />
+            }
+          </div>
         </div>
-        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          {booking.totalCents > 0 && (
-            <p className="text-sm font-semibold" style={{ color: GOLD }}>
-              {formatPrice(booking.totalCents, booking.currency || 'ILS')}
-            </p>
-          )}
-          {isRTL
-            ? <ChevronLeft size={16} className="text-gray-300" />
-            : <ChevronRight size={16} className="text-gray-300" />
-          }
-        </div>
+
+        {showRebook && (
+          <div className={`mt-3 pt-3 border-t border-gray-100 flex ${isRTL ? 'justify-start' : 'justify-end'}`}>
+            <button
+              onClick={handleRebook}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors"
+              style={{ borderColor: GOLD, color: GOLD, background: `${GOLD}10` }}
+            >
+              <RefreshCw size={12} />
+              {isRTL ? 'הזמן שוב' : 'Book Again'}
+            </button>
+          </div>
+        )}
       </div>
     </Link>
   );
@@ -264,13 +336,20 @@ export default function CustomerBookings() {
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />
+              <div key={i} className="h-24 bg-gray-100 rounded-2xl animate-pulse" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
           <EmptyState tab={activeTab} isRTL={isRTL} />
         ) : (
-          filtered.map(b => <BookingCard key={b.requestId} booking={b} isRTL={isRTL} />)
+          filtered.map(b => (
+            <BookingCard
+              key={b.requestId}
+              booking={b}
+              isRTL={isRTL}
+              showRebook={activeTab === 'past'}
+            />
+          ))
         )}
       </div>
 

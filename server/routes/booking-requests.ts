@@ -21,11 +21,12 @@ import {
   sitterProfiles,
   walkerProfiles,
   trainers,
+  users,
   createBookingRequestSchema,
   providerBookingResponseSchema,
   type BookingRequest
 } from '@shared/schema';
-import { eq, and, desc, sql, or } from 'drizzle-orm';
+import { eq, and, desc, sql, or, inArray } from 'drizzle-orm';
 import { calculateQuote, persistBookingQuote } from '../services/quoteEngine';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
@@ -388,6 +389,19 @@ router.get('/', async (req, res) => {
     if (status) {
       bookings = bookings.filter(b => b.status === status);
     }
+
+    // Batch-resolve provider names from users table
+    const providerIds = [...new Set(bookings.map(b => b.providerId).filter(Boolean))];
+    const providerNameMap: Record<string, string> = {};
+    if (providerIds.length > 0) {
+      const providerUsers = await db
+        .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+        .from(users)
+        .where(inArray(users.id, providerIds));
+      providerUsers.forEach(u => {
+        providerNameMap[u.id] = [u.firstName, u.lastName].filter(Boolean).join(' ') || 'ספק';
+      });
+    }
     
     res.json({
       bookings: bookings.map(b => ({
@@ -407,6 +421,8 @@ router.get('/', async (req, res) => {
         meetGreetLocation: b.meetGreetLocation,
         meetGreetNotes: b.meetGreetNotes,
         createdAt: b.createdAt,
+        providerId: b.providerId,
+        providerName: providerNameMap[b.providerId] || null,
       })),
       total: bookings.length,
     });

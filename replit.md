@@ -734,6 +734,46 @@ A booking is a CONTAINER. Not a single pet. The backend is the single source of 
 ### Pricing version
 Every quote carries `pricingVersion: "v1.0.0"` — stored in both the booking row and the audit log for reproducibility.
 
+## Competitive Parity Build (March 2026 — Rover + MadPaws gap analysis)
+
+### New shared components
+- **`client/src/components/TrustBar.tsx`** — Reusable trust/safety badge strip with 3 variants:
+  - `horizontal` (scrollable strip) — for provider profile header
+  - `grid` (2-col grid with desc) — for landing pages and onboarding
+  - `compact` (badge row) — for booking confirmation
+  - Badges: ID Verified (green) · 1 in 5 Accepted (gold) · PetWash Guarantee (blue) · Trained & Certified (violet) · 10,000+ Bookings (sky)
+
+- **`client/src/components/StarProviderBadge.tsx`** — Rover-inspired provider rank badge:
+  - `Elite Provider` (gold star): rating ≥ 4.8, ≥5 reviews, ≥90% response rate, ≥30% repeat clients
+  - `Verified Provider` (green star): rating ≥ 4.5, ≥2 reviews
+  - `showDetails` prop renders: star rating, response rate %, repeat client %
+
+### CustomerBookings.tsx upgrade
+- **Provider avatar**: Gold circle with initials when `providerName` is resolved from API
+- **Provider name** shown as primary text on each booking card (service label drops to subtitle)
+- **Meet & Greet badge**: Violet badge shown on upcoming bookings when `meetGreetDate` or `meetGreetLocation` is set
+- **"Book Again" CTA**: Visible only on Past tab — routes to appropriate platform (sitter-suite, walk-my-pet, groomers etc.)
+- **Rounded-2xl cards** with subtle shadow and hover elevation
+
+### CustomerFavourites.tsx upgrade
+- **Tab count badges**: Shows count on Shortlisted and Previously Booked tabs
+- **"Book" button**: Gold Zap CTA on each shortlisted provider card (routes to their platform)
+- **"Rebook" button**: Gold ring CTA on each previously booked card (routes to platform)
+- **Provider avatars**: Gold initials circles on both tabs (pulls from API providerName)
+- **Updated empty states**: Better copy matching Rover/MadPaws phrasing
+
+### Backend: Booking list API upgrade
+- `GET /api/booking-requests` now batch-resolves provider names from `users` table (one extra query)
+- Response now includes: `providerId`, `providerName` (resolved first+last name or null)
+
+### SEO Discovery Engine — ServiceLandingPage.tsx
+- Route: `/services/:service` and `/services/:service/:city`
+- Services covered: pet-sitting, dog-walking, grooming, k9000-wash, pet-taxi, training
+- Cities covered: 12 Israeli cities (Tel Aviv, Jerusalem, Haifa, Beer Sheva, Rishon, Petah Tikva, Ashdod, Netanya, Holon, Bnei Brak, Ramat Gan, Herzliya)
+- Each page: hero CTA, TrustBar grid, star reviews, FAQ accordion, city cross-links, service cross-links
+- Full SEO: `react-helmet-async` title/description/og/canonical, robots: index,follow
+- Example URLs: `/services/dog-walking`, `/services/pet-sitting/tel-aviv`
+
 ## Quote Engine v1.1.0 (March 2026 hardening)
 
 ### Changes shipped this session

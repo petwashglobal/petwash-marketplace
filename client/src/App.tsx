@@ -66,6 +66,7 @@ const CustomerBookings = lazy(() => import("@/pages/CustomerBookings"));
 const CustomerFavourites = lazy(() => import("@/pages/CustomerFavourites"));
 const Marketplace = lazy(() => import("@/pages/Marketplace"));
 const TalentMarketplace = lazy(() => import("@/pages/PetWashTalentMarketplacePage"));
+const ServiceLandingPage = lazy(() => import("@/pages/ServiceLandingPage"));
 const ProviderDetail = lazy(() => import("@/pages/ProviderDetail"));
 const ProviderCompliance = lazy(() => import("@/pages/ProviderCompliance"));
 const BecomeProvider = lazy(() => import("@/pages/BecomeProvider"));
@@ -827,6 +828,22 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
+        {/* SEO SERVICE LANDING PAGES — /services/dog-walking, /services/pet-sitting/tel-aviv, etc. */}
+        <Route path="/services/:service/:city">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <ServiceLandingPage />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/services/:service">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <ServiceLandingPage />
+            </Suspense>
+          )}
+        </Route>
+
         {/* UNIFIED MARKETPLACE - Search & Book All Services */}
         <Route path="/marketplace">
           {() => (
