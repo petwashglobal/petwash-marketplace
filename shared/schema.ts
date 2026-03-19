@@ -9849,6 +9849,21 @@ export const bookingRequests = pgTable("booking_requests", {
   refundCents: integer("refund_cents"),
   refundProcessedAt: timestamp("refund_processed_at"),
   
+  // Quote Engine Fields (written by backend, never by frontend)
+  quoteSubtotalCents: integer("quote_subtotal_cents").notNull().default(0),
+  quoteDiscountCents: integer("quote_discount_cents").notNull().default(0),
+  quoteCreditCents: integer("quote_credit_cents").notNull().default(0),
+  quoteGiftCardCents: integer("quote_gift_card_cents").notNull().default(0),
+  quoteTaxCents: integer("quote_tax_cents").notNull().default(0),
+  quoteTotalCents: integer("quote_total_cents").notNull().default(0),
+  quoteCurrency: varchar("quote_currency", { length: 8 }).notNull().default("ILS"),
+  quoteBreakdown: jsonb("quote_breakdown"), // full snapshot of QuoteResponse
+  pricingVersion: varchar("pricing_version", { length: 40 }),
+  promoCode: varchar("promo_code", { length: 80 }),
+  couponId: varchar("coupon_id", { length: 255 }),
+  giftCardId: varchar("gift_card_id", { length: 255 }),
+  walletCreditUsedCents: integer("wallet_credit_used_cents").notNull().default(0),
+
   // Metadata
   searchId: varchar("search_id", { length: 24 }), // Link to original search
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -9991,7 +10006,14 @@ export const providerRateCards = pgTable("provider_rate_cards", {
   // Available Add-ons for this service
   enabledAddons: text("enabled_addons").array().default([]), // ["bath", "nail_trim", "medication"]
   addonPricing: jsonb("addon_pricing").default(sql`'{}'::jsonb`), // {"bath": 5000, "nail_trim": 2500}
-  
+
+  // Structured Quote-Engine Pricing Rules
+  // Shape: { base_price_cents, additional_pet_price_cents, pet_type_rules, size_rules,
+  //          special_needs_surcharge_cents, medication_surcharge_cents, behavior_flag_surcharge_cents }
+  pricingRules: jsonb("pricing_rules").notNull().default(sql`'{}'::jsonb`),
+  // Shape: [{ code, name, scope: 'booking'|'pet', unit_price_cents }]
+  addonsCatalog: jsonb("addons_catalog").notNull().default(sql`'[]'::jsonb`),
+
   // Availability
   isActive: boolean("is_active").default(true),
   minBookingHours: integer("min_booking_hours").default(1),
@@ -12132,6 +12154,85 @@ export type ActivationAuditEntry = typeof activationAuditLog.$inferSelect;
 
 export type ActivationSession = typeof activationSessions.$inferSelect;
 export type InsertActivationSession = typeof activationSessions.$inferInsert;
+
+// ── Quote Engine Tables ────────────────────────────────────────────────────────
+
+// One row per pet attached to a booking_request — stores per-pet line items and snapshot
+export const bookingRequestPets = pgTable("booking_request_pets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bookingRequestId: integer("booking_request_id").notNull().references(() => bookingRequests.id, { onDelete: 'cascade' }),
+  petId: integer("pet_id").references(() => pets.id),
+  petName: varchar("pet_name", { length: 120 }).notNull(),
+  petType: varchar("pet_type", { length: 40 }).notNull(), // dog | cat | other
+  breed: varchar("breed", { length: 120 }),
+  sizeCategory: varchar("size_category", { length: 40 }), // small | medium | large | giant
+  ageYears: decimal("age_years", { precision: 4, scale: 1 }),
+  weightKg: decimal("weight_kg", { precision: 6, scale: 2 }),
+  gender: varchar("gender", { length: 20 }),
+  specialNotes: text("special_notes"),
+  requiresMedication: boolean("requires_medication").notNull().default(false),
+  hasBehaviorFlag: boolean("has_behavior_flag").notNull().default(false),
+  hasSpecialNeeds: boolean("has_special_needs").notNull().default(false),
+  quantity: integer("quantity").notNull().default(1),
+  basePriceCents: integer("base_price_cents").notNull().default(0),
+  adjustmentPriceCents: integer("adjustment_price_cents").notNull().default(0),
+  subtotalPriceCents: integer("subtotal_price_cents").notNull().default(0),
+  currency: varchar("currency", { length: 8 }).notNull().default("ILS"),
+  pricingSnapshot: jsonb("pricing_snapshot"), // exact inputs used at quote time
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  bookingRequestIdx: index("idx_brp_booking_request_id").on(table.bookingRequestId),
+  petIdx: index("idx_brp_pet_id").on(table.petId),
+}));
+
+export const insertBookingRequestPetSchema = createInsertSchema(bookingRequestPets).omit({ id: true, createdAt: true, updatedAt: true });
+export type BookingRequestPet = typeof bookingRequestPets.$inferSelect;
+export type InsertBookingRequestPet = z.infer<typeof insertBookingRequestPetSchema>;
+
+// One row per add-on selected in a booking — booking-level or pet-level scope
+export const bookingRequestAddons = pgTable("booking_request_addons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bookingRequestId: integer("booking_request_id").notNull().references(() => bookingRequests.id, { onDelete: 'cascade' }),
+  bookingRequestPetId: varchar("booking_request_pet_id").references(() => bookingRequestPets.id, { onDelete: 'cascade' }),
+  addonCode: varchar("addon_code", { length: 80 }).notNull(),
+  addonName: varchar("addon_name", { length: 120 }).notNull(),
+  addonScope: varchar("addon_scope", { length: 20 }).notNull(), // booking | pet
+  quantity: integer("quantity").notNull().default(1),
+  unitPriceCents: integer("unit_price_cents").notNull().default(0),
+  subtotalPriceCents: integer("subtotal_price_cents").notNull().default(0),
+  currency: varchar("currency", { length: 8 }).notNull().default("ILS"),
+  pricingSnapshot: jsonb("pricing_snapshot"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  bookingRequestIdx: index("idx_bra_booking_request_id").on(table.bookingRequestId),
+  petIdx: index("idx_bra_booking_request_pet_id").on(table.bookingRequestPetId),
+  addonCodeIdx: index("idx_bra_addon_code").on(table.addonCode),
+}));
+
+export const insertBookingRequestAddonSchema = createInsertSchema(bookingRequestAddons).omit({ id: true, createdAt: true, updatedAt: true });
+export type BookingRequestAddon = typeof bookingRequestAddons.$inferSelect;
+export type InsertBookingRequestAddon = z.infer<typeof insertBookingRequestAddonSchema>;
+
+// Audit log — every quote returned by the engine, keyed by pricing_version
+export const quoteEngineLogs = pgTable("quote_engine_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bookingRequestId: integer("booking_request_id").references(() => bookingRequests.id),
+  userId: varchar("user_id", { length: 255 }),
+  providerId: varchar("provider_id", { length: 255 }),
+  serviceType: varchar("service_type", { length: 60 }).notNull(),
+  requestPayload: jsonb("request_payload").notNull(),
+  responsePayload: jsonb("response_payload").notNull(),
+  pricingVersion: varchar("pricing_version", { length: 40 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  bookingRequestIdx: index("idx_qel_booking_request_id").on(table.bookingRequestId),
+  providerIdx: index("idx_qel_provider_id").on(table.providerId),
+  createdAtIdx: index("idx_qel_created_at").on(table.createdAt),
+}));
+
+export type QuoteEngineLog = typeof quoteEngineLogs.$inferSelect;
 
 // ── Unified Payment Tables (pw_payments, pw_provider_payouts) ────────────────
 export * from './schema-payments';

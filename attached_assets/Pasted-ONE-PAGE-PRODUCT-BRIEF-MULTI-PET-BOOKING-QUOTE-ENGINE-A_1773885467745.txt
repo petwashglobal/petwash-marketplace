@@ -1,0 +1,472 @@
+ONE-PAGE PRODUCT BRIEF
+MULTI-PET BOOKING + QUOTE ENGINE + ADD-ONS + REDUCTION LOGIC
+
+This is the exact implementation brief.
+
+OBJECTIVE
+
+We need to move from a single-pet / loose-price booking model to a proper quote-driven booking architecture that supports:
+- multiple pets in one booking
+- per-pet pricing
+- per-addon pricing
+- service-level pricing rules
+- provider-specific rate cards
+- discounts / promo / credit / gift logic
+- deterministic backend quote generation
+- machine / kiosk compatibility later
+
+The frontend must never calculate the final payable amount.
+The backend quote engine is the single source of truth.
+
+==================================================
+1. NEW / REQUIRED TABLES
+==================================================
+
+A. booking_request_pets
+Purpose:
+Stores each pet attached to a booking request as its own priced line item.
+
+Columns:
+- id UUID PK
+- booking_request_id UUID NOT NULL FK -> booking_requests.id
+- pet_id UUID NULL FK -> pets.id
+- pet_name VARCHAR(120) NOT NULL
+- pet_type VARCHAR(40) NOT NULL
+  Allowed values initially:
+  - dog
+  - cat
+  - other
+- breed VARCHAR(120) NULL
+- size_category VARCHAR(40) NULL
+  Allowed values:
+  - small
+  - medium
+  - large
+  - giant
+- age_years NUMERIC(4,1) NULL
+- weight_kg NUMERIC(6,2) NULL
+- gender VARCHAR(20) NULL
+- special_notes TEXT NULL
+- requires_medication BOOLEAN NOT NULL DEFAULT false
+- has_behavior_flag BOOLEAN NOT NULL DEFAULT false
+- has_special_needs BOOLEAN NOT NULL DEFAULT false
+- quantity INTEGER NOT NULL DEFAULT 1
+- base_price_cents INTEGER NOT NULL DEFAULT 0
+- adjustment_price_cents INTEGER NOT NULL DEFAULT 0
+- subtotal_price_cents INTEGER NOT NULL DEFAULT 0
+- currency VARCHAR(8) NOT NULL DEFAULT 'ILS'
+- pricing_snapshot JSONB NULL
+- created_at TIMESTAMP NOT NULL DEFAULT now()
+- updated_at TIMESTAMP NOT NULL DEFAULT now()
+
+Indexes:
+- idx_booking_request_pets_booking_request_id
+- idx_booking_request_pets_pet_id
+
+Notes:
+- subtotal_price_cents = base_price_cents + adjustment_price_cents
+- pricing_snapshot stores the exact rule inputs used when quoted
+
+B. booking_request_addons
+Purpose:
+Stores add-ons selected for a booking as explicit priced line items.
+
+Columns:
+- id UUID PK
+- booking_request_id UUID NOT NULL FK -> booking_requests.id
+- booking_request_pet_id UUID NULL FK -> booking_request_pets.id
+- addon_code VARCHAR(80) NOT NULL
+- addon_name VARCHAR(120) NOT NULL
+- addon_scope VARCHAR(20) NOT NULL
+  Allowed values:
+  - booking
+  - pet
+- quantity INTEGER NOT NULL DEFAULT 1
+- unit_price_cents INTEGER NOT NULL DEFAULT 0
+- subtotal_price_cents INTEGER NOT NULL DEFAULT 0
+- currency VARCHAR(8) NOT NULL DEFAULT 'ILS'
+- pricing_snapshot JSONB NULL
+- created_at TIMESTAMP NOT NULL DEFAULT now()
+- updated_at TIMESTAMP NOT NULL DEFAULT now()
+
+Indexes:
+- idx_booking_request_addons_booking_request_id
+- idx_booking_request_addons_booking_request_pet_id
+- idx_booking_request_addons_addon_code
+
+Notes:
+- booking-level add-ons apply once to the whole booking
+- pet-level add-ons apply to a specific pet line
+
+C. quote_engine_logs
+Purpose:
+Audit every quote returned by backend.
+
+Columns:
+- id UUID PK
+- booking_request_id UUID NULL FK -> booking_requests.id
+- user_id VARCHAR(255) NULL
+- provider_id UUID NULL
+- service_type VARCHAR(60) NOT NULL
+- request_payload JSONB NOT NULL
+- response_payload JSONB NOT NULL
+- pricing_version VARCHAR(40) NOT NULL
+- created_at TIMESTAMP NOT NULL DEFAULT now()
+
+Indexes:
+- idx_quote_engine_logs_booking_request_id
+- idx_quote_engine_logs_provider_id
+- idx_quote_engine_logs_created_at
+
+==================================================
+2. EXISTING TABLES TO EXTEND
+==================================================
+
+A. booking_requests
+Add columns:
+- quote_subtotal_cents INTEGER NOT NULL DEFAULT 0
+- quote_discount_cents INTEGER NOT NULL DEFAULT 0
+- quote_credit_cents INTEGER NOT NULL DEFAULT 0
+- quote_gift_card_cents INTEGER NOT NULL DEFAULT 0
+- quote_tax_cents INTEGER NOT NULL DEFAULT 0
+- quote_total_cents INTEGER NOT NULL DEFAULT 0
+- quote_currency VARCHAR(8) NOT NULL DEFAULT 'ILS'
+- quote_breakdown JSONB NULL
+- pricing_version VARCHAR(40) NULL
+- promo_code VARCHAR(80) NULL
+- coupon_id UUID NULL
+- gift_card_id UUID NULL
+- wallet_credit_used_cents INTEGER NOT NULL DEFAULT 0
+
+B. provider_rate_cards
+Need to support:
+- service_type
+- base service price
+- per additional pet logic
+- pet type multipliers
+- size multipliers
+- daycare / grooming / walking / sitting specific rules
+- addon price definitions
+
+If current table is too limited, add:
+- pricing_rules JSONB NOT NULL DEFAULT '{}'
+- addons_catalog JSONB NOT NULL DEFAULT '[]'
+- currency VARCHAR(8) NOT NULL DEFAULT 'ILS'
+- is_active BOOLEAN NOT NULL DEFAULT true
+- updated_at TIMESTAMP NOT NULL DEFAULT now()
+
+Expected pricing_rules shape example:
+{
+  "base_price_cents": 12000,
+  "additional_pet_price_cents": 7000,
+  "pet_type_rules": {
+    "dog": 1.0,
+    "cat": 0.9
+  },
+  "size_rules": {
+    "small": 1.0,
+    "medium": 1.1,
+    "large": 1.25,
+    "giant": 1.4
+  },
+  "special_needs_surcharge_cents": 2500,
+  "medication_surcharge_cents": 1500,
+  "behavior_flag_surcharge_cents": 2000
+}
+
+Expected addons_catalog example:
+[
+  {
+    "code": "pickup_dropoff",
+    "name": "Pickup and Drop-off",
+    "scope": "booking",
+    "unit_price_cents": 3000
+  },
+  {
+    "code": "nail_trim",
+    "name": "Nail Trim",
+    "scope": "pet",
+    "unit_price_cents": 1500
+  }
+]
+
+==================================================
+3. QUOTE ENGINE RULES
+==================================================
+
+The quote engine must be deterministic.
+
+INPUTS:
+- service type
+- provider id
+- location / zone if relevant
+- booking dates / duration
+- pets array
+- add-ons array
+- coupon / promo code
+- gift card id / code
+- wallet credit availability
+- customer eligibility flags
+- provider rate card
+- system pricing version
+
+OUTPUTS:
+- per-pet line items
+- per-addon line items
+- subtotal
+- discounts
+- tax
+- gift card applied
+- wallet credit applied
+- final total
+- machine / kiosk compatibility later
+
+RULE ORDER
+Apply in this order:
+1. provider service base pricing
+2. per-pet adjustments
+3. add-ons
+4. booking subtotal
+5. promo / coupon discount
+6. gift card application
+7. wallet credit application
+8. tax
+9. final payable total
+
+Important:
+- no negative totals
+- no frontend arithmetic trust
+- all returned amounts in cents
+- quote response includes pricing_version
+
+==================================================
+4. API CONTRACT
+==================================================
+
+A. POST /api/quotes/preview
+Purpose:
+Returns a full quote before booking is created or updated.
+
+Request body:
+{
+  "providerId": "uuid",
+  "serviceType": "pet_sitting",
+  "currency": "ILS",
+  "bookingWindow": {
+    "startAt": "2026-03-18T09:00:00.000Z",
+    "endAt": "2026-03-18T18:00:00.000Z"
+  },
+  "pets": [
+    {
+      "petId": "uuid-or-null",
+      "petName": "Luna",
+      "petType": "dog",
+      "breed": "Cavoodle",
+      "sizeCategory": "small",
+      "ageYears": 3,
+      "weightKg": 8.5,
+      "requiresMedication": false,
+      "hasBehaviorFlag": false,
+      "hasSpecialNeeds": false,
+      "quantity": 1
+    },
+    {
+      "petId": "uuid-or-null",
+      "petName": "Milo",
+      "petType": "dog",
+      "breed": "Spoodle",
+      "sizeCategory": "medium",
+      "ageYears": 5,
+      "weightKg": 14,
+      "requiresMedication": true,
+      "hasBehaviorFlag": false,
+      "hasSpecialNeeds": false,
+      "quantity": 1
+    }
+  ],
+  "addons": [
+    {
+      "addonCode": "pickup_dropoff",
+      "scope": "booking",
+      "quantity": 1
+    },
+    {
+      "addonCode": "nail_trim",
+      "scope": "pet",
+      "petRef": "0",
+      "quantity": 1
+    }
+  ],
+  "promoCode": "WELCOME10",
+  "giftCardCode": null,
+  "useWalletCredit": true
+}
+
+Response body:
+{
+  "success": true,
+  "pricingVersion": "v1.0.0",
+  "currency": "ILS",
+  "serviceType": "pet_sitting",
+  "providerId": "uuid",
+  "lineItems": {
+    "pets": [
+      {
+        "clientRef": "0",
+        "petId": "uuid-or-null",
+        "petName": "Luna",
+        "basePriceCents": 12000,
+        "adjustmentPriceCents": 0,
+        "subtotalPriceCents": 12000,
+        "pricingSnapshot": {}
+      },
+      {
+        "clientRef": "1",
+        "petId": "uuid-or-null",
+        "petName": "Milo",
+        "basePriceCents": 7000,
+        "adjustmentPriceCents": 1500,
+        "subtotalPriceCents": 8500,
+        "pricingSnapshot": {}
+      }
+    ],
+    "addons": [
+      {
+        "addonCode": "pickup_dropoff",
+        "addonName": "Pickup and Drop-off",
+        "scope": "booking",
+        "quantity": 1,
+        "unitPriceCents": 3000,
+        "subtotalPriceCents": 3000
+      },
+      {
+        "addonCode": "nail_trim",
+        "addonName": "Nail Trim",
+        "scope": "pet",
+        "petRef": "0",
+        "quantity": 1,
+        "unitPriceCents": 1500,
+        "subtotalPriceCents": 1500
+      }
+    ]
+  },
+  "totals": {
+    "subtotalCents": 25000,
+    "discountCents": 2500,
+    "giftCardAppliedCents": 0,
+    "walletCreditAppliedCents": 3000,
+    "taxCents": 0,
+    "totalCents": 19500
+  },
+  "appliedAdjustments": [
+    {
+      "type": "promo_code",
+      "code": "WELCOME10",
+      "amountCents": 2500
+    },
+    {
+      "type": "wallet_credit",
+      "amountCents": 3000
+    }
+  ],
+  "warnings": []
+}
+
+B. POST /api/booking-requests/:id/reprice
+Purpose:
+Rebuilds quote for an existing booking request and rewrites stored quote fields + line items.
+
+Request body:
+{
+  "promoCode": "WELCOME10",
+  "giftCardCode": null,
+  "useWalletCredit": true
+}
+
+Response:
+same quote response plus bookingRequestId
+
+C. POST /api/booking-requests
+When booking is created, backend should:
+- validate payload
+- call quote engine
+- create booking_requests row
+- create booking_request_pets rows
+- create booking_request_addons rows
+- persist quote fields on booking_requests
+- persist quote breakdown snapshot
+
+==================================================
+5. FRONTEND REQUIREMENTS
+==================================================
+
+Customer booking UI must support:
+- add multiple pets in one booking flow
+- show per-pet card
+- allow different attributes per pet
+- allow add-ons at booking level and pet level
+- call quote preview whenever:
+  - pet added/removed
+  - pet size/type changes
+  - addon changes
+  - promo code changes
+  - wallet usage toggle changes
+- show clean quote summary:
+  - service subtotal
+  - add-ons
+  - discount
+  - gift card
+  - wallet credit
+  - final payable total
+
+No frontend final total math except rendering backend response.
+
+==================================================
+6. BUSINESS RULES
+==================================================
+
+- first pet may use full base price
+- additional pets may use additional_pet_price_cents
+- provider-specific overrides win over defaults
+- promo codes must be validated server-side only
+- wallet credit cannot exceed remaining payable amount
+- gift card cannot exceed remaining payable amount
+- if both wallet and gift card exist, apply gift card first, then wallet credit
+- quote must remain reproducible from saved snapshots
+- every final quote written to DB must carry pricing_version
+
+==================================================
+7. PRIORITY BUILD ORDER
+==================================================
+
+Priority 1
+- schema changes
+- quote engine service
+- preview quote endpoint
+- booking create flow persistence
+- reprice endpoint
+
+Priority 2
+- multi-pet booking UI
+- add-on selector UI
+- quote summary UI
+
+Priority 3
+- promo / gift / wallet integration
+- audit logging
+- admin quote visibility
+
+==================================================
+8. DEFINITION OF DONE
+==================================================
+
+Done means:
+- one booking can contain 2+ pets
+- each pet is stored as its own DB row
+- each addon is stored as its own DB row
+- backend returns deterministic quote preview
+- booking persists full quote breakdown
+- frontend never decides final price
+- reprice endpoint works
+- promo / credit / gift logic applies in the correct order
+- quote can be audited later from DB snapshots

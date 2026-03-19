@@ -24,6 +24,7 @@ import {
   type BookingRequest
 } from '@shared/schema';
 import { eq, and, desc, sql, or } from 'drizzle-orm';
+import { calculateQuote, persistBookingQuote } from '../services/quoteEngine';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 
@@ -1141,6 +1142,81 @@ router.post('/:requestId/photo-update', async (req, res) => {
   } catch (error: any) {
     logger.error('[BookingRequests] Photo update error', { error: error.message });
     res.status(500).json({ error: 'Failed to send photo update' });
+  }
+});
+
+/**
+ * POST /api/booking-requests/:requestId/reprice
+ * Rebuilds the quote for an existing booking request and persists updated line items.
+ * Call this when: promo code changes, wallet toggle changes, or after provider accepts.
+ */
+router.post('/:requestId/reprice', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const userId = (req as any).userId || req.user?.uid || null;
+
+    const booking = await db
+      .select()
+      .from(bookingRequests)
+      .where(eq(bookingRequests.requestId, requestId))
+      .limit(1);
+
+    if (!booking.length) {
+      return res.status(404).json({ error: 'Booking request not found' });
+    }
+
+    const br = booking[0];
+
+    // Rebuild quote from saved pet details snapshot
+    const savedPets: any[] = (br.petDetails as any[]) ?? [];
+    if (!savedPets.length && (br.petCount ?? 0) > 0) {
+      return res.status(400).json({
+        error: 'No pet details stored on this booking. Cannot reprice.',
+      });
+    }
+
+    const pets = savedPets.map((p: any, i: number) => ({
+      clientRef: String(i),
+      petId: p.petId ?? null,
+      petName: p.petName ?? p.name ?? `Pet ${i + 1}`,
+      petType: p.petType ?? p.species ?? 'dog',
+      breed: p.breed ?? null,
+      sizeCategory: p.sizeCategory ?? p.size ?? null,
+      ageYears: p.ageYears ?? p.age ?? null,
+      weightKg: p.weightKg ?? null,
+      requiresMedication: p.requiresMedication ?? false,
+      hasBehaviorFlag: p.hasBehaviorFlag ?? false,
+      hasSpecialNeeds: p.hasSpecialNeeds ?? false,
+      quantity: 1,
+    }));
+
+    const quote = await calculateQuote({
+      providerId: br.providerId,
+      serviceType: br.serviceType,
+      currency: br.currency,
+      bookingWindow: {
+        startAt: br.startDate.toISOString(),
+        endAt: br.endDate.toISOString(),
+      },
+      pets,
+      addons: [],
+      promoCode: req.body?.promoCode ?? br.promoCode ?? null,
+      giftCardCode: req.body?.giftCardCode ?? null,
+      useWalletCredit: req.body?.useWalletCredit ?? false,
+      userId,
+      bookingRequestId: br.id,
+    });
+
+    if (!quote.success) {
+      return res.status(422).json(quote);
+    }
+
+    await persistBookingQuote(br.id, quote, pets, []);
+
+    return res.json({ ...quote, bookingRequestId: br.id, requestId });
+  } catch (error: any) {
+    logger.error('[BookingRequests] Reprice error', { error: error.message });
+    res.status(500).json({ error: 'Failed to reprice booking' });
   }
 });
 

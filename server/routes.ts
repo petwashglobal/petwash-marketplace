@@ -9677,6 +9677,10 @@ self.addEventListener('notificationclick', (event) => {
   const bookingRequestsRoutes = (await import('./routes/booking-requests')).default;
   app.use('/api/booking-requests', optionalFirebaseToken, apiLimiter, bookingRequestsRoutes);
 
+  // Quote Engine — deterministic backend pricing (never trust frontend arithmetic)
+  const quotesRoutes = (await import('./routes/quotes')).default;
+  app.use('/api/quotes', optionalFirebaseToken, apiLimiter, quotesRoutes);
+
   // Pet Wash™ Marketplace Bookings (PostgreSQL - 12-status lifecycle, escrow, quotes)
   const marketplaceBookingsRoutes = (await import('./routes/marketplace-bookings')).default;
   app.use('/api/marketplace-bookings', optionalFirebaseToken, apiLimiter, marketplaceBookingsRoutes);

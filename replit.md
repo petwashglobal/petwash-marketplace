@@ -696,3 +696,40 @@ Every regulated financial event (`processReversal`, `processChargeback`, `proces
 - Deleted `server/middleware/security.ts.LEGACY_DO_NOT_USE`
 - Removed dead `userConsents` imports from `webauthn.ts` and `mobile-biometric.ts` (both use raw SQL for the consent check)
 - Dropped stale global idempotency DB constraint
+
+## Quote Engine v1.0.0 (Multi-Pet Booking Architecture)
+
+### Core principle
+A booking is a CONTAINER. Not a single pet. The backend is the single source of truth for all pricing. Frontend renders backend response — never calculates final totals.
+
+### New DB tables (created March 2026)
+- `booking_request_pets` — one row per pet per booking request, stores per-pet line items + pricing snapshot
+- `booking_request_addons` — one row per add-on per booking (booking-level or pet-level scope)
+- `quote_engine_logs` — audit trail of every quote returned, keyed by pricing_version
+
+### Extended tables
+- `booking_requests` — added 13 quote columns: `quote_subtotal_cents`, `quote_discount_cents`, `quote_credit_cents`, `quote_gift_card_cents`, `quote_tax_cents`, `quote_total_cents`, `quote_currency`, `quote_breakdown` (JSONB), `pricing_version`, `promo_code`, `coupon_id`, `gift_card_id`, `wallet_credit_used_cents`
+- `provider_rate_cards` — added `pricing_rules` (JSONB: base price, additional pet price, species multipliers, size multipliers, surcharges) and `addons_catalog` (JSONB array)
+
+### New files
+- `server/services/quoteEngine.ts` — core engine: `calculateQuote()`, `persistBookingQuote()`
+- `server/routes/quotes.ts` — `POST /api/quotes/preview`
+
+### New endpoints
+- `POST /api/quotes/preview` — unauthenticated preview, returns full deterministic quote with per-pet line items, add-on line items, discount/credit/gift stacking
+- `POST /api/booking-requests/:requestId/reprice` — rebuilds quote for existing booking, persists updated line items to DB
+
+### Apply order (enforced in backend)
+1. Provider base pricing per service
+2. Per-pet: species multiplier × size multiplier × duration units
+3. Additional pet pricing (50% of base by default if no rate card rule)
+4. Per-pet surcharges (medication, behavior flag, special needs)
+5. Add-ons (booking-level and pet-level)
+6. Promo/coupon validation (server-side only)
+7. Gift card (egift balance from wallet_accounts)
+8. Wallet credit (cash + promo + referral balances)
+9. Tax (currently 0 — marketplace services VAT exempt at booking level)
+10. Final payable total (never negative)
+
+### Pricing version
+Every quote carries `pricingVersion: "v1.0.0"` — stored in both the booking row and the audit log for reproducibility.
