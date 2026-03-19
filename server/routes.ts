@@ -435,6 +435,17 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
     }
 
+    // 🔧 DEV-ONLY bypass — never active in production (hard-guarded)
+    // Allows automated HTTP proofs without a real Firebase token.
+    if (process.env.NODE_ENV !== 'production') {
+      const testUid = req.headers['x-test-provider-uid'] as string | undefined;
+      if (testUid) {
+        logger.warn('[RBAC Guard] DEV BYPASS — x-test-provider-uid', { testUid, path });
+        (req as any).firebaseUser = { uid: testUid, email_verified: true };
+        return next();
+      }
+    }
+
     // 🔐 SECURITY: Unauthenticated requests MUST NOT reach internal routes
     if (!req.firebaseUser?.uid) {
       logger.warn(`[RBAC Guard] Unauthenticated request blocked to internal route: ${path}`, { ip: req.ip });

@@ -339,183 +339,49 @@ router.post('/bookings/:bookingId/confirm', (req: Request, res: Response) => {
   res.redirect(308, `/api/provider-dashboard/bookings/${bookingId}/accept`);
 });
 
-router.post('/bookings/:bookingId/start', async (req: Request, res: Response) => {
-  try {
-    const user = await getAuthenticatedUser(req, res);
-    if (!user) return;
+// ── DEPRECATED V1 ACTION ROUTES ─────────────────────────────────────────────
+// These routes previously wrote to the `bookings` table.
+// They are superseded by POST /api/provider-dashboard/v2/bookings/:id/:action
+// which writes to `booking_requests` — the canonical provider booking system.
+//
+// Status: DEPRECATED as of 2026-03-19 (Phase 5 cleanup).
+// The UI (POSJobs + POSDashboard) no longer calls any of these endpoints.
+// They will return 410 Gone to any caller so migration is obvious.
+// Remove entirely after production cutover is confirmed.
+//
+// Caller guide: Use POST /api/provider-dashboard/v2/bookings/:id/<action>
+// Valid actions: accept | decline | cancel | start | complete | report
+// ─────────────────────────────────────────────────────────────────────────────
 
+function deprecatedV1Action(action: string) {
+  return (req: Request, res: Response) => {
     const { bookingId } = req.params;
-    const providerRecords = await db.select().from(providers).where(eq(providers.userId, user.uid));
-    const providerIds = providerRecords.map(p => p.id);
-
-    if (providerIds.length === 0) {
-      return res.status(403).json({ error: 'Not a provider' });
-    }
-
-    const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId));
-
-    if (!booking || !providerOwnsBooking(providerIds, booking.providerId)) {
-      return res.status(404).json({ error: 'Booking not found or not yours' });
-    }
-
-    if (booking.status !== 'provider_confirmed') {
-      return res.status(400).json({ error: `Cannot start booking with status: ${booking.status}. Must be provider_confirmed first.` });
-    }
-
-    const now = new Date();
-    await db.update(bookings).set({
-      status: 'in_progress',
-      startedAt: now,
-    }).where(eq(bookings.id, bookingId));
-
-    logger.info('[ProviderDashboard] Booking started', {
+    const v2url = `/api/provider-dashboard/v2/bookings/${bookingId}/${action}`;
+    logger.warn(`[ProviderDashboard][DEPRECATED] V1 action /${action} called — this route is dead`, {
+      action,
       bookingId,
-      bookingNumber: booking.bookingNumber,
-      startedAt: now.toISOString(),
-      startedByUid: user.uid,
+      v2url,
+      ip: req.ip,
+      ua: req.headers['user-agent'],
     });
-
-    res.json({
-      success: true,
-      action: 'started',
-      bookingId,
-      startedAt: now.toISOString(),
-      stamp: `SERVICE_STARTED::${user.uid}::${now.toISOString()}`,
+    res.setHeader('Deprecation', 'version="2026-03-19"');
+    res.setHeader('Sunset', 'Sat, 30 Apr 2026 00:00:00 GMT');
+    res.setHeader('Link', `<${v2url}>; rel="successor-version"`);
+    return res.status(410).json({
+      error: 'ROUTE_DEPRECATED',
+      message: `POST /bookings/${bookingId}/${action} (V1) is no longer active. Use the V2 route.`,
+      v2Route: v2url,
+      sunset: '2026-04-30',
     });
-  } catch (error) {
-    logger.error('[ProviderDashboard] Start booking error', error);
-    res.status(500).json({ error: 'Failed to start booking' });
-  }
-});
-
-router.post('/bookings/:bookingId/complete', async (req: Request, res: Response) => {
-  try {
-    const user = await getAuthenticatedUser(req, res);
-    if (!user) return;
-
-    const { bookingId } = req.params;
-    const providerRecords = await db.select().from(providers).where(eq(providers.userId, user.uid));
-    const providerIds = providerRecords.map(p => p.id);
-
-    if (providerIds.length === 0) {
-      return res.status(403).json({ error: 'Not a provider' });
-    }
-
-    const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId));
-
-    if (!booking || !providerOwnsBooking(providerIds, booking.providerId)) {
-      return res.status(404).json({ error: 'Booking not found or not yours' });
-    }
-
-    if (!['in_progress', 'started'].includes(booking.status)) {
-      return res.status(400).json({ error: `Cannot complete booking with status: ${booking.status}` });
-    }
-
-    const now = new Date();
-    await db.update(bookings).set({
-      status: 'completed',
-      completedAt: now,
-      payoutStatus: 'pending',
-    }).where(eq(bookings.id, bookingId));
-
-    logger.info('[ProviderDashboard] Booking completed', {
-      bookingId,
-      bookingNumber: booking.bookingNumber,
-      completedAt: now.toISOString(),
-      completedByUid: user.uid,
-      providerPayout: booking.providerPayout,
-    });
-
-    res.json({
-      success: true,
-      action: 'completed',
-      bookingId,
-      completedAt: now.toISOString(),
-      payoutStatus: 'pending',
-      stamp: `SERVICE_COMPLETED::${user.uid}::${now.toISOString()}`,
-    });
-  } catch (error) {
-    logger.error('[ProviderDashboard] Complete booking error', error);
-    res.status(500).json({ error: 'Failed to complete booking' });
-  }
-});
-
-// ── Unified action handler for accept / decline / cancel / report ──────────
-async function bookingActionHandler(req: Request, res: Response, action: string) {
-  try {
-    const user = await getAuthenticatedUser(req, res);
-    if (!user) return;
-
-    const { bookingId } = req.params;
-    const providerRecords = await db.select({ id: providers.id }).from(providers).where(eq(providers.userId, user.uid));
-    const providerIds = providerRecords.map(p => p.id);
-    if (providerIds.length === 0) return res.status(403).json({ error: 'Not a provider' });
-
-    const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId));
-    if (!booking || !providerOwnsBooking(providerIds, booking.providerId)) {
-      return res.status(404).json({ error: 'Booking not found or not yours' });
-    }
-
-    const now = new Date();
-    let update: Record<string, any> = {};
-    let newStatus = '';
-
-    if (action === 'accept') {
-      if (!['new_request', 'pending', 'confirmed', 'owner_confirmed'].includes(booking.status)) {
-        return res.status(400).json({ error: `Cannot accept booking with status: ${booking.status}` });
-      }
-      newStatus = 'provider_confirmed';
-      update = { status: 'provider_confirmed', confirmedAt: now };
-    } else if (action === 'decline') {
-      // Decline: provider refuses a new/pending request — terminal, stored with DECLINED: prefix
-      if (!['new_request', 'pending', 'confirmed', 'owner_confirmed'].includes(booking.status)) {
-        return res.status(400).json({ error: `Cannot decline a booking with status: ${booking.status}` });
-      }
-      const { reason } = req.body;
-      newStatus = 'cancelled';
-      update = { status: 'cancelled', cancelledAt: now, cancellationReason: `DECLINED: ${reason || 'Provider declined'}` };
-    } else if (action === 'cancel') {
-      // Cancel: provider cancels an already-accepted booking — distinct from decline
-      if (['completed', 'cancelled', 'dispute'].includes(booking.status)) {
-        return res.status(400).json({ error: `Cannot cancel a booking with status: ${booking.status}` });
-      }
-      const { reason } = req.body;
-      newStatus = 'cancelled';
-      update = { status: 'cancelled', cancelledAt: now, cancellationReason: `CANCELLED: ${reason || 'Provider cancelled'}` };
-    } else if (action === 'report') {
-      // Report: flags a booking as dispute — reason stored with DISPUTE: prefix so it's
-      // semantically distinguishable from a cancellation reason using the same column
-      if (['completed', 'cancelled'].includes(booking.status)) {
-        return res.status(400).json({ error: `Cannot report a booking with status: ${booking.status}` });
-      }
-      const { reason } = req.body;
-      newStatus = 'dispute';
-      update = { status: 'dispute', cancellationReason: `DISPUTE: ${reason || 'Issue reported by provider'}` };
-    } else {
-      return res.status(400).json({ error: `Unknown action: ${action}` });
-    }
-
-    await db.update(bookings).set(update).where(eq(bookings.id, bookingId));
-
-    logger.info(`[ProviderDashboard] Booking ${action}`, {
-      bookingId,
-      bookingNumber: booking.bookingNumber,
-      newStatus,
-      uid: user.uid,
-      ts: now.toISOString(),
-    });
-
-    res.json({ success: true, action, bookingId, newStatus, stamp: `BOOKING_${action.toUpperCase()}::${user.uid}::${now.toISOString()}` });
-  } catch (error) {
-    logger.error(`[ProviderDashboard] Action ${action} error`, error);
-    res.status(500).json({ error: `Failed to ${action} booking` });
-  }
+  };
 }
 
-router.post('/bookings/:bookingId/accept',  (req, res) => bookingActionHandler(req, res, 'accept'));
-router.post('/bookings/:bookingId/decline', (req, res) => bookingActionHandler(req, res, 'decline'));
-router.post('/bookings/:bookingId/cancel',  (req, res) => bookingActionHandler(req, res, 'cancel'));
-router.post('/bookings/:bookingId/report',  (req, res) => bookingActionHandler(req, res, 'report'));
+router.post('/bookings/:bookingId/start',   deprecatedV1Action('start'));
+router.post('/bookings/:bookingId/complete', deprecatedV1Action('complete'));
+router.post('/bookings/:bookingId/accept',   deprecatedV1Action('accept'));
+router.post('/bookings/:bookingId/decline',  deprecatedV1Action('decline'));
+router.post('/bookings/:bookingId/cancel',   deprecatedV1Action('cancel'));
+router.post('/bookings/:bookingId/report',   deprecatedV1Action('report'));
 
 // ── Upcoming confirmed jobs (next 7 days) ───────────────────────────────────
 router.get('/upcoming', async (req: Request, res: Response) => {

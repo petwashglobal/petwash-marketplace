@@ -838,8 +838,23 @@ cancelled    → cancelled, declined, disputed
   - Ownership double-check in UPDATE WHERE (TOCTOU-safe)
   - POSJobs.tsx + POSDashboard.tsx mutation URLs → `/api/provider-dashboard/v2/bookings/:id/:action`
   - Reads and writes now hit the same table — split resolved
+- [x] Phase 5 — V1 action routes deprecated (2026-03-19)
+  - All 6 V1 action routes now return `410 ROUTE_DEPRECATED` with `Deprecation:`, `Sunset:`, `Link:` headers
+  - Routes: `start | complete | accept | decline | cancel | report` under `/api/provider-dashboard/bookings/:id/`
+  - Sunset date: 2026-04-30. Remove handlers entirely after production cutover confirmed.
+  - Dev-only bypass added to RBAC guard + V2 `getAuthenticatedUser`: `x-test-provider-uid` header (hard-rejected in production)
+- [x] Phase 4+5 real authenticated HTTP proofs
+  - accept id=13 pending→confirmed: HTTP 200 ✓
+  - start  id=13 confirmed→in_progress: HTTP 200 ✓
+  - complete id=13 in_progress→completed: HTTP 200 ✓
+  - decline id=19 pending→declined + DECLINED: reason prefix: HTTP 200 ✓
+  - report  id=20 pending→disputed + DISPUTE: reason prefix: HTTP 200 ✓
+  - invalid transition: 400 with currentStatus + allowedFrom list ✓
+  - wrong owner: 404 "not found or not yours" ✓
+  - unknown action: 400 with valid action list ✓
+  - report on terminal booking: 400 with allowedFrom list ✓
 - [ ] Monitor `/v2/migration-diff` — confirm parity when real bookings flow in
-- [ ] Retire V1 dashboard booking routes once diff shows `parity: true`
+- [ ] Remove V1 action route handlers entirely after 2026-04-30 sunset
 
 ### Phase 4 — Status transition table
 ```

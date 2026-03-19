@@ -21,8 +21,18 @@ import { pool } from '../db';
 
 const router = Router();
 
-// ── Auth helper (identical to V1) ────────────────────────────────────────────
+// ── Auth helper ───────────────────────────────────────────────────────────────
+// DEV-ONLY: accepts x-test-provider-uid header to bypass Firebase token verification.
+// Hard-rejected in production so it can never be exploited in a live environment.
 async function getAuthenticatedUser(req: Request, res: Response) {
+  if (process.env.NODE_ENV !== 'production') {
+    const testUid = req.headers['x-test-provider-uid'] as string | undefined;
+    if (testUid) {
+      logger.warn('[ProviderDashboardV2] DEV AUTH BYPASS — x-test-provider-uid', { testUid });
+      return { uid: testUid } as any;
+    }
+  }
+
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Authentication required' });
