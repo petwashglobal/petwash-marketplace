@@ -362,4 +362,178 @@ router.get('/earnings', async (req: Request, res: Response) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// PHASE 4 — V2 ACTION ROUTES (writes to booking_requests, not bookings)
+// These replace the V1 action handlers for the provider lifecycle.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Status transition table ───────────────────────────────────────────────────
+// Defines EXACTLY which statuses each action is allowed to transition FROM.
+const ALLOWED_FROM: Record<string, string[]> = {
+  accept:   ['pending', 'accepted'],
+  decline:  ['pending', 'accepted'],
+  cancel:   ['accepted', 'confirmed', 'in_progress',
+             'meet_greet_scheduled', 'meet_greet_completed', 'payment_pending'],
+  start:    ['confirmed'],
+  complete: ['in_progress'],
+  report:   ['pending', 'accepted', 'confirmed', 'in_progress'],
+};
+
+// Target status for each action
+const TO_STATUS: Record<string, string> = {
+  accept:   'confirmed',
+  decline:  'declined',
+  cancel:   'cancelled',
+  start:    'in_progress',
+  complete: 'completed',
+  report:   'disputed',
+};
+
+// Prefix convention for cancellation_reason (matches V1 semantic prefix scheme)
+const REASON_PREFIX: Record<string, string> = {
+  decline: 'DECLINED',
+  cancel:  'CANCELLED',
+  report:  'DISPUTE',
+};
+
+const VALID_ACTIONS = Object.keys(ALLOWED_FROM);
+
+// ── POST /api/provider-dashboard/v2/bookings/:id/:action ────────────────────
+// Handles: accept | decline | cancel | start | complete | report
+// Ownership: provider_id must match authenticated user's Firebase UID.
+// Reason: optional body.reason — stored with semantic prefix in cancellation_reason
+//         AND appended to status_history JSONB for full audit trail.
+router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
+  const { id, action } = req.params;
+
+  if (!VALID_ACTIONS.includes(action)) {
+    return res.status(400).json({ error: `Unknown action '${action}'. Valid: ${VALID_ACTIONS.join(', ')}` });
+  }
+
+  try {
+    const user = await getAuthenticatedUser(req, res);
+    if (!user) return;
+
+    const bookingId = parseInt(id, 10);
+    if (isNaN(bookingId)) {
+      return res.status(400).json({ error: 'Invalid booking id' });
+    }
+
+    // Fetch + ownership check in one query
+    const fetchResult = await pool.query(
+      `SELECT id, status, provider_id FROM booking_requests WHERE id = $1 AND provider_id = $2`,
+      [bookingId, user.uid],
+    );
+
+    if (fetchResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Booking not found or not yours' });
+    }
+
+    const booking = fetchResult.rows[0];
+    const oldStatus: string = booking.status;
+    const newStatus: string = TO_STATUS[action];
+    const allowed: string[] = ALLOWED_FROM[action];
+
+    if (!allowed.includes(oldStatus)) {
+      return res.status(400).json({
+        error: `Cannot '${action}' a booking with status '${oldStatus}'. Allowed from: [${allowed.join(', ')}].`,
+        currentStatus: oldStatus,
+        allowedFrom: allowed,
+      });
+    }
+
+    const now = new Date();
+    const { reason } = req.body;
+
+    // Build status_history entry
+    const historyEntry = {
+      status:     newStatus,
+      prevStatus: oldStatus,
+      timestamp:  now.toISOString(),
+      actor:      'provider',
+      uid:        user.uid,
+      action,
+      ...(reason ? { note: reason } : {}),
+    };
+
+    // Build UPDATE dynamically — only touch columns relevant to the action
+    const setClauses: string[] = [
+      `status = $1::booking_request_status`,
+      `updated_at = NOW()`,
+      `status_history = status_history || $2::jsonb`,
+    ];
+    const params: any[] = [newStatus, JSON.stringify([historyEntry])];
+    let p = 3; // next param index
+
+    if (action === 'decline' || action === 'cancel') {
+      const prefix = REASON_PREFIX[action];
+      setClauses.push(`cancellation_reason = $${p++}`);
+      params.push(`${prefix}: ${reason || `Provider ${action}d`}`);
+      setClauses.push(`cancelled_at = $${p++}`);
+      params.push(now);
+      setClauses.push(`cancelled_by = 'provider'`);
+    }
+
+    if (action === 'report') {
+      setClauses.push(`cancellation_reason = $${p++}`);
+      params.push(`DISPUTE: ${reason || 'Issue reported by provider'}`);
+    }
+
+    if (action === 'start') {
+      setClauses.push(`service_started_at = $${p++}`);
+      params.push(now);
+    }
+
+    if (action === 'complete') {
+      setClauses.push(`service_completed_at = $${p++}`);
+      params.push(now);
+    }
+
+    // WHERE: id + provider_id double-check prevents any TOCTOU race
+    params.push(bookingId); // $p
+    params.push(user.uid);  // $p+1
+
+    const updateResult = await pool.query(
+      `UPDATE booking_requests
+       SET ${setClauses.join(', ')}
+       WHERE id = $${p} AND provider_id = $${p + 1}
+       RETURNING id, status, cancellation_reason, service_started_at,
+                 service_completed_at, cancelled_at, updated_at`,
+      params,
+    );
+
+    if (updateResult.rows.length === 0) {
+      // Should not happen — the fetch proved the row exists — but guard anyway
+      return res.status(500).json({ error: 'Update did not modify any row' });
+    }
+
+    const updated = updateResult.rows[0];
+
+    // Structured log — retained for the Phase 4 transition window
+    logger.info(`[ProviderDashboardV2] ACTION:${action.toUpperCase()}`, {
+      bookingId,
+      oldStatus,
+      newStatus,
+      route: `/api/provider-dashboard/v2/bookings/${bookingId}/${action}`,
+      providerUid: user.uid,
+      reason: reason ?? null,
+      ts: now.toISOString(),
+    });
+
+    res.json({
+      success:   true,
+      action,
+      bookingId,
+      oldStatus,
+      newStatus,
+      updatedAt: updated.updated_at,
+      stamp:     `BOOKING_${action.toUpperCase()}::${user.uid}::${now.toISOString()}`,
+      _source:   'booking_requests',
+    });
+  } catch (error) {
+    logger.error(`[ProviderDashboardV2] ACTION:${action} error`, error);
+    res.status(500).json({ error: `Failed to ${action} booking (v2)` });
+  }
+});
+
 export default router;

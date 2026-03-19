@@ -1,0 +1,81 @@
+Good. The V2 read switch was the right move.
+
+The proof is now clear:
+- V2 has the real provider-linked booking data
+- V1 is mostly legacy/orphaned test data
+- provider dashboard reads should stay on V2
+
+Now the next phase is the most important one:
+
+PHASE 4 - ACTION WRITES MUST MOVE TO booking_requests
+
+Right now the system has a dangerous split:
+- reads = V2 / booking_requests
+- writes = V1 / bookings
+
+That is not acceptable to leave in place.
+
+Priority now is to migrate these provider actions to booking_requests:
+- accept
+- decline
+- cancel
+- start
+- complete
+- report
+
+Required outcome:
+1. provider dashboard reads and writes must hit the same source of truth
+2. status transitions must happen on booking_requests
+3. V1 action routes must stop being operational paths
+4. the UI must no longer create stale mismatches between what is displayed and what is changed
+
+Build order:
+A. create V2 action routes
+- /api/provider-dashboard/v2/bookings/:id/accept
+- /api/provider-dashboard/v2/bookings/:id/decline
+- /api/provider-dashboard/v2/bookings/:id/cancel
+- /api/provider-dashboard/v2/bookings/:id/start
+- /api/provider-dashboard/v2/bookings/:id/complete
+- /api/provider-dashboard/v2/bookings/:id/report
+
+B. define exact booking_requests status transitions
+I want the allowed transitions written clearly, for example:
+- pending -> accepted or declined
+- accepted -> confirmed if needed, or directly in_progress depending on business logic
+- confirmed -> in_progress
+- in_progress -> completed
+- any non-terminal -> disputed where allowed
+- accepted/confirmed/in_progress -> cancelled where allowed
+
+C. persist action reasons properly
+- decline reason
+- cancel reason
+- dispute/report reason
+Do not overload vague fields without a clear convention.
+If a dedicated action_notes or provider_action_reason field is needed, add it.
+
+D. update POSJobs and POSDashboard mutations to hit V2 action routes
+Once V2 writes are live, remove UI dependence on V1 write routes.
+
+E. keep temporary logging
+For a short period, log:
+- booking id
+- old status
+- new status
+- action route used
+- provider uid
+- reason if provided
+
+Evidence I want after Phase 4:
+- exact files changed
+- one successful V2 accept action proof
+- one successful V2 decline action proof
+- one successful V2 cancel or report action proof
+- one booking row before and after each action
+- one UI proof that the action updates the same data source the dashboard reads from
+- any status mapping gaps listed honestly
+
+Important:
+Do not do more provider dashboard polish before this.
+The source-of-truth mismatch is now the main risk.
+Fix writes next.

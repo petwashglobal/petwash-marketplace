@@ -827,9 +827,30 @@ cancelled    → cancelled, declined, disputed
   - STATUS_STYLES in both components expanded to all V2 enum values + V1 compat aliases
   - JobCard action guards updated: accepted added to accept/decline gate; disputed/declined/reviewed added to terminal list
   - STATUS_GROUP_MAP in v2 route: added `dispute → ['disputed']` + `provider_confirmed → ['confirmed']` aliases
-  - Action writes (accept/decline/cancel/start/report/complete) still POST to V1 routes (Phase 4 work)
+  - Action writes migrated to V2 in Phase 4 (see below)
+- [x] Phase 4 — V2 action routes live, UI writes to `booking_requests`
+  - POST `/v2/bookings/:id/accept|decline|cancel|start|complete|report` all writing to `booking_requests`
+  - Status transition table enforced server-side (ALLOWED_FROM guard)
+  - `status_history` JSONB appended on every action: `{status, prevStatus, timestamp, actor, uid, action, note?}`
+  - `cancellation_reason` written with semantic prefix: `DECLINED:` / `CANCELLED:` / `DISPUTE:`
+  - `cancelled_by = 'provider'` set on cancel/decline
+  - `service_started_at` / `service_completed_at` set on start/complete
+  - Ownership double-check in UPDATE WHERE (TOCTOU-safe)
+  - POSJobs.tsx + POSDashboard.tsx mutation URLs → `/api/provider-dashboard/v2/bookings/:id/:action`
+  - Reads and writes now hit the same table — split resolved
 - [ ] Monitor `/v2/migration-diff` — confirm parity when real bookings flow in
 - [ ] Retire V1 dashboard booking routes once diff shows `parity: true`
+
+### Phase 4 — Status transition table
+```
+accept:   [pending, accepted]                                       → confirmed
+decline:  [pending, accepted]                                       → declined
+cancel:   [accepted, confirmed, in_progress, meet_greet_*,          → cancelled
+           payment_pending]
+start:    [confirmed]                                               → in_progress
+complete: [in_progress]                                             → completed
+report:   [pending, accepted, confirmed, in_progress]               → disputed
+```
 
 ## Competitive Deep-Review Build v2 (March 2026 — Airbnb + Rover + MadPaws micro-UX)
 

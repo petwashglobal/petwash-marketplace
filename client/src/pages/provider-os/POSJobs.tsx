@@ -118,7 +118,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
 
   const actionMutation = useMutation({
     mutationFn: async ({ bookingId, action, reason }: { bookingId: string; action: string; reason?: string }) =>
-      fetchWithAuth(`/api/provider-dashboard/bookings/${bookingId}/${action}`, {
+      fetchWithAuth(`/api/provider-dashboard/v2/bookings/${bookingId}/${action}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: reason ? JSON.stringify({ reason }) : undefined,

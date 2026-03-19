@@ -110,7 +110,7 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
 
   const bookingActionMutation = useMutation({
     mutationFn: async ({ bookingId, action, reason }: { bookingId: string; action: string; reason?: string }) =>
-      fetchWithAuth(`/api/provider-dashboard/bookings/${bookingId}/${action}`, {
+      fetchWithAuth(`/api/provider-dashboard/v2/bookings/${bookingId}/${action}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(reason ? { reason } : {}),
