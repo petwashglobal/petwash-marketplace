@@ -476,8 +476,38 @@ router.get('/:requestId', async (req, res) => {
     if (booking.ownerId !== userId && booking.providerId !== userId) {
       return res.status(403).json({ error: 'Not authorized to view this booking' });
     }
+
+    // Resolve provider display name
+    let providerName: string | null = null;
+    if (booking.providerId) {
+      const [providerUser] = await db
+        .select({ firstName: users.firstName, lastName: users.lastName })
+        .from(users)
+        .where(eq(users.id, booking.providerId))
+        .limit(1);
+      if (providerUser) {
+        providerName = [providerUser.firstName, providerUser.lastName].filter(Boolean).join(' ') || null;
+      }
+    }
+
+    // Resolve addon codes for rebook prefill
+    let addonCodes: string[] = [];
+    if (booking.id) {
+      const addonRows = await db
+        .select({ addonCode: bookingRequestAddons.addonCode })
+        .from(bookingRequestAddons)
+        .where(eq(bookingRequestAddons.bookingRequestId, booking.id));
+      addonCodes = addonRows.map(r => r.addonCode);
+    }
     
-    res.json({ booking });
+    res.json({
+      booking: {
+        ...booking,
+        providerName,
+        petIds: (booking.petIds as string[] | null) || [],
+        addonCodes,
+      }
+    });
   } catch (error: any) {
     logger.error('[BookingRequests] Error fetching booking', { error: error.message });
     res.status(500).json({ error: 'Failed to fetch booking' });
