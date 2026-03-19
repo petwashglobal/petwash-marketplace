@@ -1,0 +1,307 @@
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { queryClient } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Dog, Moon, MapPin, Scissors, GraduationCap, Home, Clock, Eye,
+  Plus, Trash2, Loader2, ChevronDown, ChevronUp, ToggleLeft, ToggleRight,
+  Info,
+} from 'lucide-react';
+
+interface Addon {
+  id: string;
+  label: string;
+  price: number;
+  enabled: boolean;
+}
+
+interface ServiceConfig {
+  enabled: boolean;
+  basePrice: number | null;
+  addons: Addon[];
+}
+
+type ServicesConfig = Record<string, ServiceConfig>;
+
+const SERVICE_META: Record<string, { label: string; description: string; icon: any; color: string }> = {
+  petsitting:   { label: 'Pet Sitting',    description: 'Stay at client\'s home while they\'re away', icon: Home,         color: 'text-indigo-600' },
+  boarding:     { label: 'Boarding',       description: 'Pet stays at your home overnight',           icon: Moon,         color: 'text-blue-600' },
+  daycare:      { label: 'Day Care',       description: 'Full-day care at your home',                 icon: Clock,        color: 'text-green-600' },
+  dogwalking:   { label: 'Dog Walking',    description: 'Solo or group walks',                        icon: MapPin,       color: 'text-amber-600' },
+  grooming:     { label: 'Grooming',       description: 'Bath, haircut and styling',                  icon: Scissors,     color: 'text-pink-600' },
+  pettraining:  { label: 'Training',       description: 'Obedience and behaviour sessions',           icon: GraduationCap,color: 'text-purple-600' },
+  housesitting: { label: 'House Sitting',  description: 'House check-ins while client travels',       icon: Home,         color: 'text-teal-600' },
+  dropinvisit:  { label: 'Drop-In Visit',  description: 'Short home visit to feed/play',              icon: Dog,          color: 'text-orange-600' },
+};
+
+const ALL_SERVICE_IDS = Object.keys(SERVICE_META);
+
+const DEFAULT_ADDONS: Record<string, Addon[]> = {
+  boarding:   [{ id: 'extra_pet', label: 'Additional pet', price: 60, enabled: true }],
+  daycare:    [{ id: 'extra_pet', label: 'Additional pet', price: 50, enabled: true }],
+  dogwalking: [{ id: 'extra_dog', label: 'Additional dog', price: 30, enabled: true }, { id: 'gps_report', label: 'GPS walk report', price: 10, enabled: false }],
+  grooming:   [{ id: 'blow_dry', label: 'Blow dry', price: 40, enabled: true }, { id: 'nail_trim', label: 'Nail trim', price: 20, enabled: true }],
+};
+
+function buildDefault(): ServicesConfig {
+  return Object.fromEntries(
+    ALL_SERVICE_IDS.map(id => [id, {
+      enabled: false,
+      basePrice: null,
+      addons: DEFAULT_ADDONS[id] ?? [],
+    }])
+  );
+}
+
+function fetchWithAuth(url: string, opts?: RequestInit) {
+  return fetch(url, { ...opts, credentials: 'include' }).then(r => r.json());
+}
+
+export default function POSServices() {
+  const { toast } = useToast();
+  const [config, setConfig] = useState<ServicesConfig>(buildDefault());
+  const [expandedService, setExpandedService] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['/api/provider-profile/services'],
+    queryFn: () => fetchWithAuth('/api/provider-profile/services'),
+  });
+
+  useEffect(() => {
+    if (data?.servicesConfig) {
+      const merged = buildDefault();
+      for (const [id, cfg] of Object.entries(data.servicesConfig as ServicesConfig)) {
+        if (merged[id]) merged[id] = { ...merged[id], ...cfg };
+      }
+      setConfig(merged);
+    }
+  }, [data]);
+
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      fetchWithAuth('/api/provider-profile/services', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-profile/services'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-profile/me'] });
+      setDirty(false);
+      toast({ title: 'Services saved' });
+    },
+    onError: () => toast({ title: 'Failed to save', variant: 'destructive' }),
+  });
+
+  function update(serviceId: string, patch: Partial<ServiceConfig>) {
+    setConfig(prev => ({ ...prev, [serviceId]: { ...prev[serviceId], ...patch } }));
+    setDirty(true);
+  }
+
+  function updateAddon(serviceId: string, addonIdx: number, patch: Partial<Addon>) {
+    setConfig(prev => {
+      const addons = [...(prev[serviceId].addons ?? [])];
+      addons[addonIdx] = { ...addons[addonIdx], ...patch };
+      return { ...prev, [serviceId]: { ...prev[serviceId], addons } };
+    });
+    setDirty(true);
+  }
+
+  function addAddon(serviceId: string) {
+    const newAddon: Addon = { id: `addon_${Date.now()}`, label: '', price: 0, enabled: true };
+    setConfig(prev => ({
+      ...prev,
+      [serviceId]: { ...prev[serviceId], addons: [...(prev[serviceId].addons ?? []), newAddon] },
+    }));
+    setDirty(true);
+  }
+
+  function removeAddon(serviceId: string, addonIdx: number) {
+    setConfig(prev => {
+      const addons = (prev[serviceId].addons ?? []).filter((_, i) => i !== addonIdx);
+      return { ...prev, [serviceId]: { ...prev[serviceId], addons } };
+    });
+    setDirty(true);
+  }
+
+  const enabledCount = Object.values(config).filter(s => s.enabled).length;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3].map(i => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-gray-900">Your Services</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {enabledCount === 0 ? 'No services enabled yet' : `${enabledCount} service${enabledCount !== 1 ? 's' : ''} active`}
+          </p>
+        </div>
+        {dirty && (
+          <button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+            className="px-4 py-2 bg-amber-500 text-white text-sm font-semibold rounded-xl hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-60">
+            {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            Save
+          </button>
+        )}
+      </div>
+
+      {/* Info banner */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-start gap-2">
+        <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+        <p className="text-xs text-blue-800">
+          Enabled services and prices are shown on your public profile. Prices are in ILS (₪) before platform fee.
+          <span className="block mt-0.5 text-blue-600">Commission 15% + VAT 18% on commission is deducted from each booking.</span>
+        </p>
+      </div>
+
+      {/* Service cards */}
+      <div className="space-y-3">
+        {ALL_SERVICE_IDS.map(serviceId => {
+          const meta = SERVICE_META[serviceId];
+          const svc = config[serviceId];
+          const Icon = meta.icon;
+          const isExpanded = expandedService === serviceId;
+
+          return (
+            <div key={serviceId} className={`bg-white border rounded-xl overflow-hidden transition-all ${svc.enabled ? 'border-amber-200' : 'border-gray-200'}`}>
+              {/* Service header row */}
+              <div className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${svc.enabled ? 'bg-amber-50' : 'bg-gray-50'}`}>
+                    <Icon className={`w-5 h-5 ${svc.enabled ? meta.color : 'text-gray-300'}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold ${svc.enabled ? 'text-gray-900' : 'text-gray-400'}`}>{meta.label}</p>
+                    <p className="text-xs text-gray-400 truncate">{meta.description}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {svc.enabled && svc.basePrice != null && (
+                      <span className="text-sm font-bold text-green-700">₪{svc.basePrice}</span>
+                    )}
+                    <button
+                      onClick={() => update(serviceId, { enabled: !svc.enabled })}
+                      className="transition-colors"
+                      title={svc.enabled ? 'Disable service' : 'Enable service'}>
+                      {svc.enabled
+                        ? <ToggleRight className="w-7 h-7 text-amber-500" />
+                        : <ToggleLeft className="w-7 h-7 text-gray-300" />}
+                    </button>
+                    {svc.enabled && (
+                      <button onClick={() => setExpandedService(isExpanded ? null : serviceId)}
+                        className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
+                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Expanded editor */}
+              {svc.enabled && isExpanded && (
+                <div className="border-t border-gray-100 p-4 space-y-4 bg-gray-50">
+                  {/* Base price */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                      Base price (₪ / booking)
+                    </label>
+                    <div className="relative w-36">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₪</span>
+                      <input
+                        type="number" min="0" step="5"
+                        value={svc.basePrice ?? ''}
+                        onChange={e => update(serviceId, { basePrice: e.target.value === '' ? null : Number(e.target.value) })}
+                        placeholder="e.g. 150"
+                        className="w-full pl-7 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-amber-400 bg-white font-medium"
+                        style={{ fontSize: '16px' }}
+                      />
+                    </div>
+                    {svc.basePrice != null && (
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        Your net after 15% commission + VAT: ₪{(svc.basePrice * 0.823).toFixed(0)}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Add-ons */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-semibold text-gray-700">Add-ons</label>
+                      <button onClick={() => addAddon(serviceId)}
+                        className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700 font-medium">
+                        <Plus className="w-3 h-3" /> Add
+                      </button>
+                    </div>
+                    {(!svc.addons || svc.addons.length === 0) ? (
+                      <p className="text-xs text-gray-400 italic">No add-ons for this service</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {svc.addons.map((addon, addonIdx) => (
+                          <div key={addon.id} className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl p-2.5">
+                            <button onClick={() => updateAddon(serviceId, addonIdx, { enabled: !addon.enabled })}
+                              className="shrink-0 transition-colors">
+                              {addon.enabled
+                                ? <ToggleRight className="w-5 h-5 text-amber-400" />
+                                : <ToggleLeft className="w-5 h-5 text-gray-300" />}
+                            </button>
+                            <input
+                              type="text"
+                              value={addon.label}
+                              onChange={e => updateAddon(serviceId, addonIdx, { label: e.target.value })}
+                              placeholder="Add-on name"
+                              className="flex-1 text-xs border-0 outline-none bg-transparent font-medium text-gray-800 placeholder-gray-400"
+                            />
+                            <div className="flex items-center gap-1 shrink-0">
+                              <span className="text-xs text-gray-400">₪</span>
+                              <input
+                                type="number" min="0" step="5"
+                                value={addon.price}
+                                onChange={e => updateAddon(serviceId, addonIdx, { price: Number(e.target.value) })}
+                                className="w-14 text-xs border border-gray-200 rounded-lg px-2 py-1 text-center font-medium focus:outline-none focus:border-amber-400 bg-white"
+                              />
+                            </div>
+                            <button onClick={() => removeAddon(serviceId, addonIdx)}
+                              className="p-1 text-gray-300 hover:text-red-400 transition-colors shrink-0">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Public visibility note */}
+                  <div className="flex items-center gap-2 text-xs text-gray-400 bg-white rounded-xl p-2.5 border border-gray-100">
+                    <Eye className="w-3.5 h-3.5 shrink-0" />
+                    <span>Visible on your public profile once saved</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Bottom save */}
+      {dirty && (
+        <button
+          onClick={() => saveMutation.mutate()}
+          disabled={saveMutation.isPending}
+          className="w-full py-3 bg-amber-500 text-white text-sm font-semibold rounded-xl hover:bg-amber-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
+          {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          Save Services
+        </button>
+      )}
+    </div>
+  );
+}

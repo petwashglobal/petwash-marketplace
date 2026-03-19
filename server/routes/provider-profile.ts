@@ -160,28 +160,39 @@ router.get('/me', async (req: Request, res: Response) => {
   }
 });
 
+// ─── Helpers for time validation ─────────────────────────────────────────────
+function isValidHHMM(t: string): boolean {
+  const [h, m] = t.split(':').map(Number);
+  return h >= 0 && h <= 23 && m >= 0 && m <= 59;
+}
+
 // Working hours shape: { mon: {active:bool, from:'09:00', to:'18:00'}, tue: {...}, ... }
 const dayHoursSchema = z.object({
   active: z.boolean(),
-  from: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-  to:   z.string().regex(/^\d{2}:\d{2}$/).optional(),
-}).optional();
+  from: z.string().regex(/^\d{2}:\d{2}$/).refine(isValidHHMM, { message: 'Invalid time (must be HH:MM, 00:00–23:59)' }).optional(),
+  to:   z.string().regex(/^\d{2}:\d{2}$/).refine(isValidHHMM, { message: 'Invalid time (must be HH:MM, 00:00–23:59)' }).optional(),
+}).refine(d => !d.active || !d.from || !d.to || d.from < d.to, { message: '"from" must be before "to"' }).optional();
 
 // ─── Patch schema — strict allowlist ─────────────────────────────────────────
 const patchSchema = z.object({
   bio:              z.string().max(2000).optional(),
-  languages:        z.array(z.string()).optional(),
+  // Languages: whitelist-enforced to the supported set
+  languages:        z.array(z.string().refine(l => LANGUAGE_WHITELIST.includes(l), { message: 'Unsupported language' })).optional(),
   availabilityState: z.enum(AVAILABILITY_WHITELIST).optional(),
   priceFromCents:   z.number().int().min(0).max(100_000_00).optional().nullable(), // max ₪100,000
   acceptedPets:     z.array(z.enum(PET_WHITELIST)).optional(),
   hasFencedYard:    z.boolean().optional().nullable(),
   hasNoPetsAtHome:  z.boolean().optional().nullable(),
-  // Availability scheduling (new)
-  blockedDates:     z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(365).optional(),
-  workingHours:     z.object({
+  // Availability scheduling — format + calendar validity
+  blockedDates: z.array(
+    z.string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD')
+      .refine(d => { const p = new Date(d + 'T12:00:00'); return !isNaN(p.getTime()) && p.toISOString().startsWith(d); }, { message: 'Invalid calendar date' })
+  ).max(365).optional(),
+  workingHours: z.object({
     mon: dayHoursSchema, tue: dayHoursSchema, wed: dayHoursSchema, thu: dayHoursSchema,
     fri: dayHoursSchema, sat: dayHoursSchema, sun: dayHoursSchema,
-  }).optional().nullable(),
+  }).strict().optional().nullable(), // .strict() on inner object rejects unknown day keys
 }).strict(); // .strict() means any unknown key = validation error
 
 // ─── PATCH /api/provider-profile/me ──────────────────────────────────────────
@@ -255,6 +266,76 @@ router.patch('/me', async (req: Request, res: Response) => {
   } catch (err) {
     logger.error('[ProviderProfile] PATCH /me failed', { uid, err });
     return res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// ─── Services config schema ───────────────────────────────────────────────────
+const addonSchema = z.object({
+  id:      z.string().max(60),
+  label:   z.string().max(100),
+  price:   z.number().min(0).max(10000),
+  enabled: z.boolean(),
+});
+
+const serviceSchema = z.object({
+  enabled:   z.boolean(),
+  basePrice: z.number().min(0).max(100000).nullable().optional(),
+  addons:    z.array(addonSchema).max(20).optional(),
+});
+
+const ALLOWED_SERVICE_IDS = ['boarding', 'daycare', 'dogwalking', 'grooming', 'pettraining', 'petsitting', 'housesitting', 'dropinvisit'];
+
+const servicesConfigSchema = z
+  .record(z.string(), serviceSchema)
+  .refine(obj => Object.keys(obj).every(k => ALLOWED_SERVICE_IDS.includes(k)), { message: 'Unknown service type' });
+
+// ─── GET /api/provider-profile/services ──────────────────────────────────────
+router.get('/services', async (req: Request, res: Response) => {
+  applyDevBypass(req);
+  const uid = getUid(req);
+  if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+
+  try {
+    const rows = await pool.query(
+      `SELECT services_config FROM provider_profiles WHERE user_id = $1`,
+      [uid]
+    );
+    if (rows.rows.length === 0) return res.status(404).json({ error: 'Provider profile not found' });
+
+    return res.json({ success: true, servicesConfig: rows.rows[0].services_config ?? null });
+  } catch (err) {
+    logger.error('[ProviderProfile] GET /services failed', { uid, err });
+    return res.status(500).json({ error: 'Failed to load services' });
+  }
+});
+
+// ─── PATCH /api/provider-profile/services ────────────────────────────────────
+router.patch('/services', async (req: Request, res: Response) => {
+  applyDevBypass(req);
+  const uid = getUid(req);
+  if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+
+  const parsed = servicesConfigSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Invalid services config', details: parsed.error.flatten() });
+  }
+
+  const [existing] = await db
+    .select({ userId: providerProfiles.userId })
+    .from(providerProfiles)
+    .where(eq(providerProfiles.userId, uid));
+  if (!existing) return res.status(404).json({ error: 'Provider profile not found' });
+
+  try {
+    await pool.query(
+      `UPDATE provider_profiles SET services_config = $1, updated_at = NOW() WHERE user_id = $2`,
+      [JSON.stringify(parsed.data), uid]
+    );
+    logger.info('[ProviderProfile] PATCH /services', { uid, services: Object.keys(parsed.data) });
+    return res.json({ success: true, servicesConfig: parsed.data });
+  } catch (err) {
+    logger.error('[ProviderProfile] PATCH /services failed', { uid, err });
+    return res.status(500).json({ error: 'Failed to save services' });
   }
 });
 

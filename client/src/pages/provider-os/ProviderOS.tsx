@@ -7,7 +7,7 @@ import {
   Home, Briefcase, CalendarDays, Wallet, User,
   Bell, Settings, FileText, Shield, Bot,
   Menu, X, ChevronRight, Power, LogOut,
-  Dog, MapPin, Scissors, GraduationCap,
+  Dog, MapPin, Scissors, GraduationCap, Star,
 } from 'lucide-react';
 import POSDashboard from './POSDashboard';
 import POSJobs from './POSJobs';
@@ -19,8 +19,9 @@ import POSDocuments from './POSDocuments';
 import POSNotifications from './POSNotifications';
 import POSSafety from './POSSafety';
 import POSAssistant from './POSAssistant';
+import POSServices from './POSServices';
 
-type Module = 'dashboard' | 'jobs' | 'calendar' | 'wallet' | 'profile' | 'settings' | 'documents' | 'notifications' | 'safety' | 'assistant';
+type Module = 'dashboard' | 'jobs' | 'calendar' | 'wallet' | 'profile' | 'services' | 'settings' | 'documents' | 'notifications' | 'safety' | 'assistant';
 type Platform = 'all' | 'petsitter' | 'walkpet' | 'petwash' | 'academy';
 
 const PLATFORMS: { id: Platform; label: string; labelHe: string; icon: React.ComponentType<any> }[] = [
@@ -44,6 +45,7 @@ const SIDEBAR_ITEMS = [
   { id: 'calendar' as Module, label: 'Calendar & Availability', labelHe: 'יומן וזמינות', icon: CalendarDays },
   { id: 'wallet' as Module, label: 'Wallet & Payouts', labelHe: 'ארנק ותשלומים', icon: Wallet },
   { id: 'profile' as Module, label: 'Provider Profile', labelHe: 'פרופיל ספק', icon: User },
+  { id: 'services' as Module, label: 'Services & Add-ons', labelHe: 'שירותים ותוספות', icon: Star },
   { id: 'settings' as Module, label: 'Settings', labelHe: 'הגדרות', icon: Settings },
   { id: 'documents' as Module, label: 'Documents', labelHe: 'מסמכים', icon: FileText },
   { id: 'notifications' as Module, label: 'Notifications', labelHe: 'התראות', icon: Bell },
@@ -53,8 +55,8 @@ const SIDEBAR_ITEMS = [
 
 const MODULE_LABELS: Record<Module, string> = {
   dashboard: 'Dashboard', jobs: 'Jobs & Bookings', calendar: 'Calendar & Availability',
-  wallet: 'Wallet & Payouts', profile: 'Provider Profile', settings: 'Settings',
-  documents: 'Documents & Signatures', notifications: 'Notifications',
+  wallet: 'Wallet & Payouts', profile: 'Provider Profile', services: 'Services & Add-ons',
+  settings: 'Settings', documents: 'Documents & Signatures', notifications: 'Notifications',
   safety: 'Safety & Reporting', assistant: 'AI Assistant',
 };
 
@@ -246,6 +248,7 @@ export default function ProviderOS() {
             {activeModule === 'calendar' && <POSCalendar />}
             {activeModule === 'wallet' && <POSWallet activePlatform={activePlatform} />}
             {activeModule === 'profile' && <POSProfile />}
+            {activeModule === 'services' && <POSServices />}
             {activeModule === 'settings' && <POSSettings />}
             {activeModule === 'documents' && <POSDocuments />}
             {activeModule === 'notifications' && <POSNotifications />}

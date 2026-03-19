@@ -1,0 +1,84 @@
+Good. This is a meaningful provider-side step.
+
+I accept this as completion of:
+- jobs clarity fixes
+- earnings display correction
+- availability editor
+- reviews visibility
+- migration plan draft
+
+What is now good:
+- multi-status bookings query is fixed
+- availability POST/PATCH mismatch is fixed
+- finance strip is reading the right earnings values
+- booking counts exist
+- availability editor is now real and persisted
+- reviews are visible in the Badges tab
+- the old/new provider-system split is now documented honestly
+
+Now I want the next phase done with the same proof standard and less technical debt.
+
+1. Proof I still want
+Please send actual evidence for:
+- one authenticated GET /api/provider-profile/me response with blockedDates and workingHours populated
+- one authenticated PATCH /api/provider-profile/me success changing availability fields
+- one provider dashboard screenshot showing corrected earnings values
+- one POSJobs screenshot showing live tab counts
+- one POSProfile Availability tab screenshot
+- one Badges tab screenshot with real review data or honest empty state
+
+2. Hardening checks
+Please confirm:
+- workingHours schema rejects invalid day keys and invalid time ranges
+- blockedDates rejects malformed dates
+- profile save persists availability without breaking other profile fields
+- review endpoint never leaks private reviewer data beyond what is intended
+- booking-counts endpoint is correctly scoped to the authenticated provider
+- no dev bypass can ever run in production
+
+3. Next build order
+Now do this in order:
+
+A. Provider dashboard maturity
+- upcoming jobs module cleaned up
+- requests module with clearer actions
+- unread messages and unread requests summary
+- honest empty states
+
+B. Service settings and add-ons editor
+- provider can enable/disable services
+- provider can edit add-ons
+- public service settings flow into browse/profile correctly
+
+C. Earnings maturity
+- this week
+- this month
+- pending payout
+- paid out
+- recent payouts list
+- per-booking earnings detail if real data exists
+
+D. Migration execution plan
+I want a concrete source-of-truth decision next, not only a draft.
+Please specify:
+- which table becomes canonical for provider profile
+- which table becomes canonical for provider bookings
+- what data must be backfilled
+- what routes will be moved next
+- what legacy routes can be retired first
+
+4. Important rule
+Do not let the old/new split become permanent.
+The next phase must reduce it, not normalize it.
+
+5. Exact next deliverables
+Please send next:
+- exact files changed
+- real screenshots
+- one authenticated API proof for availability save
+- one screenshot of earnings dashboard
+- one screenshot of jobs counts
+- one screenshot of reviews
+- updated migration checklist with concrete route/table ownership
+
+Proceed with provider dashboard maturity and service settings/add-ons editor next.

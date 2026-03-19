@@ -143,10 +143,9 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
   const totalPages = Math.ceil(total / 15);
 
   const handleFinishRequest = (booking: any) => {
-    const amountCents = booking.providerPayout || booking.amount || 0;
     setFinishModal({
       booking,
-      amountILS: (amountCents / 100).toFixed(0),
+      amountILS: parseFloat(booking.providerPayout || booking.subtotal || '0').toFixed(0),
       paymentMethod: 'cash',
     });
   };
@@ -413,14 +412,12 @@ function JobCard({
             <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                {booking.scheduledDate
-                  ? new Date(booking.scheduledDate).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
-                  : booking.startTime
-                  ? new Date(booking.startTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+                {booking.startTime
+                  ? new Date(booking.startTime).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
                   : 'לא נקבע'}
               </span>
               <span className="font-semibold text-green-700">
-                ₪{((booking.providerPayout || booking.amount || 0) / 100).toFixed(0)}
+                ₪{parseFloat(booking.providerPayout || booking.subtotal || '0').toFixed(0)}
               </span>
             </div>
           </div>

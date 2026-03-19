@@ -479,6 +479,122 @@ router.post('/bookings/:bookingId/complete', async (req: Request, res: Response)
   }
 });
 
+// ── Unified action handler for accept / decline / cancel / report ──────────
+async function bookingActionHandler(req: Request, res: Response, action: string) {
+  try {
+    const user = await getAuthenticatedUser(req, res);
+    if (!user) return;
+
+    const { bookingId } = req.params;
+    const providerRecords = await db.select({ id: providers.id }).from(providers).where(eq(providers.userId, user.uid));
+    const providerIds = providerRecords.map(p => p.id);
+    if (providerIds.length === 0) return res.status(403).json({ error: 'Not a provider' });
+
+    const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId));
+    if (!booking || !providerOwnsBooking(providerIds, booking.providerId)) {
+      return res.status(404).json({ error: 'Booking not found or not yours' });
+    }
+
+    const now = new Date();
+    let update: Record<string, any> = {};
+    let newStatus = '';
+
+    if (action === 'accept') {
+      if (!['new_request', 'pending', 'confirmed', 'owner_confirmed'].includes(booking.status)) {
+        return res.status(400).json({ error: `Cannot accept booking with status: ${booking.status}` });
+      }
+      newStatus = 'provider_confirmed';
+      update = { status: 'provider_confirmed', confirmedAt: now };
+    } else if (action === 'decline') {
+      if (!['new_request', 'pending', 'confirmed', 'owner_confirmed'].includes(booking.status)) {
+        return res.status(400).json({ error: `Cannot decline booking with status: ${booking.status}` });
+      }
+      const { reason } = req.body;
+      newStatus = 'cancelled';
+      update = { status: 'cancelled', cancelledAt: now, cancellationReason: reason || 'Provider declined' };
+    } else if (action === 'cancel') {
+      if (['completed', 'cancelled'].includes(booking.status)) {
+        return res.status(400).json({ error: `Cannot cancel booking with status: ${booking.status}` });
+      }
+      const { reason } = req.body;
+      newStatus = 'cancelled';
+      update = { status: 'cancelled', cancelledAt: now, cancellationReason: reason || 'Provider cancelled' };
+    } else if (action === 'report') {
+      const { reason } = req.body;
+      newStatus = 'dispute';
+      update = { status: 'dispute', cancellationReason: reason || 'Issue reported by provider' };
+    } else {
+      return res.status(400).json({ error: `Unknown action: ${action}` });
+    }
+
+    await db.update(bookings).set(update).where(eq(bookings.id, bookingId));
+
+    logger.info(`[ProviderDashboard] Booking ${action}`, {
+      bookingId,
+      bookingNumber: booking.bookingNumber,
+      newStatus,
+      uid: user.uid,
+      ts: now.toISOString(),
+    });
+
+    res.json({ success: true, action, bookingId, newStatus, stamp: `BOOKING_${action.toUpperCase()}::${user.uid}::${now.toISOString()}` });
+  } catch (error) {
+    logger.error(`[ProviderDashboard] Action ${action} error`, error);
+    res.status(500).json({ error: `Failed to ${action} booking` });
+  }
+}
+
+router.post('/bookings/:bookingId/accept',  (req, res) => bookingActionHandler(req, res, 'accept'));
+router.post('/bookings/:bookingId/decline', (req, res) => bookingActionHandler(req, res, 'decline'));
+router.post('/bookings/:bookingId/cancel',  (req, res) => bookingActionHandler(req, res, 'cancel'));
+router.post('/bookings/:bookingId/report',  (req, res) => bookingActionHandler(req, res, 'report'));
+
+// ── Upcoming confirmed jobs (next 7 days) ───────────────────────────────────
+router.get('/upcoming', async (req: Request, res: Response) => {
+  try {
+    const user = await getAuthenticatedUser(req, res);
+    if (!user) return;
+
+    const providerRecords = await db.select({ id: providers.id }).from(providers).where(eq(providers.userId, user.uid));
+    const providerIds = providerRecords.map(p => p.id);
+
+    if (providerIds.length === 0) return res.json({ success: true, upcoming: [] });
+
+    const now = new Date();
+    const sevenDaysOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    const providerFilter = sql`${bookings.providerId} = ANY(${sql`ARRAY[${sql.join(providerIds.map(id => sql`${id}`), sql`, `)}]`})`;
+
+    const rows = await db
+      .select({
+        id: bookings.id,
+        bookingNumber: bookings.bookingNumber,
+        serviceType: bookings.serviceType,
+        status: bookings.status,
+        startTime: bookings.startTime,
+        providerPayout: bookings.providerPayout,
+        userId: bookings.userId,
+        platformId: bookings.platformId,
+        specialRequests: bookings.specialRequests,
+      })
+      .from(bookings)
+      .where(
+        sql`${providerFilter}
+          AND ${bookings.status} IN ('confirmed','provider_confirmed')
+          AND ${bookings.startTime} IS NOT NULL
+          AND ${bookings.startTime} >= ${now}
+          AND ${bookings.startTime} <= ${sevenDaysOut}`
+      )
+      .orderBy(bookings.startTime)
+      .limit(20);
+
+    res.json({ success: true, upcoming: rows });
+  } catch (error) {
+    logger.error('[ProviderDashboard] Upcoming error', error);
+    res.status(500).json({ error: 'Failed to load upcoming jobs' });
+  }
+});
+
 router.post('/availability', async (req: Request, res: Response) => {
   return availabilityHandler(req, res);
 });
