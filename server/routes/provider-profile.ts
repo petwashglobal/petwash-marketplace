@@ -137,8 +137,15 @@ router.get('/me', async (req: Request, res: Response) => {
         acceptedPets: row.accepted_pets ?? [],
         hasFencedYard: row.has_fenced_yard ?? null,
         hasNoPetsAtHome: row.has_no_pets_at_home ?? null,
-        blockedDates: row.blocked_dates ?? [],
+        // Dedup on read — defensive guard against any pre-hardening dirty data
+        blockedDates: [...new Set<string>(row.blocked_dates ?? [])].sort(),
         workingHours: row.working_hours ?? null,
+        // Computed availability signal — used by browse/profile surfaces
+        nextAvailableSlot: computeNextAvailableSlot(
+          row.working_hours,
+          [...new Set<string>(row.blocked_dates ?? [])],
+          row.availability_state ?? 'offline',
+        ),
         // Read-only trust/compliance fields (provider can SEE but not edit)
         backgroundCheckStatus: row.background_check_status ?? null,  // read-only
         ratingAvg: row.rating_avg != null ? Number(row.rating_avg) : null,
@@ -159,6 +166,38 @@ router.get('/me', async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Failed to load profile' });
   }
 });
+
+// ─── Next available slot computation ─────────────────────────────────────────
+// Returns the ISO date string (YYYY-MM-DD) of the next day that:
+//   1. Has active working hours in the provider's schedule
+//   2. Is NOT in blockedDates
+//   3. Falls within the next 60 days
+// Returns null if no available slot found within the window.
+function computeNextAvailableSlot(
+  workingHours: Record<string, { active?: boolean }> | null,
+  blockedDates: string[],
+  availabilityState: string,
+): string | null {
+  if (!availabilityState || availabilityState === 'offline' || availabilityState === 'busy') return null;
+  const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const blockedSet = new Set(blockedDates);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = 1; i <= 60; i++) {
+    const d = new Date(today.getTime() + i * 86_400_000);
+    const dayKey = DAY_KEYS[d.getDay()];
+    const dayConfig = workingHours?.[dayKey];
+    // If no workingHours configured at all, treat all weekdays Mon-Fri as available
+    const isWorkDay = workingHours
+      ? (dayConfig?.active === true)
+      : d.getDay() >= 1 && d.getDay() <= 5;
+    if (!isWorkDay) continue;
+    const iso = d.toISOString().split('T')[0];
+    if (blockedSet.has(iso)) continue;
+    return iso;
+  }
+  return null;
+}
 
 // ─── Helpers for time validation ─────────────────────────────────────────────
 function isValidHHMM(t: string): boolean {
@@ -228,7 +267,8 @@ router.patch('/me', async (req: Request, res: Response) => {
     if (data.acceptedPets !== undefined)     updates.acceptedPets = data.acceptedPets;
     if (data.hasFencedYard !== undefined)    updates.hasFencedYard = data.hasFencedYard;
     if (data.hasNoPetsAtHome !== undefined)  updates.hasNoPetsAtHome = data.hasNoPetsAtHome;
-    if (data.blockedDates !== undefined)     updates.blockedDates = data.blockedDates;
+    // Dedup on write — belt-and-suspenders (schema refine already rejects dups, but auto-heal here too)
+    if (data.blockedDates !== undefined)     updates.blockedDates = [...new Set(data.blockedDates)].sort();
     if (data.workingHours !== undefined)     updates.workingHours = data.workingHours;
 
     await db

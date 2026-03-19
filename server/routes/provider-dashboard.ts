@@ -324,58 +324,19 @@ function providerOwnsBooking(providerIds: number[], bookingProviderId: string | 
   return providerIds.includes(bookingPid);
 }
 
-router.post('/bookings/:bookingId/confirm', async (req: Request, res: Response) => {
-  try {
-    const user = await getAuthenticatedUser(req, res);
-    if (!user) return;
-
-    const { bookingId } = req.params;
-    const providerRecords = await db.select().from(providers).where(eq(providers.userId, user.uid));
-    const providerIds = providerRecords.map(p => p.id);
-
-    if (providerIds.length === 0) {
-      return res.status(403).json({ error: 'Not a provider' });
-    }
-
-    const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId));
-
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
-    }
-
-    if (!providerOwnsBooking(providerIds, booking.providerId)) {
-      return res.status(403).json({ error: 'Not your booking' });
-    }
-
-    if (!['pending', 'confirmed', 'owner_confirmed'].includes(booking.status)) {
-      return res.status(400).json({ error: `Cannot confirm booking with status: ${booking.status}` });
-    }
-
-    const now = new Date();
-    await db.update(bookings).set({
-      status: 'provider_confirmed',
-      confirmedAt: now,
-    }).where(eq(bookings.id, bookingId));
-
-    logger.info('[ProviderDashboard] Booking confirmed', {
-      bookingId,
-      bookingNumber: booking.bookingNumber,
-      providerId: booking.providerId,
-      confirmedAt: now.toISOString(),
-      confirmedByUid: user.uid,
-    });
-
-    res.json({
-      success: true,
-      action: 'confirmed',
-      bookingId,
-      confirmedAt: now.toISOString(),
-      stamp: `PROVIDER_CONFIRMED::${user.uid}::${now.toISOString()}`,
-    });
-  } catch (error) {
-    logger.error('[ProviderDashboard] Confirm booking error', error);
-    res.status(500).json({ error: 'Failed to confirm booking' });
-  }
+// ── DEPRECATED: POST /bookings/:id/confirm ─────────────────────────────────
+// Migration step D-2: this route is superseded by POST /bookings/:id/accept
+// (which correctly transitions to provider_confirmed and is auth-owner scoped).
+// Kept alive with a 308 redirect for backward compat during migration window.
+// Rollback: remove the 308 and restore the full handler body from git.
+// Remove entirely after Phase 3 migration is confirmed safe.
+router.post('/bookings/:bookingId/confirm', (req: Request, res: Response) => {
+  const { bookingId } = req.params;
+  logger.warn('[ProviderDashboard] DEPRECATED /confirm called — redirecting to /accept', { bookingId });
+  res.setHeader('Deprecation', 'version="2026-03-19"');
+  res.setHeader('Link', `</api/provider-dashboard/bookings/${bookingId}/accept>; rel="successor-version"`);
+  // 308 Permanent Redirect preserves POST method
+  res.redirect(308, `/api/provider-dashboard/bookings/${bookingId}/accept`);
 });
 
 router.post('/bookings/:bookingId/start', async (req: Request, res: Response) => {
@@ -506,23 +467,30 @@ async function bookingActionHandler(req: Request, res: Response, action: string)
       newStatus = 'provider_confirmed';
       update = { status: 'provider_confirmed', confirmedAt: now };
     } else if (action === 'decline') {
+      // Decline: provider refuses a new/pending request — terminal, stored with DECLINED: prefix
       if (!['new_request', 'pending', 'confirmed', 'owner_confirmed'].includes(booking.status)) {
-        return res.status(400).json({ error: `Cannot decline booking with status: ${booking.status}` });
+        return res.status(400).json({ error: `Cannot decline a booking with status: ${booking.status}` });
       }
       const { reason } = req.body;
       newStatus = 'cancelled';
-      update = { status: 'cancelled', cancelledAt: now, cancellationReason: reason || 'Provider declined' };
+      update = { status: 'cancelled', cancelledAt: now, cancellationReason: `DECLINED: ${reason || 'Provider declined'}` };
     } else if (action === 'cancel') {
-      if (['completed', 'cancelled'].includes(booking.status)) {
-        return res.status(400).json({ error: `Cannot cancel booking with status: ${booking.status}` });
+      // Cancel: provider cancels an already-accepted booking — distinct from decline
+      if (['completed', 'cancelled', 'dispute'].includes(booking.status)) {
+        return res.status(400).json({ error: `Cannot cancel a booking with status: ${booking.status}` });
       }
       const { reason } = req.body;
       newStatus = 'cancelled';
-      update = { status: 'cancelled', cancelledAt: now, cancellationReason: reason || 'Provider cancelled' };
+      update = { status: 'cancelled', cancelledAt: now, cancellationReason: `CANCELLED: ${reason || 'Provider cancelled'}` };
     } else if (action === 'report') {
+      // Report: flags a booking as dispute — reason stored with DISPUTE: prefix so it's
+      // semantically distinguishable from a cancellation reason using the same column
+      if (['completed', 'cancelled'].includes(booking.status)) {
+        return res.status(400).json({ error: `Cannot report a booking with status: ${booking.status}` });
+      }
       const { reason } = req.body;
       newStatus = 'dispute';
-      update = { status: 'dispute', cancellationReason: reason || 'Issue reported by provider' };
+      update = { status: 'dispute', cancellationReason: `DISPUTE: ${reason || 'Issue reported by provider'}` };
     } else {
       return res.status(400).json({ error: `Unknown action: ${action}` });
     }
