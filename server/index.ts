@@ -546,6 +546,15 @@ if (isProduction) {
       });
     });
 
+    // Non-blocking: backfill ranking scores for all providers (runs after trust, 500ms delay).
+    setTimeout(() => {
+      import('./utils/providerRanking').then(({ backfillAllProviderRankingScores }) => {
+        backfillAllProviderRankingScores().catch(err =>
+          console.warn('[RankingBackfill] Startup backfill failed', err)
+        );
+      });
+    }, 500);
+
     // 5. Serve static files - CONDITIONAL based on environment
     // DEVELOPMENT: Use Vite dev server with HMR for hot reloading
     // PRODUCTION: Serve pre-built static files from dist/public

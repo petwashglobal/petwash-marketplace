@@ -23,6 +23,11 @@ import {
   backfillAllProviderTrustMetrics,
   VERIFIED_BADGE_IDS,
 } from '../utils/providerTrustMetrics';
+import {
+  refreshAndCacheProviderRankingScore,
+  backfillAllProviderRankingScores,
+  rankingTier,
+} from '../utils/providerRanking';
 
 const SUPER_ADMIN_UID = 'vdiboz7IrUQEm2RbdO7VZLkBu552';
 
@@ -161,7 +166,7 @@ router.get('/providers/browse', async (req: Request, res: Response) => {
     backgroundCheckOnly,
     fencedYardOnly,
     noPetsAtHomeOnly,
-    sortBy = 'rating',
+    sortBy = 'ranking',
     limit = '24',
     offset = '0',
     // price + petType — NOW DB-backed (price_from_cents, accepted_pets columns added in migration)
@@ -223,12 +228,16 @@ router.get('/providers/browse', async (req: Request, res: Response) => {
 
   // ── ORDER BY — pure SQL (no user input in column name, switch-guarded) ──
   const orderByMap: Record<string, string> = {
-    rating:   'pp.rating_avg DESC NULLS LAST',
-    reviews:  'pp.rating_count DESC NULLS LAST',
-    new:      'pp.created_at DESC',
-    bookings: 'pp.completed_bookings_count DESC NULLS LAST',
+    ranking:   'COALESCE(pp.ranking_override, pp.ranking_score) DESC NULLS LAST, pp.rating_avg DESC NULLS LAST',
+    rating:    'pp.rating_avg DESC NULLS LAST',
+    reviews:   'pp.rating_count DESC NULLS LAST',
+    new:       'pp.created_at DESC',
+    bookings:  'pp.completed_bookings_count DESC NULLS LAST',
+    price_asc: 'pp.price_from_cents ASC NULLS LAST',
+    price_desc:'pp.price_from_cents DESC NULLS LAST',
+    trust:     'pp.trust_score DESC NULLS LAST, pp.rating_avg DESC NULLS LAST',
   };
-  const orderBy = orderByMap[sortBy] ?? orderByMap.rating;
+  const orderBy = orderByMap[sortBy] ?? orderByMap.ranking;
 
   const pageLimit  = Math.min(Math.max(Number(limit) || 24, 1), 100);
   const pageOffset = Math.max(Number(offset) || 0, 0);
@@ -266,6 +275,9 @@ router.get('/providers/browse', async (req: Request, res: Response) => {
         pp.completion_rate_pct        AS "completionRatePct",
         pp.cancellation_rate_pct      AS "cancellationRatePct",
         pp.badges                     AS "badges",
+        pp.ranking_score              AS "rankingScore",
+        pp.ranking_override           AS "rankingOverride",
+        COALESCE(pp.ranking_override, pp.ranking_score) AS "effectiveRankingScore",
         pp.created_at                 AS "createdAt",
         CASE WHEN sp.id IS NOT NULL THEN TRUE ELSE FALSE END AS "isSavedByUser"
       FROM provider_profiles pp
@@ -545,6 +557,160 @@ router.post('/admin/providers/backfill-trust-metrics', async (req: Request, res:
     logger.error('[TrustBackfill] Failed to start', { err });
     return res.status(500).json({ error: 'Failed to start backfill' });
   }
+});
+
+// ─── GET /api/admin/ranking/overview ─────────────────────────────────────────
+// Admin-only: list all providers sorted by effective ranking score.
+router.get('/admin/ranking/overview', async (req: Request, res: Response) => {
+  const uid = getUid(req);
+  if (!uid || uid !== SUPER_ADMIN_UID) {
+    return res.status(403).json({ error: 'Forbidden — admin only' });
+  }
+
+  try {
+    const result = await pool.query(`
+      SELECT
+        pp.user_id                    AS "userId",
+        TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')) AS "displayName",
+        pp.ranking_score              AS "rankingScore",
+        pp.ranking_override           AS "rankingOverride",
+        COALESCE(pp.ranking_override, pp.ranking_score) AS "effectiveRankingScore",
+        pp.ranking_boosted_until      AS "rankingBoostUntil",
+        pp.trust_score                AS "trustScore",
+        pp.rating_avg                 AS "ratingAvg",
+        pp.rating_count               AS "ratingCount",
+        pp.acceptance_rate_pct        AS "acceptanceRatePct",
+        pp.completion_rate_pct        AS "completionRatePct",
+        pp.cancellation_rate_pct      AS "cancellationRatePct",
+        pp.completed_bookings_count   AS "completedBookingsCount",
+        pp.badges                     AS "badges",
+        pp.ranking_updated_at         AS "rankingUpdatedAt"
+      FROM provider_profiles pp
+      LEFT JOIN users u ON u.id = pp.user_id
+      ORDER BY COALESCE(pp.ranking_override, pp.ranking_score) DESC NULLS LAST, pp.rating_avg DESC NULLS LAST
+      LIMIT 200
+    `);
+
+    return res.json({
+      providers: result.rows.map((r: any) => ({
+        ...r,
+        ratingAvg: r.ratingAvg !== null ? Number(r.ratingAvg) : null,
+        badges: Array.isArray(r.badges) ? r.badges : [],
+        tier: rankingTier(r.effectiveRankingScore),
+        boostActive: r.rankingBoostUntil ? new Date() < new Date(r.rankingBoostUntil) : false,
+      })),
+      total: result.rows.length,
+    });
+  } catch (err) {
+    logger.error('[RankingOverview] Failed', { err });
+    return res.status(500).json({ error: 'Failed to load ranking overview' });
+  }
+});
+
+// ─── PATCH /api/admin/providers/:userId/ranking ───────────────────────────────
+// Admin-only: set or clear ranking_override + temporary boost.
+// Body: { override?: number | null, boostDays?: number | null }
+//   override: 0–100 integer — replaces computed score entirely (null clears)
+//   boostDays: integer — extends boost until N days from now (null clears)
+router.patch('/admin/providers/:userId/ranking', async (req: Request, res: Response) => {
+  const uid = getUid(req);
+  if (!uid || uid !== SUPER_ADMIN_UID) {
+    return res.status(403).json({ error: 'Forbidden — admin only' });
+  }
+
+  const { userId } = req.params;
+  const { override, boostDays } = req.body as {
+    override?: number | null;
+    boostDays?: number | null;
+  };
+
+  // Validate override
+  if (override !== undefined && override !== null) {
+    const v = Number(override);
+    if (isNaN(v) || v < 0 || v > 100) {
+      return res.status(400).json({ error: 'override must be 0–100 or null' });
+    }
+  }
+
+  // Validate boostDays
+  if (boostDays !== undefined && boostDays !== null) {
+    const d = Number(boostDays);
+    if (isNaN(d) || d < 0 || d > 365) {
+      return res.status(400).json({ error: 'boostDays must be 0–365 or null' });
+    }
+  }
+
+  const [existing] = await db
+    .select({ userId: providerProfiles.userId })
+    .from(providerProfiles)
+    .where(eq(providerProfiles.userId, userId));
+
+  if (!existing) {
+    return res.status(404).json({ error: 'Provider not found' });
+  }
+
+  const boostUntil = boostDays === null
+    ? null
+    : boostDays !== undefined
+      ? new Date(Date.now() + Number(boostDays) * 86_400_000)
+      : undefined; // undefined = don't change
+
+  const updatePayload: Record<string, any> = {};
+  if (override !== undefined) updatePayload.rankingOverride = override === null ? null : Number(override);
+  if (boostUntil !== undefined) updatePayload.rankingBoostUntil = boostUntil;
+
+  if (Object.keys(updatePayload).length > 0) {
+    await db
+      .update(providerProfiles)
+      .set(updatePayload as any)
+      .where(eq(providerProfiles.userId, userId));
+  }
+
+  // Recompute ranking score to reflect the new override/boost
+  const newScore = await refreshAndCacheProviderRankingScore(userId);
+
+  logger.info('[AdminRanking] Override applied', {
+    adminUid: uid, providerId: userId, override, boostDays, newScore,
+  });
+
+  return res.json({ userId, rankingScore: newScore, override, boostDays });
+});
+
+// ─── DELETE /api/admin/providers/:userId/ranking-override ─────────────────────
+// Admin-only: clear ranking override and boost, revert to computed score.
+router.delete('/admin/providers/:userId/ranking-override', async (req: Request, res: Response) => {
+  const uid = getUid(req);
+  if (!uid || uid !== SUPER_ADMIN_UID) {
+    return res.status(403).json({ error: 'Forbidden — admin only' });
+  }
+
+  const { userId } = req.params;
+
+  await db
+    .update(providerProfiles)
+    .set({ rankingOverride: null, rankingBoostUntil: null } as any)
+    .where(eq(providerProfiles.userId, userId));
+
+  const newScore = await refreshAndCacheProviderRankingScore(userId);
+
+  logger.info('[AdminRanking] Override cleared', { adminUid: uid, providerId: userId, newScore });
+  return res.json({ userId, rankingScore: newScore, override: null });
+});
+
+// ─── POST /api/admin/ranking/backfill ─────────────────────────────────────────
+// Admin-only: recompute ranking_score for all stale providers.
+router.post('/admin/ranking/backfill', async (req: Request, res: Response) => {
+  const uid = getUid(req);
+  if (!uid || uid !== SUPER_ADMIN_UID) {
+    return res.status(403).json({ error: 'Forbidden — admin only' });
+  }
+
+  const resultPromise = backfillAllProviderRankingScores();
+  resultPromise
+    .then(r => logger.info('[RankingBackfill] Admin-triggered complete', r))
+    .catch(err => logger.error('[RankingBackfill] Admin-triggered error', { err }));
+
+  return res.status(202).json({ message: 'Ranking backfill started' });
 });
 
 export default router;

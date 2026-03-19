@@ -68,6 +68,10 @@ export interface ProviderCardData {
   isSavedByUser: boolean;
   memberSince?: string | null;
   lastReviewSnippet?: string;
+  // ── Ranking — null = not computed yet ──
+  effectiveRankingScore?: number | null;
+  rankingScore?: number | null;
+  rankingOverride?: number | null;
 }
 
 type Platform = 'sitter' | 'walker' | 'driver' | 'groomer' | 'trainer';
@@ -77,7 +81,7 @@ export interface FilterState {
   minRating: number;
   maxPrice: number;
   minPrice: number;
-  sortBy: 'rating' | 'price' | 'reviews' | 'distance' | 'new';
+  sortBy: 'ranking' | 'rating' | 'price' | 'reviews' | 'distance' | 'new' | 'trust';
   petType: 'all' | 'dog' | 'cat' | 'rabbit' | 'bird';
   availableThisWeek: boolean;
   backgroundCheckOnly: boolean;
@@ -116,7 +120,7 @@ const PET_TYPE_OPTIONS = [
 
 const DEFAULTS: FilterState = {
   location: '', minRating: 0, maxPrice: 1000, minPrice: 0,
-  sortBy: 'rating', petType: 'all',
+  sortBy: 'ranking', petType: 'all',
   availableThisWeek: false, backgroundCheckOnly: false,
   fencedYardOnly: false, noPetsAtHomeOnly: false,
 };
@@ -318,10 +322,12 @@ export function ProviderBrowseGrid({
                 <SelectValue placeholder={isHebrew ? 'מיין לפי' : 'Sort by'} />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="ranking">{isHebrew ? 'מומלצים' : 'Recommended'}</SelectItem>
+                <SelectItem value="trust">{isHebrew ? 'הכי אמינים' : 'Most Trusted'}</SelectItem>
                 <SelectItem value="rating">{isHebrew ? 'דירוג גבוה' : 'Top Rated'}</SelectItem>
-                <SelectItem value="price">{isHebrew ? 'מחיר נמוך' : 'Lowest Price'}</SelectItem>
                 <SelectItem value="reviews">{isHebrew ? 'הכי נסקרים' : 'Most Reviews'}</SelectItem>
-                <SelectItem value="distance">{isHebrew ? 'הכי קרוב' : 'Nearest'}</SelectItem>
+                <SelectItem value="price_asc">{isHebrew ? 'מחיר: נמוך לגבוה' : 'Price: Low to High'}</SelectItem>
+                <SelectItem value="price_desc">{isHebrew ? 'מחיר: גבוה לנמוך' : 'Price: High to Low'}</SelectItem>
                 <SelectItem value="new">{isHebrew ? 'חדשים' : 'New Providers'}</SelectItem>
               </SelectContent>
             </Select>
@@ -532,6 +538,10 @@ export function ProviderBrowseGrid({
                   const quickResponder = provider.responseRatePct !== null && provider.responseRatePct >= 90;
                   // Only show "New" badge when isNew is true AND we have real booking data
                   const showNew = provider.isNew && provider.completedBookingsCount === 0;
+                  // Ranking badge — real DB score only (null = not enough data, skip)
+                  const score = provider.effectiveRankingScore ?? provider.rankingScore ?? null;
+                  const showTopProvider = score !== null && score >= 80;
+                  const showRising = score !== null && score >= 65 && score < 80;
 
                   return (
                     <article
@@ -556,9 +566,21 @@ export function ProviderBrowseGrid({
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-                        {/* Top-left: New + Background check badges */}
+                        {/* Top-left: Ranking + New + Background check badges */}
                         <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap max-w-[calc(100%-3.5rem)]">
-                          {showNew && (
+                          {showTopProvider && (
+                            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white shadow-md" style={{ background: 'linear-gradient(135deg, #C5A55A, #a8893e)' }}>
+                              <Zap className="w-3 h-3" />
+                              {isHebrew ? 'ספק מוביל' : 'Top Provider'}
+                            </div>
+                          )}
+                          {!showTopProvider && showRising && (
+                            <div className="flex items-center gap-1 px-2.5 py-1 bg-blue-600 rounded-full text-[11px] font-semibold text-white shadow-md">
+                              <Sparkles className="w-3 h-3" />
+                              {isHebrew ? 'עולה' : 'Rising'}
+                            </div>
+                          )}
+                          {showNew && !showTopProvider && !showRising && (
                             <div className="flex items-center gap-1 px-2.5 py-1 bg-rose-500 rounded-full text-[11px] font-semibold text-white shadow-md">
                               <Sparkles className="w-3 h-3" />
                               {isHebrew ? 'חדש' : 'New'}

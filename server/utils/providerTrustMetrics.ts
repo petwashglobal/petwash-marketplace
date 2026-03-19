@@ -28,6 +28,7 @@ import { db } from '../db';
 import { bookingRequests, providerProfiles } from '@shared/schema';
 import { eq, and, sql, count } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { refreshAndCacheProviderRankingScore } from './providerRanking';
 
 const MIN_BOOKINGS_FOR_RATE     = 5;
 const MIN_BOOKINGS_FOR_TIME     = 5;
@@ -275,6 +276,13 @@ export async function refreshAndCacheProviderTrustMetrics(
       trustMetricsUpdatedAt:   new Date(),
     })
     .where(eq(providerProfiles.userId, providerId));
+
+  // Recompute ranking score immediately after trust metrics are refreshed
+  setImmediate(() =>
+    refreshAndCacheProviderRankingScore(providerId).catch(err =>
+      logger.error('[Ranking] Post-trust refresh failed', { providerId, err }),
+    ),
+  );
 
   return metrics;
 }

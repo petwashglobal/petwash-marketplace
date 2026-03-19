@@ -11499,6 +11499,11 @@ export const providerProfiles = pgTable("provider_profiles", {
   cancellationRatePct: integer("cancellation_rate_pct"),           // 0-100, % of confirmed bookings cancelled by provider
   trustScore: integer("trust_score"),                              // 0-100 composite score (null = new/insufficient data)
   trustMetricsUpdatedAt: timestamp("trust_metrics_updated_at"),   // when last computed
+  // ── Ranking (smart matching score, computed from trust + rating + recency + completeness) ──
+  rankingScore: integer("ranking_score"),                          // 0-100 final display rank (null = not computed)
+  rankingOverride: integer("ranking_override"),                    // admin-set override (null = use computed)
+  rankingBoostUntil: timestamp("ranking_boosted_until"),          // temporary admin boost expiry
+  rankingUpdatedAt: timestamp("ranking_updated_at"),              // last recomputed
   // ── Home setup (set by provider, null = not answered yet) ──
   hasFencedYard: boolean("has_fenced_yard"),
   hasNoPetsAtHome: boolean("has_no_pets_at_home"),

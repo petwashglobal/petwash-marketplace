@@ -757,6 +757,41 @@ Every quote carries `pricingVersion: "v1.0.0"` — stored in both the booking ro
 - `backfillAllProviderTrustMetrics()` — batch refresh all stale providers (> 6h or null); called on startup + admin endpoint
 - Null thresholds enforced: `responseRatePct`/`avgResponseTimeMinutes` require ≥5 requests; `repeatClientCount` requires ≥2 bookings
 
+### Database schema additions — Step 5 (Smart Ranking, March 2026)
+**Additional `provider_profiles` columns (via executeSql, schema.ts updated):**
+- `ranking_score integer` — 0-100 composite display rank (null = not computed)
+- `ranking_override integer` — admin-set full score override (null = use computed)
+- `ranking_boosted_until timestamp` — temporary +15 admin boost expiry
+- `ranking_updated_at timestamp` — last recomputed
+
+**Ranking formula (`server/utils/providerRanking.ts`):**
+- `trust_score × 0.40 + (rating/5×100) × 0.25 + completion_rate × 0.15 + recency (max 10) + profile completeness (max 10) − penalties`
+- Recency: ≤7d=+10, ≤14d=+6, ≤30d=+3
+- Profile completeness: bio=+3, avatar=+3, working hours set=+4
+- Penalties: acceptance_rate<50%=−10; cancellation>20%=−20, >10%=−10, >5%=−5
+- Admin boost: +15 if `ranking_boosted_until` in future
+- New provider floor: completedBookingsCount=0 → base score 50 (listed but not top)
+- Admin override replaces computed score entirely (boost still applies on top)
+
+**New API routes (`server/routes/provider-trust.ts`):**
+- `GET /api/admin/ranking/overview` — all providers sorted by effective ranking score with tier labels
+- `PATCH /api/admin/providers/:userId/ranking` — set override (0-100) and/or boostDays (0-365)
+- `DELETE /api/admin/providers/:userId/ranking-override` — clear override + boost, revert to computed
+- `POST /api/admin/ranking/backfill` — recompute all stale ranking scores
+
+**Browse endpoint (`GET /api/providers/browse`):**
+- Default `sortBy` changed from `rating` → `ranking` (`COALESCE(ranking_override, ranking_score) DESC NULLS LAST`)
+- New sort options: `ranking` (Recommended), `trust` (Most Trusted), `price_asc`, `price_desc`
+- Browse result now includes: `rankingScore`, `rankingOverride`, `effectiveRankingScore`
+
+**Backfill on startup:** `server/index.ts` runs `backfillAllProviderRankingScores()` 500ms after startup (non-blocking, idempotent). Trust refresh automatically triggers ranking refresh via `setImmediate`.
+
+**UI (ProviderBrowseGrid.tsx):**
+- Default sort: "Recommended" (ranking)
+- New sort options in dropdown: Recommended, Most Trusted, Price: Low→High, Price: High→Low
+- Card badge hierarchy: "Top Provider" (gold, ≥80) > "Rising" (blue, ≥65) > "New" (rose) — mutually exclusive
+- `effectiveRankingScore` and `rankingScore` added to `ProviderCardData` type
+
 ### Database schema additions — Step 4 (Trust Upgrade, March 2026)
 **Additional `provider_profiles` columns (via executeSql, schema.ts updated):**
 - `acceptance_rate_pct` integer — % of requests accepted (null if < 5 requests)
