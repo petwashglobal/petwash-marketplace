@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { LogOut, ChevronRight, PawPrint, CalendarCheck, Clock, Shield, ArrowRight, Mail } from 'lucide-react';
+import { NotificationBell } from '@/components/NotificationCenterPanel';
 import type { ReactNode } from 'react';
 import diamondLogo from '@assets/IMG_3257_1771582024352.png';
 import { apiRequest } from '@/lib/queryClient';
@@ -406,6 +407,10 @@ export default function Dashboard() {
     <Layout>
       <div className="min-h-screen relative" style={{ backgroundColor: '#FFFFFF' }}>
         <div className="relative z-10 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto px-5 sm:px-6 pt-5 pb-10">
+          {/* Top bar: notification bell */}
+          <div className={`flex ${language === 'he' || language === 'ar' ? 'justify-start' : 'justify-end'} mb-2`}>
+            <NotificationBell language={language} />
+          </div>
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
