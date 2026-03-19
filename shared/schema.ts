@@ -12310,5 +12310,34 @@ export const quoteEngineLogs = pgTable("quote_engine_logs", {
 
 export type QuoteEngineLog = typeof quoteEngineLogs.$inferSelect;
 
+// ── Rebook Triggers — smart re-engagement nudges ────────────────────────────
+export const rebookTriggers = pgTable("rebook_triggers", {
+  id:                 serial("id").primaryKey(),
+  userId:             varchar("user_id").notNull(),
+  triggerType:        varchar("trigger_type").notNull(), // 'post_completion' | 'weekly_rebook' | 'cancelled_recovery' | 'declined_recovery'
+  requestId:          varchar("request_id"),
+  providerId:         varchar("provider_id"),
+  providerName:       varchar("provider_name"),
+  serviceType:        varchar("service_type"),
+  serviceDate:        timestamp("service_date"),
+  scheduledAt:        timestamp("scheduled_at").notNull(),
+  firedAt:            timestamp("fired_at"),
+  notificationId:     varchar("notification_id"),
+  openedAt:           timestamp("opened_at"),
+  clickedAt:          timestamp("clicked_at"),
+  rebookStartedAt:    timestamp("rebook_started_at"),
+  rebookCompletedAt:  timestamp("rebook_completed_at"),
+  suppressed:         boolean("suppressed").notNull().default(false),
+  suppressionReason:  varchar("suppression_reason"),
+  createdAt:          timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  userIdx:        index("idx_rt_user_id").on(table.userId),
+  scheduledIdx:   index("idx_rt_scheduled_at").on(table.scheduledAt),
+  typeUserIdx:    index("idx_rt_trigger_type_user").on(table.triggerType, table.userId),
+}));
+
+export type RebookTrigger = typeof rebookTriggers.$inferSelect;
+export type InsertRebookTrigger = typeof rebookTriggers.$inferInsert;
+
 // ── Unified Payment Tables (pw_payments, pw_provider_payouts) ────────────────
 export * from './schema-payments';

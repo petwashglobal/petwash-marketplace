@@ -23,6 +23,7 @@ import {
   trainers,
   users,
   superAppNotifications,
+  rebookTriggers,
   createBookingRequestSchema,
   providerBookingResponseSchema,
   type BookingRequest
@@ -38,6 +39,7 @@ import { createEarningRecord } from '../services/payoutLedger';
 import { dispatchNotification } from '../lib/notificationDispatcher';
 import { logBookingEvent, type BookingEventPayload } from '../services/bookingEventLogger';
 import { twilioSMSService } from '../services/TwilioSMSService';
+import { scheduleRebookTrigger } from '../jobs/rebook-scheduler';
 import { EmailService } from '../emailService';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
 
@@ -626,6 +628,19 @@ router.post('/:requestId/respond', async (req, res) => {
       logger.warn('[BookingRequests] superAppNotifications insert failed (respond)', { error: notifErr.message });
     }
 
+    // ── Non-blocking: Schedule declined_recovery nudge (1 h later) ────────────
+    if (newStatus === 'declined' && booking.ownerId) {
+      scheduleRebookTrigger('declined_recovery', {
+        userId: booking.ownerId,
+        requestId,
+        providerId: booking.providerId,
+        providerName,
+        serviceType: booking.serviceType,
+        serviceDate: booking.startDate ?? undefined,
+        delayMs: 60 * 60 * 1000,
+      }).catch((e: any) => logger.warn('[RebookScheduler] declined_recovery schedule failed', { error: e.message }));
+    }
+
     logger.info('[BookingRequests] Provider responded to booking', {
       requestId,
       action: data.action,
@@ -987,6 +1002,22 @@ router.post('/:requestId/complete', async (req, res) => {
       serviceStartedAt: booking.serviceStartedAt?.toISOString() || undefined,
       serviceCompletedAt: new Date().toISOString(),
     }).catch(() => {});
+
+    // ── Non-blocking: Schedule rebook nudges after service completion ─────────
+    if (booking.ownerId) {
+      const triggerBase = {
+        userId: booking.ownerId,
+        requestId,
+        providerId: booking.providerId,
+        providerName: booking.providerName || undefined,
+        serviceType: booking.serviceType,
+        serviceDate: booking.startDate ?? undefined,
+      };
+      scheduleRebookTrigger('post_completion', { ...triggerBase, delayMs: 24 * 60 * 60 * 1000 })
+        .catch((e: any) => logger.warn('[RebookScheduler] post_completion schedule failed', { error: e.message }));
+      scheduleRebookTrigger('weekly_rebook', { ...triggerBase, delayMs: 7 * 24 * 60 * 60 * 1000 })
+        .catch((e: any) => logger.warn('[RebookScheduler] weekly_rebook schedule failed', { error: e.message }));
+    }
 
     // ── Non-blocking: Refresh provider trust metrics cache ───────────────────
     setImmediate(async () => {
@@ -1375,6 +1406,19 @@ router.post('/:requestId/cancel', async (req, res) => {
       logger.warn('[BookingRequests] superAppNotifications insert failed (cancel)', { error: notifErr.message });
     }
 
+    // ── Non-blocking: cancelled_recovery nudge for customer (2 h later, only when provider cancels) ─
+    if (cancelledBy === 'provider' && booking.ownerId) {
+      scheduleRebookTrigger('cancelled_recovery', {
+        userId: booking.ownerId,
+        requestId,
+        providerId: booking.providerId,
+        providerName: booking.providerName || undefined,
+        serviceType: booking.serviceType,
+        serviceDate: booking.startDate ?? undefined,
+        delayMs: 2 * 60 * 60 * 1000,
+      }).catch((e: any) => logger.warn('[RebookScheduler] cancelled_recovery schedule failed', { error: e.message }));
+    }
+
     logger.info('[BookingRequests] Booking cancelled', {
       requestId,
       cancelledBy,
@@ -1523,6 +1567,50 @@ router.post('/:requestId/reprice', async (req, res) => {
   } catch (error: any) {
     logger.error('[BookingRequests] Reprice error', { error: error.message });
     res.status(500).json({ error: 'Failed to reprice booking' });
+  }
+});
+
+/* ── Rebook trigger tracking ─────────────────────────────────────────────── */
+
+// POST /api/rebook-triggers/:id/clicked
+// POST /api/rebook-triggers/:id/rebook-started
+// POST /api/rebook-triggers/:id/rebook-completed
+const REBOOK_TRACKING_FIELDS: Record<string, string> = {
+  'clicked':          'clicked_at',
+  'rebook-started':   'rebook_started_at',
+  'rebook-completed': 'rebook_completed_at',
+};
+
+router.post('/rebook-triggers/:triggerId/:action', async (req, res) => {
+  try {
+    const { triggerId, action } = req.params;
+    const userId = (req as any).user?.uid;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const field = REBOOK_TRACKING_FIELDS[action];
+    if (!field) return res.status(400).json({ error: 'Unknown tracking action' });
+
+    const id = parseInt(triggerId, 10);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid trigger ID' });
+
+    const [trigger] = await db
+      .select({ id: rebookTriggers.id, userId: rebookTriggers.userId })
+      .from(rebookTriggers)
+      .where(eq(rebookTriggers.id, id))
+      .limit(1);
+
+    if (!trigger) return res.status(404).json({ error: 'Trigger not found' });
+    if (trigger.userId !== userId) return res.status(403).json({ error: 'Forbidden' });
+
+    await db
+      .update(rebookTriggers)
+      .set({ [field === 'clicked_at' ? 'clickedAt' : field === 'rebook_started_at' ? 'rebookStartedAt' : 'rebookCompletedAt']: new Date() } as any)
+      .where(eq(rebookTriggers.id, id));
+
+    return res.json({ success: true });
+  } catch (err: any) {
+    logger.error('[BookingRequests] Rebook tracking error', { error: err.message });
+    return res.status(500).json({ error: 'Tracking failed' });
   }
 });
 

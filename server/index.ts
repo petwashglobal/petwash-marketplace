@@ -623,6 +623,7 @@ if (isProduction) {
     import('./services/JobDispatchService').then(m => m.JobDispatchService.startDispatchPoller()).catch(() => {});
     import('./services/JobExpiryNotificationService').then(m => m.jobExpiryNotificationService.start()).catch(() => {});
     import('./jobs/booking-expiry').then(m => m.startBookingExpiryPoller()).catch(() => {});
+    import('./jobs/rebook-scheduler').then(m => m.startRebookScheduler()).catch(() => {});
 
     // Email Spend Guard — wire alarm callback so budget alerts reach nir.h@petwash.co.il
     import('./services/EmailSpendGuard').then(async ({ emailSpendGuard }) => {

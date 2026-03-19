@@ -6,7 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import {
   Bell, X, CheckCheck, Dog, Cat, PawPrint, ChevronRight, Inbox,
   MessageCircle, CheckCircle, Star, Car, Scissors,
-  AlertCircle
+  AlertCircle, RefreshCw, Search
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -24,6 +24,7 @@ interface NotifGroup {
   ids: string[];
   actionUrl: string | null;
   notificationType?: string | null;
+  rebookTriggerId?: number | null;
 }
 
 interface GroupedNotifResponse {
@@ -80,6 +81,27 @@ const TYPE_CONFIG: Record<string, {
     actionLabel: "View", actionLabelHe: "צפה",
     hint: "⭐ View your new review →", hintHe: "⭐ צפה בביקורת החדשה →",
   },
+  // ── Smart rebook reminders — written by rebook-scheduler.ts ──
+  rebook_reminder_post_completion: {
+    label: "Book again?", labelHe: "הזמן שוב?", color: "#C5A55A", Icon: RefreshCw,
+    actionLabel: "Book again", actionLabelHe: "הזמן שוב",
+    hint: "🐾 One tap to rebook →", hintHe: "🐾 לחיצה אחת להזמנה חוזרת →",
+  },
+  rebook_reminder_weekly_rebook: {
+    label: "Weekly reminder", labelHe: "תזכורת שבועית", color: "#C5A55A", Icon: RefreshCw,
+    actionLabel: "Book now", actionLabelHe: "הזמן עכשיו",
+    hint: "📅 Keep the routine going →", hintHe: "📅 שמרו על השגרה →",
+  },
+  rebook_reminder_cancelled_recovery: {
+    label: "Find a provider", labelHe: "מצא ספק", color: "#3B82F6", Icon: Search,
+    actionLabel: "Browse providers", actionLabelHe: "עיין בספקים",
+    hint: "🔍 Similar providers are available →", hintHe: "🔍 ספקים דומים זמינים עכשיו →",
+  },
+  rebook_reminder_declined_recovery: {
+    label: "Try another provider", labelHe: "נסה ספק אחר", color: "#3B82F6", Icon: Search,
+    actionLabel: "Find provider", actionLabelHe: "מצא ספק",
+    hint: "🔍 Other great providers ready →", hintHe: "🔍 ספקים מעולים נוספים מחכים →",
+  },
 };
 
 function resolveTypeConfig(notificationType: string | null | undefined, platform: string | null | undefined) {
@@ -106,6 +128,8 @@ const MESSAGE_TYPES = new Set(['booking_chat_message', 'message']);
 const BOOKING_STATUS_TYPES = new Set([
   'booking_request', 'booking_accepted', 'booking_confirmed',
   'booking_declined', 'booking_cancelled', 'meet_greet', 'reminder',
+  'rebook_reminder_post_completion', 'rebook_reminder_weekly_rebook',
+  'rebook_reminder_cancelled_recovery', 'rebook_reminder_declined_recovery',
 ]);
 
 function isMessageType(group: NotifGroup) {
@@ -152,8 +176,11 @@ export function NotificationCenterPanel({ open, onClose, language = 'en' }: Noti
     } else if (group.unreadCount > 0 && group.ids.length) {
       markReadMutation.mutate({ ids: group.ids });
     }
+    // Fire rebook click tracking (fire-and-forget)
+    if (group.rebookTriggerId) {
+      apiRequest('POST', `/api/booking-requests/rebook-triggers/${group.rebookTriggerId}/clicked`).catch(() => {});
+    }
     // Prefer explicit actionUrl (always set for new notifications).
-    // Fallback: route by notificationType — messages → chat, status changes → confirmation.
     const fallback = group.bookingId
       ? isMessageType(group)
         ? `/booking-chat/${group.bookingId}`

@@ -263,11 +263,13 @@ router.get('/notifications/grouped', async (req, res) => {
       totalCount: number; unreadCount: number;
       latestTitle: string; latestBody: string;
       latestAt: Date | null; ids: string[]; actionUrl: string | null;
+      rebookTriggerId?: number | null;
     }>();
 
     for (const n of rawNotifs) {
-      const key = n.bookingId ?? `__other__${n.type}`;
+      const key = n.bookingId ?? `__other__${n.type}__${n.id}`;
       const existing = groupMap.get(key);
+      const meta = n.metadata as Record<string, any> | null;
       if (!existing) {
         groupMap.set(key, {
           bookingId: n.bookingId ?? null, platform: null,
@@ -275,6 +277,7 @@ router.get('/notifications/grouped', async (req, res) => {
           totalCount: 1, unreadCount: n.isRead ? 0 : 1,
           latestTitle: n.title, latestBody: n.body,
           latestAt: n.createdAt, ids: [n.id], actionUrl: n.actionUrl ?? null,
+          rebookTriggerId: meta?.rebookTriggerId ?? null,
         });
       } else {
         existing.totalCount++;
@@ -283,6 +286,7 @@ router.get('/notifications/grouped', async (req, res) => {
           existing.latestTitle = n.title; existing.latestBody = n.body;
           existing.latestAt = n.createdAt; existing.actionUrl = n.actionUrl ?? existing.actionUrl;
           existing.notificationType = n.type ?? existing.notificationType;
+          if (meta?.rebookTriggerId) existing.rebookTriggerId = meta.rebookTriggerId;
         }
         existing.ids.push(n.id);
       }
