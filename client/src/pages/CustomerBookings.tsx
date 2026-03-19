@@ -120,6 +120,10 @@ interface Booking {
   cancelledBy?: string | null;
   refundCents?: number;
   statusHistory?: Array<{ status: string; timestamp: string; note?: string }>;
+  // Rebook prefill fields
+  petIds?: string[];
+  addonCodes?: string[];
+  ownerMessage?: string | null;
 }
 
 const TIMELINE_STEPS: Array<{
@@ -314,12 +318,15 @@ function BookingCard({
   const handleRebook = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (booking.providerId) {
-      navigate(`/booking/new/${booking.serviceType}/${booking.providerId}`);
-    } else {
-      const route = SERVICE_TO_ROUTE[booking.serviceType] || '/marketplace';
-      navigate(route);
+    if (!booking.providerId) {
+      navigate(SERVICE_TO_ROUTE[booking.serviceType] || '/marketplace');
+      return;
     }
+    const params = new URLSearchParams({ rebook: '1' });
+    if (booking.petIds?.length) params.set('petIds', booking.petIds.join(','));
+    if (booking.addonCodes?.length) params.set('addons', booking.addonCodes.join(','));
+    if (booking.ownerMessage) params.set('notes', booking.ownerMessage);
+    navigate(`/booking/new/${booking.serviceType}/${booking.providerId}?${params.toString()}`);
   };
 
   const handleCancel = (e: React.MouseEvent) => {

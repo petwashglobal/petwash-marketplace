@@ -15,7 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ChevronRight, ChevronLeft, Plus, Check, Loader2,
   Calendar, Pill, AlertTriangle,
-  Star, Info, Shield
+  Star, Info, Shield, RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -306,6 +306,30 @@ function ProgressBar({ currentStep }: { currentStep: WizardStep }) {
             )}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ── RebookBanner ─────────────────────────────────────────────────────────────
+
+function RebookBanner({ warnings }: { warnings: string[] }) {
+  return (
+    <div className="mx-4 mt-3 p-3 rounded-xl bg-[#C5A55A]/10 border border-[#C5A55A]/25">
+      <div className="flex items-start gap-2">
+        <RefreshCw className="w-4 h-4 text-[#C5A55A] mt-0.5 flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-[#8B6914]">הזמנה חוזרת</p>
+          <p className="text-[11px] text-[#8B6914] mt-0.5 leading-relaxed">
+            בחר תאריך חדש — המחיר יחושב מחדש על-ידי מנוע המחיר הנוכחי.
+          </p>
+          {warnings.map((w, i) => (
+            <div key={i} className="flex items-center gap-1.5 mt-1.5">
+              <AlertTriangle className="w-3 h-3 text-amber-500 flex-shrink-0" />
+              <p className="text-[11px] text-amber-700 leading-tight">{w}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -1261,6 +1285,20 @@ export default function MultiPetBookingWizard() {
   const { toast } = useToast();
   const { user } = useFirebaseAuth();
 
+  // ── Rebook prefill — parse URL params once on mount ──────────────────────────
+  const rebookParams = (() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const isRebook = p.get("rebook") === "1";
+      const petIds = p.get("petIds")?.split(",").map(Number).filter(n => !isNaN(n) && n > 0) || [];
+      const addons = p.get("addons")?.split(",").filter(Boolean) || [];
+      const notes = p.get("notes") || "";
+      return { isRebook, petIds, addons, notes };
+    } catch {
+      return { isRebook: false, petIds: [], addons: [], notes: "" };
+    }
+  })();
+
   // ── Step state ──────────────────────────────────────────────────────────────
   const [step, setStep] = useState<WizardStep>("schedule");
 
@@ -1279,9 +1317,14 @@ export default function MultiPetBookingWizard() {
   const [selectedAddons, setSelectedAddons] = useState<SelectedAddon[]>([]);
 
   // ── Confirm state ───────────────────────────────────────────────────────────
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(rebookParams.notes);
   const [promoCode, setPromoCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ── Rebook warnings ──────────────────────────────────────────────────────────
+  const [rebookWarnings, setRebookWarnings] = useState<string[]>([]);
+  const petPrefillApplied = useRef(false);
+  const addonPrefillApplied = useRef(false);
 
   // ── Queries ─────────────────────────────────────────────────────────────────
   const platform = serviceType ? serviceTypeToPlatform(serviceType) : null;
@@ -1309,12 +1352,67 @@ export default function MultiPetBookingWizard() {
   } : null;
   const pets: UserPet[] = Array.isArray(petsData) ? petsData : ((petsData as any)?.pets || []);
 
-  // Auto-select single pet
+  // Auto-select single pet (only if not a rebook)
   useEffect(() => {
+    if (rebookParams.isRebook) return;
     if (pets.length === 1 && selectedPetIds.length === 0) {
       setSelectedPetIds([pets[0].id]);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pets, selectedPetIds.length]);
+
+  // Rebook prefill: auto-select pets once pets have loaded
+  useEffect(() => {
+    if (!rebookParams.isRebook || !rebookParams.petIds.length || !pets.length) return;
+    if (petPrefillApplied.current) return;
+    petPrefillApplied.current = true;
+
+    const validIds = rebookParams.petIds.filter(id => pets.some(p => p.id === id));
+    const missingCount = rebookParams.petIds.length - validIds.length;
+    setSelectedPetIds(validIds.length > 0 ? validIds : selectedPetIds);
+
+    if (missingCount > 0) {
+      const msg = missingCount === 1
+        ? "חיית מחמד אחת לא נמצאה בחשבון — בחר שוב"
+        : `${missingCount} חיות מחמד לא נמצאו בחשבון — בחר שוב`;
+      setRebookWarnings(w => [...w, msg]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pets]);
+
+  // Rebook prefill: auto-select valid addons once we know the serviceType
+  useEffect(() => {
+    if (!rebookParams.isRebook || !rebookParams.addons.length || !serviceType) return;
+    if (addonPrefillApplied.current) return;
+    addonPrefillApplied.current = true;
+
+    const catalog = ADDON_CATALOG[serviceType] || ADDON_CATALOG["default"] || [];
+    const catalogCodes = new Set(catalog.map(a => a.code));
+    const validCodes = rebookParams.addons.filter(c => catalogCodes.has(c));
+    const removedCount = rebookParams.addons.length - validCodes.length;
+
+    if (validCodes.length > 0) {
+      const prefilled: SelectedAddon[] = validCodes
+        .map(code => catalog.find(a => a.code === code))
+        .filter((a): a is AddonCatalogEntry => !!a)
+        .map(a => ({
+          addonCode: a.code,
+          addonName: a.nameHe,
+          scope: a.scope,
+          quantity: 1,
+          unitPriceCents: a.unitPriceCents,
+        }));
+      setSelectedAddons(prefilled);
+    }
+
+    if (removedCount > 0) {
+      const msg = removedCount === 1
+        ? "תוספת אחת הוסרה — אינה זמינה עוד עבור שירות זה"
+        : `${removedCount} תוספות הוסרו — אינן זמינות עוד עבור שירות זה`;
+      setRebookWarnings(w => [...w, msg]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceType]);
 
   // ── Sync petCares when selection changes ────────────────────────────────────
   useEffect(() => {
@@ -1498,7 +1596,9 @@ export default function MultiPetBookingWizard() {
           <button onClick={goBack} className="p-1.5 rounded-full hover:bg-gray-100">
             <ChevronRight className="w-5 h-5 text-gray-600" />
           </button>
-          <h1 className="font-semibold text-gray-900 flex-1 text-center">הזמנה חדשה</h1>
+          <h1 className="font-semibold text-gray-900 flex-1 text-center">
+            {rebookParams.isRebook ? "הזמנה חוזרת" : "הזמנה חדשה"}
+          </h1>
           <div className="w-8" />
         </div>
         <ProgressBar currentStep={step} />
@@ -1506,6 +1606,10 @@ export default function MultiPetBookingWizard() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto pb-24">
+        {rebookParams.isRebook && (
+          <RebookBanner warnings={rebookWarnings} />
+        )}
+
         {step === "schedule" && (
           <ScheduleStep
             serviceType={serviceType || "pet_sitting"}

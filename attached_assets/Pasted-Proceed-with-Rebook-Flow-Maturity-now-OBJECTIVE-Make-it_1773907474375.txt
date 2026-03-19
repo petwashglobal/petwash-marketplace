@@ -1,0 +1,101 @@
+Proceed with Rebook Flow Maturity now.
+
+OBJECTIVE
+
+Make it easy for a customer to rebook from:
+1. past bookings
+2. saved providers
+3. provider profile
+
+The flow must feel fast, safe, and smart.
+Do not duplicate booking logic.
+Reuse the quote engine and the multi-pet booking wizard wherever possible.
+
+PRIORITY ORDER
+
+A. Rebook entry points
+Add clear rebook entry points from:
+- completed bookings
+- cancelled bookings where rebooking still makes sense
+- saved providers
+- provider profile page
+
+B. Rebook prefill logic
+When user taps Rebook:
+- prefill provider
+- prefill service type
+- prefill pets where still available
+- prefill add-ons where still valid
+- prefill last-used notes only if appropriate
+- prefill schedule only as a suggestion, not as a silent final booking
+
+C. Validation rules
+Before showing final confirm:
+- revalidate provider availability
+- revalidate enabled service
+- revalidate add-ons still exist
+- revalidate pricing with live quote engine
+- revalidate pets still exist on the account
+- if something changed, show a clean notice and continue with updated values
+
+D. UX structure
+I want two rebook modes:
+1. Quick Rebook
+   - starts from past booking
+   - preloads everything possible
+   - lands at review/quote step if data is still valid
+2. Smart Rebook
+   - preloads provider, pets, service, add-ons
+   - still walks user through schedule and confirmation cleanly
+
+E. Exact sources of truth
+- booking source of truth: booking_requests
+- saved providers source of truth: saved_providers
+- quote source of truth: /api/quotes/preview
+- final booking creation source of truth: POST /api/booking-requests
+
+F. Rebook behavior rules
+- never copy old price directly
+- never trust old quote directly
+- always requote live
+- if provider no longer offers that service, show clear fallback
+- if provider is unavailable, offer view profile or choose another date
+- if add-on removed, explain it briefly and continue
+- if pet deleted, prompt user to select another pet
+
+G. What to build
+1. Rebook helper service
+   - takes previous booking or saved provider context
+   - normalizes into booking wizard input shape
+
+2. Rebook CTA surfaces
+   - completed booking card
+   - saved provider card
+   - provider profile sticky CTA where relevant
+
+3. Rebook API/helper mapping
+   - booking request -> wizard prefill payload
+   - saved provider -> provider/platform prefill payload
+
+4. Rebook warning UI
+   - compact notice area for:
+     - service changed
+     - add-on removed
+     - pet missing
+     - provider unavailable
+     - price updated
+
+H. Evidence I want after build
+Please send:
+- exact files changed
+- one rebook from past completed booking proof
+- one rebook from saved provider proof
+- one case where add-on changed and warning displayed
+- one case where price changed and new quote displayed
+- confirmation that no old price is reused
+- confirmation that final booking still goes through the normal quote + create flow
+
+IMPORTANT
+
+Do not build a separate booking path.
+Rebook must be a smart entry into the existing booking system, not a duplicate system.

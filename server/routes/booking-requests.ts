@@ -403,6 +403,21 @@ router.get('/', async (req, res) => {
       });
     }
     
+    // Batch-resolve addon codes for rebook prefill (single query, not N+1)
+    const bookingIds = bookings.map(b => b.id).filter(Boolean) as number[];
+    const addonCodeMap: Record<number, string[]> = {};
+    if (bookingIds.length > 0) {
+      const addonRows = await db
+        .select({ bookingRequestId: bookingRequestAddons.bookingRequestId, addonCode: bookingRequestAddons.addonCode })
+        .from(bookingRequestAddons)
+        .where(inArray(bookingRequestAddons.bookingRequestId, bookingIds));
+      addonRows.forEach(r => {
+        if (!r.bookingRequestId) return;
+        addonCodeMap[r.bookingRequestId] = addonCodeMap[r.bookingRequestId] || [];
+        addonCodeMap[r.bookingRequestId].push(r.addonCode);
+      });
+    }
+
     res.json({
       bookings: bookings.map(b => ({
         requestId: b.requestId,
@@ -427,6 +442,9 @@ router.get('/', async (req, res) => {
         createdAt: b.createdAt,
         providerId: b.providerId,
         providerName: providerNameMap[b.providerId] || null,
+        // Rebook prefill fields
+        petIds: (b.petIds as string[] | null) || [],
+        addonCodes: (b.id ? addonCodeMap[b.id] : null) || [],
       })),
       total: bookings.length,
     });
