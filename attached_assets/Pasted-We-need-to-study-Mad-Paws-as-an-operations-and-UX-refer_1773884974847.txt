@@ -1,0 +1,314 @@
+We need to study Mad Paws as an operations and UX reference, not as a copy.
+
+I want us to extract the business logic and rebuild the correct version for our own model across three distinct surfaces:
+
+1. Customer app
+2. Provider app / provider dashboard
+3. Internal business operations dashboard
+
+The mistake would be to copy screens without copying the underlying operating logic.
+
+CORE PRODUCT DIRECTION
+
+Mad Paws is strong because it handles:
+- trust before booking
+- clear booking visibility
+- easy repeat behavior
+- settings and consent hygiene
+- provider communication
+- lifecycle clarity
+
+We are currently missing some of that structural logic.
+
+I want a deep product audit and implementation plan based on the screenshots and app review, focused on what matters operationally.
+
+A. CUSTOMER SIDE - REQUIRED LOGIC
+
+Customer expectations are:
+- fast signup / sign in
+- low friction trust
+- visibility of all bookings
+- favourites / rebook flows
+- messages
+- wallet / credits / gift cards / promo codes
+- notification and consent controls
+- payment confidence
+- refund / no-refund clarity
+- account privacy controls
+
+Customer dashboard / mobile nav should include:
+- Home
+- Favourites
+- Bookings
+- Messages
+- Account
+
+Customer bookings must have:
+- Pending
+- Upcoming
+- Past
+- Archived
+- filter by service type
+- provider card
+- status badge
+- payment status
+- support / contact path
+- rebook CTA where relevant
+
+Customer account must include:
+- profile
+- pets
+- payment methods
+- wallet / credits
+- promo codes / vouchers / gift cards
+- notifications
+- privacy
+- consent settings
+- delete account
+- logout
+
+Customer onboarding / trust must include:
+- terms acceptance
+- privacy acceptance
+- marketing consent choice
+- push notification consent
+- location permission timing
+- communication preferences
+- age / legal consent where required
+
+Captcha or security logic must never become a standalone UX step.
+It must remain invisible inside:
+- phone login
+- email login
+- signup
+- send verification code
+
+B. PROVIDER SIDE - REQUIRED LOGIC
+
+Provider expectations are completely different from customers.
+
+Provider dashboard must focus on:
+- new leads / booking requests
+- pending approvals
+- calendar / availability
+- pricing rules
+- response speed
+- payout status
+- job history
+- disputes / incidents
+- service area
+- profile strength / trust indicators
+- performance metrics
+
+Provider tabs should likely include:
+- Requests
+- Upcoming Jobs
+- Completed Jobs
+- Calendar / Availability
+- Earnings / Payouts
+- Messages
+- Profile
+- Settings
+
+Provider operations must support:
+- accept / decline logic
+- response deadlines
+- cancellation rules
+- service radius
+- blackout dates
+- pricing per service
+- add-ons
+- promo participation rules
+- quality / rating management
+- proof of completion
+- issue reporting
+- tax / invoice / payout records
+
+Provider settings must include:
+- SMS settings
+- push notification settings
+- email notification settings
+- legal documents
+- ID / verification status
+- payout method
+- privacy and consent
+- deactivation / logout
+
+C. BUSINESS / ADMIN OPERATIONS SIDE - REQUIRED LOGIC
+
+Internal operations dashboard should not look like customer or provider UI.
+
+Admin side must manage:
+- all bookings
+- provider approvals
+- customer support
+- disputes
+- refunds / credits / no-refund exceptions
+- voucher and promo engine
+- gift card issuance and redemption
+- service coverage map
+- machine status / kiosk status
+- payment reconciliation
+- provider performance
+- churn / repeat behavior
+- consent and compliance records
+- notification delivery health
+- fraud review
+- audit logs
+
+Admin dashboard needs visibility by:
+- region
+- service type
+- booking status
+- payment status
+- provider
+- campaign / promo source
+- machine / kiosk
+- support risk
+- operational SLA
+
+D. CONSENT / PRIVACY / SETTINGS GAP
+
+We are missing important consent and settings structure.
+
+We need a full consent framework, not only scattered toggles.
+
+Required consent/settings architecture:
+1. Terms of service acceptance
+2. Privacy policy acceptance
+3. Marketing consent opt-in / opt-out
+4. Push notification permission flow
+5. SMS notification preference
+6. Email notification preference
+7. Data export request path
+8. Account deletion path
+9. Privacy controls and data rights page
+10. Consent log in backend with timestamps and versioning
+
+We need to track:
+- what user consented to
+- when they consented
+- which policy version
+- whether they later withdrew consent
+
+E. PROMO / COUPON / GIFT CARD / CREDIT LOGIC
+
+We need one clean commercial logic for redemptions.
+
+Customer can have:
+- promo code
+- gift card
+- wallet credit
+- referral credit
+- prepaid package balance
+- membership discount
+- first-time discount
+- senior discount if eligible
+
+Redemption priority must be defined centrally by backend.
+Suggested order:
+1. coupon / promo eligibility check
+2. gift card balance
+3. wallet credit
+4. remaining card charge / Nayax / payment method
+
+We must never let frontend decide final payable amount.
+Backend must calculate:
+- subtotal
+- discounts
+- credits applied
+- gift card applied
+- tax if relevant
+- final payable amount
+- remaining stored balance
+
+F. KIOSK / MACHINE / MOBILE REDEEM LOGIC
+
+For kiosk redemption and machine usage, the logic must be smart and simple.
+
+Possible customer flow:
+1. user signs in
+2. user has wallet / package / coupon / gift card / promo
+3. user scans machine QR or machine ID
+4. backend identifies machine
+5. backend checks:
+   - machine online
+   - machine available
+   - user authenticated
+   - coupon eligibility
+   - wallet / gift / balance
+   - provider / location / campaign rules
+6. backend shows final payment choice:
+   - redeem credit
+   - apply gift card
+   - apply promo
+   - pay remaining via Nayax / saved method
+7. backend authorizes session
+8. machine starts
+9. session recorded
+10. invoice / receipt / wallet update / loyalty update
+
+We need a clear rule for partial payment:
+- if stored value covers full wash, no card charge
+- if not, charge only the balance
+- user must see this clearly before start
+
+G. WHAT WE NEED FROM ENGINEERING NOW
+
+I want a structured product and engineering audit with these outputs:
+
+1. Feature matrix
+Compare current platform vs required customer / provider / admin logic
+
+2. Missing screens list
+What screens do we not yet have for:
+- customer
+- provider
+- admin
+
+3. Missing backend capabilities
+What APIs / tables / permissions / audit logs are missing
+
+4. Consent architecture plan
+What data model, screens, and logs must be added
+
+5. Booking lifecycle map
+Separate lifecycle for:
+- customer
+- provider
+- admin
+
+6. Payments / credits / promo engine map
+Single backend source of truth for all redemption logic
+
+7. Kiosk redemption flow
+Exact end-to-end machine flow with Nayax / QR / wallet / gift / promo
+
+8. Prioritized delivery plan
+Order the work by highest operational value, not cosmetic value
+
+H. PRIORITY ORDER I WANT
+
+Priority 1
+- clean auth and onboarding
+- consent / settings foundation
+- customer bookings visibility
+- provider requests / upcoming jobs visibility
+
+Priority 2
+- favourites / rebook flows
+- credits / promo / gift card wallet structure
+- notification preferences and consent logs
+
+Priority 3
+- machine / kiosk redemption flow
+- provider earnings / payout visibility
+- admin operational dashboards
+
+Priority 4
+- polish / visual improvements / animation refinement
+
+Do not copy Mad Paws blindly.
+Use it as a reference for operational maturity and user trust.
+
+I want the audit and implementation plan written from a business operations perspective first, then mapped into product screens, backend logic, and API work.
