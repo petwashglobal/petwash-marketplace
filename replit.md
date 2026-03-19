@@ -821,7 +821,13 @@ cancelled    → cancelled, declined, disputed
 - [x] Phase 3 routes live (V2 endpoints)
 - [x] Payout fields added to booking_requests
 - [x] Backfill script written + dry-run verified
-- [ ] Switch UI query keys from `/api/provider-dashboard/...` to `/api/provider-dashboard/v2/...`
+- [x] Switch UI query keys — POSDashboard + POSJobs now read from `/api/provider-dashboard/v2/...`
+  - bookings, booking-counts, upcoming, earnings → all v2
+  - invalidateAll() in both components → v2 keys
+  - STATUS_STYLES in both components expanded to all V2 enum values + V1 compat aliases
+  - JobCard action guards updated: accepted added to accept/decline gate; disputed/declined/reviewed added to terminal list
+  - STATUS_GROUP_MAP in v2 route: added `dispute → ['disputed']` + `provider_confirmed → ['confirmed']` aliases
+  - Action writes (accept/decline/cancel/start/report/complete) still POST to V1 routes (Phase 4 work)
 - [ ] Monitor `/v2/migration-diff` — confirm parity when real bookings flow in
 - [ ] Retire V1 dashboard booking routes once diff shows `parity: true`
 

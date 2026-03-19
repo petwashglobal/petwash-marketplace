@@ -1,13 +1,14 @@
 /**
  * POSJobs — Provider job list with full request lifecycle management.
  *
- * Architecture:
- *   source_of_truth:    bookings table (legacy; Phase 3 will migrate to booking_requests)
- *   read_path:          GET /api/provider-dashboard/bookings?status=&page=&limit=
+ * Architecture (Phase 3 — V2 active):
+ *   source_of_truth:    booking_requests table (new system, Firebase UID provider ref)
+ *   read_path:          GET /api/provider-dashboard/v2/bookings?status=&page=&limit=
  *   write_path:         POST /api/provider-dashboard/bookings/:id/{accept|decline|cancel|start|report|complete}
- *   cache_invalidation: ['/api/provider-dashboard/bookings'], ['/api/provider-dashboard/stats'],
- *                       ['/api/provider-dashboard/booking-counts']
- *   migration_impact:   Phase 3 will swap booking source; action routes stay as-is
+ *                       (action routes still write to V1; will migrate in Phase 4)
+ *   cache_invalidation: ['/api/provider-dashboard/v2/bookings'], ['/api/provider-dashboard/stats'],
+ *                       ['/api/provider-dashboard/v2/booking-counts']
+ *   v1_fallback:        V1 routes stay live as read-only fallback until migration-diff confirms parity
  */
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -34,13 +35,23 @@ const STATUSES = [
 ];
 
 const STATUS_STYLES: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  new_request: { label: 'New Request', color: '#92400e', bg: '#fef3c7', border: '#fbbf24' },
-  pending:     { label: 'Pending',     color: '#1e40af', bg: '#dbeafe', border: '#93c5fd' },
-  confirmed:   { label: 'Confirmed',   color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' },
-  in_progress: { label: 'In Progress', color: '#5b21b6', bg: '#ede9fe', border: '#a78bfa' },
-  completed:   { label: 'Completed',   color: '#374151', bg: '#f3f4f6', border: '#d1d5db' },
-  cancelled:   { label: 'Cancelled',   color: '#991b1b', bg: '#fee2e2', border: '#fca5a5' },
-  dispute:     { label: 'Dispute',     color: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd' },
+  // V2 booking_requests statuses
+  pending:              { label: 'Pending',      color: '#1e40af', bg: '#dbeafe', border: '#93c5fd' },
+  accepted:             { label: 'Accepted',     color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' },
+  meet_greet_scheduled: { label: 'Meet & Greet', color: '#92400e', bg: '#fef3c7', border: '#fbbf24' },
+  meet_greet_completed: { label: 'Meet Done',    color: '#92400e', bg: '#fef3c7', border: '#fbbf24' },
+  payment_pending:      { label: 'Awaiting Pmt', color: '#b45309', bg: '#fef3c7', border: '#fbbf24' },
+  confirmed:            { label: 'Confirmed',    color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' },
+  in_progress:          { label: 'In Progress',  color: '#5b21b6', bg: '#ede9fe', border: '#a78bfa' },
+  completed:            { label: 'Completed',    color: '#374151', bg: '#f3f4f6', border: '#d1d5db' },
+  reviewed:             { label: 'Reviewed',     color: '#374151', bg: '#f3f4f6', border: '#d1d5db' },
+  cancelled:            { label: 'Cancelled',    color: '#991b1b', bg: '#fee2e2', border: '#fca5a5' },
+  declined:             { label: 'Declined',     color: '#991b1b', bg: '#fee2e2', border: '#fca5a5' },
+  disputed:             { label: 'Dispute',      color: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd' },
+  // V1 compat aliases (stale cache / V1 action write-back)
+  new_request:          { label: 'New Request',  color: '#92400e', bg: '#fef3c7', border: '#fbbf24' },
+  dispute:              { label: 'Dispute',      color: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd' },
+  provider_confirmed:   { label: 'Confirmed',    color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' },
 };
 
 const CANCEL_REASONS  = ['Schedule conflict', 'Emergency', 'Pet is unwell', 'Client request', 'Other'];
@@ -88,21 +99,21 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
 
   const statusParam = statusFilter === 'all' ? '' : statusFilter;
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['/api/provider-dashboard/bookings', statusParam, activePlatform, page],
-    queryFn: () => fetchWithAuth(`/api/provider-dashboard/bookings?status=${statusParam}&page=${page}&limit=15`),
+    queryKey: ['/api/provider-dashboard/v2/bookings', statusParam, activePlatform, page],
+    queryFn: () => fetchWithAuth(`/api/provider-dashboard/v2/bookings?status=${statusParam}&page=${page}&limit=15`),
   });
 
   const { data: countsData } = useQuery({
-    queryKey: ['/api/provider-dashboard/booking-counts'],
-    queryFn: () => fetchWithAuth('/api/provider-dashboard/booking-counts'),
+    queryKey: ['/api/provider-dashboard/v2/booking-counts'],
+    queryFn: () => fetchWithAuth('/api/provider-dashboard/v2/booking-counts'),
     staleTime: 30_000,
   });
   const statusCounts: Record<string, number> = (countsData as any)?.counts ?? {};
 
   const invalidateAll = () => {
-    queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/bookings'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/bookings'] });
     queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/stats'] });
-    queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/booking-counts'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/booking-counts'] });
   };
 
   const actionMutation = useMutation({
@@ -413,11 +424,13 @@ function JobCard({
   const payout = parseFloat(booking.providerPayout || booking.subtotal || '0');
 
   const actions = [];
-  if (booking.status === 'new_request' || booking.status === 'pending') {
+  // V2: pending/accepted = new requests awaiting provider decision
+  if (['new_request', 'pending', 'accepted'].includes(booking.status)) {
     actions.push({ label: 'Accept', action: 'accept',   icon: CheckCircle2, className: 'bg-green-600 text-white hover:bg-green-700' });
     actions.push({ label: 'Decline', action: '_decline', icon: XCircle,      className: 'bg-gray-100 text-gray-700 hover:bg-red-50 hover:text-red-700' });
   }
-  if (booking.status === 'confirmed' || booking.status === 'provider_confirmed') {
+  // V2: confirmed = ready to start
+  if (['confirmed', 'provider_confirmed'].includes(booking.status)) {
     actions.push({ label: 'Start',  action: 'start',   icon: Play,    className: 'bg-purple-600 text-white hover:bg-purple-700' });
     actions.push({ label: 'Cancel', action: '_cancel', icon: XCircle, className: 'bg-gray-100 text-red-600 hover:bg-red-50' });
   }
@@ -547,7 +560,7 @@ function JobCard({
             </div>
 
             {/* Report issue — available for any non-terminal active booking */}
-            {!['completed', 'cancelled'].includes(booking.status) && (
+            {!['completed', 'reviewed', 'cancelled', 'declined', 'disputed'].includes(booking.status) && (
               <button
                 onClick={() => onAction(booking.id, 'report')}
                 disabled={isPending}

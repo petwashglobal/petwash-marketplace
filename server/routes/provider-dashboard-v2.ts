@@ -44,6 +44,9 @@ const STATUS_GROUP_MAP: Record<string, string[]> = {
   active:       ['confirmed', 'in_progress'],
   completed:    ['completed', 'reviewed'],
   cancelled:    ['cancelled', 'declined', 'disputed'],
+  // V1 compat aliases — old UI sent these tab IDs, map them to V2 enum values
+  dispute:      ['disputed'],
+  provider_confirmed: ['confirmed'],
 };
 
 // Converts a comma-separated status query param into an array of booking_request statuses

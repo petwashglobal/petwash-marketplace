@@ -22,14 +22,22 @@ interface Props {
 }
 
 const STATUS_STYLES: Record<string, { label: string; color: string; bg: string }> = {
-  new_request:       { label: 'New Request', color: '#92400e', bg: '#fef3c7' },
-  pending:           { label: 'Pending',     color: '#1e40af', bg: '#dbeafe' },
-  confirmed:         { label: 'Confirmed',   color: '#065f46', bg: '#d1fae5' },
-  provider_confirmed:{ label: 'Confirmed',   color: '#065f46', bg: '#d1fae5' },
-  in_progress:       { label: 'In Progress', color: '#7c3aed', bg: '#ede9fe' },
-  completed:         { label: 'Completed',   color: '#374151', bg: '#f3f4f6' },
-  cancelled:         { label: 'Cancelled',   color: '#991b1b', bg: '#fee2e2' },
-  dispute:           { label: 'Dispute',     color: '#92400e', bg: '#fef3c7' },
+  // V2 booking_requests statuses
+  pending:              { label: 'Pending',     color: '#1e40af', bg: '#dbeafe' },
+  accepted:             { label: 'Accepted',    color: '#065f46', bg: '#d1fae5' },
+  meet_greet_scheduled: { label: 'Meet & Greet',color: '#92400e', bg: '#fef3c7' },
+  payment_pending:      { label: 'Awaiting Pmt',color: '#b45309', bg: '#fef3c7' },
+  confirmed:            { label: 'Confirmed',   color: '#065f46', bg: '#d1fae5' },
+  in_progress:          { label: 'In Progress', color: '#7c3aed', bg: '#ede9fe' },
+  completed:            { label: 'Completed',   color: '#374151', bg: '#f3f4f6' },
+  reviewed:             { label: 'Reviewed',    color: '#374151', bg: '#f3f4f6' },
+  cancelled:            { label: 'Cancelled',   color: '#991b1b', bg: '#fee2e2' },
+  declined:             { label: 'Declined',    color: '#991b1b', bg: '#fee2e2' },
+  disputed:             { label: 'Dispute',     color: '#92400e', bg: '#fef3c7' },
+  // V1 compat aliases (kept for any stale cache hits during transition)
+  new_request:          { label: 'New Request', color: '#92400e', bg: '#fef3c7' },
+  provider_confirmed:   { label: 'Confirmed',   color: '#065f46', bg: '#d1fae5' },
+  dispute:              { label: 'Dispute',     color: '#92400e', bg: '#fef3c7' },
 };
 
 function fetchWithAuth(url: string, opts?: RequestInit) {
@@ -63,25 +71,25 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
   });
 
   const { data: bookingsData, isLoading: bookingsLoading } = useQuery({
-    queryKey: ['/api/provider-dashboard/bookings', 'new_request,pending,in_progress,confirmed,provider_confirmed'],
-    queryFn: () => fetchWithAuth('/api/provider-dashboard/bookings?status=new_request,pending,in_progress,confirmed,provider_confirmed&page=1&limit=20'),
+    queryKey: ['/api/provider-dashboard/v2/bookings', 'new_request,active'],
+    queryFn: () => fetchWithAuth('/api/provider-dashboard/v2/bookings?status=new_request,active&page=1&limit=20'),
   });
 
   const { data: upcomingData } = useQuery({
-    queryKey: ['/api/provider-dashboard/upcoming'],
-    queryFn: () => fetchWithAuth('/api/provider-dashboard/upcoming'),
+    queryKey: ['/api/provider-dashboard/v2/upcoming'],
+    queryFn: () => fetchWithAuth('/api/provider-dashboard/v2/upcoming'),
     staleTime: 60_000,
   });
 
   const { data: countsData } = useQuery({
-    queryKey: ['/api/provider-dashboard/booking-counts'],
-    queryFn: () => fetchWithAuth('/api/provider-dashboard/booking-counts'),
+    queryKey: ['/api/provider-dashboard/v2/booking-counts'],
+    queryFn: () => fetchWithAuth('/api/provider-dashboard/v2/booking-counts'),
     staleTime: 30_000,
   });
 
   const { data: earningsData } = useQuery({
-    queryKey: ['/api/provider-dashboard/earnings'],
-    queryFn: () => fetchWithAuth('/api/provider-dashboard/earnings'),
+    queryKey: ['/api/provider-dashboard/v2/earnings'],
+    queryFn: () => fetchWithAuth('/api/provider-dashboard/v2/earnings'),
   });
 
   const availabilityMutation = useMutation({
@@ -108,10 +116,10 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
         body: JSON.stringify(reason ? { reason } : {}),
       }),
     onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/booking-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/booking-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/upcoming'] });
       queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/stats'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/upcoming'] });
       toast({ title: vars.action === 'accept' ? 'Job accepted' : 'Job declined' });
     },
     onError: () => toast({ title: 'Action failed', variant: 'destructive' }),
@@ -125,10 +133,12 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
   };
 
   const allBookings: any[] = (bookingsData as any)?.bookings || [];
-  const newRequests = allBookings.filter((b: any) => b.status === 'new_request' || b.status === 'pending');
+  const newRequests = allBookings.filter((b: any) =>
+    ['pending', 'accepted', 'meet_greet_scheduled', 'meet_greet_completed', 'payment_pending'].includes(b.status)
+  );
   const activeJobs  = allBookings.filter((b: any) => b.status === 'in_progress');
   const todayJobs   = allBookings.filter((b: any) =>
-    (b.status === 'confirmed' || b.status === 'provider_confirmed') && isToday(b.startTime)
+    b.status === 'confirmed' && isToday(b.startTime)
   );
   const upcomingJobs: any[] = (upcomingData as any)?.upcoming || [];
   const statusCounts: Record<string, number> = (countsData as any)?.counts ?? {};
