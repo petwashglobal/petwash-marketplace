@@ -1,0 +1,70 @@
+Phase 3 should be next.
+
+You’ve done enough polishing on provider-side profile and dashboard to stop adding more detail there for now. The biggest strategic risk is still the split between old and new booking systems.
+
+So the smartest next move is:
+
+Phase 3 - move provider dashboard booking reads toward booking_requests
+
+This should be the next order:
+	1.	Booking source-of-truth migration
+Move these provider dashboard reads step by step from old bookings to new booking_requests:
+
+	•	upcoming jobs
+	•	new requests
+	•	active jobs
+	•	completed jobs
+	•	cancelled/dispute jobs
+
+Do it route by route, not all at once.
+	2.	Add missing payout fields to booking_requests
+Before full migration, make sure booking_requests can support:
+
+	•	provider payout
+	•	gross amount
+	•	platform fee
+	•	net payout
+	•	payout status
+	•	payout date if needed
+
+Without that, provider earnings will stay chained to the old system.
+	3.	Backfill script
+Create one migration script:
+
+	•	map old bookings rows into booking_requests where needed
+	•	preserve provider UID mapping
+	•	preserve status history as much as possible
+	•	mark migrated rows clearly
+
+	4.	Provider dashboard dual-read safety phase
+For a short transition period:
+
+	•	keep old routes live
+	•	add shadow comparison logging between old and new results
+	•	compare counts and totals
+	•	only switch UI fully once results match
+
+	5.	Then remove legacy booking reads
+Once counts and payouts match:
+
+	•	retire old dashboard booking queries
+	•	keep old table read-only temporarily
+	•	then remove dead routes
+
+After that, the next best move is:
+
+Owner-side booking flow maturity
+Because once provider ops are stable, the biggest commercial upside is on the customer side:
+	•	booking management polish
+	•	rebook flow
+	•	saved providers
+	•	promo / wallet / gift UX
+	•	booking timeline
+	•	better trust and notification loops
+
+So my recommendation is:
+
+Now: Phase 3 migration to booking_requests
+Then: owner-side booking flow and retention loop
+
+If you want, I’ll write the exact Phase 3 migration brief with table changes, routes to migrate first, backfill logic, and proof checklist.

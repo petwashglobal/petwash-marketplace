@@ -781,6 +781,50 @@ All filters are now DB-backed — no client-side post-filtering anywhere.
 - `onSuccess`: invalidates `/api/saved-providers` query cache
 - Zero client-side post-filtering remains
 
+## Phase 3: booking_requests Migration (March 2026)
+
+### Goal
+Move provider dashboard reads from `bookings` (old system) to `booking_requests` (new system, Firebase-UID-based provider reference). Dual-read safety phase: V1 routes stay live until migration-diff confirms parity.
+
+### DB changes (via executeSql — no drizzle-kit migration)
+**`booking_requests` new columns:**
+- `provider_payout_cents integer` — net provider payout after 15% platform fee (= subtotalCents - serviceFeeCents)
+- `payout_status varchar(32) DEFAULT 'pending'` — pending | released | paid_out | failed
+- `payout_date timestamp` — when funds released to provider
+- Backfilled: all 13 existing rows populated with `providerPayoutCents = subtotalCents - serviceFeeCents`
+
+### New routes: `server/routes/provider-dashboard-v2.ts`
+Mounted at `/api/provider-dashboard/v2/...` — RBAC guard covered by existing `/api/provider-dashboard` prefix.
+- `GET /v2/bookings` — reads from `booking_requests` WHERE `provider_id = user.uid` (Firebase UID direct, no integer join). Returns same shape as V1 (cents → ILS conversion). Status filter supports both raw enum values and V1 group names (new_request, active, completed, cancelled).
+- `GET /v2/upcoming` — confirmed/in_progress jobs within next 7 days
+- `GET /v2/booking-counts` — count per status + group totals for tab badges
+- `GET /v2/earnings` — paid/pending/this-month earnings from `booking_requests`
+- `GET /v2/migration-diff` — shadow comparison: v1 count vs v2 count + parity flag + recommendation
+
+### Backfill script: `scripts/migrate-bookings-to-requests.ts`
+- Reads all `bookings`, joins to `providers` (p.id::text = b.provider_id) to get Firebase UID
+- Maps old statuses → booking_request_status enum
+- Converts ILS decimals → cents
+- ON CONFLICT (request_id) DO NOTHING — idempotent, safe to re-run
+- Result: 38/39 old bookings had NULL provider_id (test/simulation data never properly linked), 1 row migrated
+- Rollback: `DELETE FROM booking_requests WHERE status_history::text LIKE '%migrated_from_bookings%'`
+
+### Status group mapping
+```
+new_request  → pending, accepted, meet_greet_scheduled, meet_greet_completed, payment_pending
+active       → confirmed, in_progress
+completed    → completed, reviewed
+cancelled    → cancelled, declined, disputed
+```
+
+### Migration roadmap
+- [x] Phase 3 routes live (V2 endpoints)
+- [x] Payout fields added to booking_requests
+- [x] Backfill script written + dry-run verified
+- [ ] Switch UI query keys from `/api/provider-dashboard/...` to `/api/provider-dashboard/v2/...`
+- [ ] Monitor `/v2/migration-diff` — confirm parity when real bookings flow in
+- [ ] Retire V1 dashboard booking routes once diff shows `parity: true`
+
 ## Competitive Deep-Review Build v2 (March 2026 — Airbnb + Rover + MadPaws micro-UX)
 
 ### Research performed

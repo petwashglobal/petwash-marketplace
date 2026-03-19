@@ -9864,6 +9864,12 @@ export const bookingRequests = pgTable("booking_requests", {
   giftCardId: varchar("gift_card_id", { length: 255 }),
   walletCreditUsedCents: integer("wallet_credit_used_cents").notNull().default(0),
 
+  // Provider payout (Phase 3 — source of truth for provider earnings)
+  // providerPayoutCents = subtotalCents - serviceFeeCents (net after 15% platform commission)
+  providerPayoutCents: integer("provider_payout_cents"),       // nullable until booking is confirmed
+  payoutStatus: varchar("payout_status", { length: 32 }).default("pending"), // pending | released | paid_out | failed
+  payoutDate: timestamp("payout_date"),                         // when funds were released to provider
+
   // Metadata
   searchId: varchar("search_id", { length: 24 }), // Link to original search
   createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -9719,9 +9719,15 @@ self.addEventListener('notificationclick', (event) => {
   const providerOnboardingRoutes = (await import('./routes/provider-onboarding')).default;
   app.use('/api/provider-onboarding', apiLimiter, providerOnboardingRoutes);
 
-  // Provider Dashboard (Uber-style provider dashboard with jobs, earnings, client IDs)
+  // Provider Dashboard V1 — reads from old bookings table (kept live for fallback)
   const providerDashboardRoutes = (await import('./routes/provider-dashboard')).default;
   app.use('/api/provider-dashboard', apiLimiter, providerDashboardRoutes);
+
+  // Provider Dashboard V2 — Phase 3 migration: reads from booking_requests (new source of truth)
+  // Dual-read safety phase: both V1 and V2 live simultaneously; switch UI query keys to /v2 once
+  // migration-diff confirms parity. Remove V1 routes after Phase 3 is complete.
+  const providerDashboardV2Routes = (await import('./routes/provider-dashboard-v2')).default;
+  app.use('/api/provider-dashboard/v2', apiLimiter, providerDashboardV2Routes);
 
   // Provider phone OTP verification (no CAPTCHA — user is already authenticated)
   const { providerPhoneRouter } = await import('./routes/provider-phone');
