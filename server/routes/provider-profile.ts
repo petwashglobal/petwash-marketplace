@@ -13,7 +13,7 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { providerProfiles } from '@shared/schema';
+import { providerProfiles, providers } from '@shared/schema';
 import { eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
@@ -183,12 +183,12 @@ const patchSchema = z.object({
   acceptedPets:     z.array(z.enum(PET_WHITELIST)).optional(),
   hasFencedYard:    z.boolean().optional().nullable(),
   hasNoPetsAtHome:  z.boolean().optional().nullable(),
-  // Availability scheduling — format + calendar validity
+  // Availability scheduling — format + calendar validity + no duplicates
   blockedDates: z.array(
     z.string()
       .regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD')
       .refine(d => { const p = new Date(d + 'T12:00:00'); return !isNaN(p.getTime()) && p.toISOString().startsWith(d); }, { message: 'Invalid calendar date' })
-  ).max(365).optional(),
+  ).max(365).refine(arr => new Set(arr).size === arr.length, { message: 'Duplicate dates not allowed' }).optional(),
   workingHours: z.object({
     mon: dayHoursSchema, tue: dayHoursSchema, wed: dayHoursSchema, thu: dayHoursSchema,
     fri: dayHoursSchema, sat: dayHoursSchema, sun: dayHoursSchema,
@@ -235,6 +235,18 @@ router.patch('/me', async (req: Request, res: Response) => {
       .update(providerProfiles)
       .set(updates)
       .where(eq(providerProfiles.userId, uid));
+
+    // ── D: Mirror availabilityState → providers.isAvailable ──────────────────
+    // Phase 2 migration step: keep legacy providers.isAvailable in sync until
+    // the dashboard fully migrates to read from provider_profiles.
+    if (data.availabilityState !== undefined) {
+      const isAvailableNow = data.availabilityState === 'online' || data.availabilityState === 'available';
+      await db
+        .update(providers)
+        .set({ isAvailable: isAvailableNow })
+        .where(eq(providers.userId, uid));
+      logger.info('[ProviderProfile] Mirror availability → providers', { uid, isAvailable: isAvailableNow });
+    }
 
     logger.info('[ProviderProfile] PATCH /me', { uid, fields: Object.keys(updates) });
 

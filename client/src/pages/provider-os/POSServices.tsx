@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Dog, Moon, MapPin, Scissors, GraduationCap, Home, Clock, Eye,
   Plus, Trash2, Loader2, ChevronDown, ChevronUp, ToggleLeft, ToggleRight,
-  Info,
+  Info, AlertCircle, Globe,
 } from 'lucide-react';
 
 interface Addon {
@@ -78,6 +78,8 @@ export default function POSServices() {
     }
   }, [data]);
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const saveMutation = useMutation({
     mutationFn: () =>
       fetchWithAuth('/api/provider-profile/services', {
@@ -85,13 +87,24 @@ export default function POSServices() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
       }),
-    onSuccess: () => {
+    onSuccess: (res: any) => {
+      if (!res.success) {
+        const msg = res.error || 'Validation failed';
+        const details = res.details ? JSON.stringify(res.details) : '';
+        setSaveError(details || msg);
+        toast({ title: msg, variant: 'destructive' });
+        return;
+      }
+      setSaveError(null);
       queryClient.invalidateQueries({ queryKey: ['/api/provider-profile/services'] });
       queryClient.invalidateQueries({ queryKey: ['/api/provider-profile/me'] });
       setDirty(false);
-      toast({ title: 'Services saved' });
+      toast({ title: 'Services saved', description: `${Object.values(config).filter(s => s.enabled).length} service(s) now visible on your profile.` });
     },
-    onError: () => toast({ title: 'Failed to save', variant: 'destructive' }),
+    onError: (err: any) => {
+      setSaveError(err?.message || 'Network error');
+      toast({ title: 'Failed to save services', variant: 'destructive' });
+    },
   });
 
   function update(serviceId: string, patch: Partial<ServiceConfig>) {
@@ -156,14 +169,35 @@ export default function POSServices() {
         )}
       </div>
 
-      {/* Info banner */}
+      {/* How pricing works */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-start gap-2">
         <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
-        <p className="text-xs text-blue-800">
-          Enabled services and prices are shown on your public profile. Prices are in ILS (₪) before platform fee.
-          <span className="block mt-0.5 text-blue-600">Commission 15% + VAT 18% on commission is deducted from each booking.</span>
-        </p>
+        <div className="text-xs text-blue-800 space-y-0.5">
+          <p className="font-semibold">What clients see vs what you earn</p>
+          <p>Clients see your base price on your public profile. You receive the base price minus a 15% platform commission. VAT (18%) applies to the commission portion only.</p>
+          <p className="text-blue-600 font-medium">Your net = base price × 82.3%</p>
+        </div>
       </div>
+
+      {/* Visibility explainer */}
+      <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-start gap-2">
+        <Globe className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+        <div className="text-xs text-green-800">
+          <p className="font-semibold">Public vs private</p>
+          <p>Services you <span className="font-semibold">enable</span> with a price set appear on your public profile and in search results. Disabled services are hidden from clients but your settings are saved.</p>
+        </div>
+      </div>
+
+      {/* Save error */}
+      {saveError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+          <div className="text-xs text-red-800">
+            <p className="font-semibold mb-0.5">Could not save services</p>
+            <p className="font-mono text-[10px] text-red-600 break-all">{saveError}</p>
+          </div>
+        </div>
+      )}
 
       {/* Service cards */}
       <div className="space-y-3">
@@ -182,7 +216,19 @@ export default function POSServices() {
                     <Icon className={`w-5 h-5 ${svc.enabled ? meta.color : 'text-gray-300'}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold ${svc.enabled ? 'text-gray-900' : 'text-gray-400'}`}>{meta.label}</p>
+                    <div className="flex items-center gap-2">
+                      <p className={`text-sm font-semibold ${svc.enabled ? 'text-gray-900' : 'text-gray-400'}`}>{meta.label}</p>
+                      {svc.enabled && svc.basePrice != null && (
+                        <span className="flex items-center gap-0.5 text-[10px] font-medium text-green-700 bg-green-50 px-1.5 py-0.5 rounded-full border border-green-200">
+                          <Globe className="w-2.5 h-2.5" /> Public
+                        </span>
+                      )}
+                      {svc.enabled && svc.basePrice == null && (
+                        <span className="flex items-center gap-0.5 text-[10px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200">
+                          <AlertCircle className="w-2.5 h-2.5" /> No price
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-400 truncate">{meta.description}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -281,10 +327,17 @@ export default function POSServices() {
                   </div>
 
                   {/* Public visibility note */}
-                  <div className="flex items-center gap-2 text-xs text-gray-400 bg-white rounded-xl p-2.5 border border-gray-100">
-                    <Eye className="w-3.5 h-3.5 shrink-0" />
-                    <span>Visible on your public profile once saved</span>
-                  </div>
+                  {svc.basePrice != null ? (
+                    <div className="flex items-center gap-2 text-xs text-green-700 bg-green-50 rounded-xl p-2.5 border border-green-200">
+                      <Eye className="w-3.5 h-3.5 shrink-0" />
+                      <span><span className="font-semibold">Public:</span> This service is visible on your profile and in search results once saved.</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded-xl p-2.5 border border-amber-200">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span><span className="font-semibold">Not public yet:</span> Set a base price above to make this service visible to clients.</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
