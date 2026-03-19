@@ -1,0 +1,65 @@
+Good. This is the right result.
+
+You have now closed the remaining browse and favourites gaps in the correct way:
+- minPrice / maxPrice are server-backed
+- petType is server-backed
+- saved providers are unified on one API everywhere
+- optimistic save now has rollback
+- trust backfill has startup, admin, booking-complete, and profile-view paths
+- public trust responses are cleaner and safer
+
+I accept this as the completion of the browse / favourites hardening phase.
+
+Now the next phase can move forward.
+
+1. What is now considered complete
+- real browse filtering for price and pet type
+- real favourites persistence across grid and profile
+- trust metric refresh and backfill foundation
+- no decorative-only trust/filter gaps remaining in these areas
+
+2. What I want next
+Now move to provider-side maturity, but keep the same proof standard.
+
+Priority order:
+A. Provider dashboard
+- earnings summary
+- upcoming bookings
+- booking calendar / availability
+- profile completeness score
+- unread messages / requests summary
+
+B. Provider profile editor
+- pricing setup UI for price_from_cents
+- accepted_pets editor
+- home setup fields
+- background-check status visibility
+- service settings and add-ons editor
+
+C. Review management
+- provider sees reviews
+- provider can understand rating drivers
+- response capability only if appropriate to business rules
+
+3. Evidence required for the next phase
+Please send proof for:
+- provider dashboard screenshots
+- one provider with earnings summary
+- one provider with calendar / availability state
+- profile completeness score logic
+- profile editor saving price_from_cents
+- profile editor saving accepted_pets
+- one end-to-end provider update reflected in browse results
+
+4. Important rule
+Do not seed forever.
+Now that price and accepted_pets exist in DB, they need real provider-editable UI, not only manual DB values.
+
+5. Safety checks for the next phase
+Please confirm in the next pass:
+- provider can edit only their own data
+- admin can override where needed
+- browse updates reflect provider edits correctly
+- no private compliance/admin fields leak into public profile editing responses
+
+Proceed with provider dashboard maturity and provider profile editor next.

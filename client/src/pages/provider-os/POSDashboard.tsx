@@ -9,7 +9,7 @@ import {
   Star, Clock, TrendingUp, CheckCircle2, XCircle, Zap,
   AlertTriangle, Play, Square, MessageSquare, Plane,
   Power, Wallet, CalendarDays, ChevronRight, Loader2,
-  Dog, Scissors, MapPin, GraduationCap, Package,
+  Dog, Scissors, MapPin, GraduationCap, Package, UserCircle,
 } from 'lucide-react';
 
 type Module = 'dashboard' | 'jobs' | 'calendar' | 'wallet' | 'profile' | 'settings' | 'documents' | 'notifications' | 'safety' | 'assistant';
@@ -47,6 +47,14 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['/api/provider-dashboard/stats'],
     queryFn: () => fetchWithAuth('/api/provider-dashboard/stats'),
+  });
+
+  const { data: profileData } = useQuery<{
+    exists: boolean;
+    completeness: { score: number; breakdown: Record<string, { done: boolean; weight: number; label: string }> };
+  }>({
+    queryKey: ['/api/provider-profile/me'],
+    staleTime: 60_000,
   });
 
   const { data: bookingsData, isLoading: bookingsLoading } = useQuery({
@@ -158,6 +166,45 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
           </div>
         ))}
       </div>
+
+      {/* Profile completeness card — live from /api/provider-profile/me */}
+      {profileData?.exists !== false && profileData?.completeness && profileData.completeness.score < 100 && (
+        <button
+          onClick={() => onNavigate('profile')}
+          className="w-full bg-white border border-gray-200 rounded-xl p-4 text-start hover:border-amber-300 transition-colors group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center">
+                <UserCircle className="w-4 h-4 text-amber-500" />
+              </div>
+              <p className="text-sm font-semibold text-gray-900">Complete your profile</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-sm font-bold ${
+                profileData.completeness.score >= 80 ? 'text-green-600' :
+                profileData.completeness.score >= 50 ? 'text-amber-600' : 'text-red-500'
+              }`}>{profileData.completeness.score}%</span>
+              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-amber-500 transition-colors" />
+            </div>
+          </div>
+          <div className="w-full bg-gray-100 rounded-full h-1.5 mb-2">
+            <div
+              className={`h-1.5 rounded-full transition-all duration-500 ${
+                profileData.completeness.score >= 80 ? 'bg-green-500' :
+                profileData.completeness.score >= 50 ? 'bg-amber-500' : 'bg-red-400'
+              }`}
+              style={{ width: `${profileData.completeness.score}%` }}
+            />
+          </div>
+          {(() => {
+            const next = Object.values(profileData.completeness.breakdown).find(c => !c.done);
+            return next ? (
+              <p className="text-xs text-gray-500">Next: {next.label} <span className="text-amber-500 font-medium">+{next.weight}%</span></p>
+            ) : null;
+          })()}
+        </button>
+      )}
 
       {/* Missing docs / alerts */}
       {stats?.platforms?.some((p: any) => p.verificationStatus === 'pending') && (
