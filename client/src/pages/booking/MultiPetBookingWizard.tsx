@@ -15,7 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ChevronRight, ChevronLeft, Plus, Check, Loader2,
   Calendar, Pill, AlertTriangle,
-  Star, Info, Shield, RefreshCw
+  Star, Info, Shield, RefreshCw, Sparkles, PawPrint, StickyNote
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -313,24 +313,77 @@ function ProgressBar({ currentStep }: { currentStep: WizardStep }) {
 
 // ── RebookBanner ─────────────────────────────────────────────────────────────
 
-function RebookBanner({ warnings }: { warnings: string[] }) {
+interface RebookBannerProps {
+  warnings: string[];
+  petCount: number;
+  addonCount: number;
+  hasNotes: boolean;
+}
+
+function RebookBanner({ warnings, petCount, addonCount, hasNotes }: RebookBannerProps) {
+  const hasPrefill = petCount > 0 || addonCount > 0 || hasNotes;
   return (
-    <div className="mx-4 mt-3 p-3 rounded-xl bg-[#C5A55A]/10 border border-[#C5A55A]/25">
-      <div className="flex items-start gap-2">
-        <RefreshCw className="w-4 h-4 text-[#C5A55A] mt-0.5 flex-shrink-0" />
+    <div className="mx-4 mt-3 rounded-2xl overflow-hidden border border-[#C5A55A]/25 shadow-sm">
+
+      {/* ── Header row ─────────────────────────────────────────────────── */}
+      <div className="bg-gradient-to-l from-[#C5A55A]/8 to-[#FAF6EE] px-4 py-3 flex items-start gap-3">
+        <div className="w-8 h-8 rounded-full bg-[#C5A55A]/15 border border-[#C5A55A]/20 flex items-center justify-center shrink-0 mt-0.5">
+          <RefreshCw className="w-3.5 h-3.5 text-[#C5A55A]" />
+        </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-[#8B6914]">הזמנה חוזרת</p>
-          <p className="text-[11px] text-[#8B6914] mt-0.5 leading-relaxed">
-            בחר תאריך חדש — המחיר יחושב מחדש על-ידי מנוע המחיר הנוכחי.
-          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-xs font-bold text-[#7A5C1E] tracking-wide">הזמנה חוזרת</p>
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#C5A55A]/15 text-[#8B6914] border border-[#C5A55A]/25">
+              על בסיס הזמנה קודמת
+            </span>
+          </div>
+
+          {/* Prefill summary chips */}
+          {hasPrefill && (
+            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+              {petCount > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#6B4E1A] bg-[#C5A55A]/12 px-2 py-0.5 rounded-full border border-[#C5A55A]/20">
+                  <PawPrint className="w-2.5 h-2.5" />
+                  {petCount === 1 ? 'חיית מחמד אחת הועברה' : `${petCount} חיות מחמד הועברו`}
+                </span>
+              )}
+              {addonCount > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#6B4E1A] bg-[#C5A55A]/12 px-2 py-0.5 rounded-full border border-[#C5A55A]/20">
+                  <Check className="w-2.5 h-2.5" />
+                  {addonCount === 1 ? 'תוספת אחת הועברה' : `${addonCount} תוספות הועברו`}
+                </span>
+              )}
+              {hasNotes && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#6B4E1A] bg-[#C5A55A]/12 px-2 py-0.5 rounded-full border border-[#C5A55A]/20">
+                  <StickyNote className="w-2.5 h-2.5" />
+                  הערות הועברו
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Price recalculation notice ─────────────────────────────────── */}
+      <div className="px-4 py-2.5 flex items-start gap-2 bg-sky-50/70 border-t border-sky-100/80">
+        <Sparkles className="w-3.5 h-3.5 text-sky-400 shrink-0 mt-0.5" />
+        <p className="text-[11px] text-sky-700 leading-relaxed">
+          <span className="font-semibold">המחיר מחושב מחדש</span> — התעריף מגיע ממנוע המחיר הנוכחי.
+          ייתכן שישתנה מההזמנה הקודמת. בחר תאריך להצגת מחיר מעודכן.
+        </p>
+      </div>
+
+      {/* ── Warnings ──────────────────────────────────────────────────── */}
+      {warnings.length > 0 && (
+        <div className="border-t border-amber-100 divide-y divide-amber-50/80">
           {warnings.map((w, i) => (
-            <div key={i} className="flex items-center gap-1.5 mt-1.5">
-              <AlertTriangle className="w-3 h-3 text-amber-500 flex-shrink-0" />
-              <p className="text-[11px] text-amber-700 leading-tight">{w}</p>
+            <div key={i} className="flex items-start gap-2 px-4 py-2.5 bg-amber-50/80">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-amber-800 font-medium leading-relaxed">{w}</p>
             </div>
           ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -1321,8 +1374,9 @@ export default function MultiPetBookingWizard() {
   const [promoCode, setPromoCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ── Rebook warnings ──────────────────────────────────────────────────────────
+  // ── Rebook state ──────────────────────────────────────────────────────────────
   const [rebookWarnings, setRebookWarnings] = useState<string[]>([]);
+  const [rebookPrefillMeta, setRebookPrefillMeta] = useState({ petCount: 0, addonCount: 0 });
   const petPrefillApplied = useRef(false);
   const addonPrefillApplied = useRef(false);
 
@@ -1369,7 +1423,8 @@ export default function MultiPetBookingWizard() {
 
     const validIds = rebookParams.petIds.filter(id => pets.some(p => p.id === id));
     const missingCount = rebookParams.petIds.length - validIds.length;
-    setSelectedPetIds(validIds.length > 0 ? validIds : selectedPetIds);
+    if (validIds.length > 0) setSelectedPetIds(validIds);
+    setRebookPrefillMeta(m => ({ ...m, petCount: validIds.length }));
 
     if (missingCount > 0) {
       const msg = missingCount === 1
@@ -1403,6 +1458,7 @@ export default function MultiPetBookingWizard() {
           unitPriceCents: a.unitPriceCents,
         }));
       setSelectedAddons(prefilled);
+      setRebookPrefillMeta(m => ({ ...m, addonCount: prefilled.length }));
     }
 
     if (removedCount > 0) {
@@ -1607,7 +1663,12 @@ export default function MultiPetBookingWizard() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto pb-24">
         {rebookParams.isRebook && (
-          <RebookBanner warnings={rebookWarnings} />
+          <RebookBanner
+            warnings={rebookWarnings}
+            petCount={rebookPrefillMeta.petCount}
+            addonCount={rebookPrefillMeta.addonCount}
+            hasNotes={!!rebookParams.notes}
+          />
         )}
 
         {step === "schedule" && (

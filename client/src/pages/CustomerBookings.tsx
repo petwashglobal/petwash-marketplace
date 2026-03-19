@@ -448,13 +448,19 @@ function BookingCard({
           {showRebook && (
             <button
               onClick={handleRebook}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors"
-              style={{ borderColor: GOLD, color: GOLD, background: `${GOLD}10` }}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-full border-2 transition-all hover:scale-[1.02] active:scale-[0.97]"
+              style={{ borderColor: GOLD, color: GOLD, background: `${GOLD}0E` }}
             >
-              <RefreshCw size={12} />
-              {isRTL
-                ? (booking.providerName ? `הזמן שוב עם ${booking.providerName}` : 'הזמן שוב')
-                : (booking.providerName ? `Book ${booking.providerName} again` : 'Book Again')}
+              <RefreshCw size={11} className="shrink-0" />
+              <span>{isRTL ? 'הזמנה חוזרת' : 'Book again'}</span>
+              {(booking.petIds?.length || booking.addonCodes?.length) ? (
+                <span
+                  className="text-[10px] font-normal hidden sm:inline-block"
+                  style={{ opacity: 0.65 }}
+                >
+                  {isRTL ? '· אותם פרטים' : '· same details'}
+                </span>
+              ) : null}
             </button>
           )}
           <button
