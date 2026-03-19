@@ -12372,6 +12372,9 @@ export const loyaltyRules = pgTable("loyalty_rules", {
   minBookingIls:   integer("min_booking_ils"),       // minimum booking value to qualify
   maxUsesPerUser:  integer("max_uses_per_user"),     // null = unlimited
   description:     text("description"),
+  // Phase 6.11 — rollout guardrails
+  armed:           boolean("armed").notNull().default(false), // processor skips unless true
+  dailySendCap:    integer("daily_send_cap"),                 // max sends per day; null = unlimited
   updatedAt:       timestamp("updated_at").notNull().defaultNow(),
 });
 export type LoyaltyRule = typeof loyaltyRules.$inferSelect;

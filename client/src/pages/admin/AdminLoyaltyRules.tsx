@@ -16,8 +16,9 @@ import {
   Settings2, BarChart2, Coins, RefreshCw, ClipboardList,
   ToggleLeft, ToggleRight, Loader2, AlertTriangle, ChevronRight, Check,
   TrendingUp, TrendingDown, Users, ArrowUpRight, ArrowDownRight,
-  Trophy, PauseCircle, PlayCircle, Zap,
+  Trophy, PauseCircle, PlayCircle, Zap, ShieldCheck, ShieldOff,
 } from "lucide-react";
+import { QueueHealthCard } from "@/components/loyalty/QueueHealthCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,8 @@ interface LoyaltyRule {
   minBookingIls:  number | null;
   maxUsesPerUser: number | null;
   description:    string | null;
+  armed:          boolean;
+  dailySendCap:   number | null;
   updatedAt:      string;
 }
 
@@ -155,6 +158,8 @@ function RulesTab() {
       minBookingIls:  r.minBookingIls ?? undefined,
       maxUsesPerUser: r.maxUsesPerUser ?? undefined,
       description:    r.description ?? "",
+      armed:          r.armed,
+      dailySendCap:   r.dailySendCap ?? undefined,
     });
   };
 
@@ -204,7 +209,16 @@ function RulesTab() {
 
             {/* Quick stats row */}
             {!isEditing && (
-              <div className="px-4 pb-3 flex gap-4 text-[11px] text-gray-400">
+              <div className="px-4 pb-3 flex flex-wrap gap-3 text-[11px] text-gray-400 items-center">
+                {rule.armed
+                  ? <Badge className="text-[9px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 border-0 gap-0.5">
+                      <ShieldCheck className="w-2.5 h-2.5" /> מחומש
+                    </Badge>
+                  : <Badge className="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-400 border-0 gap-0.5">
+                      <ShieldOff className="w-2.5 h-2.5" /> לא מחומש
+                    </Badge>
+                }
+                {rule.dailySendCap   && <span>תקרה/יום: {rule.dailySendCap}</span>}
                 {rule.expiryDays     && <span>תוקף: {rule.expiryDays} ימים</span>}
                 {rule.minBookingIls  && <span>מינימום: ₪{rule.minBookingIls}</span>}
                 {rule.maxUsesPerUser && <span>מקסימום שימושים: {rule.maxUsesPerUser}</span>}
@@ -256,6 +270,31 @@ function RulesTab() {
                   <Input
                     value={editValues.description ?? ""}
                     onChange={e => setEditValues(v => ({ ...v, description: e.target.value }))}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                {/* Phase 6.11 rollout guardrails */}
+                <div className="col-span-2 border-t border-gray-50 pt-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold text-gray-600">מחומש לשליחות</p>
+                    <p className="text-[10px] text-gray-400">המעבד שולח רק אם מחומש</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditValues(v => ({ ...v, armed: !v.armed }))}
+                    className="text-gray-400 hover:text-emerald-500 transition-colors"
+                  >
+                    {editValues.armed
+                      ? <ToggleRight className="w-7 h-7 text-emerald-500" />
+                      : <ToggleLeft  className="w-7 h-7 text-gray-300" />}
+                  </button>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[11px] text-gray-400 mb-1 block">תקרת שליחות יומית</label>
+                  <Input
+                    type="number" min={1} placeholder="ללא הגבלה"
+                    value={editValues.dailySendCap ?? ""}
+                    onChange={e => setEditValues(v => ({ ...v, dailySendCap: e.target.value ? parseInt(e.target.value) : null }))}
                     className="h-8 text-sm"
                   />
                 </div>
@@ -790,6 +829,9 @@ function WinbackTab() {
 
   return (
     <div className="p-4 space-y-5">
+      {/* Phase 6.11 — Queue health + proof-run panel */}
+      <QueueHealthCard />
+
       {/* KPI strip */}
       <div className="grid grid-cols-3 gap-3">
         <KpiCard label="נשלחו"    value={String(conversion.sent)}      icon={<ArrowUpRight className="w-4 h-4 text-blue-500" />} />

@@ -110,6 +110,31 @@ export async function runWinbackProcessor(): Promise<void> {
   let awarded   = 0;
   let errors    = 0;
 
+  // ── Load loyalty rules — armed flag + daily send cap ─────────────────────
+  const ruleRows = await db
+    .select({
+      ruleKey:      loyaltyRules.ruleKey,
+      armed:        loyaltyRules.armed,
+      dailySendCap: loyaltyRules.dailySendCap,
+      enabled:      loyaltyRules.enabled,
+    })
+    .from(loyaltyRules);
+  const ruleMap = new Map(ruleRows.map(r => [r.ruleKey, r]));
+
+  // ── Daily sends already dispatched today per trigger ──────────────────────
+  const todaySentRes = await db.execute<{ trigger: string; cnt: number }>(sql`
+    SELECT trigger, count(*)::int AS cnt
+    FROM winback_queue
+    WHERE status = 'sent'
+      AND sent_at >= current_date
+    GROUP BY trigger
+  `);
+  const todaySent = new Map<string, number>(
+    (todaySentRes.rows ?? []).map(r => [r.trigger, r.cnt]),
+  );
+  // Track additional sends during THIS batch so cap is respected within the run
+  const batchSent = new Map<string, number>();
+
   // ── Load experiment_decisions — authoritative winner/pause state ──────────
   // Key: experimentKey (e.g. 'winback_14d'), Value: decision row
   const decisionRows = await db
@@ -164,8 +189,26 @@ export async function runWinbackProcessor(): Promise<void> {
 
       const expKey   = `winback_${trigger}` as const;
       const decision = decisionMap.get(expKey);
+      const guardrail = ruleMap.get(trigger);
 
-      // ── 0a. Frequency cap ─────────────────────────────────────────────────
+      // ── 0a. Armed guardrail — rule must be explicitly armed for sends ──────
+      if (!guardrail?.armed) {
+        // Leave row pending — admin may arm the rule later
+        logger.debug('[WinbackProcessor] Trigger not armed, skipping row', { trigger, queueId });
+        continue;
+      }
+
+      // ── 0b. Daily send cap ────────────────────────────────────────────────
+      if (guardrail.dailySendCap != null) {
+        const todayCount  = todaySent.get(trigger) ?? 0;
+        const batchCount  = batchSent.get(trigger) ?? 0;
+        if (todayCount + batchCount >= guardrail.dailySendCap) {
+          logger.info('[WinbackProcessor] Daily send cap reached', { trigger, cap: guardrail.dailySendCap, todayCount, batchCount });
+          continue; // Leave pending — will be picked up tomorrow
+        }
+      }
+
+      // ── 0c. Frequency cap ─────────────────────────────────────────────────
       if (recentSentSet.has(userId)) {
         await db.execute(sql`
           UPDATE winback_queue SET status = 'suppressed' WHERE id = ${queueId}
@@ -308,6 +351,7 @@ export async function runWinbackProcessor(): Promise<void> {
       });
 
       awarded++;
+      batchSent.set(trigger, (batchSent.get(trigger) ?? 0) + 1);
       logger.info('[WinbackProcessor] Win-back sent', {
         userId,
         trigger,
