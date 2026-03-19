@@ -21,6 +21,7 @@ import {
   refreshAndCacheProviderTrustMetrics,
   formatResponseTime,
   backfillAllProviderTrustMetrics,
+  VERIFIED_BADGE_IDS,
 } from '../utils/providerTrustMetrics';
 
 const SUPER_ADMIN_UID = 'vdiboz7IrUQEm2RbdO7VZLkBu552';
@@ -47,6 +48,11 @@ router.get('/providers/stats/:userId', async (req: Request, res: Response) => {
         repeatClientCount: providerProfiles.repeatClientCount,
         responseRatePct: providerProfiles.responseRatePct,
         avgResponseTimeMinutes: providerProfiles.avgResponseTimeMinutes,
+        acceptanceRatePct: providerProfiles.acceptanceRatePct,
+        completionRatePct: providerProfiles.completionRatePct,
+        cancellationRatePct: providerProfiles.cancellationRatePct,
+        trustScore: providerProfiles.trustScore,
+        badges: providerProfiles.badges,
         lastPresenceAt: providerProfiles.lastPresenceAt,
         availabilityState: providerProfiles.availabilityState,
         backgroundCheckStatus: providerProfiles.backgroundCheckStatus,
@@ -74,17 +80,25 @@ router.get('/providers/stats/:userId', async (req: Request, res: Response) => {
         metrics = await computeProviderTrustMetrics(userId);
       }
     } else {
-      // Use cached values
+      const badgeList = Array.isArray(profile.badges) ? (profile.badges as string[]) : [];
+      if (profile.backgroundCheckStatus === 'approved' && !badgeList.includes('background_check')) {
+        badgeList.push('background_check');
+      }
       metrics = {
         completedBookingsCount: profile.completedBookingsCount ?? 0,
         repeatClientCount: profile.repeatClientCount ?? null,
         responseRatePct: profile.responseRatePct ?? null,
         avgResponseTimeMinutes: profile.avgResponseTimeMinutes ?? null,
+        acceptanceRatePct: profile.acceptanceRatePct ?? null,
+        completionRatePct: profile.completionRatePct ?? null,
+        cancellationRatePct: profile.cancellationRatePct ?? null,
+        trustScore: profile.trustScore ?? null,
         isNew: (profile.completedBookingsCount ?? 0) < 3,
         lastActiveAt: profile.lastPresenceAt ?? null,
         backgroundCheckStatus: profile.backgroundCheckStatus ?? null,
         hasFencedYard: profile.hasFencedYard ?? null,
         hasNoPetsAtHome: profile.hasNoPetsAtHome ?? null,
+        badges: badgeList,
       };
     }
 
@@ -100,26 +114,32 @@ router.get('/providers/stats/:userId', async (req: Request, res: Response) => {
 
     return res.json({
       userId,
-      // ── Ratings (from provider_profiles, always shown) ──
+      // ── Ratings ──────────────────────────────────────────────────────────
       ratingAvg: profile?.ratingAvg ? Number(profile.ratingAvg) : null,
       ratingCount: profile?.ratingCount ?? null,
-      // ── Trust metrics (null = hide in UI) ──
+      // ── Trust score (null = new provider / insufficient data) ────────────
+      trustScore: metrics.trustScore,
+      // ── Trust metrics (null = hide in UI) ────────────────────────────────
       completedBookingsCount: metrics.completedBookingsCount,
-      repeatClientCount: metrics.repeatClientCount,         // null = hide
-      responseRatePct: metrics.responseRatePct,             // null = hide
-      avgResponseTimeMinutes: metrics.avgResponseTimeMinutes, // null = hide
-      responseTimeLabel: formatResponseTime(metrics.avgResponseTimeMinutes), // null = hide
+      repeatClientCount: metrics.repeatClientCount,
+      responseRatePct: metrics.responseRatePct,
+      avgResponseTimeMinutes: metrics.avgResponseTimeMinutes,
+      responseTimeLabel: formatResponseTime(metrics.avgResponseTimeMinutes),
+      acceptanceRatePct: metrics.acceptanceRatePct,
+      completionRatePct: metrics.completionRatePct,
+      cancellationRatePct: metrics.cancellationRatePct,
       isNew: metrics.isNew,
-      // ── Background check — boolean only, never expose raw status string ──
+      // ── Verified badges ───────────────────────────────────────────────────
+      badges: metrics.badges,
       hasBackgroundCheck: profile?.backgroundCheckStatus === 'approved',
-      // ── Home setup (null = provider hasn't filled this in yet) ──
-      hasFencedYard: metrics.hasFencedYard,                 // null = hide
-      hasNoPetsAtHome: metrics.hasNoPetsAtHome,             // null = hide
-      // ── Availability (real from presence data) ──
+      // ── Home setup ────────────────────────────────────────────────────────
+      hasFencedYard: metrics.hasFencedYard,
+      hasNoPetsAtHome: metrics.hasNoPetsAtHome,
+      // ── Availability ──────────────────────────────────────────────────────
       isAvailableNow,
       isAvailableThisWeek,
       lastActiveAt: metrics.lastActiveAt,
-      // ── Provider account age ──
+      // ── Account age ───────────────────────────────────────────────────────
       memberSince: profile?.createdAt ?? null,
     });
   } catch (err) {
@@ -241,6 +261,11 @@ router.get('/providers/browse', async (req: Request, res: Response) => {
         pp.avg_response_time_minutes  AS "avgResponseTimeMinutes",
         pp.price_from_cents           AS "priceFromCents",
         pp.accepted_pets              AS "acceptedPets",
+        pp.trust_score                AS "trustScore",
+        pp.acceptance_rate_pct        AS "acceptanceRatePct",
+        pp.completion_rate_pct        AS "completionRatePct",
+        pp.cancellation_rate_pct      AS "cancellationRatePct",
+        pp.badges                     AS "badges",
         pp.created_at                 AS "createdAt",
         CASE WHEN sp.id IS NOT NULL THEN TRUE ELSE FALSE END AS "isSavedByUser"
       FROM provider_profiles pp
@@ -388,6 +413,111 @@ router.delete('/saved-providers/:providerId', async (req: Request, res: Response
   } catch (err) {
     logger.error('[SavedProviders] DELETE failed', { uid, providerId, err });
     return res.status(500).json({ error: 'Failed to unsave provider' });
+  }
+});
+
+// ─── GET /api/admin/providers/trust-overview ─────────────────────────────────
+// Admin-only: list all providers sorted by trust score with badge/metric summary.
+router.get('/admin/providers/trust-overview', async (req: Request, res: Response) => {
+  const uid = getUid(req);
+  if (!uid || uid !== SUPER_ADMIN_UID) {
+    return res.status(403).json({ error: 'Forbidden — admin only' });
+  }
+
+  try {
+    const result = await pool.query(`
+      SELECT
+        pp.user_id                    AS "userId",
+        TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')) AS "displayName",
+        pp.trust_score                AS "trustScore",
+        pp.acceptance_rate_pct        AS "acceptanceRatePct",
+        pp.completion_rate_pct        AS "completionRatePct",
+        pp.cancellation_rate_pct      AS "cancellationRatePct",
+        pp.response_rate_pct          AS "responseRatePct",
+        pp.completed_bookings_count   AS "completedBookingsCount",
+        pp.rating_avg                 AS "ratingAvg",
+        pp.rating_count               AS "ratingCount",
+        pp.badges                     AS "badges",
+        pp.background_check_status    AS "backgroundCheckStatus",
+        pp.trust_metrics_updated_at   AS "trustMetricsUpdatedAt"
+      FROM provider_profiles pp
+      LEFT JOIN users u ON u.id = pp.user_id
+      ORDER BY pp.trust_score DESC NULLS LAST, pp.completed_bookings_count DESC NULLS LAST
+      LIMIT 200
+    `);
+
+    return res.json({
+      providers: result.rows.map((r: any) => ({
+        ...r,
+        ratingAvg: r.ratingAvg !== null ? Number(r.ratingAvg) : null,
+        badges: Array.isArray(r.badges) ? r.badges : [],
+      })),
+      total: result.rows.length,
+    });
+  } catch (err) {
+    logger.error('[TrustOverview] Failed', { err });
+    return res.status(500).json({ error: 'Failed to load trust overview' });
+  }
+});
+
+// ─── PATCH /api/admin/providers/:userId/badges ────────────────────────────────
+// Admin-only: grant or revoke verified badges on a provider profile.
+// Body: { add?: string[], remove?: string[] }
+// Valid badge IDs: id_verified | insured | licensed | background_check
+router.patch('/admin/providers/:userId/badges', async (req: Request, res: Response) => {
+  const uid = getUid(req);
+  if (!uid || uid !== SUPER_ADMIN_UID) {
+    return res.status(403).json({ error: 'Forbidden — admin only' });
+  }
+
+  const { userId } = req.params;
+  const { add = [], remove = [] } = req.body as { add?: string[]; remove?: string[] };
+
+  const allowedIds = [...VERIFIED_BADGE_IDS];
+  const invalidAdd = (add as string[]).filter(b => !allowedIds.includes(b as any));
+  const invalidRemove = (remove as string[]).filter(b => !allowedIds.includes(b as any));
+  if (invalidAdd.length || invalidRemove.length) {
+    return res.status(400).json({
+      error: 'Invalid badge IDs',
+      invalidAdd,
+      invalidRemove,
+      allowed: allowedIds,
+    });
+  }
+
+  try {
+    const [profile] = await db
+      .select({ badges: providerProfiles.badges })
+      .from(providerProfiles)
+      .where(eq(providerProfiles.userId, userId));
+
+    if (!profile) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+
+    const current: string[] = Array.isArray(profile.badges) ? (profile.badges as string[]) : [];
+    const next = Array.from(new Set([
+      ...current.filter(b => !(remove as string[]).includes(b)),
+      ...(add as string[]),
+    ]));
+
+    await db
+      .update(providerProfiles)
+      .set({ badges: next })
+      .where(eq(providerProfiles.userId, userId));
+
+    // Immediately refresh trust score to reflect badge change
+    try {
+      await refreshAndCacheProviderTrustMetrics(userId);
+    } catch (_) {
+      // Non-fatal — badge update succeeded even if score refresh fails
+    }
+
+    logger.info('[AdminBadges] Updated', { adminUid: uid, providerId: userId, added: add, removed: remove, badges: next });
+    return res.json({ userId, badges: next });
+  } catch (err) {
+    logger.error('[AdminBadges] Failed', { userId, err });
+    return res.status(500).json({ error: 'Failed to update badges' });
   }
 });
 

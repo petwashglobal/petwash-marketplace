@@ -11494,6 +11494,10 @@ export const providerProfiles = pgTable("provider_profiles", {
   repeatClientCount: integer("repeat_client_count"),               // distinct owners with ≥2 completed bookings
   responseRatePct: integer("response_rate_pct"),                   // 0-100, % of requests responded within 24h
   avgResponseTimeMinutes: integer("avg_response_time_minutes"),    // median minutes to first status change
+  acceptanceRatePct: integer("acceptance_rate_pct"),               // 0-100, % of requests moved to accepted/confirmed
+  completionRatePct: integer("completion_rate_pct"),               // 0-100, % of confirmed bookings completed (not cancelled)
+  cancellationRatePct: integer("cancellation_rate_pct"),           // 0-100, % of confirmed bookings cancelled by provider
+  trustScore: integer("trust_score"),                              // 0-100 composite score (null = new/insufficient data)
   trustMetricsUpdatedAt: timestamp("trust_metrics_updated_at"),   // when last computed
   // ── Home setup (set by provider, null = not answered yet) ──
   hasFencedYard: boolean("has_fenced_yard"),

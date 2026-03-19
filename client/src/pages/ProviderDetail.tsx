@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useParams, useLocation } from 'wouter';
+import { useQuery } from '@tanstack/react-query';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +12,8 @@ import { useProviderDetails } from '@/services/marketplace';
 import {
   Star, MapPin, Shield, CheckCircle2, Award, Calendar as CalendarIcon,
   Clock, DollarSign, MessageCircle, Phone, Mail,
-  TrendingUp, Users, Video, Plane, Dog, Car, Scissors
+  TrendingUp, Users, Video, Plane, Dog, Car, Scissors,
+  UserCheck, CheckSquare, AlertTriangle,
 } from 'lucide-react';
 import type { MarketplacePlatformId } from '@shared/schema';
 
@@ -28,6 +30,14 @@ export default function ProviderDetail() {
   // Fetch provider details
   const { data, isLoading, error } = useProviderDetails(platform!, id!);
   const provider = data?.provider;
+
+  // Fetch trust stats once provider loads (lazy — only when userId available)
+  const { data: trustStats } = useQuery<any>({
+    queryKey: ['/api/providers/stats', provider?.userId],
+    queryFn: () => fetch(`/api/providers/stats/${provider!.userId}`, { credentials: 'include' }).then(r => r.json()),
+    staleTime: 300_000,
+    enabled: !!provider?.userId,
+  });
 
   if (isLoading) {
     return (
@@ -264,6 +274,90 @@ export default function ProviderDetail() {
                     </div>
                   </div>
                 </div>
+
+                {/* Trust Metrics Section */}
+                {(trustStats?.trustScore != null || trustStats?.acceptanceRatePct != null || (trustStats?.badges && trustStats.badges.length > 0)) && (
+                  <div className="p-5 rounded-2xl border-2 border-amber-100 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-900/10">
+                    <div className="flex items-center gap-2 mb-4">
+                      <TrendingUp className="w-5 h-5 text-amber-600" />
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                        {isHebrew ? 'אמינות ספק' : 'Provider Trust'}
+                      </h3>
+                      {trustStats?.trustScore != null && (
+                        <div
+                          className="ms-auto w-12 h-12 rounded-full border-4 flex items-center justify-center font-bold text-base"
+                          style={{
+                            borderColor: trustStats.trustScore >= 75 ? '#C5A55A' : '#3b82f6',
+                            color: trustStats.trustScore >= 75 ? '#C5A55A' : '#3b82f6',
+                          }}
+                        >
+                          {trustStats.trustScore}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      {trustStats?.acceptanceRatePct != null && (
+                        <div className="flex items-center gap-2 bg-white dark:bg-gray-900 p-3 rounded-xl border border-blue-100">
+                          <UserCheck className="w-4 h-4 text-blue-500 shrink-0" />
+                          <div>
+                            <p className="text-[10px] text-gray-500">{isHebrew ? 'אחוז קבלה' : 'Acceptance'}</p>
+                            <p className="text-sm font-bold text-blue-700">{trustStats.acceptanceRatePct}%</p>
+                          </div>
+                        </div>
+                      )}
+                      {trustStats?.completionRatePct != null && (
+                        <div className="flex items-center gap-2 bg-white dark:bg-gray-900 p-3 rounded-xl border border-green-100">
+                          <CheckSquare className="w-4 h-4 text-green-500 shrink-0" />
+                          <div>
+                            <p className="text-[10px] text-gray-500">{isHebrew ? 'אחוז השלמה' : 'Completion'}</p>
+                            <p className="text-sm font-bold text-green-700">{trustStats.completionRatePct}%</p>
+                          </div>
+                        </div>
+                      )}
+                      {trustStats?.responseRatePct != null && (
+                        <div className="flex items-center gap-2 bg-white dark:bg-gray-900 p-3 rounded-xl border border-purple-100">
+                          <Clock className="w-4 h-4 text-purple-500 shrink-0" />
+                          <div>
+                            <p className="text-[10px] text-gray-500">{isHebrew ? 'אחוז תגובה' : 'Response'}</p>
+                            <p className="text-sm font-bold text-purple-700">{trustStats.responseRatePct}%</p>
+                          </div>
+                        </div>
+                      )}
+                      {trustStats?.cancellationRatePct != null && (
+                        <div className={`flex items-center gap-2 bg-white dark:bg-gray-900 p-3 rounded-xl border ${trustStats.cancellationRatePct > 10 ? 'border-red-100' : trustStats.cancellationRatePct > 5 ? 'border-amber-100' : 'border-green-100'}`}>
+                          <AlertTriangle className={`w-4 h-4 shrink-0 ${trustStats.cancellationRatePct > 10 ? 'text-red-400' : trustStats.cancellationRatePct > 5 ? 'text-amber-400' : 'text-green-400'}`} />
+                          <div>
+                            <p className="text-[10px] text-gray-500">{isHebrew ? 'סיכון ביטול' : 'Cancel risk'}</p>
+                            <p className={`text-sm font-bold ${trustStats.cancellationRatePct > 10 ? 'text-red-600' : trustStats.cancellationRatePct > 5 ? 'text-amber-600' : 'text-green-700'}`}>
+                              {trustStats.cancellationRatePct > 10 ? (isHebrew ? 'גבוה' : 'High') : trustStats.cancellationRatePct > 5 ? (isHebrew ? 'בינוני' : 'Medium') : (isHebrew ? 'נמוך' : 'Low')}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Verified badges */}
+                    {Array.isArray(trustStats?.badges) && trustStats.badges.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {(trustStats.badges as string[]).map((b: string) => {
+                          const BADGE_LABELS: Record<string, string> = {
+                            id_verified: isHebrew ? 'זהות מאומתת' : 'ID Verified',
+                            insured: isHebrew ? 'מבוטח' : 'Insured',
+                            licensed: isHebrew ? 'מורשה' : 'Licensed',
+                            background_check: isHebrew ? 'בדיקת רקע' : 'Background Check',
+                          };
+                          return (
+                            <span key={b} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-amber-200 text-xs font-semibold text-amber-700">
+                              <CheckCircle2 className="w-3 h-3" />
+                              {BADGE_LABELS[b] ?? b}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Bio */}
                 <div className="bg-white dark:bg-black p-6 rounded-2xl border-2 border-purple-100 dark:border-purple-900">

@@ -10,27 +10,51 @@
  *   repeatClientCount       — only shown when completedBookingsCount >= 2
  *   responseRatePct         — only shown when >= 5 total incoming requests
  *   avgResponseTimeMinutes  — only shown when >= 5 responded bookings
+ *   acceptanceRatePct       — only shown when >= 5 total requests
+ *   completionRatePct       — only shown when >= 3 confirmed bookings
+ *   cancellationRatePct     — only shown when >= 3 confirmed bookings
+ *   trustScore              — only shown when >= 5 total requests
+ *
+ * Trust Score formula (0–100):
+ *   completionRatePct  × 0.30 → max 30 pts
+ *   acceptanceRatePct  × 0.20 → max 20 pts
+ *   responseRatePct    × 0.15 → max 15 pts
+ *   repeatClientRate   × 0.15 → max 15 pts (repeat_client_count / completed × 100)
+ *   verifiedBadges     × 5 ea → max 20 pts  (id_verified, insured, licensed, background_check)
+ *   cancellationPenalty        → −15 if >20%, −8 if >10%, −3 if >5%
  */
 
 import { db } from '../db';
 import { bookingRequests, providerProfiles } from '@shared/schema';
-import { eq, and, sql, count, countDistinct } from 'drizzle-orm';
+import { eq, and, sql, count } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 
-const MIN_BOOKINGS_FOR_RATE  = 5;  // need 5+ requests before showing response rate
-const MIN_BOOKINGS_FOR_TIME  = 5;  // need 5+ responses before showing avg response time
-const MIN_REPEAT_THRESHOLD   = 2;  // need 2+ completed bookings before showing repeat count
+const MIN_BOOKINGS_FOR_RATE     = 5;
+const MIN_BOOKINGS_FOR_TIME     = 5;
+const MIN_REPEAT_THRESHOLD      = 2;
+const MIN_ACCEPTANCE_THRESHOLD  = 5;
+const MIN_COMPLETION_THRESHOLD  = 3;
+const MIN_TRUST_SCORE_THRESHOLD = 5;
+
+/** Verified badge IDs that count toward trust score (5 pts each, max 20) */
+export const VERIFIED_BADGE_IDS = ['id_verified', 'insured', 'licensed', 'background_check'] as const;
+export type VerifiedBadgeId = typeof VERIFIED_BADGE_IDS[number];
 
 export interface ProviderTrustMetrics {
-  completedBookingsCount: number;        // always real (0 = new provider)
-  repeatClientCount: number | null;      // null = below threshold
-  responseRatePct: number | null;        // null = below threshold
-  avgResponseTimeMinutes: number | null; // null = below threshold
-  isNew: boolean;                        // true if completedBookingsCount < 3
-  lastActiveAt: Date | null;             // from providerProfiles.lastPresenceAt
-  backgroundCheckStatus: string | null;  // 'approved' | 'pending' | null
+  completedBookingsCount: number;
+  repeatClientCount: number | null;
+  responseRatePct: number | null;
+  avgResponseTimeMinutes: number | null;
+  acceptanceRatePct: number | null;
+  completionRatePct: number | null;
+  cancellationRatePct: number | null;
+  trustScore: number | null;
+  isNew: boolean;
+  lastActiveAt: Date | null;
+  backgroundCheckStatus: string | null;
   hasFencedYard: boolean | null;
   hasNoPetsAtHome: boolean | null;
+  badges: string[];
 }
 
 export async function computeProviderTrustMetrics(
@@ -41,16 +65,13 @@ export async function computeProviderTrustMetrics(
     const [completedRow] = await db
       .select({ cnt: count() })
       .from(bookingRequests)
-      .where(
-        and(
-          eq(bookingRequests.providerId, providerId),
-          eq(bookingRequests.status, 'completed'),
-        ),
-      );
+      .where(and(
+        eq(bookingRequests.providerId, providerId),
+        eq(bookingRequests.status, 'completed'),
+      ));
     const completedBookingsCount = Number(completedRow?.cnt ?? 0);
 
-    // ── 2. Repeat clients — distinct owners who booked ≥2 completed times ──
-    // We use a subquery: count(ownerId) grouped by ownerId, then count those with cnt >= 2
+    // ── 2. Repeat clients ───────────────────────────────────────────────────
     let repeatClientCount: number | null = null;
     if (completedBookingsCount >= MIN_REPEAT_THRESHOLD) {
       const repeatRows = await db.execute(sql`
@@ -67,26 +88,16 @@ export async function computeProviderTrustMetrics(
       repeatClientCount = Number((repeatRows.rows[0] as any)?.cnt ?? 0);
     }
 
-    // ── 3. Response rate ─────────────────────────────────────────────────────
-    // Defined as: % of incoming booking requests where the provider responded
-    // within 24 hours (status changed from 'pending' to anything else within 24h).
-    // We detect "responded" by checking provider_response IS NOT NULL
-    // OR status != 'pending' AND the first status_history entry after pending
-    // has a timestamp within 24h of created_at.
-    //
-    // Simpler safe approach: count requests where status != 'pending'
-    // as "responded", then compute rate. This isn't perfect but is real.
-    let responseRatePct: number | null = null;
-    let avgResponseTimeMinutes: number | null = null;
-
+    // ── 3. Total requests ───────────────────────────────────────────────────
     const [totalRequestsRow] = await db
       .select({ cnt: count() })
       .from(bookingRequests)
       .where(eq(bookingRequests.providerId, providerId));
     const totalRequests = Number(totalRequestsRow?.cnt ?? 0);
 
+    // ── 4. Response rate (% of requests where provider took action) ─────────
+    let responseRatePct: number | null = null;
     if (totalRequests >= MIN_BOOKINGS_FOR_RATE) {
-      // Count requests that left 'pending' state (provider took action)
       const respondedRows = await db.execute(sql`
         SELECT COUNT(*) AS cnt
         FROM booking_requests
@@ -97,9 +108,8 @@ export async function computeProviderTrustMetrics(
       responseRatePct = Math.round((responded / totalRequests) * 100);
     }
 
-    // ── 4. Average response time ─────────────────────────────────────────────
-    // Extract the timestamp of the first non-pending status from status_history JSONB
-    // status_history is [{status, timestamp, note}, ...]
+    // ── 5. Average response time (minutes to first non-pending status) ──────
+    let avgResponseTimeMinutes: number | null = null;
     if (totalRequests >= MIN_BOOKINGS_FOR_TIME) {
       const timeRows = await db.execute(sql`
         SELECT
@@ -121,32 +131,120 @@ export async function computeProviderTrustMetrics(
           AND jsonb_array_length(status_history::jsonb) > 0
       `);
       const raw = Number((timeRows.rows[0] as any)?.avg_minutes);
-      if (!isNaN(raw) && raw > 0 && raw < 20160) { // cap at 2 weeks
+      if (!isNaN(raw) && raw > 0 && raw < 20160) {
         avgResponseTimeMinutes = Math.round(raw);
       }
     }
 
-    // ── 5. Fetch provider profile for home setup & last active ───────────────
+    // ── 6. Acceptance rate (% of requests that reached accepted/confirmed) ──
+    let acceptanceRatePct: number | null = null;
+    if (totalRequests >= MIN_ACCEPTANCE_THRESHOLD) {
+      const acceptedRows = await db.execute(sql`
+        SELECT COUNT(*) AS cnt
+        FROM booking_requests
+        WHERE provider_id = ${providerId}
+          AND status = ANY(ARRAY['accepted','confirmed','in_progress','completed']::booking_request_status[])
+      `);
+      const accepted = Number((acceptedRows.rows[0] as any)?.cnt ?? 0);
+      acceptanceRatePct = Math.round((accepted / totalRequests) * 100);
+    }
+
+    // ── 7. Completion rate (confirmed → completed vs cancelled) ─────────────
+    let completionRatePct: number | null = null;
+    let cancellationRatePct: number | null = null;
+
+    const confirmedRows = await db.execute(sql`
+      SELECT COUNT(*) AS cnt
+      FROM booking_requests
+      WHERE provider_id = ${providerId}
+        AND status = ANY(ARRAY['confirmed','in_progress','completed','cancelled']::booking_request_status[])
+    `);
+    const confirmedTotal = Number((confirmedRows.rows[0] as any)?.cnt ?? 0);
+
+    if (confirmedTotal >= MIN_COMPLETION_THRESHOLD) {
+      const completedFromConfirmed = await db.execute(sql`
+        SELECT COUNT(*) AS cnt
+        FROM booking_requests
+        WHERE provider_id = ${providerId}
+          AND status = ANY(ARRAY['completed']::booking_request_status[])
+      `);
+      const completedCount = Number((completedFromConfirmed.rows[0] as any)?.cnt ?? 0);
+      completionRatePct = Math.round((completedCount / confirmedTotal) * 100);
+
+      // Provider-initiated cancellations (cancelled bookings where provider had confirmed)
+      const cancelledRows = await db.execute(sql`
+        SELECT COUNT(*) AS cnt
+        FROM booking_requests
+        WHERE provider_id = ${providerId}
+          AND status = 'cancelled'
+      `);
+      const cancelledCount = Number((cancelledRows.rows[0] as any)?.cnt ?? 0);
+      cancellationRatePct = Math.round((cancelledCount / confirmedTotal) * 100);
+    }
+
+    // ── 8. Fetch provider profile for badges, home setup, last active ───────
     const [profile] = await db
       .select({
         lastPresenceAt: providerProfiles.lastPresenceAt,
         backgroundCheckStatus: providerProfiles.backgroundCheckStatus,
         hasFencedYard: providerProfiles.hasFencedYard,
         hasNoPetsAtHome: providerProfiles.hasNoPetsAtHome,
+        badges: providerProfiles.badges,
       })
       .from(providerProfiles)
       .where(eq(providerProfiles.userId, providerId));
+
+    const badgeList: string[] = Array.isArray(profile?.badges) ? (profile.badges as string[]) : [];
+
+    // Automatically include background_check badge if background check is approved
+    if (profile?.backgroundCheckStatus === 'approved' && !badgeList.includes('background_check')) {
+      badgeList.push('background_check');
+    }
+
+    // ── 9. Trust score ───────────────────────────────────────────────────────
+    let trustScore: number | null = null;
+    if (totalRequests >= MIN_TRUST_SCORE_THRESHOLD) {
+      let score = 0;
+
+      if (completionRatePct !== null)  score += completionRatePct * 0.30;
+      if (acceptanceRatePct !== null)  score += acceptanceRatePct * 0.20;
+      if (responseRatePct !== null)    score += responseRatePct * 0.15;
+
+      // Repeat client rate component (0–100 scale)
+      if (repeatClientCount !== null && completedBookingsCount > 0) {
+        const repeatRate = Math.min((repeatClientCount / completedBookingsCount) * 100, 100);
+        score += repeatRate * 0.15;
+      }
+
+      // Verified badges: 5 pts each, max 20 pts
+      const verifiedCount = badgeList.filter(b => VERIFIED_BADGE_IDS.includes(b as VerifiedBadgeId)).length;
+      score += Math.min(verifiedCount * 5, 20);
+
+      // Cancellation penalty
+      if (cancellationRatePct !== null) {
+        if (cancellationRatePct > 20) score -= 15;
+        else if (cancellationRatePct > 10) score -= 8;
+        else if (cancellationRatePct > 5)  score -= 3;
+      }
+
+      trustScore = Math.max(0, Math.min(100, Math.round(score)));
+    }
 
     return {
       completedBookingsCount,
       repeatClientCount,
       responseRatePct,
       avgResponseTimeMinutes,
+      acceptanceRatePct,
+      completionRatePct,
+      cancellationRatePct,
+      trustScore,
       isNew: completedBookingsCount < 3,
       lastActiveAt: profile?.lastPresenceAt ?? null,
       backgroundCheckStatus: profile?.backgroundCheckStatus ?? null,
       hasFencedYard: profile?.hasFencedYard ?? null,
       hasNoPetsAtHome: profile?.hasNoPetsAtHome ?? null,
+      badges: badgeList,
     };
   } catch (err) {
     logger.error('[TrustMetrics] compute failed', { providerId, err });
@@ -155,8 +253,8 @@ export async function computeProviderTrustMetrics(
 }
 
 /**
- * Compute, then persist results back into provider_profiles cache columns.
- * Called after booking completion and on nightly cron.
+ * Compute then persist results into provider_profiles cache columns.
+ * Called after booking completion events and on nightly cron.
  */
 export async function refreshAndCacheProviderTrustMetrics(
   providerId: string,
@@ -166,62 +264,76 @@ export async function refreshAndCacheProviderTrustMetrics(
   await db
     .update(providerProfiles)
     .set({
-      completedBookingsCount: metrics.completedBookingsCount,
-      repeatClientCount: metrics.repeatClientCount ?? undefined,
-      responseRatePct: metrics.responseRatePct ?? undefined,
-      avgResponseTimeMinutes: metrics.avgResponseTimeMinutes ?? undefined,
-      trustMetricsUpdatedAt: new Date(),
+      completedBookingsCount:  metrics.completedBookingsCount,
+      repeatClientCount:       metrics.repeatClientCount ?? undefined,
+      responseRatePct:         metrics.responseRatePct ?? undefined,
+      avgResponseTimeMinutes:  metrics.avgResponseTimeMinutes ?? undefined,
+      acceptanceRatePct:       metrics.acceptanceRatePct ?? undefined,
+      completionRatePct:       metrics.completionRatePct ?? undefined,
+      cancellationRatePct:     metrics.cancellationRatePct ?? undefined,
+      trustScore:              metrics.trustScore ?? undefined,
+      trustMetricsUpdatedAt:   new Date(),
     })
     .where(eq(providerProfiles.userId, providerId));
 
   return metrics;
 }
 
-/** Format response time for display: "< 1 hour", "~2 hours", "< 1 day" */
-export function formatResponseTime(minutes: number | null): string | null {
-  if (minutes === null) return null;
-  if (minutes < 60)  return `< 1 hour`;
-  if (minutes < 120) return `~1 hour`;
-  if (minutes < 1440) return `~${Math.round(minutes / 60)} hours`;
-  return `~1 day`;
-}
-
 /**
- * Backfill trust metrics for all providers who have never had metrics computed
- * (trustMetricsUpdatedAt IS NULL) or whose metrics are stale (> 6h old).
- *
- * Called once on startup (non-blocking) and can be triggered via admin endpoint.
- * Returns { refreshed, skipped, errors } counts.
+ * Backfill trust metrics for all providers who are stale or have never been computed.
+ * Non-destructive, idempotent. Safe to re-run.
  */
 export async function backfillAllProviderTrustMetrics(): Promise<{
-  refreshed: number; skipped: number; errors: number;
+  refreshed: number;
+  skipped: number;
+  errors: number;
+  total: number;
 }> {
-  const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
-  const cutoff = new Date(Date.now() - SIX_HOURS_MS);
+  const SIX_HOURS = 6 * 60 * 60 * 1000;
 
-  // Fetch all providers who need a refresh
-  const staleProviders = await db
-    .select({ userId: providerProfiles.userId })
-    .from(providerProfiles)
-    .where(
-      sql`${providerProfiles.trustMetricsUpdatedAt} IS NULL
-        OR ${providerProfiles.trustMetricsUpdatedAt} < ${cutoff}`
-    );
+  const allProviders = await db
+    .select({
+      userId: providerProfiles.userId,
+      trustMetricsUpdatedAt: providerProfiles.trustMetricsUpdatedAt,
+    })
+    .from(providerProfiles);
 
-  let refreshed = 0;
-  let skipped   = 0;
-  let errors    = 0;
+  let refreshed = 0, skipped = 0, errors = 0;
 
-  for (const { userId } of staleProviders) {
+  for (const p of allProviders) {
+    const stale =
+      !p.trustMetricsUpdatedAt ||
+      Date.now() - p.trustMetricsUpdatedAt.getTime() > SIX_HOURS;
+
+    if (!stale) { skipped++; continue; }
+
     try {
-      await refreshAndCacheProviderTrustMetrics(userId);
+      await refreshAndCacheProviderTrustMetrics(p.userId);
       refreshed++;
     } catch (err) {
-      logger.warn('[TrustBackfill] Failed for provider', { userId, err });
       errors++;
+      logger.error('[TrustBackfill] Provider failed', { userId: p.userId, err });
     }
   }
 
-  logger.info('[TrustBackfill] Complete', { refreshed, skipped, errors, total: staleProviders.length });
-  return { refreshed, skipped, errors };
+  logger.info('[TrustBackfill] Complete', { refreshed, skipped, errors, total: allProviders.length });
+  return { refreshed, skipped, errors, total: allProviders.length };
+}
+
+/** Format avg response time into a human-readable label. Returns null if time is null. */
+export function formatResponseTime(minutes: number | null): string | null {
+  if (minutes === null) return null;
+  if (minutes < 60) return `~${Math.round(minutes)}m`;
+  const hours = minutes / 60;
+  if (hours < 24) return `~${Math.round(hours)}h`;
+  return `~${Math.round(hours / 24)}d`;
+}
+
+/** Trust score tier label */
+export function trustScoreTier(score: number | null): 'new' | 'rising' | 'trusted' | 'top' | null {
+  if (score === null) return null;
+  if (score < 40) return 'rising';
+  if (score < 65) return 'trusted';
+  if (score < 85) return 'trusted';
+  return 'top';
 }

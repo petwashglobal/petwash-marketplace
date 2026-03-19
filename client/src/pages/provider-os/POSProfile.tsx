@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Camera, Star, Shield, Award, MapPin, Globe, Dog, Cat, Bird,
   Rabbit, CheckCircle2, Edit3, Home, AlertCircle, Loader2,
   CalendarDays, Clock, ChevronLeft, ChevronRight as ChevronRightIcon, X,
+  TrendingUp, UserCheck, CheckSquare, AlertTriangle,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -133,6 +135,7 @@ function CompletenessBar({ score, breakdown }: { score: number; breakdown: Recor
 export default function POSProfile() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { user } = useFirebaseAuth();
   const [activeTab, setActiveTab] = useState<'basic' | 'services' | 'home' | 'availability' | 'badges'>('basic');
 
   // Form state (initialized from API)
@@ -161,6 +164,13 @@ export default function POSProfile() {
     queryFn: () => fetch('/api/provider-dashboard/reviews', { credentials: 'include' }).then(r => r.json()),
     staleTime: 60_000,
     enabled: activeTab === 'badges',
+  });
+
+  const { data: trustStats } = useQuery<any>({
+    queryKey: ['/api/providers/stats', user?.uid],
+    queryFn: () => fetch(`/api/providers/stats/${user!.uid}`, { credentials: 'include' }).then(r => r.json()),
+    staleTime: 300_000,
+    enabled: activeTab === 'badges' && !!user?.uid,
   });
 
   // Initialize form state from API response (only once)
@@ -615,6 +625,130 @@ export default function POSProfile() {
       {/* ── Badges Tab ───────────────────────────────────────────────── */}
       {activeTab === 'badges' && (
         <div className="space-y-3">
+
+          {/* ── Trust Score Widget ──────────────────────────────────────── */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+                <TrendingUp className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Trust Score</p>
+                <p className="text-xs text-gray-500">Computed from your real booking history</p>
+              </div>
+              {trustStats?.trustScore != null ? (
+                <div className="ms-auto flex flex-col items-center">
+                  <div
+                    className="w-14 h-14 rounded-full flex items-center justify-center border-4 font-bold text-lg"
+                    style={{
+                      borderColor: trustStats.trustScore >= 75 ? '#C5A55A' : trustStats.trustScore >= 50 ? '#3b82f6' : '#d1d5db',
+                      color: trustStats.trustScore >= 75 ? '#C5A55A' : trustStats.trustScore >= 50 ? '#3b82f6' : '#6b7280',
+                    }}
+                  >
+                    {trustStats.trustScore}
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-0.5">out of 100</p>
+                </div>
+              ) : (
+                <div className="ms-auto px-2.5 py-1 bg-gray-100 rounded-full text-[10px] text-gray-500 font-medium">
+                  Not enough data yet
+                </div>
+              )}
+            </div>
+
+            {/* Metric chips */}
+            <div className="grid grid-cols-2 gap-2">
+              {/* Acceptance rate */}
+              <div className={`flex items-center gap-2 p-2.5 rounded-lg ${trustStats?.acceptanceRatePct != null ? 'bg-blue-50 border border-blue-100' : 'bg-gray-50 border border-gray-100'}`}>
+                <UserCheck className={`w-4 h-4 shrink-0 ${trustStats?.acceptanceRatePct != null ? 'text-blue-500' : 'text-gray-300'}`} />
+                <div className="min-w-0">
+                  <p className="text-[10px] text-gray-500">Acceptance rate</p>
+                  <p className={`text-sm font-semibold ${trustStats?.acceptanceRatePct != null ? 'text-blue-700' : 'text-gray-300'}`}>
+                    {trustStats?.acceptanceRatePct != null ? `${trustStats.acceptanceRatePct}%` : '—'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Completion rate */}
+              <div className={`flex items-center gap-2 p-2.5 rounded-lg ${trustStats?.completionRatePct != null ? 'bg-green-50 border border-green-100' : 'bg-gray-50 border border-gray-100'}`}>
+                <CheckSquare className={`w-4 h-4 shrink-0 ${trustStats?.completionRatePct != null ? 'text-green-500' : 'text-gray-300'}`} />
+                <div className="min-w-0">
+                  <p className="text-[10px] text-gray-500">Completion rate</p>
+                  <p className={`text-sm font-semibold ${trustStats?.completionRatePct != null ? 'text-green-700' : 'text-gray-300'}`}>
+                    {trustStats?.completionRatePct != null ? `${trustStats.completionRatePct}%` : '—'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Response rate */}
+              <div className={`flex items-center gap-2 p-2.5 rounded-lg ${trustStats?.responseRatePct != null ? 'bg-purple-50 border border-purple-100' : 'bg-gray-50 border border-gray-100'}`}>
+                <Clock className={`w-4 h-4 shrink-0 ${trustStats?.responseRatePct != null ? 'text-purple-500' : 'text-gray-300'}`} />
+                <div className="min-w-0">
+                  <p className="text-[10px] text-gray-500">Response rate</p>
+                  <p className={`text-sm font-semibold ${trustStats?.responseRatePct != null ? 'text-purple-700' : 'text-gray-300'}`}>
+                    {trustStats?.responseRatePct != null ? `${trustStats.responseRatePct}%` : '—'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Cancellation rate — show as risk signal */}
+              <div className={`flex items-center gap-2 p-2.5 rounded-lg ${
+                trustStats?.cancellationRatePct != null
+                  ? trustStats.cancellationRatePct > 10 ? 'bg-red-50 border border-red-100'
+                  : trustStats.cancellationRatePct > 5 ? 'bg-amber-50 border border-amber-100'
+                  : 'bg-green-50 border border-green-100'
+                  : 'bg-gray-50 border border-gray-100'
+              }`}>
+                <AlertTriangle className={`w-4 h-4 shrink-0 ${
+                  trustStats?.cancellationRatePct != null
+                    ? trustStats.cancellationRatePct > 10 ? 'text-red-400'
+                    : trustStats.cancellationRatePct > 5 ? 'text-amber-400'
+                    : 'text-green-400'
+                    : 'text-gray-300'
+                }`} />
+                <div className="min-w-0">
+                  <p className="text-[10px] text-gray-500">Cancel risk</p>
+                  <p className={`text-sm font-semibold ${
+                    trustStats?.cancellationRatePct != null
+                      ? trustStats.cancellationRatePct > 10 ? 'text-red-600'
+                      : trustStats.cancellationRatePct > 5 ? 'text-amber-600'
+                      : 'text-green-700'
+                      : 'text-gray-300'
+                  }`}>
+                    {trustStats?.cancellationRatePct != null
+                      ? trustStats.cancellationRatePct > 10 ? 'High'
+                      : trustStats.cancellationRatePct > 5 ? 'Medium'
+                      : 'Low'
+                      : '—'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Verified badges earned */}
+            {Array.isArray(trustStats?.badges) && trustStats.badges.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <p className="text-[10px] text-gray-400 mb-2 font-medium uppercase tracking-wide">Verified Badges</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(trustStats.badges as string[]).map((b: string) => {
+                    const BADGE_LABELS: Record<string, string> = {
+                      id_verified: 'ID Verified',
+                      insured: 'Insured',
+                      licensed: 'Licensed',
+                      background_check: 'Background Check',
+                    };
+                    return (
+                      <span key={b} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-semibold text-amber-700">
+                        <CheckCircle2 className="w-2.5 h-2.5" />
+                        {BADGE_LABELS[b] ?? b}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Background check — real status from API */}
           <div className={`bg-white border rounded-xl p-4 flex items-center gap-3 ${profile?.backgroundCheckStatus === 'approved' ? 'border-green-200' : 'border-gray-200'}`}>
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${profile?.backgroundCheckStatus === 'approved' ? 'bg-green-50' : 'bg-gray-50'}`}>

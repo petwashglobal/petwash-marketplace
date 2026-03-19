@@ -757,10 +757,23 @@ Every quote carries `pricingVersion: "v1.0.0"` — stored in both the booking ro
 - `backfillAllProviderTrustMetrics()` — batch refresh all stale providers (> 6h or null); called on startup + admin endpoint
 - Null thresholds enforced: `responseRatePct`/`avgResponseTimeMinutes` require ≥5 requests; `repeatClientCount` requires ≥2 bookings
 
+### Database schema additions — Step 4 (Trust Upgrade, March 2026)
+**Additional `provider_profiles` columns (via executeSql, schema.ts updated):**
+- `acceptance_rate_pct` integer — % of requests accepted (null if < 5 requests)
+- `completion_rate_pct` integer — % of accepted bookings completed
+- `cancellation_rate_pct` integer — % cancelled by provider
+- `trust_score` integer — composite 0–100 score (null if < 5 total requests)
+
+**Trust score formula (providerTrustMetrics.ts):**
+- completion × 0.30 + acceptance × 0.20 + response × 0.15 + repeat rate × 0.15 + badge bonus (5pts each, max 20) − cancellation penalty (−15 if >20%, −8 if >10%, −3 if >5%)
+- Requires totalRequests ≥ 5 to compute; returns null otherwise
+
+**Verified badge IDs:** `id_verified`, `insured`, `licensed`, `background_check` (auto-granted if `backgroundCheckStatus === 'approved'`)
+
 ### API routes: `server/routes/provider-trust.ts`
 All filters are now DB-backed — no client-side post-filtering anywhere.
-- `GET /api/providers/stats/:userId` — 6-hour cached trust stats with auto-refresh
-- `GET /api/providers/browse` — DB-backed filter search:
+- `GET /api/providers/stats/:userId` — returns `trustScore`, `acceptanceRatePct`, `completionRatePct`, `cancellationRatePct`, `responseRatePct`, `badges` + 6-hour cache auto-refresh
+- `GET /api/providers/browse` — DB-backed filter search; now also returns `trustScore`, `acceptanceRatePct`, `completionRatePct`, `cancellationRatePct`, `badges`:
   - minRating, fencedYardOnly, noPetsAtHomeOnly, backgroundCheckOnly, availableThisWeek, sortBy (all proven)
   - **minPrice, maxPrice** — DB predicate on `price_from_cents` (ILS × 100 → agorot)
   - **petType** — DB predicate on `accepted_pets` TEXT[] with whitelist injection guard
@@ -768,6 +781,8 @@ All filters are now DB-backed — no client-side post-filtering anywhere.
 - `POST /api/saved-providers/:providerId` — save a provider (provider existence check, ON CONFLICT DO NOTHING)
 - `DELETE /api/saved-providers/:providerId` — unsave a provider
 - `POST /api/admin/providers/backfill-trust-metrics` — super-admin only (UID check); triggers async backfill; returns 202
+- `GET /api/admin/providers/trust-overview` — admin overview of all providers' trust metrics
+- `PATCH /api/admin/providers/:userId/badges` — grant/revoke verified badges, auto-refreshes trust score
 
 ### Trust metrics backfill
 - **Startup**: Non-blocking `setImmediate` in `server/index.ts` calls `backfillAllProviderTrustMetrics()` on every cold start
