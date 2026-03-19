@@ -295,6 +295,7 @@ const GroomingReviews = lazy(() => import("@/pages/GroomingReviews"));
 const AuditTrail = lazy(() => import("@/pages/AuditTrail"));
 const FraudDashboard = lazy(() => import("@/pages/admin/FraudDashboard"));
 const ProviderReview = lazy(() => import("@/pages/admin/ProviderReview"));
+const AdminLoyaltyRules = lazy(() => import("@/pages/admin/AdminLoyaltyRules"));
 
 // Pet Wash Ltd Executive Suite - Centralized C-Suite Management
 const ExecutiveSuiteHome = lazy(() => import("@/pages/ExecutiveSuiteHome"));
@@ -1668,6 +1669,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* Protected route - Blockchain Audit Trail [LEGACY: redirects to Executive Suite] */}
         <Route path="/audit-trail">{() => <Redirect to="/pet-wash-ltd/executive/audit" />}</Route>
         
+        {/* Admin route - Loyalty Rules & Analytics */}
+        <Route path="/admin/loyalty">
+          {() => (
+            <AdminRouteGuard>
+              <AdminLoyaltyRules />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
         {/* Admin route - Fraud Monitoring Dashboard */}
         <Route path="/admin/fraud-dashboard">
           {() => (

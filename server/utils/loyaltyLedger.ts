@@ -312,6 +312,51 @@ export async function expireLoyaltyCredits(): Promise<number> {
   return count;
 }
 
+// ─── Admin adjust ────────────────────────────────────────────────────────────
+// Direct balance adjustment for admin use. Bypasses ruleKey/fingerprint but
+// still writes a proper ledger row and updates the cached users.loyalty_balance_cents.
+
+interface AdminAdjustOptions {
+  userId:      string;
+  amountCents: number;  // positive = grant, negative = deduct
+  eventType?:  string;  // defaults to 'admin_adjust'
+  note?:       string;
+}
+
+export async function adjustLoyaltyBalance(opts: AdminAdjustOptions): Promise<number> {
+  const { userId, amountCents, eventType = 'admin_adjust', note } = opts;
+
+  const currentBalance = await getLoyaltyBalance(userId);
+  const rawNew = currentBalance + amountCents;
+
+  // Safety bounds: never go below 0 or above cap
+  const newBalance = Math.max(0, Math.min(MAX_BALANCE_CENTS, rawNew));
+  const actualDelta = newBalance - currentBalance;
+
+  if (actualDelta === 0) {
+    logger.info('[Loyalty] admin_adjust: no effective change (clamped)', { userId, amountCents, currentBalance });
+    return currentBalance;
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.insert(loyaltyLedger).values({
+      userId,
+      eventType,
+      amountIlsCents:    actualDelta,
+      balanceAfterCents: newBalance,
+      note: note ?? 'admin_adjust',
+    });
+
+    await tx
+      .update(users)
+      .set({ loyaltyBalanceCents: newBalance })
+      .where(eq(users.id, userId));
+  });
+
+  logger.info('[Loyalty] admin_adjust applied', { userId, amountCents, actualDelta, newBalance });
+  return newBalance;
+}
+
 // ─── Streak queries ───────────────────────────────────────────────────────────
 
 export async function getStreakCounts(userId: string): Promise<{

@@ -126,6 +126,7 @@ import policeCheckRoutes from "./routes/police-check";
 import { postLoginDecider, chooseRole, approveAccess, completeProfile, getWhoami } from "./routes/post-login";
 import accessRequestsRoutes from "./routes/access-requests";
 import adminProviderReviewRoutes from "./routes/admin-provider-review";
+import adminLoyaltyRoutes from "./routes/admin-loyalty";
 import aiPayoutVerificationRoutes from "./routes/ai-payout-verification";
 import israeliCompliance2025Routes from "./routes/israeli-compliance-2025";
 import platformApiRoutes from "./routes/platform-api";
@@ -9229,6 +9230,7 @@ self.addEventListener('notificationclick', (event) => {
   // Admin routes
   const adminRoutes = await import('./routes/admin');
   app.use('/api/admin', adminLimiter, requireAdminMfa, adminRoutes.default);
+  app.use('/api/admin/loyalty', adminLimiter, adminLoyaltyRoutes);
   
   // Control Panel Registry - RBAC (Role-Based Access Control)
   app.use('/api/control-panel/registry', apiLimiter, controlPanelRegistryRoutes);
