@@ -146,12 +146,12 @@ function formatShortDate(date: string | null) {
   });
 }
 
-function getBookingAction(status: string): { action: 'confirm' | 'start' | 'complete' | null; labelHe: string; icon: any; gradient: string } | null {
+function getBookingAction(status: string): { action: 'accept' | 'start' | 'complete' | null; labelHe: string; icon: any; gradient: string } | null {
   switch (status) {
     case 'pending':
     case 'confirmed':
     case 'owner_confirmed':
-      return { action: 'confirm', labelHe: '\u05D0\u05E9\u05E8 \u05D4\u05D6\u05DE\u05E0\u05D4', icon: Check, gradient: 'from-teal-500 to-emerald-600' };
+      return { action: 'accept', labelHe: '\u05D0\u05E9\u05E8 \u05D4\u05D6\u05DE\u05E0\u05D4', icon: Check, gradient: 'from-teal-500 to-emerald-600' };
     case 'provider_confirmed':
       return { action: 'start', labelHe: '\u05D4\u05EA\u05D7\u05DC \u05E9\u05D9\u05E8\u05D5\u05EA', icon: Play, gradient: 'from-blue-500 to-indigo-600' };
     case 'in_progress':
@@ -239,9 +239,9 @@ export default function ProviderDashboard() {
   });
 
   const bookingAction = useMutation({
-    mutationFn: async ({ bookingId, action }: { bookingId: string; action: 'confirm' | 'start' | 'complete' }) => {
+    mutationFn: async ({ bookingId, action }: { bookingId: string; action: 'accept' | 'start' | 'complete' }) => {
       setProcessingBooking(bookingId);
-      return fetchWithAuth(`/api/provider-dashboard/bookings/${bookingId}/${action}`, {
+      return fetchWithAuth(`/api/provider-dashboard/v2/bookings/${bookingId}/${action}`, {
         method: 'POST',
       });
     },

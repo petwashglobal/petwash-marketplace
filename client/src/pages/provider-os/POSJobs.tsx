@@ -1,14 +1,14 @@
 /**
  * POSJobs — Provider job list with full request lifecycle management.
  *
- * Architecture (Phase 3 — V2 active):
- *   source_of_truth:    booking_requests table (new system, Firebase UID provider ref)
+ * Architecture (Phase 4+5 complete — V2 fully canonical):
+ *   source_of_truth:    booking_requests table (Firebase UID provider ref)
  *   read_path:          GET /api/provider-dashboard/v2/bookings?status=&page=&limit=
- *   write_path:         POST /api/provider-dashboard/bookings/:id/{accept|decline|cancel|start|report|complete}
- *                       (action routes still write to V1; will migrate in Phase 4)
+ *   write_path:         POST /api/provider-dashboard/v2/bookings/:id/{accept|decline|cancel|start|report|complete}
+ *                       (all action routes write to booking_requests — V1 action routes are 410 Dead)
  *   cache_invalidation: ['/api/provider-dashboard/v2/bookings'], ['/api/provider-dashboard/stats'],
  *                       ['/api/provider-dashboard/v2/booking-counts']
- *   v1_fallback:        V1 routes stay live as read-only fallback until migration-diff confirms parity
+ *   v1_status:          All V1 action routes deprecated 2026-03-19. Sunset 2026-04-30.
  */
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';

@@ -1,12 +1,24 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useLanguage } from '@/lib/languageStore';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { Link, useLocation } from 'wouter';
-import { SlidersHorizontal, X, CalendarDays, PawPrint, ChevronLeft, ChevronRight, RefreshCw, HandshakeIcon } from 'lucide-react';
+import {
+  SlidersHorizontal, X, CalendarDays, PawPrint,
+  ChevronLeft, ChevronRight, RefreshCw, HandshakeIcon,
+  XCircle, AlertTriangle, Banknote, Clock,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 
 const GOLD = '#C5A55A';
 
@@ -24,10 +36,19 @@ const STATUS_TO_TAB: Record<string, TabId> = {
   accepted:    'upcoming',
   confirmed:   'upcoming',
   in_progress: 'upcoming',
+  meet_greet_scheduled: 'upcoming',
+  meet_greet_completed: 'upcoming',
+  payment_pending: 'upcoming',
   completed:   'past',
+  reviewed:    'past',
   declined:    'archived',
   cancelled:   'archived',
+  disputed:    'archived',
 };
+
+const CANCELLABLE_STATUSES = new Set([
+  'pending', 'accepted', 'confirmed', 'meet_greet_scheduled', 'meet_greet_completed',
+]);
 
 const SERVICE_TYPES = [
   { id: 'all',          labelHe: 'הכל',             labelEn: 'All',          emoji: '🐾' },
@@ -41,23 +62,33 @@ const SERVICE_TYPES = [
 ];
 
 const STATUS_COLORS: Record<string, string> = {
-  pending:     'bg-amber-100 text-amber-800',
-  accepted:    'bg-blue-100 text-blue-800',
-  confirmed:   'bg-blue-100 text-blue-800',
-  in_progress: 'bg-green-100 text-green-800',
-  completed:   'bg-gray-100 text-gray-700',
-  declined:    'bg-red-100 text-red-700',
-  cancelled:   'bg-red-100 text-red-700',
+  pending:               'bg-amber-100 text-amber-800',
+  accepted:              'bg-blue-100 text-blue-800',
+  confirmed:             'bg-blue-100 text-blue-800',
+  meet_greet_scheduled:  'bg-violet-100 text-violet-800',
+  meet_greet_completed:  'bg-violet-100 text-violet-800',
+  payment_pending:       'bg-yellow-100 text-yellow-800',
+  in_progress:           'bg-green-100 text-green-800',
+  completed:             'bg-gray-100 text-gray-700',
+  reviewed:              'bg-teal-100 text-teal-700',
+  declined:              'bg-red-100 text-red-700',
+  cancelled:             'bg-red-100 text-red-700',
+  disputed:              'bg-orange-100 text-orange-700',
 };
 
 const STATUS_LABELS: Record<string, { he: string; en: string }> = {
-  pending:     { he: 'ממתין',     en: 'Pending'     },
-  accepted:    { he: 'אושר',      en: 'Accepted'    },
-  confirmed:   { he: 'מאושר',     en: 'Confirmed'   },
-  in_progress: { he: 'בתהליך',    en: 'In Progress' },
-  completed:   { he: 'הושלם',     en: 'Completed'   },
-  declined:    { he: 'נדחה',      en: 'Declined'    },
-  cancelled:   { he: 'בוטל',      en: 'Cancelled'   },
+  pending:              { he: 'ממתין',           en: 'Pending'             },
+  accepted:             { he: 'אושר',            en: 'Accepted'            },
+  confirmed:            { he: 'מאושר',           en: 'Confirmed'           },
+  meet_greet_scheduled: { he: 'פגישה מתוכננת',  en: 'Meet & Greet set'    },
+  meet_greet_completed: { he: 'פגישה הושלמה',   en: 'Meet & Greet done'   },
+  payment_pending:      { he: 'ממתין לתשלום',   en: 'Awaiting payment'    },
+  in_progress:          { he: 'בתהליך',         en: 'In Progress'         },
+  completed:            { he: 'הושלם',           en: 'Completed'           },
+  reviewed:             { he: 'עם ביקורת',       en: 'Reviewed'            },
+  declined:             { he: 'נדחה',            en: 'Declined'            },
+  cancelled:            { he: 'בוטל',            en: 'Cancelled'           },
+  disputed:             { he: 'במחלוקת',         en: 'Disputed'            },
 };
 
 const SERVICE_TO_ROUTE: Record<string, string> = {
@@ -84,6 +115,10 @@ interface Booking {
   providerName?: string | null;
   meetGreetDate?: string | null;
   meetGreetLocation?: string | null;
+  cancellationReason?: string | null;
+  cancelledBy?: string | null;
+  refundCents?: number;
+  statusHistory?: Array<{ status: string; timestamp: string; note?: string }>;
 }
 
 function ProviderAvatar({ name, size = 36 }: { name: string; size?: number }) {
@@ -125,14 +160,28 @@ function EmptyState({ tab, isRTL }: { tab: TabId; isRTL: boolean }) {
   );
 }
 
-function BookingCard({ booking, isRTL, showRebook }: { booking: Booking; isRTL: boolean; showRebook?: boolean }) {
+function BookingCard({
+  booking,
+  isRTL,
+  showRebook,
+  onCancel,
+  cancelling,
+}: {
+  booking: Booking;
+  isRTL: boolean;
+  showRebook?: boolean;
+  onCancel?: () => void;
+  cancelling?: boolean;
+}) {
   const [, navigate] = useLocation();
   const service = SERVICE_TYPES.find(s => s.id === booking.serviceType) || SERVICE_TYPES[0];
   const statusLabel = STATUS_LABELS[booking.status] || { he: booking.status, en: booking.status };
   const statusColor = STATUS_COLORS[booking.status] || 'bg-gray-100 text-gray-700';
   const hasMeetGreet = !!(booking.meetGreetDate || booking.meetGreetLocation);
+  const canCancel = CANCELLABLE_STATUSES.has(booking.status) && !!onCancel;
+  const hasRefund = (booking.refundCents ?? 0) > 0;
 
-  const formatDate = (d: string) => {
+  const formatDate = (d: string | null | undefined) => {
     if (!d) return '—';
     return new Date(d).toLocaleDateString(isRTL ? 'he-IL' : 'en-AU', {
       day: 'numeric', month: 'short', year: 'numeric',
@@ -148,14 +197,29 @@ function BookingCard({ booking, isRTL, showRebook }: { booking: Booking; isRTL: 
   const handleRebook = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const route = SERVICE_TO_ROUTE[booking.serviceType] || '/marketplace';
-    navigate(route);
+    if (booking.providerId) {
+      navigate(`/booking/new/${booking.serviceType}/${booking.providerId}`);
+    } else {
+      const route = SERVICE_TO_ROUTE[booking.serviceType] || '/marketplace';
+      navigate(route);
+    }
+  };
+
+  const handleCancel = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onCancel?.();
+  };
+
+  const cleanReason = (reason: string | null | undefined) => {
+    if (!reason) return null;
+    return reason.replace(/^(DECLINED:|CANCELLED:|DISPUTE:|CANCELED:)\s*/i, '');
   };
 
   return (
-    <Link href={`/booking/${booking.requestId}`}>
+    <Link href={`/booking/confirmation/${booking.requestId}`}>
       <div
-        className="p-4 bg-white border border-gray-100 rounded-2xl mb-3 active:bg-gray-50 transition-colors cursor-pointer shadow-sm hover:shadow-md transition-shadow"
+        className="p-4 bg-white border border-gray-100 rounded-2xl mb-3 active:bg-gray-50 transition-colors cursor-pointer shadow-sm hover:shadow-md"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
         <div className="flex items-start gap-3">
@@ -180,6 +244,7 @@ function BookingCard({ booking, isRTL, showRebook }: { booking: Booking; isRTL: 
                 {isRTL ? statusLabel.he : statusLabel.en}
               </span>
             </div>
+
             <div className="flex items-center gap-1 mt-1.5 text-xs text-gray-500">
               <CalendarDays size={11} />
               <span>{formatDate(booking.startDate)}</span>
@@ -187,12 +252,14 @@ function BookingCard({ booking, isRTL, showRebook }: { booking: Booking; isRTL: 
                 <><span>–</span><span>{formatDate(booking.endDate)}</span></>
               )}
             </div>
+
             {booking.petCount > 0 && (
               <div className="flex items-center gap-1 mt-0.5 text-xs text-gray-500">
                 <PawPrint size={11} />
                 <span>{booking.petCount} {isRTL ? 'חיות' : booking.petCount === 1 ? 'pet' : 'pets'}</span>
               </div>
             )}
+
             {hasMeetGreet && (
               <div className="flex items-center gap-1 mt-1.5">
                 <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 flex items-center gap-1">
@@ -201,7 +268,35 @@ function BookingCard({ booking, isRTL, showRebook }: { booking: Booking; isRTL: 
                 </span>
               </div>
             )}
+
+            {booking.status === 'disputed' && (
+              <div className="flex items-center gap-1 mt-1.5">
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 flex items-center gap-1">
+                  <AlertTriangle size={10} />
+                  {isRTL ? 'תיק במחלוקת — בטיפול' : 'Dispute under review'}
+                </span>
+              </div>
+            )}
+
+            {booking.status === 'declined' && cleanReason(booking.cancellationReason) && (
+              <p className="text-[11px] text-red-600 mt-1 leading-snug line-clamp-2">
+                {isRTL ? 'סיבת דחייה: ' : 'Reason: '}
+                {cleanReason(booking.cancellationReason)}
+              </p>
+            )}
+
+            {booking.status === 'cancelled' && hasRefund && (
+              <div className="flex items-center gap-1 mt-1.5">
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-green-50 text-green-700 flex items-center gap-1">
+                  <Banknote size={10} />
+                  {isRTL
+                    ? `החזר ₪${((booking.refundCents ?? 0) / 100).toFixed(0)} בעיבוד`
+                    : `Refund ₪${((booking.refundCents ?? 0) / 100).toFixed(0)} processing`}
+                </span>
+              </div>
+            )}
           </div>
+
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
             {booking.totalCents > 0 && (
               <p className="text-sm font-semibold" style={{ color: GOLD }}>
@@ -215,16 +310,30 @@ function BookingCard({ booking, isRTL, showRebook }: { booking: Booking; isRTL: 
           </div>
         </div>
 
-        {showRebook && (
-          <div className={`mt-3 pt-3 border-t border-gray-100 flex ${isRTL ? 'justify-start' : 'justify-end'}`}>
-            <button
-              onClick={handleRebook}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors"
-              style={{ borderColor: GOLD, color: GOLD, background: `${GOLD}10` }}
-            >
-              <RefreshCw size={12} />
-              {isRTL ? 'הזמן שוב' : 'Book Again'}
-            </button>
+        {(showRebook || canCancel) && (
+          <div className={`mt-3 pt-3 border-t border-gray-100 flex items-center gap-2 ${isRTL ? 'justify-start flex-row-reverse' : 'justify-end'}`}>
+            {canCancel && (
+              <button
+                onClick={handleCancel}
+                disabled={cancelling}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50"
+              >
+                <XCircle size={12} />
+                {isRTL ? 'בטל הזמנה' : 'Cancel booking'}
+              </button>
+            )}
+            {showRebook && (
+              <button
+                onClick={handleRebook}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors"
+                style={{ borderColor: GOLD, color: GOLD, background: `${GOLD}10` }}
+              >
+                <RefreshCw size={12} />
+                {isRTL
+                  ? (booking.providerName ? `הזמן שוב עם ${booking.providerName}` : 'הזמן שוב')
+                  : (booking.providerName ? `Book ${booking.providerName} again` : 'Book Again')}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -236,14 +345,38 @@ export default function CustomerBookings() {
   const { language } = useLanguage();
   const { user } = useFirebaseAuth();
   const isRTL = language === 'he' || language === 'ar';
+  const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<TabId>('upcoming');
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedService, setSelectedService] = useState('all');
+  const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
 
   const { data, isLoading } = useQuery<{ bookings: Booking[]; total: number }>({
     queryKey: ['/api/booking-requests'],
     enabled: !!user,
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async ({ requestId, reason }: { requestId: string; reason: string }) =>
+      apiRequest('POST', `/api/booking-requests/${requestId}/cancel`, { reason }),
+    onSuccess: () => {
+      setCancelTarget(null);
+      setCancelReason('');
+      queryClient.invalidateQueries({ queryKey: ['/api/booking-requests'] });
+      toast({
+        title: isRTL ? 'ההזמנה בוטלה' : 'Booking cancelled',
+        description: isRTL ? 'ההזמנה בוטלה בהצלחה.' : 'Your booking has been cancelled.',
+      });
+    },
+    onError: () => {
+      toast({
+        title: isRTL ? 'שגיאה בביטול' : 'Cancellation failed',
+        description: isRTL ? 'לא ניתן לבטל כעת. נסה שוב.' : 'Could not cancel right now. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   const allBookings = data?.bookings ?? [];
@@ -347,7 +480,9 @@ export default function CustomerBookings() {
               key={b.requestId}
               booking={b}
               isRTL={isRTL}
-              showRebook={activeTab === 'past'}
+              showRebook={activeTab === 'past' || activeTab === 'archived'}
+              onCancel={CANCELLABLE_STATUSES.has(b.status) ? () => setCancelTarget(b) : undefined}
+              cancelling={cancelMutation.isPending && cancelTarget?.requestId === b.requestId}
             />
           ))
         )}
@@ -393,6 +528,52 @@ export default function CustomerBookings() {
           </Button>
         </SheetContent>
       </Sheet>
+
+      <AlertDialog open={!!cancelTarget} onOpenChange={open => { if (!open) { setCancelTarget(null); setCancelReason(''); } }}>
+        <AlertDialogContent dir={isRTL ? 'rtl' : 'ltr'}>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <XCircle size={18} className="text-red-500" />
+              {isRTL ? 'ביטול הזמנה' : 'Cancel booking'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className={`text-sm text-gray-600 ${isRTL ? 'text-right' : 'text-left'}`}>
+              {isRTL
+                ? 'האם אתה בטוח שברצונך לבטל? פעולה זו אינה ניתנת לביטול.'
+                : 'Are you sure you want to cancel? This cannot be undone.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="py-2">
+            <Textarea
+              placeholder={isRTL ? 'סיבת ביטול (אופציונלי)' : 'Reason for cancellation (optional)'}
+              value={cancelReason}
+              onChange={e => setCancelReason(e.target.value)}
+              className="resize-none text-sm"
+              rows={3}
+              dir={isRTL ? 'rtl' : 'ltr'}
+            />
+          </div>
+
+          <AlertDialogFooter className={isRTL ? 'flex-row-reverse' : ''}>
+            <AlertDialogCancel disabled={cancelMutation.isPending}>
+              {isRTL ? 'שמור הזמנה' : 'Keep booking'}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (cancelTarget) {
+                  cancelMutation.mutate({ requestId: cancelTarget.requestId, reason: cancelReason });
+                }
+              }}
+              disabled={cancelMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {cancelMutation.isPending
+                ? (isRTL ? 'מבטל...' : 'Cancelling...')
+                : (isRTL ? 'אשר ביטול' : 'Confirm cancel')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -325,18 +325,22 @@ function providerOwnsBooking(providerIds: number[], bookingProviderId: string | 
 }
 
 // ── DEPRECATED: POST /bookings/:id/confirm ─────────────────────────────────
-// Migration step D-2: this route is superseded by POST /bookings/:id/accept
-// (which correctly transitions to provider_confirmed and is auth-owner scoped).
-// Kept alive with a 308 redirect for backward compat during migration window.
-// Rollback: remove the 308 and restore the full handler body from git.
-// Remove entirely after Phase 3 migration is confirmed safe.
+// Previously: 308-redirected to /accept (which was itself a V1 route).
+// Now: direct 410 Gone pointing straight to the V2 successor route.
+// Removed the redirect chain — /accept is also deprecated (410) so chaining would just double-hop to an error.
 router.post('/bookings/:bookingId/confirm', (req: Request, res: Response) => {
   const { bookingId } = req.params;
-  logger.warn('[ProviderDashboard] DEPRECATED /confirm called — redirecting to /accept', { bookingId });
+  const v2url = `/api/provider-dashboard/v2/bookings/${bookingId}/accept`;
+  logger.warn('[ProviderDashboard][DEPRECATED] V1 /confirm called — returning 410', { bookingId, v2url });
   res.setHeader('Deprecation', 'version="2026-03-19"');
-  res.setHeader('Link', `</api/provider-dashboard/bookings/${bookingId}/accept>; rel="successor-version"`);
-  // 308 Permanent Redirect preserves POST method
-  res.redirect(308, `/api/provider-dashboard/bookings/${bookingId}/accept`);
+  res.setHeader('Sunset', 'Sat, 30 Apr 2026 00:00:00 GMT');
+  res.setHeader('Link', `<${v2url}>; rel="successor-version"`);
+  return res.status(410).json({
+    error: 'ROUTE_DEPRECATED',
+    message: `POST /bookings/${bookingId}/confirm (V1) is no longer active. Use the V2 route.`,
+    v2Route: v2url,
+    sunset: '2026-04-30',
+  });
 });
 
 // ── DEPRECATED V1 ACTION ROUTES ─────────────────────────────────────────────
