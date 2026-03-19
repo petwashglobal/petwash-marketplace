@@ -172,10 +172,10 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
   const total: number   = (data as any)?.total || 0;
   const totalPages = Math.ceil(total / 15);
 
-  const handleFinishRequest = (booking: any) => {
+  const handleFinishRequest = (booking: any, payout: number) => {
     setFinishModal({
       booking,
-      amountILS: parseFloat(booking.providerPayout || booking.subtotal || '0').toFixed(0),
+      amountILS: payout.toFixed(0),
       paymentMethod: 'cash',
     });
   };
@@ -408,7 +408,7 @@ function JobCard({
   onAction: (id: string, action: string) => void;
   onCancelRequest: (id: string) => void;
   onDeclineRequest: (id: string) => void;
-  onFinishRequest: (booking: any) => void;
+  onFinishRequest: (booking: any, payout: number) => void;
   isPending: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -582,7 +582,7 @@ function JobCard({
                 onClick={() => {
                   if (a.action === '_cancel')  onCancelRequest(booking.id);
                   else if (a.action === '_decline') onDeclineRequest(booking.id);
-                  else if (a.action === '_finish') onFinishRequest(booking);
+                  else if (a.action === '_finish') onFinishRequest(booking, payout);
                   else onAction(booking.id, a.action);
                 }}
                 className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${a.className}`}>

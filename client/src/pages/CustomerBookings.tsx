@@ -11,9 +11,7 @@ import {
   CheckCircle2, CircleDot, Ban, Star, Timer, Hourglass,
   Loader2, MessageSquare, MapPin, Coins,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,

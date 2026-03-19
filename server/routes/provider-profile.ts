@@ -12,12 +12,11 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { db } from '../db';
+import { db, pool } from '../db';
 import { providerProfiles, providers } from '@shared/schema';
 import { eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
-import { pool } from '../db';
 
 const router = Router();
 
