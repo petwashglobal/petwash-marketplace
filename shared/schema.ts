@@ -12484,7 +12484,7 @@ export const winbackQueue = pgTable("winback_queue", {
   experimentVariant:  text("experiment_variant"),
   // Phase 6.10 — row-level suppression markers (authoritative source = experiment_decisions)
   pausedAt:           timestamp("paused_at"),
-  pauseReason:        text("pause_reason"), // 'low_sample' | 'losing' | 'admin'
+  pauseReason:        text("pause_reason"), // 'low_sample' | 'losing' | 'admin' | 'control_group' | 'over_messaged'
   // Phase 6.12 — multi-channel escalation tracking
   smsEscalationAt:    timestamp("sms_escalation_at"),    // when to attempt SMS (sentAt + 6h)
   smsSentAt:          timestamp("sms_sent_at"),           // when SMS was actually dispatched
