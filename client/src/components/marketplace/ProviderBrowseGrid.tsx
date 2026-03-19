@@ -46,7 +46,9 @@ export interface ProviderCardData {
   location?: string;
   ratingAvg: number | null;
   ratingCount: number;
-  priceFrom?: number;
+  priceFrom?: number | null;          // ILS — from price_from_cents/100; null = not set
+  priceFromCents?: number | null;     // raw agorot from DB
+  acceptedPets?: string[];            // e.g. ['dog','cat']; empty = accepts all
   priceUnit?: string;
   priceUnitHe?: string;
   profileImageUrl?: string;
@@ -134,7 +136,7 @@ export function ProviderBrowseGrid({
   const [filters, setFilters] = useState<FilterState>(DEFAULTS);
   const [showFilters, setShowFilters] = useState(false);
 
-  // ── Backend filter params (only backend-wired ones) ─────────────────────
+  // ── Backend filter params — all filters now DB-backed ───────────────────
   const backendParams = new URLSearchParams({
     platform,
     ...(filters.minRating > 0 && { minRating: String(filters.minRating) }),
@@ -142,6 +144,10 @@ export function ProviderBrowseGrid({
     ...(filters.backgroundCheckOnly && { backgroundCheckOnly: 'true' }),
     ...(filters.fencedYardOnly && { fencedYardOnly: 'true' }),
     ...(filters.noPetsAtHomeOnly && { noPetsAtHomeOnly: 'true' }),
+    // price + petType — now DB-backed via price_from_cents / accepted_pets columns
+    ...(filters.minPrice > 0 && { minPrice: String(filters.minPrice) }),
+    ...(filters.maxPrice < 1000 && { maxPrice: String(filters.maxPrice) }),
+    ...(filters.petType !== 'all' && { petType: filters.petType }),
     sortBy: filters.sortBy,
     limit: '48',
   });
@@ -156,13 +162,8 @@ export function ProviderBrowseGrid({
   const rawProviders = staticProviders ?? browseData?.providers ?? [];
   const isLoading = staticProviders ? (staticLoading ?? false) : browseLoading;
 
-  // ── Client-side post-filter (petType, price — no DB column yet) ──────────
-  const providers = rawProviders.filter(p => {
-    if (filters.minPrice > 0 && (p.priceFrom ?? 0) < filters.minPrice) return false;
-    if (filters.maxPrice < 1000 && (p.priceFrom ?? 0) > filters.maxPrice) return false;
-    // petType filter: if provider specifies service specialties, match — else show all
-    return true;
-  });
+  // All filters are server-backed — no client-side post-filtering
+  const providers = rawProviders;
 
   // ── Saved providers state (persisted per user) ───────────────────────────
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
@@ -191,7 +192,7 @@ export function ProviderBrowseGrid({
     }
   }, [rawProviders]);
 
-  // ── Save / Unsave mutations ───────────────────────────────────────────────
+  // ── Save / Unsave mutations (optimistic + rollback on error) ────────────
   const saveMutation = useMutation({
     mutationFn: async ({ providerId, saving }: { providerId: string; saving: boolean }) => {
       if (saving) {
@@ -200,10 +201,22 @@ export function ProviderBrowseGrid({
         return apiRequest('DELETE', `/api/saved-providers/${providerId}`);
       }
     },
+    onMutate: ({ providerId, saving }) => {
+      // Capture snapshot for rollback
+      const prev = new Set(savedIds);
+      setSavedIds(snapshot => {
+        const next = new Set(snapshot);
+        saving ? next.add(providerId) : next.delete(providerId);
+        return next;
+      });
+      return { prev };
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['/api/saved-providers'] });
     },
-    onError: () => {
+    onError: (_err, _vars, context) => {
+      // Rollback optimistic update to the pre-mutation snapshot
+      if (context?.prev) setSavedIds(context.prev);
       toast({ title: isHebrew ? 'שגיאה' : 'Error', description: isHebrew ? 'לא ניתן לשמור' : 'Could not save', variant: 'destructive' });
     },
   });
@@ -215,11 +228,6 @@ export function ProviderBrowseGrid({
       return;
     }
     const saving = !savedIds.has(providerId);
-    setSavedIds(prev => {
-      const next = new Set(prev);
-      saving ? next.add(providerId) : next.delete(providerId);
-      return next;
-    });
     saveMutation.mutate({ providerId, saving });
   }, [user, savedIds, saveMutation, isHebrew, toast]);
 

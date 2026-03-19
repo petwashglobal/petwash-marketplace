@@ -185,3 +185,43 @@ export function formatResponseTime(minutes: number | null): string | null {
   if (minutes < 1440) return `~${Math.round(minutes / 60)} hours`;
   return `~1 day`;
 }
+
+/**
+ * Backfill trust metrics for all providers who have never had metrics computed
+ * (trustMetricsUpdatedAt IS NULL) or whose metrics are stale (> 6h old).
+ *
+ * Called once on startup (non-blocking) and can be triggered via admin endpoint.
+ * Returns { refreshed, skipped, errors } counts.
+ */
+export async function backfillAllProviderTrustMetrics(): Promise<{
+  refreshed: number; skipped: number; errors: number;
+}> {
+  const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+  const cutoff = new Date(Date.now() - SIX_HOURS_MS);
+
+  // Fetch all providers who need a refresh
+  const staleProviders = await db
+    .select({ userId: providerProfiles.userId })
+    .from(providerProfiles)
+    .where(
+      sql`${providerProfiles.trustMetricsUpdatedAt} IS NULL
+        OR ${providerProfiles.trustMetricsUpdatedAt} < ${cutoff}`
+    );
+
+  let refreshed = 0;
+  let skipped   = 0;
+  let errors    = 0;
+
+  for (const { userId } of staleProviders) {
+    try {
+      await refreshAndCacheProviderTrustMetrics(userId);
+      refreshed++;
+    } catch (err) {
+      logger.warn('[TrustBackfill] Failed for provider', { userId, err });
+      errors++;
+    }
+  }
+
+  logger.info('[TrustBackfill] Complete', { refreshed, skipped, errors, total: staleProviders.length });
+  return { refreshed, skipped, errors };
+}

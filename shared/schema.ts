@@ -11492,6 +11492,9 @@ export const providerProfiles = pgTable("provider_profiles", {
   // ── Home setup (set by provider, null = not answered yet) ──
   hasFencedYard: boolean("has_fenced_yard"),
   hasNoPetsAtHome: boolean("has_no_pets_at_home"),
+  // ── Pricing + pet acceptance (DB-backed browse filters) ──
+  priceFromCents: integer("price_from_cents"),               // lowest service price in agorot; null = not set
+  acceptedPets: text("accepted_pets").array(),               // e.g. ['dog','cat']; null/empty = show for all
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

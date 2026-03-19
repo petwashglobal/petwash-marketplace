@@ -536,6 +536,16 @@ if (isProduction) {
     await registerRoutes(app);
     healthState.app.routesReady = true;
 
+    // Non-blocking: backfill trust metrics for all providers missing or stale data.
+    // Runs once per cold start — safe to re-run (idempotent).
+    setImmediate(() => {
+      import('./utils/providerTrustMetrics').then(({ backfillAllProviderTrustMetrics }) => {
+        backfillAllProviderTrustMetrics().catch(err =>
+          console.warn('[TrustBackfill] Startup backfill failed', err)
+        );
+      });
+    });
+
     // 5. Serve static files - CONDITIONAL based on environment
     // DEVELOPMENT: Use Vite dev server with HMR for hot reloading
     // PRODUCTION: Serve pre-built static files from dist/public

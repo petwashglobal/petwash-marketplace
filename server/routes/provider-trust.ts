@@ -20,7 +20,10 @@ import {
   computeProviderTrustMetrics,
   refreshAndCacheProviderTrustMetrics,
   formatResponseTime,
+  backfillAllProviderTrustMetrics,
 } from '../utils/providerTrustMetrics';
+
+const SUPER_ADMIN_UID = 'vdiboz7IrUQEm2RbdO7VZLkBu552';
 
 const router = Router();
 
@@ -141,8 +144,10 @@ router.get('/providers/browse', async (req: Request, res: Response) => {
     sortBy = 'rating',
     limit = '24',
     offset = '0',
-    // minPrice / maxPrice / petType noted: these have no price column in provider_profiles yet
-    // They are accepted but not yet enforced at DB level (marked LOCAL below)
+    // price + petType — NOW DB-backed (price_from_cents, accepted_pets columns added in migration)
+    minPrice,   // ILS (multiplied ×100 → agorot for DB comparison)
+    maxPrice,   // ILS
+    petType,    // 'dog' | 'cat' | 'rabbit' | 'bird' | 'all'
   } = req.query as Record<string, string>;
 
   // ── Build parameterized WHERE clauses (pure SQL, no Drizzle ORM objects) ──
@@ -173,6 +178,27 @@ router.get('/providers/browse', async (req: Request, res: Response) => {
   // noPetsAtHomeOnly — server-backed (DB column has_no_pets_at_home)
   if (noPetsAtHomeOnly === 'true') {
     whereParts.push(`pp.has_no_pets_at_home = TRUE`);
+  }
+
+  // minPrice — server-backed (DB column price_from_cents; ILS → agorot ×100)
+  if (minPrice && Number(minPrice) > 0) {
+    params.push(Math.round(Number(minPrice) * 100));
+    whereParts.push(`pp.price_from_cents >= $${params.length}`);
+  }
+
+  // maxPrice — server-backed; providers with null price always pass through (no price set = show)
+  if (maxPrice && Number(maxPrice) < 1000) {
+    params.push(Math.round(Number(maxPrice) * 100));
+    whereParts.push(`(pp.price_from_cents IS NULL OR pp.price_from_cents <= $${params.length})`);
+  }
+
+  // petType — server-backed (DB column accepted_pets TEXT[]; null/empty = accepts all pet types)
+  if (petType && petType !== 'all') {
+    const PET_WHITELIST = ['dog', 'cat', 'rabbit', 'bird', 'hamster', 'fish'];
+    if (PET_WHITELIST.includes(petType)) {
+      params.push(petType);
+      whereParts.push(`(pp.accepted_pets IS NULL OR pp.accepted_pets = '{}' OR $${params.length} = ANY(pp.accepted_pets))`);
+    }
   }
 
   // ── ORDER BY — pure SQL (no user input in column name, switch-guarded) ──
@@ -214,6 +240,8 @@ router.get('/providers/browse', async (req: Request, res: Response) => {
         pp.repeat_client_count        AS "repeatClientCount",
         pp.response_rate_pct          AS "responseRatePct",
         pp.avg_response_time_minutes  AS "avgResponseTimeMinutes",
+        pp.price_from_cents           AS "priceFromCents",
+        pp.accepted_pets              AS "acceptedPets",
         pp.created_at                 AS "createdAt",
         CASE WHEN sp.id IS NOT NULL THEN TRUE ELSE FALSE END AS "isSavedByUser"
       FROM provider_profiles pp
@@ -254,6 +282,10 @@ router.get('/providers/browse', async (req: Request, res: Response) => {
       responseTimeLabel: formatResponseTime(row.avgResponseTimeMinutes ?? null),
       isNew: (row.completedBookingsCount ?? 0) < 3,
       isSavedByUser: savedIds.includes(row.userId),
+      // price + accepted pets — now DB-backed
+      priceFromCents: row.priceFromCents ?? null,               // agorot; null = provider hasn't set a price
+      priceFrom: row.priceFromCents != null ? Math.round(row.priceFromCents / 100) : null, // ILS
+      acceptedPets: row.acceptedPets ?? [],                     // string[]; empty = accepts all
       memberSince: row.createdAt,
     }));
 
@@ -335,6 +367,32 @@ router.delete('/saved-providers/:providerId', async (req: Request, res: Response
   } catch (err) {
     logger.error('[SavedProviders] DELETE failed', { uid, providerId, err });
     return res.status(500).json({ error: 'Failed to unsave provider' });
+  }
+});
+
+// ─── POST /api/admin/providers/backfill-trust-metrics ────────────────────────
+// Admin-only: refreshes trust metrics for all providers who are stale (> 6h) or
+// have never been computed. Non-destructive — idempotent. Safe to re-run.
+router.post('/admin/providers/backfill-trust-metrics', async (req: Request, res: Response) => {
+  const uid = getUid(req);
+  if (!uid || uid !== SUPER_ADMIN_UID) {
+    return res.status(403).json({ error: 'Forbidden — admin only' });
+  }
+
+  try {
+    logger.info('[TrustBackfill] Admin-triggered backfill started', { triggeredBy: uid });
+    // Run async — respond immediately with 202 then let the work run
+    const resultPromise = backfillAllProviderTrustMetrics();
+    resultPromise.then(result => {
+      logger.info('[TrustBackfill] Admin-triggered backfill complete', result);
+    }).catch(err => {
+      logger.error('[TrustBackfill] Admin-triggered backfill error', { err });
+    });
+
+    return res.status(202).json({ message: 'Backfill started — check server logs for progress' });
+  } catch (err) {
+    logger.error('[TrustBackfill] Failed to start', { err });
+    return res.status(500).json({ error: 'Failed to start backfill' });
   }
 });
 

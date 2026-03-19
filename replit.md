@@ -737,7 +737,7 @@ Every quote carries `pricingVersion: "v1.0.0"` — stored in both the booking ro
 ## Trust Metrics Infrastructure (March 2026)
 
 ### Database schema additions (via executeSql — no drizzle migration)
-**`provider_profiles` new columns:**
+**`provider_profiles` new columns (all added, schema.ts updated):**
 - `completed_bookings_count` integer — real count from booking_requests
 - `repeat_client_count` integer — null when < 2 completed bookings (never fake)
 - `response_rate_pct` integer — null when < 5 requests (never fake)
@@ -745,24 +745,41 @@ Every quote carries `pricingVersion: "v1.0.0"` — stored in both the booking ro
 - `trust_metrics_updated_at` timestamp — last time cache was refreshed
 - `has_fenced_yard` boolean — nullable (provider may not have filled in)
 - `has_no_pets_at_home` boolean — nullable (provider may not have filled in)
+- `price_from_cents` integer — lowest service price in agorot (÷100 = ILS); null = not set
+- `accepted_pets` TEXT[] — e.g. `['dog','cat']`; null/empty = accepts all pet types
 
-**`saved_providers` table:** id, user_id, provider_id, platform, created_at
+**`saved_providers` table:** id, user_id, provider_id, platform, created_at + UNIQUE CONSTRAINT `uq_saved_provider_pair(user_id, provider_id)`
 
 ### Server utilities: `server/utils/providerTrustMetrics.ts`
 - `computeProviderTrustMetrics(providerId)` — queries booking_requests for real stats
 - `refreshAndCacheProviderTrustMetrics(providerId)` — computes + writes to DB
 - `formatResponseTime(minutes)` — human label (e.g. "within 1 hour")
+- `backfillAllProviderTrustMetrics()` — batch refresh all stale providers (> 6h or null); called on startup + admin endpoint
 - Null thresholds enforced: `responseRatePct`/`avgResponseTimeMinutes` require ≥5 requests; `repeatClientCount` requires ≥2 bookings
 
 ### API routes: `server/routes/provider-trust.ts`
+All filters are now DB-backed — no client-side post-filtering anywhere.
 - `GET /api/providers/stats/:userId` — 6-hour cached trust stats with auto-refresh
-- `GET /api/providers/browse` — DB-backed filter search (minRating, fencedYardOnly, noPetsAtHomeOnly, backgroundCheckOnly, availableThisWeek, sortBy)
+- `GET /api/providers/browse` — DB-backed filter search:
+  - minRating, fencedYardOnly, noPetsAtHomeOnly, backgroundCheckOnly, availableThisWeek, sortBy (all proven)
+  - **minPrice, maxPrice** — DB predicate on `price_from_cents` (ILS × 100 → agorot)
+  - **petType** — DB predicate on `accepted_pets` TEXT[] with whitelist injection guard
 - `GET /api/saved-providers` — list saved providers for current user
-- `POST /api/saved-providers/:providerId` — save a provider
+- `POST /api/saved-providers/:providerId` — save a provider (provider existence check, ON CONFLICT DO NOTHING)
 - `DELETE /api/saved-providers/:providerId` — unsave a provider
+- `POST /api/admin/providers/backfill-trust-metrics` — super-admin only (UID check); triggers async backfill; returns 202
 
-### Booking completion hook
-`server/routes/booking-requests.ts` — on service completion (`status = 'completed'`), triggers `setImmediate(() => refreshAndCacheProviderTrustMetrics(booking.providerId))` non-blocking.
+### Trust metrics backfill
+- **Startup**: Non-blocking `setImmediate` in `server/index.ts` calls `backfillAllProviderTrustMetrics()` on every cold start
+- **Admin endpoint**: `POST /api/admin/providers/backfill-trust-metrics` — SUPER_ADMIN_UID gated, async, returns 202 immediately
+- **On booking completion**: `setImmediate(() => refreshAndCacheProviderTrustMetrics(booking.providerId))` in booking-requests.ts
+- **On profile view**: auto-refresh if cached value > 6h old (self-healing)
+
+### ProviderBrowseGrid save heart — fully API-backed with rollback
+- `onMutate`: captures `prev` Set snapshot before optimistic update
+- `onError`: rolls back to `prev` snapshot + shows toast
+- `onSuccess`: invalidates `/api/saved-providers` query cache
+- Zero client-side post-filtering remains
 
 ## Competitive Deep-Review Build v2 (March 2026 — Airbnb + Rover + MadPaws micro-UX)
 
