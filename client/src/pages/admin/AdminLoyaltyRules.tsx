@@ -48,12 +48,17 @@ interface StatsData {
   variantFunnel: { experimentKey: string; variant: string; event: string; cnt: number }[];
 }
 
+interface ChannelStat   { channel: string; today_sent: number; total_sent: number }
+interface ChannelConv   { channel: string; sent: number; clicked: number; completed: number }
+
 interface WinbackData {
   statusBreakdown: { trigger: string; status: string; cnt: number }[];
   recent: { id: number; userId: string; trigger: string; status: string;
             scheduledAt: string; sentAt: string | null; convertedAt: string | null; variant: string | null }[];
   conversion: { sent: number; converted: number; suppressed: number };
-  variantFunnel: { experimentKey: string; variant: string; event: string; cnt: number }[];
+  variantFunnel:     { experimentKey: string; variant: string; channel: string; event: string; cnt: number }[];
+  channelStats:      ChannelStat[];
+  channelConversion: ChannelConv[];
 }
 
 interface DecisionRow {
@@ -952,6 +957,89 @@ function WinbackTab() {
           </SectionCard>
         );
       })()}
+
+      {/* Phase 6.12 — Channel Performance Table */}
+      {(data.channelConversion?.length > 0 || data.channelStats?.length > 0) && (
+        <SectionCard title="ביצועים לפי ערוץ">
+          {/* Cost & daily usage panel */}
+          {data.channelStats?.length > 0 && (
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {['sms', 'whatsapp'].map(ch => {
+                const stat = data.channelStats.find(s => s.channel === ch);
+                const cap  = ch === 'sms' ? 50 : 30;
+                // Estimated cost: SMS ~$0.045, WhatsApp ~$0.065 per message
+                const costPerMsg = ch === 'sms' ? 0.045 : 0.065;
+                const todayCost  = ((stat?.today_sent ?? 0) * costPerMsg).toFixed(2);
+                const totalCost  = ((stat?.total_sent  ?? 0) * costPerMsg).toFixed(2);
+                return (
+                  <div key={ch} className="border border-gray-100 rounded-xl p-3 text-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-gray-700 capitalize">{ch === 'whatsapp' ? 'WhatsApp' : 'SMS'}</span>
+                      <span className="text-[10px] text-gray-400">תקרה: {cap}/יום</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${(stat?.today_sent ?? 0) >= cap ? 'bg-red-400' : 'bg-blue-400'}`}
+                        style={{ width: `${Math.min(((stat?.today_sent ?? 0) / cap) * 100, 100)}%` }}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 text-gray-500">
+                      <span>היום</span>   <span className="text-right font-mono text-gray-700">{stat?.today_sent ?? 0} / {cap}</span>
+                      <span>סה״כ</span>   <span className="text-right font-mono text-gray-700">{stat?.total_sent  ?? 0}</span>
+                      <span>עלות היום</span> <span className="text-right font-mono text-gray-700">${todayCost}</span>
+                      <span>עלות כוללת</span> <span className="text-right font-mono text-gray-700">${totalCost}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Channel conversion table: sent / clicked / completed / CVR */}
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-gray-400 border-b border-gray-100">
+                <th className="text-right py-1.5 font-semibold">ערוץ</th>
+                <th className="text-center py-1.5 font-semibold">נשלח</th>
+                <th className="text-center py-1.5 font-semibold">נלחץ</th>
+                <th className="text-center py-1.5 font-semibold">הושלם</th>
+                <th className="text-center py-1.5 font-semibold text-purple-500">CTR%</th>
+                <th className="text-center py-1.5 font-semibold text-emerald-600">המרה%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(['inapp', 'sms', 'whatsapp'] as const).map(ch => {
+                const row = data.channelConversion?.find(r => r.channel === ch);
+                const sent    = row?.sent      ?? 0;
+                const clicked = row?.clicked   ?? 0;
+                const done    = row?.completed ?? 0;
+                const ctr     = sent > 0 ? `${((clicked / sent) * 100).toFixed(1)}%` : '—';
+                const cvr     = sent > 0 ? `${((done   / sent) * 100).toFixed(1)}%` : '—';
+                const LABEL: Record<string, string> = { inapp: 'In-App', sms: 'SMS', whatsapp: 'WhatsApp' };
+                const DOT: Record<string, string> = {
+                  inapp: 'bg-blue-400', sms: 'bg-amber-400', whatsapp: 'bg-emerald-400',
+                };
+                return (
+                  <tr key={ch} className="border-b border-gray-50 last:border-0">
+                    <td className="py-2 pr-2 font-medium text-gray-700 flex items-center gap-1.5">
+                      <span className={`inline-block w-2 h-2 rounded-full ${DOT[ch]}`} />
+                      {LABEL[ch]}
+                    </td>
+                    <td className="py-2 text-center text-gray-600">{sent  || '—'}</td>
+                    <td className="py-2 text-center text-gray-600">{clicked || '—'}</td>
+                    <td className="py-2 text-center text-gray-600">{done   || '—'}</td>
+                    <td className="py-2 text-center text-blue-600 font-mono">{ctr}</td>
+                    <td className="py-2 text-center text-emerald-600 font-mono font-bold">{cvr}</td>
+                  </tr>
+                );
+              })}
+              {!data.channelConversion?.length && (
+                <tr><td colSpan={6} className="py-4 text-center text-gray-300 text-xs">אין נתוני ערוץ עדיין</td></tr>
+              )}
+            </tbody>
+          </table>
+        </SectionCard>
+      )}
 
       {/* Statistical decisions + action panel */}
       <ExperimentDecisionsPanel />

@@ -215,11 +215,12 @@ router.get('/winback', requireAdmin, async (_req, res) => {
       })
       .from(winbackQueue);
 
-    // Experiment variant funnel for winback experiments
+    // Experiment variant funnel for winback experiments (Phase 6.12: includes channel)
     const variantFunnel = await db
       .select({
         experimentKey: experimentEvents.experimentKey,
         variant:       experimentEvents.variant,
+        channel:       experimentEvents.channel,
         event:         experimentEvents.event,
         cnt:           count(),
       })
@@ -228,15 +229,47 @@ router.get('/winback', requireAdmin, async (_req, res) => {
       .groupBy(
         experimentEvents.experimentKey,
         experimentEvents.variant,
+        experimentEvents.channel,
         experimentEvents.event,
       )
       .orderBy(experimentEvents.experimentKey, experimentEvents.variant);
 
+    // Phase 6.12: channel daily usage for cost panel
+    const channelStats = await db.execute<{
+      channel: string; today_sent: number; total_sent: number;
+    }>(sql`
+      SELECT
+        channel,
+        count(*) FILTER (WHERE event = 'notification_sent' AND created_at >= current_date)::int  AS today_sent,
+        count(*) FILTER (WHERE event = 'notification_sent')::int                                  AS total_sent
+      FROM experiment_events
+      WHERE experiment_key LIKE 'winback_%'
+        AND channel IN ('sms', 'whatsapp')
+      GROUP BY channel
+    `);
+
+    // Channel click-through and conversion rates
+    const channelConversion = await db.execute<{
+      channel: string; sent: number; clicked: number; completed: number;
+    }>(sql`
+      SELECT
+        channel,
+        count(*) FILTER (WHERE event = 'notification_sent')::int AS sent,
+        count(*) FILTER (WHERE event = 'clicked')::int           AS clicked,
+        count(*) FILTER (WHERE event = 'completed')::int         AS completed
+      FROM experiment_events
+      WHERE experiment_key LIKE 'winback_%'
+        AND channel IN ('inapp','sms','whatsapp')
+      GROUP BY channel
+    `);
+
     res.json({
       statusBreakdown,
       recent,
-      conversion:    conversionRow[0] ?? { sent: 0, converted: 0, suppressed: 0 },
+      conversion:        conversionRow[0] ?? { sent: 0, converted: 0, suppressed: 0 },
       variantFunnel,
+      channelStats:      channelStats.rows ?? [],
+      channelConversion: channelConversion.rows ?? [],
     });
   } catch (err: any) {
     logger.error('admin-loyalty GET /winback', err);

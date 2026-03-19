@@ -12462,10 +12462,12 @@ export const experimentEvents = pgTable("experiment_events", {
   userId:        varchar("user_id").notNull(),
   variant:       text("variant").notNull(),
   event:         text("event").notNull(), // notification_sent | opened | clicked | booked | completed
+  channel:       text("channel").notNull().default('inapp'), // Phase 6.12: inapp | sms | whatsapp
   bookingId:     integer("booking_id"),
   createdAt:     timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("idx_exp_events_key_user").on(table.experimentKey, table.userId),
+  index("idx_exp_events_channel").on(table.channel, table.createdAt),
 ]);
 export type ExperimentEvent = typeof experimentEvents.$inferSelect;
 
@@ -12483,10 +12485,16 @@ export const winbackQueue = pgTable("winback_queue", {
   // Phase 6.10 — row-level suppression markers (authoritative source = experiment_decisions)
   pausedAt:           timestamp("paused_at"),
   pauseReason:        text("pause_reason"), // 'low_sample' | 'losing' | 'admin'
+  // Phase 6.12 — multi-channel escalation tracking
+  smsEscalationAt:    timestamp("sms_escalation_at"),    // when to attempt SMS (sentAt + 6h)
+  smsSentAt:          timestamp("sms_sent_at"),           // when SMS was actually dispatched
+  whatsappEscalationAt: timestamp("whatsapp_escalation_at"), // when to attempt WhatsApp (smsSentAt + 24h)
+  whatsappSentAt:     timestamp("whatsapp_sent_at"),      // when WhatsApp was dispatched
   createdAt:          timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   uniqueIndex("idx_winback_user_trigger").on(table.userId, table.trigger),
   index("idx_winback_status").on(table.status, table.scheduledAt),
+  index("idx_winback_sms_escalation").on(table.smsEscalationAt),
 ]);
 export type WinbackQueueEntry = typeof winbackQueue.$inferSelect;
 
