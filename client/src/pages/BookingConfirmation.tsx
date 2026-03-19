@@ -15,7 +15,7 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import {
   Check, Calendar, Clock, MapPin, Star, Shield, CreditCard,
   Phone, Mail, Download, Share2, ArrowLeft, CheckCircle2, Loader2,
-  RefreshCw, Search, XCircle, AlertTriangle,
+  RefreshCw, Search, XCircle, AlertTriangle, MessageCircle,
 } from 'lucide-react';
 
 const SERVICE_TO_ROUTE: Record<string, string> = {
@@ -59,6 +59,9 @@ const labels = {
     confirming: 'מאשר...',
     rating: 'דרג את השירות',
     review: 'ביקורת (אופציונלי)',
+    chatNowTitle: 'ספקך אישר! מוכן להתחיל?',
+    chatNowSub: 'שוחח עם הספק, תאם פרטים, ותכן את הביקור.',
+    chatNowBtn: 'שוחח עכשיו',
     rebookTitle: 'הזמן שוב',
     rebookWith: 'הזמן שוב עם',
     rebookSub: 'אותן חיות מחמד, אותו שירות — בלחיצה אחת',
@@ -104,6 +107,9 @@ const labels = {
     confirming: 'Confirming...',
     rating: 'Rate the service',
     review: 'Review (optional)',
+    chatNowTitle: 'Your provider confirmed! Ready to start?',
+    chatNowSub: 'Chat with your provider, coordinate details, and prepare for the visit.',
+    chatNowBtn: 'Chat Now',
     rebookTitle: 'Book Again',
     rebookWith: 'Book again with',
     rebookSub: 'Same pets, same service — one tap',
@@ -120,6 +126,42 @@ const labels = {
     refund: 'Refund',
   },
 };
+
+/* ── Chat Now Panel (shown when booking is confirmed / accepted) ──────── */
+interface ChatNowPanelProps {
+  booking: any;
+  t: typeof labels['en'];
+  navigate: (path: string) => void;
+}
+
+function ChatNowPanel({ booking, t, navigate }: ChatNowPanelProps) {
+  return (
+    <div
+      className="rounded-2xl p-5 mb-4 flex items-center justify-between gap-4"
+      style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%)', border: '1.5px solid #3B82F622' }}
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ background: '#3B82F61A' }}
+        >
+          <MessageCircle className="w-5 h-5 text-blue-500" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-bold text-sm text-gray-900 truncate">{t.chatNowTitle}</p>
+          <p className="text-xs text-gray-500">{t.chatNowSub}</p>
+        </div>
+      </div>
+      <Button
+        onClick={() => navigate(`/booking-chat/${booking.requestId}`)}
+        className="flex-shrink-0 font-semibold text-sm px-5 py-2 rounded-xl text-white"
+        style={{ background: '#3B82F6', border: 'none' }}
+      >
+        {t.chatNowBtn}
+      </Button>
+    </div>
+  );
+}
 
 /* ── Rebook CTA Panel ─────────────────────────────────────────────────── */
 interface RebookPanelProps {
@@ -330,6 +372,7 @@ export default function BookingConfirmation() {
 
   const isOwner      = booking.ownerId === user?.uid;
   const canConfirm   = isOwner && booking.status === 'completed' && !confirmed;
+  const showChatNow  = isOwner && booking.status === 'confirmed' && !!booking.requestId;
   const showRebook   = isOwner && (confirmed || booking.status === 'reviewed') && booking.providerId;
   const showAlertPanel = isOwner && ['declined', 'cancelled'].includes(booking.status);
 
@@ -357,6 +400,11 @@ export default function BookingConfirmation() {
                 <p className="text-emerald-100">{t.thankYou}</p>
               </div>
             </div>
+          )}
+
+          {/* ── Chat Now panel (booking accepted, awaiting service) ── */}
+          {showChatNow && (
+            <ChatNowPanel booking={booking} t={t} navigate={navigate} />
           )}
 
           {/* ── Rebook panel (post-confirm or already reviewed) ── */}

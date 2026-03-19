@@ -47,15 +47,39 @@ const PLATFORM_CONFIG: Record<string, { label: string; color: string; Icon: any 
 // Only types that are actually written to superAppNotifications are listed here.
 // booking_request, booking_confirmed, meet_greet, reminder, message were removed
 // as they are never inserted into superAppNotifications (verified 2026-03).
-const TYPE_CONFIG: Record<string, { label: string; labelHe: string; color: string; Icon: any; actionLabel?: string; actionLabelHe?: string }> = {
+const TYPE_CONFIG: Record<string, {
+  label: string; labelHe: string; color: string; Icon: any;
+  actionLabel?: string; actionLabelHe?: string;
+  hint?: string; hintHe?: string;
+}> = {
   // ── Status-change types — written by booking-requests.ts on accept/decline/cancel ──
-  booking_accepted:      { label: "Accepted",  labelHe: "אושרה",  color: "#10B981", Icon: CheckCircle,   actionLabel: "View",     actionLabelHe: "צפה" },
-  booking_declined:      { label: "Declined",  labelHe: "נדחתה",  color: "#EF4444", Icon: AlertCircle,   actionLabel: "הזמן שוב", actionLabelHe: "הזמן שוב" },
-  booking_cancelled:     { label: "Cancelled", labelHe: "בוטלה",  color: "#EF4444", Icon: AlertCircle,   actionLabel: "View",     actionLabelHe: "צפה" },
+  booking_accepted: {
+    label: "Accepted", labelHe: "אושרה", color: "#10B981", Icon: CheckCircle,
+    actionLabel: "Chat now", actionLabelHe: "שוחח עכשיו",
+    hint: "💬 Chat with your provider now →", hintHe: "💬 שוחח עם הספק עכשיו →",
+  },
+  booking_declined: {
+    label: "Declined", labelHe: "נדחתה", color: "#EF4444", Icon: AlertCircle,
+    actionLabel: "Find another", actionLabelHe: "חפש ספק אחר",
+    hint: "🔍 Find another provider →", hintHe: "🔍 חפש ספק אחר →",
+  },
+  booking_cancelled: {
+    label: "Cancelled", labelHe: "בוטלה", color: "#F97316", Icon: AlertCircle,
+    actionLabel: "View", actionLabelHe: "צפה",
+    hint: "🔍 Find similar providers →", hintHe: "🔍 מצא ספקים דומים →",
+  },
   // ── Chat messages — written by booking-chat.ts on new message ──
-  booking_chat_message:  { label: "Message",   labelHe: "הודעה",  color: "#3B82F6", Icon: MessageCircle, actionLabel: "Reply",    actionLabelHe: "השב" },
-  // ── Reviews ── written by review submission flow ──
-  review_received:       { label: "New Review", labelHe: "ביקורת חדשה", color: "#8B5CF6", Icon: Star, actionLabel: "View", actionLabelHe: "צפה" },
+  booking_chat_message: {
+    label: "Message", labelHe: "הודעה", color: "#3B82F6", Icon: MessageCircle,
+    actionLabel: "Reply", actionLabelHe: "השב",
+    hint: "↩ Reply to message →", hintHe: "↩ השב להודעה →",
+  },
+  // ── Reviews — written by review submission flow ──
+  review_received: {
+    label: "New Review", labelHe: "ביקורת חדשה", color: "#8B5CF6", Icon: Star,
+    actionLabel: "View", actionLabelHe: "צפה",
+    hint: "⭐ View your new review →", hintHe: "⭐ צפה בביקורת החדשה →",
+  },
 };
 
 function resolveTypeConfig(notificationType: string | null | undefined, platform: string | null | undefined) {
@@ -302,6 +326,16 @@ export function NotificationCenterPanel({ open, onClose, language = 'en' }: Noti
                     {group.latestBody}
                   </p>
 
+                  {/* Contextual action hint — per notification type */}
+                  {typeCfg.hint && (
+                    <p
+                      className="text-[11px] font-semibold mt-1"
+                      style={{ color: typeCfg.color }}
+                    >
+                      {isHebrew ? (typeCfg.hintHe ?? typeCfg.hint) : typeCfg.hint}
+                    </p>
+                  )}
+
                   {/* Type chip + platform + booking id */}
                   <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                     {group.notificationType && TYPE_CONFIG[group.notificationType] && (
@@ -350,8 +384,8 @@ export function NotificationCenterPanel({ open, onClose, language = 'en' }: Noti
                     {group.bookingId && <ChevronRight className="w-3.5 h-3.5 text-gray-300" />}
                   </div>
 
-                  {/* Action button — Airbnb inline CTA */}
-                  {hasAction && group.bookingId && (
+                  {/* Action button — shown for any notification with a destination */}
+                  {hasAction && (group.bookingId || group.actionUrl) && (
                     <button
                       onClick={(e) => { e.stopPropagation(); handleGroupTap(group); }}
                       className="text-[11px] font-semibold px-3 py-1 rounded-full border transition-all hover:opacity-80"

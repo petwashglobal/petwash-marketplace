@@ -587,19 +587,37 @@ router.post('/:requestId/respond', async (req, res) => {
     // Notify customer via superAppNotifications (in-app bell)
     try {
       const isAccept = data.action === 'accept';
+
+      // Resolve provider display name for personalised copy
+      let providerName = 'הספק';
+      if (booking.providerId) {
+        const [providerUser] = await db
+          .select({ firstName: users.firstName, lastName: users.lastName })
+          .from(users)
+          .where(eq(users.id, booking.providerId))
+          .limit(1);
+        if (providerUser) {
+          providerName = [providerUser.firstName, providerUser.lastName].filter(Boolean).join(' ') || 'הספק';
+        }
+      }
+
       await db.insert(superAppNotifications).values({
         userId: booking.ownerId,
         type: isAccept ? 'booking_accepted' : 'booking_declined',
-        title: isAccept ? '✅ ההזמנה אושרה!' : '❌ ההזמנה נדחתה',
-        titleHe: isAccept ? '✅ ההזמנה אושרה!' : '❌ ההזמנה נדחתה',
+        title: isAccept
+          ? `✅ ${providerName} אישר את הבקשה!`
+          : `${providerName} אינו זמין בתאריכים אלה`,
+        titleHe: isAccept
+          ? `✅ ${providerName} אישר את הבקשה!`
+          : `${providerName} אינו זמין בתאריכים אלה`,
         body: isAccept
-          ? `ספקך אישר את הבקשה. לחץ לצפות בפרטי ההזמנה.`
-          : `ספקך דחה את הבקשה. ניתן להזמין ספק אחר.`,
+          ? `ההזמנה שלך אושרה — שוחח עם ${providerName} עכשיו והכן את הפגישה.`
+          : `אל דאגה — יש לנו ספקים נוספים שיוכלו לעזור. חפש עכשיו.`,
         bodyHe: isAccept
-          ? `ספקך אישר את הבקשה. לחץ לצפות בפרטי ההזמנה.`
-          : `ספקך דחה את הבקשה. ניתן להזמין ספק אחר.`,
+          ? `ההזמנה שלך אושרה — שוחח עם ${providerName} עכשיו והכן את הפגישה.`
+          : `אל דאגה — יש לנו ספקים נוספים שיוכלו לעזור. חפש עכשיו.`,
         actionUrl: `/booking/confirmation/${requestId}`,
-        actionType: 'open_booking',
+        actionType: isAccept ? 'open_booking_chat' : 'open_booking',
         channels: ['in_app'],
         isRead: false,
         createdAt: new Date(),
@@ -1316,14 +1334,37 @@ router.post('/:requestId/cancel', async (req, res) => {
     // Notify the OTHER party about cancellation via superAppNotifications
     try {
       const notifyUid = cancelledBy === 'owner' ? booking.providerId : booking.ownerId;
-      const cancellerLabel = cancelledBy === 'owner' ? 'הלקוח' : 'הספק';
+
+      // Resolve provider display name for personalised copy
+      let providerName = 'הספק';
+      if (booking.providerId) {
+        const [providerUser] = await db
+          .select({ firstName: users.firstName, lastName: users.lastName })
+          .from(users)
+          .where(eq(users.id, booking.providerId))
+          .limit(1);
+        if (providerUser) {
+          providerName = [providerUser.firstName, providerUser.lastName].filter(Boolean).join(' ') || 'הספק';
+        }
+      }
+
+      // Customer cancelled → notify provider
+      // Provider cancelled → notify customer
+      const notifyingCustomer = cancelledBy === 'provider';
+      const titleText = notifyingCustomer
+        ? `🚫 ${providerName} ביטל את ההזמנה`
+        : `🚫 הלקוח ביטל את ההזמנה`;
+      const bodyText = notifyingCustomer
+        ? `מצאנו ספקים דומים באזורך — לחץ לחיפוש.${reason ? ` (${reason})` : ''}`
+        : `ההזמנה בוטלה על ידי הלקוח.${reason ? ` סיבה: ${reason}` : ''}`;
+
       await db.insert(superAppNotifications).values({
         userId: notifyUid,
         type: 'booking_cancelled',
-        title: '🚫 הזמנה בוטלה',
-        titleHe: '🚫 הזמנה בוטלה',
-        body: `הזמנה ${requestId} בוטלה על ידי ${cancellerLabel}.${reason ? ` סיבה: ${reason}` : ''}`,
-        bodyHe: `הזמנה ${requestId} בוטלה על ידי ${cancellerLabel}.${reason ? ` סיבה: ${reason}` : ''}`,
+        title: titleText,
+        titleHe: titleText,
+        body: bodyText,
+        bodyHe: bodyText,
         actionUrl: `/booking/confirmation/${requestId}`,
         actionType: 'open_booking',
         channels: ['in_app'],
