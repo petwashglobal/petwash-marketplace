@@ -1,0 +1,521 @@
+MULTI-PET BOOKING LOGIC BRIEF
+Customer + Provider + Admin + Backend + Frontend
+House Sitting / Pet Sitting / Daycare / Walking / Grooming / Machine
+
+We must design this for real households, not simple demo cases.
+
+The system must support:
+- one pet
+- multiple pets of same type
+- mixed household: dogs + cats + other supported pets
+- different pet sizes
+- different service needs per pet
+- provider-specific pricing rules
+- platform-wide pricing rules
+- add-ons
+- surcharges
+- discounts
+- credits / gift / promo / wallet
+- admin exceptions
+
+==================================================
+1. CORE PRINCIPLE
+==================================================
+
+A booking is not “one pet by default”.
+
+A booking must support:
+- one booking
+- one customer
+- one provider
+- one service type
+- multiple pets attached to the same booking
+- optional add-ons at booking level
+- optional add-ons at pet level
+
+This means pricing cannot live only on the booking header.
+We need line-item logic.
+
+==================================================
+2. REQUIRED DATA MODEL
+==================================================
+
+A. bookings
+Header record only:
+- id
+- customer_user_id
+- provider_id
+- service_type
+- booking_status
+- scheduled_start_at
+- scheduled_end_at
+- subtotal_amount
+- discount_amount
+- surcharge_amount
+- final_amount
+- currency
+- notes
+- created_at
+- updated_at
+
+B. booking_pets
+One row per pet inside the booking:
+- id
+- booking_id
+- pet_id
+- species
+- breed
+- size
+- age
+- pet_base_price
+- pet_surcharge_amount
+- pet_discount_amount
+- pet_final_amount
+- care_notes_snapshot
+- medication_required boolean
+- created_at
+- updated_at
+
+C. booking_addons
+Optional extras:
+- id
+- booking_id
+- booking_pet_id nullable
+- addon_type
+- addon_name
+- unit_price
+- quantity
+- total_price
+- created_at
+
+D. pricing_rules
+Support:
+- provider-specific rules
+- platform default fallback rules
+
+==================================================
+3. MULTI-PET PRICING LOGIC
+==================================================
+
+We need pricing to support all these cases:
+
+CASE A - 1 dog house sitting
+Price = provider base rate for first dog
+
+CASE B - 2 dogs house sitting
+Price =
+- first dog full rate
+- second dog additional dog rate
+or
+- provider-defined second pet rate
+
+CASE C - 3 dogs + 1 cat house sitting
+Price =
+- first dog full rate
+- second dog extra dog rate
+- third dog extra dog rate
+- cat extra cat rate
+- plus any medication / holiday / pickup / admin fee if applicable
+
+CASE D - mixed pet household
+System must support separate pricing by species:
+- dog rate
+- cat rate
+- other pet rate if enabled
+
+CASE E - different pet sizes
+Optional provider pricing multipliers:
+- small dog
+- medium dog
+- large dog
+- giant dog
+
+CASE F - per-pet special care
+Add surcharge if:
+- medication
+- senior care
+- special handling
+- aggression risk
+- puppy / kitten care
+- extra cleaning requirement
+
+==================================================
+4. SERVICE-SPECIFIC LOGIC
+==================================================
+
+A. HOUSE SITTING / PET SITTING
+Must support:
+- multiple pets in one home
+- price per first pet + additional pet pricing
+- overnight count
+- day count
+- holiday surcharge
+- medication / special care surcharge
+- optional dog walk add-on
+- optional pickup/dropoff add-on
+- notes per pet
+
+Example:
+3 dogs + 1 cat
+2 nights
+1 dog needs medication
+
+Calculation example:
+- first dog: 220 per night x 2
+- second dog: 70 per night x 2
+- third dog: 70 per night x 2
+- cat: 50 per night x 2
+- medication surcharge: 25 per night x 2
+- subtotal = sum of all lines
+
+B. DOG WALKING
+Must support:
+- one dog or multi-dog walk
+- max dogs allowed per provider
+- extra dog price
+- walk duration
+- optional weekend / holiday surcharge
+
+Important:
+Some providers may say:
+- 1 dog included
+- extra dogs up to 3
+- no cats for walking obviously
+
+C. DAYCARE
+Must support:
+- per pet daily rate
+- extra pet daily rate
+- half day / full day
+- late pickup fee
+- feeding / medication extra
+- package discounts if needed later
+
+D. GROOMING
+Must support:
+- pricing by pet, not only booking
+- different pet type/size/coat
+- one household may bring 2 or 3 dogs
+- add-ons:
+  - nail trim
+  - flea wash
+  - de-shedding
+  - teeth clean
+- total booking can include several pets with separate grooming lines
+
+E. MACHINE / KIOSK
+Usually per wash session, not pet profile pricing.
+But still must support:
+- one user may buy package credit used across multiple dogs
+- family wallet / package logic
+- one machine session usually one pet, but stored value belongs to account not pet
+
+==================================================
+5. FRONTEND REQUIREMENTS
+==================================================
+
+CUSTOMER BOOKING FLOW MUST DO THIS:
+
+Step 1
+Choose service type
+
+Step 2
+Select one or more pets
+- allow multiple selection
+- allow mixed pets if service supports it
+- show pet chips/cards
+
+Step 3
+For each pet, collect service-specific details
+Example:
+- medication?
+- age?
+- size?
+- behavioral notes?
+- special care?
+
+Step 4
+Show pricing breakdown clearly
+Not one vague total.
+Need:
+- first pet line
+- additional pet lines
+- add-ons
+- surcharges
+- discounts
+- credits
+- final total
+
+Step 5
+Show provider rules if relevant
+Example:
+- up to 3 dogs max
+- cats accepted
+- no aggressive pets
+- medication surcharge applies
+
+Step 6
+Confirm booking
+
+UI requirement:
+When 3 dogs and 1 cat are selected, user must visually understand:
+- all 4 pets are included
+- how each one affected the price
+- what services apply to each pet
+
+==================================================
+6. PROVIDER REQUIREMENTS
+==================================================
+
+Provider dashboard must let provider define:
+
+A. What pets they accept
+- dogs
+- cats
+- small animals
+- max pets per booking
+- max dogs per walk
+- house sitting mixed pets yes/no
+
+B. Pricing model
+For each service:
+- first pet price
+- additional dog price
+- additional cat price
+- additional other pet price
+- size-based adjustments
+- holiday surcharge
+- medication surcharge
+- puppy / senior surcharge
+- weekend surcharge
+- custom add-ons
+
+C. Booking visibility
+Provider must see booking with:
+- all pets listed
+- each pet’s notes
+- total pet count
+- species mix
+- medication flags
+- line-item pricing summary
+
+D. Accept / decline logic
+Provider can decline if:
+- too many pets
+- unsupported species
+- care complexity too high
+- booking conflicts with capacity
+
+==================================================
+7. ADMIN / BUSINESS OPERATIONS REQUIREMENTS
+==================================================
+
+Admin must be able to:
+- view all pets inside any booking
+- see line-item pricing
+- see which rule generated each charge
+- override price manually with audit log
+- add goodwill credit or surcharge
+- resolve disputes over “I thought only one dog was included”
+- see provider capacity issues
+- refund or partially refund specific line items if needed
+
+Admin needs:
+- booking header
+- booking pets
+- add-ons
+- pricing explanation
+- rule source
+- audit trail
+
+==================================================
+8. BACKEND PRICING ENGINE REQUIREMENTS
+==================================================
+
+Backend must be single source of truth.
+
+Frontend can only collect inputs and display quote.
+
+Backend must compute:
+- eligible pets
+- provider capacity
+- service support by species
+- first pet price
+- additional pet prices
+- pet-level surcharges
+- booking-level surcharges
+- add-ons
+- promo / gift / wallet / loyalty
+- final payable amount
+
+Do not calculate final totals in frontend.
+
+Need function like:
+
+calculateBookingQuote({
+  providerId,
+  serviceType,
+  pets: [
+    { petId, species, size, age, medicationRequired, specialCareFlags }
+  ],
+  schedule,
+  addons,
+  promoCode,
+  walletBalance,
+  giftCardBalance
+})
+
+Response must return:
+- booking subtotal
+- pet line items
+- surcharge line items
+- addon line items
+- discounts
+- credits applied
+- final amount
+- warnings / restrictions
+
+==================================================
+9. LINE ITEM RESPONSE EXAMPLE
+==================================================
+
+Example response for house sitting:
+3 dogs + 1 cat
+2 nights
+
+{
+  "serviceType": "house_sitting",
+  "currency": "ILS",
+  "nights": 2,
+  "petLineItems": [
+    {
+      "petId": "dog_1",
+      "petName": "Milo",
+      "label": "First dog",
+      "unitPrice": 220,
+      "quantity": 2,
+      "total": 440
+    },
+    {
+      "petId": "dog_2",
+      "petName": "Luna",
+      "label": "Additional dog",
+      "unitPrice": 70,
+      "quantity": 2,
+      "total": 140
+    },
+    {
+      "petId": "dog_3",
+      "petName": "Rocky",
+      "label": "Additional dog",
+      "unitPrice": 70,
+      "quantity": 2,
+      "total": 140
+    },
+    {
+      "petId": "cat_1",
+      "petName": "Mochi",
+      "label": "Additional cat",
+      "unitPrice": 50,
+      "quantity": 2,
+      "total": 100
+    }
+  ],
+  "surcharges": [
+    {
+      "type": "medication",
+      "label": "Medication care",
+      "unitPrice": 25,
+      "quantity": 2,
+      "total": 50
+    }
+  ],
+  "subtotal": 870,
+  "discounts": [],
+  "credits": [],
+  "finalAmount": 870
+}
+
+==================================================
+10. RULES / EDGE CASES
+==================================================
+
+Must handle all of these:
+
+- customer adds pet after initial quote
+- customer removes one pet
+- one pet has medication, others do not
+- provider accepts dogs but not cats
+- provider max capacity = 3 pets, customer selects 4
+- provider allows 2 dogs per walk max
+- holiday surcharge applies to whole booking
+- add-on applies only to one pet
+- promo code applies to booking subtotal only
+- wallet/gift applies after discounts
+- partial payment if credit is insufficient
+- admin manual override
+- rebook old booking with changed pricing rules
+- booking edit after provider acceptance
+- cancellation for multi-pet booking
+- partial refund of one pet or one add-on
+- house sitting by nights vs daycare by days vs walking by session
+- one household with same owner but multiple pets and different needs
+
+==================================================
+11. REQUIRED SCREEN LOGIC
+==================================================
+
+CUSTOMER
+- multi-pet selector
+- pet cards in booking flow
+- per-pet care questions
+- quote breakdown screen
+- booking confirmation with all pets listed
+
+PROVIDER
+- request detail with all pets visible
+- pricing settings by first pet / additional pet
+- service restrictions
+- max pet count settings
+
+ADMIN
+- booking inspector with line items
+- pricing rule explanation
+- override and refund tools
+
+==================================================
+12. IMPLEMENTATION ORDER
+==================================================
+
+P1
+- booking_pets table
+- booking_addons table
+- quote engine with pet line items
+- provider pricing rules for first pet + additional pet
+- frontend multi-pet booking UI
+- provider max capacity validation
+
+P2
+- pet-level surcharges
+- service restrictions by species
+- add-ons per pet
+- admin line-item view
+
+P3
+- advanced refunds
+- rebook with rule snapshot
+- package / loyalty interaction with multi-pet pricing
+
+==================================================
+13. NON-NEGOTIABLE PRINCIPLE
+==================================================
+
+The platform must treat a booking as:
+- one booking header
+- multiple pet rows
+- multiple pricing line items
+
+Not:
+- one total number guessed in the frontend
+
+If we do not build this correctly now, house sitting, daycare, walking, and grooming logic will become messy very fast.
