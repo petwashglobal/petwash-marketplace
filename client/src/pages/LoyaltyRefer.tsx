@@ -1,20 +1,41 @@
 import { useState } from 'react';
 import { Link } from 'wouter';
-import { Share2, Users, Gift, Copy, Mail, MessageCircle, TrendingUp, Award, ArrowLeft, Send, Facebook } from 'lucide-react';
+import { Share2, Users, Gift, Copy, Mail, MessageCircle, TrendingUp, Award, ArrowLeft, Send, Facebook, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
+import { useFirebaseAuth } from '@/auth/AuthProvider';
+
+interface SummaryData {
+  referralCode: string | null;
+}
 
 export default function LoyaltyRefer() {
   const [language] = useState(localStorage.getItem('petwash_lang') || 'he');
   const isHebrew = language === 'he';
-  const [referralCode] = useState('PETWASH2026');
   const { toast } = useToast();
+  const { user } = useFirebaseAuth();
+
+  const { data: summary, isLoading: summaryLoading } = useQuery<SummaryData>({
+    queryKey: ['/api/loyalty-credits/summary'],
+    enabled:  !!user,
+    staleTime: 60_000,
+  });
+
+  const referralCode = summary?.referralCode ?? null;
+  const displayCode  = referralCode ?? (summaryLoading ? '…' : 'PETWASH');
+
+  const shareText = isHebrew
+    ? `הצטרפו ל-PetWash™ — הטיפוח והשמירה הטובים ביותר לחיות מחמד! השתמשו בקוד ההזמנה שלי: ${displayCode}`
+    : `Join PetWash™ — the best pet care app! Use my referral code: ${displayCode}`;
+  const siteUrl = 'https://petwash.co.il';
 
   const handleCopy = async () => {
+    const text = referralCode ?? displayCode;
     try {
-      await navigator.clipboard.writeText(referralCode);
+      await navigator.clipboard.writeText(text);
     } catch {
       const ta = document.createElement('textarea');
-      ta.value = referralCode;
+      ta.value = text;
       ta.style.position = 'fixed';
       ta.style.left = '-9999px';
       document.body.appendChild(ta);
@@ -29,10 +50,26 @@ export default function LoyaltyRefer() {
   };
 
   const shareButtons = [
-    { icon: MessageCircle, label: isHebrew ? 'וואטסאפ' : 'WhatsApp', labelEn: 'WhatsApp' },
-    { icon: Facebook, label: isHebrew ? 'פייסבוק' : 'Facebook', labelEn: 'Facebook' },
-    { icon: Mail, label: isHebrew ? 'אימייל' : 'Email', labelEn: 'Email' },
-    { icon: Send, label: isHebrew ? 'SMS' : 'SMS', labelEn: 'SMS' },
+    {
+      icon: MessageCircle,
+      label: isHebrew ? 'וואטסאפ' : 'WhatsApp',
+      href: `https://wa.me/?text=${encodeURIComponent(shareText)}`,
+    },
+    {
+      icon: Facebook,
+      label: isHebrew ? 'פייסבוק' : 'Facebook',
+      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(siteUrl)}&quote=${encodeURIComponent(shareText)}`,
+    },
+    {
+      icon: Mail,
+      label: isHebrew ? 'אימייל' : 'Email',
+      href: `mailto:?subject=${encodeURIComponent(isHebrew ? 'הזמנה ל-PetWash™' : 'Join PetWash™')}&body=${encodeURIComponent(shareText + '\n' + siteUrl)}`,
+    },
+    {
+      icon: Send,
+      label: 'SMS',
+      href: `sms:?body=${encodeURIComponent(shareText)}`,
+    },
   ];
 
   const stats = [
@@ -128,8 +165,8 @@ export default function LoyaltyRefer() {
           </h2>
           <div className="max-w-md mx-auto">
             <div className="flex items-center gap-3 p-4 rounded-xl bg-[#F0EBE0] border border-[rgba(201,169,110,0.2)] mb-6">
-              <code className="flex-1 text-2xl font-bold text-center text-[#C9A96E] tracking-[0.2em]">
-                {referralCode}
+              <code className="flex-1 text-2xl font-bold text-center text-[#C9A96E] tracking-[0.2em] flex items-center justify-center gap-2">
+                {summaryLoading ? <Loader2 className="w-5 h-5 animate-spin text-[#C9A96E]" /> : displayCode}
               </code>
               <button
                 onClick={handleCopy}
@@ -141,13 +178,16 @@ export default function LoyaltyRefer() {
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {shareButtons.map((button, idx) => (
-                <button
+                <a
                   key={idx}
+                  href={button.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex flex-col items-center gap-2 py-4 px-3 rounded-xl bg-[rgba(139,92,246,0.08)] border border-[rgba(139,92,246,0.15)] hover:bg-[rgba(139,92,246,0.15)] hover:border-[rgba(139,92,246,0.3)] transition-all duration-300"
                 >
                   <button.icon className="w-5 h-5 text-purple-400" />
                   <span className="text-xs text-[#6A6A6A]">{button.label}</span>
-                </button>
+                </a>
               ))}
             </div>
           </div>

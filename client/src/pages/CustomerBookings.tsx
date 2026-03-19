@@ -9,7 +9,7 @@ import {
   ChevronLeft, ChevronRight, RefreshCw, HandshakeIcon,
   XCircle, AlertTriangle, Banknote, Clock, ChevronDown, ChevronUp,
   CheckCircle2, CircleDot, Ban, Star, Timer, Hourglass,
-  Loader2, MessageSquare, MapPin,
+  Loader2, MessageSquare, MapPin, Coins,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -138,6 +138,7 @@ interface Booking {
   cancellationReason?: string | null;
   cancelledBy?: string | null;
   refundCents?: number;
+  loyaltyRedeemedCents?: number;
   ownerMessage?: string | null;
   statusHistory?: Array<{ status: string; timestamp: string; note?: string }>;
   petIds?: string[];
@@ -647,6 +648,18 @@ function BookingCard({
                     {isRTL
                       ? `החזר ₪${((booking.refundCents ?? 0) / 100).toFixed(0)} בעיבוד`
                       : `Refund ₪${((booking.refundCents ?? 0) / 100).toFixed(0)} processing`}
+                  </span>
+                </div>
+              )}
+
+              {/* Loyalty credits redeemed badge */}
+              {(booking.loyaltyRedeemedCents ?? 0) > 0 && (
+                <div className="mt-2">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#C5A55A]/10 text-[#7A5C1E] border border-[#C5A55A]/20">
+                    <Coins size={9} />
+                    {isRTL
+                      ? `קרדיטים מומשו ₪${((booking.loyaltyRedeemedCents ?? 0) / 100).toFixed(0)}`
+                      : `₪${((booking.loyaltyRedeemedCents ?? 0) / 100).toFixed(0)} credits used`}
                   </span>
                 </div>
               )}

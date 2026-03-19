@@ -15,7 +15,7 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import {
   Check, Calendar, Clock, MapPin, Star, Shield, CreditCard,
   Phone, Mail, Download, Share2, ArrowLeft, CheckCircle2, Loader2,
-  RefreshCw, Search, XCircle, AlertTriangle, MessageCircle,
+  RefreshCw, Search, XCircle, AlertTriangle, MessageCircle, Coins,
 } from 'lucide-react';
 
 const SERVICE_TO_ROUTE: Record<string, string> = {
@@ -76,6 +76,8 @@ const labels = {
     byProvider: 'נותן השירות',
     byCustomer: 'הלקוח',
     refund: 'החזר כספי',
+    loyaltyRedeemed: 'קרדיטים מומשו',
+    creditsEarned: 'קרדיטים שנצברו',
   },
   en: {
     title: 'Booking Confirmation',
@@ -124,6 +126,8 @@ const labels = {
     byProvider: 'Provider',
     byCustomer: 'Customer',
     refund: 'Refund',
+    loyaltyRedeemed: 'Credits Redeemed',
+    creditsEarned: 'Credits Earned',
   },
 };
 
@@ -474,6 +478,19 @@ export default function BookingConfirmation() {
                   <span className="text-lg font-bold">{t.total}</span>
                   <span className="text-lg font-bold">₪{(booking.totalCents / 100).toFixed(2)}</span>
                 </div>
+
+                {/* Loyalty credits redeemed row */}
+                {booking.loyaltyRedeemedCents > 0 && (
+                  <div className="flex justify-between items-center py-2.5 border-b border-[#C5A55A]/20 bg-[#C5A55A]/5 rounded-xl px-2 mt-1">
+                    <span className="flex items-center gap-1.5 text-sm text-[#7A5C1E] font-medium">
+                      <Coins className="w-4 h-4 text-[#C5A55A]" />
+                      {(t as any).loyaltyRedeemed}
+                    </span>
+                    <span className="text-sm font-bold text-[#7A5C1E]">
+                      -₪{(booking.loyaltyRedeemedCents / 100).toFixed(2)}
+                    </span>
+                  </div>
+                )}
 
                 <div className="flex justify-between items-center py-3">
                   <span className="text-gray-500">{t.status}</span>

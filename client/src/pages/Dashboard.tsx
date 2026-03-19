@@ -7,6 +7,9 @@ import { motion } from 'framer-motion';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { LogOut, ChevronRight, PawPrint, CalendarCheck, Clock, Shield, ArrowRight, Mail } from 'lucide-react';
+import { LoyaltyWalletCard } from '@/components/loyalty/LoyaltyWalletCard';
+import { LoyaltyStreakCard } from '@/components/loyalty/LoyaltyStreakCard';
+import { LoyaltyWinbackCard } from '@/components/loyalty/LoyaltyWinbackCard';
 import { NotificationBell } from '@/components/NotificationCenterPanel';
 import type { ReactNode } from 'react';
 import diamondLogo from '@assets/IMG_3257_1771582024352.png';
@@ -519,6 +522,13 @@ export default function Dashboard() {
                 <p className="text-[9px] sm:text-[10px] tracking-[0.15em] uppercase" style={goldText}>{tx('comingSoon', language)}</p>
               </div>
             </LuxuryCard>
+          </div>
+
+          {/* ── Loyalty Credits Section ─────────────────────────────────── */}
+          <div className="space-y-4 mb-6">
+            <LoyaltyWinbackCard />
+            <LoyaltyWalletCard />
+            <LoyaltyStreakCard />
           </div>
 
           {/* ── Prestige Pass Featured Card ─────────────────────────────────── */}
