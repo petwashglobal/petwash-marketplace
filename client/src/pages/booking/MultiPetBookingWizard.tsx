@@ -15,7 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ChevronRight, ChevronLeft, Plus, Check, Loader2,
   Calendar, Pill, AlertTriangle,
-  Star, Info, Shield, RefreshCw, Sparkles, PawPrint, StickyNote
+  Star, Info, Shield, RefreshCw, Sparkles, PawPrint, StickyNote, Coins
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1015,6 +1015,10 @@ function ConfirmStep({
   provider,
   onSubmit,
   isSubmitting,
+  applyLoyaltyCredits, setApplyLoyaltyCredits,
+  loyaltyAvailableCents,
+  loyaltyMaxOnBookingCents,
+  loyaltyToggleEnabled,
 }: {
   quote: any | null;
   quoteLoading: boolean;
@@ -1032,6 +1036,11 @@ function ConfirmStep({
   provider: any;
   onSubmit: () => void;
   isSubmitting: boolean;
+  applyLoyaltyCredits: boolean;
+  setApplyLoyaltyCredits: (v: boolean) => void;
+  loyaltyAvailableCents: number;
+  loyaltyMaxOnBookingCents: number;
+  loyaltyToggleEnabled: boolean;
 }) {
   const isMultiDay = ["pet_sitting", "house_sitting", "daycare"].includes(serviceType);
   const staleMs = quote?.quotedAt ? Date.now() - new Date(quote.quotedAt).getTime() : 0;
@@ -1149,6 +1158,51 @@ function ConfirmStep({
         </div>
       )}
 
+      {/* ── Loyalty credits ─────────────────────────────────────────────── */}
+      {loyaltyAvailableCents > 0 && (
+        <div className="px-5 py-4 space-y-3">
+          {/* Balance banner */}
+          <div className="flex items-center gap-3 p-3 rounded-2xl bg-[#C5A55A]/10 border border-[#C5A55A]/20">
+            <div className="w-9 h-9 rounded-full bg-[#C5A55A]/15 flex items-center justify-center shrink-0">
+              <Coins className="w-5 h-5 text-[#C5A55A]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-[#7A5C1E]">קרדיטים זמינים</p>
+              <p className="text-sm font-extrabold text-[#C5A55A]">{formatILS(loyaltyAvailableCents)}</p>
+              {loyaltyMaxOnBookingCents > 0 && (
+                <p className="text-[11px] text-[#8B6914] mt-0.5">
+                  ניתן לממש עד {formatILS(loyaltyMaxOnBookingCents)} בהזמנה זו
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Toggle */}
+          <div className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+            applyLoyaltyCredits
+              ? "bg-emerald-50 border-emerald-200"
+              : "bg-gray-50 border-gray-100"
+          } ${!loyaltyToggleEnabled ? "opacity-50" : ""}`}>
+            <div className="flex items-center gap-2.5">
+              <Coins className={`w-4 h-4 ${applyLoyaltyCredits ? "text-emerald-600" : "text-gray-400"}`} />
+              <div>
+                <p className="text-sm font-semibold text-gray-800">השתמש בקרדיטים</p>
+                <p className="text-[11px] text-gray-400">
+                  {loyaltyToggleEnabled
+                    ? `חיסכון של עד ${formatILS(loyaltyMaxOnBookingCents)}`
+                    : "מינימום מימוש ₪10"}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={applyLoyaltyCredits}
+              onCheckedChange={setApplyLoyaltyCredits}
+              disabled={!loyaltyToggleEnabled || quoteLoading}
+            />
+          </div>
+        </div>
+      )}
+
       {/* ── Promo code ─────────────────────────────────────────────────── */}
       <div className="px-5 py-4">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">קוד קופון</p>
@@ -1251,6 +1305,14 @@ function ConfirmStep({
                 <div className="flex justify-between text-sm text-emerald-600 font-medium">
                   <span>💳 קרדיט ארנק</span>
                   <span>-{formatILS(quote.totals.walletCreditAppliedCents)}</span>
+                </div>
+              )}
+              {(quote.totals.loyaltyRedeemedCents ?? 0) > 0 && (
+                <div className="flex justify-between text-sm text-[#C5A55A] font-medium">
+                  <span className="flex items-center gap-1.5">
+                    <Coins className="w-3.5 h-3.5" /> קרדיטים מועדון
+                  </span>
+                  <span>-{formatILS(quote.totals.loyaltyRedeemedCents)}</span>
                 </div>
               )}
               {quote.totals.taxCents > 0 && (
@@ -1373,6 +1435,14 @@ export default function MultiPetBookingWizard() {
   const [message, setMessage] = useState(rebookParams.notes);
   const [promoCode, setPromoCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [applyLoyaltyCredits, setApplyLoyaltyCredits] = useState(false);
+
+  // ── Loyalty credits balance (fetched once, refreshes on step change) ─────────
+  const { data: loyaltyBalanceData } = useQuery<{ balanceCents: number; pendingExpiryCents: number; pendingExpiryAt: string | null }>({
+    queryKey: ["/api/loyalty-credits/balance"],
+    enabled: !!user && step === "confirm",
+    staleTime: 30_000,
+  });
 
   // ── Rebook state ──────────────────────────────────────────────────────────────
   const [rebookWarnings, setRebookWarnings] = useState<string[]>([]);
@@ -1537,6 +1607,7 @@ export default function MultiPetBookingWizard() {
     })),
     promoCode: promoCode || null,
     userId: user?.uid || null,
+    applyLoyaltyCredits,
   };
 
   const quoteDeps = [
@@ -1546,6 +1617,7 @@ export default function MultiPetBookingWizard() {
     JSON.stringify(petCares.map(p => ({ ref: p.clientRef, size: p.sizeCategory, med: p.requiresMedication, beh: p.hasBehaviorFlag, sn: p.hasSpecialNeeds }))),
     JSON.stringify(selectedAddons.map(a => a.addonCode + a.petRef)),
     promoCode,
+    applyLoyaltyCredits,
   ];
 
   const { loading: quoteLoading, data: quoteData, error: quoteError } = useQuotePreview(
@@ -1553,6 +1625,18 @@ export default function MultiPetBookingWizard() {
     quotePayload,
     quoteDeps
   );
+
+  // ── Derived loyalty values ───────────────────────────────────────────────────
+  // Balance comes from the direct balance endpoint (fresh) OR from the quote (server-echoed).
+  // Always prefer the direct endpoint so the value is correct even before the first quote fires.
+  const loyaltyAvailableCents: number =
+    loyaltyBalanceData?.balanceCents ??
+    (quoteData as any)?.totals?.loyaltyAvailableCents ??
+    0;
+  const loyaltyMaxOnBookingCents: number = quoteData
+    ? Math.min(loyaltyAvailableCents, Math.floor(((quoteData as any).totals?.subtotalCents ?? 0) * 0.5))
+    : 0;
+  const loyaltyToggleEnabled = loyaltyAvailableCents >= 1_000; // ₪10 minimum
 
   // ── Navigation ──────────────────────────────────────────────────────────────
   const stepIdx = STEPS.indexOf(step);
@@ -1627,6 +1711,7 @@ export default function MultiPetBookingWizard() {
         finalQuote: quoteData,
         promoCode: promoCode || undefined,
         message: message || undefined,
+        applyLoyaltyCredits,
       };
 
       const res = await apiRequest("POST", "/api/booking-requests", payload);
@@ -1724,6 +1809,11 @@ export default function MultiPetBookingWizard() {
             provider={provider}
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
+            applyLoyaltyCredits={applyLoyaltyCredits}
+            setApplyLoyaltyCredits={setApplyLoyaltyCredits}
+            loyaltyAvailableCents={loyaltyAvailableCents}
+            loyaltyMaxOnBookingCents={loyaltyMaxOnBookingCents}
+            loyaltyToggleEnabled={loyaltyToggleEnabled}
           />
         )}
       </div>

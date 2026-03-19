@@ -83,6 +83,7 @@ const LoyaltyTiers = lazy(() => import("@/pages/LoyaltyTiers"));
 const LoyaltyBenefits = lazy(() => import("@/pages/LoyaltyBenefits"));
 const LoyaltyBirthday = lazy(() => import("@/pages/LoyaltyBirthday"));
 const LoyaltyRefer = lazy(() => import("@/pages/LoyaltyRefer"));
+const LoyaltyCreditsHistory = lazy(() => import("@/pages/LoyaltyCreditsHistory"));
 const ReferralPage = lazy(() => import("@/pages/ReferralPage"));
 const EGift = lazy(() => import("@/pages/EGift"));
 const Vouchers = lazy(() => import("@/pages/Vouchers"));
@@ -656,6 +657,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/loyalty/refer">
           {() => <LoyaltyRefer />}
+        </Route>
+        <Route path="/loyalty/credits">
+          {() => (
+            <RequireAuth>
+              <LoyaltyCreditsHistory />
+            </RequireAuth>
+          )}
         </Route>
         
         {/* Referral Program - חבר מביא חבר */}
