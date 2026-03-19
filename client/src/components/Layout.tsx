@@ -47,7 +47,9 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
         {children}
       </main>
       
-      <Footer language={language} />
+      <div className="pb-16 md:pb-0">
+        <Footer language={language} />
+      </div>
     </div>
   );
 }

@@ -24,6 +24,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { initViewportFix } from "@/lib/viewportFix";
 import { useState, useEffect, lazy, Suspense } from "react";
+import { MobileBottomNav } from "@/components/MobileBottomNav";
 import type { Language } from "@/lib/i18n";
 import { getDefaultLanguageByLocation } from "@/lib/geolocation";
 import { LanguageProvider, useLanguage } from "@/lib/languageStore";
@@ -61,6 +62,8 @@ const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
 const SignIn = lazy(() => import("@/pages/SignIn"));
 const SignUp = lazy(() => import("@/pages/SignUp"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const CustomerBookings = lazy(() => import("@/pages/CustomerBookings"));
+const CustomerFavourites = lazy(() => import("@/pages/CustomerFavourites"));
 const Marketplace = lazy(() => import("@/pages/Marketplace"));
 const TalentMarketplace = lazy(() => import("@/pages/PetWashTalentMarketplacePage"));
 const ProviderDetail = lazy(() => import("@/pages/ProviderDetail"));
@@ -579,6 +582,22 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <Dashboard />
+            </RequireAuth>
+          )}
+        </Route>
+
+        <Route path="/bookings">
+          {() => (
+            <RequireAuth>
+              <CustomerBookings />
+            </RequireAuth>
+          )}
+        </Route>
+
+        <Route path="/favourites">
+          {() => (
+            <RequireAuth>
+              <CustomerFavourites />
             </RequireAuth>
           )}
         </Route>
@@ -2542,6 +2561,7 @@ console.log("Build: 1769350182889");
                 localStorage.setItem('language', newLang);
               }} />
               <NotificationPermissionPrompt />
+              <MobileBottomNav />
             </SimpleAuthProvider>
           </AuthProvider>
           

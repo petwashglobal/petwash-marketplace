@@ -106,6 +106,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   };
 
   const navigatePostLogin = async (fallback = '/home') => {
+    const notifShown = localStorage.getItem('petwash_notification_consent_shown');
     try {
       const intent = localStorage.getItem('signup_intent') || undefined;
       const res = await fetch(getApiUrl('/api/auth/post-login'), {
@@ -115,13 +116,16 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         body: intent ? JSON.stringify({ intent }) : undefined,
       });
       const data = await res.json();
-      const path = data.nextUrl || data.redirectTo || fallback;
+      let path = data.nextUrl || data.redirectTo || fallback;
       localStorage.removeItem('signup_intent');
+      if (!notifShown && (path === '/home' || path === '/dashboard')) {
+        path = '/notification-consent';
+      }
       window.scrollTo(0, 0);
       navigate(path);
     } catch {
       window.scrollTo(0, 0);
-      navigate(fallback);
+      navigate(notifShown ? fallback : '/notification-consent');
     }
   };
   
