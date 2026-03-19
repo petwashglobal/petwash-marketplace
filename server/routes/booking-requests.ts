@@ -26,6 +26,7 @@ import {
   rebookTriggers,
   referrals,
   winbackQueue,
+  experimentEvents,
   createBookingRequestSchema,
   providerBookingResponseSchema,
   type BookingRequest
@@ -1266,7 +1267,38 @@ router.post('/:requestId/confirm', async (req, res) => {
           }
         }
 
-        // 5. Win-back reset — cancel any pending win-back queue entries for this user
+        // 5a. Win-back attribution — if user clicked/rebook_started via a winback in
+        //     the last 7 days, emit a 'completed' experiment event (fire-and-forget).
+        {
+          const recentClick = await db
+            .select({
+              experimentKey: experimentEvents.experimentKey,
+              variant:       experimentEvents.variant,
+            })
+            .from(experimentEvents)
+            .where(and(
+              eq(experimentEvents.userId, ownerId),
+              sql`${experimentEvents.event} IN ('clicked','rebook_started')`,
+              sql`${experimentEvents.createdAt} > now() - interval '7 days'`,
+            ))
+            .orderBy(desc(experimentEvents.createdAt))
+            .limit(1);
+
+          if (recentClick.length > 0) {
+            await db.insert(experimentEvents).values({
+              experimentKey: recentClick[0].experimentKey,
+              userId:        ownerId,
+              variant:       recentClick[0].variant,
+              event:         'completed',
+              bookingId:     bId,
+            });
+            logger.info('[Loyalty] Winback experiment attributed', {
+              ownerId, experimentKey: recentClick[0].experimentKey, variant: recentClick[0].variant,
+            });
+          }
+        }
+
+        // 5b. Win-back reset — cancel any pending win-back queue entries for this user
         await db
           .update(winbackQueue)
           .set({ status: 'converted', convertedAt: new Date() })

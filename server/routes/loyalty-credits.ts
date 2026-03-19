@@ -15,8 +15,8 @@ import {
   getStreakCounts,
 } from '../utils/loyaltyLedger';
 import { db } from '../db';
-import { loyaltyLedger, users, winbackQueue } from '../../shared/schema';
-import { and, eq, gt, lte, sql } from 'drizzle-orm';
+import { loyaltyLedger, users, winbackQueue, experimentEvents } from '../../shared/schema';
+import { and, eq, gt, lte, sql, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -85,6 +85,54 @@ router.get('/streaks', validateFirebaseToken, async (req: any, res) => {
   } catch (err: any) {
     logger.error('[LoyaltyCredits] Streaks error', { error: err.message });
     res.status(500).json({ error: 'Failed to load streaks' });
+  }
+});
+
+// POST /api/loyalty-credits/winback/track
+// Fire-and-forget front-end tracking: opened | clicked | rebook_started
+// Looks up the user's most-recently-sent winback queue row for the experiment key + variant.
+router.post('/winback/track', validateFirebaseToken, async (req: any, res) => {
+  try {
+    const userId = req.firebaseUser?.uid || req.user?.uid;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { event } = req.body as { event: string };
+    const VALID_EVENTS = ['opened', 'clicked', 'rebook_started'] as const;
+    if (!VALID_EVENTS.includes(event as any)) {
+      return res.status(400).json({ error: 'Invalid event' });
+    }
+
+    // Find most recent sent winback row for this user
+    const [row] = await db
+      .select({
+        id:      winbackQueue.id,
+        trigger: winbackQueue.trigger,
+        variant: winbackQueue.experimentVariant,
+      })
+      .from(winbackQueue)
+      .where(and(
+        eq(winbackQueue.userId, userId),
+        eq(winbackQueue.status, 'sent'),
+      ))
+      .orderBy(desc(winbackQueue.sentAt))
+      .limit(1);
+
+    if (!row?.variant) {
+      return res.json({ ok: false, reason: 'no_active_winback' });
+    }
+
+    await db.insert(experimentEvents).values({
+      experimentKey: `winback_${row.trigger}`,
+      userId,
+      variant:       row.variant,
+      event,
+    });
+
+    logger.info('[LoyaltyCredits] Winback event tracked', { userId, event, trigger: row.trigger, variant: row.variant });
+    res.json({ ok: true });
+  } catch (err: any) {
+    logger.error('[LoyaltyCredits] Winback track error', { error: err.message });
+    res.status(500).json({ error: 'Failed to track event' });
   }
 });
 

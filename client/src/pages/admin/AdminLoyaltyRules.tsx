@@ -49,6 +49,7 @@ interface WinbackData {
   recent: { id: number; userId: string; trigger: string; status: string;
             scheduledAt: string; sentAt: string | null; convertedAt: string | null; variant: string | null }[];
   conversion: { sent: number; converted: number; suppressed: number };
+  variantFunnel: { experimentKey: string; variant: string; event: string; cnt: number }[];
 }
 
 interface LedgerEntry {
@@ -506,7 +507,7 @@ function WinbackTab() {
   if (isLoading) return <Spinner />;
   if (isError || !data) return <ErrorMsg />;
 
-  const { conversion, statusBreakdown, recent } = data;
+  const { conversion, statusBreakdown, recent, variantFunnel = [] } = data;
   const conversionRate = conversion.sent
     ? ((conversion.converted / conversion.sent) * 100).toFixed(1)
     : "0";
@@ -549,6 +550,94 @@ function WinbackTab() {
           </tbody>
         </table>
       </SectionCard>
+
+      {/* Experiment variant funnel */}
+      {variantFunnel.length > 0 && (() => {
+        const FUNNEL_STEPS = ['notification_sent', 'opened', 'clicked', 'rebook_started', 'completed'] as const;
+        const STEP_LABEL: Record<string, string> = {
+          notification_sent: 'נשלח', opened: 'נפתח', clicked: 'נלחץ',
+          rebook_started: 'התחיל הזמנה', completed: 'הושלם',
+        };
+        const VARIANT_LABEL: Record<string, string> = { ctrl: 'בקרה', v1: 'V1 דחיפות', v2: 'V2 הוכחה חברתית' };
+
+        // Group by experimentKey
+        const expKeys = Array.from(new Set(variantFunnel.map(r => r.experimentKey)));
+        return (
+          <SectionCard title="ניסויי A/B — משפך ווין-בק">
+            {expKeys.map(expKey => {
+              const rows = variantFunnel.filter(r => r.experimentKey === expKey);
+              const variants = Array.from(new Set(rows.map(r => r.variant)));
+
+              // Count per (variant, event)
+              function cnt(variant: string, event: string) {
+                return rows.find(r => r.variant === variant && r.event === event)?.cnt ?? 0;
+              }
+
+              // Find winner by completed/notification_sent rate
+              let winnerVariant = '';
+              let bestRate = -1;
+              for (const v of variants) {
+                const sent = cnt(v, 'notification_sent');
+                const done = cnt(v, 'completed');
+                const rate = sent > 0 ? done / sent : 0;
+                if (rate > bestRate) { bestRate = rate; winnerVariant = v; }
+              }
+
+              return (
+                <div key={expKey} className="mb-5 last:mb-0">
+                  <p className="text-xs font-bold text-gray-700 mb-3">{expKey}</p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-gray-400 border-b border-gray-100">
+                          <th className="text-right py-1.5 font-semibold pr-2">וריאנט</th>
+                          {FUNNEL_STEPS.map(s => (
+                            <th key={s} className="text-center py-1.5 font-semibold">{STEP_LABEL[s]}</th>
+                          ))}
+                          <th className="text-center py-1.5 font-semibold text-purple-500">המרה %</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {variants.map(variant => {
+                          const sent = cnt(variant, 'notification_sent');
+                          const done = cnt(variant, 'completed');
+                          const rate = sent > 0 ? ((done / sent) * 100).toFixed(1) : '—';
+                          const isWinner = variant === winnerVariant && bestRate > 0;
+                          return (
+                            <tr key={variant} className={`border-b border-gray-50 last:border-0 ${isWinner ? 'bg-emerald-50/50' : ''}`}>
+                              <td className="py-2 pr-2 font-medium text-gray-700 whitespace-nowrap">
+                                {VARIANT_LABEL[variant] ?? variant}
+                                {isWinner && (
+                                  <span className="ml-1.5 inline-flex items-center gap-0.5 text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">
+                                    ★ מנצח
+                                  </span>
+                                )}
+                              </td>
+                              {FUNNEL_STEPS.map(step => {
+                                const c = cnt(variant, step);
+                                const prev = step === 'notification_sent' ? null : cnt(variant, FUNNEL_STEPS[FUNNEL_STEPS.indexOf(step) - 1]);
+                                const pct  = prev && prev > 0 ? ` (${((c / prev) * 100).toFixed(0)}%)` : '';
+                                return (
+                                  <td key={step} className="py-2 text-center text-gray-600">
+                                    {c > 0 ? <>{c}<span className="text-gray-300 text-[9px]">{pct}</span></> : '—'}
+                                  </td>
+                                );
+                              })}
+                              <td className={`py-2 text-center font-bold ${isWinner ? 'text-emerald-600' : 'text-gray-500'}`}>
+                                {rate}{rate !== '—' ? '%' : ''}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })}
+          </SectionCard>
+        );
+      })()}
 
       {/* Recent entries */}
       <SectionCard title="רשומות אחרונות (50)">

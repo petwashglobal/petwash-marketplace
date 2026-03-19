@@ -16,7 +16,7 @@
  */
 
 import { db } from '../db';
-import { users, loyaltyRules } from '@shared/schema';
+import { users, loyaltyRules, experimentEvents } from '@shared/schema';
 import { eq, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { awardLoyaltyCredit } from '../utils/loyaltyLedger';
@@ -25,10 +25,28 @@ import { dispatchNotification } from '../lib/notificationDispatcher';
 const BATCH_SIZE = 50;
 
 type WinbackTrigger = 'winback_14d' | 'winback_30d' | 'winback_60d';
+type Variant = 'ctrl' | 'v1' | 'v2';
 
-// ── Hebrew notification copy per tier ────────────────────────────────────────
+// ── A/B Variant Assignment ────────────────────────────────────────────────────
+// Deterministic hash so the same user always gets the same variant.
+// ctrl  → baseline copy (control group)
+// v1    → urgency framing ("offer expires in 48 hours")
+// v2    → social proof framing ("join X owners who returned this week")
 
-function buildNotifCopy(trigger: WinbackTrigger, creditIls: string, firstName: string | null) {
+function assignVariant(userId: string): Variant {
+  let hash = 0;
+  for (const c of userId) hash = (hash * 31 + c.charCodeAt(0)) & 0x7fffffff;
+  return (['ctrl', 'v1', 'v2'] as Variant[])[hash % 3];
+}
+
+// ── Hebrew notification copy per tier + variant ───────────────────────────────
+
+function buildNotifCopy(
+  trigger: WinbackTrigger,
+  creditIls: string,
+  firstName: string | null,
+  variant: Variant,
+) {
   const name = firstName ?? 'שלום';
 
   const dayLabel: Record<WinbackTrigger, string> = {
@@ -36,19 +54,51 @@ function buildNotifCopy(trigger: WinbackTrigger, creditIls: string, firstName: s
     winback_30d: 'חודש',
     winback_60d: 'חודשיים',
   };
-
   const days = dayLabel[trigger];
 
+  // Shared base
+  const ctaText = 'הזמן עכשיו';
+  const ctaUrl  = 'https://petwash.co.il/marketplace';
+
+  if (variant === 'v1') {
+    // Urgency variant — emphasise 48-hour expiry
+    return {
+      title:    `${name}, הקרדיט שלך יפוג בעוד 48 שעות! ⏰`,
+      bodyHtml: `
+        <p>הוספנו לחשבונך <strong>₪${creditIls} קרדיט נאמנות</strong>.</p>
+        <p>הקרדיט תקף ל-48 שעות בלבד — השתמש בו עכשיו לפני שיפוג.</p>
+      `,
+      bodyText: `יש לך ₪${creditIls} קרדיט שיפוג בעוד 48 שעות — הזמן עכשיו.`,
+      ctaText,
+      ctaUrl,
+    };
+  }
+
+  if (variant === 'v2') {
+    // Social proof variant
+    return {
+      title:    `${name}, ${days} לא ראינו אותך! 🐾`,
+      bodyHtml: `
+        <p>אלפי בעלי חיות מחמד שבו ל-PetWash™ החודש.</p>
+        <p>הוספנו לחשבונך <strong>₪${creditIls} קרדיט נאמנות</strong> כדי שתוכל לחזור בקלות.</p>
+      `,
+      bodyText: `אלפי לקוחות שבו החודש — יש לך ₪${creditIls} קרדיט לחזרה. הזמן עכשיו.`,
+      ctaText,
+      ctaUrl,
+    };
+  }
+
+  // ctrl — baseline
   return {
-    title: `${name}, התגעגענו אליך! 🐾`,
+    title:    `${name}, התגעגענו אליך! 🐾`,
     bodyHtml: `
       <p>עברו ${days} מאז הביקור האחרון שלך ב-PetWash™.</p>
       <p>הוספנו לחשבונך <strong>₪${creditIls} קרדיט נאמנות</strong> — מתנה מאיתנו.</p>
       <p>השתמש בו בהזמנה הבאה שלך לפני שיפוג.</p>
     `,
     bodyText: `עברו ${days} מאז הביקור האחרון. הוספנו ₪${creditIls} קרדיט לחשבונך — השתמש בו בהזמנה הבאה.`,
-    ctaText: 'הזמן עכשיו',
-    ctaUrl: 'https://petwash.co.il/marketplace',
+    ctaText,
+    ctaUrl,
   };
 }
 
@@ -65,8 +115,9 @@ export async function runWinbackProcessor(): Promise<void> {
     user_id: string;
     trigger: WinbackTrigger;
     last_booking_at: Date | null;
+    experiment_variant: string | null;
   }>(sql`
-    SELECT id, user_id, trigger, last_booking_at
+    SELECT id, user_id, trigger, last_booking_at, experiment_variant
     FROM winback_queue
     WHERE status = 'pending'
       AND scheduled_at <= now()
@@ -84,7 +135,17 @@ export async function runWinbackProcessor(): Promise<void> {
   for (const row of pendingRows.rows) {
     processed++;
     try {
-      const { id: queueId, user_id: userId, trigger, last_booking_at } = row;
+      const { id: queueId, user_id: userId, trigger, last_booking_at, experiment_variant } = row;
+
+      // ── 0. Assign A/B variant (deterministic, idempotent) ─────────────────
+      const variant: Variant = (experiment_variant as Variant) ?? assignVariant(userId);
+      if (!experiment_variant) {
+        await db.execute(sql`
+          UPDATE winback_queue
+          SET experiment_variant = ${variant}
+          WHERE id = ${queueId}
+        `);
+      }
 
       // ── 1. Verify still dormant ─────────────────────────────────────────
       if (last_booking_at) {
@@ -153,7 +214,7 @@ export async function runWinbackProcessor(): Promise<void> {
 
       // ── 5. Dispatch notification ────────────────────────────────────────
       const creditIls = (rule.rewardCents / 100).toFixed(0);
-      const copy = buildNotifCopy(trigger, creditIls, user.firstName);
+      const copy = buildNotifCopy(trigger, creditIls, user.firstName, variant);
 
       await dispatchNotification({
         uid: userId,
@@ -177,14 +238,23 @@ export async function runWinbackProcessor(): Promise<void> {
       // ── 6. Mark sent ────────────────────────────────────────────────────
       await db.execute(sql`
         UPDATE winback_queue
-        SET status = 'sent', sent_at = now()
+        SET status = 'sent', sent_at = now(), experiment_variant = ${variant}
         WHERE id = ${queueId}
       `);
+
+      // ── 7. Record experiment event: notification_sent ───────────────────
+      await db.insert(experimentEvents).values({
+        experimentKey: `winback_${trigger}`,
+        userId,
+        variant,
+        event: 'notification_sent',
+      });
 
       awarded++;
       logger.info('[WinbackProcessor] Win-back sent', {
         userId,
         trigger,
+        variant,
         creditCents: rule.rewardCents,
         queueId,
       });

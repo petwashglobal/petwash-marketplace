@@ -208,10 +208,28 @@ router.get('/winback', requireAdmin, async (_req, res) => {
       })
       .from(winbackQueue);
 
+    // Experiment variant funnel for winback experiments
+    const variantFunnel = await db
+      .select({
+        experimentKey: experimentEvents.experimentKey,
+        variant:       experimentEvents.variant,
+        event:         experimentEvents.event,
+        cnt:           count(),
+      })
+      .from(experimentEvents)
+      .where(sql`${experimentEvents.experimentKey} LIKE 'winback_%'`)
+      .groupBy(
+        experimentEvents.experimentKey,
+        experimentEvents.variant,
+        experimentEvents.event,
+      )
+      .orderBy(experimentEvents.experimentKey, experimentEvents.variant);
+
     res.json({
       statusBreakdown,
       recent,
-      conversion: conversionRow[0] ?? { sent: 0, converted: 0, suppressed: 0 },
+      conversion:    conversionRow[0] ?? { sent: 0, converted: 0, suppressed: 0 },
+      variantFunnel,
     });
   } catch (err: any) {
     logger.error('admin-loyalty GET /winback', err);
