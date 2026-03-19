@@ -9,7 +9,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { db } from '../db';
+import { db, pool } from '../db';
 import {
   providerProfiles,
   savedProviders,
@@ -223,7 +223,6 @@ router.get('/providers/browse', async (req: Request, res: Response) => {
   const whereClause = whereParts.join(' AND ');
 
   try {
-    const { pool } = await import('../db');
     const result = await pool.query(
       `SELECT
         pp.user_id                    AS "userId",
@@ -302,13 +301,35 @@ router.get('/saved-providers', async (req: Request, res: Response) => {
   if (!uid) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
-    const rows = await db
-      .select()
-      .from(savedProviders)
-      .where(eq(savedProviders.userId, uid))
-      .orderBy(desc(savedProviders.createdAt));
+    const rows = await pool.query<{
+      provider_id: string;
+      platform: string | null;
+      created_at: Date;
+      display_name: string | null;
+      profile_pic_url: string | null;
+    }>(
+      `SELECT
+         sp.provider_id,
+         sp.platform,
+         sp.created_at,
+         TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')) AS display_name,
+         u.profile_image_url AS profile_pic_url
+       FROM saved_providers sp
+       LEFT JOIN users u ON u.id = sp.provider_id
+       WHERE sp.user_id = $1
+       ORDER BY sp.created_at DESC`,
+      [uid],
+    );
 
-    return res.json({ saved: rows.map(r => ({ providerId: r.providerId, platform: r.platform, savedAt: r.createdAt })) });
+    return res.json({
+      saved: rows.rows.map(r => ({
+        providerId:    r.provider_id,
+        platform:      r.platform,
+        savedAt:       r.created_at,
+        displayName:   r.display_name?.trim() || null,
+        profilePicUrl: r.profile_pic_url || null,
+      })),
+    });
   } catch (err) {
     logger.error('[SavedProviders] GET failed', { uid, err });
     return res.status(500).json({ error: 'Failed to load saved providers' });

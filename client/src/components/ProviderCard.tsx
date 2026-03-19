@@ -8,12 +8,13 @@
  * Platform-aware: Conditionally renders platform-specific badges
  */
 
-import { Star, MapPin, Shield, Camera, Clock, Check } from 'lucide-react';
+import { Star, MapPin, Shield, Camera, Clock, Check, Heart } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { MarketplaceProvider } from '@shared/schema';
 import { Link } from 'wouter';
+import { useSavedProviders } from '@/hooks/useSavedProviders';
 
 interface ProviderCardProps {
   provider: MarketplaceProvider;
@@ -21,6 +22,9 @@ interface ProviderCardProps {
 }
 
 export function ProviderCard({ provider, onClick }: ProviderCardProps) {
+  const { isSaved, toggle, isPending } = useSavedProviders();
+  const saved = isSaved(provider.userId);
+
   const platformLabels = {
     walk_my_pet: 'Walk My Pet',
     sitter_suite: 'Sitter Suite',
@@ -151,14 +155,31 @@ export function ProviderCard({ provider, onClick }: ProviderCardProps) {
                   </p>
                 </div>
 
-                {/* Price */}
-                <div className="text-right ml-4">
+                {/* Price + Heart */}
+                <div className="flex flex-col items-end gap-1 ml-4 flex-shrink-0">
                   <p
                     className="text-xl font-bold text-black"
                     data-testid="text-price"
                   >
                     {provider.priceDisplay}
                   </p>
+                  <button
+                    disabled={isPending}
+                    onClick={e => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggle(provider.userId, provider.platform);
+                    }}
+                    aria-label={saved ? 'הסר מהמועדפים' : 'שמור למועדפים'}
+                    className="p-1.5 rounded-full hover:bg-rose-50 transition-colors disabled:opacity-50"
+                  >
+                    <Heart
+                      size={18}
+                      className="transition-colors"
+                      fill={saved ? '#f43f5e' : 'none'}
+                      style={{ color: saved ? '#f43f5e' : '#9ca3af' }}
+                    />
+                  </button>
                 </div>
               </div>
 
