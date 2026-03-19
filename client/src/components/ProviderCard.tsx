@@ -171,13 +171,15 @@ export function ProviderCard({ provider, onClick }: ProviderCardProps) {
                       toggle(provider.userId, provider.platform);
                     }}
                     aria-label={saved ? 'הסר מהמועדפים' : 'שמור למועדפים'}
-                    className="p-1.5 rounded-full hover:bg-rose-50 transition-colors disabled:opacity-50"
+                    className="p-1.5 rounded-full hover:bg-rose-50 active:scale-90 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed group/heart"
                   >
                     <Heart
                       size={18}
-                      className="transition-colors"
-                      fill={saved ? '#f43f5e' : 'none'}
-                      style={{ color: saved ? '#f43f5e' : '#9ca3af' }}
+                      className={`transition-all duration-200 ${
+                        saved
+                          ? 'fill-rose-500 text-rose-500 scale-110'
+                          : 'fill-none text-gray-400 group-hover/heart:text-rose-400 group-hover/heart:scale-110'
+                      } ${isPending ? 'animate-pulse' : ''}`}
                     />
                   </button>
                 </div>

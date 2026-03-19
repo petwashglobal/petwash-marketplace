@@ -4,7 +4,7 @@ import { useLanguage } from '@/lib/languageStore';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { Link, useLocation } from 'wouter';
 import {
-  Heart, CalendarDays, ChevronLeft, ChevronRight, Zap, RefreshCw, Loader2,
+  Heart, CalendarDays, ChevronLeft, ChevronRight, Zap, RefreshCw, User,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -71,6 +71,25 @@ function ProviderAvatar({
   );
 }
 
+// ── Skeleton Card ─────────────────────────────────────────────────────────────
+function SkeletonCard() {
+  return (
+    <div className="p-4 bg-white border border-gray-100 rounded-2xl mb-3 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="w-11 h-11 rounded-full bg-gray-100 animate-pulse flex-shrink-0" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 bg-gray-100 rounded-full animate-pulse w-32" />
+          <div className="h-3 bg-gray-100 rounded-full animate-pulse w-20" />
+        </div>
+        <div className="flex gap-2">
+          <div className="h-7 w-20 bg-gray-100 rounded-full animate-pulse" />
+          <div className="h-7 w-16 bg-gray-100 rounded-full animate-pulse" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Shortlisted Card ──────────────────────────────────────────────────────────
 function ShortlistedCard({
   provider, isRTL,
@@ -103,34 +122,53 @@ function ShortlistedCard({
       >
         <div className="flex items-center gap-3">
           <ProviderAvatar name={displayName} photoUrl={provider.profilePicUrl} />
+
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-gray-900">{displayName}</p>
+            <p className="font-semibold text-gray-900 truncate">{displayName}</p>
             {meta && (
               <p className="text-sm text-gray-500 mt-0.5">
                 {meta.emoji} {isRTL ? meta.he : meta.en}
               </p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {/* View profile */}
+            <button
+              onClick={e => { e.preventDefault(); e.stopPropagation(); navigate(profileUrl); }}
+              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-full border transition-colors hover:bg-gray-50"
+              style={{ borderColor: '#E5E7EB', color: '#6B7280' }}
+            >
+              <User size={10} />
+              {isRTL ? 'פרופיל' : 'Profile'}
+            </button>
+
+            {/* Book now */}
             <button
               onClick={handleBook}
-              className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full"
+              className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-full transition-colors"
               style={{ background: GOLD, color: '#fff' }}
             >
-              <Zap size={11} />
+              <Zap size={10} />
               {isRTL ? 'הזמן' : 'Book'}
             </button>
+
+            {/* Remove / heart */}
             <button
               disabled={isPending}
               onClick={handleRemove}
-              aria-label={isRTL ? 'הסר ממועדפים' : 'Remove from favourites'}
-              className="p-2 rounded-full hover:bg-red-50 transition-colors disabled:opacity-50"
+              aria-label={isRTL ? 'הסר ממועדפים' : 'Remove from saved'}
+              className="p-1.5 rounded-full hover:bg-red-50 active:scale-90 transition-all duration-150 disabled:opacity-40 group/heart"
             >
-              <Heart size={18} fill="#f43f5e" style={{ color: '#f43f5e' }} />
+              <Heart
+                size={16}
+                className={`transition-all duration-200 fill-rose-500 text-rose-500 group-hover/heart:fill-rose-300 group-hover/heart:text-rose-300 ${isPending ? 'animate-pulse' : ''}`}
+              />
             </button>
+
             {isRTL
-              ? <ChevronLeft size={16} className="text-gray-300" />
-              : <ChevronRight size={16} className="text-gray-300" />
+              ? <ChevronLeft size={14} className="text-gray-200" />
+              : <ChevronRight size={14} className="text-gray-200" />
             }
           </div>
         </div>
@@ -331,8 +369,8 @@ export default function CustomerFavourites() {
       <div className="px-4 pt-4">
         {activeTab === 'shortlisted' && (
           savedLoading ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="animate-spin text-gray-400" size={28} />
+            <div>
+              {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
             </div>
           ) : saved.length === 0 ? (
             <EmptyShortlisted isRTL={isRTL} />

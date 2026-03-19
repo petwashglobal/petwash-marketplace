@@ -10,13 +10,18 @@ export interface SavedProviderItem {
   profilePicUrl: string | null;
 }
 
+type SavedData = { saved: SavedProviderItem[] };
+
+const QK = ['/api/saved-providers'] as const;
+
 export function useSavedProviders() {
   const { user } = useFirebaseAuth();
   const qc = useQueryClient();
 
-  const { data, isLoading } = useQuery<{ saved: SavedProviderItem[] }>({
-    queryKey: ['/api/saved-providers'],
+  const { data, isLoading } = useQuery<SavedData>({
+    queryKey: QK,
     enabled: !!user,
+    staleTime: 30_000,
   });
 
   const savedList: SavedProviderItem[] = data?.saved ?? [];
@@ -29,7 +34,35 @@ export function useSavedProviders() {
       remove
         ? apiRequest('DELETE', `/api/saved-providers/${id}`)
         : apiRequest('POST', `/api/saved-providers/${id}`, { platform: platform ?? null }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/saved-providers'] }),
+
+    onMutate: async ({ id, platform, remove }) => {
+      await qc.cancelQueries({ queryKey: QK });
+      const previous = qc.getQueryData<SavedData>(QK);
+
+      qc.setQueryData<SavedData>(QK, old => {
+        if (!old) return old;
+        if (remove) {
+          return { saved: old.saved.filter(s => s.providerId !== id) };
+        }
+        if (old.saved.some(s => s.providerId === id)) return old;
+        return {
+          saved: [
+            { providerId: id, platform: platform ?? null, savedAt: new Date().toISOString(), displayName: null, profilePicUrl: null },
+            ...old.saved,
+          ],
+        };
+      });
+
+      return { previous };
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous !== undefined) {
+        qc.setQueryData(QK, context.previous);
+      }
+    },
+
+    onSettled: () => qc.invalidateQueries({ queryKey: QK }),
   });
 
   const toggle = (id: string, platform?: string | null) =>
