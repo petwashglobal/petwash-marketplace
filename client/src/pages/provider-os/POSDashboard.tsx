@@ -58,8 +58,8 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
   const { toast } = useToast();
 
   const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['/api/provider-dashboard/stats'],
-    queryFn: () => fetchWithAuth('/api/provider-dashboard/stats'),
+    queryKey: ['/api/provider-dashboard/v2/stats'],
+    queryFn: () => fetchWithAuth('/api/provider-dashboard/v2/stats'),
   });
 
   const { data: profileData } = useQuery<{
@@ -100,7 +100,7 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
         body: JSON.stringify({ providerId, isAvailable }),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/stats'] });
     },
     onError: () => {
       onToggleAvailable(!isAvailable);
@@ -119,7 +119,7 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
       queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/bookings'] });
       queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/booking-counts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/upcoming'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/stats'] });
       toast({ title: vars.action === 'accept' ? 'Job accepted' : 'Job declined' });
     },
     onError: () => toast({ title: 'Action failed', variant: 'destructive' }),

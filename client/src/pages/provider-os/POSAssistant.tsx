@@ -44,8 +44,8 @@ export default function POSAssistant() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: stats } = useQuery({
-    queryKey: ['/api/provider-dashboard/stats'],
-    queryFn: () => fetchWithAuth('/api/provider-dashboard/stats'),
+    queryKey: ['/api/provider-dashboard/v2/stats'],
+    queryFn: () => fetchWithAuth('/api/provider-dashboard/v2/stats'),
   });
 
   useEffect(() => {

@@ -87,8 +87,8 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
 
   // Real earnings data from API
   const { data: earningsData, isLoading: earningsLoading } = useQuery({
-    queryKey: ['/api/provider-dashboard/earnings'],
-    queryFn: () => fetchWithAuth('/api/provider-dashboard/earnings'),
+    queryKey: ['/api/provider-dashboard/v2/earnings'],
+    queryFn: () => fetchWithAuth('/api/provider-dashboard/v2/earnings'),
   });
 
   // Correct field access — API returns { success, earnings: { ... } }

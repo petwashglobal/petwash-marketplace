@@ -1,0 +1,85 @@
+Excellent. Phase 6 is the right cleanup.
+
+I accept this as completed:
+	•	ProviderDashboard reads moved to V2
+	•	ProviderConsole reads moved to V2
+	•	7 dead V1 action routes physically removed
+	•	V2 stats endpoint added
+	•	V2 earnings made V1-compatible
+	•	customer booking timeline added
+	•	rebook flow confirmed
+
+That means the booking system is now much cleaner:
+	•	provider reads = V2
+	•	provider writes = V2
+	•	customer bookings = booking_requests
+	•	old action paths are gone
+
+That is a major architecture win.
+
+What should happen next
+
+1. Remove the 5 dead V1 read routes now
+
+You already proved:
+	•	/stats no UI callers
+	•	/bookings no UI callers
+	•	/earnings no UI callers
+	•	/booking-counts likely orphaned
+	•	/upcoming needs one final caller check
+
+So the next cleanup commit should:
+	•	remove /stats
+	•	remove /bookings
+	•	remove /earnings
+	•	remove /booking-counts
+	•	remove /upcoming if caller check confirms zero use
+
+Do not leave stale legacy read routes around if they are no longer used.
+
+2. Customer booking lifecycle polish
+
+Now the best product work is on the customer side:
+	•	add owner cancel action to booking cards where allowed
+	•	show cancellation and dispute reasons clearly
+	•	improve timeline styling and labels
+	•	add better empty states by tab
+	•	make rebook smarter with prefilled provider/service/pets where possible
+
+3. Saved providers loop
+
+This is the next retention feature:
+	•	save provider from booking card
+	•	save provider from booking detail/profile
+	•	browse saved providers
+	•	rebook from saved providers
+
+4. Notification and status-change UX
+
+Next strong upgrade:
+	•	in-app notification center tied to booking status changes
+	•	booking accepted
+	•	booking declined
+	•	booking cancelled
+	•	booking completed
+	•	dispute opened
+
+5. Final migration closeout
+
+After deleting the dead V1 read routes, write one short closeout note:
+	•	canonical booking table: booking_requests
+	•	canonical provider action routes: /api/provider-dashboard/v2/...
+	•	all removed V1 routes listed
+	•	any remaining compatibility code listed
+
+What I want next
+
+Please send:
+	•	exact files changed for the V1 read-route cleanup
+	•	grep proof that old V1 booking read routes are gone
+	•	one customer booking card proof with timeline
+	•	one owner cancel flow proof
+	•	one saved-provider implementation plan
+	•	any remaining old booking dependencies honestly listed
+
+You are now out of migration mode and into product refinement mode. The next smart move is customer retention and booking management quality.

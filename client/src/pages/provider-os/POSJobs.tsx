@@ -112,7 +112,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/bookings'] });
-    queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/stats'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/stats'] });
     queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/booking-counts'] });
   };
 

@@ -345,6 +345,10 @@ router.get('/earnings', async (req: Request, res: Response) => {
           COALESCE(SUM(CASE WHEN status IN ('completed','reviewed') AND payout_status != 'paid_out' THEN provider_payout_cents ELSE 0 END), 0)::bigint AS pending_payouts_cents,
           COALESCE(SUM(CASE
             WHEN status IN ('completed','reviewed')
+             AND service_completed_at >= date_trunc('week', NOW())
+            THEN provider_payout_cents ELSE 0 END), 0)::bigint AS this_week_cents,
+          COALESCE(SUM(CASE
+            WHEN status IN ('completed','reviewed')
              AND EXTRACT(MONTH FROM service_completed_at) = EXTRACT(MONTH FROM NOW())
              AND EXTRACT(YEAR  FROM service_completed_at) = EXTRACT(YEAR  FROM NOW())
             THEN provider_payout_cents ELSE 0 END), 0)::bigint AS this_month_cents,
@@ -361,11 +365,12 @@ router.get('/earnings', async (req: Request, res: Response) => {
       ),
       pool.query(
         `SELECT
-          request_id, provider_payout_cents, service_completed_at, payout_status, service_type
+          request_id, provider_payout_cents, subtotal_cents, service_fee_cents,
+          service_completed_at, payout_status, service_type
          FROM booking_requests
          WHERE provider_id = $1 AND status IN ('completed','reviewed')
          ORDER BY service_completed_at DESC NULLS LAST
-         LIMIT 5`,
+         LIMIT 20`,
         [user.uid],
       ),
     ]);
@@ -379,12 +384,16 @@ router.get('/earnings', async (req: Request, res: Response) => {
         totalEarnings:     toILS(row.total_earnings_cents),
         paidPayouts:       toILS(row.paid_payouts_cents),
         pendingPayouts:    toILS(row.pending_payouts_cents),
+        thisWeekEarnings:  toILS(row.this_week_cents),
         thisMonthEarnings: toILS(row.this_month_cents),
         lastMonthEarnings: toILS(row.last_month_cents),
         completedCount:    row.completed_count ?? 0,
+        totalJobs:         row.completed_count ?? 0,
         recentPayouts: recents.rows.map(r => ({
           bookingNumber: r.request_id,
           amount:        toILS(r.provider_payout_cents),
+          gross:         toILS(r.subtotal_cents),
+          platformFee:   toILS(r.service_fee_cents),
           date:          r.service_completed_at,
           payoutStatus:  r.payout_status ?? 'pending',
           serviceType:   r.service_type,
