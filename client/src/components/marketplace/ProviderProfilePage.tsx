@@ -723,8 +723,11 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
       </div>
 
       {/* ── Mobile Fixed Bottom Bar: Booking CTA ────────────────────────────── */}
-      {/* Sits above bottom nav (safe area), no overlap with footer */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 px-4 py-3 pb-safe shadow-2xl">
+      {/* Sits above bottom nav — env(safe-area-inset-bottom) prevents iPhone Safari overlap */}
+      <div
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 px-4 shadow-2xl"
+        style={{ paddingTop: 12, paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+      >
         <div className="flex items-center gap-3 max-w-lg mx-auto">
           <div className="flex-1">
             <div className="text-xs text-gray-400">{isHebrew ? 'מ-' : 'from'}</div>

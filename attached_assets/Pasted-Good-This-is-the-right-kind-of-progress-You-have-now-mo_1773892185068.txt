@@ -1,0 +1,81 @@
+Good. This is the right kind of progress.
+
+You have now moved trust from UI decoration to a real backend data path.
+That is the correct direction.
+
+I accept this as a strong infrastructure step.
+
+Now I want proof and hardening on the following points.
+
+1. Proof of real data
+Please send evidence for:
+- one provider with real stats returned from /api/providers/stats/:userId
+- one provider with null stats where trust chips correctly hide
+- one provider with home setup fields populated
+- one provider with no home setup fields where the section does not render
+- one saved provider flow showing save, refresh, and remove
+
+2. Exact trust metric rules
+Please confirm the exact logic for:
+- isNew
+- repeatClientsCount
+- responseRate
+- avgResponseMinutes or equivalent
+- backgroundCheck flag
+- availability indicator
+
+I want the actual rule or threshold for each, not general wording.
+
+3. Saved providers
+Please confirm:
+- exact schema for saved_providers
+- whether duplicates are prevented at DB level
+- whether save is scoped per authenticated user
+- whether saved state survives logout/login correctly
+- whether the API is protected from saving nonexistent providers
+
+4. Browse filters
+You mentioned a real browse endpoint.
+Please confirm with evidence:
+- which filters are now server-backed
+- exact request params supported
+- exact response fields returned
+- whether min/max price are both enforced
+- whether pet type, home environment, background-check, and availability filters all affect backend results
+- whether sorting is backend-driven or frontend-only
+
+5. Provider profile mobile behavior
+Please confirm:
+- sticky bottom bar works on iPhone Safari
+- no overlap with bottom nav
+- no overlap with cookie/privacy banners
+- CTA remains visible when keyboard opens
+- page content has correct bottom padding so nothing is hidden
+
+6. Trust refresh lifecycle
+The booking completion hook is good, but I need confirmation on:
+- which booking status transition triggers refresh
+- whether cancelled bookings are excluded
+- whether duplicate completion events cause duplicate refresh work
+- whether refresh failures are logged
+- whether there is any backfill path for old providers with past completed bookings
+
+7. Data integrity and safety
+Please confirm:
+- stats endpoint cannot leak private provider data
+- only public-safe fields are returned
+- null handling is correct everywhere
+- old cached trust values do not remain visible after data becomes unavailable
+- optimistic save rollback is tested on API failure
+
+8. Exact files changed
+Please send the exact file list changed in this pass.
+
+9. Next build order
+After proof is sent and hardening is complete, the next correct step is:
+- finish real backend wiring for all browse filters
+- complete saved/favourites loops across cards and lists
+- improve provider profile CTA and booking panel behavior
+- then move to provider-side dashboard maturity
+
+Do not move on again before sending proof.

@@ -13,10 +13,8 @@ import { db } from '../db';
 import {
   providerProfiles,
   savedProviders,
-  bookingRequests,
-  users,
 } from '@shared/schema';
-import { eq, and, or, sql, gte, lte, inArray, desc, count } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import {
   computeProviderTrustMetrics,
@@ -109,9 +107,8 @@ router.get('/providers/stats/:userId', async (req: Request, res: Response) => {
       avgResponseTimeMinutes: metrics.avgResponseTimeMinutes, // null = hide
       responseTimeLabel: formatResponseTime(metrics.avgResponseTimeMinutes), // null = hide
       isNew: metrics.isNew,
-      // ── Background check (real from backgroundCheckStatus field) ──
+      // ── Background check — boolean only, never expose raw status string ──
       hasBackgroundCheck: profile?.backgroundCheckStatus === 'approved',
-      backgroundCheckStatus: profile?.backgroundCheckStatus ?? null,
       // ── Home setup (null = provider hasn't filled this in yet) ──
       hasFencedYard: metrics.hasFencedYard,                 // null = hide
       hasNoPetsAtHome: metrics.hasNoPetsAtHome,             // null = hide
@@ -136,88 +133,101 @@ router.get('/providers/browse', async (req: Request, res: Response) => {
   const uid = getUid(req);
 
   const {
-    platform,
     minRating,
-    maxPrice,
-    minPrice,
-    petType,
     availableThisWeek,
     backgroundCheckOnly,
     fencedYardOnly,
     noPetsAtHomeOnly,
     sortBy = 'rating',
-    location,
     limit = '24',
     offset = '0',
+    // minPrice / maxPrice / petType noted: these have no price column in provider_profiles yet
+    // They are accepted but not yet enforced at DB level (marked LOCAL below)
   } = req.query as Record<string, string>;
 
+  // ── Build parameterized WHERE clauses (pure SQL, no Drizzle ORM objects) ──
+  const whereParts: string[] = ['TRUE'];
+  const params: any[] = [];
+
+  // minRating — server-backed (DB column rating_avg)
+  if (minRating && Number(minRating) > 0) {
+    params.push(Number(minRating));
+    whereParts.push(`pp.rating_avg >= $${params.length}`);
+  }
+
+  // availableThisWeek — server-backed (DB column availability_state)
+  if (availableThisWeek === 'true') {
+    whereParts.push(`pp.availability_state IN ('online', 'available')`);
+  }
+
+  // backgroundCheckOnly — server-backed (DB column background_check_status)
+  if (backgroundCheckOnly === 'true') {
+    whereParts.push(`pp.background_check_status = 'approved'`);
+  }
+
+  // fencedYardOnly — server-backed (DB column has_fenced_yard)
+  if (fencedYardOnly === 'true') {
+    whereParts.push(`pp.has_fenced_yard = TRUE`);
+  }
+
+  // noPetsAtHomeOnly — server-backed (DB column has_no_pets_at_home)
+  if (noPetsAtHomeOnly === 'true') {
+    whereParts.push(`pp.has_no_pets_at_home = TRUE`);
+  }
+
+  // ── ORDER BY — pure SQL (no user input in column name, switch-guarded) ──
+  const orderByMap: Record<string, string> = {
+    rating:   'pp.rating_avg DESC NULLS LAST',
+    reviews:  'pp.rating_count DESC NULLS LAST',
+    new:      'pp.created_at DESC',
+    bookings: 'pp.completed_bookings_count DESC NULLS LAST',
+  };
+  const orderBy = orderByMap[sortBy] ?? orderByMap.rating;
+
+  const pageLimit  = Math.min(Math.max(Number(limit) || 24, 1), 100);
+  const pageOffset = Math.max(Number(offset) || 0, 0);
+
+  params.push(uid ?? '');
+  const savedParam = params.length; // $N for uid in saved_providers join
+  params.push(pageLimit);
+  const limitParam = params.length;
+  params.push(pageOffset);
+  const offsetParam = params.length;
+
+  const whereClause = whereParts.join(' AND ');
+
   try {
-    // Build WHERE conditions
-    const conditions: any[] = [];
-
-    if (minRating && Number(minRating) > 0) {
-      conditions.push(
-        gte(providerProfiles.ratingAvg, String(minRating)),
-      );
-    }
-    if (availableThisWeek === 'true') {
-      conditions.push(
-        or(
-          eq(providerProfiles.availabilityState, 'online'),
-          eq(providerProfiles.availabilityState, 'available'),
-        ),
-      );
-    }
-    if (backgroundCheckOnly === 'true') {
-      conditions.push(eq(providerProfiles.backgroundCheckStatus, 'approved'));
-    }
-    if (fencedYardOnly === 'true') {
-      conditions.push(eq(providerProfiles.hasFencedYard, true));
-    }
-    if (noPetsAtHomeOnly === 'true') {
-      conditions.push(eq(providerProfiles.hasNoPetsAtHome, true));
-    }
-
-    // Build ORDER BY
-    let orderByClause;
-    switch (sortBy) {
-      case 'price':    orderByClause = sql`pp.rating_avg ASC`;   break; // placeholder until price in profile
-      case 'reviews':  orderByClause = sql`pp.rating_count DESC`; break;
-      case 'new':      orderByClause = sql`pp.created_at DESC`;  break;
-      default:         orderByClause = sql`pp.rating_avg DESC`;  break; // 'rating' or 'distance'
-    }
-
-    const rows = await db.execute(sql`
-      SELECT
-        pp.user_id          AS "userId",
-        u.first_name        AS "firstName",
-        u.last_name         AS "lastName",
-        pp.rating_avg       AS "ratingAvg",
-        pp.rating_count     AS "ratingCount",
-        pp.availability_state AS "availabilityState",
-        pp.last_presence_at AS "lastPresenceAt",
-        pp.background_check_status AS "backgroundCheckStatus",
-        pp.has_fenced_yard  AS "hasFencedYard",
-        pp.has_no_pets_at_home AS "hasNoPetsAtHome",
-        pp.completed_bookings_count AS "completedBookingsCount",
-        pp.repeat_client_count AS "repeatClientCount",
-        pp.response_rate_pct AS "responseRatePct",
-        pp.avg_response_time_minutes AS "avgResponseTimeMinutes",
-        pp.created_at       AS "createdAt",
-        -- Is provider saved by current user?
-        CASE WHEN sp.id IS NOT NULL THEN true ELSE false END AS "isSavedByUser"
+    const { pool } = await import('../db');
+    const result = await pool.query(
+      `SELECT
+        pp.user_id                    AS "userId",
+        u.first_name                  AS "firstName",
+        u.last_name                   AS "lastName",
+        pp.rating_avg                 AS "ratingAvg",
+        pp.rating_count               AS "ratingCount",
+        pp.availability_state         AS "availabilityState",
+        pp.last_presence_at           AS "lastPresenceAt",
+        pp.background_check_status    AS "backgroundCheckStatus",
+        pp.has_fenced_yard            AS "hasFencedYard",
+        pp.has_no_pets_at_home        AS "hasNoPetsAtHome",
+        pp.completed_bookings_count   AS "completedBookingsCount",
+        pp.repeat_client_count        AS "repeatClientCount",
+        pp.response_rate_pct          AS "responseRatePct",
+        pp.avg_response_time_minutes  AS "avgResponseTimeMinutes",
+        pp.created_at                 AS "createdAt",
+        CASE WHEN sp.id IS NOT NULL THEN TRUE ELSE FALSE END AS "isSavedByUser"
       FROM provider_profiles pp
       LEFT JOIN users u ON u.id = pp.user_id
       LEFT JOIN saved_providers sp
-        ON sp.provider_id = pp.user_id AND sp.user_id = ${uid ?? ''}
-      WHERE true
-        ${conditions.length > 0 ? sql`AND ${sql.join(conditions, sql` AND `)}` : sql``}
-      ORDER BY ${orderByClause}
-      LIMIT ${Number(limit)}
-      OFFSET ${Number(offset)}
-    `);
+        ON sp.provider_id = pp.user_id AND sp.user_id = $${savedParam}
+      WHERE ${whereClause}
+      ORDER BY ${orderBy}
+      LIMIT $${limitParam}
+      OFFSET $${offsetParam}`,
+      params,
+    );
 
-    // Get saved provider IDs for this user
+    // Also fetch saved IDs separately for isSavedByUser flag accuracy
     let savedIds: string[] = [];
     if (uid) {
       const savedRows = await db
@@ -227,10 +237,10 @@ router.get('/providers/browse', async (req: Request, res: Response) => {
       savedIds = savedRows.map(r => r.providerId);
     }
 
-    const providers = (rows.rows as any[]).map(row => ({
+    const providers = result.rows.map((row: any) => ({
       userId: row.userId,
       name: [row.firstName, row.lastName].filter(Boolean).join(' ') || null,
-      ratingAvg: row.ratingAvg ? Number(row.ratingAvg) : null,
+      ratingAvg: row.ratingAvg !== null ? Number(row.ratingAvg) : null,
       ratingCount: row.ratingCount ?? 0,
       isAvailableThisWeek:
         row.availabilityState === 'online' || row.availabilityState === 'available',
@@ -282,11 +292,21 @@ router.post('/saved-providers/:providerId', async (req: Request, res: Response) 
   const { platform } = req.body;
 
   try {
-    // Upsert — ignore if already saved
+    // Verify the provider actually exists in provider_profiles
+    const [providerExists] = await db
+      .select({ userId: providerProfiles.userId })
+      .from(providerProfiles)
+      .where(eq(providerProfiles.userId, providerId));
+
+    if (!providerExists) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+
+    // Upsert — ON CONFLICT on unique constraint (user_id, provider_id)
     await db.execute(sql`
       INSERT INTO saved_providers (user_id, provider_id, platform)
       VALUES (${uid}, ${providerId}, ${platform ?? null})
-      ON CONFLICT DO NOTHING
+      ON CONFLICT ON CONSTRAINT uq_saved_provider_pair DO NOTHING
     `);
     return res.json({ saved: true, providerId });
   } catch (err) {
