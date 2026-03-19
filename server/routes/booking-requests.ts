@@ -43,7 +43,7 @@ import { logBookingEvent, type BookingEventPayload } from '../services/bookingEv
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { scheduleRebookTrigger } from '../jobs/rebook-scheduler';
 import { EmailService } from '../emailService';
-import { awardLoyaltyCredit, getStreakCounts } from '../utils/loyaltyLedger';
+import { awardLoyaltyCredit, getStreakCounts, redeemLoyaltyCredit } from '../utils/loyaltyLedger';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
 
 const ISRAEL_TIMEZONE = 'Asia/Jerusalem';
@@ -249,6 +249,7 @@ router.post('/', async (req, res) => {
         quoteBreakdown: fq,
         pricingVersion: fq.pricingVersion || 'v1.0.0',
         promoCode: data.promoCode || null,
+        loyaltyRedeemedCents: fq.totals.loyaltyRedeemedCents ?? 0,
       } : {}),
       currency: 'ILS',
       status: 'pending',
@@ -342,6 +343,40 @@ router.post('/', async (req, res) => {
     logBookingEvent('created', buildEventPayload(booking), {
       customerRequestedAt: new Date().toISOString(),
     }).catch(() => {});
+
+    // ── Loyalty credit redemption — synchronous debit after booking row exists ──
+    // Amount was already reflected in the quote's totalCents.
+    // Idempotency fingerprint prevents double-spend on retries.
+    let loyaltyApplied = 0;
+    const quotedLoyalty = (fq && fq.success) ? (fq.totals.loyaltyRedeemedCents ?? 0) : 0;
+    if (data.applyLoyaltyCredits && quotedLoyalty > 0 && userId) {
+      try {
+        const redeemResult = await redeemLoyaltyCredit({
+          userId:          userId,
+          amountCents:     quotedLoyalty,
+          bookingId:       booking.id,
+          orderTotalCents: fq!.totals.subtotalCents,
+          fingerprint:     `loyalty_redeem:${booking.requestId}`,
+        });
+        loyaltyApplied = redeemResult.applied;
+
+        // If the applied amount differs from what was quoted (race condition),
+        // update the booking row to reflect the actual debit.
+        if (loyaltyApplied !== quotedLoyalty) {
+          await db.update(bookingRequests)
+            .set({ loyaltyRedeemedCents: loyaltyApplied })
+            .where(eq(bookingRequests.id, booking.id));
+          logger.warn('[Loyalty] Applied amount differs from quoted amount', {
+            bookingId: booking.id, quotedLoyalty, loyaltyApplied,
+          });
+        }
+      } catch (err: any) {
+        logger.error('[Loyalty] Redemption failed after booking created', {
+          bookingId: booking.id, error: err.message,
+        });
+        // Non-fatal: booking still succeeded. Credit stays in user's balance.
+      }
+    }
     
     res.status(201).json({
       success: true,
@@ -354,6 +389,7 @@ router.post('/', async (req, res) => {
         startDate: booking.startDate,
         endDate: booking.endDate,
         petCount: data.petDetails?.length || data.petCount,
+        loyaltyRedeemedCents: loyaltyApplied,
       },
       message: 'Booking request sent successfully. The provider will respond soon.',
     });

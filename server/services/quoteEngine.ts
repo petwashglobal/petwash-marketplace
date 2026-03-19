@@ -30,6 +30,7 @@ import {
   bookingRequestPets,
   bookingRequestAddons,
   quoteEngineLogs,
+  users,
 } from "@shared/schema";
 
 export const QUOTE_ENGINE_VERSION = "v1.0.0";
@@ -109,6 +110,7 @@ export interface QuoteRequest {
   promoCode?: string | null;
   giftCardCode?: string | null;
   useWalletCredit?: boolean;
+  applyLoyaltyCredits?: boolean;
   userId?: string | null;
   bookingRequestId?: number | null; // set when repricing an existing booking
 }
@@ -155,7 +157,7 @@ export interface QuoteAddonLineItem {
 }
 
 export interface AppliedAdjustment {
-  type: "promo_code" | "wallet_credit" | "gift_card";
+  type: "promo_code" | "wallet_credit" | "gift_card" | "loyalty_credit";
   code?: string;
   amountCents: number;
 }
@@ -178,6 +180,8 @@ export interface QuoteResponse {
     discountCents: number;
     giftCardAppliedCents: number;
     walletCreditAppliedCents: number;
+    loyaltyRedeemedCents: number;   // agorot deducted by loyalty credits (0 if not applied)
+    loyaltyAvailableCents: number;  // user's current balance (0 for anon)
     taxCents: number;
     totalCents: number;
   };
@@ -467,7 +471,40 @@ export async function calculateQuote(
     }
   }
 
-  // 9. Tax — currently 0 (marketplace services exempt from VAT collection at booking level)
+  // 9. Loyalty credits — read balance always (surfaces in UI even when not applied)
+  //    Apply only when applyLoyaltyCredits=true AND user is authenticated.
+  //    Cap = min(balance, floor(subtotal × 50%), remaining).
+  //    NO ledger write here — debit happens once at booking-creation (idempotent).
+  const MIN_LOYALTY_REDEEM = 1_000; // ₪10 minimum (mirrors loyaltyLedger constant)
+  let loyaltyAvailableCents = 0;
+  let loyaltyRedeemedCents  = 0;
+
+  if (req.userId) {
+    try {
+      const [userRow] = await db
+        .select({ balance: users.loyaltyBalanceCents })
+        .from(users)
+        .where(eq(users.id, req.userId))
+        .limit(1);
+      loyaltyAvailableCents = userRow?.balance ?? 0;
+    } catch {
+      // non-fatal — balance stays 0
+    }
+
+    if (req.applyLoyaltyCredits && remaining > 0 && loyaltyAvailableCents >= MIN_LOYALTY_REDEEM) {
+      const cap = Math.min(
+        loyaltyAvailableCents,
+        Math.floor(subtotal * 0.5), // 50% of gross subtotal before any discounts
+      );
+      if (cap >= MIN_LOYALTY_REDEEM) {
+        loyaltyRedeemedCents = Math.min(cap, remaining);
+        remaining = clampAboveZero(remaining - loyaltyRedeemedCents);
+        adjustments.push({ type: "loyalty_credit", amountCents: loyaltyRedeemedCents });
+      }
+    }
+  }
+
+  // 10. Tax — currently 0 (marketplace services exempt from VAT collection at booking level)
   const taxCents = 0;
 
   const totalCents = clampAboveZero(remaining + taxCents);
@@ -490,6 +527,8 @@ export async function calculateQuote(
       discountCents,
       giftCardAppliedCents,
       walletCreditAppliedCents,
+      loyaltyRedeemedCents,
+      loyaltyAvailableCents,
       taxCents,
       totalCents,
     },

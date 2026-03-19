@@ -55,6 +55,7 @@ const quotePreviewSchema = z.object({
   promoCode: z.string().nullish(),
   giftCardCode: z.string().nullish(),
   useWalletCredit: z.boolean().optional().default(false),
+  applyLoyaltyCredits: z.boolean().optional().default(false),
 });
 
 /**

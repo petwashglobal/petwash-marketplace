@@ -177,10 +177,11 @@ export async function awardLoyaltyCredit(opts: AwardOptions): Promise<number> {
 // ─── Redeem ───────────────────────────────────────────────────────────────────
 
 interface RedeemOptions {
-  userId:       string;
-  amountCents:  number;
-  bookingId?:   number;
+  userId:          string;
+  amountCents:     number;
+  bookingId?:      number;
   orderTotalCents: number; // for 50% cap validation
+  fingerprint?:    string; // idempotency key — prevents double-spend on retries
 }
 
 export interface RedeemResult {
@@ -190,7 +191,29 @@ export interface RedeemResult {
 }
 
 export async function redeemLoyaltyCredit(opts: RedeemOptions): Promise<RedeemResult> {
-  const { userId, amountCents, bookingId, orderTotalCents } = opts;
+  const { userId, amountCents, bookingId, orderTotalCents, fingerprint } = opts;
+
+  // ── Idempotency: if this fingerprint was already processed, return cached result ──
+  if (fingerprint) {
+    const existing = await db
+      .select({ amountIlsCents: loyaltyLedger.amountIlsCents, balanceAfterCents: loyaltyLedger.balanceAfterCents })
+      .from(loyaltyLedger)
+      .where(
+        sql`user_id = ${userId}
+          AND event_type = 'redeem'
+          AND note LIKE ${'%[fp:' + fingerprint + ']%'}`,
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      const row = existing[0];
+      logger.info('[Loyalty] Redeem already processed (idempotent)', { fingerprint, bookingId });
+      return {
+        applied: Math.abs(row.amountIlsCents),
+        newBalance: row.balanceAfterCents,
+      };
+    }
+  }
 
   const currentBalance = await getLoyaltyBalance(userId);
   if (currentBalance < MIN_REDEEM_CENTS) {
@@ -207,6 +230,7 @@ export async function redeemLoyaltyCredit(opts: RedeemOptions): Promise<RedeemRe
 
   const applied = Math.min(amountCents, maxRedeemable);
   const newBalance = currentBalance - applied;
+  const fpTag = fingerprint ? ` [fp:${fingerprint}]` : '';
 
   await db.transaction(async (tx) => {
     await tx.insert(loyaltyLedger).values({
@@ -215,14 +239,14 @@ export async function redeemLoyaltyCredit(opts: RedeemOptions): Promise<RedeemRe
       amountIlsCents:    -applied,
       balanceAfterCents: newBalance,
       bookingId,
-      note:              `Redeemed at checkout (booking ${bookingId ?? 'N/A'})`,
+      note:              `Redeemed at checkout (booking ${bookingId ?? 'N/A'})${fpTag}`,
     });
     await tx.update(users)
       .set({ loyaltyBalanceCents: newBalance })
       .where(eq(users.id, userId));
   });
 
-  logger.info('[Loyalty] Credit redeemed', { userId, applied, newBalance, bookingId });
+  logger.info('[Loyalty] Credit redeemed', { userId, applied, newBalance, bookingId, fingerprint });
   return { applied, newBalance };
 }
 

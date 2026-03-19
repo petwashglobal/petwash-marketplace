@@ -9866,6 +9866,7 @@ export const bookingRequests = pgTable("booking_requests", {
   couponId: varchar("coupon_id", { length: 255 }),
   giftCardId: varchar("gift_card_id", { length: 255 }),
   walletCreditUsedCents: integer("wallet_credit_used_cents").notNull().default(0),
+  loyaltyRedeemedCents: integer("loyalty_redeemed_cents").notNull().default(0),
 
   // Provider payout (Phase 3 — source of truth for provider earnings)
   // providerPayoutCents = subtotalCents - serviceFeeCents (net after 15% platform commission)
@@ -9942,6 +9943,7 @@ export const createBookingRequestSchema = z.object({
   promoCode: z.string().optional().nullable(),
   useWalletCredit: z.boolean().optional(),
   giftCardCode: z.string().optional().nullable(),
+  applyLoyaltyCredits: z.boolean().optional().default(false),
 });
 
 export type CreateBookingRequest = z.infer<typeof createBookingRequestSchema>;
