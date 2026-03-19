@@ -1,0 +1,1443 @@
+/**
+ * MultiPetBookingWizard
+ * 5-step booking wizard for the PetWash marketplace.
+ * Steps: schedule → pets → care → addons → confirm
+ *
+ * RULES:
+ * - Frontend NEVER calculates totals — only renders /api/quotes/preview response
+ * - Quote is debounced 600 ms after any meaningful state change
+ * - On confirm, final quote is passed to POST /api/booking-requests as `finalQuote`
+ */
+
+import { useState, useEffect, useRef } from "react";
+import { useParams, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import {
+  ChevronRight, ChevronLeft, Plus, Check, Loader2,
+  Calendar, Pill, AlertTriangle,
+  Star, Info, Shield
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { useFirebaseAuth } from "@/auth/AuthProvider";
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+type WizardStep = "schedule" | "pets" | "care" | "addons" | "confirm";
+
+type PetType = "dog" | "cat" | "other";
+type SizeCategory = "small" | "medium" | "large" | "giant";
+
+interface UserPet {
+  id: number;
+  name: string;
+  species: string; // dog | cat | rabbit | ...
+  breed?: string;
+  ageYears?: number;
+  weightKg?: number;
+  gender?: string;
+  photoUrl?: string;
+}
+
+interface PetCareInfo {
+  petId: number;
+  clientRef: string;       // positional "0", "1", "2"
+  petName: string;
+  petType: PetType;
+  breed?: string;
+  sizeCategory: SizeCategory;
+  ageYears?: number;
+  weightKg?: number;
+  gender?: string;
+  requiresMedication: boolean;
+  hasBehaviorFlag: boolean;
+  hasSpecialNeeds: boolean;
+  specialNotes: string;
+  // service-specific
+  coatType?: string;
+  lastGroomedDate?: string;
+  leashTrained?: boolean;
+  dogParkOk?: boolean;
+  feedingInstructions?: string;
+  currentSkills?: string;
+  trainingGoals?: string;
+}
+
+interface SelectedAddon {
+  addonCode: string;
+  addonName: string;
+  scope: "booking" | "pet";
+  petRef?: string;
+  quantity: number;
+  unitPriceCents: number;
+}
+
+interface AddonCatalogEntry {
+  code: string;
+  name: string;
+  nameHe: string;
+  scope: "booking" | "pet";
+  unitPriceCents: number;
+  icon?: string;
+}
+
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const STEPS: WizardStep[] = ["schedule", "pets", "care", "addons", "confirm"];
+const STEP_LABELS: Record<WizardStep, string> = {
+  schedule: "תאריך",
+  pets: "חיות",
+  care: "טיפול",
+  addons: "תוספות",
+  confirm: "אישור",
+};
+
+const SIZE_OPTIONS: { value: SizeCategory; label: string; sub: string }[] = [
+  { value: "small", label: "קטן", sub: "עד 7 ק\"ג" },
+  { value: "medium", label: "בינוני", sub: "7–20 ק\"ג" },
+  { value: "large", label: "גדול", sub: "20–40 ק\"ג" },
+  { value: "giant", label: "ענק", sub: "40+ ק\"ג" },
+];
+
+const COAT_TYPES = [
+  { value: "short", label: "קצר" },
+  { value: "medium", label: "בינוני" },
+  { value: "long", label: "ארוך" },
+  { value: "double", label: "כפול" },
+  { value: "curly", label: "מתולתל" },
+  { value: "wire", label: "גס/וירי" },
+];
+
+const ADDON_CATALOG: Record<string, AddonCatalogEntry[]> = {
+  grooming: [
+    { code: "nail_clip", name: "Nail Trim", nameHe: "גזיזת ציפורניים", scope: "pet", unitPriceCents: 3000, icon: "✂️" },
+    { code: "ear_clean", name: "Ear Cleaning", nameHe: "ניקוי אוזניים", scope: "pet", unitPriceCents: 2000, icon: "👂" },
+    { code: "deshed", name: "De-shedding Treatment", nameHe: "טיפול דה-שדינג", scope: "pet", unitPriceCents: 5000, icon: "🪮" },
+    { code: "teeth_brush", name: "Teeth Brushing", nameHe: "צחצוח שיניים", scope: "pet", unitPriceCents: 2500, icon: "🦷" },
+    { code: "bandana", name: "Bandana / Bow", nameHe: "בנדנה / קשת", scope: "pet", unitPriceCents: 1000, icon: "🎀" },
+    { code: "blueberry_facial", name: "Blueberry Facial", nameHe: "פנים אוכמניות", scope: "pet", unitPriceCents: 2000, icon: "💙" },
+  ],
+  dog_walking: [
+    { code: "extra_30min", name: "Extra 30 Minutes", nameHe: "30 דק׳ נוספות", scope: "booking", unitPriceCents: 3000, icon: "⏱️" },
+    { code: "dog_park", name: "Dog Park Visit", nameHe: "ביקור בפארק כלבים", scope: "booking", unitPriceCents: 1500, icon: "🌳" },
+    { code: "photo_report", name: "Photo Report", nameHe: "דוח תמונות", scope: "booking", unitPriceCents: 500, icon: "📸" },
+    { code: "treat_pack", name: "Treat Pack", nameHe: "חבילת פינוקים", scope: "pet", unitPriceCents: 1200, icon: "🦴" },
+  ],
+  pet_sitting: [
+    { code: "medication_admin", name: "Medication Administration", nameHe: "מתן תרופות", scope: "pet", unitPriceCents: 2000, icon: "💊" },
+    { code: "daily_photos", name: "Daily Photo Updates", nameHe: "עדכוני תמונות יומיים", scope: "booking", unitPriceCents: 1000, icon: "📷" },
+    { code: "grooming_light", name: "Light Grooming", nameHe: "טיפוח קל", scope: "pet", unitPriceCents: 3000, icon: "🪮" },
+    { code: "vet_pickup", name: "Vet Pickup/Drop-off", nameHe: "איסוף/הורדה לוטרינר", scope: "booking", unitPriceCents: 5000, icon: "🏥" },
+  ],
+  house_sitting: [
+    { code: "medication_admin", name: "Medication Administration", nameHe: "מתן תרופות", scope: "pet", unitPriceCents: 2000, icon: "💊" },
+    { code: "daily_photos", name: "Daily Photo Updates", nameHe: "עדכוני תמונות יומיים", scope: "booking", unitPriceCents: 1000, icon: "📷" },
+    { code: "mail_handling", name: "Mail Collection", nameHe: "איסוף דואר", scope: "booking", unitPriceCents: 500, icon: "📬" },
+    { code: "plant_watering", name: "Plant Watering", nameHe: "השקיית צמחים", scope: "booking", unitPriceCents: 500, icon: "🪴" },
+  ],
+  training: [
+    { code: "training_report", name: "Training Report", nameHe: "דוח אימון", scope: "booking", unitPriceCents: 1500, icon: "📋" },
+    { code: "training_kit", name: "Training Kit", nameHe: "ערכת אימון", scope: "booking", unitPriceCents: 3000, icon: "🎒" },
+    { code: "video_recap", name: "Video Recap", nameHe: "סיכום וידאו", scope: "booking", unitPriceCents: 2000, icon: "🎥" },
+  ],
+  daycare: [
+    { code: "daily_photos", name: "Daily Photo Updates", nameHe: "עדכוני תמונות יומיים", scope: "booking", unitPriceCents: 1000, icon: "📷" },
+    { code: "special_meal", name: "Special Meal Prep", nameHe: "הכנת ארוחה מיוחדת", scope: "pet", unitPriceCents: 2000, icon: "🥣" },
+  ],
+  default: [
+    { code: "daily_photos", name: "Daily Photo Updates", nameHe: "עדכוני תמונות יומיים", scope: "booking", unitPriceCents: 1000, icon: "📷" },
+    { code: "extra_care", name: "Extra Attention", nameHe: "תשומת לב נוספת", scope: "pet", unitPriceCents: 2500, icon: "❤️" },
+  ],
+};
+
+const CARE_FIELDS_BY_SERVICE: Record<string, string[]> = {
+  pet_sitting:   ["size", "medication", "behavior", "special_needs", "feeding_instructions", "notes"],
+  house_sitting: ["size", "medication", "behavior", "special_needs", "feeding_instructions", "notes"],
+  dog_walking:   ["size", "behavior", "leash_trained", "dog_park", "notes"],
+  grooming:      ["size", "coat_type", "last_groomed", "medication", "special_needs", "notes"],
+  training:      ["size", "behavior", "current_skills", "training_goals", "notes"],
+  daycare:       ["size", "medication", "behavior", "feeding_instructions", "notes"],
+  pet_taxi:      ["size", "notes"],
+  k9000_wash:    ["size", "notes"],
+};
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function petEmoji(species: string): string {
+  if (species === "dog") return "🐕";
+  if (species === "cat") return "🐈";
+  if (species === "rabbit") return "🐇";
+  if (species === "bird") return "🐦";
+  return "🐾";
+}
+
+function speciesToPetType(species: string): PetType {
+  if (species === "dog") return "dog";
+  if (species === "cat") return "cat";
+  return "other";
+}
+
+function formatILS(cents: number): string {
+  return `₪${(cents / 100).toFixed(0)}`;
+}
+
+
+function providerTypeToType(serviceType: string): string {
+  if (["pet_sitting", "house_sitting", "daycare"].includes(serviceType)) return "sitter";
+  if (serviceType === "dog_walking") return "walker";
+  if (serviceType === "grooming") return "groomer";
+  if (serviceType === "training") return "trainer";
+  if (serviceType === "k9000_wash") return "k9000";
+  return "sitter";
+}
+
+function serviceTypeToPlatform(serviceType: string): string {
+  const map: Record<string, string> = {
+    pet_sitting: "sitter_suite",
+    house_sitting: "sitter_suite",
+    daycare: "sitter_suite",
+    dog_walking: "walk_my_pet",
+    grooming: "groomers",
+    training: "academy",
+    pet_taxi: "pettrek",
+    k9000_wash: "k9000",
+  };
+  return map[serviceType] || "sitter_suite";
+}
+
+function serviceTypeLabel(serviceType: string): string {
+  const map: Record<string, string> = {
+    pet_sitting: "שמרטפות לחיות",
+    house_sitting: "שמירת בית",
+    daycare: "פנסיון יומי",
+    dog_walking: "הליכת כלבים",
+    grooming: "טיפוח",
+    training: "אילוף",
+    pet_taxi: "מונית לחיות",
+    k9000_wash: "רחצה עצמאית",
+  };
+  return map[serviceType] || serviceType;
+}
+
+// ── useQuotePreview hook ─────────────────────────────────────────────────────
+
+interface QuoteState {
+  loading: boolean;
+  data: any | null;
+  error: string | null;
+}
+
+function useQuotePreview(
+  enabled: boolean,
+  payload: object,
+  deps: any[]
+): QuoteState {
+  const [state, setState] = useState<QuoteState>({ loading: false, data: null, error: null });
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+
+  useEffect(() => {
+    if (!enabled) return;
+    setState(s => ({ ...s, loading: true, error: null }));
+
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(async () => {
+      try {
+        const res = await apiRequest("POST", "/api/quotes/preview", payload);
+        const json = await res.json();
+        if (!mountedRef.current) return;
+        if (json.success) {
+          setState({ loading: false, data: json, error: null });
+        } else {
+          setState({ loading: false, data: null, error: json.error || "Quote failed" });
+        }
+      } catch (e: any) {
+        if (!mountedRef.current) return;
+        setState({ loading: false, data: null, error: "Network error" });
+      }
+    }, 600);
+
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  return state;
+}
+
+// ── ProgressBar ──────────────────────────────────────────────────────────────
+
+function ProgressBar({ currentStep }: { currentStep: WizardStep }) {
+  const idx = STEPS.indexOf(currentStep);
+  return (
+    <div className="flex items-center gap-1 px-4 py-3 border-b border-gray-100">
+      {STEPS.map((step, i) => (
+        <div key={step} className="flex items-center flex-1">
+          <div className="flex flex-col items-center flex-1">
+            <div
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                i < idx
+                  ? "bg-[#C5A55A] text-white"
+                  : i === idx
+                  ? "bg-[#C5A55A] text-white ring-2 ring-[#C5A55A]/30"
+                  : "bg-gray-100 text-gray-400"
+              }`}
+            >
+              {i < idx ? <Check className="w-3 h-3" /> : i + 1}
+            </div>
+            <span className={`text-[10px] mt-0.5 ${i === idx ? "text-[#C5A55A] font-semibold" : "text-gray-400"}`}>
+              {STEP_LABELS[step]}
+            </span>
+          </div>
+          {i < STEPS.length - 1 && (
+            <div className={`h-px flex-1 mx-1 ${i < idx ? "bg-[#C5A55A]" : "bg-gray-200"}`} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── QuoteMiniBar ─────────────────────────────────────────────────────────────
+
+function QuoteMiniBar({ quote, loading }: { quote: any | null; loading: boolean }) {
+  if (!quote && !loading) return null;
+  return (
+    <div className="bg-[#C5A55A]/10 border-t border-[#C5A55A]/20 px-4 py-2 flex items-center justify-between">
+      <span className="text-xs text-[#C5A55A] font-medium">סה"כ משוער</span>
+      {loading ? (
+        <span className="text-xs text-gray-400 flex items-center gap-1">
+          <Loader2 className="w-3 h-3 animate-spin" /> מחשב...
+        </span>
+      ) : quote ? (
+        <span className="text-sm font-bold text-[#C5A55A]">{formatILS(quote.totals.totalCents)}</span>
+      ) : null}
+    </div>
+  );
+}
+
+// ── ScheduleStep ─────────────────────────────────────────────────────────────
+
+function ScheduleStep({
+  serviceType,
+  provider,
+  startDate, setStartDate,
+  endDate, setEndDate,
+  startTime, setStartTime,
+  endTime, setEndTime,
+}: {
+  serviceType: string;
+  provider: any;
+  startDate: string; setStartDate: (v: string) => void;
+  endDate: string; setEndDate: (v: string) => void;
+  startTime: string; setStartTime: (v: string) => void;
+  endTime: string; setEndTime: (v: string) => void;
+}) {
+  const isMultiDay = ["pet_sitting", "house_sitting", "daycare"].includes(serviceType);
+  const isHourly = ["dog_walking", "training", "pet_taxi"].includes(serviceType);
+
+  return (
+    <div className="p-4 space-y-5">
+      {/* Provider card */}
+      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+        {provider?.photoUrl ? (
+          <img src={provider.photoUrl} alt={provider.name} className="w-12 h-12 rounded-full object-cover" />
+        ) : (
+          <div className="w-12 h-12 rounded-full bg-[#C5A55A]/20 flex items-center justify-center text-xl">🐾</div>
+        )}
+        <div>
+          <p className="font-semibold text-gray-900">{provider?.name || "בוחר..."}</p>
+          <p className="text-xs text-gray-500">{provider?.serviceLabel || serviceTypeLabel(serviceType)}</p>
+        </div>
+        {provider?.rating && (
+          <div className="mr-auto flex items-center gap-1 text-sm text-[#C5A55A] font-semibold">
+            <Star className="w-3.5 h-3.5 fill-[#C5A55A]" /> {provider.rating}
+          </div>
+        )}
+      </div>
+
+      {/* Date picker */}
+      <div className="space-y-3">
+        <h3 className="font-semibold text-gray-800">
+          {isMultiDay ? "תאריכי שהות" : isHourly ? "תאריך ושעה" : "תאריך שירות"}
+        </h3>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs text-gray-500 mb-1 block">
+              {isMultiDay ? "כניסה" : "תאריך"}
+            </Label>
+            <input
+              type="date"
+              value={startDate}
+              min={new Date().toISOString().split("T")[0]}
+              onChange={e => setStartDate(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30"
+            />
+          </div>
+          {isMultiDay && (
+            <div>
+              <Label className="text-xs text-gray-500 mb-1 block">יציאה</Label>
+              <input
+                type="date"
+                value={endDate}
+                min={startDate || new Date().toISOString().split("T")[0]}
+                onChange={e => setEndDate(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30"
+              />
+            </div>
+          )}
+          {!isMultiDay && (
+            <div>
+              <Label className="text-xs text-gray-500 mb-1 block">שעת התחלה</Label>
+              <input
+                type="time"
+                value={startTime}
+                onChange={e => setStartTime(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30"
+              />
+            </div>
+          )}
+        </div>
+        {isHourly && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-gray-500 mb-1 block">שעת סיום</Label>
+              <input
+                type="time"
+                value={endTime}
+                onChange={e => setEndTime(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30"
+              />
+            </div>
+          </div>
+        )}
+        {isMultiDay && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-gray-500 mb-1 block">שעת כניסה</Label>
+              <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30" />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500 mb-1 block">שעת יציאה</Label>
+              <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30" />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── PetsStep ─────────────────────────────────────────────────────────────────
+
+function PetsStep({
+  pets,
+  petsLoading,
+  selectedPetIds,
+  onTogglePet,
+}: {
+  pets: UserPet[];
+  petsLoading: boolean;
+  selectedPetIds: number[];
+  onTogglePet: (id: number) => void;
+}) {
+  const [, setLocation] = useLocation();
+
+  if (petsLoading) {
+    return (
+      <div className="p-8 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-[#C5A55A]" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 space-y-4">
+      <div>
+        <h3 className="font-semibold text-gray-800">בחר חיות מחמד</h3>
+        <p className="text-xs text-gray-500 mt-0.5">ניתן לבחור יותר מחיה אחת</p>
+      </div>
+
+      {pets.length === 0 ? (
+        <div className="text-center py-8 space-y-3">
+          <div className="text-4xl">🐾</div>
+          <p className="text-sm text-gray-500">אין חיות מחמד רשומות</p>
+          <Button variant="outline" size="sm" onClick={() => setLocation("/pets")} className="border-[#C5A55A] text-[#C5A55A]">
+            <Plus className="w-3.5 h-3.5 mr-1" /> הוסף חיית מחמד
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {pets.map(pet => {
+            const selected = selectedPetIds.includes(pet.id);
+            return (
+              <button
+                key={pet.id}
+                onClick={() => onTogglePet(pet.id)}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-right ${
+                  selected
+                    ? "border-[#C5A55A] bg-[#C5A55A]/5"
+                    : "border-gray-100 bg-white hover:border-gray-200"
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${selected ? "bg-[#C5A55A]/20" : "bg-gray-100"}`}>
+                  {pet.photoUrl
+                    ? <img src={pet.photoUrl} alt={pet.name} className="w-10 h-10 rounded-full object-cover" />
+                    : petEmoji(pet.species)
+                  }
+                </div>
+                <div className="flex-1 text-right">
+                  <p className="font-semibold text-sm text-gray-900">{pet.name}</p>
+                  <p className="text-xs text-gray-500">{pet.breed || pet.species}</p>
+                </div>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                  selected ? "bg-[#C5A55A] border-[#C5A55A]" : "border-gray-300"
+                }`}>
+                  {selected && <Check className="w-3 h-3 text-white" />}
+                </div>
+              </button>
+            );
+          })}
+
+          <button
+            onClick={() => setLocation("/pets?return=/booking")}
+            className="w-full flex items-center gap-3 p-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 hover:border-[#C5A55A]/40 hover:text-[#C5A55A] transition-all"
+          >
+            <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
+              <Plus className="w-4 h-4" />
+            </div>
+            <span className="text-sm">הוסף חיית מחמד חדשה</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── CareStep ─────────────────────────────────────────────────────────────────
+
+function CareStep({
+  petCares,
+  onUpdateCare,
+  serviceType,
+}: {
+  petCares: PetCareInfo[];
+  onUpdateCare: (clientRef: string, updates: Partial<PetCareInfo>) => void;
+  serviceType: string;
+}) {
+  const fields = CARE_FIELDS_BY_SERVICE[serviceType] || CARE_FIELDS_BY_SERVICE.pet_sitting;
+  const [activeTab, setActiveTab] = useState(petCares[0]?.clientRef || "0");
+
+  return (
+    <div className="p-4 space-y-4">
+      <div>
+        <h3 className="font-semibold text-gray-800">פרטי טיפול</h3>
+        <p className="text-xs text-gray-500 mt-0.5">מלא פרטים לכל חיית מחמד בנפרד</p>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="w-full bg-gray-50 rounded-xl p-1">
+          {petCares.map(pc => (
+            <TabsTrigger
+              key={pc.clientRef}
+              value={pc.clientRef}
+              className="flex-1 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg"
+            >
+              <span className="mr-1">{petEmoji(pc.petType)}</span>
+              {pc.petName.split(" ")[0]}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {petCares.map(pc => (
+          <TabsContent key={pc.clientRef} value={pc.clientRef} className="space-y-4 mt-3">
+            <PetCareForm
+              care={pc}
+              fields={fields}
+              onChange={updates => onUpdateCare(pc.clientRef, updates)}
+            />
+          </TabsContent>
+        ))}
+      </Tabs>
+    </div>
+  );
+}
+
+function PetCareForm({
+  care,
+  fields,
+  onChange,
+}: {
+  care: PetCareInfo;
+  fields: string[];
+  onChange: (updates: Partial<PetCareInfo>) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      {/* Size */}
+      {fields.includes("size") && (
+        <div>
+          <Label className="text-sm font-medium text-gray-700 mb-2 block">גודל</Label>
+          <div className="grid grid-cols-4 gap-1.5">
+            {SIZE_OPTIONS.map(s => (
+              <button
+                key={s.value}
+                onClick={() => onChange({ sizeCategory: s.value })}
+                className={`flex flex-col items-center p-2 rounded-lg border-2 transition-all text-center ${
+                  care.sizeCategory === s.value
+                    ? "border-[#C5A55A] bg-[#C5A55A]/5"
+                    : "border-gray-100 hover:border-gray-200"
+                }`}
+              >
+                <span className="text-xs font-semibold text-gray-800">{s.label}</span>
+                <span className="text-[10px] text-gray-400 mt-0.5">{s.sub}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Coat type */}
+      {fields.includes("coat_type") && (
+        <div>
+          <Label className="text-sm font-medium text-gray-700 mb-1 block">סוג פרווה</Label>
+          <Select value={care.coatType || ""} onValueChange={v => onChange({ coatType: v })}>
+            <SelectTrigger className="border-gray-200 focus:ring-[#C5A55A]/30">
+              <SelectValue placeholder="בחר סוג פרווה..." />
+            </SelectTrigger>
+            <SelectContent>
+              {COAT_TYPES.map(ct => (
+                <SelectItem key={ct.value} value={ct.value}>{ct.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Last groomed date */}
+      {fields.includes("last_groomed") && (
+        <div>
+          <Label className="text-sm font-medium text-gray-700 mb-1 block">תאריך טיפוח אחרון</Label>
+          <input
+            type="date"
+            value={care.lastGroomedDate || ""}
+            onChange={e => onChange({ lastGroomedDate: e.target.value })}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30"
+          />
+        </div>
+      )}
+
+      {/* Boolean flags */}
+      {fields.includes("medication") && (
+        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+          <div className="flex items-center gap-2">
+            <Pill className="w-4 h-4 text-blue-500" />
+            <div>
+              <p className="text-sm font-medium text-gray-800">זקוק לתרופות</p>
+              <p className="text-xs text-gray-500">יש לציין פרטים בהערות</p>
+            </div>
+          </div>
+          <Switch
+            checked={care.requiresMedication}
+            onCheckedChange={v => onChange({ requiresMedication: v })}
+            className="data-[state=checked]:bg-[#C5A55A]"
+          />
+        </div>
+      )}
+
+      {fields.includes("behavior") && (
+        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
+            <div>
+              <p className="text-sm font-medium text-gray-800">דגל התנהגותי</p>
+              <p className="text-xs text-gray-500">אגרסיביות, פחדנות וכו׳</p>
+            </div>
+          </div>
+          <Switch
+            checked={care.hasBehaviorFlag}
+            onCheckedChange={v => onChange({ hasBehaviorFlag: v })}
+            className="data-[state=checked]:bg-[#C5A55A]"
+          />
+        </div>
+      )}
+
+      {fields.includes("special_needs") && (
+        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-purple-500" />
+            <div>
+              <p className="text-sm font-medium text-gray-800">צרכים מיוחדים</p>
+              <p className="text-xs text-gray-500">נכות, קשיש, ריפוי וכו׳</p>
+            </div>
+          </div>
+          <Switch
+            checked={care.hasSpecialNeeds}
+            onCheckedChange={v => onChange({ hasSpecialNeeds: v })}
+            className="data-[state=checked]:bg-[#C5A55A]"
+          />
+        </div>
+      )}
+
+      {fields.includes("leash_trained") && (
+        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🐕</span>
+            <p className="text-sm font-medium text-gray-800">מאולף לרצועה</p>
+          </div>
+          <Switch
+            checked={!!care.leashTrained}
+            onCheckedChange={v => onChange({ leashTrained: v })}
+            className="data-[state=checked]:bg-[#C5A55A]"
+          />
+        </div>
+      )}
+
+      {fields.includes("dog_park") && (
+        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🌳</span>
+            <p className="text-sm font-medium text-gray-800">מתאים לפארק כלבים</p>
+          </div>
+          <Switch
+            checked={!!care.dogParkOk}
+            onCheckedChange={v => onChange({ dogParkOk: v })}
+            className="data-[state=checked]:bg-[#C5A55A]"
+          />
+        </div>
+      )}
+
+      {/* Text fields */}
+      {fields.includes("feeding_instructions") && (
+        <div>
+          <Label className="text-sm font-medium text-gray-700 mb-1 block">הוראות האכלה</Label>
+          <Textarea
+            placeholder="כמויות, תדירות, אלרגיות למזון..."
+            value={care.feedingInstructions || ""}
+            onChange={e => onChange({ feedingInstructions: e.target.value })}
+            className="text-sm border-gray-200 focus:ring-[#C5A55A]/30 resize-none"
+            rows={2}
+          />
+        </div>
+      )}
+
+      {fields.includes("current_skills") && (
+        <div>
+          <Label className="text-sm font-medium text-gray-700 mb-1 block">כישורים נוכחיים</Label>
+          <Textarea
+            placeholder="ישיבה, עמידה, הליכה..."
+            value={care.currentSkills || ""}
+            onChange={e => onChange({ currentSkills: e.target.value })}
+            className="text-sm border-gray-200 focus:ring-[#C5A55A]/30 resize-none"
+            rows={2}
+          />
+        </div>
+      )}
+
+      {fields.includes("training_goals") && (
+        <div>
+          <Label className="text-sm font-medium text-gray-700 mb-1 block">מטרות אימון</Label>
+          <Textarea
+            placeholder="מה תרצה להשיג בסשן הזה?"
+            value={care.trainingGoals || ""}
+            onChange={e => onChange({ trainingGoals: e.target.value })}
+            className="text-sm border-gray-200 focus:ring-[#C5A55A]/30 resize-none"
+            rows={2}
+          />
+        </div>
+      )}
+
+      {fields.includes("notes") && (
+        <div>
+          <Label className="text-sm font-medium text-gray-700 mb-1 block">הערות נוספות</Label>
+          <Textarea
+            placeholder="כל מה שהמטפל צריך לדעת..."
+            value={care.specialNotes || ""}
+            onChange={e => onChange({ specialNotes: e.target.value })}
+            className="text-sm border-gray-200 focus:ring-[#C5A55A]/30 resize-none"
+            rows={3}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── AddonsStep ───────────────────────────────────────────────────────────────
+
+function AddonsStep({
+  serviceType,
+  petCares,
+  selectedAddons,
+  onToggleAddon,
+}: {
+  serviceType: string;
+  petCares: PetCareInfo[];
+  selectedAddons: SelectedAddon[];
+  onToggleAddon: (addon: AddonCatalogEntry, petRef?: string) => void;
+}) {
+  const catalog = ADDON_CATALOG[serviceType] || ADDON_CATALOG.default;
+  const bookingAddons = catalog.filter(a => a.scope === "booking");
+  const petAddons = catalog.filter(a => a.scope === "pet");
+
+  function isSelected(code: string, petRef?: string): boolean {
+    return selectedAddons.some(a => a.addonCode === code && a.petRef === petRef);
+  }
+
+  return (
+    <div className="p-4 space-y-5">
+      <div>
+        <h3 className="font-semibold text-gray-800">תוספות ושירותים נוספים</h3>
+        <p className="text-xs text-gray-500 mt-0.5">אופציונלי — ניתן לדלג</p>
+      </div>
+
+      {/* Booking-level addons */}
+      {bookingAddons.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">לכל ההזמנה</p>
+          {bookingAddons.map(addon => {
+            const selected = isSelected(addon.code);
+            return (
+              <button
+                key={addon.code}
+                onClick={() => onToggleAddon(addon)}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-right ${
+                  selected ? "border-[#C5A55A] bg-[#C5A55A]/5" : "border-gray-100 bg-white hover:border-gray-200"
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${selected ? "bg-[#C5A55A]/20" : "bg-gray-50"}`}>
+                  {addon.icon}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-800">{addon.nameHe}</p>
+                  <p className="text-xs text-gray-500">להזמנה כולה</p>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="text-sm font-bold text-[#C5A55A]">{formatILS(addon.unitPriceCents)}</span>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? "bg-[#C5A55A] border-[#C5A55A]" : "border-gray-300"}`}>
+                    {selected && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Per-pet addons */}
+      {petAddons.length > 0 && petCares.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">לפי חיית מחמד</p>
+          {petCares.map(pc => (
+            <div key={pc.clientRef} className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm">{petEmoji(pc.petType)}</span>
+                <span className="text-xs font-semibold text-gray-600">{pc.petName}</span>
+              </div>
+              {petAddons.map(addon => {
+                const selected = isSelected(addon.code, pc.clientRef);
+                return (
+                  <button
+                    key={`${addon.code}-${pc.clientRef}`}
+                    onClick={() => onToggleAddon(addon, pc.clientRef)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-right mr-2 ${
+                      selected ? "border-[#C5A55A] bg-[#C5A55A]/5" : "border-gray-100 bg-white hover:border-gray-200"
+                    }`}
+                  >
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${selected ? "bg-[#C5A55A]/20" : "bg-gray-50"}`}>
+                      {addon.icon}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-800">{addon.nameHe}</p>
+                      <p className="text-xs text-gray-500">עבור {pc.petName}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-sm font-bold text-[#C5A55A]">{formatILS(addon.unitPriceCents)}</span>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? "bg-[#C5A55A] border-[#C5A55A]" : "border-gray-300"}`}>
+                        {selected && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {bookingAddons.length === 0 && petAddons.length === 0 && (
+        <div className="text-center py-6 text-gray-400 text-sm">אין תוספות זמינות לשירות זה</div>
+      )}
+    </div>
+  );
+}
+
+// ── ConfirmStep (Quote + Submit) ─────────────────────────────────────────────
+
+function ConfirmStep({
+  quote,
+  quoteLoading,
+  quoteError,
+  petCares,
+  selectedAddons,
+  startDate,
+  endDate,
+  message, setMessage,
+  promoCode, setPromoCode,
+  provider,
+  onSubmit,
+  isSubmitting,
+}: {
+  quote: any | null;
+  quoteLoading: boolean;
+  quoteError: string | null;
+  petCares: PetCareInfo[];
+  selectedAddons: SelectedAddon[];
+  startDate: string;
+  endDate: string;
+  message: string; setMessage: (v: string) => void;
+  promoCode: string; setPromoCode: (v: string) => void;
+  provider: any;
+  onSubmit: () => void;
+  isSubmitting: boolean;
+}) {
+  return (
+    <div className="p-4 space-y-5">
+      {/* Summary cards */}
+      <div className="space-y-3">
+        {/* Date summary */}
+        <div className="p-3 bg-gray-50 rounded-xl flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-[#C5A55A]" />
+          <div>
+            <p className="text-xs text-gray-500">תאריכים</p>
+            <p className="text-sm font-medium text-gray-800">
+              {startDate} {endDate && endDate !== startDate ? `← ${endDate}` : ""}
+            </p>
+          </div>
+        </div>
+
+        {/* Pets summary */}
+        <div className="p-3 bg-gray-50 rounded-xl">
+          <p className="text-xs text-gray-500 mb-2">חיות מחמד ({petCares.length})</p>
+          <div className="flex flex-wrap gap-2">
+            {petCares.map(pc => (
+              <Badge
+                key={pc.clientRef}
+                variant="outline"
+                className="border-[#C5A55A]/30 text-gray-700 bg-white"
+              >
+                {petEmoji(pc.petType)} {pc.petName}
+                {pc.requiresMedication && <Pill className="w-3 h-3 mr-1 text-blue-400" />}
+                {pc.hasBehaviorFlag && <AlertTriangle className="w-3 h-3 mr-1 text-amber-400" />}
+              </Badge>
+            ))}
+          </div>
+        </div>
+
+        {/* Addons summary */}
+        {selectedAddons.length > 0 && (
+          <div className="p-3 bg-gray-50 rounded-xl">
+            <p className="text-xs text-gray-500 mb-2">תוספות ({selectedAddons.length})</p>
+            <div className="space-y-1">
+              {selectedAddons.map((a, i) => (
+                <div key={i} className="flex items-center justify-between text-sm">
+                  <span className="text-gray-700">{a.addonName}</span>
+                  {a.petRef && (
+                    <span className="text-xs text-gray-400 mr-1">
+                      ({petCares.find(pc => pc.clientRef === a.petRef)?.petName || ""})
+                    </span>
+                  )}
+                  <span className="font-medium text-gray-800">{formatILS(a.unitPriceCents)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Promo code */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          placeholder="קוד קופון (אופציונלי)"
+          value={promoCode}
+          onChange={e => setPromoCode(e.target.value.toUpperCase())}
+          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30"
+          dir="ltr"
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-[#C5A55A] text-[#C5A55A] shrink-0"
+          disabled={!promoCode}
+        >
+          הפעל
+        </Button>
+      </div>
+
+      {/* Quote breakdown */}
+      <div className="border border-gray-100 rounded-xl overflow-hidden">
+        <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+          <span className="text-sm font-semibold text-gray-700">פירוט עלות</span>
+          {quoteLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-[#C5A55A]" />}
+        </div>
+
+        {quoteLoading ? (
+          <div className="p-6 text-center text-sm text-gray-400">מחשב מחיר...</div>
+        ) : quoteError ? (
+          <div className="p-4 text-sm text-red-500">{quoteError}</div>
+        ) : quote ? (
+          <div className="p-4 space-y-2">
+            {/* Pet line items */}
+            {quote.lineItems?.pets?.map((li: any, i: number) => (
+              <div key={i} className="flex justify-between text-sm">
+                <span className="text-gray-600">{li.label}</span>
+                <span className="font-medium">{formatILS(li.subtotalPriceCents)}</span>
+              </div>
+            ))}
+
+            {/* Addon line items */}
+            {quote.lineItems?.addons?.map((li: any, i: number) => (
+              <div key={i} className="flex justify-between text-sm">
+                <span className="text-gray-500">{li.addonName}
+                  {li.scope === "pet" && li.petRef != null && (
+                    <span className="text-xs text-gray-400"> ({petCares.find(pc => pc.clientRef === li.petRef)?.petName || ""})</span>
+                  )}
+                </span>
+                <span className="font-medium">{formatILS(li.subtotalPriceCents)}</span>
+              </div>
+            ))}
+
+            <div className="border-t border-gray-100 pt-2 mt-2 space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">סכום ביניים</span>
+                <span>{formatILS(quote.totals.subtotalCents)}</span>
+              </div>
+              {quote.totals.discountCents > 0 && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>הנחה</span>
+                  <span>-{formatILS(quote.totals.discountCents)}</span>
+                </div>
+              )}
+              {quote.totals.giftCardAppliedCents > 0 && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>כרטיס מתנה</span>
+                  <span>-{formatILS(quote.totals.giftCardAppliedCents)}</span>
+                </div>
+              )}
+              {quote.totals.walletCreditAppliedCents > 0 && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>קרדיט ארנק</span>
+                  <span>-{formatILS(quote.totals.walletCreditAppliedCents)}</span>
+                </div>
+              )}
+              {quote.totals.taxCents > 0 && (
+                <div className="flex justify-between text-sm text-gray-500">
+                  <span>מע"מ</span>
+                  <span>{formatILS(quote.totals.taxCents)}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-gray-200 pt-3 flex justify-between">
+              <span className="font-bold text-gray-900">לתשלום</span>
+              <span className="font-bold text-xl text-[#C5A55A]">{formatILS(quote.totals.totalCents)}</span>
+            </div>
+
+            {/* Warnings */}
+            {quote.warnings?.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {quote.warnings.map((w: string, i: number) => (
+                  <div key={i} className="flex items-start gap-1.5 text-xs text-amber-600 bg-amber-50 px-2 py-1.5 rounded-lg">
+                    <Info className="w-3 h-3 mt-0.5 shrink-0" />
+    {w}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <p className="text-[10px] text-gray-400 text-center mt-1">
+              גרסת תמחור: {quote.pricingVersion} · {quote.durationLabel}
+            </p>
+          </div>
+        ) : (
+          <div className="p-4 text-sm text-gray-400 text-center">הוסף פרטי הזמנה לקבלת הצעת מחיר</div>
+        )}
+      </div>
+
+      {/* Message to provider */}
+      <div>
+        <Label className="text-sm font-medium text-gray-700 mb-1 block">הודעה לנותן השירות (אופציונלי)</Label>
+        <Textarea
+          placeholder="ספר לנו על הצרכים המיוחדים שלך..."
+          value={message}
+          onChange={e => setMessage(e.target.value)}
+          className="text-sm border-gray-200 focus:ring-[#C5A55A]/30 resize-none"
+          rows={2}
+        />
+      </div>
+
+      {/* Submit */}
+      <Button
+        onClick={onSubmit}
+        disabled={isSubmitting || quoteLoading || !quote}
+        className="w-full bg-[#C5A55A] hover:bg-[#b8945a] text-white font-semibold py-3 rounded-xl"
+      >
+        {isSubmitting ? (
+          <><Loader2 className="w-4 h-4 animate-spin mr-2" />שולח בקשת הזמנה...</>
+        ) : (
+          "שלח בקשת הזמנה →"
+        )}
+      </Button>
+
+      <p className="text-xs text-gray-400 text-center">
+        <Shield className="w-3 h-3 inline mr-1" />
+        ההזמנה תאושר רק לאחר אישור נותן השירות
+      </p>
+    </div>
+  );
+}
+
+// ── Main Wizard ───────────────────────────────────────────────────────────────
+
+export default function MultiPetBookingWizard() {
+  const { serviceType, providerId } = useParams<{ serviceType: string; providerId: string }>();
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const { user } = useFirebaseAuth();
+
+  // ── Step state ──────────────────────────────────────────────────────────────
+  const [step, setStep] = useState<WizardStep>("schedule");
+
+  // ── Schedule state ──────────────────────────────────────────────────────────
+  const today = new Date().toISOString().split("T")[0];
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(today);
+  const [startTime, setStartTime] = useState("10:00");
+  const [endTime, setEndTime] = useState("11:00");
+
+  // ── Pets state ──────────────────────────────────────────────────────────────
+  const [selectedPetIds, setSelectedPetIds] = useState<number[]>([]);
+  const [petCares, setPetCares] = useState<PetCareInfo[]>([]);
+
+  // ── Addons state ────────────────────────────────────────────────────────────
+  const [selectedAddons, setSelectedAddons] = useState<SelectedAddon[]>([]);
+
+  // ── Confirm state ───────────────────────────────────────────────────────────
+  const [message, setMessage] = useState("");
+  const [promoCode, setPromoCode] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ── Queries ─────────────────────────────────────────────────────────────────
+  const platform = serviceType ? serviceTypeToPlatform(serviceType) : null;
+  const providerApiKey = platform && providerId
+    ? `/api/marketplace/provider/${platform}/${providerId}`
+    : null;
+
+  const { data: providerData } = useQuery({
+    queryKey: [providerApiKey],
+    enabled: !!providerApiKey,
+  });
+
+  const { data: petsData, isLoading: petsLoading } = useQuery({
+    queryKey: ["/api/pets"],
+    enabled: !!user,
+  });
+
+  const rawProvider = (providerData as any)?.provider || (providerData as any);
+  const provider = rawProvider ? {
+    ...rawProvider,
+    name: rawProvider.name || [rawProvider.firstName, rawProvider.lastName].filter(Boolean).join(" ") || "ספק שירות",
+    photoUrl: rawProvider.photoUrl || rawProvider.profilePictureUrl,
+    rating: rawProvider.rating || rawProvider.averageRating,
+    serviceLabel: rawProvider.serviceLabel || serviceTypeLabel(serviceType || ""),
+  } : null;
+  const pets: UserPet[] = Array.isArray(petsData) ? petsData : ((petsData as any)?.pets || []);
+
+  // Auto-select single pet
+  useEffect(() => {
+    if (pets.length === 1 && selectedPetIds.length === 0) {
+      setSelectedPetIds([pets[0].id]);
+    }
+  }, [pets, selectedPetIds.length]);
+
+  // ── Sync petCares when selection changes ────────────────────────────────────
+  useEffect(() => {
+    setPetCares(prev => {
+      const result: PetCareInfo[] = selectedPetIds.map((pid, i) => {
+        const existing = prev.find(c => c.petId === pid);
+        if (existing) return { ...existing, clientRef: String(i) };
+        const pet = pets.find(p => p.id === pid);
+        return {
+          petId: pid,
+          clientRef: String(i),
+          petName: pet?.name || `Pet ${i + 1}`,
+          petType: speciesToPetType(pet?.species || "dog"),
+          breed: pet?.breed,
+          sizeCategory: "medium",
+          ageYears: pet?.ageYears,
+          weightKg: pet?.weightKg,
+          gender: pet?.gender,
+          requiresMedication: false,
+          hasBehaviorFlag: false,
+          hasSpecialNeeds: false,
+          specialNotes: "",
+        };
+      });
+      return result;
+    });
+  }, [selectedPetIds, pets]);
+
+  // ── Build start/end ISO timestamps ─────────────────────────────────────────
+  const startISO = (() => {
+    try { return new Date(`${startDate}T${startTime}`).toISOString(); } catch { return ""; }
+  })();
+  const endISO = (() => {
+    const isMultiDay = ["pet_sitting", "house_sitting", "daycare"].includes(serviceType || "");
+    const ed = isMultiDay ? endDate : startDate;
+    const et = isMultiDay ? endTime : endTime;
+    try { return new Date(`${ed}T${et}`).toISOString(); } catch { return ""; }
+  })();
+
+  // ── Quote preview ───────────────────────────────────────────────────────────
+  const quoteEnabled = step === "confirm" && petCares.length > 0 && !!startISO && !!endISO && !!providerId;
+
+  const quotePayload = {
+    providerId: providerId || "",
+    serviceType: serviceType || "",
+    bookingWindow: { startAt: startISO, endAt: endISO },
+    pets: petCares.map(pc => ({
+      clientRef: pc.clientRef,
+      petId: String(pc.petId),
+      petName: pc.petName,
+      petType: pc.petType,
+      breed: pc.breed || null,
+      sizeCategory: pc.sizeCategory,
+      ageYears: pc.ageYears || null,
+      weightKg: pc.weightKg || null,
+      gender: pc.gender || null,
+      requiresMedication: pc.requiresMedication,
+      hasBehaviorFlag: pc.hasBehaviorFlag,
+      hasSpecialNeeds: pc.hasSpecialNeeds,
+    })),
+    addons: selectedAddons.map(a => ({
+      addonCode: a.addonCode,
+      scope: a.scope,
+      petRef: a.petRef || null,
+      quantity: a.quantity,
+    })),
+    promoCode: promoCode || null,
+    userId: user?.uid || null,
+  };
+
+  const quoteDeps = [
+    quoteEnabled,
+    startISO,
+    endISO,
+    JSON.stringify(petCares.map(p => ({ ref: p.clientRef, size: p.sizeCategory, med: p.requiresMedication, beh: p.hasBehaviorFlag, sn: p.hasSpecialNeeds }))),
+    JSON.stringify(selectedAddons.map(a => a.addonCode + a.petRef)),
+    promoCode,
+  ];
+
+  const { loading: quoteLoading, data: quoteData, error: quoteError } = useQuotePreview(
+    quoteEnabled,
+    quotePayload,
+    quoteDeps
+  );
+
+  // ── Navigation ──────────────────────────────────────────────────────────────
+  const stepIdx = STEPS.indexOf(step);
+
+  function canGoNext(): boolean {
+    if (step === "schedule") {
+      return !!startDate && !!startISO && !!endISO;
+    }
+    if (step === "pets") return selectedPetIds.length > 0;
+    if (step === "care") return petCares.every(pc => !!pc.sizeCategory);
+    return true; // addons + confirm always ok
+  }
+
+  function goNext() {
+    if (!canGoNext()) {
+      toast({ title: "חסרים פרטים", description: "אנא מלא את כל השדות הנדרשים", variant: "destructive" });
+      return;
+    }
+    if (stepIdx < STEPS.length - 1) setStep(STEPS[stepIdx + 1]);
+  }
+
+  function goBack() {
+    if (stepIdx > 0) setStep(STEPS[stepIdx - 1]);
+    else setLocation(-1 as any);
+  }
+
+  // ── Pet care update ─────────────────────────────────────────────────────────
+  function updateCare(clientRef: string, updates: Partial<PetCareInfo>) {
+    setPetCares(prev => prev.map(c => c.clientRef === clientRef ? { ...c, ...updates } : c));
+  }
+
+  // ── Toggle pet selection ────────────────────────────────────────────────────
+  function togglePet(petId: number) {
+    setSelectedPetIds(prev =>
+      prev.includes(petId) ? prev.filter(id => id !== petId) : [...prev, petId]
+    );
+  }
+
+  // ── Toggle addon ────────────────────────────────────────────────────────────
+  function toggleAddon(addon: AddonCatalogEntry, petRef?: string) {
+    setSelectedAddons(prev => {
+      const exists = prev.findIndex(a => a.addonCode === addon.code && a.petRef === petRef);
+      if (exists >= 0) return prev.filter((_, i) => i !== exists);
+      return [...prev, {
+        addonCode: addon.code,
+        addonName: addon.nameHe,
+        scope: addon.scope,
+        petRef: petRef || undefined,
+        quantity: 1,
+        unitPriceCents: addon.unitPriceCents,
+      }];
+    });
+  }
+
+  // ── Submit ──────────────────────────────────────────────────────────────────
+  async function handleSubmit() {
+    if (!quoteData || !providerId || !serviceType) return;
+    if (!user) { toast({ title: "יש להתחבר", variant: "destructive" }); return; }
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        providerId,
+        providerType: providerTypeToType(serviceType),
+        serviceType,
+        startDate: startISO,
+        endDate: endISO,
+        petCount: petCares.length,
+        petIds: petCares.map(pc => String(pc.petId)),
+        petDetails: petCares,
+        selectedAddons,
+        finalQuote: quoteData,
+        promoCode: promoCode || undefined,
+        message: message || undefined,
+      };
+
+      const res = await apiRequest("POST", "/api/booking-requests", payload);
+      const json = await res.json();
+
+      if (!res.ok) throw new Error(json.error || "Booking failed");
+
+      toast({ title: "ההזמנה נשלחה! 🎉", description: "נותן השירות יאשר בקרוב" });
+      setLocation(`/bookings`);
+    } catch (e: any) {
+      toast({ title: "שגיאה", description: e.message || "נסה שוב", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+  return (
+    <div className="min-h-screen bg-white flex flex-col max-w-lg mx-auto">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
+        <div className="flex items-center gap-2 px-4 py-3">
+          <button onClick={goBack} className="p-1.5 rounded-full hover:bg-gray-100">
+            <ChevronRight className="w-5 h-5 text-gray-600" />
+          </button>
+          <h1 className="font-semibold text-gray-900 flex-1 text-center">הזמנה חדשה</h1>
+          <div className="w-8" />
+        </div>
+        <ProgressBar currentStep={step} />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto pb-24">
+        {step === "schedule" && (
+          <ScheduleStep
+            serviceType={serviceType || "pet_sitting"}
+            provider={provider}
+            startDate={startDate} setStartDate={setStartDate}
+            endDate={endDate} setEndDate={setEndDate}
+            startTime={startTime} setStartTime={setStartTime}
+            endTime={endTime} setEndTime={setEndTime}
+          />
+        )}
+        {step === "pets" && (
+          <PetsStep
+            pets={pets}
+            petsLoading={petsLoading}
+            selectedPetIds={selectedPetIds}
+            onTogglePet={togglePet}
+          />
+        )}
+        {step === "care" && (
+          <CareStep
+            petCares={petCares}
+            onUpdateCare={updateCare}
+            serviceType={serviceType || "pet_sitting"}
+          />
+        )}
+        {step === "addons" && (
+          <AddonsStep
+            serviceType={serviceType || "pet_sitting"}
+            petCares={petCares}
+            selectedAddons={selectedAddons}
+            onToggleAddon={toggleAddon}
+          />
+        )}
+        {step === "confirm" && (
+          <ConfirmStep
+            quote={quoteData}
+            quoteLoading={quoteLoading}
+            quoteError={quoteError}
+            petCares={petCares}
+            selectedAddons={selectedAddons}
+            startDate={startDate}
+            endDate={endDate}
+            message={message} setMessage={setMessage}
+            promoCode={promoCode} setPromoCode={setPromoCode}
+            provider={provider}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+          />
+        )}
+      </div>
+
+      {/* Mini quote bar (from addons step onward) */}
+      {(step === "addons") && (
+        <QuoteMiniBar quote={null} loading={false} />
+      )}
+
+      {/* Bottom nav */}
+      {step !== "confirm" && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 flex gap-3 max-w-lg mx-auto safe-area-bottom">
+          <Button
+            variant="outline"
+            onClick={goBack}
+            className="flex-1 border-gray-200 text-gray-700"
+          >
+            <ChevronRight className="w-4 h-4 ml-1" />
+            חזור
+          </Button>
+          <Button
+            onClick={goNext}
+            disabled={!canGoNext()}
+            className="flex-1 bg-[#C5A55A] hover:bg-[#b8945a] text-white font-semibold"
+          >
+            המשך
+            <ChevronLeft className="w-4 h-4 mr-1" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}

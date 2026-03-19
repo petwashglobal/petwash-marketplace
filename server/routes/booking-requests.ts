@@ -16,6 +16,8 @@ import { Router } from 'express';
 import { db } from '../db';
 import { 
   bookingRequests,
+  bookingRequestPets,
+  bookingRequestAddons,
   sitterProfiles,
   walkerProfiles,
   trainers,
@@ -108,55 +110,59 @@ router.post('/', async (req, res) => {
       });
     }
     
-    // Calculate pricing based on provider type
-    let dailyRateCents = 0;
-    let hourlyRateCents = 0;
-    
-    // Fetch provider pricing
-    if (data.providerType === 'sitter' && data.providerProfileId) {
-      const [sitter] = await db.select()
-        .from(sitterProfiles)
-        .where(eq(sitterProfiles.id, data.providerProfileId))
-        .limit(1);
-      if (sitter) {
-        dailyRateCents = sitter.pricePerDayCents || 15000; // Default 150 ILS
-      }
-    } else if (data.providerType === 'walker' && data.providerProfileId) {
-      const [walker] = await db.select()
-        .from(walkerProfiles)
-        .where(eq(walkerProfiles.id, data.providerProfileId))
-        .limit(1);
-      if (walker) {
-        hourlyRateCents = parseInt(walker.hourlyRate || '5000'); // Default 50 ILS/hr
-      }
-    } else if (data.providerType === 'trainer' && data.providerProfileId) {
-      const [trainer] = await db.select()
-        .from(trainers)
-        .where(eq(trainers.id, data.providerProfileId))
-        .limit(1);
-      if (trainer) {
-        hourlyRateCents = parseFloat(trainer.hourlyRate || '8000') * 100;
-      }
-    }
-    
-    // Calculate totals
-    const totalDays = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+    // ── Pricing ────────────────────────────────────────────────────────────────
+    // If the frontend passed finalQuote (from /api/quotes/preview), use it directly.
+    // Otherwise fall back to simple legacy calculation.
+    const fq = data.finalQuote;
     
     let subtotalCents: number;
-    if (dailyRateCents > 0) {
-      subtotalCents = dailyRateCents * totalDays * data.petCount;
-    } else if (hourlyRateCents > 0) {
-      // Assume 1 hour for walking/training
-      subtotalCents = hourlyRateCents * data.petCount;
+    let serviceFeeCents: number;
+    let totalCents: number;
+    let totalDays: number;
+    let dailyRateCents = 0;
+    let hourlyRateCents = 0;
+    const serviceFeePercent = 15;
+    
+    totalDays = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+    
+    if (fq && fq.success && typeof fq.totals?.totalCents === 'number') {
+      // Use engine quote — no client-side arithmetic
+      subtotalCents = fq.totals.subtotalCents;
+      serviceFeeCents = 0; // already included in quote totals
+      totalCents = fq.totals.totalCents;
     } else {
-      subtotalCents = 15000 * totalDays * data.petCount; // Default pricing
+      // Legacy fallback: fetch provider rate and calculate
+      if (data.providerType === 'sitter' && data.providerProfileId) {
+        const [sitter] = await db.select().from(sitterProfiles)
+          .where(eq(sitterProfiles.id, data.providerProfileId)).limit(1);
+        if (sitter) dailyRateCents = sitter.pricePerDayCents || 15000;
+      } else if (data.providerType === 'walker' && data.providerProfileId) {
+        const [walker] = await db.select().from(walkerProfiles)
+          .where(eq(walkerProfiles.id, data.providerProfileId)).limit(1);
+        if (walker) hourlyRateCents = parseInt(walker.hourlyRate || '5000');
+      } else if (data.providerType === 'trainer' && data.providerProfileId) {
+        const [trainer] = await db.select().from(trainers)
+          .where(eq(trainers.id, data.providerProfileId)).limit(1);
+        if (trainer) hourlyRateCents = parseFloat(trainer.hourlyRate || '8000') * 100;
+      }
+      
+      if (dailyRateCents > 0) {
+        subtotalCents = dailyRateCents * totalDays * data.petCount;
+      } else if (hourlyRateCents > 0) {
+        subtotalCents = hourlyRateCents * data.petCount;
+      } else {
+        subtotalCents = 15000 * totalDays * data.petCount;
+      }
+      serviceFeeCents = Math.round(subtotalCents * serviceFeePercent / 100);
+      totalCents = subtotalCents + serviceFeeCents;
     }
     
-    const serviceFeePercent = 15; // 15% platform fee (industry standard)
-    const serviceFeeCents = Math.round(subtotalCents * serviceFeePercent / 100);
-    const totalCents = subtotalCents + serviceFeeCents;
+    // Derive petDetails persisted on the booking row (used for display, not pricing)
+    const petDetailsForRow = data.petDetails && data.petDetails.length > 0
+      ? data.petDetails
+      : null;
     
-    // Create booking request
+    // ── Create booking request row ─────────────────────────────────────────────
     const [booking] = await db.insert(bookingRequests).values({
       requestId,
       ownerId: userId,
@@ -166,9 +172,9 @@ router.post('/', async (req, res) => {
       serviceType: data.serviceType,
       startDate,
       endDate,
-      petIds: data.petIds || [],
+      petIds: data.petIds || (data.petDetails?.map(p => String(p.petId ?? '')).filter(Boolean) ?? []),
       petCount: data.petCount,
-      petDetails: null,
+      petDetails: petDetailsForRow,
       dailyRateCents: dailyRateCents || null,
       hourlyRateCents: hourlyRateCents || null,
       totalDays,
@@ -177,6 +183,19 @@ router.post('/', async (req, res) => {
       serviceFeePercent: serviceFeePercent.toString(),
       serviceFeeCents,
       totalCents,
+      // Quote engine columns (stored when finalQuote is provided)
+      ...(fq && fq.success ? {
+        quoteSubtotalCents: fq.totals.subtotalCents,
+        quoteDiscountCents: fq.totals.discountCents,
+        quoteCreditCents: fq.totals.walletCreditAppliedCents,
+        quoteGiftCardCents: fq.totals.giftCardAppliedCents,
+        quoteTaxCents: fq.totals.taxCents,
+        quoteTotalCents: fq.totals.totalCents,
+        quoteCurrency: fq.currency || 'ILS',
+        quoteBreakdown: fq,
+        pricingVersion: fq.pricingVersion || 'v1.0.0',
+        promoCode: data.promoCode || null,
+      } : {}),
       currency: 'ILS',
       status: 'pending',
       statusHistory: [{ status: 'pending', timestamp: new Date().toISOString(), note: 'Booking request created' }],
@@ -185,12 +204,85 @@ router.post('/', async (req, res) => {
       searchId: data.searchId || null,
     }).returning();
     
+    // ── Persist multi-pet rows ─────────────────────────────────────────────────
+    // Map clientRef → DB row ID so we can attach per-pet addons
+    const petRowMap: Record<string, string> = {};
+    
+    if (data.petDetails && data.petDetails.length > 0 && booking.id) {
+      const petLineItems: Record<string, any> = {};
+      if (fq?.success && Array.isArray(fq.lineItems?.pets)) {
+        for (const li of fq.lineItems.pets) {
+          petLineItems[li.clientRef] = li;
+        }
+      }
+      
+      for (const pd of data.petDetails) {
+        const li = petLineItems[pd.clientRef] || {};
+        const [petRow] = await db.insert(bookingRequestPets).values({
+          bookingRequestId: booking.id,
+          petId: pd.petId ? Number(pd.petId) : null,
+          petName: pd.petName,
+          petType: pd.petType,
+          breed: pd.breed || null,
+          sizeCategory: pd.sizeCategory || null,
+          ageYears: pd.ageYears ? String(pd.ageYears) : null,
+          weightKg: pd.weightKg ? String(pd.weightKg) : null,
+          gender: pd.gender || null,
+          specialNotes: [pd.specialNotes, pd.feedingInstructions, pd.currentSkills, pd.trainingGoals]
+            .filter(Boolean).join(' | ') || null,
+          requiresMedication: !!pd.requiresMedication,
+          hasBehaviorFlag: !!pd.hasBehaviorFlag,
+          hasSpecialNeeds: !!pd.hasSpecialNeeds,
+          quantity: 1,
+          basePriceCents: li.basePriceCents || 0,
+          adjustmentPriceCents: li.adjustmentPriceCents || 0,
+          subtotalPriceCents: li.subtotalPriceCents || 0,
+          currency: 'ILS',
+          pricingSnapshot: li.pricingSnapshot || null,
+        }).returning();
+        petRowMap[pd.clientRef] = petRow.id;
+      }
+    }
+    
+    // ── Persist addon rows ─────────────────────────────────────────────────────
+    if (data.selectedAddons && data.selectedAddons.length > 0 && booking.id) {
+      const addonLineItems: Record<string, any> = {};
+      if (fq?.success && Array.isArray(fq.lineItems?.addons)) {
+        for (const li of fq.lineItems.addons) {
+          addonLineItems[li.addonCode] = li;
+        }
+      }
+      
+      for (const addon of data.selectedAddons) {
+        const li = addonLineItems[addon.addonCode] || {};
+        const petRowId = addon.scope === 'pet' && addon.petRef
+          ? (petRowMap[addon.petRef] || null)
+          : null;
+          
+        await db.insert(bookingRequestAddons).values({
+          bookingRequestId: booking.id,
+          bookingRequestPetId: petRowId,
+          addonCode: addon.addonCode,
+          addonName: addon.addonName,
+          addonScope: addon.scope,
+          quantity: addon.quantity || 1,
+          unitPriceCents: addon.unitPriceCents || li.unitPriceCents || 0,
+          subtotalPriceCents: li.subtotalPriceCents || (addon.unitPriceCents * (addon.quantity || 1)) || 0,
+          currency: 'ILS',
+          pricingSnapshot: li,
+        });
+      }
+    }
+
     logger.info('[BookingRequests] Created new booking request', {
       requestId,
       ownerId: userId,
       providerId: data.providerId,
       serviceType: data.serviceType,
       totalCents,
+      petCount: data.petDetails?.length || data.petCount,
+      addonCount: data.selectedAddons?.length || 0,
+      usedQuoteEngine: !!(fq?.success),
     });
 
     logBookingEvent('created', buildEventPayload(booking), {
@@ -201,11 +293,13 @@ router.post('/', async (req, res) => {
       success: true,
       booking: {
         requestId: booking.requestId,
+        id: booking.id,
         status: booking.status,
         totalAmount: totalCents / 100,
         currency: 'ILS',
         startDate: booking.startDate,
         endDate: booking.endDate,
+        petCount: data.petDetails?.length || data.petCount,
       },
       message: 'Booking request sent successfully. The provider will respond soon.',
     });

@@ -9880,6 +9880,40 @@ export type BookingRequest = typeof bookingRequests.$inferSelect;
 export type InsertBookingRequest = z.infer<typeof insertBookingRequestSchema>;
 
 // Schema for creating a new booking request from search results
+export const quotePetInputSchema = z.object({
+  clientRef: z.string(),
+  petId: z.union([z.string(), z.number()]).optional().nullable(),
+  petName: z.string(),
+  petType: z.enum(['dog', 'cat', 'other']),
+  breed: z.string().optional().nullable(),
+  sizeCategory: z.enum(['small', 'medium', 'large', 'giant']).optional().nullable(),
+  ageYears: z.number().optional().nullable(),
+  weightKg: z.number().optional().nullable(),
+  gender: z.string().optional().nullable(),
+  requiresMedication: z.boolean().optional(),
+  hasBehaviorFlag: z.boolean().optional(),
+  hasSpecialNeeds: z.boolean().optional(),
+  quantity: z.number().optional(),
+  specialNotes: z.string().optional().nullable(),
+  // service-specific extras stored here
+  coatType: z.string().optional().nullable(),
+  lastGroomedDate: z.string().optional().nullable(),
+  leashTrained: z.boolean().optional().nullable(),
+  dogParkOk: z.boolean().optional().nullable(),
+  feedingInstructions: z.string().optional().nullable(),
+  currentSkills: z.string().optional().nullable(),
+  trainingGoals: z.string().optional().nullable(),
+});
+
+export const quoteAddonInputSchema = z.object({
+  addonCode: z.string(),
+  addonName: z.string(),
+  scope: z.enum(['booking', 'pet']),
+  petRef: z.string().optional().nullable(),
+  quantity: z.number().min(1).default(1),
+  unitPriceCents: z.number().min(0),
+});
+
 export const createBookingRequestSchema = z.object({
   providerId: z.string(),
   providerProfileId: z.number().optional(),
@@ -9892,6 +9926,13 @@ export const createBookingRequestSchema = z.object({
   message: z.string().optional(),
   specialRequirements: z.string().optional(),
   searchId: z.string().optional(),
+  // Multi-pet booking fields
+  petDetails: z.array(quotePetInputSchema).optional(),
+  selectedAddons: z.array(quoteAddonInputSchema).optional(),
+  finalQuote: z.any().optional(), // QuoteResponse from /api/quotes/preview
+  promoCode: z.string().optional().nullable(),
+  useWalletCredit: z.boolean().optional(),
+  giftCardCode: z.string().optional().nullable(),
 });
 
 export type CreateBookingRequest = z.infer<typeof createBookingRequestSchema>;
