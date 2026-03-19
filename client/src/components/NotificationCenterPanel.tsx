@@ -43,15 +43,21 @@ const PLATFORM_CONFIG: Record<string, { label: string; color: string; Icon: any 
   groomers:     { label: "Groomers",   color: "#7C3AED", Icon: Scissors },
 };
 
-// ─── Notification type config — Airbnb-style differentiation ─────────────────
+// ─── Notification type config ─────────────────────────────────────────────────
 const TYPE_CONFIG: Record<string, { label: string; labelHe: string; color: string; Icon: any; actionLabel?: string; actionLabelHe?: string }> = {
-  booking_request:   { label: "Booking Request", labelHe: "בקשת הזמנה",     color: "#F59E0B", Icon: Calendar,    actionLabel: "Accept",   actionLabelHe: "אשר" },
-  booking_confirmed: { label: "Confirmed",        labelHe: "הזמנה אושרה",    color: "#10B981", Icon: CheckCircle, actionLabel: "View",     actionLabelHe: "צפה" },
-  booking_cancelled: { label: "Cancelled",        labelHe: "הזמנה בוטלה",    color: "#EF4444", Icon: AlertCircle },
-  message:           { label: "Message",          labelHe: "הודעה",          color: "#3B82F6", Icon: MessageCircle, actionLabel: "Reply",  actionLabelHe: "השב" },
-  review_received:   { label: "New Review",       labelHe: "ביקורת חדשה",    color: "#8B5CF6", Icon: Star,        actionLabel: "View",     actionLabelHe: "צפה" },
-  meet_greet:        { label: "Meet & Greet",     labelHe: "פגישת היכרות",   color: "#F97316", Icon: Dog,         actionLabel: "Details",  actionLabelHe: "פרטים" },
-  reminder:          { label: "Reminder",         labelHe: "תזכורת",         color: "#6B7280", Icon: Bell },
+  // ── Status-change types written by booking-requests.ts ──
+  booking_accepted:      { label: "Accepted",       labelHe: "אושרה",          color: "#10B981", Icon: CheckCircle,   actionLabel: "View",     actionLabelHe: "צפה" },
+  booking_declined:      { label: "Declined",        labelHe: "נדחתה",          color: "#EF4444", Icon: AlertCircle,   actionLabel: "Find alt", actionLabelHe: "הזמן שוב" },
+  booking_cancelled:     { label: "Cancelled",       labelHe: "בוטלה",          color: "#EF4444", Icon: AlertCircle,   actionLabel: "View",     actionLabelHe: "צפה" },
+  // ── Chat messages written by booking-chat.ts ──
+  booking_chat_message:  { label: "Message",         labelHe: "הודעה",          color: "#3B82F6", Icon: MessageCircle, actionLabel: "Reply",    actionLabelHe: "השב" },
+  // ── Legacy / future types ──
+  booking_request:       { label: "Booking Request", labelHe: "בקשת הזמנה",     color: "#F59E0B", Icon: Calendar,      actionLabel: "View",     actionLabelHe: "צפה" },
+  booking_confirmed:     { label: "Confirmed",       labelHe: "הזמנה אושרה",    color: "#10B981", Icon: CheckCircle,   actionLabel: "View",     actionLabelHe: "צפה" },
+  meet_greet:            { label: "Meet & Greet",    labelHe: "פגישת היכרות",   color: "#F97316", Icon: Dog,           actionLabel: "Details",  actionLabelHe: "פרטים" },
+  review_received:       { label: "New Review",      labelHe: "ביקורת חדשה",    color: "#8B5CF6", Icon: Star,          actionLabel: "View",     actionLabelHe: "צפה" },
+  reminder:              { label: "Reminder",        labelHe: "תזכורת",          color: "#6B7280", Icon: Bell },
+  message:               { label: "Message",         labelHe: "הודעה",           color: "#3B82F6", Icon: MessageCircle, actionLabel: "Reply",   actionLabelHe: "השב" },
 };
 
 function resolveTypeConfig(notificationType: string | null | undefined, platform: string | null | undefined) {
@@ -74,13 +80,20 @@ function PlatformIcon({ platform, notificationType }: { platform: string | null;
   );
 }
 
-function isBookingType(group: NotifGroup) {
-  const t = group.notificationType;
-  return !t || ['booking_request', 'booking_confirmed', 'booking_cancelled', 'meet_greet', 'reminder'].includes(t);
-}
+const MESSAGE_TYPES = new Set(['booking_chat_message', 'message']);
+const BOOKING_STATUS_TYPES = new Set([
+  'booking_request', 'booking_accepted', 'booking_confirmed',
+  'booking_declined', 'booking_cancelled', 'meet_greet', 'reminder',
+]);
 
 function isMessageType(group: NotifGroup) {
-  return group.notificationType === 'message';
+  return MESSAGE_TYPES.has(group.notificationType ?? '');
+}
+
+function isBookingType(group: NotifGroup) {
+  const t = group.notificationType;
+  if (!t) return true; // legacy untyped → show under bookings
+  return BOOKING_STATUS_TYPES.has(t);
 }
 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
@@ -117,7 +130,14 @@ export function NotificationCenterPanel({ open, onClose, language = 'en' }: Noti
     } else if (group.unreadCount > 0 && group.ids.length) {
       markReadMutation.mutate({ ids: group.ids });
     }
-    const target = group.actionUrl ?? (group.bookingId ? `/booking-chat/${group.bookingId}` : null);
+    // Prefer explicit actionUrl (always set for new notifications).
+    // Fallback: route by notificationType — messages → chat, status changes → confirmation.
+    const fallback = group.bookingId
+      ? isMessageType(group)
+        ? `/booking-chat/${group.bookingId}`
+        : `/booking/confirmation/${group.bookingId}`
+      : null;
+    const target = group.actionUrl ?? fallback;
     if (target) {
       onClose();
       setLocation(target);

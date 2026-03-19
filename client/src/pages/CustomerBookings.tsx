@@ -278,6 +278,111 @@ function StatusTimeline({ booking, isRTL }: { booking: Booking; isRTL: boolean }
           </div>
         )}
       </div>
+
+      {/* Per-status contextual guidance card */}
+      <StatusContextCard status={currentStatus} booking={booking} isRTL={isRTL} />
+    </div>
+  );
+}
+
+// ── Contextual status guidance card ───────────────────────────────────────────
+const STATUS_CONTEXT: Record<string, {
+  bg: string; border: string; textColor: string;
+  icon: any; iconColor: string;
+  he: string; en: string;
+}> = {
+  pending: {
+    bg: 'bg-amber-50', border: 'border-amber-200', textColor: 'text-amber-800',
+    icon: Hourglass, iconColor: '#D97706',
+    he: 'ממתינים לתגובת הספק. תקבל עדכון בהקדם.',
+    en: 'Awaiting provider response. You will be notified soon.',
+  },
+  accepted: {
+    bg: 'bg-blue-50', border: 'border-blue-200', textColor: 'text-blue-800',
+    icon: CheckCircle2, iconColor: '#2563EB',
+    he: 'הספק הגיב! ייתכן שתתואם פגישת היכרות לפני האישור הסופי.',
+    en: 'Provider responded! A Meet & Greet may be scheduled before final confirmation.',
+  },
+  meet_greet_scheduled: {
+    bg: 'bg-orange-50', border: 'border-orange-200', textColor: 'text-orange-800',
+    icon: Timer, iconColor: '#EA580C',
+    he: 'פגישת היכרות מתוכננת. בדוק את הפרטים שקיבלת מהספק.',
+    en: 'Meet & Greet is scheduled. Check the details shared by your provider.',
+  },
+  meet_greet_completed: {
+    bg: 'bg-blue-50', border: 'border-blue-200', textColor: 'text-blue-800',
+    icon: CheckCircle2, iconColor: '#2563EB',
+    he: 'פגישת ההיכרות הושלמה. השלם תשלום לאישור סופי.',
+    en: 'Meet & Greet done. Complete payment to finalize your booking.',
+  },
+  payment_pending: {
+    bg: 'bg-yellow-50', border: 'border-yellow-200', textColor: 'text-yellow-800',
+    icon: AlertTriangle, iconColor: '#CA8A04',
+    he: 'ממתינים לתשלום שלך כדי לאשר את ההזמנה.',
+    en: 'Waiting for your payment to confirm the booking.',
+  },
+  confirmed: {
+    bg: 'bg-emerald-50', border: 'border-emerald-200', textColor: 'text-emerald-800',
+    icon: CheckCircle2, iconColor: '#059669',
+    he: 'ההזמנה אושרה! השירות יתחיל בקרוב.',
+    en: 'Booking confirmed! Service will begin soon.',
+  },
+  in_progress: {
+    bg: 'bg-sky-50', border: 'border-sky-200', textColor: 'text-sky-800',
+    icon: Timer, iconColor: '#0284C7',
+    he: 'השירות מתבצע כעת. חיית המחמד שלך בידיים טובות! 🐾',
+    en: 'Service is in progress. Your pet is in good hands! 🐾',
+  },
+  completed: {
+    bg: 'bg-violet-50', border: 'border-violet-200', textColor: 'text-violet-800',
+    icon: Star, iconColor: '#7C3AED',
+    he: 'השירות הושלם! נשמח לשמוע מה חשבת — השאר ביקורת.',
+    en: 'Service completed! We'd love your feedback — please leave a review.',
+  },
+  reviewed: {
+    bg: 'bg-emerald-50', border: 'border-emerald-200', textColor: 'text-emerald-800',
+    icon: Star, iconColor: '#059669',
+    he: 'תודה על הביקורת! נשמח לראותך שוב.',
+    en: 'Thank you for your review! Hope to see you again soon.',
+  },
+  declined: {
+    bg: 'bg-red-50', border: 'border-red-200', textColor: 'text-red-800',
+    icon: XCircle, iconColor: '#DC2626',
+    he: 'הספק דחה את הבקשה. ניתן להזמין ספק אחר דרך דף הבית.',
+    en: 'Provider declined your request. You can book a different provider.',
+  },
+  cancelled: {
+    bg: 'bg-red-50', border: 'border-red-200', textColor: 'text-red-800',
+    icon: Ban, iconColor: '#DC2626',
+    he: 'ההזמנה בוטלה. החזר כספי יעובד בהתאם למדיניות.',
+    en: 'Booking was cancelled. A refund will be processed per our policy.',
+  },
+  disputed: {
+    bg: 'bg-orange-50', border: 'border-orange-200', textColor: 'text-orange-800',
+    icon: AlertTriangle, iconColor: '#EA580C',
+    he: 'פנייתך לבירור התקבלה. הצוות שלנו יצור קשר בקרוב.',
+    en: 'Your dispute has been received. Our team will be in touch shortly.',
+  },
+};
+
+function StatusContextCard({ status, booking, isRTL }: { status: string; booking: Booking; isRTL: boolean }) {
+  const cfg = STATUS_CONTEXT[status];
+  if (!cfg) return null;
+  const Icon = cfg.icon;
+
+  const extraHe = status === 'cancelled' && booking.refundCents && booking.refundCents > 0
+    ? ` החזר של ₪${(booking.refundCents / 100).toFixed(2)} יעובד תוך 3-5 ימי עסקים.`
+    : '';
+  const extraEn = status === 'cancelled' && booking.refundCents && booking.refundCents > 0
+    ? ` A refund of ₪${(booking.refundCents / 100).toFixed(2)} will be processed within 3-5 business days.`
+    : '';
+
+  return (
+    <div className={`mt-3 rounded-xl border px-3 py-2.5 flex gap-2 items-start ${cfg.bg} ${cfg.border} ${isRTL ? 'flex-row-reverse text-right' : 'text-left'}`}>
+      <Icon size={14} style={{ color: cfg.iconColor, flexShrink: 0, marginTop: 1 }} />
+      <p className={`text-[11px] leading-snug font-medium ${cfg.textColor}`}>
+        {isRTL ? (cfg.he + extraHe) : (cfg.en + extraEn)}
+      </p>
     </div>
   );
 }

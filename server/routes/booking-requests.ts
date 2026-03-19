@@ -22,6 +22,7 @@ import {
   walkerProfiles,
   trainers,
   users,
+  superAppNotifications,
   createBookingRequestSchema,
   providerBookingResponseSchema,
   type BookingRequest
@@ -552,7 +553,31 @@ router.post('/:requestId/respond', async (req, res) => {
     await db.update(bookingRequests)
       .set(updateData)
       .where(eq(bookingRequests.requestId, requestId));
-    
+
+    // Notify customer via superAppNotifications (in-app bell)
+    try {
+      const isAccept = data.action === 'accept';
+      await db.insert(superAppNotifications).values({
+        userId: booking.ownerId,
+        type: isAccept ? 'booking_accepted' : 'booking_declined',
+        title: isAccept ? '✅ ההזמנה אושרה!' : '❌ ההזמנה נדחתה',
+        titleHe: isAccept ? '✅ ההזמנה אושרה!' : '❌ ההזמנה נדחתה',
+        body: isAccept
+          ? `ספקך אישר את הבקשה. לחץ לצפות בפרטי ההזמנה.`
+          : `ספקך דחה את הבקשה. ניתן להזמין ספק אחר.`,
+        bodyHe: isAccept
+          ? `ספקך אישר את הבקשה. לחץ לצפות בפרטי ההזמנה.`
+          : `ספקך דחה את הבקשה. ניתן להזמין ספק אחר.`,
+        actionUrl: `/booking/confirmation/${requestId}`,
+        actionType: 'open_booking',
+        channels: ['in_app'],
+        isRead: false,
+        createdAt: new Date(),
+      });
+    } catch (notifErr: any) {
+      logger.warn('[BookingRequests] superAppNotifications insert failed (respond)', { error: notifErr.message });
+    }
+
     logger.info('[BookingRequests] Provider responded to booking', {
       requestId,
       action: data.action,
@@ -1257,7 +1282,28 @@ router.post('/:requestId/cancel', async (req, res) => {
         updatedAt: new Date(),
       })
       .where(eq(bookingRequests.requestId, requestId));
-    
+
+    // Notify the OTHER party about cancellation via superAppNotifications
+    try {
+      const notifyUid = cancelledBy === 'owner' ? booking.providerId : booking.ownerId;
+      const cancellerLabel = cancelledBy === 'owner' ? 'הלקוח' : 'הספק';
+      await db.insert(superAppNotifications).values({
+        userId: notifyUid,
+        type: 'booking_cancelled',
+        title: '🚫 הזמנה בוטלה',
+        titleHe: '🚫 הזמנה בוטלה',
+        body: `הזמנה ${requestId} בוטלה על ידי ${cancellerLabel}.${reason ? ` סיבה: ${reason}` : ''}`,
+        bodyHe: `הזמנה ${requestId} בוטלה על ידי ${cancellerLabel}.${reason ? ` סיבה: ${reason}` : ''}`,
+        actionUrl: `/booking/confirmation/${requestId}`,
+        actionType: 'open_booking',
+        channels: ['in_app'],
+        isRead: false,
+        createdAt: new Date(),
+      });
+    } catch (notifErr: any) {
+      logger.warn('[BookingRequests] superAppNotifications insert failed (cancel)', { error: notifErr.message });
+    }
+
     logger.info('[BookingRequests] Booking cancelled', {
       requestId,
       cancelledBy,

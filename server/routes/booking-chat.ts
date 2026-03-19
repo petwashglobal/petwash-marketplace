@@ -259,6 +259,7 @@ router.get('/notifications/grouped', async (req, res) => {
 
     const groupMap = new Map<string, {
       bookingId: string | null; platform: string | null;
+      notificationType: string | null;
       totalCount: number; unreadCount: number;
       latestTitle: string; latestBody: string;
       latestAt: Date | null; ids: string[]; actionUrl: string | null;
@@ -270,6 +271,7 @@ router.get('/notifications/grouped', async (req, res) => {
       if (!existing) {
         groupMap.set(key, {
           bookingId: n.bookingId ?? null, platform: null,
+          notificationType: n.type ?? null,
           totalCount: 1, unreadCount: n.isRead ? 0 : 1,
           latestTitle: n.title, latestBody: n.body,
           latestAt: n.createdAt, ids: [n.id], actionUrl: n.actionUrl ?? null,
@@ -280,6 +282,7 @@ router.get('/notifications/grouped', async (req, res) => {
         if (n.createdAt && (!existing.latestAt || n.createdAt > existing.latestAt)) {
           existing.latestTitle = n.title; existing.latestBody = n.body;
           existing.latestAt = n.createdAt; existing.actionUrl = n.actionUrl ?? existing.actionUrl;
+          existing.notificationType = n.type ?? existing.notificationType;
         }
         existing.ids.push(n.id);
       }
