@@ -19,7 +19,8 @@ function getClientIP(req: Request): string {
 const isDevelopment = process.env.NODE_ENV !== 'production';
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isDevelopment ? 1000 : 200, // High for dev, moderate for production
+  max: isDevelopment ? 1_000_000 : 200, // Effectively unlimited in dev (Vite HMR + test traffic), moderate in prod
+  skip: () => isDevelopment, // Fully bypass in dev — Vite HMR generates too much traffic to rate-limit
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false, // Disable `X-RateLimit-*` headers

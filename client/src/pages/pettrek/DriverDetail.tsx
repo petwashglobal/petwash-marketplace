@@ -133,6 +133,27 @@ export default function DriverDetail() {
 
   return (
     <Layout>
+      {user && (
+        <div className="max-w-5xl mx-auto px-4 pt-4">
+          <div className="p-4 bg-gradient-to-l from-[#C5A55A]/10 to-amber-50 border border-[#C5A55A]/30 rounded-2xl flex items-center justify-between gap-4">
+            <div>
+              <p className="font-semibold text-gray-900 text-sm">
+                {isHebrew ? "כמה חיות? מחיר מיידי?" : "Multiple pets? Get an instant quote?"}
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {isHebrew ? "השתמש בתהליך הזמנה המתקדם עם ציטוט מחיר חי" : "Use the advanced booking flow with live quote"}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => navigate(`/booking/new/pet_taxi/${driver.userId}`)}
+              className="bg-[#C5A55A] hover:bg-[#b8945a] text-white shrink-0 text-xs px-4"
+            >
+              {isHebrew ? "הזמן ←" : "Book →"}
+            </Button>
+          </div>
+        </div>
+      )}
       <ProviderProfilePage
         platform="driver"
         providerId={String(driver.id)}

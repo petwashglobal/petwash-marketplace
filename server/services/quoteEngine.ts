@@ -34,6 +34,43 @@ import {
 
 export const QUOTE_ENGINE_VERSION = "v1.0.0";
 
+// ── System-level addon catalog ─────────────────────────────────────────────────
+// Used as fallback when a provider has no rate card or their catalog is missing.
+// This mirrors the frontend ADDON_CATALOG so addons always price correctly.
+const SYSTEM_ADDON_CATALOG: Record<string, { name: string; scope: "booking" | "pet"; unit_price_cents: number }> = {
+  nail_clip:        { name: "Nail Trim",                   scope: "pet",     unit_price_cents: 3000 },
+  ear_clean:        { name: "Ear Cleaning",                scope: "pet",     unit_price_cents: 2000 },
+  deshed:           { name: "De-shedding Treatment",       scope: "pet",     unit_price_cents: 5000 },
+  teeth_brush:      { name: "Teeth Brushing",              scope: "pet",     unit_price_cents: 2500 },
+  bandana:          { name: "Bandana / Bow",               scope: "pet",     unit_price_cents: 1000 },
+  blueberry_facial: { name: "Blueberry Facial",            scope: "pet",     unit_price_cents: 2000 },
+  extra_30min:      { name: "Extra 30 Minutes",            scope: "booking", unit_price_cents: 3000 },
+  dog_park:         { name: "Dog Park Visit",              scope: "booking", unit_price_cents: 1500 },
+  photo_report:     { name: "Photo Report",                scope: "booking", unit_price_cents:  500 },
+  treat_pack:       { name: "Treat Pack",                  scope: "pet",     unit_price_cents: 1200 },
+  medication_admin: { name: "Medication Administration",   scope: "pet",     unit_price_cents: 2000 },
+  daily_photos:     { name: "Daily Photo Updates",         scope: "booking", unit_price_cents: 1000 },
+  grooming_light:   { name: "Light Grooming",              scope: "pet",     unit_price_cents: 3000 },
+  vet_pickup:       { name: "Vet Pickup/Drop-off",         scope: "booking", unit_price_cents: 5000 },
+  mail_handling:    { name: "Mail Collection",             scope: "booking", unit_price_cents:  500 },
+  plant_watering:   { name: "Plant Watering",              scope: "booking", unit_price_cents:  500 },
+  training_report:  { name: "Training Report",             scope: "booking", unit_price_cents: 1500 },
+  training_kit:     { name: "Training Kit",                scope: "booking", unit_price_cents: 3000 },
+  video_recap:      { name: "Video Recap",                 scope: "booking", unit_price_cents: 2000 },
+  special_meal:     { name: "Special Meal Prep",           scope: "pet",     unit_price_cents: 2000 },
+  extra_care:       { name: "Extra Attention",             scope: "pet",     unit_price_cents: 2500 },
+  // K9000 Wash addons
+  blow_dry:         { name: "Blow Dry",                    scope: "pet",     unit_price_cents: 2500 },
+  cologne_spray:    { name: "Cologne Spray",               scope: "pet",     unit_price_cents: 1500 },
+  flea_treatment:   { name: "Flea Treatment",              scope: "pet",     unit_price_cents: 4000 },
+  paw_balm:         { name: "Paw Balm",                    scope: "pet",     unit_price_cents: 1500 },
+  // PetTrek (taxi) addons
+  carrier_rental:   { name: "Carrier Rental",              scope: "booking", unit_price_cents: 2000 },
+  extra_stop:       { name: "Extra Stop",                  scope: "booking", unit_price_cents: 3000 },
+  // Sitter Suite addons
+  report_card:      { name: "Daily Report Card",           scope: "booking", unit_price_cents:  800 },
+};
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export interface QuotePetInput {
@@ -126,6 +163,7 @@ export interface AppliedAdjustment {
 export interface QuoteResponse {
   success: true;
   pricingVersion: string;
+  quotedAt: string; // ISO timestamp — used for stale-quote detection on submit
   currency: string;
   serviceType: string;
   providerId: string;
@@ -169,11 +207,15 @@ function durationUnits(
   const diff = endAt.getTime() - startAt.getTime();
 
   const overnightServices = ["pet_sitting", "house_sitting", "doggy_daycare_overnight"];
-  const hourlyServices = ["dog_walking", "dog_training", "pet_taxi"];
+  const hourlyServices = ["dog_walking", "dog_training", "training"];
+  const perTripServices = ["pet_taxi"];
 
   if (overnightServices.includes(serviceType)) {
     const nights = Math.max(1, Math.round(diff / msPerDay));
     return { units: nights, label: nights === 1 ? "1 night" : `${nights} nights` };
+  }
+  if (perTripServices.includes(serviceType)) {
+    return { units: 1, label: "1 trip" };
   }
   if (hourlyServices.includes(serviceType)) {
     const hours = Math.max(1, Math.ceil(diff / msPerHour));
@@ -267,6 +309,18 @@ export async function calculateQuote(
     giant: 1.4,
   };
 
+  // Determine billing unit for the pricingSnapshot rateUnit field
+  const overnightSvcs = ["pet_sitting", "house_sitting", "doggy_daycare_overnight"];
+  const hourlySvcs = ["dog_walking", "dog_training", "training"];
+  const tripSvcs = ["pet_taxi"];
+  const rateUnit: string = overnightSvcs.includes(req.serviceType)
+    ? "per_night"
+    : tripSvcs.includes(req.serviceType)
+    ? "per_trip"
+    : hourlySvcs.includes(req.serviceType)
+    ? "per_hour"
+    : "per_session";
+
   // 3. Per-pet line items
   const petLineItems: QuotePetLineItem[] = req.pets.map((pet, index) => {
     const isFirst = index === 0;
@@ -315,28 +369,48 @@ export async function calculateQuote(
         typeMult,
         sizeMult,
         durationUnits: durationUnitsCount,
+        rateUnit,
         ...snapshotFlags,
       },
     };
   });
 
-  // 4. Add-on line items
+  // 4. Add-on line items — look up provider catalog first, then system catalog as fallback
   const addonLineItems: QuoteAddonLineItem[] = [];
   for (const addon of req.addons ?? []) {
-    const catalogEntry = addonCatalog.find((a) => a.code === addon.addonCode);
+    // Try provider-specific catalog first
+    const providerEntry = addonCatalog.find((a) => a.code === addon.addonCode);
+    // Fall back to system catalog so addons always price even without a rate card
+    const systemEntry = SYSTEM_ADDON_CATALOG[addon.addonCode];
+    const catalogEntry = providerEntry ?? systemEntry;
+
     if (!catalogEntry) {
-      warnings.push(`Add-on "${addon.addonCode}" not found in provider catalog — skipped.`);
+      warnings.push(`Add-on "${addon.addonCode}" is not available — skipped.`);
       continue;
     }
+
     const qty = addon.quantity ?? 1;
+    const unitPrice = providerEntry
+      ? providerEntry.unit_price_cents
+      : systemEntry.unit_price_cents;
+
+    // Validate petRef for pet-scope addons
+    if (catalogEntry.scope === "pet" && addon.petRef) {
+      const petExists = req.pets.some((p) => p.clientRef === addon.petRef);
+      if (!petExists) {
+        warnings.push(`Add-on "${addon.addonCode}" references unknown pet ref "${addon.petRef}" — skipped.`);
+        continue;
+      }
+    }
+
     addonLineItems.push({
       addonCode: addon.addonCode,
       addonName: catalogEntry.name,
       scope: catalogEntry.scope,
       petRef: addon.petRef ?? null,
       quantity: qty,
-      unitPriceCents: catalogEntry.unit_price_cents,
-      subtotalPriceCents: catalogEntry.unit_price_cents * qty,
+      unitPriceCents: unitPrice,
+      subtotalPriceCents: unitPrice * qty,
     });
   }
 
@@ -401,6 +475,7 @@ export async function calculateQuote(
   const response: QuoteResponse = {
     success: true,
     pricingVersion: QUOTE_ENGINE_VERSION,
+    quotedAt: new Date().toISOString(),
     currency: req.currency ?? "ILS",
     serviceType: req.serviceType,
     providerId: req.providerId,

@@ -1,8 +1,9 @@
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/Layout";
 import { useLanguage } from "@/lib/languageStore";
+import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { 
   ProviderProfilePage, 
   getFAQsForPlatform,
@@ -134,6 +135,8 @@ export default function TrainerDetail() {
   const { id } = useParams<{ id: string }>();
   const { language } = useLanguage();
   const isHebrew = language === 'he';
+  const { user } = useFirebaseAuth();
+  const [, navigate] = useLocation();
   
   const faqItems = getFAQsForPlatform('trainer', language);
 
@@ -171,6 +174,27 @@ export default function TrainerDetail() {
   return (
     <Layout>
       <div className="min-h-screen bg-white">
+        {user && (
+          <div className="max-w-5xl mx-auto px-4 pt-4">
+            <div className="p-4 bg-gradient-to-l from-[#C5A55A]/10 to-amber-50 border border-[#C5A55A]/30 rounded-2xl flex items-center justify-between gap-4">
+              <div>
+                <p className="font-semibold text-gray-900 text-sm">
+                  {isHebrew ? "כמה כלבים? תוכנית אישית?" : "Multiple dogs? Custom training plan?"}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {isHebrew ? "השתמש בתהליך הזמנה המתקדם עם ציטוט מחיר חי" : "Use the advanced booking flow with live quote"}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => navigate(`/booking/new/training/${id}`)}
+                className="bg-[#C5A55A] hover:bg-[#b8945a] text-white shrink-0 text-xs px-4"
+              >
+                {isHebrew ? "הזמן ←" : "Book →"}
+              </Button>
+            </div>
+          </div>
+        )}
         <div className="container mx-auto px-4 pt-6">
           <Link href="/academy">
             <Button 

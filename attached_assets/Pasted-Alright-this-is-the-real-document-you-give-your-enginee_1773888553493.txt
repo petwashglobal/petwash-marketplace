@@ -1,0 +1,391 @@
+Alright - this is the real document you give your engineer.
+Not theory. Not inspiration. This is the operating blueprint gap vs Rover and exactly what to build next.
+
+⸻
+
+🔥 FULL PRODUCT GAP + BUILD PLAN (ROVER vs YOUR SYSTEM)
+
+🎯 OBJECTIVE
+
+We are NOT copying Rover.
+
+We are extracting:
+	•	what makes it work
+	•	what creates trust + repeat usage
+	•	what keeps providers active
+	•	what allows scale
+
+Then rebuilding it cleaner + smarter on your system.
+
+⸻
+
+🧠 1. SYSTEM COMPARISON - TRUTH
+
+🟢 YOUR CURRENT STRENGTH (VERY IMPORTANT)
+
+You are already ahead in one critical area:
+
+✔ quote engine (multi-pet, addons, structured pricing)
+✔ deterministic backend pricing
+✔ booking_request_pets / addons architecture
+✔ API-driven pricing (not frontend guessing)
+
+👉 Rover likely evolved into this.
+👉 You STARTED with it. That’s a big advantage.
+
+⸻
+
+🔴 WHERE YOU ARE WEAK (REALITY)
+
+You are currently weak in:
+
+1. TRUST LAYER
+	•	no strong onboarding trust moment
+	•	no “safe / verified / professional” feeling
+	•	login/auth messy (captcha confusion, flows broken)
+
+⸻
+
+2. CUSTOMER LIFECYCLE
+
+You built booking… but not the loop:
+
+Missing:
+	•	smooth browse → shortlist → book → repeat
+	•	emotional UX
+	•	clear booking management
+
+⸻
+
+3. PROVIDER OPERATING SYSTEM
+
+This is a big gap.
+
+You mostly built customer side
+Rover is strong because of provider side
+
+⸻
+
+4. ADMIN / CONTROL SYSTEM
+
+You don’t yet have:
+	•	operational control
+	•	dispute tools
+	•	visibility
+	•	analytics
+
+⸻
+
+5. DISCOVERY (VERY BIG ONE)
+
+Rover wins here massively:
+	•	city pages
+	•	SEO pages
+	•	service landing pages
+
+👉 This is how they scale users.
+
+⸻
+
+🧱 2. WHAT ROVER ACTUALLY IS (SIMPLIFIED)
+
+Rover is NOT a booking app.
+
+It is 3 systems:
+
+1. Customer App
+
+2. Provider App
+
+3. Internal Operations System
+
+⸻
+
+🚧 3. BUILD PLAN (WHAT YOUR ENGINEER MUST DO)
+
+🔵 PHASE 1 - TRUST + AUTH (CRITICAL FIX)
+
+🚨 FIX THIS FIRST
+
+Your current issue:
+
+captcha is breaking logic
+
+Correct flow:
+
+✅ LOGIN FLOW (FIXED)
+	•	enter phone OR email
+	•	click continue
+	•	backend silently runs captcha
+	•	send OTP
+	•	user enters code
+	•	logged in
+
+❌ captcha must NEVER be a screen
+❌ captcha must NEVER be manual step
+
+⸻
+
+✅ REQUIRED SCREENS
+
+Customer:
+	•	login
+	•	verify code
+	•	minimal signup
+
+Settings:
+	•	notifications
+	•	privacy
+	•	consent
+	•	delete account
+
+⸻
+
+✅ BACKEND REQUIRED
+	•	auth_sessions
+	•	otp verification
+	•	captcha verification (silent)
+	•	consent_logs table
+
+⸻
+
+🟢 PHASE 2 - CUSTOMER SYSTEM (MAKE IT STICK)
+
+REQUIRED NAV
+	•	Home
+	•	Favourites
+	•	Bookings
+	•	Messages
+	•	Account
+
+⸻
+
+REQUIRED FEATURES
+
+1. BOOKINGS SYSTEM
+Tabs:
+	•	pending
+	•	upcoming
+	•	completed
+	•	cancelled
+
+Each booking shows:
+	•	provider
+	•	pets
+	•	services
+	•	price
+	•	status
+	•	rebook button
+
+⸻
+
+2. FAVOURITES
+	•	save providers
+	•	quick rebook
+
+⸻
+
+3. REBOOK FLOW
+🔥 very important
+	•	1-click rebook
+	•	pre-filled pets + addons
+	•	call quote engine again
+
+⸻
+
+4. MESSAGING
+	•	customer ↔ provider chat
+	•	linked to booking
+
+⸻
+
+🟣 PHASE 3 - PROVIDER SYSTEM (BIG GAP)
+
+This is where Rover wins.
+
+PROVIDER DASHBOARD
+
+Tabs:
+	•	Requests
+	•	Upcoming Jobs
+	•	Completed Jobs
+	•	Calendar
+	•	Earnings
+	•	Messages
+	•	Profile
+	•	Settings
+
+⸻
+
+REQUIRED FEATURES
+
+REQUESTS
+	•	accept / decline
+	•	countdown timer
+	•	quick view quote
+
+⸻
+
+CALENDAR
+	•	availability
+	•	blocked dates
+	•	service hours
+
+⸻
+
+EARNINGS
+	•	per booking
+	•	totals
+	•	payout status
+
+⸻
+
+PROFILE
+	•	photos
+	•	services
+	•	pricing
+	•	add-ons
+	•	service radius
+
+⸻
+
+PERFORMANCE
+	•	response rate
+	•	rating
+	•	repeat clients
+
+⸻
+
+🟠 PHASE 4 - ADMIN SYSTEM (CONTROL)
+
+You need visibility.
+
+ADMIN DASHBOARD
+
+Must show:
+	•	all bookings
+	•	providers
+	•	customers
+	•	disputes
+	•	payments
+	•	promo usage
+	•	machine activity (future)
+
+⸻
+
+REQUIRED TOOLS
+	•	force cancel booking
+	•	adjust credits
+	•	issue refund
+	•	block provider
+	•	view quote breakdown
+
+⸻
+
+🟡 PHASE 5 - DISCOVERY ENGINE (SCALE)
+
+This is how you grow.
+
+BUILD:
+
+1. CITY PAGES
+Example:
+	•	/pet-sitting/tel-aviv
+	•	/dog-walking/melbourne
+
+2. SERVICE PAGES
+	•	/pet-sitting
+	•	/dog-walking
+	•	/grooming
+
+3. SEO STRUCTURE
+	•	provider lists by city
+	•	filters
+	•	content blocks
+
+⸻
+
+💰 4. COMMERCIAL ENGINE (YOU ARE STRONG HERE)
+
+Keep improving:
+	•	promo codes
+	•	gift cards
+	•	wallet credit
+	•	prepaid packages
+	•	membership discounts
+
+👉 you already built the base correctly
+
+⸻
+
+🧪 5. CRITICAL TESTING (MANDATORY)
+
+Your engineer MUST test:
+	•	multi pet
+	•	mixed species
+	•	add-ons
+	•	promo valid/invalid
+	•	wallet usage
+	•	gift card
+	•	reprice
+	•	provider with/without rate card
+
+⸻
+
+⚠️ 6. BIG RISKS TO FIX
+
+1. AUTH BROKEN UX
+
+→ fix immediately
+
+2. NO TRUST FEEL
+
+→ users won’t convert
+
+3. NO PROVIDER SYSTEM
+
+→ supply side will fail
+
+4. NO ADMIN CONTROL
+
+→ chaos at scale
+
+⸻
+
+🧭 FINAL STRATEGY
+
+Do NOT build more features randomly.
+
+Build in THIS order:
+	1.	AUTH + TRUST
+	2.	CUSTOMER FLOW
+	3.	PROVIDER SYSTEM
+	4.	ADMIN CONTROL
+	5.	DISCOVERY (SEO SCALE)
+
+⸻
+
+🧠 MY HONEST VIEW
+
+You are actually in a strong position.
+
+Most people:
+❌ build UI
+❌ guess pricing
+❌ break later
+
+You:
+✔ built pricing engine early
+✔ structured bookings properly
+
+Now you must build:
+👉 the SYSTEM around it
+
+⸻
+
+If you want next step, I’ll do:
+	•	exact screen-by-screen UI structure (luxury level)
+	•	or database map for provider + admin systems
+	•	or Replit-ready task breakdown
+
+Just tell me.

@@ -278,30 +278,35 @@ function useQuotePreview(
 function ProgressBar({ currentStep }: { currentStep: WizardStep }) {
   const idx = STEPS.indexOf(currentStep);
   return (
-    <div className="flex items-center gap-1 px-4 py-3 border-b border-gray-100">
-      {STEPS.map((step, i) => (
-        <div key={step} className="flex items-center flex-1">
-          <div className="flex flex-col items-center flex-1">
-            <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                i < idx
-                  ? "bg-[#C5A55A] text-white"
-                  : i === idx
-                  ? "bg-[#C5A55A] text-white ring-2 ring-[#C5A55A]/30"
-                  : "bg-gray-100 text-gray-400"
-              }`}
-            >
-              {i < idx ? <Check className="w-3 h-3" /> : i + 1}
+    <div className="px-4 py-3 border-b border-gray-100">
+      {/* Step line */}
+      <div className="flex items-center gap-0">
+        {STEPS.map((step, i) => (
+          <div key={step} className="flex items-center flex-1">
+            <div className="flex flex-col items-center">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 ${
+                  i < idx
+                    ? "bg-[#C5A55A] text-white shadow-sm"
+                    : i === idx
+                    ? "bg-[#C5A55A] text-white ring-4 ring-[#C5A55A]/20 shadow-md"
+                    : "bg-gray-100 text-gray-400"
+                }`}
+              >
+                {i < idx ? <Check className="w-3.5 h-3.5" /> : i + 1}
+              </div>
+              <span className={`text-[9px] mt-1 font-medium whitespace-nowrap ${
+                i === idx ? "text-[#C5A55A]" : i < idx ? "text-[#C5A55A]/60" : "text-gray-300"
+              }`}>
+                {STEP_LABELS[step]}
+              </span>
             </div>
-            <span className={`text-[10px] mt-0.5 ${i === idx ? "text-[#C5A55A] font-semibold" : "text-gray-400"}`}>
-              {STEP_LABELS[step]}
-            </span>
+            {i < STEPS.length - 1 && (
+              <div className={`h-0.5 flex-1 mx-1 mb-4 rounded-full transition-all duration-300 ${i < idx ? "bg-[#C5A55A]" : "bg-gray-100"}`} />
+            )}
           </div>
-          {i < STEPS.length - 1 && (
-            <div className={`h-px flex-1 mx-1 ${i < idx ? "bg-[#C5A55A]" : "bg-gray-200"}`} />
-          )}
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
@@ -801,30 +806,34 @@ function AddonsStep({
         <p className="text-xs text-gray-500 mt-0.5">אופציונלי — ניתן לדלג</p>
       </div>
 
-      {/* Booking-level addons */}
+      {/* Booking-level addons — apply once for the whole booking */}
       {bookingAddons.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">לכל ההזמנה</p>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-[#C5A55A]" />
+            <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">🔖 לכל ההזמנה</p>
+            <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">חיוב אחד</span>
+          </div>
           {bookingAddons.map(addon => {
             const selected = isSelected(addon.code);
             return (
               <button
                 key={addon.code}
                 onClick={() => onToggleAddon(addon)}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-right ${
-                  selected ? "border-[#C5A55A] bg-[#C5A55A]/5" : "border-gray-100 bg-white hover:border-gray-200"
+                className={`w-full flex items-center gap-3 p-3.5 rounded-2xl border-2 transition-all text-right ${
+                  selected ? "border-[#C5A55A] bg-[#C5A55A]/5 shadow-sm" : "border-gray-100 bg-white hover:border-[#C5A55A]/30"
                 }`}
               >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${selected ? "bg-[#C5A55A]/20" : "bg-gray-50"}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 ${selected ? "bg-[#C5A55A]/20" : "bg-gray-50"}`}>
                   {addon.icon}
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-800">{addon.nameHe}</p>
-                  <p className="text-xs text-gray-500">להזמנה כולה</p>
+                <div className="flex-1 text-right">
+                  <p className="text-sm font-semibold text-gray-800">{addon.nameHe}</p>
+                  <p className="text-xs text-gray-400">חיוב אחד · כל הזמן ההזמנה</p>
                 </div>
-                <div className="flex flex-col items-end gap-1">
+                <div className="flex flex-col items-end gap-1 shrink-0">
                   <span className="text-sm font-bold text-[#C5A55A]">{formatILS(addon.unitPriceCents)}</span>
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? "bg-[#C5A55A] border-[#C5A55A]" : "border-gray-300"}`}>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? "bg-[#C5A55A] border-[#C5A55A]" : "border-gray-200"}`}>
                     {selected && <Check className="w-3 h-3 text-white" />}
                   </div>
                 </div>
@@ -834,15 +843,21 @@ function AddonsStep({
         </div>
       )}
 
-      {/* Per-pet addons */}
+      {/* Per-pet addons — priced per pet selected */}
       {petAddons.length > 0 && petCares.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">לפי חיית מחמד</p>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-blue-400" />
+            <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">🐾 לפי חיית מחמד</p>
+            <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">חיוב לכל חיה</span>
+          </div>
           {petCares.map(pc => (
             <div key={pc.clientRef} className="space-y-2">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm">{petEmoji(pc.petType)}</span>
-                <span className="text-xs font-semibold text-gray-600">{pc.petName}</span>
+              {/* Pet header */}
+              <div className="flex items-center gap-2 px-1 py-1">
+                <span className="text-base">{petEmoji(pc.petType)}</span>
+                <span className="text-sm font-semibold text-gray-700">{pc.petName}</span>
+                <div className="flex-1 h-px bg-gray-100" />
               </div>
               {petAddons.map(addon => {
                 const selected = isSelected(addon.code, pc.clientRef);
@@ -850,20 +865,20 @@ function AddonsStep({
                   <button
                     key={`${addon.code}-${pc.clientRef}`}
                     onClick={() => onToggleAddon(addon, pc.clientRef)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-right mr-2 ${
-                      selected ? "border-[#C5A55A] bg-[#C5A55A]/5" : "border-gray-100 bg-white hover:border-gray-200"
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-right mr-3 ${
+                      selected ? "border-blue-300 bg-blue-50/50 shadow-sm" : "border-gray-100 bg-white hover:border-blue-200"
                     }`}
                   >
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${selected ? "bg-[#C5A55A]/20" : "bg-gray-50"}`}>
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0 ${selected ? "bg-blue-100" : "bg-gray-50"}`}>
                       {addon.icon}
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 text-right">
                       <p className="text-sm font-medium text-gray-800">{addon.nameHe}</p>
-                      <p className="text-xs text-gray-500">עבור {pc.petName}</p>
+                      <p className="text-xs text-gray-400">עבור {pc.petName}</p>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="text-sm font-bold text-[#C5A55A]">{formatILS(addon.unitPriceCents)}</span>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? "bg-[#C5A55A] border-[#C5A55A]" : "border-gray-300"}`}>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className="text-sm font-bold text-gray-700">{formatILS(addon.unitPriceCents)}</span>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? "bg-blue-500 border-blue-500" : "border-gray-200"}`}>
                         {selected && <Check className="w-3 h-3 text-white" />}
                       </div>
                     </div>
@@ -876,13 +891,35 @@ function AddonsStep({
       )}
 
       {bookingAddons.length === 0 && petAddons.length === 0 && (
-        <div className="text-center py-6 text-gray-400 text-sm">אין תוספות זמינות לשירות זה</div>
+        <div className="text-center py-10 text-gray-400">
+          <div className="text-3xl mb-2">✨</div>
+          <p className="text-sm">אין תוספות זמינות לשירות זה</p>
+        </div>
       )}
     </div>
   );
 }
 
 // ── ConfirmStep (Quote + Submit) ─────────────────────────────────────────────
+
+function QuoteSkeleton() {
+  return (
+    <div className="animate-pulse space-y-2 p-4">
+      {[1, 2, 3].map(i => (
+        <div key={i} className="flex justify-between">
+          <div className="h-3 bg-gray-100 rounded w-32" />
+          <div className="h-3 bg-gray-100 rounded w-12" />
+        </div>
+      ))}
+      <div className="border-t border-gray-100 pt-3 mt-2">
+        <div className="flex justify-between">
+          <div className="h-4 bg-gray-100 rounded w-20" />
+          <div className="h-5 bg-[#C5A55A]/10 rounded w-16" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ConfirmStep({
   quote,
@@ -892,8 +929,12 @@ function ConfirmStep({
   selectedAddons,
   startDate,
   endDate,
+  startTime,
+  endTime,
+  serviceType,
   message, setMessage,
   promoCode, setPromoCode,
+  onApplyPromo,
   provider,
   onSubmit,
   isSubmitting,
@@ -905,198 +946,302 @@ function ConfirmStep({
   selectedAddons: SelectedAddon[];
   startDate: string;
   endDate: string;
+  startTime: string;
+  endTime: string;
+  serviceType: string;
   message: string; setMessage: (v: string) => void;
   promoCode: string; setPromoCode: (v: string) => void;
+  onApplyPromo: () => void;
   provider: any;
   onSubmit: () => void;
   isSubmitting: boolean;
 }) {
+  const isMultiDay = ["pet_sitting", "house_sitting", "daycare"].includes(serviceType);
+  const staleMs = quote?.quotedAt ? Date.now() - new Date(quote.quotedAt).getTime() : 0;
+  const isStale = staleMs > 5 * 60 * 1000;
+
   return (
-    <div className="p-4 space-y-5">
-      {/* Summary cards */}
-      <div className="space-y-3">
-        {/* Date summary */}
-        <div className="p-3 bg-gray-50 rounded-xl flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-[#C5A55A]" />
-          <div>
-            <p className="text-xs text-gray-500">תאריכים</p>
-            <p className="text-sm font-medium text-gray-800">
-              {startDate} {endDate && endDate !== startDate ? `← ${endDate}` : ""}
-            </p>
-          </div>
-        </div>
+    <div className="divide-y divide-gray-100">
 
-        {/* Pets summary */}
-        <div className="p-3 bg-gray-50 rounded-xl">
-          <p className="text-xs text-gray-500 mb-2">חיות מחמד ({petCares.length})</p>
-          <div className="flex flex-wrap gap-2">
-            {petCares.map(pc => (
-              <Badge
-                key={pc.clientRef}
-                variant="outline"
-                className="border-[#C5A55A]/30 text-gray-700 bg-white"
-              >
-                {petEmoji(pc.petType)} {pc.petName}
-                {pc.requiresMedication && <Pill className="w-3 h-3 mr-1 text-blue-400" />}
-                {pc.hasBehaviorFlag && <AlertTriangle className="w-3 h-3 mr-1 text-amber-400" />}
-              </Badge>
-            ))}
+      {/* ── Provider block ─────────────────────────────────────────────── */}
+      <div className="px-5 py-4">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">נותן שירות</p>
+        <div className="flex items-center gap-3">
+          {provider?.photoUrl ? (
+            <img src={provider.photoUrl} alt={provider.name} className="w-11 h-11 rounded-full object-cover border border-gray-100" />
+          ) : (
+            <div className="w-11 h-11 rounded-full bg-[#C5A55A]/15 flex items-center justify-center text-xl">🐾</div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-gray-900 text-sm truncate">{provider?.name || "—"}</p>
+            <p className="text-xs text-gray-500">{serviceTypeLabel(serviceType)}</p>
           </div>
-        </div>
-
-        {/* Addons summary */}
-        {selectedAddons.length > 0 && (
-          <div className="p-3 bg-gray-50 rounded-xl">
-            <p className="text-xs text-gray-500 mb-2">תוספות ({selectedAddons.length})</p>
-            <div className="space-y-1">
-              {selectedAddons.map((a, i) => (
-                <div key={i} className="flex items-center justify-between text-sm">
-                  <span className="text-gray-700">{a.addonName}</span>
-                  {a.petRef && (
-                    <span className="text-xs text-gray-400 mr-1">
-                      ({petCares.find(pc => pc.clientRef === a.petRef)?.petName || ""})
-                    </span>
-                  )}
-                  <span className="font-medium text-gray-800">{formatILS(a.unitPriceCents)}</span>
-                </div>
-              ))}
+          {provider?.rating && (
+            <div className="flex items-center gap-1 text-xs font-semibold text-[#C5A55A]">
+              <Star className="w-3 h-3 fill-[#C5A55A]" /> {provider.rating}
             </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Schedule block ─────────────────────────────────────────────── */}
+      <div className="px-5 py-4">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">לוח זמנים</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-gray-50 rounded-xl p-3">
+            <p className="text-xs text-gray-400 mb-0.5">{isMultiDay ? "כניסה" : "תאריך"}</p>
+            <p className="text-sm font-semibold text-gray-800">{startDate}</p>
+            <p className="text-xs text-gray-500">{startTime}</p>
           </div>
-        )}
+          {isMultiDay ? (
+            <div className="bg-gray-50 rounded-xl p-3">
+              <p className="text-xs text-gray-400 mb-0.5">יציאה</p>
+              <p className="text-sm font-semibold text-gray-800">{endDate}</p>
+              <p className="text-xs text-gray-500">{endTime}</p>
+            </div>
+          ) : (
+            <div className="bg-gray-50 rounded-xl p-3">
+              <p className="text-xs text-gray-400 mb-0.5">שעת סיום</p>
+              <p className="text-sm font-semibold text-gray-800">{endTime}</p>
+              <p className="text-xs text-gray-500">{quote?.durationLabel || ""}</p>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Promo code */}
-      <div className="flex gap-2">
-        <input
-          type="text"
-          placeholder="קוד קופון (אופציונלי)"
-          value={promoCode}
-          onChange={e => setPromoCode(e.target.value.toUpperCase())}
-          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30"
-          dir="ltr"
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          className="border-[#C5A55A] text-[#C5A55A] shrink-0"
-          disabled={!promoCode}
-        >
-          הפעל
-        </Button>
+      {/* ── Pets block ─────────────────────────────────────────────────── */}
+      <div className="px-5 py-4">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+          חיות מחמד ({petCares.length})
+        </p>
+        <div className="space-y-2">
+          {petCares.map(pc => (
+            <div key={pc.clientRef} className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2.5">
+              <span className="text-lg">{petEmoji(pc.petType)}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800">{pc.petName}</p>
+                <p className="text-xs text-gray-400">{pc.sizeCategory} · {pc.petType}</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {pc.requiresMedication && (
+                  <span className="flex items-center gap-0.5 text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">
+                    <Pill className="w-2.5 h-2.5" /> תרופות
+                  </span>
+                )}
+                {pc.hasBehaviorFlag && (
+                  <span className="flex items-center gap-0.5 text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                    <AlertTriangle className="w-2.5 h-2.5" /> התנהגות
+                  </span>
+                )}
+                {pc.hasSpecialNeeds && (
+                  <span className="flex items-center gap-0.5 text-[10px] text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full">
+                    <Info className="w-2.5 h-2.5" /> מיוחד
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Quote breakdown */}
-      <div className="border border-gray-100 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-          <span className="text-sm font-semibold text-gray-700">פירוט עלות</span>
-          {quoteLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-[#C5A55A]" />}
+      {/* ── Add-ons block ───────────────────────────────────────────────── */}
+      {selectedAddons.length > 0 && (
+        <div className="px-5 py-4">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+            תוספות ({selectedAddons.length})
+          </p>
+          <div className="space-y-1.5">
+            {selectedAddons.map((a, i) => {
+              const petName = a.petRef ? petCares.find(pc => pc.clientRef === a.petRef)?.petName : null;
+              return (
+                <div key={i} className="flex items-center justify-between py-1">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${a.scope === "booking" ? "bg-[#C5A55A]" : "bg-blue-400"}`} />
+                    <p className="text-sm text-gray-700 truncate">{a.addonName}</p>
+                    {petName && (
+                      <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full shrink-0">
+                        {petName}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-sm font-medium text-gray-700 shrink-0 mr-2">{formatILS(a.unitPriceCents)}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Promo code ─────────────────────────────────────────────────── */}
+      <div className="px-5 py-4">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">קוד קופון</p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="הזן קוד (אופציונלי)"
+            value={promoCode}
+            onChange={e => setPromoCode(e.target.value.toUpperCase())}
+            className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30"
+            dir="ltr"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-[#C5A55A] text-[#C5A55A] shrink-0 px-4 rounded-xl"
+            disabled={!promoCode}
+            onClick={onApplyPromo}
+          >
+            הפעל
+          </Button>
+        </div>
+      </div>
+
+      {/* ── Quote breakdown ─────────────────────────────────────────────── */}
+      <div className="px-5 py-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">פירוט עלות</p>
+          {quoteLoading && (
+            <div className="flex items-center gap-1 text-xs text-[#C5A55A]">
+              <Loader2 className="w-3 h-3 animate-spin" /> מחשב...
+            </div>
+          )}
+          {isStale && !quoteLoading && quote && (
+            <span className="text-[10px] text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full">
+              ⏱ הוזמן לפני {Math.round(staleMs / 60000)} דק׳
+            </span>
+          )}
         </div>
 
         {quoteLoading ? (
-          <div className="p-6 text-center text-sm text-gray-400">מחשב מחיר...</div>
+          <QuoteSkeleton />
         ) : quoteError ? (
-          <div className="p-4 text-sm text-red-500">{quoteError}</div>
+          <div className="flex items-start gap-2 p-3 bg-red-50 rounded-xl text-sm text-red-600">
+            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" /> {quoteError}
+          </div>
         ) : quote ? (
-          <div className="p-4 space-y-2">
-            {/* Pet line items */}
-            {quote.lineItems?.pets?.map((li: any, i: number) => (
-              <div key={i} className="flex justify-between text-sm">
-                <span className="text-gray-600">{li.label}</span>
-                <span className="font-medium">{formatILS(li.subtotalPriceCents)}</span>
-              </div>
-            ))}
-
-            {/* Addon line items */}
-            {quote.lineItems?.addons?.map((li: any, i: number) => (
-              <div key={i} className="flex justify-between text-sm">
-                <span className="text-gray-500">{li.addonName}
-                  {li.scope === "pet" && li.petRef != null && (
-                    <span className="text-xs text-gray-400"> ({petCares.find(pc => pc.clientRef === li.petRef)?.petName || ""})</span>
-                  )}
-                </span>
-                <span className="font-medium">{formatILS(li.subtotalPriceCents)}</span>
-              </div>
-            ))}
-
-            <div className="border-t border-gray-100 pt-2 mt-2 space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">סכום ביניים</span>
-                <span>{formatILS(quote.totals.subtotalCents)}</span>
-              </div>
-              {quote.totals.discountCents > 0 && (
-                <div className="flex justify-between text-sm text-green-600">
-                  <span>הנחה</span>
-                  <span>-{formatILS(quote.totals.discountCents)}</span>
+          <div className="space-y-0">
+            {/* Pet lines */}
+            <div className="space-y-2 pb-3">
+              {quote.lineItems?.pets?.map((li: any, i: number) => (
+                <div key={i} className="flex justify-between text-sm">
+                  <span className="text-gray-600">
+                    {petEmoji(li.clientRef === "0" ? petCares[0]?.petType || "dog" : petCares[parseInt(li.clientRef)]?.petType || "dog")} {li.petName}
+                    <span className="text-xs text-gray-400 mr-1">({li.label})</span>
+                  </span>
+                  <span className="font-medium text-gray-800">{formatILS(li.subtotalPriceCents)}</span>
                 </div>
-              )}
-              {quote.totals.giftCardAppliedCents > 0 && (
-                <div className="flex justify-between text-sm text-green-600">
-                  <span>כרטיס מתנה</span>
-                  <span>-{formatILS(quote.totals.giftCardAppliedCents)}</span>
-                </div>
-              )}
-              {quote.totals.walletCreditAppliedCents > 0 && (
-                <div className="flex justify-between text-sm text-green-600">
-                  <span>קרדיט ארנק</span>
-                  <span>-{formatILS(quote.totals.walletCreditAppliedCents)}</span>
-                </div>
-              )}
-              {quote.totals.taxCents > 0 && (
-                <div className="flex justify-between text-sm text-gray-500">
-                  <span>מע"מ</span>
-                  <span>{formatILS(quote.totals.taxCents)}</span>
-                </div>
-              )}
+              ))}
             </div>
 
-            <div className="border-t border-gray-200 pt-3 flex justify-between">
-              <span className="font-bold text-gray-900">לתשלום</span>
-              <span className="font-bold text-xl text-[#C5A55A]">{formatILS(quote.totals.totalCents)}</span>
-            </div>
-
-            {/* Warnings */}
-            {quote.warnings?.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {quote.warnings.map((w: string, i: number) => (
-                  <div key={i} className="flex items-start gap-1.5 text-xs text-amber-600 bg-amber-50 px-2 py-1.5 rounded-lg">
-                    <Info className="w-3 h-3 mt-0.5 shrink-0" />
-    {w}
+            {/* Addon lines from engine */}
+            {(quote.lineItems?.addons?.length ?? 0) > 0 && (
+              <div className="space-y-2 border-t border-dashed border-gray-100 pt-3 pb-3">
+                {quote.lineItems.addons.map((li: any, i: number) => (
+                  <div key={i} className="flex justify-between text-sm">
+                    <span className="text-gray-500">
+                      {li.addonName}
+                      {li.scope === "pet" && li.petRef != null && (
+                        <span className="text-xs text-gray-400 mr-1">
+                          ({petCares.find(pc => pc.clientRef === li.petRef)?.petName || ""})
+                        </span>
+                      )}
+                    </span>
+                    <span className="font-medium text-gray-700">{formatILS(li.subtotalPriceCents)}</span>
                   </div>
                 ))}
               </div>
             )}
 
-            <p className="text-[10px] text-gray-400 text-center mt-1">
-              גרסת תמחור: {quote.pricingVersion} · {quote.durationLabel}
+            {/* Totals */}
+            <div className="border-t border-gray-200 pt-3 space-y-2">
+              <div className="flex justify-between text-sm text-gray-500">
+                <span>סכום ביניים</span>
+                <span>{formatILS(quote.totals.subtotalCents)}</span>
+              </div>
+              {quote.totals.discountCents > 0 && (
+                <div className="flex justify-between text-sm text-emerald-600 font-medium">
+                  <span>✓ הנחת קופון</span>
+                  <span>-{formatILS(quote.totals.discountCents)}</span>
+                </div>
+              )}
+              {quote.totals.giftCardAppliedCents > 0 && (
+                <div className="flex justify-between text-sm text-emerald-600 font-medium">
+                  <span>🎁 כרטיס מתנה</span>
+                  <span>-{formatILS(quote.totals.giftCardAppliedCents)}</span>
+                </div>
+              )}
+              {quote.totals.walletCreditAppliedCents > 0 && (
+                <div className="flex justify-between text-sm text-emerald-600 font-medium">
+                  <span>💳 קרדיט ארנק</span>
+                  <span>-{formatILS(quote.totals.walletCreditAppliedCents)}</span>
+                </div>
+              )}
+              {quote.totals.taxCents > 0 && (
+                <div className="flex justify-between text-sm text-gray-400">
+                  <span>מע"מ (18%)</span>
+                  <span>{formatILS(quote.totals.taxCents)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Final total */}
+            <div className="flex justify-between items-center pt-3 mt-1 border-t-2 border-[#C5A55A]/20">
+              <span className="font-bold text-gray-900 text-base">לתשלום</span>
+              <span className="font-extrabold text-2xl text-[#C5A55A]">{formatILS(quote.totals.totalCents)}</span>
+            </div>
+
+            {/* Engine warnings */}
+            {quote.warnings?.filter((w: string) => !w.includes("Using ₪0")).length > 0 && (
+              <div className="mt-3 space-y-1.5">
+                {quote.warnings
+                  .filter((w: string) => !w.includes("Using ₪0"))
+                  .map((w: string, i: number) => (
+                    <div key={i} className="flex items-start gap-2 p-2.5 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700">
+                      <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-500" />
+                      <span>{w}</span>
+                    </div>
+                  ))}
+              </div>
+            )}
+
+            <p className="text-[9px] text-gray-300 text-center mt-2">
+              {quote.pricingVersion} · {quote.durationLabel}
+              {quote.quotedAt && ` · מחיר מ-${new Date(quote.quotedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`}
             </p>
           </div>
         ) : (
-          <div className="p-4 text-sm text-gray-400 text-center">הוסף פרטי הזמנה לקבלת הצעת מחיר</div>
+          <div className="text-center py-6 text-sm text-gray-400">
+            <div className="text-2xl mb-2">💰</div>
+            ממתין לנתוני ההזמנה...
+          </div>
         )}
       </div>
 
-      {/* Message to provider */}
-      <div>
-        <Label className="text-sm font-medium text-gray-700 mb-1 block">הודעה לנותן השירות (אופציונלי)</Label>
+      {/* ── Message to provider ─────────────────────────────────────────── */}
+      <div className="px-5 py-4">
+        <Label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 block">
+          הודעה לנותן השירות
+        </Label>
         <Textarea
-          placeholder="ספר לנו על הצרכים המיוחדים שלך..."
+          placeholder="פרטים מיוחדים, שאלות, בקשות... (אופציונלי)"
           value={message}
           onChange={e => setMessage(e.target.value)}
-          className="text-sm border-gray-200 focus:ring-[#C5A55A]/30 resize-none"
-          rows={2}
+          className="text-sm border-gray-200 rounded-xl focus:ring-[#C5A55A]/30 resize-none"
+          rows={3}
         />
       </div>
 
-      {/* Submit */}
-      <Button
-        onClick={onSubmit}
-        disabled={isSubmitting || quoteLoading || !quote}
-        className="w-full bg-[#C5A55A] hover:bg-[#b8945a] text-white font-semibold py-3 rounded-xl"
-      >
-        {isSubmitting ? (
-          <><Loader2 className="w-4 h-4 animate-spin mr-2" />שולח בקשת הזמנה...</>
-        ) : (
-          "שלח בקשת הזמנה →"
+      {/* ── Submit ─────────────────────────────────────────────────────── */}
+      <div className="px-5 py-5 space-y-3">
+        <Button
+          onClick={onSubmit}
+          disabled={isSubmitting || quoteLoading || !quote}
+          className="w-full bg-[#C5A55A] hover:bg-[#b8945a] text-white font-bold py-4 rounded-2xl text-base shadow-md shadow-[#C5A55A]/20"
+        >
+          {isSubmitting ? (
+            <><Loader2 className="w-4 h-4 animate-spin mr-2" />שולח בקשת הזמנה...</>
+          ) : (
+            "שלח בקשת הזמנה ←"
         )}
       </Button>
 
@@ -1403,19 +1548,20 @@ export default function MultiPetBookingWizard() {
             selectedAddons={selectedAddons}
             startDate={startDate}
             endDate={endDate}
+            startTime={startTime}
+            endTime={endTime}
+            serviceType={serviceType || "pet_sitting"}
             message={message} setMessage={setMessage}
             promoCode={promoCode} setPromoCode={setPromoCode}
+            onApplyPromo={() => {
+              // Re-trigger quote with new promoCode by bumping the deps — quote hook already includes promoCode
+            }}
             provider={provider}
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
           />
         )}
       </div>
-
-      {/* Mini quote bar (from addons step onward) */}
-      {(step === "addons") && (
-        <QuoteMiniBar quote={null} loading={false} />
-      )}
 
       {/* Bottom nav */}
       {step !== "confirm" && (

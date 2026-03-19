@@ -126,6 +126,53 @@ router.post('/', async (req, res) => {
     totalDays = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
     
     if (fq && fq.success && typeof fq.totals?.totalCents === 'number') {
+      // ── Safety checks before trusting the client-supplied quote ──────────────
+
+      // 1. Provider mismatch — quote was generated for a different provider
+      if (fq.providerId && fq.providerId !== data.providerId) {
+        return res.status(400).json({
+          error: 'Quote provider mismatch. Please restart your booking.',
+          code: 'QUOTE_PROVIDER_MISMATCH',
+        });
+      }
+
+      // 2. Service type mismatch — quote was generated for a different service
+      if (fq.serviceType && fq.serviceType !== data.serviceType) {
+        return res.status(400).json({
+          error: 'Quote service type mismatch. Please restart your booking.',
+          code: 'QUOTE_SERVICE_MISMATCH',
+        });
+      }
+
+      // 3. Stale quote check — quote older than 10 minutes must be repriced
+      const STALE_THRESHOLD_MS = 10 * 60 * 1000;
+      if (fq.quotedAt) {
+        const quoteAgeMs = Date.now() - new Date(fq.quotedAt).getTime();
+        if (quoteAgeMs > STALE_THRESHOLD_MS) {
+          // Reprice to see if the total changed
+          const freshQuote = await calculateQuote({
+            providerId: data.providerId,
+            serviceType: data.serviceType,
+            bookingWindow: { startAt: startDate.toISOString(), endAt: endDate.toISOString() },
+            pets: data.petDetails ?? [],
+            addons: data.selectedAddons ?? [],
+            promoCode: data.promoCode ?? null,
+            userId,
+          });
+          if (freshQuote.success && freshQuote.totals.totalCents !== fq.totals.totalCents) {
+            return res.status(409).json({
+              error: 'Your quote has expired and the price has changed. Please review the updated quote before confirming.',
+              code: 'QUOTE_STALE_PRICE_CHANGED',
+              freshQuote,
+            });
+          }
+          // Price unchanged — accept stale quote with a warning logged
+          logger.warn('[BookingRequest] Stale quote accepted (price unchanged)', {
+            requestId: 'pending', quoteAgeMs, providerId: data.providerId,
+          });
+        }
+      }
+
       // Use engine quote — no client-side arithmetic
       subtotalCents = fq.totals.subtotalCents;
       serviceFeeCents = 0; // already included in quote totals

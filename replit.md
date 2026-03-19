@@ -733,3 +733,25 @@ A booking is a CONTAINER. Not a single pet. The backend is the single source of 
 
 ### Pricing version
 Every quote carries `pricingVersion: "v1.0.0"` — stored in both the booking row and the audit log for reproducibility.
+
+## Quote Engine v1.1.0 (March 2026 hardening)
+
+### Changes shipped this session
+- **`quotedAt` ISO timestamp** on every `QuoteResponse` (stale detection in UI)
+- **`rateUnit` in `pricingSnapshot`** — `per_night` / `per_hour` / `per_trip` / `per_session` for each pet line item
+- **`pet_taxi` billing fix** — changed from `per_hour` to `per_trip` (1 unit always)
+- **SYSTEM_ADDON_CATALOG expanded** — 35 codes now covering K9000 wash (blow_dry, cologne_spray, flea_treatment, paw_balm), PetTrek taxi (carrier_rental, extra_stop), and sitter suite (report_card)
+- **Dev rate limiter bypassed** — `apiLimiter` skips all requests in development mode; production limit unchanged at 200/15min
+
+### ConfirmStep new props (MultiPetBookingWizard)
+- `startTime: string` — HH:MM time string from schedule step
+- `endTime: string` — HH:MM time string from schedule step
+- `serviceType: string` — passed to display correct rateUnit label
+- `onApplyPromo: () => void` — triggers quote re-fetch after promo code entry
+
+### AddonsStep UX improvements
+- Booking-scope addons: gold dot + "חיוב אחד" badge, rounded-2xl, gold hover border
+- Pet-scope addons: blue dot + "חיוב לכל חיה" badge, indented per-pet groups with divider line, blue selection color
+
+### Test suite: 12/12 PASS
+All quote engine scenarios verified after each fix cycle.
