@@ -1,3 +1,18 @@
+/**
+ * ╔══════════════════════════════════════════════════════════════════╗
+ * ║  DEPRECATED — Octopus Engine V1 API                             ║
+ * ║                                                                  ║
+ * ║  The V1 booking routes (/v1/bookings*) and V1 provider routes   ║
+ * ║  (/v1/providers*) in this file are superseded by the canonical  ║
+ * ║  booking flow:                                                   ║
+ * ║    POST/GET  /api/booking-requests  (booking-requests.ts)       ║
+ * ║    PATCH     /api/provider-dashboard/v2/bookings/:id/:action    ║
+ * ║                                                                  ║
+ * ║  No frontend surface calls these routes as of 2026-03.          ║
+ * ║  Wallet (/v1/wallet*), ledger (/v1/ledger*) and egift routes    ║
+ * ║  remain active and are NOT deprecated.                          ║
+ * ╚══════════════════════════════════════════════════════════════════╝
+ */
 import { Router, Request, Response } from "express";
 import { createHash, randomBytes } from 'crypto';
 import { db } from "../db";
@@ -41,7 +56,9 @@ const createBookingSchema = z.object({
   idempotencyKey: z.string().optional(),
 });
 
+// [DEPRECATED V1] Use POST /api/booking-requests instead
 router.post("/v1/bookings", async (req: Request, res: Response) => {
+  logger.warn('[DEPRECATED V1] POST /api/octopus/v1/bookings called — migrate to POST /api/booking-requests');
   try {
     const body = createBookingSchema.parse(req.body);
 
@@ -285,7 +302,9 @@ router.get("/v1/wallet/:userId", async (req: Request, res: Response) => {
 });
 
 // =================== COMPLETE BOOKING (Race-safe) ===================
+// [DEPRECATED V1] Use PATCH /api/booking-requests/:id/complete instead
 router.post("/v1/bookings/:id/complete", async (req: Request, res: Response) => {
+  logger.warn('[DEPRECATED V1] POST /api/octopus/v1/bookings/:id/complete called — migrate to PATCH /api/booking-requests/:id/complete');
   try {
     const { id } = req.params;
 
@@ -404,7 +423,9 @@ router.post("/v1/bookings/:id/complete", async (req: Request, res: Response) => 
 });
 
 // =================== CANCEL BOOKING (Race-safe) ===================
+// [DEPRECATED V1] Use POST /api/booking-requests/:id/cancel instead
 router.post("/v1/bookings/:id/cancel", async (req: Request, res: Response) => {
+  logger.warn('[DEPRECATED V1] POST /api/octopus/v1/bookings/:id/cancel called — migrate to POST /api/booking-requests/:id/cancel');
   try {
     const { id } = req.params;
 
@@ -439,7 +460,9 @@ router.post("/v1/bookings/:id/cancel", async (req: Request, res: Response) => {
 });
 
 // =================== GET BOOKING (with ledger + invoice) ===================
+// [DEPRECATED V1] Use GET /api/booking-requests/:id instead
 router.get("/v1/bookings/:id", async (req: Request, res: Response) => {
+  logger.warn('[DEPRECATED V1] GET /api/octopus/v1/bookings/:id called — migrate to GET /api/booking-requests/:id');
   try {
     const { id } = req.params;
 
@@ -472,7 +495,9 @@ router.get("/v1/bookings/:id", async (req: Request, res: Response) => {
 });
 
 // =================== LIST BOOKINGS ===================
+// [DEPRECATED V1] Use GET /api/booking-requests instead
 router.get("/v1/bookings", async (req: Request, res: Response) => {
+  logger.warn('[DEPRECATED V1] GET /api/octopus/v1/bookings called — migrate to GET /api/booking-requests');
   try {
     const { userId, platform } = req.query;
 
@@ -536,7 +561,9 @@ const registerProviderSchema = z.object({
   services: z.array(z.enum(VALID_PLATFORMS)).min(1),
 });
 
+// [DEPRECATED V1] Provider registration now handled by the provider application flow
 router.post("/v1/providers", async (req: Request, res: Response) => {
+  logger.warn('[DEPRECATED V1] POST /api/octopus/v1/providers called — use canonical provider application flow');
   try {
     const body = registerProviderSchema.parse(req.body);
 
@@ -577,7 +604,9 @@ router.post("/v1/providers", async (req: Request, res: Response) => {
 });
 
 // =================== APPROVE PROVIDER (KYC enforced) ===================
+// [DEPRECATED V1] Provider approval now handled by the admin panel / provider application flow
 router.post("/v1/providers/:id/approve", async (req: Request, res: Response) => {
+  logger.warn('[DEPRECATED V1] POST /api/octopus/v1/providers/:id/approve called — use admin panel approval flow');
   try {
     const { id } = req.params;
 

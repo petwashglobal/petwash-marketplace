@@ -5,7 +5,7 @@ import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { formatDistanceToNow } from "date-fns";
 import {
   Bell, X, CheckCheck, Dog, Cat, PawPrint, ChevronRight, Inbox,
-  MessageCircle, CheckCircle, Calendar, Star, Car, Scissors,
+  MessageCircle, CheckCircle, Star, Car, Scissors,
   AlertCircle
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
@@ -44,20 +44,18 @@ const PLATFORM_CONFIG: Record<string, { label: string; color: string; Icon: any 
 };
 
 // ─── Notification type config ─────────────────────────────────────────────────
+// Only types that are actually written to superAppNotifications are listed here.
+// booking_request, booking_confirmed, meet_greet, reminder, message were removed
+// as they are never inserted into superAppNotifications (verified 2026-03).
 const TYPE_CONFIG: Record<string, { label: string; labelHe: string; color: string; Icon: any; actionLabel?: string; actionLabelHe?: string }> = {
-  // ── Status-change types written by booking-requests.ts ──
-  booking_accepted:      { label: "Accepted",       labelHe: "אושרה",          color: "#10B981", Icon: CheckCircle,   actionLabel: "View",     actionLabelHe: "צפה" },
-  booking_declined:      { label: "Declined",        labelHe: "נדחתה",          color: "#EF4444", Icon: AlertCircle,   actionLabel: "Find alt", actionLabelHe: "הזמן שוב" },
-  booking_cancelled:     { label: "Cancelled",       labelHe: "בוטלה",          color: "#EF4444", Icon: AlertCircle,   actionLabel: "View",     actionLabelHe: "צפה" },
-  // ── Chat messages written by booking-chat.ts ──
-  booking_chat_message:  { label: "Message",         labelHe: "הודעה",          color: "#3B82F6", Icon: MessageCircle, actionLabel: "Reply",    actionLabelHe: "השב" },
-  // ── Legacy / future types ──
-  booking_request:       { label: "Booking Request", labelHe: "בקשת הזמנה",     color: "#F59E0B", Icon: Calendar,      actionLabel: "View",     actionLabelHe: "צפה" },
-  booking_confirmed:     { label: "Confirmed",       labelHe: "הזמנה אושרה",    color: "#10B981", Icon: CheckCircle,   actionLabel: "View",     actionLabelHe: "צפה" },
-  meet_greet:            { label: "Meet & Greet",    labelHe: "פגישת היכרות",   color: "#F97316", Icon: Dog,           actionLabel: "Details",  actionLabelHe: "פרטים" },
-  review_received:       { label: "New Review",      labelHe: "ביקורת חדשה",    color: "#8B5CF6", Icon: Star,          actionLabel: "View",     actionLabelHe: "צפה" },
-  reminder:              { label: "Reminder",        labelHe: "תזכורת",          color: "#6B7280", Icon: Bell },
-  message:               { label: "Message",         labelHe: "הודעה",           color: "#3B82F6", Icon: MessageCircle, actionLabel: "Reply",   actionLabelHe: "השב" },
+  // ── Status-change types — written by booking-requests.ts on accept/decline/cancel ──
+  booking_accepted:      { label: "Accepted",  labelHe: "אושרה",  color: "#10B981", Icon: CheckCircle,   actionLabel: "View",     actionLabelHe: "צפה" },
+  booking_declined:      { label: "Declined",  labelHe: "נדחתה",  color: "#EF4444", Icon: AlertCircle,   actionLabel: "הזמן שוב", actionLabelHe: "הזמן שוב" },
+  booking_cancelled:     { label: "Cancelled", labelHe: "בוטלה",  color: "#EF4444", Icon: AlertCircle,   actionLabel: "View",     actionLabelHe: "צפה" },
+  // ── Chat messages — written by booking-chat.ts on new message ──
+  booking_chat_message:  { label: "Message",   labelHe: "הודעה",  color: "#3B82F6", Icon: MessageCircle, actionLabel: "Reply",    actionLabelHe: "השב" },
+  // ── Reviews ── written by review submission flow ──
+  review_received:       { label: "New Review", labelHe: "ביקורת חדשה", color: "#8B5CF6", Icon: Star, actionLabel: "View", actionLabelHe: "צפה" },
 };
 
 function resolveTypeConfig(notificationType: string | null | undefined, platform: string | null | undefined) {
