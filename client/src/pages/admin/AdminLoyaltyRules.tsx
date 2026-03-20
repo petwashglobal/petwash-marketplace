@@ -17,6 +17,7 @@ import {
   ToggleLeft, ToggleRight, Loader2, AlertTriangle, ChevronRight, Check,
   TrendingUp, TrendingDown, Users, ArrowUpRight, ArrowDownRight,
   Trophy, PauseCircle, PlayCircle, Zap, ShieldCheck, ShieldOff,
+  Lock, Unlock, Timer,
 } from "lucide-react";
 import { QueueHealthCard } from "@/components/loyalty/QueueHealthCard";
 import { Button } from "@/components/ui/button";
@@ -65,17 +66,20 @@ interface WinbackData {
 }
 
 interface DecisionRow {
-  id:            number;
-  experimentKey: string;
-  winnerVariant: string | null;
-  pausedVariants: string[];
-  decidedAt:     string;
-  decidedBy:     string;
-  confidencePct: string | null;
-  upliftPct:     string | null;
-  promotedAt:    string | null;
-  notes:         string | null;
-  updatedAt:     string;
+  id:                  number;
+  experimentKey:       string;
+  winnerVariant:       string | null;
+  pausedVariants:      string[];
+  decidedAt:           string;
+  decidedBy:           string;
+  confidencePct:       string | null;
+  upliftPct:           string | null;
+  promotedAt:          string | null;
+  promotionLocked:     boolean;
+  notes:               string | null;
+  updatedAt:           string;
+  runtimeDays:         number | null;
+  autoPromoteEligible: boolean;
 }
 
 interface DecisionsData {
@@ -630,6 +634,16 @@ function ExperimentDecisionsPanel() {
     onError: () => toast({ title: 'שגיאה', description: 'שינוי מצב נכשל.', variant: 'destructive' }),
   });
 
+  const lockMut = useMutation({
+    mutationFn: ({ experimentKey, locked }: { experimentKey: string; locked: boolean }) =>
+      apiRequest('POST', '/api/admin/loyalty/experiment-decisions/lock', { experimentKey, locked }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK });
+      toast({ title: 'עודכן', description: 'מצב נעילת קידום אוטומטי שונה.' });
+    },
+    onError: () => toast({ title: 'שגיאה', description: 'שינוי נעילה נכשל.', variant: 'destructive' }),
+  });
+
   if (isLoading) return <div className="py-4 text-center text-xs text-gray-400">טוען החלטות…</div>;
   if (isError || !data) return <div className="py-4 text-center text-xs text-red-400">שגיאה בטעינת החלטות</div>;
 
@@ -663,28 +677,85 @@ function ExperimentDecisionsPanel() {
           const decision  = decisions.find(d => d.experimentKey === expKey);
           const variants  = ['ctrl', 'v1', 'v2'];
 
-          const ctrlSent  = funnelCnt(expKey, 'ctrl', 'notification_sent');
-          const hasData   = ctrlSent > 0;
-          const isPromoted = !!decision?.promotedAt;
+          const ctrlSent          = funnelCnt(expKey, 'ctrl', 'notification_sent');
+          const hasData           = ctrlSent > 0;
+          const isPromoted        = !!decision?.promotedAt;
+          const isLocked          = !!decision?.promotionLocked;
+          const runtimeDays       = decision?.runtimeDays ?? null;
+          const confidencePct     = decision?.confidencePct ? parseFloat(decision.confidencePct) : null;
+          const autoPromoteEligible = !!decision?.autoPromoteEligible;
+          const isAutoPromoted    = decision?.decidedBy === 'auto-promote' && isPromoted;
 
           return (
             <div key={expKey}>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-bold text-gray-700">{expKey}</p>
-                {isPromoted ? (
-                  <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[10px] gap-1">
-                    <Trophy className="w-2.5 h-2.5" />
-                    {VARIANT_LABEL[decision!.winnerVariant ?? ''] ?? decision!.winnerVariant} — מוצב
-                  </Badge>
-                ) : decision?.winnerVariant ? (
-                  <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] gap-1">
-                    <Trophy className="w-2.5 h-2.5" />
-                    מנצח זוהה — ממתין לקידום
-                  </Badge>
-                ) : (
-                  <Badge className="bg-gray-50 text-gray-400 border-0 text-[10px]">בתהליך</Badge>
-                )}
+                <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                  {isLocked && !isPromoted && (
+                    <Badge className="bg-red-50 text-red-500 border-red-100 text-[10px] gap-1">
+                      <Lock className="w-2.5 h-2.5" /> נעול
+                    </Badge>
+                  )}
+                  {isPromoted ? (
+                    <Badge className={`border-0 text-[10px] gap-1 ${isAutoPromoted ? 'bg-violet-100 text-violet-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                      <Trophy className="w-2.5 h-2.5" />
+                      {VARIANT_LABEL[decision!.winnerVariant ?? ''] ?? decision!.winnerVariant}
+                      {isAutoPromoted ? ' — קידום אוטומטי' : ' — מוצב'}
+                    </Badge>
+                  ) : autoPromoteEligible ? (
+                    <Badge className="bg-violet-50 text-violet-600 border-violet-200 text-[10px] gap-1">
+                      <Zap className="w-2.5 h-2.5" />
+                      זכאי לקידום אוטומטי
+                    </Badge>
+                  ) : decision?.winnerVariant ? (
+                    <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] gap-1">
+                      <Trophy className="w-2.5 h-2.5" />
+                      מנצח זוהה — ממתין לקידום
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-gray-50 text-gray-400 border-0 text-[10px]">בתהליך</Badge>
+                  )}
+                </div>
               </div>
+
+              {/* Phase 6.14: Auto-promote eligibility progress (only shown when winner exists + not yet promoted) */}
+              {decision?.winnerVariant && !isPromoted && (
+                <div className="mb-3 p-2.5 bg-gray-50 rounded-lg border border-gray-100 space-y-2">
+                  <p className="text-[10px] font-semibold text-gray-500 mb-1">קריטריוני קידום אוטומטי</p>
+
+                  {/* Confidence bar: need 97% */}
+                  <div>
+                    <div className="flex justify-between text-[9px] text-gray-400 mb-0.5">
+                      <span>ביטחון סטטיסטי</span>
+                      <span>
+                        {confidencePct !== null ? `${confidencePct.toFixed(1)}%` : '—'} / 97%
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${(confidencePct ?? 0) >= 97 ? 'bg-emerald-500' : 'bg-amber-400'}`}
+                        style={{ width: `${Math.min(((confidencePct ?? 0) / 97) * 100, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Runtime bar: need 14 days */}
+                  <div>
+                    <div className="flex justify-between text-[9px] text-gray-400 mb-0.5">
+                      <span><Timer className="w-2.5 h-2.5 inline ml-0.5" />זמן ריצה</span>
+                      <span>
+                        {runtimeDays !== null ? `${runtimeDays} ימים` : '—'} / 14 ימים
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${(runtimeDays ?? 0) >= 14 ? 'bg-emerald-500' : 'bg-blue-400'}`}
+                        style={{ width: `${Math.min(((runtimeDays ?? 0) / 14) * 100, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {!hasData ? (
                 <p className="text-xs text-gray-300 italic">אין נתוני ניסוי עדיין</p>
@@ -772,9 +843,9 @@ function ExperimentDecisionsPanel() {
                     );
                   })}
 
-                  {/* Winner promotion button */}
+                  {/* Winner promotion button + lock toggle */}
                   {decision?.winnerVariant && !isPromoted && (
-                    <div className="pt-1">
+                    <div className="pt-1 space-y-2">
                       <Button
                         size="sm"
                         className="w-full bg-amber-500 hover:bg-amber-600 text-white text-xs h-8 gap-1.5"
@@ -788,19 +859,44 @@ function ExperimentDecisionsPanel() {
                         קדם את {VARIANT_LABEL[decision.winnerVariant] ?? decision.winnerVariant} כוריאנט ברירת מחדל
                       </Button>
                       {decision.confidencePct && decision.upliftPct && (
-                        <p className="text-[10px] text-center text-gray-400 mt-1.5">
+                        <p className="text-[10px] text-center text-gray-400">
                           ביטחון {parseFloat(decision.confidencePct).toFixed(1)}% ·{' '}
                           עלייה {parseFloat(decision.upliftPct) > 0 ? '+' : ''}{parseFloat(decision.upliftPct).toFixed(1)}% vs בקרה
                         </p>
                       )}
+                      {/* Phase 6.14: Lock / unlock auto-promotion */}
+                      <button
+                        className={`flex items-center justify-center gap-1 w-full text-[10px] font-medium py-1.5 rounded-lg border transition-colors ${
+                          isLocked
+                            ? 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'
+                            : 'border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50'
+                        }`}
+                        disabled={lockMut.isPending}
+                        onClick={() => lockMut.mutate({ experimentKey: expKey, locked: !isLocked })}
+                      >
+                        {lockMut.isPending
+                          ? <Loader2 className="w-3 h-3 animate-spin" />
+                          : isLocked
+                            ? <><Unlock className="w-3 h-3" /> בטל נעילת קידום אוטומטי</>
+                            : <><Lock className="w-3 h-3" /> נעל קידום אוטומטי</>
+                        }
+                      </button>
                     </div>
                   )}
 
                   {isPromoted && (
-                    <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2">
-                      <Check className="w-3.5 h-3.5" />
+                    <div className={`flex items-center gap-2 text-xs rounded-lg px-3 py-2 ${
+                      isAutoPromoted
+                        ? 'text-violet-700 bg-violet-50'
+                        : 'text-emerald-600 bg-emerald-50'
+                    }`}>
+                      {isAutoPromoted
+                        ? <Zap className="w-3.5 h-3.5 shrink-0" />
+                        : <Check className="w-3.5 h-3.5 shrink-0" />
+                      }
                       <span>
-                        {VARIANT_LABEL[decision!.winnerVariant!] ?? decision!.winnerVariant} מוצב ופעיל —
+                        {VARIANT_LABEL[decision!.winnerVariant!] ?? decision!.winnerVariant} מוצב ופעיל
+                        {isAutoPromoted ? ' — קודם אוטומטית' : ''} —
                         כל שליחות חדשות ישתמשו בוריאנט זה.
                       </span>
                     </div>

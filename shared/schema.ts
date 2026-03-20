@@ -12506,10 +12506,11 @@ export const experimentDecisions = pgTable("experiment_decisions", {
   winnerVariant:   text("winner_variant"),                        // null = no winner yet
   pausedVariants:  text("paused_variants").array().notNull().default(sql`'{}'::text[]`),
   decidedAt:       timestamp("decided_at").notNull().defaultNow(),
-  decidedBy:       text("decided_by").notNull().default('auto'), // 'auto' | admin email
+  decidedBy:       text("decided_by").notNull().default('auto'), // 'auto' | 'auto-promote' | admin email
   confidencePct:   decimal("confidence_pct", { precision: 5, scale: 2 }),
   upliftPct:       decimal("uplift_pct",     { precision: 5, scale: 2 }),
   promotedAt:      timestamp("promoted_at"),
+  promotionLocked: boolean("promotion_locked").notNull().default(false), // Phase 6.14: admin can freeze auto-promotion
   notes:           text("notes"),
   updatedAt:       timestamp("updated_at").notNull().defaultNow(),
 }, (table) => [

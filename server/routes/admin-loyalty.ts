@@ -648,7 +648,8 @@ router.post('/proof-run', requireAdmin, async (req: any, res) => {
 });
 
 // ── GET /experiment-decisions ────────────────────────────────────────────────
-// Returns all rows from experiment_decisions joined with per-variant funnel counts.
+// Returns all rows from experiment_decisions joined with per-variant funnel counts
+// plus runtimeInfo (first notification sent → now) for auto-promote eligibility display.
 router.get('/experiment-decisions', requireAdmin, async (_req, res) => {
   try {
     const decisions = await db
@@ -656,22 +657,54 @@ router.get('/experiment-decisions', requireAdmin, async (_req, res) => {
       .from(experimentDecisions)
       .orderBy(desc(experimentDecisions.updatedAt));
 
-    // Also pull per-variant funnel for the same experiment keys
     const expKeys = decisions.map(d => d.experimentKey);
-    const funnel = expKeys.length > 0
-      ? await db
-          .select({
-            experimentKey: experimentEvents.experimentKey,
-            variant:       experimentEvents.variant,
-            event:         experimentEvents.event,
-            cnt:           count(),
-          })
-          .from(experimentEvents)
-          .where(inArray(experimentEvents.experimentKey, expKeys))
-          .groupBy(experimentEvents.experimentKey, experimentEvents.variant, experimentEvents.event)
-      : [];
 
-    res.json({ decisions, funnel });
+    const [funnel, runtimeRows] = await Promise.all([
+      expKeys.length > 0
+        ? db
+            .select({
+              experimentKey: experimentEvents.experimentKey,
+              variant:       experimentEvents.variant,
+              event:         experimentEvents.event,
+              cnt:           count(),
+            })
+            .from(experimentEvents)
+            .where(inArray(experimentEvents.experimentKey, expKeys))
+            .groupBy(experimentEvents.experimentKey, experimentEvents.variant, experimentEvents.event)
+        : Promise.resolve([]),
+
+      // Phase 6.14: per-experiment first_sent_at for runtime day calculation
+      expKeys.length > 0
+        ? db.execute<{ experiment_key: string; first_sent_at: string }>(sql`
+            SELECT experiment_key, MIN(created_at) AS first_sent_at
+            FROM experiment_events
+            WHERE experiment_key = ANY(${sql.raw(`ARRAY['${expKeys.join("','")}']`)})
+              AND event = 'notification_sent'
+            GROUP BY experiment_key
+          `)
+        : Promise.resolve({ rows: [] as { experiment_key: string; first_sent_at: string }[] }),
+    ]);
+
+    // Build runtimeDays map
+    const runtimeMap: Record<string, number | null> = {};
+    for (const row of (runtimeRows as any).rows ?? []) {
+      const msAgo = Date.now() - new Date(row.first_sent_at).getTime();
+      runtimeMap[row.experiment_key] = Math.floor(msAgo / 86_400_000);
+    }
+
+    // Attach runtimeDays + autoPromoteEligible to each decision
+    const decisionsOut = decisions.map(d => ({
+      ...d,
+      runtimeDays: runtimeMap[d.experimentKey] ?? null,
+      autoPromoteEligible:
+        !d.promotedAt &&
+        !d.promotionLocked &&
+        !!d.winnerVariant &&
+        Number(d.confidencePct ?? 0) >= 97 &&
+        (runtimeMap[d.experimentKey] ?? 0) >= 14,
+    }));
+
+    res.json({ decisions: decisionsOut, funnel });
   } catch (err: any) {
     logger.error('admin-loyalty GET /experiment-decisions', err);
     res.status(500).json({ error: 'Failed to fetch decisions' });
@@ -804,6 +837,51 @@ router.post('/experiment-decisions/pause-variant', requireAdmin, async (req: any
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
     logger.error('admin-loyalty POST /experiment-decisions/pause-variant', err);
     res.status(500).json({ error: err.message || 'Pause-variant failed' });
+  }
+});
+
+// ── POST /experiment-decisions/lock ──────────────────────────────────────────
+// Phase 6.14: Admin override — prevent or re-enable auto-promotion for an experiment.
+// When locked=true the auto-promote job will NOT promote this experiment automatically,
+// even if confidence and runtime thresholds are met.
+// Manual promote via /promote still works regardless of lock state.
+const lockSchema = z.object({
+  experimentKey: z.string().min(1),
+  locked:        z.boolean(),
+  notes:         z.string().max(500).optional(),
+});
+
+router.post('/experiment-decisions/lock', requireAdmin, async (req: any, res) => {
+  try {
+    const { experimentKey, locked, notes } = lockSchema.parse(req.body);
+    const adminEmail = req.firebaseUser?.email ?? 'admin';
+
+    // Upsert the decision row with the new lock state
+    await db
+      .insert(experimentDecisions)
+      .values({
+        experimentKey,
+        promotionLocked: locked,
+        decidedBy:       adminEmail,
+        notes:           notes ?? null,
+        updatedAt:       new Date(),
+      })
+      .onConflictDoUpdate({
+        target: experimentDecisions.experimentKey,
+        set: {
+          promotionLocked: locked,
+          decidedBy:       adminEmail,
+          notes:           notes ? notes : sql`experiment_decisions.notes`,
+          updatedAt:       new Date(),
+        },
+      });
+
+    logger.info('admin-loyalty: auto-promotion lock toggled', { experimentKey, locked, adminEmail });
+    res.json({ ok: true, experimentKey, promotionLocked: locked });
+  } catch (err: any) {
+    if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
+    logger.error('admin-loyalty POST /experiment-decisions/lock', err);
+    res.status(500).json({ error: err.message || 'Lock update failed' });
   }
 });
 

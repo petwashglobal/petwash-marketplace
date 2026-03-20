@@ -20,8 +20,15 @@
 
 export const MIN_SAMPLE_SIZE   = 100;   // notification_sent per variant
 export const MIN_RUNTIME_DAYS  = 7;
-export const WINNER_CONFIDENCE = 95;    // %
+export const WINNER_CONFIDENCE = 95;    // % — threshold for manual promote button
 export const ZERO_CONV_THRESHOLD = 50;  // sends with 0 completions → auto-pause
+
+// Phase 6.14 — Auto-promotion (higher bar than manual)
+export const AUTO_PROMOTE_CONFIDENCE      = 97;  // % — requires stronger signal than manual
+export const MIN_AUTO_PROMOTE_RUNTIME_DAYS = 14; // days — at least 2 weeks of real data
+
+// Phase 6.14 — ROI floor (paid channels cut when ROI drops below this)
+export const ROI_FLOOR_PCT = 0; // 0 = break-even; negative ROI → cut SMS/WhatsApp first
 
 export interface VariantCounts {
   variant:   string;

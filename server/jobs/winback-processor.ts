@@ -509,30 +509,139 @@ async function runWhatsAppEscalationPass(): Promise<{ sent: number; skipped: num
   return { sent, skipped, errors };
 }
 
+// ── Phase 6.14: Channel ROI calculation ──────────────────────────────────────
+//
+// Queries the last 14 days of experiment_events to estimate ROI per paid channel.
+// ROI% = ( completions × AVG_BOOKING_VALUE_ILS − sends × CHANNEL_COST_ILS )
+//        / ( sends × CHANNEL_COST_ILS ) × 100
+//
+// Conservative cost/revenue constants — update if Twilio pricing changes:
+const AVG_BOOKING_VALUE_ILS = 100;   // ₪100 avg booking value attributed to winback
+const SMS_COST_ILS          = 0.03;  // ₪0.03 per SMS (≈ $0.0075 at 4 ILS/USD)
+const WHATSAPP_COST_ILS     = 0.02;  // ₪0.02 per WhatsApp message
+
+interface ChannelRoi { roi: number | null; sent: number; completed: number }
+
+async function loadChannelRoi(): Promise<Map<'sms' | 'whatsapp', ChannelRoi>> {
+  const rows = await db.execute<{ channel: string; sent: string; completed: string }>(sql`
+    SELECT
+      ee.channel,
+      COUNT(*)  FILTER (WHERE ee.event = 'notification_sent') AS sent,
+      COUNT(*)  FILTER (WHERE ee.event = 'completed')         AS completed
+    FROM experiment_events ee
+    WHERE ee.created_at > now() - interval '14 days'
+      AND ee.channel IN ('sms', 'whatsapp')
+    GROUP BY ee.channel
+  `);
+
+  const result = new Map<'sms' | 'whatsapp', ChannelRoi>();
+
+  for (const row of rows.rows ?? []) {
+    const ch        = row.channel as 'sms' | 'whatsapp';
+    const sent      = parseInt(row.sent, 10)      || 0;
+    const completed = parseInt(row.completed, 10) || 0;
+    const costIls   = ch === 'sms' ? SMS_COST_ILS : WHATSAPP_COST_ILS;
+
+    if (sent === 0) {
+      result.set(ch, { roi: null, sent: 0, completed: 0 });
+      continue;
+    }
+
+    const revenuIls = completed * AVG_BOOKING_VALUE_ILS;
+    const costTotal = sent * costIls;
+    const roi       = ((revenuIls - costTotal) / costTotal) * 100;
+    result.set(ch, { roi, sent, completed });
+  }
+
+  // Ensure both channels have an entry
+  if (!result.has('sms'))      result.set('sms',      { roi: null, sent: 0, completed: 0 });
+  if (!result.has('whatsapp')) result.set('whatsapp', { roi: null, sent: 0, completed: 0 });
+
+  return result;
+}
+
 // ── Main entry point ──────────────────────────────────────────────────────────
 
 export async function runWinbackProcessor(): Promise<void> {
-  logger.info('[WinbackProcessor] Starting multi-channel run (Phase 6.13)');
+  logger.info('[WinbackProcessor] Starting multi-channel run (Phase 6.14)');
 
-  const guards = await loadGuards();
-
-  const [p1, p2, p3] = await Promise.all([
-    runInitialPass(guards),
-    runSmsEscalationPass(),
-    runWhatsAppEscalationPass(),
+  const [guards, channelRoi] = await Promise.all([
+    loadGuards(),
+    loadChannelRoi(),
   ]);
 
-  const totalAwarded = p1.awarded;
+  // Phase 6.14: ROI floor — skip paid channels when return is negative.
+  // null ROI (no data yet) means we allow the channel (don't cut with no evidence).
+  const smsRoi = channelRoi.get('sms')!;
+  const waRoi  = channelRoi.get('whatsapp')!;
+
+  const runSms = smsRoi.roi === null || smsRoi.roi >= 0;
+  const runWa  = waRoi.roi  === null || waRoi.roi  >= 0;
+
+  if (!runSms) {
+    logger.warn('[WinbackProcessor] Skipping SMS pass — ROI below floor (ROI_FLOOR_PCT=0%)', {
+      smsRoi: smsRoi.roi?.toFixed(1), sent: smsRoi.sent, completed: smsRoi.completed,
+    });
+  }
+  if (!runWa) {
+    logger.warn('[WinbackProcessor] Skipping WhatsApp pass — ROI below floor (ROI_FLOOR_PCT=0%)', {
+      waRoi: waRoi.roi?.toFixed(1), sent: waRoi.sent, completed: waRoi.completed,
+    });
+  }
+
+  // Phase 6.14: Budget-aware ordering — when both paid channels are eligible,
+  // run the higher-ROI channel first so it exhausts its eligible rows before the lower-ROI one.
+  // (Passes operate on different queue rows so sequential ordering, not parallel, is intentional.)
+  const paidPasses: Array<() => Promise<{ sent: number; skipped: number; errors: number }>> = [];
+
+  if (runSms && runWa) {
+    // Sort by ROI descending (null = no data → treat as 0 for ordering)
+    const smsFirst = (smsRoi.roi ?? 0) >= (waRoi.roi ?? 0);
+    if (smsFirst) {
+      paidPasses.push(runSmsEscalationPass, runWhatsAppEscalationPass);
+    } else {
+      paidPasses.push(runWhatsAppEscalationPass, runSmsEscalationPass);
+    }
+    logger.info('[WinbackProcessor] ROI-ordered paid passes', {
+      order: smsFirst ? ['sms', 'whatsapp'] : ['whatsapp', 'sms'],
+      smsRoi: smsRoi.roi?.toFixed(1) ?? 'null', waRoi: waRoi.roi?.toFixed(1) ?? 'null',
+    });
+  } else {
+    if (runSms) paidPasses.push(runSmsEscalationPass);
+    if (runWa)  paidPasses.push(runWhatsAppEscalationPass);
+  }
+
+  // Run in-app pass + (ordered) paid escalation passes
+  const p1 = await runInitialPass(guards);
+
+  // Run paid passes in ROI-priority order (sequential to respect ordering intent)
+  let p2: { sent: number; skipped: number; errors: number } = { sent: 0, skipped: 0, errors: 0 };
+  let p3: { sent: number; skipped: number; errors: number } = { sent: 0, skipped: 0, errors: 0 };
+
+  for (const passFn of paidPasses) {
+    const r = await passFn();
+    // Assign results back to p2/p3 for logging (first paid = p2, second = p3)
+    if (p2.sent === 0 && p2.errors === 0 && p2.skipped === 0 && r.sent + r.errors + r.skipped > 0) {
+      p2 = r;
+    } else {
+      p3 = r;
+    }
+  }
+
   const totalErrors  = p1.errors + p2.errors + p3.errors;
 
   logger.info('[WinbackProcessor] Run complete', {
     inApp:    { awarded: p1.awarded, errors: p1.errors },
-    sms:      { sent: p2.sent, skipped: p2.skipped, errors: p2.errors },
-    whatsapp: { sent: p3.sent, skipped: p3.skipped, errors: p3.errors },
+    sms:      runSms ? { sent: p2.sent, skipped: p2.skipped, errors: p2.errors } : 'skipped(ROI)',
+    whatsapp: runWa  ? { sent: p3.sent, skipped: p3.skipped, errors: p3.errors } : 'skipped(ROI)',
     totalErrors,
+    channelRoi: {
+      sms:      `${smsRoi.roi?.toFixed(1) ?? 'null'}% (${smsRoi.sent} sent, ${smsRoi.completed} completed)`,
+      whatsapp: `${waRoi.roi?.toFixed(1)  ?? 'null'}% (${waRoi.sent}  sent, ${waRoi.completed}  completed)`,
+    },
   });
 
-  if (totalAwarded > 0) {
+  if (p1.awarded > 0) {
     runExperimentDecisionJob().catch(err =>
       logger.warn('[WinbackProcessor] Decision job error (non-blocking)', { error: err.message }),
     );
