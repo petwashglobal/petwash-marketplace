@@ -509,6 +509,219 @@ async function runWhatsAppEscalationPass(): Promise<{ sent: number; skipped: num
   return { sent, skipped, errors };
 }
 
+// ── Phase 6.15: Emergency paid-channel kill switch ───────────────────────────
+//
+// When a loyalty_rules row with ruleKey = 'winback_paid_kill' has enabled = true,
+// ALL paid escalation passes (SMS + WhatsApp) are immediately halted.
+// The row is created / toggled via POST /api/admin/loyalty/paid-channel-kill-switch.
+// This is a hard stop — no ROI check, no ordering — just a blanket bypass.
+
+export const PAID_KILL_SWITCH_RULE = 'winback_paid_kill' as const;
+
+async function isPaidKillSwitchActive(): Promise<boolean> {
+  try {
+    const [row] = await db
+      .select({ enabled: loyaltyRules.enabled })
+      .from(loyaltyRules)
+      .where(eq(loyaltyRules.ruleKey, PAID_KILL_SWITCH_RULE))
+      .limit(1);
+    return row?.enabled ?? false;
+  } catch {
+    return false; // fail open (don't kill paid channels on DB error)
+  }
+}
+
+// ── Phase 6.15: Queue health checks ──────────────────────────────────────────
+
+export interface QueueHealthCheck {
+  name:      string;
+  status:    'ok' | 'warn' | 'critical';
+  message:   string;
+  detail?:   Record<string, unknown>;
+}
+
+export interface QueueHealthReport {
+  checks:          QueueHealthCheck[];
+  generatedAt:     string;
+  autoPromotedToday: number;
+  pausedToday:     number;
+}
+
+const STUCK_PENDING_HOURS   = 6;    // pending row older than this = stuck
+const HIGH_PAUSED_RATIO     = 0.40; // 40%+ paused rows = alert
+const ZERO_CONV_MIN_SENDS   = 100;  // sends threshold before we flag zero completions
+const ROI_COLLAPSE_THRESHOLD = 30;  // drop of 30+ pct-points vs prior 7d = collapse
+
+export async function loadQueueHealth(): Promise<QueueHealthReport> {
+  const checks: QueueHealthCheck[] = [];
+
+  // ─ 1. Stuck pending rows ─────────────────────────────────────────
+  const stuckRes = await db.execute<{ trigger: string; cnt: string }>(sql`
+    SELECT trigger, COUNT(*)::text AS cnt
+    FROM winback_queue
+    WHERE status = 'pending'
+      AND scheduled_at < now() - (${STUCK_PENDING_HOURS} || ' hours')::interval
+    GROUP BY trigger
+  `);
+  const stuckRows = stuckRes.rows ?? [];
+  const totalStuck = stuckRows.reduce((s, r) => s + parseInt(r.cnt, 10), 0);
+
+  checks.push(
+    totalStuck === 0
+      ? { name: 'stuck_pending', status: 'ok',      message: 'אין שורות pending תקועות' }
+      : totalStuck <= 10
+        ? { name: 'stuck_pending', status: 'warn',   message: `${totalStuck} שורות pending תקועות מעל ${STUCK_PENDING_HOURS}ש'`,     detail: Object.fromEntries(stuckRows.map(r => [r.trigger, r.cnt])) }
+        : { name: 'stuck_pending', status: 'critical', message: `${totalStuck} שורות pending תקועות — ייתכן תקלה ב-cron`,            detail: Object.fromEntries(stuckRows.map(r => [r.trigger, r.cnt])) },
+  );
+
+  // ─ 2. High paused ratio ─────────────────────────────────────────
+  const ratioRes = await db.execute<{ trigger: string; total: string; paused: string }>(sql`
+    SELECT trigger,
+      COUNT(*)::text AS total,
+      COUNT(*) FILTER (WHERE paused_at IS NOT NULL)::text AS paused
+    FROM winback_queue
+    WHERE status != 'converted'
+    GROUP BY trigger
+  `);
+  const highPaused = (ratioRes.rows ?? []).filter(r => {
+    const total  = parseInt(r.total,  10);
+    const paused = parseInt(r.paused, 10);
+    return total > 0 && (paused / total) > HIGH_PAUSED_RATIO;
+  });
+
+  checks.push(
+    highPaused.length === 0
+      ? { name: 'paused_ratio', status: 'ok',   message: 'יחס השהיות תקין' }
+      : { name: 'paused_ratio', status: 'warn', message: `טריגרים עם > ${HIGH_PAUSED_RATIO * 100}% שהייה: ${highPaused.map(r => r.trigger).join(', ')}`,
+          detail: Object.fromEntries(highPaused.map(r => [r.trigger, `${r.paused}/${r.total}`])) },
+  );
+
+  // ─ 3. Zero completions after enough sends ───────────────────────
+  const convRes = await db.execute<{ experiment_key: string; sent: string; completed: string }>(sql`
+    SELECT
+      experiment_key,
+      COUNT(*) FILTER (WHERE event = 'notification_sent')::text AS sent,
+      COUNT(*) FILTER (WHERE event = 'completed')::text         AS completed
+    FROM experiment_events
+    WHERE created_at > now() - interval '7 days'
+    GROUP BY experiment_key
+    HAVING COUNT(*) FILTER (WHERE event = 'notification_sent') >= ${ZERO_CONV_MIN_SENDS}
+       AND COUNT(*) FILTER (WHERE event = 'completed') = 0
+  `);
+  const zeroConvKeys = (convRes.rows ?? []).map(r => r.experiment_key);
+
+  checks.push(
+    zeroConvKeys.length === 0
+      ? { name: 'zero_completions', status: 'ok',       message: 'כל הניסויים הפעילים מראים המרות' }
+      : { name: 'zero_completions', status: 'critical', message: `0 המרות לאחר >= ${ZERO_CONV_MIN_SENDS} שליחות ב-7 ימים: ${zeroConvKeys.join(', ')}` },
+  );
+
+  // ─ 4. ROI collapse (7d vs prior 7d) ─────────────────────────────
+  const roiRes = await db.execute<{
+    channel:     string;
+    sent_cur:    string; completed_cur:  string;
+    sent_prior:  string; completed_prior: string;
+  }>(sql`
+    SELECT channel,
+      COUNT(*) FILTER (WHERE event='notification_sent' AND created_at > now() - interval '7 days')::text  AS sent_cur,
+      COUNT(*) FILTER (WHERE event='completed'         AND created_at > now() - interval '7 days')::text  AS completed_cur,
+      COUNT(*) FILTER (WHERE event='notification_sent' AND created_at BETWEEN now() - interval '14 days' AND now() - interval '7 days')::text AS sent_prior,
+      COUNT(*) FILTER (WHERE event='completed'         AND created_at BETWEEN now() - interval '14 days' AND now() - interval '7 days')::text AS completed_prior
+    FROM experiment_events
+    WHERE channel IN ('sms','whatsapp')
+    GROUP BY channel
+  `);
+
+  const roiCollapseChannels: string[] = [];
+  for (const r of roiRes.rows ?? []) {
+    const sentCur    = parseInt(r.sent_cur,    10) || 0;
+    const compCur    = parseInt(r.completed_cur, 10) || 0;
+    const sentPrior  = parseInt(r.sent_prior,  10) || 0;
+    const compPrior  = parseInt(r.completed_prior, 10) || 0;
+    if (sentCur < 20 || sentPrior < 20) continue; // not enough data
+    const roiCur   = (compCur   / sentCur)   * 100;
+    const roiPrior = (compPrior / sentPrior) * 100;
+    if ((roiPrior - roiCur) >= ROI_COLLAPSE_THRESHOLD) roiCollapseChannels.push(r.channel);
+  }
+
+  checks.push(
+    roiCollapseChannels.length === 0
+      ? { name: 'roi_collapse', status: 'ok',   message: 'אין ירידת ROI חדה' }
+      : { name: 'roi_collapse', status: 'warn', message: `ירידת המרה חדה ב: ${roiCollapseChannels.join(', ')} — בדוק טריגרים ו-copy` },
+  );
+
+  // ─ 5. Daily ops indicators ──────────────────────────────────────
+  const [apRes, ppRes] = await Promise.all([
+    db.execute<{ cnt: string }>(sql`
+      SELECT COUNT(*)::text AS cnt FROM experiment_decisions
+      WHERE promoted_at >= current_date AND decided_by = 'auto-promote'
+    `),
+    db.execute<{ cnt: string }>(sql`
+      SELECT COUNT(*)::text AS cnt FROM winback_queue
+      WHERE paused_at >= current_date
+    `),
+  ]);
+
+  const autoPromotedToday = parseInt(apRes.rows?.[0]?.cnt ?? '0', 10);
+  const pausedToday       = parseInt(ppRes.rows?.[0]?.cnt ?? '0', 10);
+
+  return { checks, generatedAt: new Date().toISOString(), autoPromotedToday, pausedToday };
+}
+
+// ── Phase 6.15: Channel ROI detail (admin-facing) ─────────────────────────────
+
+export interface ChannelRoiDetail {
+  channel:       'sms' | 'whatsapp';
+  sent24h:       number; completed24h: number; roi24h: number | null;
+  sent7d:        number; completed7d:  number; roi7d:  number | null;
+  costIls24h:    number;
+  revenueIls24h: number;
+  costIls7d:     number;
+  revenueIls7d:  number;
+}
+
+export async function getChannelRoiDetail(): Promise<ChannelRoiDetail[]> {
+  const res = await db.execute<{
+    channel:         string;
+    sent_24h:        string; completed_24h: string;
+    sent_7d:         string; completed_7d:  string;
+  }>(sql`
+    SELECT
+      channel,
+      COUNT(*) FILTER (WHERE event='notification_sent' AND created_at > now() - interval '24 hours')::text AS sent_24h,
+      COUNT(*) FILTER (WHERE event='completed'         AND created_at > now() - interval '24 hours')::text AS completed_24h,
+      COUNT(*) FILTER (WHERE event='notification_sent' AND created_at > now() - interval '7 days')::text   AS sent_7d,
+      COUNT(*) FILTER (WHERE event='completed'         AND created_at > now() - interval '7 days')::text   AS completed_7d
+    FROM experiment_events
+    WHERE channel IN ('sms','whatsapp')
+    GROUP BY channel
+  `);
+
+  const COST: Record<'sms' | 'whatsapp', number> = { sms: SMS_COST_ILS, whatsapp: WHATSAPP_COST_ILS };
+
+  return (['sms', 'whatsapp'] as const).map(ch => {
+    const row         = (res.rows ?? []).find(r => r.channel === ch);
+    const sent24h     = parseInt(row?.sent_24h        ?? '0', 10);
+    const comp24h     = parseInt(row?.completed_24h   ?? '0', 10);
+    const sent7d      = parseInt(row?.sent_7d         ?? '0', 10);
+    const comp7d      = parseInt(row?.completed_7d    ?? '0', 10);
+    const costPer     = COST[ch];
+    const rev24h      = comp24h  * AVG_BOOKING_VALUE_ILS;
+    const cost24h     = sent24h  * costPer;
+    const rev7d       = comp7d   * AVG_BOOKING_VALUE_ILS;
+    const cost7d      = sent7d   * costPer;
+    return {
+      channel:       ch,
+      sent24h, completed24h: comp24h,
+      roi24h:   sent24h === 0 ? null : ((rev24h  - cost24h)  / Math.max(cost24h,  0.001)) * 100,
+      sent7d,  completed7d: comp7d,
+      roi7d:    sent7d  === 0 ? null : ((rev7d   - cost7d)   / Math.max(cost7d,   0.001)) * 100,
+      costIls24h: cost24h, revenueIls24h: rev24h,
+      costIls7d:  cost7d,  revenueIls7d:  rev7d,
+    };
+  });
+}
+
 // ── Phase 6.14: Channel ROI calculation ──────────────────────────────────────
 //
 // Queries the last 14 days of experiment_events to estimate ROI per paid channel.
@@ -563,12 +776,29 @@ async function loadChannelRoi(): Promise<Map<'sms' | 'whatsapp', ChannelRoi>> {
 // ── Main entry point ──────────────────────────────────────────────────────────
 
 export async function runWinbackProcessor(): Promise<void> {
-  logger.info('[WinbackProcessor] Starting multi-channel run (Phase 6.14)');
+  logger.info('[WinbackProcessor] Starting multi-channel run (Phase 6.15)');
 
-  const [guards, channelRoi] = await Promise.all([
+  const [guards, channelRoi, killSwitchOn] = await Promise.all([
     loadGuards(),
     loadChannelRoi(),
+    isPaidKillSwitchActive(),
   ]);
+
+  // Phase 6.15: Emergency kill switch — hard stop all paid channels immediately.
+  if (killSwitchOn) {
+    logger.warn('[WinbackProcessor] ⚠️ PAID CHANNEL KILL SWITCH IS ACTIVE — skipping all SMS + WhatsApp passes');
+    const p1 = await runInitialPass(guards);
+    logger.info('[WinbackProcessor] Run complete (kill switch mode)', {
+      inApp: { awarded: p1.awarded, errors: p1.errors },
+      sms: 'KILLED', whatsapp: 'KILLED',
+    });
+    if (p1.awarded > 0) {
+      runExperimentDecisionJob().catch(err =>
+        logger.warn('[WinbackProcessor] Decision job error (non-blocking)', { error: err.message }),
+      );
+    }
+    return;
+  }
 
   // Phase 6.14: ROI floor — skip paid channels when return is negative.
   // null ROI (no data yet) means we allow the channel (don't cut with no evidence).

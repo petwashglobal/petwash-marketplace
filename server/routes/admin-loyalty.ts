@@ -22,7 +22,11 @@ import {
   experimentDecisions,
 } from '../../shared/schema';
 import { eq, desc, sql, and, gte, count, inArray } from 'drizzle-orm';
-import { runExperimentDecisionJob } from '../jobs/experiment-decision';
+import { runExperimentDecisionJob }                 from '../jobs/experiment-decision';
+import {
+  loadQueueHealth, getChannelRoiDetail,
+  PAID_KILL_SWITCH_RULE,
+} from '../jobs/winback-processor';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
 import { adjustLoyaltyBalance } from '../utils/loyaltyLedger';
@@ -397,76 +401,6 @@ router.get('/ledger', requireAdmin, async (req, res) => {
   }
 });
 
-// ── GET /queue-health ─────────────────────────────────────────────────────────
-// Comprehensive queue + experiment health snapshot for admin safety panel.
-router.get('/queue-health', requireAdmin, async (_req, res) => {
-  try {
-    // Pending count + stuck rows per trigger
-    const queueStats = await db.execute<{
-      trigger: string; pending: number; stuck: number; paused: number; today_sent: number;
-    }>(sql`
-      SELECT
-        trigger,
-        count(*) FILTER (WHERE status = 'pending')::int                                         AS pending,
-        count(*) FILTER (WHERE status = 'pending' AND scheduled_at < now() - interval '48h')::int AS stuck,
-        count(*) FILTER (WHERE paused_at IS NOT NULL AND status IN ('pending','sent'))::int       AS paused,
-        count(*) FILTER (WHERE status = 'sent' AND sent_at >= current_date)::int                 AS today_sent
-      FROM winback_queue
-      GROUP BY trigger
-    `);
-
-    // Armed status + daily cap per trigger from loyalty_rules
-    const rules = await db
-      .select({ ruleKey: loyaltyRules.ruleKey, armed: loyaltyRules.armed, dailySendCap: loyaltyRules.dailySendCap })
-      .from(loyaltyRules);
-
-    // Sends with no experiment decision record
-    const sendsWithoutDecision = await db.execute<{ cnt: number }>(sql`
-      SELECT count(*)::int AS cnt
-      FROM winback_queue wq
-      WHERE wq.status = 'sent'
-        AND NOT EXISTS (
-          SELECT 1 FROM experiment_decisions ed
-          WHERE ed.experiment_key = 'winback_' || wq.trigger
-        )
-    `);
-    const orphanSends = sendsWithoutDecision.rows[0]?.cnt ?? 0;
-
-    // 7-day conversion trend vs prior 7 days (sent → completed)
-    const trendRes = await db.execute<{
-      period: string; sent: number; completed: number;
-    }>(sql`
-      SELECT
-        CASE
-          WHEN created_at >= now() - interval '7 days'  THEN 'current'
-          WHEN created_at >= now() - interval '14 days' THEN 'prior'
-        END AS period,
-        count(*) FILTER (WHERE event = 'notification_sent')::int AS sent,
-        count(*) FILTER (WHERE event = 'completed')::int         AS completed
-      FROM experiment_events
-      WHERE experiment_key LIKE 'winback_%'
-        AND created_at >= now() - interval '14 days'
-      GROUP BY 1
-    `);
-
-    const trend = Object.fromEntries(
-      (trendRes.rows ?? []).filter(r => r.period).map(r => [r.period, r]),
-    );
-
-    res.json({
-      queueStats:     queueStats.rows ?? [],
-      rules,
-      orphanSends,
-      trend: {
-        current: trend['current'] ?? { sent: 0, completed: 0 },
-        prior:   trend['prior']   ?? { sent: 0, completed: 0 },
-      },
-    });
-  } catch (err: any) {
-    logger.error('admin-loyalty GET /queue-health', err);
-    res.status(500).json({ error: 'Failed to fetch queue health' });
-  }
-});
 
 // ── POST /proof-run ───────────────────────────────────────────────────────────
 // Seeds synthetic experiment_events for a controlled scenario, runs the
@@ -837,6 +771,284 @@ router.post('/experiment-decisions/pause-variant', requireAdmin, async (req: any
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
     logger.error('admin-loyalty POST /experiment-decisions/pause-variant', err);
     res.status(500).json({ error: err.message || 'Pause-variant failed' });
+  }
+});
+
+// ── GET /queue-health ─────────────────────────────────────────────────────────
+// Phase 6.15: Returns queue health checks + daily ops indicators + channel ROI detail.
+router.get('/queue-health', requireAdmin, async (_req, res) => {
+  try {
+    const [health, roiDetail, killActive] = await Promise.all([
+      loadQueueHealth(),
+      getChannelRoiDetail(),
+      db.select({ enabled: loyaltyRules.enabled })
+        .from(loyaltyRules)
+        .where(eq(loyaltyRules.ruleKey, PAID_KILL_SWITCH_RULE))
+        .limit(1)
+        .then(rows => rows[0]?.enabled ?? false),
+    ]);
+    res.json({ ...health, roiDetail, paidKillSwitchActive: killActive });
+  } catch (err: any) {
+    logger.error('admin-loyalty GET /queue-health', err);
+    res.status(500).json({ error: 'Failed to load queue health' });
+  }
+});
+
+// ── GET /deployment-checklist ─────────────────────────────────────────────────
+// Phase 6.15: Returns a live readiness checklist for production deployment.
+router.get('/deployment-checklist', requireAdmin, async (_req, res) => {
+  try {
+    const [ruleRows, expData, killRow] = await Promise.all([
+      db.select({
+        ruleKey: loyaltyRules.ruleKey, armed: loyaltyRules.armed,
+        enabled: loyaltyRules.enabled, dailySendCap: loyaltyRules.dailySendCap,
+      }).from(loyaltyRules),
+      db.execute<{ experiment_key: string; cnt: string }>(sql`
+        SELECT experiment_key, COUNT(*)::text AS cnt FROM experiment_events
+        WHERE experiment_key = 'winback_14d' GROUP BY experiment_key LIMIT 1
+      `),
+      db.select({ enabled: loyaltyRules.enabled })
+        .from(loyaltyRules)
+        .where(eq(loyaltyRules.ruleKey, PAID_KILL_SWITCH_RULE))
+        .limit(1),
+    ]);
+
+    const rule14d  = ruleRows.find(r => r.ruleKey === 'winback_14d');
+    const rule30d  = ruleRows.find(r => r.ruleKey === 'winback_30d');
+    const rule60d  = ruleRows.find(r => r.ruleKey === 'winback_60d');
+    const killOn   = killRow[0]?.enabled ?? false;
+    const expCount = parseInt(expData.rows?.[0]?.cnt ?? '0', 10);
+
+    // Check environment secrets (presence only — values never logged)
+    const hasTwilioSid   = !!process.env.TWILIO_ACCOUNT_SID?.trim();
+    const hasTwilioPhone = !!(process.env.TWILIO_PHONE_NUMBER?.trim() || process.env.TWILIO_MESSAGING_SERVICE_SID?.trim());
+    const hasWaFrom      = !!process.env.TWILIO_WHATSAPP_FROM?.trim();
+    const hasWaContent   = !!process.env.TWILIO_WHATSAPP_CONTENT_SID?.trim();
+    const hasWinbackSecret = !!(process.env.WINBACK_LINK_SECRET?.trim() || process.env.COOKIE_SECRET?.trim());
+
+    const checklist = [
+      {
+        id:      'twilio_sid',
+        label:   'TWILIO_ACCOUNT_SID',
+        status:  hasTwilioSid ? 'ok' : 'critical',
+        note:    hasTwilioSid ? 'מוגדר' : 'חסר — SMS/WhatsApp לא יישלחו',
+      },
+      {
+        id:      'twilio_phone',
+        label:   'TWILIO_PHONE_NUMBER / MESSAGING_SERVICE_SID',
+        status:  hasTwilioPhone ? 'ok' : 'critical',
+        note:    hasTwilioPhone ? 'מוגדר' : 'חסר — SMS לא יישלחו',
+      },
+      {
+        id:      'twilio_wa',
+        label:   'TWILIO_WHATSAPP_FROM + CONTENT_SID',
+        status:  (hasWaFrom && hasWaContent) ? 'ok' : hasWaFrom ? 'warn' : 'warn',
+        note:    (hasWaFrom && hasWaContent) ? 'מוגדר' : 'חסר (אופציונלי לשלב זה) — WhatsApp לא יישלחו',
+      },
+      {
+        id:      'winback_secret',
+        label:   'WINBACK_LINK_SECRET / COOKIE_SECRET',
+        status:  hasWinbackSecret ? 'ok' : 'critical',
+        note:    hasWinbackSecret ? 'מוגדר' : 'חסר — קישורי מעקב לא יעבדו',
+      },
+      {
+        id:      'arm_14d',
+        label:   'winback_14d armed',
+        status:  rule14d?.armed ? 'ok' : 'warn',
+        note:    rule14d?.armed ? 'חמוש ומוכן' : 'לא חמוש — הפעל בלוח הניהול',
+      },
+      {
+        id:      'arm_30d_60d_off',
+        label:   'winback_30d + winback_60d לא חמושים (מדיניות שלב א׳)',
+        status:  (!rule30d?.armed && !rule60d?.armed) ? 'ok' : 'warn',
+        note:    (!rule30d?.armed && !rule60d?.armed) ? 'כבויים כמצופה' : '⚠️ 30d/60d חמושים — ודא שזה מכוון',
+      },
+      {
+        id:      'daily_cap',
+        label:   'daily_send_cap מוגדר',
+        status:  (rule14d?.dailySendCap && rule14d.dailySendCap > 0) ? 'ok' : 'warn',
+        note:    rule14d?.dailySendCap ? `מוגדר: ${rule14d.dailySendCap}/יום` : 'לא מוגדר — ריצה ללא מגבלה יומית',
+      },
+      {
+        id:      'kill_switch_off',
+        label:   'kill switch כבוי',
+        status:  killOn ? 'warn' : 'ok',
+        note:    killOn ? '⚠️ KILL SWITCH פעיל — ערוצים פחותים מבוטלים' : 'כבוי (מצב תקין)',
+      },
+      {
+        id:      'experiment_data',
+        label:   'winback_14d — יש נתוני ניסוי',
+        status:  expCount > 0 ? 'ok' : 'warn',
+        note:    expCount > 0 ? `${expCount} אירועים רשומים` : 'אין נתונים עדיין — הפעל את הניסוי',
+      },
+    ];
+
+    res.json({ checklist, generatedAt: new Date().toISOString() });
+  } catch (err: any) {
+    logger.error('admin-loyalty GET /deployment-checklist', err);
+    res.status(500).json({ error: 'Failed to generate checklist' });
+  }
+});
+
+// ── POST /proof-scenario ──────────────────────────────────────────────────────
+// Phase 6.15: Dry-run proofs — read-only verification that automation logic is correct.
+const proofSchema = z.object({
+  scenario: z.enum(['auto_promote', 'lock_blocks', 'roi_gate', 'budget_order']),
+});
+
+router.post('/proof-scenario', requireAdmin, async (req, res) => {
+  try {
+    const { scenario } = proofSchema.parse(req.body);
+
+    if (scenario === 'auto_promote') {
+      // Which experiments WOULD auto-promote if the decision job ran right now?
+      const decisions = await db.select().from(experimentDecisions);
+      const expKeys = decisions.map(d => d.experimentKey);
+
+      const runtimeRows = expKeys.length > 0
+        ? await db.execute<{ experiment_key: string; first_sent_at: string }>(sql`
+            SELECT experiment_key, MIN(created_at) AS first_sent_at
+            FROM experiment_events
+            WHERE experiment_key = ANY(${sql.raw(`ARRAY['${expKeys.join("','")}']`)})
+              AND event = 'notification_sent'
+            GROUP BY experiment_key
+          `)
+        : { rows: [] as any[] };
+
+      const runtimeMap: Record<string, number> = {};
+      for (const r of runtimeRows.rows ?? []) {
+        runtimeMap[r.experiment_key] = Math.floor((Date.now() - new Date(r.first_sent_at).getTime()) / 86_400_000);
+      }
+
+      const eligible = decisions.map(d => {
+        const confidence  = parseFloat(d.confidencePct ?? '0');
+        const runtimeDays = runtimeMap[d.experimentKey] ?? 0;
+        const wouldPromote =
+          !d.promotedAt &&
+          !d.promotionLocked &&
+          !!d.winnerVariant &&
+          confidence >= 97 &&
+          runtimeDays >= 14;
+
+        return {
+          experimentKey: d.experimentKey,
+          winnerVariant:    d.winnerVariant,
+          confidencePct:    confidence,
+          runtimeDays,
+          promotedAt:       d.promotedAt,
+          promotionLocked:  d.promotionLocked,
+          wouldAutoPromote: wouldPromote,
+          blockedReason: wouldPromote ? null
+            : d.promotedAt       ? 'already_promoted'
+            : d.promotionLocked  ? 'locked_by_admin'
+            : !d.winnerVariant   ? 'no_winner_yet'
+            : confidence < 97    ? `confidence_${confidence.toFixed(1)}_lt_97`
+            : `runtime_${runtimeDays}d_lt_14d`,
+        };
+      });
+
+      return res.json({ scenario, eligible, proofAt: new Date().toISOString() });
+    }
+
+    if (scenario === 'lock_blocks') {
+      // Show locked experiments that have a winner (proving lock is blocking auto-promote)
+      const decisions = await db
+        .select()
+        .from(experimentDecisions)
+        .where(sql`${experimentDecisions.promotionLocked} = true`);
+
+      const proof = decisions.map(d => ({
+        experimentKey:   d.experimentKey,
+        winnerVariant:   d.winnerVariant,
+        confidencePct:   parseFloat(d.confidencePct ?? '0'),
+        promotionLocked: true,
+        promotedAt:      d.promotedAt,
+        blocking:        !!d.winnerVariant && !d.promotedAt,
+      }));
+
+      return res.json({ scenario, proof, proofAt: new Date().toISOString() });
+    }
+
+    if (scenario === 'roi_gate') {
+      // Show which channels would be gated by the ROI floor
+      const roiDetail = await getChannelRoiDetail();
+      const proof = roiDetail.map(r => ({
+        channel:  r.channel,
+        roi7d:    r.roi7d,
+        roi24h:   r.roi24h,
+        sent7d:   r.sent7d,
+        completed7d: r.completed7d,
+        wouldBeGated: r.roi7d !== null && r.roi7d < 0,
+        reason:   r.roi7d === null ? 'insufficient_data_pass' : r.roi7d >= 0 ? 'roi_ok' : 'roi_below_floor',
+      }));
+      return res.json({ scenario, proof, proofAt: new Date().toISOString() });
+    }
+
+    if (scenario === 'budget_order') {
+      // Show the ROI-based pass ordering that would be chosen
+      const roiDetail = await getChannelRoiDetail();
+      const sms = roiDetail.find(r => r.channel === 'sms')!;
+      const wa  = roiDetail.find(r => r.channel === 'whatsapp')!;
+      const smsRoi = sms.roi7d ?? 0;
+      const waRoi  = wa.roi7d  ?? 0;
+      const smsEligible = sms.roi7d === null || sms.roi7d >= 0;
+      const waEligible  = wa.roi7d  === null || wa.roi7d  >= 0;
+      const smsFirst = smsRoi >= waRoi;
+
+      return res.json({
+        scenario,
+        proof: {
+          sms:  { roi7d: sms.roi7d, eligible: smsEligible },
+          whatsapp: { roi7d: wa.roi7d, eligible: waEligible },
+          order: smsEligible && waEligible
+            ? (smsFirst ? ['sms', 'whatsapp'] : ['whatsapp', 'sms'])
+            : smsEligible ? ['sms'] : waEligible ? ['whatsapp'] : [],
+          reason: !smsEligible && !waEligible
+            ? 'both_gated_by_roi_floor'
+            : smsEligible && waEligible
+              ? `sorted_by_roi_${smsFirst ? 'sms_wins' : 'whatsapp_wins'}`
+              : smsEligible ? 'whatsapp_gated' : 'sms_gated',
+        },
+        proofAt: new Date().toISOString(),
+      });
+    }
+  } catch (err: any) {
+    if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
+    logger.error('admin-loyalty POST /proof-scenario', err);
+    res.status(500).json({ error: err.message || 'Proof run failed' });
+  }
+});
+
+// ── POST /paid-channel-kill-switch ────────────────────────────────────────────
+// Phase 6.15: Emergency toggle — instantly halt all SMS + WhatsApp passes.
+// Creates or updates a loyalty_rules row with ruleKey = PAID_KILL_SWITCH_RULE.
+const killSwitchSchema = z.object({ active: z.boolean() });
+
+router.post('/paid-channel-kill-switch', requireAdmin, async (req: any, res) => {
+  try {
+    const { active } = killSwitchSchema.parse(req.body);
+    const adminEmail = req.firebaseUser?.email ?? 'admin';
+
+    await db
+      .insert(loyaltyRules)
+      .values({
+        ruleKey:        PAID_KILL_SWITCH_RULE,
+        enabled:        active,
+        armed:          false,
+        rewardIlsCents: 0,
+        description:    'Phase 6.15 emergency kill switch — disables all paid winback channels (SMS + WhatsApp)',
+      })
+      .onConflictDoUpdate({
+        target: loyaltyRules.ruleKey,
+        set:    { enabled: active, updatedAt: new Date() },
+      });
+
+    logger.warn('admin-loyalty: paid channel kill switch toggled', { active, adminEmail });
+    res.json({ ok: true, active });
+  } catch (err: any) {
+    if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
+    logger.error('admin-loyalty POST /paid-channel-kill-switch', err);
+    res.status(500).json({ error: err.message || 'Kill switch update failed' });
   }
 });
 

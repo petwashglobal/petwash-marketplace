@@ -17,7 +17,7 @@ import {
   ToggleLeft, ToggleRight, Loader2, AlertTriangle, ChevronRight, Check,
   TrendingUp, TrendingDown, Users, ArrowUpRight, ArrowDownRight,
   Trophy, PauseCircle, PlayCircle, Zap, ShieldCheck, ShieldOff,
-  Lock, Unlock, Timer,
+  Lock, Unlock, Timer, Activity, XCircle, Power, Radio,
 } from "lucide-react";
 import { QueueHealthCard } from "@/components/loyalty/QueueHealthCard";
 import { Button } from "@/components/ui/button";
@@ -125,7 +125,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 // ── Tab navigation ───────────────────────────────────────────────────────────
 
-type Tab = "rules" | "reporting" | "adjustments" | "winback" | "ledger";
+type Tab = "rules" | "reporting" | "adjustments" | "winback" | "ledger" | "ops";
 
 const TABS: { id: Tab; label: string; icon: any }[] = [
   { id: "rules",       label: "כללים",    icon: Settings2    },
@@ -133,6 +133,7 @@ const TABS: { id: Tab; label: string; icon: any }[] = [
   { id: "adjustments", label: "התאמות",   icon: Coins        },
   { id: "winback",     label: "Win-back", icon: RefreshCw    },
   { id: "ledger",      label: "יומן",     icon: ClipboardList },
+  { id: "ops",         label: "מבצעי",    icon: Activity     },
 ];
 
 // ── Rules Tab ─────────────────────────────────────────────────────────────────
@@ -1271,6 +1272,268 @@ function WinbackTab() {
   );
 }
 
+// ── Ops Tab (Phase 6.15) ──────────────────────────────────────────────────────
+
+interface HealthCheckRow   { name: string; status: 'ok'|'warn'|'critical'; message: string; detail?: Record<string,unknown> }
+interface RoiDetailRow     { channel: 'sms'|'whatsapp'; sent24h: number; completed24h: number; roi24h: number|null; sent7d: number; completed7d: number; roi7d: number|null; costIls24h: number; revenueIls24h: number; costIls7d: number; revenueIls7d: number }
+interface QueueHealthData  { checks: HealthCheckRow[]; generatedAt: string; autoPromotedToday: number; pausedToday: number; roiDetail: RoiDetailRow[]; paidKillSwitchActive: boolean }
+interface ChecklistItem    { id: string; label: string; status: 'ok'|'warn'|'critical'; note: string }
+interface DeployChecklist  { checklist: ChecklistItem[]; generatedAt: string }
+
+const HEALTH_STATUS_STYLE: Record<string, string> = {
+  ok:       'bg-emerald-50  text-emerald-700 border-emerald-100',
+  warn:     'bg-amber-50    text-amber-700   border-amber-100',
+  critical: 'bg-red-50      text-red-700     border-red-100',
+};
+
+function HealthIcon({ status }: { status: 'ok'|'warn'|'critical' }) {
+  if (status === 'ok')       return <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />;
+  if (status === 'warn')     return <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />;
+  return <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />;
+}
+
+function roiColor(roi: number|null): string {
+  if (roi === null) return 'text-gray-400';
+  if (roi >= 50)   return 'text-emerald-600 font-bold';
+  if (roi >= 0)    return 'text-blue-600';
+  return 'text-red-600 font-bold';
+}
+
+const PROOF_SCENARIOS = [
+  { id: 'auto_promote',  label: 'קידום אוטומטי', desc: 'מי יקודם אם הJob ירוץ עכשיו?' },
+  { id: 'lock_blocks',   label: 'נעילה חוסמת',   desc: 'ניסויים נעולים עם מנצח?' },
+  { id: 'roi_gate',      label: 'שער ROI',        desc: 'אילו ערוצים ייחסמו עכשיו?' },
+  { id: 'budget_order',  label: 'סדר תקציב',      desc: 'איזה ערוץ קודם לפי ROI?' },
+] as const;
+
+function OpsTab() {
+  const { toast } = useToast();
+  const qc        = useQueryClient();
+
+  const healthQ    = useQuery<QueueHealthData>({ queryKey: ['/api/admin/loyalty/queue-health'],      staleTime: 30_000 });
+  const checklistQ = useQuery<DeployChecklist>({ queryKey: ['/api/admin/loyalty/deployment-checklist'], staleTime: 60_000 });
+
+  const [proofResult,     setProofResult]     = useState<any>(null);
+  const [activeScenario,  setActiveScenario]  = useState<string | null>(null);
+
+  const proofMut = useMutation({
+    mutationFn: (scenario: string) => apiRequest('POST', '/api/admin/loyalty/proof-scenario', { scenario }),
+    onSuccess:  (data: any, scenario) => { setProofResult(data); setActiveScenario(scenario); },
+    onError:    () => toast({ title: 'שגיאה', description: 'בדיקת תרחיש נכשלה', variant: 'destructive' }),
+  });
+
+  const killMut = useMutation({
+    mutationFn: (active: boolean) => apiRequest('POST', '/api/admin/loyalty/paid-channel-kill-switch', { active }),
+    onSuccess: (_: any, active) => {
+      qc.invalidateQueries({ queryKey: ['/api/admin/loyalty/queue-health'] });
+      toast({ title: active ? '⚠️ Kill Switch פעיל' : 'Kill Switch כובה', description: active ? 'SMS ו-WhatsApp מבוטלים' : 'ערוצים בתשלום פועלים שוב' });
+    },
+    onError: () => toast({ title: 'שגיאה', variant: 'destructive' }),
+  });
+
+  const health    = healthQ.data;
+  const checklist = checklistQ.data;
+  const killOn    = health?.paidKillSwitchActive ?? false;
+
+  const criticalCount = health?.checks.filter(c => c.status === 'critical').length ?? 0;
+  const warnCount     = health?.checks.filter(c => c.status === 'warn').length ?? 0;
+
+  return (
+    <div className="p-4 space-y-5">
+
+      {/* ── Kill switch ──────────────────────────────────────────────── */}
+      <div className={`rounded-2xl border p-4 ${killOn ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Power className={`w-4 h-4 ${killOn ? 'text-red-600' : 'text-gray-400'}`} />
+            <div>
+              <p className={`text-sm font-bold ${killOn ? 'text-red-700' : 'text-gray-700'}`}>
+                {killOn ? '⚠️ Kill Switch פעיל — SMS + WhatsApp מבוטלים' : 'Kill Switch כבוי (מצב תקין)'}
+              </p>
+              <p className="text-[11px] text-gray-400">חסימה מיידית של כל ערוצי הסקלציה בתשלום</p>
+            </div>
+          </div>
+          <button
+            className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors ${
+              killOn
+                ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700'
+                : 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200'
+            }`}
+            onClick={() => killMut.mutate(!killOn)}
+            disabled={killMut.isPending}
+          >
+            {killMut.isPending ? <Loader2 className="w-3 h-3 animate-spin inline" /> : killOn ? 'בטל Kill Switch' : 'הפעל Kill Switch'}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Daily ops indicators ─────────────────────────────────────── */}
+      <div className="grid grid-cols-3 gap-3">
+        <KpiCard
+          label="קודמו היום"
+          value={health ? String(health.autoPromotedToday) : '…'}
+          icon={<Zap className="w-4 h-4 text-violet-500" />}
+        />
+        <KpiCard
+          label="הושהו היום"
+          value={health ? String(health.pausedToday) : '…'}
+          icon={<PauseCircle className="w-4 h-4 text-amber-500" />}
+        />
+        <KpiCard
+          label="אזהרות תאים"
+          value={criticalCount > 0 ? `${criticalCount} חמורות` : warnCount > 0 ? `${warnCount} אזהרות` : 'הכל תקין'}
+          icon={criticalCount > 0
+            ? <XCircle className="w-4 h-4 text-red-500" />
+            : warnCount > 0
+              ? <AlertTriangle className="w-4 h-4 text-amber-500" />
+              : <Check className="w-4 h-4 text-emerald-500" />
+          }
+        />
+      </div>
+
+      {/* ── Queue health checks ──────────────────────────────────────── */}
+      <SectionCard
+        title="בריאות תור"
+        action={
+          <button
+            onClick={() => qc.invalidateQueries({ queryKey: ['/api/admin/loyalty/queue-health'] })}
+            className="text-[10px] text-[#C5A55A] hover:underline"
+          >
+            רענן
+          </button>
+        }
+      >
+        {healthQ.isLoading
+          ? <div className="py-3 text-center text-xs text-gray-400">טוען…</div>
+          : <div className="space-y-2">
+              {(health?.checks ?? []).map(c => (
+                <div key={c.name} className={`flex items-start gap-2 rounded-lg border px-3 py-2 ${HEALTH_STATUS_STYLE[c.status]}`}>
+                  <HealthIcon status={c.status} />
+                  <div className="flex-1">
+                    <p className="text-[11px] font-medium">{c.message}</p>
+                    {c.detail && (
+                      <p className="text-[10px] opacity-70 mt-0.5">
+                        {Object.entries(c.detail).map(([k,v]) => `${k}: ${v}`).join(' · ')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {(health?.checks ?? []).length === 0 && (
+                <p className="text-xs text-gray-300 text-center py-2">אין נתונים</p>
+              )}
+            </div>
+        }
+      </SectionCard>
+
+      {/* ── Channel ROI 24h / 7d ─────────────────────────────────────── */}
+      <SectionCard title="ROI ערוצים — 24ש' / 7י'">
+        {healthQ.isLoading
+          ? <div className="py-3 text-center text-xs text-gray-400">טוען…</div>
+          : <table className="w-full text-xs">
+              <thead>
+                <tr className="text-gray-400 border-b border-gray-50">
+                  <th className="text-right py-1.5 font-semibold">ערוץ</th>
+                  <th className="text-center py-1.5 font-semibold">נשלחו 24ש'</th>
+                  <th className="text-center py-1.5 font-semibold">ROI 24ש'</th>
+                  <th className="text-center py-1.5 font-semibold">נשלחו 7י'</th>
+                  <th className="text-center py-1.5 font-semibold">ROI 7י'</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(health?.roiDetail ?? []).map(r => (
+                  <tr key={r.channel} className="border-b border-gray-50 last:border-0">
+                    <td className="py-2 font-medium text-gray-700 capitalize">{r.channel}</td>
+                    <td className="py-2 text-center text-gray-500">{r.sent24h}</td>
+                    <td className={`py-2 text-center font-mono ${roiColor(r.roi24h)}`}>
+                      {r.roi24h !== null ? `${r.roi24h.toFixed(0)}%` : '—'}
+                    </td>
+                    <td className="py-2 text-center text-gray-500">{r.sent7d}</td>
+                    <td className={`py-2 text-center font-mono ${roiColor(r.roi7d)}`}>
+                      {r.roi7d !== null ? `${r.roi7d.toFixed(0)}%` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+        }
+        <p className="text-[10px] text-gray-300 mt-2">
+          ROI = (המרות × ₪100 – עלות שליחה) / עלות שליחה × 100 · SMS ₪0.03 / WA ₪0.02 לשליחה
+        </p>
+      </SectionCard>
+
+      {/* ── Proof scenarios ──────────────────────────────────────────── */}
+      <SectionCard title="תרחישי בדיקה (Dry-Run)">
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {PROOF_SCENARIOS.map(s => (
+            <button
+              key={s.id}
+              onClick={() => proofMut.mutate(s.id)}
+              disabled={proofMut.isPending}
+              className={`text-right rounded-lg border px-3 py-2 text-[11px] transition-colors ${
+                activeScenario === s.id
+                  ? 'bg-[#C5A55A]/10 border-[#C5A55A] text-[#C5A55A]'
+                  : 'bg-gray-50 border-gray-100 text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              {proofMut.isPending && activeScenario === s.id
+                ? <Loader2 className="w-3 h-3 animate-spin inline mr-1" />
+                : <Radio className="w-3 h-3 inline mr-1" />
+              }
+              <span className="font-semibold">{s.label}</span>
+              <span className="block text-[10px] text-gray-400 mt-0.5">{s.desc}</span>
+            </button>
+          ))}
+        </div>
+        {proofResult && (
+          <div className="mt-2 rounded-lg bg-gray-50 border border-gray-100 p-3">
+            <p className="text-[10px] font-semibold text-gray-500 mb-1.5">
+              תוצאת בדיקה: {activeScenario} · {new Date(proofResult.proofAt).toLocaleTimeString('he-IL')}
+            </p>
+            <pre className="text-[10px] text-gray-700 overflow-auto max-h-48 whitespace-pre-wrap">
+              {JSON.stringify(proofResult.eligible ?? proofResult.proof, null, 2)}
+            </pre>
+          </div>
+        )}
+      </SectionCard>
+
+      {/* ── Deployment checklist ─────────────────────────────────────── */}
+      <SectionCard
+        title="רשימת פריסה לייב"
+        action={
+          <button
+            onClick={() => qc.invalidateQueries({ queryKey: ['/api/admin/loyalty/deployment-checklist'] })}
+            className="text-[10px] text-[#C5A55A] hover:underline"
+          >
+            רענן
+          </button>
+        }
+      >
+        {checklistQ.isLoading
+          ? <div className="py-3 text-center text-xs text-gray-400">טוען…</div>
+          : <div className="space-y-1.5">
+              {(checklist?.checklist ?? []).map(item => (
+                <div key={item.id} className={`flex items-start gap-2 rounded-lg border px-3 py-2 ${HEALTH_STATUS_STYLE[item.status]}`}>
+                  <HealthIcon status={item.status} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-semibold">{item.label}</p>
+                    <p className="text-[10px] opacity-75">{item.note}</p>
+                  </div>
+                </div>
+              ))}
+              {checklist?.generatedAt && (
+                <p className="text-[10px] text-gray-300 text-left mt-1">
+                  עודכן: {new Date(checklist.generatedAt).toLocaleTimeString('he-IL')}
+                </p>
+              )}
+            </div>
+        }
+      </SectionCard>
+
+    </div>
+  );
+}
+
 // ── Ledger Tab ────────────────────────────────────────────────────────────────
 
 function LedgerTab() {
@@ -1408,6 +1671,7 @@ export default function AdminLoyaltyRules() {
         {tab === "adjustments" && <AdjustmentsTab />}
         {tab === "winback"     && <WinbackTab />}
         {tab === "ledger"      && <LedgerTab />}
+        {tab === "ops"         && <OpsTab />}
       </div>
     </div>
   );
