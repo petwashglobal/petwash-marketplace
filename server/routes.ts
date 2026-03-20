@@ -14107,6 +14107,11 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // ── Daily reconciliation job (Spec §15) — runs at 00:05 Asia/Jerusalem ──
   startDailyReconciliationJob();
 
+  // ── Wallet hold/debit reconciliation — startup + every 5 min ─────────────
+  // Heals commercial↔financial drift (accepted booking + finance_state=hold_active).
+  const { startWalletReconciliationJob } = await import('./jobs/wallet-reconciliation');
+  startWalletReconciliationJob();
+
   // ── Async Google secondary job worker — polls pw_async_jobs every 30s ─────
   // Handles: ARCHIVE_TAX_DOCUMENT_TO_DRIVE, EXPORT_RECONCILIATION_TO_SHEETS,
   //          CREATE_CALENDAR_EVENT, SEND_GMAIL_FALLBACK (never blocks payments)

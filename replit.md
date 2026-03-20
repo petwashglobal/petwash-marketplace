@@ -529,6 +529,27 @@ Uses pending booking ref (`PENDING-SITTER-{uid}` / `PENDING-WALKER-{uid}`) when 
 - Pending balance chip (amber, inside dark hero card) shown only when holds exist
 - Lifetime earned/redeemed two-column stat grid shown when history exists
 
+### Phase 2.1 — Reconciliation Job + Proof-Pass Endpoint (March 2026)
+
+**Edge case sealed:** Server crash between `booking.status = accepted` (HTTP 200 returned) and `setImmediate(debitFromWalletHold)` completing leaves `finance_state = hold_active` on an accepted booking. Now healed automatically.
+
+**`server/jobs/wallet-reconciliation.ts`** — `ReconciliationReport` interface + `runWalletReconciliation()` + `startWalletReconciliationJob()`:
+- Startup run (deferred 10 s for pool stability) + cron every 5 min
+- Queries `status='accepted' AND finance_state='hold_active' AND wallet_hold_cents>0`
+- Resets velocity limiter per user before replay (idempotency key prevents double-charge regardless)
+- Calls `walletService.debitBookingFromHold` — fully idempotent via `wallet:booking:debit:{bookingId}`
+- Updates `finance_state='debited'` on success, logs `healed | already_idempotent | error` per booking
+
+**`server/routes.ts`** wiring — `startWalletReconciliationJob()` called after `startDailyReconciliationJob()`
+
+**`POST /api/prestige-pass/admin/wallet/proof-pass`** — admin-only system audit (6 steps, returns `PASS | WARN | FAIL`):
+- Step 1 Reconciliation: runs `runWalletReconciliation()` live
+- Step 2 Finance-state distribution: breakdown of hold_active/debited/released/refunded counts
+- Step 3 Balance integrity: queries any wallet with negative bucket values  
+- Step 4 Pending consistency: compares `pending_balance_cents` vs ledger-derived pending
+- Step 5 Idempotency coverage: counts operations missing their expected key columns
+- Step 6 Verdict: `FAIL` (negative balance or unhealable drift), `WARN` (healed drift or missing keys), `PASS`
+
 ### Anti-Fraud Architecture — Production 2026 (WalletLedger.ts)
 
 All wallet mutations now route through `server/services/WalletLedger.ts` which implements 9 protection layers:

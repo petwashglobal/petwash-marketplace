@@ -2525,4 +2525,185 @@ router.get('/admin/wallet/booking-audit', async (req: Request, res: Response) =>
   }
 });
 
+// ─── Admin: Wallet Lifecycle Proof Pass ───────────────────────────────────────
+// POST /api/prestige-pass/admin/wallet/proof-pass
+//
+// Runs a full system audit of the wallet hold/release/debit/refund lifecycle:
+//   Step 1 — Reconciliation: detect + heal accepted bookings with hold_active
+//   Step 2 — Finance-state distribution across all bookings with wallet activity
+//   Step 3 — Balance integrity: check for negative balances in any bucket
+//   Step 4 — Pending consistency: compare pending_balance_cents vs ledger sum
+//   Step 5 — Idempotency coverage: check that every debit/release/refund has a key
+//   Step 6 — Summary verdict: PASS | WARN | FAIL
+//
+// Requires admin role. Safe to run in production — read-heavy, no synthetic mutations.
+router.post('/admin/wallet/proof-pass', async (req: Request, res: Response) => {
+  const t0 = Date.now();
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    const isAdmin = !!(adminUser?.customClaims as any)?.admin;
+    if (!isAdmin) return res.status(403).json({ error: 'Admin access required' });
+
+    const steps: Record<string, any> = {};
+    const issues: string[] = [];
+
+    // ── Step 1: Reconciliation ────────────────────────────────────────────────
+    const { runWalletReconciliation } = await import('../jobs/wallet-reconciliation');
+    const reconReport = await runWalletReconciliation();
+    steps.reconciliation = reconReport;
+    if (reconReport.failed > 0) {
+      issues.push(`${reconReport.failed} booking(s) could not be healed — manual intervention required`);
+    }
+    if (reconReport.healed > 0) {
+      issues.push(`${reconReport.healed} booking(s) were drifted and have now been healed`);
+    }
+
+    // ── Step 2: Finance-state distribution ───────────────────────────────────
+    const distRows: any = await db.execute(sql`
+      SELECT finance_state, COUNT(*) AS cnt, SUM(wallet_hold_cents) AS total_hold_cents
+      FROM booking_requests
+      WHERE wallet_hold_cents > 0
+         OR wallet_debited_cents > 0
+         OR wallet_refunded_cents > 0
+      GROUP BY finance_state
+      ORDER BY cnt DESC
+    `);
+    steps.financeStateDistribution = (distRows?.rows ?? distRows ?? []).map((r: any) => ({
+      financeState:    r.finance_state,
+      count:           Number(r.cnt),
+      totalHoldCents:  Number(r.total_hold_cents),
+    }));
+
+    // ── Step 3: Balance integrity — no bucket should go negative ─────────────
+    const negRows: any = await db.execute(sql`
+      SELECT user_id, wallet_id,
+             cash_wallet_balance_cents,
+             egift_balance_cents,
+             promo_balance_cents,
+             referral_balance_cents,
+             pending_balance_cents
+      FROM wallet_accounts
+      WHERE cash_wallet_balance_cents < 0
+         OR egift_balance_cents       < 0
+         OR promo_balance_cents       < 0
+         OR referral_balance_cents    < 0
+         OR pending_balance_cents     < 0
+    `);
+    const negativeBalances = (negRows?.rows ?? negRows ?? []).map((r: any) => ({
+      userId:              r.user_id,
+      walletId:            r.wallet_id,
+      cashWalletCents:     Number(r.cash_wallet_balance_cents),
+      egiftCents:          Number(r.egift_balance_cents),
+      promoCents:          Number(r.promo_balance_cents),
+      referralCents:       Number(r.referral_balance_cents),
+      pendingCents:        Number(r.pending_balance_cents),
+    }));
+    steps.negativeBalances = negativeBalances;
+    if (negativeBalances.length > 0) {
+      issues.push(`CRITICAL: ${negativeBalances.length} wallet(s) have negative bucket balance`);
+    }
+
+    // ── Step 4: Pending consistency ───────────────────────────────────────────
+    // pending_balance_cents should equal SUM(hold) - SUM(debit) - SUM(release)
+    // per user across the ledger.
+    const pendingRows: any = await db.execute(sql`
+      WITH ledger_pending AS (
+        SELECT
+          user_id,
+          SUM(CASE WHEN event_type = 'hold'    AND direction = 'credit' THEN amount_cents ELSE 0 END) AS held,
+          SUM(CASE WHEN event_type = 'debit'   AND direction = 'debit'  THEN amount_cents ELSE 0 END) AS debited,
+          SUM(CASE WHEN event_type = 'release' AND direction = 'debit'  THEN amount_cents ELSE 0 END) AS released
+        FROM wallet_ledger_entries
+        WHERE event_type IN ('hold','debit','release')
+        GROUP BY user_id
+      )
+      SELECT
+        w.user_id,
+        w.pending_balance_cents              AS wallet_pending,
+        COALESCE(lp.held,0)
+          - COALESCE(lp.debited,0)
+          - COALESCE(lp.released,0)          AS ledger_pending,
+        ABS(
+          w.pending_balance_cents -
+          (COALESCE(lp.held,0)
+           - COALESCE(lp.debited,0)
+           - COALESCE(lp.released,0))
+        )                                    AS drift_cents
+      FROM wallet_accounts w
+      LEFT JOIN ledger_pending lp ON lp.user_id = w.user_id
+      WHERE ABS(
+        w.pending_balance_cents -
+        (COALESCE(lp.held,0)
+         - COALESCE(lp.debited,0)
+         - COALESCE(lp.released,0))
+      ) > 0
+    `);
+    const pendingDrift = (pendingRows?.rows ?? pendingRows ?? []).map((r: any) => ({
+      userId:         r.user_id,
+      walletPending:  Number(r.wallet_pending),
+      ledgerPending:  Number(r.ledger_pending),
+      driftCents:     Number(r.drift_cents),
+    }));
+    steps.pendingConsistency = {
+      driftingAccounts: pendingDrift.length,
+      accounts:         pendingDrift,
+    };
+    if (pendingDrift.length > 0) {
+      issues.push(`${pendingDrift.length} wallet(s) have pending_balance drift vs ledger`);
+    }
+
+    // ── Step 5: Idempotency coverage ─────────────────────────────────────────
+    // Every booking with wallet activity should have an idempotency key stored
+    // for each operation that ran. Count bookings missing their expected keys.
+    const covRows: any = await db.execute(sql`
+      SELECT
+        COUNT(*) FILTER (WHERE finance_state = 'debited'  AND (wallet_debit_key   IS NULL OR wallet_debit_key   = '')) AS debited_missing_key,
+        COUNT(*) FILTER (WHERE finance_state = 'released' AND (wallet_release_key IS NULL OR wallet_release_key = '')) AS released_missing_key,
+        COUNT(*) FILTER (WHERE finance_state = 'refunded' AND (wallet_refund_key  IS NULL OR wallet_refund_key  = '')) AS refunded_missing_key,
+        COUNT(*) FILTER (WHERE finance_state = 'hold_active' AND (wallet_hold_key IS NULL OR wallet_hold_key = ''))    AS hold_missing_key
+      FROM booking_requests
+      WHERE wallet_hold_cents > 0
+         OR wallet_debited_cents > 0
+         OR wallet_refunded_cents > 0
+    `);
+    const cov: any = (covRows?.rows ?? covRows ?? [])[0] ?? {};
+    const idempCoverage = {
+      debitedMissingKey:   Number(cov.debited_missing_key  ?? 0),
+      releasedMissingKey:  Number(cov.released_missing_key ?? 0),
+      refundedMissingKey:  Number(cov.refunded_missing_key ?? 0),
+      holdMissingKey:      Number(cov.hold_missing_key     ?? 0),
+    };
+    steps.idempotencyCoverage = idempCoverage;
+    const missingKeys = Object.values(idempCoverage).reduce((a, b) => a + b, 0);
+    if (missingKeys > 0) {
+      issues.push(`${missingKeys} booking operation(s) are missing idempotency keys`);
+    }
+
+    // ── Step 6: Verdict ───────────────────────────────────────────────────────
+    const hasCritical = negativeBalances.length > 0 || reconReport.failed > 0;
+    const hasWarnings = issues.length > 0;
+    const verdict: 'PASS' | 'WARN' | 'FAIL' =
+      hasCritical ? 'FAIL' : hasWarnings ? 'WARN' : 'PASS';
+
+    logger.info('[ProofPass] Wallet lifecycle proof pass complete', {
+      verdict, issueCount: issues.length, durationMs: Date.now() - t0,
+    });
+
+    return res.json({
+      ok: true,
+      verdict,
+      issues,
+      durationMs: Date.now() - t0,
+      generatedAt: new Date().toISOString(),
+      steps,
+    });
+  } catch (err: any) {
+    logger.error('[ProofPass] error', { error: err.message });
+    return res.status(500).json({ error: 'Proof pass failed', detail: err.message });
+  }
+});
+
 export default router;
