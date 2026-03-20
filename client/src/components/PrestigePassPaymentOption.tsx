@@ -67,15 +67,15 @@ interface Props {
 const fmt = (cents: number) => `₪${(cents / 100).toFixed(0)}`;
 
 const TIER_LABEL: Record<string, { label: string; color: string }> = {
-  black:    { label: 'פרסטיז שחור',    color: '#D4AF37' },
-  elite:    { label: 'פרסטיז שחור',    color: '#D4AF37' },
-  diamond:  { label: 'פרסטיז שחור',    color: '#D4AF37' },
-  vip:      { label: 'פרסטיז שחור',    color: '#D4AF37' },
-  platinum: { label: 'פרסטיז פלטינום', color: '#B8BCC8' },
-  gold:     { label: 'פרסטיז זהב',     color: '#D4AF37' },
-  silver:   { label: 'פרסטיז כסף',     color: '#9CA3AF' },
-  bronze:   { label: 'פרסטיז פנינה',   color: '#CD7F32' },
-  new:      { label: 'פרסטיז פנינה',   color: '#CD7F32' },
+  black:    { label: 'PetWash Privilege Black',    color: '#D4AF37' },
+  elite:    { label: 'PetWash Privilege Black',    color: '#D4AF37' },
+  diamond:  { label: 'PetWash Privilege Black',    color: '#D4AF37' },
+  vip:      { label: 'PetWash Privilege Black',    color: '#D4AF37' },
+  platinum: { label: 'PetWash Privilege Platinum', color: '#B8BCC8' },
+  gold:     { label: 'PetWash Privilege Gold',     color: '#D4AF37' },
+  silver:   { label: 'PetWash Privilege Silver',   color: '#9CA3AF' },
+  bronze:   { label: 'PetWash Privilege Pearl',    color: '#CD7F32' },
+  new:      { label: 'PetWash Privilege Pearl',    color: '#CD7F32' },
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -107,7 +107,7 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
       queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/wallet'] });
       toast({
         title: 'תשלום בוצע בהצלחה',
-        description: `₪${(result.deductionBreakdown.totalCovered / 100).toFixed(0)} שולם מהפאס הפרסטיז שלך`,
+        description: `₪${(result.deductionBreakdown.totalCovered / 100).toFixed(0)} paid from your PetWash Privilege`,
       });
       onRedemptionSuccess?.(result);
     },
@@ -122,7 +122,7 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
     return (
       <div className="flex items-center gap-3 p-4 rounded-xl border border-amber-100 bg-amber-50/40">
         <Loader2 className="h-5 w-5 text-amber-500 animate-spin" />
-        <span className="text-sm text-amber-700">טוען יתרות הפאס הפרסטיז...</span>
+        <span className="text-sm text-amber-700">Loading PetWash Privilege...</span>
       </div>
     );
   }
@@ -150,7 +150,7 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
               <CheckCircle className="h-5 w-5" style={{ color: '#D4AF37' }} />
             </div>
             <div>
-              <div className="font-semibold text-white text-sm">תשלום מהפאס הפרסטיז בוצע</div>
+              <div className="font-semibold text-white text-sm">PetWash Privilege — תשלום בוצע</div>
               <div className="text-xs" style={{ color: 'rgba(212,175,55,0.8)' }}>#{txnResult.txnId}</div>
             </div>
           </div>
@@ -211,7 +211,7 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-white">תשלום עם פאס פרסטיז</span>
+            <span className="text-sm font-semibold text-white">Pay with PetWash Privilege</span>
             <Badge
               style={{
                 background:   'rgba(212,175,55,0.15)',

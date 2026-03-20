@@ -72,6 +72,9 @@ export interface DeductionContext {
   userAgent?:       string | null;
   staffId?:         string;        // if action initiated by staff POS
   endpoint?:        string;
+  // Division tracking — required for cross-platform financial reporting
+  divisionCode?:    string;        // station_k9000 | petsitter | walkers | academy | gift_card | admin
+  sourceType?:      string;        // k9000_wash | booking | academy | reward | topup | manual
 }
 
 export interface DeductionResult {
@@ -213,6 +216,8 @@ export async function applyDeduction(ctx: DeductionContext): Promise<DeductionRe
     userAgent:       ctx.userAgent,
     staffId:         ctx.staffId,
     endpoint:        ctx.endpoint,
+    divisionCode:    ctx.divisionCode,
+    sourceType:      ctx.sourceType,
   });
 
   // Keep creditTransactions as a compatibility / reporting layer

@@ -28,8 +28,8 @@ import { v4 as uuidv4 } from 'uuid';
 import rateLimit from 'express-rate-limit';
 import { db as firestoreDb, auth as firebaseAuth } from '../lib/firebase-admin';
 import { db } from '../db';
-import { walletAccounts, creditTransactions } from '@shared/schema';
-import { eq, desc } from 'drizzle-orm';
+import { walletAccounts, creditTransactions, walletLedgerEntries } from '@shared/schema';
+import { eq, desc, and, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import { EmailService } from '../emailService';
@@ -474,6 +474,9 @@ async function applySmartRedemption(
     userAgent:       ctx?.userAgent,
     staffId:         ctx?.staffId,
     endpoint:        ctx?.endpoint ?? `prestige-pass/${serviceType}`,
+    // Division tracking — kiosk path always K9000
+    divisionCode:    'station_k9000',
+    sourceType:      isKioskWash ? 'k9000_wash' : 'k9000_kiosk_payment',
   });
 
   // result.source is already computed by WalletEngine.applyDeduction()
@@ -613,6 +616,120 @@ router.get('/history', async (req: Request, res: Response) => {
     return res.json({ ok: true, events: txns });
   } catch (err) {
     logger.error('[PrestigePass] /history error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// GET /division-activity — cross-platform wallet activity
+// Returns last 25 ledger debit entries grouped by division.
+// Powers the DivisionActivitySection in the Privilege UI.
+// Finance query: SELECT division_code, SUM(amount) WHERE direction='debit'
+// ─────────────────────────────────────────────────────────
+router.get('/division-activity', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    let userId = session?.user?.uid;
+
+    // Firebase Bearer token fallback (mobile Safari)
+    if (!userId) {
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith('Bearer ')) {
+        try {
+          const decoded = await firebaseAuth.verifyIdToken(authHeader.slice(7));
+          userId = decoded.uid;
+        } catch { /* ignore */ }
+      }
+    }
+    if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
+
+    const [wallet] = await db
+      .select({ walletId: walletAccounts.walletId })
+      .from(walletAccounts)
+      .where(eq(walletAccounts.userId, userId))
+      .limit(1);
+
+    if (!wallet) {
+      return res.json({
+        ok: true,
+        activity: { station_k9000: [], petsitter: [], walkers: [], academy: [], pettrek: [], general: [] },
+        totals:   { station_k9000: 0, petsitter: 0, walkers: 0, academy: 0, pettrek: 0, general: 0 },
+        lifetimeRedeemedCents: 0,
+      });
+    }
+
+    // Fetch last 60 debit ledger entries for this wallet
+    const rawEntries = await db
+      .select({
+        entryId:      walletLedgerEntries.entryId,
+        divisionCode: walletLedgerEntries.divisionCode,
+        sourceType:   walletLedgerEntries.sourceType,
+        amountCents:  walletLedgerEntries.amountCents,
+        bucket:       walletLedgerEntries.bucket,
+        eventType:    walletLedgerEntries.eventType,
+        bookingId:    walletLedgerEntries.bookingId,
+        kioskId:      walletLedgerEntries.kioskId,
+        createdAt:    walletLedgerEntries.createdAt,
+        metadata:     walletLedgerEntries.metadata,
+      })
+      .from(walletLedgerEntries)
+      .where(
+        and(
+          eq(walletLedgerEntries.walletId, wallet.walletId),
+          eq(walletLedgerEntries.direction, 'debit'),
+        )
+      )
+      .orderBy(desc(walletLedgerEntries.createdAt))
+      .limit(60);
+
+    // Division totals query — the spec finance query
+    const divisionTotalsRaw: any = await db.execute(sql`
+      SELECT 
+        COALESCE(division_code, 'general') AS division_code,
+        SUM(amount_cents) AS total_cents,
+        COUNT(*) AS tx_count
+      FROM wallet_ledger_entries
+      WHERE wallet_id = ${wallet.walletId}
+        AND direction = 'debit'
+      GROUP BY COALESCE(division_code, 'general')
+    `);
+
+    const totalsRows: any[] = divisionTotalsRaw?.rows ?? divisionTotalsRaw ?? [];
+    const totals: Record<string, number> = {};
+    for (const row of totalsRows) {
+      totals[row.division_code] = Number(row.total_cents) || 0;
+    }
+
+    // Lifetime redeemed
+    const lifetimeRaw: any = await db.execute(sql`
+      SELECT SUM(amount_cents) AS total FROM wallet_ledger_entries
+      WHERE wallet_id = ${wallet.walletId} AND direction = 'debit'
+    `);
+    const lifetimeRows: any[] = lifetimeRaw?.rows ?? lifetimeRaw ?? [];
+    const lifetimeRedeemedCents = Number(lifetimeRows[0]?.total) || 0;
+
+    // Group entries by division
+    const KNOWN_DIVISIONS = ['station_k9000', 'petsitter', 'walkers', 'academy', 'pettrek', 'general'];
+    const activity: Record<string, typeof rawEntries> = {};
+    for (const div of KNOWN_DIVISIONS) activity[div] = [];
+
+    for (const entry of rawEntries) {
+      const key = entry.divisionCode ?? 'general';
+      const target = KNOWN_DIVISIONS.includes(key) ? key : 'general';
+      if (activity[target].length < 10) activity[target].push(entry);
+    }
+
+    return res.json({
+      ok: true,
+      activity,
+      totals: {
+        ...Object.fromEntries(KNOWN_DIVISIONS.map(d => [d, 0])),
+        ...totals,
+      },
+      lifetimeRedeemedCents,
+    });
+  } catch (err) {
+    logger.error('[PrestigePass] /division-activity error:', err);
     return res.status(500).json({ ok: false, error: 'Internal error' });
   }
 });
@@ -1280,6 +1397,18 @@ router.post('/redeem-online', async (req: Request, res: Response) => {
       });
     }
 
+    // Map service type to platform division code for financial reporting
+    const DIVISION_MAP: Record<string, string> = {
+      pet_sitter:    'petsitter',
+      dog_walker:    'walkers',
+      pet_transport: 'pettrek',
+      academy:       'academy',
+      grooming:      'grooming',
+      vet:           'vet',
+      daycare:       'petsitter',
+      other:         'general',
+    };
+
     // Atomic deduction via WalletEngine (PostgreSQL only — no Firestore split)
     const result = await applyDeduction({
       userId,
@@ -1288,6 +1417,8 @@ router.post('/redeem-online', async (req: Request, res: Response) => {
       serviceType,
       bookingId,
       description: `Online redemption — ${serviceType}`,
+      divisionCode: DIVISION_MAP[serviceType] ?? 'general',
+      sourceType:   'booking',
     });
 
     if (!result.breakdown.ok && result.breakdown.cardFallback > 0) {

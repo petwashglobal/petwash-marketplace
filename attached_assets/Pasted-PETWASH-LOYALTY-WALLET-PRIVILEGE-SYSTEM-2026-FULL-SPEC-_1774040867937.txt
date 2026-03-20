@@ -1,0 +1,338 @@
+PETWASH — LOYALTY / WALLET / PRIVILEGE SYSTEM (2026 FULL SPEC)
+
+CONTEXT (CRITICAL)
+PetWash is NOT a single product.
+It is a multi-division ecosystem under one Octopus backend.
+
+DIVISIONS:
+1. PetWash K9000 — hardware + software self-service wash
+2. Walk My Pet — dog walking SaaS marketplace
+3. Pet Sitters / Boarding — SaaS marketplace
+4. PetWash Academy — training / education
+5. Future divisions (extensible)
+
+CURRENT PROBLEM
+The current loyalty implementation is incorrectly designed as if:
+- the entire system = K9000 wash usage
+
+This is WRONG.
+
+It creates:
+- wrong financial logic
+- wrong UX
+- wrong data model
+- wrong business positioning
+
+K9000 is ONLY ONE REDEMPTION CHANNEL — not the loyalty system.
+
+---
+
+CORE BUSINESS RULE (NON-NEGOTIABLE)
+
+We operate ONE shared wallet across ALL divisions.
+
+Example:
+
+User wallet = ₪500  
+User redeems K9000 wash = ₪55  
+New balance = ₪445  
+
+That ₪445 can be used for:
+- Petsitter
+- Walker booking
+- Academy training
+- Future services
+
+NO separate balances per division.
+
+---
+
+TARGET ARCHITECTURE (MANDATORY)
+
+1. WALLET (SOURCE OF TRUTH)
+
+wallet_accounts:
+- id
+- user_id
+- currency_code
+- available_balance_cents
+- pending_balance_cents
+- lifetime_earned_cents
+- lifetime_redeemed_cents
+- updated_at
+
+---
+
+2. LEDGER (APPEND-ONLY — NEVER MUTATE)
+
+wallet_ledger:
+- id
+- wallet_account_id
+- user_id
+- entry_type            // credit | debit | hold | release | refund | expire | adjustment
+- source_type           // k9000_wash | booking | academy | reward | manual
+- source_id             // external reference (bookingId, sessionId)
+- division_code         // station_k9000 | petsitter | walkers | academy
+- amount_cents          // negative = debit, positive = credit
+- balance_after_cents
+- currency_code
+- status                // pending | posted | reversed
+- idempotency_key
+- metadata_json
+- created_at
+
+---
+
+3. DIVISION TRANSACTIONS (SEPARATE)
+
+DO NOT MIX wallet with operations.
+
+Examples:
+- k9000_sessions
+- booking_requests
+- academy_orders
+
+These are operational tables.
+
+Wallet is financial truth.
+
+---
+
+4. WALLET SERVICE (SINGLE ENTRY POINT)
+
+All divisions MUST call WalletService.
+
+Example:
+
+class WalletService {
+  getBalance(userId)
+  previewRedemption(input)
+  debit(input)
+  hold(input)
+  releaseHold(input)
+  refund(input)
+  getLedger(userId)
+}
+
+---
+
+5. REDEMPTION LOGIC
+
+K9000:
+- immediate debit
+- no hold
+
+Bookings (walker/sitter):
+- hold on booking creation
+- post debit on confirmation/start
+- release on cancel
+
+Academy:
+- usually immediate debit (depends on flow)
+
+---
+
+6. IDEMPOTENCY (CRITICAL)
+
+Every financial action MUST include idempotencyKey.
+
+Examples:
+wallet:k9000:station123:session456  
+wallet:booking:hold:booking789  
+wallet:academy:order321  
+
+RULE:
+- if key exists → return existing result
+- if not → create entry
+
+Prevents:
+- double charge
+- retries
+- webhook duplication
+
+---
+
+7. PRICING FLOW (REQUIRED)
+
+Preview endpoint:
+
+{
+  division: "station_k9000",
+  subtotalCents: 5500,
+  walletAvailableCents: 50000,
+  walletRedeemableMaxCents: 5500,
+  walletAppliedCents: 5500,
+  cashDueCents: 0
+}
+
+---
+
+8. REPORTING (FINANCE)
+
+We must support:
+
+SELECT division_code, SUM(amount)
+FROM wallet_ledger
+WHERE entry_type = 'debit'
+GROUP BY division_code;
+
+This gives:
+- revenue split by division
+- wallet usage per business line
+
+---
+
+PRODUCT DESIGN FIX (VERY IMPORTANT)
+
+CURRENT ISSUE:
+Loyalty page behaves like:
+- dashboard clone
+- profile clone
+- wash-centric UI
+
+THIS IS WRONG.
+
+---
+
+TARGET UI STRUCTURE
+
+SECTION 1 — HERO (MEMBERSHIP IDENTITY)
+- pure white background
+- large premium diamond logo (increase size significantly)
+- no dark dashboard feel
+- member name
+- tier
+- member ID
+- ONE main card only
+
+---
+
+SECTION 2 — GROUP BENEFITS
+Show cross-platform benefits:
+
+- K9000 wash discounts
+- walker / sitter benefits
+- academy benefits
+- priority access
+- member perks
+
+DO NOT mention only washes.
+
+---
+
+SECTION 3 — DIVISION ACTIVITY
+Separate clearly:
+
+- K9000 usage
+- walking bookings
+- sitter bookings
+- academy sessions
+
+NOT mixed into one block.
+
+---
+
+SECTION 4 — WALLET
+Show:
+
+- total balance
+- available credits
+- expiring credits
+- rewards earned
+
+Label as:
+PetWash Wallet / Privilege Balance
+
+NOT “wash credits”
+
+---
+
+SECTION 5 — DIGITAL CARD / WALLET
+Apple Wallet / Google Wallet / QR / email
+
+LOWER in page hierarchy.
+
+---
+
+UI / VISUAL FIXES (MANDATORY)
+
+- pure white background (not grey / not dark)
+- diamond logo must be bigger and premium
+- remove inconsistent crest styling
+- reduce empty vertical spacing
+- align spacing above card
+- remove duplicate dashboard tiles at top
+- ensure mobile-first layout
+
+---
+
+FLOATING WIDGET FIX (CRITICAL)
+
+Current issue:
+- accessibility
+- WhatsApp
+- chat
+
+They overlap content.
+
+Fix:
+- stack properly on mobile
+- avoid covering membership card
+- adjust z-index and bottom spacing
+
+---
+
+CHAT WIDGET FIX
+
+- default collapsed on mobile
+- reduce height
+- do not block main UI
+
+---
+
+NAMING (IMPORTANT)
+
+Use:
+
+PetWash Wallet  
+PetWash Privilege  
+Privilege Balance  
+
+NOT:
+wash credits  
+K9000 credits  
+
+---
+
+REPLIT IMPLEMENTATION TASKS
+
+1. Refactor wallet to be group-level
+2. Ensure all divisions use WalletService
+3. Remove wash-centric assumptions from loyalty UI
+4. Split UI into:
+   - PrivilegeHeroCard
+   - BenefitsSection
+   - DivisionActivitySection
+   - WalletSection
+   - DigitalCardSection
+5. Fix mobile layout spacing + overlays
+6. Keep routes and auth intact
+7. Preserve existing backend but remap data structure
+
+---
+
+FINAL RULE
+
+PetWash is a PLATFORM ECOSYSTEM.
+
+NOT a car wash app.
+
+Wallet = group-level  
+Ledger = single truth  
+Divisions = consumers  
+
+K9000 is ONLY ONE consumer of the wallet.
+
+---
+
+END OF SPEC

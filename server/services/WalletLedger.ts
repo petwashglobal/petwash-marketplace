@@ -150,6 +150,9 @@ export interface LedgerDeductCtx {
   userAgent?:       string | null;
   endpoint?:        string;
   staffId?:         string;
+  // Division tracking — required for cross-platform financial reporting
+  divisionCode?:    string;  // station_k9000 | petsitter | walkers | academy | gift_card | admin
+  sourceType?:      string;  // k9000_wash | booking | academy | reward | topup | manual | egift | referral
 }
 
 export interface LedgerDeductResult {
@@ -350,6 +353,8 @@ export async function deductFromWallet(ctx: LedgerDeductCtx): Promise<LedgerDedu
         amountCents:      netAmount,
         currency:         'ILS',
         bucket,
+        divisionCode:     ctx.divisionCode ?? (ctx.isKioskWash ? 'station_k9000' : null),
+        sourceType:       ctx.sourceType   ?? (ctx.isKioskWash ? 'k9000_wash'    : ctx.bookingId ? 'booking' : 'manual'),
         counterpartyType: 'service_revenue',
         counterpartyId:   ctx.bookingId ?? ctx.machineId ?? null,
         idempotencyKey:   idemKey,
@@ -359,7 +364,7 @@ export async function deductFromWallet(ctx: LedgerDeductCtx): Promise<LedgerDedu
         createdBy:        ctx.staffId ?? ctx.userId,
         ipAddress:        ctx.ipAddress ?? null,
         userAgent:        ctx.userAgent ?? null,
-        metadata:         { breakdown, serviceType: ctx.serviceType, bayId: ctx.bayId, description: ctx.description } as any,
+        metadata:         { breakdown, serviceType: ctx.serviceType, bayId: ctx.bayId, description: ctx.description, divisionCode: ctx.divisionCode } as any,
         previousHash,
         entryHash:        debitHash,
         createdAt:        now,
@@ -373,6 +378,8 @@ export async function deductFromWallet(ctx: LedgerDeductCtx): Promise<LedgerDedu
         amountCents:      netAmount,
         currency:         'ILS',
         bucket:           'service_revenue',
+        divisionCode:     ctx.divisionCode ?? (ctx.isKioskWash ? 'station_k9000' : null),
+        sourceType:       ctx.sourceType   ?? (ctx.isKioskWash ? 'k9000_wash'    : ctx.bookingId ? 'booking' : 'manual'),
         counterpartyType: 'customer_wallet',
         counterpartyId:   walletId,
         idempotencyKey:   idemKey,
@@ -381,7 +388,7 @@ export async function deductFromWallet(ctx: LedgerDeductCtx): Promise<LedgerDedu
         kioskId:          ctx.machineId ?? null,
         createdBy:        'system',
         ipAddress:        ctx.ipAddress ?? null,
-        metadata:         { serviceType: ctx.serviceType, description: ctx.description } as any,
+        metadata:         { serviceType: ctx.serviceType, description: ctx.description, divisionCode: ctx.divisionCode } as any,
         previousHash:     debitHash,
         entryHash:        creditHash,
         createdAt:        now,

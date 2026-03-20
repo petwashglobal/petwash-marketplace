@@ -10743,6 +10743,12 @@ export const walletLedgerEntries = pgTable("wallet_ledger_entries", {
   counterpartyType: varchar("counterparty_type", { length: 50 }),
   counterpartyId:   varchar("counterparty_id",   { length: 128 }),
 
+  // Division tracking (cross-platform reporting)
+  divisionCode:    varchar("division_code",    { length: 40 }),
+  // station_k9000 | petsitter | walkers | academy | gift_card | admin
+  sourceType:      varchar("source_type",      { length: 40 }),
+  // k9000_wash | booking | academy | reward | topup | manual | egift | referral
+
   // Reference IDs
   idempotencyKey:  varchar("idempotency_key",  { length: 128 }),
   jti:             varchar("jti",              { length: 128 }),
@@ -10772,6 +10778,8 @@ export const walletLedgerEntries = pgTable("wallet_ledger_entries", {
   index("idx_wle_jti").on(table.jti),
   index("idx_wle_event_type").on(table.eventType),
   index("idx_wle_created").on(table.createdAt),
+  index("idx_wle_division").on(table.divisionCode),
+  index("idx_wle_source_type").on(table.sourceType),
 ]);
 
 // ─── 2. wallet_idempotency_keys — prevents double-processing ──────────────────
