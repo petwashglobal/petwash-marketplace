@@ -542,6 +542,27 @@ Uses pending booking ref (`PENDING-SITTER-{uid}` / `PENDING-WALKER-{uid}`) when 
 
 **`server/routes.ts`** wiring — `startWalletReconciliationJob()` called after `startDailyReconciliationJob()`
 
+### Phase 2.2 — Academy Wallet Integration + Admin Finance Dashboard (March 2026)
+
+**Academy (`server/routes/academy.ts`) — full wallet lifecycle wired:**
+- `POST /api/academy/bookings` (create): accepts `walletCreditAppliedCents`; calls `previewRedemption` (100% cap for academy); calls `holdBookingWallet` with idempotency key `wallet:booking:hold:{bookingId}`; saves `walletHoldCents`, `walletHoldKey`, `financeState='hold_active'` on `trainer_bookings`
+- `POST /api/academy/bookings/:id/confirm` (**new route**): trainer-only; if `financeState='hold_active'` calls `debitBookingFromHold`; sets `financeState='debited'`, `walletDebitedCents`, `walletDebitKey`; also sets `bookingStatus='confirmed'`, `paymentStatus='completed'`, `escrowStatus='held'`
+- `POST /api/academy/bookings/:id/cancel`: if `financeState='hold_active'` → `releaseBookingHold`→`financeState='released'`; if `financeState='debited'` → `refundBookingWallet`→`financeState='refunded'`; all idempotent via standard `wallet:booking:{release|refund}:{bookingId}` keys
+
+**Schema — `trainer_bookings` table extended (8 new columns via `executeSql`):**
+`wallet_hold_cents`, `wallet_debited_cents`, `wallet_refunded_cents`, `wallet_hold_key`, `wallet_debit_key`, `wallet_release_key`, `wallet_refund_key`, `finance_state` (default `'none'`)
+
+**Reconciliation job extended** (`server/jobs/wallet-reconciliation.ts`):
+- Now covers both `booking_requests` (walkers/sitters) AND `trainer_bookings` (academy) in a single pass
+- Removed early-return on zero booking_requests drifted — always continues to academy query
+- Academy heal path: `booking_status='confirmed' AND finance_state='hold_active'` → `debitBookingFromHold` + `finance_state='debited'`
+
+**Admin Wallet Finance Dashboard** (`client/src/pages/AdminWalletDashboard.tsx`):
+- Route: `/admin/wallet-finance` (admin-guarded)
+- Tab 1 "Proof Pass": run button → 6-step audit with PASS/WARN/FAIL badges per step
+- Tab 2 "Division Report": wallet volume table grouped by division_code (K9000/Sitter/Walkers/Academy/PetTrek)
+- Tab 3 "Booking Audit": search by booking ID → shows `financeState`, hold/debit amounts, full ledger entry timeline with idempotency keys
+
 **`POST /api/prestige-pass/admin/wallet/proof-pass`** — admin-only system audit (6 steps, returns `PASS | WARN | FAIL`):
 - Step 1 Reconciliation: runs `runWalletReconciliation()` live
 - Step 2 Finance-state distribution: breakdown of hold_active/debited/released/refunded counts

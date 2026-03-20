@@ -19,7 +19,7 @@ import cron from 'node-cron';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { eq } from 'drizzle-orm';
-import { bookingRequests } from '@shared/schema';
+import { bookingRequests, trainerBookings } from '@shared/schema';
 import { walletService } from '../services/WalletService';
 import { resetVelocity } from '../services/WalletLedger';
 import { logger } from '../lib/logger';
@@ -79,14 +79,11 @@ export async function runWalletReconciliation(): Promise<ReconciliationReport> {
     return { runAt, drifted: 0, healed: 0, idempotent: 0, failed: 0, outcomes: [] };
   }
 
-  if (drifted.length === 0) {
-    logger.info(`${LABEL} Clean — no drifted bookings found`);
-    return { runAt, drifted: 0, healed: 0, idempotent: 0, failed: 0, outcomes: [] };
+  if (drifted.length > 0) {
+    logger.warn(`${LABEL} ${drifted.length} drifted booking(s) detected`, {
+      bookingIds: drifted.map((b: any) => b.request_id),
+    });
   }
-
-  logger.warn(`${LABEL} ${drifted.length} drifted booking(s) detected`, {
-    bookingIds: drifted.map((b: any) => b.request_id),
-  });
 
   // ── 2. Replay debit for each drifted booking ──────────────────────────────
   for (const booking of drifted) {
@@ -145,15 +142,89 @@ export async function runWalletReconciliation(): Promise<ReconciliationReport> {
     }
   }
 
+  // ── 3. Also reconcile Academy (trainer_bookings) confirmed + hold_active ─────
+  let academyDrifted: any[];
+  try {
+    const rows: any = await db.execute(sql`
+      SELECT booking_id, user_id, wallet_hold_cents
+      FROM trainer_bookings
+      WHERE booking_status = 'confirmed'
+        AND finance_state   = 'hold_active'
+        AND wallet_hold_cents > 0
+    `);
+    academyDrifted = rows?.rows ?? rows ?? [];
+  } catch (err: any) {
+    logger.error(`${LABEL} Academy query failed`, { error: err.message });
+    academyDrifted = [];
+  }
+
+  if (academyDrifted.length > 0) {
+    logger.warn(`${LABEL} ${academyDrifted.length} drifted Academy booking(s) detected`, {
+      bookingIds: academyDrifted.map((b: any) => b.booking_id),
+    });
+
+    for (const booking of academyDrifted) {
+      const bookingId  = String(booking.booking_id);
+      const ownerId    = String(booking.user_id);
+      const holdCents  = Number(booking.wallet_hold_cents);
+      const t0 = Date.now();
+
+      try {
+        resetVelocity(ownerId);
+
+        const result = await walletService.debitBookingFromHold({
+          userId:      ownerId,
+          amountCents: holdCents,
+          bookingId,
+          divisionCode: 'academy',
+          ipAddress:   null,
+        });
+
+        await db
+          .update(trainerBookings)
+          .set({
+            walletDebitedCents: holdCents,
+            walletDebitKey:     `wallet:booking:debit:${bookingId}`,
+            financeState:       'debited',
+            updatedAt:          new Date(),
+          })
+          .where(eq(trainerBookings.bookingId, bookingId));
+
+        const outcome: ReconciliationOutcome = {
+          bookingId, ownerId, holdCents,
+          result:     result.idempotent ? 'already_idempotent' : 'debited',
+          txnId:      result.txnId,
+          durationMs: Date.now() - t0,
+        };
+        outcomes.push(outcome);
+        logger.info(`${LABEL} Academy healed`, outcome);
+      } catch (err: any) {
+        const outcome: ReconciliationOutcome = {
+          bookingId, ownerId, holdCents,
+          result:     'error',
+          error:      err.message,
+          durationMs: Date.now() - t0,
+        };
+        outcomes.push(outcome);
+        logger.error(`${LABEL} Academy heal failed`, outcome);
+      }
+    }
+  }
+
+  const totalDrifted = drifted.length + academyDrifted.length;
   const healed     = outcomes.filter(o => o.result === 'debited').length;
   const idempotent = outcomes.filter(o => o.result === 'already_idempotent').length;
   const failed     = outcomes.filter(o => o.result === 'error').length;
 
-  logger.info(`${LABEL} Pass complete`, {
-    total: drifted.length, healed, idempotent, failed,
-  });
+  if (totalDrifted === 0) {
+    logger.info(`${LABEL} Clean — no drifted bookings found`);
+  } else {
+    logger.info(`${LABEL} Pass complete`, {
+      total: totalDrifted, healed, idempotent, failed,
+    });
+  }
 
-  return { runAt, drifted: drifted.length, healed, idempotent, failed, outcomes };
+  return { runAt, drifted: totalDrifted, healed, idempotent, failed, outcomes };
 }
 
 /**

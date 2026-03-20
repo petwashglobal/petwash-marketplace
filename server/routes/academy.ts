@@ -24,6 +24,7 @@ import { requireLoyaltyMember } from '../middleware/loyalty';
 import { requireAuth } from '../customAuth';
 import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
+import { walletService } from '../services/WalletService';
 
 const router = Router();
 
@@ -220,6 +221,31 @@ router.post('/bookings', requireAuth, async (req, res) => {
     const platformFee = totalAmount * (parseFloat(trainer.commissionRate) / 100);
     const trainerPayout = totalAmount - platformFee;
     
+    // Wallet hold (Academy = 100% cap)
+    const walletCreditAppliedCents: number = Number(req.body.walletCreditAppliedCents ?? 0);
+    const totalAmountCents = Math.round(totalAmount * 100);
+
+    let holdResult: { heldCents: number; holdKey: string } | null = null;
+    if (walletCreditAppliedCents > 0) {
+      const preview = await walletService.previewRedemption({
+        userId: req.user.uid,
+        subtotalCents: totalAmountCents,
+        divisionCode: 'academy',
+      });
+      const heldCents = Math.min(preview.applicableCents, walletCreditAppliedCents);
+      if (heldCents > 0) {
+        const holdKey = `wallet:booking:hold:${validatedData.bookingId}`;
+        await walletService.holdBookingWallet({
+          userId: req.user.uid,
+          amountCents: heldCents,
+          bookingId: validatedData.bookingId,
+          divisionCode: 'academy',
+          ipAddress: req.ip ?? null,
+        });
+        holdResult = { heldCents, holdKey };
+      }
+    }
+
     // Create booking with pricing
     const [newBooking] = await db
       .insert(trainerBookings)
@@ -235,6 +261,10 @@ router.post('/bookings', requireAuth, async (req, res) => {
         paymentStatus: 'pending',
         escrowStatus: 'pending',
         autoReleaseAt: new Date(Date.now() + 72 * 60 * 60 * 1000), // 72 hours
+        // Wallet lifecycle
+        walletHoldCents: holdResult?.heldCents ?? 0,
+        walletHoldKey: holdResult?.holdKey ?? null,
+        financeState: holdResult ? 'hold_active' : 'none',
       })
       .returning();
     
@@ -243,10 +273,9 @@ router.post('/bookings', requireAuth, async (req, res) => {
       trainerId: trainer.id,
       totalAmount,
       userId: req.user.uid,
+      walletHoldCents: newBooking.walletHoldCents,
+      financeState: newBooking.financeState,
     });
-    
-    // TODO: Integrate with central Payments & Ledger service for Nayax authorization
-    // This should call the unified payment service instead of handling Nayax directly
     
     // Generate navigation links to trainer's location
     let navigationLinks = undefined;
@@ -393,19 +422,104 @@ router.post('/bookings/:id/cancel', async (req, res) => {
       .where(eq(trainerBookings.bookingId, bookingId))
       .returning();
     
+    // Wallet release or refund based on finance_state
+    let walletUpdates: Record<string, unknown> = {};
+    if (booking.financeState === 'hold_active' && booking.walletHoldCents > 0) {
+      await walletService.releaseBookingHold({
+        userId: booking.userId,
+        amountCents: booking.walletHoldCents,
+        bookingId,
+        divisionCode: 'academy',
+        ipAddress: req.ip ?? null,
+      });
+      walletUpdates = { financeState: 'released', walletReleaseKey: `wallet:booking:release:${bookingId}` };
+      logger.info('[Academy] Wallet hold released on cancel', { bookingId, releasedCents: booking.walletHoldCents });
+    } else if (booking.financeState === 'debited' && booking.walletDebitedCents > 0) {
+      await walletService.refundBookingWallet({
+        userId: booking.userId,
+        amountCents: booking.walletDebitedCents,
+        bookingId,
+        divisionCode: 'academy',
+        ipAddress: req.ip ?? null,
+      });
+      walletUpdates = { financeState: 'refunded', walletRefundKey: `wallet:booking:refund:${bookingId}`, walletRefundedCents: booking.walletDebitedCents };
+      logger.info('[Academy] Wallet refunded on cancel', { bookingId, refundedCents: booking.walletDebitedCents });
+    }
+
+    if (Object.keys(walletUpdates).length > 0) {
+      await db.update(trainerBookings)
+        .set({ ...walletUpdates, updatedAt: new Date() })
+        .where(eq(trainerBookings.bookingId, bookingId));
+    }
+
     logger.info('[Academy] Booking cancelled', {
       bookingId,
       cancelledBy: req.user.uid,
       reason,
     });
     
-    // TODO: Process refund through central Payments & Ledger service
-    // This should call the unified refund service for Nayax processing
-    
-    res.json(updatedBooking);
+    res.json({ ...updatedBooking, ...walletUpdates });
   } catch (error) {
     logger.error('[Academy] Error cancelling booking', error);
     res.status(500).json({ error: 'Failed to cancel booking' });
+  }
+});
+
+/**
+ * POST /api/academy/bookings/:id/confirm - Trainer confirms booking → debit wallet hold
+ * Trainer-only endpoint – only the assigned trainer may confirm
+ */
+router.post('/bookings/:id/confirm', requireAuth, async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+
+    const [booking] = await db
+      .select()
+      .from(trainerBookings)
+      .where(eq(trainerBookings.bookingId, bookingId));
+
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (booking.trainerUserId !== req.user!.uid) {
+      return res.status(403).json({ error: 'Only the assigned trainer can confirm this booking' });
+    }
+    if (booking.bookingStatus !== 'pending') {
+      return res.status(400).json({ error: `Cannot confirm booking in status: ${booking.bookingStatus}` });
+    }
+
+    const walletUpdates: Record<string, unknown> = {
+      bookingStatus: 'confirmed',
+      confirmedAt: new Date(),
+      paymentStatus: 'completed',
+      escrowStatus: 'held',
+      escrowHeldAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    if (booking.financeState === 'hold_active' && booking.walletHoldCents > 0) {
+      await walletService.debitBookingFromHold({
+        userId: booking.userId,
+        amountCents: booking.walletHoldCents,
+        bookingId,
+        divisionCode: 'academy',
+        ipAddress: req.ip ?? null,
+      });
+      walletUpdates.financeState = 'debited';
+      walletUpdates.walletDebitKey = `wallet:booking:debit:${bookingId}`;
+      walletUpdates.walletDebitedCents = booking.walletHoldCents;
+      logger.info('[Academy] Wallet debited on confirm', { bookingId, debitedCents: booking.walletHoldCents });
+    }
+
+    const [confirmed] = await db
+      .update(trainerBookings)
+      .set(walletUpdates)
+      .where(eq(trainerBookings.bookingId, bookingId))
+      .returning();
+
+    logger.info('[Academy] Booking confirmed', { bookingId, trainerId: booking.trainerId });
+    res.json(confirmed);
+  } catch (error) {
+    logger.error('[Academy] Error confirming booking', error);
+    res.status(500).json({ error: 'Failed to confirm booking' });
   }
 });
 

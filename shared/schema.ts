@@ -6430,6 +6430,16 @@ export const trainerBookings = pgTable("trainer_bookings", {
   trainerReviewId: varchar("trainer_review_id"), // Trainer can review customer
   isReviewed: boolean("is_reviewed").default(false),
   
+  // Wallet Hold/Release/Debit/Refund Lifecycle (Phase 2.2)
+  walletHoldCents:     integer("wallet_hold_cents").notNull().default(0),
+  walletDebitedCents:  integer("wallet_debited_cents").notNull().default(0),
+  walletRefundedCents: integer("wallet_refunded_cents").notNull().default(0),
+  walletHoldKey:       varchar("wallet_hold_key", { length: 200 }),
+  walletDebitKey:      varchar("wallet_debit_key", { length: 200 }),
+  walletReleaseKey:    varchar("wallet_release_key", { length: 200 }),
+  walletRefundKey:     varchar("wallet_refund_key", { length: 200 }),
+  financeState:        varchar("finance_state", { length: 30 }).notNull().default("none"),
+
   // Audit Trail
   ipAddress: varchar("ip_address"),
   userAgent: varchar("user_agent"),
