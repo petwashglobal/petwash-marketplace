@@ -56,15 +56,3 @@ DEV_TEST_SECRET = "petwash-dev-test-2026-secret-internal"
 
 [userenv.production]
 NODE_ENV = "production"
-
-[[ports]]
-localPort = 5000
-externalPort = 80
-
-[[ports]]
-localPort = 23636
-externalPort = 3002
-
-[[ports]]
-localPort = 23637
-externalPort = 3001
