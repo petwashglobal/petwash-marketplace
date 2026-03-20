@@ -421,7 +421,7 @@ function JobCard({
     ? new Date(booking.endTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
     : null;
 
-  const payout = parseFloat(booking.providerPayout || booking.subtotal || '0');
+  const payout = parseFloat(booking.providerPayout ?? booking.subtotal ?? '0');
 
   const actions = [];
   // V2: pending/accepted = new requests awaiting provider decision

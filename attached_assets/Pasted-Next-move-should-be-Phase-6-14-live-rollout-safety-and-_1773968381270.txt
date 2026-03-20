@@ -1,0 +1,101 @@
+Next move should be Phase 6.14 - live rollout safety and automation control.
+
+You already have:
+	•	rebook loop
+	•	notification intelligence
+	•	smart timing
+	•	loyalty + credits
+	•	winback experiments
+	•	trust + ranking
+	•	revenue optimization
+	•	ops tab + queue health + kill switch
+
+So now the smartest path is not more features first. It is safe controlled rollout.
+
+What to do next
+
+1. Clean the tiny leftovers in the current diff
+
+Before anything else, publish a very small cleanup:
+	•	provider-profile.ts - keep one merged db, pool import
+	•	POSJobs.tsx - keep one payout calculation path
+	•	CustomerBookings.tsx - keep the final single rebook button version only
+
+These are small, but worth publishing cleanly before rollout.
+
+2. Run the production sanity pass
+
+Do this against the published app and production DB:
+	•	provider profile save
+	•	finish job modal amount
+	•	customer rebook button
+	•	quote preview
+	•	booking create
+	•	loyalty redemption
+	•	admin loyalty pages
+	•	/w tracking redirect
+	•	queue health endpoint
+	•	proof scenario runner
+	•	paid channel kill switch
+
+3. Start rollout with only one rule
+
+Arm only:
+	•	winback_14d
+
+Keep:
+	•	low daily cap
+	•	paid channels off first if you want extra caution
+	•	watch data 3 to 7 days
+
+Suggested first settings:
+	•	armed = true
+	•	enabled = true
+	•	dailySendCap = 20 to 30
+	•	SMS / WhatsApp only if Twilio is fully ready
+	•	otherwise in-app only first
+
+4. Watch these numbers daily
+
+In Admin Loyalty:
+	•	sent
+	•	opened
+	•	clicked
+	•	completed
+	•	control vs treated lift
+	•	ROI by channel
+	•	pause ratio
+	•	stuck pending rows
+	•	auto-promoted today
+	•	health alerts count
+
+5. Only then move to automatic scaling
+
+After a few days of stable data:
+	•	promote winner only on completed booking lift
+	•	not CTR alone
+	•	then arm winback_30d
+	•	later winback_60d
+
+Best next feature after rollout safety
+
+After 6.14 is proven stable, the next strongest build is:
+
+Phase 6.16 - channel hardening
+	•	real SMS templates
+	•	WhatsApp approved templates
+	•	delivery status webhooks
+	•	failed-send retries
+	•	bounce / unsubscribe handling
+	•	real cost tracking from provider callbacks instead of fixed estimates
+
+My recommendation
+
+Do this order exactly:
+	1.	publish the 3 tiny cleanup diffs
+	2.	run the full production sanity pass
+	3.	arm only winback_14d with low cap
+	4.	observe 3 to 7 days
+	5.	then expand volume and channels
+
+If you want, I’ll turn this into one single copy-paste rollout checklist for you and your developer.
