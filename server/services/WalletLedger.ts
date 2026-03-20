@@ -762,3 +762,403 @@ export async function captureHold(holdId: string): Promise<void> {
     .set({ status: 'captured', capturedAt: new Date() })
     .where(eq(walletHolds.holdId, holdId));
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PHASE 2 — MULTI-DIVISION HOLD / RELEASE / DEBIT-FROM-HOLD / REFUND
+//
+// Financial contract:
+//   holdWallet:         available ↓, pending ↑  (event=hold)
+//   releaseWalletHold:  available ↑, pending ↓  (event=release)
+//   debitFromWalletHold: pending ↓ ONLY         (event=debit — available already moved at hold time)
+//   refundToWallet:     available ↑              (event=refund)
+//
+// Every method: FOR UPDATE lock → validate → ledger → balance UPDATE → idempotency
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface WalletHoldCtx {
+  userId:          string;
+  amountCents:     number;
+  divisionCode:    string;
+  sourceType:      string;
+  sourceId:        string;        // bookingId, orderId, etc.
+  idempotencyKey:  string;        // REQUIRED — wallet:booking:hold:{bookingId}
+  ipAddress?:      string | null;
+  userAgent?:      string | null;
+  metadata?:       Record<string, unknown>;
+}
+
+export interface WalletHoldResult {
+  txnId:                  string;
+  walletId:               string;
+  availableAfterCents:    number;
+  pendingAfterCents:      number;
+  idempotent:             boolean;
+}
+
+// ─── 1. holdWallet — lock funds for a future booking ─────────────────────────
+export async function holdWallet(ctx: WalletHoldCtx): Promise<WalletHoldResult> {
+  if (!Number.isInteger(ctx.amountCents) || ctx.amountCents <= 0) throw new Error('INVALID_AMOUNT');
+  if (!ctx.userId) throw new Error('INVALID_USER');
+  if (!ctx.idempotencyKey) throw new Error('HOLD_REQUIRES_IDEMPOTENCY_KEY');
+
+  // Fast-path idempotency
+  const cached = await getIdempotencyResult(ctx.idempotencyKey);
+  if (cached) return { ...(JSON.parse(cached.responseJson) as WalletHoldResult), idempotent: true };
+
+  const vel = checkVelocity(ctx.userId);
+  if (!vel.allowed) throw new Error('VELOCITY_EXCEEDED');
+
+  return await (db as any).transaction(async (tx: typeof db) => {
+    // Lock wallet row
+    const lockRes: any = await (tx as any).execute(sql`
+      SELECT wallet_id, cash_wallet_balance_cents, egift_balance_cents,
+             promo_balance_cents, referral_balance_cents, pending_balance_cents, lifetime_earned_cents
+      FROM wallet_accounts WHERE user_id = ${ctx.userId} FOR UPDATE
+    `);
+    const row: any = (lockRes?.rows ?? lockRes ?? [])[0];
+    if (!row) throw new Error('WALLET_NOT_FOUND');
+
+    const walletId        = String(row.wallet_id);
+    const availableCash   = Number(row.cash_wallet_balance_cents) || 0;
+    const availableEgift  = Number(row.egift_balance_cents) || 0;
+    const availablePromo  = Number(row.promo_balance_cents) || 0;
+    const availableRef    = Number(row.referral_balance_cents) || 0;
+    const totalAvailable  = availableCash + availableEgift + availablePromo + availableRef;
+
+    // In-tx idempotency
+    const [existingKey]: any[] = await (tx as any)
+      .select({ responseJson: walletIdempotencyKeys.responseJson })
+      .from(walletIdempotencyKeys)
+      .where(eq(walletIdempotencyKeys.idempotencyKey, ctx.idempotencyKey))
+      .limit(1);
+    if (existingKey?.responseJson) {
+      return { ...(JSON.parse(existingKey.responseJson) as WalletHoldResult), idempotent: true };
+    }
+
+    if (totalAvailable < ctx.amountCents) {
+      throw new Error(`INSUFFICIENT_BALANCE: available ${totalAvailable} < hold ${ctx.amountCents}`);
+    }
+
+    // Deduct from buckets in priority order: promo → egift → referral → cash
+    let remaining = ctx.amountCents;
+    const promoUsed  = Math.min(remaining, availablePromo);  remaining -= promoUsed;
+    const egiftUsed  = Math.min(remaining, availableEgift);  remaining -= egiftUsed;
+    const refUsed    = Math.min(remaining, availableRef);    remaining -= refUsed;
+    const cashUsed   = Math.min(remaining, availableCash);   remaining -= cashUsed;
+
+    const updRes: any = await (tx as any).execute(sql`
+      UPDATE wallet_accounts SET
+        cash_wallet_balance_cents = GREATEST(0, cash_wallet_balance_cents  - ${cashUsed}),
+        egift_balance_cents       = GREATEST(0, egift_balance_cents        - ${egiftUsed}),
+        promo_balance_cents       = GREATEST(0, promo_balance_cents        - ${promoUsed}),
+        referral_balance_cents    = GREATEST(0, referral_balance_cents     - ${refUsed}),
+        pending_balance_cents     = pending_balance_cents + ${ctx.amountCents},
+        updated_at                = NOW(),
+        last_activity_at          = NOW()
+      WHERE user_id = ${ctx.userId}
+        AND cash_wallet_balance_cents  >= ${cashUsed}
+        AND egift_balance_cents        >= ${egiftUsed}
+        AND promo_balance_cents        >= ${promoUsed}
+        AND referral_balance_cents     >= ${refUsed}
+      RETURNING wallet_id, cash_wallet_balance_cents, egift_balance_cents,
+                promo_balance_cents, pending_balance_cents
+    `);
+    const upd: any = (updRes?.rows ?? updRes ?? [])[0];
+    if (!upd) throw new Error('HOLD_CONFLICT: Insufficient balance (race condition)');
+
+    // Hash chain
+    const nowD = new Date();
+    const nowIso = nowD.toISOString();
+    const lastHR: any = await (tx as any).execute(
+      sql`SELECT entry_hash FROM wallet_ledger_entries WHERE wallet_id = ${walletId} ORDER BY id DESC LIMIT 1`
+    );
+    const prevHash = ((lastHR?.rows ?? lastHR ?? [])[0])?.entry_hash ?? 'genesis';
+
+    const eid1 = `LE-H1-${Date.now().toString(36).toUpperCase()}-${randomBytes(4).toString('hex').toUpperCase()}`;
+    const eid2 = `LE-H2-${Date.now().toString(36).toUpperCase()}-${randomBytes(4).toString('hex').toUpperCase()}`;
+    const h1 = computeEntryHash(prevHash, walletId, 'debit',  ctx.amountCents, 'ILS', ctx.idempotencyKey, nowIso);
+    const h2 = computeEntryHash(h1,       walletId, 'credit', ctx.amountCents, 'ILS', ctx.idempotencyKey, nowIso);
+
+    const baseEntry = {
+      walletId, userId: ctx.userId, currency: 'ILS',
+      amountCents: ctx.amountCents, eventType: 'hold',
+      divisionCode: ctx.divisionCode, sourceType: ctx.sourceType,
+      counterpartyId: ctx.sourceId, idempotencyKey: ctx.idempotencyKey,
+      bookingId: ctx.sourceId, createdBy: ctx.userId,
+      ipAddress: ctx.ipAddress ?? null, userAgent: ctx.userAgent ?? null,
+      metadata: { breakdown: { promo: promoUsed, egift: egiftUsed, referral: refUsed, cash: cashUsed }, ...ctx.metadata } as any,
+      createdAt: nowD,
+    };
+
+    await (tx as any).insert(walletLedgerEntries).values([
+      { ...baseEntry, entryId: eid1, direction: 'debit',  bucket: 'cash_wallet', counterpartyType: 'hold_reserve', previousHash: prevHash, entryHash: h1 },
+      { ...baseEntry, entryId: eid2, direction: 'credit', bucket: 'hold_reserve', counterpartyType: 'customer_wallet', previousHash: h1, entryHash: h2 },
+    ]);
+
+    const result: WalletHoldResult = {
+      txnId: eid1, walletId,
+      availableAfterCents: Number(upd.cash_wallet_balance_cents) + Number(upd.egift_balance_cents) + Number(upd.promo_balance_cents),
+      pendingAfterCents:   Number(upd.pending_balance_cents),
+      idempotent: false,
+    };
+    await (tx as any).insert(walletIdempotencyKeys).values({
+      idempotencyKey: ctx.idempotencyKey, endpoint: 'wallet/hold',
+      requestHash: computeRequestHash(ctx.userId, ctx.amountCents, ctx.sourceType, 'hold'),
+      responseJson: JSON.stringify(result), status: 'success',
+      expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+    }).onConflictDoNothing();
+
+    logger.info('[WalletLedger] Hold created', { txnId: eid1, walletId, userId: ctx.userId, amountCents: ctx.amountCents, divisionCode: ctx.divisionCode });
+    return result;
+  });
+}
+
+// ─── 2. releaseWalletHold — restore funds when hold is no longer needed ───────
+export async function releaseWalletHold(ctx: Omit<WalletHoldCtx, 'divisionCode'> & { divisionCode?: string }): Promise<WalletHoldResult> {
+  if (!ctx.idempotencyKey) throw new Error('RELEASE_REQUIRES_IDEMPOTENCY_KEY');
+
+  const cached = await getIdempotencyResult(ctx.idempotencyKey);
+  if (cached) return { ...(JSON.parse(cached.responseJson) as WalletHoldResult), idempotent: true };
+
+  const vel = checkVelocity(ctx.userId);
+  if (!vel.allowed) throw new Error('VELOCITY_EXCEEDED');
+
+  return await (db as any).transaction(async (tx: typeof db) => {
+    const lockRes: any = await (tx as any).execute(sql`
+      SELECT wallet_id, cash_wallet_balance_cents, pending_balance_cents
+      FROM wallet_accounts WHERE user_id = ${ctx.userId} FOR UPDATE
+    `);
+    const row: any = (lockRes?.rows ?? lockRes ?? [])[0];
+    if (!row) throw new Error('WALLET_NOT_FOUND');
+
+    const walletId    = String(row.wallet_id);
+    const pendingNow  = Number(row.pending_balance_cents) || 0;
+
+    const [existing]: any[] = await (tx as any)
+      .select({ responseJson: walletIdempotencyKeys.responseJson })
+      .from(walletIdempotencyKeys).where(eq(walletIdempotencyKeys.idempotencyKey, ctx.idempotencyKey)).limit(1);
+    if (existing?.responseJson) return { ...(JSON.parse(existing.responseJson) as WalletHoldResult), idempotent: true };
+
+    if (pendingNow < ctx.amountCents) {
+      // Allow if pending is 0 — this means it was already released. Just mark idempotent.
+      if (pendingNow === 0) {
+        const result: WalletHoldResult = { txnId: 'NO-OP', walletId, availableAfterCents: Number(row.cash_wallet_balance_cents), pendingAfterCents: 0, idempotent: true };
+        return result;
+      }
+      throw new Error(`RELEASE_EXCEEDS_PENDING: pending ${pendingNow} < release ${ctx.amountCents}`);
+    }
+
+    const updRes: any = await (tx as any).execute(sql`
+      UPDATE wallet_accounts SET
+        cash_wallet_balance_cents = cash_wallet_balance_cents + ${ctx.amountCents},
+        pending_balance_cents     = GREATEST(0, pending_balance_cents - ${ctx.amountCents}),
+        updated_at                = NOW(), last_activity_at = NOW()
+      WHERE user_id = ${ctx.userId}
+      RETURNING wallet_id, cash_wallet_balance_cents, pending_balance_cents
+    `);
+    const upd: any = (updRes?.rows ?? updRes ?? [])[0];
+
+    const nowD = new Date();
+    const nowIso = nowD.toISOString();
+    const lastHR: any = await (tx as any).execute(
+      sql`SELECT entry_hash FROM wallet_ledger_entries WHERE wallet_id = ${walletId} ORDER BY id DESC LIMIT 1`
+    );
+    const prevHash = ((lastHR?.rows ?? lastHR ?? [])[0])?.entry_hash ?? 'genesis';
+
+    const eid1 = `LE-R1-${Date.now().toString(36).toUpperCase()}-${randomBytes(4).toString('hex').toUpperCase()}`;
+    const eid2 = `LE-R2-${Date.now().toString(36).toUpperCase()}-${randomBytes(4).toString('hex').toUpperCase()}`;
+    const h1 = computeEntryHash(prevHash, walletId, 'debit',  ctx.amountCents, 'ILS', ctx.idempotencyKey, nowIso);
+    const h2 = computeEntryHash(h1,       walletId, 'credit', ctx.amountCents, 'ILS', ctx.idempotencyKey, nowIso);
+
+    const baseEntry = {
+      walletId, userId: ctx.userId, currency: 'ILS', amountCents: ctx.amountCents, eventType: 'release',
+      divisionCode: ctx.divisionCode ?? null, sourceType: ctx.sourceType,
+      counterpartyId: ctx.sourceId, idempotencyKey: ctx.idempotencyKey,
+      bookingId: ctx.sourceId, createdBy: ctx.userId,
+      ipAddress: ctx.ipAddress ?? null,
+      metadata: { reason: 'hold_released', ...ctx.metadata } as any, createdAt: nowD,
+    };
+
+    await (tx as any).insert(walletLedgerEntries).values([
+      { ...baseEntry, entryId: eid1, direction: 'debit',  bucket: 'hold_reserve',  counterpartyType: 'customer_wallet', previousHash: prevHash, entryHash: h1 },
+      { ...baseEntry, entryId: eid2, direction: 'credit', bucket: 'cash_wallet',   counterpartyType: 'hold_reserve', previousHash: h1, entryHash: h2 },
+    ]);
+
+    const result: WalletHoldResult = {
+      txnId: eid1, walletId,
+      availableAfterCents: Number(upd.cash_wallet_balance_cents),
+      pendingAfterCents:   Number(upd.pending_balance_cents),
+      idempotent: false,
+    };
+    await (tx as any).insert(walletIdempotencyKeys).values({
+      idempotencyKey: ctx.idempotencyKey, endpoint: 'wallet/release',
+      requestHash: computeRequestHash(ctx.userId, ctx.amountCents, ctx.sourceType, 'release'),
+      responseJson: JSON.stringify(result), status: 'success',
+      expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+    }).onConflictDoNothing();
+
+    logger.info('[WalletLedger] Hold released', { txnId: eid1, walletId, userId: ctx.userId, amountCents: ctx.amountCents });
+    return result;
+  });
+}
+
+// ─── 3. debitFromWalletHold — finalize held funds as service payment ──────────
+// NOTE: available_balance_cents does NOT change — it already moved at hold time.
+// This converts pending → realized debit (lifetime_redeemed_cents increases).
+export async function debitFromWalletHold(ctx: WalletHoldCtx): Promise<WalletHoldResult> {
+  if (!ctx.idempotencyKey) throw new Error('DEBIT_FROM_HOLD_REQUIRES_IDEMPOTENCY_KEY');
+
+  const cached = await getIdempotencyResult(ctx.idempotencyKey);
+  if (cached) return { ...(JSON.parse(cached.responseJson) as WalletHoldResult), idempotent: true };
+
+  const vel = checkVelocity(ctx.userId);
+  if (!vel.allowed) throw new Error('VELOCITY_EXCEEDED');
+
+  return await (db as any).transaction(async (tx: typeof db) => {
+    const lockRes: any = await (tx as any).execute(sql`
+      SELECT wallet_id, cash_wallet_balance_cents, pending_balance_cents, lifetime_redeemed_cents
+      FROM wallet_accounts WHERE user_id = ${ctx.userId} FOR UPDATE
+    `);
+    const row: any = (lockRes?.rows ?? lockRes ?? [])[0];
+    if (!row) throw new Error('WALLET_NOT_FOUND');
+
+    const walletId   = String(row.wallet_id);
+    const pendingNow = Number(row.pending_balance_cents) || 0;
+
+    const [existing]: any[] = await (tx as any)
+      .select({ responseJson: walletIdempotencyKeys.responseJson })
+      .from(walletIdempotencyKeys).where(eq(walletIdempotencyKeys.idempotencyKey, ctx.idempotencyKey)).limit(1);
+    if (existing?.responseJson) return { ...(JSON.parse(existing.responseJson) as WalletHoldResult), idempotent: true };
+
+    if (pendingNow < ctx.amountCents) {
+      throw new Error(`DEBIT_FROM_HOLD_EXCEEDS_PENDING: pending ${pendingNow} < debit ${ctx.amountCents}`);
+    }
+
+    const updRes: any = await (tx as any).execute(sql`
+      UPDATE wallet_accounts SET
+        pending_balance_cents    = GREATEST(0, pending_balance_cents - ${ctx.amountCents}),
+        lifetime_redeemed_cents  = lifetime_redeemed_cents + ${ctx.amountCents},
+        updated_at               = NOW(), last_activity_at = NOW()
+      WHERE user_id = ${ctx.userId}
+      RETURNING wallet_id, cash_wallet_balance_cents, pending_balance_cents, lifetime_redeemed_cents
+    `);
+    const upd: any = (updRes?.rows ?? updRes ?? [])[0];
+
+    const nowD = new Date();
+    const nowIso = nowD.toISOString();
+    const lastHR: any = await (tx as any).execute(
+      sql`SELECT entry_hash FROM wallet_ledger_entries WHERE wallet_id = ${walletId} ORDER BY id DESC LIMIT 1`
+    );
+    const prevHash = ((lastHR?.rows ?? lastHR ?? [])[0])?.entry_hash ?? 'genesis';
+
+    const eid1 = `LE-DH1-${Date.now().toString(36).toUpperCase()}-${randomBytes(4).toString('hex').toUpperCase()}`;
+    const eid2 = `LE-DH2-${Date.now().toString(36).toUpperCase()}-${randomBytes(4).toString('hex').toUpperCase()}`;
+    const h1 = computeEntryHash(prevHash, walletId, 'debit',  ctx.amountCents, 'ILS', ctx.idempotencyKey, nowIso);
+    const h2 = computeEntryHash(h1,       walletId, 'credit', ctx.amountCents, 'ILS', ctx.idempotencyKey, nowIso);
+
+    const baseEntry = {
+      walletId, userId: ctx.userId, currency: 'ILS', amountCents: ctx.amountCents, eventType: 'debit',
+      divisionCode: ctx.divisionCode, sourceType: ctx.sourceType,
+      counterpartyId: ctx.sourceId, idempotencyKey: ctx.idempotencyKey,
+      bookingId: ctx.sourceId, createdBy: ctx.userId,
+      ipAddress: ctx.ipAddress ?? null,
+      metadata: { debitType: 'from_hold', ...ctx.metadata } as any, createdAt: nowD,
+    };
+
+    await (tx as any).insert(walletLedgerEntries).values([
+      { ...baseEntry, entryId: eid1, direction: 'debit',  bucket: 'hold_reserve',   counterpartyType: 'service_revenue', previousHash: prevHash, entryHash: h1 },
+      { ...baseEntry, entryId: eid2, direction: 'credit', bucket: 'service_revenue', counterpartyType: 'hold_reserve',   previousHash: h1,       entryHash: h2 },
+    ]);
+
+    const result: WalletHoldResult = {
+      txnId: eid1, walletId,
+      availableAfterCents: Number(upd.cash_wallet_balance_cents),
+      pendingAfterCents:   Number(upd.pending_balance_cents),
+      idempotent: false,
+    };
+    await (tx as any).insert(walletIdempotencyKeys).values({
+      idempotencyKey: ctx.idempotencyKey, endpoint: 'wallet/debit-from-hold',
+      requestHash: computeRequestHash(ctx.userId, ctx.amountCents, ctx.sourceType, 'debit-from-hold'),
+      responseJson: JSON.stringify(result), status: 'success',
+      expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+    }).onConflictDoNothing();
+
+    logger.info('[WalletLedger] Debit-from-hold committed', { txnId: eid1, walletId, userId: ctx.userId, amountCents: ctx.amountCents, divisionCode: ctx.divisionCode });
+    return result;
+  });
+}
+
+// ─── 4. refundToWallet — restore funds to available (post-debit reversal) ─────
+export async function refundToWallet(ctx: WalletHoldCtx & { reason?: string }): Promise<WalletHoldResult> {
+  if (!ctx.idempotencyKey) throw new Error('REFUND_REQUIRES_IDEMPOTENCY_KEY');
+
+  const cached = await getIdempotencyResult(ctx.idempotencyKey);
+  if (cached) return { ...(JSON.parse(cached.responseJson) as WalletHoldResult), idempotent: true };
+
+  return await (db as any).transaction(async (tx: typeof db) => {
+    const lockRes: any = await (tx as any).execute(sql`
+      SELECT wallet_id, cash_wallet_balance_cents, pending_balance_cents
+      FROM wallet_accounts WHERE user_id = ${ctx.userId} FOR UPDATE
+    `);
+    const row: any = (lockRes?.rows ?? lockRes ?? [])[0];
+    if (!row) throw new Error('WALLET_NOT_FOUND');
+
+    const walletId = String(row.wallet_id);
+
+    const [existing]: any[] = await (tx as any)
+      .select({ responseJson: walletIdempotencyKeys.responseJson })
+      .from(walletIdempotencyKeys).where(eq(walletIdempotencyKeys.idempotencyKey, ctx.idempotencyKey)).limit(1);
+    if (existing?.responseJson) return { ...(JSON.parse(existing.responseJson) as WalletHoldResult), idempotent: true };
+
+    const updRes: any = await (tx as any).execute(sql`
+      UPDATE wallet_accounts SET
+        cash_wallet_balance_cents = cash_wallet_balance_cents + ${ctx.amountCents},
+        updated_at                = NOW(), last_activity_at = NOW()
+      WHERE user_id = ${ctx.userId}
+      RETURNING wallet_id, cash_wallet_balance_cents, pending_balance_cents
+    `);
+    const upd: any = (updRes?.rows ?? updRes ?? [])[0];
+
+    const nowD = new Date();
+    const nowIso = nowD.toISOString();
+    const lastHR: any = await (tx as any).execute(
+      sql`SELECT entry_hash FROM wallet_ledger_entries WHERE wallet_id = ${walletId} ORDER BY id DESC LIMIT 1`
+    );
+    const prevHash = ((lastHR?.rows ?? lastHR ?? [])[0])?.entry_hash ?? 'genesis';
+
+    const eid1 = `LE-RF1-${Date.now().toString(36).toUpperCase()}-${randomBytes(4).toString('hex').toUpperCase()}`;
+    const eid2 = `LE-RF2-${Date.now().toString(36).toUpperCase()}-${randomBytes(4).toString('hex').toUpperCase()}`;
+    const h1 = computeEntryHash(prevHash, walletId, 'debit',  ctx.amountCents, 'ILS', ctx.idempotencyKey, nowIso);
+    const h2 = computeEntryHash(h1,       walletId, 'credit', ctx.amountCents, 'ILS', ctx.idempotencyKey, nowIso);
+
+    const baseEntry = {
+      walletId, userId: ctx.userId, currency: 'ILS', amountCents: ctx.amountCents, eventType: 'refund',
+      divisionCode: ctx.divisionCode, sourceType: ctx.sourceType,
+      counterpartyId: ctx.sourceId, idempotencyKey: ctx.idempotencyKey,
+      bookingId: ctx.sourceId, createdBy: ctx.userId,
+      ipAddress: ctx.ipAddress ?? null,
+      metadata: { reason: ctx.reason ?? 'refund', ...ctx.metadata } as any, createdAt: nowD,
+    };
+
+    await (tx as any).insert(walletLedgerEntries).values([
+      { ...baseEntry, entryId: eid1, direction: 'debit',  bucket: 'service_revenue', counterpartyType: 'refund_source',   previousHash: prevHash, entryHash: h1 },
+      { ...baseEntry, entryId: eid2, direction: 'credit', bucket: 'cash_wallet',     counterpartyType: 'customer_wallet', previousHash: h1,       entryHash: h2 },
+    ]);
+
+    const result: WalletHoldResult = {
+      txnId: eid1, walletId,
+      availableAfterCents: Number(upd.cash_wallet_balance_cents),
+      pendingAfterCents:   Number(upd.pending_balance_cents),
+      idempotent: false,
+    };
+    await (tx as any).insert(walletIdempotencyKeys).values({
+      idempotencyKey: ctx.idempotencyKey, endpoint: 'wallet/refund',
+      requestHash: computeRequestHash(ctx.userId, ctx.amountCents, ctx.sourceType, 'refund'),
+      responseJson: JSON.stringify(result), status: 'success',
+      expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+    }).onConflictDoNothing();
+
+    logger.info('[WalletLedger] Refund committed', { txnId: eid1, walletId, userId: ctx.userId, amountCents: ctx.amountCents, divisionCode: ctx.divisionCode, reason: ctx.reason });
+    return result;
+  });
+}

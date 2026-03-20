@@ -1,0 +1,501 @@
+PETWASH WALLET - NEXT BUILD MAP
+Priority: Phase 1 completion + Phase 2 booking hold/release
+
+GOAL
+Turn the wallet from "shared debit balance" into a real cross-division financial engine.
+
+TARGET OUTCOME
+Walkers and sitters must be able to:
+1. preview wallet usage safely
+2. place a hold at booking creation
+3. release hold on cancel / decline / expiry
+4. convert hold into debit on confirmation / service start
+5. refund correctly if needed
+
+ACADEMY must plug into the same wallet service after that.
+
+==================================================
+PHASE 1 - WALLET CORE COMPLETION
+==================================================
+
+1. DATABASE CHANGES
+
+A. wallet_accounts
+Add:
+- pending_balance_cents integer not null default 0
+- lifetime_earned_cents integer not null default 0
+- lifetime_redeemed_cents integer not null default 0
+
+Meaning:
+- available_balance_cents = usable now
+- pending_balance_cents = reserved by holds
+- lifetime_earned_cents = all positive credits ever posted
+- lifetime_redeemed_cents = all debits ever posted
+
+B. wallet_ledger_entries
+Expand event vocabulary to support:
+- hold
+- release
+- refund
+
+If eventType already exists and is flexible, reuse it.
+If constrained, extend enum / validation.
+
+Required entry set:
+- credit
+- debit
+- hold
+- release
+- refund
+- expire
+- adjustment
+
+C. booking_requests
+Add:
+- wallet_hold_cents integer not null default 0
+- wallet_debited_cents integer not null default 0
+- wallet_refunded_cents integer not null default 0
+- wallet_hold_key text nullable
+- wallet_debit_key text nullable
+- wallet_release_key text nullable
+- wallet_refund_key text nullable
+
+Purpose:
+persist financial state on booking object for audit and retries.
+
+D. optional but recommended
+Add:
+- finance_state text not null default 'none'
+Values:
+- none
+- hold_active
+- debited
+- released
+- refunded
+
+==================================================
+2. WALLET SERVICE CONTRACT
+==================================================
+
+WalletService must expose these exact methods:
+
+- getBalance(userId)
+- previewRedemption(input)
+- hold(input)
+- releaseHold(input)
+- debitFromHold(input)
+- debit(input)
+- refund(input)
+- getLedger(userId)
+
+Recommended input contracts:
+
+previewRedemption({
+  userId,
+  divisionCode,
+  sourceType,
+  subtotalCents,
+  maxRedeemPct,
+  currencyCode,
+  sourceId?
+})
+
+hold({
+  userId,
+  amountCents,
+  divisionCode,
+  sourceType: 'booking',
+  sourceId,
+  idempotencyKey,
+  metadata
+})
+
+releaseHold({
+  userId,
+  amountCents,
+  divisionCode,
+  sourceType: 'booking',
+  sourceId,
+  idempotencyKey,
+  metadata
+})
+
+debitFromHold({
+  userId,
+  amountCents,
+  divisionCode,
+  sourceType: 'booking',
+  sourceId,
+  idempotencyKey,
+  metadata
+})
+
+refund({
+  userId,
+  amountCents,
+  divisionCode,
+  sourceType,
+  sourceId,
+  idempotencyKey,
+  metadata
+})
+
+==================================================
+3. FINANCIAL RULES
+==================================================
+
+A. HOLD
+When hold is created:
+- available_balance_cents decreases
+- pending_balance_cents increases
+- ledger entry_type = hold
+- balance_after_cents records new available balance
+
+B. RELEASE
+When hold is released:
+- available_balance_cents increases
+- pending_balance_cents decreases
+- ledger entry_type = release
+
+C. DEBIT FROM HOLD
+When booking becomes financially committed:
+- pending_balance_cents decreases
+- available_balance_cents does not change again
+- ledger entry_type = debit
+- lifetime_redeemed_cents increases
+
+This is critical:
+debitFromHold is NOT the same as direct debit.
+The money already left available balance at hold time.
+
+D. DIRECT DEBIT
+Used for:
+- K9000
+- academy immediate purchase
+- future instant checkout flows
+
+When direct debit happens:
+- available_balance_cents decreases
+- pending_balance_cents unchanged
+- ledger entry_type = debit
+- lifetime_redeemed_cents increases
+
+E. REFUND
+When refund happens:
+- available_balance_cents increases
+- pending_balance_cents unchanged
+- ledger entry_type = refund
+- lifetime_earned_cents may or may not increase depending on your reporting policy
+Recommended:
+  - do NOT add refunds into lifetime_earned_cents
+  - keep lifetime_earned_cents for true earned credits only
+  - track refunds separately in reporting
+
+==================================================
+4. IDEMPOTENCY KEYS
+==================================================
+
+Required patterns:
+
+Booking preview hold:
+- wallet:booking:hold:{bookingId}
+
+Booking release:
+- wallet:booking:release:{bookingId}
+
+Booking debit:
+- wallet:booking:debit:{bookingId}
+
+Booking refund:
+- wallet:booking:refund:{bookingId}
+
+K9000:
+- wallet:k9000:debit:{sessionId}
+
+Academy:
+- wallet:academy:debit:{orderId}
+
+Rule:
+same key must always return existing result, never double-post.
+
+==================================================
+PHASE 2 - BOOKING HOLD / RELEASE / DEBIT FLOW
+==================================================
+
+5. BOOKING FLOW - CORRECT FINANCIAL LIFECYCLE
+
+A. BOOKING CREATE
+At booking creation:
+1. calculate booking subtotal server-side
+2. call previewRedemption with booking cap
+3. if user chooses wallet usage:
+   - create hold for approved amount
+   - store wallet_hold_cents
+   - store wallet_hold_key
+   - set finance_state = hold_active
+4. remaining amount paid by card / cash as your current logic dictates
+
+B. BOOKING DECLINED BY PROVIDER
+If hold active:
+- call releaseHold
+- store wallet_release_key
+- set wallet_hold_cents still as historical value
+- set finance_state = released
+
+C. BOOKING CANCELLED BY CUSTOMER
+If hold active and service not financially committed:
+- release hold
+- finance_state = released
+
+If already debited and policy allows refund:
+- refund
+- finance_state = refunded
+
+D. BOOKING EXPIRES / TIMES OUT
+If hold active:
+- release hold automatically
+- finance_state = released
+
+E. BOOKING CONFIRMED / SERVICE START
+At the actual commitment moment:
+- call debitFromHold
+- store wallet_debit_key
+- store wallet_debited_cents
+- finance_state = debited
+
+Choose one financial moment and keep it consistent:
+Recommended:
+- walkers / sitters: debit on confirmed booking if commercial commitment is final
+OR
+- debit on service start if cancellations are still common before service begins
+
+Pick one rule and keep it universal.
+
+==================================================
+6. SERVER-SIDE BOOKING CAP RULES
+==================================================
+
+Wallet cap must not live only in UI.
+It must be enforced server-side in previewRedemption.
+
+Recommended rules:
+- K9000: maxRedeemPct = 100
+- walker / sitter booking: maxRedeemPct = 50
+- academy: usually 100 unless business wants partial cap
+
+Formula:
+walletRedeemableMaxCents = min(
+  available_balance_cents,
+  floor(subtotalCents * maxRedeemPct / 100)
+)
+
+Example:
+subtotal = 12,000
+wallet balance = 50,000
+maxRedeemPct = 50
+walletRedeemableMax = 6,000
+
+==================================================
+7. ROUTES TO UPDATE
+==================================================
+
+A. booking-requests.ts
+Add:
+- previewRedemption call in quote / create flow
+- hold on create
+- release on decline / cancel / expiry
+- debitFromHold on financial commitment
+- refund if post-debit reversal needed
+
+B. quote / preview endpoints
+Return:
+- walletAvailableCents
+- walletRedeemableMaxCents
+- walletAppliedCents
+- cashDueCents
+- divisionCode
+- sourceType
+
+C. K9000 routes
+Keep immediate debit model
+No hold
+
+D. academy routes
+Phase 2b after booking flow is stable:
+- preview
+- immediate debit
+- refund on cancel
+
+==================================================
+8. REPORTING BUILD
+==================================================
+
+After Phase 1 and 2 core logic is in, add admin finance views:
+
+A. wallet by division
+- total debits by division_code
+- total holds by division_code
+- total releases by division_code
+- total refunds by division_code
+
+B. customer wallet summary
+- available
+- pending
+- lifetime earned
+- lifetime redeemed
+
+C. booking finance audit
+Per booking:
+- hold created
+- hold released
+- debit posted
+- refund posted
+- timestamps
+- idempotency keys
+
+D. reconciliation export
+CSV / admin export:
+- date
+- user
+- division
+- source type
+- source id
+- entry type
+- amount
+- balance after
+- idempotency key
+
+==================================================
+9. ADMIN ADJUSTMENT / AUDIT
+==================================================
+
+Add admin adjustment write reasons:
+- goodwill
+- support_resolution
+- promotion
+- manual_correction
+- fraud_reversal
+- migration_fix
+
+Every adjustment must store:
+- admin email / uid
+- reason code
+- free text note
+- created_at
+
+No silent manual edits.
+
+==================================================
+10. FRONTEND BUILD MAP
+==================================================
+
+A. Booking checkout / preview
+Show:
+- available wallet balance
+- max redeemable for this booking
+- amount applied
+- cash due
+
+B. Booking confirmation / details
+Show wallet finance rows:
+- wallet hold
+- wallet debited
+- refunded
+- finance state
+
+C. Privilege page
+Already restructured correctly.
+Next add:
+- pending balance display
+- lifetime earned / redeemed display
+- finance state chips in activity
+
+D. admin finance pages
+Add:
+- division margin tables
+- refund / release ratios
+- hold aging report
+- reconciliation export
+
+==================================================
+11. ORDER OF IMPLEMENTATION
+==================================================
+
+STEP 1
+Schema
+- wallet_accounts new counters
+- booking_requests finance fields
+- ledger event type support
+
+STEP 2
+WalletService core
+- hold
+- releaseHold
+- debitFromHold
+- refund
+
+STEP 3
+Booking integration
+- preview cap
+- hold on create
+- release on decline/cancel/expiry
+- debitFromHold on commitment
+
+STEP 4
+Admin reporting
+- wallet summary
+- division reporting
+- booking finance audit
+
+STEP 5
+Academy integration
+- immediate debit / refund flow
+
+==================================================
+12. PROOF PASS REQUIRED
+==================================================
+
+Before rollout, run these exact tests:
+
+A. hold creation
+- booking created with wallet
+- available goes down
+- pending goes up
+- one hold ledger row
+
+B. release
+- booking cancelled before commitment
+- available restored
+- pending cleared
+- one release ledger row
+
+C. debit from hold
+- booking confirmed
+- pending decreases
+- available unchanged
+- one debit ledger row
+- no duplicate on retry
+
+D. refund
+- debited booking refunded
+- available increases
+- one refund ledger row
+
+E. cap enforcement
+- 50% booking cap cannot be bypassed by client payload
+
+F. idempotency
+- same booking key retried 3 times
+- only one financial result
+
+==================================================
+13. WHAT THIS UNLOCKS
+==================================================
+
+Once this is in place:
+- walkers and sitters become financially correct
+- wallet works across divisions safely
+- management gets real division reporting
+- refunds and cancellations stop being risky
+- academy can plug in cleanly
+- privilege becomes a real financial layer, not just a K9000 wrapper

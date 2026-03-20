@@ -1134,9 +1134,164 @@ IP Address: ${ipAddress || 'unknown'}
     };
   }
 
+  // ─── Phase 2 public interface ─────────────────────────────────────────────
+
   /**
-   * Get credits expiring soon for a user (warning for UI)
+   * previewRedemption — server-side cap enforcement before any hold/debit.
+   * Bookings: wallet covers at most 50% of subtotal.
+   * K9000 / Academy (direct-debit divisions): 100% coverage allowed.
    */
+  async previewRedemption(params: {
+    userId: string;
+    subtotalCents: number;
+    divisionCode: 'station_k9000' | 'petsitter' | 'walkers' | 'academy' | 'pettrek' | 'general';
+  }): Promise<{
+    walletAvailableCents: number;
+    pendingBalanceCents: number;
+    applicableCents: number;        // what the wallet will contribute (after cap)
+    cashDueCents: number;           // subtotal - applicable
+    capPercent: number;             // 50 or 100
+    cappedByPolicy: boolean;        // true if cap was the binding constraint
+    cappedByBalance: boolean;       // true if balance was the binding constraint
+    breakdown: { promo: number; egift: number; referral: number; cash: number };
+  }> {
+    const walletRow: any = await (db as any).execute(
+      sql`SELECT cash_wallet_balance_cents, egift_balance_cents, promo_balance_cents,
+                 referral_balance_cents, pending_balance_cents
+          FROM wallet_accounts WHERE user_id = ${params.userId} LIMIT 1`
+    ).then((r: any) => (r?.rows ?? r ?? [])[0] ?? null);
+
+    const cash    = Number(walletRow?.cash_wallet_balance_cents  || 0);
+    const egift   = Number(walletRow?.egift_balance_cents        || 0);
+    const promo   = Number(walletRow?.promo_balance_cents        || 0);
+    const referral = Number(walletRow?.referral_balance_cents    || 0);
+    const pending  = Number(walletRow?.pending_balance_cents     || 0);
+    const totalAvailable = promo + egift + referral + cash;
+
+    // 50% cap for booking divisions; 100% for point-of-sale divisions
+    const isPosDivision = params.divisionCode === 'station_k9000' || params.divisionCode === 'academy';
+    const capPercent = isPosDivision ? 100 : 50;
+    const capCents = Math.floor(params.subtotalCents * capPercent / 100);
+
+    const applicableRaw = Math.min(totalAvailable, capCents);
+    const cappedByPolicy  = capCents < totalAvailable;
+    const cappedByBalance = totalAvailable <= capCents;
+
+    // Bucket breakdown (priority: promo → egift → referral → cash)
+    let remaining = applicableRaw;
+    const promoUsed   = Math.min(remaining, promo);   remaining -= promoUsed;
+    const egiftUsed   = Math.min(remaining, egift);   remaining -= egiftUsed;
+    const referralUsed = Math.min(remaining, referral); remaining -= referralUsed;
+    const cashUsed    = Math.min(remaining, cash);
+
+    return {
+      walletAvailableCents: totalAvailable,
+      pendingBalanceCents:  pending,
+      applicableCents:      applicableRaw,
+      cashDueCents:         params.subtotalCents - applicableRaw,
+      capPercent,
+      cappedByPolicy,
+      cappedByBalance,
+      breakdown: { promo: promoUsed, egift: egiftUsed, referral: referralUsed, cash: cashUsed },
+    };
+  }
+
+  /**
+   * holdBookingWallet — freeze funds when a booking request is created.
+   * Called only if walletCreditAppliedCents > 0 on the quote.
+   */
+  async holdBookingWallet(params: {
+    userId: string;
+    amountCents: number;
+    bookingId: string;
+    divisionCode: string;
+    ipAddress?: string | null;
+  }): Promise<{ txnId: string; idempotent: boolean }> {
+    const { holdWallet } = await import('./WalletLedger');
+    const result = await holdWallet({
+      userId:         params.userId,
+      amountCents:    params.amountCents,
+      divisionCode:   params.divisionCode,
+      sourceType:     'booking',
+      sourceId:       params.bookingId,
+      idempotencyKey: `wallet:booking:hold:${params.bookingId}`,
+      ipAddress:      params.ipAddress,
+    });
+    return { txnId: result.txnId, idempotent: result.idempotent };
+  }
+
+  /**
+   * releaseBookingHold — restore funds when a booking is declined or cancelled before debit.
+   */
+  async releaseBookingHold(params: {
+    userId: string;
+    amountCents: number;
+    bookingId: string;
+    divisionCode?: string;
+    ipAddress?: string | null;
+  }): Promise<{ txnId: string; idempotent: boolean }> {
+    const { releaseWalletHold } = await import('./WalletLedger');
+    const result = await releaseWalletHold({
+      userId:         params.userId,
+      amountCents:    params.amountCents,
+      divisionCode:   params.divisionCode ?? 'general',
+      sourceType:     'booking',
+      sourceId:       params.bookingId,
+      idempotencyKey: `wallet:booking:release:${params.bookingId}`,
+      ipAddress:      params.ipAddress,
+    });
+    return { txnId: result.txnId, idempotent: result.idempotent };
+  }
+
+  /**
+   * debitBookingFromHold — finalize the wallet charge when provider confirms the booking.
+   * available_balance_cents already moved at hold time; this drains pending only.
+   */
+  async debitBookingFromHold(params: {
+    userId: string;
+    amountCents: number;
+    bookingId: string;
+    divisionCode: string;
+    ipAddress?: string | null;
+  }): Promise<{ txnId: string; idempotent: boolean }> {
+    const { debitFromWalletHold } = await import('./WalletLedger');
+    const result = await debitFromWalletHold({
+      userId:         params.userId,
+      amountCents:    params.amountCents,
+      divisionCode:   params.divisionCode,
+      sourceType:     'booking',
+      sourceId:       params.bookingId,
+      idempotencyKey: `wallet:booking:debit:${params.bookingId}`,
+      ipAddress:      params.ipAddress,
+    });
+    return { txnId: result.txnId, idempotent: result.idempotent };
+  }
+
+  /**
+   * refundBookingWallet — restore funds to available after a post-debit cancellation/refund.
+   */
+  async refundBookingWallet(params: {
+    userId: string;
+    amountCents: number;
+    bookingId: string;
+    divisionCode?: string;
+    reason?: string;
+    ipAddress?: string | null;
+  }): Promise<{ txnId: string; idempotent: boolean }> {
+    const { refundToWallet } = await import('./WalletLedger');
+    const result = await refundToWallet({
+      userId:         params.userId,
+      amountCents:    params.amountCents,
+      divisionCode:   params.divisionCode ?? 'general',
+      sourceType:     'booking',
+      sourceId:       params.bookingId,
+      idempotencyKey: `wallet:booking:refund:${params.bookingId}`,
+      reason:         params.reason ?? 'booking_cancelled',
+      ipAddress:      params.ipAddress,
+    });
+    return { txnId: result.txnId, idempotent: result.idempotent };
+  }
+
   async getExpiringCredits(userId: string, daysAhead: number = 30): Promise<{
     expiringCredits: Array<{
       creditType: string;

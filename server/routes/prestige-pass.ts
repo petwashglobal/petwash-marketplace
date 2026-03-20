@@ -321,12 +321,15 @@ router.get('/wallet', async (req: Request, res: Response) => {
         issuedAt:      passData.issuedAt,
       },
       balances: {
-        cashWalletCents:      wallet?.cashWalletBalanceCents || 0,
-        egiftBalanceCents:    wallet?.egiftBalanceCents || 0,
-        promoBalanceCents:    wallet?.promoBalanceCents || 0,
-        packageWashesLeft:    wallet?.washPackageCredits || 0,
-        loyaltyPoints:        wallet?.loyaltyPointsBalance || 0,
-        referralBalanceCents: wallet?.referralBalanceCents || 0,
+        cashWalletCents:        wallet?.cashWalletBalanceCents  || 0,
+        egiftBalanceCents:      wallet?.egiftBalanceCents       || 0,
+        promoBalanceCents:      wallet?.promoBalanceCents       || 0,
+        packageWashesLeft:      wallet?.washPackageCredits      || 0,
+        loyaltyPoints:          wallet?.loyaltyPointsBalance    || 0,
+        referralBalanceCents:   wallet?.referralBalanceCents    || 0,
+        pendingBalanceCents:    wallet?.pendingBalanceCents     || 0,
+        lifetimeEarnedCents:    wallet?.lifetimeEarnedCents     || 0,
+        lifetimeRedeemedCents:  wallet?.lifetimeRedeemedCents   || 0,
       },
     });
   } catch (err) {
@@ -2398,6 +2401,127 @@ router.post('/admin/send-demo-receipts', async (req: Request, res: Response) => 
   } catch (err) {
     logger.error('[DemoReceipts] error', err);
     return res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
+// ─── Admin: Division-level wallet report ──────────────────────────────────────
+// GET /api/prestige-pass/admin/wallet/division-report
+// Returns SUM(amount_cents) grouped by division_code and event_type.
+// Requires admin role (checked via Firestore custom claims).
+router.get('/admin/wallet/division-report', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Admin gate via Firestore custom claims
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    const isAdmin = !!(adminUser?.customClaims as any)?.admin;
+    if (!isAdmin) return res.status(403).json({ error: 'Admin access required' });
+
+    const rows: any = await db.execute(sql`
+      SELECT
+        COALESCE(division_code, 'general')  AS division_code,
+        event_type,
+        direction,
+        COUNT(*)                            AS entry_count,
+        SUM(amount_cents)                   AS total_cents,
+        MIN(created_at)                     AS first_at,
+        MAX(created_at)                     AS last_at
+      FROM wallet_ledger_entries
+      GROUP BY division_code, event_type, direction
+      ORDER BY total_cents DESC
+    `);
+
+    const data = (rows?.rows ?? rows ?? []).map((r: any) => ({
+      divisionCode:  r.division_code,
+      eventType:     r.event_type,
+      direction:     r.direction,
+      entryCount:    Number(r.entry_count),
+      totalCents:    Number(r.total_cents),
+      totalIls:      Number(r.total_cents) / 100,
+      firstAt:       r.first_at,
+      lastAt:        r.last_at,
+    }));
+
+    return res.json({ ok: true, generatedAt: new Date().toISOString(), data });
+  } catch (err: any) {
+    logger.error('[Admin] division-report error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to generate division report' });
+  }
+});
+
+// ─── Admin: Per-booking wallet audit trail ────────────────────────────────────
+// GET /api/prestige-pass/admin/wallet/booking-audit?bookingId=XXX
+// Returns the full hold → debit/release → refund timeline for one booking.
+router.get('/admin/wallet/booking-audit', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    const isAdmin = !!(adminUser?.customClaims as any)?.admin;
+    if (!isAdmin) return res.status(403).json({ error: 'Admin access required' });
+
+    const bookingId = String(req.query.bookingId || '').trim();
+    if (!bookingId) return res.status(400).json({ error: 'bookingId query param required' });
+
+    // Pull booking finance state
+    const bookingRows: any = await db.execute(sql`
+      SELECT request_id, owner_id, service_type, finance_state,
+             wallet_hold_cents, wallet_debited_cents, wallet_refunded_cents,
+             wallet_hold_key, wallet_debit_key, wallet_release_key, wallet_refund_key,
+             created_at, updated_at
+      FROM booking_requests WHERE request_id = ${bookingId} LIMIT 1
+    `);
+    const booking = (bookingRows?.rows ?? bookingRows ?? [])[0] ?? null;
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    // Pull all ledger entries for this booking
+    const ledgerRows: any = await db.execute(sql`
+      SELECT entry_id, event_type, direction, bucket,
+             amount_cents, currency, division_code,
+             idempotency_key, created_at, metadata
+      FROM wallet_ledger_entries
+      WHERE booking_id = ${bookingId}
+      ORDER BY id ASC
+    `);
+    const ledger = (ledgerRows?.rows ?? ledgerRows ?? []).map((r: any) => ({
+      entryId:        r.entry_id,
+      eventType:      r.event_type,
+      direction:      r.direction,
+      bucket:         r.bucket,
+      amountCents:    Number(r.amount_cents),
+      amountIls:      Number(r.amount_cents) / 100,
+      divisionCode:   r.division_code,
+      idempotencyKey: r.idempotency_key,
+      createdAt:      r.created_at,
+      metadata:       r.metadata,
+    }));
+
+    return res.json({
+      ok: true,
+      bookingId,
+      booking: {
+        requestId:           booking.request_id,
+        ownerId:             booking.owner_id,
+        serviceType:         booking.service_type,
+        financeState:        booking.finance_state,
+        walletHoldCents:     Number(booking.wallet_hold_cents),
+        walletDebitedCents:  Number(booking.wallet_debited_cents),
+        walletRefundedCents: Number(booking.wallet_refunded_cents),
+        walletHoldKey:       booking.wallet_hold_key,
+        walletDebitKey:      booking.wallet_debit_key,
+        walletReleaseKey:    booking.wallet_release_key,
+        walletRefundKey:     booking.wallet_refund_key,
+        createdAt:           booking.created_at,
+        updatedAt:           booking.updated_at,
+      },
+      ledger,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    logger.error('[Admin] booking-audit error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to generate booking audit' });
   }
 });
 

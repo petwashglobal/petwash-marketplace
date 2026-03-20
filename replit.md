@@ -497,6 +497,38 @@ Premium dark/gold UI payment component. Shows balance breakdown, deduction previ
 - `client/src/pages/walk-my-pet/BookingFlow.tsx` (before Payment Method Disclosure, ~line 561)
 Uses pending booking ref (`PENDING-SITTER-{uid}` / `PENDING-WALKER-{uid}`) when booking doesn't exist yet.
 
+### Phase 2 — Multi-Division Wallet Hold/Release/Debit/Refund Lifecycle (March 2026)
+
+**Commercial rule (locked):** Wallet debit happens on provider ACCEPT (not at booking creation or payment).
+
+**Four atomic operations added to `WalletLedger.ts`:**
+- `holdWallet` — available ↓, pending ↑ (eventType=hold). Called on booking CREATE if walletCreditAppliedCents > 0.
+- `releaseWalletHold` — available ↑, pending ↓ (eventType=release). Called on DECLINE or CANCEL before debit.
+- `debitFromWalletHold` — pending ↓ only (eventType=debit). Called on provider ACCEPT. Available already moved at hold time.
+- `refundToWallet` — available ↑ (eventType=refund). Called on CANCEL after debit.
+
+**`wallet_accounts` new columns:** `pending_balance_cents`, `lifetime_earned_cents`, `lifetime_redeemed_cents`
+
+**`booking_requests` new columns:** `wallet_hold_cents`, `wallet_debited_cents`, `wallet_refunded_cents`, `wallet_hold_key`, `wallet_debit_key`, `wallet_release_key`, `wallet_refund_key`, `finance_state` (none|hold_active|debited|released|refunded)
+
+**`WalletService.ts` Phase 2 public interface:**
+- `previewRedemption(userId, subtotalCents, divisionCode)` — server-side cap: 50% for bookings, 100% for K9000/Academy
+- `holdBookingWallet / releaseBookingHold / debitBookingFromHold / refundBookingWallet` — division wrappers
+
+**`booking-requests.ts` lifecycle integration:**
+- POST / (create): holdWallet if quote has walletCreditAppliedCents > 0
+- POST /:id/respond (accept): debitFromWalletHold via setImmediate
+- POST /:id/respond (decline): releaseWalletHold via setImmediate
+- POST /:id/cancel: releaseWalletHold (if hold_active) or refundToWallet (if debited)
+
+**Admin finance reporting (`prestige-pass.ts`):**
+- `GET /api/prestige-pass/admin/wallet/division-report` — SUM grouped by division_code + event_type
+- `GET /api/prestige-pass/admin/wallet/booking-audit?bookingId=XXX` — full hold timeline per booking
+
+**Frontend (`PrestigePassWallet.tsx` WalletBalanceSection):**
+- Pending balance chip (amber, inside dark hero card) shown only when holds exist
+- Lifetime earned/redeemed two-column stat grid shown when history exists
+
 ### Anti-Fraud Architecture — Production 2026 (WalletLedger.ts)
 
 All wallet mutations now route through `server/services/WalletLedger.ts` which implements 9 protection layers:

@@ -9868,6 +9868,18 @@ export const bookingRequests = pgTable("booking_requests", {
   walletCreditUsedCents: integer("wallet_credit_used_cents").notNull().default(0),
   loyaltyRedeemedCents: integer("loyalty_redeemed_cents").notNull().default(0),
 
+  // Wallet hold/debit lifecycle (Phase 2 — multi-division financial engine)
+  // hold_active → debited (on confirm) | released (on cancel/decline) | refunded (post-debit reversal)
+  walletHoldCents: integer("wallet_hold_cents").notNull().default(0),       // amount currently held
+  walletDebitedCents: integer("wallet_debited_cents").notNull().default(0), // amount finally debited
+  walletRefundedCents: integer("wallet_refunded_cents").notNull().default(0),
+  walletHoldKey: text("wallet_hold_key"),       // idempotency key for the hold operation
+  walletDebitKey: text("wallet_debit_key"),     // idempotency key for the debit operation
+  walletReleaseKey: text("wallet_release_key"), // idempotency key for the release operation
+  walletRefundKey: text("wallet_refund_key"),   // idempotency key for the refund operation
+  financeState: varchar("finance_state", { length: 30 }).notNull().default("none"),
+  // none | hold_active | debited | released | refunded
+
   // Provider payout (Phase 3 — source of truth for provider earnings)
   // providerPayoutCents = subtotalCents - serviceFeeCents (net after 15% platform commission)
   providerPayoutCents: integer("provider_payout_cents"),       // nullable until booking is confirmed
@@ -10564,6 +10576,11 @@ export const walletAccounts = pgTable("wallet_accounts", {
   loyaltyTier: varchar("loyalty_tier", { length: 50 }).default("bronze"), // bronze, silver, gold, platinum, diamond, elite, vip
   tierPointsThisYear: integer("tier_points_this_year").default(0),
   
+  // Hold & lifetime counters (Phase 2 — multi-division wallet)
+  pendingBalanceCents: integer("pending_balance_cents").notNull().default(0),    // sum of active holds
+  lifetimeEarnedCents: integer("lifetime_earned_cents").notNull().default(0),   // all credit events ever
+  lifetimeRedeemedCents: integer("lifetime_redeemed_cents").notNull().default(0), // all debit events ever
+
   // Settings
   preferredCurrency: varchar("preferred_currency", { length: 3 }).default("ILS"),
   autoApplyCredits: boolean("auto_apply_credits").default(true),

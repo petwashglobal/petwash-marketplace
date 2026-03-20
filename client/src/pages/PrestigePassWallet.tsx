@@ -34,6 +34,9 @@ interface WalletData {
     packageWashesLeft: number;
     loyaltyPoints: number;
     referralBalanceCents: number;
+    pendingBalanceCents: number;
+    lifetimeEarnedCents: number;
+    lifetimeRedeemedCents: number;
   };
 }
 
@@ -440,6 +443,9 @@ function DivisionActivitySection({ he }: { he: boolean }) {
 // ─── Section 4: PetWash Wallet Balance ────────────────────────────────────────
 function WalletBalanceSection({ balances, he }: { balances: WalletData['balances']; he: boolean }) {
   const totalLiquid = balances.cashWalletCents + balances.egiftBalanceCents + balances.promoBalanceCents + balances.referralBalanceCents;
+  const pending = balances.pendingBalanceCents || 0;
+  const lifetimeEarned = balances.lifetimeEarnedCents || 0;
+  const lifetimeRedeemed = balances.lifetimeRedeemedCents || 0;
 
   return (
     <div style={{ padding:'24px 20px 0', background:'#FFFFFF' }}>
@@ -462,6 +468,17 @@ function WalletBalanceSection({ balances, he }: { balances: WalletData['balances
         <div style={{ color:'#D4AF37', fontSize:'2.4rem', fontWeight:800, letterSpacing:'-0.03em', lineHeight:1 }}>
           {fmt(totalLiquid)}
         </div>
+
+        {/* Pending hold chip — shown only when funds are locked on active bookings */}
+        {pending > 0 && (
+          <div style={{ marginTop:'10px', display:'inline-flex', alignItems:'center', gap:'6px', background:'rgba(245,158,11,0.15)', borderRadius:'100px', padding:'5px 12px', border:'1px solid rgba(245,158,11,0.3)' }}>
+            <Clock size={12} color="#f59e0b" />
+            <span style={{ color:'#f59e0b', fontSize:'0.72rem', fontWeight:700 }}>
+              {fmt(pending)} {he ? 'מוקפא — ממתין לאישור הזמנה' : 'on hold — pending booking'}
+            </span>
+          </div>
+        )}
+
         {balances.packageWashesLeft > 0 && (
           <div style={{ marginTop:'8px', display:'inline-flex', alignItems:'center', gap:'6px', background:'rgba(34,197,94,0.15)', borderRadius:'100px', padding:'4px 12px' }}>
             <Droplets size={12} color="#22c55e" />
@@ -485,7 +502,28 @@ function WalletBalanceSection({ balances, he }: { balances: WalletData['balances
         )}
         <BalanceRow icon={<Droplets size={16} />}  label={he ? 'חבילת שטיפות K9000' : 'K9000 Package Washes'} value={balances.packageWashesLeft > 0 ? `${balances.packageWashesLeft} ${he ? 'שטיפות' : 'washes'}` : '—'} color="#22c55e" />
         <BalanceRow icon={<Star size={16} />}       label={he ? 'נקודות נאמנות' : 'Loyalty Points'}  value={balances.loyaltyPoints.toLocaleString()} color="#8b5cf6" />
+        {pending > 0 && (
+          <BalanceRow icon={<Clock size={16} />}    label={he ? 'מוקפא (הזמנות פעילות)' : 'On Hold (active bookings)'} value={fmt(pending)} color="#f59e0b" />
+        )}
       </div>
+
+      {/* Lifetime stats — shown only when there's history */}
+      {(lifetimeEarned > 0 || lifetimeRedeemed > 0) && (
+        <div style={{ marginTop:'10px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
+          <div style={{ background:'rgba(34,197,94,0.06)', border:'1px solid rgba(34,197,94,0.2)', borderRadius:'12px', padding:'12px 14px' }}>
+            <div style={{ fontSize:'0.62rem', color:'#5a7a5a', fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:'4px' }}>
+              {he ? 'סה"כ נצבר' : 'Lifetime Earned'}
+            </div>
+            <div style={{ fontSize:'1.2rem', fontWeight:800, color:'#16a34a' }}>{fmt(lifetimeEarned)}</div>
+          </div>
+          <div style={{ background:'rgba(139,92,246,0.06)', border:'1px solid rgba(139,92,246,0.2)', borderRadius:'12px', padding:'12px 14px' }}>
+            <div style={{ fontSize:'0.62rem', color:'#5a5070', fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:'4px' }}>
+              {he ? 'סה"כ מומש' : 'Lifetime Redeemed'}
+            </div>
+            <div style={{ fontSize:'1.2rem', fontWeight:800, color:'#7c3aed' }}>{fmt(lifetimeRedeemed)}</div>
+          </div>
+        </div>
+      )}
 
       {/* Deduction order */}
       <div style={{ marginTop:'10px', padding:'10px 14px', background:'rgba(197,165,90,0.05)', borderRadius:'10px', border:'1px solid rgba(197,165,90,0.15)' }}>

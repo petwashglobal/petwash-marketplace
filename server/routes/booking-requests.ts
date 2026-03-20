@@ -46,6 +46,17 @@ import { scheduleRebookTrigger } from '../jobs/rebook-scheduler';
 import { EmailService } from '../emailService';
 import { awardLoyaltyCredit, getStreakCounts, redeemLoyaltyCredit } from '../utils/loyaltyLedger';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
+import { walletService } from '../services/WalletService';
+
+function getDivisionCode(serviceType?: string | null): 'petsitter' | 'walkers' | 'academy' | 'pettrek' | 'general' {
+  switch (serviceType) {
+    case 'sitting':   return 'petsitter';
+    case 'walking':   return 'walkers';
+    case 'training':  return 'academy';
+    case 'pettrek':   return 'pettrek';
+    default:          return 'general';
+  }
+}
 
 const ISRAEL_TIMEZONE = 'Asia/Jerusalem';
 
@@ -378,6 +389,53 @@ router.post('/', async (req, res) => {
         // Non-fatal: booking still succeeded. Credit stays in user's balance.
       }
     }
+
+    // ── Wallet hold — freeze wallet credits for the duration of the booking ────
+    // Amount comes from the quote engine's walletCreditAppliedCents.
+    // Server re-validates the cap (50% of subtotal) before holding.
+    // On ACCEPT: debitFromHold. On DECLINE/CANCEL: releaseHold.
+    const quotedWalletCredit = (fq && fq.success) ? (fq.totals.walletCreditAppliedCents ?? 0) : 0;
+    let walletHoldApplied = 0;
+    if (quotedWalletCredit > 0 && userId) {
+      try {
+        const divisionCode = getDivisionCode(data.serviceType);
+        // Re-validate cap server-side (protect against tampered quotes)
+        const preview = await walletService.previewRedemption({
+          userId,
+          subtotalCents: subtotalCents,
+          divisionCode,
+        });
+        walletHoldApplied = Math.min(quotedWalletCredit, preview.applicableCents);
+
+        if (walletHoldApplied > 0) {
+          const holdResult = await walletService.holdBookingWallet({
+            userId,
+            amountCents:  walletHoldApplied,
+            bookingId:    booking.requestId,
+            divisionCode,
+            ipAddress:    req.ip ?? null,
+          });
+
+          await db.update(bookingRequests)
+            .set({
+              walletHoldCents: walletHoldApplied,
+              walletHoldKey:   holdResult.txnId,
+              financeState:    'hold_active',
+              updatedAt:       new Date(),
+            })
+            .where(eq(bookingRequests.id, booking.id));
+
+          logger.info('[BookingRequests] Wallet hold created', {
+            bookingId: booking.requestId, walletHoldApplied, txnId: holdResult.txnId,
+          });
+        }
+      } catch (holdErr: any) {
+        // Non-fatal: booking still created. Log for alerting. Wallet credit simply not applied.
+        logger.error('[BookingRequests] Wallet hold failed', {
+          bookingId: booking.requestId, error: holdErr.message,
+        });
+      }
+    }
     
     res.status(201).json({
       success: true,
@@ -625,6 +683,45 @@ router.post('/:requestId/respond', async (req, res) => {
     await db.update(bookingRequests)
       .set(updateData)
       .where(eq(bookingRequests.requestId, requestId));
+
+    // ── Wallet lifecycle on provider response ──────────────────────────────────
+    // ACCEPT → debitFromWalletHold (pending → realized debit, commercially locked)
+    // DECLINE → releaseWalletHold (pending → available restored)
+    if ((booking as any).financeState === 'hold_active' && (booking as any).walletHoldCents > 0) {
+      const holdCents    = Number((booking as any).walletHoldCents) || 0;
+      const divisionCode = getDivisionCode(booking.serviceType);
+      setImmediate(async () => {
+        try {
+          if (data.action === 'accept') {
+            const debitResult = await walletService.debitBookingFromHold({
+              userId:       booking.ownerId,
+              amountCents:  holdCents,
+              bookingId:    requestId,
+              divisionCode,
+              ipAddress:    req.ip ?? null,
+            });
+            await db.update(bookingRequests)
+              .set({ walletDebitedCents: holdCents, walletDebitKey: debitResult.txnId, financeState: 'debited', updatedAt: new Date() })
+              .where(eq(bookingRequests.requestId, requestId));
+            logger.info('[BookingRequests] Wallet debited from hold on accept', { requestId, holdCents, txnId: debitResult.txnId });
+          } else {
+            const releaseResult = await walletService.releaseBookingHold({
+              userId:       booking.ownerId,
+              amountCents:  holdCents,
+              bookingId:    requestId,
+              divisionCode,
+              ipAddress:    req.ip ?? null,
+            });
+            await db.update(bookingRequests)
+              .set({ walletReleaseKey: releaseResult.txnId, financeState: 'released', updatedAt: new Date() })
+              .where(eq(bookingRequests.requestId, requestId));
+            logger.info('[BookingRequests] Wallet hold released on decline', { requestId, holdCents, txnId: releaseResult.txnId });
+          }
+        } catch (walletErr: any) {
+          logger.error('[BookingRequests] Wallet lifecycle error on provider response', { requestId, action: data.action, error: walletErr.message });
+        }
+      });
+    }
 
     // Notify customer via superAppNotifications (in-app bell)
     try {
@@ -1550,6 +1647,45 @@ router.post('/:requestId/cancel', async (req, res) => {
         updatedAt: new Date(),
       })
       .where(eq(bookingRequests.requestId, requestId));
+
+    // ── Wallet lifecycle on cancel ─────────────────────────────────────────────
+    // hold_active → release (funds never spent, restore to available)
+    // debited → refund (funds were charged, return to available)
+    const financeState = (booking as any).financeState as string | null;
+    const holdCents = Number((booking as any).walletHoldCents) || 0;
+    const debitedCents = Number((booking as any).walletDebitedCents) || 0;
+    if (financeState === 'hold_active' && holdCents > 0) {
+      setImmediate(async () => {
+        try {
+          const releaseResult = await walletService.releaseBookingHold({
+            userId: booking.ownerId, amountCents: holdCents, bookingId: requestId,
+            divisionCode: getDivisionCode(booking.serviceType), ipAddress: req.ip ?? null,
+          });
+          await db.update(bookingRequests)
+            .set({ walletReleaseKey: releaseResult.txnId, financeState: 'released', updatedAt: new Date() })
+            .where(eq(bookingRequests.requestId, requestId));
+          logger.info('[BookingRequests] Wallet hold released on cancel', { requestId, holdCents, txnId: releaseResult.txnId });
+        } catch (e: any) {
+          logger.error('[BookingRequests] Wallet release failed on cancel', { requestId, error: e.message });
+        }
+      });
+    } else if (financeState === 'debited' && debitedCents > 0) {
+      setImmediate(async () => {
+        try {
+          const refundResult = await walletService.refundBookingWallet({
+            userId: booking.ownerId, amountCents: debitedCents, bookingId: requestId,
+            divisionCode: getDivisionCode(booking.serviceType),
+            reason: `booking_cancelled_by_${cancelledBy}`, ipAddress: req.ip ?? null,
+          });
+          await db.update(bookingRequests)
+            .set({ walletRefundedCents: debitedCents, walletRefundKey: refundResult.txnId, financeState: 'refunded', updatedAt: new Date() })
+            .where(eq(bookingRequests.requestId, requestId));
+          logger.info('[BookingRequests] Wallet refunded on cancel', { requestId, debitedCents, txnId: refundResult.txnId });
+        } catch (e: any) {
+          logger.error('[BookingRequests] Wallet refund failed on cancel', { requestId, error: e.message });
+        }
+      });
+    }
 
     // Notify the OTHER party about cancellation via superAppNotifications
     try {
