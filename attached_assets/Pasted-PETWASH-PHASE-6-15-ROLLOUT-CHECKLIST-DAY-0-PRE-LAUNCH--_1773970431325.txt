@@ -1,0 +1,160 @@
+PETWASH - PHASE 6.15 ROLLOUT CHECKLIST
+
+----------------------------------------
+DAY 0 - PRE-LAUNCH (MANDATORY)
+----------------------------------------
+
+Run ALL checks on production (live app + prod DB):
+
+CORE FLOWS
+- Provider profile save → PATCH /api/provider-profile/me returns 200
+- Finish job modal → amount = providerPayout ?? subtotal (verify correct value)
+- Customer rebook → opens wizard with prefilled pets/addons
+- Quote preview → server-calculated totals only (no client math)
+- Booking create → full flow completes successfully
+- Loyalty redemption → credits applied correctly at checkout
+
+ADMIN + LOYALTY
+- All tabs load:
+  כללים | דיווח | התאמות | Win-back | יומן | מבצעי
+
+- /w/:token → redirects + logs click event
+- GET /api/admin/loyalty/queue-health returns:
+  { checks, roiDetail, paidKillSwitchActive }
+
+- Proof scenario:
+  Run "auto_promote" → confirm valid JSON output
+
+- Kill switch:
+  Toggle ON → confirm DB write
+  Toggle OFF → confirm revert
+
+❗ IF ANY FAILS → DO NOT PROCEED
+
+----------------------------------------
+INITIAL ARMING (ONLY ONE RULE)
+----------------------------------------
+
+Rule: winback_14d
+
+SET:
+- enabled = true
+- armed = true
+- dailySendCap = 20
+
+CHANNELS:
+- SMS = OFF
+- WhatsApp = OFF
+- In-app = ON ONLY
+
+----------------------------------------
+DAYS 1–7 - DAILY OPS (מבצעי TAB)
+----------------------------------------
+
+CHECK EVERY DAY:
+
+1. QUEUE HEALTH
+- Stuck pending (>6h)
+- Pause ratio
+- Health alerts
+
+2. FUNNEL
+- Sent
+- Clicked
+- Completed
+
+3. EXPERIMENT
+- Control vs Variant performance
+- Completed booking lift (NOT CTR)
+
+4. ROI
+- 24h ROI per channel
+- 7d ROI per channel
+
+5. SYSTEM STATE
+- Auto-promoted today
+- Paused today
+- Kill switch status
+
+----------------------------------------
+THRESHOLDS (ACTION RULES)
+----------------------------------------
+
+STUCK PENDING:
+- 0 = OK
+- 1–3 = monitor
+- 4+ = ACTIVATE KILL SWITCH
+
+PAUSE RATIO:
+- <20% = OK
+- 20–40% = watch
+- >40% = ACTIVATE KILL SWITCH
+
+ZERO COMPLETIONS:
+- <50 sends = ignore
+- 100+ sends + 0 completed = ACTIVATE KILL SWITCH
+
+ROI (24h):
+- ≥50% = strong
+- 0–49% = acceptable
+- negative = PAUSE CHANNEL
+
+HEALTH ALERTS:
+- ANY RED = INVESTIGATE IMMEDIATELY
+
+----------------------------------------
+AFTER 3–7 DAYS (ONLY IF STABLE)
+----------------------------------------
+
+IF:
+- Positive completed-booking lift vs control
+- No red health alerts
+- ROI non-negative
+
+THEN:
+
+1. PROMOTE WINNER
+   (ONLY based on completed bookings, NOT CTR)
+
+2. SCALE GRADUALLY
+- dailySendCap → 50
+- then → 100
+
+3. EXPAND RULES
+- Arm winback_30d (low cap again)
+- Observe 3–7 days
+- Only then consider winback_60d
+
+----------------------------------------
+HARD RULES (DO NOT BREAK)
+----------------------------------------
+
+- NEVER scale based on CTR
+- NEVER arm multiple rules at once
+- NEVER ignore red health signals
+- ALWAYS verify ROI before scaling
+- ALWAYS keep kill switch available
+
+----------------------------------------
+PHASE 6.16 TRIGGER (NEXT BUILD)
+----------------------------------------
+
+START ONLY AFTER STABLE DATA:
+
+Build:
+- Twilio delivery callbacks (sent/delivered/failed)
+- WhatsApp template tracking
+- Bounce + unsubscribe handling
+- Retry logic
+- Real cost tracking (replace estimates)
+- Channel-level profit reporting
+
+----------------------------------------
+END STATE GOAL
+----------------------------------------
+
+Fully autonomous winback system:
+- self-optimizing
+- ROI-driven
+- safe under load
+- instant shutdown capability
