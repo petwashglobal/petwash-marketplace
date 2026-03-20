@@ -416,17 +416,37 @@ export default function PrestigePassWallet() {
   }
 
   if (error || !wallet) {
+    const is401 = (error as any)?.status === 401 || (error as any)?.message?.includes('401');
     return (
       <Layout>
         <div style={{ minHeight:'60vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#ffffff', padding:'2rem' }}>
           <div style={{ textAlign:'center', maxWidth:'320px' }}>
             <AlertCircle size={48} color="#ef4444" style={{ margin:'0 auto 16px' }} />
             <p style={{ color:'#3A3228', fontWeight:600, marginBottom:'8px' }}>
-              {he ? 'נדרשת התחברות' : 'Sign in required'}
+              {is401
+                ? (he ? 'נדרשת התחברות' : 'Sign in required')
+                : (he ? 'שגיאה בטעינת הכרטיס' : 'Could not load your pass')}
             </p>
-            <p style={{ color:'#7A7068', fontSize:'0.85rem' }}>
-              {he ? 'יש להתחבר כדי לגשת לכרטיס הפרסטיז.' : 'Please sign in to access your Prestige Pass.'}
+            <p style={{ color:'#7A7068', fontSize:'0.85rem', marginBottom:'20px' }}>
+              {is401
+                ? (he ? 'יש להתחבר כדי לגשת לכרטיס הפרסטיז.' : 'Please sign in to access your Prestige Pass.')
+                : (he ? 'אנא נסה שוב או התחבר מחדש.' : 'Please try again or sign in again.')}
             </p>
+            <a
+              href="/signin"
+              style={{
+                display:'inline-block',
+                background:'linear-gradient(135deg,#C5A55A,#D4AF37)',
+                color:'#fff',
+                fontWeight:600,
+                padding:'10px 28px',
+                borderRadius:'8px',
+                textDecoration:'none',
+                fontSize:'0.95rem',
+              }}
+            >
+              {he ? 'כניסה לחשבון' : 'Sign In'}
+            </a>
           </div>
         </div>
       </Layout>

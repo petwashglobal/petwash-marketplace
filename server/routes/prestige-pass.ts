@@ -236,7 +236,21 @@ function verifyToken(token: string): QrPayload | null {
 router.get('/wallet', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    let userId = session?.user?.uid;
+
+    // Fallback: accept Firebase Bearer token (mobile Safari / fresh sessions)
+    if (!userId) {
+      const authHeader = req.headers['authorization'];
+      if (authHeader?.startsWith('Bearer ')) {
+        try {
+          const decoded = await firebaseAuth.verifyIdToken(authHeader.split('Bearer ')[1], true);
+          userId = decoded.uid;
+        } catch {
+          return res.status(401).json({ ok: false, error: 'Auth required' });
+        }
+      }
+    }
+
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     // Load wallet from DB
