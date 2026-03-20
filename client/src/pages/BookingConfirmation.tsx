@@ -275,7 +275,7 @@ function StatusAlertPanel({ booking, t, navigate }: StatusAlertPanelProps) {
       {/* Find another provider CTA */}
       <div
         className="rounded-2xl p-4 flex items-center justify-between gap-4"
-        style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0' }}
+        style={{ background: '#ffffff', border: '1.5px solid rgba(0,0,0,0.08)' }}
       >
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">

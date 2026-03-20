@@ -470,23 +470,30 @@ export default function PrestigePassWallet() {
 
         {/* ── Hero bar ── */}
         <div style={{
-          background:   cs.bg,
-          padding:      '40px 20px 100px',
+          background:   '#ffffff',
+          padding:      '32px 20px 100px',
           textAlign:    'center',
           position:     'relative',
           overflow:     'hidden',
+          borderBottom: '1px solid rgba(212,175,55,0.15)',
         }}>
-          <div style={{ position:'absolute', inset:0, background:cs.shine, pointerEvents:'none' }} />
           <div style={{ position:'absolute', top:0, left:0, right:0, height:'2px', background:cs.badge }} />
 
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'10px', marginBottom:'6px', position:'relative' }}>
-            <Shield size={14} color={cs.accent} />
-            <span style={{ color:cs.sub, fontSize:'0.68rem', fontWeight:600, letterSpacing:'0.15em', textTransform:'uppercase' }}>
+          {/* Diamond logo — large & centered */}
+          <img
+            src={prestigeLogoDiamond}
+            alt="PetWash Prestige"
+            style={{ width: '110px', height: 'auto', margin: '0 auto 12px', display: 'block' }}
+          />
+
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', marginBottom:'6px' }}>
+            <Shield size={13} color="#C5A55A" />
+            <span style={{ color:'#7A7068', fontSize:'0.65rem', fontWeight:600, letterSpacing:'0.15em', textTransform:'uppercase' }}>
               {he ? 'כרטיס פרסטיז רשמי' : 'Official Prestige Pass'}
             </span>
           </div>
-          <h1 style={{ color:cs.text, fontSize:'1.6rem', fontWeight:800, letterSpacing:'-0.02em', margin:0, position:'relative' }}>
-            PetWash <span style={{ color:cs.accent }}>Prestige</span>
+          <h1 style={{ color:'#1A1A1A', fontSize:'1.5rem', fontWeight:800, letterSpacing:'-0.02em', margin:0 }}>
+            PetWash <span style={{ color:'#C5A55A' }}>Prestige</span>
           </h1>
         </div>
 
@@ -621,7 +628,7 @@ export default function PrestigePassWallet() {
 
                 {/* Short member code */}
                 <div style={{
-                  background:    'rgba(212,175,55,0.05)',
+                  background:    '#ffffff',
                   border:        '1px solid rgba(212,175,55,0.2)',
                   borderRadius:  '10px',
                   padding:       '8px 20px',
@@ -702,8 +709,8 @@ export default function PrestigePassWallet() {
             {/* Available for online use */}
             <div style={{
               display:'flex', alignItems:'center', justifyContent:'space-between',
-              background:'rgba(212,175,55,0.05)',
-              border:'1px solid rgba(212,175,55,0.15)',
+              background:'#ffffff',
+              border:'1px solid rgba(212,175,55,0.2)',
               borderRadius:'12px',
               padding:'14px 16px',
               marginBottom:'14px',
@@ -933,8 +940,8 @@ export default function PrestigePassWallet() {
                   gap: '8px', marginBottom: '14px',
                 }}>
                   <div style={{
-                    background: 'rgba(212,175,55,0.05)', borderRadius: '10px', padding: '10px 12px',
-                    border: '1px solid rgba(212,175,55,0.1)',
+                    background: '#ffffff', borderRadius: '10px', padding: '10px 12px',
+                    border: '1px solid rgba(212,175,55,0.15)',
                   }}>
                     <div style={{ fontSize: '0.65rem', color: '#9E9E9E', fontWeight: 600, marginBottom: '2px' }}>
                       {he ? 'יתרה זמינה' : 'Your Balance'}
@@ -946,7 +953,7 @@ export default function PrestigePassWallet() {
                     </div>
                   </div>
                   <div style={{
-                    background: 'rgba(0,0,0,0.02)', borderRadius: '10px', padding: '10px 12px',
+                    background: '#ffffff', borderRadius: '10px', padding: '10px 12px',
                     border: '1px solid rgba(0,0,0,0.06)',
                   }}>
                     <div style={{ fontSize: '0.65rem', color: '#9E9E9E', fontWeight: 600, marginBottom: '2px' }}>
@@ -1200,8 +1207,8 @@ export default function PrestigePassWallet() {
             {/* Footnote: how partial payment works */}
             <div style={{
               marginTop: '12px', padding: '10px 12px',
-              background: 'rgba(212,175,55,0.04)',
-              borderRadius: '10px', border: '1px solid rgba(212,175,55,0.12)',
+              background: '#ffffff',
+              borderRadius: '10px', border: '1px solid rgba(212,175,55,0.15)',
             }}>
               <p style={{ margin: 0, fontSize: '0.68rem', color: '#9E9E9E', lineHeight: 1.5 }}>
                 <strong style={{ color: '#B8941F' }}>{he ? 'איך עובד: ' : 'How it works: '}</strong>
@@ -1269,7 +1276,7 @@ export default function PrestigePassWallet() {
             {/* Redemption order note */}
             <div style={{
               marginTop:'12px', padding:'10px 14px',
-              background:'rgba(212,175,55,0.05)',
+              background:'#ffffff',
               borderRadius:'10px',
               border:'1px solid rgba(212,175,55,0.15)',
             }}>

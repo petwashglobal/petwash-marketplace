@@ -41,8 +41,8 @@ function EmvChip() {
 
 function PetWashLogo() {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
         <ellipse cx="5" cy="7" rx="2.2" ry="3" fill="#C6A35B" />
         <ellipse cx="9.5" cy="4.5" rx="2" ry="2.8" fill="#C6A35B" />
         <ellipse cx="14.5" cy="4.5" rx="2" ry="2.8" fill="#C6A35B" />
@@ -51,7 +51,7 @@ function PetWashLogo() {
       </svg>
       <span style={{
         fontFamily: "'SF Pro Display', 'Helvetica Neue', Helvetica, sans-serif",
-        fontSize: '18px', fontWeight: 700, color: '#C6A35B', letterSpacing: '-0.02em', lineHeight: 1,
+        fontSize: '26px', fontWeight: 700, color: '#C6A35B', letterSpacing: '-0.02em', lineHeight: 1,
       }}>
         Pet<span style={{ fontWeight: 800 }}>Wash</span>™
       </span>

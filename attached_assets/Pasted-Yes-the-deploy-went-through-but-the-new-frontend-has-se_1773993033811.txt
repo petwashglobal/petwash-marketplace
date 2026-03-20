@@ -1,0 +1,55 @@
+Yes - the deploy went through, but the new frontend has several regressions.
+
+From your screenshots, the main problems look like this:
+	1.	/my-account is rendering with broken mobile layout
+There is a huge empty spacer at the top, cards are pushed too low, and the page looks partially unstyled. That usually means a bad mobile container height, safe-area padding issue, or a section wrapper with the wrong min-height / padding-top.
+	2.	Some protected pages are failing on auth state
+You have both:
+
+	•	a red toast saying Auth required
+	•	a page saying נדרשת התחברות
+	•	and another page hitting the generic Something went wrong error box
+
+That usually means the deploy changed auth boot timing or route guards, so the page renders before the user session is ready, then crashes or falls into the error boundary.
+	3.	Floating widgets are overlapping content on mobile
+The accessibility button, WhatsApp button, and blue chat button are stacked on top of page content. On smaller screens they are covering cards and text.
+	4.	The support chat widget is too aggressive on mobile
+The Kenzo widget opens as a very large panel and takes over the screen. That is a UX bug even if the widget itself is technically working.
+
+So this is not “server dead”. It is more like:
+	•	backend mostly alive
+	•	deployment succeeded
+	•	mobile frontend regression + auth guard regression + overlay stacking problems
+
+Also, when I checked the live site, the server is serving the app shell and fallback page correctly, which means the domain itself is up.  ￼
+
+What I would do right now:
+
+First - rollback
+If customers are seeing this, send 100% traffic back to the previous Cloud Run revision immediately. In your earlier screenshot the previous revision was still there, so rollback is the safest move while debugging.
+
+Second - fix these in order
+	1.	Auth boot / protected route handling
+Make sure account and privilege pages wait for auth initialization before rendering protected content.
+	2.	Mobile layout containers
+Check the new wrappers on:
+	•	/my-account
+	•	privilege page
+	•	error state page
+especially any pt-*, min-h-screen, safe-area, hero spacing, and top banner offsets.
+	3.	Floating action buttons
+Add mobile spacing rules so they do not cover content. On small screens they need lower z-index coordination or a bottom stack container.
+	4.	Chat widget mobile mode
+Collapse it by default on mobile and reduce height.
+
+My honest read from the screenshots:
+	•	/my-account is the highest priority
+	•	privilege auth flow is second
+	•	generic error page is third
+	•	floating widgets and chat are fourth
+
+If you want, I can help you make a rapid rollback + repair checklist for your developer with exact fixes for:
+	•	auth guard race
+	•	mobile spacing
+	•	floating buttons
+	•	Kenzo widget sizing

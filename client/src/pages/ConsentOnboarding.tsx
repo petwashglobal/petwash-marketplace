@@ -112,7 +112,7 @@ export default function ConsentOnboarding({ language = 'he' }: ConsentOnboarding
           {/* Gold circle background */}
           <div
             className="w-48 h-48 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: '#F5EDD0' }}
+            style={{ backgroundColor: '#ffffff', border: '1.5px solid rgba(212,175,55,0.25)', borderRadius: '50%' }}
           >
             <div
               className="w-36 h-36 rounded-full flex items-center justify-center"

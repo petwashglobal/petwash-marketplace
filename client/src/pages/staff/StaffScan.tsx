@@ -140,7 +140,7 @@ export default function StaffScan() {
                   flex: 1, padding: '12px 14px', borderRadius: '10px',
                   border: '1.5px solid rgba(212,175,55,0.3)', fontSize: '0.9rem',
                   fontFamily: 'monospace', outline: 'none', color: '#1A1A1A',
-                  background: '#FAFAFA',
+                  background: '#ffffff',
                 }}
               />
               <button

@@ -93,7 +93,7 @@ export default function NotificationConsent({ language = 'he' }: NotificationCon
           {/* Outer glow ring */}
           <div
             className="w-52 h-52 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: '#F5EDD0' }}
+            style={{ backgroundColor: '#ffffff', border: '1.5px solid rgba(212,175,55,0.25)', borderRadius: '50%' }}
           >
             {/* Inner gold circle */}
             <div

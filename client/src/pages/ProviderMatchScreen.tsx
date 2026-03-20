@@ -348,7 +348,7 @@ const MatchCard = memo(function MatchCard({
         {/* Image area */}
         <div
           className="relative flex items-center justify-center"
-          style={{ height: 172, backgroundColor: '#fafafa' }}
+          style={{ height: 172, backgroundColor: '#ffffff' }}
         >
           {/* Gold accent line — top */}
           <div
