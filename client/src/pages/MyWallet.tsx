@@ -23,6 +23,8 @@ import {
   Loader2,
   Plus,
   Ticket,
+  TrendingUp,
+  AlertCircle,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 import { Layout } from '@/components/Layout';
@@ -34,11 +36,15 @@ import { useToast } from '@/hooks/use-toast';
 interface WalletSummary {
   walletId: string;
   userId: string;
+  cashWalletBalanceCents: number;
   egiftBalanceCents: number;
   washPackageCredits: number;
   loyaltyPointsBalance: number;
   promoBalanceCents: number;
   referralBalanceCents: number;
+  pendingBalanceCents: number;
+  lifetimeEarnedCents: number;
+  lifetimeRedeemedCents: number;
   totalCreditsValueCents: number;
   loyaltyTier: string;
   tierPointsThisYear: number;
@@ -228,7 +234,31 @@ export default function MyWallet() {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-2 gap-3 mb-5 luxury-animate-slide-up">
+          <div className="grid grid-cols-2 gap-3 mb-3 luxury-animate-slide-up">
+            {/* Cash Wallet */}
+            <Card className="luxury-glass-card col-span-2 border border-emerald-100">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                      <Wallet className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700">
+                      {isHebrew ? 'ארנק מזומן' : 'Cash Wallet'}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-gray-900">
+                      {formatCurrency(wallet?.cashWalletBalanceCents || 0)}
+                    </div>
+                    <p className="text-[10px] text-gray-400">
+                      {isHebrew ? 'יתרה זמינה' : 'Available balance'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="luxury-glass-card">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -300,6 +330,60 @@ export default function MyWallet() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Pending / Reserved Balance */}
+          {(wallet?.pendingBalanceCents || 0) > 0 && (
+            <Card className="mb-3 border border-amber-200 bg-amber-50 luxury-animate-slide-up">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-600" />
+                    <span className="text-sm font-semibold text-amber-800">
+                      {isHebrew ? 'יתרה מוקפאת' : 'Reserved (Pending)'}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xl font-bold text-amber-800">
+                      {formatCurrency(wallet?.pendingBalanceCents || 0)}
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-amber-600 mt-1">
+                  {isHebrew
+                    ? 'סכום זה מוקפא עבור הזמנות פעילות. הוא ישוחרר או יחויב לאחר אישור הספק.'
+                    : 'This amount is reserved by active bookings. It will be released or charged after provider confirmation.'}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Lifetime Stats */}
+          {((wallet?.lifetimeEarnedCents || 0) > 0 || (wallet?.lifetimeRedeemedCents || 0) > 0) && (
+            <Card className="mb-5 luxury-glass-card luxury-animate-slide-up">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <TrendingUp className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm font-semibold text-gray-700">
+                    {isHebrew ? 'סטטיסטיקה לכל החיים' : 'Lifetime Stats'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">{isHebrew ? 'סה״כ נצבר' : 'Total earned'}</p>
+                    <p className="text-lg font-bold text-green-700">
+                      {formatCurrency(wallet?.lifetimeEarnedCents || 0)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">{isHebrew ? 'סה״כ נוצל' : 'Total redeemed'}</p>
+                    <p className="text-lg font-bold text-gray-700">
+                      {formatCurrency(wallet?.lifetimeRedeemedCents || 0)}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {uv && uv.activeVoucherCount > 0 && (
             <Card className="luxury-glass-card mb-5 luxury-animate-slide-up border border-amber-100">

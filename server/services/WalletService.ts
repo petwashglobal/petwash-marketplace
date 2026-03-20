@@ -20,11 +20,15 @@ const WALLET_SECRET = process.env.WALLET_LINK_SECRET || 'petwash-wallet-secret-2
 export interface WalletSummary {
   walletId: string;
   userId: string;
+  cashWalletBalanceCents: number;
   egiftBalanceCents: number;
   washPackageCredits: number;
   loyaltyPointsBalance: number;
   promoBalanceCents: number;
   referralBalanceCents: number;
+  pendingBalanceCents: number;
+  lifetimeEarnedCents: number;
+  lifetimeRedeemedCents: number;
   totalCreditsValueCents: number;
   loyaltyTier: string;
   tierPointsThisYear: number;
@@ -95,12 +99,17 @@ class WalletService {
     return {
       walletId: wallet.walletId,
       userId: wallet.userId,
+      cashWalletBalanceCents: wallet.cashWalletBalanceCents || 0,
       egiftBalanceCents: wallet.egiftBalanceCents || 0,
       washPackageCredits: wallet.washPackageCredits || 0,
       loyaltyPointsBalance: wallet.loyaltyPointsBalance || 0,
       promoBalanceCents: wallet.promoBalanceCents || 0,
       referralBalanceCents: wallet.referralBalanceCents || 0,
+      pendingBalanceCents: wallet.pendingBalanceCents || 0,
+      lifetimeEarnedCents: wallet.lifetimeEarnedCents || 0,
+      lifetimeRedeemedCents: wallet.lifetimeRedeemedCents || 0,
       totalCreditsValueCents: 
+        (wallet.cashWalletBalanceCents || 0) +
         (wallet.egiftBalanceCents || 0) + 
         (wallet.promoBalanceCents || 0) + 
         (wallet.referralBalanceCents || 0) +

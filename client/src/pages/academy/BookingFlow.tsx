@@ -12,6 +12,7 @@ import { getActivePaymentMethod } from "@/lib/paymentConfig";
 import { CreditWalletCard } from "@/components/wallet/CreditWalletCard";
 import { PrestigePassPaymentOption } from "@/components/PrestigePassPaymentOption";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
+import { WalletCheckoutPreview } from "@/components/wallet/WalletCheckoutPreview";
 
 type BookingStep = "details" | "summary" | "confirmation";
 
@@ -410,6 +411,12 @@ export default function AcademyBookingFlow() {
                 התשלום יתואם לאחר ההזמנה.
               </div>
             </div>
+
+            <WalletCheckoutPreview
+              subtotalCents={Math.round(pricing.totalCharged * 100)}
+              divisionCode="academy"
+              className="mb-4"
+            />
 
             {user && (
               <CreditWalletCard

@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useLanguage } from '@/lib/languageStore';
 import { t as ti18n } from '@/lib/i18n';
+import { WalletCheckoutPreview } from '@/components/wallet/WalletCheckoutPreview';
 
 interface SitterProfile {
   id: string;
@@ -459,6 +460,12 @@ export default function SitterBooking() {
                         <span>{t('booking.common.total')}</span>
                         <span>{pricing.currency} {pricing.totalPrice.toFixed(2)}</span>
                       </div>
+
+                      <WalletCheckoutPreview
+                        subtotalCents={Math.round(pricing.totalPrice * 100)}
+                        divisionCode="petsitter"
+                        className="mt-2"
+                      />
 
                       <p className="text-xs text-gray-500 mt-2">
                         Payment held in secure escrow until service completion

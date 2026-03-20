@@ -2743,6 +2743,54 @@ router.post('/admin/wallet/proof-pass', async (req: Request, res: Response) => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
+// GET /api/prestige-pass/wallet-preview
+// Server-driven checkout preview for any division.
+// Returns the exact wallet amounts the server will apply — no frontend math.
+// ──────────────────────────────────────────────────────────────────────────────
+router.get('/wallet-preview', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+
+    const subtotalCents = parseInt(req.query.subtotalCents as string, 10);
+    const divisionCode  = (req.query.divisionCode as string) || 'general';
+
+    if (!subtotalCents || isNaN(subtotalCents) || subtotalCents <= 0) {
+      return res.status(400).json({ error: 'subtotalCents must be a positive integer' });
+    }
+
+    const VALID_DIVISIONS = ['station_k9000', 'petsitter', 'walkers', 'academy', 'pettrek', 'general'];
+    if (!VALID_DIVISIONS.includes(divisionCode)) {
+      return res.status(400).json({ error: `Invalid divisionCode: ${divisionCode}` });
+    }
+
+    const { walletService } = await import('../services/WalletService');
+    const preview = await walletService.previewRedemption({
+      userId: uid,
+      subtotalCents,
+      divisionCode: divisionCode as any,
+    });
+
+    return res.json({
+      subtotalCents,
+      divisionCode,
+      walletAvailableCents:     preview.walletAvailableCents,
+      walletAppliedCents:       preview.applicableCents,
+      cashDueCents:             preview.cashDueCents,
+      pendingWalletImpactCents: preview.applicableCents,
+      capRule:                  preview.capPercent === 100 ? '100_percent' : '50_percent',
+      cappedByPolicy:           preview.cappedByPolicy,
+      cappedByBalance:          preview.cappedByBalance,
+      pendingBalanceCents:      preview.pendingBalanceCents,
+      breakdown:                preview.breakdown,
+    });
+  } catch (err: any) {
+    logger.error('[WalletPreview] error', { error: err.message });
+    return res.status(500).json({ error: 'Preview failed', detail: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // GET /api/prestige-pass/admin/wallet/reconciliation-history
 // Returns paginated history of all reconciliation and proof-pass runs.
 // ──────────────────────────────────────────────────────────────────────────────

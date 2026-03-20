@@ -20,6 +20,8 @@ import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useLanguage } from '@/lib/languageStore';
 import { t as ti18n } from '@/lib/i18n';
+import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { WalletCheckoutPreview } from '@/components/wallet/WalletCheckoutPreview';
 
 interface WalkerProfile {
   walkerId: string;
@@ -163,6 +165,8 @@ export default function WalkerBooking() {
     });
   };
 
+  const { user } = useFirebaseAuth();
+
   // Calculate pricing
   const hourlyRate = walker ? parseFloat(walker.baseHourlyRate) : 0;
   const hours = duration / 60;
@@ -170,6 +174,7 @@ export default function WalkerBooking() {
   const platformFeeOwner = walkerRate * 0.15; // 15% platform commission
   const totalCost = walkerRate + platformFeeOwner;
   const walkerPayout = walkerRate * 0.85; // Walker receives 85% (base - 15%)
+  const totalCostCents = Math.round(totalCost * 100);
 
   if (walkerLoading) {
     return (
@@ -516,6 +521,14 @@ export default function WalkerBooking() {
                         <span className="luxury-heading-sm">{t('booking.common.total')}</span>
                         <span className="luxury-heading-lg luxury-text-gradient">{walker.currency} {totalCost.toFixed(2)}</span>
                       </div>
+
+                      {user && totalCostCents > 0 && (
+                        <WalletCheckoutPreview
+                          subtotalCents={totalCostCents}
+                          divisionCode="walkers"
+                          className="mt-3"
+                        />
+                      )}
 
                       <Alert className="luxury-glass-minimal border-none mt-3">
                         <AlertDescription className="text-xs luxury-text-small">
