@@ -25,11 +25,12 @@
 import { Router, Request, Response } from 'express';
 import { createHmac, randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
+import { nanoid } from 'nanoid';
 import rateLimit from 'express-rate-limit';
 import { db as firestoreDb, auth as firebaseAuth } from '../lib/firebase-admin';
 import { db } from '../db';
-import { walletAccounts, creditTransactions, walletLedgerEntries } from '@shared/schema';
-import { eq, desc, and, sql } from 'drizzle-orm';
+import { walletAccounts, creditTransactions, walletLedgerEntries, walletReconciliationRuns } from '@shared/schema';
+import { eq, desc, and, sql, gte, lte } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import { EmailService } from '../emailService';
@@ -2561,18 +2562,22 @@ router.post('/admin/wallet/proof-pass', async (req: Request, res: Response) => {
       issues.push(`${reconReport.healed} booking(s) were drifted and have now been healed`);
     }
 
-    // ── Step 2: Finance-state distribution ───────────────────────────────────
+    // ── Step 2: Finance-state distribution (booking_requests + trainer_bookings) ─
     const distRows: any = await db.execute(sql`
-      SELECT finance_state, COUNT(*) AS cnt, SUM(wallet_hold_cents) AS total_hold_cents
+      SELECT finance_state, 'booking' AS source, COUNT(*) AS cnt, SUM(wallet_hold_cents) AS total_hold_cents
       FROM booking_requests
-      WHERE wallet_hold_cents > 0
-         OR wallet_debited_cents > 0
-         OR wallet_refunded_cents > 0
+      WHERE wallet_hold_cents > 0 OR wallet_debited_cents > 0 OR wallet_refunded_cents > 0
+      GROUP BY finance_state
+      UNION ALL
+      SELECT finance_state, 'academy' AS source, COUNT(*) AS cnt, SUM(wallet_hold_cents) AS total_hold_cents
+      FROM trainer_bookings
+      WHERE wallet_hold_cents > 0 OR wallet_debited_cents > 0 OR wallet_refunded_cents > 0
       GROUP BY finance_state
       ORDER BY cnt DESC
     `);
     steps.financeStateDistribution = (distRows?.rows ?? distRows ?? []).map((r: any) => ({
       financeState:    r.finance_state,
+      source:          r.source,
       count:           Number(r.cnt),
       totalHoldCents:  Number(r.total_hold_cents),
     }));
@@ -2655,19 +2660,28 @@ router.post('/admin/wallet/proof-pass', async (req: Request, res: Response) => {
       issues.push(`${pendingDrift.length} wallet(s) have pending_balance drift vs ledger`);
     }
 
-    // ── Step 5: Idempotency coverage ─────────────────────────────────────────
-    // Every booking with wallet activity should have an idempotency key stored
-    // for each operation that ran. Count bookings missing their expected keys.
+    // ── Step 5: Idempotency coverage (booking_requests + trainer_bookings) ───
     const covRows: any = await db.execute(sql`
       SELECT
-        COUNT(*) FILTER (WHERE finance_state = 'debited'  AND (wallet_debit_key   IS NULL OR wallet_debit_key   = '')) AS debited_missing_key,
-        COUNT(*) FILTER (WHERE finance_state = 'released' AND (wallet_release_key IS NULL OR wallet_release_key = '')) AS released_missing_key,
-        COUNT(*) FILTER (WHERE finance_state = 'refunded' AND (wallet_refund_key  IS NULL OR wallet_refund_key  = '')) AS refunded_missing_key,
-        COUNT(*) FILTER (WHERE finance_state = 'hold_active' AND (wallet_hold_key IS NULL OR wallet_hold_key = ''))    AS hold_missing_key
-      FROM booking_requests
-      WHERE wallet_hold_cents > 0
-         OR wallet_debited_cents > 0
-         OR wallet_refunded_cents > 0
+        SUM(debited_missing)  AS debited_missing_key,
+        SUM(released_missing) AS released_missing_key,
+        SUM(refunded_missing) AS refunded_missing_key,
+        SUM(hold_missing)     AS hold_missing_key
+      FROM (
+        SELECT
+          COUNT(*) FILTER (WHERE finance_state = 'debited'    AND (wallet_debit_key   IS NULL OR wallet_debit_key   = '')) AS debited_missing,
+          COUNT(*) FILTER (WHERE finance_state = 'released'   AND (wallet_release_key IS NULL OR wallet_release_key = '')) AS released_missing,
+          COUNT(*) FILTER (WHERE finance_state = 'refunded'   AND (wallet_refund_key  IS NULL OR wallet_refund_key  = '')) AS refunded_missing,
+          COUNT(*) FILTER (WHERE finance_state = 'hold_active' AND (wallet_hold_key   IS NULL OR wallet_hold_key    = '')) AS hold_missing
+        FROM booking_requests WHERE wallet_hold_cents > 0 OR wallet_debited_cents > 0 OR wallet_refunded_cents > 0
+        UNION ALL
+        SELECT
+          COUNT(*) FILTER (WHERE finance_state = 'debited'    AND (wallet_debit_key   IS NULL OR wallet_debit_key   = '')) AS debited_missing,
+          COUNT(*) FILTER (WHERE finance_state = 'released'   AND (wallet_release_key IS NULL OR wallet_release_key = '')) AS released_missing,
+          COUNT(*) FILTER (WHERE finance_state = 'refunded'   AND (wallet_refund_key  IS NULL OR wallet_refund_key  = '')) AS refunded_missing,
+          COUNT(*) FILTER (WHERE finance_state = 'hold_active' AND (wallet_hold_key   IS NULL OR wallet_hold_key    = '')) AS hold_missing
+        FROM trainer_bookings WHERE wallet_hold_cents > 0 OR wallet_debited_cents > 0 OR wallet_refunded_cents > 0
+      ) AS combined
     `);
     const cov: any = (covRows?.rows ?? covRows ?? [])[0] ?? {};
     const idempCoverage = {
@@ -2688,21 +2702,270 @@ router.post('/admin/wallet/proof-pass', async (req: Request, res: Response) => {
     const verdict: 'PASS' | 'WARN' | 'FAIL' =
       hasCritical ? 'FAIL' : hasWarnings ? 'WARN' : 'PASS';
 
+    const durationMs = Date.now() - t0;
     logger.info('[ProofPass] Wallet lifecycle proof pass complete', {
-      verdict, issueCount: issues.length, durationMs: Date.now() - t0,
+      verdict, issueCount: issues.length, durationMs,
     });
 
-    return res.json({
+    const fullResult = {
       ok: true,
       verdict,
       issues,
-      durationMs: Date.now() - t0,
+      durationMs,
       generatedAt: new Date().toISOString(),
       steps,
-    });
+    };
+
+    // Persist to wallet_reconciliation_runs (fire-and-forget)
+    const runId = `pp-${nanoid(12)}`;
+    db.insert(walletReconciliationRuns).values({
+      runId,
+      runType:     'proof_pass',
+      status:      'completed',
+      verdict,
+      startedAt:   new Date(t0),
+      completedAt: new Date(),
+      durationMs,
+      drifted:     reconReport.drifted,
+      healed:      reconReport.healed,
+      failedCount: reconReport.failed,
+      triggeredBy: uid,
+      summaryJson: fullResult as any,
+    }).catch((e: any) =>
+      logger.error('[ProofPass] Failed to persist run', { error: e.message }),
+    );
+
+    return res.json(fullResult);
   } catch (err: any) {
     logger.error('[ProofPass] error', { error: err.message });
     return res.status(500).json({ error: 'Proof pass failed', detail: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /api/prestige-pass/admin/wallet/reconciliation-history
+// Returns paginated history of all reconciliation and proof-pass runs.
+// ──────────────────────────────────────────────────────────────────────────────
+router.get('/admin/wallet/reconciliation-history', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const limit  = Math.min(Number(req.query.limit  ?? 50), 200);
+    const offset = Number(req.query.offset ?? 0);
+    const runType = req.query.runType as string | undefined;
+
+    const rows: any = await db.execute(sql`
+      SELECT id, run_id, run_type, status, verdict,
+             started_at, completed_at, duration_ms,
+             drifted, healed, failed_count, triggered_by, created_at
+      FROM wallet_reconciliation_runs
+      WHERE (${runType ? sql`run_type = ${runType}` : sql`1=1`})
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `);
+
+    const countRow: any = await db.execute(sql`
+      SELECT COUNT(*) AS total FROM wallet_reconciliation_runs
+      WHERE (${runType ? sql`run_type = ${runType}` : sql`1=1`})
+    `);
+
+    const runs = (rows?.rows ?? rows ?? []).map((r: any) => ({
+      id:          r.id,
+      runId:       r.run_id,
+      runType:     r.run_type,
+      status:      r.status,
+      verdict:     r.verdict,
+      startedAt:   r.started_at,
+      completedAt: r.completed_at,
+      durationMs:  r.duration_ms,
+      drifted:     Number(r.drifted),
+      healed:      Number(r.healed),
+      failedCount: Number(r.failed_count),
+      triggeredBy: r.triggered_by,
+      createdAt:   r.created_at,
+    }));
+
+    const total = Number((countRow?.rows ?? countRow ?? [])[0]?.total ?? 0);
+    return res.json({ runs, total, limit, offset });
+  } catch (err: any) {
+    logger.error('[ReconciliationHistory] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch reconciliation history' });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /api/prestige-pass/admin/wallet/adjustments
+// Admin adjustment audit — ledger entries of type admin_credit / admin_debit / reversal.
+// Filters: staffId, userId, from, to, divisionCode
+// ──────────────────────────────────────────────────────────────────────────────
+router.get('/admin/wallet/adjustments', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const { staffId, userId, from, to, divisionCode } = req.query as Record<string, string>;
+    const limit  = Math.min(Number(req.query.limit  ?? 100), 500);
+    const offset = Number(req.query.offset ?? 0);
+
+    const rows: any = await db.execute(sql`
+      SELECT
+        e.id,
+        e.entry_id,
+        e.user_id,
+        e.wallet_id,
+        e.event_type,
+        e.direction,
+        e.amount_cents,
+        e.currency,
+        e.bucket,
+        e.division_code,
+        e.source_type,
+        e.idempotency_key,
+        e.booking_id,
+        e.created_by,
+        e.ip_address,
+        e.metadata,
+        e.created_at
+      FROM wallet_ledger_entries e
+      WHERE e.event_type IN ('admin_credit', 'admin_debit', 'reversal')
+        AND (${staffId   ? sql`e.created_by    = ${staffId}`     : sql`1=1`})
+        AND (${userId    ? sql`e.user_id        = ${userId}`     : sql`1=1`})
+        AND (${from      ? sql`e.created_at    >= ${new Date(from)}` : sql`1=1`})
+        AND (${to        ? sql`e.created_at    <= ${new Date(to)}`   : sql`1=1`})
+        AND (${divisionCode ? sql`e.division_code = ${divisionCode}` : sql`1=1`})
+      ORDER BY e.created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `);
+
+    const countRow: any = await db.execute(sql`
+      SELECT COUNT(*) AS total
+      FROM wallet_ledger_entries e
+      WHERE e.event_type IN ('admin_credit', 'admin_debit', 'reversal')
+        AND (${staffId   ? sql`e.created_by    = ${staffId}`     : sql`1=1`})
+        AND (${userId    ? sql`e.user_id        = ${userId}`     : sql`1=1`})
+        AND (${from      ? sql`e.created_at    >= ${new Date(from)}` : sql`1=1`})
+        AND (${to        ? sql`e.created_at    <= ${new Date(to)}`   : sql`1=1`})
+        AND (${divisionCode ? sql`e.division_code = ${divisionCode}` : sql`1=1`})
+    `);
+
+    const entries = (rows?.rows ?? rows ?? []).map((r: any) => ({
+      id:             r.id,
+      entryId:        r.entry_id,
+      userId:         r.user_id,
+      walletId:       r.wallet_id,
+      eventType:      r.event_type,
+      direction:      r.direction,
+      amountCents:    Number(r.amount_cents),
+      currency:       r.currency,
+      bucket:         r.bucket,
+      divisionCode:   r.division_code,
+      sourceType:     r.source_type,
+      idempotencyKey: r.idempotency_key,
+      bookingId:      r.booking_id,
+      createdBy:      r.created_by,
+      ipAddress:      r.ip_address,
+      metadata:       r.metadata,
+      createdAt:      r.created_at,
+    }));
+
+    const total = Number((countRow?.rows ?? countRow ?? [])[0]?.total ?? 0);
+    return res.json({ entries, total, limit, offset });
+  } catch (err: any) {
+    logger.error('[Adjustments] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch adjustments' });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /api/prestige-pass/admin/wallet/export.csv
+// Streams wallet_ledger_entries as CSV. Filters: from, to, divisionCode,
+// eventType, sourceType, userId. No body mutation — read-only.
+// ──────────────────────────────────────────────────────────────────────────────
+router.get('/admin/wallet/export.csv', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const { from, to, divisionCode, eventType, sourceType, userId } = req.query as Record<string, string>;
+
+    const rows: any = await db.execute(sql`
+      SELECT
+        created_at,
+        user_id,
+        wallet_id,
+        division_code,
+        source_type,
+        event_type,
+        direction,
+        amount_cents,
+        currency,
+        bucket,
+        idempotency_key,
+        booking_id,
+        created_by,
+        metadata
+      FROM wallet_ledger_entries
+      WHERE (${from         ? sql`created_at    >= ${new Date(from)}` : sql`1=1`})
+        AND (${to           ? sql`created_at    <= ${new Date(to)}`   : sql`1=1`})
+        AND (${divisionCode ? sql`division_code  = ${divisionCode}`   : sql`1=1`})
+        AND (${eventType    ? sql`event_type     = ${eventType}`      : sql`1=1`})
+        AND (${sourceType   ? sql`source_type    = ${sourceType}`     : sql`1=1`})
+        AND (${userId       ? sql`user_id        = ${userId}`         : sql`1=1`})
+      ORDER BY created_at DESC
+      LIMIT 50000
+    `);
+
+    const data = rows?.rows ?? rows ?? [];
+
+    const CSV_HEADERS = [
+      'created_at', 'user_id', 'wallet_id', 'division_code', 'source_type',
+      'event_type', 'direction', 'amount_cents', 'currency', 'bucket',
+      'idempotency_key', 'booking_id', 'created_by', 'metadata_json',
+    ].join(',');
+
+    function csvEscape(v: any): string {
+      if (v == null) return '';
+      const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
+    }
+
+    const lines = [
+      CSV_HEADERS,
+      ...data.map((r: any) => [
+        csvEscape(r.created_at),
+        csvEscape(r.user_id),
+        csvEscape(r.wallet_id),
+        csvEscape(r.division_code),
+        csvEscape(r.source_type),
+        csvEscape(r.event_type),
+        csvEscape(r.direction),
+        csvEscape(r.amount_cents),
+        csvEscape(r.currency),
+        csvEscape(r.bucket),
+        csvEscape(r.idempotency_key),
+        csvEscape(r.booking_id),
+        csvEscape(r.created_by),
+        csvEscape(r.metadata),
+      ].join(',')),
+    ];
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="wallet-ledger-${dateStr}.csv"`);
+    res.send('\uFEFF' + lines.join('\r\n')); // BOM for Excel
+  } catch (err: any) {
+    logger.error('[WalletExport] error', { error: err.message });
+    return res.status(500).json({ error: 'Export failed', detail: err.message });
   }
 });
 

@@ -10809,6 +10809,29 @@ export const walletLedgerEntries = pgTable("wallet_ledger_entries", {
   index("idx_wle_source_type").on(table.sourceType),
 ]);
 
+// ─── 1b. wallet_reconciliation_runs — persistent audit trail of every recon/proof run ──
+export const walletReconciliationRuns = pgTable("wallet_reconciliation_runs", {
+  id:           serial("id").primaryKey(),
+  runId:        varchar("run_id",       { length: 80  }).unique().notNull(),
+  runType:      varchar("run_type",     { length: 30  }).notNull(), // 'reconciliation' | 'proof_pass'
+  status:       varchar("status",       { length: 20  }).notNull().default("completed"),
+  verdict:      varchar("verdict",      { length: 10  }), // 'PASS' | 'WARN' | 'FAIL' | null
+  startedAt:    timestamp("started_at").defaultNow().notNull(),
+  completedAt:  timestamp("completed_at"),
+  durationMs:   integer("duration_ms"),
+  drifted:      integer("drifted").notNull().default(0),
+  healed:       integer("healed").notNull().default(0),
+  failedCount:  integer("failed_count").notNull().default(0),
+  triggeredBy:  varchar("triggered_by", { length: 128 }), // uid | 'startup' | 'cron'
+  summaryJson:  jsonb("summary_json").notNull().default(sql`'{}'::jsonb`),
+  createdAt:    timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_wrr_run_type").on(table.runType),
+  index("idx_wrr_created_at").on(table.createdAt),
+  index("idx_wrr_triggered").on(table.triggeredBy),
+]);
+export type WalletReconciliationRun = typeof walletReconciliationRuns.$inferSelect;
+
 // ─── 2. wallet_idempotency_keys — prevents double-processing ──────────────────
 // One row per idempotency key; stores the full response so duplicate requests
 // return the exact same result without re-processing.

@@ -16,10 +16,11 @@
  */
 
 import cron from 'node-cron';
+import { nanoid } from 'nanoid';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { eq } from 'drizzle-orm';
-import { bookingRequests, trainerBookings } from '@shared/schema';
+import { bookingRequests, trainerBookings, walletReconciliationRuns } from '@shared/schema';
 import { walletService } from '../services/WalletService';
 import { resetVelocity } from '../services/WalletLedger';
 import { logger } from '../lib/logger';
@@ -57,9 +58,14 @@ function divisionCodeFor(serviceType: string | null | undefined): string {
 
 /**
  * Run one reconciliation pass. Returns structured report.
- * Logs every outcome. Safe to await or fire-and-forget.
+ * Persists every run to wallet_reconciliation_runs for history + audit.
+ * Safe to await or fire-and-forget.
  */
-export async function runWalletReconciliation(): Promise<ReconciliationReport> {
+export async function runWalletReconciliation(
+  triggeredBy: string = 'cron',
+): Promise<ReconciliationReport> {
+  const t0 = Date.now();
+  const runId = `rec-${nanoid(12)}`;
   const runAt = new Date().toISOString();
   const outcomes: ReconciliationOutcome[] = [];
 
@@ -215,6 +221,7 @@ export async function runWalletReconciliation(): Promise<ReconciliationReport> {
   const healed     = outcomes.filter(o => o.result === 'debited').length;
   const idempotent = outcomes.filter(o => o.result === 'already_idempotent').length;
   const failed     = outcomes.filter(o => o.result === 'error').length;
+  const durationMs = Date.now() - t0;
 
   if (totalDrifted === 0) {
     logger.info(`${LABEL} Clean — no drifted bookings found`);
@@ -224,7 +231,28 @@ export async function runWalletReconciliation(): Promise<ReconciliationReport> {
     });
   }
 
-  return { runAt, drifted: totalDrifted, healed, idempotent, failed, outcomes };
+  const report: ReconciliationReport = {
+    runAt, drifted: totalDrifted, healed, idempotent, failed, outcomes,
+  };
+
+  // Persist to wallet_reconciliation_runs (fire-and-forget — never block the run itself)
+  db.insert(walletReconciliationRuns).values({
+    runId,
+    runType:     'reconciliation',
+    status:      'completed',
+    startedAt:   new Date(t0),
+    completedAt: new Date(),
+    durationMs,
+    drifted:     totalDrifted,
+    healed,
+    failedCount: failed,
+    triggeredBy,
+    summaryJson: report as any,
+  }).catch((err: any) =>
+    logger.error(`${LABEL} Failed to persist run to DB`, { error: err.message }),
+  );
+
+  return report;
 }
 
 /**
@@ -235,14 +263,14 @@ export async function runWalletReconciliation(): Promise<ReconciliationReport> {
 export function startWalletReconciliationJob(): void {
   // Startup run — deferred 10 s to avoid racing with pool initialisation
   setTimeout(() => {
-    runWalletReconciliation().catch((err: any) =>
+    runWalletReconciliation('startup').catch((err: any) =>
       logger.error(`${LABEL} Startup run failed`, { error: err.message }),
     );
   }, 10_000);
 
   // Recurring every 5 minutes (*/5 * * * *)
   cron.schedule('*/5 * * * *', () => {
-    runWalletReconciliation().catch((err: any) =>
+    runWalletReconciliation('cron').catch((err: any) =>
       logger.error(`${LABEL} Cron run failed`, { error: err.message }),
     );
   });

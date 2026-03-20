@@ -27,6 +27,9 @@ import {
   BarChart3,
   BookOpen,
   ChevronRight,
+  Download,
+  History,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -71,6 +74,20 @@ export default function AdminWalletDashboard() {
   const [auditId, setAuditId] = useState("");
   const [auditSearch, setAuditSearch] = useState("");
 
+  // ── Adjustments filters ──────────────────────────────────────────────────────
+  const [adjFrom, setAdjFrom]           = useState("");
+  const [adjTo, setAdjTo]               = useState("");
+  const [adjUserId, setAdjUserId]       = useState("");
+  const [adjDivision, setAdjDivision]   = useState("");
+  const [adjApplied, setAdjApplied]     = useState(false);
+
+  // ── Export filters ───────────────────────────────────────────────────────────
+  const [expFrom, setExpFrom]           = useState("");
+  const [expTo, setExpTo]               = useState("");
+  const [expDivision, setExpDivision]   = useState("");
+  const [expEventType, setExpEventType] = useState("");
+  const [expUserId, setExpUserId]       = useState("");
+
   // ── Division Report ─────────────────────────────────────────────────────────
   const { data: divisionReport, isLoading: divLoading } = useQuery<any[]>({
     queryKey: ["/api/prestige-pass/admin/wallet/division-report"],
@@ -97,9 +114,39 @@ export default function AdminWalletDashboard() {
     onError: () => toast({ title: "Proof pass failed", variant: "destructive" }),
   });
 
+  // ── Reconciliation History ───────────────────────────────────────────────────
+  const { data: reconHistory, isLoading: reconHistLoading } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/reconciliation-history"],
+  });
+
+  // ── Admin Adjustments ────────────────────────────────────────────────────────
+  const adjParams = new URLSearchParams();
+  if (adjApplied) {
+    if (adjFrom)     adjParams.set("from",         adjFrom);
+    if (adjTo)       adjParams.set("to",           adjTo);
+    if (adjUserId)   adjParams.set("userId",       adjUserId);
+    if (adjDivision) adjParams.set("divisionCode", adjDivision);
+  }
+  const adjUrl = `/api/prestige-pass/admin/wallet/adjustments?${adjParams.toString()}`;
+  const { data: adjData, isLoading: adjLoading, refetch: refetchAdj } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/adjustments", adjApplied, adjFrom, adjTo, adjUserId, adjDivision],
+    queryFn: () => fetch(adjUrl, { credentials: "include" }).then(r => r.json()),
+    enabled: adjApplied,
+  });
+
   function handleAuditSearch() {
     if (!auditId.trim()) return;
     setAuditSearch(auditId.trim());
+  }
+
+  function buildExportUrl() {
+    const p = new URLSearchParams();
+    if (expFrom)      p.set("from",         expFrom);
+    if (expTo)        p.set("to",           expTo);
+    if (expDivision)  p.set("divisionCode", expDivision);
+    if (expEventType) p.set("eventType",    expEventType);
+    if (expUserId)    p.set("userId",       expUserId);
+    return `/api/prestige-pass/admin/wallet/export.csv?${p.toString()}`;
   }
 
   // Group division report by division_code
@@ -127,7 +174,7 @@ export default function AdminWalletDashboard() {
 
       <div className="p-6 max-w-6xl mx-auto space-y-6">
         <Tabs defaultValue="proof">
-          <TabsList className="bg-gray-100">
+          <TabsList className="bg-gray-100 flex-wrap h-auto">
             <TabsTrigger value="proof">
               <ShieldCheck className="w-4 h-4 mr-2" />
               Proof Pass
@@ -139,6 +186,18 @@ export default function AdminWalletDashboard() {
             <TabsTrigger value="audit">
               <BookOpen className="w-4 h-4 mr-2" />
               Booking Audit
+            </TabsTrigger>
+            <TabsTrigger value="history">
+              <History className="w-4 h-4 mr-2" />
+              Reconciliation History
+            </TabsTrigger>
+            <TabsTrigger value="adjustments">
+              <SlidersHorizontal className="w-4 h-4 mr-2" />
+              Adjustments
+            </TabsTrigger>
+            <TabsTrigger value="export">
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
             </TabsTrigger>
           </TabsList>
 
@@ -366,6 +425,227 @@ export default function AdminWalletDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
+          {/* ── RECONCILIATION HISTORY ── */}
+          <TabsContent value="history" className="mt-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <History className="w-4 h-4" style={{ color: GOLD }} />
+                  Reconciliation &amp; Proof Pass Run History
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {reconHistLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500 py-4">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+                  </div>
+                ) : !reconHistory?.runs?.length ? (
+                  <p className="text-sm text-gray-500 py-4">No runs recorded yet.</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead className="text-xs">Time</TableHead>
+                        <TableHead className="text-xs">Type</TableHead>
+                        <TableHead className="text-xs">Status</TableHead>
+                        <TableHead className="text-xs">Verdict</TableHead>
+                        <TableHead className="text-xs text-right">Duration</TableHead>
+                        <TableHead className="text-xs text-right">Drifted</TableHead>
+                        <TableHead className="text-xs text-right">Healed</TableHead>
+                        <TableHead className="text-xs text-right">Failed</TableHead>
+                        <TableHead className="text-xs">Triggered By</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {reconHistory.runs.map((r: any) => (
+                        <TableRow key={r.runId}>
+                          <TableCell className="text-xs whitespace-nowrap">
+                            {new Date(r.startedAt ?? r.createdAt).toLocaleString("he-IL")}
+                          </TableCell>
+                          <TableCell className="text-xs capitalize">
+                            {(r.runType ?? "—").replace(/_/g, " ")}
+                          </TableCell>
+                          <TableCell className="text-xs capitalize">{r.status ?? "—"}</TableCell>
+                          <TableCell className="text-xs">
+                            {r.verdict ? <VerdictBadge verdict={r.verdict} /> : <span className="text-gray-400">—</span>}
+                          </TableCell>
+                          <TableCell className="text-xs text-right font-mono">
+                            {r.durationMs != null ? `${r.durationMs} ms` : "—"}
+                          </TableCell>
+                          <TableCell className="text-xs text-right">{r.drifted ?? 0}</TableCell>
+                          <TableCell className="text-xs text-right text-green-700 font-medium">{r.healed ?? 0}</TableCell>
+                          <TableCell className="text-xs text-right text-red-600">{r.failedCount ?? 0}</TableCell>
+                          <TableCell className="text-xs font-mono text-gray-500 max-w-[140px] truncate">
+                            {r.triggeredBy ?? "—"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+                {reconHistory?.total != null && (
+                  <p className="text-xs text-gray-400 mt-2">
+                    Showing {reconHistory.runs?.length ?? 0} of {reconHistory.total} runs.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── ADMIN ADJUSTMENTS ── */}
+          <TabsContent value="adjustments" className="mt-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4" style={{ color: GOLD }} />
+                  Admin / Reversal Ledger Adjustments
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">From</label>
+                    <Input type="date" value={adjFrom} onChange={e => setAdjFrom(e.target.value)} className="text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">To</label>
+                    <Input type="date" value={adjTo} onChange={e => setAdjTo(e.target.value)} className="text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">User ID</label>
+                    <Input placeholder="uid…" value={adjUserId} onChange={e => setAdjUserId(e.target.value)} className="text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Division</label>
+                    <Input placeholder="e.g. academy" value={adjDivision} onChange={e => setAdjDivision(e.target.value)} className="text-sm" />
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  className="text-white"
+                  style={{ background: GOLD }}
+                  onClick={() => setAdjApplied(true)}
+                >
+                  <Search className="w-4 h-4 mr-2" />
+                  Search Adjustments
+                </Button>
+
+                {adjLoading && (
+                  <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+                  </div>
+                )}
+
+                {adjApplied && !adjLoading && !adjData?.entries?.length && (
+                  <p className="text-sm text-gray-500">No adjustment entries found.</p>
+                )}
+
+                {adjData?.entries?.length > 0 && (
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-50">
+                          <TableHead className="text-xs">Time</TableHead>
+                          <TableHead className="text-xs">Event</TableHead>
+                          <TableHead className="text-xs">Division</TableHead>
+                          <TableHead className="text-xs">Bucket</TableHead>
+                          <TableHead className="text-xs text-right">Amount</TableHead>
+                          <TableHead className="text-xs">User ID</TableHead>
+                          <TableHead className="text-xs">Created By</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {adjData.entries.map((e: any, i: number) => (
+                          <TableRow key={i}>
+                            <TableCell className="text-xs whitespace-nowrap">
+                              {new Date(e.createdAt).toLocaleString("he-IL")}
+                            </TableCell>
+                            <TableCell className="text-xs capitalize">
+                              {(e.eventType ?? "—").replace(/_/g, " ")}
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              {DIVISION_LABELS[e.divisionCode] ?? e.divisionCode ?? "—"}
+                            </TableCell>
+                            <TableCell className="text-xs">{e.bucket ?? "—"}</TableCell>
+                            <TableCell className={`text-xs text-right font-mono font-medium ${e.direction === "credit" ? "text-green-700" : "text-red-600"}`}>
+                              {e.direction === "credit" ? "+" : "−"}{centsToILS(Number(e.amountCents ?? 0))}
+                            </TableCell>
+                            <TableCell className="text-xs font-mono text-gray-500 max-w-[120px] truncate">{e.userId ?? "—"}</TableCell>
+                            <TableCell className="text-xs font-mono text-gray-500 max-w-[120px] truncate">{e.createdBy ?? "—"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <p className="text-xs text-gray-400">
+                      Showing {adjData.entries.length} of {adjData.total} entries.
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── EXPORT CSV ── */}
+          <TabsContent value="export" className="mt-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Download className="w-4 h-4" style={{ color: GOLD }} />
+                  Export Ledger to CSV
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-gray-500">
+                  Download up to 50,000 wallet ledger rows as CSV (UTF-8 BOM, Excel-safe). All filters are optional.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">From Date</label>
+                    <Input type="date" value={expFrom} onChange={e => setExpFrom(e.target.value)} className="text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">To Date</label>
+                    <Input type="date" value={expTo} onChange={e => setExpTo(e.target.value)} className="text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Division Code</label>
+                    <Input placeholder="e.g. academy" value={expDivision} onChange={e => setExpDivision(e.target.value)} className="text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Event Type</label>
+                    <Input placeholder="e.g. admin_credit" value={expEventType} onChange={e => setExpEventType(e.target.value)} className="text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">User ID</label>
+                    <Input placeholder="uid…" value={expUserId} onChange={e => setExpUserId(e.target.value)} className="text-sm" />
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  className="text-white gap-2"
+                  style={{ background: GOLD }}
+                  onClick={() => {
+                    const url = buildExportUrl();
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `wallet-ledger-${new Date().toISOString().slice(0, 10)}.csv`;
+                    a.click();
+                  }}
+                >
+                  <Download className="w-4 h-4" />
+                  Download CSV
+                </Button>
+                <div className="rounded-md border border-gray-100 bg-gray-50 p-3">
+                  <p className="text-xs font-medium text-gray-700 mb-1">Export columns:</p>
+                  <p className="text-xs text-gray-500 font-mono">
+                    created_at, user_id, wallet_id, division_code, source_type, event_type,
+                    direction, amount_cents, currency, bucket, idempotency_key, booking_id, created_by, metadata_json
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
         </Tabs>
       </div>
     </div>
