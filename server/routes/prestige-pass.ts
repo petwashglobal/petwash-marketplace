@@ -12544,7 +12544,7 @@ router.get('/admin/wallet/approval-requests/:id', async (req: Request, res: Resp
   }
 });
 
-// ── 3.8B: Simulation to Policy Promotion ─────────────────────────────────────
+// ── 3.8B: Simulation to Policy Promotion (with 3.9B validation) ──────────────
 
 // POST /admin/wallet/policy-simulations/:id/promote
 router.post('/admin/wallet/policy-simulations/:id/promote', async (req: Request, res: Response) => {
@@ -12552,13 +12552,60 @@ router.post('/admin/wallet/policy-simulations/:id/promote', async (req: Request,
     const session = (req as any).session;
     if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
     const simId = parseInt(req.params.id, 10);
-    const { notes, divisionCode } = req.body;
+    const { notes, divisionCode, force } = req.body;
 
     // Fetch simulation
     const simRaw: any = await db.execute(sql`SELECT * FROM policy_simulations WHERE id = ${simId}`);
     const sim = (simRaw?.rows ?? simRaw)?.[0];
     if (!sim) return res.status(404).json({ error: 'Simulation not found' });
     if (sim.status !== 'completed') return res.status(409).json({ error: 'Only completed simulations can be promoted' });
+
+    // ── 3.9B: Run promotion safety validations ─────────────────────────────
+    const validations: Array<{ validationType: string; passed: boolean; detail: string }> = [];
+
+    // Check 1: risk score threshold (< 70 passes)
+    const riskScore = parseFloat(sim.risk_score ?? 0);
+    validations.push({
+      validationType: 'risk_threshold',
+      passed: riskScore < 70,
+      detail: `Risk score ${riskScore} — threshold 70. ${riskScore < 70 ? 'PASS' : 'FAIL — score too high'}`,
+    });
+
+    // Check 2: affected entities count < 50000
+    const affectedEntities = parseInt(sim.affected_entities ?? 0, 10);
+    validations.push({
+      validationType: 'value_limit',
+      passed: affectedEntities < 50000,
+      detail: `Affected entities ${affectedEntities} — limit 50000. ${affectedEntities < 50000 ? 'PASS' : 'FAIL — too many affected entities'}`,
+    });
+
+    // Check 3: anomaly delta — proposed value should not deviate > 200% from original
+    const originalNum = parseFloat(sim.original_value ?? sim.proposed_value);
+    const proposedNum = parseFloat(sim.proposed_value);
+    const anomalyDelta = originalNum > 0 ? Math.abs((proposedNum - originalNum) / originalNum) * 100 : 0;
+    validations.push({
+      validationType: 'anomaly_delta',
+      passed: anomalyDelta < 200,
+      detail: `Delta ${anomalyDelta.toFixed(1)}% from original — limit 200%. ${anomalyDelta < 200 ? 'PASS' : 'FAIL — change too large'}`,
+    });
+
+    // Persist validation records
+    for (const v of validations) {
+      await db.execute(sql`
+        INSERT INTO promotion_validations (simulation_id, validation_type, passed, detail)
+        VALUES (${simId}, ${v.validationType}, ${v.passed}, ${v.detail})
+      `);
+    }
+
+    const allPassed = validations.every(v => v.passed);
+    if (!allPassed && !force) {
+      return res.status(422).json({
+        error: 'Promotion blocked by safety validations',
+        validations,
+        hint: 'Pass force=true to override (finance_admin only)',
+      });
+    }
+    // ── end 3.9B ───────────────────────────────────────────────────────────
 
     // Snapshot current live value (rollback target)
     const currentRaw: any = await db.execute(sql`
@@ -12585,13 +12632,19 @@ router.post('/admin/wallet/policy-simulations/:id/promote', async (req: Request,
     // Mark simulation promoted
     await db.execute(sql`UPDATE policy_simulations SET status='promoted' WHERE id = ${simId}`);
 
+    // Record orchestration run
+    await db.execute(sql`
+      INSERT INTO orchestration_runs (run_type, entity_type, entity_id, status, completed_at, metadata)
+      VALUES ('policy_promotion', 'policy_simulation', ${String(simId)}, 'success', NOW(), ${JSON.stringify({ policyKey: sim.policy_key, forced: !!force })})
+    `);
+
     // Audit log
     await db.execute(sql`
       INSERT INTO finance_audit_log (event_type, entity_type, entity_id, actor_uid, payload)
-      VALUES ('policy_promoted_from_simulation', 'policy_rule', ${sim.policy_key}, ${session.user.uid}, ${JSON.stringify({ simId, proposedValue: sim.proposed_value, rollbackValue })})
+      VALUES ('policy_promoted_from_simulation', 'policy_rule', ${sim.policy_key}, ${session.user.uid}, ${JSON.stringify({ simId, proposedValue: sim.proposed_value, rollbackValue, validations })})
     `);
 
-    return res.json({ ok: true, promotion, policyKey: sim.policy_key, liveValue: sim.proposed_value, rollbackValue });
+    return res.json({ ok: true, promotion, policyKey: sim.policy_key, liveValue: sim.proposed_value, rollbackValue, validations });
   } catch (err: any) {
     return res.status(500).json({ error: 'Promotion failed', detail: err.message });
   }
@@ -12764,60 +12817,45 @@ const ALLOWED_ASSISTANT_ACTIONS = new Set([
 ]);
 
 // POST /admin/wallet/assistant/execute
+// ── 3.9D: Push to assistant_execution_queue instead of direct execution ───────
 router.post('/admin/wallet/assistant/execute', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
     if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
-    const { assistantContext, suggestedAction, targetEntityType, targetEntityId, actionParams } = req.body;
-    if (!suggestedAction) return res.status(400).json({ error: 'suggestedAction required' });
+    const { action, payload, reason, assistantContext, suggestedAction, targetEntityType, targetEntityId, actionParams } = req.body;
 
-    if (!ALLOWED_ASSISTANT_ACTIONS.has(suggestedAction)) {
-      return res.status(403).json({ error: `Action '${suggestedAction}' is not permitted via the assistant. Allowed: ${[...ALLOWED_ASSISTANT_ACTIONS].join(', ')}` });
+    // Accept both old-style (suggestedAction) and new-style (action) field names
+    const actionName = action ?? suggestedAction;
+    if (!actionName) return res.status(400).json({ error: 'action required' });
+
+    const allowed = new Set([...ALLOWED_ASSISTANT_ACTIONS]);
+    if (!allowed.has(actionName)) {
+      return res.status(403).json({ error: `Action '${actionName}' not permitted. Allowed: ${[...allowed].join(', ')}` });
     }
 
-    let resultJson: any = {};
-    let finalStatus = 'queued_for_approval';
+    const queuePayload = payload ?? { targetEntityType, targetEntityId, actionParams, assistantContext };
 
-    if (suggestedAction === 'create_approval_request') {
-      const arRaw: any = await db.execute(sql`
-        INSERT INTO approval_requests (entity_type, entity_id, requested_by_uid, context)
-        VALUES (${targetEntityType ?? 'unknown'}, ${targetEntityId ?? '0'}, ${session.user.uid}, ${JSON.stringify({ source: 'finance_assistant', params: actionParams ?? {} })})
-        RETURNING id
-      `);
-      const arId = (arRaw?.rows ?? arRaw)?.[0]?.id;
-      resultJson = { approvalRequestId: arId };
-      finalStatus = 'queued_for_approval';
-    } else if (suggestedAction === 'trigger_simulation') {
-      const simParams = actionParams ?? {};
-      const simRaw: any = await db.execute(sql`
-        INSERT INTO policy_simulations (simulated_by_uid, policy_key, proposed_value, simulation_context, outcome_summary, outcome_detail, status)
-        VALUES (${session.user.uid}, ${simParams.policyKey ?? 'unknown'}, ${simParams.proposedValue ?? '0'}, ${JSON.stringify({ source: 'assistant' })}, 'Queued from assistant', '{}', 'pending')
-        RETURNING id
-      `);
-      resultJson = { simulationId: (simRaw?.rows ?? simRaw)?.[0]?.id };
-      finalStatus = 'queued_for_approval';
-    } else if (suggestedAction === 'queue_archive_retrieval') {
-      resultJson = { queued: true, entityType: targetEntityType, entityId: targetEntityId };
-      finalStatus = 'queued_for_approval';
-    } else {
-      // open_dispute, request_refund_approval — route to approval queue
-      const arRaw: any = await db.execute(sql`
-        INSERT INTO approval_requests (entity_type, entity_id, requested_by_uid, context)
-        VALUES (${targetEntityType ?? 'unknown'}, ${targetEntityId ?? '0'}, ${session.user.uid}, ${JSON.stringify({ source: 'finance_assistant', action: suggestedAction, params: actionParams ?? {} })})
-        RETURNING id
-      `);
-      resultJson = { approvalRequestId: (arRaw?.rows ?? arRaw)?.[0]?.id, routedVia: 'approval_queue' };
-    }
-
-    // Log the action run
-    const runRaw: any = await db.execute(sql`
-      INSERT INTO assistant_action_runs (assistant_context, suggested_action, target_entity_type, target_entity_id, requested_by_uid, status, result_json)
-      VALUES (${assistantContext ?? 'general'}, ${suggestedAction}, ${targetEntityType ?? null}, ${targetEntityId ?? null}, ${session.user.uid}, ${finalStatus}, ${JSON.stringify(resultJson)})
+    // Push to queue — never execute directly
+    const qRaw: any = await db.execute(sql`
+      INSERT INTO assistant_execution_queue (action_type, payload, requested_by_uid, reason, status)
+      VALUES (${actionName}, ${JSON.stringify(queuePayload)}, ${session.user.uid}, ${reason ?? null}, 'queued')
       RETURNING *
     `);
-    const run = (runRaw?.rows ?? runRaw)?.[0];
+    const queueEntry = (qRaw?.rows ?? qRaw)?.[0];
 
-    return res.json({ ok: true, status: finalStatus, run, result: resultJson });
+    // Log in legacy action_runs table for continuity
+    await db.execute(sql`
+      INSERT INTO assistant_action_runs (assistant_context, suggested_action, target_entity_type, target_entity_id, requested_by_uid, status, result_json)
+      VALUES (${assistantContext ?? 'general'}, ${actionName}, ${targetEntityType ?? null}, ${targetEntityId ?? null}, ${session.user.uid}, 'queued', ${JSON.stringify({ queueId: queueEntry?.id })})
+    `);
+
+    // Record orchestration run
+    await db.execute(sql`
+      INSERT INTO orchestration_runs (run_type, entity_type, entity_id, status, metadata)
+      VALUES ('assistant_action', ${targetEntityType ?? 'unknown'}, ${String(targetEntityId ?? '')}, 'started', ${JSON.stringify({ queueId: queueEntry?.id, action: actionName })})
+    `);
+
+    return res.json({ ok: true, status: 'queued', queueEntry, message: 'Action queued — requires assignment and approval before execution' });
   } catch (err: any) {
     return res.status(500).json({ error: 'Assistant execute failed', detail: err.message });
   }
@@ -13082,6 +13120,475 @@ router.post('/admin/wallet/finance-assistant', async (req: Request, res: Respons
     return res.json({ ok: true, question: question ?? null, suggestions, generatedAt: new Date().toISOString() });
   } catch (err: any) {
     return res.status(500).json({ error: 'Finance assistant failed', detail: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PHASE 3.9 — ORCHESTRATION RESILIENCE & GOVERNANCE SCALE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── 3.9A: Orchestration Monitoring & Failure Recovery ─────────────────────────
+
+// GET /admin/wallet/orchestration-runs
+router.get('/admin/wallet/orchestration-runs', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { runType, status, from, to } = req.query as Record<string, string>;
+
+    let baseQuery = `SELECT * FROM orchestration_runs WHERE 1=1`;
+    const conditions: string[] = [];
+    if (runType) conditions.push(`run_type = '${runType.replace(/'/g, "''")}'`);
+    if (status) conditions.push(`status = '${status.replace(/'/g, "''")}'`);
+    if (from) conditions.push(`started_at >= '${from}'`);
+    if (to) conditions.push(`started_at <= '${to}'`);
+    if (conditions.length) baseQuery += ' AND ' + conditions.join(' AND ');
+    baseQuery += ' ORDER BY started_at DESC LIMIT 200';
+
+    const raw: any = await db.execute(sql.raw(baseQuery));
+    return res.json({ ok: true, runs: raw?.rows ?? raw });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch orchestration runs', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/orchestration-runs/:id/retry
+router.post('/admin/wallet/orchestration-runs/:id/retry', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const runId = parseInt(req.params.id, 10);
+
+    const raw: any = await db.execute(sql`SELECT * FROM orchestration_runs WHERE id = ${runId}`);
+    const run = (raw?.rows ?? raw)?.[0];
+    if (!run) return res.status(404).json({ error: 'Run not found' });
+    if (run.status !== 'failed') return res.status(409).json({ error: 'Only failed runs can be retried' });
+
+    const updated: any = await db.execute(sql`
+      UPDATE orchestration_runs
+      SET status='retrying', retry_count = retry_count + 1, error_message = NULL
+      WHERE id = ${runId}
+      RETURNING *
+    `);
+    const updatedRun = (updated?.rows ?? updated)?.[0];
+
+    // Audit
+    await db.execute(sql`
+      INSERT INTO finance_audit_log (event_type, entity_type, entity_id, actor_uid, payload)
+      VALUES ('orchestration_run_retried', ${run.entity_type ?? 'unknown'}, ${run.entity_id ?? ''}, ${session.user.uid}, ${JSON.stringify({ runId, runType: run.run_type })})
+    `);
+
+    return res.json({ ok: true, run: updatedRun });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Retry failed', detail: err.message });
+  }
+});
+
+// ── 3.9B: Promotion Validations (query endpoint) ──────────────────────────────
+
+// GET /admin/wallet/promotion-validations
+router.get('/admin/wallet/promotion-validations', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const simId = req.query.simulationId ? parseInt(req.query.simulationId as string, 10) : null;
+
+    const raw: any = simId
+      ? await db.execute(sql`SELECT * FROM promotion_validations WHERE simulation_id = ${simId} ORDER BY created_at DESC`)
+      : await db.execute(sql`SELECT * FROM promotion_validations ORDER BY created_at DESC LIMIT 200`);
+
+    return res.json({ ok: true, validations: raw?.rows ?? raw });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch validations', detail: err.message });
+  }
+});
+
+// ── 3.9C: Scenario Template Library ──────────────────────────────────────────
+
+// GET /admin/wallet/forecast-templates
+router.get('/admin/wallet/forecast-templates', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const raw: any = await db.execute(sql`
+      SELECT * FROM forecast_scenario_templates ORDER BY created_at DESC
+    `);
+    return res.json({ ok: true, templates: raw?.rows ?? raw });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch templates', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/forecast-templates
+router.post('/admin/wallet/forecast-templates', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { name, description, scenarioJson } = req.body;
+    if (!name || !scenarioJson) return res.status(400).json({ error: 'name and scenarioJson required' });
+
+    const raw: any = await db.execute(sql`
+      INSERT INTO forecast_scenario_templates (name, description, scenario_json, created_by_uid)
+      VALUES (${name}, ${description ?? ''}, ${JSON.stringify(scenarioJson)}, ${session.user.uid})
+      RETURNING *
+    `);
+    return res.json({ ok: true, template: (raw?.rows ?? raw)?.[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create template', detail: err.message });
+  }
+});
+
+// PATCH /admin/wallet/forecast-templates/:id
+router.patch('/admin/wallet/forecast-templates/:id', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const id = parseInt(req.params.id, 10);
+    const { enabled } = req.body;
+    const raw: any = await db.execute(sql`
+      UPDATE forecast_scenario_templates SET enabled = ${enabled} WHERE id = ${id} RETURNING *
+    `);
+    return res.json({ ok: true, template: (raw?.rows ?? raw)?.[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to patch template', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/forecast-templates/:id/apply
+router.post('/admin/wallet/forecast-templates/:id/apply', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const id = parseInt(req.params.id, 10);
+
+    const tplRaw: any = await db.execute(sql`SELECT * FROM forecast_scenario_templates WHERE id = ${id}`);
+    const tpl = (tplRaw?.rows ?? tplRaw)?.[0];
+    if (!tpl) return res.status(404).json({ error: 'Template not found' });
+    if (!tpl.enabled) return res.status(409).json({ error: 'Template is disabled' });
+
+    const sc = tpl.scenario_json as any;
+
+    // Create a NEW scenario from the template (does not mutate template)
+    const newScRaw: any = await db.execute(sql`
+      INSERT INTO forecast_scenarios (scenario_name, description, base_horizon_days, revenue_adjustment_pct, booking_volume_adjustment_pct, is_active)
+      VALUES (
+        ${`[TPL] ${tpl.name} — ${new Date().toISOString().slice(0, 10)}`},
+        ${`Applied from template #${id}: ${tpl.description}`},
+        ${sc.base_horizon_days ?? 30},
+        ${sc.revenue_adjustment_pct ?? 0},
+        ${sc.booking_volume_adjustment_pct ?? 0},
+        true
+      )
+      RETURNING *
+    `);
+    const newScenario = (newScRaw?.rows ?? newScRaw)?.[0];
+
+    return res.json({ ok: true, scenario: newScenario, appliedFromTemplate: id });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to apply template', detail: err.message });
+  }
+});
+
+// ── 3.9D: Assistant Execution Queue ──────────────────────────────────────────
+
+// GET /admin/wallet/assistant/queue
+router.get('/admin/wallet/assistant/queue', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const raw: any = await db.execute(sql`
+      SELECT * FROM assistant_execution_queue ORDER BY created_at DESC LIMIT 100
+    `);
+    return res.json({ ok: true, queue: raw?.rows ?? raw });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch queue', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/assistant/queue/:id/assign
+router.post('/admin/wallet/assistant/queue/:id/assign', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const id = parseInt(req.params.id, 10);
+    const { assignedToUid } = req.body;
+    if (!assignedToUid) return res.status(400).json({ error: 'assignedToUid required' });
+
+    const raw: any = await db.execute(sql`
+      UPDATE assistant_execution_queue
+      SET assigned_to_uid = ${assignedToUid}, status = 'in_progress', updated_at = NOW()
+      WHERE id = ${id} AND status = 'queued'
+      RETURNING *
+    `);
+    const entry = (raw?.rows ?? raw)?.[0];
+    if (!entry) return res.status(409).json({ error: 'Item not found or not in queued state' });
+    return res.json({ ok: true, entry });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Assign failed', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/assistant/queue/:id/approve
+router.post('/admin/wallet/assistant/queue/:id/approve', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const id = parseInt(req.params.id, 10);
+    const { decision } = req.body; // 'approve' | 'reject'
+    if (!['approve', 'reject'].includes(decision)) return res.status(400).json({ error: 'decision must be approve or reject' });
+
+    const newStatus = decision === 'approve' ? 'approved' : 'rejected';
+    const raw: any = await db.execute(sql`
+      UPDATE assistant_execution_queue
+      SET status = ${newStatus}, updated_at = NOW()
+      WHERE id = ${id} AND status IN ('queued', 'in_progress')
+      RETURNING *
+    `);
+    const entry = (raw?.rows ?? raw)?.[0];
+    if (!entry) return res.status(409).json({ error: 'Item not found or in non-approvable state' });
+
+    await db.execute(sql`
+      INSERT INTO finance_audit_log (event_type, entity_type, entity_id, actor_uid, payload)
+      VALUES ('assistant_queue_decision', 'assistant_queue', ${String(id)}, ${session.user.uid}, ${JSON.stringify({ decision, actionType: entry.action_type })})
+    `);
+    return res.json({ ok: true, entry });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Approve/reject failed', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/assistant/queue/:id/execute
+router.post('/admin/wallet/assistant/queue/:id/execute', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const id = parseInt(req.params.id, 10);
+
+    const raw: any = await db.execute(sql`SELECT * FROM assistant_execution_queue WHERE id = ${id}`);
+    const entry = (raw?.rows ?? raw)?.[0];
+    if (!entry) return res.status(404).json({ error: 'Queue entry not found' });
+    if (entry.status !== 'approved') return res.status(409).json({ error: 'Entry must be approved before execution' });
+
+    let resultJson: any = {};
+    const actionType: string = entry.action_type;
+    const payload: any = entry.payload ?? {};
+
+    if (actionType === 'create_approval_request') {
+      const arRaw: any = await db.execute(sql`
+        INSERT INTO approval_requests (entity_type, entity_id, requested_by_uid, context)
+        VALUES (${payload.targetEntityType ?? 'unknown'}, ${payload.targetEntityId ?? '0'}, ${session.user.uid}, ${JSON.stringify({ source: 'assistant_queue', queueId: id })})
+        RETURNING id
+      `);
+      resultJson = { approvalRequestId: (arRaw?.rows ?? arRaw)?.[0]?.id };
+    } else if (actionType === 'trigger_simulation') {
+      const simRaw: any = await db.execute(sql`
+        INSERT INTO policy_simulations (simulated_by_uid, policy_key, proposed_value, simulation_context, outcome_summary, outcome_detail, status)
+        VALUES (${session.user.uid}, ${payload.policyKey ?? 'unknown'}, ${payload.proposedValue ?? '0'}, ${JSON.stringify({ source: 'assistant_queue', queueId: id })}, 'Queued from assistant', '{}', 'pending')
+        RETURNING id
+      `);
+      resultJson = { simulationId: (simRaw?.rows ?? simRaw)?.[0]?.id };
+    } else {
+      resultJson = { queued: true, routedVia: 'assistant_queue', action: actionType };
+    }
+
+    // Mark executed
+    const updatedRaw: any = await db.execute(sql`
+      UPDATE assistant_execution_queue
+      SET status = 'executed', updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING *
+    `);
+
+    // Record orchestration run
+    await db.execute(sql`
+      INSERT INTO orchestration_runs (run_type, entity_type, entity_id, status, completed_at, metadata)
+      VALUES ('assistant_action', 'assistant_queue', ${String(id)}, 'success', NOW(), ${JSON.stringify({ action: actionType, result: resultJson })})
+    `);
+
+    return res.json({ ok: true, status: 'executed', entry: (updatedRaw?.rows ?? updatedRaw)?.[0], result: resultJson });
+  } catch (err: any) {
+    // Record failure
+    try {
+      await db.execute(sql`
+        INSERT INTO orchestration_runs (run_type, entity_type, entity_id, status, error_message, metadata)
+        VALUES ('assistant_action', 'assistant_queue', ${req.params.id}, 'failed', ${err.message}, '{}')
+      `);
+    } catch {}
+    return res.status(500).json({ error: 'Execution failed', detail: err.message });
+  }
+});
+
+// ── 3.9E: Governance Recipient Groups & Distribution Rules ────────────────────
+
+// GET /admin/wallet/governance/recipient-groups
+router.get('/admin/wallet/governance/recipient-groups', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const raw: any = await db.execute(sql`SELECT * FROM governance_recipient_groups ORDER BY created_at DESC`);
+    return res.json({ ok: true, groups: raw?.rows ?? raw });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch groups', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/governance/recipient-groups
+router.post('/admin/wallet/governance/recipient-groups', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { groupName, recipients } = req.body;
+    if (!groupName) return res.status(400).json({ error: 'groupName required' });
+
+    const raw: any = await db.execute(sql`
+      INSERT INTO governance_recipient_groups (group_name, recipients)
+      VALUES (${groupName}, ${JSON.stringify(Array.isArray(recipients) ? recipients : [])})
+      RETURNING *
+    `);
+    return res.json({ ok: true, group: (raw?.rows ?? raw)?.[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create group', detail: err.message });
+  }
+});
+
+// PATCH /admin/wallet/governance/recipient-groups/:id
+router.patch('/admin/wallet/governance/recipient-groups/:id', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const id = parseInt(req.params.id, 10);
+    const { groupName, recipients, enabled } = req.body;
+
+    let setClause = '';
+    const updates: string[] = [];
+    if (groupName !== undefined) updates.push(`group_name = '${String(groupName).replace(/'/g, "''")}'`);
+    if (recipients !== undefined) updates.push(`recipients = '${JSON.stringify(recipients)}'::jsonb`);
+    if (enabled !== undefined) updates.push(`enabled = ${Boolean(enabled)}`);
+    if (!updates.length) return res.status(400).json({ error: 'No fields to update' });
+    setClause = updates.join(', ');
+
+    const raw: any = await db.execute(sql.raw(`UPDATE governance_recipient_groups SET ${setClause} WHERE id = ${id} RETURNING *`));
+    return res.json({ ok: true, group: (raw?.rows ?? raw)?.[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update group', detail: err.message });
+  }
+});
+
+// GET /admin/wallet/governance/distribution-rules
+router.get('/admin/wallet/governance/distribution-rules', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const raw: any = await db.execute(sql`
+      SELECT dr.*, rg.group_name FROM governance_distribution_rules dr
+      LEFT JOIN governance_recipient_groups rg ON rg.id = dr.group_id
+      ORDER BY dr.id DESC
+    `);
+    return res.json({ ok: true, rules: raw?.rows ?? raw });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch rules', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/governance/distribution-rules
+router.post('/admin/wallet/governance/distribution-rules', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { packType, groupId, schedule } = req.body;
+    if (!packType || !groupId) return res.status(400).json({ error: 'packType and groupId required' });
+
+    const raw: any = await db.execute(sql`
+      INSERT INTO governance_distribution_rules (pack_type, group_id, schedule)
+      VALUES (${packType}, ${parseInt(groupId, 10)}, ${schedule ?? 'manual'})
+      RETURNING *
+    `);
+    return res.json({ ok: true, rule: (raw?.rows ?? raw)?.[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create rule', detail: err.message });
+  }
+});
+
+// PATCH /admin/wallet/governance/distribution-rules/:id
+router.patch('/admin/wallet/governance/distribution-rules/:id', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const id = parseInt(req.params.id, 10);
+    const { enabled, schedule } = req.body;
+    const raw: any = await db.execute(sql`
+      UPDATE governance_distribution_rules
+      SET enabled = COALESCE(${enabled ?? null}, enabled),
+          schedule = COALESCE(${schedule ?? null}, schedule)
+      WHERE id = ${id} RETURNING *
+    `);
+    return res.json({ ok: true, rule: (raw?.rows ?? raw)?.[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update rule', detail: err.message });
+  }
+});
+
+// ── 3.9G: Orchestration Audit Trace View ──────────────────────────────────────
+
+// GET /admin/wallet/orchestration-trace/:entityType/:entityId
+router.get('/admin/wallet/orchestration-trace/:entityType/:entityId', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { entityType, entityId } = req.params;
+
+    const [approvalRaw, auditRaw, orchRaw, assistantRaw, disputeRaw] = await Promise.all([
+      db.execute(sql`
+        SELECT ar.*, acs.step_name, acs.step_order
+        FROM approval_requests ar
+        LEFT JOIN approval_chain_steps acs ON acs.chain_id = ar.chain_id AND acs.step_order = ar.current_step_order
+        WHERE ar.entity_type = ${entityType} AND ar.entity_id::text = ${entityId}
+        ORDER BY ar.created_at DESC LIMIT 20
+      `),
+      db.execute(sql`
+        SELECT * FROM finance_audit_log
+        WHERE entity_type = ${entityType} AND entity_id = ${entityId}
+        ORDER BY created_at DESC LIMIT 50
+      `),
+      db.execute(sql`
+        SELECT * FROM orchestration_runs
+        WHERE entity_type = ${entityType} AND entity_id = ${entityId}
+        ORDER BY started_at DESC LIMIT 30
+      `),
+      db.execute(sql`
+        SELECT * FROM assistant_action_runs
+        WHERE target_entity_type = ${entityType} AND target_entity_id::text = ${entityId}
+        ORDER BY created_at DESC LIMIT 20
+      `),
+      db.execute(sql`
+        SELECT * FROM disputes
+        WHERE entity_type = ${entityType} AND entity_id::text = ${entityId}
+        ORDER BY created_at DESC LIMIT 10
+      `).catch(() => ({ rows: [] })),
+    ]);
+
+    const timeline: any[] = [
+      ...(approvalRaw?.rows ?? approvalRaw as any[]).map((r: any) => ({ ...r, _traceType: 'approval', _ts: r.created_at })),
+      ...(auditRaw?.rows ?? auditRaw as any[]).map((r: any) => ({ ...r, _traceType: 'audit', _ts: r.created_at })),
+      ...(orchRaw?.rows ?? orchRaw as any[]).map((r: any) => ({ ...r, _traceType: 'orchestration', _ts: r.started_at })),
+      ...(assistantRaw?.rows ?? assistantRaw as any[]).map((r: any) => ({ ...r, _traceType: 'assistant', _ts: r.created_at })),
+      ...((disputeRaw as any)?.rows ?? disputeRaw as any[]).map((r: any) => ({ ...r, _traceType: 'dispute', _ts: r.created_at })),
+    ].sort((a, b) => new Date(b._ts).getTime() - new Date(a._ts).getTime());
+
+    return res.json({
+      ok: true,
+      entityType,
+      entityId,
+      timeline,
+      summary: {
+        approvals: (approvalRaw?.rows ?? approvalRaw as any[]).length,
+        audits: (auditRaw?.rows ?? auditRaw as any[]).length,
+        orchestrationRuns: (orchRaw?.rows ?? orchRaw as any[]).length,
+        assistantActions: (assistantRaw?.rows ?? assistantRaw as any[]).length,
+      },
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Trace failed', detail: err.message });
   }
 });
 

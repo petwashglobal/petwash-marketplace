@@ -1497,6 +1497,110 @@ export default function AdminWalletDashboard() {
     onSuccess: () => { toast({ title: 'Entity updated' }); refetchFinanceEntities(); },
   });
 
+  // ── Phase 3.9A: Orchestration runs ─────────────────────────────────────────
+  const [orchRunType, setOrchRunType]       = useState('');
+  const [orchStatus, setOrchStatus]         = useState('');
+  const [orchFrom, setOrchFrom]             = useState('');
+  const [orchTo, setOrchTo]                 = useState('');
+  const orchRunsKey = ['/api/prestige-pass/admin/wallet/orchestration-runs', orchRunType, orchStatus, orchFrom, orchTo];
+  const { data: orchRunsData, isLoading: orchRunsLoading, refetch: refetchOrchRuns } = useQuery<any>({
+    queryKey: orchRunsKey,
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (orchRunType) p.set('runType', orchRunType);
+      if (orchStatus) p.set('status', orchStatus);
+      if (orchFrom) p.set('from', orchFrom);
+      if (orchTo) p.set('to', orchTo);
+      return fetch(`/api/prestige-pass/admin/wallet/orchestration-runs?${p}`, { credentials: 'include' }).then(r => r.json());
+    },
+  });
+  const { mutate: retryOrchRun, isPending: retryOrchRunPending } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest('POST', `/api/prestige-pass/admin/wallet/orchestration-runs/${id}/retry`, {}),
+    onSuccess: (d) => { toast({ title: `Retrying run — status: ${d.run?.status}` }); refetchOrchRuns(); },
+  });
+
+  // ── Phase 3.9B: Promotion validations ──────────────────────────────────────
+  const [validationSimId, setValidationSimId] = useState('');
+  const { data: promoValidationsData, isLoading: promoValidationsLoading, refetch: refetchPromoValidations } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/promotion-validations', validationSimId],
+    queryFn: () => fetch(`/api/prestige-pass/admin/wallet/promotion-validations${validationSimId ? `?simulationId=${validationSimId}` : ''}`, { credentials: 'include' }).then(r => r.json()),
+  });
+
+  // ── Phase 3.9C: Scenario templates ────────────────────────────────────────
+  const { data: scenarioTemplatesData, isLoading: scenarioTemplatesLoading, refetch: refetchScenarioTemplates } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/forecast-templates'],
+  });
+  const [showNewTemplateForm, setShowNewTemplateForm] = useState(false);
+  const [newTemplate, setNewTemplate] = useState({ name: '', description: '', scenarioJson: '{}' });
+  const { mutate: createTemplate, isPending: createTemplatePending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/forecast-templates', body),
+    onSuccess: () => { toast({ title: 'Template saved' }); refetchScenarioTemplates(); setShowNewTemplateForm(false); setNewTemplate({ name: '', description: '', scenarioJson: '{}' }); },
+  });
+  const { mutate: applyTemplate, isPending: applyTemplatePending } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest('POST', `/api/prestige-pass/admin/wallet/forecast-templates/${id}/apply`, {}),
+    onSuccess: (d) => { toast({ title: `Scenario created from template`, description: d.scenario?.scenario_name }); refetchForecastScenarios(); },
+  });
+  const { mutate: patchTemplate } = useMutation<any, any, { id: number; body: any }>({
+    mutationFn: ({ id, body }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/forecast-templates/${id}`, body),
+    onSuccess: () => { toast({ title: 'Template updated' }); refetchScenarioTemplates(); },
+  });
+
+  // ── Phase 3.9D: Assistant execution queue ─────────────────────────────────
+  const { data: assistantQueueData, isLoading: assistantQueueLoading, refetch: refetchAssistantQueue } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/assistant/queue'],
+  });
+  const { mutate: assignQueueItem, isPending: assignQueuePending } = useMutation<any, any, { id: number; assignedToUid: string }>({
+    mutationFn: ({ id, assignedToUid }) => apiRequest('POST', `/api/prestige-pass/admin/wallet/assistant/queue/${id}/assign`, { assignedToUid }),
+    onSuccess: () => { toast({ title: 'Assigned' }); refetchAssistantQueue(); },
+  });
+  const { mutate: decideQueueItem, isPending: decideQueuePending } = useMutation<any, any, { id: number; decision: string }>({
+    mutationFn: ({ id, decision }) => apiRequest('POST', `/api/prestige-pass/admin/wallet/assistant/queue/${id}/approve`, { decision }),
+    onSuccess: (d) => { toast({ title: `Decision: ${d.entry?.status}` }); refetchAssistantQueue(); },
+  });
+  const { mutate: executeQueueItem, isPending: executeQueuePending } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest('POST', `/api/prestige-pass/admin/wallet/assistant/queue/${id}/execute`, {}),
+    onSuccess: (d) => { toast({ title: `Executed: ${d.status}` }); refetchAssistantQueue(); refetchOrchRuns(); },
+  });
+
+  // ── Phase 3.9E: Governance recipient groups & distribution rules ───────────
+  const { data: recipientGroupsData, isLoading: recipientGroupsLoading, refetch: refetchRecipientGroups } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/governance/recipient-groups'],
+  });
+  const { data: distributionRulesData, isLoading: distRulesLoading, refetch: refetchDistRules } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/governance/distribution-rules'],
+  });
+  const [showNewGroupForm, setShowNewGroupForm] = useState(false);
+  const [newGroup, setNewGroup] = useState({ groupName: '', recipients: '' });
+  const { mutate: createGroup, isPending: createGroupPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/governance/recipient-groups', body),
+    onSuccess: () => { toast({ title: 'Group created' }); refetchRecipientGroups(); setShowNewGroupForm(false); setNewGroup({ groupName: '', recipients: '' }); },
+  });
+  const [showNewRuleForm, setShowNewRuleForm] = useState(false);
+  const [newDistRule, setNewDistRule] = useState({ packType: 'monthly', groupId: '', schedule: 'manual' });
+  const { mutate: createDistRule, isPending: createDistRulePending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/governance/distribution-rules', body),
+    onSuccess: () => { toast({ title: 'Rule created' }); refetchDistRules(); setShowNewRuleForm(false); setNewDistRule({ packType: 'monthly', groupId: '', schedule: 'manual' }); },
+  });
+  const { mutate: patchDistRule } = useMutation<any, any, { id: number; body: any }>({
+    mutationFn: ({ id, body }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/governance/distribution-rules/${id}`, body),
+    onSuccess: () => { toast({ title: 'Rule updated' }); refetchDistRules(); },
+  });
+
+  // ── Phase 3.9G: Orchestration trace ────────────────────────────────────────
+  const [traceEntityType, setTraceEntityType] = useState('booking');
+  const [traceEntityId, setTraceEntityId]     = useState('');
+  const [traceResult, setTraceResult]         = useState<any>(null);
+  const [traceFilter, setTraceFilter]         = useState('all');
+  const [traceLoading, setTraceLoading]       = useState(false);
+  const fetchTrace = async () => {
+    if (!traceEntityId) return;
+    setTraceLoading(true);
+    try {
+      const r = await fetch(`/api/prestige-pass/admin/wallet/orchestration-trace/${traceEntityType}/${traceEntityId}`, { credentials: 'include' });
+      setTraceResult(await r.json());
+    } finally { setTraceLoading(false); }
+  };
+
   // ── Phase 3.6 UI aliases & supplemental state ──────────────────────────────
   // 3.6A — weight form state for the UI card
   const [weightForm, setWeightForm] = useState({ signalKey: '', divisionCode: '', weight: '' });
@@ -1819,6 +1923,10 @@ export default function AdminWalletDashboard() {
             <TabsTrigger value="governance">
               <Building2 className="w-4 h-4 mr-2" />
               Governance
+            </TabsTrigger>
+            <TabsTrigger value="orchestration">
+              <Zap className="w-4 h-4 mr-2" />
+              Orchestration
             </TabsTrigger>
           </TabsList>
 
@@ -8141,6 +8249,108 @@ export default function AdminWalletDashboard() {
                 }
               </CardContent>
             </Card>
+            {/* 3.9B — PROMOTION VALIDATION SUMMARY */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-rose-600" /> Promotion Safety Validations
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">
+                  Every simulation runs 3 safety checks before promotion: risk threshold (&lt;70), affected entities (&lt;50k), and anomaly delta (&lt;200%). Failed checks block the promotion unless forced.
+                </div>
+                <div className="flex gap-2">
+                  <select value={validationSimId} onChange={e => { setValidationSimId(e.target.value); }} className="border rounded px-2 py-1 text-xs flex-1">
+                    <option value="">All simulations</option>
+                    {simHistory?.simulations?.map((s: any) => (
+                      <option key={s.id} value={String(s.id)}>#{s.id} — {s.policy_key}</option>
+                    ))}
+                  </select>
+                  <button onClick={() => refetchPromoValidations()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Refresh</button>
+                </div>
+                {promoValidationsLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                  !promoValidationsData?.validations?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No validation records yet — promote a simulation to generate them</div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {promoValidationsData.validations.slice(0, 30).map((v: any) => (
+                        <div key={v.id} className={`flex items-start gap-2 rounded p-2 text-xs border ${v.passed ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+                          <span className={`mt-0.5 shrink-0 ${v.passed ? 'text-green-600' : 'text-red-600'}`}>{v.passed ? <CheckCircle className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}</span>
+                          <div>
+                            <div className="font-mono font-semibold text-gray-700">{v.validation_type}</div>
+                            <div className="text-gray-600">{v.detail}</div>
+                            <div className="text-gray-400 mt-0.5">Sim #{v.simulation_id} · {new Date(v.created_at).toLocaleDateString('he-IL')}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 3.9C — SCENARIO TEMPLATE LIBRARY */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-indigo-600" /> Scenario Template Library
+                </CardTitle>
+                <button onClick={() => setShowNewTemplateForm(v => !v)} className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+                  {showNewTemplateForm ? 'Cancel' : '+ Save as Template'}
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 rounded p-2">
+                  Save any scenario configuration as a reusable template. Applying creates a new scenario without modifying the original.
+                </div>
+                {showNewTemplateForm && (
+                  <div className="border border-indigo-200 rounded p-3 bg-indigo-50 space-y-2">
+                    <input type="text" placeholder="Template name" value={newTemplate.name} onChange={e => setNewTemplate(v => ({ ...v, name: e.target.value }))} className="border rounded px-2 py-1 text-xs w-full" />
+                    <input type="text" placeholder="Description" value={newTemplate.description} onChange={e => setNewTemplate(v => ({ ...v, description: e.target.value }))} className="border rounded px-2 py-1 text-xs w-full" />
+                    <textarea rows={3} placeholder='{"base_horizon_days":30,"revenue_adjustment_pct":5,"booking_volume_adjustment_pct":0}' value={newTemplate.scenarioJson}
+                      onChange={e => setNewTemplate(v => ({ ...v, scenarioJson: e.target.value }))} className="border rounded px-2 py-1 text-xs w-full font-mono" />
+                    <button disabled={createTemplatePending || !newTemplate.name} onClick={() => {
+                      let parsed; try { parsed = JSON.parse(newTemplate.scenarioJson); } catch { toast({ title: 'Invalid JSON', variant: 'destructive' }); return; }
+                      createTemplate({ name: newTemplate.name, description: newTemplate.description, scenarioJson: parsed });
+                    }} className="text-xs px-3 py-1.5 bg-indigo-700 text-white rounded hover:bg-indigo-800 disabled:opacity-40 flex items-center gap-1">
+                      {createTemplatePending ? <Loader2 className="w-3 h-3 animate-spin" /> : <BookOpen className="w-3 h-3" />} Save Template
+                    </button>
+                  </div>
+                )}
+                {scenarioTemplatesLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                  !scenarioTemplatesData?.templates?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No templates yet — save a scenario configuration above</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {scenarioTemplatesData.templates.map((t: any) => (
+                        <div key={t.id} className={`border rounded-lg p-3 text-xs ${t.enabled ? '' : 'opacity-50'}`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="font-semibold text-gray-800">{t.name}</div>
+                              {t.description && <div className="text-gray-500 mt-0.5">{t.description}</div>}
+                              <div className="text-gray-400 mt-1 font-mono">
+                                Horizon: {(t.scenario_json as any)?.base_horizon_days ?? '?'}d · Rev: {(t.scenario_json as any)?.revenue_adjustment_pct ?? 0}% · Vol: {(t.scenario_json as any)?.booking_volume_adjustment_pct ?? 0}%
+                              </div>
+                            </div>
+                            <div className="flex flex-col gap-1 shrink-0">
+                              <button disabled={applyTemplatePending || !t.enabled} onClick={() => applyTemplate(t.id)}
+                                className="text-xs px-2 py-0.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-40 flex items-center gap-1">
+                                {applyTemplatePending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Target className="w-3 h-3" />} Apply
+                              </button>
+                              <button onClick={() => patchTemplate({ id: t.id, body: { enabled: !t.enabled } })}
+                                className={`text-xs px-2 py-0.5 border rounded ${t.enabled ? 'border-red-200 text-red-600' : 'border-green-200 text-green-600'}`}>
+                                {t.enabled ? 'Disable' : 'Enable'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -8517,6 +8727,326 @@ export default function AdminWalletDashboard() {
                     </div>
                   )
                 }
+              </CardContent>
+            </Card>
+
+            {/* 3.9D — ASSISTANT EXECUTION QUEUE */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <ListChecks className="w-4 h-4 text-amber-600" /> Assistant Execution Queue
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                  All assistant actions now flow through this queue. Items must be assigned → approved → executed. Nothing runs immediately.
+                </div>
+                {assistantQueueLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  !assistantQueueData?.queue?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">Queue is empty — submit an action above to enqueue it</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {assistantQueueData.queue.map((q: any) => (
+                        <div key={q.id} className="border rounded-lg p-3 text-xs">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-semibold text-gray-800">{q.action_type}</span>
+                                <span className={`px-1.5 py-0.5 rounded text-xs ${q.status === 'executed' ? 'bg-green-100 text-green-700' : q.status === 'approved' ? 'bg-blue-100 text-blue-700' : q.status === 'rejected' ? 'bg-red-100 text-red-700' : q.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>
+                                  {q.status}
+                                </span>
+                              </div>
+                              {q.reason && <div className="text-gray-500 mt-0.5">{q.reason}</div>}
+                              {q.assigned_to_uid && <div className="text-gray-400 mt-0.5">Assigned to: <span className="font-mono">{q.assigned_to_uid}</span></div>}
+                              <div className="text-gray-400 mt-0.5">{new Date(q.created_at).toLocaleString('he-IL')}</div>
+                            </div>
+                            <div className="flex flex-col gap-1 shrink-0">
+                              {q.status === 'queued' && (
+                                <button disabled={assignQueuePending} onClick={() => assignQueueItem({ id: q.id, assignedToUid: 'finance_admin' })}
+                                  className="text-xs px-2 py-0.5 border border-blue-300 text-blue-700 rounded hover:bg-blue-50 disabled:opacity-40">
+                                  Assign to me
+                                </button>
+                              )}
+                              {(q.status === 'queued' || q.status === 'in_progress') && (
+                                <div className="flex gap-1">
+                                  <button disabled={decideQueuePending} onClick={() => decideQueueItem({ id: q.id, decision: 'approve' })}
+                                    className="text-xs px-2 py-0.5 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-40">
+                                    Approve
+                                  </button>
+                                  <button disabled={decideQueuePending} onClick={() => decideQueueItem({ id: q.id, decision: 'reject' })}
+                                    className="text-xs px-2 py-0.5 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-40">
+                                    Reject
+                                  </button>
+                                </div>
+                              )}
+                              {q.status === 'approved' && (
+                                <button disabled={executeQueuePending} onClick={() => executeQueueItem(q.id)}
+                                  className="text-xs px-2 py-0.5 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-40 flex items-center gap-1">
+                                  {executeQueuePending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Execute
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 3.9E — RECIPIENT GROUPS */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Users className="w-4 h-4 text-purple-600" /> Governance Recipient Groups
+                </CardTitle>
+                <button onClick={() => setShowNewGroupForm(v => !v)} className="text-xs px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700">
+                  {showNewGroupForm ? 'Cancel' : '+ Add Group'}
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {showNewGroupForm && (
+                  <div className="border border-purple-200 rounded p-3 bg-purple-50 space-y-2">
+                    <input type="text" placeholder="Group name (e.g. Finance Board)" value={newGroup.groupName} onChange={e => setNewGroup(v => ({ ...v, groupName: e.target.value }))} className="border rounded px-2 py-1 text-xs w-full" />
+                    <input type="text" placeholder="Recipients (comma-sep emails)" value={newGroup.recipients} onChange={e => setNewGroup(v => ({ ...v, recipients: e.target.value }))} className="border rounded px-2 py-1 text-xs w-full" />
+                    <button disabled={createGroupPending || !newGroup.groupName} onClick={() => createGroup({ groupName: newGroup.groupName, recipients: newGroup.recipients.split(',').map(s => s.trim()).filter(Boolean) })}
+                      className="text-xs px-3 py-1.5 bg-purple-700 text-white rounded hover:bg-purple-800 disabled:opacity-40 flex items-center gap-1">
+                      {createGroupPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Users className="w-3 h-3" />} Create Group
+                    </button>
+                  </div>
+                )}
+                {recipientGroupsLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                  !recipientGroupsData?.groups?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No recipient groups yet</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {recipientGroupsData.groups.map((g: any) => (
+                        <div key={g.id} className="border rounded p-2 text-xs">
+                          <div className="font-semibold text-gray-800">{g.group_name}</div>
+                          <div className="text-gray-500 mt-0.5">{(g.recipients as string[]).join(', ') || 'No recipients'}</div>
+                          <div className={`mt-1 inline-block px-1.5 py-0.5 rounded ${g.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>{g.enabled ? 'Active' : 'Inactive'}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 3.9E — DISTRIBUTION RULES */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Send className="w-4 h-4 text-teal-600" /> Distribution Rules
+                </CardTitle>
+                <button onClick={() => setShowNewRuleForm(v => !v)} className="text-xs px-2 py-1 bg-teal-600 text-white rounded hover:bg-teal-700">
+                  {showNewRuleForm ? 'Cancel' : '+ Add Rule'}
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {showNewRuleForm && (
+                  <div className="border border-teal-200 rounded p-3 bg-teal-50 space-y-2">
+                    <select value={newDistRule.packType} onChange={e => setNewDistRule(v => ({ ...v, packType: e.target.value }))} className="border rounded px-2 py-1 text-xs w-full">
+                      <option value="monthly">Monthly Pack</option>
+                      <option value="quarterly">Quarterly Pack</option>
+                      <option value="annual">Annual Pack</option>
+                    </select>
+                    <select value={newDistRule.groupId} onChange={e => setNewDistRule(v => ({ ...v, groupId: e.target.value }))} className="border rounded px-2 py-1 text-xs w-full">
+                      <option value="">Select recipient group</option>
+                      {recipientGroupsData?.groups?.filter((g: any) => g.enabled).map((g: any) => (
+                        <option key={g.id} value={String(g.id)}>{g.group_name}</option>
+                      ))}
+                    </select>
+                    <select value={newDistRule.schedule} onChange={e => setNewDistRule(v => ({ ...v, schedule: e.target.value }))} className="border rounded px-2 py-1 text-xs w-full">
+                      <option value="manual">Manual</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                    <button disabled={createDistRulePending || !newDistRule.groupId} onClick={() => createDistRule({ packType: newDistRule.packType, groupId: parseInt(newDistRule.groupId, 10), schedule: newDistRule.schedule })}
+                      className="text-xs px-3 py-1.5 bg-teal-700 text-white rounded hover:bg-teal-800 disabled:opacity-40 flex items-center gap-1">
+                      {createDistRulePending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} Create Rule
+                    </button>
+                  </div>
+                )}
+                {distRulesLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                  !distributionRulesData?.rules?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No distribution rules yet</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Pack</th><th className="text-left p-2">Group</th><th className="text-left p-2">Schedule</th><th className="text-left p-2">Status</th></tr>
+                      </thead><tbody>
+                        {distributionRulesData.rules.map((r: any) => (
+                          <tr key={r.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 capitalize text-gray-700">{r.pack_type}</td>
+                            <td className="p-2 text-gray-700">{r.group_name}</td>
+                            <td className="p-2 capitalize text-gray-500">{r.schedule}</td>
+                            <td className="p-2">
+                              <button onClick={() => patchDistRule({ id: r.id, body: { enabled: !r.enabled } })}
+                                className={`text-xs px-1.5 py-0.5 border rounded ${r.enabled ? 'border-green-200 text-green-700' : 'border-red-200 text-red-500'}`}>
+                                {r.enabled ? 'Active' : 'Paused'}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* 3.9A + 3.9G — ORCHESTRATION TAB                              */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          <TabsContent value="orchestration" className="mt-4 space-y-4">
+
+            {/* 3.9A — RUN MONITOR */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-gray-700" /> Orchestration Run Monitor
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-gray-600 bg-gray-50 border rounded p-2">
+                  Every automated execution — approvals, promotions, assistant actions, replays — produces a run record. Failed runs are retryable.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <select value={orchRunType} onChange={e => setOrchRunType(e.target.value)} className="border rounded px-2 py-1 text-xs">
+                    <option value="">All types</option>
+                    <option value="payout_release">payout_release</option>
+                    <option value="replay">replay</option>
+                    <option value="refund">refund</option>
+                    <option value="assistant_action">assistant_action</option>
+                    <option value="policy_promotion">policy_promotion</option>
+                  </select>
+                  <select value={orchStatus} onChange={e => setOrchStatus(e.target.value)} className="border rounded px-2 py-1 text-xs">
+                    <option value="">All statuses</option>
+                    <option value="started">started</option>
+                    <option value="success">success</option>
+                    <option value="failed">failed</option>
+                    <option value="retrying">retrying</option>
+                  </select>
+                  <input type="date" value={orchFrom} onChange={e => setOrchFrom(e.target.value)} className="border rounded px-2 py-1 text-xs" />
+                  <input type="date" value={orchTo} onChange={e => setOrchTo(e.target.value)} className="border rounded px-2 py-1 text-xs" />
+                  <button onClick={() => refetchOrchRuns()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                </div>
+                {orchRunsLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                  !orchRunsData?.runs?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-6 border border-dashed rounded">No orchestration runs yet</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Type</th><th className="text-left p-2">Entity</th><th className="text-left p-2">Status</th><th className="text-left p-2">Retries</th><th className="text-left p-2">Started</th><th className="text-left p-2">Error</th><th className="text-left p-2">Actions</th></tr>
+                      </thead><tbody>
+                        {orchRunsData.runs.map((r: any) => (
+                          <tr key={r.id} className="border-t hover:bg-gray-50 align-top">
+                            <td className="p-2 font-mono text-gray-700">{r.run_type}</td>
+                            <td className="p-2 text-gray-500">{r.entity_type} {r.entity_id ? `#${r.entity_id}` : ''}</td>
+                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded ${r.status === 'success' ? 'bg-green-100 text-green-700' : r.status === 'failed' ? 'bg-red-100 text-red-700' : r.status === 'retrying' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>{r.status}</span></td>
+                            <td className="p-2 font-mono text-center text-gray-500">{r.retry_count}</td>
+                            <td className="p-2 text-gray-400">{new Date(r.started_at).toLocaleString('he-IL')}</td>
+                            <td className="p-2 text-red-500 max-w-[160px] truncate" title={r.error_message ?? ''}>{r.error_message ?? '—'}</td>
+                            <td className="p-2">
+                              {r.status === 'failed' && (
+                                <button disabled={retryOrchRunPending} onClick={() => retryOrchRun(r.id)}
+                                  className="text-xs px-2 py-0.5 border border-orange-300 text-orange-700 rounded hover:bg-orange-50 disabled:opacity-40 flex items-center gap-1">
+                                  {retryOrchRunPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />} Retry
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 3.9G — TRACE VIEWER */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <GitMerge className="w-4 h-4 text-blue-600" /> Orchestration Trace Viewer
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded p-2">
+                  Enter any entity type + ID to see its full lifecycle: approvals, audit log, assistant actions, orchestration runs, and disputes — ordered chronologically.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <select value={traceEntityType} onChange={e => setTraceEntityType(e.target.value)} className="border rounded px-2 py-1 text-xs">
+                    <option value="booking">booking</option>
+                    <option value="trainer_booking">trainer_booking</option>
+                    <option value="user">user</option>
+                    <option value="provider">provider</option>
+                    <option value="payout_batch">payout_batch</option>
+                    <option value="dispute">dispute</option>
+                    <option value="wallet">wallet</option>
+                    <option value="policy_simulation">policy_simulation</option>
+                    <option value="assistant_queue">assistant_queue</option>
+                  </select>
+                  <input type="text" placeholder="Entity ID" value={traceEntityId} onChange={e => setTraceEntityId(e.target.value)} className="border rounded px-2 py-1 text-xs w-32" />
+                  <button disabled={traceLoading || !traceEntityId} onClick={fetchTrace}
+                    className="text-xs px-3 py-1.5 bg-blue-700 text-white rounded hover:bg-blue-800 disabled:opacity-40 flex items-center gap-1">
+                    {traceLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <GitMerge className="w-3 h-3" />} Trace
+                  </button>
+                  {traceResult && (
+                    <div className="flex gap-2 items-center ml-auto">
+                      <span className="text-xs text-gray-500">Filter:</span>
+                      {['all', 'approval', 'audit', 'orchestration', 'assistant', 'dispute'].map(f => (
+                        <button key={f} onClick={() => setTraceFilter(f)}
+                          className={`text-xs px-2 py-0.5 rounded border ${traceFilter === f ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>{f}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {traceResult && (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-3 text-xs text-gray-500 border-b pb-2">
+                      <span>Approvals: <span className="font-mono font-semibold">{traceResult.summary?.approvals}</span></span>
+                      <span>Audit entries: <span className="font-mono font-semibold">{traceResult.summary?.audits}</span></span>
+                      <span>Orch runs: <span className="font-mono font-semibold">{traceResult.summary?.orchestrationRuns}</span></span>
+                      <span>Assistant actions: <span className="font-mono font-semibold">{traceResult.summary?.assistantActions}</span></span>
+                    </div>
+                    {(traceResult.timeline ?? [])
+                      .filter((e: any) => traceFilter === 'all' || e._traceType === traceFilter)
+                      .slice(0, 60)
+                      .map((e: any, i: number) => (
+                        <div key={i} className={`border-l-4 pl-3 py-1 text-xs ${e._traceType === 'approval' ? 'border-blue-400' : e._traceType === 'audit' ? 'border-gray-400' : e._traceType === 'orchestration' ? 'border-amber-400' : e._traceType === 'assistant' ? 'border-purple-400' : 'border-red-400'}`}>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`px-1.5 py-0.5 rounded text-xs ${e._traceType === 'approval' ? 'bg-blue-100 text-blue-700' : e._traceType === 'audit' ? 'bg-gray-100 text-gray-600' : e._traceType === 'orchestration' ? 'bg-amber-100 text-amber-700' : e._traceType === 'assistant' ? 'bg-purple-100 text-purple-700' : 'bg-red-100 text-red-700'}`}>
+                              {e._traceType}
+                            </span>
+                            <span className="font-semibold text-gray-800">
+                              {e.event_type ?? e.run_type ?? e.suggested_action ?? e.action_type ?? e.entity_type ?? '—'}
+                            </span>
+                            <span className="text-gray-400 ml-auto">{e._ts ? new Date(e._ts).toLocaleString('he-IL') : ''}</span>
+                          </div>
+                          {(e.status || e.error_message) && (
+                            <div className="mt-0.5 text-gray-500">
+                              {e.status && <span className="mr-2">Status: <span className="font-mono">{e.status}</span></span>}
+                              {e.error_message && <span className="text-red-500">{e.error_message}</span>}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    }
+                    {(traceResult.timeline ?? []).filter((e: any) => traceFilter === 'all' || e._traceType === traceFilter).length === 0 && (
+                      <div className="text-xs text-gray-400 text-center py-4">No events for this filter</div>
+                    )}
+                  </div>
+                )}
+                {!traceResult && !traceLoading && (
+                  <div className="text-xs text-gray-400 text-center py-6 border border-dashed rounded">Enter an entity type and ID, then click Trace</div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
