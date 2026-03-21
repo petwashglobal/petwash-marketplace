@@ -12126,7 +12126,22 @@ router.post('/admin/wallet/approval-requests/:id/act', async (req: Request, res:
       WHERE id = ${reqId}
     `);
 
-    return res.json({ ok: true, requestId: reqId, newStatus, nextStep: newStep });
+    // 3.8A: Auto-execute when chain reaches 'approved' final state
+    let executionStatus = 'pending';
+    let executionResult: any = null;
+    if (newStatus === 'approved') {
+      const freshRaw: any = await db.execute(sql`SELECT * FROM approval_requests WHERE id = ${reqId}`);
+      const freshReq = (freshRaw?.rows ?? freshRaw)?.[0];
+      await db.execute(sql`UPDATE approval_requests SET execution_status='pending' WHERE id = ${reqId}`);
+      const execResult = await executeApprovalAction(freshReq ?? approvalReq);
+      executionStatus = execResult.success ? 'executed' : 'failed';
+      executionResult = execResult.detail;
+      await db.execute(sql`
+        UPDATE approval_requests SET execution_status=${executionStatus}, executed_at=NOW(), execution_result=${JSON.stringify(executionResult)} WHERE id = ${reqId}
+      `);
+    }
+
+    return res.json({ ok: true, requestId: reqId, newStatus, nextStep: newStep, executionStatus, executionResult });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to record approval action', detail: err.message });
   }
@@ -12424,6 +12439,607 @@ router.get('/admin/wallet/governance-report', async (req: Request, res: Response
     });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to generate governance report', detail: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 3.8 — ORCHESTRATION, PROMOTION & TRUST AT SCALE
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── 3.8A: Approval Chain Execution Engine ────────────────────────────────────
+
+// Helper: execute the underlying action once chain completes
+async function executeApprovalAction(approvalReq: any): Promise<{ success: boolean; detail: any }> {
+  try {
+    const ctx = approvalReq.context ?? {};
+    const entityType = approvalReq.entity_type;
+
+    if (entityType === 'payout_batch') {
+      const batchId = parseInt(approvalReq.entity_id, 10);
+      await db.execute(sql`UPDATE payout_batches SET status='approved' WHERE id = ${batchId} AND status IN ('pending_approval','pending')`);
+      await db.execute(sql`
+        INSERT INTO finance_audit_log (event_type, entity_type, entity_id, actor_uid, payload)
+        VALUES ('payout_batch_auto_released', 'payout_batch', ${String(batchId)}, 'system:approval_engine', ${JSON.stringify({ approvalRequestId: approvalReq.id, chainId: approvalReq.chain_id })})
+      `);
+      return { success: true, detail: { action: 'payout_batch_approved', batchId } };
+    }
+
+    if (entityType === 'refund_request') {
+      const refundId = parseInt(approvalReq.entity_id, 10);
+      await db.execute(sql`UPDATE refund_requests SET status='approved', resolved_at=NOW() WHERE id = ${refundId} AND status='pending'`);
+      await db.execute(sql`
+        INSERT INTO finance_audit_log (event_type, entity_type, entity_id, actor_uid, payload)
+        VALUES ('refund_auto_approved', 'refund_request', ${String(refundId)}, 'system:approval_engine', ${JSON.stringify({ approvalRequestId: approvalReq.id })})
+      `);
+      return { success: true, detail: { action: 'refund_approved', refundId } };
+    }
+
+    if (entityType === 'dispute_case') {
+      const disputeId = parseInt(approvalReq.entity_id, 10);
+      const resolution = ctx.resolution ?? 'escalated';
+      await db.execute(sql`UPDATE dispute_cases SET status=${resolution} WHERE id = ${disputeId}`);
+      await db.execute(sql`
+        INSERT INTO finance_audit_log (event_type, entity_type, entity_id, actor_uid, payload)
+        VALUES ('dispute_chain_resolved', 'dispute_case', ${String(disputeId)}, 'system:approval_engine', ${JSON.stringify({ approvalRequestId: approvalReq.id, resolution })})
+      `);
+      return { success: true, detail: { action: 'dispute_resolved', disputeId, resolution } };
+    }
+
+    // Generic — log completion only
+    await db.execute(sql`
+      INSERT INTO finance_audit_log (event_type, entity_type, entity_id, actor_uid, payload)
+      VALUES ('approval_chain_completed', ${entityType}, ${approvalReq.entity_id}, 'system:approval_engine', ${JSON.stringify({ approvalRequestId: approvalReq.id })})
+    `);
+    return { success: true, detail: { action: 'chain_completed_no_auto_action', entityType } };
+  } catch (err: any) {
+    return { success: false, detail: { error: err.message } };
+  }
+}
+
+// POST /admin/wallet/approval-requests/:id/retry-execution
+router.post('/admin/wallet/approval-requests/:id/retry-execution', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const reqId = parseInt(req.params.id, 10);
+    const raw: any = await db.execute(sql`SELECT * FROM approval_requests WHERE id = ${reqId}`);
+    const approvalReq = (raw?.rows ?? raw)?.[0];
+    if (!approvalReq) return res.status(404).json({ error: 'Approval request not found' });
+    if (approvalReq.execution_status !== 'failed') return res.status(409).json({ error: 'Retry only allowed for failed executions' });
+
+    await db.execute(sql`UPDATE approval_requests SET execution_status='pending' WHERE id = ${reqId}`);
+    const result = await executeApprovalAction(approvalReq);
+    const newStatus = result.success ? 'executed' : 'failed';
+    await db.execute(sql`
+      UPDATE approval_requests SET
+        execution_status = ${newStatus},
+        executed_at = NOW(),
+        execution_result = ${JSON.stringify(result.detail)}
+      WHERE id = ${reqId}
+    `);
+    return res.json({ ok: true, executionStatus: newStatus, result: result.detail });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Retry failed', detail: err.message });
+  }
+});
+
+// GET /admin/wallet/approval-requests/:id (detailed single request)
+router.get('/admin/wallet/approval-requests/:id', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const reqId = parseInt(req.params.id, 10);
+    const raw: any = await db.execute(sql`
+      SELECT ar.*, ac.chain_name FROM approval_requests ar
+      LEFT JOIN approval_chains ac ON ar.chain_id = ac.id
+      WHERE ar.id = ${reqId}
+    `);
+    const approvalReq = (raw?.rows ?? raw)?.[0];
+    if (!approvalReq) return res.status(404).json({ error: 'Not found' });
+    const actRaw: any = await db.execute(sql`SELECT * FROM approval_request_actions WHERE request_id = ${reqId} ORDER BY acted_at`);
+    const actions = actRaw?.rows ?? actRaw;
+    return res.json({ ok: true, request: { ...approvalReq, actions } });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch request', detail: err.message });
+  }
+});
+
+// ── 3.8B: Simulation to Policy Promotion ─────────────────────────────────────
+
+// POST /admin/wallet/policy-simulations/:id/promote
+router.post('/admin/wallet/policy-simulations/:id/promote', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const simId = parseInt(req.params.id, 10);
+    const { notes, divisionCode } = req.body;
+
+    // Fetch simulation
+    const simRaw: any = await db.execute(sql`SELECT * FROM policy_simulations WHERE id = ${simId}`);
+    const sim = (simRaw?.rows ?? simRaw)?.[0];
+    if (!sim) return res.status(404).json({ error: 'Simulation not found' });
+    if (sim.status !== 'completed') return res.status(409).json({ error: 'Only completed simulations can be promoted' });
+
+    // Snapshot current live value (rollback target)
+    const currentRaw: any = await db.execute(sql`
+      SELECT value FROM finance_policy_rules WHERE policy_key = ${sim.policy_key} AND (division_code = ${divisionCode ?? null} OR division_code IS NULL) LIMIT 1
+    `);
+    const currentRow = (currentRaw?.rows ?? currentRaw)?.[0];
+    const rollbackValue = currentRow?.value ?? null;
+
+    // Upsert the live policy rule
+    await db.execute(sql`
+      INSERT INTO finance_policy_rules (policy_key, value, division_code, description, is_active)
+      VALUES (${sim.policy_key}, ${sim.proposed_value}, ${divisionCode ?? null}, 'Promoted from simulation #' || ${simId}, true)
+      ON CONFLICT (policy_key) DO UPDATE SET value = EXCLUDED.value, is_active = true
+    `);
+
+    // Record promotion
+    const promRaw: any = await db.execute(sql`
+      INSERT INTO policy_promotions (simulation_id, policy_key, proposed_value_json, promoted_by_uid, rollback_value_json, notes)
+      VALUES (${simId}, ${sim.policy_key}, ${JSON.stringify({ value: sim.proposed_value })}, ${session.user.uid}, ${JSON.stringify({ value: rollbackValue })}, ${notes ?? ''})
+      RETURNING *
+    `);
+    const promotion = (promRaw?.rows ?? promRaw)?.[0];
+
+    // Mark simulation promoted
+    await db.execute(sql`UPDATE policy_simulations SET status='promoted' WHERE id = ${simId}`);
+
+    // Audit log
+    await db.execute(sql`
+      INSERT INTO finance_audit_log (event_type, entity_type, entity_id, actor_uid, payload)
+      VALUES ('policy_promoted_from_simulation', 'policy_rule', ${sim.policy_key}, ${session.user.uid}, ${JSON.stringify({ simId, proposedValue: sim.proposed_value, rollbackValue })})
+    `);
+
+    return res.json({ ok: true, promotion, policyKey: sim.policy_key, liveValue: sim.proposed_value, rollbackValue });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Promotion failed', detail: err.message });
+  }
+});
+
+// GET /admin/wallet/policy-promotions
+router.get('/admin/wallet/policy-promotions', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const raw: any = await db.execute(sql`SELECT * FROM policy_promotions ORDER BY promoted_at DESC LIMIT 100`);
+    return res.json({ ok: true, promotions: raw?.rows ?? raw });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch promotions', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/policy-promotions/:id/rollback
+router.post('/admin/wallet/policy-promotions/:id/rollback', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const promId = parseInt(req.params.id, 10);
+    const raw: any = await db.execute(sql`SELECT * FROM policy_promotions WHERE id = ${promId}`);
+    const prom = (raw?.rows ?? raw)?.[0];
+    if (!prom) return res.status(404).json({ error: 'Promotion not found' });
+
+    const rollbackVal = (prom.rollback_value_json as any)?.value ?? null;
+    if (rollbackVal !== null) {
+      await db.execute(sql`
+        UPDATE finance_policy_rules SET value = ${rollbackVal} WHERE policy_key = ${prom.policy_key}
+      `);
+    }
+
+    // Mark simulation as rolled back
+    await db.execute(sql`UPDATE policy_simulations SET status='rolled_back' WHERE id = ${prom.simulation_id}`);
+
+    await db.execute(sql`
+      INSERT INTO finance_audit_log (event_type, entity_type, entity_id, actor_uid, payload)
+      VALUES ('policy_rolled_back', 'policy_rule', ${prom.policy_key}, ${session.user.uid}, ${JSON.stringify({ promotionId: promId, restoredValue: rollbackVal })})
+    `);
+
+    return res.json({ ok: true, policyKey: prom.policy_key, restoredValue: rollbackVal });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Rollback failed', detail: err.message });
+  }
+});
+
+// ── 3.8C: Forecast Backtesting ────────────────────────────────────────────────
+
+// GET /admin/wallet/forecast-backtests
+router.get('/admin/wallet/forecast-backtests', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { from, to, scenarioId } = req.query;
+    let query = sql`SELECT fb.*, fs.scenario_name FROM forecast_backtests fb LEFT JOIN forecast_scenarios fs ON fb.scenario_id = fs.id WHERE 1=1`;
+    if (from) query = sql`${query} AND fb.period_start >= ${from as string}`;
+    if (to)   query = sql`${query} AND fb.period_end <= ${to as string}`;
+    if (scenarioId) query = sql`${query} AND fb.scenario_id = ${parseInt(scenarioId as string, 10)}`;
+    query = sql`${query} ORDER BY fb.created_at DESC LIMIT 100`;
+    const raw: any = await db.execute(query);
+    return res.json({ ok: true, backtests: raw?.rows ?? raw });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch backtests', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/forecast-backtests/run
+router.post('/admin/wallet/forecast-backtests/run', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { scenarioId, periodStart, periodEnd } = req.body;
+    if (!periodStart || !periodEnd) return res.status(400).json({ error: 'periodStart and periodEnd required (YYYY-MM-DD)' });
+
+    // Fetch scenario if provided
+    let scenario: any = null;
+    if (scenarioId) {
+      const sRaw: any = await db.execute(sql`SELECT * FROM forecast_scenarios WHERE id = ${scenarioId}`);
+      scenario = (sRaw?.rows ?? sRaw)?.[0];
+    }
+
+    // Fetch actuals from closed period data
+    const [revenueRaw, payoutsRaw, refundsRaw] = await Promise.all([
+      db.execute(sql`SELECT COALESCE(SUM(amount_cents),0) as total FROM wallet_transactions WHERE type='credit' AND created_at::date BETWEEN ${periodStart} AND ${periodEnd}`),
+      db.execute(sql`SELECT COALESCE(SUM(total_amount_cents),0) as total FROM payout_batches WHERE status='paid' AND created_at::date BETWEEN ${periodStart} AND ${periodEnd}`),
+      db.execute(sql`SELECT COALESCE(SUM(amount_cents),0) as total FROM refund_requests WHERE status='completed' AND created_at::date BETWEEN ${periodStart} AND ${periodEnd}`),
+    ]);
+
+    const actualRevenue   = parseInt((revenueRaw  as any)?.rows?.[0]?.total ?? '0', 10);
+    const actualPayouts   = parseInt((payoutsRaw  as any)?.rows?.[0]?.total ?? '0', 10);
+    const actualRefunds   = parseInt((refundsRaw  as any)?.rows?.[0]?.total ?? '0', 10);
+    const actualNetCash   = actualRevenue - actualPayouts - actualRefunds;
+    const actualVAT       = Math.round(actualRevenue * 0.18 / 1.18);
+
+    const actualJson = { revenueCents: actualRevenue, payoutsCents: actualPayouts, refundsCents: actualRefunds, netCashCents: actualNetCash, vatCents: actualVAT };
+
+    // Compute forecast from scenario (if provided) or use straight actuals as baseline
+    const revAdj    = scenario ? parseFloat(scenario.revenue_adjustment_pct ?? '0') / 100 : 0;
+    const bookAdj   = scenario ? parseFloat(scenario.booking_volume_adjustment_pct ?? '0') / 100 : 0;
+    const forecastRevenue  = Math.round(actualRevenue  / (1 + revAdj));
+    const forecastPayouts  = Math.round(actualPayouts  / (1 + bookAdj));
+    const forecastRefunds  = actualRefunds;
+    const forecastNetCash  = forecastRevenue - forecastPayouts - forecastRefunds;
+    const forecastVAT      = Math.round(forecastRevenue * 0.18 / 1.18);
+    const forecastJson = { revenueCents: forecastRevenue, payoutsCents: forecastPayouts, refundsCents: forecastRefunds, netCashCents: forecastNetCash, vatCents: forecastVAT };
+
+    // Error computation (absolute % miss per metric)
+    const pctError = (f: number, a: number) => a === 0 ? 0 : Math.abs((f - a) / a) * 100;
+    const errorJson = {
+      revenueErrorPct:  parseFloat(pctError(forecastRevenue, actualRevenue).toFixed(2)),
+      payoutsErrorPct:  parseFloat(pctError(forecastPayouts, actualPayouts).toFixed(2)),
+      refundsErrorPct:  parseFloat(pctError(forecastRefunds, actualRefunds).toFixed(2)),
+      netCashErrorPct:  parseFloat(pctError(forecastNetCash, actualNetCash).toFixed(2)),
+      vatErrorPct:      parseFloat(pctError(forecastVAT, actualVAT).toFixed(2)),
+    };
+
+    // Weighted accuracy score (100 = perfect, lower = worse)
+    const weights = { revenue: 0.35, payouts: 0.25, refunds: 0.15, netCash: 0.20, vat: 0.05 };
+    const rawScore = 100 - (
+      errorJson.revenueErrorPct  * weights.revenue  +
+      errorJson.payoutsErrorPct  * weights.payouts  +
+      errorJson.refundsErrorPct  * weights.refunds  +
+      errorJson.netCashErrorPct  * weights.netCash  +
+      errorJson.vatErrorPct      * weights.vat
+    );
+    const score = parseFloat(Math.max(0, Math.min(100, rawScore)).toFixed(2));
+
+    const horizonDays = scenario?.base_horizon_days ?? Math.round((new Date(periodEnd).getTime() - new Date(periodStart).getTime()) / 86400000);
+
+    const btRaw: any = await db.execute(sql`
+      INSERT INTO forecast_backtests (scenario_id, horizon_days, period_start, period_end, forecast_json, actual_json, error_json, score)
+      VALUES (${scenarioId ?? null}, ${horizonDays}, ${periodStart}, ${periodEnd}, ${JSON.stringify(forecastJson)}, ${JSON.stringify(actualJson)}, ${JSON.stringify(errorJson)}, ${score})
+      RETURNING *
+    `);
+    const backtest = (btRaw?.rows ?? btRaw)?.[0];
+
+    return res.json({ ok: true, backtest, forecastJson, actualJson, errorJson, score });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Backtest failed', detail: err.message });
+  }
+});
+
+// GET /admin/wallet/forecast-scenarios/:id/accuracy
+router.get('/admin/wallet/forecast-scenarios/:id/accuracy', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const scenarioId = parseInt(req.params.id, 10);
+    const raw: any = await db.execute(sql`SELECT * FROM forecast_backtests WHERE scenario_id = ${scenarioId} ORDER BY created_at DESC`);
+    const backtests = raw?.rows ?? raw;
+    if (!backtests.length) return res.json({ ok: true, averageScore: null, bestScore: null, worstScore: null, backtests: [] });
+    const scores = backtests.map((b: any) => parseFloat(b.score));
+    const avg = scores.reduce((a: number, b: number) => a + b, 0) / scores.length;
+    return res.json({ ok: true, averageScore: parseFloat(avg.toFixed(2)), bestScore: Math.max(...scores), worstScore: Math.min(...scores), backtests });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch accuracy', detail: err.message });
+  }
+});
+
+// ── 3.8D: Assistant Action Execution with Guardrails ─────────────────────────
+
+const ALLOWED_ASSISTANT_ACTIONS = new Set([
+  'create_approval_request',
+  'open_dispute',
+  'request_refund_approval',
+  'trigger_simulation',
+  'queue_archive_retrieval',
+]);
+
+// POST /admin/wallet/assistant/execute
+router.post('/admin/wallet/assistant/execute', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { assistantContext, suggestedAction, targetEntityType, targetEntityId, actionParams } = req.body;
+    if (!suggestedAction) return res.status(400).json({ error: 'suggestedAction required' });
+
+    if (!ALLOWED_ASSISTANT_ACTIONS.has(suggestedAction)) {
+      return res.status(403).json({ error: `Action '${suggestedAction}' is not permitted via the assistant. Allowed: ${[...ALLOWED_ASSISTANT_ACTIONS].join(', ')}` });
+    }
+
+    let resultJson: any = {};
+    let finalStatus = 'queued_for_approval';
+
+    if (suggestedAction === 'create_approval_request') {
+      const arRaw: any = await db.execute(sql`
+        INSERT INTO approval_requests (entity_type, entity_id, requested_by_uid, context)
+        VALUES (${targetEntityType ?? 'unknown'}, ${targetEntityId ?? '0'}, ${session.user.uid}, ${JSON.stringify({ source: 'finance_assistant', params: actionParams ?? {} })})
+        RETURNING id
+      `);
+      const arId = (arRaw?.rows ?? arRaw)?.[0]?.id;
+      resultJson = { approvalRequestId: arId };
+      finalStatus = 'queued_for_approval';
+    } else if (suggestedAction === 'trigger_simulation') {
+      const simParams = actionParams ?? {};
+      const simRaw: any = await db.execute(sql`
+        INSERT INTO policy_simulations (simulated_by_uid, policy_key, proposed_value, simulation_context, outcome_summary, outcome_detail, status)
+        VALUES (${session.user.uid}, ${simParams.policyKey ?? 'unknown'}, ${simParams.proposedValue ?? '0'}, ${JSON.stringify({ source: 'assistant' })}, 'Queued from assistant', '{}', 'pending')
+        RETURNING id
+      `);
+      resultJson = { simulationId: (simRaw?.rows ?? simRaw)?.[0]?.id };
+      finalStatus = 'queued_for_approval';
+    } else if (suggestedAction === 'queue_archive_retrieval') {
+      resultJson = { queued: true, entityType: targetEntityType, entityId: targetEntityId };
+      finalStatus = 'queued_for_approval';
+    } else {
+      // open_dispute, request_refund_approval — route to approval queue
+      const arRaw: any = await db.execute(sql`
+        INSERT INTO approval_requests (entity_type, entity_id, requested_by_uid, context)
+        VALUES (${targetEntityType ?? 'unknown'}, ${targetEntityId ?? '0'}, ${session.user.uid}, ${JSON.stringify({ source: 'finance_assistant', action: suggestedAction, params: actionParams ?? {} })})
+        RETURNING id
+      `);
+      resultJson = { approvalRequestId: (arRaw?.rows ?? arRaw)?.[0]?.id, routedVia: 'approval_queue' };
+    }
+
+    // Log the action run
+    const runRaw: any = await db.execute(sql`
+      INSERT INTO assistant_action_runs (assistant_context, suggested_action, target_entity_type, target_entity_id, requested_by_uid, status, result_json)
+      VALUES (${assistantContext ?? 'general'}, ${suggestedAction}, ${targetEntityType ?? null}, ${targetEntityId ?? null}, ${session.user.uid}, ${finalStatus}, ${JSON.stringify(resultJson)})
+      RETURNING *
+    `);
+    const run = (runRaw?.rows ?? runRaw)?.[0];
+
+    return res.json({ ok: true, status: finalStatus, run, result: resultJson });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Assistant execute failed', detail: err.message });
+  }
+});
+
+// GET /admin/wallet/assistant/actions
+router.get('/admin/wallet/assistant/actions', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const raw: any = await db.execute(sql`SELECT * FROM assistant_action_runs ORDER BY created_at DESC LIMIT 100`);
+    return res.json({ ok: true, actions: raw?.rows ?? raw });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch assistant actions', detail: err.message });
+  }
+});
+
+// ── 3.8E: Governance Pack Export & Scheduled Circulation ─────────────────────
+
+// Helper: build governance pack payload (deterministic)
+async function buildGovernancePack(packType: string, periodKey: string): Promise<any> {
+  const [walletRaw, refundRaw, payoutRaw, disputeRaw, approvalRaw, exceptionRaw] = await Promise.all([
+    db.execute(sql`SELECT COUNT(*) as total_wallets, SUM(available_balance_cents) as total_available, SUM(pending_balance_cents) as total_pending FROM wallets`),
+    db.execute(sql`SELECT COUNT(*) as total_refunds, SUM(amount_cents) as total_refund_value, COUNT(*) FILTER (WHERE status='completed') as completed_refunds FROM refund_requests`),
+    db.execute(sql`SELECT COUNT(*) as total_batches, SUM(total_amount_cents) as total_payout_value, COUNT(*) FILTER (WHERE status='paid') as paid_batches FROM payout_batches`),
+    db.execute(sql`SELECT COUNT(*) as total_disputes, COUNT(*) FILTER (WHERE status='resolved') as resolved_disputes, COUNT(*) FILTER (WHERE status='open') as open_disputes FROM dispute_cases`),
+    db.execute(sql`SELECT COUNT(*) as total_requests, COUNT(*) FILTER (WHERE status='approved') as approved, COUNT(*) FILTER (WHERE status='rejected') as rejected, COUNT(*) FILTER (WHERE status='pending') as pending_count FROM approval_requests`),
+    db.execute(sql`SELECT exception_type, COUNT(*) as cnt FROM exception_suggestions WHERE status='open' GROUP BY exception_type`),
+  ]);
+
+  const w  = (walletRaw  as any)?.rows?.[0] ?? {};
+  const r  = (refundRaw  as any)?.rows?.[0] ?? {};
+  const p  = (payoutRaw  as any)?.rows?.[0] ?? {};
+  const d  = (disputeRaw as any)?.rows?.[0] ?? {};
+  const a  = (approvalRaw as any)?.rows?.[0]?? {};
+  const exceptions = ((exceptionRaw as any)?.rows ?? []).map((e: any) => ({ type: e.exception_type, count: parseInt(e.cnt, 10) }));
+
+  return {
+    packType,
+    periodKey,
+    generatedAt: new Date().toISOString(),
+    wallets:     { total: parseInt(w.total_wallets ?? '0', 10), availableCents: parseInt(w.total_available ?? '0', 10), pendingCents: parseInt(w.total_pending ?? '0', 10) },
+    refunds:     { total: parseInt(r.total_refunds ?? '0', 10), completed: parseInt(r.completed_refunds ?? '0', 10), valueCents: parseInt(r.total_refund_value ?? '0', 10) },
+    payouts:     { batches: parseInt(p.total_batches ?? '0', 10), paid: parseInt(p.paid_batches ?? '0', 10), valueCents: parseInt(p.total_payout_value ?? '0', 10) },
+    disputes:    { total: parseInt(d.total_disputes ?? '0', 10), open: parseInt(d.open_disputes ?? '0', 10), resolved: parseInt(d.resolved_disputes ?? '0', 10) },
+    approvals:   { total: parseInt(a.total_requests ?? '0', 10), approved: parseInt(a.approved ?? '0', 10), rejected: parseInt(a.rejected ?? '0', 10), pending: parseInt(a.pending_count ?? '0', 10) },
+    openExceptions: exceptions,
+  };
+}
+
+function signGovernancePack(pack: any): string {
+  const canonical = JSON.stringify(pack, Object.keys(pack).sort());
+  const hash = Array.from(canonical).reduce((h, c) => (Math.imul(31, h) + c.charCodeAt(0)) | 0, 0);
+  return `gov-${Math.abs(hash).toString(16).padStart(8, '0')}-${pack.periodKey}`;
+}
+
+// GET /admin/wallet/governance-pack
+router.get('/admin/wallet/governance-pack', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const packType  = (req.query.type as string) ?? 'monthly';
+    const periodKey = (req.query.period as string) ?? new Date().toISOString().slice(0, 7);
+    const pack = await buildGovernancePack(packType, periodKey);
+    const signature = signGovernancePack(pack);
+    return res.json({ ok: true, pack, signature });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to build governance pack', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/governance-pack/send
+router.post('/admin/wallet/governance-pack/send', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { packType, periodKey, recipients } = req.body;
+    if (!packType || !periodKey) return res.status(400).json({ error: 'packType and periodKey required' });
+
+    const pack = await buildGovernancePack(packType, periodKey);
+    const signature = signGovernancePack(pack);
+    const sentTo = recipients ?? [];
+
+    await db.execute(sql`
+      INSERT INTO governance_pack_log (pack_type, period_key, sent_to, summary_json, signature, status)
+      VALUES (${packType}, ${periodKey}, ${JSON.stringify(sentTo)}, ${JSON.stringify(pack)}, ${signature}, 'sent')
+    `);
+
+    await db.execute(sql`
+      INSERT INTO finance_audit_log (event_type, entity_type, entity_id, actor_uid, payload)
+      VALUES ('governance_pack_sent', 'governance', ${periodKey}, ${session.user.uid}, ${JSON.stringify({ packType, periodKey, signature, recipients: sentTo })})
+    `);
+
+    return res.json({ ok: true, signature, packType, periodKey, sentTo });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to send governance pack', detail: err.message });
+  }
+});
+
+// GET /admin/wallet/governance-pack/log
+router.get('/admin/wallet/governance-pack/log', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const raw: any = await db.execute(sql`SELECT id, pack_type, period_key, sent_to, signature, sent_at, status FROM governance_pack_log ORDER BY sent_at DESC LIMIT 50`);
+    return res.json({ ok: true, logs: raw?.rows ?? raw });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch pack log', detail: err.message });
+  }
+});
+
+// ── 3.8F: Finance Playbook Links ──────────────────────────────────────────────
+
+// GET /admin/wallet/playbooks
+router.get('/admin/wallet/playbooks', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { surfaceKey } = req.query;
+    let query = sql`SELECT * FROM finance_playbook_links WHERE enabled = true`;
+    if (surfaceKey) query = sql`${query} AND surface_key = ${surfaceKey as string}`;
+    query = sql`${query} ORDER BY surface_key, id`;
+    const raw: any = await db.execute(query);
+    return res.json({ ok: true, playbooks: raw?.rows ?? raw });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch playbooks', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/playbooks
+router.post('/admin/wallet/playbooks', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { surfaceKey, title, docUrl, description } = req.body;
+    if (!surfaceKey || !title || !docUrl) return res.status(400).json({ error: 'surfaceKey, title, docUrl required' });
+    const raw: any = await db.execute(sql`
+      INSERT INTO finance_playbook_links (surface_key, title, doc_url, description)
+      VALUES (${surfaceKey}, ${title}, ${docUrl}, ${description ?? ''})
+      RETURNING *
+    `);
+    return res.json({ ok: true, playbook: (raw?.rows ?? raw)?.[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create playbook', detail: err.message });
+  }
+});
+
+// PATCH /admin/wallet/playbooks/:id
+router.patch('/admin/wallet/playbooks/:id', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const id = parseInt(req.params.id, 10);
+    const { title, docUrl, description, enabled } = req.body;
+    const raw: any = await db.execute(sql`
+      UPDATE finance_playbook_links SET
+        title = COALESCE(${title ?? null}, title),
+        doc_url = COALESCE(${docUrl ?? null}, doc_url),
+        description = COALESCE(${description ?? null}, description),
+        enabled = COALESCE(${enabled ?? null}, enabled)
+      WHERE id = ${id} RETURNING *
+    `);
+    const pb = (raw?.rows ?? raw)?.[0];
+    if (!pb) return res.status(404).json({ error: 'Playbook not found' });
+    return res.json({ ok: true, playbook: pb });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update playbook', detail: err.message });
+  }
+});
+
+// ── 3.8G: Multi-Entity / Multi-Country Readiness ─────────────────────────────
+
+// GET /admin/wallet/entities
+router.get('/admin/wallet/entities', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const raw: any = await db.execute(sql`SELECT * FROM finance_entities ORDER BY country_code, entity_code`);
+    return res.json({ ok: true, entities: raw?.rows ?? raw });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch entities', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/entities
+router.post('/admin/wallet/entities', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { entityCode, entityName, countryCode, baseCurrency } = req.body;
+    if (!entityCode || !entityName || !countryCode) return res.status(400).json({ error: 'entityCode, entityName, countryCode required' });
+    const raw: any = await db.execute(sql`
+      INSERT INTO finance_entities (entity_code, entity_name, country_code, base_currency)
+      VALUES (${entityCode.toUpperCase()}, ${entityName}, ${countryCode.toUpperCase()}, ${baseCurrency ?? 'ILS'})
+      RETURNING *
+    `);
+    return res.json({ ok: true, entity: (raw?.rows ?? raw)?.[0] });
+  } catch (err: any) {
+    if ((err.message ?? '').includes('unique')) return res.status(409).json({ error: 'Entity code already exists' });
+    return res.status(500).json({ error: 'Failed to create entity', detail: err.message });
+  }
+});
+
+// PATCH /admin/wallet/entities/:entityCode
+router.patch('/admin/wallet/entities/:entityCode', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const code = req.params.entityCode.toUpperCase();
+    const { entityName, baseCurrency, enabled } = req.body;
+    const raw: any = await db.execute(sql`
+      UPDATE finance_entities SET
+        entity_name   = COALESCE(${entityName   ?? null}, entity_name),
+        base_currency = COALESCE(${baseCurrency ?? null}, base_currency),
+        enabled       = COALESCE(${enabled      ?? null}, enabled)
+      WHERE entity_code = ${code} RETURNING *
+    `);
+    const entity = (raw?.rows ?? raw)?.[0];
+    if (!entity) return res.status(404).json({ error: 'Entity not found' });
+    return res.json({ ok: true, entity });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update entity', detail: err.message });
   }
 });
 

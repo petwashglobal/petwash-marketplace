@@ -78,6 +78,13 @@ import {
   CheckCircle,
   Bot,
   ListChecks,
+  Globe,
+  Rocket,
+  Award,
+  Target,
+  Zap,
+  ArrowUpCircle,
+  PackageCheck,
 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -1397,6 +1404,97 @@ export default function AdminWalletDashboard() {
   const { mutate: askAssistant, isPending: askAssistantPending } = useMutation<any, any, { context: string; question: string }>({
     mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/finance-assistant', body),
     onSuccess: (d) => { setAssistantResult(d); },
+  });
+
+  // ── Phase 3.8A: Approval execution ─────────────────────────────────────────
+  const { mutate: retryExecution, isPending: retryExecutionPending } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest('POST', `/api/prestige-pass/admin/wallet/approval-requests/${id}/retry-execution`, {}),
+    onSuccess: (d) => { toast({ title: `Retry: ${d.executionStatus}` }); refetchApprovalRequests(); },
+  });
+
+  // ── Phase 3.8B: Simulation promotion ───────────────────────────────────────
+  const { data: policyPromotionsData, isLoading: policyPromotionsLoading, refetch: refetchPolicyPromotions } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/policy-promotions'],
+  });
+  const { mutate: promoteSimulation, isPending: promoteSimulationPending } = useMutation<any, any, { id: number; notes?: string }>({
+    mutationFn: ({ id, notes }) => apiRequest('POST', `/api/prestige-pass/admin/wallet/policy-simulations/${id}/promote`, { notes }),
+    onSuccess: (d) => { toast({ title: 'Policy promoted', description: `${d.policyKey} → ${d.liveValue}` }); refetchSimHistory(); refetchPolicyPromotions(); },
+  });
+  const { mutate: rollbackPromotion, isPending: rollbackPromotionPending } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest('POST', `/api/prestige-pass/admin/wallet/policy-promotions/${id}/rollback`, {}),
+    onSuccess: (d) => { toast({ title: 'Rolled back', description: `${d.policyKey} restored to ${d.restoredValue ?? 'unset'}` }); refetchPolicyPromotions(); },
+  });
+
+  // ── Phase 3.8C: Forecast backtesting ───────────────────────────────────────
+  const { data: forecastBacktestsData, isLoading: forecastBacktestsLoading, refetch: refetchBacktests } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/forecast-backtests'],
+  });
+  const [backtestPeriodStart, setBacktestPeriodStart] = useState('');
+  const [backtestPeriodEnd, setBacktestPeriodEnd]     = useState('');
+  const [backtestScenarioId, setBacktestScenarioId]   = useState('');
+  const [backtestResult, setBacktestResult]           = useState<any>(null);
+  const { mutate: runBacktest, isPending: runBacktestPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/forecast-backtests/run', body),
+    onSuccess: (d) => { setBacktestResult(d); toast({ title: `Backtest score: ${d.score}/100` }); refetchBacktests(); },
+  });
+
+  // ── Phase 3.8D: Assistant action execution ─────────────────────────────────
+  const { data: assistantActionsData, isLoading: assistantActionsLoading, refetch: refetchAssistantActions } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/assistant/actions'],
+  });
+  const { mutate: executeAssistantAction, isPending: executeAssistantPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/assistant/execute', body),
+    onSuccess: (d) => { toast({ title: `Action: ${d.status}` }); refetchAssistantActions(); refetchApprovalRequests(); },
+  });
+  const [exAction, setExAction]   = useState('create_approval_request');
+  const [exPayload, setExPayload] = useState('{}');
+  const [exReason, setExReason]   = useState('');
+
+  // ── Phase 3.8E: Governance pack ────────────────────────────────────────────
+  const [govPackType, setGovPackType]     = useState('monthly');
+  const [govPeriodKey, setGovPeriodKey]   = useState(new Date().toISOString().slice(0, 7));
+  const [govPackPreview, setGovPackPreview] = useState<any>(null);
+  const [govRecipients, setGovRecipients] = useState('');
+  const { data: govPackLog, isLoading: govPackLogLoading, refetch: refetchGovPackLog } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/governance-pack/log'],
+  });
+  const { mutate: previewGovPack, isPending: previewGovPackPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('GET', `/api/prestige-pass/admin/wallet/governance-pack?type=${body.packType}&period=${body.periodKey}`, undefined),
+    onSuccess: (d) => { setGovPackPreview(d); toast({ title: 'Pack preview ready' }); },
+  });
+  const { mutate: sendGovPack, isPending: sendGovPackPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/governance-pack/send', body),
+    onSuccess: (d) => { toast({ title: 'Pack sent', description: `Signature: ${d.signature}` }); refetchGovPackLog(); setGovPackPreview(null); },
+  });
+
+  // ── Phase 3.8F: Playbook links ─────────────────────────────────────────────
+  const { data: playbooksData, isLoading: playbooksLoading, refetch: refetchPlaybooks } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/playbooks'],
+  });
+  const [showNewPlaybookForm, setShowNewPlaybookForm] = useState(false);
+  const [newPlaybook, setNewPlaybook] = useState({ surfaceKey: 'governance', title: '', docUrl: '', description: '' });
+  const { mutate: createPlaybook, isPending: createPlaybookPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/playbooks', body),
+    onSuccess: () => { toast({ title: 'Playbook added' }); refetchPlaybooks(); setShowNewPlaybookForm(false); setNewPlaybook({ surfaceKey: 'governance', title: '', docUrl: '', description: '' }); },
+  });
+  const { mutate: patchPlaybook } = useMutation<any, any, { id: number; body: any }>({
+    mutationFn: ({ id, body }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/playbooks/${id}`, body),
+    onSuccess: () => { toast({ title: 'Playbook updated' }); refetchPlaybooks(); },
+  });
+
+  // ── Phase 3.8G: Finance entities ───────────────────────────────────────────
+  const { data: financeEntitiesData, isLoading: financeEntitiesLoading, refetch: refetchFinanceEntities } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/entities'],
+  });
+  const [showNewEntityForm, setShowNewEntityForm] = useState(false);
+  const [newEntity, setNewEntity] = useState({ entityCode: '', entityName: '', countryCode: '', baseCurrency: 'ILS' });
+  const { mutate: createEntity, isPending: createEntityPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/entities', body),
+    onSuccess: () => { toast({ title: 'Entity created' }); refetchFinanceEntities(); setShowNewEntityForm(false); setNewEntity({ entityCode: '', entityName: '', countryCode: '', baseCurrency: 'ILS' }); },
+  });
+  const { mutate: patchEntity } = useMutation<any, any, { code: string; body: any }>({
+    mutationFn: ({ code, body }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/entities/${code}`, body),
+    onSuccess: () => { toast({ title: 'Entity updated' }); refetchFinanceEntities(); },
   });
 
   // ── Phase 3.6 UI aliases & supplemental state ──────────────────────────────
@@ -7715,19 +7813,34 @@ export default function AdminWalletDashboard() {
                               <div className="text-gray-500">{r.chain_name ?? 'No chain'} — Step {r.current_step_order}</div>
                               {r.amount_cents && <div className="text-gray-600 font-mono">₪{(r.amount_cents/100).toFixed(2)}</div>}
                             </div>
-                            <div className="flex gap-1 shrink-0">
-                              <button onClick={() => actOnApproval({ id: r.id, action: 'approve' })} disabled={actOnApprovalPending}
-                                className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-40 flex items-center gap-1">
-                                <CheckCircle className="w-3 h-3" /> Approve
-                              </button>
-                              <button onClick={() => actOnApproval({ id: r.id, action: 'reject' })} disabled={actOnApprovalPending}
-                                className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-40 flex items-center gap-1">
-                                <XCircle className="w-3 h-3" /> Reject
-                              </button>
-                              <button onClick={() => actOnApproval({ id: r.id, action: 'escalate' })} disabled={actOnApprovalPending}
-                                className="px-2 py-1 border border-orange-300 text-orange-700 rounded hover:bg-orange-50 disabled:opacity-40">
-                                Escalate
-                              </button>
+                            <div className="flex flex-col gap-1 shrink-0">
+                              <div className="flex gap-1">
+                                <button onClick={() => actOnApproval({ id: r.id, action: 'approve' })} disabled={actOnApprovalPending}
+                                  className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-40 flex items-center gap-1">
+                                  <CheckCircle className="w-3 h-3" /> Approve
+                                </button>
+                                <button onClick={() => actOnApproval({ id: r.id, action: 'reject' })} disabled={actOnApprovalPending}
+                                  className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-40 flex items-center gap-1">
+                                  <XCircle className="w-3 h-3" /> Reject
+                                </button>
+                                <button onClick={() => actOnApproval({ id: r.id, action: 'escalate' })} disabled={actOnApprovalPending}
+                                  className="px-2 py-1 border border-orange-300 text-orange-700 rounded hover:bg-orange-50 disabled:opacity-40">
+                                  Escalate
+                                </button>
+                              </div>
+                              {r.execution_status && r.execution_status !== 'pending' && (
+                                <div className="flex items-center gap-1">
+                                  <span className={`text-xs px-1.5 py-0.5 rounded ${r.execution_status === 'executed' ? 'bg-green-100 text-green-700' : r.execution_status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>
+                                    <Zap className="w-2.5 h-2.5 inline mr-0.5" />{r.execution_status}
+                                  </span>
+                                  {r.execution_status === 'failed' && (
+                                    <button onClick={() => retryExecution(r.id)} disabled={retryExecutionPending}
+                                      className="text-xs px-1.5 py-0.5 border border-orange-300 text-orange-700 rounded hover:bg-orange-50 disabled:opacity-40">
+                                      {retryExecutionPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Retry'}
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -7794,7 +7907,7 @@ export default function AdminWalletDashboard() {
                     ) : (
                       <div className="border rounded-lg overflow-hidden">
                         <table className="w-full text-xs"><thead className="bg-gray-50">
-                          <tr className="text-gray-500"><th className="text-left p-2">Policy Key</th><th className="text-left p-2">From → To</th><th className="text-left p-2">Risk</th><th className="text-left p-2">Affected</th><th className="text-left p-2">Date</th></tr>
+                          <tr className="text-gray-500"><th className="text-left p-2">Policy Key</th><th className="text-left p-2">From → To</th><th className="text-left p-2">Risk</th><th className="text-left p-2">Affected</th><th className="text-left p-2">Date</th><th className="text-left p-2">Promote</th></tr>
                         </thead><tbody>
                           {simHistory.simulations.slice(0, 10).map((s: any) => (
                             <tr key={s.id} className="border-t hover:bg-gray-50">
@@ -7803,6 +7916,17 @@ export default function AdminWalletDashboard() {
                               <td className="p-2"><span className={`font-mono ${s.risk_score > 60 ? 'text-red-600' : s.risk_score > 30 ? 'text-orange-500' : 'text-green-600'}`}>{s.risk_score}</span></td>
                               <td className="p-2 font-mono">{s.affected_entities}</td>
                               <td className="p-2 text-gray-400">{new Date(s.created_at).toLocaleDateString('he-IL')}</td>
+                              <td className="p-2">
+                                {s.status === 'completed' ? (
+                                  <button onClick={() => { if (window.confirm(`Promote "${s.policy_key}" → ${s.proposed_value} to live policy?`)) promoteSimulation({ id: s.id }) }}
+                                    disabled={promoteSimulationPending}
+                                    className="text-xs px-2 py-0.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-40 flex items-center gap-1">
+                                    {promoteSimulationPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowUpCircle className="w-3 h-3" />} Promote
+                                  </button>
+                                ) : (
+                                  <span className="text-xs text-gray-400 italic">{s.status}</span>
+                                )}
+                              </td>
                             </tr>
                           ))}
                         </tbody></table>
@@ -7880,6 +8004,10 @@ export default function AdminWalletDashboard() {
                                 className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40 flex items-center gap-1">
                                 {runScenarioPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <FlaskConical className="w-3 h-3" />} Run
                               </button>
+                              <button onClick={() => setBacktestScenarioId(String(sc.id))}
+                                className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center gap-1">
+                                <Target className="w-3 h-3" /> Backtest
+                              </button>
                               <button onClick={() => patchScenario({ id: sc.id, body: { isActive: !sc.is_active } })} disabled={patchScenarioPending}
                                 className={`text-xs px-2 py-1 border rounded ${sc.is_active ? 'border-red-200 text-red-600' : 'border-green-200 text-green-600'}`}>
                                 {sc.is_active ? 'Disable' : 'Enable'}
@@ -7888,6 +8016,126 @@ export default function AdminWalletDashboard() {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 3.8B — PROMOTION HISTORY */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Rocket className="w-4 h-4 text-emerald-600" /> Simulation → Policy Promotions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded p-2">
+                  Promote a completed simulation directly to a live policy rule. Rollback restores the prior value exactly.
+                </div>
+                {/* Promote button appears on simulation history rows — this section shows promotion log */}
+                {policyPromotionsLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  !policyPromotionsData?.promotions?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No promotions yet. Use "Promote to Policy" on a completed simulation.</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Policy Key</th><th className="text-left p-2">Live Value</th><th className="text-left p-2">Rollback To</th><th className="text-left p-2">Promoted</th><th className="text-left p-2">Actions</th></tr>
+                      </thead><tbody>
+                        {policyPromotionsData.promotions.map((p: any) => (
+                          <tr key={p.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 font-mono text-gray-700">{p.policy_key}</td>
+                            <td className="p-2 font-mono text-emerald-700">{(p.proposed_value_json as any)?.value ?? '—'}</td>
+                            <td className="p-2 font-mono text-gray-500">{(p.rollback_value_json as any)?.value ?? 'unset'}</td>
+                            <td className="p-2 text-gray-400">{new Date(p.promoted_at).toLocaleDateString('he-IL')}</td>
+                            <td className="p-2">
+                              <button onClick={() => rollbackPromotion(p.id)} disabled={rollbackPromotionPending}
+                                className="text-xs px-2 py-0.5 border border-orange-300 text-orange-700 rounded hover:bg-orange-50 disabled:opacity-40 flex items-center gap-1">
+                                {rollbackPromotionPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />} Rollback
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 3.8C — FORECAST BACKTEST */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-indigo-600" /> Forecast Backtest & Accuracy
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 rounded p-2">
+                  Compare a scenario's forecast against actual closed-period data. Scores 0–100 (100 = perfect accuracy).
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input type="date" placeholder="Period start" value={backtestPeriodStart} onChange={e => setBacktestPeriodStart(e.target.value)}
+                    className="border rounded px-2 py-1 text-xs w-36" />
+                  <input type="date" placeholder="Period end" value={backtestPeriodEnd} onChange={e => setBacktestPeriodEnd(e.target.value)}
+                    className="border rounded px-2 py-1 text-xs w-36" />
+                  <select value={backtestScenarioId} onChange={e => setBacktestScenarioId(e.target.value)}
+                    className="border rounded px-2 py-1 text-xs flex-1 min-w-40">
+                    <option value="">No scenario (baseline)</option>
+                    {forecastScenariosData?.scenarios?.map((s: any) => (
+                      <option key={s.id} value={String(s.id)}>{s.scenario_name}</option>
+                    ))}
+                  </select>
+                  <button disabled={runBacktestPending || !backtestPeriodStart || !backtestPeriodEnd}
+                    onClick={() => runBacktest({ periodStart: backtestPeriodStart, periodEnd: backtestPeriodEnd, scenarioId: backtestScenarioId ? parseInt(backtestScenarioId, 10) : undefined })}
+                    className="text-xs px-3 py-1.5 bg-indigo-700 text-white rounded hover:bg-indigo-800 disabled:opacity-40 flex items-center gap-1">
+                    {runBacktestPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Target className="w-3 h-3" />} Run Backtest
+                  </button>
+                </div>
+                {backtestResult && (
+                  <div className="border border-indigo-200 rounded-lg p-3 bg-indigo-50 text-xs space-y-2">
+                    <div className="flex items-center gap-3">
+                      <span className="font-semibold text-indigo-800">Backtest Result</span>
+                      <span className={`px-2 py-0.5 rounded font-mono font-bold ${backtestResult.score >= 80 ? 'bg-green-100 text-green-700' : backtestResult.score >= 50 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                        Score: {backtestResult.score}/100
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {[
+                        { label: 'Revenue', forecast: backtestResult.forecastJson?.revenueCents, actual: backtestResult.actualJson?.revenueCents, error: backtestResult.errorJson?.revenueErrorPct },
+                        { label: 'Payouts', forecast: backtestResult.forecastJson?.payoutsCents, actual: backtestResult.actualJson?.payoutsCents, error: backtestResult.errorJson?.payoutsErrorPct },
+                        { label: 'Refunds', forecast: backtestResult.forecastJson?.refundsCents, actual: backtestResult.actualJson?.refundsCents, error: backtestResult.errorJson?.refundsErrorPct },
+                        { label: 'Net Cash', forecast: backtestResult.forecastJson?.netCashCents, actual: backtestResult.actualJson?.netCashCents, error: backtestResult.errorJson?.netCashErrorPct },
+                        { label: 'VAT', forecast: backtestResult.forecastJson?.vatCents, actual: backtestResult.actualJson?.vatCents, error: backtestResult.errorJson?.vatErrorPct },
+                      ].map(({ label, forecast, actual, error }) => (
+                        <div key={label} className="border rounded p-2 bg-white">
+                          <div className="text-gray-500 mb-1">{label}</div>
+                          <div>Forecast: <span className="font-mono text-blue-700">₪{((forecast ?? 0)/100).toFixed(2)}</span></div>
+                          <div>Actual: <span className="font-mono text-gray-700">₪{((actual ?? 0)/100).toFixed(2)}</span></div>
+                          <div>Miss: <span className={`font-mono ${(error ?? 0) > 20 ? 'text-red-600' : (error ?? 0) > 10 ? 'text-orange-500' : 'text-green-600'}`}>{(error ?? 0).toFixed(1)}%</span></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Backtest history */}
+                {forecastBacktestsLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  !forecastBacktestsData?.backtests?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No backtest history</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Scenario</th><th className="text-left p-2">Period</th><th className="text-left p-2">Score</th><th className="text-left p-2">Date</th></tr>
+                      </thead><tbody>
+                        {forecastBacktestsData.backtests.slice(0, 10).map((b: any) => (
+                          <tr key={b.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 text-gray-700">{b.scenario_name ?? <span className="italic text-gray-400">baseline</span>}</td>
+                            <td className="p-2 text-gray-500 font-mono">{b.period_start} → {b.period_end}</td>
+                            <td className="p-2"><span className={`font-mono font-semibold ${parseFloat(b.score) >= 80 ? 'text-green-600' : parseFloat(b.score) >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>{parseFloat(b.score).toFixed(1)}</span></td>
+                            <td className="p-2 text-gray-400">{new Date(b.created_at).toLocaleDateString('he-IL')}</td>
+                          </tr>
+                        ))}
+                      </tbody></table>
                     </div>
                   )
                 }
@@ -8024,6 +8272,251 @@ export default function AdminWalletDashboard() {
                     <div className="text-xs text-gray-400 text-right">Generated: {new Date(assistantResult.generatedAt).toLocaleString('he-IL')}</div>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* 3.8D — ASSISTANT ACTION EXECUTION */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-amber-600" /> Run Governed Assistant Action
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                  Execute an allowlisted finance assistant action on behalf of the system. All runs are logged and auditable.
+                  <br />Allowed: <span className="font-mono">create_approval_request · open_dispute · request_refund_approval · trigger_simulation · queue_archive_retrieval</span>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <select value={exAction} onChange={e => setExAction(e.target.value)} className="border rounded px-2 py-1 text-xs">
+                    <option value="create_approval_request">create_approval_request</option>
+                    <option value="open_dispute">open_dispute</option>
+                    <option value="request_refund_approval">request_refund_approval</option>
+                    <option value="trigger_simulation">trigger_simulation</option>
+                    <option value="queue_archive_retrieval">queue_archive_retrieval</option>
+                  </select>
+                  <textarea rows={2} placeholder='{"entityId":123}' value={exPayload} onChange={e => setExPayload(e.target.value)} className="border rounded px-2 py-1 text-xs font-mono" />
+                  <input type="text" placeholder="Reason / context..." value={exReason} onChange={e => setExReason(e.target.value)} className="border rounded px-2 py-1 text-xs" />
+                  <button disabled={executeAssistantPending} onClick={() => {
+                    let parsed; try { parsed = JSON.parse(exPayload); } catch { toast({ title: 'Invalid JSON payload', variant: 'destructive' }); return; }
+                    executeAssistantAction({ action: exAction, payload: parsed, reason: exReason });
+                  }} className="text-xs px-3 py-1.5 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-40 flex items-center gap-1 w-fit">
+                    {executeAssistantPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Execute Action
+                  </button>
+                </div>
+                {/* Action run log */}
+                {assistantActionsLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                  !assistantActionsData?.runs?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No assistant action runs yet</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Action</th><th className="text-left p-2">Status</th><th className="text-left p-2">Reason</th><th className="text-left p-2">Date</th></tr>
+                      </thead><tbody>
+                        {assistantActionsData.runs.slice(0, 10).map((r: any) => (
+                          <tr key={r.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 font-mono text-gray-700">{r.action_name}</td>
+                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded ${r.status === 'success' ? 'bg-green-100 text-green-700' : r.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>{r.status}</span></td>
+                            <td className="p-2 text-gray-500 truncate max-w-[180px]">{r.reason ?? '—'}</td>
+                            <td className="p-2 text-gray-400">{new Date(r.executed_at).toLocaleDateString('he-IL')}</td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 3.8E — GOVERNANCE PACK EXPORT */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <PackageCheck className="w-4 h-4 text-purple-600" /> Governance Pack Export
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-purple-700 bg-purple-50 border border-purple-200 rounded p-2">
+                  Build a signed, auditable governance pack (monthly / quarterly / annual). Preview before sending — packs are logged with a deterministic hash signature.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <select value={govPackType} onChange={e => setGovPackType(e.target.value)} className="border rounded px-2 py-1 text-xs">
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="annual">Annual</option>
+                  </select>
+                  <input type="text" placeholder="Period key e.g. 2026-03" value={govPeriodKey} onChange={e => setGovPeriodKey(e.target.value)} className="border rounded px-2 py-1 text-xs w-36" />
+                  <button disabled={previewGovPackPending} onClick={() => previewGovPack({ packType: govPackType, periodKey: govPeriodKey })}
+                    className="text-xs px-3 py-1.5 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-40 flex items-center gap-1">
+                    {previewGovPackPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Award className="w-3 h-3" />} Preview Pack
+                  </button>
+                </div>
+                {govPackPreview && (
+                  <div className="border border-purple-200 rounded-lg p-3 bg-purple-50 text-xs space-y-2">
+                    <div className="font-semibold text-purple-800">{govPackPreview.packType?.toUpperCase()} — {govPackPreview.periodKey}</div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { label: 'Revenue', val: govPackPreview.summary?.totalRevenueCents },
+                        { label: 'Payouts', val: govPackPreview.summary?.totalPayoutsCents },
+                        { label: 'Net Cash', val: govPackPreview.summary?.netCashCents },
+                        { label: 'VAT', val: govPackPreview.summary?.vatCents },
+                        { label: 'Refunds', val: govPackPreview.summary?.refundsCents },
+                        { label: 'Disputes', val: govPackPreview.summary?.activeDisputes ?? 0, isCount: true },
+                      ].map(({ label, val, isCount }) => (
+                        <div key={label} className="border rounded p-2 bg-white">
+                          <div className="text-gray-400">{label}</div>
+                          <div className="font-mono font-semibold text-gray-800">{isCount ? val : `₪${((val ?? 0)/100).toFixed(2)}`}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2 items-center flex-wrap">
+                      <input type="text" placeholder="Recipients (comma-sep emails)" value={govRecipients} onChange={e => setGovRecipients(e.target.value)}
+                        className="border rounded px-2 py-1 text-xs flex-1 min-w-40 bg-white" />
+                      <button disabled={sendGovPackPending} onClick={() => sendGovPack({ packType: govPackType, periodKey: govPeriodKey, recipients: govRecipients.split(',').map(s => s.trim()).filter(Boolean) })}
+                        className="text-xs px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-40 flex items-center gap-1">
+                        {sendGovPackPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Globe className="w-3 h-3" />} Send & Sign Pack
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {/* Pack log */}
+                {govPackLogLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                  !govPackLog?.log?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No packs sent yet</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Type</th><th className="text-left p-2">Period</th><th className="text-left p-2">Signature</th><th className="text-left p-2">Sent</th></tr>
+                      </thead><tbody>
+                        {govPackLog.log.slice(0, 8).map((l: any) => (
+                          <tr key={l.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 capitalize text-gray-700">{l.pack_type}</td>
+                            <td className="p-2 font-mono text-gray-700">{l.period_key}</td>
+                            <td className="p-2 font-mono text-gray-400 truncate max-w-[120px]" title={l.signature}>{l.signature?.slice(0, 12)}…</td>
+                            <td className="p-2 text-gray-400">{new Date(l.sent_at).toLocaleDateString('he-IL')}</td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 3.8F — PLAYBOOK LINKS */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-teal-600" /> Finance Playbook Links
+                </CardTitle>
+                <button onClick={() => setShowNewPlaybookForm(v => !v)} className="text-xs px-2 py-1 bg-teal-600 text-white rounded hover:bg-teal-700">
+                  {showNewPlaybookForm ? 'Cancel' : '+ Add Playbook'}
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {showNewPlaybookForm && (
+                  <div className="border border-teal-200 rounded p-3 bg-teal-50 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <select value={newPlaybook.surfaceKey} onChange={e => setNewPlaybook(v => ({ ...v, surfaceKey: e.target.value }))} className="border rounded px-2 py-1 text-xs col-span-2">
+                        <option value="governance">Governance</option>
+                        <option value="simulation">Simulation</option>
+                        <option value="disputes">Disputes</option>
+                        <option value="approvals">Approvals</option>
+                        <option value="wallet">Wallet</option>
+                      </select>
+                      <input type="text" placeholder="Title" value={newPlaybook.title} onChange={e => setNewPlaybook(v => ({ ...v, title: e.target.value }))} className="border rounded px-2 py-1 text-xs col-span-2" />
+                      <input type="url" placeholder="Doc URL" value={newPlaybook.docUrl} onChange={e => setNewPlaybook(v => ({ ...v, docUrl: e.target.value }))} className="border rounded px-2 py-1 text-xs col-span-2" />
+                      <input type="text" placeholder="Description (optional)" value={newPlaybook.description} onChange={e => setNewPlaybook(v => ({ ...v, description: e.target.value }))} className="border rounded px-2 py-1 text-xs col-span-2" />
+                    </div>
+                    <button disabled={createPlaybookPending || !newPlaybook.title || !newPlaybook.docUrl} onClick={() => createPlaybook(newPlaybook)}
+                      className="text-xs px-3 py-1.5 bg-teal-700 text-white rounded hover:bg-teal-800 disabled:opacity-40 flex items-center gap-1">
+                      {createPlaybookPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <BookOpen className="w-3 h-3" />} Save Playbook
+                    </button>
+                  </div>
+                )}
+                {playbooksLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                  !playbooksData?.playbooks?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No playbooks yet</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {playbooksData.playbooks.map((p: any) => (
+                        <div key={p.id} className="flex items-start justify-between gap-2 border rounded p-2 text-xs hover:bg-gray-50">
+                          <div>
+                            <div className="font-semibold text-gray-800">{p.title}</div>
+                            <div className="text-gray-400 capitalize">{p.surface_key}</div>
+                            {p.description && <div className="text-gray-500 mt-0.5">{p.description}</div>}
+                            <a href={p.doc_url} target="_blank" rel="noreferrer" className="text-teal-600 hover:underline mt-0.5 block truncate max-w-[240px]">{p.doc_url}</a>
+                          </div>
+                          <button onClick={() => patchPlaybook({ id: p.id, body: { isActive: !p.is_active } })}
+                            className={`shrink-0 text-xs px-2 py-0.5 border rounded ${p.is_active ? 'border-red-200 text-red-600' : 'border-green-200 text-green-600'}`}>
+                            {p.is_active ? 'Deactivate' : 'Activate'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 3.8G — FINANCE ENTITIES */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-blue-600" /> Finance Entities (Multi-Entity)
+                </CardTitle>
+                <button onClick={() => setShowNewEntityForm(v => !v)} className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
+                  {showNewEntityForm ? 'Cancel' : '+ Add Entity'}
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded p-2">
+                  Each entity represents a legal/financial unit (e.g., IL_MAIN for Israel operations). Governance packs aggregate across active entities.
+                </div>
+                {showNewEntityForm && (
+                  <div className="border border-blue-200 rounded p-3 bg-blue-50 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="text" placeholder="Entity Code (e.g. IL_MAIN)" value={newEntity.entityCode} onChange={e => setNewEntity(v => ({ ...v, entityCode: e.target.value.toUpperCase() }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="text" placeholder="Entity Name" value={newEntity.entityName} onChange={e => setNewEntity(v => ({ ...v, entityName: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="text" placeholder="Country Code (e.g. IL)" value={newEntity.countryCode} onChange={e => setNewEntity(v => ({ ...v, countryCode: e.target.value.toUpperCase() }))} className="border rounded px-2 py-1 text-xs" />
+                      <select value={newEntity.baseCurrency} onChange={e => setNewEntity(v => ({ ...v, baseCurrency: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                        <option value="ILS">ILS</option>
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                      </select>
+                    </div>
+                    <button disabled={createEntityPending || !newEntity.entityCode || !newEntity.entityName} onClick={() => createEntity(newEntity)}
+                      className="text-xs px-3 py-1.5 bg-blue-700 text-white rounded hover:bg-blue-800 disabled:opacity-40 flex items-center gap-1">
+                      {createEntityPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Globe className="w-3 h-3" />} Create Entity
+                    </button>
+                  </div>
+                )}
+                {financeEntitiesLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                  !financeEntitiesData?.entities?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No entities configured</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Code</th><th className="text-left p-2">Name</th><th className="text-left p-2">Country</th><th className="text-left p-2">Currency</th><th className="text-left p-2">Status</th></tr>
+                      </thead><tbody>
+                        {financeEntitiesData.entities.map((e: any) => (
+                          <tr key={e.entityCode} className="border-t hover:bg-gray-50">
+                            <td className="p-2 font-mono font-semibold text-blue-700">{e.entityCode}</td>
+                            <td className="p-2 text-gray-700">{e.entityName}</td>
+                            <td className="p-2 font-mono text-gray-500">{e.countryCode}</td>
+                            <td className="p-2 font-mono text-gray-500">{e.baseCurrency}</td>
+                            <td className="p-2">
+                              <button onClick={() => patchEntity({ code: e.entityCode, body: { isActive: !e.isActive } })}
+                                className={`text-xs px-2 py-0.5 border rounded ${e.isActive ? 'border-green-200 text-green-700' : 'border-red-200 text-red-500'}`}>
+                                {e.isActive ? 'Active' : 'Inactive'}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )
+                }
               </CardContent>
             </Card>
           </TabsContent>

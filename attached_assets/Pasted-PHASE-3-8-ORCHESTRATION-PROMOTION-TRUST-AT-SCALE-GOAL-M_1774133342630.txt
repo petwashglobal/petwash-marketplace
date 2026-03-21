@@ -1,0 +1,400 @@
+PHASE 3.8 - ORCHESTRATION, PROMOTION & TRUST AT SCALE
+
+GOAL
+Move from guided decision support to governed execution.
+The platform should now:
+- execute approvals automatically once chains complete
+- promote good simulations into live policy safely
+- score forecast scenarios against real outcomes
+- let the finance assistant trigger actions behind approval guardrails
+- distribute governance packs automatically
+- connect workflows to institutional knowledge
+- prepare the system for multi-entity / multi-country expansion if needed
+
+LOCKED PRINCIPLES
+- no wallet-core changes
+- no mutation of original financial facts
+- every automatic execution path must remain auditable
+- every promotion from simulation to live policy must be explicit and reversible
+- assistant actions must never bypass approvals
+- backtesting must use only closed / final actuals
+- governance exports must be deterministic and signable
+- multi-entity support must be additive, not invasive
+
+==================================================
+3.8A - APPROVAL CHAIN EXECUTION ENGINE
+==================================================
+
+GOAL
+When all approval steps complete, the system automatically executes the underlying action.
+
+DB
+No required new core table if approval_requests already stores enough context.
+Optional extension:
+approval_requests
+- execution_status VARCHAR(24) NOT NULL DEFAULT 'pending'   // pending | ready | executed | failed
+- executed_at TIMESTAMPTZ
+- execution_result JSONB NOT NULL DEFAULT '{}'::jsonb
+
+BACKEND
+1. POST /api/prestige-pass/admin/wallet/approval-requests/:id/approve
+Extend existing flow:
+- after final step approval, detect completion
+- execute underlying action automatically:
+  - payout release
+  - replay execute
+  - refund approval
+  - other chain-bound actions
+- write finance_audit_log
+- write execution result
+
+2. GET /api/prestige-pass/admin/wallet/approval-requests/:id
+Returns:
+- chain status
+- step history
+- execution status
+- execution result
+
+3. POST /api/prestige-pass/admin/wallet/approval-requests/:id/retry-execution
+- finance_admin only
+- only when execution_status=failed
+
+FRONTEND
+Simulation / Policies / Recovery areas
+- approval requests show:
+  - Pending
+  - Ready
+  - Executed
+  - Failed
+- retry execution button when failed
+- execution result panel
+
+ACCEPTANCE
+- final approval triggers exactly one execution
+- failed execution is visible and retryable
+- execution never occurs before chain completion
+
+==================================================
+3.8B - SIMULATION TO POLICY PROMOTION WORKFLOW
+==================================================
+
+GOAL
+Turn policy simulations into safe live policy updates with one explicit promotion path.
+
+DB
+Create table: policy_promotions
+- id SERIAL PRIMARY KEY
+- simulation_id INTEGER NOT NULL
+- policy_key VARCHAR(64) NOT NULL
+- proposed_value_json JSONB NOT NULL
+- promoted_by_uid VARCHAR(128) NOT NULL
+- promoted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+- rollback_value_json JSONB NOT NULL
+- notes TEXT NOT NULL DEFAULT ''
+
+BACKEND
+1. POST /api/prestige-pass/admin/wallet/policy-simulations/:id/promote
+Logic:
+- fetch simulation
+- validate status allows promotion
+- snapshot existing policy value into rollback_value_json
+- update finance_policy_rules
+- write promotion record
+- write finance_audit_log
+
+2. GET /api/prestige-pass/admin/wallet/policy-promotions
+3. POST /api/prestige-pass/admin/wallet/policy-promotions/:id/rollback
+Logic:
+- restore rollback_value_json to live policy
+- write audit log
+
+FRONTEND
+Simulation tab
+- "Promote to Policy" button on successful simulations
+- confirmation dialog with before / after diff
+- promotion history table
+- rollback button on promotion history rows
+
+ACCEPTANCE
+- promotion updates exactly one policy
+- rollback restores prior value exactly
+- both promotion and rollback are audited
+
+==================================================
+3.8C - FORECAST BACKTESTING & SCENARIO ACCURACY
+==================================================
+
+GOAL
+Measure whether scenario plans and forecasts actually matched what happened.
+
+DB
+Create table: forecast_backtests
+- id SERIAL PRIMARY KEY
+- scenario_id INTEGER
+- horizon_days INTEGER NOT NULL
+- period_start DATE NOT NULL
+- period_end DATE NOT NULL
+- forecast_json JSONB NOT NULL
+- actual_json JSONB NOT NULL
+- error_json JSONB NOT NULL
+- score NUMERIC(8,2) NOT NULL DEFAULT 0
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+BACKEND
+1. GET /api/prestige-pass/admin/wallet/forecast-backtests?from=&to=
+2. POST /api/prestige-pass/admin/wallet/forecast-backtests/run
+Logic:
+- compare forecast scenario outputs to actual closed period data
+- compute score by metric:
+  - payouts
+  - refunds
+  - VAT
+  - net cash need
+- produce weighted score
+
+3. GET /api/prestige-pass/admin/wallet/forecast-scenarios/:id/accuracy
+Returns:
+- scenario runs
+- average score
+- best / worst miss
+
+FRONTEND
+Forecast / Simulation tabs
+- "Backtest" button
+- scenario score history
+- score badge
+- per-metric miss table
+
+ACCEPTANCE
+- same actual period gives same backtest result
+- score clearly derived from actual closed data
+- scenario comparison is explainable
+
+==================================================
+3.8D - ASSISTANT ACTION EXECUTION WITH GUARDRAILS
+==================================================
+
+GOAL
+Let the finance assistant not only suggest actions, but initiate them safely behind policies and approvals.
+
+DB
+Optional table:
+assistant_action_runs
+- id SERIAL PRIMARY KEY
+- assistant_context VARCHAR(64) NOT NULL
+- suggested_action VARCHAR(64) NOT NULL
+- target_entity_type VARCHAR(64)
+- target_entity_id VARCHAR(128)
+- requested_by_uid VARCHAR(128) NOT NULL
+- status VARCHAR(24) NOT NULL DEFAULT 'suggested'   // suggested | queued_for_approval | executed | rejected
+- result_json JSONB NOT NULL DEFAULT '{}'::jsonb
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+BACKEND
+1. POST /api/prestige-pass/admin/wallet/assistant/execute
+Allowed action classes:
+- create approval request
+- open dispute
+- request refund approval
+- trigger simulation
+- queue archive retrieval
+Not allowed:
+- direct wallet mutation
+- direct payout release
+- direct replay execution
+
+Logic:
+- route action through existing approval/policy path
+- create assistant_action_run
+- return queued status
+
+2. GET /api/prestige-pass/admin/wallet/assistant/actions
+- action run history
+
+FRONTEND
+Governance / Assistant panel
+- "Run Suggested Action" button per suggestion
+- result chip:
+  - queued for approval
+  - executed
+  - rejected
+
+ACCEPTANCE
+- assistant cannot bypass approval workflows
+- every assistant-triggered action is logged
+- action outcome is visible
+
+==================================================
+3.8E - GOVERNANCE PACK EXPORT & SCHEDULED CIRCULATION
+==================================================
+
+GOAL
+Turn governance views into scheduled and exportable board/committee packs.
+
+DB
+Create table: governance_pack_log
+- id SERIAL PRIMARY KEY
+- pack_type VARCHAR(32) NOT NULL   // weekly | monthly | quarter
+- period_key VARCHAR(32) NOT NULL
+- sent_to JSONB NOT NULL DEFAULT '[]'::jsonb
+- summary_json JSONB NOT NULL DEFAULT '{}'::jsonb
+- signature VARCHAR(255) NOT NULL
+- sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+- status VARCHAR(20) NOT NULL DEFAULT 'sent'
+- error_detail TEXT NOT NULL DEFAULT ''
+
+BACKEND
+1. GET /api/prestige-pass/admin/wallet/governance-pack?type=weekly|monthly|quarter&period=...
+Returns:
+- governance summary
+- control center snapshot
+- alerts summary
+- signoff state
+- commentary
+- signature
+
+2. POST /api/prestige-pass/admin/wallet/governance-pack/send
+- send via email to configured recipients
+- log delivery
+
+3. JOB
+- weekly send at configured time if GOVERNANCE_PACK_ENABLED=true
+
+FRONTEND
+Governance tab
+- period selector
+- export button
+- send now button
+- recent pack log table
+
+ACCEPTANCE
+- exported pack deterministic
+- sent pack matches preview payload
+- delivery logged
+
+==================================================
+3.8F - FINANCE KNOWLEDGE BASE & PLAYBOOK LINKAGE
+==================================================
+
+GOAL
+Attach policy and workflow surfaces to operational knowledge, not tribal memory.
+
+DB
+Create table: finance_playbook_links
+- id SERIAL PRIMARY KEY
+- surface_key VARCHAR(64) NOT NULL   // forecast | payout_batch | disputes | archive | replay
+- title VARCHAR(255) NOT NULL
+- doc_url TEXT NOT NULL
+- description TEXT NOT NULL DEFAULT ''
+- enabled BOOLEAN NOT NULL DEFAULT true
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+BACKEND
+1. GET /api/prestige-pass/admin/wallet/playbooks
+2. POST /api/prestige-pass/admin/wallet/playbooks
+3. PATCH /api/prestige-pass/admin/wallet/playbooks/:id
+
+FRONTEND
+Each relevant tab:
+- small "Playbook" / "Runbook" panel
+- one or more linked docs
+Examples:
+- Forecast tab -> forecasting assumptions guide
+- Recovery tab -> replay SOP
+- Archive tab -> archive and retrieval SOP
+- Governance tab -> board pack checklist
+
+ACCEPTANCE
+- playbook links visible where context matters
+- disabled links disappear
+- no workflow depends on external doc to function
+
+==================================================
+3.8G - MULTI-ENTITY / MULTI-COUNTRY READINESS
+==================================================
+
+GOAL
+Prepare the finance system for multiple legal entities or country partitions without rewriting the core.
+
+DB
+Create table: finance_entities
+- id SERIAL PRIMARY KEY
+- entity_code VARCHAR(32) UNIQUE NOT NULL
+- entity_name VARCHAR(255) NOT NULL
+- country_code VARCHAR(8) NOT NULL
+- base_currency VARCHAR(8) NOT NULL DEFAULT 'ILS'
+- enabled BOOLEAN NOT NULL DEFAULT true
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+Optional additive column on major finance tables:
+- entity_code VARCHAR(32) NULL
+Only add where safe in this phase, or simulate via policy scope if safer.
+
+BACKEND
+1. GET /api/prestige-pass/admin/wallet/entities
+2. POST /api/prestige-pass/admin/wallet/entities
+3. PATCH /api/prestige-pass/admin/wallet/entities/:entityCode
+4. Extend policy engine and governance pack to accept entityCode filters where possible
+
+FRONTEND
+Policies / Governance tabs
+- entity filter selector where meaningful
+- entity management card
+
+ACCEPTANCE
+- entity layer additive only
+- no existing single-entity data breaks
+- filters safely noop when entity not provided
+
+==================================================
+RECOMMENDED BUILD ORDER
+==================================================
+
+1. 3.8A - approval chain execution engine
+2. 3.8B - simulation to policy promotion workflow
+3. 3.8C - forecast backtesting and scenario accuracy
+4. 3.8D - assistant action execution with guardrails
+5. 3.8E - governance pack export and scheduled circulation
+6. 3.8F - finance knowledge base and playbook linkage
+7. 3.8G - multi-entity / multi-country readiness
+
+==================================================
+PARALLELIZATION
+==================================================
+
+Can build in parallel:
+- 3.8A + 3.8C
+- 3.8B + 3.8F
+- 3.8E + 3.8G after core data is stable
+
+Do earlier:
+- 3.8A before assistant execution
+- 3.8B before widespread policy-tuning rollout
+
+==================================================
+WHAT DOES NOT CHANGE
+==================================================
+
+- wallet hold / release / debit / refund architecture
+- payout batch source-of-truth
+- dispute case source-of-truth
+- daily close record structure
+- monthly sign-off structure
+- policy engine storage model
+- audit bundle signature model
+- existing role hierarchy and finance permissions
+
+==================================================
+SUCCESS CRITERIA
+==================================================
+
+By the end of 3.8:
+- completed approval chains execute automatically
+- simulations can be promoted and rolled back safely
+- forecasts and scenarios are backtested against actuals
+- assistant actions route through approved workflows
+- governance packs can be previewed and distributed
+- key tabs link to the right runbooks
+- the system is structurally ready for multiple entities/countries
+
+This phase turns configurable intelligence into governed orchestration.

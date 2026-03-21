@@ -13124,3 +13124,93 @@ export const exceptionSuggestions = pgTable("exception_suggestions", {
 });
 export type ExceptionSuggestion       = typeof exceptionSuggestions.$inferSelect;
 export type InsertExceptionSuggestion = typeof exceptionSuggestions.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 3.8 — ORCHESTRATION, PROMOTION & TRUST AT SCALE
+// ─────────────────────────────────────────────────────────────────────────────
+
+// 3.8B — Policy Promotions
+export const policyPromotions = pgTable("policy_promotions", {
+  id:                 serial("id").primaryKey(),
+  simulationId:       integer("simulation_id").notNull(),
+  policyKey:          varchar("policy_key",          { length: 64  }).notNull(),
+  proposedValueJson:  jsonb("proposed_value_json").notNull().default(sql`'{}'::jsonb`),
+  promotedByUid:      varchar("promoted_by_uid",     { length: 128 }).notNull(),
+  promotedAt:         timestamp("promoted_at",        { withTimezone: true }).notNull().defaultNow(),
+  rollbackValueJson:  jsonb("rollback_value_json").notNull().default(sql`'{}'::jsonb`),
+  notes:              text("notes").notNull().default(''),
+});
+export type PolicyPromotion       = typeof policyPromotions.$inferSelect;
+export type InsertPolicyPromotion = typeof policyPromotions.$inferInsert;
+
+// 3.8C — Forecast Backtests
+export const forecastBacktests = pgTable("forecast_backtests", {
+  id:           serial("id").primaryKey(),
+  scenarioId:   integer("scenario_id"),
+  horizonDays:  integer("horizon_days").notNull(),
+  periodStart:  date("period_start").notNull(),
+  periodEnd:    date("period_end").notNull(),
+  forecastJson: jsonb("forecast_json").notNull().default(sql`'{}'::jsonb`),
+  actualJson:   jsonb("actual_json").notNull().default(sql`'{}'::jsonb`),
+  errorJson:    jsonb("error_json").notNull().default(sql`'{}'::jsonb`),
+  score:        numeric("score", { precision: 8, scale: 2 }).notNull().default('0'),
+  createdAt:    timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type ForecastBacktest       = typeof forecastBacktests.$inferSelect;
+export type InsertForecastBacktest = typeof forecastBacktests.$inferInsert;
+
+// 3.8D — Assistant Action Runs
+export const assistantActionRuns = pgTable("assistant_action_runs", {
+  id:                serial("id").primaryKey(),
+  assistantContext:  varchar("assistant_context",  { length: 64  }).notNull(),
+  suggestedAction:   varchar("suggested_action",   { length: 64  }).notNull(),
+  targetEntityType:  varchar("target_entity_type", { length: 64  }),
+  targetEntityId:    varchar("target_entity_id",   { length: 128 }),
+  requestedByUid:    varchar("requested_by_uid",   { length: 128 }).notNull(),
+  status:            varchar("status",              { length: 24  }).notNull().default('suggested'),
+  resultJson:        jsonb("result_json").notNull().default(sql`'{}'::jsonb`),
+  createdAt:         timestamp("created_at",        { withTimezone: true }).notNull().defaultNow(),
+});
+export type AssistantActionRun       = typeof assistantActionRuns.$inferSelect;
+export type InsertAssistantActionRun = typeof assistantActionRuns.$inferInsert;
+
+// 3.8E — Governance Pack Log
+export const governancePackLog = pgTable("governance_pack_log", {
+  id:          serial("id").primaryKey(),
+  packType:    varchar("pack_type",  { length: 32  }).notNull(),
+  periodKey:   varchar("period_key", { length: 32  }).notNull(),
+  sentTo:      jsonb("sent_to").notNull().default(sql`'[]'::jsonb`),
+  summaryJson: jsonb("summary_json").notNull().default(sql`'{}'::jsonb`),
+  signature:   varchar("signature",  { length: 255 }).notNull(),
+  sentAt:      timestamp("sent_at",  { withTimezone: true }).notNull().defaultNow(),
+  status:      varchar("status",     { length: 20  }).notNull().default('sent'),
+  errorDetail: text("error_detail").notNull().default(''),
+});
+export type GovernancePackLog       = typeof governancePackLog.$inferSelect;
+export type InsertGovernancePackLog = typeof governancePackLog.$inferInsert;
+
+// 3.8F — Finance Playbook Links
+export const financePlaybookLinks = pgTable("finance_playbook_links", {
+  id:         serial("id").primaryKey(),
+  surfaceKey: varchar("surface_key", { length: 64  }).notNull(),
+  title:      varchar("title",       { length: 255 }).notNull(),
+  docUrl:     text("doc_url").notNull(),
+  description:text("description").notNull().default(''),
+  enabled:    boolean("enabled").notNull().default(true),
+  createdAt:  timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type FinancePlaybookLink       = typeof financePlaybookLinks.$inferSelect;
+export type InsertFinancePlaybookLink = typeof financePlaybookLinks.$inferInsert;
+
+// 3.8G — Finance Entities
+export const financeEntities = pgTable("finance_entities", {
+  id:           serial("id").primaryKey(),
+  entityCode:   varchar("entity_code",   { length: 32  }).notNull().unique(),
+  entityName:   varchar("entity_name",   { length: 255 }).notNull(),
+  countryCode:  varchar("country_code",  { length: 8   }).notNull(),
+  baseCurrency: varchar("base_currency", { length: 8   }).notNull().default('ILS'),
+  enabled:      boolean("enabled").notNull().default(true),
+  createdAt:    timestamp("created_at",  { withTimezone: true }).notNull().defaultNow(),
+});
+export type FinanceEntity       = typeof financeEntities.$inferSelect;
+export type InsertFinanceEntity = typeof financeEntities.$inferInsert;
