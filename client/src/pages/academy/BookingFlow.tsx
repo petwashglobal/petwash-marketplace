@@ -13,7 +13,7 @@ import { CreditWalletCard } from "@/components/wallet/CreditWalletCard";
 import { PrestigePassPaymentOption } from "@/components/PrestigePassPaymentOption";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { WalletCheckoutPreview } from "@/components/wallet/WalletCheckoutPreview";
-import { WalletLifecycleMessage } from "@/components/wallet/WalletLifecycleMessage";
+import { BookingFinancialSummary } from "@/components/wallet/BookingFinancialSummary";
 
 type BookingStep = "details" | "summary" | "confirmation";
 
@@ -387,35 +387,13 @@ export default function AcademyBookingFlow() {
               </div>
             </div>
 
-            <div className="mb-6 luxury-glass-card luxury-shadow-xl luxury-hover-glow luxury-stagger-item p-6">
-              <div className="mb-4 luxury-heading-sm">פירוט מחיר</div>
-              <div className="mb-2 flex items-center justify-between luxury-text-small">
-                <span>מחיר השיעור</span>
-                <span>₪{pricing.grossCollectedILS.toFixed(2)}</span>
-              </div>
-              <div className="mb-2 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-purple-100">
-                <span>כולל עמלת PetWash + מע״מ</span>
-                <span>₪{(pricing.commission + pricing.vatOnCommission).toFixed(2)}</span>
-              </div>
-              <div className="pt-4 border-t border-purple-100 flex items-center justify-between">
-                <span className="luxury-heading-sm">סה״כ</span>
-                <span className="luxury-heading-lg luxury-text-gradient">₪{pricing.totalCharged.toFixed(2)}</span>
-              </div>
-              {appliedCredits && (
-                <div className="mt-3 pt-3 border-t border-purple-100 space-y-1">
-                  <div className="flex items-center justify-between luxury-text-small text-emerald-600">
-                    <span>קרדיטים שהופעלו</span>
-                    <span>-₪{(appliedCredits.totalCreditsAppliedCents / 100).toFixed(2)}</span>
-                  </div>
-                  <div className="flex items-center justify-between luxury-heading-sm">
-                    <span>לתשלום במזומן</span>
-                    <span className="luxury-text-gradient">₪{(appliedCredits.cashDueCents / 100).toFixed(2)}</span>
-                  </div>
-                </div>
-              )}
-              <div className="mt-4 luxury-text-small opacity-80">
-                התשלום יתואם לאחר ההזמנה.
-              </div>
+            <div className="mb-4 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-4">
+              <BookingFinancialSummary
+                subtotalCents={Math.round(pricing.grossCollectedILS * 100)}
+                serviceFeeCents={Math.round((pricing.commission + pricing.vatOnCommission) * 100)}
+                totalCents={Math.round(pricing.totalCharged * 100)}
+                loyaltyRedeemedCents={appliedCredits ? appliedCredits.totalCreditsAppliedCents : 0}
+              />
             </div>
 
             <WalletCheckoutPreview
@@ -484,19 +462,18 @@ export default function AcademyBookingFlow() {
               </p>
             </div>
 
-            {bookingFinanceState !== 'none' && (
-              <div className="max-w-md mx-auto mb-6">
-                <WalletLifecycleMessage
-                  financeState={bookingFinanceState}
-                  amountCents={bookingWalletHoldCents}
-                />
-              </div>
-            )}
+            <div className="max-w-md mx-auto mb-6 luxury-glass-card luxury-shadow-xl p-4">
+              <BookingFinancialSummary
+                subtotalCents={Math.round(pricing.grossCollectedILS * 100)}
+                serviceFeeCents={Math.round((pricing.commission + pricing.vatOnCommission) * 100)}
+                totalCents={Math.round(pricing.totalCharged * 100)}
+                loyaltyRedeemedCents={appliedCredits ? appliedCredits.totalCreditsAppliedCents : 0}
+                financeState={bookingFinanceState !== 'none' ? bookingFinanceState : undefined}
+                walletHoldCents={bookingWalletHoldCents}
+              />
+            </div>
 
             <div className="text-center">
-              <p className="luxury-text-small max-w-md mx-auto mb-8">
-                פרטי התשלום ישלחו בהודעה נפרדת.
-              </p>
               <Button
                 className="luxury-btn-primary luxury-shadow-xl px-12"
                 onClick={() => setLocation("/dashboard")}

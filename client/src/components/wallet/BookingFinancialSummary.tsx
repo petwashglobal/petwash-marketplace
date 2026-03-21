@@ -11,6 +11,7 @@
  * RULE: No math here. Every cent value comes from the server.
  */
 
+import type { ReactNode } from "react";
 import { Coins, Wallet } from "lucide-react";
 import { WalletLifecycleMessage, resolveWalletAmountCents, fmtIls, type FinanceState } from "@/components/wallet/WalletLifecycleMessage";
 import { useLanguage } from "@/lib/languageStore";
@@ -35,7 +36,7 @@ interface RowProps {
   doubleBorder?: boolean;
   accentBg?: string;
   accentText?: string;
-  icon?: React.ReactNode;
+  icon?: ReactNode;
 }
 
 function Row({ label, value, bold, doubleBorder, accentBg, accentText, icon }: RowProps) {
