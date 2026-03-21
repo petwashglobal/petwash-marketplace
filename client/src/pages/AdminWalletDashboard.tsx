@@ -143,6 +143,26 @@ export default function AdminWalletDashboard() {
   const [reverseReason, setReverseReason] = useState("");
   const [reverseResult, setReverseResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
+  // ── Settlement tab (2.9B) ─────────────────────────────────────────────────────
+  const today = new Date().toISOString().slice(0, 10);
+  const firstOfMonth = today.slice(0, 7) + '-01';
+  const [settlFrom,    setSettlFrom]    = useState(firstOfMonth);
+  const [settlTo,      setSettlTo]      = useState(today);
+  const [settlDiv,     setSettlDiv]     = useState("");
+  const [settlApplied, setSettlApplied] = useState(false);
+
+  const settlParams = new URLSearchParams();
+  if (settlApplied) {
+    if (settlFrom) settlParams.set("from",         settlFrom);
+    if (settlTo)   settlParams.set("to",           settlTo);
+    if (settlDiv)  settlParams.set("divisionCode", settlDiv);
+  }
+  const { data: settlData, isLoading: settlLoading, refetch: refetchSettl } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/settlement-summary", settlApplied, settlFrom, settlTo, settlDiv],
+    queryFn: () => fetch(`/api/prestige-pass/admin/wallet/settlement-summary?${settlParams.toString()}`, { credentials: "include" }).then(r => r.json()),
+    enabled: settlApplied,
+  });
+
   // ── Admin Payouts tab (2.9A) ──────────────────────────────────────────────────
   const [payFilterUserId, setPayFilterUserId]     = useState("");
   const [payFilterDivision, setPayFilterDivision] = useState("");
@@ -662,6 +682,10 @@ export default function AdminWalletDashboard() {
             <TabsTrigger value="payouts">
               <DollarSign className="w-4 h-4 mr-2" />
               Payouts
+            </TabsTrigger>
+            <TabsTrigger value="settlement">
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Settlement
             </TabsTrigger>
           </TabsList>
 
@@ -2462,6 +2486,247 @@ export default function AdminWalletDashboard() {
                     </p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── SETTLEMENT (2.9B) ── */}
+          <TabsContent value="settlement" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-indigo-600" />
+                    Settlement Summary
+                  </CardTitle>
+                  <div className="flex gap-2">
+                    <button
+                      className="text-xs text-blue-600 hover:underline"
+                      onClick={() => refetchSettl()}
+                    >Refresh</button>
+                    {settlData?.summary && (
+                      <a
+                        href={`/api/prestige-pass/admin/wallet/settlement-summary/export?${settlParams.toString()}`}
+                        className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 flex items-center gap-1"
+                      >
+                        <Download className="w-3 h-3" />
+                        Export CSV
+                      </a>
+                    )}
+                  </div>
+                </div>
+                <p className="text-sm text-gray-500">
+                  Read-only. collected − providerPayable − VAT(18%) = platform margin.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {/* Filters */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">From</label>
+                    <input type="date" className="w-full border rounded px-2 py-1.5 text-sm"
+                      value={settlFrom} onChange={e => setSettlFrom(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">To</label>
+                    <input type="date" className="w-full border rounded px-2 py-1.5 text-sm"
+                      value={settlTo} onChange={e => setSettlTo(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Division</label>
+                    <select className="w-full border rounded px-2 py-1.5 text-sm"
+                      value={settlDiv} onChange={e => setSettlDiv(e.target.value)}>
+                      <option value="">All Divisions</option>
+                      <option value="walkers">Walkers</option>
+                      <option value="petsitter">Sitter Suite</option>
+                      <option value="academy">Academy</option>
+                      <option value="station_k9000">K9000</option>
+                    </select>
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <button
+                      className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded hover:bg-gray-800 w-full"
+                      onClick={() => setSettlApplied(true)}
+                    >Run Report</button>
+                  </div>
+                </div>
+                {/* Quick presets */}
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { label: 'Today',     from: today,         to: today },
+                    { label: 'This Month',from: firstOfMonth,  to: today },
+                    { label: 'Last 7d',   from: (() => { const d = new Date(); d.setDate(d.getDate()-6); return d.toISOString().slice(0,10); })(), to: today },
+                    { label: 'Last 30d',  from: (() => { const d = new Date(); d.setDate(d.getDate()-29); return d.toISOString().slice(0,10); })(), to: today },
+                    { label: 'All Time',  from: '',            to: '' },
+                  ].map(({ label, from, to }) => (
+                    <button key={label}
+                      className="text-xs px-2 py-1 border rounded hover:bg-gray-50"
+                      onClick={() => { setSettlFrom(from); setSettlTo(to); setSettlApplied(true); }}
+                    >{label}</button>
+                  ))}
+                </div>
+
+                {!settlApplied ? (
+                  <div className="border-2 border-dashed border-gray-200 rounded-lg p-12 text-center">
+                    <BarChart3 className="w-8 h-8 mx-auto mb-3 text-gray-300" />
+                    <p className="text-sm text-gray-400">Select a period and click <strong>Run Report</strong></p>
+                  </div>
+                ) : settlLoading ? (
+                  <div className="space-y-3">
+                    {[...Array(3)].map((_, i) => <div key={i} className="h-20 bg-gray-100 animate-pulse rounded" />)}
+                  </div>
+                ) : settlData?.error ? (
+                  <div className="bg-red-50 border border-red-200 rounded p-4 text-sm text-red-700">{settlData.error}</div>
+                ) : settlData?.summary ? (
+                  <>
+                    {/* 6 KPI Cards */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {[
+                        {
+                          label: 'Collected',
+                          value: settlData.summary.collected,
+                          sub: 'gross revenue from services',
+                          color: 'indigo',
+                          icon: <TrendingUp className="w-4 h-4" />,
+                        },
+                        {
+                          label: 'Pending Holds',
+                          value: settlData.summary.pendingHolds,
+                          sub: 'active holds not yet captured',
+                          color: 'blue',
+                          icon: <Clock className="w-4 h-4" />,
+                        },
+                        {
+                          label: 'Provider Payable',
+                          value: settlData.summary.providerPayable,
+                          sub: 'earned + held payout entries',
+                          color: 'amber',
+                          icon: <DollarSign className="w-4 h-4" />,
+                        },
+                        {
+                          label: 'VAT Liability',
+                          value: settlData.summary.vatLiability,
+                          sub: 'collected × 18%',
+                          color: 'rose',
+                          icon: <AlertTriangle className="w-4 h-4" />,
+                        },
+                        {
+                          label: 'Platform Margin',
+                          value: settlData.summary.margin,
+                          sub: `collected − payable − VAT`,
+                          color: settlData.summary.margin >= 0 ? 'emerald' : 'red',
+                          icon: <CheckCircle2 className="w-4 h-4" />,
+                        },
+                        {
+                          label: 'Margin %',
+                          value: null,
+                          pct: settlData.summary.marginPct,
+                          sub: 'of collected revenue',
+                          color: settlData.summary.marginPct >= 0 ? 'emerald' : 'red',
+                          icon: <BarChart3 className="w-4 h-4" />,
+                        },
+                      ].map(({ label, value, pct, sub, color, icon }) => {
+                        const palette: Record<string, string> = {
+                          indigo:  'bg-indigo-50  border-indigo-200  text-indigo-700',
+                          blue:    'bg-blue-50    border-blue-200    text-blue-700',
+                          amber:   'bg-amber-50   border-amber-200   text-amber-700',
+                          rose:    'bg-rose-50    border-rose-200    text-rose-700',
+                          emerald: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+                          red:     'bg-red-50     border-red-200     text-red-700',
+                        };
+                        return (
+                          <div key={label} className={`border rounded p-4 ${palette[color] ?? 'bg-gray-50'}`}>
+                            <div className="flex items-center gap-2 mb-1 opacity-70">{icon}<span className="text-xs font-medium uppercase tracking-wide">{label}</span></div>
+                            <p className="text-xl font-bold font-mono">
+                              {pct !== undefined
+                                ? `${pct.toFixed(2)}%`
+                                : `₪${((value as number) / 100).toFixed(2)}`}
+                            </p>
+                            <p className="text-xs opacity-60 mt-0.5">{sub}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Period info */}
+                    <div className="text-xs text-gray-400 flex gap-4">
+                      <span>Period: <strong>{settlData.period.from ?? 'all'}</strong> → <strong>{settlData.period.to ?? 'all'}</strong></span>
+                      {settlData.period.divisionCode && <span>Division: <strong>{settlData.period.divisionCode}</strong></span>}
+                    </div>
+
+                    {/* By-division table */}
+                    {settlData.byDivision?.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Collected vs Payable by Division</h4>
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-xs">Division</TableHead>
+                                <TableHead className="text-xs text-right">Collected</TableHead>
+                                <TableHead className="text-xs text-right">Provider Payable</TableHead>
+                                <TableHead className="text-xs text-right">VAT (18%)</TableHead>
+                                <TableHead className="text-xs text-right">Margin</TableHead>
+                                <TableHead className="text-xs text-right">Margin %</TableHead>
+                                <TableHead className="text-xs">Bar</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {(settlData.byDivision as any[]).map((row: any) => {
+                                const totalCollected = settlData.summary.collected;
+                                const barPct = totalCollected > 0 ? Math.round((row.collected / totalCollected) * 100) : 0;
+                                const marginNeg = row.margin < 0;
+                                return (
+                                  <TableRow key={row.divisionCode}>
+                                    <TableCell className="text-xs font-medium">{row.divisionCode}</TableCell>
+                                    <TableCell className="text-xs text-right font-mono">₪{(row.collected / 100).toFixed(2)}</TableCell>
+                                    <TableCell className="text-xs text-right font-mono text-amber-700">₪{(row.providerPayable / 100).toFixed(2)}</TableCell>
+                                    <TableCell className="text-xs text-right font-mono text-rose-600">₪{(row.vatLiability / 100).toFixed(2)}</TableCell>
+                                    <TableCell className={`text-xs text-right font-mono font-semibold ${marginNeg ? 'text-red-600' : 'text-emerald-700'}`}>
+                                      ₪{(row.margin / 100).toFixed(2)}
+                                    </TableCell>
+                                    <TableCell className={`text-xs text-right ${marginNeg ? 'text-red-600' : 'text-emerald-700'}`}>
+                                      {row.marginPct.toFixed(1)}%
+                                    </TableCell>
+                                    <TableCell className="text-xs min-w-[80px]">
+                                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                        <div
+                                          className="h-full bg-indigo-400 rounded-full"
+                                          style={{ width: `${barPct}%` }}
+                                        />
+                                      </div>
+                                      <span className="text-gray-400 text-[10px]">{barPct}%</span>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                              {/* Totals footer */}
+                              <TableRow className="bg-gray-50 font-semibold border-t-2">
+                                <TableCell className="text-xs">TOTAL</TableCell>
+                                <TableCell className="text-xs text-right font-mono">₪{(settlData.summary.collected / 100).toFixed(2)}</TableCell>
+                                <TableCell className="text-xs text-right font-mono text-amber-700">₪{(settlData.summary.providerPayable / 100).toFixed(2)}</TableCell>
+                                <TableCell className="text-xs text-right font-mono text-rose-600">₪{(settlData.summary.vatLiability / 100).toFixed(2)}</TableCell>
+                                <TableCell className={`text-xs text-right font-mono ${settlData.summary.margin < 0 ? 'text-red-600' : 'text-emerald-700'}`}>
+                                  ₪{(settlData.summary.margin / 100).toFixed(2)}
+                                </TableCell>
+                                <TableCell className={`text-xs text-right ${settlData.summary.margin < 0 ? 'text-red-600' : 'text-emerald-700'}`}>
+                                  {settlData.summary.marginPct.toFixed(1)}%
+                                </TableCell>
+                                <TableCell />
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Math identity check */}
+                    <div className="bg-gray-50 border border-gray-200 rounded px-4 py-3 text-xs font-mono text-gray-500 space-y-0.5">
+                      <p className="font-semibold text-gray-700 text-[11px] mb-1">Identity Check</p>
+                      <p>collected({(settlData.summary.collected/100).toFixed(2)}) − payable({(settlData.summary.providerPayable/100).toFixed(2)}) − vat({(settlData.summary.vatLiability/100).toFixed(2)}) = <span className={settlData.summary.margin >= 0 ? 'text-emerald-700' : 'text-red-600'}>{(settlData.summary.margin/100).toFixed(2)}</span></p>
+                    </div>
+                  </>
+                ) : null}
               </CardContent>
             </Card>
           </TabsContent>

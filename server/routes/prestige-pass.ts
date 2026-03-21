@@ -5341,4 +5341,255 @@ router.post('/admin/wallet/payout-entries/mark-paid', async (req: Request, res: 
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 2.9B — Settlement Dashboard
+//
+// collected      = SUM debits on event_type IN (redeem_kiosk, redeem_online, hold_capture)
+//                  from wallet_ledger_entries in the period
+// pendingHolds   = SUM amount_cents from wallet_holds WHERE status='active'
+//                  (period-scoped by created_at; no division_code on holds table)
+// providerPayable= SUM net_cents from provider_payout_entries WHERE status IN ('earned','held')
+//                  (period-scoped by created_at)
+// vatLiability   = FLOOR(collected * 0.18)   (consistent with franchise.ts / accounting.ts)
+// margin         = collected - providerPayable - vatLiability
+// marginPct      = margin / collected * 100   (0 when collected = 0)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const VAT_RATE = 0.18;
+const COLLECTED_EVENTS = `('redeem_kiosk','redeem_online','hold_capture')`;
+
+// GET /api/prestige-pass/admin/wallet/settlement-summary
+router.get('/admin/wallet/settlement-summary', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const from         = req.query.from         as string | undefined; // ISO date string
+    const to           = req.query.to           as string | undefined;
+    const divisionCode = req.query.divisionCode as string | undefined;
+
+    // Build date clauses
+    const fromClause = from ? `AND wle.created_at >= '${from}'::timestamptz` : '';
+    const toClause   = to   ? `AND wle.created_at <  '${to}'::timestamptz + INTERVAL '1 day'` : '';
+    const divClause  = divisionCode ? `AND wle.division_code = '${divisionCode}'` : '';
+
+    const fromHoldClause = from ? `AND wh.created_at >= '${from}'::timestamptz` : '';
+    const toHoldClause   = to   ? `AND wh.created_at <  '${to}'::timestamptz + INTERVAL '1 day'` : '';
+
+    const fromPayClause = from ? `AND ppe.created_at >= '${from}'::timestamptz` : '';
+    const toPayClause   = to   ? `AND ppe.created_at <  '${to}'::timestamptz + INTERVAL '1 day'` : '';
+    const divPayClause  = divisionCode ? `AND ppe.division_code = '${divisionCode}'` : '';
+
+    // ── 1. Collected (wallet debits for services) ──────────────────────────────
+    const collectedRow: any = await db.execute(sql.raw(`
+      SELECT COALESCE(SUM(amount_cents), 0) AS collected
+      FROM wallet_ledger_entries wle
+      WHERE wle.direction = 'debit'
+        AND wle.event_type IN ${COLLECTED_EVENTS}
+        ${fromClause} ${toClause} ${divClause}
+    `));
+    const collected = Number((collectedRow?.rows ?? collectedRow ?? [])[0]?.collected ?? 0);
+
+    // ── 2. Pending holds (active holds created in period) ────────────────────
+    const holdsRow: any = await db.execute(sql.raw(`
+      SELECT COALESCE(SUM(wh.amount_cents), 0) AS pending_holds
+      FROM wallet_holds wh
+      WHERE wh.status = 'active'
+        ${fromHoldClause} ${toHoldClause}
+    `));
+    const pendingHolds = Number((holdsRow?.rows ?? holdsRow ?? [])[0]?.pending_holds ?? 0);
+
+    // ── 3. Provider payable (earned + held payout entries in period) ──────────
+    const payableRow: any = await db.execute(sql.raw(`
+      SELECT COALESCE(SUM(ppe.net_cents), 0) AS payable
+      FROM provider_payout_entries ppe
+      WHERE ppe.status IN ('earned', 'held')
+        ${fromPayClause} ${toPayClause} ${divPayClause}
+    `));
+    const providerPayable = Number((payableRow?.rows ?? payableRow ?? [])[0]?.payable ?? 0);
+
+    // ── 4. Derived metrics ────────────────────────────────────────────────────
+    const vatLiability   = Math.floor(collected * VAT_RATE);
+    const margin         = collected - providerPayable - vatLiability;
+    const marginPct      = collected > 0 ? (margin / collected) * 100 : 0;
+
+    // ── 5. By-division breakdown ───────────────────────────────────────────────
+    const byDivisionRaw: any = await db.execute(sql.raw(`
+      SELECT
+        COALESCE(wle.division_code, 'unknown')            AS division_code,
+        COALESCE(SUM(wle.amount_cents), 0)               AS collected
+      FROM wallet_ledger_entries wle
+      WHERE wle.direction = 'debit'
+        AND wle.event_type IN ${COLLECTED_EVENTS}
+        ${fromClause} ${toClause}
+      GROUP BY wle.division_code
+      ORDER BY collected DESC
+    `));
+
+    const payableByDivRaw: any = await db.execute(sql.raw(`
+      SELECT
+        COALESCE(ppe.division_code, 'unknown')            AS division_code,
+        COALESCE(SUM(ppe.net_cents), 0)                  AS payable
+      FROM provider_payout_entries ppe
+      WHERE ppe.status IN ('earned', 'held')
+        ${fromPayClause} ${toPayClause}
+      GROUP BY ppe.division_code
+    `));
+
+    const divRows   = byDivisionRaw?.rows   ?? byDivisionRaw   ?? [];
+    const payDivMap = new Map<string, number>();
+    for (const pr of (payableByDivRaw?.rows ?? payableByDivRaw ?? [])) {
+      payDivMap.set(pr.division_code, Number(pr.payable ?? 0));
+    }
+
+    const byDivision = divRows.map((row: any) => {
+      const divCollected   = Number(row.collected ?? 0);
+      const divPayable     = payDivMap.get(row.division_code) ?? 0;
+      const divVat         = Math.floor(divCollected * VAT_RATE);
+      const divMargin      = divCollected - divPayable - divVat;
+      const divMarginPct   = divCollected > 0 ? (divMargin / divCollected) * 100 : 0;
+      return {
+        divisionCode:     row.division_code,
+        collected:        divCollected,
+        providerPayable:  divPayable,
+        vatLiability:     divVat,
+        margin:           divMargin,
+        marginPct:        parseFloat(divMarginPct.toFixed(2)),
+      };
+    });
+
+    return res.json({
+      ok: true,
+      period: { from: from ?? null, to: to ?? null, divisionCode: divisionCode ?? null },
+      summary: {
+        collected,
+        pendingHolds,
+        providerPayable,
+        vatLiability,
+        margin,
+        marginPct: parseFloat(marginPct.toFixed(2)),
+      },
+      byDivision,
+    });
+  } catch (err: any) {
+    logger.error('[Settlement] summary error', { error: err.message });
+    return res.status(500).json({ error: 'Settlement summary failed', detail: err.message });
+  }
+});
+
+// GET /api/prestige-pass/admin/wallet/settlement-summary/export
+// Returns CSV with same query logic — one header row + summary row + per-division rows
+router.get('/admin/wallet/settlement-summary/export', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const from         = req.query.from         as string | undefined;
+    const to           = req.query.to           as string | undefined;
+    const divisionCode = req.query.divisionCode as string | undefined;
+
+    // Reuse the summary endpoint logic by making an internal call
+    // Build same queries inline
+    const fromClause = from ? `AND wle.created_at >= '${from}'::timestamptz` : '';
+    const toClause   = to   ? `AND wle.created_at <  '${to}'::timestamptz + INTERVAL '1 day'` : '';
+    const divClause  = divisionCode ? `AND wle.division_code = '${divisionCode}'` : '';
+    const fromPayClause = from ? `AND ppe.created_at >= '${from}'::timestamptz` : '';
+    const toPayClause   = to   ? `AND ppe.created_at <  '${to}'::timestamptz + INTERVAL '1 day'` : '';
+
+    const collectedRow: any = await db.execute(sql.raw(`
+      SELECT COALESCE(SUM(amount_cents), 0) AS collected
+      FROM wallet_ledger_entries wle
+      WHERE wle.direction = 'debit' AND wle.event_type IN ${COLLECTED_EVENTS}
+        ${fromClause} ${toClause} ${divClause}
+    `));
+    const collected = Number((collectedRow?.rows ?? collectedRow ?? [])[0]?.collected ?? 0);
+
+    const holdsRow: any = await db.execute(sql.raw(`
+      SELECT COALESCE(SUM(amount_cents), 0) AS pending_holds
+      FROM wallet_holds WHERE status = 'active'
+      ${from ? `AND created_at >= '${from}'::timestamptz` : ''}
+      ${to   ? `AND created_at <  '${to}'::timestamptz + INTERVAL '1 day'` : ''}
+    `));
+    const pendingHolds = Number((holdsRow?.rows ?? holdsRow ?? [])[0]?.pending_holds ?? 0);
+
+    const payableRow: any = await db.execute(sql.raw(`
+      SELECT COALESCE(SUM(net_cents), 0) AS payable
+      FROM provider_payout_entries ppe
+      WHERE ppe.status IN ('earned','held')
+        ${fromPayClause} ${toPayClause}
+        ${divisionCode ? `AND ppe.division_code = '${divisionCode}'` : ''}
+    `));
+    const providerPayable = Number((payableRow?.rows ?? payableRow ?? [])[0]?.payable ?? 0);
+
+    const vatLiability = Math.floor(collected * VAT_RATE);
+    const margin       = collected - providerPayable - vatLiability;
+    const marginPct    = collected > 0 ? (margin / collected) * 100 : 0;
+
+    const byDivisionRaw: any = await db.execute(sql.raw(`
+      SELECT COALESCE(wle.division_code, 'unknown') AS division_code,
+             COALESCE(SUM(wle.amount_cents), 0)    AS collected
+      FROM wallet_ledger_entries wle
+      WHERE wle.direction = 'debit' AND wle.event_type IN ${COLLECTED_EVENTS}
+        ${fromClause} ${toClause}
+      GROUP BY wle.division_code ORDER BY collected DESC
+    `));
+
+    const payableByDivRaw: any = await db.execute(sql.raw(`
+      SELECT COALESCE(ppe.division_code, 'unknown') AS division_code,
+             COALESCE(SUM(ppe.net_cents), 0)       AS payable
+      FROM provider_payout_entries ppe
+      WHERE ppe.status IN ('earned','held')
+        ${fromPayClause} ${toPayClause}
+      GROUP BY ppe.division_code
+    `));
+
+    const divRows   = byDivisionRaw?.rows ?? byDivisionRaw ?? [];
+    const payDivMap = new Map<string, number>();
+    for (const pr of (payableByDivRaw?.rows ?? payableByDivRaw ?? [])) {
+      payDivMap.set(pr.division_code, Number(pr.payable ?? 0));
+    }
+
+    const fmtILS = (cents: number) => (cents / 100).toFixed(2);
+
+    const lines: string[] = [
+      'PetWash Settlement Summary Export',
+      `Period:,"${from ?? 'all'} – ${to ?? 'all'}"`,
+      `Division Filter:,"${divisionCode ?? 'all'}"`,
+      `Generated:,"${new Date().toISOString()}"`,
+      '',
+      'SUMMARY',
+      'Metric,Amount (ILS)',
+      `Collected (gross revenue),${fmtILS(collected)}`,
+      `Pending Holds (active),${fmtILS(pendingHolds)}`,
+      `Provider Payable (earned+held),${fmtILS(providerPayable)}`,
+      `VAT Liability (18%),${fmtILS(vatLiability)}`,
+      `Platform Margin,${fmtILS(margin)}`,
+      `Margin %,${marginPct.toFixed(2)}%`,
+      '',
+      'BY DIVISION',
+      'Division,Collected (ILS),Provider Payable (ILS),VAT Liability (ILS),Margin (ILS),Margin %',
+    ];
+
+    for (const row of divRows) {
+      const divCollected  = Number(row.collected ?? 0);
+      const divPayable    = payDivMap.get(row.division_code) ?? 0;
+      const divVat        = Math.floor(divCollected * VAT_RATE);
+      const divMargin     = divCollected - divPayable - divVat;
+      const divMarginPct  = divCollected > 0 ? (divMargin / divCollected) * 100 : 0;
+      lines.push(
+        `"${row.division_code}",${fmtILS(divCollected)},${fmtILS(divPayable)},${fmtILS(divVat)},${fmtILS(divMargin)},${divMarginPct.toFixed(2)}%`
+      );
+    }
+
+    const csv = lines.join('\n');
+    const filename = `settlement_${from ?? 'all'}_${to ?? 'all'}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.send('\uFEFF' + csv); // BOM for Hebrew Excel compatibility
+  } catch (err: any) {
+    logger.error('[Settlement] export error', { error: err.message });
+    return res.status(500).json({ error: 'Settlement export failed', detail: err.message });
+  }
+});
+
 export default router;
