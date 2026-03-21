@@ -13001,3 +13001,126 @@ export const periodClosePacks = pgTable("period_close_packs", {
 });
 export type PeriodClosePack       = typeof periodClosePacks.$inferSelect;
 export type InsertPeriodClosePack = typeof periodClosePacks.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 3.7 — Finance Decision Support Layer
+// ─────────────────────────────────────────────────────────────────────────────
+
+// 3.7A — Policy Simulations
+export const policySimulations = pgTable("policy_simulations", {
+  id:                serial("id").primaryKey(),
+  simulatedByUid:    varchar("simulated_by_uid",  { length: 128 }).notNull(),
+  policyKey:         varchar("policy_key",          { length: 64 }).notNull(),
+  originalValue:     text("original_value"),
+  proposedValue:     text("proposed_value").notNull(),
+  divisionCode:      varchar("division_code",       { length: 40 }),
+  simulationContext: jsonb("simulation_context").notNull().default(sql`'{}'::jsonb`),
+  outcomeSummary:    text("outcome_summary"),
+  outcomeDetail:     jsonb("outcome_detail").notNull().default(sql`'{}'::jsonb`),
+  affectedEntities:  integer("affected_entities").notNull().default(0),
+  riskScore:         integer("risk_score").notNull().default(0),
+  wouldSaveCents:    integer("would_save_cents").notNull().default(0),
+  status:            varchar("status", { length: 20 }).notNull().default("pending"),
+  createdAt:         timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type PolicySimulation       = typeof policySimulations.$inferSelect;
+export type InsertPolicySimulation = typeof policySimulations.$inferInsert;
+
+// 3.7B — Approval Chains
+export const approvalChains = pgTable("approval_chains", {
+  id:               serial("id").primaryKey(),
+  chainName:        varchar("chain_name",      { length: 128 }).notNull(),
+  triggerType:      varchar("trigger_type",    { length: 64 }).notNull(),
+  divisionCode:     varchar("division_code",   { length: 40 }),
+  minAmountCents:   integer("min_amount_cents").notNull().default(0),
+  maxAmountCents:   integer("max_amount_cents"),
+  isActive:         boolean("is_active").notNull().default(true),
+  escalationHours:  integer("escalation_hours").notNull().default(48),
+  notes:            text("notes"),
+  createdAt:        timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type ApprovalChain       = typeof approvalChains.$inferSelect;
+export type InsertApprovalChain = typeof approvalChains.$inferInsert;
+
+// 3.7B — Approval Chain Steps
+export const approvalChainSteps = pgTable("approval_chain_steps", {
+  id:             serial("id").primaryKey(),
+  chainId:        integer("chain_id").notNull().references(() => approvalChains.id),
+  stepOrder:      integer("step_order").notNull(),
+  requiredRole:   varchar("required_role",  { length: 64 }).notNull(),
+  isRequired:     boolean("is_required").notNull().default(true),
+  timeoutHours:   integer("timeout_hours").notNull().default(24),
+  escalateToRole: varchar("escalate_to_role", { length: 64 }),
+  createdAt:      timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type ApprovalChainStep       = typeof approvalChainSteps.$inferSelect;
+export type InsertApprovalChainStep = typeof approvalChainSteps.$inferInsert;
+
+// 3.7B — Approval Requests
+export const approvalRequests = pgTable("approval_requests", {
+  id:               serial("id").primaryKey(),
+  chainId:          integer("chain_id").references(() => approvalChains.id),
+  entityType:       varchar("entity_type", { length: 64 }).notNull(),
+  entityId:         varchar("entity_id",   { length: 128 }).notNull(),
+  requestedByUid:   varchar("requested_by_uid", { length: 128 }).notNull(),
+  currentStepOrder: integer("current_step_order").notNull().default(1),
+  status:           varchar("status", { length: 20 }).notNull().default("pending"),
+  amountCents:      integer("amount_cents"),
+  divisionCode:     varchar("division_code", { length: 40 }),
+  context:          jsonb("context").notNull().default(sql`'{}'::jsonb`),
+  completedAt:      timestamp("completed_at", { withTimezone: true }),
+  createdAt:        timestamp("created_at",   { withTimezone: true }).notNull().defaultNow(),
+});
+export type ApprovalRequest       = typeof approvalRequests.$inferSelect;
+export type InsertApprovalRequest = typeof approvalRequests.$inferInsert;
+
+// 3.7B — Approval Request Actions
+export const approvalRequestActions = pgTable("approval_request_actions", {
+  id:          serial("id").primaryKey(),
+  requestId:   integer("request_id").notNull().references(() => approvalRequests.id),
+  stepOrder:   integer("step_order").notNull(),
+  actorUid:    varchar("actor_uid", { length: 128 }).notNull(),
+  action:      varchar("action",    { length: 20 }).notNull(),
+  comment:     text("comment"),
+  actedAt:     timestamp("acted_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type ApprovalRequestAction       = typeof approvalRequestActions.$inferSelect;
+export type InsertApprovalRequestAction = typeof approvalRequestActions.$inferInsert;
+
+// 3.7C — Forecast Scenarios
+export const forecastScenarios = pgTable("forecast_scenarios", {
+  id:                           serial("id").primaryKey(),
+  scenarioName:                 varchar("scenario_name", { length: 128 }).notNull(),
+  description:                  text("description"),
+  baseHorizonDays:              integer("base_horizon_days").notNull().default(30),
+  weightOverrides:              jsonb("weight_overrides").notNull().default(sql`'{}'::jsonb`),
+  revenueAdjustmentPct:         numeric("revenue_adjustment_pct", { precision: 8, scale: 4 }).notNull().default('0'),
+  bookingVolumeAdjustmentPct:   numeric("booking_volume_adjustment_pct", { precision: 8, scale: 4 }).notNull().default('0'),
+  divisionCode:                 varchar("division_code", { length: 40 }),
+  lastRunAt:                    timestamp("last_run_at", { withTimezone: true }),
+  lastRunResult:                jsonb("last_run_result"),
+  isActive:                     boolean("is_active").notNull().default(true),
+  createdByUid:                 varchar("created_by_uid", { length: 128 }),
+  createdAt:                    timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type ForecastScenario       = typeof forecastScenarios.$inferSelect;
+export type InsertForecastScenario = typeof forecastScenarios.$inferInsert;
+
+// 3.7D — Exception Suggestions
+export const exceptionSuggestions = pgTable("exception_suggestions", {
+  id:               serial("id").primaryKey(),
+  exceptionType:    varchar("exception_type", { length: 64 }).notNull(),
+  entityType:       varchar("entity_type",    { length: 64 }).notNull(),
+  entityId:         varchar("entity_id",      { length: 128 }).notNull(),
+  exceptionDetail:  jsonb("exception_detail").notNull().default(sql`'{}'::jsonb`),
+  suggestedAction:  text("suggested_action").notNull(),
+  suggestionDetail: jsonb("suggestion_detail").notNull().default(sql`'{}'::jsonb`),
+  confidenceScore:  integer("confidence_score").notNull().default(0),
+  autoApplicable:   boolean("auto_applicable").notNull().default(false),
+  status:           varchar("status", { length: 20 }).notNull().default("open"),
+  appliedByUid:     varchar("applied_by_uid", { length: 128 }),
+  appliedAt:        timestamp("applied_at",   { withTimezone: true }),
+  generatedAt:      timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type ExceptionSuggestion       = typeof exceptionSuggestions.$inferSelect;
+export type InsertExceptionSuggestion = typeof exceptionSuggestions.$inferInsert;

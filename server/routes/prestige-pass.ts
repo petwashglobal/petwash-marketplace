@@ -11848,4 +11848,625 @@ router.get('/admin/wallet/period-pack/export', async (req: Request, res: Respons
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 3.7 — FINANCE DECISION SUPPORT LAYER
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── 3.7A: Policy Simulation ──────────────────────────────────────────────────
+
+// POST /admin/wallet/policy-simulation/run
+router.post('/admin/wallet/policy-simulation/run', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { policyKey, proposedValue, divisionCode, simulationContext } = req.body;
+    if (!policyKey || proposedValue === undefined) return res.status(400).json({ error: 'policyKey and proposedValue required' });
+
+    // Fetch current value from finance_policy_rules
+    const currentRaw: any = await db.execute(sql`SELECT value FROM finance_policy_rules WHERE policy_key = ${policyKey} LIMIT 1`);
+    const currentRow = (currentRaw?.rows ?? currentRaw)?.[0];
+    const originalValue = currentRow?.value ?? null;
+
+    // Simulate impact based on policy key
+    let outcomeSummary = '';
+    let outcomeDetail: any = {};
+    let affectedEntities = 0;
+    let riskScore = 0;
+    let wouldSaveCents = 0;
+
+    const proposed = parseFloat(proposedValue) || 0;
+    const original = parseFloat(originalValue ?? '0') || 0;
+
+    if (policyKey === 'refund_auto_approve_limit') {
+      const refundsRaw: any = await db.execute(sql`SELECT COUNT(*) as cnt, SUM(amount_cents) as total FROM refund_requests WHERE amount_cents <= ${proposed} AND status = 'pending'`);
+      const r = (refundsRaw?.rows ?? refundsRaw)?.[0];
+      affectedEntities = parseInt(r?.cnt ?? '0', 10);
+      wouldSaveCents = parseInt(r?.total ?? '0', 10);
+      riskScore = proposed > original ? Math.min(90, Math.round((proposed / original - 1) * 50)) : 10;
+      outcomeSummary = `${affectedEntities} pending refunds (₪${(wouldSaveCents/100).toFixed(2)} total) would be auto-approved. Risk: ${riskScore}/100.`;
+      outcomeDetail = { pendingRefunds: affectedEntities, totalValueCents: wouldSaveCents };
+    } else if (policyKey === 'payout_auto_release_limit') {
+      const batchRaw: any = await db.execute(sql`SELECT COUNT(*) as cnt, SUM(total_amount_cents) as total FROM payout_batches WHERE total_amount_cents <= ${proposed} AND status = 'pending_approval'`);
+      const b = (batchRaw?.rows ?? batchRaw)?.[0];
+      affectedEntities = parseInt(b?.cnt ?? '0', 10);
+      wouldSaveCents = parseInt(b?.total ?? '0', 10);
+      riskScore = proposed > original ? Math.min(95, Math.round((proposed / original - 1) * 60)) : 5;
+      outcomeSummary = `${affectedEntities} pending payout batches (₪${(wouldSaveCents/100).toFixed(2)}) would auto-release. Risk: ${riskScore}/100.`;
+      outcomeDetail = { pendingBatches: affectedEntities, totalValueCents: wouldSaveCents };
+    } else if (policyKey === 'dispute_sla_hours') {
+      const dispRaw: any = await db.execute(sql`SELECT COUNT(*) as cnt FROM dispute_cases WHERE status IN ('open','pending_evidence') AND created_at < NOW() - INTERVAL '1 hour' * ${proposed}`);
+      const d = (dispRaw?.rows ?? dispRaw)?.[0];
+      affectedEntities = parseInt(d?.cnt ?? '0', 10);
+      riskScore = proposed < original ? 30 : 5;
+      outcomeSummary = `${affectedEntities} disputes would breach the new ${proposed}h SLA. Risk: ${riskScore}/100.`;
+      outcomeDetail = { breachedDisputes: affectedEntities };
+    } else {
+      outcomeSummary = `Simulated policy change: ${policyKey} from ${originalValue ?? 'unset'} → ${proposedValue}. No automated impact model for this key.`;
+      riskScore = 20;
+      outcomeDetail = { policyKey, from: originalValue, to: proposedValue };
+    }
+
+    // Persist simulation record
+    await db.execute(sql`
+      INSERT INTO policy_simulations
+        (simulated_by_uid, policy_key, original_value, proposed_value, division_code, simulation_context, outcome_summary, outcome_detail, affected_entities, risk_score, would_save_cents, status)
+      VALUES (
+        ${session.user.uid}, ${policyKey}, ${originalValue}, ${proposedValue},
+        ${divisionCode ?? null}, ${JSON.stringify(simulationContext ?? {})},
+        ${outcomeSummary}, ${JSON.stringify(outcomeDetail)},
+        ${affectedEntities}, ${riskScore}, ${wouldSaveCents}, 'completed'
+      )
+    `);
+
+    return res.json({ ok: true, policyKey, originalValue, proposedValue, outcomeSummary, outcomeDetail, affectedEntities, riskScore, wouldSaveCents });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Simulation failed', detail: err.message });
+  }
+});
+
+// GET /admin/wallet/policy-simulation/history
+router.get('/admin/wallet/policy-simulation/history', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const limit = Math.min(parseInt(req.query.limit as string || '50', 10), 200);
+    const raw: any = await db.execute(sql`SELECT * FROM policy_simulations ORDER BY created_at DESC LIMIT ${limit}`);
+    const rows = raw?.rows ?? raw;
+    return res.json({ ok: true, simulations: rows });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch simulation history', detail: err.message });
+  }
+});
+
+// ── 3.7B: Approval Chain Engine ───────────────────────────────────────────────
+
+// GET /admin/wallet/approval-chains
+router.get('/admin/wallet/approval-chains', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const chainsRaw: any = await db.execute(sql`SELECT * FROM approval_chains ORDER BY trigger_type, min_amount_cents`);
+    const chains = chainsRaw?.rows ?? chainsRaw;
+    const stepsRaw: any = await db.execute(sql`SELECT * FROM approval_chain_steps ORDER BY chain_id, step_order`);
+    const steps = stepsRaw?.rows ?? stepsRaw;
+    const result = chains.map((c: any) => ({ ...c, steps: steps.filter((s: any) => s.chain_id === c.id) }));
+    return res.json({ ok: true, chains: result });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch approval chains', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/approval-chains
+router.post('/admin/wallet/approval-chains', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { chainName, triggerType, divisionCode, minAmountCents, maxAmountCents, escalationHours, notes } = req.body;
+    if (!chainName || !triggerType) return res.status(400).json({ error: 'chainName and triggerType required' });
+    const raw: any = await db.execute(sql`
+      INSERT INTO approval_chains (chain_name, trigger_type, division_code, min_amount_cents, max_amount_cents, escalation_hours, notes)
+      VALUES (${chainName}, ${triggerType}, ${divisionCode ?? null}, ${minAmountCents ?? 0}, ${maxAmountCents ?? null}, ${escalationHours ?? 48}, ${notes ?? null})
+      RETURNING *
+    `);
+    const chain = (raw?.rows ?? raw)?.[0];
+    return res.json({ ok: true, chain });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create approval chain', detail: err.message });
+  }
+});
+
+// PATCH /admin/wallet/approval-chains/:id
+router.patch('/admin/wallet/approval-chains/:id', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const id = parseInt(req.params.id, 10);
+    const { isActive, chainName, escalationHours, notes } = req.body;
+    const raw: any = await db.execute(sql`
+      UPDATE approval_chains SET
+        is_active = COALESCE(${isActive ?? null}, is_active),
+        chain_name = COALESCE(${chainName ?? null}, chain_name),
+        escalation_hours = COALESCE(${escalationHours ?? null}, escalation_hours),
+        notes = COALESCE(${notes ?? null}, notes)
+      WHERE id = ${id} RETURNING *
+    `);
+    const chain = (raw?.rows ?? raw)?.[0];
+    if (!chain) return res.status(404).json({ error: 'Chain not found' });
+    return res.json({ ok: true, chain });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update chain', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/approval-chains/:id/steps
+router.post('/admin/wallet/approval-chains/:id/steps', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const chainId = parseInt(req.params.id, 10);
+    const { stepOrder, requiredRole, isRequired, timeoutHours, escalateToRole } = req.body;
+    if (!stepOrder || !requiredRole) return res.status(400).json({ error: 'stepOrder and requiredRole required' });
+    const raw: any = await db.execute(sql`
+      INSERT INTO approval_chain_steps (chain_id, step_order, required_role, is_required, timeout_hours, escalate_to_role)
+      VALUES (${chainId}, ${stepOrder}, ${requiredRole}, ${isRequired ?? true}, ${timeoutHours ?? 24}, ${escalateToRole ?? null})
+      RETURNING *
+    `);
+    const step = (raw?.rows ?? raw)?.[0];
+    return res.json({ ok: true, step });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to add step', detail: err.message });
+  }
+});
+
+// DELETE /admin/wallet/approval-chain-steps/:stepId
+router.delete('/admin/wallet/approval-chain-steps/:stepId', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const stepId = parseInt(req.params.stepId, 10);
+    await db.execute(sql`DELETE FROM approval_chain_steps WHERE id = ${stepId}`);
+    return res.json({ ok: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to delete step', detail: err.message });
+  }
+});
+
+// GET /admin/wallet/approval-requests
+router.get('/admin/wallet/approval-requests', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { status, entityType, limit: lim } = req.query;
+    const limitVal = Math.min(parseInt(lim as string || '100', 10), 500);
+    let query = sql`SELECT ar.*, ac.chain_name FROM approval_requests ar LEFT JOIN approval_chains ac ON ar.chain_id = ac.id WHERE 1=1`;
+    if (status) query = sql`${query} AND ar.status = ${status as string}`;
+    if (entityType) query = sql`${query} AND ar.entity_type = ${entityType as string}`;
+    query = sql`${query} ORDER BY ar.created_at DESC LIMIT ${limitVal}`;
+    const raw: any = await db.execute(query);
+    const requests = raw?.rows ?? raw;
+    // Fetch actions for each
+    const reqIds = requests.map((r: any) => r.id);
+    let actions: any[] = [];
+    if (reqIds.length > 0) {
+      const actRaw: any = await db.execute(sql`SELECT * FROM approval_request_actions WHERE request_id = ANY(${reqIds}::int[]) ORDER BY acted_at`);
+      actions = actRaw?.rows ?? actRaw;
+    }
+    const result = requests.map((r: any) => ({ ...r, actions: actions.filter((a: any) => a.request_id === r.id) }));
+    return res.json({ ok: true, requests: result });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch approval requests', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/approval-requests
+router.post('/admin/wallet/approval-requests', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { chainId, entityType, entityId, amountCents, divisionCode, context } = req.body;
+    if (!entityType || !entityId) return res.status(400).json({ error: 'entityType and entityId required' });
+    const raw: any = await db.execute(sql`
+      INSERT INTO approval_requests (chain_id, entity_type, entity_id, requested_by_uid, amount_cents, division_code, context)
+      VALUES (${chainId ?? null}, ${entityType}, ${entityId}, ${session.user.uid}, ${amountCents ?? null}, ${divisionCode ?? null}, ${JSON.stringify(context ?? {})})
+      RETURNING *
+    `);
+    const request = (raw?.rows ?? raw)?.[0];
+    return res.json({ ok: true, request });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create approval request', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/approval-requests/:id/act
+router.post('/admin/wallet/approval-requests/:id/act', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const reqId = parseInt(req.params.id, 10);
+    const { action, comment } = req.body;
+    if (!action || !['approve','reject','escalate'].includes(action)) return res.status(400).json({ error: 'action must be approve|reject|escalate' });
+
+    const reqRaw: any = await db.execute(sql`SELECT * FROM approval_requests WHERE id = ${reqId} FOR UPDATE`);
+    const approvalReq = (reqRaw?.rows ?? reqRaw)?.[0];
+    if (!approvalReq) return res.status(404).json({ error: 'Approval request not found' });
+    if (approvalReq.status !== 'pending') return res.status(409).json({ error: `Request is already ${approvalReq.status}` });
+
+    // Record the action
+    await db.execute(sql`
+      INSERT INTO approval_request_actions (request_id, step_order, actor_uid, action, comment)
+      VALUES (${reqId}, ${approvalReq.current_step_order}, ${session.user.uid}, ${action}, ${comment ?? null})
+    `);
+
+    let newStatus = 'pending';
+    let newStep = approvalReq.current_step_order;
+
+    if (action === 'approve') {
+      // Check if there are more steps in the chain
+      const nextStepRaw: any = await db.execute(sql`
+        SELECT * FROM approval_chain_steps WHERE chain_id = ${approvalReq.chain_id} AND step_order > ${approvalReq.current_step_order} ORDER BY step_order LIMIT 1
+      `);
+      const nextStep = (nextStepRaw?.rows ?? nextStepRaw)?.[0];
+      if (nextStep) {
+        newStep = nextStep.step_order;
+        newStatus = 'pending';
+      } else {
+        newStatus = 'approved';
+      }
+    } else if (action === 'reject') {
+      newStatus = 'rejected';
+    } else {
+      newStatus = 'escalated';
+    }
+
+    await db.execute(sql`
+      UPDATE approval_requests SET
+        status = ${newStatus},
+        current_step_order = ${newStep},
+        completed_at = ${newStatus !== 'pending' ? new Date().toISOString() : null}
+      WHERE id = ${reqId}
+    `);
+
+    return res.json({ ok: true, requestId: reqId, newStatus, nextStep: newStep });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to record approval action', detail: err.message });
+  }
+});
+
+// ── 3.7C: Forecast Scenarios ──────────────────────────────────────────────────
+
+// GET /admin/wallet/forecast-scenarios
+router.get('/admin/wallet/forecast-scenarios', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const raw: any = await db.execute(sql`SELECT * FROM forecast_scenarios ORDER BY created_at DESC`);
+    return res.json({ ok: true, scenarios: raw?.rows ?? raw });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch scenarios', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/forecast-scenarios
+router.post('/admin/wallet/forecast-scenarios', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { scenarioName, description, baseHorizonDays, weightOverrides, revenueAdjustmentPct, bookingVolumeAdjustmentPct, divisionCode } = req.body;
+    if (!scenarioName) return res.status(400).json({ error: 'scenarioName required' });
+    const raw: any = await db.execute(sql`
+      INSERT INTO forecast_scenarios (scenario_name, description, base_horizon_days, weight_overrides, revenue_adjustment_pct, booking_volume_adjustment_pct, division_code, created_by_uid)
+      VALUES (${scenarioName}, ${description ?? null}, ${baseHorizonDays ?? 30}, ${JSON.stringify(weightOverrides ?? {})}, ${revenueAdjustmentPct ?? 0}, ${bookingVolumeAdjustmentPct ?? 0}, ${divisionCode ?? null}, ${session.user.uid})
+      RETURNING *
+    `);
+    return res.json({ ok: true, scenario: (raw?.rows ?? raw)?.[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create scenario', detail: err.message });
+  }
+});
+
+// PATCH /admin/wallet/forecast-scenarios/:id
+router.patch('/admin/wallet/forecast-scenarios/:id', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const id = parseInt(req.params.id, 10);
+    const { scenarioName, description, revenueAdjustmentPct, bookingVolumeAdjustmentPct, weightOverrides, isActive } = req.body;
+    const raw: any = await db.execute(sql`
+      UPDATE forecast_scenarios SET
+        scenario_name = COALESCE(${scenarioName ?? null}, scenario_name),
+        description = COALESCE(${description ?? null}, description),
+        revenue_adjustment_pct = COALESCE(${revenueAdjustmentPct ?? null}, revenue_adjustment_pct),
+        booking_volume_adjustment_pct = COALESCE(${bookingVolumeAdjustmentPct ?? null}, booking_volume_adjustment_pct),
+        weight_overrides = COALESCE(${weightOverrides ? JSON.stringify(weightOverrides) : null}::jsonb, weight_overrides),
+        is_active = COALESCE(${isActive ?? null}, is_active)
+      WHERE id = ${id} RETURNING *
+    `);
+    const scenario = (raw?.rows ?? raw)?.[0];
+    if (!scenario) return res.status(404).json({ error: 'Scenario not found' });
+    return res.json({ ok: true, scenario });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update scenario', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/forecast-scenarios/:id/run
+router.post('/admin/wallet/forecast-scenarios/:id/run', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const id = parseInt(req.params.id, 10);
+    const scenRaw: any = await db.execute(sql`SELECT * FROM forecast_scenarios WHERE id = ${id}`);
+    const scenario = (scenRaw?.rows ?? scenRaw)?.[0];
+    if (!scenario) return res.status(404).json({ error: 'Scenario not found' });
+
+    // Fetch base revenue for the horizon period
+    const horizon = scenario.base_horizon_days ?? 30;
+    const baseRevRaw: any = await db.execute(sql`
+      SELECT COALESCE(SUM(amount_cents),0) as base_revenue, COUNT(*) as booking_count
+      FROM wallet_transactions WHERE type = 'credit' AND created_at >= NOW() - INTERVAL '1 day' * ${horizon}
+    `);
+    const base = (baseRevRaw?.rows ?? baseRevRaw)?.[0];
+    const baseRevenue = parseInt(base?.base_revenue ?? '0', 10);
+    const baseBookings = parseInt(base?.booking_count ?? '0', 10);
+
+    const revAdj = parseFloat(scenario.revenue_adjustment_pct ?? '0') / 100;
+    const bookAdj = parseFloat(scenario.booking_volume_adjustment_pct ?? '0') / 100;
+
+    const projectedRevenue = Math.round(baseRevenue * (1 + revAdj));
+    const projectedBookings = Math.round(baseBookings * (1 + bookAdj));
+    const deltaRevenue = projectedRevenue - baseRevenue;
+
+    const runResult = {
+      scenarioId: id,
+      horizon,
+      baseRevenueCents: baseRevenue,
+      projectedRevenueCents: projectedRevenue,
+      deltaRevenueCents: deltaRevenue,
+      baseBookings,
+      projectedBookings,
+      revenueAdjustmentPct: scenario.revenue_adjustment_pct,
+      bookingVolumeAdjustmentPct: scenario.booking_volume_adjustment_pct,
+      ranAt: new Date().toISOString(),
+    };
+
+    await db.execute(sql`
+      UPDATE forecast_scenarios SET last_run_at = NOW(), last_run_result = ${JSON.stringify(runResult)} WHERE id = ${id}
+    `);
+
+    return res.json({ ok: true, result: runResult });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to run scenario', detail: err.message });
+  }
+});
+
+// ── 3.7D: Exception Suggestions ───────────────────────────────────────────────
+
+// GET /admin/wallet/exception-suggestions
+router.get('/admin/wallet/exception-suggestions', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { status } = req.query;
+    const raw: any = await db.execute(sql`
+      SELECT * FROM exception_suggestions
+      WHERE status = ${(status as string) ?? 'open'}
+      ORDER BY confidence_score DESC, generated_at DESC LIMIT 100
+    `);
+    return res.json({ ok: true, suggestions: raw?.rows ?? raw });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch suggestions', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/exception-suggestions/generate
+router.post('/admin/wallet/exception-suggestions/generate', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const generated: any[] = [];
+
+    // Scan for overdue disputes
+    const disputesRaw: any = await db.execute(sql`
+      SELECT id, created_at, provider_uid FROM dispute_cases
+      WHERE status IN ('open','pending_evidence') AND created_at < NOW() - INTERVAL '48 hours'
+      LIMIT 20
+    `);
+    const overdueDisputes = disputesRaw?.rows ?? disputesRaw;
+    for (const d of overdueDisputes) {
+      await db.execute(sql`
+        INSERT INTO exception_suggestions (exception_type, entity_type, entity_id, exception_detail, suggested_action, suggestion_detail, confidence_score, auto_applicable)
+        VALUES ('overdue_dispute', 'dispute_case', ${String(d.id)}, ${JSON.stringify({ createdAt: d.created_at, providerUid: d.provider_uid })},
+          'Escalate to senior mediator and send 24h notice to both parties',
+          ${JSON.stringify({ action: 'escalate', notifyParties: true, autoSlaExtend: false })}, 88, FALSE)
+        ON CONFLICT DO NOTHING
+      `);
+      generated.push({ type: 'overdue_dispute', entityId: d.id });
+    }
+
+    // Scan for negative wallet balances
+    const negRaw: any = await db.execute(sql`
+      SELECT user_uid, available_balance_cents FROM wallets WHERE available_balance_cents < 0 LIMIT 10
+    `);
+    const negBalances = negRaw?.rows ?? negRaw;
+    for (const w of negBalances) {
+      await db.execute(sql`
+        INSERT INTO exception_suggestions (exception_type, entity_type, entity_id, exception_detail, suggested_action, suggestion_detail, confidence_score, auto_applicable)
+        VALUES ('negative_balance', 'wallet', ${w.user_uid}, ${JSON.stringify({ balanceCents: w.available_balance_cents })},
+          'Freeze wallet outflows and send correction notice to provider',
+          ${JSON.stringify({ action: 'freeze_outflows', notifyProvider: true })}, 95, FALSE)
+        ON CONFLICT DO NOTHING
+      `);
+      generated.push({ type: 'negative_balance', entityId: w.user_uid });
+    }
+
+    // Scan for stale payout batches (>72h pending)
+    const staleRaw: any = await db.execute(sql`
+      SELECT id, total_amount_cents FROM payout_batches
+      WHERE status = 'pending_approval' AND created_at < NOW() - INTERVAL '72 hours' LIMIT 10
+    `);
+    const staleBatches = staleRaw?.rows ?? staleRaw;
+    for (const b of staleBatches) {
+      await db.execute(sql`
+        INSERT INTO exception_suggestions (exception_type, entity_type, entity_id, exception_detail, suggested_action, suggestion_detail, confidence_score, auto_applicable)
+        VALUES ('stale_payout_batch', 'payout_batch', ${String(b.id)}, ${JSON.stringify({ amountCents: b.total_amount_cents })},
+          'Re-route to CFO approval queue and trigger escalation alert',
+          ${JSON.stringify({ action: 'escalate_to_cfo', sendAlert: true })}, 80, FALSE)
+        ON CONFLICT DO NOTHING
+      `);
+      generated.push({ type: 'stale_payout_batch', entityId: b.id });
+    }
+
+    return res.json({ ok: true, generated: generated.length, items: generated });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to generate suggestions', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/exception-suggestions/:id/apply
+router.post('/admin/wallet/exception-suggestions/:id/apply', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const id = parseInt(req.params.id, 10);
+    const raw: any = await db.execute(sql`
+      UPDATE exception_suggestions SET status='applied', applied_by_uid=${session.user.uid}, applied_at=NOW()
+      WHERE id = ${id} AND status = 'open' RETURNING *
+    `);
+    const suggestion = (raw?.rows ?? raw)?.[0];
+    if (!suggestion) return res.status(404).json({ error: 'Suggestion not found or already applied' });
+    return res.json({ ok: true, suggestion });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to apply suggestion', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/exception-suggestions/:id/dismiss
+router.post('/admin/wallet/exception-suggestions/:id/dismiss', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const id = parseInt(req.params.id, 10);
+    await db.execute(sql`UPDATE exception_suggestions SET status='dismissed' WHERE id = ${id}`);
+    return res.json({ ok: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to dismiss suggestion', detail: err.message });
+  }
+});
+
+// ── 3.7E: Governance Report ───────────────────────────────────────────────────
+
+// GET /admin/wallet/governance-report
+router.get('/admin/wallet/governance-report', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { period } = req.query; // YYYY-MM or YYYY-Q1 format
+
+    // Cross-entity aggregation
+    const [walletRaw, refundRaw, payoutRaw, disputeRaw, approvalRaw, closedRaw] = await Promise.all([
+      db.execute(sql`SELECT COUNT(*) as total_wallets, SUM(available_balance_cents) as total_available, SUM(pending_balance_cents) as total_pending FROM wallets`),
+      db.execute(sql`SELECT COUNT(*) as total_refunds, SUM(amount_cents) as total_refund_value, COUNT(*) FILTER (WHERE status='completed') as completed_refunds FROM refund_requests`),
+      db.execute(sql`SELECT COUNT(*) as total_batches, SUM(total_amount_cents) as total_payout_value, COUNT(*) FILTER (WHERE status='paid') as paid_batches FROM payout_batches`),
+      db.execute(sql`SELECT COUNT(*) as total_disputes, COUNT(*) FILTER (WHERE status='resolved') as resolved_disputes, COUNT(*) FILTER (WHERE status='open') as open_disputes FROM dispute_cases`),
+      db.execute(sql`SELECT COUNT(*) as total_requests, COUNT(*) FILTER (WHERE status='approved') as approved, COUNT(*) FILTER (WHERE status='rejected') as rejected, COUNT(*) FILTER (WHERE status='pending') as pending FROM approval_requests`),
+      db.execute(sql`SELECT COUNT(*) as total_closes FROM finance_close_records`),
+    ]);
+
+    const w  = (walletRaw as any)?.rows?.[0]  ?? (walletRaw as any)?.[0]  ?? {};
+    const r  = (refundRaw as any)?.rows?.[0]  ?? (refundRaw as any)?.[0]  ?? {};
+    const p  = (payoutRaw as any)?.rows?.[0]  ?? (payoutRaw as any)?.[0]  ?? {};
+    const d  = (disputeRaw as any)?.rows?.[0] ?? (disputeRaw as any)?.[0] ?? {};
+    const a  = (approvalRaw as any)?.rows?.[0]?? (approvalRaw as any)?.[0]?? {};
+    const cl = (closedRaw as any)?.rows?.[0]  ?? (closedRaw as any)?.[0]  ?? {};
+
+    // Open exceptions
+    const exceptRaw: any = await db.execute(sql`SELECT exception_type, COUNT(*) as cnt FROM exception_suggestions WHERE status='open' GROUP BY exception_type`);
+    const exceptions = (exceptRaw?.rows ?? exceptRaw).map((e: any) => ({ type: e.exception_type, count: parseInt(e.cnt, 10) }));
+
+    // Recent simulations
+    const simRaw: any = await db.execute(sql`SELECT policy_key, risk_score, outcome_summary, created_at FROM policy_simulations ORDER BY created_at DESC LIMIT 5`);
+    const recentSimulations = simRaw?.rows ?? simRaw;
+
+    return res.json({
+      ok: true,
+      generatedAt: new Date().toISOString(),
+      period: period ?? 'all-time',
+      wallets: {
+        total: parseInt(w.total_wallets ?? '0', 10),
+        totalAvailableCents: parseInt(w.total_available ?? '0', 10),
+        totalPendingCents: parseInt(w.total_pending ?? '0', 10),
+      },
+      refunds: {
+        total: parseInt(r.total_refunds ?? '0', 10),
+        completed: parseInt(r.completed_refunds ?? '0', 10),
+        totalValueCents: parseInt(r.total_refund_value ?? '0', 10),
+      },
+      payouts: {
+        totalBatches: parseInt(p.total_batches ?? '0', 10),
+        paidBatches: parseInt(p.paid_batches ?? '0', 10),
+        totalValueCents: parseInt(p.total_payout_value ?? '0', 10),
+      },
+      disputes: {
+        total: parseInt(d.total_disputes ?? '0', 10),
+        open: parseInt(d.open_disputes ?? '0', 10),
+        resolved: parseInt(d.resolved_disputes ?? '0', 10),
+      },
+      approvals: {
+        total: parseInt(a.total_requests ?? '0', 10),
+        approved: parseInt(a.approved ?? '0', 10),
+        rejected: parseInt(a.rejected ?? '0', 10),
+        pending: parseInt(a.pending ?? '0', 10),
+      },
+      closeRecords: { total: parseInt(cl.total_closes ?? '0', 10) },
+      openExceptions: exceptions,
+      recentSimulations,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to generate governance report', detail: err.message });
+  }
+});
+
+// ── 3.7F: Finance Assistant ───────────────────────────────────────────────────
+
+// POST /admin/wallet/finance-assistant
+router.post('/admin/wallet/finance-assistant', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { context, question } = req.body;
+
+    const suggestions: { priority: string; action: string; reason: string; link?: string }[] = [];
+
+    // Scan current system state for actionable guidance
+    const [pendingRaw, exceptionRaw, staleRaw, approvalRaw] = await Promise.all([
+      db.execute(sql`SELECT COUNT(*) as cnt FROM payout_batches WHERE status = 'pending_approval'`),
+      db.execute(sql`SELECT COUNT(*) as cnt FROM exception_suggestions WHERE status = 'open'`),
+      db.execute(sql`SELECT COUNT(*) as cnt FROM approval_requests WHERE status = 'pending' AND created_at < NOW() - INTERVAL '24 hours'`),
+      db.execute(sql`SELECT COUNT(*) as cnt FROM approval_requests WHERE status = 'pending'`),
+    ]);
+
+    const pendingBatches = parseInt((pendingRaw as any)?.rows?.[0]?.cnt ?? '0', 10);
+    const openExceptions = parseInt((exceptionRaw as any)?.rows?.[0]?.cnt ?? '0', 10);
+    const staleApprovals = parseInt((staleRaw as any)?.rows?.[0]?.cnt ?? '0', 10);
+    const pendingApprovals = parseInt((approvalRaw as any)?.rows?.[0]?.cnt ?? '0', 10);
+
+    if (pendingBatches > 0) suggestions.push({ priority: 'high', action: 'Review pending payout batches', reason: `${pendingBatches} batch(es) awaiting approval`, link: '/admin/wallet?tab=batches' });
+    if (openExceptions > 0) suggestions.push({ priority: 'high', action: 'Review open exception suggestions', reason: `${openExceptions} unresolved exception(s) detected`, link: '/admin/wallet?tab=control-center' });
+    if (staleApprovals > 0) suggestions.push({ priority: 'medium', action: 'Escalate stale approval requests', reason: `${staleApprovals} approval request(s) pending over 24h`, link: '/admin/wallet?tab=policies' });
+    if (pendingApprovals > 0) suggestions.push({ priority: 'medium', action: 'Process pending approval queue', reason: `${pendingApprovals} approval request(s) awaiting action`, link: '/admin/wallet?tab=policies' });
+
+    // Context-specific guidance
+    if (context === 'forecast') suggestions.push({ priority: 'low', action: 'Run optimistic and conservative scenarios', reason: 'Compare scenario divergence before committing to quarterly budget', link: '/admin/wallet?tab=simulation' });
+    if (context === 'period-close') suggestions.push({ priority: 'high', action: 'Generate and sign period close pack', reason: 'Required before submitting to external auditor', link: '/admin/wallet?tab=executive' });
+    if (context === 'policy') suggestions.push({ priority: 'low', action: 'Simulate proposed policy changes before saving', reason: 'Simulation reveals affected entity counts and risk score before committing', link: '/admin/wallet?tab=simulation' });
+
+    if (suggestions.length === 0) suggestions.push({ priority: 'low', action: 'System is healthy', reason: 'No immediate actions required. Review governance report for board-level overview.' });
+
+    return res.json({ ok: true, question: question ?? null, suggestions, generatedAt: new Date().toISOString() });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Finance assistant failed', detail: err.message });
+  }
+});
+
 export default router;

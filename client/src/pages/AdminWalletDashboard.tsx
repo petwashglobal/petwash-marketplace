@@ -72,6 +72,12 @@ import {
   FolderSearch,
   GitCompare,
   Scale,
+  FlaskConical,
+  Building2,
+  Layers,
+  CheckCircle,
+  Bot,
+  ListChecks,
 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -1297,6 +1303,102 @@ export default function AdminWalletDashboard() {
     enabled: false,
   });
 
+  // ── Phase 3.7A: Policy Simulation ─────────────────────────────────────────
+  const [simPolicyKey, setSimPolicyKey] = useState('refund_auto_approve_limit');
+  const [simProposedValue, setSimProposedValue] = useState('');
+  const [simDivision, setSimDivision] = useState('');
+  const [simResult, setSimResult] = useState<any>(null);
+  const { data: simHistory, isLoading: simHistoryLoading, refetch: refetchSimHistory } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/policy-simulation/history'],
+  });
+  const { mutate: runSimulation, isPending: runSimulationPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/policy-simulation/run', body),
+    onSuccess: (d) => { setSimResult(d); toast({ title: 'Simulation complete', description: d.outcomeSummary }); refetchSimHistory(); },
+  });
+
+  // ── Phase 3.7B: Approval Chains ────────────────────────────────────────────
+  const { data: approvalChains, isLoading: approvalChainsLoading, refetch: refetchApprovalChains } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/approval-chains'],
+  });
+  const { data: approvalRequestsData, isLoading: approvalRequestsLoading, refetch: refetchApprovalRequests } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/approval-requests'],
+  });
+  const [showNewChainForm, setShowNewChainForm] = useState(false);
+  const [newChain, setNewChain] = useState({ chainName: '', triggerType: 'payout', minAmountCents: '', maxAmountCents: '', escalationHours: '48', notes: '' });
+  const [expandedChainId, setExpandedChainId] = useState<number | null>(null);
+  const [newStep, setNewStep] = useState({ chainId: 0, stepOrder: '1', requiredRole: 'finance_manager', timeoutHours: '24', escalateToRole: '' });
+  const { mutate: createApprovalChain, isPending: createChainPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/approval-chains', body),
+    onSuccess: () => { toast({ title: 'Chain created' }); refetchApprovalChains(); setShowNewChainForm(false); setNewChain({ chainName: '', triggerType: 'payout', minAmountCents: '', maxAmountCents: '', escalationHours: '48', notes: '' }); },
+  });
+  const { mutate: patchApprovalChain, isPending: patchChainPending } = useMutation<any, any, { id: number; body: any }>({
+    mutationFn: ({ id, body }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/approval-chains/${id}`, body),
+    onSuccess: () => { toast({ title: 'Chain updated' }); refetchApprovalChains(); },
+  });
+  const { mutate: addChainStep, isPending: addStepPending } = useMutation<any, any, any>({
+    mutationFn: ({ chainId, body }) => apiRequest('POST', `/api/prestige-pass/admin/wallet/approval-chains/${chainId}/steps`, body),
+    onSuccess: () => { toast({ title: 'Step added' }); refetchApprovalChains(); setNewStep({ chainId: 0, stepOrder: '1', requiredRole: 'finance_manager', timeoutHours: '24', escalateToRole: '' }); },
+  });
+  const { mutate: deleteChainStep } = useMutation<any, any, number>({
+    mutationFn: (stepId) => apiRequest('DELETE', `/api/prestige-pass/admin/wallet/approval-chain-steps/${stepId}`),
+    onSuccess: () => { toast({ title: 'Step removed' }); refetchApprovalChains(); },
+  });
+  const { mutate: actOnApproval, isPending: actOnApprovalPending } = useMutation<any, any, { id: number; action: string; comment?: string }>({
+    mutationFn: ({ id, action, comment }) => apiRequest('POST', `/api/prestige-pass/admin/wallet/approval-requests/${id}/act`, { action, comment }),
+    onSuccess: (d) => { toast({ title: `Approval ${d.newStatus}` }); refetchApprovalRequests(); },
+  });
+
+  // ── Phase 3.7C: Forecast Scenarios ─────────────────────────────────────────
+  const { data: forecastScenariosData, isLoading: forecastScenariosLoading, refetch: refetchForecastScenarios } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/forecast-scenarios'],
+  });
+  const [showNewScenarioForm, setShowNewScenarioForm] = useState(false);
+  const [newScenario, setNewScenario] = useState({ scenarioName: '', description: '', revenueAdjustmentPct: '0', bookingVolumeAdjustmentPct: '0', baseHorizonDays: '30' });
+  const [scenarioRunResult, setScenarioRunResult] = useState<any>(null);
+  const { mutate: createScenario, isPending: createScenarioPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/forecast-scenarios', body),
+    onSuccess: () => { toast({ title: 'Scenario created' }); refetchForecastScenarios(); setShowNewScenarioForm(false); },
+  });
+  const { mutate: runScenario, isPending: runScenarioPending } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest('POST', `/api/prestige-pass/admin/wallet/forecast-scenarios/${id}/run`, {}),
+    onSuccess: (d) => { setScenarioRunResult(d.result); toast({ title: 'Scenario run complete' }); refetchForecastScenarios(); },
+  });
+  const { mutate: patchScenario, isPending: patchScenarioPending } = useMutation<any, any, { id: number; body: any }>({
+    mutationFn: ({ id, body }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/forecast-scenarios/${id}`, body),
+    onSuccess: () => { toast({ title: 'Scenario updated' }); refetchForecastScenarios(); },
+  });
+
+  // ── Phase 3.7D: Exception Suggestions ──────────────────────────────────────
+  const { data: exceptionSuggestionsData, isLoading: exceptionSuggestionsLoading, refetch: refetchExceptionSuggestions } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/exception-suggestions'],
+  });
+  const { mutate: generateSuggestions, isPending: generateSuggestionsPending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest('POST', '/api/prestige-pass/admin/wallet/exception-suggestions/generate', {}),
+    onSuccess: (d) => { toast({ title: 'Suggestions generated', description: `${d.generated} new items` }); refetchExceptionSuggestions(); },
+  });
+  const { mutate: applySuggestion, isPending: applySuggestionPending } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest('POST', `/api/prestige-pass/admin/wallet/exception-suggestions/${id}/apply`, {}),
+    onSuccess: () => { toast({ title: 'Suggestion applied' }); refetchExceptionSuggestions(); },
+  });
+  const { mutate: dismissSuggestion } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest('POST', `/api/prestige-pass/admin/wallet/exception-suggestions/${id}/dismiss`, {}),
+    onSuccess: () => { toast({ title: 'Dismissed' }); refetchExceptionSuggestions(); },
+  });
+
+  // ── Phase 3.7E: Governance Report ──────────────────────────────────────────
+  const { data: governanceReport, isLoading: governanceReportLoading, refetch: refetchGovernanceReport } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/governance-report'],
+  });
+
+  // ── Phase 3.7F: Finance Assistant ──────────────────────────────────────────
+  const [assistantContext, setAssistantContext] = useState('');
+  const [assistantQuestion, setAssistantQuestion] = useState('');
+  const [assistantResult, setAssistantResult] = useState<any>(null);
+  const { mutate: askAssistant, isPending: askAssistantPending } = useMutation<any, any, { context: string; question: string }>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/finance-assistant', body),
+    onSuccess: (d) => { setAssistantResult(d); },
+  });
+
   // ── Phase 3.6 UI aliases & supplemental state ──────────────────────────────
   // 3.6A — weight form state for the UI card
   const [weightForm, setWeightForm] = useState({ signalKey: '', divisionCode: '', weight: '' });
@@ -1611,6 +1713,14 @@ export default function AdminWalletDashboard() {
             <TabsTrigger value="policies">
               <Settings className="w-4 h-4 mr-2" />
               Policies
+            </TabsTrigger>
+            <TabsTrigger value="simulation">
+              <FlaskConical className="w-4 h-4 mr-2" />
+              Simulation
+            </TabsTrigger>
+            <TabsTrigger value="governance">
+              <Building2 className="w-4 h-4 mr-2" />
+              Governance
             </TabsTrigger>
           </TabsList>
 
@@ -6709,6 +6819,62 @@ export default function AdminWalletDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* 3.7D — EXCEPTION SUGGESTION ENGINE */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <ListChecks className="w-4 h-4 text-amber-600" /> Exception Suggestion Engine
+                  </CardTitle>
+                  <button
+                    onClick={() => generateSuggestions()}
+                    disabled={generateSuggestionsPending}
+                    className="text-xs px-3 py-1.5 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-40 flex items-center gap-1">
+                    {generateSuggestionsPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bot className="w-3 h-3" />}
+                    Scan &amp; Generate Suggestions
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {exceptionSuggestionsLoading ? (
+                  <div className="h-20 bg-gray-100 animate-pulse rounded" />
+                ) : !exceptionSuggestionsData?.suggestions?.length ? (
+                  <div className="text-xs text-gray-400 text-center py-6 border border-dashed rounded">
+                    No open exception suggestions. Click "Scan &amp; Generate" to detect issues.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {exceptionSuggestionsData.suggestions.map((s: any) => (
+                      <div key={s.id} className="border rounded-lg p-3 text-xs flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`px-1.5 py-0.5 rounded font-medium ${
+                              s.exception_type === 'negative_balance' ? 'bg-red-100 text-red-700' :
+                              s.exception_type === 'overdue_dispute' ? 'bg-orange-100 text-orange-700' :
+                              'bg-yellow-100 text-yellow-700'
+                            }`}>{s.exception_type?.replace(/_/g, ' ')}</span>
+                            <span className="text-gray-400">{s.entity_type} #{s.entity_id}</span>
+                            <span className="ml-auto text-gray-400">Confidence: {s.confidence_score}%</span>
+                          </div>
+                          <div className="text-gray-700 font-medium">{s.suggested_action}</div>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <button onClick={() => applySuggestion(s.id)} disabled={applySuggestionPending}
+                            className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-40 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" /> Apply
+                          </button>
+                          <button onClick={() => dismissSuggestion(s.id)}
+                            className="px-2 py-1 border border-gray-200 text-gray-600 rounded hover:bg-gray-50 flex items-center gap-1">
+                            <XCircle className="w-3 h-3" /> Dismiss
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -7412,6 +7578,452 @@ export default function AdminWalletDashboard() {
                     </button>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* 3.7B — APPROVAL CHAIN DESIGNER */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-violet-600" /> Approval Chain Designer
+                  </CardTitle>
+                  <button onClick={() => setShowNewChainForm(f => !f)}
+                    className="text-xs px-3 py-1.5 bg-violet-700 text-white rounded hover:bg-violet-800 flex items-center gap-1">
+                    {showNewChainForm ? <XCircle className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                    {showNewChainForm ? 'Cancel' : 'New Chain'}
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {showNewChainForm && (
+                  <div className="border border-violet-200 rounded-lg p-3 bg-violet-50 space-y-2">
+                    <div className="text-xs font-semibold text-violet-800 mb-1">New Approval Chain</div>
+                    <div className="flex flex-wrap gap-2">
+                      <input placeholder="Chain name" value={newChain.chainName} onChange={e => setNewChain(f => ({ ...f, chainName: e.target.value }))}
+                        className="border rounded px-2 py-1 text-xs flex-1 min-w-36" />
+                      <select value={newChain.triggerType} onChange={e => setNewChain(f => ({ ...f, triggerType: e.target.value }))}
+                        className="border rounded px-2 py-1 text-xs w-36">
+                        <option value="payout">Payout</option>
+                        <option value="refund">Refund</option>
+                        <option value="dispute">Dispute</option>
+                        <option value="policy_change">Policy Change</option>
+                        <option value="period_close">Period Close</option>
+                      </select>
+                      <input placeholder="Min ₪ (cents)" type="number" value={newChain.minAmountCents} onChange={e => setNewChain(f => ({ ...f, minAmountCents: e.target.value }))}
+                        className="border rounded px-2 py-1 text-xs w-28" />
+                      <input placeholder="Max ₪ (cents, blank=∞)" type="number" value={newChain.maxAmountCents} onChange={e => setNewChain(f => ({ ...f, maxAmountCents: e.target.value }))}
+                        className="border rounded px-2 py-1 text-xs w-36" />
+                      <input placeholder="Escalation hours" type="number" value={newChain.escalationHours} onChange={e => setNewChain(f => ({ ...f, escalationHours: e.target.value }))}
+                        className="border rounded px-2 py-1 text-xs w-32" />
+                      <input placeholder="Notes" value={newChain.notes} onChange={e => setNewChain(f => ({ ...f, notes: e.target.value }))}
+                        className="border rounded px-2 py-1 text-xs flex-1 min-w-36" />
+                    </div>
+                    <button disabled={createChainPending || !newChain.chainName}
+                      onClick={() => createApprovalChain({ ...newChain, minAmountCents: parseInt(newChain.minAmountCents || '0', 10), maxAmountCents: newChain.maxAmountCents ? parseInt(newChain.maxAmountCents, 10) : null, escalationHours: parseInt(newChain.escalationHours || '48', 10) })}
+                      className="text-xs px-3 py-1.5 bg-violet-700 text-white rounded hover:bg-violet-800 disabled:opacity-40 flex items-center gap-1">
+                      {createChainPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />} Create Chain
+                    </button>
+                  </div>
+                )}
+                {approvalChainsLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                  !approvalChains?.chains?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-6 border border-dashed rounded">No approval chains configured</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {approvalChains.chains.map((chain: any) => (
+                        <div key={chain.id} className="border rounded-lg overflow-hidden">
+                          <div className="flex items-center justify-between p-3 bg-gray-50 cursor-pointer" onClick={() => setExpandedChainId(expandedChainId === chain.id ? null : chain.id)}>
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="font-semibold text-gray-800">{chain.chain_name}</span>
+                              <span className="px-1.5 py-0.5 rounded bg-violet-100 text-violet-700">{chain.trigger_type}</span>
+                              <span className="text-gray-500">₪{(chain.min_amount_cents/100).toFixed(0)}–{chain.max_amount_cents ? '₪'+(chain.max_amount_cents/100).toFixed(0) : '∞'}</span>
+                              <span className={`px-1.5 py-0.5 rounded ${chain.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>{chain.is_active ? 'Active' : 'Off'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button onClick={e => { e.stopPropagation(); patchApprovalChain({ id: chain.id, body: { isActive: !chain.is_active } }); }}
+                                className={`text-xs px-2 py-0.5 rounded border ${chain.is_active ? 'border-red-200 text-red-600' : 'border-green-200 text-green-700'}`}>
+                                {chain.is_active ? 'Disable' : 'Enable'}
+                              </button>
+                              <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${expandedChainId === chain.id ? 'rotate-90' : ''}`} />
+                            </div>
+                          </div>
+                          {expandedChainId === chain.id && (
+                            <div className="p-3 space-y-3 border-t">
+                              <div className="text-xs font-semibold text-gray-600">Steps ({chain.steps?.length ?? 0})</div>
+                              {chain.steps?.length ? (
+                                <div className="space-y-1">
+                                  {chain.steps.map((step: any) => (
+                                    <div key={step.id} className="flex items-center gap-2 text-xs border rounded px-2 py-1.5 bg-white">
+                                      <span className="w-5 h-5 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center font-mono text-xs">{step.step_order}</span>
+                                      <span className="font-medium text-gray-700">{step.required_role}</span>
+                                      <span className="text-gray-400">timeout {step.timeout_hours}h</span>
+                                      {step.escalate_to_role && <span className="text-gray-400">→ {step.escalate_to_role}</span>}
+                                      <span className={`ml-auto px-1 py-0.5 rounded ${step.is_required ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-500'}`}>{step.is_required ? 'required' : 'optional'}</span>
+                                      <button onClick={() => deleteChainStep(step.id)} className="text-red-400 hover:text-red-600"><XCircle className="w-3.5 h-3.5" /></button>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : <div className="text-xs text-gray-400">No steps yet</div>}
+                              {/* Add step form */}
+                              <div className="border-t pt-2">
+                                <div className="text-xs font-semibold text-gray-600 mb-1">Add Step</div>
+                                <div className="flex flex-wrap gap-2">
+                                  <input type="number" placeholder="Order" value={newStep.chainId === chain.id ? newStep.stepOrder : '1'} onChange={e => setNewStep(f => ({ ...f, chainId: chain.id, stepOrder: e.target.value }))}
+                                    className="border rounded px-2 py-1 text-xs w-16" />
+                                  <select value={newStep.chainId === chain.id ? newStep.requiredRole : 'finance_manager'}
+                                    onChange={e => setNewStep(f => ({ ...f, chainId: chain.id, requiredRole: e.target.value }))}
+                                    className="border rounded px-2 py-1 text-xs">
+                                    <option value="finance_manager">Finance Manager</option>
+                                    <option value="cfo">CFO</option>
+                                    <option value="director">Director</option>
+                                    <option value="board">Board</option>
+                                    <option value="legal">Legal</option>
+                                  </select>
+                                  <input type="number" placeholder="Timeout hrs" value={newStep.chainId === chain.id ? newStep.timeoutHours : '24'}
+                                    onChange={e => setNewStep(f => ({ ...f, chainId: chain.id, timeoutHours: e.target.value }))}
+                                    className="border rounded px-2 py-1 text-xs w-24" />
+                                  <button disabled={addStepPending} onClick={() => addChainStep({ chainId: chain.id, body: { stepOrder: parseInt(newStep.stepOrder, 10), requiredRole: newStep.requiredRole, timeoutHours: parseInt(newStep.timeoutHours, 10) } })}
+                                    className="text-xs px-2 py-1 bg-violet-600 text-white rounded hover:bg-violet-700 disabled:opacity-40">
+                                    {addStepPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Add Step'}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }
+
+                {/* Pending approval requests */}
+                <div className="border-t pt-3">
+                  <div className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    Pending Approval Requests
+                    <span className="px-1.5 py-0.5 rounded bg-orange-100 text-orange-700">{approvalRequestsData?.requests?.filter((r: any) => r.status === 'pending')?.length ?? 0}</span>
+                  </div>
+                  {approvalRequestsLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                    !approvalRequestsData?.requests?.filter((r: any) => r.status === 'pending')?.length ? (
+                      <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No pending requests</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {approvalRequestsData.requests.filter((r: any) => r.status === 'pending').map((r: any) => (
+                          <div key={r.id} className="border rounded-lg p-3 text-xs flex items-start justify-between gap-3">
+                            <div>
+                              <div className="font-medium text-gray-800">{r.entity_type} #{r.entity_id}</div>
+                              <div className="text-gray-500">{r.chain_name ?? 'No chain'} — Step {r.current_step_order}</div>
+                              {r.amount_cents && <div className="text-gray-600 font-mono">₪{(r.amount_cents/100).toFixed(2)}</div>}
+                            </div>
+                            <div className="flex gap-1 shrink-0">
+                              <button onClick={() => actOnApproval({ id: r.id, action: 'approve' })} disabled={actOnApprovalPending}
+                                className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-40 flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" /> Approve
+                              </button>
+                              <button onClick={() => actOnApproval({ id: r.id, action: 'reject' })} disabled={actOnApprovalPending}
+                                className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-40 flex items-center gap-1">
+                                <XCircle className="w-3 h-3" /> Reject
+                              </button>
+                              <button onClick={() => actOnApproval({ id: r.id, action: 'escalate' })} disabled={actOnApprovalPending}
+                                className="px-2 py-1 border border-orange-300 text-orange-700 rounded hover:bg-orange-50 disabled:opacity-40">
+                                Escalate
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  }
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* 3.7A+3.7C — SIMULATION TAB                                    */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          <TabsContent value="simulation" className="mt-4 space-y-4">
+            {/* 3.7A — Policy Simulator */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <FlaskConical className="w-4 h-4 text-teal-600" /> Policy Impact Simulator
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded p-2">
+                  Simulate the financial impact of changing a policy rule before applying it. Results are saved to history and never modify live rules.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <select value={simPolicyKey} onChange={e => setSimPolicyKey(e.target.value)}
+                    className="border rounded px-2 py-1 text-xs flex-1 min-w-48">
+                    <option value="refund_auto_approve_limit">refund_auto_approve_limit</option>
+                    <option value="payout_auto_release_limit">payout_auto_release_limit</option>
+                    <option value="dispute_sla_hours">dispute_sla_hours</option>
+                    <option value="forecast_default_horizon">forecast_default_horizon</option>
+                  </select>
+                  <input placeholder="Proposed value (cents / hours)" value={simProposedValue} onChange={e => setSimProposedValue(e.target.value)}
+                    className="border rounded px-2 py-1 text-xs w-48" />
+                  <input placeholder="Division (blank=global)" value={simDivision} onChange={e => setSimDivision(e.target.value)}
+                    className="border rounded px-2 py-1 text-xs w-40" />
+                  <button disabled={runSimulationPending || !simProposedValue}
+                    onClick={() => runSimulation({ policyKey: simPolicyKey, proposedValue: simProposedValue, divisionCode: simDivision || undefined })}
+                    className="text-xs px-3 py-1.5 bg-teal-700 text-white rounded hover:bg-teal-800 disabled:opacity-40 flex items-center gap-1">
+                    {runSimulationPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <FlaskConical className="w-3 h-3" />} Run Simulation
+                  </button>
+                </div>
+                {simResult && (
+                  <div className="border border-teal-200 rounded-lg p-3 bg-teal-50 text-xs space-y-2">
+                    <div className="font-semibold text-teal-800">Simulation Result</div>
+                    <div className="text-gray-700">{simResult.outcomeSummary}</div>
+                    <div className="flex flex-wrap gap-4 mt-2">
+                      <div className="flex flex-col"><span className="text-gray-500">Current</span><span className="font-mono text-gray-800">{simResult.originalValue ?? 'unset'}</span></div>
+                      <div className="flex flex-col"><span className="text-gray-500">Proposed</span><span className="font-mono text-teal-700">{simResult.proposedValue}</span></div>
+                      <div className="flex flex-col"><span className="text-gray-500">Affected entities</span><span className="font-mono text-orange-700">{simResult.affectedEntities}</span></div>
+                      <div className="flex flex-col"><span className="text-gray-500">Risk score</span><span className={`font-mono font-semibold ${simResult.riskScore > 60 ? 'text-red-600' : simResult.riskScore > 30 ? 'text-orange-500' : 'text-green-600'}`}>{simResult.riskScore}/100</span></div>
+                      {simResult.wouldSaveCents > 0 && <div className="flex flex-col"><span className="text-gray-500">Value impacted</span><span className="font-mono text-blue-700">₪{(simResult.wouldSaveCents/100).toFixed(2)}</span></div>}
+                    </div>
+                  </div>
+                )}
+                {/* Simulation history */}
+                <div className="border-t pt-3">
+                  <div className="text-xs font-semibold text-gray-600 mb-2">Recent Simulations</div>
+                  {simHistoryLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                    !simHistory?.simulations?.length ? (
+                      <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No past simulations</div>
+                    ) : (
+                      <div className="border rounded-lg overflow-hidden">
+                        <table className="w-full text-xs"><thead className="bg-gray-50">
+                          <tr className="text-gray-500"><th className="text-left p-2">Policy Key</th><th className="text-left p-2">From → To</th><th className="text-left p-2">Risk</th><th className="text-left p-2">Affected</th><th className="text-left p-2">Date</th></tr>
+                        </thead><tbody>
+                          {simHistory.simulations.slice(0, 10).map((s: any) => (
+                            <tr key={s.id} className="border-t hover:bg-gray-50">
+                              <td className="p-2 font-mono text-gray-700">{s.policy_key}</td>
+                              <td className="p-2 text-gray-500">{s.original_value ?? '—'} → <span className="text-teal-700">{s.proposed_value}</span></td>
+                              <td className="p-2"><span className={`font-mono ${s.risk_score > 60 ? 'text-red-600' : s.risk_score > 30 ? 'text-orange-500' : 'text-green-600'}`}>{s.risk_score}</span></td>
+                              <td className="p-2 font-mono">{s.affected_entities}</td>
+                              <td className="p-2 text-gray-400">{new Date(s.created_at).toLocaleDateString('he-IL')}</td>
+                            </tr>
+                          ))}
+                        </tbody></table>
+                      </div>
+                    )
+                  }
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 3.7C — Forecast Scenarios */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-blue-600" /> Forecast Scenario Planner
+                  </CardTitle>
+                  <button onClick={() => setShowNewScenarioForm(f => !f)}
+                    className="text-xs px-3 py-1.5 bg-blue-700 text-white rounded hover:bg-blue-800 flex items-center gap-1">
+                    {showNewScenarioForm ? <XCircle className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                    {showNewScenarioForm ? 'Cancel' : 'New Scenario'}
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {showNewScenarioForm && (
+                  <div className="border border-blue-200 rounded-lg p-3 bg-blue-50 space-y-2">
+                    <div className="text-xs font-semibold text-blue-800">New Forecast Scenario</div>
+                    <div className="flex flex-wrap gap-2">
+                      <input placeholder="Scenario name" value={newScenario.scenarioName} onChange={e => setNewScenario(f => ({ ...f, scenarioName: e.target.value }))}
+                        className="border rounded px-2 py-1 text-xs flex-1 min-w-36" />
+                      <input placeholder="Description" value={newScenario.description} onChange={e => setNewScenario(f => ({ ...f, description: e.target.value }))}
+                        className="border rounded px-2 py-1 text-xs flex-1 min-w-48" />
+                      <input type="number" placeholder="Horizon days" value={newScenario.baseHorizonDays} onChange={e => setNewScenario(f => ({ ...f, baseHorizonDays: e.target.value }))}
+                        className="border rounded px-2 py-1 text-xs w-28" />
+                      <input type="number" placeholder="Revenue adj %" value={newScenario.revenueAdjustmentPct} onChange={e => setNewScenario(f => ({ ...f, revenueAdjustmentPct: e.target.value }))}
+                        className="border rounded px-2 py-1 text-xs w-32" />
+                      <input type="number" placeholder="Booking vol adj %" value={newScenario.bookingVolumeAdjustmentPct} onChange={e => setNewScenario(f => ({ ...f, bookingVolumeAdjustmentPct: e.target.value }))}
+                        className="border rounded px-2 py-1 text-xs w-32" />
+                    </div>
+                    <button disabled={createScenarioPending || !newScenario.scenarioName}
+                      onClick={() => createScenario({ ...newScenario, baseHorizonDays: parseInt(newScenario.baseHorizonDays, 10), revenueAdjustmentPct: parseFloat(newScenario.revenueAdjustmentPct), bookingVolumeAdjustmentPct: parseFloat(newScenario.bookingVolumeAdjustmentPct) })}
+                      className="text-xs px-3 py-1.5 bg-blue-700 text-white rounded hover:bg-blue-800 disabled:opacity-40 flex items-center gap-1">
+                      {createScenarioPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />} Create Scenario
+                    </button>
+                  </div>
+                )}
+                {forecastScenariosLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                  !forecastScenariosData?.scenarios?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-6 border border-dashed rounded">No forecast scenarios yet</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {forecastScenariosData.scenarios.map((sc: any) => (
+                        <div key={sc.id} className="border rounded-lg p-3 text-xs">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="font-semibold text-gray-800">{sc.scenario_name}</div>
+                              {sc.description && <div className="text-gray-500 mt-0.5">{sc.description}</div>}
+                              <div className="flex flex-wrap gap-3 mt-1.5 text-gray-600">
+                                <span>Horizon: <span className="font-mono">{sc.base_horizon_days}d</span></span>
+                                <span>Revenue adj: <span className={`font-mono ${parseFloat(sc.revenue_adjustment_pct) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{parseFloat(sc.revenue_adjustment_pct) >= 0 ? '+' : ''}{parseFloat(sc.revenue_adjustment_pct).toFixed(1)}%</span></span>
+                                <span>Bookings adj: <span className={`font-mono ${parseFloat(sc.booking_volume_adjustment_pct) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{parseFloat(sc.booking_volume_adjustment_pct) >= 0 ? '+' : ''}{parseFloat(sc.booking_volume_adjustment_pct).toFixed(1)}%</span></span>
+                              </div>
+                              {sc.last_run_at && sc.last_run_result && (
+                                <div className="mt-2 border border-blue-100 bg-blue-50 rounded p-2 space-y-0.5">
+                                  <div className="text-blue-700 font-medium">Last run: {new Date(sc.last_run_at).toLocaleString('he-IL')}</div>
+                                  <div>Base revenue: <span className="font-mono">₪{((sc.last_run_result?.baseRevenueCents ?? 0)/100).toFixed(2)}</span></div>
+                                  <div>Projected: <span className="font-mono text-blue-700">₪{((sc.last_run_result?.projectedRevenueCents ?? 0)/100).toFixed(2)}</span></div>
+                                  <div>Delta: <span className={`font-mono font-semibold ${(sc.last_run_result?.deltaRevenueCents ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{(sc.last_run_result?.deltaRevenueCents ?? 0) >= 0 ? '+' : ''}₪{((sc.last_run_result?.deltaRevenueCents ?? 0)/100).toFixed(2)}</span></div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex flex-col gap-1 shrink-0">
+                              <button onClick={() => runScenario(sc.id)} disabled={runScenarioPending}
+                                className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40 flex items-center gap-1">
+                                {runScenarioPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <FlaskConical className="w-3 h-3" />} Run
+                              </button>
+                              <button onClick={() => patchScenario({ id: sc.id, body: { isActive: !sc.is_active } })} disabled={patchScenarioPending}
+                                className={`text-xs px-2 py-1 border rounded ${sc.is_active ? 'border-red-200 text-red-600' : 'border-green-200 text-green-600'}`}>
+                                {sc.is_active ? 'Disable' : 'Enable'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* 3.7E+3.7F — GOVERNANCE TAB                                    */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          <TabsContent value="governance" className="mt-4 space-y-4">
+            {/* 3.7E — Governance Report */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-gray-700" /> Board-Level Governance Report
+                  </CardTitle>
+                  <button onClick={() => refetchGovernanceReport()}
+                    className="text-xs px-3 py-1.5 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCcw className="w-3 h-3" /> Refresh
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {governanceReportLoading ? (
+                  <div className="h-32 bg-gray-100 animate-pulse rounded" />
+                ) : !governanceReport ? (
+                  <div className="text-xs text-gray-400 text-center py-6 border border-dashed rounded">Report unavailable</div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="text-xs text-gray-400">Generated: {new Date(governanceReport.generatedAt).toLocaleString('he-IL')}</div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {[
+                        { label: 'Total Wallets', value: governanceReport.wallets?.total, color: 'blue' },
+                        { label: 'Available (₪)', value: ((governanceReport.wallets?.totalAvailableCents ?? 0)/100).toFixed(2), color: 'green' },
+                        { label: 'Pending (₪)', value: ((governanceReport.wallets?.totalPendingCents ?? 0)/100).toFixed(2), color: 'orange' },
+                        { label: 'Disputes Open', value: governanceReport.disputes?.open, color: 'red' },
+                        { label: 'Disputes Resolved', value: governanceReport.disputes?.resolved, color: 'green' },
+                        { label: 'Refunds Completed', value: governanceReport.refunds?.completed, color: 'teal' },
+                        { label: 'Refund Value (₪)', value: ((governanceReport.refunds?.totalValueCents ?? 0)/100).toFixed(2), color: 'teal' },
+                        { label: 'Payout Batches Paid', value: governanceReport.payouts?.paidBatches, color: 'violet' },
+                        { label: 'Payout Value (₪)', value: ((governanceReport.payouts?.totalValueCents ?? 0)/100).toFixed(2), color: 'violet' },
+                        { label: 'Pending Approvals', value: governanceReport.approvals?.pending, color: 'orange' },
+                        { label: 'Close Records', value: governanceReport.closeRecords?.total, color: 'gray' },
+                      ].map(({ label, value, color }) => (
+                        <div key={label} className={`border rounded-lg p-3 bg-${color}-50 border-${color}-100`}>
+                          <div className="text-xs text-gray-500">{label}</div>
+                          <div className={`text-lg font-bold font-mono text-${color}-700`}>{value ?? 0}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {governanceReport.openExceptions?.length > 0 && (
+                      <div className="border-t pt-3">
+                        <div className="text-xs font-semibold text-gray-700 mb-2">Open Exceptions by Type</div>
+                        <div className="flex flex-wrap gap-2">
+                          {governanceReport.openExceptions.map((e: any) => (
+                            <span key={e.type} className="px-2 py-1 rounded bg-amber-100 text-amber-700 text-xs font-medium">
+                              {e.type.replace(/_/g, ' ')}: {e.count}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {governanceReport.recentSimulations?.length > 0 && (
+                      <div className="border-t pt-3">
+                        <div className="text-xs font-semibold text-gray-700 mb-2">Recent Policy Simulations</div>
+                        <div className="border rounded-lg overflow-hidden">
+                          <table className="w-full text-xs"><thead className="bg-gray-50">
+                            <tr className="text-gray-500"><th className="text-left p-2">Policy</th><th className="text-left p-2">Risk</th><th className="text-left p-2">Summary</th></tr>
+                          </thead><tbody>
+                            {governanceReport.recentSimulations.map((s: any, i: number) => (
+                              <tr key={i} className="border-t hover:bg-gray-50">
+                                <td className="p-2 font-mono text-gray-700 whitespace-nowrap">{s.policy_key}</td>
+                                <td className="p-2"><span className={`font-mono ${s.risk_score > 60 ? 'text-red-600' : s.risk_score > 30 ? 'text-orange-500' : 'text-green-600'}`}>{s.risk_score}/100</span></td>
+                                <td className="p-2 text-gray-600 truncate max-w-xs">{s.outcome_summary}</td>
+                              </tr>
+                            ))}
+                          </tbody></table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 3.7F — Finance Assistant */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Bot className="w-4 h-4 text-indigo-600" /> Finance Decision Assistant
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 rounded p-2">
+                  Ask the assistant for contextual action guidance. It scans the live system state and surfaces prioritised recommendations.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <select value={assistantContext} onChange={e => setAssistantContext(e.target.value)}
+                    className="border rounded px-2 py-1 text-xs w-40">
+                    <option value="">No context</option>
+                    <option value="forecast">Forecasting</option>
+                    <option value="period-close">Period Close</option>
+                    <option value="policy">Policy Change</option>
+                    <option value="disputes">Dispute Review</option>
+                  </select>
+                  <input placeholder="Optional question..." value={assistantQuestion} onChange={e => setAssistantQuestion(e.target.value)}
+                    className="border rounded px-2 py-1 text-xs flex-1 min-w-48" />
+                  <button disabled={askAssistantPending} onClick={() => askAssistant({ context: assistantContext, question: assistantQuestion })}
+                    className="text-xs px-3 py-1.5 bg-indigo-700 text-white rounded hover:bg-indigo-800 disabled:opacity-40 flex items-center gap-1">
+                    {askAssistantPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bot className="w-3 h-3" />} Ask Assistant
+                  </button>
+                </div>
+                {assistantResult && (
+                  <div className="space-y-2">
+                    <div className="text-xs font-semibold text-gray-600">Recommendations ({assistantResult.suggestions?.length ?? 0})</div>
+                    {assistantResult.suggestions?.map((s: any, i: number) => (
+                      <div key={i} className={`border-l-4 rounded-r-lg p-3 text-xs ${
+                        s.priority === 'high' ? 'border-red-400 bg-red-50' :
+                        s.priority === 'medium' ? 'border-orange-400 bg-orange-50' : 'border-blue-300 bg-blue-50'
+                      }`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`px-1.5 py-0.5 rounded font-medium text-xs ${
+                            s.priority === 'high' ? 'bg-red-100 text-red-700' :
+                            s.priority === 'medium' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
+                          }`}>{s.priority.toUpperCase()}</span>
+                          <span className="font-semibold text-gray-800">{s.action}</span>
+                        </div>
+                        <div className="text-gray-600">{s.reason}</div>
+                        {s.link && <a href={s.link} className="text-indigo-600 hover:underline mt-1 block">Go to {s.link}</a>}
+                      </div>
+                    ))}
+                    <div className="text-xs text-gray-400 text-right">Generated: {new Date(assistantResult.generatedAt).toLocaleString('he-IL')}</div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

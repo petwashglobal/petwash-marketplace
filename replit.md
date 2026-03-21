@@ -1566,3 +1566,72 @@ All endpoints under `/api/prestige-pass/admin/wallet/`. Admin-only. All schema c
 - `POST /admin/wallet/replay/execute` — finance_admin only; same logic with dryRun=false; only touches derived state never immutable facts
 - `GET /admin/wallet/replay-runs` — full history with findings JSON
 - Frontend: "Recovery" tab; replay type radio selector; dry-run + execute buttons; collapsible findings viewer per run
+
+## Phase 3.5 — Advanced Finance Intelligence Layer (COMPLETE)
+- Model weights engine: `finance_model_weights` table; GET/POST/PATCH routes; frontend "forecast" tab weight editor
+- Release policy designer: `batch_release_policies` table; CRUD routes; "batches" tab policy designer
+- Digest preferences: `finance_digest_prefs` table; GET/PATCH routes; "control-center" digest section
+- Archive retrieval: GET `/admin/wallet/archive-entries`, `/archive-entries/:id/restore`; "archive" tab
+
+## Phase 3.6 — Intelligence & Governance Layer (COMPLETE)
+### 3.6A — Model Weights
+- `finance_model_weights` table: modelType, featureKey, weightValue, isActive, divisionCode
+- Frontend: weight editor in "forecast" tab; per-feature sliders & save
+
+### 3.6B — Release Policies  
+- `batch_release_policies` table: policy conditions + actions
+- Frontend: policy designer in "batches" tab
+
+### 3.6C — Digest Preferences
+- `finance_digest_prefs` table: channel, frequency, recipientUid, divisionCode
+- Frontend: subscription manager in "control-center" tab
+
+### 3.6D — Archive Retrieval
+- Soft-delete archive browsing + restore endpoint
+- Frontend: "archive" tab with restore action
+
+### 3.6E — Diff Viewer
+- Period-over-period comparison: `/admin/wallet/archive-diff`
+- Frontend: "recovery" tab diff renderer (JSON tree view)
+
+### 3.6F — Policy Engine
+- `finance_policy_rules` table: policyKey, value, divisionCode, isActive
+- Seeded 5 default policies (refund_auto_approve_limit, payout_auto_release_limit, dispute_sla_hours, forecast_default_horizon, archive_protected_entities)
+- Frontend: "policies" tab; policy table; edit/enable/disable; add rule form
+
+### 3.6G — Period Close Packs
+- `finance_close_records` table + `period_close_packs` table
+- `/admin/wallet/period-pack/generate` + `/admin/wallet/period-pack/export`
+- Frontend: "executive" tab close pack generator
+
+## Phase 3.7 — Finance Decision Support Layer (COMPLETE)
+### 3.7A — Policy Simulation Engine
+- `policy_simulations` table: records every simulation run with risk score, affected entities, outcome detail
+- `POST /admin/wallet/policy-simulation/run` — models impact of proposed policy change against live data
+- `GET /admin/wallet/policy-simulation/history` — full simulation audit trail
+- Frontend: "Simulation" tab — policy key selector, proposed value input, risk score badge, history table
+
+### 3.7B — Approval Chain Designer
+- `approval_chains` + `approval_chain_steps` + `approval_requests` + `approval_request_actions` tables
+- Full CRUD for chains and steps; `POST /approval-requests/:id/act` (approve / reject / escalate)
+- Frontend: "policies" tab — chain designer with expandable step editor, pending requests queue with approve/reject/escalate buttons
+
+### 3.7C — Forecast Scenario Planner
+- `forecast_scenarios` table: revenueAdjustmentPct, bookingVolumeAdjustmentPct, baseHorizonDays, weightOverrides, lastRunResult
+- `POST /forecast-scenarios/:id/run` — computes projected revenue vs. base using live wallet transaction data
+- Frontend: "Simulation" tab — scenario cards with run button, inline result display (base, projected, delta)
+
+### 3.7D — Exception Suggestion Engine
+- `exception_suggestions` table: exceptionType, entityId, suggestedAction, confidenceScore, status
+- `POST /exception-suggestions/generate` — scans for overdue disputes, negative balances, stale payout batches
+- `POST /exception-suggestions/:id/apply|dismiss`
+- Frontend: "control-center" tab — suggestion cards with Apply/Dismiss; confidence score display
+
+### 3.7E — Board-Level Governance Report
+- `GET /admin/wallet/governance-report` — cross-entity aggregation: wallets, refunds, payouts, disputes, approvals, open exceptions, recent simulations
+- Frontend: "governance" tab — metric grid, exception type badges, recent simulation history table
+
+### 3.7F — Finance Decision Assistant
+- `POST /admin/wallet/finance-assistant` — scans live system state; surfaces prioritised action recommendations by context (forecast, period-close, policy, disputes)
+- Frontend: "governance" tab — context selector, optional question input, priority-coded recommendation list
+
