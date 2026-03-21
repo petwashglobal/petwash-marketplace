@@ -4793,4 +4793,125 @@ router.get('/admin/wallet/anomalies', async (req: Request, res: Response) => {
   }
 });
 
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /api/prestige-pass/admin/wallet/exception-summary
+// Finance exception summary — aggregated counts and top offenders.
+// Reuses exact signal SQL from the anomaly endpoint (48h stale → 72h threshold here).
+// ──────────────────────────────────────────────────────────────────────────────
+router.get('/admin/wallet/exception-summary', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    // Collect (userId, issueType) pairs for top-offender aggregation
+    const offenderMap = new Map<string, { stale: number; refundExceedsHold: number; negBal: number; doubleDebit: number }>();
+    const bumpOffender = (userId: string | null, field: 'stale' | 'refundExceedsHold' | 'negBal' | 'doubleDebit') => {
+      if (!userId) return;
+      if (!offenderMap.has(userId)) offenderMap.set(userId, { stale: 0, refundExceedsHold: 0, negBal: 0, doubleDebit: 0 });
+      offenderMap.get(userId)![field]++;
+    };
+
+    // ── Signal 1: Negative balances ──────────────────────────────────────────
+    const negRows: any = await db.execute(sql`
+      SELECT user_id,
+             cash_wallet_balance_cents,
+             pending_balance_cents
+      FROM wallet_accounts
+      WHERE cash_wallet_balance_cents < 0
+         OR pending_balance_cents < 0
+    `);
+    const negList = negRows?.rows ?? negRows ?? [];
+    for (const r of negList) bumpOffender(r.user_id, 'negBal');
+
+    // ── Signal 2: Stale holds > 72h (stricter threshold than banner's 48h) ───
+    const staleRows: any = await db.execute(sql`
+      SELECT id::text AS booking_id,
+             owner_id AS user_id,
+             wallet_hold_cents
+      FROM booking_requests
+      WHERE finance_state = 'hold_active'
+        AND created_at < NOW() - INTERVAL '72 hours'
+      UNION ALL
+      SELECT id::text AS booking_id,
+             user_id,
+             wallet_hold_cents
+      FROM trainer_bookings
+      WHERE finance_state = 'hold_active'
+        AND created_at < NOW() - INTERVAL '72 hours'
+    `);
+    const staleList = staleRows?.rows ?? staleRows ?? [];
+    for (const r of staleList) bumpOffender(r.user_id, 'stale');
+    const staleTotalCents = staleList.reduce((acc: number, r: any) => acc + Number(r.wallet_hold_cents ?? 0), 0);
+
+    // ── Signal 3: Refund exceeds hold ─────────────────────────────────────────
+    const refundRows: any = await db.execute(sql`
+      SELECT id::text AS booking_id,
+             owner_id AS user_id,
+             wallet_hold_cents,
+             wallet_refunded_cents
+      FROM booking_requests
+      WHERE wallet_refunded_cents > wallet_hold_cents
+        AND wallet_hold_cents > 0
+      UNION ALL
+      SELECT id::text AS booking_id,
+             user_id,
+             wallet_hold_cents,
+             wallet_refunded_cents
+      FROM trainer_bookings
+      WHERE wallet_refunded_cents > wallet_hold_cents
+        AND wallet_hold_cents > 0
+    `);
+    const refundList = refundRows?.rows ?? refundRows ?? [];
+    for (const r of refundList) bumpOffender(r.user_id, 'refundExceedsHold');
+    const refundExcessCents = refundList.reduce((acc: number, r: any) => acc + Math.max(0, Number(r.wallet_refunded_cents ?? 0) - Number(r.wallet_hold_cents ?? 0)), 0);
+
+    // ── Signal 4: Double debit ───────────────────────────────────────────────
+    const doubleRows: any = await db.execute(sql`
+      SELECT booking_id,
+             MIN(user_id) AS user_id,
+             COUNT(*) AS debit_count
+      FROM wallet_ledger_entries
+      WHERE event_type = 'debit'
+        AND booking_id IS NOT NULL
+        AND booking_id != ''
+      GROUP BY booking_id
+      HAVING COUNT(*) > 1
+    `);
+    const doubleList = doubleRows?.rows ?? doubleRows ?? [];
+    for (const r of doubleList) bumpOffender(r.user_id, 'doubleDebit');
+
+    // ── Unresolved anomalies count (all 4 signals combined) ─────────────────
+    const unresolvedCount = negList.length + staleList.length + refundList.length + doubleList.length;
+
+    // ── Top offenders ────────────────────────────────────────────────────────
+    const topOffenders = Array.from(offenderMap.entries())
+      .map(([userId, counts]) => {
+        const issueCount = counts.stale + counts.refundExceedsHold + counts.negBal + counts.doubleDebit;
+        const parts: string[] = [];
+        if (counts.stale > 0)              parts.push(`${counts.stale} stale hold${counts.stale > 1 ? 's' : ''}`);
+        if (counts.refundExceedsHold > 0)  parts.push(`${counts.refundExceedsHold} refund${counts.refundExceedsHold > 1 ? 's' : ''} exceed hold`);
+        if (counts.negBal > 0)             parts.push(`${counts.negBal} negative balance${counts.negBal > 1 ? 's' : ''}`);
+        if (counts.doubleDebit > 0)        parts.push(`${counts.doubleDebit} double debit${counts.doubleDebit > 1 ? 's' : ''}`);
+        return { userId, issueCount, description: parts.join(', ') };
+      })
+      .sort((a, b) => b.issueCount - a.issueCount)
+      .slice(0, 5);
+
+    return res.json({
+      ok: true,
+      asOf: new Date().toISOString(),
+      staleHoldsOver72h:  { count: staleList.length,  totalCents: staleTotalCents },
+      refundExceedsHold:  { count: refundList.length,  totalCents: refundExcessCents },
+      negativeBalances:   { count: negList.length },
+      unresolvedAnomalies: { count: unresolvedCount },
+      topOffenders,
+    });
+  } catch (err: any) {
+    logger.error('[AdminWallet][ExceptionSummary] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch exception summary', detail: err.message });
+  }
+});
+
 export default router;
