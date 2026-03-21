@@ -50,6 +50,9 @@ import {
   ChevronDown,
   ChevronUp,
   Users,
+  Lock,
+  CalendarDays,
+  DollarSign,
 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -354,6 +357,41 @@ export default function AdminWalletDashboard() {
     queryFn:  () => fetch(`/api/prestige-pass/admin/wallet/action-history?${ahParams.toString()}`)
                       .then(r => r.json()),
     enabled:  ahApplied,
+  });
+
+  // ── Finance Close (2.9E) ──────────────────────────────────────────────────────
+  const [closeDate, setCloseDate] = useState(today);
+  const [closeNotes, setCloseNotes] = useState("");
+
+  const { data: closeData, isLoading: closeLoading, refetch: refetchClose } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/finance-close", closeDate],
+    queryFn:  () => fetch(`/api/prestige-pass/admin/wallet/finance-close/${closeDate}`, { credentials: "include" }).then(r => r.json()),
+  });
+  const closeRecord   = closeData?.record;
+  const closeChecklist: Record<string, { ok: boolean; count: number }> = closeData?.checklist ?? {};
+  const allClear      = Object.values(closeChecklist).every((c) => c.ok);
+
+  const { data: closeHistory, refetch: refetchCloseHistory } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/finance-close/history"],
+    queryFn:  () => fetch("/api/prestige-pass/admin/wallet/finance-close/history", { credentials: "include" }).then(r => r.json()),
+  });
+
+  const { mutate: executeClose, isPending: closePending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest("POST", `/api/prestige-pass/admin/wallet/finance-close/${closeDate}/close`, { notes: closeNotes }),
+    onSuccess: (data) => {
+      if (data.ok) {
+        toast({ title: data.idempotent ? "Already closed — returning existing record" : `Day ${closeDate} closed successfully` });
+        queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/finance-close", closeDate] });
+        queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/finance-close/history"] });
+      }
+    },
+    onError: (err: any) => {
+      if (err?.blocked) {
+        toast({ title: `Close blocked: ${Object.keys(err.blocked).join(", ")}`, variant: "destructive" });
+      } else {
+        toast({ title: err?.error ?? "Finance close failed", variant: "destructive" });
+      }
+    },
   });
 
   // ── Finance Today ─────────────────────────────────────────────────────────────
@@ -2736,6 +2774,198 @@ export default function AdminWalletDashboard() {
                     <p className="text-xs text-gray-400 mt-2 text-right">
                       {payLedgerData.totals?.count} result{payLedgerData.totals?.count !== 1 ? "s" : ""}
                     </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ── DAILY FINANCE CLOSE (2.9E) ────────────────────────────────── */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-blue-700" />
+                    Daily Close
+                    {closeRecord?.status === "closed" && (
+                      <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-700 rounded-full uppercase">Locked</span>
+                    )}
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={closeDate}
+                      max={today}
+                      onChange={(e) => { setCloseDate(e.target.value); }}
+                      className="text-xs border border-gray-200 rounded px-2 py-1 text-gray-700"
+                    />
+                    <button className="text-xs text-blue-600 hover:underline" onClick={() => refetchClose()}>Refresh</button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {closeLoading ? (
+                  <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-8 bg-gray-100 animate-pulse rounded" />)}</div>
+                ) : (
+                  <>
+                    {/* ── Checklist ── */}
+                    <div className="mb-4 space-y-2">
+                      {([
+                        ["noOpenAnomalies",          "No open anomalies"],
+                        ["noStaleHolds",             "No stale holds (>72h)"],
+                        ["noPendingDisputes",        "No pending disputes"],
+                        ["noPendingRefundApprovals", "No pending refund approvals"],
+                      ] as [string, string][]).map(([key, label]) => {
+                        const item = closeChecklist[key];
+                        return (
+                          <div key={key} className={`flex items-center justify-between px-3 py-2 rounded border ${item?.ok ? "border-emerald-100 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+                            <div className="flex items-center gap-2 text-sm">
+                              {item?.ok
+                                ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                : <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />}
+                              <span className={item?.ok ? "text-emerald-800" : "text-amber-800"}>{label}</span>
+                            </div>
+                            {!item?.ok && (
+                              <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">{item?.count} blocking</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* ── Closed state ── */}
+                    {closeRecord?.status === "closed" ? (
+                      <div className="border border-emerald-200 bg-emerald-50 rounded-lg p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-4 h-4 text-emerald-700" />
+                          <p className="text-sm font-semibold text-emerald-800">Day Closed & Locked</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                          <div>
+                            <p className="text-gray-400 uppercase text-[10px]">Closed By</p>
+                            <p className="font-mono text-emerald-700">{closeRecord.closedByUid ?? "—"}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 uppercase text-[10px]">Closed At</p>
+                            <p className="text-emerald-700">{closeRecord.closedAt ? new Date(closeRecord.closedAt).toLocaleString("he-IL") : "—"}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 uppercase text-[10px]">VAT Liability</p>
+                            <p className="font-bold text-emerald-700">{centsToILS(closeRecord.vatLiabilityCents ?? 0)}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 uppercase text-[10px]">Exceptions</p>
+                            <p className={`font-bold ${closeRecord.exceptionCount > 0 ? "text-amber-700" : "text-emerald-700"}`}>{closeRecord.exceptionCount}</p>
+                          </div>
+                        </div>
+                        {closeRecord.notes && (
+                          <div>
+                            <p className="text-gray-400 uppercase text-[10px] mb-1">Notes</p>
+                            <p className="text-xs text-emerald-700 bg-white border border-emerald-100 rounded px-2 py-1.5">{closeRecord.notes}</p>
+                          </div>
+                        )}
+                        {/* Division snapshot chips */}
+                        {closeRecord.divisionSnapshots && (
+                          <div>
+                            <p className="text-gray-400 uppercase text-[10px] mb-2">Division Snapshots</p>
+                            <div className="flex flex-wrap gap-2">
+                              {Object.entries(closeRecord.divisionSnapshots as Record<string, any>).map(([div, snap]: [string, any]) => (
+                                <div key={div} className="px-2 py-1 bg-white border border-emerald-100 rounded text-[10px]">
+                                  <span className="font-semibold text-emerald-800 capitalize">{div.replace("_", " ")}</span>
+                                  <span className="text-gray-500"> · </span>
+                                  <span className="text-emerald-700">{centsToILS(snap.collectedCents)}</span>
+                                  <span className="text-gray-400"> collected</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* ── Open state ── */
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">Notes (optional)</label>
+                          <textarea
+                            rows={2}
+                            value={closeNotes}
+                            onChange={(e) => setCloseNotes(e.target.value)}
+                            placeholder="EOD note for the record…"
+                            className="w-full text-sm border border-gray-200 rounded px-2 py-1.5 resize-none"
+                          />
+                        </div>
+                        <button
+                          disabled={!allClear || closePending}
+                          onClick={() => executeClose()}
+                          className={`w-full py-2 px-4 rounded text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
+                            allClear
+                              ? "bg-blue-700 text-white hover:bg-blue-800"
+                              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          }`}
+                        >
+                          {closePending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+                          {allClear ? `Close ${closeDate}` : "Checklist must be clear to close"}
+                        </button>
+                        {!allClear && (
+                          <p className="text-xs text-amber-700 text-center">
+                            {Object.entries(closeChecklist).filter(([, v]) => !v.ok).length} item(s) blocking close.
+                            Clear them in the Anomalies, Disputes, or Approvals tabs first.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ── CLOSE HISTORY (2.9E) ──────────────────────────────────────── */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <CalendarDays className="w-4 h-4 text-gray-600" />
+                    Close History
+                    <span className="text-xs font-normal text-gray-400">(last 30 days)</span>
+                  </CardTitle>
+                  <button className="text-xs text-blue-600 hover:underline" onClick={() => refetchCloseHistory()}>Refresh</button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!closeHistory?.records || closeHistory.records.length === 0 ? (
+                  <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center">
+                    <CalendarDays className="w-7 h-7 mx-auto mb-2 text-gray-200" />
+                    <p className="text-sm text-gray-400">No close records yet</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-gray-100">
+                          <th className="text-left py-2 pr-3 text-gray-400 font-medium">Date</th>
+                          <th className="text-left py-2 pr-3 text-gray-400 font-medium">Status</th>
+                          <th className="text-left py-2 pr-3 text-gray-400 font-medium">Closed By</th>
+                          <th className="text-left py-2 pr-3 text-gray-400 font-medium">Closed At</th>
+                          <th className="text-right py-2 pr-3 text-gray-400 font-medium">VAT</th>
+                          <th className="text-right py-2 text-gray-400 font-medium">Exceptions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(closeHistory.records as any[]).map((r: any) => (
+                          <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
+                            <td className="py-2 pr-3 font-mono text-gray-700">{String(r.closeDate).slice(0, 10)}</td>
+                            <td className="py-2 pr-3">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                r.status === "closed" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                              }`}>{r.status}</span>
+                            </td>
+                            <td className="py-2 pr-3 font-mono text-gray-500">{r.closedByUid ? r.closedByUid.slice(0, 12) + "…" : "—"}</td>
+                            <td className="py-2 pr-3 text-gray-500">{r.closedAt ? new Date(r.closedAt).toLocaleString("he-IL") : "—"}</td>
+                            <td className="py-2 pr-3 text-right text-gray-700">{centsToILS(r.vatLiabilityCents ?? 0)}</td>
+                            <td className={`py-2 text-right font-medium ${r.exceptionCount > 0 ? "text-amber-600" : "text-gray-400"}`}>{r.exceptionCount}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </CardContent>

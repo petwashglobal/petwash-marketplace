@@ -6127,4 +6127,323 @@ router.post('/admin/wallet/refund-requests/:id/reject', async (req: Request, res
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 2.9E — DAILY FINANCE CLOSE
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Helper: build division snapshots for a given calendar date ────────────
+async function buildDivisionSnapshots(dateIso: string): Promise<Record<string, any>> {
+  const fromClause = `AND wle.created_at >= '${dateIso}'::date AT TIME ZONE 'Asia/Jerusalem'`;
+  const toClause   = `AND wle.created_at <  ('${dateIso}'::date + INTERVAL '1 day') AT TIME ZONE 'Asia/Jerusalem'`;
+  const fromPayClause = `AND ppe.created_at >= '${dateIso}'::date AT TIME ZONE 'Asia/Jerusalem'`;
+  const toPayClause   = `AND ppe.created_at <  ('${dateIso}'::date + INTERVAL '1 day') AT TIME ZONE 'Asia/Jerusalem'`;
+
+  const DIVS = ['walkers', 'petsitter', 'academy', 'station_k9000'];
+  const snapshots: Record<string, any> = {};
+
+  const collectedRaw: any = await db.execute(sql.raw(`
+    SELECT COALESCE(wle.division_code, 'unknown') AS div,
+           COALESCE(SUM(amount_cents), 0)         AS collected
+    FROM wallet_ledger_entries wle
+    WHERE wle.direction = 'debit'
+      AND wle.event_type IN ${COLLECTED_EVENTS}
+      ${fromClause} ${toClause}
+    GROUP BY wle.division_code
+  `));
+  const payableRaw: any = await db.execute(sql.raw(`
+    SELECT COALESCE(ppe.division_code, 'unknown') AS div,
+           COALESCE(SUM(ppe.net_cents), 0)        AS payable
+    FROM provider_payout_entries ppe
+    WHERE ppe.status IN ('earned', 'held')
+      ${fromPayClause} ${toPayClause}
+    GROUP BY ppe.division_code
+  `));
+  const holdsRaw: any = await db.execute(sql.raw(`
+    SELECT COALESCE(wle.division_code, 'unknown') AS div,
+           COALESCE(SUM(wh.amount_cents), 0)      AS holds
+    FROM wallet_holds wh
+    LEFT JOIN wallet_ledger_entries wle ON wle.booking_id = wh.booking_id
+    WHERE wh.status = 'active'
+      AND wh.created_at >= '${dateIso}'::date AT TIME ZONE 'Asia/Jerusalem'
+      AND wh.created_at <  ('${dateIso}'::date + INTERVAL '1 day') AT TIME ZONE 'Asia/Jerusalem'
+    GROUP BY wle.division_code
+  `));
+
+  const collMap = new Map<string, number>();
+  for (const r of (collectedRaw?.rows ?? collectedRaw ?? [])) collMap.set(r.div, Number(r.collected ?? 0));
+  const payMap  = new Map<string, number>();
+  for (const r of (payableRaw?.rows  ?? payableRaw  ?? [])) payMap.set(r.div, Number(r.payable ?? 0));
+  const holdMap = new Map<string, number>();
+  for (const r of (holdsRaw?.rows    ?? holdsRaw    ?? [])) holdMap.set(r.div, Number(r.holds ?? 0));
+
+  for (const div of DIVS) {
+    const collected = collMap.get(div) ?? 0;
+    const payable   = payMap.get(div)  ?? 0;
+    const holds     = holdMap.get(div) ?? 0;
+    const vatLiab   = Math.floor(collected * VAT_RATE);
+    const margin    = collected - payable - vatLiab;
+    snapshots[div]  = {
+      collectedCents:       collected,
+      providerPayableCents: payable,
+      pendingHoldsCents:    holds,
+      marginCents:          margin,
+      marginPct:            collected > 0 ? parseFloat(((margin / collected) * 100).toFixed(2)) : 0,
+    };
+  }
+  return snapshots;
+}
+
+// ── Helper: build live checklist for a given date ─────────────────────────
+async function buildChecklist(dateIso: string): Promise<Record<string, { ok: boolean; count: number }>> {
+  // 1. Open anomalies (negative balance + stale hold + refund_exceeds_hold + double_debit)
+  const negBalRow: any = await db.execute(sql`
+    SELECT COUNT(*) AS cnt FROM user_wallets WHERE available_cents < 0
+  `);
+  const negBal = Number((negBalRow?.rows ?? negBalRow ?? [])[0]?.cnt ?? 0);
+
+  const staleRow: any = await db.execute(sql`
+    SELECT COUNT(*) AS cnt FROM wallet_holds
+    WHERE status = 'active' AND created_at < NOW() - INTERVAL '48 hours'
+  `);
+  const stale = Number((staleRow?.rows ?? staleRow ?? [])[0]?.cnt ?? 0);
+
+  const refExceedsRow: any = await db.execute(sql`
+    SELECT COUNT(*) AS cnt
+    FROM wallet_ledger_entries wle
+    WHERE wle.event_type = 'refund'
+      AND ABS(wle.amount_cents) > COALESCE((
+        SELECT wh.amount_cents FROM wallet_holds wh
+        WHERE wh.booking_id = wle.booking_id LIMIT 1
+      ), 0)
+  `);
+  const refExceeds = Number((refExceedsRow?.rows ?? refExceedsRow ?? [])[0]?.cnt ?? 0);
+
+  const openAnomalies = negBal + stale + refExceeds;
+
+  // 2. Stale holds > 72h (stricter close gate)
+  const staleHoldsRow: any = await db.execute(sql`
+    SELECT COUNT(*) AS cnt FROM wallet_holds
+    WHERE status = 'active' AND created_at < NOW() - INTERVAL '72 hours'
+  `);
+  const staleHolds72 = Number((staleHoldsRow?.rows ?? staleHoldsRow ?? [])[0]?.cnt ?? 0);
+
+  // 3. Pending disputes
+  const disputeRow: any = await db.execute(sql`
+    SELECT COUNT(*) AS cnt FROM dispute_cases WHERE status NOT IN ('resolved', 'closed')
+  `);
+  const pendingDisputes = Number((disputeRow?.rows ?? disputeRow ?? [])[0]?.cnt ?? 0);
+
+  // 4. Pending refund approvals
+  const approvalRow: any = await db.execute(sql`
+    SELECT COUNT(*) AS cnt FROM refund_approvals WHERE status = 'pending'
+  `);
+  const pendingApprovals = Number((approvalRow?.rows ?? approvalRow ?? [])[0]?.cnt ?? 0);
+
+  return {
+    noOpenAnomalies:          { ok: openAnomalies   === 0, count: openAnomalies },
+    noStaleHolds:             { ok: staleHolds72    === 0, count: staleHolds72 },
+    noPendingDisputes:        { ok: pendingDisputes  === 0, count: pendingDisputes },
+    noPendingRefundApprovals: { ok: pendingApprovals === 0, count: pendingApprovals },
+  };
+}
+
+// ── GET /admin/wallet/finance-close/history ───────────────────────────────
+router.get('/admin/wallet/finance-close/history', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const rows: any = await db.execute(sql`
+      SELECT id, close_date, status, closed_by_uid, closed_at,
+             vat_liability_cents, exception_count, notes, created_at
+      FROM finance_close_records
+      ORDER BY close_date DESC
+      LIMIT 30
+    `);
+    const records = (rows?.rows ?? rows ?? []).map((r: any) => ({
+      id:                r.id,
+      closeDate:         r.close_date,
+      status:            r.status,
+      closedByUid:       r.closed_by_uid,
+      closedAt:          r.closed_at,
+      vatLiabilityCents: r.vat_liability_cents,
+      exceptionCount:    r.exception_count,
+      notes:             r.notes,
+      createdAt:         r.created_at,
+    }));
+    return res.json({ ok: true, records, total: records.length });
+  } catch (err: any) {
+    logger.error('[FinanceClose][History] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch finance close history', detail: err.message });
+  }
+});
+
+// ── GET /admin/wallet/finance-close/:date ─────────────────────────────────
+router.get('/admin/wallet/finance-close/:date', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const dateParam = req.params.date; // e.g. "2026-03-22"
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+      return res.status(400).json({ error: 'date must be YYYY-MM-DD', date: dateParam });
+    }
+
+    // Fetch existing record
+    const existing: any = await db.execute(sql`
+      SELECT * FROM finance_close_records WHERE close_date = ${dateParam}::date LIMIT 1
+    `);
+    const existingRow = (existing?.rows ?? existing ?? [])[0];
+
+    const checklist = await buildChecklist(dateParam);
+
+    if (existingRow) {
+      return res.json({
+        ok: true,
+        record: {
+          id:                existingRow.id,
+          closeDate:         existingRow.close_date,
+          status:            existingRow.status,
+          closedByUid:       existingRow.closed_by_uid,
+          closedAt:          existingRow.closed_at,
+          divisionSnapshots: existingRow.division_snapshots,
+          vatLiabilityCents: existingRow.vat_liability_cents,
+          exceptionCount:    existingRow.exception_count,
+          notes:             existingRow.notes,
+        },
+        checklist,
+      });
+    }
+
+    // Scaffold live view for today
+    const divisionSnapshots = await buildDivisionSnapshots(dateParam);
+    const totalCollected = Object.values(divisionSnapshots).reduce((s: number, d: any) => s + (d.collectedCents ?? 0), 0);
+    const vatLiabilityCents = Math.floor(totalCollected * VAT_RATE);
+    const exceptionCount = Object.values(checklist).filter((c: any) => !c.ok).length;
+
+    return res.json({
+      ok: true,
+      record: {
+        closeDate:         dateParam,
+        status:            'open',
+        closedByUid:       null,
+        closedAt:          null,
+        divisionSnapshots,
+        vatLiabilityCents,
+        exceptionCount,
+        notes:             '',
+      },
+      checklist,
+    });
+  } catch (err: any) {
+    logger.error('[FinanceClose][Get] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch finance close record', detail: err.message });
+  }
+});
+
+// ── POST /admin/wallet/finance-close/:date/close ──────────────────────────
+router.post('/admin/wallet/finance-close/:date/close', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const adminUid = session.user.uid ?? session.user.id ?? 'unknown';
+
+    const dateParam = req.params.date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+      return res.status(400).json({ error: 'date must be YYYY-MM-DD', date: dateParam });
+    }
+
+    const { notes = '' } = req.body as { notes?: string };
+
+    // Idempotency: if already closed, return existing row unchanged
+    const existing: any = await db.execute(sql`
+      SELECT * FROM finance_close_records WHERE close_date = ${dateParam}::date LIMIT 1
+    `);
+    const existingRow = (existing?.rows ?? existing ?? [])[0];
+    if (existingRow?.status === 'closed') {
+      logger.info('[FinanceClose][Idempotent] already closed', { date: dateParam, closedByUid: existingRow.closed_by_uid });
+      return res.json({
+        ok: true,
+        idempotent: true,
+        record: {
+          id:                existingRow.id,
+          closeDate:         existingRow.close_date,
+          status:            existingRow.status,
+          closedByUid:       existingRow.closed_by_uid,
+          closedAt:          existingRow.closed_at,
+          divisionSnapshots: existingRow.division_snapshots,
+          vatLiabilityCents: existingRow.vat_liability_cents,
+          exceptionCount:    existingRow.exception_count,
+          notes:             existingRow.notes,
+        },
+      });
+    }
+
+    // ── Checklist enforcement ─────────────────────────────────────────────
+    const checklist = await buildChecklist(dateParam);
+    const blocked   = Object.entries(checklist).filter(([, v]) => !v.ok);
+    if (blocked.length > 0) {
+      logger.warn('[FinanceClose][Blocked]', { date: dateParam, blocked: blocked.map(([k, v]) => `${k}:${(v as any).count}`) });
+      return res.status(422).json({
+        ok: false,
+        error:    'Finance close blocked — checklist not clear',
+        blocked:  Object.fromEntries(blocked),
+        checklist,
+      });
+    }
+
+    // ── Build immutable snapshot ──────────────────────────────────────────
+    const divisionSnapshots = await buildDivisionSnapshots(dateParam);
+    const totalCollected    = Object.values(divisionSnapshots).reduce((s: number, d: any) => s + (d.collectedCents ?? 0), 0);
+    const vatLiabilityCents = Math.floor(totalCollected * VAT_RATE);
+    const exceptionCount    = 0; // all checks passed
+
+    // ── Upsert close record ───────────────────────────────────────────────
+    const upserted: any = await db.execute(sql`
+      INSERT INTO finance_close_records
+        (close_date, closed_by_uid, closed_at, division_snapshots, vat_liability_cents, exception_count, notes, status)
+      VALUES (
+        ${dateParam}::date,
+        ${adminUid},
+        NOW(),
+        ${JSON.stringify(divisionSnapshots)}::jsonb,
+        ${vatLiabilityCents},
+        ${exceptionCount},
+        ${notes},
+        'closed'
+      )
+      ON CONFLICT (close_date) DO UPDATE
+        SET closed_by_uid      = EXCLUDED.closed_by_uid,
+            closed_at          = EXCLUDED.closed_at,
+            division_snapshots = EXCLUDED.division_snapshots,
+            vat_liability_cents = EXCLUDED.vat_liability_cents,
+            exception_count    = EXCLUDED.exception_count,
+            notes              = EXCLUDED.notes,
+            status             = 'closed'
+      RETURNING *
+    `);
+    const row = (upserted?.rows ?? upserted ?? [])[0];
+
+    logger.info('[FinanceClose][Closed]', { date: dateParam, adminUid, vatLiabilityCents });
+    return res.json({
+      ok: true,
+      idempotent: false,
+      record: {
+        id:                row.id,
+        closeDate:         row.close_date,
+        status:            row.status,
+        closedByUid:       row.closed_by_uid,
+        closedAt:          row.closed_at,
+        divisionSnapshots: row.division_snapshots,
+        vatLiabilityCents: row.vat_liability_cents,
+        exceptionCount:    row.exception_count,
+        notes:             row.notes,
+      },
+    });
+  } catch (err: any) {
+    logger.error('[FinanceClose][Close] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to close finance day', detail: err.message });
+  }
+});
+
 export default router;

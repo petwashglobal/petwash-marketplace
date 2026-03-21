@@ -1272,3 +1272,46 @@ Auth: `validateFirebaseToken` from `server/middleware/firebase-auth` (sets `req.
 - Win-back credit is awarded immediately on notification send (incentive to return), with tier expiry from `loyalty_rules.expiry_days`
 - Each tier fires at most once per user per lifecycle (dedup in populator + `reward_claims` idempotency)
 - All rules remain `enabled=false` until explicitly flipped — system is dormant until activation
+
+## Wallet Finance Admin — Phase 2.9 Series (March 2026)
+
+All endpoints under `/api/prestige-pass/admin/wallet/`. Admin-only. All schema changes applied via `executeSql` (not drizzle-kit).
+
+### Phase 2.9A — Provider Payout Ledger
+- `provider_payout_entries` table (13 cols): `payout_batch_id`, `provider_uid`, `division_code`, `gross_cents`, `commission_rate_bps`, `net_cents`, `status` (earned/held/paid/reversed), `booking_id`, etc.
+- 5 endpoints: POST record-payout, GET ledger, GET summary, POST mark-paid, POST reverse-payout
+- Net math: `net_cents = gross_cents - FLOOR(gross_cents × commission_rate_bps / 10000)` — locked rule
+
+### Phase 2.9B — Settlement Summary + CSV Export
+- `GET /settlement-summary` + `GET /settlement-summary/export` (BOM-prefixed CSV)
+- `COLLECTED_EVENTS` tuple + `VAT_RATE = 0.18` constants (locked)
+- `GET /exception-summary` — cron exception email + inline summary for dashboard banner
+- Finance anomaly banner: `GET /anomalies` (negative_balance, stale_hold, refund_exceeds_hold, double_debit)
+- Signed audit bundles: `POST /booking-audit/bundle`
+
+### Phase 2.9C — Dispute Cases
+- `dispute_cases` table (13 cols, 8 indexes): `case_ref = DSP-${nanoid(10)}`, `notes` append-only JSONB, `resolved_at` only set by resolve endpoint
+- 4 endpoints: POST open, GET list (filters), PATCH update/assign/note, POST resolve
+- AdminWalletDashboard Disputes tab: filter bar, open-case form, list table, detail drawer with timeline/assign/status-update/add-note/resolve panel
+
+### Phase 2.9D — Refund Approval Threshold
+- `refund_approvals` table (13 cols, 6 indexes): `refund_request_id = RRA-${nanoid(12)}` (UNIQUE), `status` (pending/auto_approved/approved/rejected)
+- `REFUND_AUTO_APPROVE_LIMIT_CENTS` env (default 5000 = ₪50): below → auto_approve, above → pending
+- `executeApprovalRefund` internal helper: `fetchSupportBooking` + `refundToWallet` — NOT walletService.supportIssueRefund
+- Self-approve guard: 403 if reviewer UID === requester UID. Reject: zero wallet mutations.
+- 4 endpoints: POST /refund-requests, GET /pending (polls 20s), POST /:id/approve, POST /:id/reject
+- Frontend: Approvals tab with live pending badge, full queue card, `supportRefund` rerouted to `/refund-requests`
+- Result panel: emerald for auto-approved, amber for pending (with pointer to Approvals tab)
+- `linked_dispute_case_ref` optional field in Issue Refund form
+
+### Phase 2.9E — Daily Finance Close
+- `finance_close_records` table (10 cols, 3 indexes): `close_date DATE UNIQUE`, `division_snapshots JSONB`, `vat_liability_cents`, `exception_count`, `status` (open/closed), immutable after close
+- Jerusalem calendar date (`Asia/Jerusalem` timezone for all date boundaries)
+- `buildChecklist()` helper: 4 gates — noOpenAnomalies, noStaleHolds (>72h), noPendingDisputes, noPendingRefundApprovals
+- `buildDivisionSnapshots()` helper: reuses settlement math — walkers/petsitter/academy/station_k9000 × collectedCents/providerPayableCents/pendingHoldsCents/marginCents/marginPct
+- 3 endpoints:
+  - `GET /finance-close/history` (last 30, newest first) — registered BEFORE `/:date` to avoid shadow
+  - `GET /finance-close/:date` — fetch existing or scaffold live view
+  - `POST /finance-close/:date/close` — checklist enforced (422 + full `blocked` payload if not clear), idempotent (returns existing if already closed)
+- Close endpoint returns exact checklist failure payload on block (not just "cannot close")
+- Frontend: Daily Close card in Finance Today tab — date picker, 4-row checklist, Close button (disabled unless all clear), notes textarea, locked state with snapshot chips; Close History table (Date/Status/Closed By/Closed At/VAT/Exceptions)
