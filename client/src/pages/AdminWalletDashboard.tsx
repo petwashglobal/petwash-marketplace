@@ -894,6 +894,72 @@ export default function AdminWalletDashboard() {
     onError: (e) => toast({ title: "Save failed", description: e.message, variant: "destructive" }),
   });
 
+  // ── 3.3A: Reconciliation Exceptions ───────────────────────────────────────
+  const [reconExFilter, setReconExFilter] = useState<{ status: string; batchId: string; providerUid: string }>({ status: "", batchId: "", providerUid: "" });
+  const [reconExFiltersApplied, setReconExFiltersApplied] = useState<any>({});
+  const [selectedReconEx, setSelectedReconEx] = useState<any>(null);
+  const [reconExNote, setReconExNote] = useState("");
+  const [reconMatchEntryId, setReconMatchEntryId] = useState("");
+  const [reconMatchReason, setReconMatchReason] = useState("");
+  const { data: reconExData, isLoading: reconExLoading, refetch: refetchReconEx } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/reconciliation-exceptions", reconExFiltersApplied],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (reconExFiltersApplied.status) p.set("status", reconExFiltersApplied.status);
+      if (reconExFiltersApplied.batchId) p.set("batchId", reconExFiltersApplied.batchId);
+      if (reconExFiltersApplied.providerUid) p.set("providerUid", reconExFiltersApplied.providerUid);
+      return fetch(`/api/prestige-pass/admin/wallet/reconciliation-exceptions?${p}`, { credentials: "include" }).then(r => r.json());
+    },
+  });
+  const { mutate: patchReconEx, isPending: patchReconExPending } = useMutation<any, any, { id: number; action: string; note?: string; assignedAdminUid?: string }>({
+    mutationFn: ({ id, ...body }) => apiRequest("PATCH", `/api/prestige-pass/admin/wallet/reconciliation-exceptions/${id}`, body),
+    onSuccess: () => { toast({ title: "Exception updated" }); refetchReconEx(); setSelectedReconEx(null); },
+    onError: (e) => toast({ title: "Update failed", description: e.message, variant: "destructive" }),
+  });
+  const { mutate: manualMatchReconEx, isPending: matchReconExPending } = useMutation<any, any, { id: number; payoutEntryId: number; reason: string }>({
+    mutationFn: ({ id, ...body }) => apiRequest("POST", `/api/prestige-pass/admin/wallet/reconciliation-exceptions/${id}/match`, body),
+    onSuccess: () => { toast({ title: "Manually matched — entry settled" }); refetchReconEx(); setSelectedReconEx(null); setReconMatchEntryId(""); setReconMatchReason(""); },
+    onError: (e) => toast({ title: "Match failed", description: e.message, variant: "destructive" }),
+  });
+
+  // ── 3.3B: Alert Delivery Log & Escalation ─────────────────────────────────
+  const [alertDeliveryDrawer, setAlertDeliveryDrawer] = useState(false);
+  const { data: deliveryLogData, isLoading: deliveryLogLoading, refetch: refetchDeliveryLog } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/alerts/delivery-log"],
+    queryFn: () => fetch("/api/prestige-pass/admin/wallet/alerts/delivery-log", { credentials: "include" }).then(r => r.json()),
+    enabled: alertDeliveryDrawer,
+  });
+  const { data: digestPreviewData, refetch: refetchDigestPreview } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/alerts/digest-preview"],
+    queryFn: () => fetch("/api/prestige-pass/admin/wallet/alerts/digest-preview", { credentials: "include" }).then(r => r.json()),
+    enabled: false,
+  });
+  const { mutate: escalateAlertNow, isPending: escalateAlertPending } = useMutation<any, any, number>({
+    mutationFn: (alertId) => apiRequest("POST", `/api/prestige-pass/admin/wallet/alerts/${alertId}/escalate-now`, {}),
+    onSuccess: (d) => { toast({ title: `Alert escalated to level ${d.escalationLevel}` }); refetchAlerts(); },
+    onError: (e) => toast({ title: "Escalation failed", description: e.message, variant: "destructive" }),
+  });
+
+  // ── 3.3E: Board Pack ───────────────────────────────────────────────────────
+  const [boardMonth, setBoardMonth] = useState<string>(new Date().toISOString().slice(0, 7));
+  const [boardMonthApplied, setBoardMonthApplied] = useState<string>(new Date().toISOString().slice(0, 7));
+  const { data: boardPackData, isLoading: boardPackLoading, refetch: refetchBoardPack } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/board-pack", boardMonthApplied],
+    queryFn: () => fetch(`/api/prestige-pass/admin/wallet/board-pack?month=${boardMonthApplied}`, { credentials: "include" }).then(r => r.json()),
+    enabled: !!boardMonthApplied,
+  });
+
+  // ── 3.3F: Integrity Jobs ───────────────────────────────────────────────────
+  const { data: integrityHistoryData, isLoading: integrityHistoryLoading, refetch: refetchIntegrityHistory } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/integrity/history"],
+    queryFn: () => fetch("/api/prestige-pass/admin/wallet/integrity/history", { credentials: "include" }).then(r => r.json()),
+  });
+  const { mutate: runIntegrityJobs, isPending: runIntegrityPending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest("POST", "/api/prestige-pass/admin/wallet/integrity/run", {}),
+    onSuccess: () => { toast({ title: "Integrity check complete" }); refetchIntegrityHistory(); queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/alerts"] }); },
+    onError: (e) => toast({ title: "Integrity check failed", description: e.message, variant: "destructive" }),
+  });
+
   const { mutate: upsertRole, isPending: upsertRolePending } = useMutation<any, any, { uid: string; role: string }>({
     mutationFn: ({ uid, role }) => apiRequest("POST", `/api/prestige-pass/admin/wallet/finance-roles/${uid}`, { role }),
     onSuccess: () => { toast({ title: "Finance role assigned" }); setRoleAssignUid(""); refetchRoles(); },
@@ -1120,6 +1186,18 @@ export default function AdminWalletDashboard() {
             <TabsTrigger value="fin-activity">
               <Activity className="w-4 h-4 mr-2" />
               Finance Activity
+            </TabsTrigger>
+            <TabsTrigger value="recon-exceptions">
+              <AlertTriangle className="w-4 h-4 mr-2" />
+              Recon Exceptions
+            </TabsTrigger>
+            <TabsTrigger value="board-pack">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Board Pack
+            </TabsTrigger>
+            <TabsTrigger value="integrity">
+              <ShieldCheck className="w-4 h-4 mr-2" />
+              Integrity
             </TabsTrigger>
           </TabsList>
 
@@ -4912,10 +4990,19 @@ export default function AdminWalletDashboard() {
                       {signoffLoading ? (
                         <div className="text-xs text-gray-400">Loading…</div>
                       ) : signoffData?.signedOff ? (
-                        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded px-3 py-2 text-xs text-emerald-700">
-                          <span>✓</span>
-                          <span><strong>{varianceMonth}</strong> signed off by <strong>{signoffData.signOff.signedOffBy}</strong> on {new Date(signoffData.signOff.signedOffAt).toLocaleString()}</span>
-                          {signoffData.signOff.notes && <span className="text-emerald-500">— {signoffData.signOff.notes}</span>}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded px-3 py-2 text-xs text-emerald-700">
+                            <span>✓</span>
+                            <span><strong>{varianceMonth}</strong> signed off by <strong>{signoffData.signOff.signedOffBy}</strong> on {new Date(signoffData.signOff.signedOffAt).toLocaleString()}</span>
+                            {signoffData.signOff.notes && <span className="text-emerald-500">— {signoffData.signOff.notes}</span>}
+                          </div>
+                          <a
+                            href={`/api/prestige-pass/admin/wallet/monthly-signoff/${varianceMonth}/export`}
+                            download={`signoff-pack-${varianceMonth}.json`}
+                            className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-emerald-700 text-white rounded hover:bg-emerald-600"
+                          >
+                            ⬇ Download Sign-off Pack
+                          </a>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
@@ -4961,6 +5048,14 @@ export default function AdminWalletDashboard() {
                     )}
                   </CardTitle>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => { setAlertDeliveryDrawer(true); refetchDeliveryLog(); }}
+                      className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-600"
+                    >📬 Delivery Log</button>
+                    <button
+                      onClick={async () => { await refetchDigestPreview(); toast({ title: "Digest preview loaded — check Delivery Log" }); }}
+                      className="text-xs px-2 py-1 border border-blue-300 rounded hover:bg-blue-50 text-blue-600"
+                    >Preview Digest</button>
                     {(alertsData?.unacknowledged?.total ?? 0) > 0 && (
                       <button
                         disabled={ackAllPending}
@@ -4988,23 +5083,37 @@ export default function AdminWalletDashboard() {
                                                     'bg-gray-50 border-gray-200'
                       }`}>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
+                          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                               a.severity === 'critical' ? 'bg-red-500 text-white' :
                               a.severity === 'warning'  ? 'bg-amber-400 text-white' :
                                                           'bg-gray-400 text-white'
                             }`}>{a.severity.toUpperCase()}</span>
-                            <span className="font-mono text-gray-600">{a.alertType}</span>
-                            {a.entityId && <span className="text-gray-400">({a.entityType}: {a.entityId})</span>}
+                            {(a.escalation_level > 0) && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-600 text-white">
+                                ESC L{a.escalation_level}
+                              </span>
+                            )}
+                            <span className="font-mono text-gray-600">{a.alert_type ?? a.alertType}</span>
+                            {a.entity_id && <span className="text-gray-400">({a.entity_type}: {a.entity_id})</span>}
                           </div>
                           <div className="text-gray-500 truncate">{JSON.stringify(a.detail).slice(0, 120)}</div>
-                          <div className="text-gray-400 mt-0.5">{new Date(a.createdAt).toLocaleString()}</div>
+                          <div className="text-gray-400 mt-0.5">{new Date(a.created_at ?? a.createdAt).toLocaleString()}</div>
                         </div>
-                        <button
-                          disabled={ackPending}
-                          onClick={() => acknowledgeAlert(a.id)}
-                          className="text-[10px] px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 text-gray-500 disabled:opacity-40 shrink-0"
-                        >Ack</button>
+                        <div className="flex flex-col gap-1 shrink-0">
+                          {a.severity === 'critical' && !a.acknowledged_at && (
+                            <button
+                              disabled={escalateAlertPending}
+                              onClick={() => escalateAlertNow(a.id)}
+                              className="text-[10px] px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-40"
+                            >↑ Escalate</button>
+                          )}
+                          <button
+                            disabled={ackPending}
+                            onClick={() => acknowledgeAlert(a.id)}
+                            className="text-[10px] px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 text-gray-500 disabled:opacity-40"
+                          >Ack</button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -5109,8 +5218,399 @@ export default function AdminWalletDashboard() {
             </Card>
           </TabsContent>
 
+          {/* ── 3.3A: Recon Exceptions Tab ──────────────────────────────────── */}
+          <TabsContent value="recon-exceptions" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <span className="text-orange-500">⚠️</span> Reconciliation Exceptions
+                    {(reconExData?.summary?.open ?? 0) > 0 && (
+                      <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-500 text-white">{reconExData.summary.open} open</span>
+                    )}
+                  </CardTitle>
+                  <button onClick={() => refetchReconEx()} className="text-xs text-blue-600 hover:underline">Refresh</button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Filter bar */}
+                <div className="border rounded-lg p-3 bg-gray-50 space-y-2">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <select className="border rounded px-2 py-1 text-xs" value={reconExFilter.status}
+                      onChange={e => setReconExFilter(f => ({ ...f, status: e.target.value }))}>
+                      <option value="">All statuses</option>
+                      <option value="open">Open</option>
+                      <option value="matched_manually">Matched manually</option>
+                      <option value="ignored">Ignored</option>
+                      <option value="escalated">Escalated</option>
+                    </select>
+                    <input className="border rounded px-2 py-1 text-xs" placeholder="Batch ID" value={reconExFilter.batchId}
+                      onChange={e => setReconExFilter(f => ({ ...f, batchId: e.target.value }))} />
+                    <input className="border rounded px-2 py-1 text-xs" placeholder="Provider UID" value={reconExFilter.providerUid}
+                      onChange={e => setReconExFilter(f => ({ ...f, providerUid: e.target.value }))} />
+                    <div className="flex gap-1">
+                      <button className="flex-1 px-2 py-1 text-xs bg-indigo-600 text-white rounded"
+                        onClick={() => setReconExFiltersApplied({ ...reconExFilter })}>Apply</button>
+                      <button className="flex-1 px-2 py-1 text-xs border rounded"
+                        onClick={() => { setReconExFilter({ status: "", batchId: "", providerUid: "" }); setReconExFiltersApplied({}); }}>Clear</button>
+                    </div>
+                  </div>
+                </div>
+                {/* Summary chips */}
+                {reconExData?.summary && (
+                  <div className="flex gap-2 flex-wrap text-xs">
+                    {[['open','orange'],['matched_manually','green'],['ignored','gray'],['escalated','red']].map(([s,c]) => (
+                      <span key={s} className={`px-2 py-0.5 rounded-full border font-medium bg-${c}-50 border-${c}-200 text-${c}-700`}>
+                        {reconExData.summary[s]} {s.replace('_',' ')}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {/* Table */}
+                {reconExLoading ? (
+                  <div className="space-y-2">{[...Array(4)].map((_,i) => <div key={i} className="h-8 bg-gray-100 animate-pulse rounded" />)}</div>
+                ) : !(reconExData?.exceptions?.length) ? (
+                  <div className="text-center py-10 text-sm text-gray-400 border-2 border-dashed rounded-lg">No reconciliation exceptions.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 text-gray-500 uppercase text-[10px]">
+                          <th className="px-3 py-2 text-left">ID</th>
+                          <th className="px-3 py-2 text-left">Batch</th>
+                          <th className="px-3 py-2 text-left">Provider</th>
+                          <th className="px-3 py-2 text-left">Reason</th>
+                          <th className="px-3 py-2 text-left">Status</th>
+                          <th className="px-3 py-2 text-left">Created</th>
+                          <th className="px-3 py-2 text-left">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {reconExData.exceptions.map((ex: any) => (
+                          <tr key={ex.id} className="border-t hover:bg-gray-50 cursor-pointer" onClick={() => { setSelectedReconEx(ex); setReconExNote(ex.resolution_note ?? ""); }}>
+                            <td className="px-3 py-2 font-mono">{ex.id}</td>
+                            <td className="px-3 py-2 font-mono text-blue-700">{ex.batch_id}</td>
+                            <td className="px-3 py-2">{ex.provider_uid ?? <span className="text-gray-400 italic">unknown</span>}</td>
+                            <td className="px-3 py-2">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-700">{ex.detected_reason}</span>
+                            </td>
+                            <td className="px-3 py-2">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                                ex.status === 'open' ? 'bg-orange-100 text-orange-700' :
+                                ex.status === 'matched_manually' ? 'bg-green-100 text-green-700' :
+                                ex.status === 'ignored' ? 'bg-gray-100 text-gray-500' :
+                                'bg-red-100 text-red-700'
+                              }`}>{ex.status}</span>
+                            </td>
+                            <td className="px-3 py-2 text-gray-500">{new Date(ex.created_at).toLocaleDateString()}</td>
+                            <td className="px-3 py-2">
+                              {ex.status === 'open' && (
+                                <div className="flex gap-1">
+                                  <button className="px-1.5 py-0.5 text-[10px] border rounded hover:bg-gray-50"
+                                    onClick={e => { e.stopPropagation(); patchReconEx({ id: ex.id, action: 'ignore', note: 'Ignored by admin' }); }}>
+                                    Ignore
+                                  </button>
+                                  <button className="px-1.5 py-0.5 text-[10px] bg-red-50 text-red-700 border border-red-200 rounded hover:bg-red-100"
+                                    onClick={e => { e.stopPropagation(); patchReconEx({ id: ex.id, action: 'escalate' }); }}>
+                                    Escalate
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Exception Detail Drawer */}
+            {selectedReconEx && (
+              <div className="fixed inset-0 z-50 flex justify-end" onClick={() => setSelectedReconEx(null)}>
+                <div className="absolute inset-0 bg-black/30" />
+                <div className="relative w-full max-w-md bg-white shadow-xl flex flex-col h-full overflow-y-auto" onClick={e => e.stopPropagation()}>
+                  <div className="p-4 border-b flex items-center justify-between">
+                    <h3 className="font-semibold text-sm">Exception #{selectedReconEx.id}</h3>
+                    <button className="text-gray-400 hover:text-gray-700 text-lg" onClick={() => setSelectedReconEx(null)}>✕</button>
+                  </div>
+                  <div className="p-4 space-y-3 flex-1">
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div><span className="font-medium text-gray-500">Batch:</span> <span className="font-mono">{selectedReconEx.batch_id}</span></div>
+                      <div><span className="font-medium text-gray-500">Provider:</span> {selectedReconEx.provider_uid ?? "—"}</div>
+                      <div><span className="font-medium text-gray-500">Reason:</span> <span className="text-orange-700">{selectedReconEx.detected_reason}</span></div>
+                      <div><span className="font-medium text-gray-500">Status:</span> {selectedReconEx.status}</div>
+                      <div><span className="font-medium text-gray-500">Upload ID:</span> {selectedReconEx.upload_id}</div>
+                      {selectedReconEx.resolved_at && <div><span className="font-medium text-gray-500">Resolved:</span> {new Date(selectedReconEx.resolved_at).toLocaleDateString()}</div>}
+                    </div>
+                    {/* Raw bank row */}
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500 mb-1">Raw Bank Row</div>
+                      <pre className="bg-gray-50 border rounded p-2 text-[10px] overflow-x-auto">{JSON.stringify(selectedReconEx.raw_row, null, 2)}</pre>
+                    </div>
+                    {/* Note */}
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500 mb-1">Resolution Note</div>
+                      <textarea className="w-full border rounded px-2 py-1 text-xs" rows={3} value={reconExNote}
+                        onChange={e => setReconExNote(e.target.value)} placeholder="Add resolution note…" />
+                      <button className="mt-1 text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                        onClick={() => patchReconEx({ id: selectedReconEx.id, action: 'note', note: reconExNote })}>
+                        Save Note
+                      </button>
+                    </div>
+                    {/* Manual match */}
+                    {selectedReconEx.status === 'open' && (
+                      <div className="border-t pt-3">
+                        <div className="text-xs font-semibold text-gray-500 mb-2">Manual Match to Payout Entry</div>
+                        <div className="flex gap-2 mb-2">
+                          <input className="flex-1 border rounded px-2 py-1 text-xs" placeholder="Payout Entry ID"
+                            value={reconMatchEntryId} onChange={e => setReconMatchEntryId(e.target.value)} />
+                        </div>
+                        <input className="w-full border rounded px-2 py-1 text-xs mb-2" placeholder="Reason for match"
+                          value={reconMatchReason} onChange={e => setReconMatchReason(e.target.value)} />
+                        <button
+                          disabled={matchReconExPending || !reconMatchEntryId || !reconMatchReason}
+                          className="w-full text-xs px-2 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-40"
+                          onClick={() => manualMatchReconEx({ id: selectedReconEx.id, payoutEntryId: parseInt(reconMatchEntryId), reason: reconMatchReason })}>
+                          {matchReconExPending ? "Matching…" : "✓ Confirm Manual Match"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* ── 3.3E: Board Pack Tab ─────────────────────────────────────────── */}
+          <TabsContent value="board-pack" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <span className="text-violet-500">📋</span> Monthly Board Pack
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <input type="month" className="border rounded px-2 py-1 text-xs" value={boardMonth}
+                      onChange={e => setBoardMonth(e.target.value)} />
+                    <button className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                      onClick={() => setBoardMonthApplied(boardMonth)}>Load</button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {boardPackLoading ? (
+                  <div className="space-y-2">{[...Array(5)].map((_,i) => <div key={i} className="h-10 bg-gray-100 animate-pulse rounded" />)}</div>
+                ) : !boardPackData?.ok ? (
+                  <div className="text-sm text-gray-400 py-6 text-center">Select a month and click Load.</div>
+                ) : (
+                  <>
+                    {/* Summary tiles */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[
+                        { label: "Gross Payout", value: `₪${((boardPackData.financials?.grossCents ?? 0)/100).toLocaleString('he-IL',{minimumFractionDigits:2})}` },
+                        { label: "Net Payout", value: `₪${((boardPackData.financials?.netCents ?? 0)/100).toLocaleString('he-IL',{minimumFractionDigits:2})}` },
+                        { label: "Commission", value: `₪${((boardPackData.financials?.commissionCents ?? 0)/100).toLocaleString('he-IL',{minimumFractionDigits:2})}` },
+                        { label: "Est. VAT (18%)", value: `₪${((boardPackData.financials?.vatCents ?? 0)/100).toLocaleString('he-IL',{minimumFractionDigits:2})}` },
+                        { label: "Net Margin", value: `${boardPackData.financials?.netMarginPct ?? 0}%` },
+                        { label: "Providers", value: boardPackData.providerCount ?? 0 },
+                        { label: "Dispute SLA", value: `${boardPackData.disputes?.slaCompliancePct ?? 0}%` },
+                        { label: "Open Exceptions", value: (boardPackData.reconExceptions?.find((r: any) => r.status === 'open')?.count ?? 0) },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="border rounded-lg p-3 text-center">
+                          <div className="text-lg font-bold text-gray-800">{value}</div>
+                          <div className="text-[10px] text-gray-500 uppercase tracking-wide mt-0.5">{label}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Variance vs prior */}
+                    {boardPackData.varianceVsPrior?.grossChangePct !== null && (
+                      <div className="text-xs text-gray-600">
+                        vs {boardPackData.varianceVsPrior?.priorMonth}:&nbsp;
+                        <span className={boardPackData.varianceVsPrior.grossChangePct >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
+                          {boardPackData.varianceVsPrior.grossChangePct >= 0 ? '+' : ''}{boardPackData.varianceVsPrior.grossChangePct}% gross payout
+                        </span>
+                      </div>
+                    )}
+                    {/* Risks */}
+                    {boardPackData.risks?.length > 0 && (
+                      <div className="border border-red-200 rounded-lg p-3 bg-red-50">
+                        <div className="text-xs font-semibold text-red-700 mb-1.5">⚠ Key Risks</div>
+                        <ul className="text-xs text-red-800 space-y-1">
+                          {boardPackData.risks.map((r: string, i: number) => <li key={i}>• {r}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                    {/* Commentary rollup */}
+                    {boardPackData.commentary?.length > 0 && (
+                      <div>
+                        <div className="text-xs font-semibold text-gray-600 mb-2">Variance Commentary</div>
+                        <div className="space-y-1.5">
+                          {boardPackData.commentary.map((c: any) => (
+                            <div key={c.metric} className="border rounded p-2 bg-gray-50 text-xs">
+                              <span className="font-medium text-gray-700">{c.metric}:</span> {c.comment}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* Sign-off state */}
+                    <div className="text-xs flex items-center gap-2">
+                      <span className="font-medium text-gray-600">Sign-off:</span>
+                      {boardPackData.signOff ? (
+                        <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">✓ Signed by {boardPackData.signOff.signedOffBy} on {new Date(boardPackData.signOff.signedOffAt).toLocaleDateString()}</span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Not signed off</span>
+                      )}
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── 3.3F: Integrity Tab ───────────────────────────────────────────── */}
+          <TabsContent value="integrity" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <span className="text-emerald-500">🛡</span> Cross-Check Integrity Jobs
+                  </CardTitle>
+                  <button
+                    disabled={runIntegrityPending}
+                    onClick={() => runIntegrityJobs()}
+                    className="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-40"
+                  >
+                    {runIntegrityPending ? "Running…" : "▶ Run All Checks Now"}
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {integrityHistoryLoading ? (
+                  <div className="space-y-2">{[...Array(5)].map((_,i) => <div key={i} className="h-12 bg-gray-100 animate-pulse rounded" />)}</div>
+                ) : !(integrityHistoryData?.history?.length) ? (
+                  <div className="text-sm text-gray-400 py-10 text-center border-2 border-dashed rounded-lg">
+                    No integrity checks run yet. Click "Run All Checks Now" to start.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {integrityHistoryData.history.map((run: any) => (
+                      <div key={run.id} className={`border rounded-lg p-3 flex items-start justify-between gap-3 ${
+                        run.status === 'passed' ? 'bg-green-50 border-green-200' :
+                        run.status === 'failed' ? 'bg-red-50 border-red-200' :
+                        run.status === 'error'  ? 'bg-amber-50 border-amber-200' :
+                        'bg-gray-50 border-gray-200'
+                      }`}>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              run.status === 'passed' ? 'bg-green-600 text-white' :
+                              run.status === 'failed' ? 'bg-red-600 text-white' :
+                              'bg-amber-500 text-white'
+                            }`}>{run.status.toUpperCase()}</span>
+                            <span className="text-xs font-semibold text-gray-700">{run.job_name.replace(/_/g,' ')}</span>
+                          </div>
+                          <div className="text-[11px] text-gray-600">{run.summary?.summary ?? "—"}</div>
+                          {run.findings_count > 0 && (
+                            <div className="text-[11px] text-red-700 font-medium mt-0.5">{run.findings_count} finding(s) — check Finance Alerts</div>
+                          )}
+                        </div>
+                        <div className="text-right text-[10px] text-gray-400">
+                          <div>{run.started_at ? new Date(run.started_at).toLocaleDateString() : "—"}</div>
+                          <div>{run.started_at ? new Date(run.started_at).toLocaleTimeString() : ""}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="pt-3">
+                  <button onClick={() => refetchIntegrityHistory()} className="text-xs text-blue-600 hover:underline">Refresh history</button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
         </Tabs>
       </div>
+
+      {/* ── 3.3B: Alert Delivery Log Drawer ──────────────────────────────────── */}
+      {alertDeliveryDrawer && (
+        <div className="fixed inset-0 z-50 flex justify-end" onClick={() => setAlertDeliveryDrawer(false)}>
+          <div className="absolute inset-0 bg-black/30" />
+          <div className="relative w-full max-w-lg bg-white shadow-xl flex flex-col h-full overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b flex items-center justify-between">
+              <h3 className="font-semibold text-sm">📬 Alert Delivery Log</h3>
+              <button className="text-gray-400 hover:text-gray-700 text-lg" onClick={() => setAlertDeliveryDrawer(false)}>✕</button>
+            </div>
+            <div className="p-4 flex-1">
+              {/* Digest preview */}
+              {digestPreviewData?.ok && (
+                <div className="mb-4 border rounded-lg p-3 bg-blue-50 border-blue-200">
+                  <div className="text-xs font-semibold text-blue-700 mb-1.5">Digest Preview — {digestPreviewData.period}</div>
+                  <div className="text-xs text-blue-600 mb-2">{digestPreviewData.total} unacknowledged alert(s)</div>
+                  <div className="space-y-1">
+                    {digestPreviewData.groups?.map((g: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between text-xs">
+                        <span><span className={`font-bold ${g.severity === 'critical' ? 'text-red-600' : g.severity === 'warning' ? 'text-amber-600' : 'text-gray-600'}`}>{g.severity.toUpperCase()}</span> / {g.alert_type}</span>
+                        <span className="font-mono">{g.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Delivery log table */}
+              {deliveryLogLoading ? (
+                <div className="space-y-2">{[...Array(5)].map((_,i) => <div key={i} className="h-8 bg-gray-100 animate-pulse rounded" />)}</div>
+              ) : !(deliveryLogData?.deliveries?.length) ? (
+                <div className="text-xs text-gray-400 text-center py-8 border-2 border-dashed rounded-lg">No delivery records yet.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 text-gray-500 uppercase text-[10px]">
+                        <th className="px-2 py-2 text-left">Alert ID</th>
+                        <th className="px-2 py-2 text-left">Type</th>
+                        <th className="px-2 py-2 text-left">Severity</th>
+                        <th className="px-2 py-2 text-left">Delivery</th>
+                        <th className="px-2 py-2 text-left">Status</th>
+                        <th className="px-2 py-2 text-left">Sent</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {deliveryLogData.deliveries.map((d: any) => (
+                        <tr key={d.id} className="border-t hover:bg-gray-50">
+                          <td className="px-2 py-1.5 font-mono">{d.alert_id ?? "—"}</td>
+                          <td className="px-2 py-1.5">{d.alert_type ?? "—"}</td>
+                          <td className="px-2 py-1.5">
+                            {d.severity && (
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${d.severity === 'critical' ? 'bg-red-100 text-red-700' : d.severity === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
+                                {d.severity.toUpperCase()}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${d.delivery_type === 'escalation' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                              {d.delivery_type}
+                            </span>
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${d.status === 'sent' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                              {d.status}
+                            </span>
+                          </td>
+                          <td className="px-2 py-1.5 text-gray-500">{d.sent_at ? new Date(d.sent_at).toLocaleString() : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Support: Release Hold Confirm ──────────────────────────────────────── */}
       <Dialog open={!!releaseHoldConfirm} onOpenChange={(open) => !open && setReleaseHoldConfirm(null)}>

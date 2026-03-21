@@ -1471,3 +1471,49 @@ All endpoints under `/api/prestige-pass/admin/wallet/`. Admin-only. All schema c
 - `GET /admin/wallet/variance-commentary?month=YYYY-MM` — all comments for month
 - `POST /admin/wallet/variance-commentary` — upsert (mutable, unlike sign-off); ≤2000 chars; audited
 - Frontend: Inline comment fields per metric inside variance card; dirty-state Save buttons per field
+
+## Phase 3.3 — Finance Operations Layer IV (IN PROGRESS)
+
+### Phase 3.3A — Reconciliation Exception Workflow (COMPLETE)
+- DB: `bank_reconciliation_exceptions` (upload_id, batch_id, provider_uid, raw_row JSONB, detected_reason, status CHECK(open|matched_manually|ignored|escalated), matched_payout_entry_id, assigned_admin_uid, resolution_note, resolved_at)
+- Extended `POST /reconcile` — unmatched rows now create exception records automatically; fires finance_alert if ≥1 exception
+- `GET /admin/wallet/reconciliation-exceptions` — filterable by status/batchId/providerUid/assignedAdminUid/from/to
+- `PATCH /admin/wallet/reconciliation-exceptions/:id` — actions: assign, ignore, escalate, note; all audited
+- `POST /admin/wallet/reconciliation-exceptions/:id/match` — manual match to payout entry; settles the entry; closes exception
+- Frontend: New "Recon Exceptions" tab; filter bar; status-chip table; right-side drawer with raw-row viewer, note field, manual match section; inline ignore/escalate buttons
+
+### Phase 3.3B — Alert Digests & Escalation Ladders (COMPLETE)
+- DB: `finance_alert_deliveries` (alert_id, delivery_type CHECK(digest|escalation), recipient_uid, recipient_email, sent_at, status, error_detail); `escalated_at`, `escalation_level` columns added to `finance_alerts`
+- Cron jobs added to daily-close-reminder.ts: daily digest at 07:30 IL, escalation ladder every 30 min (L1@30min, L2@2h, L3@6h for unacknowledged critical alerts)
+- `GET /admin/wallet/alerts/delivery-log` — filterable by alertId/from/to; joins finance_alerts for type/severity
+- `POST /admin/wallet/alerts/:id/escalate-now` — manual escalation; increments level; records delivery; audited
+- `GET /admin/wallet/alerts/digest-preview` — grouped count of unacknowledged alerts for current day
+- Frontend: "📬 Delivery Log" button opens right-side drawer with delivery history + digest preview; ESC L{n} badge per alert; "↑ Escalate" button for unacknowledged critical alerts
+
+### Phase 3.3C — Sign-off Export Pack (COMPLETE)
+- `GET /admin/wallet/monthly-signoff/:month/export` — deterministic JSON pack with SHA-256 manifest
+- Pack includes: sign-off metadata, settlement summary, batch summary, recon exception summary, dispute SLA summary, alerts summary, variance commentary
+- Frontend: "⬇ Download Sign-off Pack" button appears in the variance card's sign-off section once month is signed off
+
+### Phase 3.3D — Provider Settlement Self-Service (COMPLETE)
+- `GET /provider/wallet/settlement-status` — provider-scoped: entries with batch status + settled_at + bank_ref + remittance status; summary tile counts
+- `GET /provider/wallet/remittance-log` — provider-scoped remittance history
+- `GET /provider/wallet/payout-batch/:batchId` — provider-specific batch + entries + remittance status; 403 if no entries for that provider
+- Frontend (ProviderDashboard): New "פירוט תשלומים" card under earnings tab; 3-tile summary; entries table with Earned/Batched/Remittance/Bank-Settled status columns; remittance history list
+
+### Phase 3.3E — Monthly Board Pack (COMPLETE)
+- `GET /admin/wallet/board-pack?month=YYYY-MM` — management summary: financials (gross/net/commission/VAT/netMargin), provider count, remittance coverage, recon exceptions, dispute SLA compliance, variance vs prior month, commentary rollup, sign-off state, key risks array
+- Frontend: New "Board Pack" tab in AdminWalletDashboard; month picker + Load button; 8-tile summary grid; risk callout panel (red); commentary rollup; sign-off state badge
+
+### Phase 3.3F — Cross-Check Integrity Jobs (COMPLETE)
+- DB: `integrity_job_runs` (job_name, started_at, completed_at, status CHECK(running|passed|failed|error), findings_count, summary JSONB)
+- `POST /admin/wallet/integrity/run` — runs 5 jobs: batch_vs_entries, remittance_coverage, settled_without_reconciliation, signoff_open_exceptions, close_continuity; writes finance_alerts on failure; audited
+- `GET /admin/wallet/integrity/history` — DISTINCT ON (job_name) latest run per job
+- Frontend: New "Integrity" tab; "▶ Run All Checks Now" button; per-job pass/fail cards with findings count
+
+### Phase 3.3G — Permission Hardening (COMPLETE)
+- DB: `finance_role_capabilities` (role_name, capability; UNIQUE); seeded with default grants per role
+- Capabilities: payout_batch_create, payout_batch_reconcile, remittance_send, dispute_resolve, refund_approve, finance_close, monthly_signoff, finance_role_manage
+- `GET /admin/wallet/capabilities?roleName=...` — capabilities for role (or all roles grouped)
+- `POST /admin/wallet/capabilities` — grant/revoke capability (finance_admin only); audited
+- finance_write cannot grant monthly_signoff or finance_role_manage; finance_read has no write capabilities

@@ -233,6 +233,13 @@ export default function ProviderDashboard() {
     queryFn: () => fetchWithAuth('/api/prestige-pass/provider/wallet/clawback-history'),
   });
 
+  // ── 3.3D: Provider Settlement Self-Service ────────────────────────────────
+  const { data: settlementData, isLoading: settlementLoading } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/provider/wallet/settlement-status'],
+    enabled: !!user,
+    queryFn: () => fetchWithAuth('/api/prestige-pass/provider/wallet/settlement-status'),
+  });
+
   const { data: appStatusData } = useQuery<{
     success: boolean;
     isProvider: boolean;
@@ -998,6 +1005,116 @@ export default function ProviderDashboard() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── 3.3D: Provider Settlement Self-Service ── */}
+            <div className="bg-white border border-gray-200/60 shadow-sm overflow-hidden" style={{ borderRadius: '2px' }}>
+              <div className="h-[2px] bg-gradient-to-r from-emerald-400 to-teal-500" />
+              <div className="px-5 py-4 border-b border-gray-100">
+                <h3 className="text-base font-serif text-gray-900">פירוט תשלומים</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Settlement status per payout entry</p>
+              </div>
+              <div className="p-5 space-y-4">
+                {/* Summary tiles */}
+                {settlementLoading ? (
+                  <div className="grid grid-cols-3 gap-3">
+                    {[...Array(3)].map((_,i) => <div key={i} className="h-14 bg-gray-100 animate-pulse rounded" />)}
+                  </div>
+                ) : settlementData?.summary && (
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { label: "Total Entries", value: settlementData.summary.totalEntries },
+                      { label: "Settled", value: settlementData.summary.settledCount, color: "text-green-600" },
+                      { label: "Net Settled", value: `₪${((settlementData.summary.settledNetCents ?? 0)/100).toFixed(2)}`, color: "text-emerald-700" },
+                    ].map(({ label, value, color }) => (
+                      <div key={label} className="border rounded-lg p-3 text-center">
+                        <div className={`text-base font-bold ${color ?? 'text-gray-800'}`}>{value}</div>
+                        <div className="text-[10px] text-gray-500 uppercase tracking-wide mt-0.5">{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Entries table */}
+                {settlementLoading ? (
+                  <div className="space-y-2">{[...Array(3)].map((_,i) => <div key={i} className="h-8 bg-gray-100 animate-pulse rounded" />)}</div>
+                ) : !(settlementData?.entries?.length) ? (
+                  <div className="text-xs text-gray-400 text-center py-6 border-2 border-dashed rounded-lg">
+                    No payout entries yet.
+                  </div>
+                ) : (
+                  <div>
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Payout Entries</div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-gray-50 text-gray-500 text-[10px] uppercase">
+                            <th className="px-2 py-2 text-left">Batch</th>
+                            <th className="px-2 py-2 text-right">Net (₪)</th>
+                            <th className="px-2 py-2 text-center">Status</th>
+                            <th className="px-2 py-2 text-center">Remittance</th>
+                            <th className="px-2 py-2 text-center">Bank Settled</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {settlementData.entries.map((e: any) => {
+                            const remit = settlementData.remittances.find((r: any) => r.batch_id === e.payout_batch_id);
+                            return (
+                              <tr key={e.id} className="border-t hover:bg-gray-50">
+                                <td className="px-2 py-1.5 font-mono text-blue-700 text-[10px]">{e.payout_batch_id}</td>
+                                <td className="px-2 py-1.5 text-right font-semibold">₪{((e.net_cents ?? 0)/100).toFixed(2)}</td>
+                                <td className="px-2 py-1.5 text-center">
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
+                                    e.status === 'settled'   ? 'bg-green-100 text-green-700' :
+                                    e.status === 'exported' ? 'bg-blue-100 text-blue-700' :
+                                    e.status === 'clawback' ? 'bg-red-100 text-red-700' :
+                                    'bg-gray-100 text-gray-600'
+                                  }`}>{e.status}</span>
+                                </td>
+                                <td className="px-2 py-1.5 text-center">
+                                  {remit ? (
+                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
+                                      remit.status === 'sent' ? 'bg-green-100 text-green-700' :
+                                      remit.status === 'failed' ? 'bg-red-100 text-red-700' :
+                                      'bg-gray-100 text-gray-600'
+                                    }`}>{remit.status}</span>
+                                  ) : <span className="text-gray-300">—</span>}
+                                </td>
+                                <td className="px-2 py-1.5 text-center">
+                                  {e.settled_at ? (
+                                    <span className="text-green-600 font-semibold">✓ {new Date(e.settled_at).toLocaleDateString('he-IL')}</span>
+                                  ) : <span className="text-gray-300">Pending</span>}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+                {/* Remittance history */}
+                {settlementData?.remittances?.length > 0 && (
+                  <div>
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Remittance History</div>
+                    <div className="space-y-1.5">
+                      {settlementData.remittances.map((r: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between text-xs border rounded px-3 py-2 bg-gray-50">
+                          <span className="font-mono text-gray-600">{r.batch_id}</span>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
+                              r.status === 'sent' ? 'bg-green-100 text-green-700' :
+                              r.status === 'failed' ? 'bg-red-100 text-red-700' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>{r.status}</span>
+                            {r.sent_at && <span className="text-gray-400">{new Date(r.sent_at).toLocaleDateString('he-IL')}</span>}
+                            {r.retry_count > 0 && <span className="text-amber-600">↺ {r.retry_count}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

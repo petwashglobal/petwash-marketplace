@@ -216,6 +216,122 @@ async function autoEscalateSlaBreachedDisputes(): Promise<void> {
   }
 }
 
+// ── 3.3B: Daily alert digest ──────────────────────────────────────────────
+async function sendDailyAlertDigest(): Promise<void> {
+  try {
+    if (!SENDGRID_API_KEY || !FINANCE_ALERT_EMAIL) return;
+    sgMail.setApiKey(SENDGRID_API_KEY);
+
+    // Alerts from the last 24 hours that are still unacknowledged
+    const rawAlerts: any = await db.execute(sql`
+      SELECT id, alert_type, severity, entity_type, entity_id, detail, created_at
+      FROM finance_alerts
+      WHERE acknowledged_at IS NULL
+        AND created_at >= NOW() - INTERVAL '24 hours'
+      ORDER BY severity DESC, created_at DESC
+    `);
+    const alerts: any[] = rawAlerts?.rows ?? rawAlerts ?? [];
+    if (alerts.length === 0) {
+      logger.info('[AlertDigest] No unacknowledged alerts — skipping digest');
+      return;
+    }
+
+    const grouped: Record<string, any[]> = {};
+    for (const a of alerts) {
+      const key = `${a.severity}:${a.alert_type}`;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(a);
+    }
+
+    const rows = Object.entries(grouped).map(([key, items]) => {
+      const [severity, type] = key.split(':');
+      return `<tr><td>${severity.toUpperCase()}</td><td>${type}</td><td>${items.length}</td></tr>`;
+    }).join('');
+
+    const html = `<h2>PetWash Finance — Daily Alert Digest</h2>
+<p>${alerts.length} unacknowledged alert(s) from the last 24 hours:</p>
+<table border="1" cellpadding="6" style="border-collapse:collapse;">
+  <thead><tr><th>Severity</th><th>Type</th><th>Count</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<p>Log in to the Admin Wallet Dashboard to acknowledge and action these alerts.</p>`;
+
+    await sgMail.send({
+      to: FINANCE_ALERT_EMAIL,
+      from: FINANCE_ALERT_EMAIL,
+      subject: `[PetWash Finance] Daily Alert Digest — ${todayIso()} — ${alerts.length} alert(s)`,
+      html,
+    });
+
+    // Record delivery
+    for (const a of alerts) {
+      await db.execute(sql`
+        INSERT INTO finance_alert_deliveries (alert_id, delivery_type, recipient_email, status)
+        VALUES (${a.id ?? null}, 'digest', ${FINANCE_ALERT_EMAIL}, 'sent')
+      `);
+    }
+
+    logger.info('[AlertDigest] Sent daily digest', { count: alerts.length });
+  } catch (err: any) {
+    logger.error('[AlertDigest] error', { error: err.message });
+  }
+}
+
+// ── 3.3B: Escalation ladder (every 30 min) ───────────────────────────────
+async function runEscalationLadder(): Promise<void> {
+  try {
+    // Escalation thresholds for unacknowledged critical alerts
+    const LEVELS = [
+      { level: 1, minMinutes: 30 },
+      { level: 2, minMinutes: 120 },
+      { level: 3, minMinutes: 360 },
+    ];
+
+    for (const { level, minMinutes } of LEVELS) {
+      const candidatesRaw: any = await db.execute(sql`
+        SELECT id, alert_type, entity_type, entity_id, created_at
+        FROM finance_alerts
+        WHERE severity = 'critical'
+          AND acknowledged_at IS NULL
+          AND (escalation_level IS NULL OR escalation_level < ${level})
+          AND created_at <= NOW() - (${minMinutes} || ' minutes')::interval
+      `);
+      const candidates: any[] = candidatesRaw?.rows ?? candidatesRaw ?? [];
+      if (candidates.length === 0) continue;
+
+      for (const a of candidates) {
+        // Update escalation level (idempotent — only move forward)
+        await db.execute(sql`
+          UPDATE finance_alerts SET escalation_level = ${level}, escalated_at = NOW()
+          WHERE id = ${a.id} AND (escalation_level IS NULL OR escalation_level < ${level})
+        `);
+
+        // Record delivery
+        await db.execute(sql`
+          INSERT INTO finance_alert_deliveries (alert_id, delivery_type, recipient_email, status)
+          VALUES (${a.id}, 'escalation', ${FINANCE_ALERT_EMAIL}, 'sent')
+        `);
+
+        // Send escalation email if configured
+        if (SENDGRID_API_KEY && FINANCE_ALERT_EMAIL) {
+          sgMail.setApiKey(SENDGRID_API_KEY);
+          await sgMail.send({
+            to: FINANCE_ALERT_EMAIL,
+            from: FINANCE_ALERT_EMAIL,
+            subject: `[PetWash Finance] CRITICAL Alert Escalation Level ${level} — ${a.alert_type}`,
+            html: `<h2>Critical Finance Alert — Escalation Level ${level}</h2>
+<p>Alert <strong>${a.alert_type}</strong> (entity: ${a.entity_type} / ${a.entity_id}) remains unacknowledged after ${minMinutes} minutes.</p>
+<p>Please log in immediately to review and acknowledge this alert.</p>`,
+          });
+        }
+      }
+      logger.info('[EscalationLadder] Escalated alerts', { level, count: candidates.length });
+    }
+  } catch (err: any) {
+    logger.error('[EscalationLadder] error', { error: err.message });
+  }
+}
+
 export function startDailyCloseReminder(): void {
   if (!ENABLED) {
     logger.info('[DailyCloseReminder] DAILY_CLOSE_REMINDER_ENABLED not set — job disabled');
@@ -229,4 +345,12 @@ export function startDailyCloseReminder(): void {
   // Auto-escalate SLA-breached disputes every hour
   cron.schedule('15 * * * *', autoEscalateSlaBreachedDisputes, { timezone: 'Asia/Jerusalem' });
   logger.info('[DailyCloseReminder] Auto-escalation job started (:15 every hour)');
+
+  // 3.3B: Daily alert digest at 07:30 IL
+  cron.schedule('30 7 * * *', sendDailyAlertDigest, { timezone: 'Asia/Jerusalem' });
+  logger.info('[DailyCloseReminder] Daily alert digest job started (07:30 IL)');
+
+  // 3.3B: Escalation ladder every 30 minutes
+  cron.schedule('*/30 * * * *', runEscalationLadder, { timezone: 'Asia/Jerusalem' });
+  logger.info('[DailyCloseReminder] Escalation ladder job started (every 30 min)');
 }
