@@ -12612,3 +12612,40 @@ export const providerPayoutEntries = pgTable("provider_payout_entries", {
 });
 export type ProviderPayoutEntry       = typeof providerPayoutEntries.$inferSelect;
 export type InsertProviderPayoutEntry = typeof providerPayoutEntries.$inferInsert;
+
+// ─── Dispute Cases (Phase 2.9C) ───────────────────────────────────────────────
+// case_ref is server-generated.  notes is an append-only JSONB array.
+// resolve is the ONLY path that sets resolved_at.
+// 2.9C1: no money movement on resolve.
+export const disputeCases = pgTable("dispute_cases", {
+  id:                  serial("id").primaryKey(),
+  caseRef:             varchar("case_ref",             { length: 40  }).unique().notNull(),
+  bookingId:           varchar("booking_id",            { length: 120 }),
+  complainantUid:      varchar("complainant_uid",       { length: 128 }).notNull(),
+  complainantType:     varchar("complainant_type",      { length: 20  }).notNull().default("customer"),
+  // 'customer' | 'provider'
+  divisionCode:        varchar("division_code",         { length: 40  }),
+  amountDisputedCents: integer("amount_disputed_cents").notNull().default(0),
+  status:              varchar("status",                { length: 20  }).notNull().default("open"),
+  // open | investigating | resolved | dismissed | escalated
+  resolutionCents:     integer("resolution_cents"),
+  resolutionType:      varchar("resolution_type",       { length: 30  }),
+  // 'full_refund' | 'partial_refund' | 'no_action' | 'goodwill_credit' | 'dismissed'
+  openedAt:            timestamp("opened_at",           { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt:          timestamp("resolved_at",         { withTimezone: true }),
+  assignedAdminUid:    varchar("assigned_admin_uid",    { length: 128 }),
+  notes:               jsonb("notes").notNull().default(sql`'[]'::jsonb`),
+  // [{authorUid, authorName, text, createdAt}]
+  metadata:            jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
+  createdAt:           timestamp("created_at",          { withTimezone: true }).notNull().defaultNow(),
+  updatedAt:           timestamp("updated_at",          { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("idx_dc_booking").on(table.bookingId),
+  index("idx_dc_status").on(table.status),
+  index("idx_dc_division").on(table.divisionCode),
+  index("idx_dc_complainant").on(table.complainantUid),
+  index("idx_dc_opened").on(table.openedAt),
+  index("idx_dc_assigned").on(table.assignedAdminUid),
+]);
+export type DisputeCase       = typeof disputeCases.$inferSelect;
+export type InsertDisputeCase = typeof disputeCases.$inferInsert;

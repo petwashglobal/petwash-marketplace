@@ -143,6 +143,73 @@ export default function AdminWalletDashboard() {
   const [reverseReason, setReverseReason] = useState("");
   const [reverseResult, setReverseResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
+  // ── Disputes tab (2.9C) ──────────────────────────────────────────────────────
+  const [dispStatus,   setDispStatus]   = useState("");
+  const [dispDivision, setDispDivision] = useState("");
+  const [dispAssigned, setDispAssigned] = useState("");
+  const [dispBooking,  setDispBooking]  = useState("");
+  const [dispApplied,  setDispApplied]  = useState(false);
+  const [selectedDispute, setSelectedDispute] = useState<any>(null);
+  const [drawerNote,   setDrawerNote]   = useState("");
+  const [resolveMode,  setResolveMode]  = useState(false);
+  const [resolveType,  setResolveType]  = useState<string>("no_action");
+  const [resolveCents, setResolveCents] = useState("");
+  const [resolveNote,  setResolveNote]  = useState("");
+  const [openForm,     setOpenForm]     = useState(false);
+  const [newComplainantUid,  setNewComplainantUid]  = useState("");
+  const [newComplainantType, setNewComplainantType] = useState<"customer"|"provider">("customer");
+  const [newBookingId,       setNewBookingId]       = useState("");
+  const [newDivision,        setNewDivision]        = useState("");
+  const [newAmount,          setNewAmount]          = useState("");
+  const [newOpeningNote,     setNewOpeningNote]     = useState("");
+  const [assignUid,          setAssignUid]          = useState("");
+
+  const dispParams = new URLSearchParams();
+  if (dispApplied) {
+    if (dispStatus)   dispParams.set("status",           dispStatus);
+    if (dispDivision) dispParams.set("divisionCode",     dispDivision);
+    if (dispAssigned) dispParams.set("assignedAdminUid", dispAssigned);
+    if (dispBooking)  dispParams.set("bookingId",        dispBooking);
+  }
+
+  const { data: dispData, isLoading: dispLoading, refetch: refetchDisp } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/disputes", dispApplied, dispStatus, dispDivision, dispAssigned, dispBooking],
+    queryFn:  () => fetch(`/api/prestige-pass/admin/wallet/disputes?${dispParams.toString()}`, { credentials: "include" }).then(r => r.json()),
+    enabled:  dispApplied,
+  });
+
+  const { mutate: openDispute, isPending: openDispPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest("POST", "/api/prestige-pass/admin/wallet/disputes", body),
+    onSuccess: (data) => {
+      toast({ title: `Dispute ${data.dispute?.case_ref} opened` });
+      setOpenForm(false); setNewComplainantUid(""); setNewBookingId(""); setNewDivision(""); setNewAmount(""); setNewOpeningNote("");
+      setDispApplied(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/disputes"] });
+    },
+    onError: (err) => toast({ title: err?.error ?? "Open dispute failed", variant: "destructive" }),
+  });
+
+  const { mutate: patchDispute, isPending: patchPending } = useMutation<any, any, { caseRef: string; body: any }>({
+    mutationFn: ({ caseRef, body }) => apiRequest("PATCH", `/api/prestige-pass/admin/wallet/disputes/${caseRef}`, body),
+    onSuccess: (data) => {
+      setSelectedDispute(data.dispute);
+      setDrawerNote(""); setAssignUid("");
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/disputes"] });
+    },
+    onError: (err) => toast({ title: err?.error ?? "Update failed", variant: "destructive" }),
+  });
+
+  const { mutate: resolveDispute, isPending: resolvePending } = useMutation<any, any, { caseRef: string; body: any }>({
+    mutationFn: ({ caseRef, body }) => apiRequest("POST", `/api/prestige-pass/admin/wallet/disputes/${caseRef}/resolve`, body),
+    onSuccess: (data) => {
+      setSelectedDispute(data.dispute);
+      setResolveMode(false); setResolveNote(""); setResolveCents("");
+      toast({ title: `Dispute resolved: ${data.dispute?.resolution_type}` });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/disputes"] });
+    },
+    onError: (err) => toast({ title: err?.error ?? "Resolve failed", variant: "destructive" }),
+  });
+
   // ── Settlement tab (2.9B) ─────────────────────────────────────────────────────
   const today = new Date().toISOString().slice(0, 10);
   const firstOfMonth = today.slice(0, 7) + '-01';
@@ -682,6 +749,10 @@ export default function AdminWalletDashboard() {
             <TabsTrigger value="payouts">
               <DollarSign className="w-4 h-4 mr-2" />
               Payouts
+            </TabsTrigger>
+            <TabsTrigger value="disputes">
+              <AlertTriangle className="w-4 h-4 mr-2" />
+              Disputes
             </TabsTrigger>
             <TabsTrigger value="settlement">
               <BarChart3 className="w-4 h-4 mr-2" />
@@ -2488,6 +2559,409 @@ export default function AdminWalletDashboard() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* ── DISPUTES (2.9C) ── */}
+          <TabsContent value="disputes" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-600" />
+                    Dispute Cases
+                  </CardTitle>
+                  <div className="flex gap-2">
+                    <button className="text-xs text-blue-600 hover:underline" onClick={() => refetchDisp()}>Refresh</button>
+                    <button
+                      className="text-xs px-2 py-1 bg-rose-600 text-white rounded hover:bg-rose-700"
+                      onClick={() => setOpenForm(true)}
+                    >+ Open Dispute</button>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-500">2.9C1 — case management only; no wallet changes on resolve.</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* ── Filters ── */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Status</label>
+                    <select className="w-full border rounded px-2 py-1.5 text-sm"
+                      value={dispStatus} onChange={e => setDispStatus(e.target.value)}>
+                      <option value="">All</option>
+                      <option value="open">open</option>
+                      <option value="investigating">investigating</option>
+                      <option value="escalated">escalated</option>
+                      <option value="resolved">resolved</option>
+                      <option value="dismissed">dismissed</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Division</label>
+                    <select className="w-full border rounded px-2 py-1.5 text-sm"
+                      value={dispDivision} onChange={e => setDispDivision(e.target.value)}>
+                      <option value="">All</option>
+                      <option value="walkers">Walkers</option>
+                      <option value="petsitter">Sitter Suite</option>
+                      <option value="academy">Academy</option>
+                      <option value="station_k9000">K9000</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Booking ID</label>
+                    <input className="w-full border rounded px-2 py-1.5 text-sm" placeholder="BK-…"
+                      value={dispBooking} onChange={e => setDispBooking(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Assigned Admin</label>
+                    <input className="w-full border rounded px-2 py-1.5 text-sm" placeholder="UID…"
+                      value={dispAssigned} onChange={e => setDispAssigned(e.target.value)} />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded hover:bg-gray-800"
+                    onClick={() => setDispApplied(true)}
+                  >Apply Filters</button>
+                  <button
+                    className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50"
+                    onClick={() => { setDispStatus(""); setDispDivision(""); setDispBooking(""); setDispAssigned(""); setDispApplied(false); }}
+                  >Clear</button>
+                  <button
+                    className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                    onClick={() => setDispApplied(true)}
+                  >Show All</button>
+                </div>
+
+                {/* ── Open-Dispute Form ── */}
+                {openForm && (
+                  <div className="border border-rose-200 bg-rose-50 rounded p-4 space-y-3">
+                    <p className="text-sm font-semibold text-rose-800">Open New Dispute Case</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-gray-600 block mb-1">Complainant UID *</label>
+                        <input className="w-full border rounded px-2 py-1.5 text-sm bg-white"
+                          value={newComplainantUid} onChange={e => setNewComplainantUid(e.target.value)} placeholder="Firebase UID" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-600 block mb-1">Complainant Type</label>
+                        <select className="w-full border rounded px-2 py-1.5 text-sm bg-white"
+                          value={newComplainantType} onChange={e => setNewComplainantType(e.target.value as any)}>
+                          <option value="customer">Customer</option>
+                          <option value="provider">Provider</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-600 block mb-1">Booking ID</label>
+                        <input className="w-full border rounded px-2 py-1.5 text-sm bg-white"
+                          value={newBookingId} onChange={e => setNewBookingId(e.target.value)} placeholder="Optional" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-600 block mb-1">Division</label>
+                        <select className="w-full border rounded px-2 py-1.5 text-sm bg-white"
+                          value={newDivision} onChange={e => setNewDivision(e.target.value)}>
+                          <option value="">— pick —</option>
+                          <option value="walkers">Walkers</option>
+                          <option value="petsitter">Sitter Suite</option>
+                          <option value="academy">Academy</option>
+                          <option value="station_k9000">K9000</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-600 block mb-1">Amount Disputed (₪)</label>
+                        <input type="number" min="0" step="0.01" className="w-full border rounded px-2 py-1.5 text-sm bg-white"
+                          value={newAmount} onChange={e => setNewAmount(e.target.value)} placeholder="0.00" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 block mb-1">Opening Note *</label>
+                      <textarea className="w-full border rounded px-2 py-1.5 text-sm bg-white h-16 resize-none"
+                        value={newOpeningNote} onChange={e => setNewOpeningNote(e.target.value)}
+                        placeholder="Describe the dispute..." />
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        className="px-3 py-1.5 text-sm bg-rose-600 text-white rounded hover:bg-rose-700 disabled:opacity-50"
+                        disabled={openDispPending || !newComplainantUid.trim() || !newOpeningNote.trim()}
+                        onClick={() => openDispute({
+                          complainantUid:      newComplainantUid.trim(),
+                          complainantType:     newComplainantType,
+                          bookingId:           newBookingId.trim() || undefined,
+                          divisionCode:        newDivision || undefined,
+                          amountDisputedCents: newAmount ? Math.round(parseFloat(newAmount) * 100) : 0,
+                          openingNote:         newOpeningNote.trim(),
+                        })}
+                      >
+                        {openDispPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Open Case"}
+                      </button>
+                      <button className="px-3 py-1.5 text-sm border rounded hover:bg-white"
+                        onClick={() => setOpenForm(false)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Dispute List ── */}
+                {!dispApplied ? (
+                  <div className="border-2 border-dashed border-gray-200 rounded-lg p-10 text-center">
+                    <AlertTriangle className="w-7 h-7 mx-auto mb-2 text-gray-300" />
+                    <p className="text-sm text-gray-400">Apply filters or click Show All to load disputes</p>
+                  </div>
+                ) : dispLoading ? (
+                  <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-12 bg-gray-100 animate-pulse rounded" />)}</div>
+                ) : !dispData?.disputes?.length ? (
+                  <div className="border rounded p-10 text-center text-sm text-gray-400">No disputes match these filters.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <p className="text-xs text-gray-400 mb-2">{dispData.total} case{dispData.total !== 1 ? "s" : ""} found</p>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Case Ref</TableHead>
+                          <TableHead className="text-xs">Status</TableHead>
+                          <TableHead className="text-xs">Division</TableHead>
+                          <TableHead className="text-xs">Booking</TableHead>
+                          <TableHead className="text-xs">Complainant</TableHead>
+                          <TableHead className="text-xs text-right">Disputed</TableHead>
+                          <TableHead className="text-xs">Opened</TableHead>
+                          <TableHead className="text-xs">Assigned</TableHead>
+                          <TableHead className="text-xs"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(dispData.disputes as any[]).map((d: any) => {
+                          const statusColor: Record<string,string> = {
+                            open:          "bg-red-100    text-red-800",
+                            investigating: "bg-amber-100  text-amber-800",
+                            escalated:     "bg-purple-100 text-purple-800",
+                            resolved:      "bg-emerald-100 text-emerald-800",
+                            dismissed:     "bg-gray-100   text-gray-600",
+                          };
+                          return (
+                            <TableRow key={d.case_ref} className="cursor-pointer hover:bg-blue-50/40"
+                              onClick={() => { setSelectedDispute(d); setResolveMode(false); setDrawerNote(""); }}>
+                              <TableCell className="text-xs font-mono font-semibold text-rose-700">{d.case_ref}</TableCell>
+                              <TableCell>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${statusColor[d.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                                  {d.status}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-xs">{d.division_code ?? "—"}</TableCell>
+                              <TableCell className="text-xs font-mono text-gray-500 max-w-[80px] truncate" title={d.booking_id ?? ""}>
+                                {d.booking_id ? d.booking_id.slice(0,10)+"…" : "—"}
+                              </TableCell>
+                              <TableCell className="text-xs font-mono text-gray-500 max-w-[80px] truncate" title={d.complainant_uid}>
+                                {d.complainant_uid.slice(0,10)}…<span className="text-gray-400 ml-1">({d.complainant_type})</span>
+                              </TableCell>
+                              <TableCell className="text-xs text-right font-mono">
+                                ₪{(d.amount_disputed_cents / 100).toFixed(2)}
+                              </TableCell>
+                              <TableCell className="text-xs text-gray-400 whitespace-nowrap">
+                                {new Date(d.opened_at).toLocaleDateString("he-IL")}
+                              </TableCell>
+                              <TableCell className="text-xs text-gray-400 font-mono max-w-[70px] truncate" title={d.assigned_admin_uid ?? ""}>
+                                {d.assigned_admin_uid ? d.assigned_admin_uid.slice(0,8)+"…" : "—"}
+                              </TableCell>
+                              <TableCell>
+                                <button className="text-xs text-blue-600 hover:underline whitespace-nowrap"
+                                  onClick={(e) => { e.stopPropagation(); setSelectedDispute(d); setResolveMode(false); setDrawerNote(""); }}>
+                                  View →
+                                </button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ── Detail Drawer (slide-over panel) ── */}
+            {selectedDispute && (
+              <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white shadow-2xl border-l border-gray-200 flex flex-col"
+                style={{ top: '60px' }}>
+                {/* Header */}
+                <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">Dispute Case</p>
+                    <h3 className="text-base font-mono font-bold text-rose-700">{selectedDispute.case_ref}</h3>
+                  </div>
+                  <button className="text-gray-400 hover:text-gray-700 text-xl font-bold"
+                    onClick={() => { setSelectedDispute(null); setResolveMode(false); }}>✕</button>
+                </div>
+
+                {/* Scrollable body */}
+                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+                  {/* Case meta */}
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    {[
+                      { label: "Status",      val: selectedDispute.status },
+                      { label: "Division",    val: selectedDispute.division_code ?? "—" },
+                      { label: "Type",        val: selectedDispute.complainant_type },
+                      { label: "Disputed",    val: `₪${(selectedDispute.amount_disputed_cents / 100).toFixed(2)}` },
+                      { label: "Booking",     val: selectedDispute.booking_id ?? "—" },
+                      { label: "Opened",      val: new Date(selectedDispute.opened_at).toLocaleString("he-IL") },
+                      { label: "Resolved",    val: selectedDispute.resolved_at ? new Date(selectedDispute.resolved_at).toLocaleString("he-IL") : "—" },
+                      { label: "Resolution",  val: selectedDispute.resolution_type ?? "—" },
+                      { label: "Res. Amount", val: selectedDispute.resolution_cents != null ? `₪${(selectedDispute.resolution_cents / 100).toFixed(2)}` : "—" },
+                    ].map(({ label, val }) => (
+                      <div key={label}>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wide">{label}</p>
+                        <p className="text-sm font-medium text-gray-800 truncate">{String(val)}</p>
+                      </div>
+                    ))}
+                    <div className="col-span-2">
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">Complainant UID</p>
+                      <p className="text-xs font-mono text-gray-600">{selectedDispute.complainant_uid}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">Assigned Admin</p>
+                      <p className="text-xs font-mono text-gray-600">{selectedDispute.assigned_admin_uid ?? "—"}</p>
+                    </div>
+                  </div>
+
+                  {/* Assign section */}
+                  {selectedDispute.status !== "resolved" && selectedDispute.status !== "dismissed" && (
+                    <div className="bg-blue-50 border border-blue-200 rounded p-3 space-y-2">
+                      <p className="text-xs font-semibold text-blue-800">Assign Admin</p>
+                      <div className="flex gap-2">
+                        <input className="flex-1 border rounded px-2 py-1.5 text-xs bg-white"
+                          placeholder="Admin UID…"
+                          value={assignUid} onChange={e => setAssignUid(e.target.value)} />
+                        <button
+                          className="px-2 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                          disabled={patchPending || !assignUid.trim()}
+                          onClick={() => patchDispute({ caseRef: selectedDispute.case_ref, body: { assignedAdminUid: assignUid.trim() } })}
+                        >Assign</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status change */}
+                  {selectedDispute.status !== "resolved" && selectedDispute.status !== "dismissed" && (
+                    <div className="bg-amber-50 border border-amber-200 rounded p-3 space-y-2">
+                      <p className="text-xs font-semibold text-amber-800">Update Status</p>
+                      <div className="flex gap-2">
+                        <select className="flex-1 border rounded px-2 py-1.5 text-xs bg-white"
+                          defaultValue={selectedDispute.status}>
+                          <option value="open">open</option>
+                          <option value="investigating">investigating</option>
+                          <option value="escalated">escalated</option>
+                        </select>
+                        <button
+                          className="px-2 py-1.5 text-xs bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50"
+                          disabled={patchPending}
+                          onClick={(e) => {
+                            const sel = (e.currentTarget.previousSibling as HTMLSelectElement)?.value;
+                            if (sel) patchDispute({ caseRef: selectedDispute.case_ref, body: { status: sel as any } });
+                          }}
+                        >Update</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notes timeline */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-700 mb-2">Timeline</p>
+                    <div className="space-y-2">
+                      {(Array.isArray(selectedDispute.notes) ? selectedDispute.notes : []).map((n: any, i: number) => (
+                        <div key={i} className={`text-xs rounded px-3 py-2 border ${n.text?.startsWith('[RESOLVE:') ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-100'}`}>
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="font-semibold text-gray-700">{n.authorName ?? n.authorUid?.slice(0,10)}</span>
+                            <span className="text-gray-400">{new Date(n.createdAt).toLocaleString("he-IL")}</span>
+                          </div>
+                          <p className="text-gray-700 whitespace-pre-wrap">{n.text}</p>
+                        </div>
+                      ))}
+                      {!(Array.isArray(selectedDispute.notes) ? selectedDispute.notes : []).length && (
+                        <p className="text-xs text-gray-400 italic">No notes yet.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Add note */}
+                  {selectedDispute.status !== "resolved" && selectedDispute.status !== "dismissed" && !resolveMode && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-gray-700">Add Note</p>
+                      <textarea className="w-full border rounded px-2 py-1.5 text-xs h-16 resize-none"
+                        placeholder="Note text…"
+                        value={drawerNote} onChange={e => setDrawerNote(e.target.value)} />
+                      <button
+                        className="px-3 py-1.5 text-xs bg-gray-900 text-white rounded hover:bg-gray-800 disabled:opacity-50"
+                        disabled={patchPending || !drawerNote.trim()}
+                        onClick={() => patchDispute({ caseRef: selectedDispute.case_ref, body: { note: drawerNote.trim() } })}
+                      >
+                        {patchPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Save Note"}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Resolve panel */}
+                  {selectedDispute.status !== "resolved" && selectedDispute.status !== "dismissed" && (
+                    <div className={`border rounded p-3 space-y-2 ${resolveMode ? 'bg-emerald-50 border-emerald-300' : 'bg-gray-50 border-gray-200'}`}>
+                      {!resolveMode ? (
+                        <button className="text-xs text-emerald-700 font-semibold hover:underline"
+                          onClick={() => setResolveMode(true)}>
+                          ✓ Resolve / Dismiss this case →
+                        </button>
+                      ) : (
+                        <>
+                          <p className="text-xs font-semibold text-emerald-800">Resolve Case</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] text-gray-500 block mb-1">Resolution Type</label>
+                              <select className="w-full border rounded px-2 py-1.5 text-xs bg-white"
+                                value={resolveType} onChange={e => setResolveType(e.target.value)}>
+                                <option value="no_action">no_action</option>
+                                <option value="full_refund">full_refund</option>
+                                <option value="partial_refund">partial_refund</option>
+                                <option value="goodwill_credit">goodwill_credit</option>
+                                <option value="dismissed">dismissed</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-gray-500 block mb-1">Resolution Amount (₪)</label>
+                              <input type="number" min="0" step="0.01" className="w-full border rounded px-2 py-1.5 text-xs bg-white"
+                                value={resolveCents} onChange={e => setResolveCents(e.target.value)} placeholder="0.00" />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-gray-500 block mb-1">Resolution Note *</label>
+                            <textarea className="w-full border rounded px-2 py-1.5 text-xs h-12 resize-none bg-white"
+                              value={resolveNote} onChange={e => setResolveNote(e.target.value)}
+                              placeholder="Reason for this resolution…" />
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              className="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50"
+                              disabled={resolvePending || !resolveNote.trim()}
+                              onClick={() => resolveDispute({
+                                caseRef: selectedDispute.case_ref,
+                                body: {
+                                  resolutionType:  resolveType,
+                                  resolutionCents: resolveCents ? Math.round(parseFloat(resolveCents) * 100) : 0,
+                                  note:            resolveNote.trim(),
+                                  finalStatus:     resolveType === "dismissed" ? "dismissed" : "resolved",
+                                },
+                              })}
+                            >
+                              {resolvePending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Confirm Resolution"}
+                            </button>
+                            <button className="px-2 py-1.5 text-xs border rounded hover:bg-white"
+                              onClick={() => setResolveMode(false)}>Cancel</button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            {/* Backdrop for drawer */}
+            {selectedDispute && (
+              <div className="fixed inset-0 z-40 bg-black/20"
+                onClick={() => { setSelectedDispute(null); setResolveMode(false); }} />
+            )}
           </TabsContent>
 
           {/* ── SETTLEMENT (2.9B) ── */}

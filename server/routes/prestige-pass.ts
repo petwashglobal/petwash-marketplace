@@ -5592,4 +5592,223 @@ router.get('/admin/wallet/settlement-summary/export', async (req: Request, res: 
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 2.9C — Dispute Case Workflow
+//
+// Rules (locked):
+//   • case_ref = `DSP-${nanoid(10)}`, server-generated only
+//   • notes is append-only JSONB array [{authorUid, authorName, text, createdAt}]
+//   • resolved_at is set ONLY by the resolve endpoint
+//   • 2.9C1: no money movement; resolve records intent only
+// ─────────────────────────────────────────────────────────────────────────────
+
+// POST /api/prestige-pass/admin/wallet/disputes  — open a new case
+router.post('/admin/wallet/disputes', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const uid = session.user.uid as string;
+
+    const schema = z.object({
+      bookingId:           z.string().optional(),
+      complainantUid:      z.string().min(1),
+      complainantType:     z.enum(['customer', 'provider']).default('customer'),
+      divisionCode:        z.string().optional(),
+      amountDisputedCents: z.number().int().min(0).default(0),
+      openingNote:         z.string().min(1),
+      metadata:            z.record(z.any()).optional(),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Validation failed', issues: parsed.error.issues });
+    const { bookingId, complainantUid, complainantType, divisionCode, amountDisputedCents, openingNote, metadata } = parsed.data;
+
+    const { nanoid } = await import('nanoid');
+    const caseRef = `DSP-${nanoid(10)}`;
+    const now     = new Date().toISOString();
+    const firstNote = JSON.stringify([{ authorUid: uid, authorName: 'Admin', text: openingNote, createdAt: now }]);
+
+    const inserted: any = await db.execute(sql`
+      INSERT INTO dispute_cases
+        (case_ref, booking_id, complainant_uid, complainant_type, division_code,
+         amount_disputed_cents, status, notes, metadata, opened_at, updated_at)
+      VALUES (
+        ${caseRef},
+        ${bookingId ?? null},
+        ${complainantUid},
+        ${complainantType},
+        ${divisionCode ?? null},
+        ${amountDisputedCents},
+        'open',
+        ${firstNote}::jsonb,
+        ${JSON.stringify(metadata ?? {})}::jsonb,
+        NOW(),
+        NOW()
+      )
+      RETURNING *
+    `);
+    const row = (inserted?.rows ?? inserted ?? [])[0];
+    logger.info('[Dispute][Open]', { caseRef, openedBy: uid, complainantUid });
+    return res.status(201).json({ ok: true, dispute: row });
+  } catch (err: any) {
+    logger.error('[Dispute][Open] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to open dispute', detail: err.message });
+  }
+});
+
+// GET /api/prestige-pass/admin/wallet/disputes  — list with filters
+// ?status= &divisionCode= &assignedAdminUid= &bookingId= &complainantUid= &limit= &offset=
+router.get('/admin/wallet/disputes', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const status           = req.query.status           as string | undefined;
+    const divisionCode     = req.query.divisionCode     as string | undefined;
+    const assignedAdminUid = req.query.assignedAdminUid as string | undefined;
+    const bookingId        = req.query.bookingId        as string | undefined;
+    const complainantUid   = req.query.complainantUid   as string | undefined;
+    const limit            = Math.min(Number(req.query.limit  ?? 50), 200);
+    const offset           = Math.max(Number(req.query.offset ?? 0),  0);
+
+    const conditions: string[] = [];
+    if (status)           conditions.push(`status = '${status}'`);
+    if (divisionCode)     conditions.push(`division_code = '${divisionCode}'`);
+    if (assignedAdminUid) conditions.push(`assigned_admin_uid = '${assignedAdminUid}'`);
+    if (bookingId)        conditions.push(`booking_id = '${bookingId}'`);
+    if (complainantUid)   conditions.push(`complainant_uid = '${complainantUid}'`);
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const rows: any = await db.execute(sql.raw(`
+      SELECT * FROM dispute_cases
+      ${where}
+      ORDER BY opened_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `));
+
+    const totalRow: any = await db.execute(sql.raw(`
+      SELECT COUNT(*) AS cnt FROM dispute_cases ${where}
+    `));
+    const total = Number((totalRow?.rows ?? totalRow ?? [])[0]?.cnt ?? 0);
+
+    return res.json({
+      ok: true,
+      total,
+      limit,
+      offset,
+      disputes: rows?.rows ?? rows ?? [],
+    });
+  } catch (err: any) {
+    logger.error('[Dispute][List] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to list disputes', detail: err.message });
+  }
+});
+
+// PATCH /api/prestige-pass/admin/wallet/disputes/:caseRef
+// Allows: status change (NOT resolved), assignment, note append
+router.patch('/admin/wallet/disputes/:caseRef', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const uid      = session.user.uid as string;
+    const { caseRef } = req.params;
+
+    const schema = z.object({
+      status:           z.enum(['open', 'investigating', 'escalated']).optional(),
+      assignedAdminUid: z.string().optional().nullable(),
+      note:             z.string().min(1).optional(),
+      authorName:       z.string().optional(),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Validation failed', issues: parsed.error.issues });
+    const { status, assignedAdminUid, note, authorName } = parsed.data;
+
+    // Fetch existing case first
+    const existing: any = await db.execute(sql.raw(
+      `SELECT * FROM dispute_cases WHERE case_ref = '${caseRef}' LIMIT 1`
+    ));
+    const row = (existing?.rows ?? existing ?? [])[0];
+    if (!row) return res.status(404).json({ error: 'Dispute not found', caseRef });
+    if (row.status === 'resolved' || row.status === 'dismissed') {
+      return res.status(400).json({ error: `Cannot patch a ${row.status} dispute. Use the resolve endpoint.` });
+    }
+
+    const setParts: string[] = [`updated_at = NOW()`];
+    if (status)                              setParts.push(`status = '${status}'`);
+    if (assignedAdminUid !== undefined)      setParts.push(`assigned_admin_uid = ${assignedAdminUid ? `'${assignedAdminUid}'` : 'NULL'}`);
+    if (note) {
+      const newNote = { authorUid: uid, authorName: authorName ?? 'Admin', text: note, createdAt: new Date().toISOString() };
+      setParts.push(`notes = notes || '${JSON.stringify([newNote])}'::jsonb`);
+    }
+
+    const updated: any = await db.execute(sql.raw(`
+      UPDATE dispute_cases SET ${setParts.join(', ')}
+      WHERE case_ref = '${caseRef}'
+      RETURNING *
+    `));
+    const updatedRow = (updated?.rows ?? updated ?? [])[0];
+    logger.info('[Dispute][Patch]', { caseRef, byAdmin: uid, status, assignedAdminUid, hasNote: !!note });
+    return res.json({ ok: true, dispute: updatedRow });
+  } catch (err: any) {
+    logger.error('[Dispute][Patch] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to update dispute', detail: err.message });
+  }
+});
+
+// POST /api/prestige-pass/admin/wallet/disputes/:caseRef/resolve
+// The ONLY path to set resolved_at.  2.9C1: records intent, no money movement.
+router.post('/admin/wallet/disputes/:caseRef/resolve', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const uid      = session.user.uid as string;
+    const { caseRef } = req.params;
+
+    const schema = z.object({
+      resolutionType:  z.enum(['full_refund', 'partial_refund', 'no_action', 'goodwill_credit', 'dismissed']),
+      resolutionCents: z.number().int().min(0).default(0),
+      note:            z.string().min(1),
+      authorName:      z.string().optional(),
+      finalStatus:     z.enum(['resolved', 'dismissed']).default('resolved'),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Validation failed', issues: parsed.error.issues });
+    const { resolutionType, resolutionCents, note, authorName, finalStatus } = parsed.data;
+
+    // Guard: can't resolve something already closed
+    const existing: any = await db.execute(sql.raw(
+      `SELECT * FROM dispute_cases WHERE case_ref = '${caseRef}' LIMIT 1`
+    ));
+    const row = (existing?.rows ?? existing ?? [])[0];
+    if (!row) return res.status(404).json({ error: 'Dispute not found', caseRef });
+    if (row.status === 'resolved' || row.status === 'dismissed') {
+      return res.status(400).json({ error: `Dispute already ${row.status}`, caseRef });
+    }
+
+    const resolutionNote = {
+      authorUid:  uid,
+      authorName: authorName ?? 'Admin',
+      text:       `[RESOLVE: ${resolutionType}] ${note}`,
+      createdAt:  new Date().toISOString(),
+    };
+
+    const updated: any = await db.execute(sql.raw(`
+      UPDATE dispute_cases SET
+        status           = '${finalStatus}',
+        resolution_type  = '${resolutionType}',
+        resolution_cents = ${resolutionCents},
+        resolved_at      = NOW(),
+        updated_at       = NOW(),
+        notes            = notes || '${JSON.stringify([resolutionNote])}'::jsonb
+      WHERE case_ref = '${caseRef}'
+      RETURNING *
+    `));
+    const updatedRow = (updated?.rows ?? updated ?? [])[0];
+    logger.info('[Dispute][Resolve]', { caseRef, byAdmin: uid, resolutionType, resolutionCents, finalStatus });
+    return res.json({ ok: true, dispute: updatedRow });
+  } catch (err: any) {
+    logger.error('[Dispute][Resolve] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to resolve dispute', detail: err.message });
+  }
+});
+
 export default router;
