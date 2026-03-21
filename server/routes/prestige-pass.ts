@@ -9575,7 +9575,935 @@ router.get('/admin/wallet/finance-roles/audit', async (req: Request, res: Respon
   }
 });
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PHASE 3.4A — CASH FORECASTING
+// ══════════════════════════════════════════════════════════════════════════════
+
+// GET /admin/wallet/cash-forecast?horizon=7|14|30
+router.get('/admin/wallet/cash-forecast', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const horizon = Math.min(Math.max(parseInt((req.query.horizon as string) || '14', 10), 7), 30);
+
+    // Pending payout entries (earned but not batched)
+    const pendingEntries: any = await db.execute(sql`
+      SELECT COALESCE(SUM(net_cents),0) AS total
+      FROM provider_payout_entries
+      WHERE status = 'earned'
+    `);
+    const pendingPayoutsCents = Number((pendingEntries?.rows ?? pendingEntries)?.[0]?.total ?? 0);
+
+    // Open payout batches (created/exported)
+    const openBatches: any = await db.execute(sql`
+      SELECT COALESCE(SUM(pb.net_total_cents),0) AS total
+      FROM payout_batches pb
+      WHERE pb.status IN ('created','exported')
+    `);
+    const batchedPayoutsCents = Number((openBatches?.rows ?? openBatches)?.[0]?.total ?? 0);
+
+    // Pending refund approvals
+    const refundPending: any = await db.execute(sql`
+      SELECT COALESCE(SUM(amount_cents),0) AS total
+      FROM refund_approvals
+      WHERE status IN ('pending','approved')
+    `);
+    const pendingRefundsCents = Number((refundPending?.rows ?? refundPending)?.[0]?.total ?? 0);
+
+    // Average daily VAT from recent close records (last 30 days)
+    const vatAvg: any = await db.execute(sql`
+      SELECT COALESCE(AVG(vat_liability_cents),0) AS avg_daily
+      FROM finance_close_records
+      WHERE close_date >= NOW() - INTERVAL '30 days'
+    `);
+    const avgDailyVatCents = Number((vatAvg?.rows ?? vatAvg)?.[0]?.avg_daily ?? 0);
+
+    // Average daily gross from recent close records
+    const grossAvg: any = await db.execute(sql`
+      SELECT COALESCE(AVG(gross_collected_cents),0) AS avg_daily,
+             COALESCE(AVG(net_after_refunds_cents),0) AS avg_net
+      FROM finance_close_records
+      WHERE close_date >= NOW() - INTERVAL '30 days'
+    `);
+    const avgRows = (grossAvg?.rows ?? grossAvg)?.[0];
+    const avgDailyGrossCents = Number(avgRows?.avg_daily ?? 0);
+    const avgDailyNetCents   = Number(avgRows?.avg_net   ?? 0);
+
+    // Build per-day forecast
+    const byDay: Array<{ date: string; payoutsCents: number; refundsCents: number; vatCents: number; netCashNeedCents: number }> = [];
+    const now = new Date();
+    const payoutDaysLeft = Math.max(1, horizon);
+    const payoutsPerDay = Math.round((pendingPayoutsCents + batchedPayoutsCents) / payoutDaysLeft);
+    const refundsPerDay = Math.round(pendingRefundsCents / payoutDaysLeft);
+
+    for (let d = 0; d < horizon; d++) {
+      const dt = new Date(now);
+      dt.setDate(dt.getDate() + d + 1);
+      const dateStr = dt.toISOString().slice(0, 10);
+      // Spread pending payouts/refunds evenly; use avg daily for VAT
+      const payC = payoutsPerDay;
+      const refC = refundsPerDay;
+      const vatC = Math.round(avgDailyVatCents);
+      byDay.push({ date: dateStr, payoutsCents: payC, refundsCents: refC, vatCents: vatC, netCashNeedCents: payC + refC + vatC });
+    }
+
+    const totals = {
+      expectedPayoutsCents:    pendingPayoutsCents + batchedPayoutsCents,
+      expectedRefundsCents:    pendingRefundsCents,
+      expectedVatCents:        Math.round(avgDailyVatCents * horizon),
+      expectedNetCashNeedCents: (pendingPayoutsCents + batchedPayoutsCents) + pendingRefundsCents + Math.round(avgDailyVatCents * horizon),
+    };
+
+    const assumptions = [
+      `VAT projected from ${avgDailyVatCents > 0 ? 'recent closed-day averages' : 'no recent close data — defaulting to zero'}`,
+      'Pending payout entries distributed evenly across forecast horizon',
+      'Refund approvals assumed to clear within the forecast window',
+      `Gross collection trend: avg ${Math.round(avgDailyGrossCents / 100)} ILS/day over last 30 days`,
+    ];
+
+    return res.json({ ok: true, horizonDays: horizon, generatedAt: new Date().toISOString(), totals, byDay, assumptions });
+  } catch (err: any) {
+    logger.error('[CashForecast] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to generate forecast', detail: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PHASE 3.4B — PAYOUT SCHEDULING AUTOMATION
+// ══════════════════════════════════════════════════════════════════════════════
+
+// GET /admin/wallet/payout-schedules
+router.get('/admin/wallet/payout-schedules', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const raw: any = await db.execute(sql`
+      SELECT ps.*, COUNT(psr.id)::int AS run_count
+      FROM payout_schedules ps
+      LEFT JOIN payout_schedule_runs psr ON psr.schedule_id = ps.id
+      GROUP BY ps.id
+      ORDER BY ps.created_at DESC
+    `);
+    const schedules = (raw?.rows ?? raw ?? []).map((r: any) => ({
+      id: r.id, divisionCode: r.division_code, cadence: r.cadence,
+      dayOfWeek: r.day_of_week, dayOfMonth: r.day_of_month, enabled: r.enabled,
+      minBatchNetCents: r.min_batch_net_cents, notes: r.notes,
+      lastRunAt: r.last_run_at, createdByUid: r.created_by_uid, createdAt: r.created_at,
+      runCount: r.run_count,
+    }));
+    return res.json({ ok: true, schedules, total: schedules.length });
+  } catch (err: any) {
+    logger.error('[PayoutSchedules][List] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to list schedules', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/payout-schedules
+router.post('/admin/wallet/payout-schedules', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const adminUid = session.user.uid;
+    const { divisionCode, cadence, dayOfWeek, dayOfMonth, enabled = true, minBatchNetCents = 0, notes = '' } = req.body;
+    if (!cadence || !['daily','weekly','fortnightly','monthly'].includes(cadence)) {
+      return res.status(400).json({ error: 'Invalid cadence. Must be daily|weekly|fortnightly|monthly' });
+    }
+    const raw: any = await db.execute(sql`
+      INSERT INTO payout_schedules (division_code, cadence, day_of_week, day_of_month, enabled, min_batch_net_cents, notes, created_by_uid)
+      VALUES (${divisionCode ?? null}, ${cadence}, ${dayOfWeek ?? null}, ${dayOfMonth ?? null},
+              ${enabled}, ${minBatchNetCents}, ${notes}, ${adminUid})
+      RETURNING *
+    `);
+    const s = (raw?.rows ?? raw)?.[0];
+    await db.execute(sql`
+      INSERT INTO finance_audit_log (actor_uid, action, entity_type, entity_id, new_value)
+      VALUES (${adminUid}, 'payout_schedule_created', 'payout_schedule', ${String(s?.id)}, ${JSON.stringify({ cadence, divisionCode })}::jsonb)
+    `);
+    return res.status(201).json({ ok: true, schedule: s });
+  } catch (err: any) {
+    logger.error('[PayoutSchedules][Create] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to create schedule', detail: err.message });
+  }
+});
+
+// PATCH /admin/wallet/payout-schedules/:id
+router.patch('/admin/wallet/payout-schedules/:id', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const adminUid = session.user.uid;
+    const { id } = req.params;
+    const { divisionCode, cadence, dayOfWeek, dayOfMonth, enabled, minBatchNetCents, notes } = req.body;
+    const sets: string[] = [];
+    const vals: any[] = [];
+    if (divisionCode !== undefined) { sets.push(`division_code = $${vals.length+1}`); vals.push(divisionCode); }
+    if (cadence        !== undefined) { sets.push(`cadence = $${vals.length+1}`);        vals.push(cadence); }
+    if (dayOfWeek      !== undefined) { sets.push(`day_of_week = $${vals.length+1}`);    vals.push(dayOfWeek); }
+    if (dayOfMonth     !== undefined) { sets.push(`day_of_month = $${vals.length+1}`);   vals.push(dayOfMonth); }
+    if (enabled        !== undefined) { sets.push(`enabled = $${vals.length+1}`);        vals.push(enabled); }
+    if (minBatchNetCents !== undefined) { sets.push(`min_batch_net_cents = $${vals.length+1}`); vals.push(minBatchNetCents); }
+    if (notes          !== undefined) { sets.push(`notes = $${vals.length+1}`);          vals.push(notes); }
+    if (!sets.length) return res.status(400).json({ error: 'No fields to update' });
+    vals.push(parseInt(id, 10));
+    const raw: any = await db.execute(sql.raw(`UPDATE payout_schedules SET ${sets.join(', ')} WHERE id = $${vals.length} RETURNING *`, vals));
+    const s = (raw?.rows ?? raw)?.[0];
+    if (!s) return res.status(404).json({ error: 'Schedule not found' });
+    await db.execute(sql`
+      INSERT INTO finance_audit_log (actor_uid, action, entity_type, entity_id, new_value)
+      VALUES (${adminUid}, 'payout_schedule_updated', 'payout_schedule', ${id}, ${JSON.stringify(req.body)}::jsonb)
+    `);
+    return res.json({ ok: true, schedule: s });
+  } catch (err: any) {
+    logger.error('[PayoutSchedules][Update] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to update schedule', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/payout-schedules/:id/run-now
+router.post('/admin/wallet/payout-schedules/:id/run-now', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const adminUid = session.user.uid;
+    const scheduleId = parseInt(req.params.id, 10);
+
+    const schRaw: any = await db.execute(sql`SELECT * FROM payout_schedules WHERE id = ${scheduleId}`);
+    const schedule = (schRaw?.rows ?? schRaw)?.[0];
+    if (!schedule) return res.status(404).json({ error: 'Schedule not found' });
+
+    // Find eligible payout entries
+    const condition = schedule.division_code
+      ? sql`status = 'earned' AND division_code = ${schedule.division_code}`
+      : sql`status = 'earned'`;
+    const entriesRaw: any = await db.execute(sql`
+      SELECT COALESCE(SUM(net_cents),0) AS net_total, COUNT(*)::int AS entry_count
+      FROM provider_payout_entries
+      WHERE ${condition}
+    `);
+    const netTotal    = Number((entriesRaw?.rows ?? entriesRaw)?.[0]?.net_total  ?? 0);
+    const entryCount  = Number((entriesRaw?.rows ?? entriesRaw)?.[0]?.entry_count ?? 0);
+
+    if (netTotal < (schedule.min_batch_net_cents || 0) || entryCount === 0) {
+      await db.execute(sql`
+        INSERT INTO payout_schedule_runs (schedule_id, result, summary)
+        VALUES (${scheduleId}, 'skipped', ${JSON.stringify({ reason: 'Below min threshold or no entries', netTotal, entryCount })}::jsonb)
+      `);
+      return res.json({ ok: true, result: 'skipped', reason: 'Below min threshold or no entries', netTotal, entryCount });
+    }
+
+    // Create batch
+    const batchId = `AUTO-${scheduleId}-${Date.now()}`;
+    const divFilter = schedule.division_code ? ` AND division_code = '${schedule.division_code}'` : '';
+    await db.execute(sql.raw(`
+      INSERT INTO payout_batches (batch_id, status, gross_total_cents, commission_total_cents, net_total_cents, entry_count, created_by_uid, notes)
+      SELECT '${batchId}', 'created',
+        SUM(gross_cents), SUM(gross_cents - net_cents), SUM(net_cents), COUNT(*),
+        '${adminUid}', 'Auto-created by schedule ${scheduleId}'
+      FROM provider_payout_entries WHERE status = 'earned'${divFilter}
+    `));
+    await db.execute(sql.raw(`
+      UPDATE provider_payout_entries SET status='batched', payout_batch_id='${batchId}'
+      WHERE status='earned'${divFilter}
+    `));
+    await db.execute(sql`
+      UPDATE payout_schedules SET last_run_at = NOW() WHERE id = ${scheduleId}
+    `);
+    await db.execute(sql`
+      INSERT INTO payout_schedule_runs (schedule_id, result, batch_id, summary)
+      VALUES (${scheduleId}, 'created', ${batchId}, ${JSON.stringify({ netTotal, entryCount })}::jsonb)
+    `);
+    await db.execute(sql`
+      INSERT INTO finance_audit_log (actor_uid, action, entity_type, entity_id, new_value)
+      VALUES (${adminUid}, 'payout_schedule_run_now', 'payout_schedule', ${String(scheduleId)}, ${JSON.stringify({ batchId, netTotal, entryCount })}::jsonb)
+    `);
+    return res.json({ ok: true, result: 'created', batchId, netTotal, entryCount });
+  } catch (err: any) {
+    logger.error('[PayoutSchedules][RunNow] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to run schedule', detail: err.message });
+  }
+});
+
+// GET /admin/wallet/payout-schedules/runs
+router.get('/admin/wallet/payout-schedules/runs', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const scheduleId = req.query.scheduleId ? parseInt(req.query.scheduleId as string, 10) : null;
+    const raw: any = await db.execute(sql`
+      SELECT psr.*, ps.cadence, ps.division_code
+      FROM payout_schedule_runs psr
+      LEFT JOIN payout_schedules ps ON ps.id = psr.schedule_id
+      WHERE (${scheduleId}::int IS NULL OR psr.schedule_id = ${scheduleId})
+      ORDER BY psr.ran_at DESC
+      LIMIT 100
+    `);
+    const runs = (raw?.rows ?? raw ?? []).map((r: any) => ({
+      id: r.id, scheduleId: r.schedule_id, ranAt: r.ran_at, result: r.result,
+      batchId: r.batch_id, summary: r.summary, cadence: r.cadence, divisionCode: r.division_code,
+    }));
+    return res.json({ ok: true, runs, total: runs.length });
+  } catch (err: any) {
+    logger.error('[PayoutSchedules][Runs] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch runs', detail: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PHASE 3.4C — DISPUTE SLA AUTO-ROUTING
+// ══════════════════════════════════════════════════════════════════════════════
+
+// GET /admin/wallet/dispute-routing-rules
+router.get('/admin/wallet/dispute-routing-rules', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const raw: any = await db.execute(sql`SELECT * FROM dispute_routing_rules ORDER BY priority ASC, id ASC`);
+    const rules = (raw?.rows ?? raw ?? []).map((r: any) => ({
+      id: r.id, divisionCode: r.division_code, minAmountCents: r.min_amount_cents,
+      maxAmountCents: r.max_amount_cents, assignToUid: r.assign_to_uid,
+      queueName: r.queue_name, priority: r.priority, enabled: r.enabled,
+    }));
+    return res.json({ ok: true, rules, total: rules.length });
+  } catch (err: any) {
+    logger.error('[DisputeRouting][Rules] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch routing rules', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/dispute-routing-rules
+router.post('/admin/wallet/dispute-routing-rules', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const adminUid = session.user.uid;
+    const { divisionCode, minAmountCents = 0, maxAmountCents, assignToUid, queueName, priority = 100, enabled = true } = req.body;
+    if (!queueName && !assignToUid) return res.status(400).json({ error: 'Must specify queueName or assignToUid' });
+    const raw: any = await db.execute(sql`
+      INSERT INTO dispute_routing_rules (division_code, min_amount_cents, max_amount_cents, assign_to_uid, queue_name, priority, enabled)
+      VALUES (${divisionCode ?? null}, ${minAmountCents}, ${maxAmountCents ?? null}, ${assignToUid ?? null}, ${queueName ?? null}, ${priority}, ${enabled})
+      RETURNING *
+    `);
+    const rule = (raw?.rows ?? raw)?.[0];
+    await db.execute(sql`
+      INSERT INTO finance_audit_log (actor_uid, action, entity_type, entity_id, new_value)
+      VALUES (${adminUid}, 'dispute_routing_rule_created', 'dispute_routing_rule', ${String(rule?.id)}, ${JSON.stringify(req.body)}::jsonb)
+    `);
+    return res.status(201).json({ ok: true, rule });
+  } catch (err: any) {
+    logger.error('[DisputeRouting][CreateRule] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to create rule', detail: err.message });
+  }
+});
+
+// PATCH /admin/wallet/dispute-routing-rules/:id
+router.patch('/admin/wallet/dispute-routing-rules/:id', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const adminUid = session.user.uid;
+    const { id } = req.params;
+    const { divisionCode, minAmountCents, maxAmountCents, assignToUid, queueName, priority, enabled } = req.body;
+    const sets: string[] = []; const vals: any[] = [];
+    if (divisionCode    !== undefined) { sets.push(`division_code = $${vals.length+1}`);     vals.push(divisionCode); }
+    if (minAmountCents  !== undefined) { sets.push(`min_amount_cents = $${vals.length+1}`);  vals.push(minAmountCents); }
+    if (maxAmountCents  !== undefined) { sets.push(`max_amount_cents = $${vals.length+1}`);  vals.push(maxAmountCents); }
+    if (assignToUid     !== undefined) { sets.push(`assign_to_uid = $${vals.length+1}`);     vals.push(assignToUid); }
+    if (queueName       !== undefined) { sets.push(`queue_name = $${vals.length+1}`);        vals.push(queueName); }
+    if (priority        !== undefined) { sets.push(`priority = $${vals.length+1}`);          vals.push(priority); }
+    if (enabled         !== undefined) { sets.push(`enabled = $${vals.length+1}`);           vals.push(enabled); }
+    if (!sets.length) return res.status(400).json({ error: 'No fields to update' });
+    vals.push(parseInt(id, 10));
+    const raw: any = await db.execute(sql.raw(`UPDATE dispute_routing_rules SET ${sets.join(', ')} WHERE id = $${vals.length} RETURNING *`, vals));
+    const rule = (raw?.rows ?? raw)?.[0];
+    if (!rule) return res.status(404).json({ error: 'Rule not found' });
+    await db.execute(sql`
+      INSERT INTO finance_audit_log (actor_uid, action, entity_type, entity_id, new_value)
+      VALUES (${adminUid}, 'dispute_routing_rule_updated', 'dispute_routing_rule', ${id}, ${JSON.stringify(req.body)}::jsonb)
+    `);
+    return res.json({ ok: true, rule });
+  } catch (err: any) {
+    logger.error('[DisputeRouting][UpdateRule] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to update rule', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/disputes/:caseRef/route
+router.post('/admin/wallet/disputes/:caseRef/route', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const adminUid = session.user.uid;
+    const { caseRef } = req.params;
+    const { overrideQueue, overrideUid, reason } = req.body;
+
+    const caseRaw: any = await db.execute(sql`
+      SELECT * FROM dispute_cases WHERE case_ref = ${caseRef}
+    `);
+    const dc = (caseRaw?.rows ?? caseRaw)?.[0];
+    if (!dc) return res.status(404).json({ error: 'Dispute case not found' });
+
+    let routedQueue = overrideQueue ?? null;
+    let routedToUid = overrideUid  ?? null;
+    let routingReason = reason ?? 'Manual route';
+
+    if (!overrideQueue && !overrideUid) {
+      // Auto-route: find best matching rule
+      const rulesRaw: any = await db.execute(sql`
+        SELECT * FROM dispute_routing_rules WHERE enabled = true ORDER BY priority ASC
+      `);
+      const rules = (rulesRaw?.rows ?? rulesRaw ?? []);
+      const amt = dc.amount_disputed_cents || 0;
+      const div = dc.division_code;
+      for (const rule of rules) {
+        const divMatch = !rule.division_code || rule.division_code === div;
+        const minMatch = amt >= (rule.min_amount_cents || 0);
+        const maxMatch = !rule.max_amount_cents || amt <= rule.max_amount_cents;
+        if (divMatch && minMatch && maxMatch) {
+          routedQueue   = rule.queue_name;
+          routedToUid   = rule.assign_to_uid;
+          routingReason = `Auto-routed by rule #${rule.id} (priority ${rule.priority})`;
+          break;
+        }
+      }
+      if (!routedQueue && !routedToUid) {
+        // Unroutable — fire alert
+        await db.execute(sql`
+          INSERT INTO finance_alerts (alert_type, severity, message, metadata)
+          VALUES ('dispute_unroutable', 'warning',
+            ${`Dispute ${caseRef} could not be auto-routed — no matching rule`},
+            ${JSON.stringify({ caseRef, amountCents: amt, divisionCode: div })}::jsonb)
+        `);
+        return res.status(422).json({ ok: false, error: 'No routing rule matched', caseRef });
+      }
+    }
+
+    await db.execute(sql`
+      UPDATE dispute_cases
+      SET routed_queue = ${routedQueue}, routed_to_uid = ${routedToUid},
+          routing_reason = ${routingReason}, last_routed_at = NOW()
+      WHERE case_ref = ${caseRef}
+    `);
+    await db.execute(sql`
+      INSERT INTO finance_audit_log (actor_uid, action, entity_type, entity_id, new_value)
+      VALUES (${adminUid}, 'dispute_routed', 'dispute_case', ${caseRef},
+              ${JSON.stringify({ routedQueue, routedToUid, routingReason })}::jsonb)
+    `);
+    return res.json({ ok: true, caseRef, routedQueue, routedToUid, routingReason });
+  } catch (err: any) {
+    logger.error('[DisputeRouting][Route] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to route dispute', detail: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PHASE 3.4D — FINANCE CONTROL CENTER
+// ══════════════════════════════════════════════════════════════════════════════
+
+// GET /admin/wallet/control-center
+router.get('/admin/wallet/control-center', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const [forecastRaw, batchRaw, refundRaw, reconRaw, alertRaw, closeRaw]: any[] = await Promise.all([
+      // Cash needed next 7 days: pending payout entries + pending refunds
+      db.execute(sql`
+        SELECT COALESCE(SUM(net_cents),0) AS payout_pending,
+               (SELECT COALESCE(SUM(amount_cents),0) FROM refund_approvals WHERE status IN ('pending','approved')) AS refund_pending
+        FROM provider_payout_entries WHERE status = 'earned'
+      `),
+      // Open batch count
+      db.execute(sql`SELECT COUNT(*)::int AS cnt FROM payout_batches WHERE status IN ('created','exported')`),
+      // Pending refund approvals
+      db.execute(sql`SELECT COUNT(*)::int AS cnt FROM refund_approvals WHERE status = 'pending'`),
+      // Open recon exceptions
+      db.execute(sql`SELECT COUNT(*)::int AS cnt FROM bank_reconciliation_exceptions WHERE status = 'open'`),
+      // Critical unacknowledged alerts
+      db.execute(sql`SELECT COUNT(*)::int AS cnt FROM finance_alerts WHERE severity = 'critical' AND acknowledged_at IS NULL`),
+      // Today close status
+      db.execute(sql`SELECT * FROM finance_close_records WHERE close_date = CURRENT_DATE LIMIT 1`),
+    ]);
+
+    const fr  = (forecastRaw?.rows ?? forecastRaw)?.[0];
+    const payoutPending  = Number(fr?.payout_pending  ?? 0);
+    const refundPending2 = Number(fr?.refund_pending  ?? 0);
+    const cashNeeded7d   = payoutPending + refundPending2;
+
+    return res.json({
+      ok: true,
+      generatedAt: new Date().toISOString(),
+      widgets: {
+        cashForecast: {
+          label: 'Cash Needed (Immediate)',
+          valueCents: cashNeeded7d,
+          status: cashNeeded7d > 500_000_00 ? 'critical' : cashNeeded7d > 100_000_00 ? 'warning' : 'ok',
+          link: 'forecast',
+        },
+        openPayoutBatches: {
+          label: 'Open Payout Batches',
+          count: Number((batchRaw?.rows ?? batchRaw)?.[0]?.cnt ?? 0),
+          status: Number((batchRaw?.rows ?? batchRaw)?.[0]?.cnt ?? 0) > 5 ? 'warning' : 'ok',
+          link: 'batches',
+        },
+        pendingRefundApprovals: {
+          label: 'Pending Refund Approvals',
+          count: Number((refundRaw?.rows ?? refundRaw)?.[0]?.cnt ?? 0),
+          status: Number((refundRaw?.rows ?? refundRaw)?.[0]?.cnt ?? 0) > 10 ? 'warning' : 'ok',
+          link: 'approvals',
+        },
+        staleReconExceptions: {
+          label: 'Open Recon Exceptions',
+          count: Number((reconRaw?.rows ?? reconRaw)?.[0]?.cnt ?? 0),
+          status: Number((reconRaw?.rows ?? reconRaw)?.[0]?.cnt ?? 0) > 0 ? 'warning' : 'ok',
+          link: 'recon-exceptions',
+        },
+        criticalAlerts: {
+          label: 'Critical Alerts Unacknowledged',
+          count: Number((alertRaw?.rows ?? alertRaw)?.[0]?.cnt ?? 0),
+          status: Number((alertRaw?.rows ?? alertRaw)?.[0]?.cnt ?? 0) > 0 ? 'critical' : 'ok',
+          link: 'fin-activity',
+        },
+        closeStatusToday: {
+          label: 'Today Close Status',
+          status: (closeRaw?.rows ?? closeRaw)?.[0] ? 'closed' : 'open',
+          closedAt: (closeRaw?.rows ?? closeRaw)?.[0]?.closed_at ?? null,
+          link: 'history',
+        },
+      },
+    });
+  } catch (err: any) {
+    logger.error('[ControlCenter] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to load control center', detail: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PHASE 3.4E — EXECUTIVE KPI SNAPSHOTS
+// ══════════════════════════════════════════════════════════════════════════════
+
+// GET /admin/wallet/executive-kpis?period=daily|weekly|monthly
+router.get('/admin/wallet/executive-kpis', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const period = (req.query.period as string) || 'daily';
+    if (!['daily','weekly','monthly'].includes(period)) return res.status(400).json({ error: 'Invalid period' });
+
+    // Date range
+    let fromDate: string;
+    const now = new Date();
+    if (period === 'daily') {
+      const d = new Date(now); d.setDate(d.getDate() - 1);
+      fromDate = d.toISOString().slice(0, 10);
+    } else if (period === 'weekly') {
+      const d = new Date(now); d.setDate(d.getDate() - 7);
+      fromDate = d.toISOString().slice(0, 10);
+    } else {
+      const d = new Date(now); d.setDate(d.getDate() - 30);
+      fromDate = d.toISOString().slice(0, 10);
+    }
+
+    const [collectRaw, disputeRaw, reconRaw, signoffRaw, alertRaw]: any[] = await Promise.all([
+      db.execute(sql`
+        SELECT
+          COALESCE(SUM(gross_collected_cents),0) AS gross,
+          COALESCE(SUM(net_after_refunds_cents),0) AS net,
+          COALESCE(SUM(vat_liability_cents),0) AS vat,
+          COALESCE(SUM(total_commission_cents),0) AS commission,
+          COALESCE(SUM(payout_total_cents),0) AS payouts,
+          COALESCE(SUM(refund_total_cents),0) AS refunds,
+          COUNT(*) AS close_days
+        FROM finance_close_records
+        WHERE close_date >= ${fromDate}
+      `),
+      db.execute(sql`
+        SELECT
+          COUNT(*) FILTER (WHERE status = 'resolved' AND resolved_at >= ${fromDate}) AS resolved,
+          COUNT(*) FILTER (WHERE status NOT IN ('resolved','dismissed')) AS open,
+          COUNT(*) FILTER (WHERE resolved_at >= ${fromDate}
+            AND EXTRACT(EPOCH FROM (resolved_at - opened_at))/3600 > 48) AS sla_breach
+        FROM dispute_cases
+        WHERE opened_at >= ${fromDate} OR (resolved_at IS NOT NULL AND resolved_at >= ${fromDate})
+      `),
+      db.execute(sql`SELECT COUNT(*)::int AS cnt FROM bank_reconciliation_exceptions WHERE status = 'open'`),
+      db.execute(sql`
+        SELECT * FROM monthly_signoffs WHERE month_key >= LEFT(${fromDate}, 7)
+        ORDER BY month_key DESC LIMIT 1
+      `),
+      db.execute(sql`
+        SELECT COUNT(*) FILTER (WHERE severity = 'critical' AND acknowledged_at IS NULL) AS critical_unacked
+        FROM finance_alerts WHERE created_at >= ${fromDate}
+      `),
+    ]);
+
+    const cr  = (collectRaw?.rows ?? collectRaw)?.[0] ?? {};
+    const dr  = (disputeRaw?.rows ?? disputeRaw)?.[0] ?? {};
+    const gross      = Number(cr.gross ?? 0);
+    const net        = Number(cr.net   ?? 0);
+    const vat        = Number(cr.vat   ?? 0);
+    const commission = Number(cr.commission ?? 0);
+    const payouts    = Number(cr.payouts    ?? 0);
+    const refunds    = Number(cr.refunds    ?? 0);
+    const resolved   = Number(dr.resolved   ?? 0);
+    const open       = Number(dr.open       ?? 0);
+    const slaBreach  = Number(dr.sla_breach ?? 0);
+    const totalDisp  = resolved + open;
+    const dispBreachRate = totalDisp > 0 ? Math.round((slaBreach / totalDisp) * 100) : 0;
+    const refundRate     = gross > 0 ? ((refunds / gross) * 100).toFixed(2) : '0.00';
+    const margin         = gross > 0 ? (((gross - payouts - refunds) / gross) * 100).toFixed(2) : '0.00';
+    const reconCount     = Number((reconRaw?.rows ?? reconRaw)?.[0]?.cnt ?? 0);
+    const signoff        = (signoffRaw?.rows ?? signoffRaw)?.[0];
+    const criticalUnacked = Number((alertRaw?.rows ?? alertRaw)?.[0]?.critical_unacked ?? 0);
+
+    const risks: string[] = [];
+    if (dispBreachRate > 10) risks.push(`Dispute SLA breach rate ${dispBreachRate}% exceeds 10% threshold`);
+    if (reconCount > 5)      risks.push(`${reconCount} open reconciliation exceptions require attention`);
+    if (criticalUnacked > 0) risks.push(`${criticalUnacked} critical finance alerts unacknowledged`);
+    if (Number(refundRate) > 5) risks.push(`Refund rate ${refundRate}% is above 5% target`);
+
+    const kpi = {
+      period,
+      fromDate,
+      grossCents: gross, netCents: net, vatCents: vat, commissionCents: commission,
+      payoutsCents: payouts, refundsCents: refunds,
+      refundRatePct: refundRate, marginPct: margin,
+      closeDays: Number(cr.close_days ?? 0),
+      disputeResolved: resolved, disputeOpen: open, disputeBreachRatePct: dispBreachRate,
+      reconExceptionsOpen: reconCount,
+      signoffStatus: signoff ? `Signed off ${signoff.month_key}` : 'Pending',
+      criticalAlertsUnacked: criticalUnacked,
+      topRisks: risks,
+      topImprovement: margin > '15' ? 'Margin healthy — focus on dispute SLA' : 'Margin below target — review commission structure',
+    };
+
+    // Cache snapshot
+    const snapshotDate = period === 'daily' ? fromDate : period === 'weekly' ? `${fromDate}-W` : fromDate.slice(0,7);
+    await db.execute(sql`
+      INSERT INTO executive_kpi_snapshots (snapshot_date, snapshot_type, kpi_json)
+      VALUES (${snapshotDate}, ${period}, ${JSON.stringify(kpi)}::jsonb)
+      ON CONFLICT DO NOTHING
+    `).catch(() => {});
+
+    return res.json({ ok: true, kpi });
+  } catch (err: any) {
+    logger.error('[ExecutiveKPIs] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to generate executive KPIs', detail: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PHASE 3.4F — RETENTION & ARCHIVE POLICY
+// ══════════════════════════════════════════════════════════════════════════════
+
+// GET /admin/wallet/archive-policies
+router.get('/admin/wallet/archive-policies', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const raw: any = await db.execute(sql`SELECT * FROM finance_archive_policies ORDER BY entity_type ASC`);
+    const policies = (raw?.rows ?? raw ?? []).map((r: any) => ({
+      id: r.id, entityType: r.entity_type, retentionDays: r.retention_days,
+      archiveAfterDays: r.archive_after_days, enabled: r.enabled, notes: r.notes,
+    }));
+    return res.json({ ok: true, policies, total: policies.length });
+  } catch (err: any) {
+    logger.error('[ArchivePolicies][List] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to list archive policies', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/archive-policies
+router.post('/admin/wallet/archive-policies', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const adminUid = session.user.uid;
+    const { entityType, retentionDays, archiveAfterDays, enabled = true, notes = '' } = req.body;
+    if (!entityType || !retentionDays || !archiveAfterDays) return res.status(400).json({ error: 'entityType, retentionDays, archiveAfterDays required' });
+    const raw: any = await db.execute(sql`
+      INSERT INTO finance_archive_policies (entity_type, retention_days, archive_after_days, enabled, notes)
+      VALUES (${entityType}, ${retentionDays}, ${archiveAfterDays}, ${enabled}, ${notes})
+      RETURNING *
+    `);
+    const policy = (raw?.rows ?? raw)?.[0];
+    await db.execute(sql`
+      INSERT INTO finance_audit_log (actor_uid, action, entity_type, entity_id, new_value)
+      VALUES (${adminUid}, 'archive_policy_created', 'finance_archive_policy', ${String(policy?.id)}, ${JSON.stringify(req.body)}::jsonb)
+    `);
+    return res.status(201).json({ ok: true, policy });
+  } catch (err: any) {
+    logger.error('[ArchivePolicies][Create] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to create archive policy', detail: err.message });
+  }
+});
+
+// PATCH /admin/wallet/archive-policies/:id
+router.patch('/admin/wallet/archive-policies/:id', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const adminUid = session.user.uid;
+    const { id } = req.params;
+    const { retentionDays, archiveAfterDays, enabled, notes } = req.body;
+    const sets: string[] = []; const vals: any[] = [];
+    if (retentionDays    !== undefined) { sets.push(`retention_days = $${vals.length+1}`);     vals.push(retentionDays); }
+    if (archiveAfterDays !== undefined) { sets.push(`archive_after_days = $${vals.length+1}`); vals.push(archiveAfterDays); }
+    if (enabled          !== undefined) { sets.push(`enabled = $${vals.length+1}`);            vals.push(enabled); }
+    if (notes            !== undefined) { sets.push(`notes = $${vals.length+1}`);              vals.push(notes); }
+    if (!sets.length) return res.status(400).json({ error: 'No fields to update' });
+    vals.push(parseInt(id, 10));
+    const raw: any = await db.execute(sql.raw(`UPDATE finance_archive_policies SET ${sets.join(', ')} WHERE id = $${vals.length} RETURNING *`, vals));
+    const policy = (raw?.rows ?? raw)?.[0];
+    if (!policy) return res.status(404).json({ error: 'Policy not found' });
+    await db.execute(sql`
+      INSERT INTO finance_audit_log (actor_uid, action, entity_type, entity_id, new_value)
+      VALUES (${adminUid}, 'archive_policy_updated', 'finance_archive_policy', ${id}, ${JSON.stringify(req.body)}::jsonb)
+    `);
+    return res.json({ ok: true, policy });
+  } catch (err: any) {
+    logger.error('[ArchivePolicies][Update] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to update archive policy', detail: err.message });
+  }
+});
+
+// GET /admin/wallet/archive-runs
+router.get('/admin/wallet/archive-runs', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const raw: any = await db.execute(sql`
+      SELECT * FROM finance_archive_runs ORDER BY ran_at DESC LIMIT 100
+    `);
+    const runs = (raw?.rows ?? raw ?? []).map((r: any) => ({
+      id: r.id, entityType: r.entity_type, ranAt: r.ran_at,
+      movedCount: r.moved_count, status: r.status, summary: r.summary,
+    }));
+    return res.json({ ok: true, runs, total: runs.length });
+  } catch (err: any) {
+    logger.error('[ArchiveRuns][List] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to list archive runs', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/archive-runs/dry-run
+router.post('/admin/wallet/archive-runs/dry-run', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const adminUid = session.user.uid;
+
+    const policiesRaw: any = await db.execute(sql`SELECT * FROM finance_archive_policies WHERE enabled = true`);
+    const policies = (policiesRaw?.rows ?? policiesRaw ?? []);
+    const dryRunResults: any[] = [];
+
+    for (const p of policies) {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - p.archive_after_days);
+      const cutoffStr = cutoff.toISOString();
+      let countResult: any;
+      try {
+        if (p.entity_type === 'finance_alert_deliveries') {
+          countResult = await db.execute(sql`SELECT COUNT(*)::int AS cnt FROM finance_alert_deliveries WHERE sent_at < ${cutoffStr}`);
+        } else if (p.entity_type === 'integrity_job_runs') {
+          countResult = await db.execute(sql`SELECT COUNT(*)::int AS cnt FROM integrity_job_runs WHERE started_at < ${cutoffStr}`);
+        } else if (p.entity_type === 'payout_schedule_runs') {
+          countResult = await db.execute(sql`SELECT COUNT(*)::int AS cnt FROM payout_schedule_runs WHERE ran_at < ${cutoffStr}`);
+        } else if (p.entity_type === 'cash_forecast_snapshots') {
+          countResult = await db.execute(sql`SELECT COUNT(*)::int AS cnt FROM cash_forecast_snapshots WHERE generated_at < ${cutoffStr}`);
+        } else {
+          countResult = null;
+        }
+        const eligible = countResult ? Number((countResult?.rows ?? countResult)?.[0]?.cnt ?? 0) : 0;
+        dryRunResults.push({ entityType: p.entity_type, eligible, archiveAfterDays: p.archive_after_days, cutoff: cutoffStr });
+      } catch {
+        dryRunResults.push({ entityType: p.entity_type, eligible: 0, error: 'table not found' });
+      }
+    }
+
+    const runRaw: any = await db.execute(sql`
+      INSERT INTO finance_archive_runs (entity_type, status, moved_count, summary)
+      VALUES ('_dry_run_all', 'dry_run', 0, ${JSON.stringify({ results: dryRunResults, initiatedBy: adminUid })}::jsonb)
+      RETURNING id
+    `);
+    return res.json({ ok: true, dryRun: true, results: dryRunResults, runId: (runRaw?.rows ?? runRaw)?.[0]?.id });
+  } catch (err: any) {
+    logger.error('[ArchiveRuns][DryRun] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to run archive dry-run', detail: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PHASE 3.4G — DISASTER RECOVERY & REPLAY PROCEDURES
+// ══════════════════════════════════════════════════════════════════════════════
+
+const SAFE_REPLAY_TYPES = ['rebuild_payout_batch_totals','rebuild_remittance_status','rebuild_close_snapshots','recheck_reconciliation_links'];
+
+async function runReplay(replayType: string, dryRun: boolean, initiatedBy: string, runId: number) {
+  const findings: any[] = [];
+  let appliedCount = 0;
+
+  try {
+    if (replayType === 'rebuild_payout_batch_totals') {
+      // Verify batch totals match sum of member entries
+      const batchesRaw: any = await db.execute(sql`
+        SELECT pb.batch_id, pb.net_total_cents AS stored_net,
+               COALESCE(SUM(ppe.net_cents),0) AS computed_net
+        FROM payout_batches pb
+        LEFT JOIN provider_payout_entries ppe ON ppe.payout_batch_id = pb.batch_id
+        GROUP BY pb.batch_id, pb.net_total_cents
+        HAVING pb.net_total_cents != COALESCE(SUM(ppe.net_cents),0)
+      `);
+      const mismatches = (batchesRaw?.rows ?? batchesRaw ?? []);
+      for (const m of mismatches) {
+        findings.push({ batchId: m.batch_id, storedNet: m.stored_net, computedNet: m.computed_net });
+        if (!dryRun) {
+          await db.execute(sql`
+            UPDATE payout_batches SET net_total_cents = ${Number(m.computed_net)}
+            WHERE batch_id = ${m.batch_id}
+          `);
+          appliedCount++;
+        }
+      }
+    } else if (replayType === 'rebuild_remittance_status') {
+      // Find completed batches with no remittance log
+      const raw: any = await db.execute(sql`
+        SELECT pb.batch_id FROM payout_batches pb
+        WHERE pb.status = 'completed'
+          AND NOT EXISTS (SELECT 1 FROM remittance_log rl WHERE rl.batch_id = pb.batch_id)
+      `);
+      const gaps = (raw?.rows ?? raw ?? []);
+      for (const g of gaps) {
+        findings.push({ batchId: g.batch_id, issue: 'completed_batch_no_remittance' });
+      }
+    } else if (replayType === 'rebuild_close_snapshots') {
+      // Find days with close records that have zero gross despite non-zero payout entries
+      const raw: any = await db.execute(sql`
+        SELECT fcr.close_date, fcr.gross_collected_cents FROM finance_close_records fcr
+        WHERE fcr.gross_collected_cents = 0
+        ORDER BY fcr.close_date DESC LIMIT 30
+      `);
+      const suspects = (raw?.rows ?? raw ?? []);
+      for (const s of suspects) {
+        findings.push({ closeDate: s.close_date, issue: 'zero_gross_close_record' });
+      }
+    } else if (replayType === 'recheck_reconciliation_links') {
+      // Find settled payout entries with no reconciliation proof or manual match
+      const raw: any = await db.execute(sql`
+        SELECT ppe.id, ppe.payout_batch_id FROM provider_payout_entries ppe
+        WHERE ppe.status = 'settled'
+          AND NOT EXISTS (
+            SELECT 1 FROM bank_reconciliation_exceptions bre
+            WHERE bre.matched_payout_entry_id = ppe.id AND bre.status = 'matched_manually'
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM payout_batches pb
+            JOIN bank_reconciliation_uploads bru ON bru.batch_id = pb.batch_id
+            WHERE pb.batch_id = ppe.payout_batch_id AND bru.status = 'completed'
+          )
+        LIMIT 50
+      `);
+      const gaps = (raw?.rows ?? raw ?? []);
+      for (const g of gaps) {
+        findings.push({ payoutEntryId: g.id, batchId: g.payout_batch_id, issue: 'settled_without_reconciliation_proof' });
+      }
+    }
+
+    await db.execute(sql`
+      UPDATE finance_replay_runs
+      SET completed_at = NOW(), status = 'completed', findings_json = ${JSON.stringify({ findings })}::jsonb,
+          applied_count = ${appliedCount}
+      WHERE id = ${runId}
+    `);
+    await db.execute(sql`
+      INSERT INTO finance_audit_log (actor_uid, action, entity_type, entity_id, new_value)
+      VALUES (${initiatedBy}, ${dryRun ? 'replay_dry_run_completed' : 'replay_executed'},
+              'finance_replay_run', ${String(runId)},
+              ${JSON.stringify({ replayType, findings: findings.length, appliedCount, dryRun })}::jsonb)
+    `);
+  } catch (err: any) {
+    await db.execute(sql`
+      UPDATE finance_replay_runs SET completed_at = NOW(), status = 'failed' WHERE id = ${runId}
+    `).catch(() => {});
+    logger.error('[Replay] background error', { error: err.message, runId });
+  }
+}
+
+// POST /admin/wallet/replay/dry-run
+router.post('/admin/wallet/replay/dry-run', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const adminUid = session.user.uid;
+    const { replayType } = req.body;
+    if (!SAFE_REPLAY_TYPES.includes(replayType)) {
+      return res.status(400).json({ error: 'Unknown replay type', validTypes: SAFE_REPLAY_TYPES });
+    }
+    const raw: any = await db.execute(sql`
+      INSERT INTO finance_replay_runs (replay_type, dry_run, initiated_by, status)
+      VALUES (${replayType}, true, ${adminUid}, 'running')
+      RETURNING id
+    `);
+    const runId = (raw?.rows ?? raw)?.[0]?.id;
+    // Fire and forget — runs async
+    runReplay(replayType, true, adminUid, runId);
+    return res.status(202).json({ ok: true, runId, replayType, dryRun: true, status: 'running' });
+  } catch (err: any) {
+    logger.error('[Replay][DryRun] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to start replay dry-run', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/replay/execute
+router.post('/admin/wallet/replay/execute', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const adminUid = session.user.uid;
+    // finance_admin only
+    const roleRaw: any = await db.execute(sql`SELECT role FROM finance_user_roles WHERE uid = ${adminUid} LIMIT 1`);
+    const role = (roleRaw?.rows ?? roleRaw)?.[0]?.role;
+    if (role !== 'finance_admin') return res.status(403).json({ error: 'finance_admin role required for replay execute' });
+
+    const { replayType } = req.body;
+    if (!SAFE_REPLAY_TYPES.includes(replayType)) {
+      return res.status(400).json({ error: 'Unknown replay type', validTypes: SAFE_REPLAY_TYPES });
+    }
+    const raw: any = await db.execute(sql`
+      INSERT INTO finance_replay_runs (replay_type, dry_run, initiated_by, status)
+      VALUES (${replayType}, false, ${adminUid}, 'running')
+      RETURNING id
+    `);
+    const runId = (raw?.rows ?? raw)?.[0]?.id;
+    runReplay(replayType, false, adminUid, runId);
+    return res.status(202).json({ ok: true, runId, replayType, dryRun: false, status: 'running' });
+  } catch (err: any) {
+    logger.error('[Replay][Execute] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to start replay execute', detail: err.message });
+  }
+});
+
+// GET /admin/wallet/replay-runs
+router.get('/admin/wallet/replay-runs', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const raw: any = await db.execute(sql`
+      SELECT * FROM finance_replay_runs ORDER BY started_at DESC LIMIT 50
+    `);
+    const runs = (raw?.rows ?? raw ?? []).map((r: any) => ({
+      id: r.id, replayType: r.replay_type, startedAt: r.started_at, completedAt: r.completed_at,
+      status: r.status, dryRun: r.dry_run, findingsJson: r.findings_json,
+      appliedCount: r.applied_count, initiatedBy: r.initiated_by,
+    }));
+    return res.json({ ok: true, runs, total: runs.length });
+  } catch (err: any) {
+    logger.error('[Replay][Runs] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch replay runs', detail: err.message });
+  }
+});
+
 export default router;
-
-
-

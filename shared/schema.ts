@@ -12681,3 +12681,110 @@ export const refundApprovals = pgTable("refund_approvals", {
 ]);
 export type RefundApproval       = typeof refundApprovals.$inferSelect;
 export type InsertRefundApproval = typeof refundApprovals.$inferInsert;
+
+// ─── Phase 3.4: Dispute Cases routing columns ─────────────────────────────────
+// These columns are added to dispute_cases via ALTER TABLE in the DB; reflected here
+// as a separate extension type for reference (not a separate table).
+// routedQueue, routedToUid, routingReason, lastRoutedAt are added to disputeCases via SQL.
+
+// ─── Cash Forecast Snapshots (Phase 3.4A) ─────────────────────────────────────
+export const cashForecastSnapshots = pgTable("cash_forecast_snapshots", {
+  id:           serial("id").primaryKey(),
+  generatedAt:  timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+  horizonDays:  integer("horizon_days").notNull(),
+  forecastJson: jsonb("forecast_json").notNull().default(sql`'{}'::jsonb`),
+  createdBy:    varchar("created_by", { length: 64 }).notNull().default("system"),
+});
+export type CashForecastSnapshot       = typeof cashForecastSnapshots.$inferSelect;
+export type InsertCashForecastSnapshot = typeof cashForecastSnapshots.$inferInsert;
+
+// ─── Payout Schedules (Phase 3.4B) ────────────────────────────────────────────
+export const payoutSchedules = pgTable("payout_schedules", {
+  id:               serial("id").primaryKey(),
+  divisionCode:     varchar("division_code", { length: 40 }),
+  cadence:          varchar("cadence", { length: 20 }).notNull(), // daily | weekly | fortnightly | monthly
+  dayOfWeek:        integer("day_of_week"),
+  dayOfMonth:       integer("day_of_month"),
+  enabled:          boolean("enabled").notNull().default(true),
+  minBatchNetCents: integer("min_batch_net_cents").notNull().default(0),
+  notes:            text("notes").notNull().default(""),
+  lastRunAt:        timestamp("last_run_at", { withTimezone: true }),
+  createdByUid:     varchar("created_by_uid", { length: 128 }).notNull(),
+  createdAt:        timestamp("created_at",   { withTimezone: true }).notNull().defaultNow(),
+});
+export type PayoutSchedule       = typeof payoutSchedules.$inferSelect;
+export type InsertPayoutSchedule = typeof payoutSchedules.$inferInsert;
+
+export const payoutScheduleRuns = pgTable("payout_schedule_runs", {
+  id:         serial("id").primaryKey(),
+  scheduleId: integer("schedule_id").notNull(),
+  ranAt:      timestamp("ran_at",    { withTimezone: true }).notNull().defaultNow(),
+  result:     varchar("result",      { length: 20 }).notNull().default("created"), // created | skipped | failed
+  batchId:    varchar("batch_id",    { length: 64 }),
+  summary:    jsonb("summary").notNull().default(sql`'{}'::jsonb`),
+});
+export type PayoutScheduleRun       = typeof payoutScheduleRuns.$inferSelect;
+export type InsertPayoutScheduleRun = typeof payoutScheduleRuns.$inferInsert;
+
+// ─── Dispute Routing Rules (Phase 3.4C) ───────────────────────────────────────
+export const disputeRoutingRules = pgTable("dispute_routing_rules", {
+  id:             serial("id").primaryKey(),
+  divisionCode:   varchar("division_code",  { length: 40  }),
+  minAmountCents: integer("min_amount_cents").notNull().default(0),
+  maxAmountCents: integer("max_amount_cents"),
+  assignToUid:    varchar("assign_to_uid",  { length: 128 }),
+  queueName:      varchar("queue_name",     { length: 64  }),
+  priority:       integer("priority").notNull().default(100),
+  enabled:        boolean("enabled").notNull().default(true),
+});
+export type DisputeRoutingRule       = typeof disputeRoutingRules.$inferSelect;
+export type InsertDisputeRoutingRule = typeof disputeRoutingRules.$inferInsert;
+
+// ─── Executive KPI Snapshots (Phase 3.4E) ─────────────────────────────────────
+export const executiveKpiSnapshots = pgTable("executive_kpi_snapshots", {
+  id:           serial("id").primaryKey(),
+  snapshotDate: varchar("snapshot_date",  { length: 12 }).notNull(), // YYYY-MM-DD or YYYY-MM or YYYY-Www
+  snapshotType: varchar("snapshot_type",  { length: 20 }).notNull().default("daily"), // daily | weekly | monthly
+  kpiJson:      jsonb("kpi_json").notNull().default(sql`'{}'::jsonb`),
+  createdAt:    timestamp("created_at",   { withTimezone: true }).notNull().defaultNow(),
+});
+export type ExecutiveKpiSnapshot       = typeof executiveKpiSnapshots.$inferSelect;
+export type InsertExecutiveKpiSnapshot = typeof executiveKpiSnapshots.$inferInsert;
+
+// ─── Finance Archive Policies (Phase 3.4F) ────────────────────────────────────
+export const financeArchivePolicies = pgTable("finance_archive_policies", {
+  id:               serial("id").primaryKey(),
+  entityType:       varchar("entity_type",         { length: 64 }).notNull(),
+  retentionDays:    integer("retention_days").notNull(),
+  archiveAfterDays: integer("archive_after_days").notNull(),
+  enabled:          boolean("enabled").notNull().default(true),
+  notes:            text("notes").notNull().default(""),
+});
+export type FinanceArchivePolicy       = typeof financeArchivePolicies.$inferSelect;
+export type InsertFinanceArchivePolicy = typeof financeArchivePolicies.$inferInsert;
+
+export const financeArchiveRuns = pgTable("finance_archive_runs", {
+  id:         serial("id").primaryKey(),
+  entityType: varchar("entity_type", { length: 64 }).notNull(),
+  ranAt:      timestamp("ran_at",    { withTimezone: true }).notNull().defaultNow(),
+  movedCount: integer("moved_count").notNull().default(0),
+  status:     varchar("status",      { length: 20 }).notNull().default("completed"), // completed | failed | dry_run
+  summary:    jsonb("summary").notNull().default(sql`'{}'::jsonb`),
+});
+export type FinanceArchiveRun       = typeof financeArchiveRuns.$inferSelect;
+export type InsertFinanceArchiveRun = typeof financeArchiveRuns.$inferInsert;
+
+// ─── Finance Replay Runs (Phase 3.4G) ─────────────────────────────────────────
+export const financeReplayRuns = pgTable("finance_replay_runs", {
+  id:           serial("id").primaryKey(),
+  replayType:   varchar("replay_type", { length: 40 }).notNull(),
+  startedAt:    timestamp("started_at",   { withTimezone: true }).notNull().defaultNow(),
+  completedAt:  timestamp("completed_at", { withTimezone: true }),
+  status:       varchar("status",         { length: 20 }).notNull().default("running"), // running | completed | failed
+  dryRun:       boolean("dry_run").notNull().default(true),
+  findingsJson: jsonb("findings_json").notNull().default(sql`'{}'::jsonb`),
+  appliedCount: integer("applied_count").notNull().default(0),
+  initiatedBy:  varchar("initiated_by",  { length: 128 }),
+});
+export type FinanceReplayRun       = typeof financeReplayRuns.$inferSelect;
+export type InsertFinanceReplayRun = typeof financeReplayRuns.$inferInsert;

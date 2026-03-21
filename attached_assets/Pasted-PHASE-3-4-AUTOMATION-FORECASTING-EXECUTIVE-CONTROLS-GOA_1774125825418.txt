@@ -1,0 +1,430 @@
+PHASE 3.4 - AUTOMATION, FORECASTING & EXECUTIVE CONTROLS
+
+GOAL
+Move the platform from finance governance maturity to finance automation maturity.
+The system should not only show signals - it should act on them safely, predict upcoming pressure, and expose executive-level controls without manual report assembly.
+
+LOCKED PRINCIPLES
+- no wallet-core changes
+- no mutation of original financial facts
+- all automation is additive, reversible where possible, and auditable
+- all forecasts are advisory first, action-triggering second
+- all automated actions must be explainable in UI and logs
+- retention and archive rules never destroy signed, closed, or audit-critical records
+- replay procedures are read-first and simulate before mutate
+
+==================================================
+3.4A - CASH FORECASTING
+==================================================
+
+GOAL
+Forecast the next 7 / 14 / 30 days of:
+- expected provider payouts
+- expected refunds
+- expected VAT liability
+- expected net cash requirement
+
+DB
+No new financial source-of-truth table required.
+Optional cache table if needed later:
+cash_forecast_snapshots
+- id SERIAL PRIMARY KEY
+- generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+- horizon_days INTEGER NOT NULL
+- forecast_json JSONB NOT NULL
+- created_by VARCHAR(64) NOT NULL DEFAULT 'system'
+
+BACKEND
+GET /api/prestige-pass/admin/wallet/cash-forecast?horizon=7|14|30
+
+Forecast inputs:
+- open payout batches
+- pending provider payout entries
+- refund approvals pending and approved-but-not-yet-processed
+- recent dispute refund patterns
+- closed-day VAT averages
+- recent weekly seasonality from finance_close_records
+
+Response:
+{
+  "horizonDays": 14,
+  "generatedAt": "ISO",
+  "totals": {
+    "expectedPayoutsCents": 0,
+    "expectedRefundsCents": 0,
+    "expectedVatCents": 0,
+    "expectedNetCashNeedCents": 0
+  },
+  "byDay": [
+    {
+      "date": "2026-04-01",
+      "payoutsCents": 0,
+      "refundsCents": 0,
+      "vatCents": 0,
+      "netCashNeedCents": 0
+    }
+  ],
+  "assumptions": [
+    "VAT projected from recent closed-day averages",
+    "Pending payout entries assumed payable within normal cycle"
+  ]
+}
+
+FRONTEND
+Admin Wallet Dashboard
+- new "Forecast" tab or card
+- horizon selector: 7 / 14 / 30
+- 4 KPI cards
+- line chart by day
+- assumptions panel
+
+ACCEPTANCE
+- 7d and 30d totals reconcile to component sums
+- forecast is deterministic for same inputs
+- no direct financial mutations
+
+==================================================
+3.4B - PAYOUT SCHEDULING AUTOMATION
+==================================================
+
+GOAL
+Turn payout batches from manual-only into schedule-capable operations.
+
+DB
+Create table: payout_schedules
+- id SERIAL PRIMARY KEY
+- division_code VARCHAR(40)
+- cadence VARCHAR(20) NOT NULL   // daily | weekly | fortnightly | monthly
+- day_of_week INTEGER
+- day_of_month INTEGER
+- enabled BOOLEAN NOT NULL DEFAULT true
+- min_batch_net_cents INTEGER NOT NULL DEFAULT 0
+- notes TEXT NOT NULL DEFAULT ''
+- last_run_at TIMESTAMPTZ
+- created_by_uid VARCHAR(128) NOT NULL
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+Create table: payout_schedule_runs
+- id SERIAL PRIMARY KEY
+- schedule_id INTEGER NOT NULL
+- ran_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+- result VARCHAR(20) NOT NULL DEFAULT 'created'   // created | skipped | failed
+- batch_id VARCHAR(64)
+- summary JSONB NOT NULL DEFAULT '{}'::jsonb
+
+BACKEND
+1. GET /api/prestige-pass/admin/wallet/payout-schedules
+2. POST /api/prestige-pass/admin/wallet/payout-schedules
+3. PATCH /api/prestige-pass/admin/wallet/payout-schedules/:id
+4. POST /api/prestige-pass/admin/wallet/payout-schedules/:id/run-now
+5. GET /api/prestige-pass/admin/wallet/payout-schedules/runs
+
+JOB
+Scheduled runner:
+- checks enabled schedules
+- creates batch only when eligible entries exist
+- respects min_batch_net_cents
+- writes payout_schedule_runs
+- writes finance audit log
+
+FRONTEND
+- "Payout Schedules" tab
+- create/edit cadence
+- run-now button
+- recent runs table
+
+ACCEPTANCE
+- run-now produces valid batch only once
+- skipped runs stay logged
+- batch creation still uses existing payout batch logic
+
+==================================================
+3.4C - DISPUTE SLA AUTO-ROUTING
+==================================================
+
+GOAL
+Remove manual triage where possible by auto-routing disputes to the correct queue/admin based on division, amount, and SLA risk.
+
+DB
+Extend dispute_cases:
+- routed_queue VARCHAR(64)
+- routed_to_uid VARCHAR(128)
+- routing_reason TEXT NOT NULL DEFAULT ''
+- last_routed_at TIMESTAMPTZ
+
+Optional config table:
+dispute_routing_rules
+- id SERIAL PRIMARY KEY
+- division_code VARCHAR(40)
+- min_amount_cents INTEGER NOT NULL DEFAULT 0
+- max_amount_cents INTEGER
+- assign_to_uid VARCHAR(128)
+- queue_name VARCHAR(64)
+- priority INTEGER NOT NULL DEFAULT 100
+- enabled BOOLEAN NOT NULL DEFAULT true
+
+BACKEND
+1. POST /api/prestige-pass/admin/wallet/disputes/:caseRef/route
+2. GET /api/prestige-pass/admin/wallet/dispute-routing-rules
+3. POST /api/prestige-pass/admin/wallet/dispute-routing-rules
+4. PATCH /api/prestige-pass/admin/wallet/dispute-routing-rules/:id
+
+JOB
+- auto-route on case creation
+- re-route when escalated or SLA enters at_risk
+- write finance_audit_log + finance_alerts if unroutable
+
+FRONTEND
+Disputes tab
+- route badge
+- assigned queue/user
+- route-now button
+- rules editor section
+
+ACCEPTANCE
+- new disputes route immediately
+- unroutable cases raise clear alert
+- manual override remains possible
+
+==================================================
+3.4D - FINANCE CONTROL CENTER WIDGETS
+==================================================
+
+GOAL
+One operational surface that tells finance what needs attention now.
+
+BACKEND
+GET /api/prestige-pass/admin/wallet/control-center
+
+Returns:
+{
+  "generatedAt": "ISO",
+  "widgets": {
+    "cashForecast": {...},
+    "openPayoutBatches": {...},
+    "pendingRefundApprovals": {...},
+    "staleReconExceptions": {...},
+    "criticalAlerts": {...},
+    "closeStatusToday": {...}
+  }
+}
+
+FRONTEND
+New "Control Center" tab or top dashboard strip
+Widgets:
+- Cash Needed Next 7 Days
+- Open Batch Count
+- Pending Approval Count
+- Recon Exceptions Open
+- Critical Alerts Unacked
+- Today Close Status
+
+Each widget:
+- number
+- status color
+- click-through target
+
+ACCEPTANCE
+- widget counts match source tabs
+- each widget links to a real workflow
+
+==================================================
+3.4E - EXECUTIVE KPI SNAPSHOTS
+==================================================
+
+GOAL
+Give leadership a clean read-only summary without exposing operational clutter.
+
+DB
+Optional cache table:
+executive_kpi_snapshots
+- id SERIAL PRIMARY KEY
+- snapshot_date DATE NOT NULL
+- snapshot_type VARCHAR(20) NOT NULL DEFAULT 'daily'   // daily | weekly | monthly
+- kpi_json JSONB NOT NULL
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+BACKEND
+GET /api/prestige-pass/admin/wallet/executive-kpis?period=daily|weekly|monthly
+
+Returns:
+- collected
+- margin
+- VAT
+- payouts
+- refund rate
+- dispute breach rate
+- reconciliation exception count
+- signoff status
+- top risk
+- top improvement
+
+FRONTEND
+New "Executive" card or tab
+- snapshot tiles
+- period selector
+- one-line commentary
+- export JSON button
+
+ACCEPTANCE
+- executive values reconcile to operational tabs
+- read-only and low-noise
+
+==================================================
+3.4F - RETENTION & ARCHIVE POLICY
+==================================================
+
+GOAL
+Control data growth without losing audit integrity.
+
+DB
+Create archive policy metadata table:
+finance_archive_policies
+- id SERIAL PRIMARY KEY
+- entity_type VARCHAR(64) NOT NULL
+- retention_days INTEGER NOT NULL
+- archive_after_days INTEGER NOT NULL
+- enabled BOOLEAN NOT NULL DEFAULT true
+- notes TEXT NOT NULL DEFAULT ''
+
+Optional archive log:
+finance_archive_runs
+- id SERIAL PRIMARY KEY
+- entity_type VARCHAR(64) NOT NULL
+- ran_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+- moved_count INTEGER NOT NULL DEFAULT 0
+- status VARCHAR(20) NOT NULL DEFAULT 'completed'
+- summary JSONB NOT NULL DEFAULT '{}'::jsonb
+
+POLICY
+- signed close records: never delete
+- audit bundles: never delete
+- finance audit logs: archive only, no delete in this phase
+- remittance logs, alert deliveries, integrity runs: archive after threshold
+- archived data stays exportable
+
+BACKEND
+1. GET /api/prestige-pass/admin/wallet/archive-policies
+2. POST /api/prestige-pass/admin/wallet/archive-policies
+3. PATCH /api/prestige-pass/admin/wallet/archive-policies/:id
+4. GET /api/prestige-pass/admin/wallet/archive-runs
+
+JOB
+archive simulation only first:
+- dry-run counts
+- no destructive delete in 3.4
+- writes finance_archive_runs
+
+FRONTEND
+- "Archive Policies" tab
+- dry-run counts
+- policy editor
+- recent archive runs table
+
+ACCEPTANCE
+- no destructive deletion in 3.4
+- finance team can see future archive effect safely
+
+==================================================
+3.4G - DISASTER RECOVERY & REPLAY PROCEDURES
+==================================================
+
+GOAL
+Be able to reconstruct operational state from immutable finance records and verified event trails.
+
+DB
+Optional table:
+finance_replay_runs
+- id SERIAL PRIMARY KEY
+- replay_type VARCHAR(40) NOT NULL
+- started_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+- completed_at TIMESTAMPTZ
+- status VARCHAR(20) NOT NULL DEFAULT 'running'
+- dry_run BOOLEAN NOT NULL DEFAULT true
+- findings_json JSONB NOT NULL DEFAULT '{}'::jsonb
+- applied_count INTEGER NOT NULL DEFAULT 0
+
+BACKEND
+1. POST /api/prestige-pass/admin/wallet/replay/dry-run
+   replay types:
+   - rebuild_payout_batch_totals
+   - rebuild_remittance_status
+   - rebuild_close_snapshots
+   - recheck_reconciliation_links
+
+2. POST /api/prestige-pass/admin/wallet/replay/execute
+   restricted to finance_admin only
+   only for replay types deemed safe
+
+3. GET /api/prestige-pass/admin/wallet/replay-runs
+
+RULES
+- dry-run first always
+- execute only after explicit review
+- every replay writes finance_audit_log
+- replay never mutates immutable source facts, only derived state
+
+FRONTEND
+- "Recovery & Replay" tab
+- replay type selector
+- dry-run button
+- findings viewer
+- execute button only when allowed
+- replay runs history
+
+ACCEPTANCE
+- dry-run shows exact proposed changes
+- execute only touches derived state
+- all replays fully auditable
+
+==================================================
+RECOMMENDED BUILD ORDER
+==================================================
+
+1. 3.4A - cash forecasting
+2. 3.4B - payout scheduling automation
+3. 3.4C - dispute SLA auto-routing
+4. 3.4D - finance control center widgets
+5. 3.4E - executive KPI snapshots
+6. 3.4F - retention and archive policy
+7. 3.4G - disaster recovery and replay procedures
+
+==================================================
+PARALLELIZATION
+==================================================
+
+Can build in parallel:
+- 3.4A + 3.4C
+- 3.4D + 3.4E once 3.4A is stable
+- 3.4F + 3.4G after the state model is stable
+
+Do last:
+- any execute-mode replay actions in 3.4G
+
+==================================================
+WHAT DOES NOT CHANGE
+==================================================
+
+- wallet hold / release / debit / refund architecture
+- payout batch math
+- settlement summary formulas
+- dispute case source-of-truth
+- refund approval thresholds
+- daily close record structure
+- month-end sign-off structure
+- existing audit bundle signature approach
+
+==================================================
+SUCCESS CRITERIA
+==================================================
+
+By the end of 3.4:
+- finance can see future cash pressure before it lands
+- payout creation can be scheduled safely
+- disputes route themselves with clear reasons
+- ops has one control center view
+- leadership can self-serve KPI snapshots
+- archive behavior is visible and controlled
+- replay procedures exist before they are urgently needed
+
+This phase takes the system from finance governance maturity to finance automation maturity.

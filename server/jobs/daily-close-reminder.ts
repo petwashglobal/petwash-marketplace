@@ -353,4 +353,83 @@ export function startDailyCloseReminder(): void {
   // 3.3B: Escalation ladder every 30 minutes
   cron.schedule('*/30 * * * *', runEscalationLadder, { timezone: 'Asia/Jerusalem' });
   logger.info('[DailyCloseReminder] Escalation ladder job started (every 30 min)');
+
+  // 3.4B: Payout scheduling automation — check enabled schedules every 15 minutes
+  cron.schedule('*/15 * * * *', runPayoutSchedules, { timezone: 'Asia/Jerusalem' });
+  logger.info('[DailyCloseReminder] Payout schedule runner started (every 15 min)');
+}
+
+// ─── 3.4B: Payout schedule runner ─────────────────────────────────────────────
+async function runPayoutSchedules(): Promise<void> {
+  try {
+    const schedulesRaw: any = await db.execute(sql`SELECT * FROM payout_schedules WHERE enabled = true`);
+    const schedules = (schedulesRaw?.rows ?? schedulesRaw ?? []);
+    const now = new Date();
+
+    for (const s of schedules) {
+      try {
+        const eligible = isScheduleEligible(s, now);
+        if (!eligible) continue;
+
+        // Check if already ran recently (idempotency guard — within last hour for non-daily)
+        const guardHours = s.cadence === 'daily' ? 20 : s.cadence === 'weekly' ? 160 : s.cadence === 'fortnightly' ? 336 : 700;
+        const lastRun = s.last_run_at ? new Date(s.last_run_at) : null;
+        if (lastRun && (now.getTime() - lastRun.getTime()) < guardHours * 3600 * 1000) continue;
+
+        // Find eligible entries
+        const divFilter = s.division_code ? ` AND division_code = '${s.division_code}'` : '';
+        const entryRaw: any = await db.execute(sql.raw(
+          `SELECT COALESCE(SUM(net_cents),0) AS net_total, COUNT(*)::int AS entry_count
+           FROM provider_payout_entries WHERE status='earned'${divFilter}`
+        ));
+        const netTotal   = Number((entryRaw?.rows ?? entryRaw)?.[0]?.net_total    ?? 0);
+        const entryCount = Number((entryRaw?.rows ?? entryRaw)?.[0]?.entry_count  ?? 0);
+
+        if (netTotal < (s.min_batch_net_cents || 0) || entryCount === 0) {
+          await db.execute(sql`
+            INSERT INTO payout_schedule_runs (schedule_id, result, summary)
+            VALUES (${s.id}, 'skipped', ${JSON.stringify({ reason: 'Below threshold', netTotal, entryCount })}::jsonb)
+          `);
+          continue;
+        }
+
+        const batchId = `SCHED-${s.id}-${Date.now()}`;
+        await db.execute(sql.raw(`
+          INSERT INTO payout_batches (batch_id, status, gross_total_cents, commission_total_cents, net_total_cents, entry_count, created_by_uid, notes)
+          SELECT '${batchId}', 'created',
+            SUM(gross_cents), SUM(gross_cents - net_cents), SUM(net_cents), COUNT(*),
+            'system', 'Auto-created by schedule ${s.id} (${s.cadence})'
+          FROM provider_payout_entries WHERE status='earned'${divFilter}
+        `));
+        await db.execute(sql.raw(`
+          UPDATE provider_payout_entries SET status='batched', payout_batch_id='${batchId}'
+          WHERE status='earned'${divFilter}
+        `));
+        await db.execute(sql`UPDATE payout_schedules SET last_run_at = NOW() WHERE id = ${s.id}`);
+        await db.execute(sql`
+          INSERT INTO payout_schedule_runs (schedule_id, result, batch_id, summary)
+          VALUES (${s.id}, 'created', ${batchId}, ${JSON.stringify({ netTotal, entryCount })}::jsonb)
+        `);
+        logger.info('[PayoutSchedule] Batch created', { scheduleId: s.id, batchId, netTotal, entryCount });
+      } catch (err: any) {
+        await db.execute(sql`
+          INSERT INTO payout_schedule_runs (schedule_id, result, summary)
+          VALUES (${s.id}, 'failed', ${JSON.stringify({ error: err.message })}::jsonb)
+        `).catch(() => {});
+        logger.error('[PayoutSchedule] Run failed', { scheduleId: s.id, error: err.message });
+      }
+    }
+  } catch (err: any) {
+    logger.error('[PayoutSchedule] Job error', { error: err.message });
+  }
+}
+
+function isScheduleEligible(s: any, now: Date): boolean {
+  const dow = now.getDay(); // 0=Sun
+  const dom = now.getDate();
+  if (s.cadence === 'daily') return true;
+  if (s.cadence === 'weekly')      return s.day_of_week  != null ? dow === s.day_of_week  : dow === 0;
+  if (s.cadence === 'fortnightly') return s.day_of_week  != null ? dow === s.day_of_week  : dow === 0;
+  if (s.cadence === 'monthly')     return s.day_of_month != null ? dom === s.day_of_month : dom === 1;
+  return false;
 }

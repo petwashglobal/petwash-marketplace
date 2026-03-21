@@ -59,6 +59,13 @@ import {
   Activity,
   FileText,
   Filter,
+  CalendarClock,
+  GitMerge,
+  LayoutDashboard,
+  Archive,
+  RefreshCcw,
+  PlayCircle,
+  Eye,
 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -971,6 +978,92 @@ export default function AdminWalletDashboard() {
     onError: (e) => toast({ title: "Failed to remove role", description: e.message, variant: "destructive" }),
   });
 
+  // ── 3.4A: Cash Forecast ──────────────────────────────────────────────────────
+  const [forecastHorizon, setForecastHorizon] = useState<number>(14);
+  const [forecastHorizonApplied, setForecastHorizonApplied] = useState<number>(14);
+  const { data: forecastData, isLoading: forecastLoading, refetch: refetchForecast } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/cash-forecast', forecastHorizonApplied],
+    queryFn: () => fetch(`/api/prestige-pass/admin/wallet/cash-forecast?horizon=${forecastHorizonApplied}`, { credentials: 'include' }).then(r => r.json()),
+  });
+
+  // ── 3.4B: Payout Schedules ───────────────────────────────────────────────────
+  const { data: schedulesData, isLoading: schedulesLoading, refetch: refetchSchedules } = useQuery<any>({ queryKey: ['/api/prestige-pass/admin/wallet/payout-schedules'] });
+  const { data: scheduleRunsData, isLoading: scheduleRunsLoading, refetch: refetchScheduleRuns } = useQuery<any>({ queryKey: ['/api/prestige-pass/admin/wallet/payout-schedules/runs'] });
+  const [newSchedule, setNewSchedule] = useState({ cadence: 'weekly', divisionCode: '', dayOfWeek: '', dayOfMonth: '', minBatchNetCents: '', notes: '' });
+  const { mutate: createSchedule, isPending: createSchedulePending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest("POST", "/api/prestige-pass/admin/wallet/payout-schedules", body),
+    onSuccess: () => { toast({ title: "Schedule created" }); refetchSchedules(); setNewSchedule({ cadence: 'weekly', divisionCode: '', dayOfWeek: '', dayOfMonth: '', minBatchNetCents: '', notes: '' }); },
+    onError: (e) => toast({ title: "Failed to create schedule", description: e.message, variant: "destructive" }),
+  });
+  const { mutate: toggleSchedule } = useMutation<any, any, { id: number; enabled: boolean }>({
+    mutationFn: ({ id, enabled }) => apiRequest("PATCH", `/api/prestige-pass/admin/wallet/payout-schedules/${id}`, { enabled }),
+    onSuccess: () => { toast({ title: "Schedule updated" }); refetchSchedules(); },
+    onError: (e) => toast({ title: "Failed", description: e.message, variant: "destructive" }),
+  });
+  const { mutate: runScheduleNow, isPending: runScheduleNowPending } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest("POST", `/api/prestige-pass/admin/wallet/payout-schedules/${id}/run-now`, {}),
+    onSuccess: (d) => { toast({ title: d.result === 'created' ? `Batch created: ${d.batchId}` : `Skipped: ${d.reason}` }); refetchSchedules(); refetchScheduleRuns(); },
+    onError: (e) => toast({ title: "Run failed", description: e.message, variant: "destructive" }),
+  });
+
+  // ── 3.4C: Dispute Routing ────────────────────────────────────────────────────
+  const { data: routingRulesData, isLoading: routingRulesLoading, refetch: refetchRoutingRules } = useQuery<any>({ queryKey: ['/api/prestige-pass/admin/wallet/dispute-routing-rules'] });
+  const [newRule, setNewRule] = useState({ divisionCode: '', minAmountCents: '', maxAmountCents: '', assignToUid: '', queueName: '', priority: '100' });
+  const { mutate: createRoutingRule, isPending: createRulePending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest("POST", "/api/prestige-pass/admin/wallet/dispute-routing-rules", body),
+    onSuccess: () => { toast({ title: "Routing rule created" }); refetchRoutingRules(); setNewRule({ divisionCode: '', minAmountCents: '', maxAmountCents: '', assignToUid: '', queueName: '', priority: '100' }); },
+    onError: (e) => toast({ title: "Failed to create rule", description: e.message, variant: "destructive" }),
+  });
+  const { mutate: toggleRule } = useMutation<any, any, { id: number; enabled: boolean }>({
+    mutationFn: ({ id, enabled }) => apiRequest("PATCH", `/api/prestige-pass/admin/wallet/dispute-routing-rules/${id}`, { enabled }),
+    onSuccess: () => { toast({ title: "Rule updated" }); refetchRoutingRules(); },
+    onError: (e) => toast({ title: "Failed", description: e.message, variant: "destructive" }),
+  });
+  const [routeDisputeRef, setRouteDisputeRef] = useState("");
+  const { mutate: routeDispute, isPending: routeDisputePending } = useMutation<any, any, string>({
+    mutationFn: (caseRef) => apiRequest("POST", `/api/prestige-pass/admin/wallet/disputes/${caseRef}/route`, {}),
+    onSuccess: (d) => toast({ title: `Routed to ${d.routedQueue || d.routedToUid}`, description: d.routingReason }),
+    onError: (e) => toast({ title: "Routing failed", description: e.message, variant: "destructive" }),
+  });
+
+  // ── 3.4D: Control Center ─────────────────────────────────────────────────────
+  const { data: controlCenterData, isLoading: controlCenterLoading, refetch: refetchControlCenter } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/control-center'],
+    refetchInterval: 60_000,
+  });
+
+  // ── 3.4E: Executive KPIs ─────────────────────────────────────────────────────
+  const [execPeriod, setExecPeriod] = useState<'daily'|'weekly'|'monthly'>('monthly');
+  const { data: execKpiData, isLoading: execKpiLoading, refetch: refetchExecKpi } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/executive-kpis', execPeriod],
+    queryFn: () => fetch(`/api/prestige-pass/admin/wallet/executive-kpis?period=${execPeriod}`, { credentials: 'include' }).then(r => r.json()),
+  });
+
+  // ── 3.4F: Archive Policies ───────────────────────────────────────────────────
+  const { data: archivePoliciesData, isLoading: archivePoliciesLoading, refetch: refetchArchivePolicies } = useQuery<any>({ queryKey: ['/api/prestige-pass/admin/wallet/archive-policies'] });
+  const { data: archiveRunsData, isLoading: archiveRunsLoading, refetch: refetchArchiveRuns } = useQuery<any>({ queryKey: ['/api/prestige-pass/admin/wallet/archive-runs'] });
+  const { mutate: dryRunArchive, isPending: dryRunArchivePending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest("POST", "/api/prestige-pass/admin/wallet/archive-runs/dry-run", {}),
+    onSuccess: () => { toast({ title: "Dry-run complete" }); refetchArchiveRuns(); },
+    onError: (e) => toast({ title: "Dry-run failed", description: e.message, variant: "destructive" }),
+  });
+
+  // ── 3.4G: Recovery & Replay ──────────────────────────────────────────────────
+  const REPLAY_TYPES = ['rebuild_payout_batch_totals','rebuild_remittance_status','rebuild_close_snapshots','recheck_reconciliation_links'];
+  const [selectedReplayType, setSelectedReplayType] = useState<string>(REPLAY_TYPES[0]);
+  const [expandedReplayRun, setExpandedReplayRun] = useState<number|null>(null);
+  const { data: replayRunsData, isLoading: replayRunsLoading, refetch: refetchReplayRuns } = useQuery<any>({ queryKey: ['/api/prestige-pass/admin/wallet/replay-runs'] });
+  const { mutate: startDryRun, isPending: dryRunPending } = useMutation<any, any, string>({
+    mutationFn: (replayType) => apiRequest("POST", "/api/prestige-pass/admin/wallet/replay/dry-run", { replayType }),
+    onSuccess: (d) => { toast({ title: `Dry-run started: ${d.replayType}`, description: `Run ID: ${d.runId}` }); setTimeout(() => refetchReplayRuns(), 3000); },
+    onError: (e) => toast({ title: "Dry-run failed", description: e.message, variant: "destructive" }),
+  });
+  const { mutate: executeReplay, isPending: executeReplayPending } = useMutation<any, any, string>({
+    mutationFn: (replayType) => apiRequest("POST", "/api/prestige-pass/admin/wallet/replay/execute", { replayType }),
+    onSuccess: (d) => { toast({ title: `Replay executing: ${d.replayType}`, description: `Run ID: ${d.runId}` }); setTimeout(() => refetchReplayRuns(), 3000); },
+    onError: (e) => toast({ title: "Execute failed", description: e.message, variant: "destructive" }),
+  });
+
   function handleAuditSearch() {
     if (!auditId.trim()) return;
     setAuditSearch(auditId.trim());
@@ -1198,6 +1291,34 @@ export default function AdminWalletDashboard() {
             <TabsTrigger value="integrity">
               <ShieldCheck className="w-4 h-4 mr-2" />
               Integrity
+            </TabsTrigger>
+            <TabsTrigger value="forecast">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Forecast
+            </TabsTrigger>
+            <TabsTrigger value="schedules">
+              <CalendarClock className="w-4 h-4 mr-2" />
+              Schedules
+            </TabsTrigger>
+            <TabsTrigger value="routing">
+              <GitMerge className="w-4 h-4 mr-2" />
+              Routing
+            </TabsTrigger>
+            <TabsTrigger value="control-center">
+              <LayoutDashboard className="w-4 h-4 mr-2" />
+              Control Center
+            </TabsTrigger>
+            <TabsTrigger value="executive">
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Executive
+            </TabsTrigger>
+            <TabsTrigger value="archive">
+              <Archive className="w-4 h-4 mr-2" />
+              Archive
+            </TabsTrigger>
+            <TabsTrigger value="recovery">
+              <RefreshCcw className="w-4 h-4 mr-2" />
+              Recovery
             </TabsTrigger>
           </TabsList>
 
@@ -5528,6 +5649,596 @@ export default function AdminWalletDashboard() {
                 <div className="pt-3">
                   <button onClick={() => refetchIntegrityHistory()} className="text-xs text-blue-600 hover:underline">Refresh history</button>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* 3.4A — CASH FORECAST                                          */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          <TabsContent value="forecast" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-blue-600" /> Cash Forecast
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Horizon:</span>
+                    {([7,14,30] as number[]).map(h => (
+                      <button key={h} onClick={() => setForecastHorizon(h)}
+                        className={`text-xs px-2.5 py-1 rounded border ${forecastHorizon === h ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 hover:border-blue-400'}`}>{h}d</button>
+                    ))}
+                    <button onClick={() => { setForecastHorizonApplied(forecastHorizon); refetchForecast(); }}
+                      className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Load</button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {forecastLoading ? (
+                  <div className="space-y-2">{[...Array(4)].map((_,i)=><div key={i} className="h-14 bg-gray-100 animate-pulse rounded"/>)}</div>
+                ) : !forecastData?.ok ? (
+                  <div className="text-sm text-gray-400 py-8 text-center border-2 border-dashed rounded-lg">Select a horizon and click Load</div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                      {[
+                        { label: 'Expected Payouts', cents: forecastData.totals.expectedPayoutsCents, color: 'text-orange-600' },
+                        { label: 'Expected Refunds', cents: forecastData.totals.expectedRefundsCents, color: 'text-red-600' },
+                        { label: 'Expected VAT',     cents: forecastData.totals.expectedVatCents,     color: 'text-purple-600' },
+                        { label: 'Net Cash Need',    cents: forecastData.totals.expectedNetCashNeedCents, color: 'text-blue-700 font-bold' },
+                      ].map(t => (
+                        <div key={t.label} className="border rounded-lg p-3 text-center">
+                          <div className={`text-lg font-bold ${t.color}`}>₪{(t.cents/100).toLocaleString('he-IL',{minimumFractionDigits:2})}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">{t.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1"><Activity className="w-3 h-3"/>Day-by-Day Breakdown ({forecastData.horizonDays}d)</div>
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs">
+                        <thead className="bg-gray-50"><tr className="text-gray-500">
+                          <th className="text-left p-2">Date</th>
+                          <th className="text-right p-2">Payouts</th>
+                          <th className="text-right p-2">Refunds</th>
+                          <th className="text-right p-2">VAT</th>
+                          <th className="text-right p-2 font-bold">Net Need</th>
+                        </tr></thead>
+                        <tbody>
+                          {forecastData.byDay?.map((d: any) => (
+                            <tr key={d.date} className="border-t hover:bg-gray-50">
+                              <td className="p-2 font-mono">{d.date}</td>
+                              <td className="p-2 text-right text-orange-700">₪{(d.payoutsCents/100).toFixed(0)}</td>
+                              <td className="p-2 text-right text-red-700">₪{(d.refundsCents/100).toFixed(0)}</td>
+                              <td className="p-2 text-right text-purple-700">₪{(d.vatCents/100).toFixed(0)}</td>
+                              <td className="p-2 text-right font-bold text-blue-700">₪{(d.netCashNeedCents/100).toFixed(0)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {forecastData.assumptions?.length > 0 && (
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700 space-y-0.5">
+                        <div className="font-semibold mb-1">Forecast assumptions:</div>
+                        {forecastData.assumptions.map((a: string, i: number) => <div key={i}>• {a}</div>)}
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* 3.4B — PAYOUT SCHEDULES                                       */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          <TabsContent value="schedules" className="mt-4 space-y-4">
+            {/* Create new schedule */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <CalendarClock className="w-4 h-4 text-violet-600" /> Payout Schedules
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* New schedule form */}
+                <div className="border rounded-lg p-3 bg-gray-50 space-y-2">
+                  <div className="text-xs font-semibold text-gray-600">Create New Schedule</div>
+                  <div className="flex flex-wrap gap-2">
+                    <select value={newSchedule.cadence} onChange={e => setNewSchedule(s=>({...s, cadence: e.target.value}))}
+                      className="text-xs border rounded px-2 py-1.5 bg-white">
+                      {['daily','weekly','fortnightly','monthly'].map(c=><option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <input placeholder="Division (optional)" value={newSchedule.divisionCode}
+                      onChange={e=>setNewSchedule(s=>({...s, divisionCode: e.target.value}))}
+                      className="text-xs border rounded px-2 py-1.5 w-36"/>
+                    {['weekly','fortnightly'].includes(newSchedule.cadence) && (
+                      <input type="number" min={0} max={6} placeholder="Day of week (0=Sun)" value={newSchedule.dayOfWeek}
+                        onChange={e=>setNewSchedule(s=>({...s, dayOfWeek: e.target.value}))}
+                        className="text-xs border rounded px-2 py-1.5 w-36"/>
+                    )}
+                    {newSchedule.cadence === 'monthly' && (
+                      <input type="number" min={1} max={28} placeholder="Day of month" value={newSchedule.dayOfMonth}
+                        onChange={e=>setNewSchedule(s=>({...s, dayOfMonth: e.target.value}))}
+                        className="text-xs border rounded px-2 py-1.5 w-32"/>
+                    )}
+                    <input type="number" placeholder="Min net (ILS)" value={newSchedule.minBatchNetCents}
+                      onChange={e=>setNewSchedule(s=>({...s, minBatchNetCents: e.target.value}))}
+                      className="text-xs border rounded px-2 py-1.5 w-32"/>
+                    <input placeholder="Notes" value={newSchedule.notes}
+                      onChange={e=>setNewSchedule(s=>({...s, notes: e.target.value}))}
+                      className="text-xs border rounded px-2 py-1.5 flex-1 min-w-0"/>
+                    <button disabled={createSchedulePending} onClick={() => createSchedule({
+                      cadence: newSchedule.cadence,
+                      divisionCode: newSchedule.divisionCode || undefined,
+                      dayOfWeek: newSchedule.dayOfWeek ? parseInt(newSchedule.dayOfWeek) : undefined,
+                      dayOfMonth: newSchedule.dayOfMonth ? parseInt(newSchedule.dayOfMonth) : undefined,
+                      minBatchNetCents: newSchedule.minBatchNetCents ? Math.round(parseFloat(newSchedule.minBatchNetCents)*100) : 0,
+                      notes: newSchedule.notes,
+                    })} className="text-xs px-3 py-1.5 bg-violet-600 text-white rounded hover:bg-violet-700 disabled:opacity-40">
+                      {createSchedulePending ? <Loader2 className="w-3 h-3 animate-spin"/> : 'Create'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Schedules list */}
+                {schedulesLoading ? (
+                  <div className="space-y-2">{[...Array(3)].map((_,i)=><div key={i} className="h-12 bg-gray-100 animate-pulse rounded"/>)}</div>
+                ) : !schedulesData?.schedules?.length ? (
+                  <div className="text-sm text-gray-400 py-8 text-center border-2 border-dashed rounded-lg">No schedules configured yet</div>
+                ) : (
+                  <div className="space-y-2">
+                    {schedulesData.schedules.map((s: any) => (
+                      <div key={s.id} className={`border rounded-lg p-3 flex items-center justify-between gap-3 ${s.enabled ? 'bg-white' : 'bg-gray-50 opacity-70'}`}>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.enabled ? 'bg-violet-100 text-violet-700' : 'bg-gray-200 text-gray-500'}`}>{s.cadence}</span>
+                            {s.divisionCode && <span className="text-xs text-gray-500 font-mono">{s.divisionCode}</span>}
+                            {s.minBatchNetCents > 0 && <span className="text-xs text-gray-400">min ₪{(s.minBatchNetCents/100).toFixed(0)}</span>}
+                            <span className="text-xs text-gray-400">{s.runCount} runs</span>
+                            {s.lastRunAt && <span className="text-xs text-gray-400">last: {new Date(s.lastRunAt).toLocaleDateString('he-IL')}</span>}
+                          </div>
+                          {s.notes && <div className="text-xs text-gray-500 mt-0.5 truncate">{s.notes}</div>}
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button onClick={() => runScheduleNow(s.id)} disabled={runScheduleNowPending}
+                            className="text-xs px-2.5 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-40">
+                            ▶ Run Now
+                          </button>
+                          <button onClick={() => toggleSchedule({ id: s.id, enabled: !s.enabled })}
+                            className={`text-xs px-2.5 py-1 rounded border ${s.enabled ? 'text-red-600 border-red-200 hover:bg-red-50' : 'text-green-600 border-green-200 hover:bg-green-50'}`}>
+                            {s.enabled ? 'Disable' : 'Enable'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Recent runs */}
+                <div>
+                  <div className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1">
+                    <History className="w-3 h-3"/> Recent Runs
+                    <button onClick={() => refetchScheduleRuns()} className="ml-2 text-blue-600 hover:underline font-normal">Refresh</button>
+                  </div>
+                  {scheduleRunsLoading ? (
+                    <div className="h-20 bg-gray-100 animate-pulse rounded"/>
+                  ) : !scheduleRunsData?.runs?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No runs yet</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Schedule</th><th className="text-left p-2">Ran</th><th className="text-left p-2">Result</th><th className="text-left p-2">Batch</th></tr>
+                      </thead><tbody>
+                        {scheduleRunsData.runs.slice(0,20).map((r: any) => (
+                          <tr key={r.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 text-gray-600">#{r.scheduleId} {r.cadence && <span className="text-gray-400">({r.cadence})</span>}</td>
+                            <td className="p-2 text-gray-500">{new Date(r.ranAt).toLocaleString('he-IL')}</td>
+                            <td className="p-2">
+                              <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${r.result === 'created' ? 'bg-green-100 text-green-700' : r.result === 'skipped' ? 'bg-gray-100 text-gray-600' : 'bg-red-100 text-red-700'}`}>{r.result}</span>
+                            </td>
+                            <td className="p-2 font-mono text-gray-500">{r.batchId ?? '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* 3.4C — DISPUTE SLA AUTO-ROUTING                               */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          <TabsContent value="routing" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <GitMerge className="w-4 h-4 text-teal-600" /> Dispute Auto-Routing
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Manual route-now */}
+                <div className="border rounded-lg p-3 bg-teal-50 border-teal-200">
+                  <div className="text-xs font-semibold text-teal-700 mb-2">Route Dispute by Case Ref</div>
+                  <div className="flex gap-2">
+                    <input placeholder="Case ref e.g. DISP-001" value={routeDisputeRef}
+                      onChange={e=>setRouteDisputeRef(e.target.value)}
+                      className="text-xs border rounded px-2 py-1.5 flex-1"/>
+                    <button disabled={routeDisputePending || !routeDisputeRef.trim()}
+                      onClick={() => { routeDispute(routeDisputeRef.trim()); setRouteDisputeRef(''); }}
+                      className="text-xs px-3 py-1.5 bg-teal-600 text-white rounded hover:bg-teal-700 disabled:opacity-40">
+                      {routeDisputePending ? <Loader2 className="w-3 h-3 animate-spin"/> : 'Auto-Route'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Create rule */}
+                <div className="border rounded-lg p-3 bg-gray-50 space-y-2">
+                  <div className="text-xs font-semibold text-gray-600">Add Routing Rule</div>
+                  <div className="flex flex-wrap gap-2">
+                    <input placeholder="Division (optional)" value={newRule.divisionCode}
+                      onChange={e=>setNewRule(r=>({...r, divisionCode: e.target.value}))}
+                      className="text-xs border rounded px-2 py-1.5 w-32"/>
+                    <input type="number" placeholder="Min amount (₪)" value={newRule.minAmountCents}
+                      onChange={e=>setNewRule(r=>({...r, minAmountCents: e.target.value}))}
+                      className="text-xs border rounded px-2 py-1.5 w-28"/>
+                    <input type="number" placeholder="Max amount (₪)" value={newRule.maxAmountCents}
+                      onChange={e=>setNewRule(r=>({...r, maxAmountCents: e.target.value}))}
+                      className="text-xs border rounded px-2 py-1.5 w-28"/>
+                    <input placeholder="Queue name" value={newRule.queueName}
+                      onChange={e=>setNewRule(r=>({...r, queueName: e.target.value}))}
+                      className="text-xs border rounded px-2 py-1.5 w-32"/>
+                    <input placeholder="Assign to UID" value={newRule.assignToUid}
+                      onChange={e=>setNewRule(r=>({...r, assignToUid: e.target.value}))}
+                      className="text-xs border rounded px-2 py-1.5 w-36"/>
+                    <input type="number" placeholder="Priority" value={newRule.priority}
+                      onChange={e=>setNewRule(r=>({...r, priority: e.target.value}))}
+                      className="text-xs border rounded px-2 py-1.5 w-20"/>
+                    <button disabled={createRulePending} onClick={() => createRoutingRule({
+                      divisionCode: newRule.divisionCode || undefined,
+                      minAmountCents: newRule.minAmountCents ? Math.round(parseFloat(newRule.minAmountCents)*100) : 0,
+                      maxAmountCents: newRule.maxAmountCents ? Math.round(parseFloat(newRule.maxAmountCents)*100) : undefined,
+                      queueName: newRule.queueName || undefined,
+                      assignToUid: newRule.assignToUid || undefined,
+                      priority: parseInt(newRule.priority),
+                    })} className="text-xs px-3 py-1.5 bg-teal-600 text-white rounded hover:bg-teal-700 disabled:opacity-40">
+                      {createRulePending ? <Loader2 className="w-3 h-3 animate-spin"/> : 'Add Rule'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Rules table */}
+                {routingRulesLoading ? (
+                  <div className="h-24 bg-gray-100 animate-pulse rounded"/>
+                ) : !routingRulesData?.rules?.length ? (
+                  <div className="text-sm text-gray-400 py-8 text-center border-2 border-dashed rounded-lg">No routing rules yet. Add rules above to enable auto-routing.</div>
+                ) : (
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <tr className="text-gray-500">
+                        <th className="text-left p-2">P</th><th className="text-left p-2">Division</th>
+                        <th className="text-left p-2">Amount Range</th><th className="text-left p-2">Queue</th>
+                        <th className="text-left p-2">Assign To</th><th className="text-left p-2">Status</th>
+                      </tr>
+                    </thead><tbody>
+                      {routingRulesData.rules.map((r: any) => (
+                        <tr key={r.id} className={`border-t ${r.enabled ? 'hover:bg-gray-50' : 'opacity-50 bg-gray-50'}`}>
+                          <td className="p-2 font-bold text-teal-600">{r.priority}</td>
+                          <td className="p-2 font-mono text-gray-600">{r.divisionCode ?? 'All'}</td>
+                          <td className="p-2">
+                            {r.minAmountCents > 0 && `≥₪${(r.minAmountCents/100).toFixed(0)}`}
+                            {r.maxAmountCents && ` — ≤₪${(r.maxAmountCents/100).toFixed(0)}`}
+                            {!r.minAmountCents && !r.maxAmountCents && 'Any'}
+                          </td>
+                          <td className="p-2 text-teal-700 font-medium">{r.queueName ?? '—'}</td>
+                          <td className="p-2 font-mono text-gray-500 truncate max-w-24">{r.assignToUid ?? '—'}</td>
+                          <td className="p-2">
+                            <button onClick={() => toggleRule({ id: r.id, enabled: !r.enabled })}
+                              className={`text-xs px-1.5 py-0.5 rounded ${r.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                              {r.enabled ? 'Active' : 'Off'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody></table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* 3.4D — CONTROL CENTER                                         */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          <TabsContent value="control-center" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <LayoutDashboard className="w-4 h-4 text-indigo-600" /> Finance Control Center
+                  </CardTitle>
+                  <button onClick={() => refetchControlCenter()}
+                    className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                    <RefreshCcw className="w-3 h-3"/> Refresh
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {controlCenterLoading ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {[...Array(6)].map((_,i)=><div key={i} className="h-24 bg-gray-100 animate-pulse rounded-lg"/>)}
+                  </div>
+                ) : !controlCenterData?.ok ? (
+                  <div className="text-sm text-gray-400 py-8 text-center border-2 border-dashed rounded-lg">Failed to load control center</div>
+                ) : (
+                  <>
+                    <div className="text-xs text-gray-400 mb-3">Updated: {new Date(controlCenterData.generatedAt).toLocaleString('he-IL')}</div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {Object.entries(controlCenterData.widgets).map(([key, w]: [string, any]) => {
+                        const statusColor = w.status === 'critical' ? 'border-red-300 bg-red-50' : w.status === 'warning' ? 'border-amber-300 bg-amber-50' : w.status === 'closed' ? 'border-green-300 bg-green-50' : 'border-green-200 bg-green-50';
+                        const textColor = w.status === 'critical' ? 'text-red-700' : w.status === 'warning' ? 'text-amber-700' : 'text-green-700';
+                        return (
+                          <div key={key} className={`border-2 rounded-lg p-4 text-center cursor-pointer hover:shadow-sm transition-shadow ${statusColor}`}>
+                            <div className={`text-2xl font-bold ${textColor}`}>
+                              {w.valueCents !== undefined ? `₪${(w.valueCents/100).toLocaleString('he-IL',{minimumFractionDigits:0,maximumFractionDigits:0})}` :
+                               w.count      !== undefined ? w.count :
+                               w.status === 'closed' ? '✓' : '–'}
+                            </div>
+                            <div className="text-xs text-gray-600 mt-1">{w.label}</div>
+                            {w.closedAt && <div className="text-xs text-gray-400 mt-0.5">{new Date(w.closedAt).toLocaleTimeString('he-IL')}</div>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* 3.4E — EXECUTIVE KPI SNAPSHOTS                                */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          <TabsContent value="executive" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-emerald-600" /> Executive KPI Snapshot
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    {(['daily','weekly','monthly'] as const).map(p => (
+                      <button key={p} onClick={() => { setExecPeriod(p); }}
+                        className={`text-xs px-2.5 py-1 rounded border capitalize ${execPeriod === p ? 'bg-emerald-600 text-white border-emerald-600' : 'border-gray-300 hover:border-emerald-400'}`}>{p}</button>
+                    ))}
+                    <button onClick={() => refetchExecKpi()} className="text-xs px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700">Load</button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {execKpiLoading ? (
+                  <div className="space-y-2">{[...Array(5)].map((_,i)=><div key={i} className="h-14 bg-gray-100 animate-pulse rounded"/>)}</div>
+                ) : !execKpiData?.ok ? (
+                  <div className="text-sm text-gray-400 py-8 text-center border-2 border-dashed rounded-lg">Select period and click Load</div>
+                ) : (() => {
+                  const k = execKpiData.kpi;
+                  return (
+                    <>
+                      <div className="text-xs text-gray-400 mb-3">Period: {k.period} from {k.fromDate}</div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                        {[
+                          { label: 'Gross Collected', value: `₪${(k.grossCents/100).toLocaleString('he-IL',{minimumFractionDigits:0})}`, color: 'text-blue-700' },
+                          { label: 'Net Margin',       value: `${k.marginPct}%`,     color: parseFloat(k.marginPct) > 15 ? 'text-green-700' : 'text-amber-700' },
+                          { label: 'VAT Liability',    value: `₪${(k.vatCents/100).toLocaleString('he-IL',{minimumFractionDigits:0})}`, color: 'text-purple-700' },
+                          { label: 'Payouts',          value: `₪${(k.payoutsCents/100).toLocaleString('he-IL',{minimumFractionDigits:0})}`, color: 'text-orange-700' },
+                          { label: 'Refund Rate',      value: `${k.refundRatePct}%`, color: parseFloat(k.refundRatePct) > 5 ? 'text-red-700' : 'text-green-700' },
+                          { label: 'Dispute SLA Breach', value: `${k.disputeBreachRatePct}%`, color: k.disputeBreachRatePct > 10 ? 'text-red-700' : 'text-green-700' },
+                          { label: 'Recon Exceptions', value: k.reconExceptionsOpen, color: k.reconExceptionsOpen > 0 ? 'text-amber-700' : 'text-green-700' },
+                          { label: 'Sign-off Status',  value: k.signoffStatus, color: k.signoffStatus.startsWith('Signed') ? 'text-green-700' : 'text-amber-700' },
+                        ].map(t => (
+                          <div key={t.label} className="border rounded-lg p-3 text-center">
+                            <div className={`text-base font-bold ${t.color}`}>{t.value}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">{t.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {k.topRisks?.length > 0 && (
+                        <div className="border border-red-200 bg-red-50 rounded-lg p-3 mb-3">
+                          <div className="text-xs font-semibold text-red-700 mb-1.5">⚠ Key Risks</div>
+                          {k.topRisks.map((risk: string, i: number) => (
+                            <div key={i} className="text-xs text-red-700">• {risk}</div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="border border-emerald-200 bg-emerald-50 rounded-lg p-3 text-xs text-emerald-700">
+                        💡 {k.topImprovement}
+                      </div>
+                    </>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* 3.4F — ARCHIVE POLICIES                                       */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          <TabsContent value="archive" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Archive className="w-4 h-4 text-slate-600" /> Retention & Archive Policies
+                  </CardTitle>
+                  <button disabled={dryRunArchivePending} onClick={() => dryRunArchive()}
+                    className="text-xs px-3 py-1.5 bg-slate-600 text-white rounded hover:bg-slate-700 disabled:opacity-40 flex items-center gap-1">
+                    {dryRunArchivePending ? <Loader2 className="w-3 h-3 animate-spin"/> : <Eye className="w-3 h-3"/>} Dry-Run All
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                  ⚠ Archive Phase 3.4 is simulation-only. No records are deleted. All runs are recorded for audit.
+                </div>
+
+                {/* Policies */}
+                {archivePoliciesLoading ? (
+                  <div className="h-24 bg-gray-100 animate-pulse rounded"/>
+                ) : !archivePoliciesData?.policies?.length ? (
+                  <div className="text-sm text-gray-400 py-6 text-center border-2 border-dashed rounded-lg">No policies configured</div>
+                ) : (
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <tr className="text-gray-500">
+                        <th className="text-left p-2">Entity Type</th>
+                        <th className="text-right p-2">Archive After</th>
+                        <th className="text-right p-2">Retain For</th>
+                        <th className="text-left p-2">Notes</th>
+                        <th className="text-left p-2">Status</th>
+                      </tr>
+                    </thead><tbody>
+                      {archivePoliciesData.policies.map((p: any) => (
+                        <tr key={p.id} className="border-t hover:bg-gray-50">
+                          <td className="p-2 font-mono text-gray-700">{p.entityType}</td>
+                          <td className="p-2 text-right text-amber-700">{p.archiveAfterDays}d</td>
+                          <td className="p-2 text-right text-slate-700">{p.retentionDays}d</td>
+                          <td className="p-2 text-gray-500 max-w-48 truncate">{p.notes}</td>
+                          <td className="p-2">
+                            <span className={`px-1.5 py-0.5 rounded text-xs ${p.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                              {p.enabled ? 'Active' : 'Off'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody></table>
+                  </div>
+                )}
+
+                {/* Archive runs */}
+                <div>
+                  <div className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1">
+                    <History className="w-3 h-3"/> Recent Archive Runs
+                    <button onClick={() => refetchArchiveRuns()} className="ml-2 text-blue-600 hover:underline font-normal">Refresh</button>
+                  </div>
+                  {archiveRunsLoading ? (
+                    <div className="h-20 bg-gray-100 animate-pulse rounded"/>
+                  ) : !archiveRunsData?.runs?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No archive runs yet</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Entity</th><th className="text-left p-2">Ran</th><th className="text-left p-2">Status</th><th className="text-right p-2">Eligible</th></tr>
+                      </thead><tbody>
+                        {archiveRunsData.runs.slice(0,20).map((r: any) => (
+                          <tr key={r.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 font-mono text-gray-600">{r.entityType}</td>
+                            <td className="p-2 text-gray-500">{new Date(r.ranAt).toLocaleString('he-IL')}</td>
+                            <td className="p-2">
+                              <span className={`px-1.5 py-0.5 rounded text-xs ${r.status === 'dry_run' ? 'bg-blue-100 text-blue-700' : r.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{r.status}</span>
+                            </td>
+                            <td className="p-2 text-right text-gray-500">{r.movedCount}</td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* 3.4G — RECOVERY & REPLAY                                      */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          <TabsContent value="recovery" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <RefreshCcw className="w-4 h-4 text-rose-600" /> Disaster Recovery & Replay
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">
+                  ⚠ Replay Execute requires <strong>finance_admin</strong> role and only modifies derived state — never immutable financial facts. Always dry-run first.
+                </div>
+
+                {/* Replay type selector */}
+                <div className="border rounded-lg p-3 bg-gray-50">
+                  <div className="text-xs font-semibold text-gray-600 mb-2">Select Replay Type</div>
+                  <div className="space-y-1.5">
+                    {REPLAY_TYPES.map(rt => (
+                      <label key={rt} className="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="replayType" value={rt}
+                          checked={selectedReplayType === rt}
+                          onChange={() => setSelectedReplayType(rt)}
+                          className="w-3 h-3"/>
+                        <span className="text-xs font-mono text-gray-700">{rt}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <button disabled={dryRunPending} onClick={() => startDryRun(selectedReplayType)}
+                      className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40 flex items-center gap-1">
+                      {dryRunPending ? <Loader2 className="w-3 h-3 animate-spin"/> : <Eye className="w-3 h-3"/>} Dry-Run
+                    </button>
+                    <button disabled={executeReplayPending} onClick={() => executeReplay(selectedReplayType)}
+                      className="text-xs px-3 py-1.5 bg-rose-600 text-white rounded hover:bg-rose-700 disabled:opacity-40 flex items-center gap-1">
+                      {executeReplayPending ? <Loader2 className="w-3 h-3 animate-spin"/> : <PlayCircle className="w-3 h-3"/>} Execute
+                    </button>
+                    <button onClick={() => refetchReplayRuns()} className="text-xs px-3 py-1.5 border rounded hover:bg-gray-100 flex items-center gap-1">
+                      <RefreshCcw className="w-3 h-3"/> Refresh
+                    </button>
+                  </div>
+                </div>
+
+                {/* Replay runs history */}
+                {replayRunsLoading ? (
+                  <div className="space-y-2">{[...Array(3)].map((_,i)=><div key={i} className="h-16 bg-gray-100 animate-pulse rounded"/>)}</div>
+                ) : !replayRunsData?.runs?.length ? (
+                  <div className="text-sm text-gray-400 py-8 text-center border-2 border-dashed rounded-lg">
+                    No replay runs yet. Select a type and click Dry-Run to start.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {replayRunsData.runs.map((r: any) => (
+                      <div key={r.id} className={`border rounded-lg overflow-hidden ${r.status === 'completed' ? 'border-green-200' : r.status === 'failed' ? 'border-red-200' : 'border-blue-200'}`}>
+                        <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50"
+                          onClick={() => setExpandedReplayRun(expandedReplayRun === r.id ? null : r.id)}>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${r.dryRun ? 'bg-blue-100 text-blue-700' : 'bg-rose-100 text-rose-700'}`}>
+                              {r.dryRun ? 'DRY-RUN' : 'EXECUTE'}
+                            </span>
+                            <span className="text-xs font-mono text-gray-700">{r.replayType}</span>
+                            <span className={`px-1.5 py-0.5 rounded text-xs ${r.status === 'completed' ? 'bg-green-100 text-green-700' : r.status === 'running' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>{r.status}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <span>{new Date(r.startedAt).toLocaleString('he-IL')}</span>
+                            {r.appliedCount > 0 && <span className="text-rose-700 font-semibold">{r.appliedCount} applied</span>}
+                            <ChevronDown className={`w-3 h-3 transition-transform ${expandedReplayRun === r.id ? 'rotate-180' : ''}`}/>
+                          </div>
+                        </div>
+                        {expandedReplayRun === r.id && r.findingsJson?.findings && (
+                          <div className="border-t bg-gray-50 p-3">
+                            <div className="text-xs font-semibold text-gray-600 mb-1.5">Findings ({r.findingsJson.findings.length})</div>
+                            {r.findingsJson.findings.length === 0 ? (
+                              <div className="text-xs text-green-700">✓ No issues found</div>
+                            ) : (
+                              <div className="space-y-1 max-h-48 overflow-y-auto">
+                                {r.findingsJson.findings.map((f: any, i: number) => (
+                                  <div key={i} className="text-xs bg-white border rounded p-2 font-mono text-gray-700">
+                                    {JSON.stringify(f)}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

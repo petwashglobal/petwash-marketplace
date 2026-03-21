@@ -1472,7 +1472,7 @@ All endpoints under `/api/prestige-pass/admin/wallet/`. Admin-only. All schema c
 - `POST /admin/wallet/variance-commentary` — upsert (mutable, unlike sign-off); ≤2000 chars; audited
 - Frontend: Inline comment fields per metric inside variance card; dirty-state Save buttons per field
 
-## Phase 3.3 — Finance Operations Layer IV (IN PROGRESS)
+## Phase 3.3 — Finance Operations Layer IV (COMPLETE)
 
 ### Phase 3.3A — Reconciliation Exception Workflow (COMPLETE)
 - DB: `bank_reconciliation_exceptions` (upload_id, batch_id, provider_uid, raw_row JSONB, detected_reason, status CHECK(open|matched_manually|ignored|escalated), matched_payout_entry_id, assigned_admin_uid, resolution_note, resolved_at)
@@ -1517,3 +1517,52 @@ All endpoints under `/api/prestige-pass/admin/wallet/`. Admin-only. All schema c
 - `GET /admin/wallet/capabilities?roleName=...` — capabilities for role (or all roles grouped)
 - `POST /admin/wallet/capabilities` — grant/revoke capability (finance_admin only); audited
 - finance_write cannot grant monthly_signoff or finance_role_manage; finance_read has no write capabilities
+
+## Phase 3.4 — Automation, Forecasting & Executive Controls (COMPLETE)
+
+### Phase 3.4A — Cash Forecasting (COMPLETE)
+- `GET /admin/wallet/cash-forecast?horizon=7|14|30` — deterministic forecast with no DB mutations
+- Inputs: pending payout entries, open batches, pending refund approvals, 30-day avg VAT and gross from close records
+- Response: totals (payouts/refunds/VAT/netCashNeed) + per-day breakdown + assumptions array
+- DB: `cash_forecast_snapshots` (optional cache table; not currently written to on each request)
+- Frontend: "Forecast" tab; horizon selector (7/14/30d); 4 KPI tiles; day-by-day table; assumptions panel
+
+### Phase 3.4B — Payout Scheduling Automation (COMPLETE)
+- DB: `payout_schedules` (cadence: daily|weekly|fortnightly|monthly; minBatchNetCents; dayOfWeek/dayOfMonth) + `payout_schedule_runs`
+- `GET/POST/PATCH /admin/wallet/payout-schedules` — CRUD for schedules; all mutations audited
+- `POST /admin/wallet/payout-schedules/:id/run-now` — creates batch immediately if eligible entries exist; skips and logs if below threshold
+- `GET /admin/wallet/payout-schedules/runs` — run history (filterable by scheduleId)
+- Cron: every 15 min, checks enabled schedules; idempotency guard prevents double-batching within cadence window
+- Frontend: "Schedules" tab; create form; schedule list with enable/disable + run-now; recent runs table
+
+### Phase 3.4C — Dispute SLA Auto-Routing (COMPLETE)
+- DB: `dispute_routing_rules` (divisionCode, min/maxAmountCents, assignToUid, queueName, priority, enabled); dispute_cases extended with routing columns
+- `GET/POST/PATCH /admin/wallet/dispute-routing-rules` — CRUD; ordered by priority ascending
+- `POST /admin/wallet/disputes/:caseRef/route` — matches best rule by div+amount; fires finance_alert if unroutable; supports manual override via body params; audited
+- Frontend: "Routing" tab; manual route-by-ref input; add-rule form; rules table with enable/disable toggles
+
+### Phase 3.4D — Finance Control Center (COMPLETE)
+- `GET /admin/wallet/control-center` — single aggregation: cashNeeded, openBatchCount, pendingRefunds, openReconExceptions, criticalUnackedAlerts, todayCloseStatus
+- Each widget has: label, value/count, status (critical|warning|ok), link target tab
+- Frontend: "Control Center" tab; 6-widget grid with status-color borders; auto-refreshes every 60s; last-updated timestamp
+
+### Phase 3.4E — Executive KPI Snapshots (COMPLETE)
+- `GET /admin/wallet/executive-kpis?period=daily|weekly|monthly` — derives from finance_close_records, dispute_cases, refund_approvals, monthly_signoffs, finance_alerts
+- Returns: gross/net/VAT/commission/payouts/refunds, refundRatePct, marginPct, disputeBreachRatePct, reconExceptionsOpen, signoffStatus, criticalAlertsUnacked, topRisks[], topImprovement
+- Caches snapshot to `executive_kpi_snapshots` table (ON CONFLICT DO NOTHING)
+- Frontend: "Executive" tab; period selector; 8-tile KPI grid; risk callout panel (red); improvement suggestion (green)
+
+### Phase 3.4F — Retention & Archive Policy (COMPLETE)
+- DB: `finance_archive_policies` (entityType, retentionDays, archiveAfterDays, enabled) + `finance_archive_runs`; seeded with 5 default policies
+- `GET/POST/PATCH /admin/wallet/archive-policies` — CRUD; all mutations audited
+- `GET /admin/wallet/archive-runs` — run history
+- `POST /admin/wallet/archive-runs/dry-run` — simulation only; counts eligible rows per policy; writes dry_run entry to archive_runs; NO destructive deletes in 3.4
+- Frontend: "Archive" tab; warning banner (simulation-only); policies table; dry-run button; recent runs table
+
+### Phase 3.4G — Disaster Recovery & Replay (COMPLETE)
+- DB: `finance_replay_runs` (replayType, dryRun, status, findingsJson, appliedCount, initiatedBy)
+- 4 replay types: rebuild_payout_batch_totals, rebuild_remittance_status, rebuild_close_snapshots, recheck_reconciliation_links
+- `POST /admin/wallet/replay/dry-run` — async (202); writes run record; fires background replay; returns runId
+- `POST /admin/wallet/replay/execute` — finance_admin only; same logic with dryRun=false; only touches derived state never immutable facts
+- `GET /admin/wallet/replay-runs` — full history with findings JSON
+- Frontend: "Recovery" tab; replay type radio selector; dry-run + execute buttons; collapsible findings viewer per run
