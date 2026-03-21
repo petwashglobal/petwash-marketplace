@@ -640,6 +640,7 @@ export async function adminAdjustWallet(params: {
   adminId:        string;
   idempotencyKey: string;
   ipAddress?:     string | null;
+  reversalOf?:    string;
 }): Promise<{ txnId: string }> {
   await logFraudEvent({
     userId:    params.adminId,
@@ -698,7 +699,7 @@ export async function adminAdjustWallet(params: {
       counterpartyType: 'admin',
       counterpartyId:   params.adminId,
       createdBy:    params.adminId,
-      metadata:     { reason: params.reason, adminId: params.adminId } as any,
+      metadata:     { reason: params.reason, adminId: params.adminId, ...(params.reversalOf ? { reversalOf: params.reversalOf } : {}) } as any,
       previousHash: prevHash,
       entryHash:    eHash,
       createdAt:    now,

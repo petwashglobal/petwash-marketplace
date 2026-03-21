@@ -12575,3 +12575,20 @@ export const experimentDecisions = pgTable("experiment_decisions", {
   index("idx_exp_decisions_key").on(table.experimentKey),
 ]);
 export type ExperimentDecision = typeof experimentDecisions.$inferSelect;
+
+// ─── Admin Action Reversals ──────────────────────────────────────────────────
+// Immutable audit log of every admin-action reversal.
+// One row per original txnId — UNIQUE constraint prevents double-reversal at DB level.
+export const adminActionReversals = pgTable("admin_action_reversals", {
+  id:               serial("id").primaryKey(),
+  originalTxnId:    varchar("original_txn_id",    { length: 100 }).notNull().unique(),
+  reversedByTxnId:  varchar("reversed_by_txn_id", { length: 100 }),
+  adminUid:         varchar("admin_uid",           { length: 200 }).notNull(),
+  actionType:       varchar("action_type",         { length: 50  }).notNull(),
+  status:           varchar("status",              { length: 20  }).notNull().default("completed"),
+  createdAt:        timestamp("created_at").notNull().defaultNow(),
+  completedAt:      timestamp("completed_at"),
+  metadata:         jsonb("metadata").notNull().default({}),
+});
+export type AdminActionReversal       = typeof adminActionReversals.$inferSelect;
+export type InsertAdminActionReversal = typeof adminActionReversals.$inferInsert;

@@ -136,6 +136,13 @@ export default function AdminWalletDashboard() {
   const [actionReason, setActionReason] = useState("");
   const [refundAmount, setRefundAmount] = useState("");
 
+  // ── Reversal modal ───────────────────────────────────────────────────────────
+  const [reverseModal, setReverseModal] = useState<{
+    txnId: string; source: string; amountCents: number; userId: string;
+  } | null>(null);
+  const [reverseReason, setReverseReason] = useState("");
+  const [reverseResult, setReverseResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
   // ── Adjustments filters ──────────────────────────────────────────────────────
   const [adjFrom, setAdjFrom]           = useState("");
   const [adjTo, setAdjTo]               = useState("");
@@ -395,6 +402,26 @@ export default function AdminWalletDashboard() {
     onError: (err) => {
       setSupportCreditConfirm(null);
       toast({ title: err?.detail ?? err?.error ?? "Credit failed", variant: "destructive" });
+    },
+  });
+
+  // ── Reversal mutation ────────────────────────────────────────────────────────
+  const { mutate: reverseAction, isPending: reversePending } = useMutation<any, any, { txnId: string; reason: string }>({
+    mutationFn: (vars) => apiRequest("POST", "/api/prestige-pass/admin/wallet/reverse-action", vars),
+    onSuccess: (data) => {
+      const amt = ((data.amountCents ?? 0) / 100).toFixed(2);
+      setReverseResult({ ok: true, msg: `הפעולה בוטלה — ₪${amt} הוחזרו (${data.reversalTxnId})` });
+      setReverseReason("");
+      queryClient.invalidateQueries({ queryKey: ["wallet-action-history"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/user-audit"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/finance-today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/anomalies"] });
+      toast({ title: `ביטול הצליח — ₪${amt}` });
+    },
+    onError: (err) => {
+      const msg = err?.error ?? err?.detail ?? "Reversal failed";
+      setReverseResult({ ok: false, msg });
+      toast({ title: msg, variant: "destructive" });
     },
   });
 
@@ -1365,18 +1392,37 @@ export default function AdminWalletDashboard() {
                                 </span>
                               </TableCell>
                               <TableCell>
-                                {row.bookingId && (
-                                  <button
-                                    className="text-xs text-gray-500 hover:text-gray-800 border border-gray-300 rounded px-1.5 py-0.5 flex items-center gap-1 whitespace-nowrap hover:bg-gray-50"
-                                    onClick={() => window.open(
-                                      `/api/prestige-pass/admin/wallet/audit-bundle/booking/${encodeURIComponent(row.bookingId)}`,
-                                      '_blank'
-                                    )}
-                                    title="Download signed audit bundle for this booking"
-                                  >
-                                    <FileDown className="w-3 h-3" /> Bundle
-                                  </button>
-                                )}
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {row.bookingId && (
+                                    <button
+                                      className="text-xs text-gray-500 hover:text-gray-800 border border-gray-300 rounded px-1.5 py-0.5 flex items-center gap-1 whitespace-nowrap hover:bg-gray-50"
+                                      onClick={() => window.open(
+                                        `/api/prestige-pass/admin/wallet/audit-bundle/booking/${encodeURIComponent(row.bookingId)}`,
+                                        '_blank'
+                                      )}
+                                      title="Download signed audit bundle for this booking"
+                                    >
+                                      <FileDown className="w-3 h-3" /> Bundle
+                                    </button>
+                                  )}
+                                  {row.reversed ? (
+                                    <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-medium" title={row.reversedByTxnId ?? ""}>בוטל</span>
+                                  ) : (() => {
+                                    const isReversible = (row.source === 'admin_credit' || row.source === 'admin_debit') && !!row.adminUid;
+                                    const ageMs = Date.now() - new Date(row.createdAt).getTime();
+                                    const withinWindow = ageMs <= 24 * 60 * 60 * 1000;
+                                    if (!isReversible || !withinWindow) return null;
+                                    return (
+                                      <button
+                                        className="text-xs text-rose-600 hover:text-rose-800 border border-rose-300 rounded px-1.5 py-0.5 flex items-center gap-1 whitespace-nowrap hover:bg-rose-50"
+                                        onClick={() => { setReverseModal({ txnId: row.txnId, source: row.source, amountCents: row.amountCents, userId: row.userId }); setReverseReason(""); setReverseResult(null); }}
+                                        title="Reverse this admin action (within 24h)"
+                                      >
+                                        ↩ בטל
+                                      </button>
+                                    );
+                                  })()}
+                                </div>
                               </TableCell>
                             </TableRow>
                           );
@@ -2458,6 +2504,79 @@ export default function AdminWalletDashboard() {
               Force Cancel
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Reverse Admin Action Modal ──────────────────────────────────────────── */}
+      <Dialog open={!!reverseModal} onOpenChange={(open) => { if (!open) { setReverseModal(null); setReverseResult(null); setReverseReason(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-700">
+              ↩ ביטול פעולת אדמין
+            </DialogTitle>
+          </DialogHeader>
+          {reverseModal && (
+            <div className="space-y-4">
+              <div className="bg-rose-50 border border-rose-200 rounded p-3 text-sm space-y-1">
+                <p><span className="font-medium">עסקה:</span> <code className="text-xs font-mono">{reverseModal.txnId}</code></p>
+                <p><span className="font-medium">סוג:</span> {reverseModal.source === 'admin_credit' ? 'זיכוי ידני' : 'חיוב ידני'}</p>
+                <p><span className="font-medium">סכום:</span> ₪{(reverseModal.amountCents / 100).toFixed(2)}</p>
+                <p><span className="font-medium">משתמש:</span> <code className="text-xs font-mono">{reverseModal.userId.slice(0, 20)}…</code></p>
+                <p className="text-rose-700 font-medium mt-2">
+                  ביטול יוצר פעולה הפוכה בארנק. לא ניתן לבטל פעמיים.
+                </p>
+              </div>
+              {reverseResult && (
+                <div className={`text-sm px-3 py-2 rounded border ${reverseResult.ok ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                  {reverseResult.msg}
+                </div>
+              )}
+              {!reverseResult?.ok && (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">סיבה לביטול <span className="text-red-500">*</span></label>
+                    <textarea
+                      className="w-full border rounded p-2 text-sm resize-none"
+                      rows={2}
+                      placeholder="הסבר מדוע הפעולה מבוטלת..."
+                      value={reverseReason}
+                      onChange={(e) => setReverseReason(e.target.value)}
+                      disabled={reversePending}
+                    />
+                    {reverseReason.trim().length > 0 && reverseReason.trim().length < 5 && (
+                      <p className="text-xs text-red-500">הסיבה חייבת להכיל לפחות 5 תווים</p>
+                    )}
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      className="px-4 py-2 text-sm border rounded hover:bg-gray-50"
+                      onClick={() => { setReverseModal(null); setReverseReason(""); setReverseResult(null); }}
+                      disabled={reversePending}
+                    >
+                      ביטול
+                    </button>
+                    <button
+                      className="px-4 py-2 text-sm bg-rose-600 text-white rounded hover:bg-rose-700 disabled:opacity-50"
+                      disabled={reversePending || reverseReason.trim().length < 5}
+                      onClick={() => reverseAction({ txnId: reverseModal.txnId, reason: reverseReason.trim() })}
+                    >
+                      {reversePending ? "מבצע ביטול…" : "אשר ביטול"}
+                    </button>
+                  </div>
+                </>
+              )}
+              {reverseResult?.ok && (
+                <div className="flex justify-end">
+                  <button
+                    className="px-4 py-2 text-sm border rounded hover:bg-gray-50"
+                    onClick={() => { setReverseModal(null); setReverseResult(null); setReverseReason(""); }}
+                  >
+                    סגור
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

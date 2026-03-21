@@ -29,7 +29,7 @@ import { nanoid } from 'nanoid';
 import rateLimit from 'express-rate-limit';
 import { db as firestoreDb, auth as firebaseAuth } from '../lib/firebase-admin';
 import { db } from '../db';
-import { walletAccounts, creditTransactions, walletLedgerEntries, walletReconciliationRuns } from '@shared/schema';
+import { walletAccounts, creditTransactions, walletLedgerEntries, walletReconciliationRuns, adminActionReversals } from '@shared/schema';
 import { eq, desc, and, sql, gte, lte } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
@@ -4236,24 +4236,26 @@ async function queryActionHistory(filters: {
   balanceAfterCents: number | null;
   reason: string | null;
   createdAt: string;
+  reversed: boolean;
+  reversedByTxnId: string | null;
 }>> {
   const conditions: any[] = [];
 
   // Only admin-originated rows
   conditions.push(sql`(
-    event_type IN ('admin_credit', 'admin_debit')
-    OR (metadata->>'adminId' IS NOT NULL AND metadata->>'adminId' != '')
+    e.event_type IN ('admin_credit', 'admin_debit')
+    OR (e.metadata->>'adminId' IS NOT NULL AND e.metadata->>'adminId' != '')
   )`);
 
-  if (filters.divisionCode) conditions.push(sql`division_code = ${filters.divisionCode}`);
-  if (filters.adminUid)    conditions.push(sql`(metadata->>'adminId' = ${filters.adminUid} OR created_by = ${filters.adminUid})`);
-  if (filters.userId)      conditions.push(sql`user_id = ${filters.userId}`);
-  if (filters.bookingId)   conditions.push(sql`booking_id = ${filters.bookingId}`);
-  if (filters.from)        conditions.push(sql`created_at >= ${new Date(filters.from)}`);
+  if (filters.divisionCode) conditions.push(sql`e.division_code = ${filters.divisionCode}`);
+  if (filters.adminUid)    conditions.push(sql`(e.metadata->>'adminId' = ${filters.adminUid} OR e.created_by = ${filters.adminUid})`);
+  if (filters.userId)      conditions.push(sql`e.user_id = ${filters.userId}`);
+  if (filters.bookingId)   conditions.push(sql`e.booking_id = ${filters.bookingId}`);
+  if (filters.from)        conditions.push(sql`e.created_at >= ${new Date(filters.from)}`);
   if (filters.to) {
     const toDate = new Date(filters.to);
     toDate.setDate(toDate.getDate() + 1);
-    conditions.push(sql`created_at < ${toDate}`);
+    conditions.push(sql`e.created_at < ${toDate}`);
   }
 
   const whereClause = conditions.reduce((acc, cond, i) =>
@@ -4263,20 +4265,23 @@ async function queryActionHistory(filters: {
 
   const rows: any = await db.execute(sql`
     SELECT
-      entry_id                                         AS txn_id,
-      COALESCE(metadata->>'adminId', created_by)       AS admin_uid,
-      user_id,
-      booking_id,
-      division_code,
-      COALESCE(metadata->>'actorSource', event_type)   AS source,
-      amount_cents,
-      balance_after_cents,
-      metadata->>'reason'                              AS reason,
-      created_at
-    FROM wallet_ledger_entries
+      e.entry_id                                          AS txn_id,
+      COALESCE(e.metadata->>'adminId', e.created_by)     AS admin_uid,
+      e.user_id,
+      e.booking_id,
+      e.division_code,
+      COALESCE(e.metadata->>'actorSource', e.event_type) AS source,
+      e.amount_cents,
+      e.balance_after_cents,
+      e.metadata->>'reason'                              AS reason,
+      e.created_at,
+      CASE WHEN r.original_txn_id IS NOT NULL THEN true ELSE false END AS reversed,
+      r.reversed_by_txn_id
+    FROM wallet_ledger_entries e
+    LEFT JOIN admin_action_reversals r ON r.original_txn_id = e.entry_id
     WHERE ${whereClause}
-      AND direction = 'credit'
-    ORDER BY created_at DESC
+      AND e.direction = 'credit'
+    ORDER BY e.created_at DESC
     LIMIT ${lim}
   `);
 
@@ -4291,6 +4296,8 @@ async function queryActionHistory(filters: {
     balanceAfterCents: r.balance_after_cents != null ? Number(r.balance_after_cents) : null,
     reason:            r.reason             ?? null,
     createdAt:         r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+    reversed:          r.reversed === true || r.reversed === 'true',
+    reversedByTxnId:   r.reversed_by_txn_id ?? null,
   }));
 }
 
@@ -4790,6 +4797,157 @@ router.get('/admin/wallet/anomalies', async (req: Request, res: Response) => {
   } catch (err: any) {
     logger.error('[AdminWallet][Anomalies] error', { error: err.message });
     return res.status(500).json({ error: 'Failed to fetch anomalies', detail: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /api/prestige-pass/admin/wallet/reverse-action
+// Reverses a single admin-originated ledger entry (admin_credit or admin_debit).
+// Guards: adminId must exist in metadata, within 24h, not already reversed.
+// Issues the inverse adjustment, inserts admin_action_reversals row.
+// ──────────────────────────────────────────────────────────────────────────────
+router.post('/admin/wallet/reverse-action', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const schema = z.object({
+      txnId:  z.string().min(1),
+      reason: z.string().min(5, 'Reason must be at least 5 characters'),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(422).json({ error: 'Validation failed', details: parsed.error.flatten() });
+
+    const { txnId, reason } = parsed.data;
+
+    // ── 1. Fetch the original ledger entry ────────────────────────────────────
+    const [original] = await db
+      .select()
+      .from(walletLedgerEntries)
+      .where(eq(walletLedgerEntries.entryId, txnId))
+      .limit(1);
+
+    if (!original) return res.status(404).json({ error: 'Transaction not found', txnId });
+
+    // ── 2. Must be admin-originated ───────────────────────────────────────────
+    const meta = (original.metadata as any) ?? {};
+    if (!meta.adminId) {
+      return res.status(422).json({ error: 'Transaction was not admin-originated and cannot be reversed' });
+    }
+
+    // ── 3. Must be reversible event type ─────────────────────────────────────
+    const reversibleTypes = ['admin_credit', 'admin_debit'];
+    if (!reversibleTypes.includes(original.eventType)) {
+      return res.status(422).json({ error: `Event type '${original.eventType}' is not reversible. Only admin_credit and admin_debit can be reversed.` });
+    }
+
+    // ── 4. Must be within 24h ─────────────────────────────────────────────────
+    const ageMs = Date.now() - new Date(original.createdAt).getTime();
+    if (ageMs > 24 * 60 * 60 * 1000) {
+      return res.status(422).json({ error: 'Cannot reverse — action is older than 24 hours', createdAt: original.createdAt });
+    }
+
+    // ── 5. Must not already be reversed ──────────────────────────────────────
+    const [existingReversal] = await db
+      .select()
+      .from(adminActionReversals)
+      .where(eq(adminActionReversals.originalTxnId, txnId))
+      .limit(1);
+
+    if (existingReversal) {
+      return res.status(409).json({
+        error: 'This action has already been reversed',
+        reversedByTxnId: existingReversal.reversedByTxnId,
+        reversedAt: existingReversal.createdAt,
+      });
+    }
+
+    // ── 6. Determine inverse type and wallet ──────────────────────────────────
+    const inverseType = original.eventType === 'admin_credit' ? 'debit' : 'credit';
+
+    const walletRow: any = await db.execute(sql`
+      SELECT wallet_id FROM wallet_accounts WHERE user_id = ${original.userId} LIMIT 1
+    `);
+    const walletId = (walletRow?.rows ?? walletRow ?? [])[0]?.wallet_id;
+    if (!walletId) return res.status(404).json({ error: 'Wallet not found for user', userId: original.userId });
+
+    // ── 7. Issue inverse adjustment ───────────────────────────────────────────
+    const { adminAdjustWallet } = await import('../services/WalletLedger');
+    const idempKey = `wallet:admin:reversal:${txnId}`;
+    const { txnId: reversalTxnId } = await adminAdjustWallet({
+      userId:         original.userId,
+      walletId,
+      amountCents:    original.amountCents,
+      type:           inverseType,
+      reason:         `REVERSAL of ${txnId}: ${reason}`,
+      adminId:        uid,
+      idempotencyKey: idempKey,
+      reversalOf:     txnId,
+    });
+
+    // ── 8. Write audit row ────────────────────────────────────────────────────
+    const now = new Date();
+    await db.insert(adminActionReversals).values({
+      originalTxnId:   txnId,
+      reversedByTxnId: reversalTxnId,
+      adminUid:        uid,
+      actionType:      original.eventType,
+      status:          'completed',
+      createdAt:       now,
+      completedAt:     now,
+      metadata:        { reason, originalAdminId: meta.adminId, originalAmountCents: original.amountCents } as any,
+    });
+
+    // ── 9. Wallet snapshot ────────────────────────────────────────────────────
+    const snapRow: any = await db.execute(sql`
+      SELECT cash_wallet_balance_cents,
+             egift_wallet_balance_cents,
+             promo_wallet_balance_cents,
+             referral_wallet_balance_cents,
+             pending_balance_cents,
+             points_balance
+      FROM wallet_accounts WHERE user_id = ${original.userId} LIMIT 1
+    `);
+    const snap = (snapRow?.rows ?? snapRow ?? [])[0] ?? {};
+    const walletSnapshot = {
+      cashCents:     Number(snap.cash_wallet_balance_cents  ?? 0),
+      egiftCents:    Number(snap.egift_wallet_balance_cents ?? 0),
+      promoCents:    Number(snap.promo_wallet_balance_cents ?? 0),
+      referralCents: Number(snap.referral_wallet_balance_cents ?? 0),
+      pendingCents:  Number(snap.pending_balance_cents      ?? 0),
+      points:        Number(snap.points_balance             ?? 0),
+    };
+
+    logger.info('[AdminWallet][ReverseAction] completed', {
+      originalTxnId: txnId,
+      reversalTxnId,
+      adminUid: uid,
+      inverseType,
+      amountCents: original.amountCents,
+    });
+
+    return res.json({
+      ok: true,
+      originalTxnId: txnId,
+      reversalTxnId,
+      inverseType,
+      amountCents: original.amountCents,
+      userId: original.userId,
+      walletSnapshot,
+    });
+  } catch (err: any) {
+    // Handle unique constraint violation (double-reverse race)
+    if (err.code === '23505' || (err.message ?? '').includes('unique')) {
+      return res.status(409).json({ error: 'This action has already been reversed (concurrent attempt)' });
+    }
+    // Insufficient balance on debit reversal
+    if ((err.message ?? '').includes('Insufficient cash balance')) {
+      return res.status(422).json({ error: 'Cannot reverse credit — user has insufficient balance for the matching debit', detail: err.message });
+    }
+    logger.error('[AdminWallet][ReverseAction] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to reverse action', detail: err.message });
   }
 });
 
