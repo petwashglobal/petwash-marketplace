@@ -1,0 +1,404 @@
+PHASE 3.3 - FINANCE OPERATIONS LAYER IV
+
+GOAL
+Move from operational maturity to audit-grade resilience, exception handling, and executive reporting.
+
+PRINCIPLES
+- no wallet-core changes
+- no mutation of original payout math
+- all exception handling is additive and auditable
+- all scheduled alerts are idempotent
+- all exports are deterministic
+- all integrity jobs are read-first and only mutate through explicit tracked workflows
+- permission tightening happens last, after workflows are stable
+
+==================================================
+3.3A - RECONCILIATION EXCEPTION WORKFLOW
+==================================================
+
+GOAL
+Give unmatched bank reconciliation rows a real lifecycle instead of leaving them stranded in upload results.
+
+DB
+Create table: bank_reconciliation_exceptions
+- id SERIAL PRIMARY KEY
+- upload_id INTEGER NOT NULL
+- batch_id VARCHAR(64) NOT NULL
+- provider_uid VARCHAR(128)
+- raw_row JSONB NOT NULL
+- detected_reason VARCHAR(64) NOT NULL
+- status VARCHAR(24) NOT NULL DEFAULT 'open'   // open | matched_manually | ignored | escalated
+- matched_payout_entry_id INTEGER
+- assigned_admin_uid VARCHAR(128)
+- resolution_note TEXT NOT NULL DEFAULT ''
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+- resolved_at TIMESTAMPTZ
+
+Indexes
+- upload_id
+- batch_id
+- status
+- provider_uid
+- created_at DESC
+
+BACKEND
+1. POST /api/prestige-pass/admin/wallet/payout-batches/:batchId/reconcile
+Extend existing upload flow:
+- matched rows still settle automatically
+- unmatched rows now create bank_reconciliation_exceptions entries
+
+2. GET /api/prestige-pass/admin/wallet/reconciliation-exceptions
+Filters:
+- status
+- batchId
+- providerUid
+- assignedAdminUid
+- from
+- to
+
+3. PATCH /api/prestige-pass/admin/wallet/reconciliation-exceptions/:id
+Actions:
+- assign
+- ignore
+- escalate
+- add note
+- manual match to payout entry
+
+4. POST /api/prestige-pass/admin/wallet/reconciliation-exceptions/:id/match
+Body:
+{
+  "payoutEntryId": 123,
+  "reason": "Matched by provider IBAN and amount"
+}
+Logic:
+- mark payout entry settled
+- mark exception matched_manually
+- write finance audit log
+
+FRONTEND
+AdminWalletDashboard
+- new "Recon Exceptions" tab
+- filter bar
+- table with status chips
+- right-side detail drawer
+- manual match action
+- assign / ignore / escalate actions
+- raw bank row viewer
+
+ACCEPTANCE
+- unmatched rows become exceptions automatically
+- manual match settles exactly one payout entry
+- ignored rows remain auditable
+- all changes appear in finance audit log
+
+==================================================
+3.3B - ALERT DIGESTS & ESCALATION LADDERS
+==================================================
+
+GOAL
+Turn passive alerts into a delivery system with escalation timing.
+
+DB
+Create table: finance_alert_deliveries
+- id SERIAL PRIMARY KEY
+- alert_id INTEGER NOT NULL
+- delivery_type VARCHAR(24) NOT NULL   // digest | escalation
+- recipient_uid VARCHAR(128)
+- recipient_email VARCHAR(255)
+- sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+- status VARCHAR(20) NOT NULL DEFAULT 'sent'   // sent | failed
+- error_detail TEXT NOT NULL DEFAULT ''
+
+Optional extension to finance_alerts:
+- escalated_at TIMESTAMPTZ
+- escalation_level INTEGER NOT NULL DEFAULT 0
+
+BACKEND JOBS
+1. Daily digest job
+- runs 07:30 IL
+- sends grouped finance alerts from prior day to finance_admin users
+- grouped by severity and type
+
+2. Escalation ladder job
+- runs every 30 min
+- if critical alert remains unacknowledged:
+  - after 30 min -> escalate level 1
+  - after 2h -> escalate level 2
+  - after 6h -> escalate level 3
+- sends email on each new escalation level only once
+
+ENDPOINTS
+- GET /api/prestige-pass/admin/wallet/alerts/delivery-log
+- POST /api/prestige-pass/admin/wallet/alerts/:id/escalate-now
+- GET /api/prestige-pass/admin/wallet/alerts/digest-preview
+
+FRONTEND
+Alerts card enhancements
+- escalation badge
+- delivery log drawer
+- "Send digest preview" action
+- "Escalate now" admin action for critical alerts
+
+ACCEPTANCE
+- unacked critical alert escalates only once per level
+- acknowledged alert stops escalating
+- digest contains grouped finance signals
+- delivery log shows each send attempt
+
+==================================================
+3.3C - SIGN-OFF EXPORT PACK
+==================================================
+
+GOAL
+Produce one downloadable pack for a signed-off month or day that finance can archive externally.
+
+BACKEND
+GET /api/prestige-pass/admin/wallet/monthly-signoff/:month/export
+and/or
+GET /api/prestige-pass/admin/wallet/finance-close/:date/signoff-pack
+
+Contents
+- finance close record
+- settlement summary
+- payout batch summary
+- reconciliation exception summary
+- dispute SLA summary
+- alerts summary
+- variance commentary
+- sign-off metadata
+- SHA-256 signature manifest
+
+Format
+- JSON pack first
+- optional ZIP later
+- deterministic key ordering
+
+FRONTEND
+Monthly Sign-off card
+- "Download Sign-off Pack" button once month is signed
+Finance Close panel
+- "Download Close Pack" button once day is closed
+
+ACCEPTANCE
+- pack hash reproducible
+- signed month exports same structure every time
+- includes sign-off metadata and commentary
+
+==================================================
+3.3D - PROVIDER SETTLEMENT SELF-SERVICE
+==================================================
+
+GOAL
+Reduce support tickets by letting providers see payout lifecycle themselves.
+
+BACKEND
+1. GET /api/prestige-pass/provider/wallet/settlement-status
+Returns:
+- open batches
+- exported batches
+- completed batches
+- remittance sent status
+- bank settled status by payout entry
+
+2. GET /api/prestige-pass/provider/wallet/remittance-log
+Provider-scoped remittance log
+
+3. GET /api/prestige-pass/provider/wallet/payout-batch/:batchId
+Provider-specific batch detail
+
+FRONTEND
+Provider Dashboard
+- new "Settlements" sub-section under Earnings
+- status chips:
+  - earned
+  - batched
+  - remittance_sent
+  - bank_settled
+- remittance history table
+- batch detail drawer
+
+ACCEPTANCE
+- provider can see if payout is merely batched vs actually bank-settled
+- provider remittance status matches admin remittance log
+
+==================================================
+3.3E - MONTHLY BOARD PACK
+==================================================
+
+GOAL
+Generate a management-grade summary for leadership, not just finance ops.
+
+BACKEND
+GET /api/prestige-pass/admin/wallet/board-pack?month=YYYY-MM
+
+Returns:
+- collected
+- net margin
+- VAT
+- payouts
+- remittances sent
+- reconciliation exception counts
+- dispute counts + SLA compliance
+- top variance movers
+- commentary rollup
+- sign-off state
+- key risks summary
+
+Optional:
+- export JSON
+- export CSV
+- export lightweight HTML report
+
+FRONTEND
+New "Board Pack" card in finance area
+- month picker
+- summary tiles
+- risk callout panel
+- export button
+
+ACCEPTANCE
+- board pack numbers reconcile to monthly pack and closes
+- risks and commentary appear in one view
+
+==================================================
+3.3F - CROSS-CHECK INTEGRITY JOBS
+==================================================
+
+GOAL
+Catch drift before finance staff do.
+
+JOBS
+1. Batch vs payout entry integrity
+- batch totals must equal sum of member payout entries
+
+2. Remittance vs completed batch integrity
+- completed batches should have remittance log coverage
+
+3. Reconciliation vs settled entries integrity
+- settled payout entries should map to reconciliation upload or manual match
+
+4. Monthly sign-off integrity
+- signed month should not contain open critical reconciliation exceptions
+
+5. Close-to-close continuity
+- previous close margin totals align with month aggregate
+
+OUTPUT
+- write finance_alerts on failure
+- optional record into integrity_job_runs table
+
+DB (optional but recommended)
+integrity_job_runs
+- id SERIAL PK
+- job_name VARCHAR(64)
+- started_at TIMESTAMPTZ
+- completed_at TIMESTAMPTZ
+- status VARCHAR(20)
+- findings_count INTEGER
+- summary JSONB
+
+FRONTEND
+AdminWalletDashboard
+- "Integrity" card or tab
+- last run per job
+- pass/fail badges
+- findings summary
+
+ACCEPTANCE
+- deliberate mismatch produces finance alert
+- clean runs remain visible for audit
+
+==================================================
+3.3G - PERMISSION HARDENING
+==================================================
+
+GOAL
+Tighten access now that workflows are complete.
+
+NEW PERMISSION MODEL
+Keep roles:
+- finance_read
+- finance_write
+- finance_admin
+
+Add per-capability guards:
+- payout_batch_create
+- payout_batch_reconcile
+- remittance_send
+- dispute_resolve
+- refund_approve
+- finance_close
+- monthly_signoff
+- finance_role_manage
+
+BACKEND
+- map each sensitive endpoint to capability
+- keep finance_admin as superuser
+- allow finance_write only where appropriate
+- forbid support from sign-off, reconciliation, remittance send, and role management
+
+DB (optional)
+finance_role_capabilities
+- role_name
+- capability
+This can stay code-mapped in 3.3 if you want lower complexity.
+
+FRONTEND
+- hide or disable buttons based on allowed capabilities returned from finance roles endpoint
+- clear "no permission" messaging instead of silent disappearance where needed
+
+ACCEPTANCE
+- finance_write cannot confirm monthly signoff
+- finance_read cannot mutate anything
+- role changes still logged in role_audit_log
+
+==================================================
+RECOMMENDED BUILD ORDER
+==================================================
+
+1. 3.3A - reconciliation exceptions
+2. 3.3B - alert digests and escalation ladders
+3. 3.3C - sign-off export pack
+4. 3.3D - provider settlement self-service
+5. 3.3E - monthly board pack
+6. 3.3F - cross-check integrity jobs
+7. 3.3G - permission hardening
+
+==================================================
+PARALLELIZATION
+==================================================
+
+Can build in parallel:
+- 3.3A + 3.3B
+- 3.3C + 3.3D
+- 3.3E + 3.3F after 3.3C is stable
+
+Do last:
+- 3.3G
+
+==================================================
+WHAT DOES NOT CHANGE
+==================================================
+
+- wallet hold / release / debit / refund architecture
+- payout batch math
+- existing finance close records
+- dispute case structure
+- refund approval logic
+- existing anomaly and alert core
+- existing audit bundle signature approach
+
+==================================================
+SUCCESS CRITERIA
+==================================================
+
+By the end of 3.3:
+- every unmatched bank row has a workflow
+- every critical alert can escalate through delivery
+- every closed or signed period has an exportable pack
+- providers can self-serve payout settlement visibility
+- management can download a board-ready finance pack
+- integrity jobs surface drift automatically
+- permissions are least-privilege and enforceable server-side
+
+This is the phase that takes the system from finance operations maturity to finance governance maturity.
