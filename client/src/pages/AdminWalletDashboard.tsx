@@ -46,7 +46,11 @@ import {
   TrendingUp,
   Clock,
   XCircle,
+  LifeBuoy,
 } from "lucide-react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Select,
   SelectContent,
@@ -91,6 +95,27 @@ const DIVISION_LABELS: Record<string, string> = {
   pettrek: "PetTrek",
   general: "General",
 };
+
+// ── Support Action Zod schemas ────────────────────────────────────────────────
+const releaseHoldSchema = z.object({
+  bookingId:   z.string().min(1, "Booking ID required"),
+  bookingType: z.enum(["marketplace", "academy"], { required_error: "Select booking type" }),
+  reason:      z.string().min(5, "Reason must be at least 5 characters"),
+});
+const issueRefundSchema = z.object({
+  bookingId:   z.string().min(1, "Booking ID required"),
+  bookingType: z.enum(["marketplace", "academy"], { required_error: "Select booking type" }),
+  amountIls:   z.coerce.number().min(0, "Amount must be ≥ 0"),
+  reason:      z.string().min(5, "Reason must be at least 5 characters"),
+});
+const supportCreditSchema = z.object({
+  userId:    z.string().min(1, "User ID required"),
+  amountIls: z.coerce.number().positive("Amount must be > 0").max(500, "Max ₪500 per credit"),
+  reason:    z.string().min(5, "Reason must be at least 5 characters"),
+});
+type ReleaseHoldVars  = z.infer<typeof releaseHoldSchema>;
+type IssueRefundVars  = z.infer<typeof issueRefundSchema>;
+type SupportCreditVars = z.infer<typeof supportCreditSchema>;
 
 export default function AdminWalletDashboard() {
   const { toast } = useToast();
@@ -280,6 +305,87 @@ export default function AdminWalletDashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/booking-audit"] });
     },
     onError: (err) => toast({ title: err?.message ?? "Force cancel failed", variant: "destructive" }),
+  });
+
+  // ── Support Actions (2.8C) ───────────────────────────────────────────────────
+  const releaseHoldForm = useForm<ReleaseHoldVars>({
+    resolver: zodResolver(releaseHoldSchema),
+    defaultValues: { bookingId: "", bookingType: "marketplace", reason: "" },
+  });
+  const issueRefundForm = useForm<IssueRefundVars>({
+    resolver: zodResolver(issueRefundSchema),
+    defaultValues: { bookingId: "", bookingType: "marketplace", amountIls: 0, reason: "" },
+  });
+  const supportCreditForm = useForm<SupportCreditVars>({
+    resolver: zodResolver(supportCreditSchema),
+    defaultValues: { userId: "", amountIls: 0, reason: "" },
+  });
+
+  const [releaseHoldConfirm, setReleaseHoldConfirm] = useState<ReleaseHoldVars | null>(null);
+  const [issueRefundConfirm, setIssueRefundConfirm] = useState<IssueRefundVars | null>(null);
+  const [supportCreditConfirm, setSupportCreditConfirm] = useState<SupportCreditVars | null>(null);
+
+  const [releaseHoldResult, setReleaseHoldResult] = useState<any>(null);
+  const [issueRefundResult, setIssueRefundResult] = useState<any>(null);
+  const [supportCreditResult, setSupportCreditResult] = useState<any>(null);
+
+  const { mutate: supportRelease, isPending: supportReleasePending } = useMutation<any, any, ReleaseHoldVars>({
+    mutationFn: (vars) => apiRequest("POST", "/api/prestige-pass/admin/wallet/support/release-hold", {
+      bookingId: vars.bookingId, bookingType: vars.bookingType, reason: vars.reason,
+    }),
+    onSuccess: (data) => {
+      setReleaseHoldResult(data);
+      setReleaseHoldConfirm(null);
+      releaseHoldForm.reset();
+      toast({ title: `Hold released — ₪${((data.releasedCents ?? 0) / 100).toFixed(2)} returned to wallet` });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/booking-audit"] });
+      queryClient.invalidateQueries({ queryKey: ["wallet-action-history"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/anomalies"] });
+    },
+    onError: (err) => {
+      setReleaseHoldConfirm(null);
+      toast({ title: err?.detail ?? err?.error ?? "Release failed", variant: "destructive" });
+    },
+  });
+
+  const { mutate: supportRefund, isPending: supportRefundPending } = useMutation<any, any, IssueRefundVars>({
+    mutationFn: (vars) => apiRequest("POST", "/api/prestige-pass/admin/wallet/support/issue-refund", {
+      bookingId: vars.bookingId, bookingType: vars.bookingType,
+      amountCents: vars.amountIls > 0 ? Math.round(vars.amountIls * 100) : 0,
+      reason: vars.reason,
+    }),
+    onSuccess: (data) => {
+      setIssueRefundResult(data);
+      setIssueRefundConfirm(null);
+      issueRefundForm.reset();
+      const label = data.actionTaken === "release" ? "Hold released (degraded)" : "Refund issued";
+      toast({ title: `${label} — ₪${((data.amountCents ?? 0) / 100).toFixed(2)}` });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/booking-audit"] });
+      queryClient.invalidateQueries({ queryKey: ["wallet-action-history"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/anomalies"] });
+    },
+    onError: (err) => {
+      setIssueRefundConfirm(null);
+      toast({ title: err?.detail ?? err?.error ?? "Refund failed", variant: "destructive" });
+    },
+  });
+
+  const { mutate: supportCredit, isPending: supportCreditPending } = useMutation<any, any, SupportCreditVars>({
+    mutationFn: (vars) => apiRequest("POST", "/api/prestige-pass/admin/wallet/support/credit", {
+      userId: vars.userId, amountCents: Math.round(vars.amountIls * 100), reason: vars.reason,
+    }),
+    onSuccess: (data) => {
+      setSupportCreditResult(data);
+      setSupportCreditConfirm(null);
+      supportCreditForm.reset();
+      toast({ title: `₪${((data.creditedCents ?? 0) / 100).toFixed(2)} credited to wallet` });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/user-audit"] });
+      queryClient.invalidateQueries({ queryKey: ["wallet-action-history"] });
+    },
+    onError: (err) => {
+      setSupportCreditConfirm(null);
+      toast({ title: err?.detail ?? err?.error ?? "Credit failed", variant: "destructive" });
+    },
   });
 
   // ── Admin Adjustments ────────────────────────────────────────────────────────
@@ -475,6 +581,10 @@ export default function AdminWalletDashboard() {
             <TabsTrigger value="export">
               <Download className="w-4 h-4 mr-2" />
               Export CSV
+            </TabsTrigger>
+            <TabsTrigger value="support">
+              <LifeBuoy className="w-4 h-4 mr-2" />
+              Support Actions
             </TabsTrigger>
           </TabsList>
 
@@ -1653,8 +1763,368 @@ export default function AdminWalletDashboard() {
 
           </TabsContent>
 
+          {/* ── SUPPORT ACTIONS ── */}
+          <TabsContent value="support" className="mt-4 space-y-4">
+
+            {/* Card 1 — Force Release Hold */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Unlock className="w-4 h-4 text-amber-600" /> Force Release Hold
+                </CardTitle>
+                <p className="text-sm text-gray-500">Release a stuck hold on a booking and return funds to the customer.</p>
+              </CardHeader>
+              <CardContent>
+                <form
+                  className="space-y-3"
+                  onSubmit={releaseHoldForm.handleSubmit((vals) => setReleaseHoldConfirm(vals))}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">Booking ID</label>
+                      <Input
+                        placeholder="REQ-… or TRN-…"
+                        {...releaseHoldForm.register("bookingId")}
+                        className={releaseHoldForm.formState.errors.bookingId ? "border-red-400" : ""}
+                      />
+                      {releaseHoldForm.formState.errors.bookingId && (
+                        <p className="text-xs text-red-500 mt-0.5">{releaseHoldForm.formState.errors.bookingId.message}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">Booking Type</label>
+                      <Controller
+                        control={releaseHoldForm.control}
+                        name="bookingType"
+                        render={({ field }) => (
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <SelectTrigger className={releaseHoldForm.formState.errors.bookingType ? "border-red-400" : ""}>
+                              <SelectValue placeholder="Select type…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="marketplace">Marketplace</SelectItem>
+                              <SelectItem value="academy">Academy</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Reason (required, min 5 chars)</label>
+                    <Textarea
+                      placeholder="e.g. Provider no-show confirmed by ops team…"
+                      {...releaseHoldForm.register("reason")}
+                      className={`text-sm ${releaseHoldForm.formState.errors.reason ? "border-red-400" : ""}`}
+                      rows={2}
+                    />
+                    {releaseHoldForm.formState.errors.reason && (
+                      <p className="text-xs text-red-500 mt-0.5">{releaseHoldForm.formState.errors.reason.message}</p>
+                    )}
+                  </div>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="gap-1 bg-amber-600 hover:bg-amber-700 text-white"
+                    disabled={supportReleasePending}
+                  >
+                    {supportReleasePending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Unlock className="w-3 h-3" />}
+                    Release Hold
+                  </Button>
+                </form>
+                {releaseHoldResult && (
+                  <div className="mt-3 p-3 rounded-lg border border-green-200 bg-green-50 text-sm space-y-1">
+                    <p className="font-medium text-green-800 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Hold Released</p>
+                    <p className="text-xs text-green-700">Released: <strong>{centsToILS(releaseHoldResult.releasedCents ?? 0)}</strong></p>
+                    <p className="text-xs font-mono text-green-600">TxnID: {releaseHoldResult.txnId}</p>
+                    {releaseHoldResult.idempotent && <p className="text-xs text-amber-600">⚠ Idempotent — already released</p>}
+                    {releaseHoldResult.walletSnapshot && (
+                      <p className="text-xs text-green-700">New cash balance: <strong>{centsToILS(releaseHoldResult.walletSnapshot.cashCents)}</strong></p>
+                    )}
+                    <button className="text-xs underline text-green-600" onClick={() => setReleaseHoldResult(null)}>Clear</button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Card 2 — Issue Refund */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <RotateCcw className="w-4 h-4 text-blue-600" /> Issue Refund
+                </CardTitle>
+                <p className="text-sm text-gray-500">Refund a debited booking. If the booking is still on hold, the system will automatically degrade to a release.</p>
+              </CardHeader>
+              <CardContent>
+                <form
+                  className="space-y-3"
+                  onSubmit={issueRefundForm.handleSubmit((vals) => setIssueRefundConfirm(vals))}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">Booking ID</label>
+                      <Input
+                        placeholder="REQ-… or TRN-…"
+                        {...issueRefundForm.register("bookingId")}
+                        className={issueRefundForm.formState.errors.bookingId ? "border-red-400" : ""}
+                      />
+                      {issueRefundForm.formState.errors.bookingId && (
+                        <p className="text-xs text-red-500 mt-0.5">{issueRefundForm.formState.errors.bookingId.message}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">Booking Type</label>
+                      <Controller
+                        control={issueRefundForm.control}
+                        name="bookingType"
+                        render={({ field }) => (
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <SelectTrigger className={issueRefundForm.formState.errors.bookingType ? "border-red-400" : ""}>
+                              <SelectValue placeholder="Select type…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="marketplace">Marketplace</SelectItem>
+                              <SelectItem value="academy">Academy</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">
+                      Amount (₪) — <span className="font-normal text-gray-500">leave 0 for full refundable amount</span>
+                    </label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0 = full amount"
+                      {...issueRefundForm.register("amountIls")}
+                      className={`max-w-xs ${issueRefundForm.formState.errors.amountIls ? "border-red-400" : ""}`}
+                    />
+                    {issueRefundForm.formState.errors.amountIls && (
+                      <p className="text-xs text-red-500 mt-0.5">{issueRefundForm.formState.errors.amountIls.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Reason (required, min 5 chars)</label>
+                    <Textarea
+                      placeholder="e.g. Customer disputes charge, service not delivered…"
+                      {...issueRefundForm.register("reason")}
+                      className={`text-sm ${issueRefundForm.formState.errors.reason ? "border-red-400" : ""}`}
+                      rows={2}
+                    />
+                    {issueRefundForm.formState.errors.reason && (
+                      <p className="text-xs text-red-500 mt-0.5">{issueRefundForm.formState.errors.reason.message}</p>
+                    )}
+                  </div>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="gap-1 bg-blue-600 hover:bg-blue-700 text-white"
+                    disabled={supportRefundPending}
+                  >
+                    {supportRefundPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                    Issue Refund
+                  </Button>
+                </form>
+                {issueRefundResult && (
+                  <div className="mt-3 p-3 rounded-lg border border-blue-200 bg-blue-50 text-sm space-y-1">
+                    <p className="font-medium text-blue-800 flex items-center gap-1">
+                      <CheckCircle2 className="w-4 h-4" />
+                      {issueRefundResult.actionTaken === "release" ? "Degraded to Release" : "Refund Issued"}
+                    </p>
+                    {issueRefundResult.actionTaken === "release" && (
+                      <p className="text-xs text-amber-700 font-medium">ℹ Booking was hold_active — release performed instead of refund</p>
+                    )}
+                    <p className="text-xs text-blue-700">Amount: <strong>{centsToILS(issueRefundResult.amountCents ?? 0)}</strong></p>
+                    <p className="text-xs font-mono text-blue-600">TxnID: {issueRefundResult.txnId}</p>
+                    {issueRefundResult.walletSnapshot && (
+                      <p className="text-xs text-blue-700">New cash balance: <strong>{centsToILS(issueRefundResult.walletSnapshot.cashCents)}</strong></p>
+                    )}
+                    <button className="text-xs underline text-blue-600" onClick={() => setIssueRefundResult(null)}>Clear</button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Card 3 — Manual Credit */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-green-600" /> Manual Credit
+                </CardTitle>
+                <p className="text-sm text-gray-500">Grant a one-off cash wallet credit directly to a user. Max ₪500 per action.</p>
+              </CardHeader>
+              <CardContent>
+                <form
+                  className="space-y-3"
+                  onSubmit={supportCreditForm.handleSubmit((vals) => setSupportCreditConfirm(vals))}
+                >
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">User ID (Firebase UID)</label>
+                    <Input
+                      placeholder="Firebase UID…"
+                      {...supportCreditForm.register("userId")}
+                      className={supportCreditForm.formState.errors.userId ? "border-red-400" : ""}
+                    />
+                    {supportCreditForm.formState.errors.userId && (
+                      <p className="text-xs text-red-500 mt-0.5">{supportCreditForm.formState.errors.userId.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Amount (₪) — max ₪500</label>
+                    <Input
+                      type="number"
+                      min="0.01"
+                      max="500"
+                      step="0.01"
+                      placeholder="e.g. 50"
+                      {...supportCreditForm.register("amountIls")}
+                      className={`max-w-xs ${supportCreditForm.formState.errors.amountIls ? "border-red-400" : ""}`}
+                    />
+                    {supportCreditForm.formState.errors.amountIls && (
+                      <p className="text-xs text-red-500 mt-0.5">{supportCreditForm.formState.errors.amountIls.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Reason (required, min 5 chars)</label>
+                    <Textarea
+                      placeholder="e.g. Goodwill gesture for app error on 2026-03-20…"
+                      {...supportCreditForm.register("reason")}
+                      className={`text-sm ${supportCreditForm.formState.errors.reason ? "border-red-400" : ""}`}
+                      rows={2}
+                    />
+                    {supportCreditForm.formState.errors.reason && (
+                      <p className="text-xs text-red-500 mt-0.5">{supportCreditForm.formState.errors.reason.message}</p>
+                    )}
+                  </div>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="gap-1 bg-green-600 hover:bg-green-700 text-white"
+                    disabled={supportCreditPending}
+                  >
+                    {supportCreditPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                    Credit Wallet
+                  </Button>
+                </form>
+                {supportCreditResult && (
+                  <div className="mt-3 p-3 rounded-lg border border-green-200 bg-green-50 text-sm space-y-1">
+                    <p className="font-medium text-green-800 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Credit Applied</p>
+                    <p className="text-xs text-green-700">Credited: <strong>{centsToILS(supportCreditResult.creditedCents ?? 0)}</strong></p>
+                    <p className="text-xs font-mono text-green-600">TxnID: {supportCreditResult.txnId}</p>
+                    {supportCreditResult.walletSnapshot && (
+                      <p className="text-xs text-green-700">New cash balance: <strong>{centsToILS(supportCreditResult.walletSnapshot.cashCents)}</strong></p>
+                    )}
+                    <button className="text-xs underline text-green-600" onClick={() => setSupportCreditResult(null)}>Clear</button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
         </Tabs>
       </div>
+
+      {/* ── Support: Release Hold Confirm ──────────────────────────────────────── */}
+      <Dialog open={!!releaseHoldConfirm} onOpenChange={(open) => !open && setReleaseHoldConfirm(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Unlock className="w-4 h-4 text-amber-600" /> Confirm Release Hold
+            </DialogTitle>
+          </DialogHeader>
+          {releaseHoldConfirm && (
+            <div className="space-y-3 py-2">
+              <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
+                Release the hold on booking <code className="font-mono text-xs">{releaseHoldConfirm.bookingId}</code> ({releaseHoldConfirm.bookingType}).
+                Funds will be returned to the customer's available balance.
+              </div>
+              <p className="text-xs text-gray-600"><span className="font-medium">Reason:</span> {releaseHoldConfirm.reason}</p>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setReleaseHoldConfirm(null)}>Cancel</Button>
+            <Button
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              disabled={supportReleasePending}
+              onClick={() => releaseHoldConfirm && supportRelease(releaseHoldConfirm)}
+            >
+              {supportReleasePending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Confirm Release
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Support: Issue Refund Confirm ──────────────────────────────────────── */}
+      <Dialog open={!!issueRefundConfirm} onOpenChange={(open) => !open && setIssueRefundConfirm(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RotateCcw className="w-4 h-4 text-blue-600" /> Confirm Issue Refund
+            </DialogTitle>
+          </DialogHeader>
+          {issueRefundConfirm && (
+            <div className="space-y-3 py-2">
+              <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-800">
+                Issue refund for booking <code className="font-mono text-xs">{issueRefundConfirm.bookingId}</code> ({issueRefundConfirm.bookingType}).
+                {issueRefundConfirm.amountIls > 0
+                  ? <> Amount: <strong>₪{issueRefundConfirm.amountIls.toFixed(2)}</strong>.</>
+                  : <> Full refundable amount will be returned.</>
+                }
+                {" "}If booking is still hold_active, the system will perform a release instead.
+              </div>
+              <p className="text-xs text-gray-600"><span className="font-medium">Reason:</span> {issueRefundConfirm.reason}</p>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIssueRefundConfirm(null)}>Cancel</Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={supportRefundPending}
+              onClick={() => issueRefundConfirm && supportRefund(issueRefundConfirm)}
+            >
+              {supportRefundPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Confirm Refund
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Support: Manual Credit Confirm ────────────────────────────────────── */}
+      <Dialog open={!!supportCreditConfirm} onOpenChange={(open) => !open && setSupportCreditConfirm(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="w-4 h-4 text-green-600" /> Confirm Manual Credit
+            </DialogTitle>
+          </DialogHeader>
+          {supportCreditConfirm && (
+            <div className="space-y-3 py-2">
+              <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
+                Credit <strong>₪{supportCreditConfirm.amountIls.toFixed(2)}</strong> to user{" "}
+                <code className="font-mono text-xs">{supportCreditConfirm.userId}</code>.
+                This will appear in the ledger and action history immediately.
+              </div>
+              <p className="text-xs text-gray-600"><span className="font-medium">Reason:</span> {supportCreditConfirm.reason}</p>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setSupportCreditConfirm(null)}>Cancel</Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white"
+              disabled={supportCreditPending}
+              onClick={() => supportCreditConfirm && supportCredit(supportCreditConfirm)}
+            >
+              {supportCreditPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Confirm Credit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Release Hold Modal ─────────────────────────────────────────────────── */}
       <Dialog open={!!releaseModal} onOpenChange={(open) => !open && setReleaseModal(null)}>

@@ -3495,6 +3495,326 @@ router.post('/admin/wallet/adjust', async (req: Request, res: Response) => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Support action helper — wallet snapshot after action
+// ──────────────────────────────────────────────────────────────────────────────
+async function fetchSupportWalletSnapshot(userId: string) {
+  const rows: any = await db.execute(sql`
+    SELECT cash_wallet_balance_cents, egift_balance_cents, promo_balance_cents,
+           referral_balance_cents, pending_balance_cents, loyalty_points_balance
+    FROM wallet_accounts WHERE user_id = ${userId} LIMIT 1
+  `);
+  const r = (rows?.rows ?? rows ?? [])[0];
+  if (!r) return null;
+  return {
+    cashCents:     Number(r.cash_wallet_balance_cents ?? 0),
+    egiftCents:    Number(r.egift_balance_cents ?? 0),
+    promoCents:    Number(r.promo_balance_cents ?? 0),
+    referralCents: Number(r.referral_balance_cents ?? 0),
+    pendingCents:  Number(r.pending_balance_cents ?? 0),
+    loyaltyPoints: Number(r.loyalty_points_balance ?? 0),
+  };
+}
+
+// Support action booking lookup — returns booking row + source table
+async function fetchSupportBooking(bookingId: string, bookingType: 'marketplace' | 'academy') {
+  if (bookingType === 'marketplace') {
+    const rows: any = await db.execute(sql`
+      SELECT request_id AS booking_id, owner_id AS user_id,
+             COALESCE(service_type, 'general') AS division_code,
+             finance_state, wallet_hold_cents, wallet_debited_cents, wallet_refunded_cents
+      FROM booking_requests WHERE request_id = ${bookingId} LIMIT 1
+    `);
+    const row = (rows?.rows ?? rows ?? [])[0] ?? null;
+    return row ? { booking: row, sourceTable: 'booking_requests' as const } : null;
+  } else {
+    const rows: any = await db.execute(sql`
+      SELECT booking_id, user_id, 'academy' AS division_code,
+             finance_state, wallet_hold_cents, wallet_debited_cents, wallet_refunded_cents
+      FROM trainer_bookings WHERE booking_id = ${bookingId} LIMIT 1
+    `);
+    const row = (rows?.rows ?? rows ?? [])[0] ?? null;
+    return row ? { booking: row, sourceTable: 'trainer_bookings' as const } : null;
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /api/prestige-pass/admin/wallet/support/release-hold
+// Support: force-release a stuck hold. Requires hold_active + hold > 0.
+// ──────────────────────────────────────────────────────────────────────────────
+router.post('/admin/wallet/support/release-hold', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const { bookingId, bookingType, reason } = req.body as {
+      bookingId: string; bookingType: 'marketplace' | 'academy'; reason: string;
+    };
+    if (!bookingId?.trim()) return res.status(400).json({ error: 'bookingId required' });
+    if (bookingType !== 'marketplace' && bookingType !== 'academy') {
+      return res.status(400).json({ error: 'bookingType must be "marketplace" or "academy"' });
+    }
+    if (!reason?.trim() || reason.trim().length < 5) {
+      return res.status(400).json({ error: 'reason must be at least 5 characters' });
+    }
+
+    const found = await fetchSupportBooking(bookingId.trim(), bookingType);
+    if (!found) return res.status(404).json({ error: 'Booking not found' });
+    const { booking, sourceTable } = found;
+
+    if (booking.finance_state !== 'hold_active') {
+      return res.status(422).json({
+        error: `Cannot release: finance_state is '${booking.finance_state}', expected 'hold_active'`,
+      });
+    }
+    const holdCents = Number(booking.wallet_hold_cents);
+    if (holdCents <= 0) return res.status(422).json({ error: 'No hold amount to release' });
+
+    const { walletService } = await import('../services/WalletService');
+    const result = await walletService.releaseBookingHold({
+      userId:               booking.user_id,
+      amountCents:          holdCents,
+      bookingId:            booking.booking_id,
+      divisionCode:         booking.division_code ?? 'general',
+      ipAddress:            req.ip,
+      idempotencyKeySuffix: `support:${bookingType}`,
+      metadata:             {
+        adminId: uid, reason,
+        source: 'support_action', supportAction: 'release_hold', bookingType,
+        actorSource: 'admin_release',
+      },
+    });
+
+    if (sourceTable === 'booking_requests') {
+      await db.execute(sql`
+        UPDATE booking_requests
+        SET finance_state = 'released', wallet_release_key = ${result.txnId}, updated_at = NOW()
+        WHERE request_id = ${booking.booking_id}
+      `);
+    } else {
+      await db.execute(sql`
+        UPDATE trainer_bookings
+        SET finance_state = 'released', wallet_release_key = ${result.txnId}, updated_at = NOW()
+        WHERE booking_id = ${booking.booking_id}
+      `);
+    }
+
+    logger.info('[Support][ReleaseHold] Hold released', {
+      bookingId, bookingType, holdCents, txnId: result.txnId,
+      idempotent: result.idempotent, adminUid: uid,
+    });
+
+    const walletSnapshot = await fetchSupportWalletSnapshot(booking.user_id);
+    return res.json({ ok: true, releasedCents: holdCents, txnId: result.txnId, idempotent: result.idempotent, walletSnapshot });
+  } catch (err: any) {
+    logger.error('[Support][ReleaseHold] error', { error: err.message });
+    return res.status(500).json({ error: 'Release failed', detail: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /api/prestige-pass/admin/wallet/support/issue-refund
+// Support: refund a debited booking, OR degrade to release if still hold_active.
+// amountCents = 0 means full refundable amount.
+// ──────────────────────────────────────────────────────────────────────────────
+router.post('/admin/wallet/support/issue-refund', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const { bookingId, bookingType, amountCents: rawAmount, reason } = req.body as {
+      bookingId: string; bookingType: 'marketplace' | 'academy'; amountCents?: number; reason: string;
+    };
+    if (!bookingId?.trim()) return res.status(400).json({ error: 'bookingId required' });
+    if (bookingType !== 'marketplace' && bookingType !== 'academy') {
+      return res.status(400).json({ error: 'bookingType must be "marketplace" or "academy"' });
+    }
+    if (!reason?.trim() || reason.trim().length < 5) {
+      return res.status(400).json({ error: 'reason must be at least 5 characters' });
+    }
+    if (rawAmount != null && rawAmount < 0) {
+      return res.status(400).json({ error: 'amountCents must be >= 0' });
+    }
+
+    const found = await fetchSupportBooking(bookingId.trim(), bookingType);
+    if (!found) return res.status(404).json({ error: 'Booking not found' });
+    const { booking, sourceTable } = found;
+
+    const supportMeta = {
+      adminId: uid, reason,
+      source: 'support_action', supportAction: 'issue_refund', bookingType,
+    };
+
+    // ── Smart degrade: hold_active → treat as release ───────────────────────
+    if (booking.finance_state === 'hold_active') {
+      const holdCents = Number(booking.wallet_hold_cents);
+      if (holdCents <= 0) return res.status(422).json({ error: 'No hold amount to release' });
+
+      const { walletService } = await import('../services/WalletService');
+      const result = await walletService.releaseBookingHold({
+        userId:               booking.user_id,
+        amountCents:          holdCents,
+        bookingId:            booking.booking_id,
+        divisionCode:         booking.division_code ?? 'general',
+        ipAddress:            req.ip,
+        idempotencyKeySuffix: `support:${bookingType}:refund-as-release`,
+        metadata:             { ...supportMeta, actorSource: 'admin_release', degradedToRelease: true },
+      });
+
+      if (sourceTable === 'booking_requests') {
+        await db.execute(sql`
+          UPDATE booking_requests
+          SET finance_state = 'released', wallet_release_key = ${result.txnId}, updated_at = NOW()
+          WHERE request_id = ${booking.booking_id}
+        `);
+      } else {
+        await db.execute(sql`
+          UPDATE trainer_bookings
+          SET finance_state = 'released', wallet_release_key = ${result.txnId}, updated_at = NOW()
+          WHERE booking_id = ${booking.booking_id}
+        `);
+      }
+
+      logger.info('[Support][IssueRefund] Degraded to release (hold_active)', {
+        bookingId, bookingType, holdCents, txnId: result.txnId, adminUid: uid,
+      });
+
+      const walletSnapshot = await fetchSupportWalletSnapshot(booking.user_id);
+      return res.json({
+        ok: true, actionTaken: 'release',
+        amountCents: holdCents, txnId: result.txnId,
+        idempotent: result.idempotent, walletSnapshot,
+      });
+    }
+
+    // ── Standard refund path: finance_state must be debited ─────────────────
+    if (booking.finance_state !== 'debited') {
+      return res.status(422).json({
+        error: `Cannot refund: finance_state is '${booking.finance_state}'. Expected 'debited' or 'hold_active'.`,
+      });
+    }
+
+    const debitedCents  = Number(booking.wallet_debited_cents);
+    const alreadyRefunded = Number(booking.wallet_refunded_cents ?? 0);
+    const maxRefundable = debitedCents - alreadyRefunded;
+    if (maxRefundable <= 0) return res.status(422).json({ error: 'Nothing left to refund' });
+
+    const refundCents = (rawAmount && rawAmount > 0)
+      ? Math.min(rawAmount, maxRefundable)
+      : maxRefundable;
+
+    const idempotencyKey = `wallet:support:refund:${bookingType}:${booking.booking_id}:${refundCents}`;
+    const { refundToWallet } = await import('../services/WalletLedger');
+    const result = await refundToWallet({
+      userId:         booking.user_id,
+      amountCents:    refundCents,
+      divisionCode:   booking.division_code ?? 'general',
+      sourceType:     'booking',
+      sourceId:       booking.booking_id,
+      idempotencyKey,
+      reason:         reason ?? 'support_refund',
+      ipAddress:      req.ip,
+      metadata:       { ...supportMeta, actorSource: 'admin_refund' },
+    });
+
+    const newRefunded = alreadyRefunded + refundCents;
+    const newState = newRefunded >= debitedCents ? 'refunded' : 'debited';
+
+    if (sourceTable === 'booking_requests') {
+      await db.execute(sql`
+        UPDATE booking_requests
+        SET finance_state = ${newState},
+            wallet_refunded_cents = ${newRefunded},
+            wallet_refund_key = ${result.txnId},
+            updated_at = NOW()
+        WHERE request_id = ${booking.booking_id}
+      `);
+    } else {
+      await db.execute(sql`
+        UPDATE trainer_bookings
+        SET finance_state = ${newState},
+            wallet_refunded_cents = ${newRefunded},
+            wallet_refund_key = ${result.txnId},
+            updated_at = NOW()
+        WHERE booking_id = ${booking.booking_id}
+      `);
+    }
+
+    logger.info('[Support][IssueRefund] Refund issued', {
+      bookingId, bookingType, refundCents, newState, txnId: result.txnId, adminUid: uid,
+    });
+
+    const walletSnapshot = await fetchSupportWalletSnapshot(booking.user_id);
+    return res.json({
+      ok: true, actionTaken: 'refund',
+      amountCents: refundCents, txnId: result.txnId, walletSnapshot,
+    });
+  } catch (err: any) {
+    logger.error('[Support][IssueRefund] error', { error: err.message });
+    return res.status(500).json({ error: 'Refund failed', detail: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /api/prestige-pass/admin/wallet/support/credit
+// Support: grant manual wallet credit. amountCents 1..50000.
+// Idempotent per user + amount + day (ILS day window).
+// ──────────────────────────────────────────────────────────────────────────────
+router.post('/admin/wallet/support/credit', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const { userId, amountCents, reason } = req.body as {
+      userId: string; amountCents: number; reason: string;
+    };
+    if (!userId?.trim()) return res.status(400).json({ error: 'userId required' });
+    if (!amountCents || amountCents <= 0) return res.status(400).json({ error: 'amountCents must be > 0' });
+    if (amountCents > 50000) return res.status(400).json({ error: 'amountCents must be <= 50000 (₪500)' });
+    if (!reason?.trim() || reason.trim().length < 5) {
+      return res.status(400).json({ error: 'reason must be at least 5 characters' });
+    }
+
+    const { walletService } = await import('../services/WalletService');
+    const wallet = await walletService.getOrCreateWallet(userId.trim());
+
+    const daystamp = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' }).replace(/-/g, '');
+    const idempotencyKey = `wallet:support:credit:${userId}:${amountCents}:${daystamp}`;
+
+    const { adminAdjustWallet } = await import('../services/WalletLedger');
+    const result = await adminAdjustWallet({
+      userId:         userId.trim(),
+      walletId:       wallet.walletId,
+      amountCents,
+      type:           'credit',
+      reason,
+      adminId:        uid,
+      idempotencyKey,
+      ipAddress:      req.ip,
+    });
+
+    // Tag the ledger entry metadata retroactively via a no-op is not needed —
+    // queryActionHistory picks it up via event_type = 'admin_credit'.
+    // For audit bundle visibility, log the support_action context here:
+    logger.info('[Support][Credit] Manual credit granted', {
+      userId, amountCents, txnId: result.txnId, adminUid: uid,
+      source: 'support_action', supportAction: 'manual_credit',
+    });
+
+    const walletSnapshot = await fetchSupportWalletSnapshot(userId.trim());
+    return res.json({ ok: true, creditedCents: amountCents, txnId: result.txnId, walletSnapshot });
+  } catch (err: any) {
+    logger.error('[Support][Credit] error', { error: err.message });
+    return res.status(500).json({ error: 'Credit failed', detail: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // GET /api/prestige-pass/admin/wallet/finance-today
 // Returns today's revenue and pending holds by division (last 24h ledger debits).
 // ──────────────────────────────────────────────────────────────────────────────
