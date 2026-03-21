@@ -732,6 +732,19 @@ export default function AdminWalletDashboard() {
                           <span className="self-center text-xs text-gray-400 italic">Admin override</span>
                         </>
                       )}
+
+                      {/* Download signed bundle */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1 text-xs border-gray-400 text-gray-700 hover:bg-gray-50 ml-auto"
+                        onClick={() => window.open(
+                          `/api/prestige-pass/admin/wallet/audit-bundle/booking/${encodeURIComponent(auditData.booking?.bookingId ?? auditSearch)}`,
+                          '_blank'
+                        )}
+                      >
+                        <FileDown className="w-3 h-3" /> Download Bundle
+                      </Button>
                     </div>
 
                     {/* Ledger entries */}
@@ -817,7 +830,7 @@ export default function AdminWalletDashboard() {
                 {userAuditData?.wallet && (
                   <div className="space-y-4">
                     {/* Admin action buttons */}
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         size="sm"
                         variant="outline"
@@ -833,6 +846,17 @@ export default function AdminWalletDashboard() {
                         onClick={() => { setAdjustModal({ userId: auditUserSearch, type: "debit" }); setActionReason(""); setAdjustAmountIls(""); }}
                       >
                         <Minus className="w-3 h-3" /> Debit Wallet
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1 text-xs border-gray-400 text-gray-700 hover:bg-gray-50 ml-auto"
+                        onClick={() => window.open(
+                          `/api/prestige-pass/admin/wallet/audit-bundle/user/${encodeURIComponent(auditUserSearch)}`,
+                          '_blank'
+                        )}
+                      >
+                        <FileDown className="w-3 h-3" /> Download User Bundle
                       </Button>
                     </div>
 
@@ -1149,6 +1173,7 @@ export default function AdminWalletDashboard() {
                           <TableHead className="text-xs">Action</TableHead>
                           <TableHead className="text-xs text-right">Amount</TableHead>
                           <TableHead className="text-xs">Reason</TableHead>
+                          <TableHead className="text-xs"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1218,6 +1243,20 @@ export default function AdminWalletDashboard() {
                                 <span className="truncate block" title={row.reason ?? ""}>
                                   {row.reason ?? "—"}
                                 </span>
+                              </TableCell>
+                              <TableCell>
+                                {row.bookingId && (
+                                  <button
+                                    className="text-xs text-gray-500 hover:text-gray-800 border border-gray-300 rounded px-1.5 py-0.5 flex items-center gap-1 whitespace-nowrap hover:bg-gray-50"
+                                    onClick={() => window.open(
+                                      `/api/prestige-pass/admin/wallet/audit-bundle/booking/${encodeURIComponent(row.bookingId)}`,
+                                      '_blank'
+                                    )}
+                                    title="Download signed audit bundle for this booking"
+                                  >
+                                    <FileDown className="w-3 h-3" /> Bundle
+                                  </button>
+                                )}
                               </TableCell>
                             </TableRow>
                           );

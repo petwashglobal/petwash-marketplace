@@ -23,7 +23,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { createHmac, randomBytes } from 'crypto';
+import { createHash, createHmac, randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { nanoid } from 'nanoid';
 import rateLimit from 'express-rate-limit';
@@ -3882,9 +3882,25 @@ router.post('/admin/wallet/academy/:id/force-cancel', async (req: Request, res: 
 //   1. event_type IN ('admin_credit','admin_debit')   — adjust credit/debit
 //   2. metadata->>'adminId' IS NOT NULL               — release/refund/debit-from-hold
 // ──────────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────────
+// stableStringify — deterministic JSON for SHA-256 signing
+// Sorts object keys alphabetically, preserves array order, handles primitives.
+// ──────────────────────────────────────────────────────────────────────────────
+function stableStringify(value: unknown): string {
+  if (value === null || value === undefined) return JSON.stringify(value);
+  if (typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return '[' + value.map(stableStringify).join(',') + ']';
+  const sorted = Object.keys(value as object)
+    .sort()
+    .map(k => JSON.stringify(k) + ':' + stableStringify((value as any)[k]))
+    .join(',');
+  return '{' + sorted + '}';
+}
+
 async function queryActionHistory(filters: {
   divisionCode?: string;
   adminUid?: string;
+  userId?: string;
   bookingId?: string;
   from?: string;
   to?: string;
@@ -3911,6 +3927,7 @@ async function queryActionHistory(filters: {
 
   if (filters.divisionCode) conditions.push(sql`division_code = ${filters.divisionCode}`);
   if (filters.adminUid)    conditions.push(sql`(metadata->>'adminId' = ${filters.adminUid} OR created_by = ${filters.adminUid})`);
+  if (filters.userId)      conditions.push(sql`user_id = ${filters.userId}`);
   if (filters.bookingId)   conditions.push(sql`booking_id = ${filters.bookingId}`);
   if (filters.from)        conditions.push(sql`created_at >= ${new Date(filters.from)}`);
   if (filters.to) {
@@ -4047,6 +4064,264 @@ router.get('/admin/wallet/action-history/export', async (req: Request, res: Resp
   } catch (err: any) {
     logger.error('[AdminWallet][ActionHistoryExport] error', { error: err.message });
     return res.status(500).json({ error: 'Export failed', detail: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /api/prestige-pass/admin/wallet/audit-bundle/:subjectType/:subjectId
+// Downloads a tamper-evident signed JSON bundle for a booking or user wallet.
+// subjectType = "booking" | "user"
+// ──────────────────────────────────────────────────────────────────────────────
+router.get('/admin/wallet/audit-bundle/:subjectType/:subjectId', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { subjectType, subjectId } = req.params as { subjectType: string; subjectId: string };
+    if (!['booking', 'user'].includes(subjectType)) {
+      return res.status(400).json({ error: 'Invalid subjectType — must be "booking" or "user"' });
+    }
+
+    const generatedAt = new Date().toISOString();
+
+    // ── BOOKING BUNDLE ──────────────────────────────────────────────────────
+    if (subjectType === 'booking') {
+      // 1. Ledger entries for this booking
+      const ledgerRaw: any = await db.execute(sql`
+        SELECT
+          entry_id, user_id, booking_id, division_code, direction,
+          amount_cents, balance_after_cents, event_type, metadata,
+          created_at
+        FROM wallet_ledger_entries
+        WHERE booking_id = ${subjectId}
+        ORDER BY created_at ASC, entry_id ASC
+      `);
+      const ledgerEntries = (ledgerRaw?.rows ?? ledgerRaw ?? []).map((r: any) => ({
+        entryId:           r.entry_id,
+        userId:            r.user_id,
+        bookingId:         r.booking_id,
+        divisionCode:      r.division_code ?? null,
+        direction:         r.direction,
+        amountCents:       Number(r.amount_cents),
+        balanceAfterCents: r.balance_after_cents != null ? Number(r.balance_after_cents) : null,
+        eventType:         r.event_type,
+        metadata:          r.metadata ?? {},
+        createdAt:         r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+      }));
+
+      // 2. Booking snapshot — check booking_requests first, then trainer_bookings
+      let bookingSnapshot: any = null;
+      const brRaw: any = await db.execute(sql`
+        SELECT
+          request_id, owner_id, provider_id,
+          booking_status, finance_state,
+          wallet_hold_cents, wallet_debited_cents, wallet_refunded_cents,
+          wallet_hold_key, wallet_debit_key, wallet_release_key, wallet_refund_key,
+          created_at, updated_at
+        FROM booking_requests
+        WHERE request_id = ${subjectId}
+        LIMIT 1
+      `);
+      const brRow = (brRaw?.rows ?? brRaw ?? [])[0];
+      if (brRow) {
+        bookingSnapshot = {
+          bookingId:          brRow.request_id,
+          sourceTable:        'booking_requests',
+          userId:             brRow.owner_id,
+          providerId:         brRow.provider_id ?? null,
+          status:             brRow.booking_status ?? null,
+          financeState:       brRow.finance_state,
+          walletHoldCents:    Number(brRow.wallet_hold_cents ?? 0),
+          walletDebitedCents: Number(brRow.wallet_debited_cents ?? 0),
+          walletRefundedCents:Number(brRow.wallet_refunded_cents ?? 0),
+          walletHoldKey:      brRow.wallet_hold_key ?? null,
+          walletDebitKey:     brRow.wallet_debit_key ?? null,
+          walletReleaseKey:   brRow.wallet_release_key ?? null,
+          walletRefundKey:    brRow.wallet_refund_key ?? null,
+          createdAt:          brRow.created_at instanceof Date ? brRow.created_at.toISOString() : String(brRow.created_at),
+          updatedAt:          brRow.updated_at instanceof Date ? brRow.updated_at.toISOString() : String(brRow.updated_at),
+        };
+      } else {
+        const tbRaw: any = await db.execute(sql`
+          SELECT
+            booking_id, user_id, trainer_user_id,
+            booking_status, finance_state,
+            wallet_hold_cents, wallet_debited_cents, wallet_refunded_cents,
+            wallet_hold_key, wallet_debit_key, wallet_release_key, wallet_refund_key,
+            created_at, updated_at
+          FROM trainer_bookings
+          WHERE booking_id = ${subjectId}
+          LIMIT 1
+        `);
+        const tbRow = (tbRaw?.rows ?? tbRaw ?? [])[0];
+        if (tbRow) {
+          bookingSnapshot = {
+            bookingId:          tbRow.booking_id,
+            sourceTable:        'trainer_bookings',
+            userId:             tbRow.user_id,
+            providerId:         tbRow.trainer_user_id ?? null,
+            status:             tbRow.booking_status ?? null,
+            financeState:       tbRow.finance_state,
+            walletHoldCents:    Number(tbRow.wallet_hold_cents ?? 0),
+            walletDebitedCents: Number(tbRow.wallet_debited_cents ?? 0),
+            walletRefundedCents:Number(tbRow.wallet_refunded_cents ?? 0),
+            walletHoldKey:      tbRow.wallet_hold_key ?? null,
+            walletDebitKey:     tbRow.wallet_debit_key ?? null,
+            walletReleaseKey:   tbRow.wallet_release_key ?? null,
+            walletRefundKey:    tbRow.wallet_refund_key ?? null,
+            createdAt:          tbRow.created_at instanceof Date ? tbRow.created_at.toISOString() : String(tbRow.created_at),
+            updatedAt:          tbRow.updated_at instanceof Date ? tbRow.updated_at.toISOString() : String(tbRow.updated_at),
+          };
+        }
+      }
+
+      if (!bookingSnapshot && ledgerEntries.length === 0) {
+        return res.status(404).json({ error: 'Booking not found in booking_requests or trainer_bookings' });
+      }
+
+      // 3. Action history for this booking (ASC for bundle — chronological read)
+      const actionHistoryRows = (await queryActionHistory({ bookingId: subjectId, limit: 5000 }))
+        .reverse(); // queryActionHistory returns DESC; reverse to ASC for the bundle
+
+      // 4. Signature
+      const signatureInput = stableStringify({ ledgerEntries, bookingSnapshot, actionHistoryRows, generatedAt });
+      const signature = 'sha256:' + createHash('sha256').update(signatureInput).digest('hex');
+
+      const bundle = {
+        bundleVersion:    '1',
+        subjectType:      'booking',
+        subjectId,
+        generatedAt,
+        generatedBy:      uid,
+        ledgerEntries,
+        bookingSnapshot,
+        actionHistoryRows,
+        signature,
+      };
+
+      const filename = `audit-bundle-booking-${subjectId}-${generatedAt.replace(/[:.]/g, '-')}.json`;
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      return res.json(bundle);
+    }
+
+    // ── USER BUNDLE ─────────────────────────────────────────────────────────
+    if (subjectType === 'user') {
+      // 1. Ledger entries for this user (capped at 2000)
+      const CAP = 2000;
+      const ledgerRaw: any = await db.execute(sql`
+        SELECT
+          entry_id, user_id, booking_id, division_code, direction,
+          amount_cents, balance_after_cents, event_type, metadata,
+          created_at
+        FROM wallet_ledger_entries
+        WHERE user_id = ${subjectId}
+        ORDER BY created_at ASC, entry_id ASC
+        LIMIT ${CAP + 1}
+      `);
+      const rawRows = (ledgerRaw?.rows ?? ledgerRaw ?? []);
+      const capped = rawRows.length > CAP;
+      const ledgerEntries = rawRows.slice(0, CAP).map((r: any) => ({
+        entryId:           r.entry_id,
+        userId:            r.user_id,
+        bookingId:         r.booking_id ?? null,
+        divisionCode:      r.division_code ?? null,
+        direction:         r.direction,
+        amountCents:       Number(r.amount_cents),
+        balanceAfterCents: r.balance_after_cents != null ? Number(r.balance_after_cents) : null,
+        eventType:         r.event_type,
+        metadata:          r.metadata ?? {},
+        createdAt:         r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+      }));
+
+      // 2. Wallet account snapshot
+      const waRaw: any = await db.execute(sql`
+        SELECT
+          cash_wallet_balance_cents, egift_balance_cents, promo_balance_cents,
+          referral_balance_cents, loyalty_points_balance, pending_balance_cents,
+          lifetime_earned_cents, lifetime_redeemed_cents, updated_at
+        FROM wallet_accounts
+        WHERE user_id = ${subjectId}
+        LIMIT 1
+      `);
+      const waRow = (waRaw?.rows ?? waRaw ?? [])[0];
+      if (!waRow) {
+        return res.status(404).json({ error: 'Wallet account not found for user' });
+      }
+
+      // 3. Booking finance summary (both tables)
+      const bfRaw: any = await db.execute(sql`
+        SELECT
+          SUM(CASE WHEN finance_state = 'hold_active' THEN 1 ELSE 0 END)  AS hold_active_count,
+          SUM(CASE WHEN finance_state = 'debited'     THEN 1 ELSE 0 END)  AS debited_count,
+          SUM(CASE WHEN finance_state = 'refunded'    THEN 1 ELSE 0 END)  AS refunded_count,
+          SUM(CASE WHEN finance_state = 'released'    THEN 1 ELSE 0 END)  AS released_count,
+          COALESCE(SUM(wallet_hold_cents), 0)                             AS total_held_cents,
+          COALESCE(SUM(wallet_debited_cents), 0)                          AS total_debited_cents,
+          COALESCE(SUM(wallet_refunded_cents), 0)                         AS total_refunded_cents
+        FROM (
+          SELECT finance_state, wallet_hold_cents, wallet_debited_cents, wallet_refunded_cents
+          FROM booking_requests WHERE owner_id = ${subjectId}
+          UNION ALL
+          SELECT finance_state, wallet_hold_cents, wallet_debited_cents, wallet_refunded_cents
+          FROM trainer_bookings WHERE user_id = ${subjectId}
+        ) combined
+      `);
+      const bfRow = (bfRaw?.rows ?? bfRaw ?? [])[0] ?? {};
+
+      const bookingSnapshot = {
+        userId: subjectId,
+        ...(capped ? { ledgerNote: `Ledger capped at ${CAP} rows (oldest first). Full history requires DB export.` } : {}),
+        walletAccount: {
+          cashWalletBalanceCents:   Number(waRow.cash_wallet_balance_cents ?? 0),
+          egiftBalanceCents:        Number(waRow.egift_balance_cents ?? 0),
+          promoBalanceCents:        Number(waRow.promo_balance_cents ?? 0),
+          referralBalanceCents:     Number(waRow.referral_balance_cents ?? 0),
+          loyaltyPointsBalance:     Number(waRow.loyalty_points_balance ?? 0),
+          pendingBalanceCents:      Number(waRow.pending_balance_cents ?? 0),
+          lifetimeEarnedCents:      Number(waRow.lifetime_earned_cents ?? 0),
+          lifetimeRedeemedCents:    Number(waRow.lifetime_redeemed_cents ?? 0),
+          updatedAt:                waRow.updated_at instanceof Date ? waRow.updated_at.toISOString() : String(waRow.updated_at),
+        },
+        bookingFinanceSummary: {
+          holdActiveCount:    Number(bfRow.hold_active_count ?? 0),
+          debitedCount:       Number(bfRow.debited_count ?? 0),
+          refundedCount:      Number(bfRow.refunded_count ?? 0),
+          releasedCount:      Number(bfRow.released_count ?? 0),
+          totalHeldCents:     Number(bfRow.total_held_cents ?? 0),
+          totalDebitedCents:  Number(bfRow.total_debited_cents ?? 0),
+          totalRefundedCents: Number(bfRow.total_refunded_cents ?? 0),
+        },
+      };
+
+      // 4. Action history for this user
+      const actionHistoryRows = (await queryActionHistory({ userId: subjectId, limit: 5000 }))
+        .reverse();
+
+      // 5. Signature
+      const signatureInput = stableStringify({ ledgerEntries, bookingSnapshot, actionHistoryRows, generatedAt });
+      const signature = 'sha256:' + createHash('sha256').update(signatureInput).digest('hex');
+
+      const bundle = {
+        bundleVersion:    '1',
+        subjectType:      'user',
+        subjectId,
+        generatedAt,
+        generatedBy:      uid,
+        ledgerEntries,
+        bookingSnapshot,
+        actionHistoryRows,
+        signature,
+      };
+
+      const filename = `audit-bundle-user-${subjectId}-${generatedAt.replace(/[:.]/g, '-')}.json`;
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      return res.json(bundle);
+    }
+  } catch (err: any) {
+    logger.error('[AdminWallet][AuditBundle] error', { error: err.message });
+    return res.status(500).json({ error: 'Audit bundle generation failed', detail: err.message });
   }
 });
 
