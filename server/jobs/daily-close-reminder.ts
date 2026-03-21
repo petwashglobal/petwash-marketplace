@@ -179,6 +179,43 @@ async function checkAndSend(): Promise<void> {
   }
 }
 
+// ── 3.2C: Auto-escalate SLA-breached disputes ─────────────────────────────
+async function autoEscalateSlaBreachedDisputes(): Promise<void> {
+  try {
+    const candidatesRaw: any = await db.execute(sql`
+      SELECT case_ref, amount_disputed_cents, opened_at
+      FROM dispute_cases
+      WHERE status IN ('open', 'investigating')
+        AND escalated_at IS NULL
+        AND (
+          (amount_disputed_cents >= 50000 AND opened_at < NOW() - INTERVAL '24 hours') OR
+          (amount_disputed_cents <  50000 AND opened_at < NOW() - INTERVAL '72 hours')
+        )
+    `);
+    const candidates: any[] = candidatesRaw?.rows ?? candidatesRaw ?? [];
+    if (candidates.length === 0) return;
+
+    for (const dc of candidates) {
+      const slaLabel = Number(dc.amount_disputed_cents) >= 50000 ? '24h' : '72h';
+      const now = new Date();
+      await db.execute(sql`
+        UPDATE dispute_cases
+        SET status = 'escalated', escalated_at = ${now}, escalated_by = 'system',
+            escalation_note = ${'Auto-escalated: SLA (' + slaLabel + ') exceeded'}, updated_at = ${now}
+        WHERE case_ref = ${dc.case_ref} AND escalated_at IS NULL
+      `);
+      await db.execute(sql`
+        INSERT INTO finance_alerts (alert_type, severity, entity_type, entity_id, detail)
+        VALUES ('sla_breach_auto_escalated', 'critical', 'dispute_case', ${dc.case_ref},
+                ${JSON.stringify({ caseRef: dc.case_ref, slaLabel, amountCents: dc.amount_disputed_cents })})
+      `);
+    }
+    logger.info('[AutoEscalate] Escalated SLA-breached disputes', { count: candidates.length });
+  } catch (err: any) {
+    logger.error('[AutoEscalate] error', { error: err.message });
+  }
+}
+
 export function startDailyCloseReminder(): void {
   if (!ENABLED) {
     logger.info('[DailyCloseReminder] DAILY_CLOSE_REMINDER_ENABLED not set — job disabled');
@@ -188,4 +225,8 @@ export function startDailyCloseReminder(): void {
   // Run hourly, every day
   cron.schedule('0 * * * *', checkAndSend, { timezone: 'Asia/Jerusalem' });
   logger.info('[DailyCloseReminder] Hourly reminder job started (checkpoints: 18:00, 20:00, 22:00 IL)');
+
+  // Auto-escalate SLA-breached disputes every hour
+  cron.schedule('15 * * * *', autoEscalateSlaBreachedDisputes, { timezone: 'Asia/Jerusalem' });
+  logger.info('[DailyCloseReminder] Auto-escalation job started (:15 every hour)');
 }

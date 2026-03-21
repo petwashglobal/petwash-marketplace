@@ -33,10 +33,14 @@ import { walletAccounts, creditTransactions, walletLedgerEntries, walletReconcil
 import { eq, desc, and, sql, gte, lte } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
+import multer from 'multer';
 import { EmailService } from '../emailService';
 import { buildPrestigePassLuxuryEmail } from '../email/templates/prestige-pass-luxury-2026';
 import { buildPassLinkToken } from '../lib/passTokens';
 import { petwashPassAccounts } from '@shared/schema';
+
+// Multer: in-memory storage for CSV reconciliation uploads (max 4 MB)
+const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024 } });
 
 /**
  * Look up the user's petwash_pass_accounts record and return a signed
@@ -7688,6 +7692,742 @@ router.get('/admin/wallet/payout-batches/:batchId/remittance-log', async (req: R
   } catch (err: any) {
     logger.error('[Remittance][Log] error', { error: err.message });
     return res.status(500).json({ error: 'Failed to fetch remittance log', detail: err.message });
+  }
+});
+
+// ── Phase 3.2A: Bank Reconciliation ──────────────────────────────────────
+
+// POST /admin/wallet/payout-batches/:batchId/reconcile — CSV upload, match against entries
+// CSV columns: provider_uid (required), bank_ref (optional), amount_ils (optional for validation)
+router.post('/admin/wallet/payout-batches/:batchId/reconcile',
+  csvUpload.single('file'),
+  async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).session;
+      if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+      const financeRole = await requireFinanceRole(req, res, 'write');
+      if (!financeRole) return;
+
+      const adminUid  = session.user.uid ?? session.user.id ?? 'unknown';
+      const { batchId } = req.params;
+      const file = (req as any).file as Express.Multer.File | undefined;
+
+      if (!file) return res.status(400).json({ error: 'No CSV file uploaded. Send as multipart/form-data with field name "file".' });
+
+      // Parse CSV buffer — simple line-by-line, no external parser needed
+      const text = file.buffer.toString('utf-8').trim();
+      const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+      if (lines.length < 2) return res.status(400).json({ error: 'CSV must have a header row and at least one data row' });
+
+      const header = lines[0].split(',').map((h: string) => h.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_'));
+      const getCol = (row: string[], name: string) => {
+        const idx = header.indexOf(name);
+        return idx >= 0 ? (row[idx] ?? '').trim() : '';
+      };
+
+      // Load all entries for this batch keyed by provider_uid
+      const entriesRaw: any = await db.execute(sql`
+        SELECT id, provider_uid, net_cents, settled_at, bank_ref
+        FROM provider_payout_entries
+        WHERE payout_batch_id = ${batchId}
+      `);
+      const entries: any[] = entriesRaw?.rows ?? entriesRaw ?? [];
+      if (entries.length === 0) return res.status(404).json({ error: 'Batch not found or has no entries', batchId });
+
+      // Aggregate by provider_uid (batch may have multiple entries per provider)
+      const providerMap: Record<string, any> = {};
+      for (const e of entries) {
+        const uid = e.provider_uid;
+        if (!providerMap[uid]) providerMap[uid] = { providerUid: uid, totalNetCents: 0, ids: [] };
+        providerMap[uid].totalNetCents += Number(e.net_cents ?? 0);
+        providerMap[uid].ids.push(e.id);
+      }
+
+      const rawRows: any[] = [];
+      const matched: string[]   = [];
+      const unmatched: string[] = [];
+      const alreadySettled: string[] = [];
+      const amountMismatch: string[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const row = lines[i].split(',');
+        const providerUid = getCol(row, 'provider_uid');
+        const bankRef     = getCol(row, 'bank_ref');
+        const amountIls   = parseFloat(getCol(row, 'amount_ils') || '0');
+        const rowObj = { providerUid, bankRef, amountIls, line: i + 1 };
+        rawRows.push(rowObj);
+
+        if (!providerUid) { unmatched.push(`line:${i + 1}:no_provider_uid`); continue; }
+
+        const provData = providerMap[providerUid];
+        if (!provData) { unmatched.push(providerUid); continue; }
+
+        // Check amount tolerance (±1 ILS) if amount_ils provided in CSV
+        if (amountIls > 0) {
+          const expectedIls = provData.totalNetCents / 100;
+          if (Math.abs(amountIls - expectedIls) > 1.0) {
+            amountMismatch.push(providerUid);
+            rawRows[rawRows.length - 1].mismatch = { expected: expectedIls, got: amountIls };
+            continue;
+          }
+        }
+
+        // Check if already settled
+        const firstEntry = entries.find((e: any) => e.provider_uid === providerUid);
+        if (firstEntry?.settled_at) { alreadySettled.push(providerUid); continue; }
+
+        // Mark all entries for this provider as settled
+        const settledAt = new Date();
+        await db.execute(sql`
+          UPDATE provider_payout_entries
+          SET settled_at = ${settledAt}, bank_ref = ${bankRef || null}, status = 'settled'
+          WHERE payout_batch_id = ${batchId} AND provider_uid = ${providerUid}
+        `);
+        matched.push(providerUid);
+        rawRows[rawRows.length - 1].settled = true;
+      }
+
+      // Write reconciliation record
+      const overallStatus = unmatched.length + amountMismatch.length === 0 ? 'completed' : 'completed';
+      await db.execute(sql`
+        INSERT INTO bank_reconciliation_uploads
+          (batch_id, uploaded_by, file_name, matched_count, unmatched_count, status, raw_rows)
+        VALUES
+          (${batchId}, ${adminUid}, ${file.originalname}, ${matched.length},
+           ${unmatched.length + amountMismatch.length},
+           ${overallStatus}, ${JSON.stringify(rawRows)})
+      `);
+
+      logger.info('[Reconciliation][Upload]', { batchId, matched: matched.length, unmatched: unmatched.length, amountMismatch: amountMismatch.length, adminUid });
+      await recordFinanceAction(adminUid, 'bank_reconciliation', 'payout_batch', batchId, null,
+        { matched: matched.length, unmatched: unmatched.length, amountMismatch: amountMismatch.length, fileName: file.originalname }, req.ip);
+
+      return res.json({
+        ok: true, batchId,
+        matched:        matched.length,
+        unmatched:      unmatched.length,
+        amountMismatch: amountMismatch.length,
+        alreadySettled: alreadySettled.length,
+        matchedProviders:       matched,
+        unmatchedProviders:     unmatched,
+        amountMismatchProviders: amountMismatch,
+        alreadySettledProviders: alreadySettled,
+        fileName: file.originalname,
+        totalRows: lines.length - 1,
+      });
+    } catch (err: any) {
+      logger.error('[Reconciliation][Upload] error', { error: err.message });
+      return res.status(500).json({ error: 'Reconciliation failed', detail: err.message });
+    }
+  }
+);
+
+// GET /admin/wallet/payout-batches/:batchId/reconciliation — fetch all reconciliation uploads + settlement state
+router.get('/admin/wallet/payout-batches/:batchId/reconciliation', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { batchId } = req.params;
+
+    const uploadsRaw: any = await db.execute(sql`
+      SELECT id, uploaded_by, file_name, matched_count, unmatched_count, status, created_at
+      FROM bank_reconciliation_uploads
+      WHERE batch_id = ${batchId}
+      ORDER BY created_at DESC
+    `);
+    const uploads = uploadsRaw?.rows ?? uploadsRaw ?? [];
+
+    // Settlement summary for this batch
+    const summaryRaw: any = await db.execute(sql`
+      SELECT
+        COUNT(*) AS total,
+        COUNT(*) FILTER (WHERE settled_at IS NOT NULL) AS settled,
+        COUNT(*) FILTER (WHERE settled_at IS NULL)     AS unsettled,
+        COUNT(DISTINCT provider_uid)                   AS providers,
+        COALESCE(SUM(net_cents) FILTER (WHERE settled_at IS NOT NULL), 0) AS settled_net_cents,
+        COALESCE(SUM(net_cents) FILTER (WHERE settled_at IS NULL), 0)     AS unsettled_net_cents
+      FROM provider_payout_entries
+      WHERE payout_batch_id = ${batchId}
+    `);
+    const summary = (summaryRaw?.rows ?? summaryRaw ?? [])[0] ?? {};
+
+    // Per-provider settlement list
+    const provRaw: any = await db.execute(sql`
+      SELECT provider_uid,
+             COALESCE(SUM(net_cents), 0) AS net_cents,
+             MAX(settled_at)             AS settled_at,
+             MAX(bank_ref)               AS bank_ref
+      FROM provider_payout_entries
+      WHERE payout_batch_id = ${batchId}
+      GROUP BY provider_uid
+      ORDER BY provider_uid
+    `);
+    const providers = (provRaw?.rows ?? provRaw ?? []).map((r: any) => ({
+      providerUid: r.provider_uid,
+      netCents:    Number(r.net_cents),
+      settledAt:   r.settled_at ?? null,
+      bankRef:     r.bank_ref ?? null,
+      settled:     !!r.settled_at,
+    }));
+
+    return res.json({
+      ok: true, batchId,
+      uploads: uploads.map((u: any) => ({
+        id: u.id, uploadedBy: u.uploaded_by, fileName: u.file_name,
+        matchedCount: u.matched_count, unmatchedCount: u.unmatched_count,
+        status: u.status, createdAt: u.created_at,
+      })),
+      summary: {
+        total:              Number(summary.total ?? 0),
+        settled:            Number(summary.settled ?? 0),
+        unsettled:          Number(summary.unsettled ?? 0),
+        providers:          Number(summary.providers ?? 0),
+        settledNetCents:    Number(summary.settled_net_cents ?? 0),
+        unsettledNetCents:  Number(summary.unsettled_net_cents ?? 0),
+      },
+      providers,
+    });
+  } catch (err: any) {
+    logger.error('[Reconciliation][Get] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch reconciliation data', detail: err.message });
+  }
+});
+
+// ── Phase 3.2B: Remittance Resend & Failure Recovery ─────────────────────
+
+// POST /admin/wallet/payout-batches/:batchId/resend-remittance/:providerUid — single provider retry
+router.post('/admin/wallet/payout-batches/:batchId/resend-remittance/:providerUid', async (req: Request, res: Response) => {
+  try {
+    const financeRole = await requireFinanceRole(req, res, 'write');
+    if (!financeRole) return;
+    const session  = (req as any).session;
+    const adminUid = session.user.uid ?? session.user.id ?? 'unknown';
+    const { batchId, providerUid } = req.params;
+
+    // Load remittance log entry — create pending if doesn't exist
+    const existing: any = await db.execute(sql`
+      SELECT id, status, retry_count FROM remittance_email_log
+      WHERE batch_id = ${batchId} AND provider_uid = ${providerUid}
+    `);
+    const existingRow = (existing?.rows ?? existing ?? [])[0];
+    if (existingRow?.status === 'sent') {
+      return res.status(409).json({ error: 'Already sent successfully. Use force=true to resend.', status: 'sent' });
+    }
+
+    // Load batch entries for this provider
+    const entriesRaw: any = await db.execute(sql`
+      SELECT SUM(gross_cents) AS gross, SUM(net_cents) AS net, COUNT(*) AS entry_count
+      FROM provider_payout_entries
+      WHERE payout_batch_id = ${batchId} AND provider_uid = ${providerUid}
+    `);
+    const provData = (entriesRaw?.rows ?? entriesRaw ?? [])[0];
+    if (!provData || Number(provData.entry_count ?? 0) === 0) {
+      return res.status(404).json({ error: 'No entries found for this provider in this batch', batchId, providerUid });
+    }
+
+    // Look up provider email
+    let providerEmail: string | null = null;
+    try {
+      const userRow: any = await db.execute(sql`SELECT email FROM users WHERE id = ${providerUid} LIMIT 1`);
+      providerEmail = (userRow?.rows ?? userRow ?? [])[0]?.email ?? null;
+      if (!providerEmail) {
+        const appRow: any = await db.execute(sql`SELECT email FROM provider_applications WHERE user_id = ${providerUid} ORDER BY id DESC LIMIT 1`);
+        providerEmail = (appRow?.rows ?? appRow ?? [])[0]?.email ?? null;
+      }
+    } catch (_) {}
+
+    if (!providerEmail) {
+      const newRetry = (existingRow?.retry_count ?? 0) + 1;
+      await db.execute(sql`
+        INSERT INTO remittance_email_log (batch_id, provider_uid, status, error_detail, retry_count, last_retry_at)
+        VALUES (${batchId}, ${providerUid}, 'failed', 'No email address found for provider', ${newRetry}, NOW())
+        ON CONFLICT (batch_id, provider_uid) DO UPDATE
+          SET status = 'failed', error_detail = 'No email address found for provider',
+              retry_count = remittance_email_log.retry_count + 1, last_retry_at = NOW()
+      `);
+      return res.status(422).json({ ok: false, error: 'No email address found for provider', providerUid });
+    }
+
+    const grossIls = (Number(provData.gross) / 100).toFixed(2);
+    const netIls   = (Number(provData.net)   / 100).toFixed(2);
+    const commIls  = ((Number(provData.gross) - Number(provData.net)) / 100).toFixed(2);
+
+    const subject = `PetWash™ — Remittance Statement | Batch ${batchId}`;
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+        <div style="background:#1a1a2e;padding:24px 32px">
+          <h1 style="color:#C5A55A;margin:0;font-size:20px">PetWash™ Provider Remittance</h1>
+        </div>
+        <div style="padding:24px 32px;background:#fff">
+          <p style="color:#555;font-size:14px">Dear Provider,</p>
+          <p style="color:#555;font-size:14px">Your payment has been processed for batch <strong>${batchId}</strong>.</p>
+          <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px">
+            <tr style="background:#f8f8f8"><td style="padding:10px 14px;color:#888">Batch ID</td><td style="padding:10px 14px;font-family:monospace">${batchId}</td></tr>
+            <tr><td style="padding:10px 14px;color:#888">Bookings</td><td style="padding:10px 14px;font-family:monospace">${provData.entry_count}</td></tr>
+            <tr style="background:#f8f8f8"><td style="padding:10px 14px;color:#888">Gross Amount</td><td style="padding:10px 14px;font-weight:bold">₪${grossIls}</td></tr>
+            <tr><td style="padding:10px 14px;color:#888">Commission</td><td style="padding:10px 14px;color:#e55">₪${commIls}</td></tr>
+            <tr style="background:#f0f9f0"><td style="padding:10px 14px;color:#2a7a2a;font-weight:bold">Net Payment</td><td style="padding:10px 14px;color:#2a7a2a;font-weight:bold;font-size:16px">₪${netIls}</td></tr>
+          </table>
+          <p style="color:#888;font-size:12px;margin-top:8px;padding:6px 0;border-top:1px solid #eee">Resent by admin — for questions contact finance@petwash.co.il</p>
+        </div>
+      </div>
+    `;
+
+    let sendOk = false;
+    let errorDetail: string | null = null;
+    try { sendOk = await EmailService.send({ to: providerEmail, subject, html }); }
+    catch (e: any) { errorDetail = e.message ?? 'Email send error'; }
+    if (!errorDetail && !sendOk) errorDetail = 'EmailService returned false';
+
+    const newRetry = (existingRow?.retry_count ?? 0) + 1;
+    const status = sendOk ? 'sent' : 'failed';
+    await db.execute(sql`
+      INSERT INTO remittance_email_log (batch_id, provider_uid, status, sent_at, error_detail, retry_count, last_retry_at)
+      VALUES (${batchId}, ${providerUid}, ${status}, ${sendOk ? new Date() : null}, ${errorDetail}, ${newRetry}, NOW())
+      ON CONFLICT (batch_id, provider_uid) DO UPDATE
+        SET status = ${status}, sent_at = ${sendOk ? new Date() : null}, error_detail = ${errorDetail},
+            retry_count = remittance_email_log.retry_count + 1, last_retry_at = NOW()
+    `);
+
+    logger.info('[Remittance][Resend]', { batchId, providerUid, status, adminUid });
+    await recordFinanceAction(adminUid, 'remittance_resend', 'payout_batch', batchId, null,
+      { providerUid, status, retryCount: newRetry }, req.ip);
+
+    return res.json({ ok: sendOk, batchId, providerUid, status, to: providerEmail, retryCount: newRetry, error: errorDetail });
+  } catch (err: any) {
+    logger.error('[Remittance][Resend] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to resend remittance', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/payout-batches/:batchId/retry-failed — bulk retry all failed providers
+router.post('/admin/wallet/payout-batches/:batchId/retry-failed', async (req: Request, res: Response) => {
+  try {
+    const financeRole = await requireFinanceRole(req, res, 'write');
+    if (!financeRole) return;
+    const session  = (req as any).session;
+    const adminUid = session.user.uid ?? session.user.id ?? 'unknown';
+    const { batchId } = req.params;
+
+    // Load all failed entries for this batch
+    const failedRaw: any = await db.execute(sql`
+      SELECT provider_uid, retry_count FROM remittance_email_log
+      WHERE batch_id = ${batchId} AND status = 'failed'
+    `);
+    const failedProviders: any[] = failedRaw?.rows ?? failedRaw ?? [];
+    if (failedProviders.length === 0) {
+      return res.json({ ok: true, message: 'No failed remittances found for this batch', retried: 0 });
+    }
+
+    const results: Array<{ providerUid: string; status: string; error?: string }> = [];
+
+    for (const fp of failedProviders) {
+      const providerUid = fp.provider_uid;
+
+      // Load batch entries for this provider
+      const entRaw: any = await db.execute(sql`
+        SELECT SUM(gross_cents) AS gross, SUM(net_cents) AS net, COUNT(*) AS entry_count
+        FROM provider_payout_entries
+        WHERE payout_batch_id = ${batchId} AND provider_uid = ${providerUid}
+      `);
+      const provData = (entRaw?.rows ?? entRaw ?? [])[0];
+
+      // Look up email
+      let providerEmail: string | null = null;
+      try {
+        const userRow: any = await db.execute(sql`SELECT email FROM users WHERE id = ${providerUid} LIMIT 1`);
+        providerEmail = (userRow?.rows ?? userRow ?? [])[0]?.email ?? null;
+        if (!providerEmail) {
+          const appRow: any = await db.execute(sql`SELECT email FROM provider_applications WHERE user_id = ${providerUid} ORDER BY id DESC LIMIT 1`);
+          providerEmail = (appRow?.rows ?? appRow ?? [])[0]?.email ?? null;
+        }
+      } catch (_) {}
+
+      if (!providerEmail) {
+        await db.execute(sql`
+          UPDATE remittance_email_log
+          SET retry_count = retry_count + 1, last_retry_at = NOW(),
+              error_detail = 'No email address found for provider'
+          WHERE batch_id = ${batchId} AND provider_uid = ${providerUid}
+        `);
+        results.push({ providerUid, status: 'failed', error: 'No email address found' });
+        continue;
+      }
+
+      const grossIls = (Number(provData?.gross ?? 0) / 100).toFixed(2);
+      const netIls   = (Number(provData?.net   ?? 0) / 100).toFixed(2);
+      const commIls  = ((Number(provData?.gross ?? 0) - Number(provData?.net ?? 0)) / 100).toFixed(2);
+      const subject  = `PetWash™ — Remittance Statement | Batch ${batchId}`;
+      const html     = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto"><div style="background:#1a1a2e;padding:24px 32px"><h1 style="color:#C5A55A;margin:0;font-size:20px">PetWash™ Provider Remittance</h1></div><div style="padding:24px 32px;background:#fff"><p style="color:#555;font-size:14px">Dear Provider, your payment for batch <strong>${batchId}</strong> — Net: <strong>₪${netIls}</strong> (Gross ₪${grossIls} - Commission ₪${commIls}) — has been processed.</p><p style="color:#888;font-size:11px">Resent automatically. Questions? finance@petwash.co.il</p></div></div>`;
+
+      let sendOk = false;
+      let errorDetail: string | null = null;
+      try { sendOk = await EmailService.send({ to: providerEmail, subject, html }); }
+      catch (e: any) { errorDetail = e.message; }
+      if (!errorDetail && !sendOk) errorDetail = 'EmailService returned false';
+
+      await db.execute(sql`
+        UPDATE remittance_email_log
+        SET status = ${sendOk ? 'sent' : 'failed'},
+            sent_at = ${sendOk ? new Date() : null},
+            error_detail = ${errorDetail},
+            retry_count = retry_count + 1,
+            last_retry_at = NOW()
+        WHERE batch_id = ${batchId} AND provider_uid = ${providerUid}
+      `);
+
+      results.push({ providerUid, status: sendOk ? 'sent' : 'failed', error: errorDetail ?? undefined });
+    }
+
+    const sentCount   = results.filter(r => r.status === 'sent').length;
+    const failedCount = results.filter(r => r.status === 'failed').length;
+    logger.info('[Remittance][RetryFailed]', { batchId, retried: results.length, sent: sentCount, failed: failedCount, adminUid });
+    await recordFinanceAction(adminUid, 'remittance_retry_failed', 'payout_batch', batchId, null,
+      { retried: results.length, sent: sentCount, failed: failedCount }, req.ip);
+
+    return res.json({ ok: true, batchId, retried: results.length, sent: sentCount, failed: failedCount, results });
+  } catch (err: any) {
+    logger.error('[Remittance][RetryFailed] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to retry failed remittances', detail: err.message });
+  }
+});
+
+// ── Phase 3.2C: Dispute Escalation Automation ────────────────────────────
+
+// POST /admin/wallet/disputes/:caseRef/escalate — manual escalation (additive, never mutates original)
+router.post('/admin/wallet/disputes/:caseRef/escalate', async (req: Request, res: Response) => {
+  try {
+    const financeRole = await requireFinanceRole(req, res, 'write');
+    if (!financeRole) return;
+    const session  = (req as any).session;
+    const adminUid = session.user.uid ?? session.user.id ?? 'unknown';
+    const { caseRef } = req.params;
+    const { note } = req.body as { note?: string };
+
+    // Load the case — must exist and not already be escalated
+    const caseRaw: any = await db.execute(sql`
+      SELECT id, status, escalated_at, amount_disputed_cents, opened_at
+      FROM dispute_cases WHERE case_ref = ${caseRef} LIMIT 1
+    `);
+    const dc = (caseRaw?.rows ?? caseRaw ?? [])[0];
+    if (!dc) return res.status(404).json({ error: 'Dispute case not found', caseRef });
+    if (dc.escalated_at) return res.status(409).json({ error: 'Case already escalated', caseRef, escalatedAt: dc.escalated_at });
+
+    const now = new Date();
+    await db.execute(sql`
+      UPDATE dispute_cases
+      SET status = 'escalated', escalated_at = ${now}, escalated_by = ${adminUid},
+          escalation_note = ${note ?? 'Manually escalated by admin'}, updated_at = ${now}
+      WHERE case_ref = ${caseRef}
+    `);
+
+    logger.info('[Dispute][Escalate]', { caseRef, adminUid, note });
+    await recordFinanceAction(adminUid, 'dispute_escalation', 'dispute_case', caseRef, null,
+      { note: note ?? 'manual', previousStatus: dc.status }, req.ip);
+
+    // Raise a finance alert for critical dispute escalation
+    const isHighValue = Number(dc.amount_disputed_cents ?? 0) >= 50000;
+    await db.execute(sql`
+      INSERT INTO finance_alerts (alert_type, severity, entity_type, entity_id, detail)
+      VALUES ('dispute_escalated', ${isHighValue ? 'critical' : 'warning'},
+              'dispute_case', ${caseRef},
+              ${JSON.stringify({ caseRef, escalatedBy: adminUid, note: note ?? 'manual', isHighValue })})
+    `);
+
+    return res.json({ ok: true, caseRef, escalatedAt: now, escalatedBy: adminUid });
+  } catch (err: any) {
+    logger.error('[Dispute][Escalate] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to escalate dispute', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/disputes/auto-escalate — scan & auto-escalate SLA-breached cases (called by scheduler)
+router.post('/admin/wallet/disputes/auto-escalate', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin && req.headers['x-internal-job'] !== 'petwash-cron') {
+      return res.status(403).json({ error: 'Admin or internal cron only' });
+    }
+    const now = new Date();
+
+    // Find open disputes that have breached SLA and are not yet escalated
+    const candidatesRaw: any = await db.execute(sql`
+      SELECT case_ref, amount_disputed_cents, opened_at, status
+      FROM dispute_cases
+      WHERE status IN ('open', 'investigating')
+        AND escalated_at IS NULL
+        AND (
+          (amount_disputed_cents >= 50000 AND opened_at < NOW() - INTERVAL '24 hours') OR
+          (amount_disputed_cents <  50000 AND opened_at < NOW() - INTERVAL '72 hours')
+        )
+    `);
+    const candidates: any[] = candidatesRaw?.rows ?? candidatesRaw ?? [];
+
+    const escalated: string[] = [];
+    for (const dc of candidates) {
+      const slaLabel = Number(dc.amount_disputed_cents) >= 50000 ? '24h' : '72h';
+      await db.execute(sql`
+        UPDATE dispute_cases
+        SET status = 'escalated', escalated_at = ${now}, escalated_by = 'system',
+            escalation_note = ${`Auto-escalated: SLA (${slaLabel}) exceeded`}, updated_at = ${now}
+        WHERE case_ref = ${dc.case_ref}
+      `);
+      await db.execute(sql`
+        INSERT INTO finance_alerts (alert_type, severity, entity_type, entity_id, detail)
+        VALUES ('sla_breach_auto_escalated', 'critical', 'dispute_case', ${dc.case_ref},
+                ${JSON.stringify({ caseRef: dc.case_ref, slaLabel, amountCents: dc.amount_disputed_cents, openedAt: dc.opened_at })})
+      `);
+      escalated.push(dc.case_ref);
+    }
+
+    logger.info('[Dispute][AutoEscalate]', { escalated: escalated.length });
+    return res.json({ ok: true, escalated: escalated.length, caseRefs: escalated });
+  } catch (err: any) {
+    logger.error('[Dispute][AutoEscalate] error', { error: err.message });
+    return res.status(500).json({ error: 'Auto-escalate failed', detail: err.message });
+  }
+});
+
+// ── Phase 3.2D: Finance Alerts ────────────────────────────────────────────
+
+// GET /admin/wallet/alerts — all unacknowledged alerts (+ optional filter)
+router.get('/admin/wallet/alerts', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const includeAck  = req.query.includeAcknowledged === 'true';
+    const severity    = (req.query.severity as string) || null;
+    const limit       = Math.min(Number(req.query.limit ?? 50), 200);
+
+    let whereClause = includeAck ? sql`1=1` : sql`acknowledged_at IS NULL`;
+    if (severity) {
+      whereClause = includeAck
+        ? sql`severity = ${severity}`
+        : sql`acknowledged_at IS NULL AND severity = ${severity}`;
+    }
+
+    const alertsRaw: any = await db.execute(sql`
+      SELECT id, alert_type, severity, entity_type, entity_id, detail, acknowledged_at, acknowledged_by, created_at
+      FROM finance_alerts
+      WHERE ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT ${limit}
+    `);
+    const alerts = (alertsRaw?.rows ?? alertsRaw ?? []).map((a: any) => ({
+      id: a.id,
+      alertType: a.alert_type,
+      severity: a.severity,
+      entityType: a.entity_type,
+      entityId: a.entity_id,
+      detail: typeof a.detail === 'string' ? JSON.parse(a.detail) : (a.detail ?? {}),
+      acknowledgedAt: a.acknowledged_at,
+      acknowledgedBy: a.acknowledged_by,
+      createdAt: a.created_at,
+    }));
+
+    const countRaw: any = await db.execute(sql`
+      SELECT COUNT(*) AS total,
+             COUNT(*) FILTER (WHERE severity = 'critical') AS critical,
+             COUNT(*) FILTER (WHERE severity = 'warning')  AS warning,
+             COUNT(*) FILTER (WHERE severity = 'info')     AS info
+      FROM finance_alerts WHERE acknowledged_at IS NULL
+    `);
+    const counts = (countRaw?.rows ?? countRaw ?? [])[0] ?? {};
+
+    return res.json({
+      ok: true, alerts,
+      unacknowledged: {
+        total:    Number(counts.total    ?? 0),
+        critical: Number(counts.critical ?? 0),
+        warning:  Number(counts.warning  ?? 0),
+        info:     Number(counts.info     ?? 0),
+      },
+    });
+  } catch (err: any) {
+    logger.error('[FinanceAlerts][Get] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch alerts', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/alerts/:alertId/acknowledge — mark one alert as acknowledged
+router.post('/admin/wallet/alerts/:alertId/acknowledge', async (req: Request, res: Response) => {
+  try {
+    const financeRole = await requireFinanceRole(req, res, 'write');
+    if (!financeRole) return;
+    const session  = (req as any).session;
+    const adminUid = session.user.uid ?? session.user.id ?? 'unknown';
+    const alertId  = Number(req.params.alertId);
+
+    await db.execute(sql`
+      UPDATE finance_alerts
+      SET acknowledged_at = NOW(), acknowledged_by = ${adminUid}
+      WHERE id = ${alertId} AND acknowledged_at IS NULL
+    `);
+    logger.info('[FinanceAlerts][Ack]', { alertId, adminUid });
+    return res.json({ ok: true, alertId });
+  } catch (err: any) {
+    logger.error('[FinanceAlerts][Ack] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to acknowledge alert', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/alerts/acknowledge-all — bulk acknowledge all unread
+router.post('/admin/wallet/alerts/acknowledge-all', async (req: Request, res: Response) => {
+  try {
+    const financeRole = await requireFinanceRole(req, res, 'write');
+    if (!financeRole) return;
+    const session  = (req as any).session;
+    const adminUid = session.user.uid ?? session.user.id ?? 'unknown';
+
+    const result: any = await db.execute(sql`
+      UPDATE finance_alerts SET acknowledged_at = NOW(), acknowledged_by = ${adminUid}
+      WHERE acknowledged_at IS NULL
+    `);
+    logger.info('[FinanceAlerts][AckAll]', { adminUid });
+    return res.json({ ok: true });
+  } catch (err: any) {
+    logger.error('[FinanceAlerts][AckAll] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to acknowledge all alerts', detail: err.message });
+  }
+});
+
+// ── Phase 3.2E: Monthly Sign-off Workflow ─────────────────────────────────
+
+// GET /admin/wallet/monthly-signoff?month=YYYY-MM — get sign-off status
+router.get('/admin/wallet/monthly-signoff', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const month = (req.query.month as string) || new Date().toISOString().slice(0, 7);
+
+    const rowRaw: any = await db.execute(sql`
+      SELECT id, month, signed_off_by, signed_off_at, notes, is_final
+      FROM monthly_signoffs WHERE month = ${month} LIMIT 1
+    `);
+    const row = (rowRaw?.rows ?? rowRaw ?? [])[0];
+
+    if (!row) return res.json({ ok: true, month, signedOff: false, signOff: null });
+    return res.json({
+      ok: true, month, signedOff: true,
+      signOff: {
+        id: row.id,
+        month: row.month,
+        signedOffBy: row.signed_off_by,
+        signedOffAt: row.signed_off_at,
+        notes: row.notes,
+        isFinal: row.is_final,
+      },
+    });
+  } catch (err: any) {
+    logger.error('[MonthlySignoff][Get] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch sign-off status', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/monthly-signoff — irreversible sign-off
+router.post('/admin/wallet/monthly-signoff', async (req: Request, res: Response) => {
+  try {
+    const financeRole = await requireFinanceRole(req, res, 'write');
+    if (!financeRole) return;
+    const session  = (req as any).session;
+    const adminUid = session.user.uid ?? session.user.id ?? 'unknown';
+    const { month, notes } = req.body as { month?: string; notes?: string };
+
+    const targetMonth = month || new Date().toISOString().slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(targetMonth)) {
+      return res.status(400).json({ error: 'Invalid month format. Use YYYY-MM.' });
+    }
+
+    // Check if already signed off (irreversible)
+    const existingRaw: any = await db.execute(sql`
+      SELECT id, signed_off_by, signed_off_at FROM monthly_signoffs WHERE month = ${targetMonth} LIMIT 1
+    `);
+    const existing = (existingRaw?.rows ?? existingRaw ?? [])[0];
+    if (existing) {
+      return res.status(409).json({
+        error: 'Month already signed off — this action is irreversible.',
+        month: targetMonth,
+        signedOffBy: existing.signed_off_by,
+        signedOffAt: existing.signed_off_at,
+      });
+    }
+
+    const signedOffAt = new Date();
+    await db.execute(sql`
+      INSERT INTO monthly_signoffs (month, signed_off_by, signed_off_at, notes, is_final)
+      VALUES (${targetMonth}, ${adminUid}, ${signedOffAt}, ${notes ?? null}, TRUE)
+    `);
+
+    logger.info('[MonthlySignoff][Create]', { month: targetMonth, adminUid });
+    await recordFinanceAction(adminUid, 'monthly_signoff', 'month', targetMonth, null,
+      { month: targetMonth, notes: notes ?? null }, req.ip);
+
+    // Fire a confirmation alert
+    await db.execute(sql`
+      INSERT INTO finance_alerts (alert_type, severity, entity_type, entity_id, detail)
+      VALUES ('monthly_signoff', 'info', 'month', ${targetMonth},
+              ${JSON.stringify({ month: targetMonth, signedOffBy: adminUid })})
+    `);
+
+    return res.json({ ok: true, month: targetMonth, signedOffBy: adminUid, signedOffAt, isFinal: true });
+  } catch (err: any) {
+    logger.error('[MonthlySignoff][Create] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to sign off month', detail: err.message });
+  }
+});
+
+// ── Phase 3.2F: Close-to-Close Variance Commentary ───────────────────────
+
+// GET /admin/wallet/variance-commentary?month=YYYY-MM — all comments for a month
+router.get('/admin/wallet/variance-commentary', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const month = (req.query.month as string) || new Date().toISOString().slice(0, 7);
+
+    const rowsRaw: any = await db.execute(sql`
+      SELECT id, month, metric, comment, author_uid, created_at, updated_at
+      FROM variance_comments WHERE month = ${month} ORDER BY metric
+    `);
+    const comments = (rowsRaw?.rows ?? rowsRaw ?? []).map((r: any) => ({
+      id: r.id, month: r.month, metric: r.metric, comment: r.comment,
+      authorUid: r.author_uid, createdAt: r.created_at, updatedAt: r.updated_at,
+    }));
+    return res.json({ ok: true, month, comments });
+  } catch (err: any) {
+    logger.error('[VarianceCommentary][Get] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch commentary', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/variance-commentary — upsert commentary for a month+metric (mutable)
+router.post('/admin/wallet/variance-commentary', async (req: Request, res: Response) => {
+  try {
+    const financeRole = await requireFinanceRole(req, res, 'write');
+    if (!financeRole) return;
+    const session  = (req as any).session;
+    const adminUid = session.user.uid ?? session.user.id ?? 'unknown';
+    const { month, metric, comment } = req.body as { month?: string; metric?: string; comment?: string };
+
+    if (!month || !metric || comment === undefined) {
+      return res.status(400).json({ error: 'month, metric, and comment are required' });
+    }
+    if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: 'Invalid month format. Use YYYY-MM.' });
+    if (comment.length > 2000) return res.status(400).json({ error: 'Comment must be ≤2000 characters' });
+
+    await db.execute(sql`
+      INSERT INTO variance_comments (month, metric, comment, author_uid)
+      VALUES (${month}, ${metric}, ${comment}, ${adminUid})
+      ON CONFLICT (month, metric) DO UPDATE
+        SET comment = ${comment}, author_uid = ${adminUid}, updated_at = NOW()
+    `);
+
+    logger.info('[VarianceCommentary][Upsert]', { month, metric, adminUid });
+    return res.json({ ok: true, month, metric, comment });
+  } catch (err: any) {
+    logger.error('[VarianceCommentary][Upsert] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to save commentary', detail: err.message });
   }
 });
 

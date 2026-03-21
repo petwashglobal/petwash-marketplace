@@ -1430,3 +1430,44 @@ All endpoints under `/api/prestige-pass/admin/wallet/`. Admin-only. All schema c
 - 8 metrics: grossPayoutCents, netPayoutCents, commissionCents, entryCount, providerCount, disputeCount, resolvedDisputeCount, disputedCents
 - Returns changePct per metric; dispute metrics: negative changePct = good (green)
 - Frontend: Monthly Variance Analysis card at top of fin-activity tab — month picker, 2-column grid, color-coded %Δ badges
+
+## Phase 3.2 — Finance Operations Layer III (COMPLETE)
+
+### Phase 3.2A — Bank Reconciliation (COMPLETE)
+- DB: `bank_reconciliation_uploads` table; `settled_at TIMESTAMPTZ`, `bank_ref VARCHAR(128)` on `provider_payout_entries`
+- `POST /admin/wallet/payout-batches/:batchId/reconcile` — CSV upload (multer, memStorage, 4MB max); matches by provider_uid, ±1 ILS tolerance; marks entries `settled`; writes to bank_reconciliation_uploads + audit log
+- `GET /admin/wallet/payout-batches/:batchId/reconciliation` — upload history + per-provider settlement state + summary counts
+- Frontend: CSV upload zone in batch detail drawer; settlement progress bar; per-provider settlement table; upload history
+
+### Phase 3.2B — Remittance Resend & Failure Recovery (COMPLETE)
+- DB: `retry_count INTEGER DEFAULT 0`, `last_retry_at TIMESTAMPTZ` on `remittance_email_log`
+- `POST .../resend-remittance/:providerUid` — single retry; 409 if already sent successfully; increments retry_count; audited
+- `POST .../retry-failed` — bulk retry all failed entries; increments retry_count; audited
+- Frontend: "Retry" button per row (non-sent entries); "↺ Retry All Failed (N)" button in log header; retry_count column
+
+### Phase 3.2C — Dispute Escalation Automation (COMPLETE)
+- DB: `escalated_at TIMESTAMPTZ`, `escalated_by VARCHAR(128)`, `escalation_note TEXT` on `dispute_cases`
+- `POST /admin/wallet/disputes/:caseRef/escalate` — manual escalation; 409 if already escalated; fires finance_alert; audited
+- `POST /admin/wallet/disputes/auto-escalate` — internal cron endpoint; scans SLA-breached open/investigating cases
+- Scheduler: `autoEscalateSlaBreachedDisputes()` runs at :15 every hour via daily-close-reminder job; 24h for ≥₪500, 72h otherwise
+- Frontend: Escalate panel in dispute drawer (purple); escalation info badge if already escalated
+
+### Phase 3.2D — Finance Alerts (COMPLETE)
+- DB: `finance_alerts` table (id, alert_type, severity CHECK(info|warning|critical), entity_type, entity_id, detail JSONB, acknowledged_at, acknowledged_by, created_at)
+- `GET /admin/wallet/alerts` — all unacknowledged (or ?includeAcknowledged=true); with unacknowledged count summary
+- `POST /admin/wallet/alerts/:alertId/acknowledge` — single ack; finance_write required
+- `POST /admin/wallet/alerts/acknowledge-all` — bulk ack; finance_write required
+- Alert sources: dispute escalation, SLA breach auto-escalation, monthly sign-off confirmation
+- Frontend: Finance Alerts card in fin-activity tab; severity badges (critical=red, warning=amber); per-alert Ack button; "Acknowledge All" bulk; auto-refreshes every 60s
+
+### Phase 3.2E — Monthly Sign-off Workflow (COMPLETE)
+- DB: `monthly_signoffs` table (id, month VARCHAR(7) UNIQUE, signed_off_by, signed_off_at, notes, is_final BOOLEAN DEFAULT TRUE)
+- `GET /admin/wallet/monthly-signoff?month=YYYY-MM` — returns signedOff bool + sign-off record
+- `POST /admin/wallet/monthly-signoff` — irreversible; 409 if already signed off; fires finance_alert; audited
+- Frontend: Sign-off section inside variance card; confirmation dialog; green banner if already signed off
+
+### Phase 3.2F — Close-to-Close Variance Commentary (COMPLETE)
+- DB: `variance_comments` table (id, month, metric, comment, author_uid, created_at, updated_at; UNIQUE on month+metric)
+- `GET /admin/wallet/variance-commentary?month=YYYY-MM` — all comments for month
+- `POST /admin/wallet/variance-commentary` — upsert (mutable, unlike sign-off); ≤2000 chars; audited
+- Frontend: Inline comment fields per metric inside variance card; dirty-state Save buttons per field

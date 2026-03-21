@@ -781,6 +781,119 @@ export default function AdminWalletDashboard() {
     onError: (e) => toast({ title: "Failed to send remittances", description: e.message, variant: "destructive" }),
   });
 
+  // ── 3.2B: Remittance Resend / Retry-Failed ─────────────────────────────
+  const { mutate: resendRemittance, isPending: resendPending } = useMutation<any, any, string>({
+    mutationFn: (providerUid) => apiRequest("POST",
+      `/api/prestige-pass/admin/wallet/payout-batches/${selectedBatchId}/resend-remittance/${providerUid}`, {}),
+    onSuccess: (data) => {
+      toast({ title: data.ok ? `Resent to ${data.to}` : `Resend failed — ${data.error}`, variant: data.ok ? "default" : "destructive" });
+      refetchRemLog();
+    },
+    onError: (e) => toast({ title: "Resend error", description: e.message, variant: "destructive" }),
+  });
+  const { mutate: retryFailed, isPending: retryFailedPending } = useMutation<any, any, string>({
+    mutationFn: (batchId) => apiRequest("POST",
+      `/api/prestige-pass/admin/wallet/payout-batches/${batchId}/retry-failed`, {}),
+    onSuccess: (data) => {
+      toast({ title: `Retry complete — ${data.sent} sent, ${data.failed} still failed` });
+      refetchRemLog();
+    },
+    onError: (e) => toast({ title: "Retry-failed error", description: e.message, variant: "destructive" }),
+  });
+
+  // ── 3.2A: Bank Reconciliation ──────────────────────────────────────────
+  const [reconFile, setReconFile] = useState<File | null>(null);
+  const [reconUploading, setReconUploading] = useState(false);
+  const { data: reconData, isLoading: reconLoading, refetch: refetchRecon } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/payout-batches", selectedBatchId, "reconciliation"],
+    enabled: !!selectedBatchId,
+    queryFn: () => fetch(`/api/prestige-pass/admin/wallet/payout-batches/${selectedBatchId}/reconciliation`, { credentials: "include" }).then(r => r.json()),
+  });
+  async function uploadReconFile() {
+    if (!reconFile || !selectedBatchId) return;
+    setReconUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", reconFile);
+      const res = await fetch(`/api/prestige-pass/admin/wallet/payout-batches/${selectedBatchId}/reconcile`, {
+        method: "POST", body: form, credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Upload failed");
+      toast({ title: `Reconciled — ${data.matched} matched, ${data.unmatched} unmatched, ${data.amountMismatch} amount mismatch` });
+      setReconFile(null);
+      refetchRecon();
+    } catch (e: any) {
+      toast({ title: "Reconciliation upload failed", description: e.message, variant: "destructive" });
+    } finally {
+      setReconUploading(false);
+    }
+  }
+
+  // ── 3.2C: Dispute Escalation ───────────────────────────────────────────
+  const { mutate: escalateDispute, isPending: escalatePending } = useMutation<any, any, { caseRef: string; note?: string }>({
+    mutationFn: ({ caseRef, note }) => apiRequest("POST", `/api/prestige-pass/admin/wallet/disputes/${caseRef}/escalate`, { note }),
+    onSuccess: (data) => {
+      toast({ title: `Case ${data.caseRef} escalated` });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/disputes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/alerts"] });
+    },
+    onError: (e) => toast({ title: "Escalation failed", description: e.message, variant: "destructive" }),
+  });
+
+  // ── 3.2D: Finance Alerts ───────────────────────────────────────────────
+  const { data: alertsData, isLoading: alertsLoading, refetch: refetchAlerts } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/alerts"],
+    queryFn: () => fetch("/api/prestige-pass/admin/wallet/alerts", { credentials: "include" }).then(r => r.json()),
+    refetchInterval: 60_000,
+  });
+  const { mutate: acknowledgeAlert, isPending: ackPending } = useMutation<any, any, number>({
+    mutationFn: (alertId) => apiRequest("POST", `/api/prestige-pass/admin/wallet/alerts/${alertId}/acknowledge`, {}),
+    onSuccess: () => refetchAlerts(),
+    onError: (e) => toast({ title: "Ack failed", description: e.message, variant: "destructive" }),
+  });
+  const { mutate: acknowledgeAll, isPending: ackAllPending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest("POST", "/api/prestige-pass/admin/wallet/alerts/acknowledge-all", {}),
+    onSuccess: () => { toast({ title: "All alerts acknowledged" }); refetchAlerts(); },
+    onError: (e) => toast({ title: "Ack-all failed", description: e.message, variant: "destructive" }),
+  });
+
+  // ── 3.2E: Monthly Sign-off ──────────────────────────────────────────────
+  const { data: signoffData, isLoading: signoffLoading, refetch: refetchSignoff } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/monthly-signoff", varianceMonth],
+    queryFn: () => fetch(`/api/prestige-pass/admin/wallet/monthly-signoff?month=${varianceMonth}`, { credentials: "include" }).then(r => r.json()),
+    enabled: !!varianceMonth,
+  });
+  const [signoffNote, setSignoffNote] = useState("");
+  const [escalationNote, setEscalationNote] = useState("");
+  const { mutate: signoffMonth, isPending: signoffPending } = useMutation<any, any, { month: string; notes?: string }>({
+    mutationFn: ({ month, notes }) => apiRequest("POST", "/api/prestige-pass/admin/wallet/monthly-signoff", { month, notes }),
+    onSuccess: (data) => {
+      toast({ title: `Month ${data.month} signed off — this is irreversible` });
+      setSignoffNote("");
+      refetchSignoff();
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/alerts"] });
+    },
+    onError: (e) => toast({ title: "Sign-off failed", description: e.message, variant: "destructive" }),
+  });
+
+  // ── 3.2F: Variance Commentary ──────────────────────────────────────────
+  const { data: commentaryData, isLoading: commentaryLoading, refetch: refetchCommentary } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/variance-commentary", varianceMonth],
+    queryFn: () => fetch(`/api/prestige-pass/admin/wallet/variance-commentary?month=${varianceMonth}`, { credentials: "include" }).then(r => r.json()),
+    enabled: !!varianceMonth,
+  });
+  const [commentDraft, setCommentDraft] = useState<Record<string, string>>({});
+  const { mutate: saveComment, isPending: saveCommentPending } = useMutation<any, any, { month: string; metric: string; comment: string }>({
+    mutationFn: ({ month, metric, comment }) => apiRequest("POST", "/api/prestige-pass/admin/wallet/variance-commentary", { month, metric, comment }),
+    onSuccess: (_data, vars) => {
+      toast({ title: `Commentary saved for ${vars.metric}` });
+      refetchCommentary();
+      setCommentDraft(d => { const n = { ...d }; delete n[vars.metric]; return n; });
+    },
+    onError: (e) => toast({ title: "Save failed", description: e.message, variant: "destructive" }),
+  });
+
   const { mutate: upsertRole, isPending: upsertRolePending } = useMutation<any, any, { uid: string; role: string }>({
     mutationFn: ({ uid, role }) => apiRequest("POST", `/api/prestige-pass/admin/wallet/finance-roles/${uid}`, { role }),
     onSuccess: () => { toast({ title: "Finance role assigned" }); setRoleAssignUid(""); refetchRoles(); },
@@ -3456,15 +3569,26 @@ export default function AdminWalletDashboard() {
                     </div>
                   )}
 
-                  {/* ── 3.1C: Remittance Delivery Log ── */}
+                  {/* ── 3.1C + 3.2B: Remittance Delivery Log with Retry Controls ── */}
                   <div className="border-t pt-4 mt-2">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Remittance Delivery Log</span>
-                      {remittanceLogData?.summary && (
-                        <span className="text-xs text-gray-400">
-                          {remittanceLogData.summary.sent} sent · {remittanceLogData.summary.failed} failed · {remittanceLogData.summary.pending} pending
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {remittanceLogData?.summary && (
+                          <span className="text-xs text-gray-400">
+                            {remittanceLogData.summary.sent} sent · {remittanceLogData.summary.failed} failed · {remittanceLogData.summary.pending} pending
+                          </span>
+                        )}
+                        {remittanceLogData?.summary?.failed > 0 && (
+                          <button
+                            disabled={retryFailedPending}
+                            onClick={() => retryFailed(selectedBatchId!)}
+                            className="text-xs px-2 py-1 bg-amber-500 text-white rounded hover:bg-amber-600 disabled:opacity-50"
+                          >
+                            {retryFailedPending ? "Retrying…" : `↺ Retry All Failed (${remittanceLogData.summary.failed})`}
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {remittanceLogLoading ? (
                       <div className="text-xs text-gray-400 py-2">Loading…</div>
@@ -3477,7 +3601,9 @@ export default function AdminWalletDashboard() {
                             <th className="pb-1 pr-3">Provider UID</th>
                             <th className="pb-1 pr-3">Status</th>
                             <th className="pb-1 pr-3">Sent At</th>
-                            <th className="pb-1">Error</th>
+                            <th className="pb-1 pr-3">Retries</th>
+                            <th className="pb-1 pr-3">Error</th>
+                            <th className="pb-1">Action</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -3492,11 +3618,122 @@ export default function AdminWalletDashboard() {
                                 }`}>{e.status}</span>
                               </td>
                               <td className="py-1.5 pr-3 text-gray-500">{e.sentAt ? new Date(e.sentAt).toLocaleString() : '—'}</td>
-                              <td className="py-1.5 text-red-500 truncate max-w-[200px]">{e.errorDetail ?? '—'}</td>
+                              <td className="py-1.5 pr-3 text-gray-400">{e.retryCount ?? 0}</td>
+                              <td className="py-1.5 pr-3 text-red-500 truncate max-w-[160px]">{e.errorDetail ?? '—'}</td>
+                              <td className="py-1.5">
+                                {e.status !== 'sent' && (
+                                  <button
+                                    disabled={resendPending}
+                                    onClick={() => resendRemittance(e.providerUid)}
+                                    className="text-[10px] px-2 py-0.5 border border-blue-300 text-blue-600 rounded hover:bg-blue-50 disabled:opacity-40"
+                                  >
+                                    Retry
+                                  </button>
+                                )}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
+                    )}
+                  </div>
+
+                  {/* ── 3.2A: Bank Reconciliation Upload ── */}
+                  <div className="border-t pt-4 mt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Bank Reconciliation</span>
+                      {reconData?.summary && (
+                        <span className="text-xs text-gray-400">
+                          {reconData.summary.settled}/{reconData.summary.total} entries settled · ₪{((reconData.summary.settledNetCents ?? 0) / 100).toFixed(2)} confirmed
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Settlement progress bar */}
+                    {reconData?.summary?.total > 0 && (
+                      <div className="mb-3">
+                        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-500 rounded-full transition-all"
+                            style={{ width: `${Math.round((reconData.summary.settled / reconData.summary.total) * 100)}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
+                          <span>{reconData.summary.settled} settled</span>
+                          <span>{reconData.summary.unsettled} pending</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Upload zone */}
+                    <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 bg-gray-50">
+                      <div className="text-xs text-gray-500 mb-2">
+                        Upload bank payment CSV — columns: <span className="font-mono">provider_uid</span> (required), <span className="font-mono">bank_ref</span>, <span className="font-mono">amount_ils</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="file"
+                          accept=".csv,text/csv"
+                          onChange={e => setReconFile(e.target.files?.[0] ?? null)}
+                          className="text-xs text-gray-600 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300"
+                        />
+                        <button
+                          disabled={!reconFile || reconUploading}
+                          onClick={uploadReconFile}
+                          className="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-500 disabled:opacity-40 shrink-0"
+                        >
+                          {reconUploading ? "Uploading…" : "Upload & Match"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Upload history */}
+                    {reconLoading ? (
+                      <div className="text-xs text-gray-400 mt-2">Loading…</div>
+                    ) : reconData?.uploads?.length > 0 ? (
+                      <div className="mt-3">
+                        <div className="text-[10px] text-gray-400 uppercase font-semibold mb-1">Upload History</div>
+                        {reconData.uploads.map((u: any) => (
+                          <div key={u.id} className="flex items-center justify-between py-1.5 border-b last:border-0 text-xs">
+                            <span className="font-mono text-gray-600">{u.fileName}</span>
+                            <span className="text-gray-400">{u.matchedCount} matched · {u.unmatchedCount} unmatched</span>
+                            <span className="text-gray-400">{new Date(u.createdAt).toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {/* Per-provider settlement table */}
+                    {reconData?.providers?.length > 0 && (
+                      <div className="mt-3">
+                        <div className="text-[10px] text-gray-400 uppercase font-semibold mb-1">Provider Settlement Status</div>
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-left text-gray-400 border-b">
+                              <th className="pb-1 pr-3">Provider UID</th>
+                              <th className="pb-1 pr-3">Net (₪)</th>
+                              <th className="pb-1 pr-3">Bank Ref</th>
+                              <th className="pb-1">Settled</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {reconData.providers.map((p: any) => (
+                              <tr key={p.providerUid} className="border-b last:border-0">
+                                <td className="py-1.5 pr-3 font-mono text-gray-700">{p.providerUid}</td>
+                                <td className="py-1.5 pr-3">₪{(p.netCents / 100).toFixed(2)}</td>
+                                <td className="py-1.5 pr-3 font-mono text-gray-400">{p.bankRef ?? '—'}</td>
+                                <td className="py-1.5">
+                                  {p.settled ? (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700">Settled</span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-500">Pending</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     )}
                   </div>
                 </CardContent>
@@ -3886,6 +4123,32 @@ export default function AdminWalletDashboard() {
                       >
                         {patchPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Save Note"}
                       </button>
+                    </div>
+                  )}
+
+                  {/* ── 3.2C: Escalate panel ── */}
+                  {selectedDispute.status !== "escalated" && selectedDispute.status !== "resolved" && selectedDispute.status !== "dismissed" && (
+                    <div className="border border-purple-200 rounded p-3 bg-purple-50 space-y-2">
+                      <p className="text-xs font-semibold text-purple-800">⬆ Escalate Case</p>
+                      <input
+                        className="w-full border rounded px-2 py-1.5 text-xs"
+                        placeholder="Escalation reason (optional)"
+                        value={escalationNote}
+                        onChange={e => setEscalationNote(e.target.value)}
+                      />
+                      <button
+                        className="text-xs px-3 py-1.5 bg-purple-700 text-white rounded hover:bg-purple-600 disabled:opacity-50"
+                        disabled={escalatePending}
+                        onClick={() => escalateDispute({ caseRef: selectedDispute.case_ref, note: escalationNote || undefined })}
+                      >
+                        {escalatePending ? "Escalating…" : "Escalate to Senior Finance"}
+                      </button>
+                    </div>
+                  )}
+                  {selectedDispute.escalated_at && (
+                    <div className="border border-purple-200 bg-purple-50 rounded px-3 py-2 text-xs text-purple-700">
+                      <span className="font-semibold">Escalated</span> by {selectedDispute.escalated_by} at {new Date(selectedDispute.escalated_at).toLocaleString()}
+                      {selectedDispute.escalation_note && <span> — {selectedDispute.escalation_note}</span>}
                     </div>
                   )}
 
@@ -4603,6 +4866,147 @@ export default function AdminWalletDashboard() {
                         );
                       })}
                     </div>
+
+                    {/* ── 3.2F: Variance Commentary ── */}
+                    <div className="border-t pt-3 mt-1">
+                      <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Close-to-Close Commentary</div>
+                      {commentaryLoading ? (
+                        <div className="text-xs text-gray-400">Loading…</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {Object.keys(varianceData?.metrics ?? {}).map((key: string) => {
+                            const labels: Record<string, string> = {
+                              grossPayoutCents: 'Gross Payout', netPayoutCents: 'Net Payout', commissionCents: 'Commission',
+                              entryCount: 'Entries', providerCount: 'Providers', disputeCount: 'Disputes Opened',
+                              resolvedDisputeCount: 'Disputes Resolved', disputedCents: 'Total Disputed',
+                            };
+                            const saved = (commentaryData?.comments ?? []).find((c: any) => c.metric === key);
+                            const draft = commentDraft[key] ?? saved?.comment ?? "";
+                            const isDirty = commentDraft[key] !== undefined && commentDraft[key] !== (saved?.comment ?? "");
+                            return (
+                              <div key={key} className="flex items-start gap-2">
+                                <span className="text-[10px] text-gray-400 w-28 shrink-0 pt-1.5">{labels[key] ?? key}</span>
+                                <input
+                                  className="flex-1 border rounded px-2 py-1 text-xs"
+                                  placeholder="Add commentary…"
+                                  value={draft}
+                                  onChange={e => setCommentDraft(d => ({ ...d, [key]: e.target.value }))}
+                                />
+                                {isDirty && (
+                                  <button
+                                    disabled={saveCommentPending}
+                                    onClick={() => saveComment({ month: varianceMonth, metric: key, comment: draft })}
+                                    className="text-[10px] px-2 py-1 bg-violet-600 text-white rounded hover:bg-violet-500 shrink-0 disabled:opacity-40"
+                                  >Save</button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ── 3.2E: Monthly Sign-off ── */}
+                    <div className="border-t pt-3 mt-1">
+                      <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Monthly Sign-off</div>
+                      {signoffLoading ? (
+                        <div className="text-xs text-gray-400">Loading…</div>
+                      ) : signoffData?.signedOff ? (
+                        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded px-3 py-2 text-xs text-emerald-700">
+                          <span>✓</span>
+                          <span><strong>{varianceMonth}</strong> signed off by <strong>{signoffData.signOff.signedOffBy}</strong> on {new Date(signoffData.signOff.signedOffAt).toLocaleString()}</span>
+                          {signoffData.signOff.notes && <span className="text-emerald-500">— {signoffData.signOff.notes}</span>}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <input
+                            className="flex-1 border rounded px-2 py-1.5 text-xs"
+                            placeholder="Sign-off notes (optional)"
+                            value={signoffNote}
+                            onChange={e => setSignoffNote(e.target.value)}
+                          />
+                          <button
+                            disabled={signoffPending}
+                            onClick={() => {
+                              if (!confirm(`Sign off ${varianceMonth}? This is irreversible.`)) return;
+                              signoffMonth({ month: varianceMonth, notes: signoffNote || undefined });
+                            }}
+                            className="text-xs px-3 py-1.5 bg-emerald-700 text-white rounded hover:bg-emerald-600 disabled:opacity-50 shrink-0"
+                          >
+                            {signoffPending ? "Signing…" : `✓ Sign off ${varianceMonth}`}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ── 3.2D: Finance Alerts ── */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <span className="text-amber-500">🔔</span> Finance Alerts
+                    {(alertsData?.unacknowledged?.critical ?? 0) > 0 && (
+                      <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white">
+                        {alertsData.unacknowledged.critical}
+                      </span>
+                    )}
+                    {(alertsData?.unacknowledged?.warning ?? 0) > 0 && (
+                      <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-white">
+                        {alertsData.unacknowledged.warning}
+                      </span>
+                    )}
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    {(alertsData?.unacknowledged?.total ?? 0) > 0 && (
+                      <button
+                        disabled={ackAllPending}
+                        onClick={() => acknowledgeAll()}
+                        className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 text-gray-600 disabled:opacity-40"
+                      >
+                        {ackAllPending ? "…" : "Acknowledge All"}
+                      </button>
+                    )}
+                    <button onClick={() => refetchAlerts()} className="text-xs text-blue-600 hover:underline">Refresh</button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {alertsLoading ? (
+                  <div className="text-xs text-gray-400 py-3">Loading…</div>
+                ) : !alertsData?.alerts?.length ? (
+                  <div className="text-xs text-gray-400 py-3">No unacknowledged alerts.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {alertsData.alerts.map((a: any) => (
+                      <div key={a.id} className={`flex items-start justify-between gap-3 rounded p-3 border text-xs ${
+                        a.severity === 'critical' ? 'bg-red-50 border-red-200' :
+                        a.severity === 'warning'  ? 'bg-amber-50 border-amber-200' :
+                                                    'bg-gray-50 border-gray-200'
+                      }`}>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              a.severity === 'critical' ? 'bg-red-500 text-white' :
+                              a.severity === 'warning'  ? 'bg-amber-400 text-white' :
+                                                          'bg-gray-400 text-white'
+                            }`}>{a.severity.toUpperCase()}</span>
+                            <span className="font-mono text-gray-600">{a.alertType}</span>
+                            {a.entityId && <span className="text-gray-400">({a.entityType}: {a.entityId})</span>}
+                          </div>
+                          <div className="text-gray-500 truncate">{JSON.stringify(a.detail).slice(0, 120)}</div>
+                          <div className="text-gray-400 mt-0.5">{new Date(a.createdAt).toLocaleString()}</div>
+                        </div>
+                        <button
+                          disabled={ackPending}
+                          onClick={() => acknowledgeAlert(a.id)}
+                          className="text-[10px] px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 text-gray-500 disabled:opacity-40 shrink-0"
+                        >Ack</button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>
