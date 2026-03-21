@@ -306,8 +306,18 @@ export default function Academy() {
                 {t('Book certified trainers for obedience, agility, behavioral training, and more. All trainers verified and background-checked.')}
               </p>
 
+              {/* Trainer portal shortcut */}
+              <div className="mb-4 luxury-animate-slide-up luxury-delay-4">
+                <Link href="/academy/trainer/bookings">
+                  <span className="inline-flex items-center gap-1.5 text-xs text-amber-300/80 hover:text-amber-200 transition-colors cursor-pointer underline underline-offset-2">
+                    <span>🎓</span>
+                    {t('Are you a trainer? Manage your session requests')}
+                  </span>
+                </Link>
+              </div>
+
               {/* Search Bar */}
-              <div className="relative max-w-2xl mx-auto luxury-animate-scale-in luxury-delay-4">
+              <div className="relative max-w-2xl mx-auto luxury-animate-scale-in luxury-delay-5">
                 <div className="absolute left-4 top-1/2 transform -translate-y-1/2 p-2 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-lg">
                   <Search className="h-5 w-5 text-white" />
                 </div>

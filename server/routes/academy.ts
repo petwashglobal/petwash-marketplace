@@ -297,6 +297,27 @@ router.post('/bookings', requireAuth, async (req, res) => {
 });
 
 /**
+ * GET /api/academy/trainer-bookings - Get trainer's incoming bookings
+ * Trainer-only endpoint - returns all bookings assigned to this trainer
+ */
+router.get('/trainer-bookings', async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Authentication required' });
+
+    const myBookings = await db
+      .select()
+      .from(trainerBookings)
+      .where(eq(trainerBookings.trainerUserId, req.user.uid))
+      .orderBy(desc(trainerBookings.createdAt));
+
+    res.json(myBookings);
+  } catch (error) {
+    logger.error('[Academy] Error fetching trainer bookings', error);
+    res.status(500).json({ error: 'Failed to fetch trainer bookings' });
+  }
+});
+
+/**
  * GET /api/academy/bookings - Get user's trainer bookings
  * Authenticated endpoint - returns user's booking history
  */

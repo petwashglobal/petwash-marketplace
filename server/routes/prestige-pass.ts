@@ -3306,6 +3306,7 @@ router.post('/admin/wallet/release', async (req: Request, res: Response) => {
     const holdCents = Number(booking.wallet_hold_cents);
     if (holdCents <= 0) return res.status(422).json({ error: 'No hold amount to release' });
 
+    const { walletService } = await import('../services/WalletService');
     const result = await walletService.releaseBookingHold({
       userId:       booking.user_id,
       amountCents:  holdCents,
@@ -3462,6 +3463,7 @@ router.post('/admin/wallet/adjust', async (req: Request, res: Response) => {
     if (!reason?.trim()) return res.status(400).json({ error: 'reason required' });
     if (type !== 'credit' && type !== 'debit') return res.status(400).json({ error: "type must be 'credit' or 'debit'" });
 
+    const { walletService } = await import('../services/WalletService');
     const wallet = await walletService.getOrCreateWallet(userId);
     const idempotencyKey = `wallet:admin:adjust:${type}:${userId}:${Date.now()}`;
 
@@ -3612,6 +3614,186 @@ router.get('/admin/wallet/reconciliation-history/export.csv', async (req: Reques
   } catch (err: any) {
     logger.error('[ReconciliationExport] error', { error: err.message });
     return res.status(500).json({ error: 'Export failed', detail: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /api/prestige-pass/admin/wallet/academy/:id/force-confirm
+// Admin override: force-confirm an academy booking.
+// Debits from hold if finance_state = hold_active. Mandatory reason + audit trail.
+// ──────────────────────────────────────────────────────────────────────────────
+router.post('/admin/wallet/academy/:id/force-confirm', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const bookingId = req.params.id;
+    const { reason } = req.body as { reason: string };
+    if (!reason?.trim()) return res.status(400).json({ error: 'reason required' });
+
+    const rows: any = await db.execute(sql`
+      SELECT booking_id, user_id, trainer_user_id, finance_state, booking_status,
+             wallet_hold_cents, wallet_debited_cents
+      FROM trainer_bookings WHERE booking_id = ${bookingId} LIMIT 1
+    `);
+    const booking = (rows?.rows ?? rows ?? [])[0] ?? null;
+    if (!booking) return res.status(404).json({ error: 'Academy booking not found' });
+
+    if (booking.booking_status === 'confirmed' || booking.booking_status === 'completed') {
+      return res.status(422).json({ error: `Booking already in status: ${booking.booking_status}` });
+    }
+    if (booking.booking_status === 'cancelled') {
+      return res.status(422).json({ error: 'Cannot confirm a cancelled booking' });
+    }
+
+    const walletUpdates: Record<string, unknown> = {};
+    let txnId: string | null = null;
+
+    if (booking.finance_state === 'hold_active' && Number(booking.wallet_hold_cents) > 0) {
+      const { walletService } = await import('../services/WalletService');
+      const debitResult = await walletService.debitBookingFromHold({
+        userId: booking.user_id,
+        amountCents: Number(booking.wallet_hold_cents),
+        bookingId,
+        divisionCode: 'academy',
+        ipAddress: req.ip,
+      });
+      walletUpdates.finance_state   = 'debited';
+      walletUpdates.wallet_debit_key = debitResult.txnId;
+      walletUpdates.wallet_debited_cents = Number(booking.wallet_hold_cents);
+      txnId = debitResult.txnId;
+      logger.info('[AdminWallet][ForceConfirm] Wallet debited', { bookingId, txnId, adminUid: uid });
+    }
+
+    await db.execute(sql`
+      UPDATE trainer_bookings
+      SET booking_status = 'confirmed',
+          confirmed_at   = NOW(),
+          payment_status = 'completed',
+          finance_state  = ${walletUpdates.finance_state ?? booking.finance_state},
+          wallet_debit_key     = ${walletUpdates.wallet_debit_key ?? booking.wallet_debit_key ?? null},
+          wallet_debited_cents = ${walletUpdates.wallet_debited_cents ?? booking.wallet_debited_cents ?? 0},
+          updated_at     = NOW()
+      WHERE booking_id = ${bookingId}
+    `);
+
+    logger.info('[AdminWallet][ForceConfirm] Academy booking force-confirmed', {
+      bookingId, adminUid: uid, reason,
+      financeState: walletUpdates.finance_state ?? booking.finance_state,
+    });
+
+    return res.json({
+      ok: true,
+      bookingId,
+      action: 'force-confirm',
+      txnId,
+      actorUid: uid,
+      actorSource: 'admin_override',
+      reason,
+      confirmedAt: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    logger.error('[AdminWallet][ForceConfirm] error', { error: err.message });
+    return res.status(500).json({ error: 'Force confirm failed', detail: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /api/prestige-pass/admin/wallet/academy/:id/force-cancel
+// Admin override: force-cancel an academy booking.
+// Releases hold if hold_active, refunds if debited. Mandatory reason + audit.
+// ──────────────────────────────────────────────────────────────────────────────
+router.post('/admin/wallet/academy/:id/force-cancel', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const bookingId = req.params.id;
+    const { reason } = req.body as { reason: string };
+    if (!reason?.trim()) return res.status(400).json({ error: 'reason required' });
+
+    const rows: any = await db.execute(sql`
+      SELECT booking_id, user_id, finance_state, booking_status,
+             wallet_hold_cents, wallet_debited_cents
+      FROM trainer_bookings WHERE booking_id = ${bookingId} LIMIT 1
+    `);
+    const booking = (rows?.rows ?? rows ?? [])[0] ?? null;
+    if (!booking) return res.status(404).json({ error: 'Academy booking not found' });
+
+    if (booking.booking_status === 'cancelled') {
+      return res.status(422).json({ error: 'Booking is already cancelled' });
+    }
+
+    const walletUpdates: Record<string, unknown> = {};
+    let action: 'released' | 'refunded' | 'cancelled' = 'cancelled';
+    let txnId: string | null = null;
+
+    const { walletService } = await import('../services/WalletService');
+
+    if (booking.finance_state === 'hold_active' && Number(booking.wallet_hold_cents) > 0) {
+      const releaseResult = await walletService.releaseBookingHold({
+        userId: booking.user_id,
+        amountCents: Number(booking.wallet_hold_cents),
+        bookingId,
+        divisionCode: 'academy',
+        ipAddress: req.ip,
+      });
+      walletUpdates.finance_state   = 'released';
+      walletUpdates.wallet_release_key = releaseResult.txnId;
+      txnId  = releaseResult.txnId;
+      action = 'released';
+      logger.info('[AdminWallet][ForceCancel] Hold released', { bookingId, txnId, adminUid: uid });
+    } else if (booking.finance_state === 'debited' && Number(booking.wallet_debited_cents) > 0) {
+      const refundResult = await walletService.refundBookingWallet({
+        userId: booking.user_id,
+        amountCents: Number(booking.wallet_debited_cents),
+        bookingId,
+        divisionCode: 'academy',
+        ipAddress: req.ip,
+      });
+      walletUpdates.finance_state        = 'refunded';
+      walletUpdates.wallet_refund_key    = refundResult.txnId;
+      walletUpdates.wallet_refunded_cents = Number(booking.wallet_debited_cents);
+      txnId  = refundResult.txnId;
+      action = 'refunded';
+      logger.info('[AdminWallet][ForceCancel] Wallet refunded', { bookingId, txnId, adminUid: uid });
+    }
+
+    await db.execute(sql`
+      UPDATE trainer_bookings
+      SET booking_status = 'cancelled',
+          cancelled_at   = NOW(),
+          cancelled_by   = 'admin',
+          cancellation_reason = ${reason},
+          finance_state  = ${walletUpdates.finance_state ?? booking.finance_state},
+          wallet_release_key    = ${walletUpdates.wallet_release_key    ?? null},
+          wallet_refund_key     = ${walletUpdates.wallet_refund_key     ?? null},
+          wallet_refunded_cents = ${walletUpdates.wallet_refunded_cents ?? booking.wallet_refunded_cents ?? 0},
+          updated_at     = NOW()
+      WHERE booking_id = ${bookingId}
+    `);
+
+    logger.info('[AdminWallet][ForceCancel] Academy booking force-cancelled', {
+      bookingId, adminUid: uid, reason, action,
+    });
+
+    return res.json({
+      ok: true,
+      bookingId,
+      action: `force-cancel:${action}`,
+      txnId,
+      actorUid: uid,
+      actorSource: 'admin_override',
+      reason,
+      cancelledAt: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    logger.error('[AdminWallet][ForceCancel] error', { error: err.message });
+    return res.status(500).json({ error: 'Force cancel failed', detail: err.message });
   }
 });
 

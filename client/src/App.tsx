@@ -228,6 +228,7 @@ const Academy = lazy(() => import("@/pages/Academy"));
 const TrainerProfile = lazy(() => import("@/pages/academy/TrainerProfile"));
 const TrainerDetail = lazy(() => import("@/pages/academy/TrainerDetail"));
 const AcademyBookingFlow = lazy(() => import("@/pages/academy/BookingFlow"));
+const TrainerBookings = lazy(() => import("@/pages/academy/TrainerBookings"));
 
 // Provider Join Flows — platform-specific application forms
 const JoinAsWalker = lazy(() => import("@/pages/join/JoinAsWalker"));
@@ -1016,6 +1017,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
+        {/* ⁦Pet Wash Academy™⁩ - Trainer Booking Management */}
+        <Route path="/academy/trainer/bookings">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <TrainerBookings />
+              </Suspense>
+            </RequireAuth>
+          )}
+        </Route>
+
         {/* Provider Join Flows — dedicated platform-specific application forms */}
         <Route path="/join/walker">
           {() => (

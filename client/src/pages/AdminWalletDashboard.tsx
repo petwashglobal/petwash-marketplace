@@ -45,6 +45,7 @@ import {
   Minus,
   TrendingUp,
   Clock,
+  XCircle,
 } from "lucide-react";
 import {
   Select,
@@ -99,9 +100,11 @@ export default function AdminWalletDashboard() {
   const [auditUserSearch, setAuditUserSearch] = useState("");
 
   // ── Action modals ────────────────────────────────────────────────────────────
-  const [releaseModal, setReleaseModal] = useState<{ bookingId: string; holdCents: number } | null>(null);
-  const [refundModal, setRefundModal]   = useState<{ bookingId: string; debitedCents: number; refundedCents: number } | null>(null);
-  const [adjustModal, setAdjustModal]   = useState<{ userId: string; type: "credit" | "debit" } | null>(null);
+  const [releaseModal, setReleaseModal]     = useState<{ bookingId: string; holdCents: number } | null>(null);
+  const [refundModal, setRefundModal]       = useState<{ bookingId: string; debitedCents: number; refundedCents: number } | null>(null);
+  const [adjustModal, setAdjustModal]       = useState<{ userId: string; type: "credit" | "debit" } | null>(null);
+  const [forceConfirmModal, setForceConfirmModal] = useState<{ bookingId: string; holdCents: number } | null>(null);
+  const [forceCancelModal, setForceCancelModal]   = useState<{ bookingId: string; financeState: string; amount: number } | null>(null);
   const [actionReason, setActionReason] = useState("");
   const [refundAmount, setRefundAmount] = useState("");
 
@@ -212,6 +215,32 @@ export default function AdminWalletDashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/user-audit"] });
     },
     onError: (err) => toast({ title: err?.message ?? "Adjustment failed", variant: "destructive" }),
+  });
+
+  // ── Academy force-confirm mutation ───────────────────────────────────────────
+  const { mutate: forceConfirm, isPending: forceConfirmPending } = useMutation<any, any, { bookingId: string; reason: string }>({
+    mutationFn: (vars) =>
+      apiRequest("POST", `/api/prestige-pass/admin/wallet/academy/${vars.bookingId}/force-confirm`, { reason: vars.reason }),
+    onSuccess: (data) => {
+      toast({ title: `Force confirmed — txn ${data.txnId ?? "n/a"}`, variant: "default" });
+      setForceConfirmModal(null);
+      setActionReason("");
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/booking-audit"] });
+    },
+    onError: (err) => toast({ title: err?.message ?? "Force confirm failed", variant: "destructive" }),
+  });
+
+  // ── Academy force-cancel mutation ────────────────────────────────────────────
+  const { mutate: forceCancel, isPending: forceCancelPending } = useMutation<any, any, { bookingId: string; reason: string }>({
+    mutationFn: (vars) =>
+      apiRequest("POST", `/api/prestige-pass/admin/wallet/academy/${vars.bookingId}/force-cancel`, { reason: vars.reason }),
+    onSuccess: (data) => {
+      toast({ title: `Force cancelled — ${data.action}`, variant: "default" });
+      setForceCancelModal(null);
+      setActionReason("");
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/booking-audit"] });
+    },
+    onError: (err) => toast({ title: err?.message ?? "Force cancel failed", variant: "destructive" }),
   });
 
   // ── Admin Adjustments ────────────────────────────────────────────────────────
@@ -527,6 +556,47 @@ export default function AdminWalletDashboard() {
                         >
                           <RotateCcw className="w-3 h-3" /> Issue Refund
                         </Button>
+                      )}
+
+                      {/* Academy-only admin overrides */}
+                      {auditData.booking?.divisionCode === "academy" && (
+                        <>
+                          {(auditData.booking?.financeState === "hold_active" ||
+                            auditData.booking?.financeState === "none") &&
+                            auditData.booking?.bookingStatus !== "confirmed" &&
+                            auditData.booking?.bookingStatus !== "cancelled" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1 text-xs border-green-500 text-green-700 hover:bg-green-50"
+                              onClick={() => setForceConfirmModal({
+                                bookingId: auditData.booking.bookingId,
+                                holdCents: Number(auditData.booking.walletHoldCents ?? 0),
+                              })}
+                            >
+                              <CheckCircle2 className="w-3 h-3" /> Force Confirm
+                            </Button>
+                          )}
+                          {auditData.booking?.bookingStatus !== "cancelled" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1 text-xs border-red-400 text-red-700 hover:bg-red-50"
+                              onClick={() => setForceCancelModal({
+                                bookingId: auditData.booking.bookingId,
+                                financeState: auditData.booking.financeState,
+                                amount: Number(
+                                  auditData.booking.financeState === "debited"
+                                    ? auditData.booking.walletDebitedCents
+                                    : auditData.booking.walletHoldCents ?? 0
+                                ),
+                              })}
+                            >
+                              <XCircle className="w-3 h-3" /> Force Cancel
+                            </Button>
+                          )}
+                          <span className="self-center text-xs text-gray-400 italic">Admin override</span>
+                        </>
                       )}
                     </div>
 
@@ -1275,6 +1345,101 @@ export default function AdminWalletDashboard() {
             >
               {refundPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RotateCcw className="w-4 h-4 mr-2" />}
               Confirm Refund
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Force Confirm Modal (Academy admin override) ───────────────────────── */}
+      <Dialog open={!!forceConfirmModal} onOpenChange={(open) => !open && setForceConfirmModal(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-green-600" /> Force Confirm — Admin Override
+            </DialogTitle>
+          </DialogHeader>
+          {forceConfirmModal && (
+            <div className="space-y-4 py-2">
+              <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
+                <p>Force-confirming booking <code className="text-xs font-mono">{forceConfirmModal.bookingId}</code>.</p>
+                {forceConfirmModal.holdCents > 0 && (
+                  <p className="mt-1">
+                    Will debit <strong>{centsToILS(forceConfirmModal.holdCents)}</strong> from the customer's wallet hold.
+                  </p>
+                )}
+                <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-green-700">
+                  Source: admin_override — this action is fully audited.
+                </p>
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block font-medium">Reason (required)</label>
+                <Textarea
+                  placeholder="e.g. Trainer unreachable, ops manual confirmation…"
+                  value={actionReason}
+                  onChange={(e) => setActionReason(e.target.value)}
+                  className="text-sm"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setForceConfirmModal(null)}>Cancel</Button>
+            <Button
+              className="text-white bg-green-700 hover:bg-green-800"
+              disabled={!actionReason.trim() || forceConfirmPending}
+              onClick={() => forceConfirmModal && forceConfirm({ bookingId: forceConfirmModal.bookingId, reason: actionReason.trim() })}
+            >
+              {forceConfirmPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+              Force Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Force Cancel Modal (Academy admin override) ────────────────────────── */}
+      <Dialog open={!!forceCancelModal} onOpenChange={(open) => !open && setForceCancelModal(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <XCircle className="w-4 h-4 text-red-600" /> Force Cancel — Admin Override
+            </DialogTitle>
+          </DialogHeader>
+          {forceCancelModal && (
+            <div className="space-y-4 py-2">
+              <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">
+                <p>Force-cancelling booking <code className="text-xs font-mono">{forceCancelModal.bookingId}</code>.</p>
+                {forceCancelModal.financeState === "hold_active" && forceCancelModal.amount > 0 && (
+                  <p className="mt-1">Will <strong>release the hold</strong> of <strong>{centsToILS(forceCancelModal.amount)}</strong> back to the customer's wallet.</p>
+                )}
+                {forceCancelModal.financeState === "debited" && forceCancelModal.amount > 0 && (
+                  <p className="mt-1">Will <strong>refund</strong> <strong>{centsToILS(forceCancelModal.amount)}</strong> back to the customer's wallet.</p>
+                )}
+                <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-red-700">
+                  Source: admin_override — this action is fully audited.
+                </p>
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block font-medium">Reason (required)</label>
+                <Textarea
+                  placeholder="e.g. Trainer no-show, booking error, customer escalation resolved…"
+                  value={actionReason}
+                  onChange={(e) => setActionReason(e.target.value)}
+                  className="text-sm"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setForceCancelModal(null)}>Keep Booking</Button>
+            <Button
+              className="text-white bg-red-600 hover:bg-red-700"
+              disabled={!actionReason.trim() || forceCancelPending}
+              onClick={() => forceCancelModal && forceCancel({ bookingId: forceCancelModal.bookingId, reason: actionReason.trim() })}
+            >
+              {forceCancelPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
+              Force Cancel
             </Button>
           </DialogFooter>
         </DialogContent>
