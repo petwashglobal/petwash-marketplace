@@ -1,0 +1,89 @@
+Excellent. This is the right kind of proof pass.
+
+44 out of 44 is strong, and the Academy key bug was exactly the kind of thing this stage is meant to catch before scale. Fixing it now matters a lot because those key fields are what make audit, reconciliation, and replay trustworthy.
+
+What this proves:
+	•	walker lifecycle is correct
+	•	sitter lifecycle is correct
+	•	academy lifecycle is now correct
+	•	pending balance math is correct
+	•	lifetime redeemed math is correct
+	•	retry safety is correct
+	•	no negative balance drift exists
+	•	ledger and wallet state reconcile cleanly
+
+The most important line in your result is this one:
+	•	pending drift = ₪0
+
+That means the wallet is behaving like a real financial subsystem, not just a UI credit counter.
+
+Where the platform stands now
+	•	K9000 is integrated
+	•	walkers are integrated
+	•	sitters are integrated
+	•	academy is integrated
+	•	shared wallet is real
+	•	hold / debit / release / refund lifecycle is real
+	•	division reporting is real
+	•	proof pass is real
+	•	reconciliation is real
+
+That is a major milestone.
+
+What should happen next
+
+Phase 2.5 should now be:
+	1.	Soft production rollout
+	2.	Live monitoring and alert thresholds
+	3.	Admin finance UX polish
+	4.	Export and reconciliation hardening
+	5.	Notification and customer wording polish everywhere
+
+Recommended rollout order
+
+First:
+	•	enable real low-volume usage for walkers
+	•	then sitters
+	•	then academy
+
+Watch daily:
+	•	pending balance drift
+	•	reconciliation job output
+	•	hold_active older than expected
+	•	debit failures
+	•	refund failures
+	•	duplicate idempotency attempts
+	•	division totals
+
+Add hard alerts for:
+	•	any negative balance
+	•	any pending drift not equal to zero
+	•	any accepted or confirmed booking left in hold_active too long
+	•	any wallet operation error rate above a tiny threshold
+
+Best next build
+
+Phase 2.5A:
+	•	live ops alerts
+	•	stuck-hold alerts
+	•	reconciliation history table in admin
+	•	CSV exports polished
+	•	finance_state filters everywhere
+	•	clearer admin audit trail by booking and by user
+
+Phase 2.5B:
+	•	customer-facing wording cleanup everywhere
+	•	same wallet language across checkout, confirmation, booking detail, notifications
+	•	academy checkout visual alignment with walker and sitter
+	•	mobile polish on wallet and finance pages
+
+Phase 2.5C:
+	•	production monitoring runbook
+	•	rollback procedure
+	•	support script for refunds and manual review
+	•	staff guidance for finance incidents
+
+The key point is simple:
+the wallet core is now trustworthy enough to build on.
+
+Send the word and I’ll map Phase 2.5 as one exact build plan with files, endpoints, alerts, UI sections, and rollout order.

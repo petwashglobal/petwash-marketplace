@@ -2526,6 +2526,105 @@ router.get('/admin/wallet/booking-audit', async (req: Request, res: Response) =>
   }
 });
 
+// ─── Admin: User Wallet Audit ─────────────────────────────────────────────────
+// GET /api/prestige-pass/admin/wallet/user-audit?userId=XXX
+// Returns the full wallet balance + all ledger entries for one user.
+router.get('/admin/wallet/user-audit', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const userId = String(req.query.userId || '').trim();
+    if (!userId) return res.status(400).json({ error: 'userId query param required' });
+
+    // Wallet balances
+    const walletRow: any = await db.execute(sql`
+      SELECT wallet_id, cash_wallet_balance_cents, egift_balance_cents,
+             promo_balance_cents, referral_balance_cents, pending_balance_cents,
+             lifetime_earned_cents, lifetime_redeemed_cents, loyalty_tier,
+             is_active, created_at, updated_at
+      FROM wallet_accounts WHERE user_id = ${userId} LIMIT 1
+    `).then((r: any) => (r?.rows ?? r ?? [])[0] ?? null);
+    if (!walletRow) return res.status(404).json({ error: 'Wallet not found for this user' });
+
+    // Wallet ledger entries (newest first, capped at 200)
+    const ledgerRows: any = await db.execute(sql`
+      SELECT entry_id, event_type, direction, bucket, amount_cents, currency,
+             division_code, source_type, idempotency_key, booking_id, created_at
+      FROM wallet_ledger_entries
+      WHERE user_id = ${userId}
+      ORDER BY id DESC
+      LIMIT 200
+    `);
+    const ledger = (ledgerRows?.rows ?? ledgerRows ?? []).map((r: any) => ({
+      entryId:        r.entry_id,
+      eventType:      r.event_type,
+      direction:      r.direction,
+      bucket:         r.bucket,
+      amountCents:    Number(r.amount_cents),
+      currency:       r.currency,
+      divisionCode:   r.division_code,
+      sourceType:     r.source_type,
+      idempotencyKey: r.idempotency_key,
+      bookingId:      r.booking_id,
+      createdAt:      r.created_at,
+    }));
+
+    // Booking finance summary (across both tables)
+    const bkSummary: any = await db.execute(sql`
+      SELECT finance_state, COUNT(*) AS cnt,
+             SUM(wallet_hold_cents) AS total_hold,
+             SUM(wallet_debited_cents) AS total_debited,
+             SUM(wallet_refunded_cents) AS total_refunded
+      FROM booking_requests
+      WHERE owner_id = ${userId} AND finance_state != 'none'
+      GROUP BY finance_state
+      UNION ALL
+      SELECT finance_state, COUNT(*) AS cnt,
+             SUM(wallet_hold_cents) AS total_hold,
+             SUM(wallet_debited_cents) AS total_debited,
+             SUM(wallet_refunded_cents) AS total_refunded
+      FROM trainer_bookings
+      WHERE user_id = ${userId} AND finance_state != 'none'
+      GROUP BY finance_state
+    `);
+    const bookingSummary = (bkSummary?.rows ?? bkSummary ?? []).map((r: any) => ({
+      financeState:   r.finance_state,
+      count:          Number(r.cnt),
+      totalHold:      Number(r.total_hold   ?? 0),
+      totalDebited:   Number(r.total_debited  ?? 0),
+      totalRefunded:  Number(r.total_refunded ?? 0),
+    }));
+
+    return res.json({
+      ok: true,
+      userId,
+      wallet: {
+        walletId:              walletRow.wallet_id,
+        cashCents:             Number(walletRow.cash_wallet_balance_cents),
+        egiftCents:            Number(walletRow.egift_balance_cents),
+        promoCents:            Number(walletRow.promo_balance_cents),
+        referralCents:         Number(walletRow.referral_balance_cents),
+        pendingCents:          Number(walletRow.pending_balance_cents),
+        lifetimeEarnedCents:   Number(walletRow.lifetime_earned_cents),
+        lifetimeRedeemedCents: Number(walletRow.lifetime_redeemed_cents),
+        loyaltyTier:           walletRow.loyalty_tier,
+        isActive:              walletRow.is_active,
+        createdAt:             walletRow.created_at,
+        updatedAt:             walletRow.updated_at,
+      },
+      bookingSummary,
+      ledger,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    logger.error('[Admin] user-audit error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to generate user wallet audit' });
+  }
+});
+
 // ─── Admin: Wallet Lifecycle Proof Pass ───────────────────────────────────────
 // POST /api/prestige-pass/admin/wallet/proof-pass
 //

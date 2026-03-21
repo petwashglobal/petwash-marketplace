@@ -81,6 +81,8 @@ export default function AdminWalletDashboard() {
   const { toast } = useToast();
   const [auditId, setAuditId] = useState("");
   const [auditSearch, setAuditSearch] = useState("");
+  const [auditUserId, setAuditUserId] = useState("");
+  const [auditUserSearch, setAuditUserSearch] = useState("");
 
   // ── Adjustments filters ──────────────────────────────────────────────────────
   const [adjFrom, setAdjFrom]           = useState("");
@@ -118,6 +120,19 @@ export default function AdminWalletDashboard() {
     enabled: !!auditSearch,
   });
 
+  // ── User Wallet Audit ────────────────────────────────────────────────────────
+  const {
+    data: userAuditData,
+    isLoading: userAuditLoading,
+  } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/user-audit", auditUserSearch],
+    queryFn: () =>
+      fetch(`/api/prestige-pass/admin/wallet/user-audit?userId=${encodeURIComponent(auditUserSearch)}`, {
+        credentials: "include",
+      }).then(r => r.json()),
+    enabled: !!auditUserSearch,
+  });
+
   // ── Proof Pass ──────────────────────────────────────────────────────────────
   const {
     data: proofPass,
@@ -152,6 +167,11 @@ export default function AdminWalletDashboard() {
   function handleAuditSearch() {
     if (!auditId.trim()) return;
     setAuditSearch(auditId.trim());
+  }
+
+  function handleUserAuditSearch() {
+    if (!auditUserId.trim()) return;
+    setAuditUserSearch(auditUserId.trim());
   }
 
   function buildExportUrl() {
@@ -352,8 +372,8 @@ export default function AdminWalletDashboard() {
             </Card>
           </TabsContent>
 
-          {/* ── BOOKING AUDIT ── */}
-          <TabsContent value="audit" className="mt-4">
+          {/* ── BOOKING AUDIT + USER WALLET AUDIT ── */}
+          <TabsContent value="audit" className="mt-4 space-y-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Booking Wallet Audit</CardTitle>
@@ -449,7 +469,157 @@ export default function AdminWalletDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* ── User Wallet Audit ── */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Wallet className="w-4 h-4" style={{ color: GOLD }} />
+                  User Wallet Audit
+                </CardTitle>
+                <p className="text-sm text-gray-500">
+                  Enter a user ID to view their full wallet balance breakdown, booking finance
+                  summary, and ledger history (latest 200 entries).
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="User ID (Firebase UID)…"
+                    value={auditUserId}
+                    onChange={(e) => setAuditUserId(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleUserAuditSearch()}
+                    className="max-w-xs"
+                  />
+                  <Button
+                    onClick={handleUserAuditSearch}
+                    style={{ backgroundColor: GOLD, color: "#fff" }}
+                    className="hover:opacity-90"
+                  >
+                    {userAuditLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Search className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+
+                {auditUserSearch && !userAuditLoading && (!userAuditData || userAuditData?.error) && (
+                  <p className="text-sm text-gray-500">
+                    {userAuditData?.error ?? `No wallet found for user ${auditUserSearch}.`}
+                  </p>
+                )}
+
+                {userAuditData?.wallet && (
+                  <div className="space-y-4">
+                    {/* Balance breakdown */}
+                    <div className="p-3 rounded-lg border border-gray-100 bg-gray-50">
+                      <p className="text-xs font-semibold text-gray-700 mb-2">Balance Breakdown</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {[
+                          { label: "Cash", value: userAuditData.wallet.cashCents },
+                          { label: "E-Gift", value: userAuditData.wallet.egiftCents },
+                          { label: "Promo", value: userAuditData.wallet.promoCents },
+                          { label: "Referral", value: userAuditData.wallet.referralCents },
+                          { label: "Pending (held)", value: userAuditData.wallet.pendingCents },
+                          { label: "Lifetime Earned", value: userAuditData.wallet.lifetimeEarnedCents },
+                          { label: "Lifetime Redeemed", value: userAuditData.wallet.lifetimeRedeemedCents },
+                        ].map(({ label, value }) => (
+                          <div key={label}>
+                            <p className="text-xs text-gray-500">{label}</p>
+                            <p className="text-sm font-mono font-medium">{centsToILS(Number(value ?? 0))}</p>
+                          </div>
+                        ))}
+                        <div>
+                          <p className="text-xs text-gray-500">Tier</p>
+                          <p className="text-sm font-medium capitalize">{userAuditData.wallet.loyaltyTier ?? "—"}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Booking finance summary */}
+                    {userAuditData.bookingSummary?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-gray-700 mb-2">Booking Finance Summary</p>
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-gray-50">
+                              <TableHead className="text-xs">Finance State</TableHead>
+                              <TableHead className="text-xs text-right">Count</TableHead>
+                              <TableHead className="text-xs text-right">Hold</TableHead>
+                              <TableHead className="text-xs text-right">Debited</TableHead>
+                              <TableHead className="text-xs text-right">Refunded</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {userAuditData.bookingSummary.map((row: any, i: number) => (
+                              <TableRow key={i}>
+                                <TableCell className="text-xs">
+                                  <FinanceStateBadge state={row.financeState ?? "—"} />
+                                </TableCell>
+                                <TableCell className="text-xs text-right">{row.count}</TableCell>
+                                <TableCell className="text-xs text-right font-mono">{centsToILS(Number(row.totalHold ?? 0))}</TableCell>
+                                <TableCell className="text-xs text-right font-mono">{centsToILS(Number(row.totalDebited ?? 0))}</TableCell>
+                                <TableCell className="text-xs text-right font-mono">{centsToILS(Number(row.totalRefunded ?? 0))}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+
+                    {/* Ledger entries */}
+                    {userAuditData.ledger?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-gray-700 mb-2">
+                          Ledger Entries (latest {userAuditData.ledger.length})
+                        </p>
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-gray-50">
+                              <TableHead className="text-xs">Time</TableHead>
+                              <TableHead className="text-xs">Event</TableHead>
+                              <TableHead className="text-xs">Dir</TableHead>
+                              <TableHead className="text-xs">Bucket</TableHead>
+                              <TableHead className="text-xs text-right">Amount</TableHead>
+                              <TableHead className="text-xs">Division</TableHead>
+                              <TableHead className="text-xs">Booking</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {userAuditData.ledger.map((e: any, i: number) => (
+                              <TableRow key={i}>
+                                <TableCell className="text-xs text-gray-500 whitespace-nowrap">
+                                  {new Date(e.createdAt).toLocaleString("he-IL")}
+                                </TableCell>
+                                <TableCell className="text-xs capitalize">
+                                  {(e.eventType ?? "—").replace(/_/g, " ")}
+                                </TableCell>
+                                <TableCell className={`text-xs font-medium ${e.direction === "credit" ? "text-green-700" : "text-red-600"}`}>
+                                  {e.direction === "credit" ? "↑" : "↓"}
+                                </TableCell>
+                                <TableCell className="text-xs">{e.bucket ?? "—"}</TableCell>
+                                <TableCell className="text-xs text-right font-mono">
+                                  {centsToILS(Number(e.amountCents ?? 0))}
+                                </TableCell>
+                                <TableCell className="text-xs">
+                                  {DIVISION_LABELS[e.divisionCode] ?? e.divisionCode ?? "—"}
+                                </TableCell>
+                                <TableCell className="text-xs font-mono text-gray-400 max-w-[140px] truncate">
+                                  {e.bookingId ?? "—"}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
+
           {/* ── RECONCILIATION HISTORY ── */}
           <TabsContent value="history" className="mt-4">
             <Card>
@@ -656,7 +826,9 @@ export default function AdminWalletDashboard() {
                     const url = buildExportUrl();
                     const a = document.createElement("a");
                     a.href = url;
-                    a.download = `wallet-ledger-${new Date().toISOString().slice(0, 10)}.csv`;
+                    const from = expFrom || "all";
+                    const to   = expTo   || new Date().toISOString().slice(0, 10);
+                    a.download = `petwash-wallet-ledger-${from}_to_${to}.csv`;
                     a.click();
                   }}
                 >
@@ -738,7 +910,10 @@ export default function AdminWalletDashboard() {
                     const url = buildBookingsExportUrl();
                     const a = document.createElement("a");
                     a.href = url;
-                    a.download = `wallet-bookings-finance-${new Date().toISOString().slice(0, 10)}.csv`;
+                    const from = bkFrom || "all";
+                    const to   = bkTo   || new Date().toISOString().slice(0, 10);
+                    const state = bkFinanceState && bkFinanceState !== "__all__" ? `-${bkFinanceState}` : "";
+                    a.download = `petwash-booking-finance${state}-${from}_to_${to}.csv`;
                     a.click();
                   }}
                 >

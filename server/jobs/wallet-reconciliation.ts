@@ -190,7 +190,7 @@ export async function runWalletReconciliation(
           .update(trainerBookings)
           .set({
             walletDebitedCents: holdCents,
-            walletDebitKey:     `wallet:booking:debit:${bookingId}`,
+            walletDebitKey:     result.txnId,
             financeState:       'debited',
             updatedAt:          new Date(),
           })
@@ -229,6 +229,120 @@ export async function runWalletReconciliation(
     logger.info(`${LABEL} Pass complete`, {
       total: totalDrifted, healed, idempotent, failed,
     });
+  }
+
+  // ── 4. Stuck-hold detection — pending bookings in hold_active > 48 h ─────────
+  // These are bookings where the customer paid a hold but the provider never responded.
+  // They need manual review — we DO NOT auto-release (would need provider context).
+  try {
+    const stuckWalkSit: any = await db.execute(sql`
+      SELECT request_id, owner_id, service_type, wallet_hold_cents, created_at
+      FROM booking_requests
+      WHERE status        = 'pending'
+        AND finance_state = 'hold_active'
+        AND wallet_hold_cents > 0
+        AND created_at < NOW() - INTERVAL '48 hours'
+    `);
+    const stuckBookings = stuckWalkSit?.rows ?? stuckWalkSit ?? [];
+    if (stuckBookings.length > 0) {
+      logger.warn(`${LABEL} [ALERT][StuckHold] ${stuckBookings.length} walker/sitter booking(s) stuck in hold_active for > 48 h`, {
+        severity: 'WARN',
+        bookings: stuckBookings.map((b: any) => ({
+          bookingId:   b.request_id,
+          ownerId:     b.owner_id,
+          serviceType: b.service_type,
+          holdCents:   Number(b.wallet_hold_cents),
+          createdAt:   b.created_at,
+        })),
+      });
+    }
+
+    const stuckAcademy: any = await db.execute(sql`
+      SELECT booking_id, user_id, wallet_hold_cents, created_at
+      FROM trainer_bookings
+      WHERE booking_status = 'pending'
+        AND finance_state   = 'hold_active'
+        AND wallet_hold_cents > 0
+        AND created_at < NOW() - INTERVAL '48 hours'
+    `);
+    const stuckAcademyBookings = stuckAcademy?.rows ?? stuckAcademy ?? [];
+    if (stuckAcademyBookings.length > 0) {
+      logger.warn(`${LABEL} [ALERT][StuckHold] ${stuckAcademyBookings.length} academy booking(s) stuck in hold_active for > 48 h`, {
+        severity: 'WARN',
+        bookings: stuckAcademyBookings.map((b: any) => ({
+          bookingId: b.booking_id,
+          userId:    b.user_id,
+          holdCents: Number(b.wallet_hold_cents),
+          createdAt: b.created_at,
+        })),
+      });
+    }
+  } catch (stuckErr: any) {
+    logger.error(`${LABEL} Stuck-hold detection failed`, { error: stuckErr.message });
+  }
+
+  // ── 5. Post-run integrity alerts — negative balances + pending drift ──────────
+  try {
+    const negRows: any = await db.execute(sql`
+      SELECT user_id, wallet_id,
+             cash_wallet_balance_cents, egift_balance_cents,
+             promo_balance_cents, referral_balance_cents, pending_balance_cents
+      FROM wallet_accounts
+      WHERE cash_wallet_balance_cents < 0
+         OR egift_balance_cents       < 0
+         OR promo_balance_cents       < 0
+         OR referral_balance_cents    < 0
+         OR pending_balance_cents     < 0
+    `);
+    const negBalances = negRows?.rows ?? negRows ?? [];
+    if (negBalances.length > 0) {
+      logger.error(`${LABEL} [ALERT][NegativeBalance] CRITICAL: ${negBalances.length} wallet(s) have negative bucket balance`, {
+        severity: 'CRITICAL',
+        wallets: negBalances.map((r: any) => ({
+          userId:      r.user_id,
+          walletId:    r.wallet_id,
+          cash:        Number(r.cash_wallet_balance_cents),
+          egift:       Number(r.egift_balance_cents),
+          promo:       Number(r.promo_balance_cents),
+          referral:    Number(r.referral_balance_cents),
+          pending:     Number(r.pending_balance_cents),
+        })),
+      });
+    }
+
+    const driftRows: any = await db.execute(sql`
+      WITH ledger_pending AS (
+        SELECT user_id,
+          SUM(CASE WHEN event_type = 'hold'    AND direction = 'credit' THEN amount_cents ELSE 0 END)
+            - SUM(CASE WHEN event_type = 'debit'   AND direction = 'debit'  THEN amount_cents ELSE 0 END)
+            - SUM(CASE WHEN event_type = 'release' AND direction = 'debit'  THEN amount_cents ELSE 0 END)
+          AS ledger_pending
+        FROM wallet_ledger_entries
+        WHERE event_type IN ('hold','debit','release')
+        GROUP BY user_id
+      )
+      SELECT w.user_id, w.pending_balance_cents AS wallet_pending, lp.ledger_pending,
+             ABS(w.pending_balance_cents - lp.ledger_pending) AS drift_cents
+      FROM wallet_accounts w
+      JOIN ledger_pending lp ON lp.user_id = w.user_id
+      WHERE ABS(w.pending_balance_cents - lp.ledger_pending) > 0
+    `);
+    const driftAccounts = driftRows?.rows ?? driftRows ?? [];
+    if (driftAccounts.length > 0) {
+      logger.error(`${LABEL} [ALERT][PendingDrift] ${driftAccounts.length} wallet(s) have pending_balance drift vs ledger`, {
+        severity: 'HIGH',
+        accounts: driftAccounts.map((r: any) => ({
+          userId:        r.user_id,
+          walletPending: Number(r.wallet_pending),
+          ledgerPending: Number(r.ledger_pending),
+          driftCents:    Number(r.drift_cents),
+        })),
+      });
+    } else {
+      logger.info(`${LABEL} Integrity checks passed — no negative balances, no pending drift`);
+    }
+  } catch (alertErr: any) {
+    logger.error(`${LABEL} Post-run integrity check failed`, { error: alertErr.message });
   }
 
   const report: ReconciliationReport = {
