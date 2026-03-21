@@ -56,6 +56,9 @@ import {
   Package,
   Download,
   ChevronRight,
+  Activity,
+  FileText,
+  Filter,
 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -304,6 +307,7 @@ export default function AdminWalletDashboard() {
   const [batchCreateNotes, setBatchCreateNotes] = useState("");
   const [batchCreateResult, setBatchCreateResult] = useState<any>(null);
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+  const [selectedFormat,  setSelectedFormat]  = useState<string>("csv");
 
   const { data: batchListData, isLoading: batchListLoading, refetch: refetchBatchList } = useQuery<any>({
     queryKey: ["/api/prestige-pass/admin/wallet/payout-batches"],
@@ -708,6 +712,75 @@ export default function AdminWalletDashboard() {
     queryKey: ["/api/prestige-pass/admin/wallet/finance-roles"],
     queryFn:  () => fetch("/api/prestige-pass/admin/wallet/finance-roles", { credentials: "include" }).then(r => r.json()),
   });
+  const { data: roleAuditData, isLoading: roleAuditLoading, refetch: refetchRoleAudit } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/finance-roles/audit"],
+    queryFn:  () => fetch("/api/prestige-pass/admin/wallet/finance-roles/audit", { credentials: "include" }).then(r => r.json()),
+  });
+
+  // ── Phase 3.1D: Finance Activity Timeline ─────────────────────────────
+  const [finActorFilter,  setFinActorFilter]  = useState("");
+  const [finActionFilter, setFinActionFilter] = useState("");
+  const [finEntityFilter, setFinEntityFilter] = useState("");
+  const [finFromFilter,   setFinFromFilter]   = useState("");
+  const [finToFilter,     setFinToFilter]     = useState("");
+  const [finPage,         setFinPage]         = useState(1);
+  const [finFiltersApplied, setFinFiltersApplied] = useState<Record<string,string>>({});
+  const { data: finActivityData, isLoading: finActivityLoading, refetch: refetchFinActivity } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/finance-audit", finFiltersApplied, finPage],
+    queryFn: () => {
+      const p = new URLSearchParams({ page: String(finPage) });
+      if (finFiltersApplied.actor)      p.set("actor",      finFiltersApplied.actor);
+      if (finFiltersApplied.action)     p.set("action",     finFiltersApplied.action);
+      if (finFiltersApplied.entityType) p.set("entityType", finFiltersApplied.entityType);
+      if (finFiltersApplied.from)       p.set("from",       finFiltersApplied.from);
+      if (finFiltersApplied.to)         p.set("to",         finFiltersApplied.to);
+      return fetch(`/api/prestige-pass/admin/wallet/finance-audit?${p}`, { credentials: "include" }).then(r => r.json());
+    },
+  });
+  // ── 3.1F: Dispute SLA Report ─────────────────────────────────────────────
+  const [slaFrom, setSlaFrom] = useState('');
+  const [slaTo, setSlaTo]     = useState('');
+  const { data: slaReportData, isLoading: slaLoading, refetch: refetchSla } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/dispute-sla-report", slaFrom, slaTo],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (slaFrom) p.set("from", slaFrom);
+      if (slaTo)   p.set("to",   slaTo);
+      return fetch(`/api/prestige-pass/admin/wallet/dispute-sla-report?${p}`, { credentials: "include" }).then(r => r.json());
+    },
+  });
+
+  // ── 3.1E: Monthly Variance Analysis ──────────────────────────────────────
+  const [varianceMonth, setVarianceMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const { data: varianceData, isLoading: varianceLoading } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/variance-analysis", varianceMonth],
+    queryFn: () => fetch(`/api/prestige-pass/admin/wallet/variance-analysis?month=${varianceMonth}`, { credentials: "include" }).then(r => r.json()),
+  });
+
+  // ── 3.1B: Clawback Summary (admin) ───────────────────────────────────────
+  const { data: clawbackSummaryData, isLoading: clawbackSummaryLoading } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/clawback-summary"],
+    queryFn: () => fetch("/api/prestige-pass/admin/wallet/clawback-summary", { credentials: "include" }).then(r => r.json()),
+  });
+
+  // ── 3.1C: Remittance Log + Mutation ──────────────────────────────────────
+  const { data: remittanceLogData, isLoading: remittanceLogLoading, refetch: refetchRemLog } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/payout-batches", selectedBatchId, "remittance-log"],
+    enabled: !!selectedBatchId,
+    queryFn: () => fetch(`/api/prestige-pass/admin/wallet/payout-batches/${selectedBatchId}/remittance-log`, { credentials: "include" }).then(r => r.json()),
+  });
+  const { mutate: sendRemittances, isPending: sendRemittancesPending } = useMutation<any, any, string>({
+    mutationFn: (batchId) => apiRequest("POST", `/api/prestige-pass/admin/wallet/payout-batches/${batchId}/send-remittances`, {}),
+    onSuccess: (data) => {
+      toast({ title: `Remittances sent — ${data.sent} sent, ${data.failed} failed, ${data.skipped} skipped` });
+      refetchRemLog();
+    },
+    onError: (e) => toast({ title: "Failed to send remittances", description: e.message, variant: "destructive" }),
+  });
+
   const { mutate: upsertRole, isPending: upsertRolePending } = useMutation<any, any, { uid: string; role: string }>({
     mutationFn: ({ uid, role }) => apiRequest("POST", `/api/prestige-pass/admin/wallet/finance-roles/${uid}`, { role }),
     onSuccess: () => { toast({ title: "Finance role assigned" }); setRoleAssignUid(""); refetchRoles(); },
@@ -930,6 +1003,10 @@ export default function AdminWalletDashboard() {
             <TabsTrigger value="roles">
               <ShieldCheck className="w-4 h-4 mr-2" />
               Finance Roles
+            </TabsTrigger>
+            <TabsTrigger value="fin-activity">
+              <Activity className="w-4 h-4 mr-2" />
+              Finance Activity
             </TabsTrigger>
           </TabsList>
 
@@ -3278,12 +3355,32 @@ export default function AdminWalletDashboard() {
                       Batch detail — <span className="font-mono">{selectedBatchId}</span>
                     </CardTitle>
                     <div className="flex items-center gap-2">
+                      <select
+                        className="text-xs border rounded px-2 py-1.5 bg-white"
+                        value={selectedFormat}
+                        onChange={(e) => setSelectedFormat(e.target.value)}
+                        title="Export format"
+                      >
+                        <option value="csv">CSV (Standard)</option>
+                        <option value="tranzilla">Tranzilla</option>
+                        <option value="hapoalim">Bank Hapoalim</option>
+                        <option value="mizrahi">Bank Mizrahi</option>
+                        <option value="iban_csv">IBAN / SEPA</option>
+                        <option value="quickbooks_iif">QuickBooks IIF</option>
+                      </select>
                       <a
-                        href={`/api/prestige-pass/admin/wallet/payout-batches/${selectedBatchId}/export`}
+                        href={`/api/prestige-pass/admin/wallet/payout-batches/${selectedBatchId}/export?format=${selectedFormat}`}
                         className="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-500 flex items-center gap-1"
                       >
-                        <Download className="w-3 h-3" /> Export CSV
+                        <Download className="w-3 h-3" /> Export for Bank
                       </a>
+                      <button
+                        disabled={sendRemittancesPending}
+                        onClick={() => sendRemittances(selectedBatchId)}
+                        className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-500 disabled:opacity-50 flex items-center gap-1"
+                      >
+                        {sendRemittancesPending ? "Sending…" : "✉ Send Remittances"}
+                      </button>
                       <button className="text-xs text-gray-400 hover:text-gray-600" onClick={() => setSelectedBatchId(null)}>✕ Close</button>
                     </div>
                   </div>
@@ -3358,9 +3455,103 @@ export default function AdminWalletDashboard() {
                       )}
                     </div>
                   )}
+
+                  {/* ── 3.1C: Remittance Delivery Log ── */}
+                  <div className="border-t pt-4 mt-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Remittance Delivery Log</span>
+                      {remittanceLogData?.summary && (
+                        <span className="text-xs text-gray-400">
+                          {remittanceLogData.summary.sent} sent · {remittanceLogData.summary.failed} failed · {remittanceLogData.summary.pending} pending
+                        </span>
+                      )}
+                    </div>
+                    {remittanceLogLoading ? (
+                      <div className="text-xs text-gray-400 py-2">Loading…</div>
+                    ) : !remittanceLogData?.entries?.length ? (
+                      <div className="text-xs text-gray-400 py-2">No remittances sent for this batch yet. Click "✉ Send Remittances" above.</div>
+                    ) : (
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="text-left text-gray-400 border-b">
+                            <th className="pb-1 pr-3">Provider UID</th>
+                            <th className="pb-1 pr-3">Status</th>
+                            <th className="pb-1 pr-3">Sent At</th>
+                            <th className="pb-1">Error</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {remittanceLogData.entries.map((e: any) => (
+                            <tr key={e.id} className="border-b last:border-0">
+                              <td className="py-1.5 pr-3 font-mono text-gray-700">{e.providerUid}</td>
+                              <td className="py-1.5 pr-3">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                  e.status === 'sent'    ? 'bg-green-100 text-green-700' :
+                                  e.status === 'failed'  ? 'bg-red-100 text-red-700' :
+                                                           'bg-yellow-100 text-yellow-700'
+                                }`}>{e.status}</span>
+                              </td>
+                              <td className="py-1.5 pr-3 text-gray-500">{e.sentAt ? new Date(e.sentAt).toLocaleString() : '—'}</td>
+                              <td className="py-1.5 text-red-500 truncate max-w-[200px]">{e.errorDetail ?? '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             )}
+
+            {/* ── 3.1B: Clawback Summary ── */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <span className="text-red-500">⊖</span> Clawback Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {clawbackSummaryLoading ? (
+                  <div className="text-xs text-gray-400 py-3">Loading…</div>
+                ) : !clawbackSummaryData?.total ? (
+                  <div className="text-xs text-gray-400 py-3">No clawbacks recorded.</div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex gap-6 text-sm">
+                      <div>
+                        <span className="text-gray-500 text-xs">Total Clawbacks</span>
+                        <p className="font-bold">{clawbackSummaryData.total}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 text-xs">Total Amount</span>
+                        <p className="font-bold text-red-600">₪{((clawbackSummaryData.totalClawbackCents ?? 0) / 100).toFixed(2)}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">By Provider</div>
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="text-left text-gray-400 border-b">
+                            <th className="pb-1 pr-3">Provider UID</th>
+                            <th className="pb-1 pr-3">Count</th>
+                            <th className="pb-1">Total Clawback</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(clawbackSummaryData.byProvider ?? []).map((p: any) => (
+                            <tr key={p.providerUid} className="border-b last:border-0">
+                              <td className="py-1.5 pr-3 font-mono text-gray-700">{p.providerUid}</td>
+                              <td className="py-1.5 pr-3">{p.count}</td>
+                              <td className="py-1.5 font-semibold text-red-600">₪{(p.totalClawbackCents / 100).toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ── DISPUTES (2.9C) ── */}
@@ -3859,6 +4050,96 @@ export default function AdminWalletDashboard() {
               <div className="fixed inset-0 z-40 bg-black/20"
                 onClick={() => { setSelectedDispute(null); setResolveMode(false); setApplyResMode(false); setApplyResResult(null); }} />
             )}
+
+            {/* ── 3.1F: SLA Report ── */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <span className="text-amber-500">⏱</span> Dispute SLA Compliance Report
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <input type="date" className="text-xs border rounded px-2 py-1" value={slaFrom} onChange={e => setSlaFrom(e.target.value)} placeholder="From" />
+                    <input type="date" className="text-xs border rounded px-2 py-1" value={slaTo} onChange={e => setSlaTo(e.target.value)} placeholder="To" />
+                    <button className="text-xs text-blue-600 hover:underline" onClick={() => refetchSla()}>Run</button>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">SLA: ≥₪500 disputes = 24h · Standard = 72h</p>
+              </CardHeader>
+              <CardContent>
+                {slaLoading ? (
+                  <div className="text-xs text-gray-400 py-3">Loading…</div>
+                ) : !slaReportData?.ok ? (
+                  <div className="text-xs text-gray-400 py-3">No data</div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Summary bar */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[
+                        { label: "Total",        value: slaReportData.total,            color: "text-gray-700" },
+                        { label: "Met",           value: slaReportData.met,              color: "text-green-600" },
+                        { label: "Breached",      value: slaReportData.breached,         color: "text-red-600" },
+                        { label: "Compliance",    value: `${slaReportData.compliancePct}%`, color: slaReportData.compliancePct >= 90 ? "text-green-600" : slaReportData.compliancePct >= 70 ? "text-amber-600" : "text-red-600" },
+                      ].map(m => (
+                        <div key={m.label} className="bg-gray-50 rounded p-3">
+                          <div className="text-xs text-gray-500 mb-1">{m.label}</div>
+                          <div className={`text-lg font-bold ${m.color}`}>{m.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Compliance progress bar */}
+                    <div>
+                      <div className="flex justify-between text-xs text-gray-500 mb-1">
+                        <span>SLA Compliance</span>
+                        <span>Avg resolution: {slaReportData.avgDurationHours}h</span>
+                      </div>
+                      <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${slaReportData.compliancePct >= 90 ? 'bg-green-500' : slaReportData.compliancePct >= 70 ? 'bg-amber-500' : 'bg-red-500'}`}
+                          style={{ width: `${slaReportData.compliancePct}%` }}
+                        />
+                      </div>
+                    </div>
+                    {/* Case table */}
+                    {slaReportData.cases?.length > 0 && (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-left text-gray-400 border-b">
+                              <th className="pb-1 pr-3">Case</th>
+                              <th className="pb-1 pr-3">Division</th>
+                              <th className="pb-1 pr-3">Amount</th>
+                              <th className="pb-1 pr-3">Status</th>
+                              <th className="pb-1 pr-3">Duration</th>
+                              <th className="pb-1 pr-3">SLA</th>
+                              <th className="pb-1">Result</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {slaReportData.cases.slice(0, 20).map((c: any) => (
+                              <tr key={c.caseRef} className="border-b last:border-0">
+                                <td className="py-1.5 pr-3 font-mono">{c.caseRef}</td>
+                                <td className="py-1.5 pr-3">{c.divisionCode}</td>
+                                <td className="py-1.5 pr-3">₪{(c.amountDisputedCents / 100).toFixed(0)}{c.isHighValue && <span className="ml-1 text-amber-500 text-[10px]">HIGH</span>}</td>
+                                <td className="py-1.5 pr-3">{c.status}</td>
+                                <td className="py-1.5 pr-3">{c.durationHours}h</td>
+                                <td className="py-1.5 pr-3 text-gray-400">{c.slaHours}h</td>
+                                <td className="py-1.5">
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${c.slaMet ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                    {c.slaMet ? 'Met' : 'Breached'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        {slaReportData.total > 20 && <p className="text-xs text-gray-400 mt-1">Showing 20 of {slaReportData.total} cases</p>}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ── SETTLEMENT (2.9B) ── */}
@@ -4203,6 +4484,221 @@ export default function AdminWalletDashboard() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ── Role Audit Log (3.1G) ─────────────────────────────────── */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-gray-500" />
+                    Role Change Audit Log
+                  </CardTitle>
+                  <button className="text-xs text-blue-600 hover:underline" onClick={() => refetchRoleAudit()}>Refresh</button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {roleAuditLoading ? (
+                  <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-7 bg-gray-100 animate-pulse rounded" />)}</div>
+                ) : (roleAuditData?.events ?? []).length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-4">No role changes recorded yet.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-gray-100">
+                          <th className="text-left py-2 pr-3 text-gray-400 font-medium">Grantor</th>
+                          <th className="text-left py-2 pr-3 text-gray-400 font-medium">Target</th>
+                          <th className="text-left py-2 pr-3 text-gray-400 font-medium">Action</th>
+                          <th className="text-left py-2 pr-3 text-gray-400 font-medium">Old → New</th>
+                          <th className="text-left py-2 text-gray-400 font-medium">When</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(roleAuditData?.events ?? []).map((e: any) => (
+                          <tr key={e.id} className="border-b border-gray-50 hover:bg-gray-50">
+                            <td className="py-2 pr-3 font-mono text-gray-500">{e.grantorUid ? e.grantorUid.slice(0, 12) + "…" : "—"}</td>
+                            <td className="py-2 pr-3 font-mono text-gray-700">{e.targetUid ? e.targetUid.slice(0, 16) + "…" : "—"}</td>
+                            <td className="py-2 pr-3">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                e.action === "grant"  ? "bg-green-100 text-green-700"  :
+                                e.action === "revoke" ? "bg-red-100 text-red-700"     :
+                                                        "bg-amber-100 text-amber-700"
+                              }`}>{e.action}</span>
+                            </td>
+                            <td className="py-2 pr-3 text-gray-500">
+                              {e.oldRole
+                                ? <><span className="line-through text-gray-300">{e.oldRole}</span> → {e.newRole ?? "—"}</>
+                                : e.newRole ?? "—"}
+                            </td>
+                            <td className="py-2 text-gray-400">{e.createdAt ? new Date(e.createdAt).toLocaleString("he-IL") : "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── Finance Activity Timeline (3.1D) ────────────────────── */}
+          <TabsContent value="fin-activity" className="mt-4 space-y-4">
+
+            {/* ── 3.1E: Monthly Variance Analysis ── */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <span className="text-violet-500">📊</span> Monthly Variance Analysis
+                  </CardTitle>
+                  <input
+                    type="month"
+                    className="text-xs border rounded px-2 py-1"
+                    value={varianceMonth}
+                    onChange={e => setVarianceMonth(e.target.value)}
+                  />
+                </div>
+              </CardHeader>
+              <CardContent>
+                {varianceLoading ? (
+                  <div className="text-xs text-gray-400 py-3">Loading…</div>
+                ) : !varianceData?.ok ? (
+                  <div className="text-xs text-gray-400 py-3">No data for this period.</div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex gap-2 text-xs text-gray-400 mb-1">
+                      <span>Comparing <strong className="text-gray-700">{varianceData.currentMonth}</strong> vs <strong className="text-gray-700">{varianceData.previousMonth}</strong></span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {Object.entries(varianceData.metrics ?? {}).map(([key, m]: [string, any]) => {
+                        const labels: Record<string, string> = {
+                          grossPayoutCents:     'Gross Payout (₪)',
+                          netPayoutCents:       'Net Payout (₪)',
+                          commissionCents:      'Commission (₪)',
+                          entryCount:           'Payout Entries',
+                          providerCount:        'Providers Paid',
+                          disputeCount:         'Disputes Opened',
+                          resolvedDisputeCount: 'Disputes Resolved',
+                          disputedCents:        'Total Disputed (₪)',
+                        };
+                        const isMoney = key.endsWith('Cents');
+                        const fmt = (v: number) => isMoney ? `₪${(v / 100).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : String(v);
+                        const pct = m.changePct;
+                        const isPositive = key === 'disputeCount' || key === 'disputedCents' ? pct <= 0 : pct >= 0;
+                        return (
+                          <div key={key} className="bg-gray-50 rounded p-3 flex items-center justify-between">
+                            <div>
+                              <div className="text-xs text-gray-500 mb-0.5">{labels[key] ?? key}</div>
+                              <div className="text-sm font-bold">{fmt(m.current)}</div>
+                              <div className="text-[10px] text-gray-400">prev: {fmt(m.previous)}</div>
+                            </div>
+                            <div className={`text-sm font-semibold px-2 py-1 rounded ${pct === 0 ? 'text-gray-400' : isPositive ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'}`}>
+                              {pct > 0 ? '+' : ''}{pct}%
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-indigo-600" />
+                    Finance Activity Timeline
+                  </CardTitle>
+                  <button className="text-xs text-blue-600 hover:underline" onClick={() => refetchFinActivity()}>Refresh</button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Filter bar */}
+                <div className="border rounded-lg p-3 bg-gray-50 space-y-2">
+                  <div className="flex items-center gap-1 text-xs font-semibold text-gray-600 mb-1">
+                    <Filter className="w-3 h-3" /> Filters
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    <input className="border rounded px-2 py-1 text-xs" placeholder="Actor UID"
+                      value={finActorFilter}  onChange={e => setFinActorFilter(e.target.value)} />
+                    <input className="border rounded px-2 py-1 text-xs" placeholder="Action (e.g. payout_batch_create)"
+                      value={finActionFilter} onChange={e => setFinActionFilter(e.target.value)} />
+                    <input className="border rounded px-2 py-1 text-xs" placeholder="Entity type (e.g. payout_batch)"
+                      value={finEntityFilter} onChange={e => setFinEntityFilter(e.target.value)} />
+                    <input type="date" className="border rounded px-2 py-1 text-xs" placeholder="From"
+                      value={finFromFilter}   onChange={e => setFinFromFilter(e.target.value)} />
+                    <input type="date" className="border rounded px-2 py-1 text-xs" placeholder="To"
+                      value={finToFilter}     onChange={e => setFinToFilter(e.target.value)} />
+                    <div className="flex gap-2">
+                      <button
+                        className="flex-1 px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                        onClick={() => { setFinFiltersApplied({ actor: finActorFilter, action: finActionFilter, entityType: finEntityFilter, from: finFromFilter, to: finToFilter }); setFinPage(1); }}
+                      >Apply</button>
+                      <button
+                        className="flex-1 px-2 py-1 text-xs border rounded hover:bg-gray-100"
+                        onClick={() => { setFinActorFilter(""); setFinActionFilter(""); setFinEntityFilter(""); setFinFromFilter(""); setFinToFilter(""); setFinFiltersApplied({}); setFinPage(1); }}
+                      >Clear</button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Event list */}
+                {finActivityLoading ? (
+                  <div className="space-y-2">{[...Array(5)].map((_, i) => <div key={i} className="h-10 bg-gray-100 animate-pulse rounded" />)}</div>
+                ) : (finActivityData?.events ?? []).length === 0 ? (
+                  <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center">
+                    <Activity className="w-8 h-8 mx-auto mb-2 text-gray-200" />
+                    <p className="text-sm text-gray-400">No finance activity recorded yet.</p>
+                    <p className="text-xs text-gray-300 mt-1">Events appear here when payout batches are created, dispute resolutions applied, or finance days are closed.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {(finActivityData?.events ?? []).map((e: any) => (
+                      <div key={e.id} className="border rounded-lg p-3 hover:bg-gray-50">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase whitespace-nowrap ${
+                                e.action?.includes('close')   ? "bg-violet-100 text-violet-700" :
+                                e.action?.includes('create')  ? "bg-green-100 text-green-700"   :
+                                e.action?.includes('refund')  ? "bg-blue-100 text-blue-700"     :
+                                e.action?.includes('clawback')? "bg-orange-100 text-orange-700" :
+                                                                 "bg-gray-100 text-gray-600"
+                              }`}>{e.action}</span>
+                              <span className="text-xs text-gray-400 font-mono">{e.entityType}</span>
+                              <span className="text-xs font-mono text-gray-600 truncate">{e.entityId}</span>
+                            </div>
+                            <div className="text-[10px] text-gray-400 mt-1">Actor: <span className="font-mono">{e.actorUid || "—"}</span></div>
+                          </div>
+                          <div className="text-[10px] text-gray-400 whitespace-nowrap">
+                            {e.createdAt ? new Date(e.createdAt).toLocaleString("he-IL") : "—"}
+                          </div>
+                        </div>
+                        {e.after && (
+                          <details className="mt-1">
+                            <summary className="text-[10px] text-blue-600 cursor-pointer hover:underline">Details</summary>
+                            <pre className="mt-1 text-[9px] bg-gray-50 rounded p-2 overflow-x-auto text-gray-600">{JSON.stringify(e.after, null, 2)}</pre>
+                          </details>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Pagination */}
+                    {(finActivityData?.pages ?? 1) > 1 && (
+                      <div className="flex items-center justify-between pt-2">
+                        <span className="text-xs text-gray-400">Page {finActivityData.page} of {finActivityData.pages} ({finActivityData.total} total)</span>
+                        <div className="flex gap-2">
+                          <button disabled={finPage <= 1} className="text-xs px-2 py-1 border rounded disabled:opacity-40" onClick={() => setFinPage(p => Math.max(1, p - 1))}>← Prev</button>
+                          <button disabled={finPage >= finActivityData.pages} className="text-xs px-2 py-1 border rounded disabled:opacity-40" onClick={() => setFinPage(p => p + 1)}>Next →</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>

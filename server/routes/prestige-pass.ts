@@ -5459,6 +5459,34 @@ async function requireFinanceRole(
   return effectiveRole;
 }
 
+// ── Finance activity audit helper (3.1D) ─────────────────────────────────
+async function recordFinanceAction(
+  actorUid:   string,
+  action:     string,
+  entityType: string,
+  entityId:   string,
+  before?:    Record<string, any> | null,
+  after?:     Record<string, any> | null,
+  ip?:        string,
+): Promise<void> {
+  try {
+    await db.execute(sql`
+      INSERT INTO finance_audit_log (actor_uid, action, entity_type, entity_id, before_snap, after_snap, ip)
+      VALUES (
+        ${actorUid},
+        ${action},
+        ${entityType},
+        ${entityId},
+        ${before  ? JSON.stringify(before)  : null},
+        ${after   ? JSON.stringify(after)   : null},
+        ${ip      ?? null}
+      )
+    `);
+  } catch (err: any) {
+    logger.error('[FinanceAudit][Record] error', { error: err.message, action, entityType, entityId });
+  }
+}
+
 const VAT_RATE = 0.18;
 const COLLECTED_EVENTS = `('redeem_kiosk','redeem_online','hold_capture')`;
 
@@ -6020,6 +6048,10 @@ router.post('/admin/wallet/disputes/:caseRef/apply-resolution', async (req: Requ
     `);
 
     logger.info('[3.0C][ApplyResolution]', { caseRef, action, adminUid, ...result });
+    await recordFinanceAction(adminUid, `dispute_resolution_${action}`, 'dispute_case', caseRef,
+      { status: dispCase.status, resolution_action: null },
+      { resolution_action: action, linkedPayoutBatchId, ...result },
+      req.ip);
     return res.json({ ok: true, ...result });
   } catch (err: any) {
     logger.error('[3.0C][ApplyResolution] error', { error: err.message });
@@ -6423,6 +6455,15 @@ router.post('/admin/wallet/payout-batches/create', async (req: Request, res: Res
     const totalProviders = Number(t.providers ?? 0);
     const totalNetCents  = Number(t.net ?? 0);
 
+    // Guard: net batch total must not be negative (clawback entries must be balanced separately)
+    if (totalNetCents < 0) {
+      return res.status(422).json({
+        error: 'Net batch total cannot be negative — split or review clawback entries before creating a batch',
+        totalNetCents,
+        batchId,
+      });
+    }
+
     // Write payout_batches row
     const pbInsert: any = await db.execute(sql`
       INSERT INTO payout_batches (batch_id, created_by_uid, status, total_providers, total_net_cents, notes)
@@ -6434,6 +6475,10 @@ router.post('/admin/wallet/payout-batches/create', async (req: Request, res: Res
     const batchRow = (pbInsert?.rows ?? pbInsert ?? [])[0];
 
     logger.info('[PayoutBatch][Created]', { batchId, adminUid, totalProviders, totalNetCents, entryCount: eligible.length });
+    await recordFinanceAction(adminUid, 'payout_batch_create', 'payout_batch', batchId,
+      null,
+      { totalProviders, totalNetCents, entryCount: eligible.length, notes },
+      req.ip);
     return res.json({
       ok: true,
       idempotent: false,
@@ -6561,48 +6606,150 @@ router.get('/admin/wallet/payout-batches/:batchId', async (req: Request, res: Re
   }
 });
 
+// ── Payout export format serializers ─────────────────────────────────────
+
+type PayoutEntry = {
+  provider_uid:        string;
+  division_code:       string;
+  booking_id:          string;
+  gross_cents:         number;
+  commission_rate_bps: number;
+  net_cents:           number;
+  clawback_reason?:    string;
+};
+
+const EXPORT_FORMATS = ['csv', 'tranzilla', 'hapoalim', 'mizrahi', 'iban_csv', 'quickbooks_iif'] as const;
+type ExportFormat = typeof EXPORT_FORMATS[number];
+
+function serializePayoutEntries(entries: PayoutEntry[], batchId: string, format: ExportFormat): { body: string; contentType: string; filename: string } {
+  const dateStr  = new Date().toISOString().slice(0, 10);
+  const esc      = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const ils      = (cents: number) => (Number(cents) / 100).toFixed(2);
+
+  if (format === 'tranzilla') {
+    // Tranzilla: pipe-delimited, no header, UTF-8 BOM, ILS amounts
+    const BOM = '\uFEFF';
+    const rows = entries.map(r => [
+      r.provider_uid,
+      r.division_code ?? '',
+      r.booking_id    ?? '',
+      ils(r.gross_cents),
+      ils(Number(r.gross_cents) - Number(r.net_cents)),
+      ils(r.net_cents),
+      'ILS',
+      dateStr,
+    ].join('|'));
+    return { body: BOM + rows.join('\r\n'), contentType: 'text/plain; charset=utf-8', filename: `tranzilla-${batchId}-${dateStr}.txt` };
+  }
+
+  if (format === 'hapoalim') {
+    // Bank Hapoalim: UTF-8 BOM CSV, Hebrew column names
+    const BOM = '\uFEFF';
+    const header = 'מספר_ספק,קוד_חטיבה,מזהה_הזמנה,ברוטו_ש"ח,עמלה_ש"ח,נטו_ש"ח,מטבע,תאריך';
+    const rows = entries.map(r => [
+      esc(r.provider_uid),
+      esc(r.division_code ?? ''),
+      esc(r.booking_id    ?? ''),
+      ils(r.gross_cents),
+      ils(Number(r.gross_cents) - Number(r.net_cents)),
+      ils(r.net_cents),
+      'ILS',
+      dateStr,
+    ].join(','));
+    return { body: BOM + [header, ...rows].join('\r\n'), contentType: 'text/csv; charset=utf-8', filename: `hapoalim-${batchId}-${dateStr}.csv` };
+  }
+
+  if (format === 'mizrahi') {
+    // Bank Mizrahi-Tefahot: semicolon-delimited, English headers, no BOM
+    const header = 'ProviderID;DivisionCode;BookingRef;GrossAmount;CommissionAmount;NetAmount;Currency;Date';
+    const rows = entries.map(r => [
+      r.provider_uid,
+      r.division_code ?? '',
+      r.booking_id    ?? '',
+      ils(r.gross_cents),
+      ils(Number(r.gross_cents) - Number(r.net_cents)),
+      ils(r.net_cents),
+      'ILS',
+      dateStr,
+    ].join(';'));
+    return { body: [header, ...rows].join('\r\n'), contentType: 'text/csv; charset=utf-8', filename: `mizrahi-${batchId}-${dateStr}.csv` };
+  }
+
+  if (format === 'iban_csv') {
+    // SEPA-compatible IBAN CSV (international providers — provider_uid used as Name/Reference)
+    const BOM = '\uFEFF';
+    const header = 'Name,Reference,Amount,Currency,PaymentDate,RemittanceInfo';
+    const rows = entries.map(r => [
+      esc(r.provider_uid),
+      esc(r.booking_id ?? ''),
+      ils(r.net_cents),
+      'ILS',
+      dateStr,
+      esc(`Batch ${batchId} | Gross ${ils(r.gross_cents)} | Comm ${ils(Number(r.gross_cents) - Number(r.net_cents))}`),
+    ].join(','));
+    return { body: BOM + [header, ...rows].join('\r\n'), contentType: 'text/csv; charset=utf-8', filename: `iban-${batchId}-${dateStr}.csv` };
+  }
+
+  if (format === 'quickbooks_iif') {
+    // QuickBooks IIF (tab-delimited transaction blocks)
+    const lines: string[] = [
+      '!TRNS\tACCNT\tDATE\tAMOUNT\tNAME\tMEMO\tCLEAR',
+      '!SPL\tACCNT\tDATE\tAMOUNT\tNAME\tMEMO',
+      '!ENDTRNS',
+    ];
+    for (const r of entries) {
+      const netIls  = (Number(r.net_cents)  / 100).toFixed(2);
+      const commIls = ((Number(r.gross_cents) - Number(r.net_cents)) / 100).toFixed(2);
+      lines.push(`TRNS\tAccounts Payable\t${dateStr}\t-${netIls}\t${r.provider_uid}\tBatch ${batchId} / Booking ${r.booking_id ?? ''}\tN`);
+      lines.push(`SPL\tPayout Commission\t${dateStr}\t${commIls}\t${r.provider_uid}\tCommission`);
+      lines.push('ENDTRNS');
+    }
+    return { body: lines.join('\r\n'), contentType: 'text/plain; charset=utf-8', filename: `qbooks-${batchId}-${dateStr}.iif` };
+  }
+
+  // Default: BOM CSV (backward-compatible)
+  const BOM = '\uFEFF';
+  const header = 'provider_uid,division_code,booking_id,gross_ils,commission_ils,net_ils';
+  const rows = entries.map(r => [
+    esc(r.provider_uid),
+    esc(r.division_code ?? ''),
+    esc(r.booking_id    ?? ''),
+    ils(r.gross_cents),
+    ils(Number(r.gross_cents) - Number(r.net_cents)),
+    ils(r.net_cents),
+  ].join(','));
+  return { body: BOM + [header, ...rows].join('\r\n'), contentType: 'text/csv; charset=utf-8', filename: `payout-batch-${batchId}.csv` };
+}
+
 // ── GET /admin/wallet/payout-batches/:batchId/export ─────────────────────
-// BOM-prefixed CSV: provider_uid,division_code,booking_id,gross_ils,commission_ils,net_ils
+// Multi-format: ?format=csv|tranzilla|hapoalim|mizrahi|iban_csv|quickbooks_iif (default: csv)
 router.get('/admin/wallet/payout-batches/:batchId/export', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
     if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
     const { batchId } = req.params;
+    const format: ExportFormat = EXPORT_FORMATS.includes(req.query.format as any)
+      ? (req.query.format as ExportFormat)
+      : 'csv';
 
     const entriesRaw: any = await db.execute(sql`
       SELECT provider_uid, division_code, booking_id,
-             gross_cents, commission_rate_bps, net_cents
+             gross_cents, commission_rate_bps, net_cents, clawback_reason
       FROM provider_payout_entries
       WHERE payout_batch_id=${batchId}
       ORDER BY provider_uid, booking_id
     `);
-    const entries = entriesRaw?.rows ?? entriesRaw ?? [];
+    const entries: PayoutEntry[] = entriesRaw?.rows ?? entriesRaw ?? [];
 
     if (entries.length === 0) {
       return res.status(404).json({ error: 'Batch not found or has no entries', batchId });
     }
 
-    const BOM = '\uFEFF';
-    const header = 'provider_uid,division_code,booking_id,gross_ils,commission_ils,net_ils';
-    const rows = entries.map((r: any) => {
-      const gross = Number(r.gross_cents ?? 0) / 100;
-      const net   = Number(r.net_cents   ?? 0) / 100;
-      const comm  = parseFloat((gross - net).toFixed(2));
-      const esc   = (v: string) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-      return [
-        esc(r.provider_uid),
-        esc(r.division_code  ?? ''),
-        esc(r.booking_id     ?? ''),
-        gross.toFixed(2),
-        comm.toFixed(2),
-        net.toFixed(2),
-      ].join(',');
-    });
-
-    const csv = BOM + [header, ...rows].join('\r\n');
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="payout-batch-${batchId}.csv"`);
-    return res.send(csv);
+    const { body, contentType, filename } = serializePayoutEntries(entries, batchId, format);
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('X-Export-Format', format);
+    return res.send(body);
   } catch (err: any) {
     logger.error('[PayoutBatch][Export] error', { error: err.message });
     return res.status(500).json({ error: 'Failed to export payout batch', detail: err.message });
@@ -7103,6 +7250,10 @@ router.post('/admin/wallet/finance-close/:date/close', async (req: Request, res:
     const row = (upserted?.rows ?? upserted ?? [])[0];
 
     logger.info('[FinanceClose][Closed]', { date: dateParam, adminUid, vatLiabilityCents });
+    await recordFinanceAction(adminUid, 'finance_day_close', 'finance_close', dateParam,
+      existingRow ? { status: existingRow.status } : null,
+      { status: 'closed', vatLiabilityCents, exceptionCount },
+      req.ip);
     return res.json({
       ok: true,
       idempotent: false,
@@ -7279,6 +7430,485 @@ router.get('/admin/wallet/finance-close/:date/export', async (req: Request, res:
 
 // ── Phase 3.0G: Finance Role Management Endpoints ─────────────────────────
 
+// ── Phase 3.1B: Provider Clawback History ────────────────────────────────
+
+// GET /provider/wallet/clawback-history — provider-facing clawback entries grouped by month
+router.get('/provider/wallet/clawback-history', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    const providerUid = session?.user?.uid ?? session?.user?.id;
+    if (!providerUid) return res.status(401).json({ error: 'Authentication required' });
+
+    const raw: any = await db.execute(sql`
+      SELECT id, booking_id, division_code, gross_cents, net_cents,
+             commission_rate_bps, clawback_reason, payout_batch_id, created_at
+      FROM provider_payout_entries
+      WHERE provider_uid = ${providerUid}
+        AND net_cents < 0
+      ORDER BY created_at DESC
+    `);
+    const entries = (raw?.rows ?? raw ?? []).map((r: any) => ({
+      id:              r.id,
+      bookingId:       r.booking_id,
+      divisionCode:    r.division_code,
+      grossCents:      Number(r.gross_cents),
+      netCents:        Number(r.net_cents),
+      clawbackCents:   Math.abs(Number(r.net_cents)),
+      clawbackReason:  r.clawback_reason ?? null,
+      batchId:         r.payout_batch_id ?? null,
+      createdAt:       r.created_at,
+      month:           String(r.created_at).slice(0, 7),
+    }));
+
+    // Group by month for display
+    const byMonth: Record<string, { month: string; count: number; totalClawbackCents: number; entries: any[] }> = {};
+    for (const e of entries) {
+      if (!byMonth[e.month]) byMonth[e.month] = { month: e.month, count: 0, totalClawbackCents: 0, entries: [] };
+      byMonth[e.month].count++;
+      byMonth[e.month].totalClawbackCents += e.clawbackCents;
+      byMonth[e.month].entries.push(e);
+    }
+
+    return res.json({
+      ok: true,
+      total: entries.length,
+      totalClawbackCents: entries.reduce((s, e) => s + e.clawbackCents, 0),
+      byMonth: Object.values(byMonth),
+    });
+  } catch (err: any) {
+    logger.error('[Clawback][ProviderHistory] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch clawback history', detail: err.message });
+  }
+});
+
+// GET /admin/wallet/clawback-summary — admin view: all clawbacks, totals per provider
+router.get('/admin/wallet/clawback-summary', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const { from, to, divisionCode } = req.query as Record<string, string>;
+    const conditions: any[] = [sql`net_cents < 0`];
+    if (from)         conditions.push(sql`created_at >= ${from}::timestamptz`);
+    if (to)           conditions.push(sql`created_at <= ${to}::timestamptz`);
+    if (divisionCode) conditions.push(sql`division_code = ${divisionCode}`);
+
+    const whereClause = sql`WHERE ${sql.join(conditions, sql` AND `)}`;
+
+    const raw: any = await db.execute(sql`
+      SELECT id, provider_uid, booking_id, division_code,
+             gross_cents, net_cents, clawback_reason, payout_batch_id, created_at
+      FROM provider_payout_entries
+      ${whereClause}
+      ORDER BY provider_uid, created_at DESC
+    `);
+    const entries = raw?.rows ?? raw ?? [];
+
+    // Aggregate per provider
+    const providerMap: Record<string, { providerUid: string; count: number; totalClawbackCents: number }> = {};
+    for (const r of entries) {
+      const uid = r.provider_uid;
+      if (!providerMap[uid]) providerMap[uid] = { providerUid: uid, count: 0, totalClawbackCents: 0 };
+      providerMap[uid].count++;
+      providerMap[uid].totalClawbackCents += Math.abs(Number(r.net_cents));
+    }
+
+    return res.json({
+      ok: true,
+      total: entries.length,
+      totalClawbackCents: entries.reduce((s: number, r: any) => s + Math.abs(Number(r.net_cents)), 0),
+      byProvider: Object.values(providerMap).sort((a, b) => b.totalClawbackCents - a.totalClawbackCents),
+      entries: entries.map((r: any) => ({
+        id: r.id, providerUid: r.provider_uid, bookingId: r.booking_id,
+        divisionCode: r.division_code, clawbackCents: Math.abs(Number(r.net_cents)),
+        clawbackReason: r.clawback_reason ?? null, batchId: r.payout_batch_id ?? null, createdAt: r.created_at,
+      })),
+    });
+  } catch (err: any) {
+    logger.error('[Clawback][AdminSummary] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch clawback summary', detail: err.message });
+  }
+});
+
+// ── Phase 3.1C: Automated Remittance Emails ──────────────────────────────
+
+// POST /admin/wallet/payout-batches/:batchId/send-remittances — idempotent per provider per batch
+router.post('/admin/wallet/payout-batches/:batchId/send-remittances', async (req: Request, res: Response) => {
+  try {
+    const financeRole = await requireFinanceRole(req, res, 'write');
+    if (!financeRole) return;
+    const session  = (req as any).session;
+    const adminUid = session.user.uid ?? session.user.id ?? 'unknown';
+    const { batchId } = req.params;
+
+    // Load all entries for the batch
+    const entriesRaw: any = await db.execute(sql`
+      SELECT provider_uid, SUM(gross_cents) AS gross, SUM(net_cents) AS net,
+             COUNT(*) AS entry_count, string_agg(booking_id, ', ') AS bookings
+      FROM provider_payout_entries
+      WHERE payout_batch_id = ${batchId}
+      GROUP BY provider_uid
+    `);
+    const providers = entriesRaw?.rows ?? entriesRaw ?? [];
+    if (providers.length === 0) {
+      return res.status(404).json({ error: 'Batch not found or has no entries', batchId });
+    }
+
+    const sentList: string[] = [];
+    const failedList: string[] = [];
+    const skippedList: string[] = [];
+
+    for (const prov of providers) {
+      const providerUid = prov.provider_uid;
+
+      // Idempotency: skip if already sent successfully
+      const existing: any = await db.execute(sql`
+        SELECT status FROM remittance_email_log
+        WHERE batch_id = ${batchId} AND provider_uid = ${providerUid}
+      `);
+      const existingRow = (existing?.rows ?? existing ?? [])[0];
+      if (existingRow?.status === 'sent') { skippedList.push(providerUid); continue; }
+
+      // Look up provider email from users table, fallback to provider_applications
+      let providerEmail: string | null = null;
+      try {
+        const userRow: any = await db.execute(sql`SELECT email FROM users WHERE id = ${providerUid} LIMIT 1`);
+        providerEmail = (userRow?.rows ?? userRow ?? [])[0]?.email ?? null;
+        if (!providerEmail) {
+          const appRow: any = await db.execute(sql`SELECT email FROM provider_applications WHERE user_id = ${providerUid} ORDER BY id DESC LIMIT 1`);
+          providerEmail = (appRow?.rows ?? appRow ?? [])[0]?.email ?? null;
+        }
+      } catch (_) {}
+
+      if (!providerEmail) {
+        await db.execute(sql`
+          INSERT INTO remittance_email_log (batch_id, provider_uid, status, error_detail)
+          VALUES (${batchId}, ${providerUid}, 'failed', 'No email address found for provider')
+          ON CONFLICT (batch_id, provider_uid) DO UPDATE
+            SET status = 'failed', error_detail = 'No email address found for provider', sent_at = NULL
+        `);
+        failedList.push(providerUid);
+        continue;
+      }
+
+      const grossIls = (Number(prov.gross) / 100).toFixed(2);
+      const netIls   = (Number(prov.net)   / 100).toFixed(2);
+      const commIls  = ((Number(prov.gross) - Number(prov.net)) / 100).toFixed(2);
+
+      const subject = `PetWash™ — Remittance Statement | Batch ${batchId}`;
+      const html = `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+          <div style="background:#1a1a2e;padding:24px 32px">
+            <h1 style="color:#C5A55A;margin:0;font-size:20px">PetWash™ Provider Remittance</h1>
+          </div>
+          <div style="padding:24px 32px;background:#fff">
+            <p style="color:#555;font-size:14px">Dear Provider,</p>
+            <p style="color:#555;font-size:14px">Your payment has been processed for batch <strong>${batchId}</strong>.</p>
+            <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px">
+              <tr style="background:#f8f8f8"><td style="padding:10px 14px;color:#888">Batch ID</td><td style="padding:10px 14px;font-family:monospace">${batchId}</td></tr>
+              <tr><td style="padding:10px 14px;color:#888">Bookings</td><td style="padding:10px 14px;font-family:monospace">${prov.entry_count}</td></tr>
+              <tr style="background:#f8f8f8"><td style="padding:10px 14px;color:#888">Gross Amount</td><td style="padding:10px 14px;font-weight:bold">₪${grossIls}</td></tr>
+              <tr><td style="padding:10px 14px;color:#888">Commission</td><td style="padding:10px 14px;color:#e55">₪${commIls}</td></tr>
+              <tr style="background:#f0f9f0"><td style="padding:10px 14px;color:#2a7a2a;font-weight:bold">Net Payment</td><td style="padding:10px 14px;color:#2a7a2a;font-weight:bold;font-size:16px">₪${netIls}</td></tr>
+            </table>
+            <p style="color:#888;font-size:12px">This is an automated remittance statement. For questions contact finance@petwash.co.il</p>
+          </div>
+        </div>
+      `;
+
+      let sendOk = false;
+      let errorDetail: string | null = null;
+      try {
+        sendOk = await EmailService.send({ to: providerEmail, subject, html });
+      } catch (emailErr: any) {
+        errorDetail = emailErr.message ?? 'Email send error';
+      }
+
+      const status = sendOk ? 'sent' : 'failed';
+      const sentAt = sendOk ? new Date() : null;
+      if (!errorDetail && !sendOk) errorDetail = 'EmailService returned false';
+
+      await db.execute(sql`
+        INSERT INTO remittance_email_log (batch_id, provider_uid, status, sent_at, error_detail)
+        VALUES (${batchId}, ${providerUid}, ${status}, ${sentAt}, ${errorDetail})
+        ON CONFLICT (batch_id, provider_uid) DO UPDATE
+          SET status = ${status}, sent_at = ${sentAt}, error_detail = ${errorDetail}
+      `);
+
+      if (sendOk) sentList.push(providerUid);
+      else failedList.push(providerUid);
+    }
+
+    logger.info('[Remittance][Send]', { batchId, sent: sentList.length, failed: failedList.length, skipped: skippedList.length, adminUid });
+    await recordFinanceAction(adminUid, 'remittance_send', 'payout_batch', batchId, null,
+      { sent: sentList.length, failed: failedList.length, skipped: skippedList.length }, req.ip);
+
+    return res.json({
+      ok: true, batchId,
+      sent: sentList.length, failed: failedList.length, skipped: skippedList.length,
+      sentProviders: sentList, failedProviders: failedList, skippedProviders: skippedList,
+    });
+  } catch (err: any) {
+    logger.error('[Remittance][Send] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to send remittances', detail: err.message });
+  }
+});
+
+// GET /admin/wallet/payout-batches/:batchId/remittance-log — delivery status per provider
+router.get('/admin/wallet/payout-batches/:batchId/remittance-log', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { batchId } = req.params;
+
+    const raw: any = await db.execute(sql`
+      SELECT id, batch_id, provider_uid, status, sent_at, error_detail, created_at
+      FROM remittance_email_log
+      WHERE batch_id = ${batchId}
+      ORDER BY created_at DESC
+    `);
+    const entries = (raw?.rows ?? raw ?? []).map((r: any) => ({
+      id:          r.id,
+      batchId:     r.batch_id,
+      providerUid: r.provider_uid,
+      status:      r.status,
+      sentAt:      r.sent_at,
+      errorDetail: r.error_detail ?? null,
+      createdAt:   r.created_at,
+    }));
+
+    const summary = {
+      total:   entries.length,
+      sent:    entries.filter((e: any) => e.status === 'sent').length,
+      failed:  entries.filter((e: any) => e.status === 'failed').length,
+      pending: entries.filter((e: any) => e.status === 'pending').length,
+    };
+
+    return res.json({ ok: true, batchId, summary, entries });
+  } catch (err: any) {
+    logger.error('[Remittance][Log] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch remittance log', detail: err.message });
+  }
+});
+
+// ── Phase 3.1F: Dispute SLA Report ───────────────────────────────────────
+
+// GET /admin/wallet/dispute-sla-report — per-dispute SLA metrics
+// SLA: high-value (amount_disputed_cents >= 50000) = 24h; standard = 72h
+router.get('/admin/wallet/dispute-sla-report', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const { from, to, divisionCode, status: statusFilter } = req.query as Record<string, string>;
+
+    const conditions: any[] = [];
+    if (from)         conditions.push(sql`opened_at >= ${from}::timestamptz`);
+    if (to)           conditions.push(sql`opened_at <= ${to}::timestamptz`);
+    if (divisionCode) conditions.push(sql`division_code = ${divisionCode}`);
+    if (statusFilter) conditions.push(sql`status = ${statusFilter}`);
+
+    const whereClause = conditions.length > 0 ? sql`WHERE ${sql.join(conditions, sql` AND `)}` : sql``;
+
+    const raw: any = await db.execute(sql`
+      SELECT case_ref, division_code, status, amount_disputed_cents,
+             opened_at, resolved_at,
+             EXTRACT(EPOCH FROM (COALESCE(resolved_at, NOW()) - opened_at)) AS duration_secs
+      FROM dispute_cases
+      ${whereClause}
+      ORDER BY opened_at DESC
+      LIMIT 200
+    `);
+    const rows = raw?.rows ?? raw ?? [];
+
+    const HIGH_VALUE_THRESHOLD = 50000; // 500 ILS in cents
+    const SLA_HIGH_SECS  = 24 * 3600;  // 24h
+    const SLA_STD_SECS   = 72 * 3600;  // 72h
+
+    const cases = rows.map((r: any) => {
+      const durSecs    = Number(r.duration_secs ?? 0);
+      const isHighVal  = Number(r.amount_disputed_cents ?? 0) >= HIGH_VALUE_THRESHOLD;
+      const slaSecs    = isHighVal ? SLA_HIGH_SECS : SLA_STD_SECS;
+      const isResolved = ['resolved', 'closed'].includes(r.status);
+      const slaMet     = durSecs <= slaSecs;
+      return {
+        caseRef:             r.case_ref,
+        divisionCode:        r.division_code,
+        status:              r.status,
+        amountDisputedCents: Number(r.amount_disputed_cents ?? 0),
+        openedAt:            r.opened_at,
+        resolvedAt:          r.resolved_at ?? null,
+        durationHours:       Math.round(durSecs / 3600 * 10) / 10,
+        slaHours:            slaSecs / 3600,
+        isHighValue:         isHighVal,
+        isResolved,
+        slaMet,
+        slaBreached:         !slaMet,
+      };
+    });
+
+    const met     = cases.filter((c: any) => c.slaMet).length;
+    const breached = cases.filter((c: any) => c.slaBreached).length;
+    const compliancePct = cases.length > 0 ? Math.round((met / cases.length) * 1000) / 10 : 100;
+
+    return res.json({
+      ok: true,
+      total: cases.length,
+      met, breached, compliancePct,
+      avgDurationHours: cases.length > 0 ? Math.round(cases.reduce((s: number, c: any) => s + c.durationHours, 0) / cases.length * 10) / 10 : 0,
+      cases,
+    });
+  } catch (err: any) {
+    logger.error('[SLA][Report] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to generate SLA report', detail: err.message });
+  }
+});
+
+// ── Phase 3.1E: Monthly Variance Analysis ─────────────────────────────────
+
+// GET /admin/wallet/variance-analysis?month=YYYY-MM
+router.get('/admin/wallet/variance-analysis', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const monthParam = String(req.query.month ?? '').trim();
+    // Default to current month
+    const now    = new Date();
+    const target = monthParam
+      ? new Date(`${monthParam}-01T00:00:00Z`)
+      : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const prevTarget = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() - 1, 1));
+
+    const fmtMonth = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+    const curMonth  = fmtMonth(target);
+    const prevMonth = fmtMonth(prevTarget);
+
+    const payoutStats: any = await db.execute(sql`
+      SELECT
+        TO_CHAR(DATE_TRUNC('month', created_at), 'YYYY-MM') AS month,
+        COUNT(*)                    AS entry_count,
+        COALESCE(SUM(gross_cents),0) AS gross,
+        COALESCE(SUM(net_cents),0)   AS net,
+        COUNT(DISTINCT provider_uid) AS provider_count
+      FROM provider_payout_entries
+      WHERE TO_CHAR(DATE_TRUNC('month', created_at), 'YYYY-MM') IN (${curMonth}, ${prevMonth})
+      GROUP BY 1
+    `);
+    const payoutRows = payoutStats?.rows ?? payoutStats ?? [];
+    const payoutMap: Record<string, any> = {};
+    for (const r of payoutRows) payoutMap[r.month] = r;
+
+    const disputeStats: any = await db.execute(sql`
+      SELECT
+        TO_CHAR(DATE_TRUNC('month', opened_at), 'YYYY-MM') AS month,
+        COUNT(*)                              AS total_disputes,
+        COUNT(*) FILTER (WHERE status IN ('resolved','closed')) AS resolved_disputes,
+        COALESCE(SUM(amount_disputed_cents),0) AS disputed_cents,
+        COALESCE(SUM(resolution_cents) FILTER (WHERE status IN ('resolved','closed')), 0) AS resolved_cents
+      FROM dispute_cases
+      WHERE TO_CHAR(DATE_TRUNC('month', opened_at), 'YYYY-MM') IN (${curMonth}, ${prevMonth})
+      GROUP BY 1
+    `);
+    const disputeRows = disputeStats?.rows ?? disputeStats ?? [];
+    const disputeMap: Record<string, any> = {};
+    for (const r of disputeRows) disputeMap[r.month] = r;
+
+    function pct(cur: number, prev: number) {
+      if (prev === 0) return cur > 0 ? 100 : 0;
+      return Math.round(((cur - prev) / prev) * 1000) / 10;
+    }
+
+    const cur  = payoutMap[curMonth]  ?? {};
+    const prev = payoutMap[prevMonth] ?? {};
+    const dcur  = disputeMap[curMonth]  ?? {};
+    const dprev = disputeMap[prevMonth] ?? {};
+
+    const curGross    = Number(cur.gross  ?? 0);
+    const prevGross   = Number(prev.gross ?? 0);
+    const curNet      = Number(cur.net    ?? 0);
+    const prevNet     = Number(prev.net   ?? 0);
+    const curComm     = curGross - curNet;
+    const prevComm    = prevGross - prevNet;
+
+    return res.json({
+      ok: true,
+      currentMonth: curMonth,
+      previousMonth: prevMonth,
+      metrics: {
+        grossPayoutCents:       { current: curGross,                    previous: prevGross,                    changePct: pct(curGross, prevGross) },
+        netPayoutCents:         { current: curNet,                      previous: prevNet,                      changePct: pct(curNet, prevNet) },
+        commissionCents:        { current: curComm,                     previous: prevComm,                     changePct: pct(curComm, prevComm) },
+        entryCount:             { current: Number(cur.entry_count  ?? 0), previous: Number(prev.entry_count  ?? 0), changePct: pct(Number(cur.entry_count ?? 0), Number(prev.entry_count ?? 0)) },
+        providerCount:          { current: Number(cur.provider_count ?? 0), previous: Number(prev.provider_count ?? 0), changePct: pct(Number(cur.provider_count ?? 0), Number(prev.provider_count ?? 0)) },
+        disputeCount:           { current: Number(dcur.total_disputes ?? 0), previous: Number(dprev.total_disputes ?? 0), changePct: pct(Number(dcur.total_disputes ?? 0), Number(dprev.total_disputes ?? 0)) },
+        resolvedDisputeCount:   { current: Number(dcur.resolved_disputes ?? 0), previous: Number(dprev.resolved_disputes ?? 0), changePct: pct(Number(dcur.resolved_disputes ?? 0), Number(dprev.resolved_disputes ?? 0)) },
+        disputedCents:          { current: Number(dcur.disputed_cents ?? 0), previous: Number(dprev.disputed_cents ?? 0), changePct: pct(Number(dcur.disputed_cents ?? 0), Number(dprev.disputed_cents ?? 0)) },
+      },
+    });
+  } catch (err: any) {
+    logger.error('[Variance][Analysis] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to generate variance analysis', detail: err.message });
+  }
+});
+
+// ── Phase 3.1D: GET /admin/wallet/finance-audit ──────────────────────────
+// Finance activity timeline — filterable by actor, action, entityType, date range
+router.get('/admin/wallet/finance-audit', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const { actor, action, entityType, from, to, page } = req.query as Record<string, string>;
+    const pageNum  = Math.max(1, parseInt(page ?? '1', 10) || 1);
+    const pageSize = 50;
+    const offset   = (pageNum - 1) * pageSize;
+
+    // Build WHERE clauses
+    const conditions: any[] = [];
+    if (actor)      conditions.push(sql`actor_uid   ILIKE ${'%' + actor      + '%'}`);
+    if (action)     conditions.push(sql`action      ILIKE ${'%' + action     + '%'}`);
+    if (entityType) conditions.push(sql`entity_type ILIKE ${'%' + entityType + '%'}`);
+    if (from)       conditions.push(sql`created_at >= ${from}::timestamptz`);
+    if (to)         conditions.push(sql`created_at <= ${to}::timestamptz`);
+
+    const whereClause = conditions.length > 0
+      ? sql`WHERE ${sql.join(conditions, sql` AND `)}`
+      : sql``;
+
+    const raw: any = await db.execute(sql`
+      SELECT id, actor_uid, action, entity_type, entity_id,
+             before_snap, after_snap, ip, created_at
+      FROM finance_audit_log
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT ${pageSize} OFFSET ${offset}
+    `);
+
+    const countRaw: any = await db.execute(sql`
+      SELECT COUNT(*)::int AS total FROM finance_audit_log ${whereClause}
+    `);
+    const total = Number((countRaw?.rows ?? countRaw ?? [])[0]?.total ?? 0);
+
+    const events = (raw?.rows ?? raw ?? []).map((r: any) => ({
+      id:         r.id,
+      actorUid:   r.actor_uid,
+      action:     r.action,
+      entityType: r.entity_type,
+      entityId:   r.entity_id,
+      before:     r.before_snap,
+      after:      r.after_snap,
+      ip:         r.ip,
+      createdAt:  r.created_at,
+    }));
+
+    return res.json({ ok: true, events, total, page: pageNum, pageSize, pages: Math.ceil(total / pageSize) });
+  } catch (err: any) {
+    logger.error('[FinanceAudit][List] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch finance audit log', detail: err.message });
+  }
+});
+
 // GET /admin/wallet/finance-roles — list all assigned roles
 router.get('/admin/wallet/finance-roles', async (req: Request, res: Response) => {
   try {
@@ -7290,21 +7920,27 @@ router.get('/admin/wallet/finance-roles', async (req: Request, res: Response) =>
       FROM finance_roles
       ORDER BY role DESC, created_at
     `);
+    const FORMAT_ACCESS: Record<string, string[]> = {
+      read:  ['csv', 'iban_csv'],
+      write: ['csv', 'tranzilla', 'hapoalim', 'mizrahi', 'iban_csv', 'quickbooks_iif'],
+      admin: ['csv', 'tranzilla', 'hapoalim', 'mizrahi', 'iban_csv', 'quickbooks_iif'],
+    };
     const roles = (rows?.rows ?? rows ?? []).map((r: any) => ({
-      userUid:   r.user_uid,
-      role:      r.role,
-      grantedBy: r.granted_by,
-      createdAt: r.created_at,
-      updatedAt: r.updated_at,
+      userUid:        r.user_uid,
+      role:           r.role,
+      grantedBy:      r.granted_by,
+      createdAt:      r.created_at,
+      updatedAt:      r.updated_at,
+      allowedFormats: FORMAT_ACCESS[r.role] ?? FORMAT_ACCESS['read'],
     }));
-    return res.json({ ok: true, roles, total: roles.length });
+    return res.json({ ok: true, roles, total: roles.length, formatsByRole: FORMAT_ACCESS });
   } catch (err: any) {
     logger.error('[FinanceRoles][List] error', { error: err.message });
     return res.status(500).json({ error: 'Failed to list finance roles', detail: err.message });
   }
 });
 
-// POST /admin/wallet/finance-roles/:uid — assign or update role for a user
+// POST /admin/wallet/finance-roles/:uid — assign or update role (audited)
 router.post('/admin/wallet/finance-roles/:uid', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
@@ -7317,6 +7953,12 @@ router.post('/admin/wallet/finance-roles/:uid', async (req: Request, res: Respon
     if (!parsed.success) return res.status(422).json({ error: 'role must be read|write|admin' });
     const { role } = parsed.data;
 
+    // Read current role so we can record grant vs. update
+    const existingRaw: any = await db.execute(sql`SELECT role FROM finance_roles WHERE user_uid=${uid}`);
+    const existingRows = existingRaw?.rows ?? existingRaw ?? [];
+    const oldRole: string | null = existingRows[0]?.role ?? null;
+    const auditAction = oldRole ? 'update' : 'grant';
+
     await db.execute(sql`
       INSERT INTO finance_roles (user_uid, role, granted_by)
       VALUES (${uid}, ${role}, ${grantorUid})
@@ -7325,28 +7967,44 @@ router.post('/admin/wallet/finance-roles/:uid', async (req: Request, res: Respon
             granted_by = EXCLUDED.granted_by,
             updated_at = NOW()
     `);
-    logger.info('[FinanceRoles][Assign]', { uid, role, grantorUid });
-    return res.json({ ok: true, userUid: uid, role });
+
+    // Write role audit log
+    await db.execute(sql`
+      INSERT INTO role_audit_log (grantor_uid, target_uid, action, old_role, new_role)
+      VALUES (${grantorUid}, ${uid}, ${auditAction}, ${oldRole}, ${role})
+    `);
+
+    logger.info('[FinanceRoles][Assign]', { uid, role, grantorUid, action: auditAction, oldRole });
+    return res.json({ ok: true, userUid: uid, role, action: auditAction });
   } catch (err: any) {
     logger.error('[FinanceRoles][Assign] error', { error: err.message });
     return res.status(500).json({ error: 'Failed to assign finance role', detail: err.message });
   }
 });
 
-// DELETE /admin/wallet/finance-roles/:uid — remove finance role for a user
+// DELETE /admin/wallet/finance-roles/:uid — remove finance role (audited)
 router.delete('/admin/wallet/finance-roles/:uid', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
     if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const grantorUid = session.user.uid ?? session.user.id ?? 'unknown';
     const { uid } = req.params;
 
-    const deleted: any = await db.execute(sql`
-      DELETE FROM finance_roles WHERE user_uid = ${uid} RETURNING user_uid
-    `);
-    const found = (deleted?.rows ?? deleted ?? []).length > 0;
-    if (!found) return res.status(404).json({ error: 'No finance role found for this UID' });
+    // Read current role before deletion so we can audit it
+    const existingRaw: any = await db.execute(sql`SELECT role FROM finance_roles WHERE user_uid=${uid}`);
+    const existingRows = existingRaw?.rows ?? existingRaw ?? [];
+    const oldRole: string | null = existingRows[0]?.role ?? null;
+    if (!oldRole) return res.status(404).json({ error: 'No finance role found for this UID' });
 
-    logger.info('[FinanceRoles][Delete]', { uid });
+    await db.execute(sql`DELETE FROM finance_roles WHERE user_uid = ${uid}`);
+
+    // Write role audit log
+    await db.execute(sql`
+      INSERT INTO role_audit_log (grantor_uid, target_uid, action, old_role, new_role)
+      VALUES (${grantorUid}, ${uid}, 'revoke', ${oldRole}, NULL)
+    `);
+
+    logger.info('[FinanceRoles][Delete]', { uid, oldRole, grantorUid });
     return res.json({ ok: true, userUid: uid, deleted: true });
   } catch (err: any) {
     logger.error('[FinanceRoles][Delete] error', { error: err.message });
@@ -7354,6 +8012,35 @@ router.delete('/admin/wallet/finance-roles/:uid', async (req: Request, res: Resp
   }
 });
 
+// GET /admin/wallet/finance-roles/audit — role change history (last 200 events)
+router.get('/admin/wallet/finance-roles/audit', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const raw: any = await db.execute(sql`
+      SELECT id, grantor_uid, target_uid, action, old_role, new_role, created_at
+      FROM role_audit_log
+      ORDER BY created_at DESC
+      LIMIT 200
+    `);
+    const events = (raw?.rows ?? raw ?? []).map((r: any) => ({
+      id:         r.id,
+      grantorUid: r.grantor_uid,
+      targetUid:  r.target_uid,
+      action:     r.action,
+      oldRole:    r.old_role,
+      newRole:    r.new_role,
+      createdAt:  r.created_at,
+    }));
+    return res.json({ ok: true, events, total: events.length });
+  } catch (err: any) {
+    logger.error('[FinanceRoles][Audit] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch role audit log', detail: err.message });
+  }
+});
+
 export default router;
+
 
 

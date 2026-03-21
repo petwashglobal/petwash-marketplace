@@ -226,6 +226,13 @@ export default function ProviderDashboard() {
     queryFn: () => fetchWithAuth(`/api/prestige-pass/provider/wallet/payout-statement${statementBatchId ? `?batchId=${statementBatchId}` : ''}`),
   });
 
+  // ── 3.1B: Clawback History ────────────────────────────────────────────────
+  const { data: clawbackData, isLoading: clawbackLoading } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/provider/wallet/clawback-history'],
+    enabled: !!user,
+    queryFn: () => fetchWithAuth('/api/prestige-pass/provider/wallet/clawback-history'),
+  });
+
   const { data: appStatusData } = useQuery<{
     success: boolean;
     isProvider: boolean;
@@ -939,6 +946,59 @@ export default function ProviderDashboard() {
                       })}
                     </div>
                   </>
+                )}
+              </div>
+            </div>
+
+            {/* ── 3.1B: Clawback History ──────────────────────────────────── */}
+            <div className="bg-white border border-gray-200/60 shadow-sm overflow-hidden" style={{ borderRadius: '2px' }}>
+              <div className="h-[2px] bg-gradient-to-r from-red-400 to-rose-500" />
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-serif text-gray-900">היסטוריית קיזוז</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">תשלומים שקוזזו מהחשבון שלך</p>
+                </div>
+                {clawbackData?.total > 0 && (
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-red-600">₪{((clawbackData.totalClawbackCents ?? 0) / 100).toFixed(2)}</p>
+                    <p className="text-[10px] text-gray-400">סה״כ קיזוז</p>
+                  </div>
+                )}
+              </div>
+              <div className="p-5">
+                {clawbackLoading ? (
+                  <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-10 bg-gray-100 animate-pulse rounded" />)}</div>
+                ) : !clawbackData?.total || clawbackData.total === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-4">אין קיזוזים — מצוין!</p>
+                ) : (
+                  <div className="space-y-4">
+                    {clawbackData.byMonth.map((month: any) => (
+                      <div key={month.month} className="border border-gray-100 rounded overflow-hidden">
+                        <div className="px-4 py-2 bg-red-50 flex items-center justify-between">
+                          <span className="text-xs font-semibold text-red-700">{month.month}</span>
+                          <span className="text-xs text-red-600">{month.count} קיזוזים · ₪{(month.totalClawbackCents / 100).toFixed(2)}</span>
+                        </div>
+                        <div className="divide-y divide-gray-50">
+                          {month.entries.map((e: any) => (
+                            <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-xs text-gray-700 font-medium truncate">
+                                  {e.clawbackReason ?? 'קיזוז'}
+                                </p>
+                                <p className="text-[10px] text-gray-400 mt-0.5">
+                                  {e.divisionCode} {e.bookingId ? `· הזמנה ${e.bookingId}` : ''} {e.batchId ? `· אצווה ${e.batchId}` : ''}
+                                </p>
+                              </div>
+                              <div className="shrink-0 text-right">
+                                <p className="text-sm font-semibold text-red-600">−₪{(e.clawbackCents / 100).toFixed(2)}</p>
+                                <p className="text-[10px] text-gray-400">{new Date(e.createdAt).toLocaleDateString('he-IL')}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>

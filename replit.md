@@ -1381,3 +1381,52 @@ All endpoints under `/api/prestige-pass/admin/wallet/`. Admin-only. All schema c
   - `POST /admin/wallet/finance-roles/:uid` — assign or update (UPSERT) role for a user
   - `DELETE /admin/wallet/finance-roles/:uid` — remove explicit role (user reverts to default)
 - Frontend: "Finance Roles" tab in AdminWalletDashboard — role hierarchy cards (read/write/admin), assign/update form (UID input + role selector), role list table with Remove action, empty state with bootstrapping message
+
+---
+
+## Phase 3.1 — Finance Operations Layer II (COMPLETE)
+
+### Phase 3.1A — Payout File Formats (COMPLETE)
+- 6 export serializers: `csv`, `tranzilla`, `hapoalim`, `mizrahi`, `iban_csv`, `quickbooks_iif`
+- `GET /admin/wallet/payout-batches/:batchId/export?format=` — content-type & filename set per format
+- `allowedFormats[]` on finance-roles GET response
+- Frontend: format selector dropdown in batch detail drawer
+
+### Phase 3.1G — Role Audit Logs (COMPLETE)
+- `role_audit_log` table: `id`, `grantor_uid`, `target_uid`, `old_role`, `new_role`, `action` (grant|update|revoke), `created_at`; indexes: idx_ral_target, idx_ral_grantor, idx_ral_created_at
+- POST/DELETE `/finance-roles/:uid` write audit rows (reads old role first for update detection)
+- `GET /admin/wallet/finance-roles/audit` — last 200 changes
+- Frontend: "Role Change Audit Log" card in Finance Roles tab
+
+### Phase 3.1D — Finance Activity Timeline (COMPLETE)
+- `finance_audit_log` table: `id`, `actor_uid`, `action`, `entity_type`, `entity_id`, `prev_state` JSONB, `new_state` JSONB, `ip_address`, `created_at`; 4 indexes
+- `recordFinanceAction()` helper — fire-and-forget, never throws
+- 3 instrumented mutations: `payout_batch_create`, `dispute_resolution_{action}`, `finance_day_close`; also `remittance_send` (Phase 3.1C)
+- `GET /admin/wallet/finance-audit` — filters: actor/action/entityType/from/to; 50/page pagination
+- Frontend: "Finance Activity" tab — filter bar, event list, action badges, JSON detail expand
+
+### Phase 3.1B — Provider Clawback History (COMPLETE)
+- `clawback_reason VARCHAR(256)` on `provider_payout_entries` (nullable)
+- Negative-batch guard: `POST /payout-batches/create` returns 422 if totalNetCents < 0
+- `GET /provider/wallet/clawback-history` — provider-facing, grouped by month, clawbackCents per entry
+- `GET /admin/wallet/clawback-summary` — admin, totals by provider; filters: from/to/divisionCode
+- Frontend (ProviderDashboard): Clawback History card in Earnings tab (Hebrew, red accent, monthly groups)
+- Frontend (AdminWalletDashboard): Clawback Summary card in Batches tab
+
+### Phase 3.1C — Automated Remittance Emails (COMPLETE)
+- `remittance_email_log` table: `id`, `batch_id`, `provider_uid`, `status CHECK(pending|sent|failed)`, `sent_at`, `error_detail`, `created_at`; UNIQUE(batch_id, provider_uid) enforces idempotency
+- Email lookup: tries `users.email` → fallback `provider_applications.email`; HTML statement with gross/commission/net breakdown
+- `POST /admin/wallet/payout-batches/:batchId/send-remittances` — finance_write, idempotent (skips already-sent), writes finance audit log
+- `GET /admin/wallet/payout-batches/:batchId/remittance-log` — admin, delivery status per provider
+- Frontend: "✉ Send Remittances" button in batch detail header; Remittance Delivery Log table with status badges
+
+### Phase 3.1F — Dispute SLA Reporting (COMPLETE)
+- SLA thresholds: amount_disputed_cents ≥ 50000 (₪500) = 24h; standard = 72h
+- `GET /admin/wallet/dispute-sla-report` — admin; filters: from/to/divisionCode/status; returns compliancePct, avgDurationHours, per-case slaMet/slaBreached/durationHours
+- Frontend: SLA Compliance Report card in Disputes tab — 4-metric summary grid, progress bar (green/amber/red by threshold), case table (top 20)
+
+### Phase 3.1E — Monthly Variance Analysis (COMPLETE)
+- `GET /admin/wallet/variance-analysis?month=YYYY-MM` — admin; compares current vs previous month
+- 8 metrics: grossPayoutCents, netPayoutCents, commissionCents, entryCount, providerCount, disputeCount, resolvedDisputeCount, disputedCents
+- Returns changePct per metric; dispute metrics: negative changePct = good (green)
+- Frontend: Monthly Variance Analysis card at top of fin-activity tab — month picker, 2-column grid, color-coded %Δ badges
