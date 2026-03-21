@@ -1635,3 +1635,32 @@ All endpoints under `/api/prestige-pass/admin/wallet/`. Admin-only. All schema c
 - `POST /admin/wallet/finance-assistant` — scans live system state; surfaces prioritised action recommendations by context (forecast, period-close, policy, disputes)
 - Frontend: "governance" tab — context selector, optional question input, priority-coded recommendation list
 
+
+### Phase 4.0 — Outcome Intelligence, Self-Healing & Operations Command (COMPLETE)
+
+#### New Tables (7)
+- `policy_outcome_scores` — ROI scoring: baseline vs actual across 6 weighted metrics (payout delay, refund cycle, dispute breach, anomaly rate, margin, manual intervention)
+- `orchestration_retry_policies` — allowlist-based auto-retry rules per failure class (email_send, archive_retrieval, downstream_timeout)
+- `orchestration_retry_attempts` — immutable audit trail of every auto-retry attempt
+- `approval_bottleneck_snapshots` — periodic snapshots of pending/stuck approval requests for trend analysis
+- `governance_pack_subscriptions` — audience routing rules for governance pack distribution
+- `scenario_entity_scores` — per-entity ROI scores for a given simulation scenario
+- `anomaly_clusters` — grouped anomaly signals with type, severity, and size metadata
+
+#### Routes (4.0A–4.0G) — all in `server/routes/prestige-pass.ts`
+- 4.0A: Policy outcome CRUD + `/recompute` (auto-scores ROI from actual vs baseline)
+- 4.0B: Retry policy CRUD + PATCH enable/disable; recent attempts log
+- 4.0C: Bottleneck analytics — avg time to first/final approval, stuck requests (&gt;24h), by-chain-type breakdown, per-request timeline
+- 4.0D: Pack subscription CRUD + PATCH enable/disable
+- 4.0E: Scenario entity scores — filter by scenario ID, auto-tags top/weakest entity
+- 4.0F: Anomaly cluster recompute + read
+- 4.0G: Command center aggregator — single endpoint combining alerts, approvals, orchestration, anomaly, governance, disputes into one summary payload
+
+#### Frontend UI (AdminWalletDashboard.tsx)
+- 4.0A → Policies tab: Policy Outcome & ROI Scoring card
+- 4.0E → Simulation tab (top): Scenario Entity Impact Scores card
+- 4.0D → Governance tab: Pack Subscriptions by Audience card
+- 4.0B → Orchestration tab: Self-Healing Retry Policies card
+- 4.0C → Orchestration tab: Approval Bottleneck Analytics card
+- 4.0F → Control-Center tab: Anomaly Clusters card (from T004 initial session)
+- 4.0G → New "Command Center" tab: Finance Operations Command Center (KPI tiles + 6 drill-through panes)

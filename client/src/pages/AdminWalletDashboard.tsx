@@ -1601,6 +1601,111 @@ export default function AdminWalletDashboard() {
     } finally { setTraceLoading(false); }
   };
 
+  // ── Phase 4.0 — Outcome Intelligence, Self-Healing & Operations Command ──────
+
+  // 4.0A — Policy Outcome Scoring
+  const [outcomeFilter, setOutcomeFilter]   = useState({ policyKey: '', entityCode: '', from: '', to: '' });
+  const [showRecomputeForm, setShowRecomputeForm] = useState(false);
+  const [recomputeForm, setRecomputeForm]   = useState({ policyKey: '', entityCode: '', periodStart: '', periodEnd: '', payoutDelayHours: '', refundCycleHours: '', disputeBreachPct: '', anomalyRatePct: '', marginCents: '', manualInterventionPct: '', basePayoutDelay: '', baseRefundCycle: '', baseDisputeBreach: '', baseAnomalyRate: '', baseMargin: '', baseManualIntervention: '' });
+  const { data: policyOutcomesData, isLoading: policyOutcomesLoading, refetch: refetchPolicyOutcomes } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/policy-outcomes', outcomeFilter],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (outcomeFilter.policyKey)  p.set('policyKey',  outcomeFilter.policyKey);
+      if (outcomeFilter.entityCode) p.set('entityCode', outcomeFilter.entityCode);
+      if (outcomeFilter.from)       p.set('from',       outcomeFilter.from);
+      if (outcomeFilter.to)         p.set('to',         outcomeFilter.to);
+      return fetch(`/api/prestige-pass/admin/wallet/policy-outcomes?${p}`, { credentials: 'include' }).then(r => r.json());
+    },
+  });
+  const { mutate: recomputeOutcome, isPending: recomputeOutcomePending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/policy-outcomes/recompute', body),
+    onSuccess: (d) => { toast({ title: `ROI score: ${d.roiScore}` }); refetchPolicyOutcomes(); setShowRecomputeForm(false); },
+  });
+
+  // 4.0B — Self-Healing Retry Policies
+  const [showNewRetryPolicyForm, setShowNewRetryPolicyForm] = useState(false);
+  const [newRetryPolicy, setNewRetryPolicy] = useState({ runType: '', errorPattern: '', maxRetries: '2', retryDelayMinutes: '15' });
+  const { data: retryPoliciesData, isLoading: retryPoliciesLoading, refetch: refetchRetryPolicies } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/orchestration-retry-policies'],
+  });
+  const { mutate: createRetryPolicy, isPending: createRetryPolicyPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/orchestration-retry-policies', body),
+    onSuccess: () => { toast({ title: 'Retry policy created' }); refetchRetryPolicies(); setShowNewRetryPolicyForm(false); setNewRetryPolicy({ runType: '', errorPattern: '', maxRetries: '2', retryDelayMinutes: '15' }); },
+  });
+  const { mutate: patchRetryPolicy } = useMutation<any, any, { id: number; body: any }>({
+    mutationFn: ({ id, body }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/orchestration-retry-policies/${id}`, body),
+    onSuccess: () => { toast({ title: 'Policy updated' }); refetchRetryPolicies(); },
+  });
+
+  // 4.0C — Approval Bottleneck Analytics
+  const [bottleneckFilter, setBottleneckFilter] = useState({ from: '', to: '' });
+  const [bottleneckRequestId, setBottleneckRequestId] = useState('');
+  const [bottleneckTimeline, setBottleneckTimeline]   = useState<any>(null);
+  const [bottleneckTimelineLoading, setBottleneckTimelineLoading] = useState(false);
+  const { data: bottleneckData, isLoading: bottleneckLoading, refetch: refetchBottlenecks } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/approval-bottlenecks', bottleneckFilter],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (bottleneckFilter.from) p.set('from', bottleneckFilter.from);
+      if (bottleneckFilter.to)   p.set('to',   bottleneckFilter.to);
+      return fetch(`/api/prestige-pass/admin/wallet/approval-bottlenecks?${p}`, { credentials: 'include' }).then(r => r.json());
+    },
+  });
+  const fetchBottleneckTimeline = async (id: string) => {
+    setBottleneckTimelineLoading(true);
+    try {
+      const r = await fetch(`/api/prestige-pass/admin/wallet/approval-bottlenecks/${id}`, { credentials: 'include' });
+      setBottleneckTimeline(await r.json());
+    } finally { setBottleneckTimelineLoading(false); }
+  };
+
+  // 4.0D — Governance Pack Subscriptions
+  const [showNewSubForm, setShowNewSubForm] = useState(false);
+  const [newSub, setNewSub] = useState({ audienceName: '', packType: 'monthly', entityCode: '', recipients: '', includeCommentary: true, includeControlCenter: false });
+  const { data: packSubsData, isLoading: packSubsLoading, refetch: refetchPackSubs } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/governance-pack-subscriptions'],
+  });
+  const { mutate: createPackSub, isPending: createPackSubPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/governance-pack-subscriptions', body),
+    onSuccess: () => { toast({ title: 'Subscription created' }); refetchPackSubs(); setShowNewSubForm(false); setNewSub({ audienceName: '', packType: 'monthly', entityCode: '', recipients: '', includeCommentary: true, includeControlCenter: false }); },
+  });
+  const { mutate: patchPackSub } = useMutation<any, any, { id: number; body: any }>({
+    mutationFn: ({ id, body }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/governance-pack-subscriptions/${id}`, body),
+    onSuccess: () => { toast({ title: 'Subscription updated' }); refetchPackSubs(); },
+  });
+
+  // 4.0E — Scenario Entity Impact Scores
+  const [entityScoreScenarioId, setEntityScoreScenarioId] = useState('');
+  const [showAddEntityScore, setShowAddEntityScore]        = useState(false);
+  const [newEntityScore, setNewEntityScore] = useState({ entityCode: '', totalScore: '', revenueAdj: '', volumeAdj: '', riskAdj: '' });
+  const { data: entityScoresData, isLoading: entityScoresLoading, refetch: refetchEntityScores } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/scenario-entity-scores', entityScoreScenarioId],
+    queryFn: () => {
+      const p = entityScoreScenarioId ? `?scenarioId=${entityScoreScenarioId}` : '';
+      return fetch(`/api/prestige-pass/admin/wallet/scenario-entity-scores${p}`, { credentials: 'include' }).then(r => r.json());
+    },
+  });
+  const { mutate: addEntityScore, isPending: addEntityScorePending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/scenario-entity-scores', body),
+    onSuccess: () => { toast({ title: 'Score recorded' }); refetchEntityScores(); setShowAddEntityScore(false); setNewEntityScore({ entityCode: '', totalScore: '', revenueAdj: '', volumeAdj: '', riskAdj: '' }); },
+  });
+
+  // 4.0F — Anomaly Root-Cause Clustering
+  const { data: anomalyClustersData, isLoading: anomalyClustersLoading, refetch: refetchAnomalyClusters } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/anomaly-clusters'],
+  });
+  const { mutate: recomputeClusters, isPending: recomputeClustersPending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest('POST', '/api/prestige-pass/admin/wallet/anomaly-clusters/recompute', {}),
+    onSuccess: () => { toast({ title: 'Clusters recomputed' }); refetchAnomalyClusters(); },
+  });
+
+  // 4.0G — Operations Command Center
+  const { data: commandCenterData, isLoading: commandCenterLoading, refetch: refetchCommandCenter } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/ops-command-center'],
+    refetchInterval: 60_000,
+  });
+
   // ── Phase 3.6 UI aliases & supplemental state ──────────────────────────────
   // 3.6A — weight form state for the UI card
   const [weightForm, setWeightForm] = useState({ signalKey: '', divisionCode: '', weight: '' });
@@ -1927,6 +2032,10 @@ export default function AdminWalletDashboard() {
             <TabsTrigger value="orchestration">
               <Zap className="w-4 h-4 mr-2" />
               Orchestration
+            </TabsTrigger>
+            <TabsTrigger value="command-center">
+              <LayoutDashboard className="w-4 h-4 mr-2" />
+              Command Center
             </TabsTrigger>
           </TabsList>
 
@@ -7718,6 +7827,54 @@ export default function AdminWalletDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* 4.0F — ANOMALY ROOT-CAUSE CLUSTERS */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-rose-700" /> Anomaly Root-Cause Clusters
+                </CardTitle>
+                <button disabled={recomputeClustersPending} onClick={() => recomputeClusters()}
+                  className="text-xs px-2 py-1 bg-rose-700 text-white rounded hover:bg-rose-800 disabled:opacity-40 flex items-center gap-1">
+                  {recomputeClustersPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Recompute
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">
+                  Advisory only — clusters group anomaly signals into probable root causes. No source anomalies are modified.
+                </div>
+                {anomalyClustersLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  !anomalyClustersData?.clusters?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No clusters yet — click Recompute to generate initial cluster set</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {anomalyClustersData.clusters.map((c: any) => (
+                        <div key={c.id} className="border rounded-lg p-3 text-xs">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="font-semibold text-gray-800">{c.root_cause_label}</div>
+                              <div className="font-mono text-gray-500 mt-0.5 text-[10px]">{c.cluster_key}</div>
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {(c.signal_codes as string[]).map((s: string) => (
+                                  <span key={s} className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-mono">{s}</span>
+                                ))}
+                              </div>
+                              <div className="text-gray-400 mt-1">Last seen: {new Date(c.last_seen_at).toLocaleDateString('he-IL')}</div>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <div className={`text-sm font-bold ${parseFloat(c.confidence_score) >= 80 ? 'text-red-600' : parseFloat(c.confidence_score) >= 60 ? 'text-amber-600' : 'text-gray-500'}`}>
+                                {parseFloat(c.confidence_score).toFixed(0)}%
+                              </div>
+                              <div className="text-[10px] text-gray-400">confidence</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -7958,12 +8115,202 @@ export default function AdminWalletDashboard() {
                 </div>
               </CardContent>
             </Card>
+            {/* 4.0A — POLICY OUTCOME & ROI SCORING */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-emerald-600" /> Policy Outcome & ROI Scoring
+                </CardTitle>
+                <button onClick={() => setShowRecomputeForm(v => !v)} className="text-xs px-2 py-1 bg-emerald-700 text-white rounded hover:bg-emerald-800">
+                  {showRecomputeForm ? 'Cancel' : '+ Record Outcome'}
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded p-2">
+                  Measure whether policy changes improved outcomes. Compare baseline vs actual across 6 weighted metrics: payout delay, refund cycle, dispute breach, anomaly rate, margin, and manual intervention.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input type="text" placeholder="Policy key" value={outcomeFilter.policyKey}
+                    onChange={e => setOutcomeFilter(v => ({ ...v, policyKey: e.target.value }))} className="border rounded px-2 py-1 text-xs w-36" />
+                  <input type="text" placeholder="Entity code" value={outcomeFilter.entityCode}
+                    onChange={e => setOutcomeFilter(v => ({ ...v, entityCode: e.target.value }))} className="border rounded px-2 py-1 text-xs w-28" />
+                  <input type="date" value={outcomeFilter.from}
+                    onChange={e => setOutcomeFilter(v => ({ ...v, from: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                  <input type="date" value={outcomeFilter.to}
+                    onChange={e => setOutcomeFilter(v => ({ ...v, to: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                  <button onClick={() => refetchPolicyOutcomes()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                </div>
+                {showRecomputeForm && (
+                  <div className="border border-emerald-200 rounded p-3 bg-emerald-50 space-y-3">
+                    <div className="text-xs font-semibold text-emerald-800">New Outcome Record</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="text" placeholder="Policy key" value={recomputeForm.policyKey}
+                        onChange={e => setRecomputeForm(v => ({ ...v, policyKey: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="text" placeholder="Entity code (opt)" value={recomputeForm.entityCode}
+                        onChange={e => setRecomputeForm(v => ({ ...v, entityCode: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="date" placeholder="Period start" value={recomputeForm.periodStart}
+                        onChange={e => setRecomputeForm(v => ({ ...v, periodStart: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="date" placeholder="Period end" value={recomputeForm.periodEnd}
+                        onChange={e => setRecomputeForm(v => ({ ...v, periodEnd: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                    </div>
+                    <div className="text-xs font-semibold text-gray-600 mt-1">Baseline (pre-promotion)</div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <input type="number" placeholder="Payout delay hrs" value={recomputeForm.basePayoutDelay}
+                        onChange={e => setRecomputeForm(v => ({ ...v, basePayoutDelay: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Refund cycle hrs" value={recomputeForm.baseRefundCycle}
+                        onChange={e => setRecomputeForm(v => ({ ...v, baseRefundCycle: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Dispute breach %" value={recomputeForm.baseDisputeBreach}
+                        onChange={e => setRecomputeForm(v => ({ ...v, baseDisputeBreach: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Anomaly rate %" value={recomputeForm.baseAnomalyRate}
+                        onChange={e => setRecomputeForm(v => ({ ...v, baseAnomalyRate: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Margin ₪ cents" value={recomputeForm.baseMargin}
+                        onChange={e => setRecomputeForm(v => ({ ...v, baseMargin: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Manual intervention %" value={recomputeForm.baseManualIntervention}
+                        onChange={e => setRecomputeForm(v => ({ ...v, baseManualIntervention: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                    </div>
+                    <div className="text-xs font-semibold text-gray-600 mt-1">Actual (post-promotion)</div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <input type="number" placeholder="Payout delay hrs" value={recomputeForm.payoutDelayHours}
+                        onChange={e => setRecomputeForm(v => ({ ...v, payoutDelayHours: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Refund cycle hrs" value={recomputeForm.refundCycleHours}
+                        onChange={e => setRecomputeForm(v => ({ ...v, refundCycleHours: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Dispute breach %" value={recomputeForm.disputeBreachPct}
+                        onChange={e => setRecomputeForm(v => ({ ...v, disputeBreachPct: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Anomaly rate %" value={recomputeForm.anomalyRatePct}
+                        onChange={e => setRecomputeForm(v => ({ ...v, anomalyRatePct: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Margin ₪ cents" value={recomputeForm.marginCents}
+                        onChange={e => setRecomputeForm(v => ({ ...v, marginCents: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Manual intervention %" value={recomputeForm.manualInterventionPct}
+                        onChange={e => setRecomputeForm(v => ({ ...v, manualInterventionPct: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                    </div>
+                    <button disabled={recomputeOutcomePending || !recomputeForm.policyKey || !recomputeForm.periodStart}
+                      onClick={() => recomputeOutcome({
+                        policyKey: recomputeForm.policyKey,
+                        entityCode: recomputeForm.entityCode || undefined,
+                        periodStart: recomputeForm.periodStart,
+                        periodEnd: recomputeForm.periodEnd,
+                        baselineJson: { payout_delay_hours: parseFloat(recomputeForm.basePayoutDelay||'0'), refund_cycle_hours: parseFloat(recomputeForm.baseRefundCycle||'0'), dispute_breach_pct: parseFloat(recomputeForm.baseDisputeBreach||'0'), anomaly_rate_pct: parseFloat(recomputeForm.baseAnomalyRate||'0'), margin_cents: parseFloat(recomputeForm.baseMargin||'0'), manual_intervention_pct: parseFloat(recomputeForm.baseManualIntervention||'0') },
+                        actualJson:   { payout_delay_hours: parseFloat(recomputeForm.payoutDelayHours||'0'), refund_cycle_hours: parseFloat(recomputeForm.refundCycleHours||'0'), dispute_breach_pct: parseFloat(recomputeForm.disputeBreachPct||'0'), anomaly_rate_pct: parseFloat(recomputeForm.anomalyRatePct||'0'), margin_cents: parseFloat(recomputeForm.marginCents||'0'), manual_intervention_pct: parseFloat(recomputeForm.manualInterventionPct||'0') },
+                      })}
+                      className="text-xs px-3 py-1.5 bg-emerald-700 text-white rounded hover:bg-emerald-800 disabled:opacity-40 flex items-center gap-1">
+                      {recomputeOutcomePending ? <Loader2 className="w-3 h-3 animate-spin" /> : <TrendingUp className="w-3 h-3" />} Compute & Save ROI Score
+                    </button>
+                  </div>
+                )}
+                {policyOutcomesLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  !policyOutcomesData?.outcomes?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No outcome scores yet — record your first baseline vs actual comparison above</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {policyOutcomesData.outcomes.map((o: any) => (
+                        <div key={o.id} className="border rounded-lg p-3 text-xs">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-semibold text-gray-800">{o.policy_key}</span>
+                                {o.entity_code && <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px]">{o.entity_code}</span>}
+                              </div>
+                              <div className="text-gray-400 mt-0.5">
+                                {o.evaluation_period_start} → {o.evaluation_period_end}
+                              </div>
+                              <div className="flex flex-wrap gap-2 mt-1.5 text-[10px] text-gray-500">
+                                {Object.entries(o.score_json as Record<string,number>).map(([k, v]) => (
+                                  <span key={k} className={`px-1 py-0.5 rounded ${typeof v === 'number' && v > 0 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+                                    {k.replace(/_/g,' ')}: {typeof v === 'number' ? v.toFixed(2) : v}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <div className={`text-xl font-bold ${parseFloat(o.roi_score) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                {parseFloat(o.roi_score) >= 0 ? '+' : ''}{parseFloat(o.roi_score).toFixed(2)}
+                              </div>
+                              <div className="text-[10px] text-gray-400">ROI score</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
           {/* 3.7A+3.7C — SIMULATION TAB                                    */}
           {/* ══════════════════════════════════════════════════════════════ */}
           <TabsContent value="simulation" className="mt-4 space-y-4">
+            {/* 4.0E — SCENARIO ENTITY IMPACT SCORES (placed first for context) */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Scale className="w-4 h-4 text-violet-600" /> Scenario Entity Impact Scores
+                </CardTitle>
+                <button onClick={() => setShowAddEntityScore(v => !v)} className="text-xs px-2 py-1 bg-violet-600 text-white rounded hover:bg-violet-700">
+                  {showAddEntityScore ? 'Cancel' : '+ Record Score'}
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded p-2">
+                  Compare how a simulation scenario performs across different entities or divisions. Same inputs → same score.
+                </div>
+                <div className="flex gap-2">
+                  <input type="text" placeholder="Scenario ID (optional)" value={entityScoreScenarioId}
+                    onChange={e => setEntityScoreScenarioId(e.target.value)} className="border rounded px-2 py-1 text-xs w-32" />
+                  <button onClick={() => refetchEntityScores()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                </div>
+                {showAddEntityScore && (
+                  <div className="border border-violet-200 rounded p-3 bg-violet-50 space-y-2">
+                    <div className="flex gap-2">
+                      <input type="text" placeholder="Scenario ID" value={newEntityScore.entityCode ? '' : ''} className="hidden" />
+                      <input type="text" placeholder="Entity code (e.g. IL01)" value={newEntityScore.entityCode}
+                        onChange={e => setNewEntityScore(v => ({ ...v, entityCode: e.target.value }))} className="border rounded px-2 py-1 text-xs flex-1" />
+                      <input type="text" placeholder="Total score" value={newEntityScore.totalScore}
+                        onChange={e => setNewEntityScore(v => ({ ...v, totalScore: e.target.value }))} className="border rounded px-2 py-1 text-xs w-24" />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <input type="text" placeholder="Revenue adj %" value={newEntityScore.revenueAdj}
+                        onChange={e => setNewEntityScore(v => ({ ...v, revenueAdj: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="text" placeholder="Volume adj %" value={newEntityScore.volumeAdj}
+                        onChange={e => setNewEntityScore(v => ({ ...v, volumeAdj: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="text" placeholder="Risk adj %" value={newEntityScore.riskAdj}
+                        onChange={e => setNewEntityScore(v => ({ ...v, riskAdj: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                    </div>
+                    <button disabled={addEntityScorePending || !newEntityScore.entityCode || !entityScoreScenarioId}
+                      onClick={() => addEntityScore({ scenarioId: entityScoreScenarioId, entityCode: newEntityScore.entityCode, totalScore: parseFloat(newEntityScore.totalScore || '0'), scoreJson: { revenue_adj_pct: newEntityScore.revenueAdj, volume_adj_pct: newEntityScore.volumeAdj, risk_adj_pct: newEntityScore.riskAdj } })}
+                      className="text-xs px-3 py-1.5 bg-violet-700 text-white rounded hover:bg-violet-800 disabled:opacity-40 flex items-center gap-1">
+                      {addEntityScorePending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Scale className="w-3 h-3" />} Record Score
+                    </button>
+                  </div>
+                )}
+                {entityScoresLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                  !entityScoresData?.scores?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No entity scores yet — enter a Scenario ID and record scores above</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Entity</th><th className="text-left p-2">Rev Adj</th><th className="text-left p-2">Vol Adj</th><th className="text-left p-2">Risk Adj</th><th className="text-right p-2">Total Score</th></tr>
+                      </thead><tbody>
+                        {entityScoresData.scores.map((s: any, i: number) => (
+                          <tr key={s.id} className={`border-t ${s.entity_code === entityScoresData.topEntity ? 'bg-green-50' : s.entity_code === entityScoresData.weakestEntity && entityScoresData.scores.length > 1 ? 'bg-red-50' : ''}`}>
+                            <td className="p-2 font-mono font-semibold text-gray-700">
+                              {s.entity_code}
+                              {s.entity_code === entityScoresData.topEntity && <span className="ml-1 text-green-600 text-[10px]">▲ top</span>}
+                              {s.entity_code === entityScoresData.weakestEntity && entityScoresData.scores.length > 1 && <span className="ml-1 text-red-500 text-[10px]">▼ weak</span>}
+                            </td>
+                            <td className="p-2 text-gray-500">{(s.score_json as any)?.revenue_adj_pct ?? '—'}%</td>
+                            <td className="p-2 text-gray-500">{(s.score_json as any)?.volume_adj_pct ?? '—'}%</td>
+                            <td className="p-2 text-gray-500">{(s.score_json as any)?.risk_adj_pct ?? '—'}%</td>
+                            <td className="p-2 text-right font-mono font-semibold text-gray-800">{parseFloat(s.total_score).toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
             {/* 3.7A — Policy Simulator */}
             <Card>
               <CardHeader className="pb-2">
@@ -8896,6 +9243,85 @@ export default function AdminWalletDashboard() {
                 }
               </CardContent>
             </Card>
+            {/* 4.0D — GOVERNANCE PACK SUBSCRIPTIONS */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Send className="w-4 h-4 text-sky-600" /> Pack Subscriptions by Audience
+                </CardTitle>
+                <button onClick={() => setShowNewSubForm(v => !v)} className="text-xs px-2 py-1 bg-sky-600 text-white rounded hover:bg-sky-700">
+                  {showNewSubForm ? 'Cancel' : '+ Add Subscription'}
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-sky-700 bg-sky-50 border border-sky-200 rounded p-2">
+                  Route governance pack outputs to the right audience automatically. Entity-scoped audiences only receive packs relevant to their scope.
+                </div>
+                {showNewSubForm && (
+                  <div className="border border-sky-200 rounded p-3 bg-sky-50 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="text" placeholder="Audience name" value={newSub.audienceName}
+                        onChange={e => setNewSub(v => ({ ...v, audienceName: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <select value={newSub.packType} onChange={e => setNewSub(v => ({ ...v, packType: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="quarter">Quarterly</option>
+                        <option value="year">Annual</option>
+                      </select>
+                      <input type="text" placeholder="Entity code (optional)" value={newSub.entityCode}
+                        onChange={e => setNewSub(v => ({ ...v, entityCode: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="text" placeholder="Recipients (comma-sep emails)" value={newSub.recipients}
+                        onChange={e => setNewSub(v => ({ ...v, recipients: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                    </div>
+                    <div className="flex gap-4 text-xs">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" checked={newSub.includeCommentary} onChange={e => setNewSub(v => ({ ...v, includeCommentary: e.target.checked }))} />
+                        Include commentary
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" checked={newSub.includeControlCenter} onChange={e => setNewSub(v => ({ ...v, includeControlCenter: e.target.checked }))} />
+                        Include command center
+                      </label>
+                    </div>
+                    <button disabled={createPackSubPending || !newSub.audienceName}
+                      onClick={() => createPackSub({ audienceName: newSub.audienceName, packType: newSub.packType, entityCode: newSub.entityCode || undefined, recipients: newSub.recipients.split(',').map(s=>s.trim()).filter(Boolean), includeCommentary: newSub.includeCommentary, includeControlCenter: newSub.includeControlCenter })}
+                      className="text-xs px-3 py-1.5 bg-sky-700 text-white rounded hover:bg-sky-800 disabled:opacity-40 flex items-center gap-1">
+                      {createPackSubPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} Create Subscription
+                    </button>
+                  </div>
+                )}
+                {packSubsLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                  !packSubsData?.subscriptions?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No subscriptions yet — create an audience rule above</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Audience</th><th className="text-left p-2">Pack</th><th className="text-left p-2">Entity</th><th className="text-left p-2">Recipients</th><th className="text-left p-2">Options</th><th className="text-left p-2">Status</th></tr>
+                      </thead><tbody>
+                        {packSubsData.subscriptions.map((s: any) => (
+                          <tr key={s.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 font-semibold text-gray-800">{s.audience_name}</td>
+                            <td className="p-2 capitalize text-gray-700">{s.pack_type}</td>
+                            <td className="p-2 font-mono text-gray-500">{s.entity_code ?? 'all'}</td>
+                            <td className="p-2 text-gray-500">{(s.recipients as string[]).length} addr.</td>
+                            <td className="p-2 text-gray-400 text-[10px]">
+                              {s.include_commentary && 'Commentary '}
+                              {s.include_control_center && 'Cmd Center'}
+                            </td>
+                            <td className="p-2">
+                              <button onClick={() => patchPackSub({ id: s.id, body: { enabled: !s.enabled } })}
+                                className={`text-xs px-1.5 py-0.5 border rounded ${s.enabled ? 'border-green-200 text-green-700' : 'border-red-200 text-red-500'}`}>
+                                {s.enabled ? 'Active' : 'Paused'}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -9046,6 +9472,271 @@ export default function AdminWalletDashboard() {
                 )}
                 {!traceResult && !traceLoading && (
                   <div className="text-xs text-gray-400 text-center py-6 border border-dashed rounded">Enter an entity type and ID, then click Trace</div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 4.0B — SELF-HEALING RETRY POLICIES */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <RotateCcw className="w-4 h-4 text-orange-600" /> Self-Healing Retry Policies
+                </CardTitle>
+                <button onClick={() => setShowNewRetryPolicyForm(v => !v)} className="text-xs px-2 py-1 bg-orange-600 text-white rounded hover:bg-orange-700">
+                  {showNewRetryPolicyForm ? 'Cancel' : '+ Add Policy'}
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded p-2">
+                  Only allowlisted failure classes retry automatically (transient network, timeout, archive retrieval). Money-movement and replay ambiguities are never auto-retried.
+                </div>
+                {showNewRetryPolicyForm && (
+                  <div className="border border-orange-200 rounded p-3 bg-orange-50 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <select value={newRetryPolicy.runType} onChange={e => setNewRetryPolicy(v => ({ ...v, runType: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                        <option value="">Run type…</option>
+                        <option value="email_send">email_send</option>
+                        <option value="archive_retrieval">archive_retrieval</option>
+                        <option value="downstream_timeout">downstream_timeout</option>
+                      </select>
+                      <input type="text" placeholder="Error pattern (substring)" value={newRetryPolicy.errorPattern}
+                        onChange={e => setNewRetryPolicy(v => ({ ...v, errorPattern: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Max retries" value={newRetryPolicy.maxRetries}
+                        onChange={e => setNewRetryPolicy(v => ({ ...v, maxRetries: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Delay (min)" value={newRetryPolicy.retryDelayMinutes}
+                        onChange={e => setNewRetryPolicy(v => ({ ...v, retryDelayMinutes: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                    </div>
+                    <button disabled={createRetryPolicyPending || !newRetryPolicy.runType || !newRetryPolicy.errorPattern}
+                      onClick={() => createRetryPolicy({ runType: newRetryPolicy.runType, errorPattern: newRetryPolicy.errorPattern, maxRetries: parseInt(newRetryPolicy.maxRetries,10), retryDelayMinutes: parseInt(newRetryPolicy.retryDelayMinutes,10) })}
+                      className="text-xs px-3 py-1.5 bg-orange-700 text-white rounded hover:bg-orange-800 disabled:opacity-40 flex items-center gap-1">
+                      {createRetryPolicyPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />} Create Retry Policy
+                    </button>
+                  </div>
+                )}
+                {retryPoliciesLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                  !retryPoliciesData?.policies?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No retry policies yet — add one to enable self-healing for safe failure classes</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Run Type</th><th className="text-left p-2">Error Pattern</th><th className="text-left p-2">Max Retries</th><th className="text-left p-2">Delay</th><th className="text-left p-2">Status</th></tr>
+                      </thead><tbody>
+                        {retryPoliciesData.policies.map((p: any) => (
+                          <tr key={p.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 font-mono text-gray-700">{p.run_type}</td>
+                            <td className="p-2 text-gray-500 max-w-[140px] truncate" title={p.error_pattern}>{p.error_pattern}</td>
+                            <td className="p-2 font-mono text-center text-gray-700">{p.max_retries}</td>
+                            <td className="p-2 text-gray-500">{p.retry_delay_minutes}m</td>
+                            <td className="p-2">
+                              <button onClick={() => patchRetryPolicy({ id: p.id, body: { enabled: !p.enabled } })}
+                                className={`text-xs px-1.5 py-0.5 border rounded ${p.enabled ? 'border-green-200 text-green-700' : 'border-red-200 text-red-500'}`}>
+                                {p.enabled ? 'Active' : 'Off'}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )
+                }
+                {retryPoliciesData?.attempts?.length > 0 && (
+                  <div>
+                    <div className="text-xs font-semibold text-gray-600 mb-1">Recent Auto-Retry Attempts</div>
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Run</th><th className="text-left p-2">Attempt</th><th className="text-left p-2">Status</th><th className="text-left p-2">Started</th><th className="text-left p-2">Error</th></tr>
+                      </thead><tbody>
+                        {retryPoliciesData.attempts.slice(0, 15).map((a: any) => (
+                          <tr key={a.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 font-mono text-gray-700">#{a.orchestration_run_id} <span className="text-gray-400 text-[10px]">{a.run_type}</span></td>
+                            <td className="p-2 font-mono text-center text-gray-500">#{a.attempt_no}</td>
+                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded ${a.status === 'success' ? 'bg-green-100 text-green-700' : a.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{a.status}</span></td>
+                            <td className="p-2 text-gray-400">{new Date(a.started_at).toLocaleString('he-IL')}</td>
+                            <td className="p-2 text-red-400 max-w-[120px] truncate" title={a.error_message}>{a.error_message || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 4.0C — APPROVAL BOTTLENECK ANALYTICS */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-700" /> Approval Bottleneck Analytics
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                  Read-only — quantifies where approvals slow down the system. Stuck = pending &gt; 24h.
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <input type="date" value={bottleneckFilter.from} onChange={e => setBottleneckFilter(v => ({ ...v, from: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                  <input type="date" value={bottleneckFilter.to}   onChange={e => setBottleneckFilter(v => ({ ...v, to:   e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                  <button onClick={() => refetchBottlenecks()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                </div>
+                {bottleneckLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                  bottleneckData && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {[
+                          { label: 'Avg to 1st Approval', value: bottleneckData.avgTimeToFirstApprovalHours != null ? `${bottleneckData.avgTimeToFirstApprovalHours}h` : '—', color: 'text-blue-600' },
+                          { label: 'Avg to Final Approval', value: bottleneckData.avgTimeToFinalApprovalHours != null ? `${bottleneckData.avgTimeToFinalApprovalHours}h` : '—', color: 'text-amber-600' },
+                          { label: 'Stuck (&gt;24h)', value: bottleneckData.stuckRequests?.length ?? 0, color: 'text-red-600' },
+                          { label: 'Pending', value: bottleneckData.pendingCount ?? 0, color: 'text-gray-700' },
+                        ].map(k => (
+                          <div key={k.label} className="border rounded p-2 text-center">
+                            <div className={`text-xl font-bold ${k.color}`}>{k.value}</div>
+                            <div className="text-[10px] text-gray-500 mt-0.5">{k.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {bottleneckData.byChainType?.length > 0 && (
+                        <div>
+                          <div className="text-xs font-semibold text-gray-600 mb-1">By Chain Type</div>
+                          <div className="border rounded-lg overflow-hidden">
+                            <table className="w-full text-xs"><thead className="bg-gray-50">
+                              <tr className="text-gray-500"><th className="text-left p-2">Chain Type</th><th className="text-right p-2">Total</th><th className="text-right p-2">Avg Resolution</th></tr>
+                            </thead><tbody>
+                              {bottleneckData.byChainType.map((c: any) => (
+                                <tr key={c.chain_type} className="border-t hover:bg-gray-50">
+                                  <td className="p-2 font-mono text-gray-700">{c.chain_type}</td>
+                                  <td className="p-2 text-right text-gray-500">{c.total}</td>
+                                  <td className="p-2 text-right font-mono text-amber-700">{c.avg_resolution_hours ?? '—'}h</td>
+                                </tr>
+                              ))}
+                            </tbody></table>
+                          </div>
+                        </div>
+                      )}
+                      {bottleneckData.stuckRequests?.length > 0 && (
+                        <div>
+                          <div className="text-xs font-semibold text-red-600 mb-1">Stuck Requests (&gt;24h open)</div>
+                          <div className="space-y-1">
+                            {bottleneckData.stuckRequests.map((r: any) => (
+                              <div key={r.id} className="flex items-center justify-between border border-red-200 bg-red-50 rounded p-2 text-xs">
+                                <div>
+                                  <span className="font-mono text-gray-800">#{r.id}</span>
+                                  <span className="ml-2 text-gray-500">{r.chain_type}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-red-600 font-semibold">{r.hours_open}h open</span>
+                                  <button disabled={bottleneckTimelineLoading} onClick={() => { setBottleneckRequestId(String(r.id)); fetchBottleneckTimeline(String(r.id)); }}
+                                    className="text-xs px-2 py-0.5 border border-gray-300 rounded hover:bg-gray-50">Timeline</button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {bottleneckTimeline && (
+                        <div>
+                          <div className="text-xs font-semibold text-gray-600 mb-1">Request #{bottleneckRequestId} Timeline</div>
+                          <div className="space-y-1">
+                            {(bottleneckTimeline.steps ?? []).map((s: any, i: number) => (
+                              <div key={i} className="flex items-center gap-2 text-xs border-l-2 border-blue-400 pl-3 py-1">
+                                <span className="font-mono text-gray-700">{s.action_type ?? s.status ?? '—'}</span>
+                                <span className="text-gray-400 ml-auto">{new Date(s.created_at).toLocaleString('he-IL')}</span>
+                              </div>
+                            ))}
+                            {!bottleneckTimeline.steps?.length && <div className="text-xs text-gray-400 pl-3">No steps recorded yet</div>}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* 4.0G — FINANCE OPERATIONS COMMAND CENTER                      */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          <TabsContent value="command-center" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <LayoutDashboard className="w-4 h-4 text-gray-800" /> Finance Operations Command Center
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400">Auto-refresh 60s</span>
+                  <button disabled={commandCenterLoading} onClick={() => refetchCommandCenter()}
+                    className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Refresh now
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {commandCenterLoading ? <div className="h-32 bg-gray-100 animate-pulse rounded" /> :
+                  commandCenterData && (
+                    <>
+                      <div className="text-[10px] text-gray-400 text-right">
+                        Generated: {commandCenterData.generatedAt ? new Date(commandCenterData.generatedAt).toLocaleString('he-IL') : '—'}
+                      </div>
+
+                      {/* KPI tiles */}
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {[
+                          { label: 'Critical Alerts',     value: commandCenterData.summary?.criticalAlerts,     color: commandCenterData.summary?.criticalAlerts > 0 ? 'text-red-600 bg-red-50 border-red-200' : 'text-gray-700 bg-gray-50 border-gray-200', tab: 'control-center' },
+                          { label: 'Pending Approvals',   value: commandCenterData.summary?.pendingApprovals,   color: commandCenterData.summary?.pendingApprovals > 5 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-gray-700 bg-gray-50 border-gray-200', tab: 'approvals' },
+                          { label: 'Orch Failures (24h)', value: commandCenterData.summary?.orchestrationFailed, color: commandCenterData.summary?.orchestrationFailed > 0 ? 'text-orange-600 bg-orange-50 border-orange-200' : 'text-gray-700 bg-gray-50 border-gray-200', tab: 'orchestration' },
+                          { label: 'Open Disputes',       value: commandCenterData.summary?.openDisputes,       color: commandCenterData.summary?.openDisputes > 0 ? 'text-rose-600 bg-rose-50 border-rose-200' : 'text-gray-700 bg-gray-50 border-gray-200', tab: 'disputes' },
+                          { label: 'Anomaly Clusters',    value: commandCenterData.summary?.anomalyClusters,    color: 'text-gray-700 bg-gray-50 border-gray-200', tab: 'control-center' },
+                          { label: 'Active Scenarios',    value: commandCenterData.summary?.activeScenarios,    color: 'text-indigo-700 bg-indigo-50 border-indigo-200', tab: 'simulation' },
+                          { label: 'Active Subscriptions',value: commandCenterData.summary?.activeSubscriptions, color: 'text-sky-700 bg-sky-50 border-sky-200', tab: 'governance' },
+                          { label: 'Orch Runs (24h)',     value: commandCenterData.orchestration?.total24h,     color: 'text-gray-700 bg-gray-50 border-gray-200', tab: 'orchestration' },
+                        ].map(k => (
+                          <div key={k.label} className={`border rounded-lg p-3 text-center ${k.color}`}>
+                            <div className="text-2xl font-bold">{k.value ?? '—'}</div>
+                            <div className="text-[10px] mt-0.5 opacity-75">{k.label}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Status sections */}
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="border rounded-lg p-3 space-y-2">
+                          <div className="text-xs font-semibold text-gray-700 flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5 text-red-500" /> Alerts</div>
+                          <div className="text-xs text-gray-600">Total active: <span className="font-mono font-semibold">{commandCenterData.alerts?.total}</span></div>
+                          <div className="text-xs text-gray-600">Critical: <span className={`font-mono font-semibold ${commandCenterData.alerts?.critical > 0 ? 'text-red-600' : 'text-gray-500'}`}>{commandCenterData.alerts?.critical}</span></div>
+                        </div>
+                        <div className="border rounded-lg p-3 space-y-2">
+                          <div className="text-xs font-semibold text-gray-700 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-amber-600" /> Approvals</div>
+                          <div className="text-xs text-gray-600">Pending: <span className="font-mono font-semibold">{commandCenterData.approvals?.pending}</span></div>
+                          <div className="text-xs text-gray-400">Drill-through → Approvals tab</div>
+                        </div>
+                        <div className="border rounded-lg p-3 space-y-2">
+                          <div className="text-xs font-semibold text-gray-700 flex items-center gap-1.5"><Activity className="w-3.5 h-3.5 text-orange-600" /> Orchestration</div>
+                          <div className="text-xs text-gray-600">Runs 24h: <span className="font-mono font-semibold">{commandCenterData.orchestration?.total24h}</span></div>
+                          <div className="text-xs text-gray-600">Failed: <span className={`font-mono font-semibold ${commandCenterData.orchestration?.failed24h > 0 ? 'text-orange-600' : 'text-gray-500'}`}>{commandCenterData.orchestration?.failed24h}</span></div>
+                        </div>
+                        <div className="border rounded-lg p-3 space-y-2">
+                          <div className="text-xs font-semibold text-gray-700 flex items-center gap-1.5"><Layers className="w-3.5 h-3.5 text-rose-600" /> Anomaly Clusters</div>
+                          <div className="text-xs text-gray-600">Clusters: <span className="font-mono font-semibold">{commandCenterData.anomalies?.clusters}</span></div>
+                          <div className="text-xs text-gray-400">Advisory — drill-through → Control Center</div>
+                        </div>
+                        <div className="border rounded-lg p-3 space-y-2">
+                          <div className="text-xs font-semibold text-gray-700 flex items-center gap-1.5"><Globe className="w-3.5 h-3.5 text-sky-600" /> Governance</div>
+                          <div className="text-xs text-gray-600">Subscriptions: <span className="font-mono font-semibold">{commandCenterData.governance?.total}</span></div>
+                          <div className="text-xs text-gray-600">Active: <span className="font-mono font-semibold text-sky-700">{commandCenterData.governance?.active}</span></div>
+                        </div>
+                        <div className="border rounded-lg p-3 space-y-2">
+                          <div className="text-xs font-semibold text-gray-700 flex items-center gap-1.5"><Scale className="w-3.5 h-3.5 text-violet-600" /> Disputes</div>
+                          <div className="text-xs text-gray-600">Open: <span className={`font-mono font-semibold ${commandCenterData.disputes?.open > 0 ? 'text-rose-600' : 'text-gray-500'}`}>{commandCenterData.disputes?.open}</span></div>
+                          <div className="text-xs text-gray-400">Drill-through → Disputes tab</div>
+                        </div>
+                      </div>
+                    </>
+                  )
+                }
+                {!commandCenterData && !commandCenterLoading && (
+                  <div className="text-xs text-gray-400 text-center py-8 border border-dashed rounded">Command center loading…</div>
                 )}
               </CardContent>
             </Card>

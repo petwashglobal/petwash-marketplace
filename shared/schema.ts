@@ -13214,3 +13214,97 @@ export const financeEntities = pgTable("finance_entities", {
 });
 export type FinanceEntity       = typeof financeEntities.$inferSelect;
 export type InsertFinanceEntity = typeof financeEntities.$inferInsert;
+
+// ── Phase 4.0 ────────────────────────────────────────────────────────────────
+
+// 4.0A — Policy Outcome & ROI Scoring
+export const policyOutcomeScores = pgTable("policy_outcome_scores", {
+  id:                    serial("id").primaryKey(),
+  policyKey:             varchar("policy_key",              { length: 64  }).notNull(),
+  entityCode:            varchar("entity_code",             { length: 32  }),
+  evaluationPeriodStart: date("evaluation_period_start").notNull(),
+  evaluationPeriodEnd:   date("evaluation_period_end").notNull(),
+  baselineJson:          jsonb("baseline_json").notNull().default(sql`'{}'::jsonb`),
+  actualJson:            jsonb("actual_json").notNull().default(sql`'{}'::jsonb`),
+  scoreJson:             jsonb("score_json").notNull().default(sql`'{}'::jsonb`),
+  roiScore:              numeric("roi_score", { precision: 8, scale: 2 }).notNull().default('0'),
+  createdAt:             timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type PolicyOutcomeScore       = typeof policyOutcomeScores.$inferSelect;
+export type InsertPolicyOutcomeScore = typeof policyOutcomeScores.$inferInsert;
+
+// 4.0B — Self-Healing: Retry Policies
+export const orchestrationRetryPolicies = pgTable("orchestration_retry_policies", {
+  id:                serial("id").primaryKey(),
+  runType:           varchar("run_type",       { length: 64  }).notNull(),
+  errorPattern:      varchar("error_pattern",  { length: 255 }).notNull(),
+  autoRetryEnabled:  boolean("auto_retry_enabled").notNull().default(true),
+  maxRetries:        integer("max_retries").notNull().default(2),
+  retryDelayMinutes: integer("retry_delay_minutes").notNull().default(15),
+  enabled:           boolean("enabled").notNull().default(true),
+  updatedAt:         timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type OrchestrationRetryPolicy       = typeof orchestrationRetryPolicies.$inferSelect;
+export type InsertOrchestrationRetryPolicy = typeof orchestrationRetryPolicies.$inferInsert;
+
+// 4.0B — Self-Healing: Retry Attempts
+export const orchestrationRetryAttempts = pgTable("orchestration_retry_attempts", {
+  id:                   serial("id").primaryKey(),
+  orchestrationRunId:   integer("orchestration_run_id").notNull(),
+  attemptNo:            integer("attempt_no").notNull(),
+  startedAt:            timestamp("started_at",   { withTimezone: true }).notNull().defaultNow(),
+  completedAt:          timestamp("completed_at", { withTimezone: true }),
+  status:               varchar("status", { length: 20 }).notNull().default('started'),
+  errorMessage:         text("error_message").notNull().default(''),
+});
+export type OrchestrationRetryAttempt       = typeof orchestrationRetryAttempts.$inferSelect;
+export type InsertOrchestrationRetryAttempt = typeof orchestrationRetryAttempts.$inferInsert;
+
+// 4.0C — Approval Bottleneck Snapshots (optional cache)
+export const approvalBottleneckSnapshots = pgTable("approval_bottleneck_snapshots", {
+  id:          serial("id").primaryKey(),
+  generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+  summaryJson: jsonb("summary_json").notNull().default(sql`'{}'::jsonb`),
+});
+export type ApprovalBottleneckSnapshot       = typeof approvalBottleneckSnapshots.$inferSelect;
+export type InsertApprovalBottleneckSnapshot = typeof approvalBottleneckSnapshots.$inferInsert;
+
+// 4.0D — Governance Pack Subscriptions
+export const governancePackSubscriptions = pgTable("governance_pack_subscriptions", {
+  id:                 serial("id").primaryKey(),
+  audienceName:       varchar("audience_name",  { length: 128 }).notNull(),
+  packType:           varchar("pack_type",      { length: 32  }).notNull(),
+  entityCode:         varchar("entity_code",    { length: 32  }),
+  recipients:         jsonb("recipients").notNull().default(sql`'[]'::jsonb`),
+  enabled:            boolean("enabled").notNull().default(true),
+  includeCommentary:  boolean("include_commentary").notNull().default(true),
+  includeControlCenter: boolean("include_control_center").notNull().default(false),
+  createdAt:          timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type GovernancePackSubscription       = typeof governancePackSubscriptions.$inferSelect;
+export type InsertGovernancePackSubscription = typeof governancePackSubscriptions.$inferInsert;
+
+// 4.0E — Scenario Entity Impact Scores
+export const scenarioEntityScores = pgTable("scenario_entity_scores", {
+  id:         serial("id").primaryKey(),
+  scenarioId: integer("scenario_id").notNull(),
+  entityCode: varchar("entity_code", { length: 32 }).notNull(),
+  scoreJson:  jsonb("score_json").notNull().default(sql`'{}'::jsonb`),
+  totalScore: numeric("total_score", { precision: 8, scale: 2 }).notNull().default('0'),
+  createdAt:  timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type ScenarioEntityScore       = typeof scenarioEntityScores.$inferSelect;
+export type InsertScenarioEntityScore = typeof scenarioEntityScores.$inferInsert;
+
+// 4.0F — Anomaly Root-Cause Clusters
+export const anomalyClusters = pgTable("anomaly_clusters", {
+  id:               serial("id").primaryKey(),
+  clusterKey:       varchar("cluster_key",      { length: 128 }).notNull().unique(),
+  rootCauseLabel:   varchar("root_cause_label", { length: 128 }).notNull(),
+  signalCodes:      jsonb("signal_codes").notNull().default(sql`'[]'::jsonb`),
+  confidenceScore:  numeric("confidence_score", { precision: 5, scale: 2 }).notNull().default('0'),
+  lastSeenAt:       timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt:        timestamp("created_at",  { withTimezone: true }).notNull().defaultNow(),
+});
+export type AnomalyCluster       = typeof anomalyClusters.$inferSelect;
+export type InsertAnomalyCluster = typeof anomalyClusters.$inferInsert;

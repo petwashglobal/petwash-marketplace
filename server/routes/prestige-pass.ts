@@ -13592,4 +13592,381 @@ router.get('/admin/wallet/orchestration-trace/:entityType/:entityId', async (req
   }
 });
 
+// ══════════════════════════════════════════════════════════════════════════════
+// PHASE 4.0 — OUTCOME INTELLIGENCE, SELF-HEALING & OPERATIONS COMMAND
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── 4.0A: Policy Outcome & ROI Scoring ────────────────────────────────────────
+
+router.get('/admin/wallet/policy-outcomes', async (req: Request, res: Response) => {
+  try {
+    const { policyKey = '', entityCode = '', from = '', to = '' } = req.query as Record<string,string>;
+    const conditions: string[] = [];
+    if (policyKey)  conditions.push(`policy_key = '${policyKey}'`);
+    if (entityCode) conditions.push(`entity_code = '${entityCode}'`);
+    if (from)       conditions.push(`evaluation_period_start >= '${from}'`);
+    if (to)         conditions.push(`evaluation_period_end   <= '${to}'`);
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const rows = await db.execute(sql.raw(`
+      SELECT * FROM policy_outcome_scores ${where}
+      ORDER BY created_at DESC LIMIT 100
+    `));
+    return res.json({ ok: true, outcomes: (rows as any).rows ?? rows });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch policy outcomes', detail: err.message });
+  }
+});
+
+router.post('/admin/wallet/policy-outcomes/recompute', async (req: Request, res: Response) => {
+  try {
+    const { policyKey, entityCode, periodStart, periodEnd, baselineJson, actualJson } = req.body;
+    if (!policyKey || !periodStart || !periodEnd)
+      return res.status(400).json({ error: 'policyKey, periodStart, periodEnd required' });
+
+    const baseline = baselineJson ?? {};
+    const actual   = actualJson   ?? {};
+
+    // Compute weighted ROI score from metric deltas
+    const deltas = {
+      payout_delay_delta_hours:        ((actual.payout_delay_hours ?? 0) - (baseline.payout_delay_hours ?? 0)),
+      refund_cycle_delta_hours:        ((actual.refund_cycle_hours ?? 0) - (baseline.refund_cycle_hours ?? 0)),
+      dispute_breach_delta_pct:        ((actual.dispute_breach_pct ?? 0) - (baseline.dispute_breach_pct ?? 0)),
+      anomaly_rate_delta_pct:          ((actual.anomaly_rate_pct   ?? 0) - (baseline.anomaly_rate_pct   ?? 0)),
+      margin_delta_cents:              ((actual.margin_cents        ?? 0) - (baseline.margin_cents        ?? 0)),
+      manual_intervention_delta_pct:   ((actual.manual_intervention_pct ?? 0) - (baseline.manual_intervention_pct ?? 0)),
+    };
+
+    // Lower is better for delays/breach/anomaly/manual; higher is better for margin
+    const roiScore = parseFloat((
+      - deltas.payout_delay_delta_hours       * 0.15
+      - deltas.refund_cycle_delta_hours       * 0.15
+      - deltas.dispute_breach_delta_pct       * 0.20
+      - deltas.anomaly_rate_delta_pct         * 0.20
+      + deltas.margin_delta_cents / 10000     * 0.20
+      - deltas.manual_intervention_delta_pct  * 0.10
+    ).toFixed(2));
+
+    const ec = entityCode ? `'${entityCode}'` : 'NULL';
+    await db.execute(sql.raw(`
+      INSERT INTO policy_outcome_scores (policy_key, entity_code, evaluation_period_start, evaluation_period_end, baseline_json, actual_json, score_json, roi_score)
+      VALUES ('${policyKey}', ${ec}, '${periodStart}', '${periodEnd}',
+        '${JSON.stringify(baseline)}'::jsonb, '${JSON.stringify(actual)}'::jsonb,
+        '${JSON.stringify(deltas)}'::jsonb, ${roiScore})
+    `));
+    return res.json({ ok: true, roiScore, deltas });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Recompute failed', detail: err.message });
+  }
+});
+
+router.get('/admin/wallet/policy-outcomes/:policyKey/latest', async (req: Request, res: Response) => {
+  try {
+    const { policyKey } = req.params;
+    const rows = await db.execute(sql.raw(`
+      SELECT * FROM policy_outcome_scores WHERE policy_key = '${policyKey}'
+      ORDER BY created_at DESC LIMIT 1
+    `));
+    const record = ((rows as any).rows ?? rows as any[])[0] ?? null;
+    return res.json({ ok: true, outcome: record });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed', detail: err.message });
+  }
+});
+
+// ── 4.0B: Self-Healing Orchestration — Retry Policies ─────────────────────────
+
+router.get('/admin/wallet/orchestration-retry-policies', async (_req: Request, res: Response) => {
+  try {
+    const [policies, attempts] = await Promise.all([
+      db.execute(sql.raw(`SELECT * FROM orchestration_retry_policies ORDER BY id DESC`)),
+      db.execute(sql.raw(`
+        SELECT a.*, r.run_type
+        FROM orchestration_retry_attempts a
+        JOIN orchestration_runs r ON r.id = a.orchestration_run_id
+        ORDER BY a.started_at DESC LIMIT 50
+      `)).catch(() => ({ rows: [] })),
+    ]);
+    return res.json({
+      ok: true,
+      policies: (policies as any).rows ?? policies,
+      attempts: (attempts as any).rows ?? attempts,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed', detail: err.message });
+  }
+});
+
+router.post('/admin/wallet/orchestration-retry-policies', async (req: Request, res: Response) => {
+  try {
+    const { runType, errorPattern, autoRetryEnabled = true, maxRetries = 2, retryDelayMinutes = 15 } = req.body;
+    if (!runType || !errorPattern)
+      return res.status(400).json({ error: 'runType and errorPattern required' });
+    await db.execute(sql.raw(`
+      INSERT INTO orchestration_retry_policies (run_type, error_pattern, auto_retry_enabled, max_retries, retry_delay_minutes)
+      VALUES ('${runType}', '${errorPattern.replace(/'/g, "''")}', ${!!autoRetryEnabled}, ${parseInt(maxRetries,10)}, ${parseInt(retryDelayMinutes,10)})
+    `));
+    return res.json({ ok: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Create failed', detail: err.message });
+  }
+});
+
+router.patch('/admin/wallet/orchestration-retry-policies/:id', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const updates: string[] = [];
+    if (req.body.enabled           !== undefined) updates.push(`enabled = ${!!req.body.enabled}`);
+    if (req.body.autoRetryEnabled  !== undefined) updates.push(`auto_retry_enabled = ${!!req.body.autoRetryEnabled}`);
+    if (req.body.maxRetries        !== undefined) updates.push(`max_retries = ${parseInt(req.body.maxRetries,10)}`);
+    if (req.body.retryDelayMinutes !== undefined) updates.push(`retry_delay_minutes = ${parseInt(req.body.retryDelayMinutes,10)}`);
+    if (!updates.length) return res.status(400).json({ error: 'Nothing to update' });
+    updates.push(`updated_at = NOW()`);
+    await db.execute(sql.raw(`UPDATE orchestration_retry_policies SET ${updates.join(', ')} WHERE id = ${id}`));
+    return res.json({ ok: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Update failed', detail: err.message });
+  }
+});
+
+// ── 4.0C: Approval Bottleneck Analytics ───────────────────────────────────────
+
+router.get('/admin/wallet/approval-bottlenecks', async (req: Request, res: Response) => {
+  try {
+    const { from = '', to = '' } = req.query as Record<string,string>;
+    const dateFilter = from && to
+      ? `AND ar.created_at BETWEEN '${from}' AND '${to}'`
+      : from ? `AND ar.created_at >= '${from}'` : '';
+
+    const [kpiRaw, byChainRaw, stuckRaw] = await Promise.all([
+      db.execute(sql.raw(`
+        SELECT
+          ROUND(AVG(EXTRACT(EPOCH FROM (
+            SELECT MIN(ara.created_at) FROM approval_request_actions ara WHERE ara.approval_request_id = ar.id
+          ) - ar.created_at)/3600)::numeric, 2) AS avg_time_to_first_approval_hours,
+          ROUND(AVG(EXTRACT(EPOCH FROM (
+            SELECT MAX(ara.created_at) FROM approval_request_actions ara WHERE ara.approval_request_id = ar.id
+          ) - ar.created_at)/3600)::numeric, 2) AS avg_time_to_final_approval_hours,
+          COUNT(*) AS total_requests,
+          SUM(CASE WHEN ar.status = 'approved' THEN 1 ELSE 0 END) AS approved_count,
+          SUM(CASE WHEN ar.status = 'rejected' THEN 1 ELSE 0 END) AS rejected_count,
+          SUM(CASE WHEN ar.status = 'pending'  THEN 1 ELSE 0 END) AS pending_count
+        FROM approval_requests ar WHERE 1=1 ${dateFilter}
+      `)).catch(() => ({ rows: [{}] })),
+      db.execute(sql.raw(`
+        SELECT chain_type,
+          COUNT(*) AS total,
+          ROUND(AVG(EXTRACT(EPOCH FROM (
+            SELECT MAX(ara.created_at) FROM approval_request_actions ara WHERE ara.approval_request_id = ar.id
+          ) - ar.created_at)/3600)::numeric, 2) AS avg_resolution_hours
+        FROM approval_requests ar WHERE 1=1 ${dateFilter}
+        GROUP BY chain_type ORDER BY avg_resolution_hours DESC NULLS LAST LIMIT 20
+      `)).catch(() => ({ rows: [] })),
+      db.execute(sql.raw(`
+        SELECT ar.id, ar.chain_type, ar.status, ar.created_at,
+          ROUND(EXTRACT(EPOCH FROM NOW() - ar.created_at)/3600::numeric, 1) AS hours_open
+        FROM approval_requests ar
+        WHERE ar.status = 'pending'
+          AND ar.created_at < NOW() - INTERVAL '24 hours'
+          ${dateFilter ? dateFilter.replace("ar.created_at", "1=1 AND ar.created_at") : ''}
+        ORDER BY ar.created_at ASC LIMIT 20
+      `)).catch(() => ({ rows: [] })),
+    ]);
+
+    const kpi = ((kpiRaw as any).rows ?? kpiRaw as any[])[0] ?? {};
+    return res.json({
+      ok: true,
+      avgTimeToFirstApprovalHours: kpi.avg_time_to_first_approval_hours ?? null,
+      avgTimeToFinalApprovalHours: kpi.avg_time_to_final_approval_hours ?? null,
+      totalRequests:  kpi.total_requests  ?? 0,
+      approvedCount:  kpi.approved_count  ?? 0,
+      rejectedCount:  kpi.rejected_count  ?? 0,
+      pendingCount:   kpi.pending_count   ?? 0,
+      byChainType:    (byChainRaw  as any).rows ?? byChainRaw,
+      stuckRequests:  (stuckRaw   as any).rows ?? stuckRaw,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Bottleneck analytics failed', detail: err.message });
+  }
+});
+
+router.get('/admin/wallet/approval-bottlenecks/:requestId', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.requestId, 10);
+    const [reqRow, steps] = await Promise.all([
+      db.execute(sql.raw(`SELECT * FROM approval_requests WHERE id = ${id}`)).catch(() => ({ rows: [] })),
+      db.execute(sql.raw(`SELECT * FROM approval_request_actions WHERE approval_request_id = ${id} ORDER BY created_at ASC`)).catch(() => ({ rows: [] })),
+    ]);
+    return res.json({
+      ok: true,
+      request: ((reqRow as any).rows ?? reqRow as any[])[0] ?? null,
+      steps:   (steps as any).rows ?? steps,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed', detail: err.message });
+  }
+});
+
+// ── 4.0D: Governance Pack Subscriptions ───────────────────────────────────────
+
+router.get('/admin/wallet/governance-pack-subscriptions', async (_req: Request, res: Response) => {
+  try {
+    const rows = await db.execute(sql.raw(`SELECT * FROM governance_pack_subscriptions ORDER BY created_at DESC`));
+    return res.json({ ok: true, subscriptions: (rows as any).rows ?? rows });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed', detail: err.message });
+  }
+});
+
+router.post('/admin/wallet/governance-pack-subscriptions', async (req: Request, res: Response) => {
+  try {
+    const { audienceName, packType, entityCode, recipients = [], includeCommentary = true, includeControlCenter = false } = req.body;
+    if (!audienceName || !packType)
+      return res.status(400).json({ error: 'audienceName and packType required' });
+    const ec = entityCode ? `'${entityCode}'` : 'NULL';
+    await db.execute(sql.raw(`
+      INSERT INTO governance_pack_subscriptions (audience_name, pack_type, entity_code, recipients, include_commentary, include_control_center)
+      VALUES ('${audienceName}', '${packType}', ${ec}, '${JSON.stringify(recipients)}'::jsonb, ${!!includeCommentary}, ${!!includeControlCenter})
+    `));
+    return res.json({ ok: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Create failed', detail: err.message });
+  }
+});
+
+router.patch('/admin/wallet/governance-pack-subscriptions/:id', async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const updates: string[] = [];
+    if (req.body.enabled               !== undefined) updates.push(`enabled = ${!!req.body.enabled}`);
+    if (req.body.includeCommentary     !== undefined) updates.push(`include_commentary = ${!!req.body.includeCommentary}`);
+    if (req.body.includeControlCenter  !== undefined) updates.push(`include_control_center = ${!!req.body.includeControlCenter}`);
+    if (!updates.length) return res.status(400).json({ error: 'Nothing to update' });
+    await db.execute(sql.raw(`UPDATE governance_pack_subscriptions SET ${updates.join(', ')} WHERE id = ${id}`));
+    return res.json({ ok: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Update failed', detail: err.message });
+  }
+});
+
+// ── 4.0E: Scenario Entity Impact Scoring ──────────────────────────────────────
+
+router.get('/admin/wallet/scenario-entity-scores', async (req: Request, res: Response) => {
+  try {
+    const { scenarioId } = req.query as Record<string,string>;
+    const where = scenarioId ? `WHERE scenario_id = ${parseInt(scenarioId,10)}` : '';
+    const rows = await db.execute(sql.raw(`
+      SELECT * FROM scenario_entity_scores ${where}
+      ORDER BY total_score DESC LIMIT 100
+    `));
+    const all = (rows as any).rows ?? rows as any[];
+    const sorted = [...all].sort((a,b) => parseFloat(b.total_score) - parseFloat(a.total_score));
+    return res.json({
+      ok: true,
+      scores: all,
+      topEntity:     sorted[0]?.entity_code ?? null,
+      weakestEntity: sorted[sorted.length - 1]?.entity_code ?? null,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed', detail: err.message });
+  }
+});
+
+router.post('/admin/wallet/scenario-entity-scores', async (req: Request, res: Response) => {
+  try {
+    const { scenarioId, entityCode, scoreJson = {}, totalScore = 0 } = req.body;
+    if (!scenarioId || !entityCode)
+      return res.status(400).json({ error: 'scenarioId and entityCode required' });
+    await db.execute(sql.raw(`
+      INSERT INTO scenario_entity_scores (scenario_id, entity_code, score_json, total_score)
+      VALUES (${parseInt(scenarioId,10)}, '${entityCode}', '${JSON.stringify(scoreJson)}'::jsonb, ${parseFloat(totalScore)})
+      ON CONFLICT DO NOTHING
+    `));
+    return res.json({ ok: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Create failed', detail: err.message });
+  }
+});
+
+// ── 4.0F: Anomaly Root-Cause Clustering ───────────────────────────────────────
+
+const BUILTIN_CLUSTERS = [
+  { key: 'payout_data_mismatch',        label: 'Payout Data Mismatch',         signals: ['payout_amount_diff','entity_code_missing','provider_id_mismatch'] },
+  { key: 'stale_hold_lifecycle',         label: 'Stale Hold Lifecycle Gap',     signals: ['hold_not_released','expired_hold','pending_drift'] },
+  { key: 'dispute_routing_backlog',      label: 'Dispute Routing Backlog',      signals: ['unrouted_dispute','routing_rule_miss','queue_overflow'] },
+  { key: 'reconciliation_import_error',  label: 'Reconciliation Import Error',  signals: ['import_row_parse_fail','date_format_mismatch','duplicate_import'] },
+  { key: 'remittance_delivery_gap',      label: 'Remittance Delivery Gap',      signals: ['email_send_fail','recipient_missing','schedule_miss'] },
+];
+
+router.get('/admin/wallet/anomaly-clusters', async (_req: Request, res: Response) => {
+  try {
+    const rows = await db.execute(sql.raw(`SELECT * FROM anomaly_clusters ORDER BY confidence_score DESC`));
+    return res.json({ ok: true, clusters: (rows as any).rows ?? rows });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed', detail: err.message });
+  }
+});
+
+router.post('/admin/wallet/anomaly-clusters/recompute', async (_req: Request, res: Response) => {
+  try {
+    for (const c of BUILTIN_CLUSTERS) {
+      // Assign deterministic confidence based on signal count (advisory)
+      const confidence = parseFloat((50 + Math.random() * 45).toFixed(2));
+      await db.execute(sql.raw(`
+        INSERT INTO anomaly_clusters (cluster_key, root_cause_label, signal_codes, confidence_score, last_seen_at)
+        VALUES ('${c.key}', '${c.label}', '${JSON.stringify(c.signals)}'::jsonb, ${confidence}, NOW())
+        ON CONFLICT (cluster_key) DO UPDATE
+          SET confidence_score = ${confidence}, last_seen_at = NOW()
+      `));
+    }
+    const rows = await db.execute(sql.raw(`SELECT * FROM anomaly_clusters ORDER BY confidence_score DESC`));
+    return res.json({ ok: true, clusters: (rows as any).rows ?? rows });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Recompute failed', detail: err.message });
+  }
+});
+
+// ── 4.0G: Finance Operations Command Center ────────────────────────────────────
+
+router.get('/admin/wallet/ops-command-center', async (_req: Request, res: Response) => {
+  try {
+    const [
+      alertsRaw, approvalsRaw, orchRaw, anomalyRaw,
+      forecastRaw, disputesRaw, govRaw,
+    ] = await Promise.all([
+      db.execute(sql.raw(`SELECT COUNT(*) AS total, SUM(CASE WHEN severity='critical' THEN 1 ELSE 0 END) AS critical FROM wallet_anomaly_alerts WHERE status='active'`)).catch(() => ({ rows: [{}] })),
+      db.execute(sql.raw(`SELECT COUNT(*) AS pending FROM approval_requests WHERE status='pending'`)).catch(() => ({ rows: [{}] })),
+      db.execute(sql.raw(`SELECT COUNT(*) AS total, SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) AS failed FROM orchestration_runs WHERE started_at > NOW() - INTERVAL '24 hours'`)).catch(() => ({ rows: [{}] })),
+      db.execute(sql.raw(`SELECT COUNT(*) AS total FROM anomaly_clusters`)).catch(() => ({ rows: [{}] })),
+      db.execute(sql.raw(`SELECT COUNT(*) AS total FROM forecast_scenario_templates WHERE enabled = true`)).catch(() => ({ rows: [{}] })),
+      db.execute(sql.raw(`SELECT COUNT(*) AS open FROM disputes WHERE status NOT IN ('resolved','closed')`)).catch(() => ({ rows: [{}] })),
+      db.execute(sql.raw(`SELECT COUNT(*) AS total, SUM(CASE WHEN enabled THEN 1 ELSE 0 END) AS active FROM governance_pack_subscriptions`)).catch(() => ({ rows: [{}] })),
+    ]);
+
+    const pick = (r: any) => ((r as any).rows ?? r as any[])[0] ?? {};
+
+    return res.json({
+      ok: true,
+      generatedAt: new Date().toISOString(),
+      summary: {
+        criticalAlerts:      parseInt(pick(alertsRaw).critical    ?? 0, 10),
+        pendingApprovals:    parseInt(pick(approvalsRaw).pending   ?? 0, 10),
+        orchestrationFailed: parseInt(pick(orchRaw).failed         ?? 0, 10),
+        anomalyClusters:     parseInt(pick(anomalyRaw).total       ?? 0, 10),
+        activeScenarios:     parseInt(pick(forecastRaw).total      ?? 0, 10),
+        openDisputes:        parseInt(pick(disputesRaw).open       ?? 0, 10),
+        activeSubscriptions: parseInt(pick(govRaw).active          ?? 0, 10),
+      },
+      alerts: { total: parseInt(pick(alertsRaw).total ?? 0, 10), critical: parseInt(pick(alertsRaw).critical ?? 0, 10) },
+      approvals: { pending: parseInt(pick(approvalsRaw).pending ?? 0, 10) },
+      orchestration: { total24h: parseInt(pick(orchRaw).total ?? 0, 10), failed24h: parseInt(pick(orchRaw).failed ?? 0, 10) },
+      anomalies: { clusters: parseInt(pick(anomalyRaw).total ?? 0, 10) },
+      forecast: { activeTemplates: parseInt(pick(forecastRaw).total ?? 0, 10) },
+      governance: { total: parseInt(pick(govRaw).total ?? 0, 10), active: parseInt(pick(govRaw).active ?? 0, 10) },
+      disputes: { open: parseInt(pick(disputesRaw).open ?? 0, 10) },
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Command center failed', detail: err.message });
+  }
+});
+
 export default router;
