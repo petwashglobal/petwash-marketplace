@@ -234,15 +234,14 @@ router.post('/bookings', requireAuth, async (req, res) => {
       });
       const heldCents = Math.min(preview.applicableCents, walletCreditAppliedCents);
       if (heldCents > 0) {
-        const holdKey = `wallet:booking:hold:${validatedData.bookingId}`;
-        await walletService.holdBookingWallet({
+        const walletHoldResult = await walletService.holdBookingWallet({
           userId: req.user.uid,
           amountCents: heldCents,
           bookingId: validatedData.bookingId,
           divisionCode: 'academy',
           ipAddress: req.ip ?? null,
         });
-        holdResult = { heldCents, holdKey };
+        holdResult = { heldCents, holdKey: walletHoldResult.txnId };
       }
     }
 
@@ -425,25 +424,25 @@ router.post('/bookings/:id/cancel', async (req, res) => {
     // Wallet release or refund based on finance_state
     let walletUpdates: Record<string, unknown> = {};
     if (booking.financeState === 'hold_active' && booking.walletHoldCents > 0) {
-      await walletService.releaseBookingHold({
+      const releaseResult = await walletService.releaseBookingHold({
         userId: booking.userId,
         amountCents: booking.walletHoldCents,
         bookingId,
         divisionCode: 'academy',
         ipAddress: req.ip ?? null,
       });
-      walletUpdates = { financeState: 'released', walletReleaseKey: `wallet:booking:release:${bookingId}` };
-      logger.info('[Academy] Wallet hold released on cancel', { bookingId, releasedCents: booking.walletHoldCents });
+      walletUpdates = { financeState: 'released', walletReleaseKey: releaseResult.txnId };
+      logger.info('[Academy] Wallet hold released on cancel', { bookingId, releasedCents: booking.walletHoldCents, txnId: releaseResult.txnId });
     } else if (booking.financeState === 'debited' && booking.walletDebitedCents > 0) {
-      await walletService.refundBookingWallet({
+      const refundResult = await walletService.refundBookingWallet({
         userId: booking.userId,
         amountCents: booking.walletDebitedCents,
         bookingId,
         divisionCode: 'academy',
         ipAddress: req.ip ?? null,
       });
-      walletUpdates = { financeState: 'refunded', walletRefundKey: `wallet:booking:refund:${bookingId}`, walletRefundedCents: booking.walletDebitedCents };
-      logger.info('[Academy] Wallet refunded on cancel', { bookingId, refundedCents: booking.walletDebitedCents });
+      walletUpdates = { financeState: 'refunded', walletRefundKey: refundResult.txnId, walletRefundedCents: booking.walletDebitedCents };
+      logger.info('[Academy] Wallet refunded on cancel', { bookingId, refundedCents: booking.walletDebitedCents, txnId: refundResult.txnId });
     }
 
     if (Object.keys(walletUpdates).length > 0) {
@@ -496,7 +495,7 @@ router.post('/bookings/:id/confirm', requireAuth, async (req, res) => {
     };
 
     if (booking.financeState === 'hold_active' && booking.walletHoldCents > 0) {
-      await walletService.debitBookingFromHold({
+      const debitResult = await walletService.debitBookingFromHold({
         userId: booking.userId,
         amountCents: booking.walletHoldCents,
         bookingId,
@@ -504,9 +503,9 @@ router.post('/bookings/:id/confirm', requireAuth, async (req, res) => {
         ipAddress: req.ip ?? null,
       });
       walletUpdates.financeState = 'debited';
-      walletUpdates.walletDebitKey = `wallet:booking:debit:${bookingId}`;
+      walletUpdates.walletDebitKey = debitResult.txnId;
       walletUpdates.walletDebitedCents = booking.walletHoldCents;
-      logger.info('[Academy] Wallet debited on confirm', { bookingId, debitedCents: booking.walletHoldCents });
+      logger.info('[Academy] Wallet debited on confirm', { bookingId, debitedCents: booking.walletHoldCents, txnId: debitResult.txnId });
     }
 
     const [confirmed] = await db

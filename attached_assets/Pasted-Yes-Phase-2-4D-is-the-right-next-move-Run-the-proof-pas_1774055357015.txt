@@ -1,0 +1,68 @@
+Yes. Phase 2.4D is the right next move.
+
+Run the proof pass in this order:
+	1.	Walker booking
+	2.	Petsitter booking
+	3.	Academy booking
+
+For each flow, verify all 9 checkpoints:
+	•	subtotal is correct
+	•	wallet available is correct
+	•	wallet cap is correct
+	•	wallet applied is correct
+	•	cash due is correct
+	•	hold is created on submit
+	•	debit happens on confirm
+	•	release happens on decline
+	•	refund happens on cancel after debit
+
+Pass criteria per division:
+
+Create
+	•	booking row created
+	•	finance_state = hold_active when wallet used
+	•	wallet_hold_cents > 0
+	•	wallet_hold_key written
+	•	wallet account available balance reduced
+	•	pending balance increased by the same amount
+
+Confirm
+	•	finance_state = debited
+	•	wallet_debited_cents = wallet_hold_cents
+	•	wallet_debit_key written
+	•	pending balance returns down correctly
+	•	lifetime_redeemed_cents increases
+	•	no duplicate debit on retry
+
+Decline
+	•	finance_state = released
+	•	wallet_release_key written
+	•	available balance restored
+	•	pending balance returns to zero
+	•	no duplicate release on retry
+
+Cancel after debit
+	•	finance_state = refunded
+	•	wallet_refund_key written
+	•	wallet_refunded_cents = wallet_debited_cents
+	•	available balance restored
+	•	no duplicate refund on retry
+
+Admin validation after each scenario:
+	•	proof pass endpoint still returns PASS or WARN only
+	•	no negative balances
+	•	pending balance matches holds
+	•	division report shows walkers, sitters, academy correctly
+	•	booking audit timeline shows hold -> debit or hold -> release or debit -> refund correctly
+
+What to record during 2.4D:
+	•	booking id
+	•	division
+	•	subtotal
+	•	wallet applied
+	•	finance_state at each step
+	•	wallet account available before and after
+	•	wallet account pending before and after
+	•	whether retry stayed idempotent
+
+If you want the fastest clean execution, start with one low value booking in each division using a wallet amount small enough to make the math obvious, like ₪20 to ₪50. After that, repeat one walker case twice to prove idempotency under retry.
