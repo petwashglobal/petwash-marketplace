@@ -954,7 +954,7 @@ export default function PrestigePassWallet() {
         .prestige-qr-wrap { animation: fadeIn 0.3s ease; }
       `}</style>
 
-      <div style={{ background:'#FFFFFF', minHeight:'100vh', paddingBottom:'100px' }}>
+      <div style={{ background:'#FFFFFF', minHeight:'100vh', paddingBottom:'calc(180px + env(safe-area-inset-bottom, 0px))' }}>
 
         {/* Live wash banner */}
         {washEvent && (
@@ -1008,8 +1008,7 @@ export default function PrestigePassWallet() {
           queryClient={queryClient}
         />
 
-        {/* Bottom spacing to prevent floating widget overlap */}
-        <div style={{ height:'60px' }} />
+        {/* Bottom spacing handled by paddingBottom on container */}
       </div>
     </Layout>
   );

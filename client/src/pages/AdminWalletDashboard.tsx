@@ -30,7 +30,15 @@ import {
   Download,
   History,
   SlidersHorizontal,
+  FileDown,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Link } from "wouter";
 
 const GOLD = "#C5A55A";
@@ -81,12 +89,19 @@ export default function AdminWalletDashboard() {
   const [adjDivision, setAdjDivision]   = useState("");
   const [adjApplied, setAdjApplied]     = useState(false);
 
-  // ── Export filters ───────────────────────────────────────────────────────────
+  // ── Ledger export filters ────────────────────────────────────────────────────
   const [expFrom, setExpFrom]           = useState("");
   const [expTo, setExpTo]               = useState("");
   const [expDivision, setExpDivision]   = useState("");
   const [expEventType, setExpEventType] = useState("");
   const [expUserId, setExpUserId]       = useState("");
+
+  // ── Booking finance export filters ──────────────────────────────────────────
+  const [bkFrom, setBkFrom]               = useState("");
+  const [bkTo, setBkTo]                   = useState("");
+  const [bkFinanceState, setBkFinanceState] = useState("");
+  const [bkSource, setBkSource]           = useState("");
+  const [bkUserId, setBkUserId]           = useState("");
 
   // ── Division Report ─────────────────────────────────────────────────────────
   const { data: divisionReport, isLoading: divLoading } = useQuery<any[]>({
@@ -147,6 +162,16 @@ export default function AdminWalletDashboard() {
     if (expEventType) p.set("eventType",    expEventType);
     if (expUserId)    p.set("userId",       expUserId);
     return `/api/prestige-pass/admin/wallet/export.csv?${p.toString()}`;
+  }
+
+  function buildBookingsExportUrl() {
+    const p = new URLSearchParams();
+    if (bkFrom)                                   p.set("from",         bkFrom);
+    if (bkTo)                                     p.set("to",           bkTo);
+    if (bkFinanceState && bkFinanceState !== "__all__") p.set("financeState", bkFinanceState);
+    if (bkSource       && bkSource       !== "__all__") p.set("source",       bkSource);
+    if (bkUserId)                                 p.set("userId",       bkUserId);
+    return `/api/prestige-pass/admin/wallet/bookings-export.csv?${p.toString()}`;
   }
 
   // Group division report by division_code
@@ -586,18 +611,21 @@ export default function AdminWalletDashboard() {
           </TabsContent>
 
           {/* ── EXPORT CSV ── */}
-          <TabsContent value="export" className="mt-4">
+          <TabsContent value="export" className="mt-4 space-y-4">
+
+            {/* ── Section A: Wallet Ledger CSV ── */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Download className="w-4 h-4" style={{ color: GOLD }} />
-                  Export Ledger to CSV
+                  Wallet Ledger CSV
                 </CardTitle>
+                <p className="text-sm text-gray-500">
+                  Raw ledger entries from <code className="text-xs bg-gray-100 px-1 rounded">wallet_ledger_entries</code>.
+                  Up to 50,000 rows. All filters optional.
+                </p>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-sm text-gray-500">
-                  Download up to 50,000 wallet ledger rows as CSV (UTF-8 BOM, Excel-safe). All filters are optional.
-                </p>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">From Date</label>
@@ -613,7 +641,7 @@ export default function AdminWalletDashboard() {
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Event Type</label>
-                    <Input placeholder="e.g. admin_credit" value={expEventType} onChange={e => setExpEventType(e.target.value)} className="text-sm" />
+                    <Input placeholder="e.g. hold" value={expEventType} onChange={e => setExpEventType(e.target.value)} className="text-sm" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">User ID</label>
@@ -633,17 +661,102 @@ export default function AdminWalletDashboard() {
                   }}
                 >
                   <Download className="w-4 h-4" />
-                  Download CSV
+                  Download Ledger CSV
                 </Button>
                 <div className="rounded-md border border-gray-100 bg-gray-50 p-3">
-                  <p className="text-xs font-medium text-gray-700 mb-1">Export columns:</p>
-                  <p className="text-xs text-gray-500 font-mono">
-                    created_at, user_id, wallet_id, division_code, source_type, event_type,
-                    direction, amount_cents, currency, bucket, idempotency_key, booking_id, created_by, metadata_json
+                  <p className="text-xs font-medium text-gray-700 mb-1">Columns:</p>
+                  <p className="text-xs text-gray-500 font-mono leading-relaxed">
+                    created_at · user_id · wallet_id · division_code · source_type · event_type ·
+                    direction · amount_cents · currency · bucket · idempotency_key · booking_id · created_by · metadata_json
                   </p>
                 </div>
               </CardContent>
             </Card>
+
+            {/* ── Section B: Booking Finance CSV ── */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileDown className="w-4 h-4" style={{ color: GOLD }} />
+                  Booking Finance CSV
+                </CardTitle>
+                <p className="text-sm text-gray-500">
+                  Booking-level wallet lifecycle state. Covers walkers, sitters, and academy in one
+                  export. Includes <code className="text-xs bg-gray-100 px-1 rounded">finance_state</code>,
+                  hold / debit / refund amounts, and idempotency keys — ready for reconciliation.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">From Date</label>
+                    <Input type="date" value={bkFrom} onChange={e => setBkFrom(e.target.value)} className="text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">To Date</label>
+                    <Input type="date" value={bkTo} onChange={e => setBkTo(e.target.value)} className="text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Finance State</label>
+                    <Select value={bkFinanceState || "__all__"} onValueChange={v => setBkFinanceState(v === "__all__" ? "" : v)}>
+                      <SelectTrigger className="text-sm">
+                        <SelectValue placeholder="All states" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">All states</SelectItem>
+                        <SelectItem value="none">none</SelectItem>
+                        <SelectItem value="hold_active">hold_active</SelectItem>
+                        <SelectItem value="debited">debited</SelectItem>
+                        <SelectItem value="released">released</SelectItem>
+                        <SelectItem value="refunded">refunded</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Source</label>
+                    <Select value={bkSource || "__all__"} onValueChange={v => setBkSource(v === "__all__" ? "" : v)}>
+                      <SelectTrigger className="text-sm">
+                        <SelectValue placeholder="All sources" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">All sources</SelectItem>
+                        <SelectItem value="booking">booking (walkers + sitters)</SelectItem>
+                        <SelectItem value="academy">academy</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">User ID</label>
+                    <Input placeholder="uid…" value={bkUserId} onChange={e => setBkUserId(e.target.value)} className="text-sm" />
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  className="text-white gap-2"
+                  style={{ background: GOLD }}
+                  onClick={() => {
+                    const url = buildBookingsExportUrl();
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `wallet-bookings-finance-${new Date().toISOString().slice(0, 10)}.csv`;
+                    a.click();
+                  }}
+                >
+                  <FileDown className="w-4 h-4" />
+                  Download Booking Finance CSV
+                </Button>
+                <div className="rounded-md border border-gray-100 bg-gray-50 p-3">
+                  <p className="text-xs font-medium text-gray-700 mb-1">Columns:</p>
+                  <p className="text-xs text-gray-500 font-mono leading-relaxed">
+                    booking_id · source_type · division_code · customer_id · provider_id · status ·
+                    finance_state · wallet_hold_cents · wallet_debited_cents · wallet_refunded_cents ·
+                    wallet_hold_key · wallet_debit_key · wallet_release_key · wallet_refund_key ·
+                    total_cents · currency · created_at
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
           </TabsContent>
 
         </Tabs>

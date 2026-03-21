@@ -2613,9 +2613,9 @@ html[lang="en"] *,
 /* Floating Button Positioning */
 .floating-button-whatsapp {
   position: fixed;
-  bottom: 6rem;
+  bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
   right: 1.5rem;
-  z-index: 50;
+  z-index: 500;
   pointer-events: none;
 }
 
@@ -2625,22 +2625,22 @@ html[lang="en"] *,
 
 .floating-button-accessibility {
   position: fixed;
-  bottom: 12rem;
+  bottom: calc(10.5rem + env(safe-area-inset-bottom, 0px));
   right: 1.5rem;
-  z-index: 50;
+  z-index: 500;
   pointer-events: auto;
 }
 
-/* Mobile adjustments */
+/* Mobile adjustments — compact stack so widgets claim less vertical space */
 @media (max-width: 768px) {
   .floating-button-whatsapp {
-    bottom: 5rem;
-    right: 1rem;
+    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+    right: 0.875rem;
   }
-  
+
   .floating-button-accessibility {
-    bottom: 10rem;
-    right: 1rem;
+    bottom: calc(8.5rem + env(safe-area-inset-bottom, 0px));
+    right: 0.875rem;
   }
 }
 

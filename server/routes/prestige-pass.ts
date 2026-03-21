@@ -3017,4 +3017,129 @@ router.get('/admin/wallet/export.csv', async (req: Request, res: Response) => {
   }
 });
 
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /api/prestige-pass/admin/wallet/bookings-export.csv
+// Booking-level wallet lifecycle export — finance_state + hold/debit/refund
+// amounts for every booking across walkers, sitters, and academy.
+// Filters: financeState, source (booking | academy), from, to, userId
+// ──────────────────────────────────────────────────────────────────────────────
+router.get('/admin/wallet/bookings-export.csv', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const { financeState, source, from, to, userId } = req.query as Record<string, string>;
+
+    // UNION booking_requests (walkers + sitters) with trainer_bookings (academy)
+    const rows: any = await db.execute(sql`
+      SELECT
+        request_id          AS booking_id,
+        'booking'           AS source_type,
+        service_type        AS division_code,
+        owner_id            AS customer_id,
+        provider_id,
+        status,
+        finance_state,
+        wallet_hold_cents,
+        wallet_debited_cents,
+        wallet_refunded_cents,
+        wallet_hold_key,
+        wallet_debit_key,
+        wallet_release_key,
+        wallet_refund_key,
+        total_cents,
+        currency,
+        created_at
+      FROM booking_requests
+      WHERE (${financeState ? sql`finance_state = ${financeState}` : sql`1=1`})
+        AND (${source ? sql`'booking' = ${source}` : sql`1=1`})
+        AND (${from   ? sql`created_at >= ${new Date(from)}` : sql`1=1`})
+        AND (${to     ? sql`created_at <= ${new Date(to)}`   : sql`1=1`})
+        AND (${userId ? sql`owner_id   =  ${userId}`         : sql`1=1`})
+
+      UNION ALL
+
+      SELECT
+        booking_id          AS booking_id,
+        'academy'           AS source_type,
+        'academy'           AS division_code,
+        user_id             AS customer_id,
+        trainer_user_id     AS provider_id,
+        booking_status      AS status,
+        finance_state,
+        wallet_hold_cents,
+        wallet_debited_cents,
+        wallet_refunded_cents,
+        wallet_hold_key,
+        wallet_debit_key,
+        wallet_release_key,
+        wallet_refund_key,
+        ROUND((total_amount * 100)::numeric) AS total_cents,
+        COALESCE(currency, 'ILS') AS currency,
+        created_at
+      FROM trainer_bookings
+      WHERE (${financeState ? sql`finance_state = ${financeState}` : sql`1=1`})
+        AND (${source ? sql`'academy' = ${source}` : sql`1=1`})
+        AND (${from   ? sql`created_at >= ${new Date(from)}` : sql`1=1`})
+        AND (${to     ? sql`created_at <= ${new Date(to)}`   : sql`1=1`})
+        AND (${userId ? sql`user_id    =  ${userId}`         : sql`1=1`})
+
+      ORDER BY created_at DESC
+      LIMIT 50000
+    `);
+
+    const data = rows?.rows ?? rows ?? [];
+
+    const CSV_HEADERS = [
+      'booking_id', 'source_type', 'division_code', 'customer_id', 'provider_id',
+      'status', 'finance_state',
+      'wallet_hold_cents', 'wallet_debited_cents', 'wallet_refunded_cents',
+      'wallet_hold_key', 'wallet_debit_key', 'wallet_release_key', 'wallet_refund_key',
+      'total_cents', 'currency', 'created_at',
+    ].join(',');
+
+    function csvEscape(v: any): string {
+      if (v == null) return '';
+      const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
+    }
+
+    const lines = [
+      CSV_HEADERS,
+      ...data.map((r: any) => [
+        csvEscape(r.booking_id),
+        csvEscape(r.source_type),
+        csvEscape(r.division_code),
+        csvEscape(r.customer_id),
+        csvEscape(r.provider_id),
+        csvEscape(r.status),
+        csvEscape(r.finance_state),
+        csvEscape(r.wallet_hold_cents),
+        csvEscape(r.wallet_debited_cents),
+        csvEscape(r.wallet_refunded_cents),
+        csvEscape(r.wallet_hold_key),
+        csvEscape(r.wallet_debit_key),
+        csvEscape(r.wallet_release_key),
+        csvEscape(r.wallet_refund_key),
+        csvEscape(r.total_cents),
+        csvEscape(r.currency),
+        csvEscape(r.created_at),
+      ].join(',')),
+    ];
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="wallet-bookings-finance-${dateStr}.csv"`);
+    res.send('\uFEFF' + lines.join('\r\n')); // BOM for Excel
+  } catch (err: any) {
+    logger.error('[BookingsFinanceExport] error', { error: err.message });
+    return res.status(500).json({ error: 'Export failed', detail: err.message });
+  }
+});
+
 export default router;
