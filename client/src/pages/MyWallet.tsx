@@ -216,16 +216,16 @@ export default function MyWallet() {
           </div>
 
           <Card className="luxury-glass-card luxury-shadow-lg mb-5 luxury-animate-slide-up overflow-hidden">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm text-gray-500">
+            <CardContent className="p-5 max-[375px]:p-3">
+              <div className="flex items-center justify-between mb-3 max-[375px]:mb-2">
+                <span className="text-sm max-[375px]:text-xs text-gray-500">
                   {isHebrew ? 'סך הקרדיטים' : 'Total Credits Value'}
                 </span>
                 <Badge className="bg-white border border-gray-200 text-gray-700 text-xs font-semibold">
                   {tierInfo.emoji} {isHebrew ? tierInfo.he : tierInfo.en}
                 </Badge>
               </div>
-              <div className="text-4xl font-bold text-gray-900 mb-1">
+              <div className="text-4xl max-[375px]:text-2xl font-bold text-gray-900 mb-1">
                 {formatCurrency(wallet?.totalCreditsValueCents || 0)}
               </div>
               <p className="text-xs text-gray-400">
@@ -234,7 +234,7 @@ export default function MyWallet() {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-2 gap-3 mb-3 luxury-animate-slide-up">
+          <div className="grid grid-cols-2 gap-3 max-[375px]:gap-2 mb-3 luxury-animate-slide-up">
             {/* Cash Wallet */}
             <Card className="luxury-glass-card col-span-2 border border-emerald-100">
               <CardContent className="p-4">

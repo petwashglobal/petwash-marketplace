@@ -353,7 +353,7 @@ export default function PetTrekBookingFlow() {
               </div>
               <div className="mt-4 luxury-text-small leading-relaxed opacity-80">
                 <Shield className="h-3 w-3 inline mr-1 text-amber-500" />
-                הכסף מוחזק ב-escrow ל-72 שעות להגנת שני הצדדים. התשלום משוחרר לנהג/ת לאחר סיום ההסעה.
+                הסכום ייושמר מהארנק שלך עם אישור הנהג/ת, ויחויב לאחר סיום ההסעה.
               </div>
             </div>
 

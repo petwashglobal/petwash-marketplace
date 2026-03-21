@@ -468,7 +468,7 @@ export default function SitterBooking() {
                       />
 
                       <p className="text-xs text-gray-500 mt-2">
-                        Payment held in secure escrow until service completion
+                        הסכום ייושמר מהארנק שלך עם אישור המשמר/ת, ויחויב לאחר סיום השהות.
                       </p>
                     </CardContent>
                   </Card>

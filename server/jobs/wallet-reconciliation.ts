@@ -231,9 +231,10 @@ export async function runWalletReconciliation(
     });
   }
 
-  // ── 4. Stuck-hold detection — pending bookings in hold_active > 48 h ─────────
-  // These are bookings where the customer paid a hold but the provider never responded.
-  // They need manual review — we DO NOT auto-release (would need provider context).
+  // ── 4. Stuck-hold detection ────────────────────────────────────────────────────
+  // Walkers & sitters: hold must resolve within 2 hours (provider accepts/rejects fast).
+  // Academy: allow 4 hours (trainer may need to review schedule before confirming).
+  // These bookings need manual review — we DO NOT auto-release here.
   try {
     const stuckWalkSit: any = await db.execute(sql`
       SELECT request_id, owner_id, service_type, wallet_hold_cents, created_at
@@ -241,12 +242,14 @@ export async function runWalletReconciliation(
       WHERE status        = 'pending'
         AND finance_state = 'hold_active'
         AND wallet_hold_cents > 0
-        AND created_at < NOW() - INTERVAL '48 hours'
+        AND created_at < NOW() - INTERVAL '2 hours'
     `);
     const stuckBookings = stuckWalkSit?.rows ?? stuckWalkSit ?? [];
     if (stuckBookings.length > 0) {
-      logger.warn(`${LABEL} [ALERT][StuckHold] ${stuckBookings.length} walker/sitter booking(s) stuck in hold_active for > 48 h`, {
+      logger.warn(`${LABEL} [ALERT][StuckHold] ${stuckBookings.length} walker/sitter booking(s) stuck in hold_active for > 2 h`, {
         severity: 'WARN',
+        thresholdHours: 2,
+        division: 'walkers/sitters',
         bookings: stuckBookings.map((b: any) => ({
           bookingId:   b.request_id,
           ownerId:     b.owner_id,
@@ -263,12 +266,14 @@ export async function runWalletReconciliation(
       WHERE booking_status = 'pending'
         AND finance_state   = 'hold_active'
         AND wallet_hold_cents > 0
-        AND created_at < NOW() - INTERVAL '48 hours'
+        AND created_at < NOW() - INTERVAL '4 hours'
     `);
     const stuckAcademyBookings = stuckAcademy?.rows ?? stuckAcademy ?? [];
     if (stuckAcademyBookings.length > 0) {
-      logger.warn(`${LABEL} [ALERT][StuckHold] ${stuckAcademyBookings.length} academy booking(s) stuck in hold_active for > 48 h`, {
+      logger.warn(`${LABEL} [ALERT][StuckHold] ${stuckAcademyBookings.length} academy booking(s) stuck in hold_active for > 4 h`, {
         severity: 'WARN',
+        thresholdHours: 4,
+        division: 'academy',
         bookings: stuckAcademyBookings.map((b: any) => ({
           bookingId: b.booking_id,
           userId:    b.user_id,

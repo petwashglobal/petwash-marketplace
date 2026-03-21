@@ -12,6 +12,7 @@ import { GooglePlacesAutocomplete, PlaceDetails } from "@/components/ui/google-p
 import { OwnerInstructionsForm, useOwnerInstructions, type OwnerInstructions } from "@/components/booking/OwnerInstructionsForm";
 import { CreditWalletCard } from "@/components/wallet/CreditWalletCard";
 import { PrestigePassPaymentOption } from "@/components/PrestigePassPaymentOption";
+import { WalletCheckoutPreview } from "@/components/wallet/WalletCheckoutPreview";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { Calendar } from "@/components/ui/calendar";
 import type { DateRange } from "react-day-picker";
@@ -590,7 +591,7 @@ export default function SitterBookingFlow() {
               </div>
               <p className="text-xs text-slate-400 mt-3 flex items-center gap-1">
                 <Shield className="h-3 w-3 text-emerald-400 flex-shrink-0" />
-                הכסף מוחזק ב-escrow ל-72 שעות להגנת שני הצדדים
+                הסכום ייושמר מהארנק שלך עם אישור המשמר/ת, ויחויב לאחר סיום השהות.
               </p>
             </section>
 
@@ -669,6 +670,11 @@ export default function SitterBookingFlow() {
               </div>
               <p className="text-xs text-slate-400 mt-3">התשלום יתואם לאחר ההזמנה.</p>
             </section>
+
+            <WalletCheckoutPreview
+              subtotalCents={Math.round(pricing.totalCharged * 100)}
+              divisionCode="petsitter"
+            />
 
             {user && (
               <CreditWalletCard

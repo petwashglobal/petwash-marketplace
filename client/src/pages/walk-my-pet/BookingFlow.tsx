@@ -13,6 +13,7 @@ import { WeatherConsentDialog, useWeatherConsent } from "@/components/weather/We
 import { OwnerInstructionsForm, useOwnerInstructions } from "@/components/booking/OwnerInstructionsForm";
 import { CreditWalletCard } from "@/components/wallet/CreditWalletCard";
 import { PrestigePassPaymentOption } from "@/components/PrestigePassPaymentOption";
+import { WalletCheckoutPreview } from "@/components/wallet/WalletCheckoutPreview";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 
 type BookingStep = "details" | "summary" | "pending_match" | "confirmation";
@@ -471,7 +472,7 @@ export default function WalkBookingFlow() {
               </div>
               <div className="mt-4 luxury-text-small leading-relaxed opacity-80">
                 <Shield className="h-3 w-3 inline mr-1 text-blue-500" />
-                הכסף מוחזק ב-escrow ל-72 שעות להגנת שני הצדדים. התשלום משוחרר למוליך/ה לאחר סיום ההליכה.
+                הסכום ייושמר מהארנק שלך עם אישור המוליך/ה, ויחויב לאחר סיום ההליכה.
               </div>
             </div>
 
@@ -537,6 +538,12 @@ export default function WalkBookingFlow() {
                 התשלום יתואם לאחר ההזמנה.
               </div>
             </div>
+
+            <WalletCheckoutPreview
+              subtotalCents={Math.round(pricing.totalCharged * 100)}
+              divisionCode="walkers"
+              className="mb-6 luxury-stagger-item"
+            />
 
             {user && (
               <div className="mb-6 luxury-stagger-item">

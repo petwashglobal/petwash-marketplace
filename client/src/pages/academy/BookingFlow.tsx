@@ -353,7 +353,7 @@ export default function AcademyBookingFlow() {
               </div>
               <div className="mt-4 luxury-text-small leading-relaxed opacity-80">
                 <Shield className="h-3 w-3 inline mr-1 text-purple-500" />
-                הכסף מוחזק ב-escrow ל-72 שעות להגנת שני הצדדים. התשלום משוחרר למאמן/ת לאחר סיום השיעור.
+                הסכום ייושמר מהארנק שלך עם אישור המאמן/ת, ויחויב לאחר סיום השיעור.
               </div>
             </div>
 
