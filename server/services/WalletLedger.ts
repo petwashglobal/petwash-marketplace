@@ -630,6 +630,94 @@ export async function adminCreditWithLedger(params: {
   });
 }
 
+// ─── Admin wallet adjustment (credit or debit) ───────────────────────────────
+export async function adminAdjustWallet(params: {
+  userId:         string;
+  walletId:       string;
+  amountCents:    number;
+  type:           'credit' | 'debit';
+  reason:         string;
+  adminId:        string;
+  idempotencyKey: string;
+  ipAddress?:     string | null;
+}): Promise<{ txnId: string }> {
+  await logFraudEvent({
+    userId:    params.adminId,
+    action:    `admin_${params.type}`,
+    riskScore: 30,
+    outcome:   'flagged',
+    reason:    `Admin manual ${params.type} on ${params.userId} — ${params.reason}`,
+    metadata:  { targetUserId: params.userId, amountCents: params.amountCents },
+  });
+
+  return await (db as any).transaction(async (tx: typeof db) => {
+    await (tx as any).execute(
+      sql`SELECT id FROM wallet_accounts WHERE user_id = ${params.userId} FOR UPDATE`
+    );
+
+    if (params.type === 'credit') {
+      await (tx as any).execute(
+        sql`UPDATE wallet_accounts
+            SET cash_wallet_balance_cents = cash_wallet_balance_cents + ${params.amountCents},
+                updated_at = NOW()
+            WHERE user_id = ${params.userId}`
+      );
+    } else {
+      const bal: any = await (tx as any).execute(
+        sql`SELECT cash_wallet_balance_cents FROM wallet_accounts WHERE user_id = ${params.userId}`
+      );
+      const available = Number((bal?.rows?.[0] ?? bal?.[0])?.cash_wallet_balance_cents ?? 0);
+      if (available < params.amountCents) throw new Error('Insufficient cash balance for debit adjustment');
+      await (tx as any).execute(
+        sql`UPDATE wallet_accounts
+            SET cash_wallet_balance_cents = cash_wallet_balance_cents - ${params.amountCents},
+                updated_at = NOW()
+            WHERE user_id = ${params.userId}`
+      );
+    }
+
+    const now = new Date();
+    const lastHashRes: any = await (tx as any).execute(
+      sql`SELECT entry_hash FROM wallet_ledger_entries WHERE wallet_id = ${params.walletId} ORDER BY id DESC LIMIT 1`
+    );
+    const prevHash = ((lastHashRes?.rows ?? lastHashRes ?? [])[0])?.entry_hash ?? 'genesis';
+
+    const entryId = `LE-ADJ-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString('hex').toUpperCase()}`;
+    const direction = params.type === 'credit' ? 'credit' : 'debit';
+    const eHash = computeEntryHash(prevHash, params.walletId, direction, params.amountCents, 'ILS', '', now.toISOString());
+
+    await (tx as any).insert(walletLedgerEntries).values({
+      entryId,
+      walletId:     params.walletId,
+      userId:       params.userId,
+      eventType:    params.type === 'credit' ? 'admin_credit' : 'admin_debit',
+      direction,
+      amountCents:  params.amountCents,
+      currency:     'ILS',
+      bucket:       'cash_wallet',
+      counterpartyType: 'admin',
+      counterpartyId:   params.adminId,
+      createdBy:    params.adminId,
+      metadata:     { reason: params.reason, adminId: params.adminId } as any,
+      previousHash: prevHash,
+      entryHash:    eHash,
+      createdAt:    now,
+    });
+
+    await (tx as any).insert(walletIdempotencyKeys).values({
+      idempotencyKey: params.idempotencyKey,
+      endpoint:       `wallet/admin_${params.type}`,
+      requestHash:    computeRequestHash(params.userId, params.amountCents, 'admin', params.type),
+      responseJson:   JSON.stringify({ txnId: entryId }),
+      status:         'success',
+      expiresAt:      new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+    }).onConflictDoNothing();
+
+    logger.info('[WalletLedger] Admin adjustment committed', { txnId: entryId, userId: params.userId, type: params.type, amountCents: params.amountCents });
+    return { txnId: entryId };
+  });
+}
+
 // ─── Reversal (never edit — always reverse) ───────────────────────────────────
 export async function reverseEntry(params: {
   originalEntryId: string;

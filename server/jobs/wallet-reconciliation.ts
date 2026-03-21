@@ -24,6 +24,9 @@ import { bookingRequests, trainerBookings, walletReconciliationRuns } from '@sha
 import { walletService } from '../services/WalletService';
 import { resetVelocity } from '../services/WalletLedger';
 import { logger } from '../lib/logger';
+import { twilioSMSService } from '../services/TwilioSMSService';
+
+const OPS_ALERT_PHONE = process.env.PETWASH_OPS_PHONE ?? '';
 
 const LABEL = '[WalletReconciliation]';
 
@@ -231,13 +234,14 @@ export async function runWalletReconciliation(
     });
   }
 
-  // ── 4. Stuck-hold detection ────────────────────────────────────────────────────
-  // Walkers & sitters: hold must resolve within 2 hours (provider accepts/rejects fast).
-  // Academy: allow 4 hours (trainer may need to review schedule before confirming).
-  // These bookings need manual review — we DO NOT auto-release here.
+  // ── 4. Stuck-hold detection + SMS escalation ─────────────────────────────────
+  // Walkers & sitters: hold must resolve within 2 hours.
+  // Academy: allow 4 hours.
+  // First occurrence per booking → SMS to ops + mark stuck_hold_alert_sent_at.
+  // Repeat occurrences → log only (deduped).
   try {
     const stuckWalkSit: any = await db.execute(sql`
-      SELECT request_id, owner_id, service_type, wallet_hold_cents, created_at
+      SELECT request_id, owner_id, service_type, wallet_hold_cents, created_at, stuck_hold_alert_sent_at
       FROM booking_requests
       WHERE status        = 'pending'
         AND finance_state = 'hold_active'
@@ -247,21 +251,34 @@ export async function runWalletReconciliation(
     const stuckBookings = stuckWalkSit?.rows ?? stuckWalkSit ?? [];
     if (stuckBookings.length > 0) {
       logger.warn(`${LABEL} [ALERT][StuckHold] ${stuckBookings.length} walker/sitter booking(s) stuck in hold_active for > 2 h`, {
-        severity: 'WARN',
-        thresholdHours: 2,
-        division: 'walkers/sitters',
+        severity: 'WARN', thresholdHours: 2, division: 'walkers/sitters',
         bookings: stuckBookings.map((b: any) => ({
-          bookingId:   b.request_id,
-          ownerId:     b.owner_id,
-          serviceType: b.service_type,
-          holdCents:   Number(b.wallet_hold_cents),
-          createdAt:   b.created_at,
+          bookingId: b.request_id, ownerId: b.owner_id,
+          serviceType: b.service_type, holdCents: Number(b.wallet_hold_cents), createdAt: b.created_at,
         })),
       });
+
+      // SMS escalation — once per booking
+      if (OPS_ALERT_PHONE) {
+        for (const b of stuckBookings) {
+          if (b.stuck_hold_alert_sent_at) continue; // already alerted
+          const holdIls = (Number(b.wallet_hold_cents) / 100).toFixed(2);
+          const msg = `[PetWash ALERT]\nStuck hold detected\nBooking: ${b.request_id}\nAmount: ₪${holdIls}\nUser: ${b.owner_id}\nDivision: ${b.service_type ?? 'walkers/sitters'}`;
+          twilioSMSService.sendSMS(OPS_ALERT_PHONE, msg).catch((e: any) =>
+            logger.error(`${LABEL} SMS escalation failed`, { bookingId: b.request_id, error: e.message }),
+          );
+          await db.execute(sql`
+            UPDATE booking_requests
+            SET stuck_hold_alert_sent_at = NOW()
+            WHERE request_id = ${b.request_id}
+          `);
+          logger.info(`${LABEL} SMS escalation sent for walker/sitter stuck hold`, { bookingId: b.request_id });
+        }
+      }
     }
 
     const stuckAcademy: any = await db.execute(sql`
-      SELECT booking_id, user_id, wallet_hold_cents, created_at
+      SELECT booking_id, user_id, wallet_hold_cents, created_at, stuck_hold_alert_sent_at
       FROM trainer_bookings
       WHERE booking_status = 'pending'
         AND finance_state   = 'hold_active'
@@ -271,16 +288,30 @@ export async function runWalletReconciliation(
     const stuckAcademyBookings = stuckAcademy?.rows ?? stuckAcademy ?? [];
     if (stuckAcademyBookings.length > 0) {
       logger.warn(`${LABEL} [ALERT][StuckHold] ${stuckAcademyBookings.length} academy booking(s) stuck in hold_active for > 4 h`, {
-        severity: 'WARN',
-        thresholdHours: 4,
-        division: 'academy',
+        severity: 'WARN', thresholdHours: 4, division: 'academy',
         bookings: stuckAcademyBookings.map((b: any) => ({
-          bookingId: b.booking_id,
-          userId:    b.user_id,
-          holdCents: Number(b.wallet_hold_cents),
-          createdAt: b.created_at,
+          bookingId: b.booking_id, userId: b.user_id,
+          holdCents: Number(b.wallet_hold_cents), createdAt: b.created_at,
         })),
       });
+
+      // SMS escalation — once per booking
+      if (OPS_ALERT_PHONE) {
+        for (const b of stuckAcademyBookings) {
+          if (b.stuck_hold_alert_sent_at) continue;
+          const holdIls = (Number(b.wallet_hold_cents) / 100).toFixed(2);
+          const msg = `[PetWash ALERT]\nStuck hold detected\nBooking: ${b.booking_id}\nAmount: ₪${holdIls}\nUser: ${b.user_id}\nDivision: academy`;
+          twilioSMSService.sendSMS(OPS_ALERT_PHONE, msg).catch((e: any) =>
+            logger.error(`${LABEL} SMS escalation failed`, { bookingId: b.booking_id, error: e.message }),
+          );
+          await db.execute(sql`
+            UPDATE trainer_bookings
+            SET stuck_hold_alert_sent_at = NOW()
+            WHERE booking_id = ${b.booking_id}
+          `);
+          logger.info(`${LABEL} SMS escalation sent for academy stuck hold`, { bookingId: b.booking_id });
+        }
+      }
     }
   } catch (stuckErr: any) {
     logger.error(`${LABEL} Stuck-hold detection failed`, { error: stuckErr.message });

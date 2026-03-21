@@ -2466,15 +2466,33 @@ router.get('/admin/wallet/booking-audit', async (req: Request, res: Response) =>
     const bookingId = String(req.query.bookingId || '').trim();
     if (!bookingId) return res.status(400).json({ error: 'bookingId query param required' });
 
-    // Pull booking finance state
+    // Pull booking finance state — try booking_requests first, then trainer_bookings
+    let booking: any = null;
+    let sourceTable: 'booking_requests' | 'trainer_bookings' = 'booking_requests';
+
     const bookingRows: any = await db.execute(sql`
-      SELECT request_id, owner_id, service_type, finance_state,
+      SELECT request_id AS booking_id, owner_id AS user_id,
+             service_type AS division_code, finance_state,
              wallet_hold_cents, wallet_debited_cents, wallet_refunded_cents,
              wallet_hold_key, wallet_debit_key, wallet_release_key, wallet_refund_key,
              created_at, updated_at
       FROM booking_requests WHERE request_id = ${bookingId} LIMIT 1
     `);
-    const booking = (bookingRows?.rows ?? bookingRows ?? [])[0] ?? null;
+    booking = (bookingRows?.rows ?? bookingRows ?? [])[0] ?? null;
+
+    if (!booking) {
+      const academyRows: any = await db.execute(sql`
+        SELECT booking_id, user_id,
+               'academy' AS division_code, finance_state,
+               wallet_hold_cents, wallet_debited_cents, wallet_refunded_cents,
+               wallet_hold_key, wallet_debit_key, wallet_release_key, wallet_refund_key,
+               created_at, updated_at
+        FROM trainer_bookings WHERE booking_id = ${bookingId} LIMIT 1
+      `);
+      booking = (academyRows?.rows ?? academyRows ?? [])[0] ?? null;
+      if (booking) sourceTable = 'trainer_bookings';
+    }
+
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
     // Pull all ledger entries for this booking
@@ -2502,10 +2520,11 @@ router.get('/admin/wallet/booking-audit', async (req: Request, res: Response) =>
     return res.json({
       ok: true,
       bookingId,
+      sourceTable,
       booking: {
-        requestId:           booking.request_id,
-        ownerId:             booking.owner_id,
-        serviceType:         booking.service_type,
+        bookingId:           booking.booking_id,
+        userId:              booking.user_id,
+        divisionCode:        booking.division_code,
         financeState:        booking.finance_state,
         walletHoldCents:     Number(booking.wallet_hold_cents),
         walletDebitedCents:  Number(booking.wallet_debited_cents),
@@ -3237,6 +3256,361 @@ router.get('/admin/wallet/bookings-export.csv', async (req: Request, res: Respon
     res.send('\uFEFF' + lines.join('\r\n')); // BOM for Excel
   } catch (err: any) {
     logger.error('[BookingsFinanceExport] error', { error: err.message });
+    return res.status(500).json({ error: 'Export failed', detail: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /api/prestige-pass/admin/wallet/release
+// Admin: release a stuck hold for a booking (finance_state must be hold_active).
+// Supports both booking_requests and trainer_bookings.
+// ──────────────────────────────────────────────────────────────────────────────
+router.post('/admin/wallet/release', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const { bookingId, reason } = req.body as { bookingId: string; reason: string };
+    if (!bookingId) return res.status(400).json({ error: 'bookingId required' });
+    if (!reason?.trim()) return res.status(400).json({ error: 'reason required' });
+
+    // Look up booking — try booking_requests then trainer_bookings
+    let booking: any = null;
+    let sourceTable: 'booking_requests' | 'trainer_bookings' = 'booking_requests';
+
+    const brRows: any = await db.execute(sql`
+      SELECT request_id AS booking_id, owner_id AS user_id, service_type AS division_code,
+             finance_state, wallet_hold_cents
+      FROM booking_requests WHERE request_id = ${bookingId} LIMIT 1
+    `);
+    booking = (brRows?.rows ?? brRows ?? [])[0] ?? null;
+    if (!booking) {
+      const tbRows: any = await db.execute(sql`
+        SELECT booking_id, user_id, 'academy' AS division_code,
+               finance_state, wallet_hold_cents
+        FROM trainer_bookings WHERE booking_id = ${bookingId} LIMIT 1
+      `);
+      booking = (tbRows?.rows ?? tbRows ?? [])[0] ?? null;
+      if (booking) sourceTable = 'trainer_bookings';
+    }
+
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (booking.finance_state !== 'hold_active') {
+      return res.status(422).json({
+        error: `Cannot release: finance_state is '${booking.finance_state}', expected 'hold_active'`,
+      });
+    }
+
+    const holdCents = Number(booking.wallet_hold_cents);
+    if (holdCents <= 0) return res.status(422).json({ error: 'No hold amount to release' });
+
+    const result = await walletService.releaseBookingHold({
+      userId:       booking.user_id,
+      amountCents:  holdCents,
+      bookingId,
+      divisionCode: booking.division_code ?? 'general',
+      ipAddress:    req.ip,
+    });
+
+    // Update booking record
+    const releaseKey = result.txnId;
+    if (sourceTable === 'booking_requests') {
+      await db.execute(sql`
+        UPDATE booking_requests
+        SET finance_state = 'released', wallet_release_key = ${releaseKey}, updated_at = NOW()
+        WHERE request_id = ${bookingId}
+      `);
+    } else {
+      await db.execute(sql`
+        UPDATE trainer_bookings
+        SET finance_state = 'released', wallet_release_key = ${releaseKey}, updated_at = NOW()
+        WHERE booking_id = ${bookingId}
+      `);
+    }
+
+    logger.info('[AdminWallet][Release] Hold released', {
+      bookingId, userId: booking.user_id, holdCents, txnId: result.txnId,
+      idempotent: result.idempotent, adminUid: uid, reason,
+    });
+
+    return res.json({ ok: true, txnId: result.txnId, idempotent: result.idempotent, releasedCents: holdCents });
+  } catch (err: any) {
+    logger.error('[AdminWallet][Release] error', { error: err.message });
+    return res.status(500).json({ error: 'Release failed', detail: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /api/prestige-pass/admin/wallet/refund
+// Admin: refund a debited booking (finance_state must be debited).
+// Supports partial refunds. Supports both booking tables.
+// ──────────────────────────────────────────────────────────────────────────────
+router.post('/admin/wallet/refund', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const { bookingId, amountCents, reason } = req.body as {
+      bookingId: string; amountCents?: number; reason: string;
+    };
+    if (!bookingId) return res.status(400).json({ error: 'bookingId required' });
+    if (!reason?.trim()) return res.status(400).json({ error: 'reason required' });
+
+    // Look up booking
+    let booking: any = null;
+    let sourceTable: 'booking_requests' | 'trainer_bookings' = 'booking_requests';
+
+    const brRows: any = await db.execute(sql`
+      SELECT request_id AS booking_id, owner_id AS user_id, service_type AS division_code,
+             finance_state, wallet_hold_cents, wallet_debited_cents, wallet_refunded_cents
+      FROM booking_requests WHERE request_id = ${bookingId} LIMIT 1
+    `);
+    booking = (brRows?.rows ?? brRows ?? [])[0] ?? null;
+    if (!booking) {
+      const tbRows: any = await db.execute(sql`
+        SELECT booking_id, user_id, 'academy' AS division_code,
+               finance_state, wallet_hold_cents, wallet_debited_cents, wallet_refunded_cents
+        FROM trainer_bookings WHERE booking_id = ${bookingId} LIMIT 1
+      `);
+      booking = (tbRows?.rows ?? tbRows ?? [])[0] ?? null;
+      if (booking) sourceTable = 'trainer_bookings';
+    }
+
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (booking.finance_state !== 'debited') {
+      return res.status(422).json({
+        error: `Cannot refund: finance_state is '${booking.finance_state}', expected 'debited'`,
+      });
+    }
+
+    const debitedCents = Number(booking.wallet_debited_cents);
+    const alreadyRefunded = Number(booking.wallet_refunded_cents ?? 0);
+    const maxRefundable = debitedCents - alreadyRefunded;
+    const refundCents = amountCents != null ? Math.min(amountCents, maxRefundable) : maxRefundable;
+
+    if (refundCents <= 0) return res.status(422).json({ error: 'Nothing left to refund' });
+
+    // Timestamp-based key allows multiple partial refunds; each is a distinct ledger entry
+    const idempotencyKey = `wallet:booking:refund:admin:${bookingId}:${Date.now()}`;
+    const { refundToWallet } = await import('../services/WalletLedger');
+    const result = await refundToWallet({
+      userId:         booking.user_id,
+      amountCents:    refundCents,
+      divisionCode:   booking.division_code ?? 'general',
+      sourceType:     'booking',
+      sourceId:       bookingId,
+      idempotencyKey,
+      reason:         reason ?? 'admin_refund',
+      ipAddress:      req.ip,
+    });
+
+    const newRefunded = alreadyRefunded + refundCents;
+    const newState = newRefunded >= debitedCents ? 'refunded' : 'debited';
+
+    if (sourceTable === 'booking_requests') {
+      await db.execute(sql`
+        UPDATE booking_requests
+        SET finance_state = ${newState},
+            wallet_refunded_cents = ${newRefunded},
+            wallet_refund_key = ${result.txnId},
+            updated_at = NOW()
+        WHERE request_id = ${bookingId}
+      `);
+    } else {
+      await db.execute(sql`
+        UPDATE trainer_bookings
+        SET finance_state = ${newState},
+            wallet_refunded_cents = ${newRefunded},
+            wallet_refund_key = ${result.txnId},
+            updated_at = NOW()
+        WHERE booking_id = ${bookingId}
+      `);
+    }
+
+    logger.info('[AdminWallet][Refund] Refund issued', {
+      bookingId, userId: booking.user_id, refundCents, newState,
+      txnId: result.txnId, adminUid: uid, reason,
+    });
+
+    return res.json({ ok: true, txnId: result.txnId, refundedCents: refundCents, newFinanceState: newState });
+  } catch (err: any) {
+    logger.error('[AdminWallet][Refund] error', { error: err.message });
+    return res.status(500).json({ error: 'Refund failed', detail: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /api/prestige-pass/admin/wallet/adjust
+// Admin: manually credit or debit a user's cash wallet (no booking required).
+// ──────────────────────────────────────────────────────────────────────────────
+router.post('/admin/wallet/adjust', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const { userId, amountCents, reason, type } = req.body as {
+      userId: string; amountCents: number; reason: string; type: 'credit' | 'debit';
+    };
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    if (!amountCents || amountCents <= 0) return res.status(400).json({ error: 'amountCents must be > 0' });
+    if (!reason?.trim()) return res.status(400).json({ error: 'reason required' });
+    if (type !== 'credit' && type !== 'debit') return res.status(400).json({ error: "type must be 'credit' or 'debit'" });
+
+    const wallet = await walletService.getOrCreateWallet(userId);
+    const idempotencyKey = `wallet:admin:adjust:${type}:${userId}:${Date.now()}`;
+
+    const { adminAdjustWallet } = await import('../services/WalletLedger');
+    const result = await adminAdjustWallet({
+      userId,
+      walletId:       wallet.walletId,
+      amountCents,
+      type,
+      reason,
+      adminId:        uid,
+      idempotencyKey,
+      ipAddress:      req.ip,
+    });
+
+    logger.info('[AdminWallet][Adjust] Adjustment applied', {
+      userId, amountCents, type, txnId: result.txnId, adminUid: uid, reason,
+    });
+
+    return res.json({ ok: true, txnId: result.txnId, adjustedCents: amountCents, type });
+  } catch (err: any) {
+    logger.error('[AdminWallet][Adjust] error', { error: err.message });
+    return res.status(500).json({ error: 'Adjustment failed', detail: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /api/prestige-pass/admin/wallet/finance-today
+// Returns today's revenue and pending holds by division (last 24h ledger debits).
+// ──────────────────────────────────────────────────────────────────────────────
+router.get('/admin/wallet/finance-today', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const revenueRows: any = await db.execute(sql`
+      SELECT COALESCE(division_code, 'general') AS division_code,
+             SUM(amount_cents) AS revenue_cents,
+             COUNT(*) AS txn_count
+      FROM wallet_ledger_entries
+      WHERE event_type = 'debit'
+        AND created_at >= NOW() - INTERVAL '24 hours'
+      GROUP BY division_code
+      ORDER BY revenue_cents DESC
+    `);
+    const revenue = (revenueRows?.rows ?? revenueRows ?? []).map((r: any) => ({
+      divisionCode: r.division_code,
+      revenueCents: Number(r.revenue_cents),
+      txnCount:     Number(r.txn_count),
+    }));
+
+    const holdRows: any = await db.execute(sql`
+      SELECT COALESCE(
+        CASE
+          WHEN s.service_type = 'walking' THEN 'walkers'
+          WHEN s.service_type = 'sitting' THEN 'petsitter'
+          WHEN s.service_type = 'training' THEN 'academy'
+          ELSE 'general'
+        END, 'general'
+      ) AS division_code,
+      COUNT(*) AS booking_count,
+      SUM(s.wallet_hold_cents) AS hold_cents
+      FROM (
+        SELECT service_type, wallet_hold_cents
+        FROM booking_requests
+        WHERE finance_state = 'hold_active'
+        UNION ALL
+        SELECT 'training' AS service_type, wallet_hold_cents
+        FROM trainer_bookings
+        WHERE finance_state = 'hold_active'
+      ) s
+      GROUP BY division_code
+    `);
+    const holds = (holdRows?.rows ?? holdRows ?? []).map((r: any) => ({
+      divisionCode:  r.division_code,
+      bookingCount:  Number(r.booking_count),
+      holdCents:     Number(r.hold_cents),
+    }));
+
+    const totalRevenueCents = revenue.reduce((s: number, r: any) => s + r.revenueCents, 0);
+    const totalHoldCents    = holds.reduce((s: number, r: any)   => s + r.holdCents,    0);
+
+    return res.json({ ok: true, revenue, holds, totalRevenueCents, totalHoldCents, generatedAt: new Date().toISOString() });
+  } catch (err: any) {
+    logger.error('[AdminWallet][FinanceToday] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch finance today', detail: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /api/prestige-pass/admin/wallet/reconciliation-history/export.csv
+// Exports reconciliation run history as CSV.
+// ──────────────────────────────────────────────────────────────────────────────
+router.get('/admin/wallet/reconciliation-history/export.csv', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const rows: any = await db.execute(sql`
+      SELECT run_id, run_type, status, verdict,
+             started_at, completed_at, duration_ms,
+             drifted, healed, failed_count,
+             triggered_by, created_at
+      FROM wallet_reconciliation_runs
+      ORDER BY started_at DESC
+      LIMIT 10000
+    `);
+    const data = rows?.rows ?? rows ?? [];
+
+    function csvEscape(v: any): string {
+      if (v == null) return '';
+      const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    }
+
+    const CSV_HEADERS = [
+      'run_id', 'run_type', 'status', 'verdict',
+      'started_at', 'completed_at', 'duration_ms',
+      'drifted', 'healed', 'failed_count', 'triggered_by',
+    ].join(',');
+
+    const lines = [
+      CSV_HEADERS,
+      ...data.map((r: any) => [
+        csvEscape(r.run_id),
+        csvEscape(r.run_type),
+        csvEscape(r.status),
+        csvEscape(r.verdict),
+        csvEscape(r.started_at),
+        csvEscape(r.completed_at),
+        csvEscape(r.duration_ms),
+        csvEscape(r.drifted),
+        csvEscape(r.healed),
+        csvEscape(r.failed_count),
+        csvEscape(r.triggered_by),
+      ].join(',')),
+    ];
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="reconciliation-history-${dateStr}.csv"`);
+    res.send('\uFEFF' + lines.join('\r\n'));
+  } catch (err: any) {
+    logger.error('[ReconciliationExport] error', { error: err.message });
     return res.status(500).json({ error: 'Export failed', detail: err.message });
   }
 });

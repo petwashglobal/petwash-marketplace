@@ -1,0 +1,203 @@
+PHASE 2.6 — ACTION LAYER + OPS AUTOMATION
+
+OBJECTIVE
+Turn visibility → ACTION + AUTOMATION
+Remove dev dependency from operations.
+
+--------------------------------------------------
+2.6A — ADMIN ACTIONS (CRITICAL)
+--------------------------------------------------
+
+A1 — Release / Refund (UI + API)
+
+Endpoints:
+POST /api/prestige-pass/admin/wallet/release
+POST /api/prestige-pass/admin/wallet/refund
+
+Payload:
+{
+  bookingId: string,
+  amountCents?: number,
+  reason: string
+}
+
+Release logic:
+- require finance_state = 'hold_active'
+- walletService.releaseBookingHold(...)
+- update finance_state = 'released'
+
+Refund logic:
+- require finance_state = 'debited'
+- walletService.refundBookingWallet(...)
+- update:
+  wallet_refunded_cents += amount
+  finance_state = 'refunded' or 'partial_refunded'
+
+Idempotency:
+wallet:booking:release:admin:{bookingId}:{timestamp}
+wallet:booking:refund:admin:{bookingId}:{timestamp}
+
+Frontend (AdminWalletDashboard):
+- Add buttons inside Booking Audit:
+  [ Release Hold ]
+  [ Refund ₪X ]
+- Modal with reason + confirm
+- Toast success / error
+
+--------------------------------------------------
+2.6B — RECONCILIATION EXPORT
+--------------------------------------------------
+
+Endpoint:
+GET /api/prestige-pass/admin/wallet/reconciliation-history/export.csv
+
+Columns:
+- run_id
+- timestamp
+- type (auto/manual)
+- healed_count
+- failed_count
+- stuck_hold_count
+- negative_balance_count
+- drift_amount_cents
+- verdict (PASS/WARN/FAIL)
+- duration_ms
+
+Frontend:
+- Add button:
+  [ Download History CSV ]
+
+--------------------------------------------------
+2.6C — STUCK-HOLD ESCALATION (AUTOMATION)
+--------------------------------------------------
+
+Trigger:
+- walkers/sitters > 2h
+- academy > 4h
+
+Actions:
+1. Twilio SMS:
+[PetWash ALERT]
+Stuck hold detected
+Booking: {id}
+Amount: ₪{amount}
+User: {userId}
+Division: {division}
+
+2. (Optional) email later
+
+Dedup:
+- send once per booking
+- column:
+  stuck_hold_alert_sent_at
+
+--------------------------------------------------
+2.6D — DIVISION FINANCE CARDS (DASHBOARD)
+--------------------------------------------------
+
+Top cards:
+
+- Total Redeemed Today
+- Walkers Revenue
+- Sitters Revenue
+- Academy Revenue
+- K9000 Revenue
+- Pending Holds Total
+
+Backend query:
+SELECT division_code, SUM(amount)
+FROM wallet_ledger
+WHERE created_at >= NOW() - INTERVAL '24 hours'
+GROUP BY division_code;
+
+--------------------------------------------------
+2.6E — ACADEMY TRAINER CONTROLS
+--------------------------------------------------
+
+Trainer UI:
+- Confirm booking → triggers debit
+- Cancel booking → triggers release/refund
+
+Guards:
+- no double confirm
+- no confirm after cancel
+- show wallet state clearly
+
+--------------------------------------------------
+2.6F — ADMIN WALLET ADJUSTMENTS
+--------------------------------------------------
+
+Endpoint:
+POST /api/prestige-pass/admin/wallet/adjust
+
+Payload:
+{
+  userId,
+  amountCents,
+  reason,
+  type: 'credit' | 'debit'
+}
+
+Ledger:
+- eventType = 'adjustment'
+- metadata = { reason, adminId }
+
+Frontend (User Audit panel):
+[ Credit Wallet ]
+[ Adjust Balance ]
+
+--------------------------------------------------
+2.6G — OPTIONAL (HIGH VALUE)
+--------------------------------------------------
+
+Auto-release stale holds:
+
+Condition:
+- booking still pending
+- > 24h
+
+Action:
+- walletService.releaseBookingHold(...)
+- log:
+[AUTO][Release]
+
+--------------------------------------------------
+BUILD ORDER (STRICT)
+--------------------------------------------------
+
+1. A1 — Admin actions (release/refund)
+2. 2.6C — Stuck-hold SMS escalation
+3. 2.6D — Finance dashboard cards
+4. 2.6B — Reconciliation export
+5. 2.6F — Wallet adjustments
+6. 2.6E — Academy controls
+
+--------------------------------------------------
+DEFINITION OF DONE
+--------------------------------------------------
+
+- Admin can fix any booking without dev
+- No need to read logs manually
+- Alerts are actionable
+- Finance visible in <5 seconds
+- Support can resolve issues alone
+
+--------------------------------------------------
+RESULT
+--------------------------------------------------
+
+System becomes:
+- operational
+- self-healing
+- auditable
+- scalable
+
+--------------------------------------------------
+NEXT (AFTER 2.6)
+--------------------------------------------------
+
+Phase 2.7 — Revenue Intelligence:
+- LTV by division
+- wallet usage cohorts
+- promo ROI
+- margin per flow

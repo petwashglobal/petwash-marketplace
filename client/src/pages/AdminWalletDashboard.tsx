@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -15,6 +16,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   ShieldCheck,
   Loader2,
@@ -31,6 +39,12 @@ import {
   History,
   SlidersHorizontal,
   FileDown,
+  Unlock,
+  RotateCcw,
+  Plus,
+  Minus,
+  TrendingUp,
+  Clock,
 } from "lucide-react";
 import {
   Select,
@@ -83,6 +97,13 @@ export default function AdminWalletDashboard() {
   const [auditSearch, setAuditSearch] = useState("");
   const [auditUserId, setAuditUserId] = useState("");
   const [auditUserSearch, setAuditUserSearch] = useState("");
+
+  // ── Action modals ────────────────────────────────────────────────────────────
+  const [releaseModal, setReleaseModal] = useState<{ bookingId: string; holdCents: number } | null>(null);
+  const [refundModal, setRefundModal]   = useState<{ bookingId: string; debitedCents: number; refundedCents: number } | null>(null);
+  const [adjustModal, setAdjustModal]   = useState<{ userId: string; type: "credit" | "debit" } | null>(null);
+  const [actionReason, setActionReason] = useState("");
+  const [refundAmount, setRefundAmount] = useState("");
 
   // ── Adjustments filters ──────────────────────────────────────────────────────
   const [adjFrom, setAdjFrom]           = useState("");
@@ -147,6 +168,50 @@ export default function AdminWalletDashboard() {
   // ── Reconciliation History ───────────────────────────────────────────────────
   const { data: reconHistory, isLoading: reconHistLoading } = useQuery<any>({
     queryKey: ["/api/prestige-pass/admin/wallet/reconciliation-history"],
+  });
+
+  // ── Finance Today ─────────────────────────────────────────────────────────────
+  const { data: financeToday, isLoading: financeTodayLoading, refetch: refetchFinanceToday } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/finance-today"],
+  });
+
+  // ── Release hold mutation ─────────────────────────────────────────────────────
+  const { mutate: releaseHold, isPending: releasePending } = useMutation<any, any, { bookingId: string; reason: string }>({
+    mutationFn: (vars) => apiRequest("POST", "/api/prestige-pass/admin/wallet/release", vars),
+    onSuccess: (data) => {
+      toast({ title: `Hold released — txn ${data.txnId}`, variant: "default" });
+      setReleaseModal(null);
+      setActionReason("");
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/booking-audit"] });
+    },
+    onError: (err) => toast({ title: err?.message ?? "Release failed", variant: "destructive" }),
+  });
+
+  // ── Refund mutation ───────────────────────────────────────────────────────────
+  const { mutate: refundBooking, isPending: refundPending } = useMutation<any, any, { bookingId: string; reason: string; amountCents?: number }>({
+    mutationFn: (vars) => apiRequest("POST", "/api/prestige-pass/admin/wallet/refund", vars),
+    onSuccess: (data) => {
+      toast({ title: `Refund issued — txn ${data.txnId}`, variant: "default" });
+      setRefundModal(null);
+      setActionReason("");
+      setRefundAmount("");
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/booking-audit"] });
+    },
+    onError: (err) => toast({ title: err?.message ?? "Refund failed", variant: "destructive" }),
+  });
+
+  // ── Adjust wallet mutation ────────────────────────────────────────────────────
+  const [adjustAmountIls, setAdjustAmountIls] = useState("");
+  const { mutate: adjustWallet, isPending: adjustPending } = useMutation<any, any, { userId: string; amountCents: number; reason: string; type: "credit" | "debit" }>({
+    mutationFn: (vars) => apiRequest("POST", "/api/prestige-pass/admin/wallet/adjust", vars),
+    onSuccess: (data) => {
+      toast({ title: `Wallet ${data.type}ed — txn ${data.txnId}`, variant: "default" });
+      setAdjustModal(null);
+      setActionReason("");
+      setAdjustAmountIls("");
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/user-audit"] });
+    },
+    onError: (err) => toast({ title: err?.message ?? "Adjustment failed", variant: "destructive" }),
   });
 
   // ── Admin Adjustments ────────────────────────────────────────────────────────
@@ -235,6 +300,10 @@ export default function AdminWalletDashboard() {
             <TabsTrigger value="history">
               <History className="w-4 h-4 mr-2" />
               Reconciliation History
+            </TabsTrigger>
+            <TabsTrigger value="finance">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Finance Today
             </TabsTrigger>
             <TabsTrigger value="adjustments">
               <SlidersHorizontal className="w-4 h-4 mr-2" />
@@ -414,20 +483,51 @@ export default function AdminWalletDashboard() {
                     <div className="p-3 rounded-lg border border-gray-100 bg-gray-50 grid grid-cols-2 md:grid-cols-4 gap-3">
                       <div>
                         <p className="text-xs text-gray-500">Booking ID</p>
-                        <p className="text-sm font-mono font-medium">{auditData.bookingId ?? auditSearch}</p>
+                        <p className="text-sm font-mono font-medium">{auditData.booking?.bookingId ?? auditSearch}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Finance State</p>
-                        <FinanceStateBadge state={auditData.financeState ?? "—"} />
+                        <FinanceStateBadge state={auditData.booking?.financeState ?? "—"} />
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Hold</p>
-                        <p className="text-sm font-mono">{centsToILS(Number(auditData.holdCents ?? 0))}</p>
+                        <p className="text-sm font-mono">{centsToILS(Number(auditData.booking?.walletHoldCents ?? 0))}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Debited</p>
-                        <p className="text-sm font-mono">{centsToILS(Number(auditData.debitedCents ?? 0))}</p>
+                        <p className="text-sm font-mono">{centsToILS(Number(auditData.booking?.walletDebitedCents ?? 0))}</p>
                       </div>
+                    </div>
+
+                    {/* Admin actions */}
+                    <div className="flex flex-wrap gap-2">
+                      {auditData.booking?.financeState === "hold_active" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 text-xs border-amber-400 text-amber-700 hover:bg-amber-50"
+                          onClick={() => setReleaseModal({
+                            bookingId: auditData.booking.bookingId,
+                            holdCents: Number(auditData.booking.walletHoldCents ?? 0),
+                          })}
+                        >
+                          <Unlock className="w-3 h-3" /> Release Hold
+                        </Button>
+                      )}
+                      {(auditData.booking?.financeState === "debited" || auditData.booking?.financeState === "hold_active") && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 text-xs border-blue-400 text-blue-700 hover:bg-blue-50"
+                          onClick={() => setRefundModal({
+                            bookingId: auditData.booking.bookingId,
+                            debitedCents: Number(auditData.booking.walletDebitedCents ?? 0),
+                            refundedCents: Number(auditData.booking.walletRefundedCents ?? 0),
+                          })}
+                        >
+                          <RotateCcw className="w-3 h-3" /> Issue Refund
+                        </Button>
+                      )}
                     </div>
 
                     {/* Ledger entries */}
@@ -512,6 +612,26 @@ export default function AdminWalletDashboard() {
 
                 {userAuditData?.wallet && (
                   <div className="space-y-4">
+                    {/* Admin action buttons */}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1 text-xs border-green-400 text-green-700 hover:bg-green-50"
+                        onClick={() => { setAdjustModal({ userId: auditUserSearch, type: "credit" }); setActionReason(""); setAdjustAmountIls(""); }}
+                      >
+                        <Plus className="w-3 h-3" /> Credit Wallet
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1 text-xs border-red-400 text-red-700 hover:bg-red-50"
+                        onClick={() => { setAdjustModal({ userId: auditUserSearch, type: "debit" }); setActionReason(""); setAdjustAmountIls(""); }}
+                      >
+                        <Minus className="w-3 h-3" /> Debit Wallet
+                      </Button>
+                    </div>
+
                     {/* Balance breakdown */}
                     <div className="p-3 rounded-lg border border-gray-100 bg-gray-50">
                       <p className="text-xs font-semibold text-gray-700 mb-2">Balance Breakdown</p>
@@ -682,6 +802,128 @@ export default function AdminWalletDashboard() {
                   <p className="text-xs text-gray-400 mt-2">
                     Showing {reconHistory.runs?.length ?? 0} of {reconHistory.total} runs.
                   </p>
+                )}
+                <div className="pt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-2 text-xs"
+                    onClick={() => {
+                      const a = document.createElement("a");
+                      a.href = "/api/prestige-pass/admin/wallet/reconciliation-history/export.csv";
+                      a.download = `petwash-reconciliation-history-${new Date().toISOString().slice(0,10)}.csv`;
+                      a.click();
+                    }}
+                  >
+                    <Download className="w-3 h-3" /> Download History CSV
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── FINANCE TODAY ── */}
+          <TabsContent value="finance" className="mt-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4" style={{ color: GOLD }} />
+                    Finance Today
+                  </span>
+                  <Button size="sm" variant="ghost" onClick={() => refetchFinanceToday()} className="text-xs gap-1">
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </Button>
+                </CardTitle>
+                <p className="text-sm text-gray-500">
+                  Real-time snapshot of today's wallet activity (00:00 IL → now).
+                </p>
+              </CardHeader>
+              <CardContent>
+                {financeTodayLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500 py-4">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+                  </div>
+                ) : !financeToday ? (
+                  <p className="text-sm text-gray-500 py-4">No data available.</p>
+                ) : (
+                  <div className="space-y-6">
+                    {/* KPI cards */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {[
+                        { label: "Revenue (Debited)", value: financeToday.totalDebitedCents, color: "text-green-700" },
+                        { label: "Holds Placed", value: financeToday.totalHoldCents, color: "text-amber-700" },
+                        { label: "Released", value: financeToday.totalReleasedCents, color: "text-blue-700" },
+                        { label: "Refunded", value: financeToday.totalRefundedCents, color: "text-red-600" },
+                      ].map(({ label, value, color }) => (
+                        <div key={label} className="p-4 rounded-lg border border-gray-100 bg-gray-50">
+                          <p className="text-xs text-gray-500 mb-1">{label}</p>
+                          <p className={`text-xl font-bold font-mono ${color}`}>{centsToILS(Number(value ?? 0))}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Booking counts */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {[
+                        { label: "New Holds", count: financeToday.holdsCount },
+                        { label: "Completed (Debited)", count: financeToday.debitedCount },
+                        { label: "Released", count: financeToday.releasedCount },
+                        { label: "Refunds", count: financeToday.refundsCount },
+                      ].map(({ label, count }) => (
+                        <div key={label} className="p-3 rounded-lg border border-gray-100 bg-white">
+                          <p className="text-xs text-gray-500 mb-1">{label}</p>
+                          <p className="text-2xl font-bold">{count ?? 0}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Per-division breakdown */}
+                    {financeToday.byDivision?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-gray-700 mb-2">By Division</p>
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-gray-50">
+                              <TableHead className="text-xs">Division</TableHead>
+                              <TableHead className="text-xs text-right">Holds</TableHead>
+                              <TableHead className="text-xs text-right">Debited</TableHead>
+                              <TableHead className="text-xs text-right">Released</TableHead>
+                              <TableHead className="text-xs text-right">Refunded</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {financeToday.byDivision.map((row: any) => (
+                              <TableRow key={row.divisionCode}>
+                                <TableCell className="text-xs font-medium">
+                                  {DIVISION_LABELS[row.divisionCode] ?? row.divisionCode}
+                                </TableCell>
+                                <TableCell className="text-xs text-right font-mono text-amber-700">
+                                  {centsToILS(Number(row.holdCents ?? 0))}
+                                </TableCell>
+                                <TableCell className="text-xs text-right font-mono text-green-700">
+                                  {centsToILS(Number(row.debitedCents ?? 0))}
+                                </TableCell>
+                                <TableCell className="text-xs text-right font-mono text-blue-700">
+                                  {centsToILS(Number(row.releasedCents ?? 0))}
+                                </TableCell>
+                                <TableCell className="text-xs text-right font-mono text-red-600">
+                                  {centsToILS(Number(row.refundedCents ?? 0))}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+
+                    {financeToday.asOf && (
+                      <p className="text-xs text-gray-400 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        Snapshot as of {new Date(financeToday.asOf).toLocaleString("he-IL")}
+                      </p>
+                    )}
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -936,6 +1178,169 @@ export default function AdminWalletDashboard() {
 
         </Tabs>
       </div>
+
+      {/* ── Release Hold Modal ─────────────────────────────────────────────────── */}
+      <Dialog open={!!releaseModal} onOpenChange={(open) => !open && setReleaseModal(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Unlock className="w-4 h-4 text-amber-600" /> Release Hold
+            </DialogTitle>
+          </DialogHeader>
+          {releaseModal && (
+            <div className="space-y-4 py-2">
+              <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
+                Release hold of <strong>{centsToILS(releaseModal.holdCents)}</strong> on booking{" "}
+                <code className="text-xs font-mono">{releaseModal.bookingId}</code>. Funds will be
+                returned to the customer's available balance.
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block font-medium">Reason (required)</label>
+                <Textarea
+                  placeholder="e.g. Provider no-show, manual cancellation by ops…"
+                  value={actionReason}
+                  onChange={(e) => setActionReason(e.target.value)}
+                  className="text-sm"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReleaseModal(null)}>Cancel</Button>
+            <Button
+              className="text-white"
+              style={{ background: "#B45309" }}
+              disabled={!actionReason.trim() || releasePending}
+              onClick={() => releaseModal && releaseHold({ bookingId: releaseModal.bookingId, reason: actionReason.trim() })}
+            >
+              {releasePending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Unlock className="w-4 h-4 mr-2" />}
+              Confirm Release
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Refund Modal ───────────────────────────────────────────────────────── */}
+      <Dialog open={!!refundModal} onOpenChange={(open) => !open && setRefundModal(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RotateCcw className="w-4 h-4 text-blue-600" /> Issue Refund
+            </DialogTitle>
+          </DialogHeader>
+          {refundModal && (
+            <div className="space-y-4 py-2">
+              <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-800">
+                Booking <code className="text-xs font-mono">{refundModal.bookingId}</code><br />
+                Debited: <strong>{centsToILS(refundModal.debitedCents)}</strong> —
+                Already refunded: <strong>{centsToILS(refundModal.refundedCents)}</strong>.<br />
+                Leave amount blank for full refund.
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block font-medium">Partial refund amount (ILS) — leave empty for full</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="e.g. 25.00"
+                  value={refundAmount}
+                  onChange={(e) => setRefundAmount(e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block font-medium">Reason (required)</label>
+                <Textarea
+                  placeholder="e.g. Service not delivered, customer complaint resolved…"
+                  value={actionReason}
+                  onChange={(e) => setActionReason(e.target.value)}
+                  className="text-sm"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRefundModal(null)}>Cancel</Button>
+            <Button
+              className="text-white"
+              style={{ background: "#1D4ED8" }}
+              disabled={!actionReason.trim() || refundPending}
+              onClick={() => {
+                if (!refundModal) return;
+                const amountCents = refundAmount ? Math.round(parseFloat(refundAmount) * 100) : undefined;
+                refundBooking({ bookingId: refundModal.bookingId, reason: actionReason.trim(), amountCents });
+              }}
+            >
+              {refundPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RotateCcw className="w-4 h-4 mr-2" />}
+              Confirm Refund
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Adjust Wallet Modal ────────────────────────────────────────────────── */}
+      <Dialog open={!!adjustModal} onOpenChange={(open) => !open && setAdjustModal(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {adjustModal?.type === "credit"
+                ? <Plus className="w-4 h-4 text-green-600" />
+                : <Minus className="w-4 h-4 text-red-600" />}
+              {adjustModal?.type === "credit" ? "Credit Wallet" : "Debit Wallet"}
+            </DialogTitle>
+          </DialogHeader>
+          {adjustModal && (
+            <div className="space-y-4 py-2">
+              <div className={`p-3 rounded-lg border text-sm ${adjustModal.type === "credit" ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"}`}>
+                Manual {adjustModal.type} on wallet of user{" "}
+                <code className="text-xs font-mono">{adjustModal.userId}</code>. This creates a full
+                ledger audit entry. Cash wallet bucket only.
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block font-medium">Amount (ILS)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="e.g. 50.00"
+                  value={adjustAmountIls}
+                  onChange={(e) => setAdjustAmountIls(e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block font-medium">Reason (required)</label>
+                <Textarea
+                  placeholder="e.g. Compensation for service issue, admin correction…"
+                  value={actionReason}
+                  onChange={(e) => setActionReason(e.target.value)}
+                  className="text-sm"
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAdjustModal(null)}>Cancel</Button>
+            <Button
+              className="text-white"
+              style={{ background: adjustModal?.type === "credit" ? "#15803D" : "#DC2626" }}
+              disabled={!actionReason.trim() || !adjustAmountIls || adjustPending}
+              onClick={() => {
+                if (!adjustModal || !adjustAmountIls) return;
+                const amountCents = Math.round(parseFloat(adjustAmountIls) * 100);
+                adjustWallet({ userId: adjustModal.userId, amountCents, reason: actionReason.trim(), type: adjustModal.type });
+              }}
+            >
+              {adjustPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : adjustModal?.type === "credit" ? <Plus className="w-4 h-4 mr-2" /> : <Minus className="w-4 h-4 mr-2" />}
+              Confirm {adjustModal?.type === "credit" ? "Credit" : "Debit"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
