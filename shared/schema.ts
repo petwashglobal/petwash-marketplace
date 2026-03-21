@@ -12649,3 +12649,35 @@ export const disputeCases = pgTable("dispute_cases", {
 ]);
 export type DisputeCase       = typeof disputeCases.$inferSelect;
 export type InsertDisputeCase = typeof disputeCases.$inferInsert;
+
+// ─── Refund Approvals (Phase 2.9D) ───────────────────────────────────────────
+// Rules (locked):
+//   • always write row first, then branch on auto-approve vs pending
+//   • auto-approved: execute immediately + mark approved
+//   • pending: wait for second approver (cannot be the requester)
+//   • approve is the only path that executes wallet money movement
+//   • reject never mutates wallet state
+//   • REFUND_AUTO_APPROVE_LIMIT_CENTS env, default 5000
+export const refundApprovals = pgTable("refund_approvals", {
+  id:                   serial("id").primaryKey(),
+  refundRequestId:      varchar("refund_request_id",       { length: 80  }).unique().notNull(),
+  requestedByUid:       varchar("requested_by_uid",        { length: 128 }).notNull(),
+  amountCents:          integer("amount_cents").notNull().default(0),
+  reason:               text("reason").notNull().default(""),
+  status:               varchar("status",                  { length: 20  }).notNull().default("pending"),
+  // pending | approved | rejected | auto_approved
+  reviewedByUid:        varchar("reviewed_by_uid",         { length: 128 }),
+  reviewedAt:           timestamp("reviewed_at",           { withTimezone: true }),
+  linkedDisputeCaseRef: varchar("linked_dispute_case_ref", { length: 40  }),
+  createdAt:            timestamp("created_at",            { withTimezone: true }).notNull().defaultNow(),
+  bookingId:            varchar("booking_id",              { length: 120 }),
+  bookingType:          varchar("booking_type",            { length: 30  }),
+  metadata:             jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
+}, (table) => [
+  index("idx_ra_status").on(table.status),
+  index("idx_ra_requester").on(table.requestedByUid),
+  index("idx_ra_dispute").on(table.linkedDisputeCaseRef),
+  index("idx_ra_created").on(table.createdAt),
+]);
+export type RefundApproval       = typeof refundApprovals.$inferSelect;
+export type InsertRefundApproval = typeof refundApprovals.$inferInsert;

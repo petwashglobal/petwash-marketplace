@@ -5811,4 +5811,320 @@ router.post('/admin/wallet/disputes/:caseRef/resolve', async (req: Request, res:
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 2.9D — Refund Approval Thresholds
+//
+// Rules (locked):
+//   • REFUND_AUTO_APPROVE_LIMIT_CENTS env, default 5000
+//   • Always write refund_approvals row first, then branch
+//   • auto_approved  → execute immediately (reuses fetchSupportBooking + refundToWallet)
+//   • pending        → no wallet mutation; wait for second approver
+//   • second approver cannot be the requester (403 self-approve guard)
+//   • approve is the ONLY path that executes money movement for pending rows
+//   • reject NEVER mutates wallet state
+// ─────────────────────────────────────────────────────────────────────────────
+
+const AUTO_APPROVE_LIMIT = () =>
+  Number(process.env.REFUND_AUTO_APPROVE_LIMIT_CENTS ?? 5000);
+
+// ── internal helper: execute support refund using existing fetchSupportBooking
+// Mirrors support/issue-refund handler logic. Called by both auto-approve and second-approve paths.
+async function executeApprovalRefund(opts: {
+  bookingId:    string;
+  bookingType:  'marketplace' | 'academy';
+  amountCents:  number;
+  reason:       string;
+  adminUid:     string;
+  approvalId:   string;
+  ip?:          string;
+}): Promise<{ ok: boolean; actionTaken: string; amountCents: number; txnId: string }> {
+  const { bookingId, bookingType, amountCents, reason, adminUid, approvalId, ip } = opts;
+
+  const found = await fetchSupportBooking(bookingId, bookingType);
+  if (!found) throw new Error(`Booking not found: ${bookingId} (${bookingType})`);
+  const { booking, sourceTable } = found;
+
+  const supportMeta = {
+    adminId: adminUid, reason,
+    source: 'refund_approval', approvalId, bookingType,
+  };
+
+  // Hold-active: degrade to release
+  if (booking.finance_state === 'hold_active') {
+    const holdCents = Number(booking.wallet_hold_cents);
+    if (holdCents <= 0) throw new Error('No hold amount to release');
+
+    const { walletService } = await import('../services/WalletService');
+    const result = await walletService.releaseBookingHold({
+      userId:               booking.user_id,
+      amountCents:          holdCents,
+      bookingId:            booking.booking_id,
+      divisionCode:         booking.division_code ?? 'general',
+      ipAddress:            ip,
+      idempotencyKeySuffix: `approval:${approvalId}:release`,
+      metadata:             { ...supportMeta, actorSource: 'admin_release', degradedToRelease: true },
+    });
+
+    if (sourceTable === 'booking_requests') {
+      await db.execute(sql`
+        UPDATE booking_requests
+        SET finance_state='released', wallet_release_key=${result.txnId}, updated_at=NOW()
+        WHERE request_id=${booking.booking_id}
+      `);
+    } else {
+      await db.execute(sql`
+        UPDATE trainer_bookings
+        SET finance_state='released', wallet_release_key=${result.txnId}, updated_at=NOW()
+        WHERE booking_id=${booking.booking_id}
+      `);
+    }
+    return { ok: true, actionTaken: 'release', amountCents: holdCents, txnId: result.txnId };
+  }
+
+  // Standard refund path: finance_state must be debited
+  if (booking.finance_state !== 'debited') {
+    throw new Error(`Cannot refund: finance_state is '${booking.finance_state}'. Expected 'debited' or 'hold_active'.`);
+  }
+
+  const debitedCents    = Number(booking.wallet_debited_cents);
+  const alreadyRefunded = Number(booking.wallet_refunded_cents ?? 0);
+  const maxRefundable   = debitedCents - alreadyRefunded;
+  if (maxRefundable <= 0) throw new Error('Nothing left to refund');
+
+  const refundCents = amountCents > 0 ? Math.min(amountCents, maxRefundable) : maxRefundable;
+  const idempotencyKey = `wallet:approval:refund:${bookingType}:${booking.booking_id}:${approvalId}`;
+  const { refundToWallet } = await import('../services/WalletLedger');
+  const result = await refundToWallet({
+    userId:         booking.user_id,
+    amountCents:    refundCents,
+    divisionCode:   booking.division_code ?? 'general',
+    sourceType:     'booking',
+    sourceId:       booking.booking_id,
+    idempotencyKey,
+    reason:         reason ?? 'approval_refund',
+    ipAddress:      ip,
+    metadata:       { ...supportMeta, actorSource: 'admin_refund' },
+  });
+
+  const newRefunded = alreadyRefunded + refundCents;
+  const newState    = newRefunded >= debitedCents ? 'refunded' : 'debited';
+
+  if (sourceTable === 'booking_requests') {
+    await db.execute(sql`
+      UPDATE booking_requests
+      SET finance_state=${newState}, wallet_refunded_cents=${newRefunded},
+          wallet_refund_key=${result.txnId}, updated_at=NOW()
+      WHERE request_id=${booking.booking_id}
+    `);
+  } else {
+    await db.execute(sql`
+      UPDATE trainer_bookings
+      SET finance_state=${newState}, wallet_refunded_cents=${newRefunded},
+          wallet_refund_key=${result.txnId}, updated_at=NOW()
+      WHERE booking_id=${booking.booking_id}
+    `);
+  }
+
+  return { ok: true, actionTaken: 'refund', amountCents: refundCents, txnId: result.txnId };
+}
+
+// POST /api/prestige-pass/admin/wallet/refund-requests
+// Entry point for all support refunds. Routes through approval threshold.
+router.post('/admin/wallet/refund-requests', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const requestedByUid = session.user.uid as string;
+
+    const schema = z.object({
+      bookingId:            z.string().min(1),
+      bookingType:          z.enum(['marketplace', 'academy']),
+      amountCents:          z.number().int().min(0),
+      reason:               z.string().min(5),
+      linkedDisputeCaseRef: z.string().optional(),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Validation failed', issues: parsed.error.issues });
+    const { bookingId, bookingType, amountCents, reason, linkedDisputeCaseRef } = parsed.data;
+
+    const { nanoid } = await import('nanoid');
+    const refundRequestId = `RRA-${nanoid(12)}`;
+    const limit           = AUTO_APPROVE_LIMIT();
+    const autoApprove     = amountCents <= limit;
+
+    // ── 1. Always write the row first ─────────────────────────────────────────
+    await db.execute(sql`
+      INSERT INTO refund_approvals
+        (refund_request_id, requested_by_uid, amount_cents, reason, status,
+         booking_id, booking_type, linked_dispute_case_ref, created_at)
+      VALUES (
+        ${refundRequestId}, ${requestedByUid}, ${amountCents}, ${reason},
+        ${autoApprove ? 'auto_approved' : 'pending'},
+        ${bookingId}, ${bookingType},
+        ${linkedDisputeCaseRef ?? null},
+        NOW()
+      )
+    `);
+
+    // ── 2. Branch: auto-approve executes immediately ──────────────────────────
+    if (autoApprove) {
+      try {
+        const refundResult = await executeApprovalRefund({
+          bookingId, bookingType, amountCents, reason,
+          adminUid: requestedByUid, approvalId: refundRequestId, ip: req.ip,
+        });
+
+        await db.execute(sql`
+          UPDATE refund_approvals
+          SET status='auto_approved', reviewed_by_uid=${requestedByUid}, reviewed_at=NOW()
+          WHERE refund_request_id=${refundRequestId}
+        `);
+
+        logger.info('[RefundApproval][AutoApproved]', { refundRequestId, amountCents, bookingId, actionTaken: refundResult.actionTaken });
+        return res.status(201).json({
+          ok: true,
+          autoApproved: true,
+          status:       'auto_approved',
+          approvalId:   refundRequestId,
+          limitCents:   limit,
+          refund:       refundResult,
+        });
+      } catch (execErr: any) {
+        await db.execute(sql`
+          UPDATE refund_approvals SET status='failed', reviewed_at=NOW()
+          WHERE refund_request_id=${refundRequestId}
+        `);
+        logger.error('[RefundApproval][AutoApprove][ExecFail]', { refundRequestId, error: execErr.message });
+        return res.status(502).json({ error: 'Auto-approve execution failed', detail: execErr.message, approvalId: refundRequestId });
+      }
+    }
+
+    // ── 3. Over threshold — leave pending ────────────────────────────────────
+    logger.info('[RefundApproval][Pending]', { refundRequestId, amountCents, limit, bookingId });
+    return res.status(201).json({
+      ok:           true,
+      autoApproved: false,
+      status:       'pending',
+      approvalId:   refundRequestId,
+      limitCents:   limit,
+      message:      `Amount ₪${(amountCents / 100).toFixed(2)} exceeds auto-approve threshold ₪${(limit / 100).toFixed(2)}. Pending second approver.`,
+    });
+  } catch (err: any) {
+    logger.error('[RefundApproval][Create] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to create refund request', detail: err.message });
+  }
+});
+
+// GET /api/prestige-pass/admin/wallet/refund-requests/pending
+// Returns all pending rows for the approval queue UI
+router.get('/admin/wallet/refund-requests/pending', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const rows: any = await db.execute(sql`
+      SELECT * FROM refund_approvals
+      WHERE status = 'pending'
+      ORDER BY created_at ASC
+    `);
+    const list = rows?.rows ?? rows ?? [];
+
+    return res.json({ ok: true, pending: list, count: list.length });
+  } catch (err: any) {
+    logger.error('[RefundApproval][Pending] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch pending approvals', detail: err.message });
+  }
+});
+
+// POST /api/prestige-pass/admin/wallet/refund-requests/:id/approve
+// Second-approver path. Executes money movement. Cannot be the original requester.
+router.post('/admin/wallet/refund-requests/:id/approve', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const reviewerUid     = session.user.uid as string;
+    const refundRequestId = req.params.id;
+
+    const existing: any = await db.execute(sql`
+      SELECT * FROM refund_approvals WHERE refund_request_id = ${refundRequestId} LIMIT 1
+    `);
+    const row = (existing?.rows ?? existing ?? [])[0];
+    if (!row) return res.status(404).json({ error: 'Refund request not found', refundRequestId });
+    if (row.status !== 'pending') {
+      return res.status(400).json({ error: `Cannot approve a ${row.status} request`, refundRequestId });
+    }
+
+    // Self-approve guard (locked rule)
+    if (row.requested_by_uid === reviewerUid) {
+      return res.status(403).json({ error: 'Second approver cannot be the original requester', refundRequestId });
+    }
+
+    // Execute wallet refund using the same internal helper
+    let refundResult: any;
+    try {
+      refundResult = await executeApprovalRefund({
+        bookingId:   row.booking_id   ?? '',
+        bookingType: (row.booking_type ?? 'marketplace') as 'marketplace' | 'academy',
+        amountCents: row.amount_cents,
+        reason:      row.reason,
+        adminUid:    reviewerUid,
+        approvalId:  refundRequestId,
+        ip:          req.ip,
+      });
+    } catch (execErr: any) {
+      logger.error('[RefundApproval][Approve][ExecFail]', { refundRequestId, error: execErr.message });
+      return res.status(502).json({ error: 'Refund execution failed', detail: execErr.message });
+    }
+
+    await db.execute(sql`
+      UPDATE refund_approvals
+      SET status='approved', reviewed_by_uid=${reviewerUid}, reviewed_at=NOW()
+      WHERE refund_request_id=${refundRequestId}
+    `);
+
+    logger.info('[RefundApproval][Approved]', { refundRequestId, reviewerUid, amountCents: row.amount_cents });
+    return res.json({ ok: true, status: 'approved', refundRequestId, refund: refundResult });
+  } catch (err: any) {
+    logger.error('[RefundApproval][Approve] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to approve refund request', detail: err.message });
+  }
+});
+
+// POST /api/prestige-pass/admin/wallet/refund-requests/:id/reject
+// Reject a pending refund. NEVER mutates wallet state.
+router.post('/admin/wallet/refund-requests/:id/reject', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const reviewerUid     = session.user.uid as string;
+    const refundRequestId = req.params.id;
+
+    const schema = z.object({ rejectReason: z.string().min(1).optional() });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Validation failed', issues: parsed.error.issues });
+
+    const existing: any = await db.execute(sql`
+      SELECT * FROM refund_approvals WHERE refund_request_id = ${refundRequestId} LIMIT 1
+    `);
+    const row = (existing?.rows ?? existing ?? [])[0];
+    if (!row) return res.status(404).json({ error: 'Refund request not found', refundRequestId });
+    if (row.status !== 'pending') {
+      return res.status(400).json({ error: `Cannot reject a ${row.status} request`, refundRequestId });
+    }
+
+    // Reject — ZERO wallet mutations
+    await db.execute(sql`
+      UPDATE refund_approvals
+      SET status='rejected', reviewed_by_uid=${reviewerUid}, reviewed_at=NOW()
+      WHERE refund_request_id=${refundRequestId}
+    `);
+
+    logger.info('[RefundApproval][Rejected]', { refundRequestId, reviewerUid });
+    return res.json({ ok: true, status: 'rejected', refundRequestId });
+  } catch (err: any) {
+    logger.error('[RefundApproval][Reject] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to reject refund request', detail: err.message });
+  }
+});
+
 export default router;

@@ -106,10 +106,11 @@ const releaseHoldSchema = z.object({
   reason:      z.string().min(5, "Reason must be at least 5 characters"),
 });
 const issueRefundSchema = z.object({
-  bookingId:   z.string().min(1, "Booking ID required"),
-  bookingType: z.enum(["marketplace", "academy"], { required_error: "Select booking type" }),
-  amountIls:   z.coerce.number().min(0, "Amount must be ≥ 0"),
-  reason:      z.string().min(5, "Reason must be at least 5 characters"),
+  bookingId:            z.string().min(1, "Booking ID required"),
+  bookingType:          z.enum(["marketplace", "academy"], { required_error: "Select booking type" }),
+  amountIls:            z.coerce.number().min(0, "Amount must be ≥ 0"),
+  reason:               z.string().min(5, "Reason must be at least 5 characters"),
+  linkedDisputeCaseRef: z.string().optional(),
 });
 const supportCreditSchema = z.object({
   userId:    z.string().min(1, "User ID required"),
@@ -454,7 +455,7 @@ export default function AdminWalletDashboard() {
   });
   const issueRefundForm = useForm<IssueRefundVars>({
     resolver: zodResolver(issueRefundSchema),
-    defaultValues: { bookingId: "", bookingType: "marketplace", amountIls: 0, reason: "" },
+    defaultValues: { bookingId: "", bookingType: "marketplace", amountIls: 0, reason: "", linkedDisputeCaseRef: "" },
   });
   const supportCreditForm = useForm<SupportCreditVars>({
     resolver: zodResolver(supportCreditSchema),
@@ -488,25 +489,61 @@ export default function AdminWalletDashboard() {
     },
   });
 
+  // ── 2.9D: Pending approvals query (polls every 20s to keep badge fresh) ──────
+  const { data: pendingApprovalsData, refetch: refetchPendingApprovals } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/refund-requests/pending"],
+    queryFn:  () => fetch("/api/prestige-pass/admin/wallet/refund-requests/pending", { credentials: "include" }).then(r => r.json()),
+    refetchInterval: 20000,
+  });
+  const pendingCount = pendingApprovalsData?.count ?? 0;
+
+  const { mutate: approveRefund, isPending: approvePending } = useMutation<any, any, string>({
+    mutationFn: (approvalId) => apiRequest("POST", `/api/prestige-pass/admin/wallet/refund-requests/${approvalId}/approve`, {}),
+    onSuccess: (data) => {
+      toast({ title: `Refund approved — ${data.refund?.actionTaken ?? ""} ₪${((data.refund?.amountCents ?? 0) / 100).toFixed(2)}` });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/refund-requests/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/booking-audit"] });
+      queryClient.invalidateQueries({ queryKey: ["wallet-action-history"] });
+    },
+    onError: (err: any) => toast({ title: err?.error ?? "Approve failed", variant: "destructive" }),
+  });
+
+  const { mutate: rejectRefund, isPending: rejectPending } = useMutation<any, any, string>({
+    mutationFn: (approvalId) => apiRequest("POST", `/api/prestige-pass/admin/wallet/refund-requests/${approvalId}/reject`, {}),
+    onSuccess: () => {
+      toast({ title: "Refund request rejected — wallet untouched" });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/refund-requests/pending"] });
+    },
+    onError: (err: any) => toast({ title: err?.error ?? "Reject failed", variant: "destructive" }),
+  });
+
+  // 2.9D: Route support refund through approval threshold endpoint
   const { mutate: supportRefund, isPending: supportRefundPending } = useMutation<any, any, IssueRefundVars>({
-    mutationFn: (vars) => apiRequest("POST", "/api/prestige-pass/admin/wallet/support/issue-refund", {
-      bookingId: vars.bookingId, bookingType: vars.bookingType,
-      amountCents: vars.amountIls > 0 ? Math.round(vars.amountIls * 100) : 0,
-      reason: vars.reason,
+    mutationFn: (vars) => apiRequest("POST", "/api/prestige-pass/admin/wallet/refund-requests", {
+      bookingId:            vars.bookingId,
+      bookingType:          vars.bookingType,
+      amountCents:          vars.amountIls > 0 ? Math.round(vars.amountIls * 100) : 0,
+      reason:               vars.reason,
+      linkedDisputeCaseRef: vars.linkedDisputeCaseRef || undefined,
     }),
     onSuccess: (data) => {
       setIssueRefundResult(data);
       setIssueRefundConfirm(null);
       issueRefundForm.reset();
-      const label = data.actionTaken === "release" ? "Hold released (degraded)" : "Refund issued";
-      toast({ title: `${label} — ₪${((data.amountCents ?? 0) / 100).toFixed(2)}` });
+      if (data.autoApproved) {
+        const label = data.refund?.actionTaken === "release" ? "Hold released (degraded)" : "Refund auto-approved";
+        toast({ title: `✓ ${label} — ₪${((data.refund?.amountCents ?? 0) / 100).toFixed(2)}` });
+      } else {
+        toast({ title: `⏳ Refund pending second approval — ID: ${data.approvalId}` });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/booking-audit"] });
       queryClient.invalidateQueries({ queryKey: ["wallet-action-history"] });
       queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/anomalies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/refund-requests/pending"] });
     },
     onError: (err) => {
       setIssueRefundConfirm(null);
-      toast({ title: err?.detail ?? err?.error ?? "Refund failed", variant: "destructive" });
+      toast({ title: err?.detail ?? err?.error ?? "Refund request failed", variant: "destructive" });
     },
   });
 
@@ -741,6 +778,15 @@ export default function AdminWalletDashboard() {
             <TabsTrigger value="export">
               <Download className="w-4 h-4 mr-2" />
               Export CSV
+            </TabsTrigger>
+            <TabsTrigger value="approvals" className="relative">
+              <ShieldCheck className="w-4 h-4 mr-2" />
+              Approvals
+              {pendingCount > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold bg-rose-600 text-white rounded-full">
+                  {pendingCount > 9 ? "9+" : pendingCount}
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="support">
               <LifeBuoy className="w-4 h-4 mr-2" />
@@ -2083,7 +2129,118 @@ export default function AdminWalletDashboard() {
 
           </TabsContent>
 
-          {/* ── SUPPORT ACTIONS ── */}
+          {/* ── APPROVALS (2.9D) ── */}
+          <TabsContent value="approvals" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-blue-700" />
+                    Refund Approval Queue
+                    {pendingCount > 0 && (
+                      <span className="ml-1 px-2 py-0.5 text-[10px] font-bold bg-rose-600 text-white rounded-full">
+                        {pendingCount} pending
+                      </span>
+                    )}
+                  </CardTitle>
+                  <button className="text-xs text-blue-600 hover:underline" onClick={() => refetchPendingApprovals()}>
+                    Refresh
+                  </button>
+                </div>
+                <p className="text-sm text-gray-500">
+                  Refunds above the auto-approve threshold (₪{((Number(process.env.REFUND_AUTO_APPROVE_LIMIT_CENTS ?? 50)) / 100).toFixed(0) ?? "50"} default ₪50) require a second admin approver.
+                  The approver cannot be the original requester.
+                </p>
+              </CardHeader>
+              <CardContent>
+                {/* Info bar */}
+                <div className="mb-4 flex flex-wrap gap-3 text-xs text-gray-500">
+                  <div className="px-2 py-1 bg-blue-50 border border-blue-100 rounded">
+                    <span className="font-semibold text-blue-800">Auto-approve threshold:</span> ₪50.00 (env: REFUND_AUTO_APPROVE_LIMIT_CENTS)
+                  </div>
+                  <div className="px-2 py-1 bg-amber-50 border border-amber-100 rounded">
+                    <span className="font-semibold text-amber-700">Self-approve:</span> Blocked at server level
+                  </div>
+                  <div className="px-2 py-1 bg-rose-50 border border-rose-100 rounded">
+                    <span className="font-semibold text-rose-700">Reject:</span> Zero wallet mutations
+                  </div>
+                </div>
+
+                {!pendingApprovalsData ? (
+                  <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-14 bg-gray-100 animate-pulse rounded" />)}</div>
+                ) : pendingCount === 0 ? (
+                  <div className="border-2 border-dashed border-gray-200 rounded-lg p-10 text-center">
+                    <ShieldCheck className="w-8 h-8 mx-auto mb-2 text-gray-200" />
+                    <p className="text-sm text-gray-400 font-medium">No pending refund approvals</p>
+                    <p className="text-xs text-gray-400 mt-1">All requests are either auto-approved or already reviewed.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {(pendingApprovalsData.pending as any[]).map((row: any) => (
+                      <div key={row.refund_request_id} className="border border-amber-200 bg-amber-50 rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <p className="text-xs font-mono font-bold text-amber-800">{row.refund_request_id}</p>
+                            <p className="text-xs text-amber-700 mt-0.5">
+                              Requested by <span className="font-mono">{row.requested_by_uid?.slice(0, 12)}…</span>
+                              {" · "}{new Date(row.created_at).toLocaleString("he-IL")}
+                            </p>
+                          </div>
+                          <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-200 text-amber-900 rounded uppercase">
+                            pending
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                          <div>
+                            <p className="text-[10px] text-gray-400 uppercase">Amount</p>
+                            <p className="text-sm font-bold text-gray-900">₪{(row.amount_cents / 100).toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-400 uppercase">Booking</p>
+                            <p className="text-xs font-mono text-gray-700 truncate" title={row.booking_id}>{row.booking_id ?? "—"}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-400 uppercase">Type</p>
+                            <p className="text-xs text-gray-700">{row.booking_type ?? "—"}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-400 uppercase">Dispute Ref</p>
+                            <p className="text-xs font-mono text-gray-700">{row.linked_dispute_case_ref ?? "—"}</p>
+                          </div>
+                        </div>
+
+                        <div className="mb-3">
+                          <p className="text-[10px] text-gray-400 uppercase mb-0.5">Reason</p>
+                          <p className="text-xs text-gray-700 bg-white border border-amber-100 rounded px-2 py-1.5">{row.reason}</p>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            className="flex-1 px-3 py-2 text-xs font-semibold bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-1"
+                            disabled={approvePending || rejectPending}
+                            onClick={() => approveRefund(row.refund_request_id)}
+                          >
+                            {approvePending ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                            Approve &amp; Execute Refund
+                          </button>
+                          <button
+                            className="px-3 py-2 text-xs font-semibold border border-rose-300 text-rose-700 rounded hover:bg-rose-50 disabled:opacity-50 flex items-center justify-center gap-1"
+                            disabled={approvePending || rejectPending}
+                            onClick={() => rejectRefund(row.refund_request_id)}
+                          >
+                            {rejectPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="support" className="mt-4 space-y-4">
 
             {/* Card 1 — Force Release Hold */}
@@ -2239,6 +2396,16 @@ export default function AdminWalletDashboard() {
                       <p className="text-xs text-red-500 mt-0.5">{issueRefundForm.formState.errors.reason.message}</p>
                     )}
                   </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">
+                      Linked Dispute Ref <span className="font-normal text-gray-400">(optional — DSP-…)</span>
+                    </label>
+                    <Input
+                      placeholder="DSP-…"
+                      {...issueRefundForm.register("linkedDisputeCaseRef")}
+                      className="max-w-xs text-sm font-mono"
+                    />
+                  </div>
                   <Button
                     type="submit"
                     size="sm"
@@ -2250,20 +2417,34 @@ export default function AdminWalletDashboard() {
                   </Button>
                 </form>
                 {issueRefundResult && (
-                  <div className="mt-3 p-3 rounded-lg border border-blue-200 bg-blue-50 text-sm space-y-1">
-                    <p className="font-medium text-blue-800 flex items-center gap-1">
-                      <CheckCircle2 className="w-4 h-4" />
-                      {issueRefundResult.actionTaken === "release" ? "Degraded to Release" : "Refund Issued"}
-                    </p>
-                    {issueRefundResult.actionTaken === "release" && (
-                      <p className="text-xs text-amber-700 font-medium">ℹ Booking was hold_active — release performed instead of refund</p>
+                  <div className={`mt-3 p-3 rounded-lg text-sm space-y-1 ${
+                    issueRefundResult.autoApproved
+                      ? "border border-emerald-200 bg-emerald-50"
+                      : "border border-amber-200 bg-amber-50"
+                  }`}>
+                    {issueRefundResult.autoApproved ? (
+                      <>
+                        <p className="font-medium text-emerald-800 flex items-center gap-1">
+                          <CheckCircle2 className="w-4 h-4" />
+                          {issueRefundResult.refund?.actionTaken === "release" ? "Degraded to Hold Release" : "Refund Auto-Approved & Executed"}
+                        </p>
+                        <p className="text-xs text-emerald-700">Amount: <strong>{centsToILS(issueRefundResult.refund?.amountCents ?? 0)}</strong></p>
+                        <p className="text-xs font-mono text-emerald-600">TxnID: {issueRefundResult.refund?.txnId}</p>
+                        <p className="text-xs text-emerald-600">Approval ID: <span className="font-mono">{issueRefundResult.approvalId}</span></p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-medium text-amber-800 flex items-center gap-1">
+                          <AlertTriangle className="w-4 h-4" />
+                          Refund Pending Second Approval
+                        </p>
+                        <p className="text-xs text-amber-700">{issueRefundResult.message}</p>
+                        <p className="text-xs text-amber-700">Amount: <strong>{centsToILS(issueRefundResult.amountCents ?? (issueRefundResult.limitCents ?? 0))}</strong></p>
+                        <p className="text-xs font-mono text-amber-800">Approval ID: {issueRefundResult.approvalId}</p>
+                        <p className="text-xs text-amber-600">→ Go to the <strong>Approvals</strong> tab to approve or reject this request.</p>
+                      </>
                     )}
-                    <p className="text-xs text-blue-700">Amount: <strong>{centsToILS(issueRefundResult.amountCents ?? 0)}</strong></p>
-                    <p className="text-xs font-mono text-blue-600">TxnID: {issueRefundResult.txnId}</p>
-                    {issueRefundResult.walletSnapshot && (
-                      <p className="text-xs text-blue-700">New cash balance: <strong>{centsToILS(issueRefundResult.walletSnapshot.cashCents)}</strong></p>
-                    )}
-                    <button className="text-xs underline text-blue-600" onClick={() => setIssueRefundResult(null)}>Clear</button>
+                    <button className="text-xs underline text-gray-500 mt-1 block" onClick={() => setIssueRefundResult(null)}>Clear</button>
                   </div>
                 )}
               </CardContent>
