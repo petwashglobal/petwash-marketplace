@@ -15,9 +15,9 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import {
   Check, Calendar, Clock, MapPin, Star, Shield, CreditCard,
   Phone, Mail, Download, Share2, ArrowLeft, CheckCircle2, Loader2,
-  RefreshCw, Search, XCircle, AlertTriangle, MessageCircle, Coins,
+  RefreshCw, Search, XCircle, AlertTriangle, MessageCircle,
 } from 'lucide-react';
-import { WalletLifecycleMessage } from '@/components/wallet/WalletLifecycleMessage';
+import { BookingFinancialSummary } from '@/components/wallet/BookingFinancialSummary';
 
 const SERVICE_TO_ROUTE: Record<string, string> = {
   k9000_wash:  '/k9000/booking',
@@ -461,53 +461,16 @@ export default function BookingConfirmation() {
                   <span className="font-semibold">{booking.petCount}</span>
                 </div>
 
-                {booking.subtotalCents != null && (
-                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                    <span className="text-gray-500">{t.subtotal}</span>
-                    <span className="font-semibold">₪{(booking.subtotalCents / 100).toFixed(2)}</span>
-                  </div>
-                )}
-
-                {booking.serviceFeeCents != null && (
-                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                    <span className="text-gray-500">{t.fee}</span>
-                    <span className="font-semibold">₪{(booking.serviceFeeCents / 100).toFixed(2)}</span>
-                  </div>
-                )}
-
-                <div className="flex justify-between items-center py-3 border-b-2 border-gray-200">
-                  <span className="text-lg font-bold">{t.total}</span>
-                  <span className="text-lg font-bold">₪{(booking.totalCents / 100).toFixed(2)}</span>
-                </div>
-
-                {/* Loyalty credits redeemed row */}
-                {booking.loyaltyRedeemedCents > 0 && (
-                  <div className="flex justify-between items-center py-2.5 border-b border-[#C5A55A]/20 bg-[#C5A55A]/5 rounded-xl px-2 mt-1">
-                    <span className="flex items-center gap-1.5 text-sm text-[#7A5C1E] font-medium">
-                      <Coins className="w-4 h-4 text-[#C5A55A]" />
-                      {(t as any).loyaltyRedeemed}
-                    </span>
-                    <span className="text-sm font-bold text-[#7A5C1E]">
-                      -₪{(booking.loyaltyRedeemedCents / 100).toFixed(2)}
-                    </span>
-                  </div>
-                )}
-
-                {/* Wallet lifecycle status */}
-                {booking.financeState && booking.financeState !== 'none' && (
-                  <div className="pt-3">
-                    <WalletLifecycleMessage
-                      financeState={booking.financeState}
-                      amountCents={
-                        booking.financeState === 'debited'
-                          ? (booking.walletDebitedCents ?? 0)
-                          : booking.financeState === 'refunded'
-                          ? (booking.walletRefundedCents ?? 0)
-                          : (booking.walletHoldCents ?? 0)
-                      }
-                    />
-                  </div>
-                )}
+                <BookingFinancialSummary
+                  subtotalCents={booking.subtotalCents ?? undefined}
+                  serviceFeeCents={booking.serviceFeeCents ?? undefined}
+                  totalCents={booking.totalCents}
+                  loyaltyRedeemedCents={booking.loyaltyRedeemedCents ?? 0}
+                  financeState={booking.financeState}
+                  walletHoldCents={booking.walletHoldCents ?? 0}
+                  walletDebitedCents={booking.walletDebitedCents ?? 0}
+                  walletRefundedCents={booking.walletRefundedCents ?? 0}
+                />
 
                 <div className="flex justify-between items-center py-3">
                   <span className="text-gray-500">{t.status}</span>

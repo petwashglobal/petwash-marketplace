@@ -1,89 +1,74 @@
 /**
  * WalletLifecycleMessage — shows the current wallet state for a booking.
  *
- * Used after a booking is created to communicate the lifecycle to the user.
- * Bilingual: Hebrew (default) / English.
- *
- * Usage:
- *   <WalletLifecycleMessage financeState="hold_active" amountCents={5000} />
+ * Phase 2.4 canonical wording (exact strings, bilingual):
+ *   reserved  → ₪X נשמרו מהארנק שלך   / ₪X reserved from your wallet
+ *   charged   → ₪X חויבו מהארנק שלך   / ₪X charged from your wallet
+ *   released  → ₪X שוחררו חזרה לארנק שלך / ₪X released back to your wallet
+ *   refunded  → ₪X הוחזרו לארנק שלך   / ₪X refunded to your wallet
  */
 
-import { CheckCircle2, Clock, RefreshCw, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, RefreshCw } from "lucide-react";
 import { useLanguage } from "@/lib/languageStore";
 
-const ils = (cents: number) =>
+export const fmtIls = (cents: number) =>
   (cents / 100).toLocaleString("he-IL", {
     style: "currency",
     currency: "ILS",
     minimumFractionDigits: 2,
   });
 
+export type FinanceState = "none" | "hold_active" | "debited" | "released" | "refunded" | string;
+
 interface Props {
-  financeState: "none" | "hold_active" | "debited" | "released" | "refunded" | string;
+  financeState: FinanceState;
   amountCents?: number;
   className?: string;
 }
 
-interface MessageConfig {
+interface Config {
   icon: typeof Clock;
   color: string;
   bg: string;
   border: string;
-  textHe: string;
-  textEn: string;
+  textHe: (amt: string | null) => string;
+  textEn: (amt: string | null) => string;
 }
 
-function getConfig(state: string, amountCents: number): MessageConfig {
-  const amt = amountCents > 0 ? ils(amountCents) : null;
-
-  switch (state) {
-    case "hold_active":
-      return {
-        icon: Clock,
-        color: "text-amber-700",
-        bg: "bg-amber-50",
-        border: "border-amber-200",
-        textHe: amt ? `${amt} הוקפאו מהארנק — ממתין לאישור ספק.` : "יתרת ארנק הוקפאה — ממתין לאישור ספק.",
-        textEn: amt ? `${amt} reserved from your wallet — pending provider confirmation.` : "Wallet balance reserved — pending provider confirmation.",
-      };
-    case "debited":
-      return {
-        icon: CheckCircle2,
-        color: "text-blue-700",
-        bg: "bg-blue-50",
-        border: "border-blue-200",
-        textHe: amt ? `${amt} חויבו מהארנק.` : "הארנק חויב.",
-        textEn: amt ? `${amt} charged from your wallet.` : "Wallet charged.",
-      };
-    case "released":
-      return {
-        icon: RefreshCw,
-        color: "text-green-700",
-        bg: "bg-green-50",
-        border: "border-green-200",
-        textHe: amt ? `${amt} שוחררו בחזרה לארנק.` : "ההקפאה שוחררה — היתרה שוחזרה.",
-        textEn: amt ? `${amt} wallet reservation released — balance restored.` : "Wallet reservation released.",
-      };
-    case "refunded":
-      return {
-        icon: RefreshCw,
-        color: "text-purple-700",
-        bg: "bg-purple-50",
-        border: "border-purple-200",
-        textHe: amt ? `${amt} הוחזרו לארנק.` : "הסכום הוחזר לארנק.",
-        textEn: amt ? `${amt} refunded to your wallet.` : "Amount refunded to your wallet.",
-      };
-    default:
-      return {
-        icon: XCircle,
-        color: "text-gray-500",
-        bg: "bg-gray-50",
-        border: "border-gray-100",
-        textHe: "אין פעילות ארנק להזמנה זו.",
-        textEn: "No wallet activity for this booking.",
-      };
-  }
-}
+const CONFIGS: Record<string, Config> = {
+  hold_active: {
+    icon: Clock,
+    color: "text-amber-700",
+    bg: "bg-amber-50",
+    border: "border-amber-200",
+    textHe: (amt) => amt ? `${amt} נשמרו מהארנק שלך` : "יתרת ארנק שמורה — ממתין לאישור ספק",
+    textEn: (amt) => amt ? `${amt} reserved from your wallet` : "Wallet balance reserved — pending provider confirmation",
+  },
+  debited: {
+    icon: CheckCircle2,
+    color: "text-blue-700",
+    bg: "bg-blue-50",
+    border: "border-blue-200",
+    textHe: (amt) => amt ? `${amt} חויבו מהארנק שלך` : "הארנק חויב",
+    textEn: (amt) => amt ? `${amt} charged from your wallet` : "Wallet charged",
+  },
+  released: {
+    icon: RefreshCw,
+    color: "text-green-700",
+    bg: "bg-green-50",
+    border: "border-green-200",
+    textHe: (amt) => amt ? `${amt} שוחררו חזרה לארנק שלך` : "ההקפאה שוחררה — היתרה שוחזרה",
+    textEn: (amt) => amt ? `${amt} released back to your wallet` : "Wallet reservation released",
+  },
+  refunded: {
+    icon: RefreshCw,
+    color: "text-purple-700",
+    bg: "bg-purple-50",
+    border: "border-purple-200",
+    textHe: (amt) => amt ? `${amt} הוחזרו לארנק שלך` : "הסכום הוחזר לארנק",
+    textEn: (amt) => amt ? `${amt} refunded to your wallet` : "Amount refunded to your wallet",
+  },
+};
 
 export function WalletLifecycleMessage({ financeState, amountCents = 0, className = "" }: Props) {
   const { language } = useLanguage();
@@ -91,9 +76,12 @@ export function WalletLifecycleMessage({ financeState, amountCents = 0, classNam
 
   if (!financeState || financeState === "none") return null;
 
-  const cfg = getConfig(financeState, amountCents);
+  const cfg = CONFIGS[financeState];
+  if (!cfg) return null;
+
+  const amt = amountCents > 0 ? fmtIls(amountCents) : null;
   const Icon = cfg.icon;
-  const text = isHebrew ? cfg.textHe : cfg.textEn;
+  const text = isHebrew ? cfg.textHe(amt) : cfg.textEn(amt);
 
   return (
     <div
@@ -104,4 +92,17 @@ export function WalletLifecycleMessage({ financeState, amountCents = 0, classNam
       <p className={`text-sm ${cfg.color}`}>{text}</p>
     </div>
   );
+}
+
+/** Resolve the correct amountCents for a given financeState */
+export function resolveWalletAmountCents(opts: {
+  financeState?: string;
+  walletHoldCents?: number;
+  walletDebitedCents?: number;
+  walletRefundedCents?: number;
+}): number {
+  const { financeState, walletHoldCents = 0, walletDebitedCents = 0, walletRefundedCents = 0 } = opts;
+  if (financeState === "debited") return walletDebitedCents;
+  if (financeState === "refunded") return walletRefundedCents;
+  return walletHoldCents;
 }

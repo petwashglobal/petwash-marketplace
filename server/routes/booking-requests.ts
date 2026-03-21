@@ -756,11 +756,11 @@ router.post('/:requestId/respond', async (req, res) => {
           ? `✅ ${providerName} אישר את הבקשה!`
           : `${providerName} אינו זמין בתאריכים אלה`,
         body: isAccept
-          ? `ההזמנה שלך אושרה — שוחח עם ${providerName} עכשיו והכן את הפגישה.`
-          : `אל דאגה — יש לנו ספקים נוספים שיוכלו לעזור. חפש עכשיו.`,
+          ? `ההזמנה שלך אושרה — שוחח עם ${providerName} עכשיו והכן את הפגישה.${holdCents > 0 ? ` ₪${(holdCents / 100).toFixed(2)} חויבו מהארנק שלך.` : ''}`
+          : `אל דאגה — יש לנו ספקים נוספים שיוכלו לעזור. חפש עכשיו.${holdCents > 0 ? ` ₪${(holdCents / 100).toFixed(2)} שוחררו חזרה לארנק שלך.` : ''}`,
         bodyHe: isAccept
-          ? `ההזמנה שלך אושרה — שוחח עם ${providerName} עכשיו והכן את הפגישה.`
-          : `אל דאגה — יש לנו ספקים נוספים שיוכלו לעזור. חפש עכשיו.`,
+          ? `ההזמנה שלך אושרה — שוחח עם ${providerName} עכשיו והכן את הפגישה.${holdCents > 0 ? ` ₪${(holdCents / 100).toFixed(2)} חויבו מהארנק שלך.` : ''}`
+          : `אל דאגה — יש לנו ספקים נוספים שיוכלו לעזור. חפש עכשיו.${holdCents > 0 ? ` ₪${(holdCents / 100).toFixed(2)} שוחררו חזרה לארנק שלך.` : ''}`,
         actionUrl: `/booking/confirmation/${requestId}`,
         actionType: isAccept ? 'open_booking_chat' : 'open_booking',
         channels: ['in_app'],
@@ -1716,8 +1716,14 @@ router.post('/:requestId/cancel', async (req, res) => {
       const titleText = notifyingCustomer
         ? `🚫 ${providerName} ביטל את ההזמנה`
         : `🚫 הלקוח ביטל את ההזמנה`;
+      const walletReturnLine =
+        financeState === 'hold_active' && holdCents > 0
+          ? ` ₪${(holdCents / 100).toFixed(2)} שוחררו חזרה לארנק שלך.`
+          : financeState === 'debited' && debitedCents > 0
+          ? ` ₪${(debitedCents / 100).toFixed(2)} הוחזרו לארנק שלך.`
+          : '';
       const bodyText = notifyingCustomer
-        ? `מצאנו ספקים דומים באזורך — לחץ לחיפוש.${reason ? ` (${reason})` : ''}`
+        ? `מצאנו ספקים דומים באזורך — לחץ לחיפוש.${walletReturnLine}${reason ? ` (${reason})` : ''}`
         : `ההזמנה בוטלה על ידי הלקוח.${reason ? ` סיבה: ${reason}` : ''}`;
 
       await db.insert(superAppNotifications).values({

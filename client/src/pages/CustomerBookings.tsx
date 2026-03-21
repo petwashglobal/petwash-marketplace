@@ -11,7 +11,7 @@ import {
   CheckCircle2, CircleDot, Ban, Star, Timer, Hourglass,
   Loader2, MessageSquare, MapPin, Coins,
 } from 'lucide-react';
-import { WalletLifecycleMessage } from '@/components/wallet/WalletLifecycleMessage';
+import { WalletLifecycleMessage, resolveWalletAmountCents } from '@/components/wallet/WalletLifecycleMessage';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -672,13 +672,12 @@ function BookingCard({
                 <div className="mt-2">
                   <WalletLifecycleMessage
                     financeState={booking.financeState}
-                    amountCents={
-                      booking.financeState === 'debited'
-                        ? (booking.walletDebitedCents ?? 0)
-                        : booking.financeState === 'refunded'
-                        ? (booking.walletRefundedCents ?? 0)
-                        : (booking.walletHoldCents ?? 0)
-                    }
+                    amountCents={resolveWalletAmountCents({
+                      financeState: booking.financeState,
+                      walletHoldCents: booking.walletHoldCents,
+                      walletDebitedCents: booking.walletDebitedCents,
+                      walletRefundedCents: booking.walletRefundedCents,
+                    })}
                   />
                 </div>
               )}

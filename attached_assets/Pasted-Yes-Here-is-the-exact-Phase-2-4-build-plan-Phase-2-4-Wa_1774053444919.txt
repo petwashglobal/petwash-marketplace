@@ -1,0 +1,220 @@
+Yes. Here is the exact Phase 2.4 build plan.
+
+Phase 2.4 - Wallet UX + Notification Alignment
+
+Goal
+
+Make the wallet lifecycle feel consistent everywhere:
+	•	same wording
+	•	same state order
+	•	same numbers
+	•	same customer expectation
+
+⸻
+
+1. Notification wording alignment
+
+States
+
+Use only these 4 customer-facing wallet states:
+	•	reserved
+	•	charged
+	•	released
+	•	refunded
+
+Standard wording
+
+Hebrew:
+	•	reserved: ₪X נשמרו מהארנק שלך
+	•	charged: ₪X חויבו מהארנק שלך
+	•	released: ₪X שוחררו חזרה לארנק שלך
+	•	refunded: ₪X הוחזרו לארנק שלך
+
+English:
+	•	reserved: ₪X reserved from your wallet
+	•	charged: ₪X charged from your wallet
+	•	released: ₪X released back to your wallet
+	•	refunded: ₪X refunded to your wallet
+
+Files
+	•	server/routes/booking-requests.ts
+	•	server/routes/academy.ts
+	•	any push/SMS/email notification builder
+	•	client/src/components/WalletLifecycleMessage.tsx
+
+Acceptance
+
+Every booking notification uses the same wording across:
+	•	checkout
+	•	confirmation
+	•	booking detail
+	•	notifications
+
+⸻
+
+2. Academy checkout UX alignment
+
+Build
+
+Add the same wallet preview block used in the main booking flow:
+	•	subtotal
+	•	wallet available
+	•	wallet cap
+	•	wallet applied
+	•	cash due
+
+Files
+	•	client/src/pages/academy/BookingFlow.tsx
+	•	server/routes/academy.ts
+	•	use existing WalletService.previewRedemption
+
+Acceptance
+
+Before submit, Academy shows:
+	•	how much comes from wallet
+	•	how much remains cash
+	•	same formatting as walker/sitter
+
+⸻
+
+3. Shared booking financial summary block
+
+Build
+
+Create one reusable component:
+BookingFinancialSummary.tsx
+
+Inputs
+	•	subtotalCents
+	•	walletAvailableCents
+	•	walletCapCents
+	•	walletAppliedCents
+	•	cashDueCents
+	•	loyaltyRedeemedCents
+	•	financeState
+	•	walletHoldCents
+	•	walletDebitedCents
+	•	walletRefundedCents
+
+Use it in
+	•	walker confirmation
+	•	sitter confirmation
+	•	academy confirmation
+	•	booking detail page
+	•	booking card expanded area where relevant
+
+Acceptance
+
+No custom one-off summary blocks left.
+
+⸻
+
+4. Admin export and reconciliation polish
+
+Add to CSV export
+
+Include:
+	•	finance_state
+	•	wallet_hold_cents
+	•	wallet_debited_cents
+	•	wallet_refunded_cents
+	•	wallet_hold_key
+	•	wallet_debit_key
+	•	wallet_release_key
+	•	wallet_refund_key
+	•	division_code
+	•	source_type
+
+Files
+	•	admin wallet export route
+	•	admin wallet dashboard table
+
+Acceptance
+
+Finance can trace any booking from:
+hold -> debit -> release/refund
+
+⸻
+
+5. Mobile wallet page polish
+
+Fix
+	•	tighten vertical spacing
+	•	avoid floating widget overlap
+	•	keep wallet chips readable on narrow widths
+	•	keep hero card visible above fold
+	•	ensure division activity tabs scroll cleanly
+
+Files
+	•	client/src/pages/PrestigePassWallet.tsx
+
+Acceptance
+
+No overlap with floating widgets and no cramped sections on mobile.
+
+⸻
+
+6. Wallet preview debounce
+
+Build
+
+Debounce wallet preview requests by 300-400ms in checkout flows.
+
+Files
+	•	main booking wizard
+	•	academy booking flow
+
+Acceptance
+
+No noisy preview recalculation on every tiny input change.
+
+⸻
+
+7. Operational proof pass after 2.4
+
+Run on all 3 flows
+	•	walker
+	•	sitter
+	•	academy
+
+Verify
+	•	preview matches final summary
+	•	hold message appears on submit
+	•	charged message appears on confirm
+	•	released message appears on decline
+	•	refunded message appears on cancel after debit
+	•	admin export shows the exact same lifecycle
+
+⸻
+
+Rollout order
+
+Phase 2.4A
+	•	notification wording alignment
+	•	shared financial summary component
+
+Phase 2.4B
+	•	academy checkout preview alignment
+	•	wallet preview debounce
+
+Phase 2.4C
+	•	admin export polish
+	•	mobile wallet page polish
+
+Phase 2.4D
+	•	proof pass on all 3 divisions
+
+⸻
+
+Files likely touched
+	•	client/src/components/WalletLifecycleMessage.tsx
+	•	client/src/components/BookingFinancialSummary.tsx new
+	•	client/src/pages/BookingConfirmation.tsx
+	•	client/src/pages/CustomerBookings.tsx
+	•	client/src/pages/academy/BookingFlow.tsx
+	•	client/src/pages/PrestigePassWallet.tsx
+	•	server/routes/booking-requests.ts
+	•	server/routes/academy.ts
+	•	admin wallet export route
+
+Best next move is Phase 2.4A first, because it removes wording drift immediately and gives one financial summary component for every division.
