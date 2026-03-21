@@ -1,0 +1,411 @@
+PHASE 3.5 - AUTOMATION FEEDBACK, SAFETY GATES & EXECUTION CONTROLS
+
+GOAL
+Close the loop on the automation layer built in 3.4.
+The platform should now:
+- measure whether forecasts were right
+- gate payout automation behind approval thresholds
+- let ops simulate routing before going live
+- push control-center signals to the right people
+- send leadership a weekly pack automatically
+- move archive from dry-run to controlled execution
+- require explicit approval and signed reporting for replay actions
+
+LOCKED PRINCIPLES
+- no wallet-core changes
+- no mutation of original financial facts
+- every automated execution path must be measurable
+- every risky execution path must be gated
+- all notifications are idempotent
+- all replay executions are approved, logged, and reportable
+- archive execution never touches signed or immutable finance records
+- every new "execute" action must have a dry-run equivalent
+
+==================================================
+3.5A - FORECAST ACCURACY SCORING
+==================================================
+
+GOAL
+Score forecast quality against actuals so finance can trust or tune the model.
+
+DB
+Create table: cash_forecast_accuracy
+- id SERIAL PRIMARY KEY
+- forecast_generated_at TIMESTAMPTZ NOT NULL
+- horizon_days INTEGER NOT NULL
+- target_date DATE NOT NULL
+- forecast_payouts_cents INTEGER NOT NULL DEFAULT 0
+- actual_payouts_cents INTEGER NOT NULL DEFAULT 0
+- forecast_refunds_cents INTEGER NOT NULL DEFAULT 0
+- actual_refunds_cents INTEGER NOT NULL DEFAULT 0
+- forecast_vat_cents INTEGER NOT NULL DEFAULT 0
+- actual_vat_cents INTEGER NOT NULL DEFAULT 0
+- forecast_net_cash_need_cents INTEGER NOT NULL DEFAULT 0
+- actual_net_cash_need_cents INTEGER NOT NULL DEFAULT 0
+- abs_error_cents INTEGER NOT NULL DEFAULT 0
+- pct_error NUMERIC(8,2) NOT NULL DEFAULT 0
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+Indexes
+- target_date
+- horizon_days
+- forecast_generated_at DESC
+
+BACKEND
+1. GET /api/prestige-pass/admin/wallet/cash-forecast/accuracy?from=&to=&horizon=
+Returns:
+- overall MAE
+- overall MAPE
+- by-day rows
+- accuracy grade (A/B/C/D)
+- biggest miss day
+
+2. JOB
+Runs daily after finance close:
+- compares yesterday's forecast to actuals
+- inserts cash_forecast_accuracy row(s)
+
+FRONTEND
+Forecast tab
+- new "Accuracy" section
+- MAE / MAPE tiles
+- forecast vs actual table
+- biggest miss callout
+- grade badge
+
+ACCEPTANCE
+- same actuals always produce same score
+- score derives only from actual closed finance data
+- no mutation of forecast inputs
+
+==================================================
+3.5B - PAYOUT RELEASE APPROVAL CONTROLS
+==================================================
+
+GOAL
+Prevent automated or bulk payout release from bypassing finance oversight above threshold.
+
+DB
+Create table: payout_release_approvals
+- id SERIAL PRIMARY KEY
+- batch_id VARCHAR(64) NOT NULL
+- requested_by_uid VARCHAR(128) NOT NULL
+- amount_cents INTEGER NOT NULL DEFAULT 0
+- reason TEXT NOT NULL DEFAULT ''
+- status VARCHAR(20) NOT NULL DEFAULT 'pending'   // pending | approved | rejected
+- reviewed_by_uid VARCHAR(128)
+- reviewed_at TIMESTAMPTZ
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+Config
+- PAYOUT_AUTO_RELEASE_LIMIT_CENTS (default 100000 = ₪1,000)
+
+BACKEND
+1. POST /api/prestige-pass/admin/wallet/payout-batches/:batchId/release-request
+Logic:
+- if batch total <= limit -> auto-approve, release immediately
+- if batch total > limit -> create pending approval only
+
+2. GET /api/prestige-pass/admin/wallet/payout-release-approvals/pending
+
+3. POST /api/prestige-pass/admin/wallet/payout-release-approvals/:id/approve
+- second approver required
+- requester cannot self-approve
+- marks related batch released/exported/completed as per flow
+
+4. POST /api/prestige-pass/admin/wallet/payout-release-approvals/:id/reject
+
+FRONTEND
+Payout Batches tab
+- "Request Release" button
+- status badge for pending approval
+Finance Today / Control Center
+- pending payout approvals widget
+Approvals queue
+- approve / reject buttons
+
+ACCEPTANCE
+- below threshold auto-releases
+- above threshold stays pending
+- requester cannot self-approve
+- reject leaves batch unchanged
+
+==================================================
+3.5C - ROUTING RULE SIMULATION & DRY-RUN PREVIEW
+==================================================
+
+GOAL
+Let ops test dispute routing rules before they affect live cases.
+
+DB
+No required schema changes
+
+BACKEND
+1. POST /api/prestige-pass/admin/wallet/dispute-routing-rules/simulate
+Input:
+{
+  "divisionCode": "academy",
+  "amountCents": 7500,
+  "bookingId": "...",
+  "complainantType": "customer"
+}
+Returns:
+- matched rule
+- would route to uid
+- queue name
+- priority
+- reasoning
+
+2. GET /api/prestige-pass/admin/wallet/dispute-routing-rules/test-cases
+Optional seeded examples
+
+FRONTEND
+Routing tab
+- simulation card
+- input form
+- result card showing:
+  - rule matched
+  - target admin
+  - queue
+  - why this rule won
+- "No match" warning state
+
+ACCEPTANCE
+- simulation uses exact same rule engine as live routing
+- no mutation of dispute rows
+- clear explanation shown
+
+==================================================
+3.5D - CONTROL-CENTER SUBSCRIPTIONS
+==================================================
+
+GOAL
+Turn control-center widgets into role-aware push notifications.
+
+DB
+Create table: finance_control_subscriptions
+- id SERIAL PRIMARY KEY
+- user_uid VARCHAR(128) NOT NULL
+- signal_code VARCHAR(64) NOT NULL
+- delivery_channel VARCHAR(20) NOT NULL DEFAULT 'email'   // email | sms | in_app
+- enabled BOOLEAN NOT NULL DEFAULT true
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+Indexes
+- user_uid
+- signal_code
+- enabled
+
+BACKEND
+1. GET /api/prestige-pass/admin/wallet/control-subscriptions
+2. POST /api/prestige-pass/admin/wallet/control-subscriptions
+3. PATCH /api/prestige-pass/admin/wallet/control-subscriptions/:id
+4. JOB INTEGRATION
+When control-center signals cross critical threshold:
+- notify subscribed users by channel
+- dedupe by signal + user + threshold window
+
+FRONTEND
+Control Center tab
+- "Subscriptions" drawer or panel
+- choose signal:
+  - cash pressure
+  - critical alerts
+  - stale recon exceptions
+  - pending payout approvals
+  - close blocked
+- choose channel
+- enable/disable
+
+ACCEPTANCE
+- only subscribed users get pushes
+- duplicate notifications suppressed within window
+- unsubscribed users receive nothing
+
+==================================================
+3.5E - EXECUTIVE WEEKLY DIGEST PACKS
+==================================================
+
+GOAL
+Push leadership a weekly finance summary without requiring dashboard visits.
+
+DB
+Create table: executive_digest_log
+- id SERIAL PRIMARY KEY
+- period_start DATE NOT NULL
+- period_end DATE NOT NULL
+- sent_to VARCHAR(255) NOT NULL
+- status VARCHAR(20) NOT NULL DEFAULT 'sent'
+- summary_json JSONB NOT NULL DEFAULT '{}'::jsonb
+- sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+- error_detail TEXT NOT NULL DEFAULT ''
+
+BACKEND
+1. GET /api/prestige-pass/admin/wallet/executive-digest/preview?week=YYYY-WW
+Returns:
+- KPI snapshot
+- top risks
+- biggest movers
+- signoff state
+- summary commentary
+
+2. POST /api/prestige-pass/admin/wallet/executive-digest/send?week=YYYY-WW
+- sends to finance_admin/executive recipients
+- logs send
+
+3. WEEKLY JOB
+- Monday 08:00 IL
+- auto-send if EXECUTIVE_DIGEST_ENABLED=true
+
+FRONTEND
+Executive tab
+- "Preview Weekly Digest"
+- "Send Now"
+- last delivery log table
+
+ACCEPTANCE
+- preview matches sent payload
+- send is idempotent per week/recipient set
+- logs every delivery attempt
+
+==================================================
+3.5F - ARCHIVE EXECUTION
+==================================================
+
+GOAL
+Turn archive policy dry-runs into controlled execution with retrieval references.
+
+DB
+Create table: finance_archive_artifacts
+- id SERIAL PRIMARY KEY
+- run_id INTEGER NOT NULL
+- entity_type VARCHAR(64) NOT NULL
+- storage_ref VARCHAR(255) NOT NULL
+- archived_count INTEGER NOT NULL DEFAULT 0
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+BACKEND
+1. POST /api/prestige-pass/admin/wallet/archive/execute
+Rules:
+- finance_admin only
+- per-policy execution
+- no execution against protected entities (signed closes, audit bundles, finance audit logs in this phase)
+- writes archive run + artifact record
+- can mark rows archived or move to archive tables if implemented
+- if full move is too risky, first implementation may write "execution artifact only" and mark simulated=false with storage ref
+
+2. GET /api/prestige-pass/admin/wallet/archive/artifacts
+
+FRONTEND
+Archive tab
+- "Execute Archive" button
+- execution confirmation dialog
+- artifact history table
+- clear protected-entity warning
+
+ACCEPTANCE
+- protected entities are skipped
+- execution produces artifact record
+- dry-run and execute numbers are explainable
+
+==================================================
+3.5G - REPLAY APPROVALS & SIGNED RUN REPORTS
+==================================================
+
+GOAL
+Make replay execution a formally approved, reportable operation.
+
+DB
+Create table: finance_replay_approvals
+- id SERIAL PRIMARY KEY
+- replay_run_id INTEGER NOT NULL
+- requested_by_uid VARCHAR(128) NOT NULL
+- reason TEXT NOT NULL DEFAULT ''
+- status VARCHAR(20) NOT NULL DEFAULT 'pending'
+- approved_by_uid VARCHAR(128)
+- approved_at TIMESTAMPTZ
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+Create table: finance_replay_reports
+- id SERIAL PRIMARY KEY
+- replay_run_id INTEGER NOT NULL
+- report_json JSONB NOT NULL DEFAULT '{}'::jsonb
+- signature VARCHAR(255) NOT NULL
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+BACKEND
+1. POST /api/prestige-pass/admin/wallet/replay/request-execute
+- creates approval request from latest dry-run
+
+2. GET /api/prestige-pass/admin/wallet/replay/approvals/pending
+
+3. POST /api/prestige-pass/admin/wallet/replay/approvals/:id/approve
+- finance_admin only
+- executes replay
+- generates signed report (SHA-256 over canonical JSON findings)
+
+4. GET /api/prestige-pass/admin/wallet/replay/reports/:runId
+
+FRONTEND
+Recovery & Replay tab
+- request execution button
+- pending approval queue
+- report download button for completed runs
+- "Signed Report Available" badge
+
+ACCEPTANCE
+- execute path unavailable without approval
+- report generated after execution
+- signed report reproducible for same findings
+
+==================================================
+RECOMMENDED BUILD ORDER
+==================================================
+
+1. 3.5A - forecast accuracy scoring
+2. 3.5B - payout release approval controls
+3. 3.5C - routing rule simulation
+4. 3.5D - control-center subscriptions
+5. 3.5E - executive weekly digest packs
+6. 3.5F - archive execution
+7. 3.5G - replay approvals and signed run reports
+
+==================================================
+PARALLELIZATION
+==================================================
+
+Can build in parallel:
+- 3.5A + 3.5C
+- 3.5D + 3.5E
+- 3.5F + 3.5G after state model is stable
+
+Do earlier:
+- 3.5B before any wider payout automation rollout
+
+==================================================
+WHAT DOES NOT CHANGE
+==================================================
+
+- wallet hold / release / debit / refund architecture
+- payout batch math
+- dispute case source-of-truth
+- settlement formulas
+- daily close record structure
+- monthly sign-off structure
+- replay dry-run model
+- existing role hierarchy
+
+==================================================
+SUCCESS CRITERIA
+==================================================
+
+By the end of 3.5:
+- finance can measure whether forecasts were right
+- payout automation has approval thresholds
+- routing rules can be tested safely before live use
+- control-center signals can push to subscribers
+- leadership gets weekly finance summaries automatically
+- archive can execute under guardrails
+- replay execution requires approval and produces signed reports
+
+This phase turns automation into governed automation.

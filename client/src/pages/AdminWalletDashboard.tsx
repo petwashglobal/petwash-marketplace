@@ -54,8 +54,6 @@ import {
   CalendarDays,
   DollarSign,
   Package,
-  Download,
-  ChevronRight,
   Activity,
   FileText,
   Filter,
@@ -66,6 +64,10 @@ import {
   RefreshCcw,
   PlayCircle,
   Eye,
+  ShieldAlert,
+  Bell,
+  Send,
+  FileSignature,
 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -1062,6 +1064,124 @@ export default function AdminWalletDashboard() {
     mutationFn: (replayType) => apiRequest("POST", "/api/prestige-pass/admin/wallet/replay/execute", { replayType }),
     onSuccess: (d) => { toast({ title: `Replay executing: ${d.replayType}`, description: `Run ID: ${d.runId}` }); setTimeout(() => refetchReplayRuns(), 3000); },
     onError: (e) => toast({ title: "Execute failed", description: e.message, variant: "destructive" }),
+  });
+
+  // ─── PHASE 3.5A: Forecast Accuracy ──────────────────────────────────────────
+  const [accuracyHorizon, setAccuracyHorizon] = useState<number|null>(null);
+  const { data: accuracyData, isLoading: accuracyLoading, refetch: refetchAccuracy } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/cash-forecast/accuracy'],
+    enabled: false,
+  });
+  const { mutate: scoreAccuracy, isPending: scorePending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest("POST", "/api/prestige-pass/admin/wallet/cash-forecast/accuracy/score", {}),
+    onSuccess: (d) => { toast({ title: "Accuracy scored", description: `${d.scored} row(s) scored` }); refetchAccuracy(); },
+    onError: (e) => toast({ title: "Score failed", description: e.message, variant: "destructive" }),
+  });
+
+  // ─── PHASE 3.5B: Payout Release Approvals ───────────────────────────────────
+  const [releaseReason, setReleaseReason] = useState<Record<string, string>>({});
+  const [showReleaseConfirm, setShowReleaseConfirm] = useState<string|null>(null);
+  const { data: pendingReleasesData, isLoading: pendingReleasesLoading, refetch: refetchPendingReleases } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/payout-release-approvals/pending'],
+  });
+  const { mutate: requestRelease, isPending: requestReleasePending } = useMutation<any, any, { batchId: string; reason: string }>({
+    mutationFn: ({ batchId, reason }) => apiRequest("POST", `/api/prestige-pass/admin/wallet/payout-batches/${batchId}/release-request`, { reason }),
+    onSuccess: (d) => { toast({ title: d.autoApproved ? "Auto-approved & released" : "Release request submitted", description: d.autoApproved ? `₪${(d.amountCents/100).toFixed(0)} — below threshold` : "Awaiting second approver" }); setShowReleaseConfirm(null); queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/admin/wallet/payout-release-approvals/pending'] }); },
+    onError: (e) => toast({ title: "Request failed", description: e.message, variant: "destructive" }),
+  });
+  const { mutate: approveRelease, isPending: approveReleasePending } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest("POST", `/api/prestige-pass/admin/wallet/payout-release-approvals/${id}/approve`, {}),
+    onSuccess: () => { toast({ title: "Release approved" }); queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/admin/wallet/payout-release-approvals/pending'] }); },
+    onError: (e) => toast({ title: "Approve failed", description: e.message, variant: "destructive" }),
+  });
+  const { mutate: rejectRelease, isPending: rejectReleasePending } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest("POST", `/api/prestige-pass/admin/wallet/payout-release-approvals/${id}/reject`, {}),
+    onSuccess: () => { toast({ title: "Release rejected" }); queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/admin/wallet/payout-release-approvals/pending'] }); },
+    onError: (e) => toast({ title: "Reject failed", description: e.message, variant: "destructive" }),
+  });
+
+  // ─── PHASE 3.5C: Routing Simulation ─────────────────────────────────────────
+  const [simInput, setSimInput] = useState({ divisionCode: '', amountCents: '', complainantType: 'customer' });
+  const [simResult, setSimResult] = useState<any>(null);
+  const [simPending, setSimPending] = useState(false);
+  const { data: testCasesData } = useQuery<any>({ queryKey: ['/api/prestige-pass/admin/wallet/dispute-routing-rules/test-cases'] });
+  const runSimulation = async () => {
+    setSimPending(true); setSimResult(null);
+    try {
+      const r = await apiRequest("POST", "/api/prestige-pass/admin/wallet/dispute-routing-rules/simulate", {
+        divisionCode: simInput.divisionCode || undefined,
+        amountCents: simInput.amountCents ? Math.round(parseFloat(simInput.amountCents)*100) : 0,
+        complainantType: simInput.complainantType,
+      });
+      setSimResult(r);
+    } catch (e: any) { toast({ title: "Simulation failed", description: e.message, variant: "destructive" }); }
+    finally { setSimPending(false); }
+  };
+
+  // ─── PHASE 3.5D: Control-Center Subscriptions ───────────────────────────────
+  const SIGNAL_LABELS: Record<string, string> = {
+    cash_pressure: 'Cash Pressure', critical_alerts: 'Critical Alerts',
+    stale_recon_exceptions: 'Stale Recon Exceptions', pending_payout_approvals: 'Pending Payout Approvals', close_blocked: 'Close Blocked',
+  };
+  const [newSub, setNewSub] = useState({ signalCode: 'cash_pressure', deliveryChannel: 'email' });
+  const { data: controlSubsData, isLoading: controlSubsLoading, refetch: refetchControlSubs } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/control-subscriptions'],
+  });
+  const { mutate: createSub, isPending: createSubPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest("POST", "/api/prestige-pass/admin/wallet/control-subscriptions", body),
+    onSuccess: () => { toast({ title: "Subscription created" }); queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/admin/wallet/control-subscriptions'] }); },
+    onError: (e) => toast({ title: "Create failed", description: e.message, variant: "destructive" }),
+  });
+  const { mutate: toggleSub } = useMutation<any, any, { id: number; enabled: boolean }>({
+    mutationFn: ({ id, enabled }) => apiRequest("PATCH", `/api/prestige-pass/admin/wallet/control-subscriptions/${id}`, { enabled }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/admin/wallet/control-subscriptions'] }),
+    onError: (e) => toast({ title: "Update failed", description: e.message, variant: "destructive" }),
+  });
+
+  // ─── PHASE 3.5E: Executive Weekly Digest ────────────────────────────────────
+  const { data: execDigestPreview, isLoading: execDigestPreviewLoading, refetch: refetchExecDigestPreview } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/executive-digest/preview'],
+    enabled: false,
+  });
+  const { data: execDigestLog, isLoading: execDigestLogLoading, refetch: refetchExecDigestLog } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/executive-digest/log'],
+  });
+  const { mutate: sendExecDigest, isPending: sendDigestPending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest("POST", "/api/prestige-pass/admin/wallet/executive-digest/send", {}),
+    onSuccess: (d) => { toast({ title: "Digest sent", description: `Period: ${d.fromDate}` }); queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/admin/wallet/executive-digest/log'] }); },
+    onError: (e) => toast({ title: "Send failed", description: e.message, variant: "destructive" }),
+  });
+
+  // ─── PHASE 3.5F: Archive Execution ──────────────────────────────────────────
+  const [showArchiveExecuteConfirm, setShowArchiveExecuteConfirm] = useState(false);
+  const { data: archiveArtifactsData, isLoading: archiveArtifactsLoading, refetch: refetchArchiveArtifacts } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/archive/artifacts'],
+  });
+  const { mutate: executeArchive, isPending: executeArchivePending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest("POST", "/api/prestige-pass/admin/wallet/archive/execute", {}),
+    onSuccess: (d) => { toast({ title: "Archive executed", description: `${d.totalMoved} rows across ${d.artifacts.length} policies` }); setShowArchiveExecuteConfirm(false); refetchArchiveArtifacts(); queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/admin/wallet/archive-runs'] }); },
+    onError: (e) => toast({ title: "Execute failed", description: e.message, variant: "destructive" }),
+  });
+
+  // ─── PHASE 3.5G: Replay Approvals & Signed Reports ──────────────────────────
+  const [replayReason, setReplayReason] = useState('');
+  const [viewingReportRunId, setViewingReportRunId] = useState<number|null>(null);
+  const { data: pendingReplayApprovalsData, isLoading: pendingReplayApprovalsLoading, refetch: refetchPendingReplayApprovals } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/replay/approvals/pending'],
+  });
+  const { mutate: requestReplayExecute, isPending: requestReplayPending } = useMutation<any, any, { replayType: string; reason: string }>({
+    mutationFn: (body) => apiRequest("POST", "/api/prestige-pass/admin/wallet/replay/request-execute", body),
+    onSuccess: (d) => { toast({ title: "Execute request submitted", description: `Approval ID: ${d.approval?.id}` }); queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/admin/wallet/replay/approvals/pending'] }); },
+    onError: (e) => toast({ title: "Request failed", description: e.message, variant: "destructive" }),
+  });
+  const { mutate: approveReplayExec, isPending: approveReplayPending } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest("POST", `/api/prestige-pass/admin/wallet/replay/approvals/${id}/approve`, {}),
+    onSuccess: (d) => { toast({ title: "Replay approved & executing", description: `Run: ${d.executeRunId}, sig: ${d.signature?.slice(0,8)}…` }); queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/admin/wallet/replay/approvals/pending'] }); refetchReplayRuns(); },
+    onError: (e) => toast({ title: "Approve failed", description: e.message, variant: "destructive" }),
+  });
+  const { data: replayReportData, isLoading: replayReportLoading, refetch: refetchReplayReport } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/replay/reports', viewingReportRunId],
+    enabled: !!viewingReportRunId,
   });
 
   function handleAuditSearch() {
@@ -3631,7 +3751,7 @@ export default function AdminWalletDashboard() {
                             <td className="py-2 pr-4 text-xs text-gray-500">{b.createdAt ? new Date(b.createdAt).toLocaleString("he-IL") : "—"}</td>
                             <td className="py-2 pr-4 text-xs text-gray-500 max-w-[140px] truncate">{b.notes || "—"}</td>
                             <td className="py-2">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <button
                                   className="text-xs text-blue-600 hover:underline flex items-center gap-1"
                                   onClick={() => setSelectedBatchId(selectedBatchId === b.batchId ? null : b.batchId)}
@@ -3646,6 +3766,30 @@ export default function AdminWalletDashboard() {
                                   <Download className="w-3 h-3" />
                                   CSV
                                 </a>
+                                {!['exported','completed'].includes(b.status) && (
+                                  <button
+                                    className="text-xs text-amber-600 hover:underline flex items-center gap-1"
+                                    onClick={() => setShowReleaseConfirm(showReleaseConfirm === b.batchId ? null : b.batchId)}
+                                  >
+                                    ↑ Release
+                                  </button>
+                                )}
+                                {showReleaseConfirm === b.batchId && (
+                                  <div className="absolute z-10 mt-8 right-0 bg-white border rounded-lg shadow-lg p-3 w-64 text-xs space-y-2">
+                                    <div className="font-semibold text-gray-700">Request Release — ₪{(b.totalNetCents/100).toFixed(0)}</div>
+                                    <input placeholder="Reason (optional)" value={releaseReason[b.batchId] ?? ''}
+                                      onChange={e => setReleaseReason(r => ({...r, [b.batchId]: e.target.value}))}
+                                      className="border rounded px-2 py-1 w-full"/>
+                                    <div className="flex gap-2">
+                                      <button disabled={requestReleasePending}
+                                        onClick={() => requestRelease({ batchId: b.batchId, reason: releaseReason[b.batchId] ?? '' })}
+                                        className="flex-1 px-2 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-40">
+                                        {requestReleasePending ? '…' : 'Confirm'}
+                                      </button>
+                                      <button onClick={() => setShowReleaseConfirm(null)} className="flex-1 px-2 py-1 border rounded hover:bg-gray-100">Cancel</button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -3656,6 +3800,50 @@ export default function AdminWalletDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* 3.5B: Pending Release Approvals */}
+            {(pendingReleasesData?.approvals?.length > 0 || pendingReleasesLoading) && (
+              <Card className="border-amber-200">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-amber-600" /> Payout Release Approvals
+                    <span className="ml-1 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-bold">{pendingReleasesData?.total ?? 0} pending</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {pendingReleasesLoading ? (
+                    <div className="h-16 bg-gray-100 animate-pulse rounded"/>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-amber-50">
+                        <tr className="text-gray-500">
+                          <th className="text-left p-2">Batch</th><th className="text-right p-2">Amount</th>
+                          <th className="text-left p-2">Requested By</th><th className="text-left p-2">Reason</th>
+                          <th className="text-left p-2">Actions</th>
+                        </tr>
+                      </thead><tbody>
+                        {pendingReleasesData.approvals.map((a: any) => (
+                          <tr key={a.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 font-mono text-gray-700">{a.batchId}</td>
+                            <td className="p-2 text-right font-bold text-amber-700">₪{(a.amountCents/100).toLocaleString('he-IL',{minimumFractionDigits:0})}</td>
+                            <td className="p-2 font-mono text-gray-500 truncate max-w-24">{a.requestedByUid}</td>
+                            <td className="p-2 text-gray-500 truncate max-w-32">{a.reason || '—'}</td>
+                            <td className="p-2">
+                              <div className="flex items-center gap-1.5">
+                                <button disabled={approveReleasePending} onClick={() => approveRelease(a.id)}
+                                  className="px-2 py-0.5 bg-green-600 text-white rounded text-xs hover:bg-green-700 disabled:opacity-40">Approve</button>
+                                <button disabled={rejectReleasePending} onClick={() => rejectRelease(a.id)}
+                                  className="px-2 py-0.5 bg-red-600 text-white rounded text-xs hover:bg-red-700 disabled:opacity-40">Reject</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Batch detail panel */}
             {selectedBatchId && (
@@ -5727,6 +5915,72 @@ export default function AdminWalletDashboard() {
                 )}
               </CardContent>
             </Card>
+          {/* 3.5A: Forecast Accuracy */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-emerald-600" /> Forecast Accuracy
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => refetchAccuracy()} className="text-xs px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700">Load Accuracy</button>
+                    <button disabled={scorePending} onClick={() => scoreAccuracy()} className="text-xs px-3 py-1 border border-emerald-300 text-emerald-700 rounded hover:bg-emerald-50 disabled:opacity-40">
+                      {scorePending ? <Loader2 className="w-3 h-3 animate-spin inline"/> : 'Score Now'}
+                    </button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {accuracyLoading ? (
+                  <div className="space-y-2">{[...Array(3)].map((_,i)=><div key={i} className="h-12 bg-gray-100 animate-pulse rounded"/>)}</div>
+                ) : !accuracyData?.ok ? (
+                  <div className="text-sm text-gray-400 py-6 text-center border-2 border-dashed rounded-lg">Click "Load Accuracy" to view forecast vs actuals</div>
+                ) : !accuracyData.summary ? (
+                  <div className="text-sm text-gray-400 py-6 text-center border-2 border-dashed rounded-lg">No accuracy rows yet — forecasts will be scored automatically after daily close</div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                      {[
+                        { label: 'MAE (Mean Abs Error)', value: `₪${(accuracyData.summary.mae/100).toFixed(0)}`, color: 'text-blue-700' },
+                        { label: 'MAPE (%)', value: `${accuracyData.summary.mape}%`, color: parseFloat(accuracyData.summary.mape) < 10 ? 'text-green-700' : 'text-red-700' },
+                        { label: 'Accuracy Grade', value: accuracyData.summary.grade, color: accuracyData.summary.grade === 'A' ? 'text-green-700' : accuracyData.summary.grade === 'B' ? 'text-blue-700' : accuracyData.summary.grade === 'C' ? 'text-amber-700' : 'text-red-700' },
+                        { label: 'Rows Scored', value: accuracyData.summary.rowCount, color: 'text-gray-700' },
+                      ].map(t => (
+                        <div key={t.label} className="border rounded-lg p-3 text-center">
+                          <div className={`text-xl font-bold ${t.color}`}>{t.value}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">{t.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {accuracyData.summary.biggestMiss && (
+                      <div className="mb-3 p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                        ⚠ Biggest miss: <strong>{accuracyData.summary.biggestMiss.targetDate}</strong> — error {accuracyData.summary.biggestMiss.pctError.toFixed(1)}%
+                      </div>
+                    )}
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500">
+                          <th className="text-left p-2">Date</th><th className="text-left p-2">Horizon</th>
+                          <th className="text-right p-2">Forecast Net</th><th className="text-right p-2">Actual Net</th>
+                          <th className="text-right p-2">Abs Error</th><th className="text-right p-2">Error %</th>
+                        </tr>
+                      </thead><tbody>
+                        {accuracyData.rows?.slice(0,30).map((r: any) => (
+                          <tr key={r.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 font-mono">{r.targetDate}</td>
+                            <td className="p-2 text-gray-500">{r.horizonDays}d</td>
+                            <td className="p-2 text-right text-blue-700">₪{(r.forecastNetCashNeedCents/100).toFixed(0)}</td>
+                            <td className="p-2 text-right text-gray-700">₪{(r.actualNetCashNeedCents/100).toFixed(0)}</td>
+                            <td className="p-2 text-right text-amber-700">₪{(r.absErrorCents/100).toFixed(0)}</td>
+                            <td className={`p-2 text-right font-medium ${r.pctError < 10 ? 'text-green-700' : r.pctError < 20 ? 'text-amber-700' : 'text-red-700'}`}>{r.pctError.toFixed(1)}%</td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -5910,6 +6164,57 @@ export default function AdminWalletDashboard() {
                 </div>
 
                 {/* Rules table */}
+                {/* 3.5C: Simulation Card */}
+                <div className="border rounded-lg p-3 bg-indigo-50 border-indigo-200 space-y-3">
+                  <div className="text-xs font-semibold text-indigo-700 flex items-center gap-1.5">
+                    <Eye className="w-3.5 h-3.5"/> Simulate Routing — test rules without affecting live disputes
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <input placeholder="Division (optional)" value={simInput.divisionCode}
+                      onChange={e=>setSimInput(s=>({...s, divisionCode: e.target.value}))}
+                      className="text-xs border rounded px-2 py-1.5 w-32"/>
+                    <input type="number" placeholder="Amount (₪)" value={simInput.amountCents}
+                      onChange={e=>setSimInput(s=>({...s, amountCents: e.target.value}))}
+                      className="text-xs border rounded px-2 py-1.5 w-28"/>
+                    <select value={simInput.complainantType} onChange={e=>setSimInput(s=>({...s, complainantType: e.target.value}))}
+                      className="text-xs border rounded px-2 py-1.5 bg-white">
+                      <option value="customer">Customer</option>
+                      <option value="provider">Provider</option>
+                    </select>
+                    {testCasesData?.testCases?.map((tc: any) => (
+                      <button key={tc.label} onClick={() => setSimInput({ divisionCode: tc.divisionCode ?? '', amountCents: String(tc.amountCents/100), complainantType: tc.complainantType })}
+                        className="text-xs px-2 py-1 border border-indigo-300 rounded text-indigo-700 hover:bg-indigo-100">{tc.label}</button>
+                    ))}
+                    <button disabled={simPending} onClick={runSimulation}
+                      className="text-xs px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-40 flex items-center gap-1">
+                      {simPending ? <Loader2 className="w-3 h-3 animate-spin"/> : '▶ Simulate'}
+                    </button>
+                  </div>
+                  {simResult && (
+                    <div className={`border rounded p-2.5 text-xs ${simResult.matched ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                      {simResult.matched ? (
+                        <>
+                          <div className="font-semibold text-green-700 mb-1">✓ Match found — Rule #{simResult.matchedRule.id} (Priority {simResult.matchedRule.priority})</div>
+                          <div className="text-gray-700 space-y-0.5">
+                            <div>Queue: <span className="font-mono text-teal-700">{simResult.routedQueue ?? '—'}</span></div>
+                            <div>Assign to: <span className="font-mono text-gray-500">{simResult.routedToUid ?? 'Any'}</span></div>
+                            <div>Reason: {simResult.routingReason}</div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-semibold text-red-700 mb-1">✗ No match — {simResult.message}</div>
+                          {simResult.eliminationLog?.length > 0 && (
+                            <div className="space-y-0.5 text-gray-600">
+                              {simResult.eliminationLog.map((e: any, i: number) => <div key={i}>Rule #{e.ruleId}: {e.reason}</div>)}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {routingRulesLoading ? (
                   <div className="h-24 bg-gray-100 animate-pulse rounded"/>
                 ) : !routingRulesData?.rules?.length ? (
@@ -5996,6 +6301,58 @@ export default function AdminWalletDashboard() {
                 )}
               </CardContent>
             </Card>
+          {/* 3.5D: Control-Center Subscriptions */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-indigo-600" /> Alert Subscriptions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-gray-500">Subscribe to receive push notifications when control-center signals cross critical thresholds.</div>
+                <div className="flex flex-wrap gap-2">
+                  <select value={newSub.signalCode} onChange={e=>setNewSub(s=>({...s, signalCode: e.target.value}))}
+                    className="text-xs border rounded px-2 py-1.5 bg-white">
+                    {Object.entries(SIGNAL_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+                  </select>
+                  <select value={newSub.deliveryChannel} onChange={e=>setNewSub(s=>({...s, deliveryChannel: e.target.value}))}
+                    className="text-xs border rounded px-2 py-1.5 bg-white">
+                    <option value="email">Email</option>
+                    <option value="in_app">In-App</option>
+                  </select>
+                  <button disabled={createSubPending} onClick={() => createSub(newSub)}
+                    className="text-xs px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-40">
+                    {createSubPending ? <Loader2 className="w-3 h-3 animate-spin inline"/> : 'Subscribe'}
+                  </button>
+                </div>
+                {controlSubsLoading ? (
+                  <div className="h-16 bg-gray-100 animate-pulse rounded"/>
+                ) : !controlSubsData?.subscriptions?.length ? (
+                  <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No subscriptions yet</div>
+                ) : (
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-xs"><thead className="bg-gray-50">
+                      <tr className="text-gray-500">
+                        <th className="text-left p-2">Signal</th><th className="text-left p-2">Channel</th><th className="text-left p-2">Status</th>
+                      </tr>
+                    </thead><tbody>
+                      {controlSubsData.subscriptions.map((s: any) => (
+                        <tr key={s.id} className="border-t hover:bg-gray-50">
+                          <td className="p-2 text-gray-700">{SIGNAL_LABELS[s.signalCode] ?? s.signalCode}</td>
+                          <td className="p-2 text-gray-500 capitalize">{s.deliveryChannel}</td>
+                          <td className="p-2">
+                            <button onClick={() => toggleSub({ id: s.id, enabled: !s.enabled })}
+                              className={`text-xs px-1.5 py-0.5 rounded ${s.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                              {s.enabled ? 'Active' : 'Off'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody></table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -6060,6 +6417,80 @@ export default function AdminWalletDashboard() {
                 })()}
               </CardContent>
             </Card>
+
+            {/* 3.5E: Executive Weekly Digest */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Send className="w-4 h-4 text-emerald-600" /> Weekly Digest
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => refetchExecDigestPreview()} className="text-xs px-3 py-1 border border-emerald-300 text-emerald-700 rounded hover:bg-emerald-50">
+                      Preview This Week
+                    </button>
+                    <button disabled={sendDigestPending} onClick={() => sendExecDigest()}
+                      className="text-xs px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-40 flex items-center gap-1">
+                      {sendDigestPending ? <Loader2 className="w-3 h-3 animate-spin"/> : <Send className="w-3 h-3"/>} Send Now
+                    </button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {execDigestPreviewLoading ? (
+                  <div className="h-20 bg-gray-100 animate-pulse rounded"/>
+                ) : execDigestPreview?.ok && (
+                  <div className="border rounded-lg p-3 bg-emerald-50 border-emerald-200 text-xs space-y-1.5">
+                    <div className="font-semibold text-emerald-700">{execDigestPreview.periodLabel}</div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {[
+                        { label: 'Gross', value: `₪${(execDigestPreview.summary.grossCents/100).toLocaleString('he-IL',{minimumFractionDigits:0})}` },
+                        { label: 'Net', value: `₪${(execDigestPreview.summary.netCents/100).toLocaleString('he-IL',{minimumFractionDigits:0})}` },
+                        { label: 'Refund Rate', value: `${execDigestPreview.summary.refundRatePct}%` },
+                        { label: 'Close Days', value: execDigestPreview.summary.closeDays },
+                      ].map(t=>(
+                        <div key={t.label} className="bg-white border border-emerald-100 rounded p-2 text-center">
+                          <div className="font-bold text-emerald-800">{t.value}</div>
+                          <div className="text-gray-500 mt-0.5">{t.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {execDigestPreview.summary.topRisks?.length > 0 && (
+                      <div className="border border-red-200 bg-red-50 rounded p-2 text-red-700">
+                        {execDigestPreview.summary.topRisks.map((r: string, i: number) => <div key={i}>⚠ {r}</div>)}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Delivery log */}
+                <div>
+                  <div className="text-xs font-semibold text-gray-600 mb-1.5 flex items-center gap-1">
+                    <History className="w-3 h-3"/> Delivery Log
+                    <button onClick={() => refetchExecDigestLog()} className="ml-2 text-blue-600 hover:underline font-normal">Refresh</button>
+                  </div>
+                  {execDigestLogLoading ? (
+                    <div className="h-16 bg-gray-100 animate-pulse rounded"/>
+                  ) : !execDigestLog?.entries?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No digests sent yet</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Week</th><th className="text-left p-2">Sent To</th><th className="text-left p-2">Status</th><th className="text-left p-2">Sent At</th></tr>
+                      </thead><tbody>
+                        {execDigestLog.entries.slice(0,10).map((e: any) => (
+                          <tr key={e.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 font-mono text-gray-700">{e.periodStart} → {e.periodEnd}</td>
+                            <td className="p-2 text-gray-500 truncate max-w-32">{e.sentTo || '—'}</td>
+                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${e.status === 'sent' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{e.status}</span></td>
+                            <td className="p-2 text-gray-500">{new Date(e.sentAt).toLocaleString('he-IL')}</td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -6080,7 +6511,62 @@ export default function AdminWalletDashboard() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
-                  ⚠ Archive Phase 3.4 is simulation-only. No records are deleted. All runs are recorded for audit.
+                  ⚠ Archive Phase 3.4 is simulation-only. No records are deleted. All runs are recorded for audit. Phase 3.5 adds controlled execution — protected entities (signed closes, audit logs, sign-offs) are always skipped.
+                </div>
+
+                {/* 3.5F: Execute Archive */}
+                <div className="border rounded-lg p-3 bg-slate-50 border-slate-200 space-y-2">
+                  <div className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5"><Archive className="w-3.5 h-3.5"/> Execute Archive — Phase 3.5</span>
+                    <button onClick={() => setShowArchiveExecuteConfirm(!showArchiveExecuteConfirm)}
+                      className="text-xs px-3 py-1 bg-slate-700 text-white rounded hover:bg-slate-800">
+                      Execute Archive
+                    </button>
+                  </div>
+                  {showArchiveExecuteConfirm && (
+                    <div className="border border-red-200 bg-red-50 rounded p-3 text-xs space-y-2">
+                      <div className="font-semibold text-red-700">⚠ Confirm Archive Execution</div>
+                      <div className="text-red-600">This will process all enabled archive policies. Protected entities (finance_audit_log, monthly_signoffs, finance_close_records, refund_approvals) will be skipped. Artifact records will be written. This action is audit-logged.</div>
+                      <div className="flex gap-2">
+                        <button disabled={executeArchivePending} onClick={() => executeArchive()}
+                          className="px-3 py-1.5 bg-red-700 text-white rounded text-xs hover:bg-red-800 disabled:opacity-40 flex items-center gap-1">
+                          {executeArchivePending ? <Loader2 className="w-3 h-3 animate-spin"/> : 'Confirm Execute'}
+                        </button>
+                        <button onClick={() => setShowArchiveExecuteConfirm(false)} className="px-3 py-1.5 border rounded text-xs hover:bg-gray-100">Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Archive Artifacts */}
+                <div>
+                  <div className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1">
+                    <FileText className="w-3 h-3"/> Archive Artifacts
+                    <button onClick={() => refetchArchiveArtifacts()} className="ml-2 text-blue-600 hover:underline font-normal">Refresh</button>
+                  </div>
+                  {archiveArtifactsLoading ? (
+                    <div className="h-16 bg-gray-100 animate-pulse rounded"/>
+                  ) : !archiveArtifactsData?.artifacts?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No archive artifacts yet — run Execute Archive to produce artifact records</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500">
+                          <th className="text-left p-2">Entity</th><th className="text-left p-2">Storage Ref</th>
+                          <th className="text-right p-2">Count</th><th className="text-left p-2">Created</th>
+                        </tr>
+                      </thead><tbody>
+                        {archiveArtifactsData.artifacts.slice(0,20).map((a: any) => (
+                          <tr key={a.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 font-mono text-gray-700">{a.entityType}</td>
+                            <td className="p-2 text-gray-500 truncate max-w-48 font-mono text-xs">{a.storageRef}</td>
+                            <td className="p-2 text-right text-slate-700 font-medium">{a.archivedCount}</td>
+                            <td className="p-2 text-gray-500">{new Date(a.createdAt).toLocaleString('he-IL')}</td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )}
                 </div>
 
                 {/* Policies */}
@@ -6178,18 +6664,35 @@ export default function AdminWalletDashboard() {
                       </label>
                     ))}
                   </div>
-                  <div className="flex gap-2 mt-3">
+                  <div className="flex flex-wrap gap-2 mt-3">
                     <button disabled={dryRunPending} onClick={() => startDryRun(selectedReplayType)}
                       className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40 flex items-center gap-1">
                       {dryRunPending ? <Loader2 className="w-3 h-3 animate-spin"/> : <Eye className="w-3 h-3"/>} Dry-Run
                     </button>
                     <button disabled={executeReplayPending} onClick={() => executeReplay(selectedReplayType)}
                       className="text-xs px-3 py-1.5 bg-rose-600 text-white rounded hover:bg-rose-700 disabled:opacity-40 flex items-center gap-1">
-                      {executeReplayPending ? <Loader2 className="w-3 h-3 animate-spin"/> : <PlayCircle className="w-3 h-3"/>} Execute
+                      {executeReplayPending ? <Loader2 className="w-3 h-3 animate-spin"/> : <PlayCircle className="w-3 h-3"/>} Execute (Direct)
                     </button>
                     <button onClick={() => refetchReplayRuns()} className="text-xs px-3 py-1.5 border rounded hover:bg-gray-100 flex items-center gap-1">
                       <RefreshCcw className="w-3 h-3"/> Refresh
                     </button>
+                  </div>
+
+                  {/* 3.5G: Request Execute via Approval */}
+                  <div className="mt-3 border-t pt-3 space-y-2">
+                    <div className="text-xs font-semibold text-rose-700 flex items-center gap-1.5">
+                      <ShieldAlert className="w-3.5 h-3.5"/> Request Execute via Approval (Phase 3.5)
+                    </div>
+                    <div className="text-xs text-gray-500">Requires a completed dry-run. A second finance_admin must approve before execution.</div>
+                    <div className="flex gap-2">
+                      <input placeholder="Reason for execution" value={replayReason}
+                        onChange={e=>setReplayReason(e.target.value)}
+                        className="text-xs border rounded px-2 py-1.5 flex-1"/>
+                      <button disabled={requestReplayPending} onClick={() => requestReplayExecute({ replayType: selectedReplayType, reason: replayReason })}
+                        className="text-xs px-3 py-1.5 bg-rose-700 text-white rounded hover:bg-rose-800 disabled:opacity-40 flex items-center gap-1">
+                        {requestReplayPending ? <Loader2 className="w-3 h-3 animate-spin"/> : <FileSignature className="w-3 h-3"/>} Request
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -6237,6 +6740,85 @@ export default function AdminWalletDashboard() {
                         )}
                       </div>
                     ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 3.5G: Pending Replay Approvals */}
+            {(pendingReplayApprovalsData?.approvals?.length > 0 || pendingReplayApprovalsLoading) && (
+              <Card className="border-rose-200">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-rose-600" /> Pending Replay Approvals
+                      <span className="ml-1 px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded text-xs font-bold">{pendingReplayApprovalsData?.total ?? 0}</span>
+                    </CardTitle>
+                    <button onClick={() => refetchPendingReplayApprovals()} className="text-xs text-blue-600 hover:underline">Refresh</button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {pendingReplayApprovalsLoading ? (
+                    <div className="h-16 bg-gray-100 animate-pulse rounded"/>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-rose-50">
+                        <tr className="text-gray-500">
+                          <th className="text-left p-2">Replay Type</th><th className="text-left p-2">Requested By</th>
+                          <th className="text-left p-2">Reason</th><th className="text-left p-2">Requested</th>
+                          <th className="text-left p-2">Actions</th>
+                        </tr>
+                      </thead><tbody>
+                        {pendingReplayApprovalsData.approvals.map((a: any) => (
+                          <tr key={a.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 font-mono text-rose-700 text-xs">{a.replayType}</td>
+                            <td className="p-2 font-mono text-gray-500 truncate max-w-24">{a.requestedByUid}</td>
+                            <td className="p-2 text-gray-500 truncate max-w-32">{a.reason || '—'}</td>
+                            <td className="p-2 text-gray-400">{new Date(a.createdAt).toLocaleString('he-IL')}</td>
+                            <td className="p-2">
+                              <button disabled={approveReplayPending} onClick={() => approveReplayExec(a.id)}
+                                className="px-2 py-0.5 bg-rose-700 text-white rounded text-xs hover:bg-rose-800 disabled:opacity-40">
+                                {approveReplayPending ? '…' : 'Approve & Execute'}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 3.5G: Signed Report Viewer */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <FileSignature className="w-4 h-4 text-gray-600" /> Signed Run Reports
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex gap-2">
+                  <input type="number" placeholder="Run ID"
+                    value={viewingReportRunId ?? ''}
+                    onChange={e => setViewingReportRunId(e.target.value ? parseInt(e.target.value) : null)}
+                    className="text-xs border rounded px-2 py-1.5 w-28"/>
+                  <button onClick={() => refetchReplayReport()} disabled={!viewingReportRunId || replayReportLoading}
+                    className="text-xs px-3 py-1.5 bg-gray-700 text-white rounded hover:bg-gray-800 disabled:opacity-40">
+                    {replayReportLoading ? <Loader2 className="w-3 h-3 animate-spin inline"/> : 'Load Report'}
+                  </button>
+                </div>
+                {replayReportData?.ok && replayReportData.report && (
+                  <div className="border rounded-lg p-3 bg-gray-50 text-xs space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-700">Run #{replayReportData.report.replayRunId}</span>
+                      <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded font-medium">Signed</span>
+                    </div>
+                    <div className="font-mono text-gray-500 break-all">SHA-256: {replayReportData.report.signature}</div>
+                    <div className="text-gray-500">Generated: {new Date(replayReportData.report.createdAt).toLocaleString('he-IL')}</div>
+                    <div className="border rounded bg-white p-2 font-mono text-xs max-h-40 overflow-y-auto text-gray-700">
+                      {JSON.stringify(replayReportData.report.reportJson, null, 2)}
+                    </div>
                   </div>
                 )}
               </CardContent>

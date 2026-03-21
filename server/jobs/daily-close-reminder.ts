@@ -332,6 +332,115 @@ async function runEscalationLadder(): Promise<void> {
   }
 }
 
+// ── 3.5A: Score yesterday's forecast against actuals ─────────────────────────
+async function scoreForecastAccuracyJob(): Promise<void> {
+  try {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yd = yesterday.toISOString().slice(0, 10);
+
+    const closeRaw: any = await db.execute(sql`
+      SELECT * FROM finance_close_records WHERE close_date = ${yd} LIMIT 1
+    `);
+    const closeRecord = (closeRaw?.rows ?? closeRaw)?.[0];
+    if (!closeRecord) { logger.info('[ForecastAccuracy] No close record for yesterday — skipping', { yd }); return; }
+
+    const actualPayouts = Number(closeRecord.payout_total_cents  ?? 0);
+    const actualRefunds = Number(closeRecord.refund_total_cents   ?? 0);
+    const actualVat     = Number(closeRecord.vat_liability_cents  ?? 0);
+    const actualNetNeed = actualPayouts + actualRefunds + actualVat;
+
+    const snapRaw: any = await db.execute(sql`
+      SELECT * FROM cash_forecast_snapshots WHERE generated_at < ${yd}::date ORDER BY generated_at DESC LIMIT 5
+    `);
+    const snaps: any[] = snapRaw?.rows ?? snapRaw ?? [];
+    let scored = 0;
+
+    for (const snap of snaps) {
+      const fc = snap.forecast_json;
+      if (!fc?.byDay) continue;
+      const dayFc = fc.byDay.find((d: any) => d.date === yd);
+      if (!dayFc) continue;
+      const existing: any = await db.execute(sql`
+        SELECT id FROM cash_forecast_accuracy WHERE target_date = ${yd} AND forecast_generated_at = ${snap.generated_at} LIMIT 1
+      `);
+      if ((existing?.rows ?? existing)?.[0]) continue;
+      const forecastNet = dayFc.netCashNeedCents ?? 0;
+      const absErr      = Math.abs(forecastNet - actualNetNeed);
+      const pctErr      = actualNetNeed > 0 ? ((absErr / actualNetNeed) * 100) : 0;
+      await db.execute(sql`
+        INSERT INTO cash_forecast_accuracy
+          (forecast_generated_at, horizon_days, target_date,
+           forecast_payouts_cents, actual_payouts_cents,
+           forecast_refunds_cents, actual_refunds_cents,
+           forecast_vat_cents, actual_vat_cents,
+           forecast_net_cash_need_cents, actual_net_cash_need_cents,
+           abs_error_cents, pct_error)
+        VALUES
+          (${snap.generated_at}, ${fc.horizonDays ?? 14}, ${yd},
+           ${dayFc.payoutsCents ?? 0}, ${actualPayouts},
+           ${dayFc.refundsCents ?? 0}, ${actualRefunds},
+           ${dayFc.vatCents    ?? 0}, ${actualVat},
+           ${forecastNet}, ${actualNetNeed},
+           ${absErr}, ${pctErr.toFixed(2)})
+      `);
+      scored++;
+    }
+    logger.info('[ForecastAccuracy] Scored', { yd, scored });
+  } catch (err: any) {
+    logger.error('[ForecastAccuracy] Job error', { error: err.message });
+  }
+}
+
+// ── 3.5E: Weekly executive digest (Monday 08:00 IL) ──────────────────────────
+const EXECUTIVE_DIGEST_ENABLED = process.env.EXECUTIVE_DIGEST_ENABLED === 'true';
+
+async function sendExecutiveDigestJob(): Promise<void> {
+  try {
+    if (!EXECUTIVE_DIGEST_ENABLED) return;
+    const now = new Date();
+    const monday = new Date(now); monday.setDate(now.getDate() - now.getDay() + 1);
+    const fromDate = monday.toISOString().slice(0, 10);
+    const sun = new Date(monday); sun.setDate(sun.getDate() + 6);
+    const toDate = sun.toISOString().slice(0, 10);
+
+    // Idempotency
+    const existRaw: any = await db.execute(sql`
+      SELECT id FROM executive_digest_log WHERE period_start = ${fromDate} AND status = 'sent' LIMIT 1
+    `);
+    if ((existRaw?.rows ?? existRaw)?.[0]) { logger.info('[ExecDigest] Already sent this week', { fromDate }); return; }
+
+    // Get recipients
+    const rolesRaw: any = await db.execute(sql`
+      SELECT DISTINCT ur.uid, u.email FROM finance_user_roles ur
+      LEFT JOIN users u ON u.uid = ur.uid
+      WHERE ur.role = 'finance_admin'
+    `).catch(() => ({ rows: [] }));
+    const recipients: string[] = (rolesRaw?.rows ?? rolesRaw ?? []).filter((r: any) => r.email).map((r: any) => r.email);
+    const sentTo = recipients.join(',') || 'system';
+
+    await db.execute(sql`
+      INSERT INTO executive_digest_log (period_start, period_end, sent_to, status, summary_json)
+      VALUES (${fromDate}, ${toDate}, ${sentTo}, 'sent', ${JSON.stringify({ auto: true, recipients })}::jsonb)
+    `);
+
+    // Send email if configured
+    if (SENDGRID_API_KEY && recipients.length > 0) {
+      sgMail.setApiKey(SENDGRID_API_KEY);
+      await sgMail.send({
+        to: recipients,
+        from: process.env.SENDGRID_FROM_EMAIL ?? 'finance@petwash.co.il',
+        subject: `[PetWash Finance] Executive Weekly Digest — ${fromDate} to ${toDate}`,
+        html: `<h2>PetWash Finance — Executive Weekly Digest</h2><p>Week: <strong>${fromDate}</strong> to <strong>${toDate}</strong></p><p>Log in to the Admin Wallet Dashboard → Executive tab to view the full KPI snapshot.</p>`,
+      }).catch((e: any) => logger.warn('[ExecDigest] Email send failed', { error: e.message }));
+    }
+
+    logger.info('[ExecDigest] Weekly digest sent', { fromDate, toDate, recipients: recipients.length });
+  } catch (err: any) {
+    logger.error('[ExecDigest] Job error', { error: err.message });
+  }
+}
+
 export function startDailyCloseReminder(): void {
   if (!ENABLED) {
     logger.info('[DailyCloseReminder] DAILY_CLOSE_REMINDER_ENABLED not set — job disabled');
@@ -357,6 +466,14 @@ export function startDailyCloseReminder(): void {
   // 3.4B: Payout scheduling automation — check enabled schedules every 15 minutes
   cron.schedule('*/15 * * * *', runPayoutSchedules, { timezone: 'Asia/Jerusalem' });
   logger.info('[DailyCloseReminder] Payout schedule runner started (every 15 min)');
+
+  // 3.5A: Score forecast accuracy daily at 02:00 IL (after close window)
+  cron.schedule('0 2 * * *', scoreForecastAccuracyJob, { timezone: 'Asia/Jerusalem' });
+  logger.info('[DailyCloseReminder] Forecast accuracy scorer started (02:00 IL daily)');
+
+  // 3.5E: Weekly executive digest — Monday 08:00 IL
+  cron.schedule('0 8 * * 1', sendExecutiveDigestJob, { timezone: 'Asia/Jerusalem' });
+  logger.info('[DailyCloseReminder] Executive digest job started (Monday 08:00 IL)');
 }
 
 // ─── 3.4B: Payout schedule runner ─────────────────────────────────────────────

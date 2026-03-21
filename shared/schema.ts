@@ -9,6 +9,7 @@ import {
   uniqueIndex,
   integer,
   decimal,
+  numeric,
   boolean,
   serial,
   date,
@@ -12788,3 +12789,116 @@ export const financeReplayRuns = pgTable("finance_replay_runs", {
 });
 export type FinanceReplayRun       = typeof financeReplayRuns.$inferSelect;
 export type InsertFinanceReplayRun = typeof financeReplayRuns.$inferInsert;
+
+// ─── Cash Forecast Accuracy (Phase 3.5A) ──────────────────────────────────────
+export const cashForecastAccuracy = pgTable("cash_forecast_accuracy", {
+  id:                       serial("id").primaryKey(),
+  forecastGeneratedAt:      timestamp("forecast_generated_at", { withTimezone: true }).notNull(),
+  horizonDays:              integer("horizon_days").notNull(),
+  targetDate:               varchar("target_date",            { length: 12 }).notNull(),
+  forecastPayoutsCents:     integer("forecast_payouts_cents").notNull().default(0),
+  actualPayoutsCents:       integer("actual_payouts_cents").notNull().default(0),
+  forecastRefundsCents:     integer("forecast_refunds_cents").notNull().default(0),
+  actualRefundsCents:       integer("actual_refunds_cents").notNull().default(0),
+  forecastVatCents:         integer("forecast_vat_cents").notNull().default(0),
+  actualVatCents:           integer("actual_vat_cents").notNull().default(0),
+  forecastNetCashNeedCents: integer("forecast_net_cash_need_cents").notNull().default(0),
+  actualNetCashNeedCents:   integer("actual_net_cash_need_cents").notNull().default(0),
+  absErrorCents:            integer("abs_error_cents").notNull().default(0),
+  pctError:                 numeric("pct_error", { precision: 8, scale: 2 }).notNull().default("0"),
+  createdAt:                timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("idx_cfa_target_date").on(table.targetDate),
+  index("idx_cfa_horizon").on(table.horizonDays),
+  index("idx_cfa_generated").on(table.forecastGeneratedAt),
+]);
+export type CashForecastAccuracy       = typeof cashForecastAccuracy.$inferSelect;
+export type InsertCashForecastAccuracy = typeof cashForecastAccuracy.$inferInsert;
+
+// ─── Payout Release Approvals (Phase 3.5B) ────────────────────────────────────
+export const payoutReleaseApprovals = pgTable("payout_release_approvals", {
+  id:              serial("id").primaryKey(),
+  batchId:         varchar("batch_id",          { length: 64  }).notNull(),
+  requestedByUid:  varchar("requested_by_uid",  { length: 128 }).notNull(),
+  amountCents:     integer("amount_cents").notNull().default(0),
+  reason:          text("reason").notNull().default(""),
+  status:          varchar("status",            { length: 20  }).notNull().default("pending"), // pending | approved | rejected | auto_approved
+  reviewedByUid:   varchar("reviewed_by_uid",   { length: 128 }),
+  reviewedAt:      timestamp("reviewed_at",     { withTimezone: true }),
+  createdAt:       timestamp("created_at",      { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("idx_pra_batch").on(table.batchId),
+  index("idx_pra_status").on(table.status),
+  index("idx_pra_requester").on(table.requestedByUid),
+]);
+export type PayoutReleaseApproval       = typeof payoutReleaseApprovals.$inferSelect;
+export type InsertPayoutReleaseApproval = typeof payoutReleaseApprovals.$inferInsert;
+
+// ─── Finance Control Subscriptions (Phase 3.5D) ───────────────────────────────
+export const financeControlSubscriptions = pgTable("finance_control_subscriptions", {
+  id:              serial("id").primaryKey(),
+  userUid:         varchar("user_uid",         { length: 128 }).notNull(),
+  signalCode:      varchar("signal_code",      { length: 64  }).notNull(),
+  deliveryChannel: varchar("delivery_channel", { length: 20  }).notNull().default("email"), // email | in_app
+  enabled:         boolean("enabled").notNull().default(true),
+  createdAt:       timestamp("created_at",     { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("idx_fcs_user").on(table.userUid),
+  index("idx_fcs_signal").on(table.signalCode),
+]);
+export type FinanceControlSubscription       = typeof financeControlSubscriptions.$inferSelect;
+export type InsertFinanceControlSubscription = typeof financeControlSubscriptions.$inferInsert;
+
+// ─── Executive Digest Log (Phase 3.5E) ────────────────────────────────────────
+export const executiveDigestLog = pgTable("executive_digest_log", {
+  id:          serial("id").primaryKey(),
+  periodStart: varchar("period_start",  { length: 12 }).notNull(),
+  periodEnd:   varchar("period_end",    { length: 12 }).notNull(),
+  sentTo:      varchar("sent_to",       { length: 255 }).notNull(),
+  status:      varchar("status",        { length: 20  }).notNull().default("sent"), // sent | failed | skipped
+  summaryJson: jsonb("summary_json").notNull().default(sql`'{}'::jsonb`),
+  sentAt:      timestamp("sent_at",     { withTimezone: true }).notNull().defaultNow(),
+  errorDetail: text("error_detail").notNull().default(""),
+});
+export type ExecutiveDigestLogEntry       = typeof executiveDigestLog.$inferSelect;
+export type InsertExecutiveDigestLogEntry = typeof executiveDigestLog.$inferInsert;
+
+// ─── Finance Archive Artifacts (Phase 3.5F) ───────────────────────────────────
+export const financeArchiveArtifacts = pgTable("finance_archive_artifacts", {
+  id:             serial("id").primaryKey(),
+  runId:          integer("run_id").notNull(),
+  entityType:     varchar("entity_type",  { length: 64  }).notNull(),
+  storageRef:     varchar("storage_ref",  { length: 255 }).notNull(),
+  archivedCount:  integer("archived_count").notNull().default(0),
+  createdAt:      timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type FinanceArchiveArtifact       = typeof financeArchiveArtifacts.$inferSelect;
+export type InsertFinanceArchiveArtifact = typeof financeArchiveArtifacts.$inferInsert;
+
+// ─── Finance Replay Approvals (Phase 3.5G) ────────────────────────────────────
+export const financeReplayApprovals = pgTable("finance_replay_approvals", {
+  id:             serial("id").primaryKey(),
+  replayRunId:    integer("replay_run_id").notNull(),
+  requestedByUid: varchar("requested_by_uid", { length: 128 }).notNull(),
+  reason:         text("reason").notNull().default(""),
+  status:         varchar("status",           { length: 20  }).notNull().default("pending"), // pending | approved | rejected
+  approvedByUid:  varchar("approved_by_uid",  { length: 128 }),
+  approvedAt:     timestamp("approved_at",    { withTimezone: true }),
+  createdAt:      timestamp("created_at",     { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("idx_fra_run").on(table.replayRunId),
+  index("idx_fra_status").on(table.status),
+]);
+export type FinanceReplayApproval       = typeof financeReplayApprovals.$inferSelect;
+export type InsertFinanceReplayApproval = typeof financeReplayApprovals.$inferInsert;
+
+// ─── Finance Replay Reports (Phase 3.5G) ──────────────────────────────────────
+export const financeReplayReports = pgTable("finance_replay_reports", {
+  id:          serial("id").primaryKey(),
+  replayRunId: integer("replay_run_id").notNull(),
+  reportJson:  jsonb("report_json").notNull().default(sql`'{}'::jsonb`),
+  signature:   varchar("signature",   { length: 255 }).notNull(),
+  createdAt:   timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type FinanceReplayReport       = typeof financeReplayReports.$inferSelect;
+export type InsertFinanceReplayReport = typeof financeReplayReports.$inferInsert;
