@@ -202,6 +202,21 @@ export default function AdminWalletDashboard() {
     queryKey: ["/api/prestige-pass/admin/wallet/finance-today"],
   });
 
+  // ── Anomaly banners ───────────────────────────────────────────────────────────
+  const { data: anomalyData } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/anomalies"],
+    refetchInterval: 60_000,
+  });
+  const anomalies: any[] = anomalyData?.anomalies ?? [];
+  const hasCritical = anomalies.some((a) => a.severity === "critical");
+  const [anomalyExpanded, setAnomalyExpanded] = useState<boolean | null>(null);
+  // null = auto: expand if critical, collapse if only warnings
+  const isExpanded = anomalyExpanded !== null ? anomalyExpanded : hasCritical;
+  const [dismissedCodes, setDismissedCodes] = useState<Set<string>>(new Set());
+  const visibleAnomalies = anomalies.filter(
+    (a) => !dismissedCodes.has(`${a.code}:${a.userId ?? ""}:${a.bookingId ?? ""}`)
+  );
+
   // ── Release hold mutation ─────────────────────────────────────────────────────
   const { mutate: releaseHold, isPending: releasePending } = useMutation<any, any, { bookingId: string; reason: string }>({
     mutationFn: (vars) => apiRequest("POST", "/api/prestige-pass/admin/wallet/release", vars),
@@ -336,6 +351,97 @@ export default function AdminWalletDashboard() {
       </div>
 
       <div className="p-6 max-w-6xl mx-auto space-y-6">
+        {/* ── Anomaly Banner Zone ───────────────────────────────────────────── */}
+        {visibleAnomalies.length > 0 && (
+          <div className={`rounded-lg border px-4 py-3 ${hasCritical ? "border-red-300 bg-red-50" : "border-amber-300 bg-amber-50"}`}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                {hasCritical
+                  ? <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                  : <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />}
+                <span className={`text-sm font-semibold ${hasCritical ? "text-red-700" : "text-amber-700"}`}>
+                  {visibleAnomalies.filter(a => a.severity === "critical").length > 0
+                    ? `${visibleAnomalies.filter(a => a.severity === "critical").length} Critical`
+                    : ""}{" "}
+                  {visibleAnomalies.filter(a => a.severity === "warning").length > 0
+                    ? `${visibleAnomalies.filter(a => a.severity === "warning").length} Warning`
+                    : ""}{" "}
+                  {visibleAnomalies.length === 1 ? "Anomaly" : "Anomalies"} Detected
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setAnomalyExpanded(v => v === null ? !hasCritical : !v)}
+                  className={`text-xs underline ${hasCritical ? "text-red-600" : "text-amber-600"}`}
+                >
+                  {isExpanded ? "Collapse" : "Expand"}
+                </button>
+                <button
+                  onClick={() => {
+                    const newSet = new Set(dismissedCodes);
+                    visibleAnomalies.forEach(a =>
+                      newSet.add(`${a.code}:${a.userId ?? ""}:${a.bookingId ?? ""}`)
+                    );
+                    setDismissedCodes(newSet);
+                  }}
+                  className={`text-xs underline ${hasCritical ? "text-red-500" : "text-amber-500"}`}
+                >
+                  Dismiss all
+                </button>
+              </div>
+            </div>
+
+            {isExpanded && (
+              <div className="mt-3 space-y-2">
+                {visibleAnomalies.map((a, idx) => {
+                  const key = `${a.code}:${a.userId ?? ""}:${a.bookingId ?? ""}`;
+                  const isCrit = a.severity === "critical";
+                  return (
+                    <div key={idx} className={`flex items-start gap-3 p-2 rounded border text-xs ${isCrit ? "border-red-200 bg-white" : "border-amber-200 bg-white"}`}>
+                      {isCrit
+                        ? <AlertTriangle className="w-3 h-3 text-red-500 mt-0.5 shrink-0" />
+                        : <AlertCircle className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-semibold ${isCrit ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
+                            {a.code}
+                          </span>
+                          {a.userId && (
+                            <button
+                              onClick={() => navigator.clipboard.writeText(a.userId)}
+                              title="Copy userId"
+                              className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-mono hover:bg-gray-200 truncate max-w-[140px]"
+                            >
+                              uid:{a.userId.slice(0, 12)}…
+                            </button>
+                          )}
+                          {a.bookingId && (
+                            <button
+                              onClick={() => navigator.clipboard.writeText(a.bookingId)}
+                              title="Copy bookingId"
+                              className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-mono hover:bg-gray-200 truncate max-w-[140px]"
+                            >
+                              bk:{a.bookingId.slice(0, 10)}…
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-gray-600 mt-0.5 truncate">{a.detail}</p>
+                      </div>
+                      <button
+                        onClick={() => setDismissedCodes(s => new Set([...s, key]))}
+                        className="text-gray-400 hover:text-gray-600 shrink-0 ml-1"
+                        title="Dismiss"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         <Tabs defaultValue="proof">
           <TabsList className="bg-gray-100 flex-wrap h-auto">
             <TabsTrigger value="proof">

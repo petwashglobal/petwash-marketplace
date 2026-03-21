@@ -4050,4 +4050,152 @@ router.get('/admin/wallet/action-history/export', async (req: Request, res: Resp
   }
 });
 
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /api/prestige-pass/admin/wallet/anomalies
+// Returns up to 50 active wallet/booking anomalies for the admin banner zone.
+// Four signal types: negative_balance, stale_hold, refund_exceeds_hold, double_debit
+// ──────────────────────────────────────────────────────────────────────────────
+router.get('/admin/wallet/anomalies', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const anomalies: Array<{
+      code: string;
+      severity: 'critical' | 'warning';
+      userId: string | null;
+      bookingId: string | null;
+      detail: string;
+      detectedAt: string;
+    }> = [];
+
+    // ── Signal 1: Negative balance ───────────────────────────────────────────
+    const negRows: any = await db.execute(sql`
+      SELECT user_id,
+             cash_wallet_balance_cents,
+             pending_balance_cents,
+             updated_at
+      FROM wallet_accounts
+      WHERE cash_wallet_balance_cents < 0
+         OR pending_balance_cents < 0
+      LIMIT 50
+    `);
+    for (const r of (negRows?.rows ?? negRows ?? [])) {
+      anomalies.push({
+        code: 'negative_balance',
+        severity: 'critical',
+        userId: r.user_id,
+        bookingId: null,
+        detail: `available=${r.cash_wallet_balance_cents} agorot, pending=${r.pending_balance_cents} agorot`,
+        detectedAt: r.updated_at ? new Date(r.updated_at).toISOString() : new Date().toISOString(),
+      });
+    }
+
+    // ── Signal 2: Stale holds > 48h ─────────────────────────────────────────
+    const staleRows: any = await db.execute(sql`
+      SELECT id::text AS booking_id,
+             owner_id AS user_id,
+             wallet_hold_cents,
+             created_at,
+             'marketplace' AS source
+      FROM booking_requests
+      WHERE finance_state = 'hold_active'
+        AND created_at < NOW() - INTERVAL '48 hours'
+      UNION ALL
+      SELECT id::text AS booking_id,
+             user_id,
+             wallet_hold_cents,
+             created_at,
+             'academy' AS source
+      FROM trainer_bookings
+      WHERE finance_state = 'hold_active'
+        AND created_at < NOW() - INTERVAL '48 hours'
+      LIMIT 50
+    `);
+    for (const r of (staleRows?.rows ?? staleRows ?? [])) {
+      anomalies.push({
+        code: 'stale_hold',
+        severity: 'warning',
+        userId: r.user_id,
+        bookingId: r.booking_id,
+        detail: `${r.source} hold of ${r.wallet_hold_cents} agorot active since ${new Date(r.created_at).toISOString()}`,
+        detectedAt: new Date(r.created_at).toISOString(),
+      });
+    }
+
+    // ── Signal 3: Refund exceeds hold ────────────────────────────────────────
+    const refundExceedsRows: any = await db.execute(sql`
+      SELECT id::text AS booking_id,
+             owner_id AS user_id,
+             wallet_hold_cents,
+             wallet_refunded_cents,
+             updated_at,
+             'marketplace' AS source
+      FROM booking_requests
+      WHERE wallet_refunded_cents > wallet_hold_cents
+        AND wallet_hold_cents > 0
+      UNION ALL
+      SELECT id::text AS booking_id,
+             user_id,
+             wallet_hold_cents,
+             wallet_refunded_cents,
+             updated_at,
+             'academy' AS source
+      FROM trainer_bookings
+      WHERE wallet_refunded_cents > wallet_hold_cents
+        AND wallet_hold_cents > 0
+      LIMIT 50
+    `);
+    for (const r of (refundExceedsRows?.rows ?? refundExceedsRows ?? [])) {
+      anomalies.push({
+        code: 'refund_exceeds_hold',
+        severity: 'critical',
+        userId: r.user_id,
+        bookingId: r.booking_id,
+        detail: `${r.source}: refunded=${r.wallet_refunded_cents} > hold=${r.wallet_hold_cents} agorot`,
+        detectedAt: r.updated_at ? new Date(r.updated_at).toISOString() : new Date().toISOString(),
+      });
+    }
+
+    // ── Signal 4: Double debit for same booking ──────────────────────────────
+    const doubleDebitRows: any = await db.execute(sql`
+      SELECT booking_id,
+             MIN(user_id) AS user_id,
+             COUNT(*) AS debit_count,
+             MIN(created_at) AS first_debit_at
+      FROM wallet_ledger_entries
+      WHERE event_type = 'debit'
+        AND booking_id IS NOT NULL
+        AND booking_id != ''
+      GROUP BY booking_id
+      HAVING COUNT(*) > 1
+      LIMIT 50
+    `);
+    for (const r of (doubleDebitRows?.rows ?? doubleDebitRows ?? [])) {
+      anomalies.push({
+        code: 'double_debit',
+        severity: 'critical',
+        userId: r.user_id,
+        bookingId: r.booking_id,
+        detail: `${r.debit_count} debit rows for booking (expected 1)`,
+        detectedAt: r.first_debit_at ? new Date(r.first_debit_at).toISOString() : new Date().toISOString(),
+      });
+    }
+
+    // ── Sort: critical first, then detectedAt DESC, then slice to 50 ─────────
+    anomalies.sort((a, b) => {
+      if (a.severity !== b.severity) return a.severity === 'critical' ? -1 : 1;
+      return new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime();
+    });
+    const result = anomalies.slice(0, 50);
+
+    return res.json({ ok: true, anomalies: result, total: result.length, generatedAt: new Date().toISOString() });
+  } catch (err: any) {
+    logger.error('[AdminWallet][Anomalies] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch anomalies', detail: err.message });
+  }
+});
+
 export default router;
