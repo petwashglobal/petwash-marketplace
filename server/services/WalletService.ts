@@ -1238,16 +1238,22 @@ IP Address: ${ipAddress || 'unknown'}
     bookingId: string;
     divisionCode?: string;
     ipAddress?: string | null;
+    metadata?: Record<string, unknown>;
+    idempotencyKeySuffix?: string;
   }): Promise<{ txnId: string; idempotent: boolean }> {
     const { releaseWalletHold } = await import('./WalletLedger');
+    const idemKey = params.idempotencyKeySuffix
+      ? `wallet:booking:release:${params.bookingId}:${params.idempotencyKeySuffix}`
+      : `wallet:booking:release:${params.bookingId}`;
     const result = await releaseWalletHold({
       userId:         params.userId,
       amountCents:    params.amountCents,
       divisionCode:   params.divisionCode ?? 'general',
       sourceType:     'booking',
       sourceId:       params.bookingId,
-      idempotencyKey: `wallet:booking:release:${params.bookingId}`,
+      idempotencyKey: idemKey,
       ipAddress:      params.ipAddress,
+      metadata:       params.metadata,
     });
     return { txnId: result.txnId, idempotent: result.idempotent };
   }
@@ -1262,16 +1268,22 @@ IP Address: ${ipAddress || 'unknown'}
     bookingId: string;
     divisionCode: string;
     ipAddress?: string | null;
+    metadata?: Record<string, unknown>;
+    idempotencyKeySuffix?: string;
   }): Promise<{ txnId: string; idempotent: boolean }> {
     const { debitFromWalletHold } = await import('./WalletLedger');
+    const idemKey = params.idempotencyKeySuffix
+      ? `wallet:booking:debit:${params.bookingId}:${params.idempotencyKeySuffix}`
+      : `wallet:booking:debit:${params.bookingId}`;
     const result = await debitFromWalletHold({
       userId:         params.userId,
       amountCents:    params.amountCents,
       divisionCode:   params.divisionCode,
       sourceType:     'booking',
       sourceId:       params.bookingId,
-      idempotencyKey: `wallet:booking:debit:${params.bookingId}`,
+      idempotencyKey: idemKey,
       ipAddress:      params.ipAddress,
+      metadata:       params.metadata,
     });
     return { txnId: result.txnId, idempotent: result.idempotent };
   }
@@ -1286,17 +1298,23 @@ IP Address: ${ipAddress || 'unknown'}
     divisionCode?: string;
     reason?: string;
     ipAddress?: string | null;
+    metadata?: Record<string, unknown>;
+    idempotencyKeySuffix?: string;
   }): Promise<{ txnId: string; idempotent: boolean }> {
     const { refundToWallet } = await import('./WalletLedger');
+    const idemKey = params.idempotencyKeySuffix
+      ? `wallet:booking:refund:${params.bookingId}:${params.idempotencyKeySuffix}`
+      : `wallet:booking:refund:${params.bookingId}`;
     const result = await refundToWallet({
       userId:         params.userId,
       amountCents:    params.amountCents,
       divisionCode:   params.divisionCode ?? 'general',
       sourceType:     'booking',
       sourceId:       params.bookingId,
-      idempotencyKey: `wallet:booking:refund:${params.bookingId}`,
+      idempotencyKey: idemKey,
       reason:         params.reason ?? 'booking_cancelled',
       ipAddress:      params.ipAddress,
+      metadata:       params.metadata,
     });
     return { txnId: result.txnId, idempotent: result.idempotent };
   }

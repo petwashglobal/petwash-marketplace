@@ -129,6 +129,14 @@ export default function AdminWalletDashboard() {
   const [bkSource, setBkSource]           = useState("");
   const [bkUserId, setBkUserId]           = useState("");
 
+  // ── Action History filters ───────────────────────────────────────────────────
+  const [ahFrom, setAhFrom]           = useState("");
+  const [ahTo, setAhTo]               = useState("");
+  const [ahDivision, setAhDivision]   = useState("");
+  const [ahAdminUid, setAhAdminUid]   = useState("");
+  const [ahBookingId, setAhBookingId] = useState("");
+  const [ahApplied, setAhApplied]     = useState(false);
+
   // ── Division Report ─────────────────────────────────────────────────────────
   const { data: divisionReport, isLoading: divLoading } = useQuery<any[]>({
     queryKey: ["/api/prestige-pass/admin/wallet/division-report"],
@@ -171,6 +179,22 @@ export default function AdminWalletDashboard() {
   // ── Reconciliation History ───────────────────────────────────────────────────
   const { data: reconHistory, isLoading: reconHistLoading } = useQuery<any>({
     queryKey: ["/api/prestige-pass/admin/wallet/reconciliation-history"],
+  });
+
+  // ── Action History ────────────────────────────────────────────────────────────
+  const ahParams = new URLSearchParams();
+  if (ahApplied) {
+    if (ahFrom)      ahParams.set("from",         ahFrom);
+    if (ahTo)        ahParams.set("to",           ahTo);
+    if (ahDivision)  ahParams.set("divisionCode", ahDivision);
+    if (ahAdminUid)  ahParams.set("adminUid",     ahAdminUid);
+    if (ahBookingId) ahParams.set("bookingId",    ahBookingId);
+  }
+  const { data: actionHistory, isLoading: ahLoading, refetch: refetchAH } = useQuery<any>({
+    queryKey: ["wallet-action-history", { from: ahFrom, to: ahTo, division: ahDivision, adminUid: ahAdminUid, bookingId: ahBookingId, applied: ahApplied }],
+    queryFn:  () => fetch(`/api/prestige-pass/admin/wallet/action-history?${ahParams.toString()}`)
+                      .then(r => r.json()),
+    enabled:  ahApplied,
   });
 
   // ── Finance Today ─────────────────────────────────────────────────────────────
@@ -329,6 +353,10 @@ export default function AdminWalletDashboard() {
             <TabsTrigger value="history">
               <History className="w-4 h-4 mr-2" />
               Reconciliation History
+            </TabsTrigger>
+            <TabsTrigger value="action-history">
+              <Clock className="w-4 h-4 mr-2" />
+              Action History
             </TabsTrigger>
             <TabsTrigger value="finance">
               <TrendingUp className="w-4 h-4 mr-2" />
@@ -888,6 +916,181 @@ export default function AdminWalletDashboard() {
                     <Download className="w-3 h-3" /> Download History CSV
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── ACTION HISTORY ── */}
+          <TabsContent value="action-history" className="mt-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" style={{ color: GOLD }} />
+                    Admin Wallet Action History
+                  </div>
+                  {actionHistory?.rows?.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1 text-xs"
+                      onClick={() => {
+                        const params = new URLSearchParams();
+                        if (ahFrom)      params.set("from",         ahFrom);
+                        if (ahTo)        params.set("to",           ahTo);
+                        if (ahDivision)  params.set("divisionCode", ahDivision);
+                        if (ahAdminUid)  params.set("adminUid",     ahAdminUid);
+                        if (ahBookingId) params.set("bookingId",    ahBookingId);
+                        const a = document.createElement("a");
+                        a.href = `/api/prestige-pass/admin/wallet/action-history/export?${params.toString()}`;
+                        a.download = `petwash-wallet-action-history-${new Date().toISOString().slice(0,10)}.csv`;
+                        a.click();
+                      }}
+                    >
+                      <FileDown className="w-3 h-3" /> Export Audit CSV
+                    </Button>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Filter row */}
+                <div className="flex flex-wrap gap-2 items-end">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-500">From</label>
+                    <Input type="date" className="text-xs h-8 w-36" value={ahFrom} onChange={e => setAhFrom(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-500">To</label>
+                    <Input type="date" className="text-xs h-8 w-36" value={ahTo} onChange={e => setAhTo(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-500">Division</label>
+                    <Select value={ahDivision} onValueChange={setAhDivision}>
+                      <SelectTrigger className="text-xs h-8 w-36">
+                        <SelectValue placeholder="All" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All</SelectItem>
+                        <SelectItem value="walkers">Walkers</SelectItem>
+                        <SelectItem value="petsitter">Sitter Suite</SelectItem>
+                        <SelectItem value="academy">Academy</SelectItem>
+                        <SelectItem value="station_k9000">K9000</SelectItem>
+                        <SelectItem value="pettrek">PetTrek</SelectItem>
+                        <SelectItem value="general">General</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-500">Admin UID</label>
+                    <Input className="text-xs h-8 w-44" placeholder="firebase uid…" value={ahAdminUid} onChange={e => setAhAdminUid(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-gray-500">Booking ID</label>
+                    <Input className="text-xs h-8 w-44" placeholder="BR- or TB-…" value={ahBookingId} onChange={e => setAhBookingId(e.target.value)} />
+                  </div>
+                  <Button size="sm" className="h-8 text-xs" onClick={() => { setAhApplied(true); refetchAH(); }}>
+                    Search
+                  </Button>
+                  {ahApplied && (
+                    <Button size="sm" variant="ghost" className="h-8 text-xs text-gray-500"
+                      onClick={() => { setAhFrom(""); setAhTo(""); setAhDivision(""); setAhAdminUid(""); setAhBookingId(""); setAhApplied(false); }}>
+                      Clear
+                    </Button>
+                  )}
+                </div>
+
+                {/* Results */}
+                {!ahApplied ? (
+                  <p className="text-sm text-gray-400 py-6 text-center">
+                    Enter filters above and click Search to load admin wallet actions.
+                  </p>
+                ) : ahLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500 py-4">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+                  </div>
+                ) : !actionHistory?.rows?.length ? (
+                  <p className="text-sm text-gray-500 py-6 text-center">
+                    No admin wallet actions found for this range.
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-50">
+                          <TableHead className="text-xs">Date</TableHead>
+                          <TableHead className="text-xs">Admin</TableHead>
+                          <TableHead className="text-xs">User</TableHead>
+                          <TableHead className="text-xs">Booking</TableHead>
+                          <TableHead className="text-xs">Division</TableHead>
+                          <TableHead className="text-xs">Action</TableHead>
+                          <TableHead className="text-xs text-right">Amount</TableHead>
+                          <TableHead className="text-xs">Reason</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(actionHistory.rows as any[]).map((row: any, i: number) => {
+                          const amountILS = (row.amountCents / 100).toFixed(2);
+                          const isDebit   = row.source === 'admin_debit';
+                          const actionColor: Record<string, string> = {
+                            admin_credit:   "bg-green-100 text-green-800",
+                            admin_debit:    "bg-red-100 text-red-800",
+                            admin_override: "bg-amber-100 text-amber-800",
+                            admin_release:  "bg-blue-100 text-blue-800",
+                            admin_refund:   "bg-indigo-100 text-indigo-800",
+                            admin_adjust:   "bg-gray-100 text-gray-800",
+                          };
+                          const chipClass = actionColor[row.source] ?? "bg-gray-100 text-gray-700";
+                          const divisionChip: Record<string, string> = {
+                            walkers: "bg-green-50 text-green-700",
+                            petsitter: "bg-blue-50 text-blue-700",
+                            academy: "bg-purple-50 text-purple-700",
+                            station_k9000: "bg-amber-50 text-amber-700",
+                          };
+                          const divChip = divisionChip[row.divisionCode] ?? "bg-gray-50 text-gray-600";
+                          return (
+                            <TableRow key={`${row.txnId}-${i}`}>
+                              <TableCell className="text-xs font-mono whitespace-nowrap">
+                                {new Date(row.createdAt).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}
+                              </TableCell>
+                              <TableCell className="text-xs font-mono text-gray-500 max-w-[120px] truncate" title={row.adminUid ?? ""}>
+                                {row.adminUid ? row.adminUid.slice(0, 12) + "…" : "—"}
+                              </TableCell>
+                              <TableCell className="text-xs font-mono text-gray-500 max-w-[120px] truncate" title={row.userId}>
+                                {row.userId.slice(0, 12) + "…"}
+                              </TableCell>
+                              <TableCell className="text-xs font-mono">
+                                {row.bookingId ? (
+                                  <span className="text-blue-700 cursor-pointer hover:underline" onClick={() => { setAuditId(row.bookingId); setAuditSearch(row.bookingId); }}>
+                                    {row.bookingId.slice(0, 12)}…
+                                  </span>
+                                ) : "—"}
+                              </TableCell>
+                              <TableCell>
+                                {row.divisionCode ? (
+                                  <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${divChip}`}>{row.divisionCode}</span>
+                                ) : "—"}
+                              </TableCell>
+                              <TableCell>
+                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${chipClass}`}>{row.source}</span>
+                              </TableCell>
+                              <TableCell className={`text-xs font-mono text-right font-semibold ${isDebit ? "text-red-600" : "text-green-700"}`}>
+                                {isDebit ? "-" : "+"}₪{amountILS}
+                              </TableCell>
+                              <TableCell className="text-xs max-w-[200px]">
+                                <span className="truncate block" title={row.reason ?? ""}>
+                                  {row.reason ?? "—"}
+                                </span>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                    <p className="text-xs text-gray-400 mt-2 text-right">
+                      {actionHistory.total} result{actionHistory.total !== 1 ? "s" : ""} — max 200 rows per query
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

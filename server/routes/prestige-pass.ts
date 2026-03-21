@@ -3308,11 +3308,13 @@ router.post('/admin/wallet/release', async (req: Request, res: Response) => {
 
     const { walletService } = await import('../services/WalletService');
     const result = await walletService.releaseBookingHold({
-      userId:       booking.user_id,
-      amountCents:  holdCents,
+      userId:               booking.user_id,
+      amountCents:          holdCents,
       bookingId,
-      divisionCode: booking.division_code ?? 'general',
-      ipAddress:    req.ip,
+      divisionCode:         booking.division_code ?? 'general',
+      ipAddress:            req.ip,
+      idempotencyKeySuffix: `admin:${uid}`,
+      metadata:             { adminId: uid, reason, actorSource: 'admin_release' },
     });
 
     // Update booking record
@@ -3407,6 +3409,7 @@ router.post('/admin/wallet/refund', async (req: Request, res: Response) => {
       idempotencyKey,
       reason:         reason ?? 'admin_refund',
       ipAddress:      req.ip,
+      metadata:       { adminId: uid, reason, actorSource: 'admin_refund' },
     });
 
     const newRefunded = alreadyRefunded + refundCents;
@@ -3654,11 +3657,13 @@ router.post('/admin/wallet/academy/:id/force-confirm', async (req: Request, res:
     if (booking.finance_state === 'hold_active' && Number(booking.wallet_hold_cents) > 0) {
       const { walletService } = await import('../services/WalletService');
       const debitResult = await walletService.debitBookingFromHold({
-        userId: booking.user_id,
-        amountCents: Number(booking.wallet_hold_cents),
+        userId:               booking.user_id,
+        amountCents:          Number(booking.wallet_hold_cents),
         bookingId,
-        divisionCode: 'academy',
-        ipAddress: req.ip,
+        divisionCode:         'academy',
+        ipAddress:            req.ip,
+        idempotencyKeySuffix: `admin:${uid}`,
+        metadata:             { adminId: uid, reason, actorSource: 'admin_override' },
       });
       walletUpdates.finance_state   = 'debited';
       walletUpdates.wallet_debit_key = debitResult.txnId;
@@ -3736,11 +3741,13 @@ router.post('/admin/wallet/academy/:id/force-cancel', async (req: Request, res: 
 
     if (booking.finance_state === 'hold_active' && Number(booking.wallet_hold_cents) > 0) {
       const releaseResult = await walletService.releaseBookingHold({
-        userId: booking.user_id,
-        amountCents: Number(booking.wallet_hold_cents),
+        userId:               booking.user_id,
+        amountCents:          Number(booking.wallet_hold_cents),
         bookingId,
-        divisionCode: 'academy',
-        ipAddress: req.ip,
+        divisionCode:         'academy',
+        ipAddress:            req.ip,
+        idempotencyKeySuffix: `admin-cancel:${uid}`,
+        metadata:             { adminId: uid, reason, actorSource: 'admin_override' },
       });
       walletUpdates.finance_state   = 'released';
       walletUpdates.wallet_release_key = releaseResult.txnId;
@@ -3749,11 +3756,14 @@ router.post('/admin/wallet/academy/:id/force-cancel', async (req: Request, res: 
       logger.info('[AdminWallet][ForceCancel] Hold released', { bookingId, txnId, adminUid: uid });
     } else if (booking.finance_state === 'debited' && Number(booking.wallet_debited_cents) > 0) {
       const refundResult = await walletService.refundBookingWallet({
-        userId: booking.user_id,
-        amountCents: Number(booking.wallet_debited_cents),
+        userId:               booking.user_id,
+        amountCents:          Number(booking.wallet_debited_cents),
         bookingId,
-        divisionCode: 'academy',
-        ipAddress: req.ip,
+        divisionCode:         'academy',
+        ipAddress:            req.ip,
+        idempotencyKeySuffix: `admin-cancel:${uid}:${Date.now()}`,
+        metadata:             { adminId: uid, reason, actorSource: 'admin_override' },
+        reason:               reason,
       });
       walletUpdates.finance_state        = 'refunded';
       walletUpdates.wallet_refund_key    = refundResult.txnId;
@@ -3794,6 +3804,155 @@ router.post('/admin/wallet/academy/:id/force-cancel', async (req: Request, res: 
   } catch (err: any) {
     logger.error('[AdminWallet][ForceCancel] error', { error: err.message });
     return res.status(500).json({ error: 'Force cancel failed', detail: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Admin Action History — shared query helper
+// Captures all admin-initiated wallet operations by filtering on:
+//   1. event_type IN ('admin_credit','admin_debit')   — adjust credit/debit
+//   2. metadata->>'adminId' IS NOT NULL               — release/refund/debit-from-hold
+// ──────────────────────────────────────────────────────────────────────────────
+async function queryActionHistory(filters: {
+  divisionCode?: string;
+  adminUid?: string;
+  bookingId?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+}): Promise<Array<{
+  txnId: string;
+  adminUid: string | null;
+  userId: string;
+  bookingId: string | null;
+  divisionCode: string | null;
+  source: string;
+  amountCents: number;
+  reason: string | null;
+  createdAt: string;
+}>> {
+  const conditions: any[] = [];
+
+  // Only admin-originated rows
+  conditions.push(sql`(
+    event_type IN ('admin_credit', 'admin_debit')
+    OR (metadata->>'adminId' IS NOT NULL AND metadata->>'adminId' != '')
+  )`);
+
+  if (filters.divisionCode) conditions.push(sql`division_code = ${filters.divisionCode}`);
+  if (filters.adminUid)    conditions.push(sql`(metadata->>'adminId' = ${filters.adminUid} OR created_by = ${filters.adminUid})`);
+  if (filters.bookingId)   conditions.push(sql`booking_id = ${filters.bookingId}`);
+  if (filters.from)        conditions.push(sql`created_at >= ${new Date(filters.from)}`);
+  if (filters.to) {
+    const toDate = new Date(filters.to);
+    toDate.setDate(toDate.getDate() + 1);
+    conditions.push(sql`created_at < ${toDate}`);
+  }
+
+  const whereClause = conditions.reduce((acc, cond, i) =>
+    i === 0 ? cond : sql`${acc} AND ${cond}`, conditions[0]);
+
+  const lim = Math.min(filters.limit ?? 200, 500);
+
+  const rows: any = await db.execute(sql`
+    SELECT
+      entry_id                        AS txn_id,
+      COALESCE(metadata->>'adminId', created_by) AS admin_uid,
+      user_id,
+      booking_id,
+      division_code,
+      COALESCE(metadata->>'actorSource', event_type) AS source,
+      amount_cents,
+      metadata->>'reason'                      AS reason,
+      created_at
+    FROM wallet_ledger_entries
+    WHERE ${whereClause}
+      AND direction = 'credit'
+    ORDER BY created_at DESC
+    LIMIT ${lim}
+  `);
+
+  return (rows?.rows ?? rows ?? []).map((r: any) => ({
+    txnId:        r.txn_id,
+    adminUid:     r.admin_uid   ?? null,
+    userId:       r.user_id,
+    bookingId:    r.booking_id  ?? null,
+    divisionCode: r.division_code ?? null,
+    source:       r.source      ?? 'unknown',
+    amountCents:  Number(r.amount_cents),
+    reason:       r.reason      ?? null,
+    createdAt:    r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+  }));
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /api/prestige-pass/admin/wallet/action-history
+// Returns admin wallet override history (JSON, paginated up to 200 rows).
+// ──────────────────────────────────────────────────────────────────────────────
+router.get('/admin/wallet/action-history', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const { divisionCode, adminUid, bookingId, from, to } = req.query as Record<string, string | undefined>;
+
+    const rows = await queryActionHistory({ divisionCode, adminUid, bookingId, from, to });
+
+    return res.json({ rows, total: rows.length });
+  } catch (err: any) {
+    logger.error('[AdminWallet][ActionHistory] error', { error: err.message });
+    return res.status(500).json({ error: 'Action history query failed', detail: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /api/prestige-pass/admin/wallet/action-history/export
+// Returns CSV download of admin wallet override history.
+// ──────────────────────────────────────────────────────────────────────────────
+router.get('/admin/wallet/action-history/export', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const { divisionCode, adminUid, bookingId, from, to } = req.query as Record<string, string | undefined>;
+
+    const rows = await queryActionHistory({ divisionCode, adminUid, bookingId, from, to, limit: 500 });
+
+    const escape = (v: string | null | undefined) => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+
+    const header  = ['txnId', 'adminUid', 'userId', 'bookingId', 'divisionCode', 'source', 'amountCents', 'amountILS', 'reason', 'createdAt'];
+    const csvRows = rows.map(r => [
+      r.txnId, r.adminUid, r.userId, r.bookingId, r.divisionCode,
+      r.source, r.amountCents,
+      (r.amountCents / 100).toFixed(2),
+      r.reason, r.createdAt,
+    ].map(v => escape(v == null ? null : String(v))).join(','));
+
+    const fromLabel = from ?? 'all';
+    const toLabel   = to   ?? 'all';
+    const filename  = from || to
+      ? `petwash-wallet-action-history-${fromLabel}_to_${toLabel}.csv`
+      : `petwash-wallet-action-history-all.csv`;
+
+    // UTF-8 BOM for Excel compatibility
+    const bom = '\uFEFF';
+    const csv = bom + [header.join(','), ...csvRows].join('\r\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.send(csv);
+  } catch (err: any) {
+    logger.error('[AdminWallet][ActionHistoryExport] error', { error: err.message });
+    return res.status(500).json({ error: 'Export failed', detail: err.message });
   }
 });
 

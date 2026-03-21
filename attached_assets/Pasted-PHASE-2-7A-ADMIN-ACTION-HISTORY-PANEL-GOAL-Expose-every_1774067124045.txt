@@ -1,0 +1,274 @@
+PHASE 2.7A — ADMIN ACTION HISTORY PANEL
+
+GOAL
+Expose every admin wallet override in one audit trail:
+- force-confirm
+- force-cancel
+- release hold
+- refund
+- credit adjust
+- debit adjust
+
+==================================================
+1. BACKEND — NEW QUERY HELPER
+FILE:
+- server/routes/prestige-pass.ts
+
+ADD:
+- shared query builder used by both JSON endpoint and CSV export
+
+FILTERS:
+- divisionCode
+- adminUid
+- from
+- to
+- bookingId
+
+SOURCE FILTER:
+Only ledger rows where source_type/source matches one of:
+- admin_override
+- admin_release
+- admin_refund
+- admin_adjust
+
+RETURN FIELDS:
+- txnId
+- adminUid
+- userId
+- bookingId
+- divisionCode
+- source
+- amountCents
+- balanceAfterCents
+- reason
+- createdAt
+
+QUERY SHAPE:
+SELECT
+  txn_id,
+  admin_uid,
+  user_id,
+  booking_id,
+  division_code,
+  source_type AS source,
+  amount_cents,
+  balance_after_cents,
+  reason,
+  created_at
+FROM wallet_ledger_entries
+WHERE source_type IN ('admin_override','admin_release','admin_refund','admin_adjust')
+  AND (:divisionCode IS NULL OR division_code = :divisionCode)
+  AND (:adminUid IS NULL OR admin_uid = :adminUid)
+  AND (:bookingId IS NULL OR booking_id = :bookingId)
+  AND (:from IS NULL OR created_at >= :from)
+  AND (:to IS NULL OR created_at < :to + interval '1 day')
+ORDER BY created_at DESC
+LIMIT 200
+
+NOTES:
+- If admin_uid and reason currently live inside metadata_json instead of columns, read them out in SQL:
+  metadata_json->>'adminUid' AS admin_uid
+  metadata_json->>'reason' AS reason
+- Keep this query in one helper so JSON and CSV never drift.
+
+==================================================
+2. BACKEND — JSON ENDPOINT
+FILE:
+- server/routes/prestige-pass.ts
+
+ADD ENDPOINT:
+GET /api/prestige-pass/admin/wallet/action-history
+
+AUTH:
+- same admin guard pattern already used by booking-audit and finance endpoints
+
+REQUEST QUERY PARAMS:
+- divisionCode
+- adminUid
+- from
+- to
+- bookingId
+
+RESPONSE:
+{
+  rows: [
+    {
+      txnId,
+      adminUid,
+      userId,
+      bookingId,
+      divisionCode,
+      source,
+      amountCents,
+      balanceAfterCents,
+      reason,
+      createdAt
+    }
+  ],
+  total: number
+}
+
+IMPLEMENTATION NOTES:
+- Use the shared helper
+- total can be rows.length for now unless you want full count query
+- Keep chronological DESC order
+
+==================================================
+3. BACKEND — CSV EXPORT ENDPOINT
+FILE:
+- server/routes/prestige-pass.ts
+
+ADD ENDPOINT:
+GET /api/prestige-pass/admin/wallet/action-history/export
+
+SAME FILTERS:
+- divisionCode
+- adminUid
+- from
+- to
+- bookingId
+
+CSV COLUMNS:
+- txnId
+- adminUid
+- userId
+- bookingId
+- divisionCode
+- source
+- amountCents
+- balanceAfterCents
+- reason
+- createdAt
+
+HEADERS:
+Content-Type: text/csv; charset=utf-8
+Content-Disposition:
+  attachment; filename="petwash-wallet-action-history-<from>_to_<to>.csv"
+
+CSV NOTES:
+- include UTF-8 BOM for Excel
+- escape commas, quotes, line breaks
+- if no from/to:
+  filename = petwash-wallet-action-history-all.csv
+
+==================================================
+4. FRONTEND — NEW TAB
+FILE:
+- client/src/pages/AdminWalletDashboard.tsx
+
+ADD TAB:
+- "Action History"
+
+PLACE IT:
+- alongside Booking Audit, User Audit, Finance Today, Reconciliation
+
+TAB CONTENT:
+A. Filter Row
+- Date from
+- Date to
+- Division select
+  - all
+  - walkers
+  - petsitter
+  - academy
+  - station_k9000
+  - other
+- Admin UID input
+- Booking ID input
+- Refresh button
+- Export Audit CSV button
+
+B. Table
+Columns:
+- Date
+- Admin
+- User
+- Booking
+- Division
+- Action
+- Amount
+- Reason
+
+DISPLAY RULES:
+- Amount in ILS, signed:
+  debit style = red
+  credit style = green
+- Action chip labels:
+  admin_override
+  admin_release
+  admin_refund
+  admin_adjust
+- Division chip colors can match existing dashboard conventions
+
+C. Empty State
+- "No admin wallet actions found for this range"
+
+==================================================
+5. FRONTEND — DATA FETCH
+FILE:
+- client/src/pages/AdminWalletDashboard.tsx
+
+ADD QUERY:
+GET /api/prestige-pass/admin/wallet/action-history
+
+QUERY KEY:
+[
+  "wallet-action-history",
+  {
+    divisionCode,
+    adminUid,
+    from,
+    to,
+    bookingId
+  }
+]
+
+EXPORT BUTTON:
+Build URLSearchParams from same filters and hit:
+- /api/prestige-pass/admin/wallet/action-history/export?...params
+
+==================================================
+6. NORMALIZATION RULES
+AMOUNT DISPLAY
+- amountCents / 100
+- keep 2 decimals
+- display ₪ sign
+
+DATE DISPLAY
+- use same formatter already used in dashboard
+- local timezone display is fine
+
+REASON DISPLAY
+- metadata fallback to "-" if missing
+
+ADMIN UID DISPLAY
+- raw adminUid is acceptable for 2.7A
+- name resolution can be 2.7A.1 later if needed
+
+==================================================
+7. MINIMUM ACCEPTANCE CHECKLIST
+AFTER BUILD, VERIFY:
+- filtering by division works
+- filtering by bookingId works
+- filtering by date range works
+- CSV export matches on-screen rows
+- force-confirm appears in history
+- force-cancel appears in history
+- admin release appears in history
+- admin refund appears in history
+- admin credit/debit adjust appears in history
+
+==================================================
+8. IF YOUR LEDGER DOES NOT YET STORE adminUid / reason AS FIRST-CLASS COLUMNS
+SAFE FALLBACK
+Use metadata_json:
+- adminUid = metadata_json->>'adminUid'
+- reason = metadata_json->>'reason'
+
+If source_type is not populated consistently, fallback to:
+- event_type IN ('admin_override','admin_release','admin_refund','admin_adjust')
+
+==================================================
+9. RECOMMENDED SMALL FOLLOW-UP RIGHT AFTER 2.7A
+Do 2.7B immediately after, reusing the same query helper.
+That keeps JSON + CSV perfectly aligned and avoids duplicate logic.
