@@ -5155,6 +5155,78 @@ router.get('/provider/wallet/payout-ledger', async (req: Request, res: Response)
   }
 });
 
+// ══════════════════════════════════════════════════════════════════════════════
+// PHASE 3.0B — PROVIDER REMITTANCE STATEMENT
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── GET /provider/wallet/payout-statement ─────────────────────────────────
+// Provider sees their own paid entries for a given batchId (or all paid).
+// Groups by booking, returns gross/commission/net totals.
+router.get('/provider/wallet/payout-statement', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const { batchId } = req.query as Record<string, string>;
+
+    const conditions: any[] = [sql`provider_uid = ${uid}`, sql`status = 'paid'`];
+    if (batchId) conditions.push(sql`payout_batch_id = ${batchId}`);
+    const whereClause = conditions.reduce((a, c, i) => i === 0 ? c : sql`${a} AND ${c}`, conditions[0]);
+
+    const rows: any = await db.execute(sql`
+      SELECT id, division_code, booking_id,
+             gross_cents, commission_rate_bps, net_cents,
+             payout_batch_id, paid_at, created_at
+      FROM provider_payout_entries
+      WHERE ${whereClause}
+      ORDER BY payout_batch_id DESC, created_at ASC
+    `);
+    const entries = (rows?.rows ?? rows ?? []).map((r: any) => ({
+      id:                Number(r.id),
+      divisionCode:      r.division_code,
+      bookingId:         r.booking_id         ?? null,
+      grossCents:        Number(r.gross_cents),
+      commissionRateBps: Number(r.commission_rate_bps),
+      netCents:          Number(r.net_cents),
+      commissionCents:   Number(r.gross_cents) - Number(r.net_cents),
+      payoutBatchId:     r.payout_batch_id    ?? null,
+      paidAt:            r.paid_at            ?? null,
+      createdAt:         r.created_at,
+    }));
+
+    // Group by batch, then by booking within batch
+    const byBatch: Record<string, { batchId: string; paidAt: string | null; entries: any[]; grossCents: number; netCents: number; commissionCents: number }> = {};
+    for (const e of entries) {
+      const key = e.payoutBatchId ?? 'unbatched';
+      if (!byBatch[key]) byBatch[key] = { batchId: key, paidAt: e.paidAt, entries: [], grossCents: 0, netCents: 0, commissionCents: 0 };
+      byBatch[key].entries.push(e);
+      byBatch[key].grossCents      += e.grossCents;
+      byBatch[key].netCents        += e.netCents;
+      byBatch[key].commissionCents += e.commissionCents;
+    }
+
+    const totals = {
+      entryCount:      entries.length,
+      grossCents:      entries.reduce((s, e) => s + e.grossCents, 0),
+      netCents:        entries.reduce((s, e) => s + e.netCents, 0),
+      commissionCents: entries.reduce((s, e) => s + e.commissionCents, 0),
+    };
+
+    // Batch list for selector
+    const batchList: any = await db.execute(sql`
+      SELECT DISTINCT payout_batch_id, MAX(paid_at) AS paid_at
+      FROM provider_payout_entries
+      WHERE provider_uid=${uid} AND status='paid' AND payout_batch_id IS NOT NULL
+      GROUP BY payout_batch_id ORDER BY MAX(paid_at) DESC
+    `);
+    const batches = (batchList?.rows ?? batchList ?? []).map((r: any) => ({ batchId: r.payout_batch_id, paidAt: r.paid_at }));
+
+    return res.json({ ok: true, providerUid: uid, batchId: batchId ?? null, entries, byBatch: Object.values(byBatch), totals, batches });
+  } catch (err: any) {
+    logger.error('[3.0B][PayoutStatement] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch payout statement', detail: err.message });
+  }
+});
+
 // ──────────────────────────────────────────────────────────────────────────────
 // GET /api/prestige-pass/admin/wallet/payout-ledger
 // Admin view — filterable by userId, divisionCode, status, batchId, from/to.
@@ -5354,6 +5426,38 @@ router.post('/admin/wallet/payout-entries/mark-paid', async (req: Request, res: 
 // margin         = collected - providerPayable - vatLiability
 // marginPct      = margin / collected * 100   (0 when collected = 0)
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ── Phase 3.0G: Finance role helper ───────────────────────────────────────
+// Roles: 'read' < 'write' < 'admin' (admin ⊃ write ⊃ read)
+// All existing `isAdmin` gates are preserved; this adds granular finance gates.
+const FINANCE_ROLE_RANK: Record<string, number> = { read: 1, write: 2, admin: 3 };
+
+async function getFinanceRole(userUid: string): Promise<string | null> {
+  const row: any = await db.execute(sql`
+    SELECT role FROM finance_roles WHERE user_uid = ${userUid} LIMIT 1
+  `);
+  return (row?.rows ?? row ?? [])[0]?.role ?? null;
+}
+
+async function requireFinanceRole(
+  req: Request, res: Response, minRole: 'read' | 'write' | 'admin'
+): Promise<string | null> {
+  const session = (req as any).session;
+  if (!session?.user?.isAdmin) { res.status(403).json({ error: 'Admin only' }); return null; }
+  const uid       = session.user.uid ?? session.user.id ?? '';
+  const storedRole = await getFinanceRole(uid);
+  // Bootstrapping: admins with no explicit role default to 'admin' so existing workflows are unaffected
+  const effectiveRole = storedRole ?? 'admin';
+  if ((FINANCE_ROLE_RANK[effectiveRole] ?? 0) < FINANCE_ROLE_RANK[minRole]) {
+    res.status(403).json({
+      error: `Finance role '${minRole}' or higher required`,
+      yourRole: effectiveRole,
+      minRole,
+    });
+    return null;
+  }
+  return effectiveRole;
+}
 
 const VAT_RATE = 0.18;
 const COLLECTED_EVENTS = `('redeem_kiosk','redeem_online','hold_capture')`;
@@ -5811,6 +5915,118 @@ router.post('/admin/wallet/disputes/:caseRef/resolve', async (req: Request, res:
   }
 });
 
+// ══════════════════════════════════════════════════════════════════════════════
+// PHASE 3.0C — DISPUTE TO FINANCIAL ACTIONS BRIDGE
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── POST /admin/wallet/disputes/:caseRef/apply-resolution ─────────────────
+// Routes resolved dispute to a financial outcome.
+// refund   → submits to refund approvals flow (2.9D). Leaves audit trail.
+// clawback → creates a new negative payout_entry (does NOT mutate original row).
+// none     → records decision with no financial action.
+// Rules: original payout entries are NEVER mutated. Every resolution creates new records.
+router.post('/admin/wallet/disputes/:caseRef/apply-resolution', async (req: Request, res: Response) => {
+  try {
+    const financeRole = await requireFinanceRole(req, res, 'write');
+    if (!financeRole) return;
+    const session  = (req as any).session;
+    const adminUid = session.user.uid ?? session.user.id ?? 'unknown';
+    const { caseRef } = req.params;
+
+    const schema = z.object({
+      action:             z.enum(['refund', 'clawback', 'none']),
+      linkedPayoutBatchId:z.string().optional(),
+      // refund fields
+      refundAmountCents:  z.number().int().positive().optional(),
+      refundBookingId:    z.string().optional(),
+      refundNote:         z.string().optional(),
+      // clawback fields
+      clawbackCents:      z.number().int().positive().optional(),
+      clawbackProviderUid:z.string().optional(),
+      clawbackDivision:   z.string().optional(),
+      clawbackNote:       z.string().optional(),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(422).json({ error: 'Validation failed', details: parsed.error.flatten() });
+    const { action, linkedPayoutBatchId, refundAmountCents, refundBookingId, refundNote, clawbackCents, clawbackProviderUid, clawbackDivision, clawbackNote } = parsed.data;
+
+    // Load the dispute case
+    const caseRows: any = await db.execute(sql`
+      SELECT * FROM dispute_cases WHERE case_ref=${caseRef} LIMIT 1
+    `);
+    const dispCase = (caseRows?.rows ?? caseRows ?? [])[0];
+    if (!dispCase) return res.status(404).json({ error: 'Dispute case not found', caseRef });
+
+    if (dispCase.resolution_action && dispCase.resolution_action !== 'none') {
+      return res.status(409).json({ error: 'Resolution already applied', current: dispCase.resolution_action, caseRef });
+    }
+
+    let result: Record<string, any> = { action, caseRef };
+
+    if (action === 'refund') {
+      if (!refundAmountCents || !refundBookingId) {
+        return res.status(422).json({ error: 'refundAmountCents and refundBookingId are required for refund action' });
+      }
+      // Route through 2.9D refund approvals
+      const refundRes = await fetch(`http://localhost:${process.env.PORT ?? 5000}/api/prestige-pass/admin/wallet/refund-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', cookie: req.headers.cookie ?? '' },
+        body: JSON.stringify({
+          bookingId: refundBookingId,
+          amountCents: refundAmountCents,
+          reason: `Dispute resolution — ${caseRef}${refundNote ? ' — ' + refundNote : ''}`,
+          linkedDisputeCaseRef: caseRef,
+        }),
+      });
+      const refundData = await refundRes.json();
+      if (!refundData.ok && !refundData.refundRequestId) {
+        return res.status(502).json({ error: 'Refund request failed', detail: refundData });
+      }
+      result.refundRequestId = refundData.refundRequestId;
+      result.refundStatus    = refundData.status;
+    } else if (action === 'clawback') {
+      if (!clawbackCents || !clawbackProviderUid) {
+        return res.status(422).json({ error: 'clawbackCents and clawbackProviderUid are required for clawback action' });
+      }
+      // Create a new NEGATIVE payout entry (offset). Never touches original row.
+      const clawbackId = `clawback_${nanoid(12)}`;
+      await db.execute(sql`
+        INSERT INTO provider_payout_entries
+          (provider_uid, division_code, booking_id, gross_cents, commission_rate_bps, net_cents, status, metadata)
+        VALUES (
+          ${clawbackProviderUid},
+          ${clawbackDivision ?? dispCase.division_code ?? 'unknown'},
+          ${dispCase.booking_id ?? null},
+          ${-Math.abs(clawbackCents)},
+          0,
+          ${-Math.abs(clawbackCents)},
+          'clawed_back',
+          ${JSON.stringify({ disputeCaseRef: caseRef, clawbackId, initiatedBy: adminUid, note: clawbackNote ?? null, linkedPayoutBatchId: linkedPayoutBatchId ?? null })}::jsonb
+        )
+      `);
+      result.clawbackId     = clawbackId;
+      result.clawbackCents  = -Math.abs(clawbackCents);
+    }
+
+    // Write resolution_action + linked_payout_batch_id back to dispute case
+    await db.execute(sql`
+      UPDATE dispute_cases
+      SET resolution_action       = ${action},
+          linked_payout_batch_id  = ${linkedPayoutBatchId ?? null},
+          metadata = COALESCE(metadata,'{}')::jsonb || ${JSON.stringify({
+            resolutionApplied: { action, adminUid, appliedAt: new Date().toISOString(), linkedPayoutBatchId, ...result }
+          })}::jsonb
+      WHERE case_ref = ${caseRef}
+    `);
+
+    logger.info('[3.0C][ApplyResolution]', { caseRef, action, adminUid, ...result });
+    return res.json({ ok: true, ...result });
+  } catch (err: any) {
+    logger.error('[3.0C][ApplyResolution] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to apply dispute resolution', detail: err.message });
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Phase 2.9D — Refund Approval Thresholds
 //
@@ -6128,6 +6344,324 @@ router.post('/admin/wallet/refund-requests/:id/reject', async (req: Request, res
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// PHASE 3.0A — PAYOUT BATCH ENGINE
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── POST /admin/wallet/payout-batches/create ─────────────────────────────
+// Validates entries → generates batch_id → marks entries paid → writes
+// payout_batches row → returns batch summary.
+router.post('/admin/wallet/payout-batches/create', async (req: Request, res: Response) => {
+  try {
+    const financeRole = await requireFinanceRole(req, res, 'write');
+    if (!financeRole) return;
+    const session  = (req as any).session;
+    const adminUid = session.user.uid ?? session.user.id ?? 'unknown';
+
+    const schema = z.object({
+      entryIds: z.array(z.number().int().positive()).min(1, 'At least one entry required'),
+      notes:    z.string().default(''),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(422).json({ error: 'Validation failed', details: parsed.error.flatten() });
+    const { entryIds, notes } = parsed.data;
+
+    // Load and validate entries
+    const existing: any = await db.execute(sql`
+      SELECT id, status, provider_uid, net_cents, gross_cents
+      FROM provider_payout_entries
+      WHERE id = ANY(${sql`ARRAY[${sql.join(entryIds.map(id => sql`${id}`), sql`, `)}]::int[]`})
+    `);
+    const rows = existing?.rows ?? existing ?? [];
+
+    const notFound  = entryIds.filter(id => !rows.find((r: any) => Number(r.id) === id));
+    if (notFound.length > 0) return res.status(404).json({ error: 'Entry IDs not found', notFound });
+
+    const eligible  = rows.filter((r: any) => r.status === 'earned' || r.status === 'held');
+    const skipped   = rows.filter((r: any) => r.status === 'paid').map((r: any) => Number(r.id));
+    const alreadyPaid = rows.filter((r: any) => r.status !== 'earned' && r.status !== 'held' && r.status !== 'paid');
+    if (alreadyPaid.length > 0) {
+      return res.status(422).json({ error: 'Some entries are ineligible (not earned/held/paid)', ineligible: alreadyPaid.map((r: any) => ({ id: r.id, status: r.status })) });
+    }
+
+    // Idempotency: if all entries already paid under same batch, return that batch
+    if (eligible.length === 0 && skipped.length > 0) {
+      const existBatch: any = await db.execute(sql`
+        SELECT payout_batch_id FROM provider_payout_entries
+        WHERE id = ANY(${sql`ARRAY[${sql.join(skipped.map(id => sql`${id}`), sql`, `)}]::int[]`})
+          AND payout_batch_id IS NOT NULL LIMIT 1
+      `);
+      const existBatchId = (existBatch?.rows ?? existBatch ?? [])[0]?.payout_batch_id;
+      if (existBatchId) {
+        const pb: any = await db.execute(sql`SELECT * FROM payout_batches WHERE batch_id=${existBatchId} LIMIT 1`);
+        const pbRow = (pb?.rows ?? pb ?? [])[0];
+        return res.json({ ok: true, idempotent: true, batchId: existBatchId, batch: pbRow ?? null, skippedIds: skipped, updatedIds: [] });
+      }
+    }
+
+    const batchId = `batch_${nanoid(16)}`;
+    const now = new Date();
+
+    if (eligible.length > 0) {
+      const eligibleIds = eligible.map((r: any) => Number(r.id));
+      await db.execute(sql`
+        UPDATE provider_payout_entries
+        SET status='paid', payout_batch_id=${batchId}, paid_at=${now},
+            metadata = COALESCE(metadata,'{}')::jsonb || ${JSON.stringify({ markedPaidBy: adminUid, batchId, notes })}::jsonb
+        WHERE id = ANY(${sql`ARRAY[${sql.join(eligibleIds.map(id => sql`${id}`), sql`, `)}]::int[]`})
+          AND status IN ('earned','held')
+      `);
+    }
+
+    // Compute totals
+    const totRow: any = await db.execute(sql`
+      SELECT COUNT(DISTINCT provider_uid) AS providers,
+             COALESCE(SUM(net_cents),0)   AS net,
+             COALESCE(SUM(gross_cents),0) AS gross
+      FROM provider_payout_entries WHERE payout_batch_id=${batchId}
+    `);
+    const t = (totRow?.rows ?? totRow ?? [])[0] ?? {};
+    const totalProviders = Number(t.providers ?? 0);
+    const totalNetCents  = Number(t.net ?? 0);
+
+    // Write payout_batches row
+    const pbInsert: any = await db.execute(sql`
+      INSERT INTO payout_batches (batch_id, created_by_uid, status, total_providers, total_net_cents, notes)
+      VALUES (${batchId}, ${adminUid}, 'completed', ${totalProviders}, ${totalNetCents}, ${notes})
+      ON CONFLICT (batch_id) DO UPDATE
+        SET total_providers=${totalProviders}, total_net_cents=${totalNetCents}, status='completed'
+      RETURNING *
+    `);
+    const batchRow = (pbInsert?.rows ?? pbInsert ?? [])[0];
+
+    logger.info('[PayoutBatch][Created]', { batchId, adminUid, totalProviders, totalNetCents, entryCount: eligible.length });
+    return res.json({
+      ok: true,
+      idempotent: false,
+      batchId,
+      batch: {
+        batchId:        batchRow?.batch_id,
+        status:         batchRow?.status,
+        totalProviders: batchRow?.total_providers,
+        totalNetCents:  batchRow?.total_net_cents,
+        notes:          batchRow?.notes,
+        createdAt:      batchRow?.created_at,
+        createdByUid:   batchRow?.created_by_uid,
+      },
+      updatedIds: eligible.map((r: any) => Number(r.id)),
+      skippedIds: skipped,
+    });
+  } catch (err: any) {
+    logger.error('[PayoutBatch][Create] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to create payout batch', detail: err.message });
+  }
+});
+
+// ── GET /admin/wallet/payout-batches ─────────────────────────────────────
+router.get('/admin/wallet/payout-batches', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const rows: any = await db.execute(sql`
+      SELECT pb.*,
+             COUNT(ppe.id)                AS entry_count,
+             COALESCE(SUM(ppe.gross_cents),0) AS gross_cents_sum
+      FROM payout_batches pb
+      LEFT JOIN provider_payout_entries ppe ON ppe.payout_batch_id = pb.batch_id
+      GROUP BY pb.id
+      ORDER BY pb.created_at DESC
+      LIMIT 50
+    `);
+    const batches = (rows?.rows ?? rows ?? []).map((r: any) => ({
+      id:             r.id,
+      batchId:        r.batch_id,
+      createdByUid:   r.created_by_uid,
+      createdAt:      r.created_at,
+      status:         r.status,
+      totalProviders: r.total_providers,
+      totalNetCents:  r.total_net_cents,
+      grossCentsSum:  Number(r.gross_cents_sum ?? 0),
+      entryCount:     Number(r.entry_count ?? 0),
+      notes:          r.notes,
+    }));
+    return res.json({ ok: true, batches, total: batches.length });
+  } catch (err: any) {
+    logger.error('[PayoutBatch][List] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to list payout batches', detail: err.message });
+  }
+});
+
+// ── GET /admin/wallet/payout-batches/:batchId ────────────────────────────
+router.get('/admin/wallet/payout-batches/:batchId', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { batchId } = req.params;
+
+    const batchRow: any = await db.execute(sql`
+      SELECT * FROM payout_batches WHERE batch_id=${batchId} LIMIT 1
+    `);
+    const batch = (batchRow?.rows ?? batchRow ?? [])[0];
+
+    const entriesRaw: any = await db.execute(sql`
+      SELECT id, provider_uid, division_code, booking_id,
+             gross_cents, commission_rate_bps, net_cents,
+             status, paid_at, created_at
+      FROM provider_payout_entries
+      WHERE payout_batch_id=${batchId}
+      ORDER BY provider_uid, created_at
+    `);
+    const entries = (entriesRaw?.rows ?? entriesRaw ?? []).map((r: any) => ({
+      id:                 Number(r.id),
+      providerUid:        r.provider_uid,
+      divisionCode:       r.division_code,
+      bookingId:          r.booking_id,
+      grossCents:         Number(r.gross_cents ?? 0),
+      commissionRateBps:  Number(r.commission_rate_bps ?? 0),
+      netCents:           Number(r.net_cents ?? 0),
+      status:             r.status,
+      paidAt:             r.paid_at,
+      createdAt:          r.created_at,
+    }));
+
+    // Group by provider
+    const byProvider: Record<string, { providerUid: string; entries: any[]; grossCents: number; netCents: number }> = {};
+    for (const e of entries) {
+      if (!byProvider[e.providerUid]) byProvider[e.providerUid] = { providerUid: e.providerUid, entries: [], grossCents: 0, netCents: 0 };
+      byProvider[e.providerUid].entries.push(e);
+      byProvider[e.providerUid].grossCents += e.grossCents;
+      byProvider[e.providerUid].netCents   += e.netCents;
+    }
+
+    const totals = {
+      entryCount:     entries.length,
+      grossCents:     entries.reduce((s, e) => s + e.grossCents, 0),
+      netCents:       entries.reduce((s, e) => s + e.netCents, 0),
+      providerCount:  Object.keys(byProvider).length,
+    };
+
+    return res.json({
+      ok: true,
+      batch: batch ? {
+        batchId:        batch.batch_id,
+        status:         batch.status,
+        createdByUid:   batch.created_by_uid,
+        createdAt:      batch.created_at,
+        totalProviders: batch.total_providers,
+        totalNetCents:  batch.total_net_cents,
+        notes:          batch.notes,
+      } : null,
+      entries,
+      byProvider: Object.values(byProvider),
+      totals,
+    });
+  } catch (err: any) {
+    logger.error('[PayoutBatch][Detail] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch payout batch', detail: err.message });
+  }
+});
+
+// ── GET /admin/wallet/payout-batches/:batchId/export ─────────────────────
+// BOM-prefixed CSV: provider_uid,division_code,booking_id,gross_ils,commission_ils,net_ils
+router.get('/admin/wallet/payout-batches/:batchId/export', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { batchId } = req.params;
+
+    const entriesRaw: any = await db.execute(sql`
+      SELECT provider_uid, division_code, booking_id,
+             gross_cents, commission_rate_bps, net_cents
+      FROM provider_payout_entries
+      WHERE payout_batch_id=${batchId}
+      ORDER BY provider_uid, booking_id
+    `);
+    const entries = entriesRaw?.rows ?? entriesRaw ?? [];
+
+    if (entries.length === 0) {
+      return res.status(404).json({ error: 'Batch not found or has no entries', batchId });
+    }
+
+    const BOM = '\uFEFF';
+    const header = 'provider_uid,division_code,booking_id,gross_ils,commission_ils,net_ils';
+    const rows = entries.map((r: any) => {
+      const gross = Number(r.gross_cents ?? 0) / 100;
+      const net   = Number(r.net_cents   ?? 0) / 100;
+      const comm  = parseFloat((gross - net).toFixed(2));
+      const esc   = (v: string) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      return [
+        esc(r.provider_uid),
+        esc(r.division_code  ?? ''),
+        esc(r.booking_id     ?? ''),
+        gross.toFixed(2),
+        comm.toFixed(2),
+        net.toFixed(2),
+      ].join(',');
+    });
+
+    const csv = BOM + [header, ...rows].join('\r\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="payout-batch-${batchId}.csv"`);
+    return res.send(csv);
+  } catch (err: any) {
+    logger.error('[PayoutBatch][Export] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to export payout batch', detail: err.message });
+  }
+});
+
+// ── GET /admin/wallet/payout-batches/:batchId/provider-export ─────────────
+// Grouped multi-provider export — one section per provider, CSV with batch header.
+router.get('/admin/wallet/payout-batches/:batchId/provider-export', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { batchId } = req.params;
+
+    const entriesRaw: any = await db.execute(sql`
+      SELECT provider_uid, division_code, booking_id,
+             gross_cents, commission_rate_bps, net_cents, paid_at
+      FROM provider_payout_entries
+      WHERE payout_batch_id=${batchId}
+      ORDER BY provider_uid, booking_id
+    `);
+    const entries = entriesRaw?.rows ?? entriesRaw ?? [];
+    if (entries.length === 0) return res.status(404).json({ error: 'Batch not found or empty', batchId });
+
+    // Group by provider
+    const byProvider: Record<string, any[]> = {};
+    for (const r of entries) {
+      if (!byProvider[r.provider_uid]) byProvider[r.provider_uid] = [];
+      byProvider[r.provider_uid].push(r);
+    }
+
+    const BOM = '\uFEFF';
+    const batchHeader = `# Payout Batch: ${batchId}\r\n# Generated: ${new Date().toISOString()}\r\n`;
+    const entryHeader = 'provider_uid,division_code,booking_id,gross_ils,commission_ils,net_ils,paid_at';
+    const esc = (v: string) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+
+    const sections: string[] = [];
+    for (const [provUid, provEntries] of Object.entries(byProvider)) {
+      const rows = provEntries.map((r: any) => {
+        const gross = Number(r.gross_cents ?? 0) / 100;
+        const net   = Number(r.net_cents   ?? 0) / 100;
+        const comm  = parseFloat((gross - net).toFixed(2));
+        return [esc(provUid), esc(r.division_code ?? ''), esc(r.booking_id ?? ''), gross.toFixed(2), comm.toFixed(2), net.toFixed(2), esc(r.paid_at ? String(r.paid_at) : '')].join(',');
+      });
+      const subtotal = provEntries.reduce((s: number, r: any) => s + Number(r.net_cents ?? 0), 0) / 100;
+      sections.push([entryHeader, ...rows, `# Subtotal net for ${provUid}: ${subtotal.toFixed(2)} ILS`].join('\r\n'));
+    }
+
+    const csv = BOM + batchHeader + sections.join('\r\n\r\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="provider-export-${batchId}.csv"`);
+    return res.send(csv);
+  } catch (err: any) {
+    logger.error('[3.0B][ProviderExport] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to export provider batch', detail: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // PHASE 2.9E — DAILY FINANCE CLOSE
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -6278,6 +6812,149 @@ router.get('/admin/wallet/finance-close/history', async (req: Request, res: Resp
   }
 });
 
+// ── GET /admin/wallet/finance-close/month-export ──────────────────────────
+// Phase 3.0F: Month-end finance pack. ?month=YYYY-MM
+// Aggregates all closed days + payout batches + disputes for the calendar month.
+router.get('/admin/wallet/finance-close/month-export', async (req: Request, res: Response) => {
+  try {
+    const { createHash } = await import('crypto');
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const monthParam = (req.query.month as string) ?? '';
+    if (!/^\d{4}-\d{2}$/.test(monthParam)) {
+      return res.status(400).json({ error: 'month query param must be YYYY-MM', example: '2026-03' });
+    }
+
+    const [yr, mo] = monthParam.split('-').map(Number);
+    // First and last day of the month
+    const firstDay = `${monthParam}-01`;
+    const lastDay  = new Date(yr, mo, 0).getDate(); // last day in month
+    const lastDayStr = `${monthParam}-${String(lastDay).padStart(2, '0')}`;
+
+    // ── 1. Daily close records for the month ──────────────────────────────
+    const closeRows: any = await db.execute(sql`
+      SELECT close_date, status, closed_by_uid, closed_at,
+             vat_liability_cents, exception_count, notes, division_snapshots
+      FROM finance_close_records
+      WHERE close_date >= ${firstDay}::date AND close_date <= ${lastDayStr}::date
+      ORDER BY close_date
+    `);
+    const closedDays = (closeRows?.rows ?? closeRows ?? []).map((r: any) => ({
+      closeDate:         String(r.close_date).slice(0, 10),
+      status:            r.status,
+      closedByUid:       r.closed_by_uid,
+      closedAt:          r.closed_at,
+      vatLiabilityCents: r.vat_liability_cents,
+      exceptionCount:    r.exception_count,
+      notes:             r.notes,
+      divisionSnapshots: r.division_snapshots,
+    }));
+
+    const totalDays    = lastDay;
+    const daysClosed   = closedDays.filter((d: any) => d.status === 'closed').length;
+    const daysOpen     = totalDays - daysClosed;
+    const totalVatCents = closedDays.reduce((s: number, d: any) => s + (d.vatLiabilityCents ?? 0), 0);
+
+    // Aggregate division totals across closed days
+    const divisionTotals: Record<string, number> = {};
+    for (const day of closedDays) {
+      if (!day.divisionSnapshots) continue;
+      for (const [div, snap] of Object.entries(day.divisionSnapshots as Record<string, any>)) {
+        divisionTotals[div] = (divisionTotals[div] ?? 0) + (snap.collectedCents ?? 0);
+      }
+    }
+
+    // ── 2. Payout batches for the month ───────────────────────────────────
+    const monthStart = `${monthParam}-01T00:00:00.000Z`;
+    const monthEnd   = `${lastDayStr}T23:59:59.999Z`;
+    const batchRows: any = await db.execute(sql`
+      SELECT pb.batch_id, pb.status, pb.total_providers, pb.total_net_cents, pb.created_at, pb.created_by_uid,
+             COALESCE(SUM(ppe.gross_cents), 0)::bigint AS total_gross_cents,
+             COUNT(ppe.id)::int                        AS entry_count
+      FROM payout_batches pb
+      LEFT JOIN provider_payout_entries ppe ON ppe.payout_batch_id = pb.batch_id
+      WHERE pb.created_at >= ${monthStart} AND pb.created_at <= ${monthEnd}
+      GROUP BY pb.id
+      ORDER BY pb.created_at
+    `);
+    const payoutBatches = (batchRows?.rows ?? batchRows ?? []).map((r: any) => ({
+      batchId:         r.batch_id,
+      status:          r.status,
+      totalGrossCents: Number(r.total_gross_cents),
+      totalNetCents:   r.total_net_cents,
+      commissionCents: Number(r.total_gross_cents) - r.total_net_cents,
+      providerCount:   r.total_providers,
+      entryCount:      r.entry_count,
+      createdAt:       r.created_at,
+      createdByUid:    r.created_by_uid,
+    }));
+
+    const totalPayoutNetCents   = payoutBatches.reduce((s: number, b: any) => s + (b.totalNetCents ?? 0), 0);
+    const totalPayoutGrossCents = payoutBatches.reduce((s: number, b: any) => s + (b.totalGrossCents ?? 0), 0);
+
+    // ── 3. Dispute resolution summary for the month ───────────────────────
+    const dispRows: any = await db.execute(sql`
+      SELECT resolution_action, COUNT(*) AS cnt
+      FROM dispute_cases
+      WHERE created_at >= ${monthStart} AND created_at <= ${monthEnd}
+      GROUP BY resolution_action
+    `);
+    const disputesByResolution: Record<string, number> = {};
+    for (const r of (dispRows?.rows ?? dispRows ?? [])) {
+      disputesByResolution[r.resolution_action ?? 'none'] = Number(r.cnt);
+    }
+
+    // ── 4. Refund summary for the month ───────────────────────────────────
+    const refundRows: any = await db.execute(sql`
+      SELECT status, COUNT(*) AS cnt, COALESCE(SUM(amount_cents), 0)::bigint AS total_cents
+      FROM refund_approvals
+      WHERE created_at >= ${monthStart} AND created_at <= ${monthEnd}
+      GROUP BY status
+    `);
+    const refundSummary: Record<string, { count: number; totalCents: number }> = {};
+    for (const r of (refundRows?.rows ?? refundRows ?? [])) {
+      refundSummary[r.status] = { count: Number(r.cnt), totalCents: Number(r.total_cents) };
+    }
+
+    // ── Assemble bundle ────────────────────────────────────────────────────
+    const bundle = {
+      meta: {
+        exportedAt:  new Date().toISOString(),
+        month:       monthParam,
+        totalDays,
+        daysClosed,
+        daysOpen,
+        totalVatLiabilityCents: totalVatCents,
+      },
+      dailyCloseRecords:    closedDays,
+      divisionTotals,
+      payoutBatches,
+      payoutSummary: {
+        batchCount:          payoutBatches.length,
+        totalGrossCents:     totalPayoutGrossCents,
+        totalNetCents:       totalPayoutNetCents,
+        totalCommissionCents: totalPayoutGrossCents - totalPayoutNetCents,
+      },
+      disputesByResolution,
+      refundSummary,
+    };
+
+    const bundleJson = JSON.stringify(bundle);
+    const sha256     = createHash('sha256').update(bundleJson).digest('hex');
+
+    res.setHeader('Content-Disposition', `attachment; filename="petwash-finance-month-${monthParam}.json"`);
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('X-Bundle-SHA256', sha256);
+
+    logger.info('[FinanceClose][MonthExport]', { month: monthParam, daysClosed, sha256: sha256.slice(0, 16) });
+    return res.json({ ...bundle, _sha256: sha256 });
+  } catch (err: any) {
+    logger.error('[FinanceClose][MonthExport] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to export month-end finance pack', detail: err.message });
+  }
+});
+
 // ── GET /admin/wallet/finance-close/:date ─────────────────────────────────
 router.get('/admin/wallet/finance-close/:date', async (req: Request, res: Response) => {
   try {
@@ -6344,8 +7021,9 @@ router.get('/admin/wallet/finance-close/:date', async (req: Request, res: Respon
 // ── POST /admin/wallet/finance-close/:date/close ──────────────────────────
 router.post('/admin/wallet/finance-close/:date/close', async (req: Request, res: Response) => {
   try {
-    const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const financeRole = await requireFinanceRole(req, res, 'admin');
+    if (!financeRole) return;
+    const session  = (req as any).session;
     const adminUid = session.user.uid ?? session.user.id ?? 'unknown';
 
     const dateParam = req.params.date;
@@ -6446,4 +7124,236 @@ router.post('/admin/wallet/finance-close/:date/close', async (req: Request, res:
   }
 });
 
+// ── GET /admin/wallet/finance-close/:date/export ──────────────────────────
+// Phase 3.0E: Deterministic daily audit pack — one JSON bundle per close date.
+// Contains 5 sections + SHA-256 of the bundle for integrity verification.
+router.get('/admin/wallet/finance-close/:date/export', async (req: Request, res: Response) => {
+  try {
+    const { createHash } = await import('crypto');
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const dateParam = req.params.date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+      return res.status(400).json({ error: 'date must be YYYY-MM-DD', date: dateParam });
+    }
+
+    const dayStart = `${dateParam}T00:00:00.000Z`;
+    const dayEnd   = `${dateParam}T23:59:59.999Z`;
+
+    // ── 1. Settlement Summary (reuse buildDivisionSnapshots) ──────────────
+    const divisionSnapshots = await buildDivisionSnapshots(dateParam);
+    const totalCollectedCents = Object.values(divisionSnapshots)
+      .reduce((s: number, d: any) => s + (d.collectedCents ?? 0), 0);
+    const vatCents = Math.floor(totalCollectedCents * VAT_RATE);
+
+    // ── 2. Payout Batches created on this date ────────────────────────────
+    const batchRows: any = await db.execute(sql`
+      SELECT pb.batch_id, pb.status, pb.total_providers, pb.total_net_cents, pb.created_at, pb.created_by_uid,
+             COALESCE(SUM(ppe.gross_cents), 0)::bigint AS total_gross_cents,
+             COUNT(ppe.id)::int                               AS entry_count
+      FROM payout_batches pb
+      LEFT JOIN provider_payout_entries ppe ON ppe.payout_batch_id = pb.batch_id
+      WHERE pb.created_at >= ${dayStart} AND pb.created_at <= ${dayEnd}
+      GROUP BY pb.id
+      ORDER BY pb.created_at
+    `);
+    const payoutBatches = (batchRows?.rows ?? batchRows ?? []).map((r: any) => ({
+      batchId:         r.batch_id,
+      status:          r.status,
+      totalGrossCents: Number(r.total_gross_cents),
+      totalNetCents:   r.total_net_cents,
+      commissionCents: Number(r.total_gross_cents) - r.total_net_cents,
+      providerCount:   r.total_providers,
+      entryCount:      r.entry_count,
+      createdAt:       r.created_at,
+      createdByUid:    r.created_by_uid,
+    }));
+
+    // ── 3. Action History (all ledger entries for the day) ─────────────────
+    const ledgerRows: any = await db.execute(sql`
+      SELECT user_id, entry_type, amount_cents, currency, description, booking_id, division, created_at
+      FROM wallet_ledger_entries
+      WHERE created_at >= ${dayStart} AND created_at <= ${dayEnd}
+      ORDER BY created_at
+    `);
+    const actionHistory = (ledgerRows?.rows ?? ledgerRows ?? []).map((r: any) => ({
+      userId:      r.user_id,
+      entryType:   r.entry_type,
+      amountCents: r.amount_cents,
+      currency:    r.currency,
+      description: r.description,
+      bookingId:   r.booking_id,
+      division:    r.division,
+      createdAt:   r.created_at,
+    }));
+
+    // ── 4. Anomaly Log ────────────────────────────────────────────────────
+    const negRows: any  = await db.execute(sql`
+      SELECT user_id, cash_wallet_balance_cents, pending_balance_cents
+      FROM wallet_accounts
+      WHERE cash_wallet_balance_cents < 0 OR pending_balance_cents < 0
+    `);
+    const staleRows: any = await db.execute(sql`
+      SELECT user_id, booking_id, amount_cents, created_at
+      FROM wallet_ledger_entries
+      WHERE entry_type='hold' AND reversed=false
+        AND created_at < NOW() - INTERVAL '72 hours'
+      ORDER BY created_at
+    `);
+    const anomalyLog = {
+      negativeBalances: (negRows?.rows ?? negRows ?? []).map((r: any) => ({
+        userId:           r.user_id,
+        cashBalanceCents: r.cash_wallet_balance_cents,
+        pendingCents:     r.pending_balance_cents,
+      })),
+      staleHoldsOver72h: (staleRows?.rows ?? staleRows ?? []).map((r: any) => ({
+        userId:      r.user_id,
+        bookingId:   r.booking_id,
+        amountCents: r.amount_cents,
+        heldSince:   r.created_at,
+      })),
+    };
+
+    // ── 5. Dispute Summary ────────────────────────────────────────────────
+    const disputeRows: any = await db.execute(sql`
+      SELECT case_ref, status, resolution_action, complaint_type, division, linked_booking_id, created_at, linked_payout_batch_id
+      FROM dispute_cases
+      WHERE created_at >= ${dayStart} AND created_at <= ${dayEnd}
+      ORDER BY created_at
+    `);
+    const disputeSummary = (disputeRows?.rows ?? disputeRows ?? []).map((r: any) => ({
+      caseRef:            r.case_ref,
+      status:             r.status,
+      resolutionAction:   r.resolution_action,
+      complaintType:      r.complaint_type,
+      division:           r.division,
+      linkedBookingId:    r.linked_booking_id,
+      linkedPayoutBatch:  r.linked_payout_batch_id,
+      createdAt:          r.created_at,
+    }));
+
+    // ── Finance close record ───────────────────────────────────────────────
+    const closeRec: any = await db.execute(sql`
+      SELECT * FROM finance_close_records WHERE close_date = ${dateParam}::date LIMIT 1
+    `);
+    const closeRow = (closeRec?.rows ?? closeRec ?? [])[0];
+
+    // ── Assemble bundle ───────────────────────────────────────────────────
+    const bundle = {
+      meta: {
+        exportedAt:     new Date().toISOString(),
+        date:           dateParam,
+        closeStatus:    closeRow?.status ?? 'open',
+        closedByUid:    closeRow?.closed_by_uid ?? null,
+        closedAt:       closeRow?.closed_at ?? null,
+        vatLiabilityCents: vatCents,
+        totalCollectedCents,
+      },
+      settlementSummary: {
+        divisions:          divisionSnapshots,
+        totalCollectedCents,
+        vatLiabilityCents:  vatCents,
+      },
+      payoutBatches,
+      actionHistory,
+      anomalyLog,
+      disputeSummary,
+    };
+
+    // ── SHA-256 integrity hash ─────────────────────────────────────────────
+    const bundleJson = JSON.stringify(bundle);
+    const sha256     = createHash('sha256').update(bundleJson).digest('hex');
+
+    res.setHeader('Content-Disposition', `attachment; filename="petwash-finance-${dateParam}.json"`);
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('X-Bundle-SHA256', sha256);
+
+    logger.info('[FinanceClose][Export]', { date: dateParam, sha256: sha256.slice(0, 16) });
+    return res.json({ ...bundle, _sha256: sha256 });
+  } catch (err: any) {
+    logger.error('[FinanceClose][Export] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to export finance bundle', detail: err.message });
+  }
+});
+
+// ── Phase 3.0G: Finance Role Management Endpoints ─────────────────────────
+
+// GET /admin/wallet/finance-roles — list all assigned roles
+router.get('/admin/wallet/finance-roles', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const rows: any = await db.execute(sql`
+      SELECT user_uid, role, granted_by, created_at, updated_at
+      FROM finance_roles
+      ORDER BY role DESC, created_at
+    `);
+    const roles = (rows?.rows ?? rows ?? []).map((r: any) => ({
+      userUid:   r.user_uid,
+      role:      r.role,
+      grantedBy: r.granted_by,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    }));
+    return res.json({ ok: true, roles, total: roles.length });
+  } catch (err: any) {
+    logger.error('[FinanceRoles][List] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to list finance roles', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/finance-roles/:uid — assign or update role for a user
+router.post('/admin/wallet/finance-roles/:uid', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const grantorUid = session.user.uid ?? session.user.id ?? 'unknown';
+    const { uid }    = req.params;
+
+    const schema = z.object({ role: z.enum(['read', 'write', 'admin']) });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(422).json({ error: 'role must be read|write|admin' });
+    const { role } = parsed.data;
+
+    await db.execute(sql`
+      INSERT INTO finance_roles (user_uid, role, granted_by)
+      VALUES (${uid}, ${role}, ${grantorUid})
+      ON CONFLICT (user_uid) DO UPDATE
+        SET role       = EXCLUDED.role,
+            granted_by = EXCLUDED.granted_by,
+            updated_at = NOW()
+    `);
+    logger.info('[FinanceRoles][Assign]', { uid, role, grantorUid });
+    return res.json({ ok: true, userUid: uid, role });
+  } catch (err: any) {
+    logger.error('[FinanceRoles][Assign] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to assign finance role', detail: err.message });
+  }
+});
+
+// DELETE /admin/wallet/finance-roles/:uid — remove finance role for a user
+router.delete('/admin/wallet/finance-roles/:uid', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { uid } = req.params;
+
+    const deleted: any = await db.execute(sql`
+      DELETE FROM finance_roles WHERE user_uid = ${uid} RETURNING user_uid
+    `);
+    const found = (deleted?.rows ?? deleted ?? []).length > 0;
+    if (!found) return res.status(404).json({ error: 'No finance role found for this UID' });
+
+    logger.info('[FinanceRoles][Delete]', { uid });
+    return res.json({ ok: true, userUid: uid, deleted: true });
+  } catch (err: any) {
+    logger.error('[FinanceRoles][Delete] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to remove finance role', detail: err.message });
+  }
+});
+
 export default router;
+
+

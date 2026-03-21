@@ -218,6 +218,14 @@ export default function ProviderDashboard() {
     queryFn: () => fetchWithAuth(`/api/prestige-pass/provider/wallet/payout-ledger${payoutStatusFilter ? `?status=${payoutStatusFilter}` : ''}`),
   });
 
+  // ── 3.0B: Payout Statement ────────────────────────────────────────────────
+  const [statementBatchId, setStatementBatchId] = useState('');
+  const { data: statementData, isLoading: statementLoading } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/provider/wallet/payout-statement', statementBatchId],
+    enabled: !!user,
+    queryFn: () => fetchWithAuth(`/api/prestige-pass/provider/wallet/payout-statement${statementBatchId ? `?batchId=${statementBatchId}` : ''}`),
+  });
+
   const { data: appStatusData } = useQuery<{
     success: boolean;
     isProvider: boolean;
@@ -738,6 +746,110 @@ export default function ProviderDashboard() {
                   </div>
                 </>
               )}
+
+              {/* ── 3.0B: Payout Statement ─────────────────────────────────── */}
+              <div className="bg-white border border-gray-200/60 shadow-sm overflow-hidden" style={{ borderRadius: '2px' }}>
+                <div className="h-[2px] bg-gradient-to-r from-emerald-400 via-green-500 to-teal-500" />
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <h3 className="text-base font-serif text-gray-900">הצהרת תשלום</h3>
+                  <div className="flex items-center gap-2">
+                    <select
+                      className="text-xs border rounded px-2 py-1.5 text-gray-700 max-w-[200px]"
+                      value={statementBatchId}
+                      onChange={e => setStatementBatchId(e.target.value)}
+                      style={{ borderRadius: '2px' }}
+                    >
+                      <option value="">כל האצוות</option>
+                      {(statementData?.batches ?? []).map((b: any) => (
+                        <option key={b.batchId} value={b.batchId}>
+                          {b.batchId} — {b.paidAt ? new Date(b.paidAt).toLocaleDateString('he-IL') : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {statementBatchId && (
+                      <a
+                        href={`/api/prestige-pass/provider/wallet/payout-statement?batchId=${statementBatchId}&format=csv`}
+                        className="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-500 flex items-center gap-1"
+                        style={{ borderRadius: '2px' }}
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          const res = await fetch(`/api/prestige-pass/provider/wallet/payout-statement${statementBatchId ? `?batchId=${statementBatchId}` : ''}`, { credentials: 'include' });
+                          const data = await res.json();
+                          const BOM = '\uFEFF';
+                          const header = 'division_code,booking_id,gross_ils,commission_ils,net_ils,paid_at';
+                          const rows = (data.entries ?? []).map((e: any) => {
+                            const gross = e.grossCents / 100;
+                            const net = e.netCents / 100;
+                            const comm = ((e.grossCents - e.netCents) / 100).toFixed(2);
+                            const esc = (v: string) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+                            return [esc(e.divisionCode ?? ''), esc(e.bookingId ?? ''), gross.toFixed(2), comm, net.toFixed(2), esc(e.paidAt ? new Date(e.paidAt).toISOString() : '')].join(',');
+                          });
+                          const csv = BOM + [header, ...rows].join('\r\n');
+                          const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+                          const a = document.createElement('a'); a.href = url; a.download = `statement-${statementBatchId}.csv`; a.click(); URL.revokeObjectURL(url);
+                        }}
+                      >
+                        ⬇ הורד CSV
+                      </a>
+                    )}
+                  </div>
+                </div>
+                {statementLoading ? (
+                  <div className="p-6 space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-10 bg-gray-100 animate-pulse rounded" />)}</div>
+                ) : !statementData?.entries?.length ? (
+                  <div className="p-8 text-center text-sm text-gray-400">אין תשלומים שהתקבלו עדיין</div>
+                ) : (
+                  <div className="p-4 space-y-4">
+                    {/* Totals */}
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { label: 'ברוטו', cents: statementData.totals?.grossCents ?? 0 },
+                        { label: 'עמלה', cents: statementData.totals?.commissionCents ?? 0, dim: true },
+                        { label: 'נטו לקבלה', cents: statementData.totals?.netCents ?? 0, bold: true },
+                      ].map(c => (
+                        <div key={c.label} className={`rounded p-3 ${c.bold ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50'}`}>
+                          <div className="text-xs text-gray-500 mb-1">{c.label}</div>
+                          <div className={`font-bold ${c.dim ? 'text-red-600' : c.bold ? 'text-emerald-700' : ''}`}>
+                            {c.dim ? '-' : ''}₪{(c.cents / 100).toFixed(2)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Per-batch breakdown */}
+                    {(statementData.byBatch ?? []).map((batch: any) => (
+                      <div key={batch.batchId} className="border rounded overflow-hidden" style={{ borderRadius: '2px' }}>
+                        <div className="px-4 py-2 bg-gray-50 border-b flex justify-between items-center">
+                          <span className="text-xs font-mono text-gray-700">{batch.batchId}</span>
+                          <span className="text-xs text-gray-500">{batch.paidAt ? new Date(batch.paidAt).toLocaleDateString('he-IL') : ''}</span>
+                          <span className="text-xs font-semibold">נטו: ₪{(batch.netCents / 100).toFixed(2)}</span>
+                        </div>
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-left text-gray-400 border-b bg-gray-50">
+                              <th className="px-3 py-1.5">חלוקה</th>
+                              <th className="px-3 py-1.5">הזמנה</th>
+                              <th className="px-3 py-1.5">ברוטו</th>
+                              <th className="px-3 py-1.5">עמלה</th>
+                              <th className="px-3 py-1.5">נטו</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {batch.entries.map((e: any) => (
+                              <tr key={e.id} className="border-b last:border-0 hover:bg-gray-50">
+                                <td className="px-3 py-2">{e.divisionCode}</td>
+                                <td className="px-3 py-2 font-mono">{e.bookingId ?? '—'}</td>
+                                <td className="px-3 py-2">₪{(e.grossCents / 100).toFixed(2)}</td>
+                                <td className="px-3 py-2 text-red-500">-₪{(e.commissionCents / 100).toFixed(2)}</td>
+                                <td className="px-3 py-2 font-semibold text-emerald-700">₪{(e.netCents / 100).toFixed(2)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* ── Payout Ledger ─────────────────────────────────────────── */}
               <div className="bg-white border border-gray-200/60 shadow-sm overflow-hidden" style={{ borderRadius: '2px' }}>

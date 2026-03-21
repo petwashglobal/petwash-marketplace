@@ -53,6 +53,9 @@ import {
   Lock,
   CalendarDays,
   DollarSign,
+  Package,
+  Download,
+  ChevronRight,
 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -160,6 +163,18 @@ export default function AdminWalletDashboard() {
   const [resolveCents, setResolveCents] = useState("");
   const [resolveNote,  setResolveNote]  = useState("");
   const [openForm,     setOpenForm]     = useState(false);
+  // 3.0C Apply Resolution state
+  const [applyResMode,    setApplyResMode]    = useState(false);
+  const [applyResAction,  setApplyResAction]  = useState<"refund"|"clawback"|"none">("none");
+  const [applyResBatchId, setApplyResBatchId] = useState("");
+  const [applyResRefundAmt,     setApplyResRefundAmt]     = useState("");
+  const [applyResRefundBooking, setApplyResRefundBooking] = useState("");
+  const [applyResRefundNote,    setApplyResRefundNote]    = useState("");
+  const [applyResClawbackAmt,   setApplyResClawbackAmt]   = useState("");
+  const [applyResClawbackUid,   setApplyResClawbackUid]   = useState("");
+  const [applyResClawbackDiv,   setApplyResClawbackDiv]   = useState("");
+  const [applyResClawbackNote,  setApplyResClawbackNote]  = useState("");
+  const [applyResResult,        setApplyResResult]        = useState<any>(null);
   const [newComplainantUid,  setNewComplainantUid]  = useState("");
   const [newComplainantType, setNewComplainantType] = useState<"customer"|"provider">("customer");
   const [newBookingId,       setNewBookingId]       = useState("");
@@ -214,6 +229,19 @@ export default function AdminWalletDashboard() {
     onError: (err) => toast({ title: err?.error ?? "Resolve failed", variant: "destructive" }),
   });
 
+  // 3.0C — Apply Resolution mutation
+  const { mutate: applyResolution, isPending: applyResPending } = useMutation<any, any, { caseRef: string; body: any }>({
+    mutationFn: ({ caseRef, body }) => apiRequest("POST", `/api/prestige-pass/admin/wallet/disputes/${caseRef}/apply-resolution`, body),
+    onSuccess: (data) => {
+      setApplyResResult(data);
+      setApplyResMode(false);
+      toast({ title: `Resolution applied: ${data.action}${data.refundRequestId ? ` — refund ${data.refundRequestId}` : ''}${data.clawbackId ? ` — clawback ${data.clawbackId}` : ''}` });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/disputes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/payout-ledger"] });
+    },
+    onError: (err: any) => toast({ title: err?.error ?? "Apply resolution failed", variant: "destructive" }),
+  });
+
   // ── Settlement tab (2.9B) ─────────────────────────────────────────────────────
   const today = new Date().toISOString().slice(0, 10);
   const firstOfMonth = today.slice(0, 7) + '-01';
@@ -264,10 +292,45 @@ export default function AdminWalletDashboard() {
       setMarkPaidNote("");
       toast({ title: `Batch ${data.batchId} — ${data.updatedIds.length} entries marked paid` });
       queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/payout-ledger"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/payout-batches"] });
     },
     onError: (err) => {
       toast({ title: err?.error ?? "Mark-paid failed", variant: "destructive" });
     },
+  });
+
+  // ── Payout Batches (3.0A) ─────────────────────────────────────────────────────
+  const [batchCreateIds, setBatchCreateIds] = useState("");
+  const [batchCreateNotes, setBatchCreateNotes] = useState("");
+  const [batchCreateResult, setBatchCreateResult] = useState<any>(null);
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+
+  const { data: batchListData, isLoading: batchListLoading, refetch: refetchBatchList } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/payout-batches"],
+    queryFn: () => fetch("/api/prestige-pass/admin/wallet/payout-batches", { credentials: "include" }).then(r => r.json()),
+  });
+
+  const { data: batchDetailData, isLoading: batchDetailLoading } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/payout-batches", selectedBatchId],
+    queryFn: () => fetch(`/api/prestige-pass/admin/wallet/payout-batches/${selectedBatchId}`, { credentials: "include" }).then(r => r.json()),
+    enabled: !!selectedBatchId,
+  });
+
+  const { mutate: createBatch, isPending: createBatchPending } = useMutation<any, any, { entryIds: number[]; notes: string }>({
+    mutationFn: (vars) => apiRequest("POST", "/api/prestige-pass/admin/wallet/payout-batches/create", vars),
+    onSuccess: (data) => {
+      setBatchCreateResult(data);
+      setBatchCreateIds("");
+      setBatchCreateNotes("");
+      if (data.idempotent) {
+        toast({ title: `Already batched — returning existing batch ${data.batchId}` });
+      } else {
+        toast({ title: `Batch created: ${data.batchId} — ${data.updatedIds?.length ?? 0} entries` });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/payout-batches"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/payout-ledger"] });
+    },
+    onError: (err: any) => toast({ title: err?.error ?? "Batch create failed", variant: "destructive" }),
   });
 
   // ── Adjustments filters ──────────────────────────────────────────────────────
@@ -638,6 +701,24 @@ export default function AdminWalletDashboard() {
     enabled: adjApplied,
   });
 
+  // ── Phase 3.0G: Finance Roles ──────────────────────────────────────────────
+  const [roleAssignUid, setRoleAssignUid] = useState("");
+  const [roleAssignVal, setRoleAssignVal] = useState<"read"|"write"|"admin">("write");
+  const { data: rolesData, isLoading: rolesLoading, refetch: refetchRoles } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/finance-roles"],
+    queryFn:  () => fetch("/api/prestige-pass/admin/wallet/finance-roles", { credentials: "include" }).then(r => r.json()),
+  });
+  const { mutate: upsertRole, isPending: upsertRolePending } = useMutation<any, any, { uid: string; role: string }>({
+    mutationFn: ({ uid, role }) => apiRequest("POST", `/api/prestige-pass/admin/wallet/finance-roles/${uid}`, { role }),
+    onSuccess: () => { toast({ title: "Finance role assigned" }); setRoleAssignUid(""); refetchRoles(); },
+    onError: (e) => toast({ title: "Failed to assign role", description: e.message, variant: "destructive" }),
+  });
+  const { mutate: deleteRole, isPending: deleteRolePending } = useMutation<any, any, string>({
+    mutationFn: (uid) => apiRequest("DELETE", `/api/prestige-pass/admin/wallet/finance-roles/${uid}`, {}),
+    onSuccess: () => { toast({ title: "Finance role removed" }); refetchRoles(); },
+    onError: (e) => toast({ title: "Failed to remove role", description: e.message, variant: "destructive" }),
+  });
+
   function handleAuditSearch() {
     if (!auditId.trim()) return;
     setAuditSearch(auditId.trim());
@@ -834,6 +915,10 @@ export default function AdminWalletDashboard() {
               <DollarSign className="w-4 h-4 mr-2" />
               Payouts
             </TabsTrigger>
+            <TabsTrigger value="batches">
+              <Package className="w-4 h-4 mr-2" />
+              Payout Batches
+            </TabsTrigger>
             <TabsTrigger value="disputes">
               <AlertTriangle className="w-4 h-4 mr-2" />
               Disputes
@@ -841,6 +926,10 @@ export default function AdminWalletDashboard() {
             <TabsTrigger value="settlement">
               <BarChart3 className="w-4 h-4 mr-2" />
               Settlement
+            </TabsTrigger>
+            <TabsTrigger value="roles">
+              <ShieldCheck className="w-4 h-4 mr-2" />
+              Finance Roles
             </TabsTrigger>
           </TabsList>
 
@@ -2863,6 +2952,34 @@ export default function AdminWalletDashboard() {
                             <p className="text-xs text-emerald-700 bg-white border border-emerald-100 rounded px-2 py-1.5">{closeRecord.notes}</p>
                           </div>
                         )}
+                        {/* ── 3.0E Export Bundle ── */}
+                        <div className="flex justify-end">
+                          <button
+                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-emerald-300 bg-white text-emerald-700 rounded hover:bg-emerald-50 font-medium"
+                            onClick={async () => {
+                              try {
+                                const res = await fetch(
+                                  `/api/prestige-pass/admin/wallet/finance-close/${closeRecord.closeDate ?? closeDate}/export`,
+                                  { credentials: "include" }
+                                );
+                                if (!res.ok) throw new Error(await res.text());
+                                const blob = await res.blob();
+                                const url  = URL.createObjectURL(blob);
+                                const a    = document.createElement("a");
+                                a.href     = url;
+                                a.download = `petwash-finance-${closeRecord.closeDate ?? closeDate}.json`;
+                                a.click();
+                                URL.revokeObjectURL(url);
+                              } catch (e: any) {
+                                toast({ title: "Export failed", description: e.message, variant: "destructive" });
+                              }
+                            }}
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            Download Audit Pack
+                          </button>
+                        </div>
+
                         {/* Division snapshot chips */}
                         {closeRecord.divisionSnapshots && (
                           <div>
@@ -2927,7 +3044,43 @@ export default function AdminWalletDashboard() {
                     Close History
                     <span className="text-xs font-normal text-gray-400">(last 30 days)</span>
                   </CardTitle>
-                  <button className="text-xs text-blue-600 hover:underline" onClick={() => refetchCloseHistory()}>Refresh</button>
+                  <div className="flex items-center gap-2">
+                    {/* ── 3.0F Month-end Pack ── */}
+                    <input
+                      type="month"
+                      defaultValue={today.slice(0, 7)}
+                      id="month-pack-input"
+                      className="text-xs border border-gray-200 rounded px-2 py-1 text-gray-700"
+                    />
+                    <button
+                      className="text-xs flex items-center gap-1 px-2 py-1 border border-violet-300 text-violet-700 rounded hover:bg-violet-50"
+                      onClick={async () => {
+                        const monthInput = (document.getElementById("month-pack-input") as HTMLInputElement);
+                        const month = monthInput?.value;
+                        if (!month) return;
+                        try {
+                          const res = await fetch(
+                            `/api/prestige-pass/admin/wallet/finance-close/month-export?month=${month}`,
+                            { credentials: "include" }
+                          );
+                          if (!res.ok) throw new Error(await res.text());
+                          const blob = await res.blob();
+                          const url  = URL.createObjectURL(blob);
+                          const a    = document.createElement("a");
+                          a.href     = url;
+                          a.download = `petwash-finance-month-${month}.json`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        } catch (e: any) {
+                          toast({ title: "Month-end export failed", description: e.message, variant: "destructive" });
+                        }
+                      }}
+                    >
+                      <Download className="w-3 h-3" />
+                      Month-end Pack
+                    </button>
+                    <button className="text-xs text-blue-600 hover:underline" onClick={() => refetchCloseHistory()}>Refresh</button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -2970,6 +3123,244 @@ export default function AdminWalletDashboard() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* ── PAYOUT BATCHES (3.0A) ── */}
+          <TabsContent value="batches" className="mt-4 space-y-4">
+            {/* Totals cards */}
+            {batchListData?.batches && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { label: "Total Batches", value: batchListData.batches.length },
+                  { label: "Total Providers", value: batchListData.batches.reduce((s: number, b: any) => s + (b.totalProviders ?? 0), 0) },
+                  { label: "Total Net (ILS)", value: `₪${(batchListData.batches.reduce((s: number, b: any) => s + (b.totalNetCents ?? 0), 0) / 100).toLocaleString("he-IL", { minimumFractionDigits: 2 })}` },
+                  { label: "Total Entries", value: batchListData.batches.reduce((s: number, b: any) => s + (b.entryCount ?? 0), 0) },
+                ].map(c => (
+                  <Card key={c.label} className="p-4">
+                    <div className="text-xs text-gray-500 mb-1">{c.label}</div>
+                    <div className="text-xl font-bold">{c.value}</div>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Create batch panel */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Package className="w-4 h-4" /> Create Payout Batch
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Entry IDs (comma-separated)</label>
+                  <input
+                    className="w-full border rounded px-2 py-1.5 text-sm font-mono"
+                    placeholder="1,2,3,4"
+                    value={batchCreateIds}
+                    onChange={e => setBatchCreateIds(e.target.value)}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">IDs must be in earned or held status. Already-paid entries are detected and handled for idempotency.</p>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Notes (optional)</label>
+                  <input
+                    className="w-full border rounded px-2 py-1.5 text-sm"
+                    placeholder="Weekly payout — week 12"
+                    value={batchCreateNotes}
+                    onChange={e => setBatchCreateNotes(e.target.value)}
+                  />
+                </div>
+                <button
+                  className="px-4 py-2 bg-gray-900 text-white text-sm rounded hover:bg-gray-700 disabled:opacity-50"
+                  disabled={createBatchPending || !batchCreateIds.trim()}
+                  onClick={() => {
+                    const ids = batchCreateIds.split(",").map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+                    if (ids.length === 0) return;
+                    createBatch({ entryIds: ids, notes: batchCreateNotes });
+                  }}
+                >
+                  {createBatchPending ? "Creating…" : "Create Batch"}
+                </button>
+
+                {batchCreateResult && (
+                  <div className={`rounded border p-3 text-sm space-y-1 ${batchCreateResult.idempotent ? "bg-amber-50 border-amber-200" : "bg-emerald-50 border-emerald-200"}`}>
+                    <div className="font-semibold">{batchCreateResult.idempotent ? "Existing batch returned (idempotent)" : "Batch created"}</div>
+                    <div>Batch ID: <span className="font-mono">{batchCreateResult.batchId}</span></div>
+                    <div>Entries marked paid: {batchCreateResult.updatedIds?.length ?? 0}</div>
+                    <div>Entries already paid (skipped): {batchCreateResult.skippedIds?.length ?? 0}</div>
+                    {batchCreateResult.batch && (
+                      <div>Net total: ₪{((batchCreateResult.batch.total_net_cents ?? batchCreateResult.batch.totalNetCents ?? 0) / 100).toFixed(2)}</div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Batch list */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm">All Batches</CardTitle>
+                  <button className="text-xs text-gray-500 hover:text-gray-800 border rounded px-2 py-1" onClick={() => refetchBatchList()}>Refresh</button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {batchListLoading ? (
+                  <div className="text-center py-6 text-gray-400 text-sm">Loading batches…</div>
+                ) : !batchListData?.batches?.length ? (
+                  <div className="text-center py-6 text-gray-400 text-sm">No batches yet</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-left text-xs text-gray-500">
+                          <th className="py-2 pr-4">Batch ID</th>
+                          <th className="py-2 pr-4">Status</th>
+                          <th className="py-2 pr-4">Providers</th>
+                          <th className="py-2 pr-4">Entries</th>
+                          <th className="py-2 pr-4">Net (ILS)</th>
+                          <th className="py-2 pr-4">Created</th>
+                          <th className="py-2 pr-4">Notes</th>
+                          <th className="py-2">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {batchListData.batches.map((b: any) => (
+                          <tr key={b.batchId} className={`border-b hover:bg-gray-50 cursor-pointer ${selectedBatchId === b.batchId ? "bg-blue-50" : ""}`}>
+                            <td className="py-2 pr-4 font-mono text-xs" onClick={() => setSelectedBatchId(selectedBatchId === b.batchId ? null : b.batchId)}>
+                              {b.batchId}
+                            </td>
+                            <td className="py-2 pr-4">
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${b.status === "completed" ? "bg-emerald-100 text-emerald-700" : b.status === "exported" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`}>
+                                {b.status}
+                              </span>
+                            </td>
+                            <td className="py-2 pr-4">{b.totalProviders}</td>
+                            <td className="py-2 pr-4">{b.entryCount}</td>
+                            <td className="py-2 pr-4 font-mono">₪{(b.totalNetCents / 100).toFixed(2)}</td>
+                            <td className="py-2 pr-4 text-xs text-gray-500">{b.createdAt ? new Date(b.createdAt).toLocaleString("he-IL") : "—"}</td>
+                            <td className="py-2 pr-4 text-xs text-gray-500 max-w-[140px] truncate">{b.notes || "—"}</td>
+                            <td className="py-2">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                                  onClick={() => setSelectedBatchId(selectedBatchId === b.batchId ? null : b.batchId)}
+                                >
+                                  <ChevronRight className="w-3 h-3" />
+                                  Detail
+                                </button>
+                                <a
+                                  href={`/api/prestige-pass/admin/wallet/payout-batches/${b.batchId}/export`}
+                                  className="text-xs text-emerald-600 hover:underline flex items-center gap-1"
+                                >
+                                  <Download className="w-3 h-3" />
+                                  CSV
+                                </a>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Batch detail panel */}
+            {selectedBatchId && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Package className="w-4 h-4" />
+                      Batch detail — <span className="font-mono">{selectedBatchId}</span>
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`/api/prestige-pass/admin/wallet/payout-batches/${selectedBatchId}/export`}
+                        className="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-500 flex items-center gap-1"
+                      >
+                        <Download className="w-3 h-3" /> Export CSV
+                      </a>
+                      <button className="text-xs text-gray-400 hover:text-gray-600" onClick={() => setSelectedBatchId(null)}>✕ Close</button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {batchDetailLoading ? (
+                    <div className="text-center py-6 text-gray-400 text-sm">Loading…</div>
+                  ) : batchDetailData?.error ? (
+                    <div className="text-red-500 text-sm">{batchDetailData.error}</div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Header totals */}
+                      {batchDetailData?.totals && (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {[
+                            { label: "Entries", value: batchDetailData.totals.entryCount },
+                            { label: "Providers", value: batchDetailData.totals.providerCount },
+                            { label: "Gross (ILS)", value: `₪${(batchDetailData.totals.grossCents / 100).toFixed(2)}` },
+                            { label: "Net (ILS)", value: `₪${(batchDetailData.totals.netCents / 100).toFixed(2)}` },
+                          ].map(c => (
+                            <div key={c.label} className="bg-gray-50 rounded p-3">
+                              <div className="text-xs text-gray-500 mb-1">{c.label}</div>
+                              <div className="font-bold">{c.value}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* By-provider breakdown */}
+                      {batchDetailData?.byProvider?.length > 0 && (
+                        <div>
+                          <div className="text-xs font-semibold text-gray-500 mb-2">By Provider</div>
+                          <div className="space-y-2">
+                            {batchDetailData.byProvider.map((prov: any) => (
+                              <div key={prov.providerUid} className="border rounded p-3">
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="font-mono text-xs text-gray-700">{prov.providerUid}</span>
+                                  <span className="text-xs font-medium">
+                                    Gross: ₪{(prov.grossCents / 100).toFixed(2)} · Net: ₪{(prov.netCents / 100).toFixed(2)}
+                                  </span>
+                                </div>
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-xs">
+                                    <thead>
+                                      <tr className="text-left text-gray-400 border-b">
+                                        <th className="pb-1 pr-3">ID</th>
+                                        <th className="pb-1 pr-3">Division</th>
+                                        <th className="pb-1 pr-3">Booking</th>
+                                        <th className="pb-1 pr-3">Gross</th>
+                                        <th className="pb-1 pr-3">Commission</th>
+                                        <th className="pb-1">Net</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {prov.entries.map((e: any) => (
+                                        <tr key={e.id} className="border-b last:border-0">
+                                          <td className="py-1 pr-3 font-mono">{e.id}</td>
+                                          <td className="py-1 pr-3">{e.divisionCode}</td>
+                                          <td className="py-1 pr-3 font-mono">{e.bookingId ?? "—"}</td>
+                                          <td className="py-1 pr-3">₪{(e.grossCents / 100).toFixed(2)}</td>
+                                          <td className="py-1 pr-3">₪{((e.grossCents - e.netCents) / 100).toFixed(2)}</td>
+                                          <td className="py-1">₪{(e.netCents / 100).toFixed(2)}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* ── DISPUTES (2.9C) ── */}
@@ -3365,13 +3756,108 @@ export default function AdminWalletDashboard() {
                       )}
                     </div>
                   )}
+
+                  {/* ── 3.0C Apply Resolution ── */}
+                  <div className="border-t pt-4 mt-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-gray-700">Apply Financial Resolution</span>
+                      {!applyResMode && !applyResResult && (
+                        <button
+                          className="text-xs px-2 py-1 bg-violet-600 text-white rounded hover:bg-violet-700"
+                          onClick={() => { setApplyResMode(true); setApplyResResult(null); }}
+                        >Apply Resolution</button>
+                      )}
+                    </div>
+
+                    {applyResResult && (
+                      <div className="rounded border p-3 text-xs space-y-1 bg-emerald-50 border-emerald-200 mb-2">
+                        <div className="font-semibold text-emerald-700">Resolution applied: {applyResResult.action}</div>
+                        {applyResResult.refundRequestId && <div>Refund request: <span className="font-mono">{applyResResult.refundRequestId}</span> — {applyResResult.refundStatus}</div>}
+                        {applyResResult.clawbackId && <div>Clawback ID: <span className="font-mono">{applyResResult.clawbackId}</span> — ₪{(Math.abs(applyResResult.clawbackCents ?? 0) / 100).toFixed(2)}</div>}
+                      </div>
+                    )}
+
+                    {applyResMode && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1">Action</label>
+                          <select className="w-full border rounded px-2 py-1.5 text-sm"
+                            value={applyResAction} onChange={e => setApplyResAction(e.target.value as any)}>
+                            <option value="none">None — record decision only</option>
+                            <option value="refund">Refund — issue refund to customer</option>
+                            <option value="clawback">Clawback — reduce provider payout</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1">Linked Batch ID (optional)</label>
+                          <input className="w-full border rounded px-2 py-1.5 text-sm font-mono"
+                            placeholder="batch_…" value={applyResBatchId} onChange={e => setApplyResBatchId(e.target.value)} />
+                        </div>
+                        {applyResAction === "refund" && (
+                          <div className="space-y-2 bg-amber-50 rounded p-3 border border-amber-200">
+                            <div className="text-xs font-semibold text-amber-700">Refund Details</div>
+                            <input className="w-full border rounded px-2 py-1.5 text-sm"
+                              placeholder="Booking ID" value={applyResRefundBooking} onChange={e => setApplyResRefundBooking(e.target.value)} />
+                            <input className="w-full border rounded px-2 py-1.5 text-sm" type="number" step="0.01"
+                              placeholder="Amount (ILS)" value={applyResRefundAmt} onChange={e => setApplyResRefundAmt(e.target.value)} />
+                            <input className="w-full border rounded px-2 py-1.5 text-sm"
+                              placeholder="Note" value={applyResRefundNote} onChange={e => setApplyResRefundNote(e.target.value)} />
+                          </div>
+                        )}
+                        {applyResAction === "clawback" && (
+                          <div className="space-y-2 bg-rose-50 rounded p-3 border border-rose-200">
+                            <div className="text-xs font-semibold text-rose-700">Clawback Details</div>
+                            <input className="w-full border rounded px-2 py-1.5 text-sm font-mono"
+                              placeholder="Provider UID" value={applyResClawbackUid} onChange={e => setApplyResClawbackUid(e.target.value)} />
+                            <input className="w-full border rounded px-2 py-1.5 text-sm" type="number" step="0.01"
+                              placeholder="Amount (ILS)" value={applyResClawbackAmt} onChange={e => setApplyResClawbackAmt(e.target.value)} />
+                            <input className="w-full border rounded px-2 py-1.5 text-sm"
+                              placeholder="Division code" value={applyResClawbackDiv} onChange={e => setApplyResClawbackDiv(e.target.value)} />
+                            <input className="w-full border rounded px-2 py-1.5 text-sm"
+                              placeholder="Note" value={applyResClawbackNote} onChange={e => setApplyResClawbackNote(e.target.value)} />
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <button
+                            className="px-3 py-1.5 text-xs bg-violet-600 text-white rounded hover:bg-violet-700 disabled:opacity-50"
+                            disabled={applyResPending}
+                            onClick={() => {
+                              if (!selectedDispute) return;
+                              applyResolution({
+                                caseRef: selectedDispute.case_ref,
+                                body: {
+                                  action: applyResAction,
+                                  linkedPayoutBatchId: applyResBatchId || undefined,
+                                  ...(applyResAction === "refund" ? {
+                                    refundAmountCents:  Math.round(parseFloat(applyResRefundAmt || "0") * 100),
+                                    refundBookingId:    applyResRefundBooking || undefined,
+                                    refundNote:         applyResRefundNote || undefined,
+                                  } : {}),
+                                  ...(applyResAction === "clawback" ? {
+                                    clawbackCents:      Math.round(parseFloat(applyResClawbackAmt || "0") * 100),
+                                    clawbackProviderUid:applyResClawbackUid || undefined,
+                                    clawbackDivision:   applyResClawbackDiv || undefined,
+                                    clawbackNote:       applyResClawbackNote || undefined,
+                                  } : {}),
+                                },
+                              });
+                            }}
+                          >
+                            {applyResPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Confirm"}
+                          </button>
+                          <button className="px-2 py-1.5 text-xs border rounded hover:bg-gray-50"
+                            onClick={() => setApplyResMode(false)}>Cancel</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
             {/* Backdrop for drawer */}
             {selectedDispute && (
               <div className="fixed inset-0 z-40 bg-black/20"
-                onClick={() => { setSelectedDispute(null); setResolveMode(false); }} />
+                onClick={() => { setSelectedDispute(null); setResolveMode(false); setApplyResMode(false); setApplyResResult(null); }} />
             )}
           </TabsContent>
 
@@ -3612,6 +4098,113 @@ export default function AdminWalletDashboard() {
                     </div>
                   </>
                 ) : null}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── FINANCE ROLES (3.0G) ──────────────────────────────────────── */}
+          <TabsContent value="roles" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-violet-600" />
+                    Finance Roles
+                  </CardTitle>
+                  <button className="text-xs text-blue-600 hover:underline" onClick={() => refetchRoles()}>Refresh</button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Role hierarchy info */}
+                <div className="grid grid-cols-3 gap-3 text-xs">
+                  {[
+                    { role: "read",  color: "bg-blue-50 border-blue-200 text-blue-700",   desc: "View all finance data (reports, exports)" },
+                    { role: "write", color: "bg-amber-50 border-amber-200 text-amber-700", desc: "Create payout batches, apply dispute resolution" },
+                    { role: "admin", color: "bg-violet-50 border-violet-200 text-violet-700", desc: "All write + close the finance day" },
+                  ].map(({ role, color, desc }) => (
+                    <div key={role} className={`rounded border p-3 ${color}`}>
+                      <div className="font-bold uppercase text-[11px] mb-1">{role}</div>
+                      <div className="text-[10px] opacity-80">{desc}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Assign / Update Role */}
+                <div className="border rounded-lg p-4 space-y-3">
+                  <div className="text-xs font-semibold text-gray-700">Assign or Update Role</div>
+                  <div className="flex gap-2">
+                    <input
+                      className="flex-1 border rounded px-2 py-1.5 text-sm font-mono"
+                      placeholder="User UID (Firebase)"
+                      value={roleAssignUid}
+                      onChange={(e) => setRoleAssignUid(e.target.value)}
+                    />
+                    <select
+                      className="border rounded px-2 py-1.5 text-sm"
+                      value={roleAssignVal}
+                      onChange={(e) => setRoleAssignVal(e.target.value as any)}
+                    >
+                      <option value="read">read</option>
+                      <option value="write">write</option>
+                      <option value="admin">admin</option>
+                    </select>
+                    <button
+                      disabled={!roleAssignUid.trim() || upsertRolePending}
+                      className="px-3 py-1.5 text-xs bg-violet-600 text-white rounded hover:bg-violet-700 disabled:opacity-50"
+                      onClick={() => upsertRole({ uid: roleAssignUid.trim(), role: roleAssignVal })}
+                    >
+                      {upsertRolePending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Assign"}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-gray-400">Admins with no explicit role default to finance_admin (bootstrapping). Assigning a role overrides the default.</p>
+                </div>
+
+                {/* Role List */}
+                {rolesLoading ? (
+                  <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-8 bg-gray-100 animate-pulse rounded" />)}</div>
+                ) : rolesData?.roles?.length === 0 ? (
+                  <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
+                    <ShieldCheck className="w-7 h-7 mx-auto mb-2 text-gray-200" />
+                    <p className="text-sm text-gray-400">No explicit roles assigned — all admins default to finance_admin</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-gray-100">
+                          <th className="text-left py-2 pr-3 text-gray-400 font-medium">User UID</th>
+                          <th className="text-left py-2 pr-3 text-gray-400 font-medium">Role</th>
+                          <th className="text-left py-2 pr-3 text-gray-400 font-medium">Granted By</th>
+                          <th className="text-left py-2 pr-3 text-gray-400 font-medium">Since</th>
+                          <th className="text-right py-2 text-gray-400 font-medium">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(rolesData?.roles ?? []).map((r: any) => (
+                          <tr key={r.userUid} className="border-b border-gray-50 hover:bg-gray-50">
+                            <td className="py-2 pr-3 font-mono text-gray-700">{r.userUid}</td>
+                            <td className="py-2 pr-3">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                r.role === "admin"  ? "bg-violet-100 text-violet-700" :
+                                r.role === "write"  ? "bg-amber-100 text-amber-700" :
+                                                      "bg-blue-100 text-blue-700"
+                              }`}>{r.role}</span>
+                            </td>
+                            <td className="py-2 pr-3 font-mono text-gray-400">{r.grantedBy ? r.grantedBy.slice(0, 12) + "…" : "—"}</td>
+                            <td className="py-2 pr-3 text-gray-400">{r.createdAt ? new Date(r.createdAt).toLocaleDateString("he-IL") : "—"}</td>
+                            <td className="py-2 text-right">
+                              <button
+                                disabled={deleteRolePending}
+                                className="text-rose-600 hover:underline text-[10px]"
+                                onClick={() => deleteRole(r.userUid)}
+                              >Remove</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

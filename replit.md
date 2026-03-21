@@ -1315,3 +1315,69 @@ All endpoints under `/api/prestige-pass/admin/wallet/`. Admin-only. All schema c
   - `POST /finance-close/:date/close` — checklist enforced (422 + full `blocked` payload if not clear), idempotent (returns existing if already closed)
 - Close endpoint returns exact checklist failure payload on block (not just "cannot close")
 - Frontend: Daily Close card in Finance Today tab — date picker, 4-row checklist, Close button (disabled unless all clear), notes textarea, locked state with snapshot chips; Close History table (Date/Status/Closed By/Closed At/VAT/Exceptions)
+
+### Phase 3.0A — Payout Batch Engine (COMPLETE)
+- `payout_batches` table (8 cols, 3 indexes): `batch_id VARCHAR(64) UNIQUE`, `created_by_uid`, `status` (open/exported/completed), `total_providers`, `total_net_cents`, `notes`; indexes: UNIQUE(batch_id), idx_pb_status, idx_pb_created_at
+- `payout_batch_id` anchor: all finance operations reference this as the object of record
+- 4 endpoints:
+  - `POST /admin/wallet/payout-batches/create` — validates entryIds (must be earned/held), generates batch_id, marks entries paid, writes payout_batches row, returns summary. Idempotent: if all entries already paid under same batch, returns that batch
+  - `GET /admin/wallet/payout-batches` — list (newest first, last 50) with aggregated entry count + gross total
+  - `GET /admin/wallet/payout-batches/:batchId` — header + entries + byProvider grouping + totals
+  - `GET /admin/wallet/payout-batches/:batchId/export` — BOM-prefixed CSV: provider_uid,division_code,booking_id,gross_ils,commission_ils,net_ils
+- CSV: commission_ils = gross - net (computed at export, never stored separately)
+- Frontend: Payout Batches tab in AdminWalletDashboard — 4 totals cards, create panel (entry IDs + notes), batch list table (status badge, providers, entries, net, CSV export link), batch detail drawer with byProvider breakdown and per-entry table, Export CSV button
+
+### Phase 3.0B — Provider Remittance & Statements (COMPLETE)
+- `GET /provider/wallet/payout-statement?batchId=...` — provider's own paid entries, grouped by batch then by booking; returns `byBatch[]`, `totals`, `batches[]` (selector list)
+- `GET /admin/wallet/payout-batches/:batchId/provider-export` — grouped multi-provider CSV (one section per provider, subtotal line per provider, batch header row)
+- commissionCents = grossCents − netCents computed at response time (not stored)
+- Frontend (ProviderDashboard, earnings tab): "הצהרת תשלום" section above full ledger — batch selector dropdown (populated from API), totals cards (gross/commission/net), per-batch breakdown table (division/booking/gross/commission/net), client-side CSV download button (BOM-prefixed, works without server round-trip for CSV)
+
+### Phase 3.0C — Dispute to Financial Actions Bridge (COMPLETE)
+- `dispute_cases` extended: `linked_payout_batch_id VARCHAR(64)`, `resolution_action VARCHAR(20) DEFAULT 'none'` (refund/clawback/none); `idx_dc_resolution_action` index
+- `POST /admin/wallet/disputes/:caseRef/apply-resolution` — routes dispute to financial outcome:
+  - `refund`: internal HTTP call to 2.9D `/refund-requests` with `linkedDisputeCaseRef`; audit trail via refundRequestId
+  - `clawback`: creates new NEGATIVE `provider_payout_entries` row (status=`clawed_back`, net_cents=−abs(clawbackCents)); original entry is NEVER mutated
+  - `none`: records decision only, no wallet/payout mutations
+  - 409 guard: resolution already applied cannot be re-applied
+  - `resolution_action` + audit metadata written back to `dispute_cases.metadata.resolutionApplied`
+- Frontend: "Apply Financial Resolution" section inside dispute case drawer — action selector (none/refund/clawback), conditional sub-forms for refund (booking + amount + note) and clawback (provider UID + amount + division + note), linked batch ID field, result panel shows refundRequestId or clawbackId after apply
+
+### Phase 3.0D — Daily Close Notifications (COMPLETE)
+- `server/jobs/daily-close-reminder.ts` — hourly cron (`0 * * * *`, `timezone: 'Asia/Jerusalem'`)
+- Checkpoints: 18:00, 20:00, 22:00 IL — 2-hour windows each
+- Per-checkpoint deduplication: in-memory `SENT` Set with key `${dateIso}:${checkpoint}` — no duplicate emails
+- Stops immediately when `finance_close_records` shows closed for today
+- Email payload: 4-gate checklist table (anomalies/staleHolds/pendingDisputes/pendingApprovals) with counts, clear/blocked status, summary line, checkpoint time
+- Gate: `DAILY_CLOSE_REMINDER_ENABLED=true` (disabled by default — zero risk in dev)
+- SendGrid delivery, `FINANCE_ALERT_EMAIL` destination
+- Registered in `server/index.ts` non-blocking with `.catch()`
+
+### Phase 3.0E — Finance Close Export Bundle (COMPLETE)
+- `GET /admin/wallet/finance-close/:date/export` — daily audit pack endpoint (admin-only)
+- 5 sections: `settlementSummary` (division snapshots + VAT), `payoutBatches` (with JOIN to compute gross_cents + entry_count), `actionHistory` (all wallet_ledger_entries for date), `anomalyLog` (negative balances + stale holds), `disputeSummary` (dispute_cases for date)
+- Finance close record `meta` embedded: status, closedByUid, closedAt, vatLiabilityCents, totalCollectedCents
+- SHA-256 integrity hash via `crypto.createHash('sha256')` → response field `_sha256` + `X-Bundle-SHA256` header
+- `Content-Disposition: attachment; filename="petwash-finance-{date}.json"` 
+- Frontend: "Download Audit Pack" button inside the "Day Closed & Locked" panel — client-side blob download via `URL.createObjectURL`, error toast on failure
+
+### Phase 3.0F — Month-end Finance Pack (COMPLETE)
+- `GET /admin/wallet/finance-close/month-export?month=YYYY-MM` (inserted BEFORE `/:date` route to avoid collision)
+- Admin-only guard. Validates `month=YYYY-MM` query param.
+- 6 sections: `dailyCloseRecords` (all finance_close_records for month), `divisionTotals` (aggregated across closed days), `payoutBatches` (with gross_cents JOIN), `payoutSummary` (batchCount/gross/net/commission totals), `disputesByResolution` (grouped by resolution_action), `refundSummary` (grouped by status)
+- `meta`: totalDays, daysClosed, daysOpen, totalVatLiabilityCents
+- SHA-256 + `X-Bundle-SHA256` header + `Content-Disposition: attachment; filename="petwash-finance-month-{YYYY-MM}.json"`
+- Frontend: month selector (`<input type="month">`) + "Month-end Pack" button in Close History card header — client-side blob download, error toast on failure
+
+### Phase 3.0G — Role-based Finance Permissions (COMPLETE)
+- `finance_roles` table: `user_uid VARCHAR UNIQUE`, `role VARCHAR(32) CHECK (read|write|admin)`, `granted_by`, timestamps; `idx_fr_user_uid`, `idx_fr_role`
+- `requireFinanceRole(req, res, minRole)` helper with `FINANCE_ROLE_RANK` hierarchy (read < write < admin). Bootstrapping: admins with no explicit role default to `finance_admin` (preserves existing workflows, no lockout)
+- 3 sensitive endpoints now require finance role:
+  - `POST /payout-batches/create` → `finance_write`
+  - `POST /disputes/:caseRef/apply-resolution` → `finance_write`  
+  - `POST /finance-close/:date/close` → `finance_admin`
+- Role management CRUD endpoints (all admin-gated):
+  - `GET /admin/wallet/finance-roles` — list all explicit role assignments
+  - `POST /admin/wallet/finance-roles/:uid` — assign or update (UPSERT) role for a user
+  - `DELETE /admin/wallet/finance-roles/:uid` — remove explicit role (user reverts to default)
+- Frontend: "Finance Roles" tab in AdminWalletDashboard — role hierarchy cards (read/write/admin), assign/update form (UID input + role selector), role list table with Remove action, empty state with bootstrapping message
