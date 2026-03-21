@@ -143,6 +143,42 @@ export default function AdminWalletDashboard() {
   const [reverseReason, setReverseReason] = useState("");
   const [reverseResult, setReverseResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
+  // ── Admin Payouts tab (2.9A) ──────────────────────────────────────────────────
+  const [payFilterUserId, setPayFilterUserId]     = useState("");
+  const [payFilterDivision, setPayFilterDivision] = useState("");
+  const [payFilterStatus, setPayFilterStatus]     = useState("");
+  const [payFilterBatch, setPayFilterBatch]       = useState("");
+  const [payApplied, setPayApplied]               = useState(false);
+  const [paySelected, setPaySelected]             = useState<number[]>([]);
+  const [markPaidNote, setMarkPaidNote]           = useState("");
+  const [markPaidResult, setMarkPaidResult]       = useState<any>(null);
+
+  const payParams = new URLSearchParams();
+  if (payApplied) {
+    if (payFilterUserId)   payParams.set("userId",       payFilterUserId);
+    if (payFilterDivision) payParams.set("divisionCode", payFilterDivision);
+    if (payFilterStatus)   payParams.set("status",       payFilterStatus);
+    if (payFilterBatch)    payParams.set("batchId",      payFilterBatch);
+  }
+  const { data: payLedgerData, isLoading: payLoading, refetch: refetchPay } = useQuery<any>({
+    queryKey: ["/api/prestige-pass/admin/wallet/payout-ledger", payApplied, payFilterUserId, payFilterDivision, payFilterStatus, payFilterBatch],
+    queryFn: () => fetch(`/api/prestige-pass/admin/wallet/payout-ledger?${payParams.toString()}`, { credentials: "include" }).then(r => r.json()),
+  });
+
+  const { mutate: markPaid, isPending: markPaidPending } = useMutation<any, any, { entryIds: number[]; note: string }>({
+    mutationFn: (vars) => apiRequest("POST", "/api/prestige-pass/admin/wallet/payout-entries/mark-paid", vars),
+    onSuccess: (data) => {
+      setMarkPaidResult(data);
+      setPaySelected([]);
+      setMarkPaidNote("");
+      toast({ title: `Batch ${data.batchId} — ${data.updatedIds.length} entries marked paid` });
+      queryClient.invalidateQueries({ queryKey: ["/api/prestige-pass/admin/wallet/payout-ledger"] });
+    },
+    onError: (err) => {
+      toast({ title: err?.error ?? "Mark-paid failed", variant: "destructive" });
+    },
+  });
+
   // ── Adjustments filters ──────────────────────────────────────────────────────
   const [adjFrom, setAdjFrom]           = useState("");
   const [adjTo, setAdjTo]               = useState("");
@@ -622,6 +658,10 @@ export default function AdminWalletDashboard() {
             <TabsTrigger value="support">
               <LifeBuoy className="w-4 h-4 mr-2" />
               Support Actions
+            </TabsTrigger>
+            <TabsTrigger value="payouts">
+              <DollarSign className="w-4 h-4 mr-2" />
+              Payouts
             </TabsTrigger>
           </TabsList>
 
@@ -2204,6 +2244,222 @@ export default function AdminWalletDashboard() {
                       <p className="text-xs text-green-700">New cash balance: <strong>{centsToILS(supportCreditResult.walletSnapshot.cashCents)}</strong></p>
                     )}
                     <button className="text-xs underline text-green-600" onClick={() => setSupportCreditResult(null)}>Clear</button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── PAYOUTS (2.9A) ── */}
+          <TabsContent value="payouts" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-emerald-600" />
+                    Provider Payout Ledger
+                  </CardTitle>
+                  <button
+                    className="text-xs text-blue-600 hover:underline"
+                    onClick={() => refetchPay()}
+                  >Refresh</button>
+                </div>
+                <p className="text-sm text-gray-500">
+                  net = gross − floor(gross × commission_bps / 10000). No wallet mutations.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Filters */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Provider UID</label>
+                    <input className="w-full border rounded px-2 py-1.5 text-sm" placeholder="Firebase UID…"
+                      value={payFilterUserId} onChange={e => setPayFilterUserId(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Division</label>
+                    <select className="w-full border rounded px-2 py-1.5 text-sm"
+                      value={payFilterDivision} onChange={e => setPayFilterDivision(e.target.value)}>
+                      <option value="">All</option>
+                      <option value="walkers">Walkers</option>
+                      <option value="petsitter">Sitter Suite</option>
+                      <option value="academy">Academy</option>
+                      <option value="station_k9000">K9000</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Status</label>
+                    <select className="w-full border rounded px-2 py-1.5 text-sm"
+                      value={payFilterStatus} onChange={e => setPayFilterStatus(e.target.value)}>
+                      <option value="">All</option>
+                      <option value="earned">earned</option>
+                      <option value="held">held</option>
+                      <option value="paid">paid</option>
+                      <option value="clawed_back">clawed_back</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Batch ID</label>
+                    <input className="w-full border rounded px-2 py-1.5 text-sm" placeholder="batch_…"
+                      value={payFilterBatch} onChange={e => setPayFilterBatch(e.target.value)} />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded hover:bg-gray-800"
+                    onClick={() => { setPayApplied(true); setMarkPaidResult(null); setPaySelected([]); }}
+                  >Apply Filters</button>
+                  <button
+                    className="px-3 py-1.5 text-sm border rounded hover:bg-gray-50"
+                    onClick={() => { setPayFilterUserId(""); setPayFilterDivision(""); setPayFilterStatus(""); setPayFilterBatch(""); setPayApplied(false); setPaySelected([]); setMarkPaidResult(null); }}
+                  >Clear</button>
+                </div>
+
+                {/* Totals summary */}
+                {payLedgerData?.totals && (
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                    {[
+                      { label: "Entries",     val: payLedgerData.totals.count,           isMoney: false },
+                      { label: "Gross",       val: payLedgerData.totals.grossCents,       isMoney: true  },
+                      { label: "Net",         val: payLedgerData.totals.netCents,         isMoney: true  },
+                      { label: "Earned",      val: payLedgerData.totals.earnedCents,      isMoney: true, highlight: "amber" },
+                      { label: "Held",        val: payLedgerData.totals.heldCents,        isMoney: true, highlight: "blue"  },
+                      { label: "Paid",        val: payLedgerData.totals.paidCents,        isMoney: true, highlight: "green" },
+                    ].map(({ label, val, isMoney, highlight }) => (
+                      <div key={label} className={`border rounded p-2 text-center ${highlight === 'amber' ? 'bg-amber-50 border-amber-200' : highlight === 'blue' ? 'bg-blue-50 border-blue-200' : highlight === 'green' ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50'}`}>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wide">{label}</p>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {isMoney ? `₪${((val as number) / 100).toFixed(2)}` : val}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Mark-paid result banner */}
+                {markPaidResult && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded px-4 py-2.5 text-sm flex items-center justify-between">
+                    <span className="text-emerald-800">
+                      Batch <code className="font-mono text-xs">{markPaidResult.batchId}</code> — {markPaidResult.updatedIds.length} paid,{" "}
+                      {markPaidResult.skippedIds.length} skipped · Net ₪{((markPaidResult.batchTotals?.netCents ?? 0) / 100).toFixed(2)}
+                    </span>
+                    <button className="text-emerald-600 hover:text-emerald-800 text-xs" onClick={() => setMarkPaidResult(null)}>✕</button>
+                  </div>
+                )}
+
+                {/* Bulk actions bar (shows when rows selected) */}
+                {paySelected.length > 0 && (
+                  <div className="bg-gray-900 text-white rounded px-4 py-2.5 flex items-center justify-between gap-4">
+                    <span className="text-sm">{paySelected.length} entries selected</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        className="border border-gray-600 bg-gray-800 text-white rounded px-2 py-1 text-xs w-52"
+                        placeholder="Optional note for batch…"
+                        value={markPaidNote}
+                        onChange={e => setMarkPaidNote(e.target.value)}
+                      />
+                      <button
+                        className="px-3 py-1.5 text-xs bg-emerald-500 hover:bg-emerald-600 text-white rounded disabled:opacity-50"
+                        disabled={markPaidPending}
+                        onClick={() => markPaid({ entryIds: paySelected, note: markPaidNote })}
+                      >
+                        {markPaidPending ? "Processing…" : "Mark Paid"}
+                      </button>
+                      <button
+                        className="text-xs text-gray-400 hover:text-white"
+                        onClick={() => setPaySelected([])}
+                      >Clear</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Table */}
+                {payLoading ? (
+                  <div className="space-y-2">{[...Array(5)].map((_, i) => <div key={i} className="h-9 bg-gray-100 animate-pulse rounded" />)}</div>
+                ) : !payLedgerData?.entries?.length ? (
+                  <div className="border rounded p-10 text-center text-gray-400 text-sm">
+                    {payApplied ? "No entries match these filters." : "Apply filters to load payout entries."}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-8">
+                            <input type="checkbox"
+                              checked={paySelected.length === payLedgerData.entries.length && payLedgerData.entries.length > 0}
+                              onChange={e => setPaySelected(e.target.checked ? payLedgerData.entries.map((r: any) => r.id) : [])}
+                            />
+                          </TableHead>
+                          <TableHead className="text-xs">Date</TableHead>
+                          <TableHead className="text-xs">Provider</TableHead>
+                          <TableHead className="text-xs">Division</TableHead>
+                          <TableHead className="text-xs">Booking</TableHead>
+                          <TableHead className="text-xs text-right">Gross</TableHead>
+                          <TableHead className="text-xs text-right">Commission</TableHead>
+                          <TableHead className="text-xs text-right">Net</TableHead>
+                          <TableHead className="text-xs">Status</TableHead>
+                          <TableHead className="text-xs">Batch</TableHead>
+                          <TableHead className="text-xs">Paid At</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(payLedgerData.entries as any[]).map((entry: any) => {
+                          const commissionCents = entry.grossCents - entry.netCents;
+                          const statusChip: Record<string, string> = {
+                            earned:      "bg-amber-100 text-amber-800",
+                            held:        "bg-blue-100 text-blue-800",
+                            paid:        "bg-emerald-100 text-emerald-800",
+                            clawed_back: "bg-red-100 text-red-700",
+                          };
+                          const isSelected = paySelected.includes(entry.id);
+                          const isPayable  = entry.status === 'earned' || entry.status === 'held';
+                          return (
+                            <TableRow key={entry.id} className={isSelected ? "bg-blue-50" : undefined}>
+                              <TableCell>
+                                {isPayable && (
+                                  <input type="checkbox" checked={isSelected}
+                                    onChange={e => setPaySelected(prev => e.target.checked ? [...prev, entry.id] : prev.filter(x => x !== entry.id))}
+                                  />
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs font-mono whitespace-nowrap">
+                                {new Date(entry.createdAt).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}
+                              </TableCell>
+                              <TableCell className="text-xs font-mono text-gray-500 max-w-[100px] truncate" title={entry.providerUid}>
+                                {entry.providerUid.slice(0, 10)}…
+                              </TableCell>
+                              <TableCell className="text-xs">{entry.divisionCode}</TableCell>
+                              <TableCell className="text-xs font-mono text-gray-400 max-w-[80px] truncate" title={entry.bookingId ?? ""}>
+                                {entry.bookingId ? `${entry.bookingId.slice(0, 8)}…` : "—"}
+                              </TableCell>
+                              <TableCell className="text-xs text-right font-mono">₪{(entry.grossCents / 100).toFixed(2)}</TableCell>
+                              <TableCell className="text-xs text-right font-mono text-gray-500">
+                                ₪{(commissionCents / 100).toFixed(2)}
+                                <span className="text-gray-400 ml-1">({(entry.commissionRateBps / 100).toFixed(0)}%)</span>
+                              </TableCell>
+                              <TableCell className="text-xs text-right font-mono font-semibold text-emerald-700">
+                                ₪{(entry.netCents / 100).toFixed(2)}
+                              </TableCell>
+                              <TableCell>
+                                <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${statusChip[entry.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                                  {entry.status}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-xs font-mono text-gray-400 max-w-[90px] truncate" title={entry.payoutBatchId ?? ""}>
+                                {entry.payoutBatchId ? entry.payoutBatchId.slice(0, 12) + "…" : "—"}
+                              </TableCell>
+                              <TableCell className="text-xs text-gray-400 whitespace-nowrap">
+                                {entry.paidAt ? new Date(entry.paidAt).toLocaleDateString("he-IL") : "—"}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                    <p className="text-xs text-gray-400 mt-2 text-right">
+                      {payLedgerData.totals?.count} result{payLedgerData.totals?.count !== 1 ? "s" : ""}
+                    </p>
                   </div>
                 )}
               </CardContent>

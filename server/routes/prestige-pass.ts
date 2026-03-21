@@ -29,7 +29,7 @@ import { nanoid } from 'nanoid';
 import rateLimit from 'express-rate-limit';
 import { db as firestoreDb, auth as firebaseAuth } from '../lib/firebase-admin';
 import { db } from '../db';
-import { walletAccounts, creditTransactions, walletLedgerEntries, walletReconciliationRuns, adminActionReversals } from '@shared/schema';
+import { walletAccounts, creditTransactions, walletLedgerEntries, walletReconciliationRuns, adminActionReversals, providerPayoutEntries } from '@shared/schema';
 import { eq, desc, and, sql, gte, lte } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
@@ -5069,6 +5069,275 @@ router.get('/admin/wallet/exception-summary', async (req: Request, res: Response
   } catch (err: any) {
     logger.error('[AdminWallet][ExceptionSummary] error', { error: err.message });
     return res.status(500).json({ error: 'Failed to fetch exception summary', detail: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PHASE 2.9A — PROVIDER PAYOUT LEDGER
+// net_cents = gross_cents - floor(gross_cents * commission_rate_bps / 10000)
+// No wallet_accounts mutations — read-only accounting layer.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /api/prestige-pass/provider/wallet/payout-ledger
+// Provider sees their own entries only (Firebase UID gate).
+// ──────────────────────────────────────────────────────────────────────────────
+router.get('/provider/wallet/payout-ledger', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+
+    const statusFilter = req.query.status as string | undefined;
+    const divisionFilter = req.query.divisionCode as string | undefined;
+    const limit = Math.min(Number(req.query.limit) || 100, 500);
+    const offset = Number(req.query.offset) || 0;
+
+    const conditions: any[] = [sql`provider_uid = ${uid}`];
+    if (statusFilter)   conditions.push(sql`status = ${statusFilter}`);
+    if (divisionFilter) conditions.push(sql`division_code = ${divisionFilter}`);
+
+    const whereClause = conditions.reduce((acc, c, i) => i === 0 ? c : sql`${acc} AND ${c}`, conditions[0]);
+
+    const rows: any = await db.execute(sql`
+      SELECT
+        id, provider_uid, division_code, booking_id,
+        gross_cents, commission_rate_bps, net_cents,
+        status, payout_batch_id, created_at, paid_at, metadata
+      FROM provider_payout_entries
+      WHERE ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `);
+
+    const totalRow: any = await db.execute(sql`
+      SELECT
+        COUNT(*)                            AS total_count,
+        COALESCE(SUM(gross_cents),  0)      AS total_gross,
+        COALESCE(SUM(net_cents),    0)      AS total_net,
+        COALESCE(SUM(CASE WHEN status = 'earned' THEN net_cents ELSE 0 END), 0)  AS earned_cents,
+        COALESCE(SUM(CASE WHEN status = 'held'   THEN net_cents ELSE 0 END), 0)  AS held_cents,
+        COALESCE(SUM(CASE WHEN status = 'paid'   THEN net_cents ELSE 0 END), 0)  AS paid_cents
+      FROM provider_payout_entries
+      WHERE ${whereClause}
+    `);
+    const totals = (totalRow?.rows ?? totalRow ?? [])[0] ?? {};
+
+    const entries = (rows?.rows ?? rows ?? []).map((r: any) => ({
+      id:                r.id,
+      providerUid:       r.provider_uid,
+      divisionCode:      r.division_code,
+      bookingId:         r.booking_id         ?? null,
+      grossCents:        Number(r.gross_cents),
+      commissionRateBps: Number(r.commission_rate_bps),
+      netCents:          Number(r.net_cents),
+      status:            r.status,
+      payoutBatchId:     r.payout_batch_id    ?? null,
+      createdAt:         r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+      paidAt:            r.paid_at ? (r.paid_at instanceof Date ? r.paid_at.toISOString() : String(r.paid_at)) : null,
+      metadata:          r.metadata ?? {},
+    }));
+
+    return res.json({
+      entries,
+      totals: {
+        count:        Number(totals.total_count ?? 0),
+        grossCents:   Number(totals.total_gross  ?? 0),
+        netCents:     Number(totals.total_net    ?? 0),
+        earnedCents:  Number(totals.earned_cents ?? 0),
+        heldCents:    Number(totals.held_cents   ?? 0),
+        paidCents:    Number(totals.paid_cents   ?? 0),
+      },
+      pagination: { limit, offset },
+    });
+  } catch (err: any) {
+    logger.error('[Payout][ProviderLedger] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch payout ledger', detail: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GET /api/prestige-pass/admin/wallet/payout-ledger
+// Admin view — filterable by userId, divisionCode, status, batchId, from/to.
+// ──────────────────────────────────────────────────────────────────────────────
+router.get('/admin/wallet/payout-ledger', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const { userId, divisionCode, status, batchId, from, to } = req.query as Record<string, string>;
+    const limit  = Math.min(Number(req.query.limit) || 200, 1000);
+    const offset = Number(req.query.offset) || 0;
+
+    const conditions: any[] = [];
+    if (userId)       conditions.push(sql`provider_uid = ${userId}`);
+    if (divisionCode) conditions.push(sql`division_code = ${divisionCode}`);
+    if (status)       conditions.push(sql`status = ${status}`);
+    if (batchId)      conditions.push(sql`payout_batch_id = ${batchId}`);
+    if (from)         conditions.push(sql`created_at >= ${new Date(from)}`);
+    if (to) {
+      const toDate = new Date(to); toDate.setDate(toDate.getDate() + 1);
+      conditions.push(sql`created_at < ${toDate}`);
+    }
+
+    const whereClause = conditions.length
+      ? conditions.reduce((acc, c, i) => i === 0 ? c : sql`${acc} AND ${c}`, conditions[0])
+      : sql`1=1`;
+
+    const rows: any = await db.execute(sql`
+      SELECT
+        id, provider_uid, division_code, booking_id,
+        gross_cents, commission_rate_bps, net_cents,
+        status, payout_batch_id, created_at, paid_at, metadata
+      FROM provider_payout_entries
+      WHERE ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `);
+
+    const totalRow: any = await db.execute(sql`
+      SELECT
+        COUNT(*)                            AS total_count,
+        COALESCE(SUM(gross_cents),  0)      AS total_gross,
+        COALESCE(SUM(net_cents),    0)      AS total_net,
+        COALESCE(SUM(CASE WHEN status = 'earned'      THEN net_cents ELSE 0 END), 0) AS earned_cents,
+        COALESCE(SUM(CASE WHEN status = 'held'        THEN net_cents ELSE 0 END), 0) AS held_cents,
+        COALESCE(SUM(CASE WHEN status = 'paid'        THEN net_cents ELSE 0 END), 0) AS paid_cents,
+        COALESCE(SUM(CASE WHEN status = 'clawed_back' THEN net_cents ELSE 0 END), 0) AS clawed_back_cents
+      FROM provider_payout_entries
+      WHERE ${whereClause}
+    `);
+    const totals = (totalRow?.rows ?? totalRow ?? [])[0] ?? {};
+
+    const entries = (rows?.rows ?? rows ?? []).map((r: any) => ({
+      id:                r.id,
+      providerUid:       r.provider_uid,
+      divisionCode:      r.division_code,
+      bookingId:         r.booking_id         ?? null,
+      grossCents:        Number(r.gross_cents),
+      commissionRateBps: Number(r.commission_rate_bps),
+      netCents:          Number(r.net_cents),
+      status:            r.status,
+      payoutBatchId:     r.payout_batch_id    ?? null,
+      createdAt:         r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+      paidAt:            r.paid_at ? (r.paid_at instanceof Date ? r.paid_at.toISOString() : String(r.paid_at)) : null,
+      metadata:          r.metadata ?? {},
+    }));
+
+    return res.json({
+      entries,
+      totals: {
+        count:           Number(totals.total_count      ?? 0),
+        grossCents:      Number(totals.total_gross       ?? 0),
+        netCents:        Number(totals.total_net         ?? 0),
+        earnedCents:     Number(totals.earned_cents      ?? 0),
+        heldCents:       Number(totals.held_cents        ?? 0),
+        paidCents:       Number(totals.paid_cents        ?? 0),
+        clawedBackCents: Number(totals.clawed_back_cents ?? 0),
+      },
+      pagination: { limit, offset },
+    });
+  } catch (err: any) {
+    logger.error('[Payout][AdminLedger] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch admin payout ledger', detail: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// POST /api/prestige-pass/admin/wallet/payout-entries/mark-paid
+// Bulk transition earned/held → paid. Generates one payout_batch_id per call.
+// Idempotent: rows already paid are skipped (not double-counted).
+// Body: { entryIds: number[] } OR { providerUid: string } (marks all earned/held)
+// ──────────────────────────────────────────────────────────────────────────────
+router.post('/admin/wallet/payout-entries/mark-paid', async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized' });
+    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
+    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+
+    const schema = z.object({
+      entryIds:    z.array(z.number().int().positive()).optional(),
+      providerUid: z.string().optional(),
+      divisionCode:z.string().optional(),
+      note:        z.string().optional(),
+    }).refine(d => d.entryIds?.length || d.providerUid, {
+      message: 'Provide either entryIds array or providerUid',
+    });
+
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(422).json({ error: 'Validation failed', details: parsed.error.flatten() });
+
+    const { entryIds, providerUid, divisionCode, note } = parsed.data;
+    const batchId = `batch_${nanoid(16)}`;
+    const now = new Date();
+
+    let updatedIds: number[] = [];
+    let skippedIds: number[] = [];
+
+    if (entryIds && entryIds.length > 0) {
+      // Explicit ID list
+      const existing: any = await db.execute(sql`
+        SELECT id, status FROM provider_payout_entries
+        WHERE id = ANY(${sql`ARRAY[${sql.join(entryIds.map(id => sql`${id}`), sql`, `)}]::int[]`})
+      `);
+      const rows = existing?.rows ?? existing ?? [];
+      const payable = rows.filter((r: any) => r.status === 'earned' || r.status === 'held').map((r: any) => Number(r.id));
+      skippedIds  = rows.filter((r: any) => r.status === 'paid').map((r: any) => Number(r.id));
+
+      if (payable.length > 0) {
+        await db.execute(sql`
+          UPDATE provider_payout_entries
+          SET status = 'paid', payout_batch_id = ${batchId}, paid_at = ${now},
+              metadata = metadata || ${JSON.stringify({ markedPaidBy: uid, note: note ?? null, batchId })}::jsonb
+          WHERE id = ANY(${sql`ARRAY[${sql.join(payable.map(id => sql`${id}`), sql`, `)}]::int[]`})
+            AND status IN ('earned', 'held')
+        `);
+        updatedIds = payable;
+      }
+    } else if (providerUid) {
+      // All earned/held for a provider (+ optional division filter)
+      const conditions: any[] = [sql`provider_uid = ${providerUid}`, sql`status IN ('earned', 'held')`];
+      if (divisionCode) conditions.push(sql`division_code = ${divisionCode}`);
+      const whereClause = conditions.reduce((a, c, i) => i === 0 ? c : sql`${a} AND ${c}`, conditions[0]);
+
+      const idRows: any = await db.execute(sql`SELECT id FROM provider_payout_entries WHERE ${whereClause}`);
+      updatedIds = (idRows?.rows ?? idRows ?? []).map((r: any) => Number(r.id));
+
+      if (updatedIds.length > 0) {
+        await db.execute(sql`
+          UPDATE provider_payout_entries
+          SET status = 'paid', payout_batch_id = ${batchId}, paid_at = ${now},
+              metadata = metadata || ${JSON.stringify({ markedPaidBy: uid, note: note ?? null, batchId })}::jsonb
+          WHERE ${whereClause}
+        `);
+      }
+    }
+
+    // Totals for the batch
+    let batchTotals = { grossCents: 0, netCents: 0, count: 0 };
+    if (updatedIds.length > 0) {
+      const totRow: any = await db.execute(sql`
+        SELECT COUNT(*) AS cnt, COALESCE(SUM(gross_cents),0) AS gross, COALESCE(SUM(net_cents),0) AS net
+        FROM provider_payout_entries WHERE payout_batch_id = ${batchId}
+      `);
+      const t = (totRow?.rows ?? totRow ?? [])[0] ?? {};
+      batchTotals = { count: Number(t.cnt ?? 0), grossCents: Number(t.gross ?? 0), netCents: Number(t.net ?? 0) };
+    }
+
+    logger.info('[Payout][MarkPaid] batch completed', { batchId, adminUid: uid, updatedCount: updatedIds.length, skippedCount: skippedIds.length });
+
+    return res.json({
+      ok: true,
+      batchId,
+      updatedIds,
+      skippedIds,
+      batchTotals,
+    });
+  } catch (err: any) {
+    logger.error('[Payout][MarkPaid] error', { error: err.message });
+    return res.status(500).json({ error: 'Failed to mark entries as paid', detail: err.message });
   }
 });
 

@@ -12592,3 +12592,23 @@ export const adminActionReversals = pgTable("admin_action_reversals", {
 });
 export type AdminActionReversal       = typeof adminActionReversals.$inferSelect;
 export type InsertAdminActionReversal = typeof adminActionReversals.$inferInsert;
+
+// ─── Provider Payout Entries (Phase 2.9A) ────────────────────────────────────
+// net_cents = gross_cents - floor(gross_cents * commission_rate_bps / 10000)
+// Never modifies wallet_accounts directly — read-only accounting layer.
+export const providerPayoutEntries = pgTable("provider_payout_entries", {
+  id:                serial("id").primaryKey(),
+  providerUid:       varchar("provider_uid",        { length: 200 }).notNull(),
+  divisionCode:      varchar("division_code",        { length: 50  }).notNull(),
+  bookingId:         varchar("booking_id",           { length: 100 }),
+  grossCents:        integer("gross_cents").notNull().default(0),
+  commissionRateBps: integer("commission_rate_bps").notNull().default(0),
+  netCents:          integer("net_cents").notNull().default(0),
+  status:            varchar("status",               { length: 30  }).notNull().default("earned"),
+  payoutBatchId:     varchar("payout_batch_id",      { length: 100 }),
+  createdAt:         timestamp("created_at").notNull().defaultNow(),
+  paidAt:            timestamp("paid_at"),
+  metadata:          jsonb("metadata").notNull().default({}),
+});
+export type ProviderPayoutEntry       = typeof providerPayoutEntries.$inferSelect;
+export type InsertProviderPayoutEntry = typeof providerPayoutEntries.$inferInsert;

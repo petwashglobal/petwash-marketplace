@@ -1,0 +1,82 @@
+Yes — here's the exact Phase 2.9 build plan, sequenced for zero-downtime rollout and minimal cross-dependency between sub-phases.
+
+Phase 2.9 — Payout, Settlement & Finance Close
+2.9A — Provider Payout Ledger
+What it is: Every provider (walker, sitter, trainer, kiosk operator) sees their own earned/pending/paid history. No SQL access, no support ticket needed.
+
+DB: provider_payout_entries table
+
+id, provider_uid, division_code, booking_id, gross_cents, commission_rate_bps, net_cents, status (earned | held | paid | clawed_back), payout_batch_id, created_at
+Endpoints:
+
+GET /api/prestige-pass/provider/wallet/payout-ledger — provider's own ledger (auth: provider role, no admin)
+GET /api/prestige-pass/admin/wallet/payout-ledger — admin view with ?userId= filter
+POST /api/prestige-pass/admin/wallet/payout-entries/mark-paid — bulk mark rows as paid, creates payout_batch_id
+Frontend: New "Earnings" tab in provider dashboard — table of bookings with gross / commission / net, running totals, status chips. Admin side: same table inside WalletDashboard under a new "Payouts" tab.
+
+2.9B — Settlement Dashboard
+What it is: Per-division daily/weekly cash flow summary — total collected, total committed to payouts, net margin, VAT liability, outstanding holds.
+
+DB: No new table — computed from existing wallet_ledger_entries + provider_payout_entries.
+
+Endpoints:
+
+GET /api/prestige-pass/admin/wallet/settlement-summary — params: from, to, divisionCode
+Returns: { collected, pendingHolds, providerPayable, vatLiability, margin, marginPct }
+GET /api/prestige-pass/admin/wallet/settlement-summary/export — CSV download
+Frontend: New "Settlement" tab in Finance Today section — 6 metric cards, bar chart (collected vs payable by division), export button.
+
+2.9C — Dispute / Exception Workflow
+What it is: Structured lifecycle for customer or provider disputes. Opens a ticket, attaches to booking, tracks resolution. Replaces ad-hoc Slack/email.
+
+DB: dispute_cases table
+
+id, case_ref (human-readable, e.g. DSP-20260321-001), booking_id, complainant_uid, complainant_type (customer | provider), division_code, amount_disputed_cents, status (open | under_review | resolved_for_customer | resolved_for_provider | closed), resolution_cents, opened_at, resolved_at, assigned_admin_uid, notes (jsonb array of timestamped comments)
+Endpoints:
+
+POST /api/prestige-pass/admin/wallet/disputes — open dispute
+GET /api/prestige-pass/admin/wallet/disputes — list with filters
+PATCH /api/prestige-pass/admin/wallet/disputes/:caseRef — update status / add note / assign
+POST /api/prestige-pass/admin/wallet/disputes/:caseRef/resolve — resolve + trigger refund or payout adjustment
+Frontend: New "Disputes" tab in WalletDashboard — open case list with status chips, click to expand detail drawer (timeline of notes + actions), resolve button that chains into refund approval (2.9D).
+
+2.9D — Refund Approval Thresholds
+What it is: Refunds above a configurable ILS threshold require a second admin to approve. Below threshold, auto-approve. Prevents single-point abuse on large refunds.
+
+DB: refund_approvals table
+
+id, refund_request_id, requested_by_uid, amount_cents, reason, status (pending | approved | rejected), reviewed_by_uid, reviewed_at, linked_dispute_case_ref, created_at
+Config: REFUND_AUTO_APPROVE_LIMIT_CENTS env var (default 5000 = ₪50).
+
+Endpoints:
+
+POST /api/prestige-pass/admin/wallet/refund-requests — submit refund request (auto-approves if below threshold, else creates pending row)
+GET /api/prestige-pass/admin/wallet/refund-requests/pending — queue for second approver
+POST /api/prestige-pass/admin/wallet/refund-requests/:id/approve — approve + execute
+POST /api/prestige-pass/admin/wallet/refund-requests/:id/reject — reject with reason
+Frontend: "Pending Approvals" badge on Finance tab nav. Approval queue card in Finance Today with approve/reject inline. Support Actions tab existing refund form routes through this workflow automatically.
+
+2.9E — Margin & Daily Finance Close
+What it is: Per-division P&L summary for each calendar day + a close checklist admin must sign off before EOD. Generates an immutable daily record.
+
+DB: finance_close_records table
+
+id, close_date (date, UNIQUE), closed_by_uid, closed_at, division_snapshots (jsonb — per-division collected/payable/margin), vat_liability_cents, exception_count, notes, status (open | closed)
+Endpoints:
+
+GET /api/prestige-pass/admin/wallet/finance-close/:date — fetch or scaffold today's record
+POST /api/prestige-pass/admin/wallet/finance-close/:date/close — lock the day (idempotent, admin-only)
+GET /api/prestige-pass/admin/wallet/finance-close/history — past 30 closes
+Frontend: New "Daily Close" card in Finance Today tab — checklist items (no open anomalies, no stale holds, no pending disputes, no pending approvals), each showing ✓ or count. "Close Today" button only enabled when all items clear. Closed days shown as locked with the signing admin's name.
+
+Rollout order and dependencies
+2.9A (provider payout ledger)   — no deps, build first
+2.9B (settlement dashboard)     — depends on 2.9A (uses payout entries)
+2.9C (dispute workflow)         — no deps, can build in parallel with 2.9B
+2.9D (refund approval)          — depends on 2.9C (disputes chain into approvals)
+2.9E (margin + close)           — depends on 2.9B + 2.9D (close checks both)
+What does NOT change
+Wallet hold/release/debit/refund architecture — untouched
+Existing 2.8 anomaly/audit/reversal flows — untouched, just consumed by 2.9E close checklist
+No schema column type changes anywhere
+Ready to start with 2.9A whenever you say go

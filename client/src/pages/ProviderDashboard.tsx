@@ -211,6 +211,13 @@ export default function ProviderDashboard() {
     queryFn: () => fetchWithAuth('/api/provider-dashboard/v2/earnings'),
   });
 
+  const [payoutStatusFilter, setPayoutStatusFilter] = useState('');
+  const { data: payoutLedgerData, isLoading: payoutLedgerLoading } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/provider/wallet/payout-ledger', payoutStatusFilter],
+    enabled: !!user,
+    queryFn: () => fetchWithAuth(`/api/prestige-pass/provider/wallet/payout-ledger${payoutStatusFilter ? `?status=${payoutStatusFilter}` : ''}`),
+  });
+
   const { data: appStatusData } = useQuery<{
     success: boolean;
     isProvider: boolean;
@@ -731,6 +738,97 @@ export default function ProviderDashboard() {
                   </div>
                 </>
               )}
+
+              {/* ── Payout Ledger ─────────────────────────────────────────── */}
+              <div className="bg-white border border-gray-200/60 shadow-sm overflow-hidden" style={{ borderRadius: '2px' }}>
+                <div className="h-[2px] bg-gradient-to-r from-violet-400 via-purple-500 to-indigo-500" />
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <h3 className="text-base font-serif text-gray-900">פירוט תשלומים מלא</h3>
+                  <div className="flex gap-2">
+                    {(['', 'earned', 'held', 'paid', 'clawed_back'] as const).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setPayoutStatusFilter(s)}
+                        className={`text-xs px-2 py-1 rounded border ${payoutStatusFilter === s ? 'bg-gray-900 text-white border-gray-900' : 'text-gray-500 border-gray-200 hover:bg-gray-50'}`}
+                        style={{ borderRadius: '2px' }}
+                      >
+                        {s === '' ? 'הכל' : s === 'earned' ? 'הרוויח' : s === 'held' ? 'בהמתנה' : s === 'paid' ? 'שולם' : 'הוחזר'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {payoutLedgerLoading ? (
+                  <div className="p-6 space-y-2">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="h-10 bg-gray-100 animate-pulse rounded" />
+                    ))}
+                  </div>
+                ) : !payoutLedgerData?.entries?.length ? (
+                  <div className="p-10 text-center">
+                    <DollarSign className="w-8 h-8 mx-auto mb-3 text-gray-200" />
+                    <p className="text-sm text-gray-400">אין רשומות תשלום עדיין</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Totals row */}
+                    {payoutLedgerData?.totals && (
+                      <div className="grid grid-cols-3 gap-px bg-gray-100 border-b border-gray-100">
+                        {[
+                          { label: 'ברוטו', val: payoutLedgerData.totals.grossCents },
+                          { label: 'נטו', val: payoutLedgerData.totals.netCents },
+                          { label: 'שולם', val: payoutLedgerData.totals.paidCents },
+                        ].map(({ label, val }) => (
+                          <div key={label} className="bg-white px-4 py-2.5 text-center">
+                            <p className="text-[10px] text-gray-400 uppercase tracking-wider">{label}</p>
+                            <p className="text-sm font-semibold text-gray-800">₪{(val / 100).toFixed(2)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="divide-y divide-gray-50">
+                      {(payoutLedgerData.entries as any[]).map((entry: any) => {
+                        const statusChip: Record<string, string> = {
+                          earned:      'bg-amber-50 text-amber-700 border-amber-200',
+                          held:        'bg-blue-50 text-blue-700 border-blue-200',
+                          paid:        'bg-emerald-50 text-emerald-700 border-emerald-200',
+                          clawed_back: 'bg-red-50 text-red-600 border-red-200',
+                        };
+                        const statusLabel: Record<string, string> = {
+                          earned: 'הרוויח', held: 'בהמתנה', paid: 'שולם', clawed_back: 'הוחזר',
+                        };
+                        const commissionAmt = entry.grossCents - entry.netCents;
+                        return (
+                          <div key={entry.id} className="px-5 py-3 flex items-center justify-between gap-4">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${statusChip[entry.status] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                                  {statusLabel[entry.status] ?? entry.status}
+                                </span>
+                                <span className="text-xs text-gray-400">{entry.divisionCode}</span>
+                                {entry.bookingId && (
+                                  <span className="text-xs font-mono text-gray-400 truncate max-w-[80px]" title={entry.bookingId}>
+                                    {entry.bookingId.slice(0, 8)}…
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-gray-400 mt-0.5">
+                                {new Date(entry.createdAt).toLocaleDateString('he-IL')}
+                                {entry.paidAt && ` · שולם ${new Date(entry.paidAt).toLocaleDateString('he-IL')}`}
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-sm font-semibold text-gray-900">₪{(entry.netCents / 100).toFixed(2)}</p>
+                              <p className="text-[10px] text-gray-400">
+                                ברוטו ₪{(entry.grossCents / 100).toFixed(2)} · עמלה ₪{(commissionAmt / 100).toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </TabsContent>
 
