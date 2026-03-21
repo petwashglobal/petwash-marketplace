@@ -543,6 +543,12 @@ router.get('/', async (req, res) => {
         createdAt: b.createdAt,
         providerId: b.providerId,
         providerName: providerNameMap[b.providerId] || null,
+        // Wallet lifecycle fields
+        financeState: b.financeState || 'none',
+        walletHoldCents: b.walletHoldCents || 0,
+        walletDebitedCents: b.walletDebitedCents || 0,
+        walletRefundedCents: b.walletRefundedCents || 0,
+        loyaltyRedeemedCents: b.loyaltyRedeemedCents || 0,
         // Rebook prefill fields
         petIds: (b.petIds as string[] | null) || [],
         addonCodes: (b.id ? addonCodeMap[b.id] : null) || [],

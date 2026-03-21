@@ -13,6 +13,7 @@ import { CreditWalletCard } from "@/components/wallet/CreditWalletCard";
 import { PrestigePassPaymentOption } from "@/components/PrestigePassPaymentOption";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { WalletCheckoutPreview } from "@/components/wallet/WalletCheckoutPreview";
+import { WalletLifecycleMessage } from "@/components/wallet/WalletLifecycleMessage";
 
 type BookingStep = "details" | "summary" | "confirmation";
 
@@ -29,6 +30,8 @@ export default function AcademyBookingFlow() {
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
+  const [bookingFinanceState, setBookingFinanceState] = useState<string>('none');
+  const [bookingWalletHoldCents, setBookingWalletHoldCents] = useState<number>(0);
   const [appliedCredits, setAppliedCredits] = useState<{ redemptionSessionId: string; totalCreditsAppliedCents: number; cashDueCents: number } | null>(null);
 
   // Fetch trainer data from real API
@@ -121,7 +124,10 @@ export default function AcademyBookingFlow() {
       const response = await apiRequest('POST', '/api/academy/bookings', payload);
       const booking = await response.json();
 
-      setBookingId(booking.booking?.id || booking.id || booking.bookingNumber || 'pending');
+      const bookingRecord = booking.booking || booking;
+      setBookingId(bookingRecord?.id || bookingRecord?.bookingNumber || 'pending');
+      setBookingFinanceState(bookingRecord?.financeState || 'none');
+      setBookingWalletHoldCents(bookingRecord?.walletHoldCents || 0);
       setStep("confirmation");
 
       toast({
@@ -467,24 +473,38 @@ export default function AcademyBookingFlow() {
 
         {/* Step 3: Confirmation */}
         {step === "confirmation" && (
-          <div className="text-center py-12 luxury-fade-in">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 mx-auto flex items-center justify-center mb-6 luxury-shadow-xl">
-              <Check className="h-12 w-12 text-white" />
+          <div className="py-12 luxury-fade-in">
+            <div className="text-center mb-6">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 mx-auto flex items-center justify-center mb-6 luxury-shadow-xl">
+                <Check className="h-12 w-12 text-white" />
+              </div>
+              <h2 className="luxury-heading-lg mb-4">ההזמנה נקלטה בהצלחה!</h2>
+              <p className="luxury-text-body max-w-md mx-auto mb-2">
+                המאמן/ת יקבל/תקבל את פרטי ההזמנה. מספר הזמנה: {bookingId || "בבדיקה"}
+              </p>
             </div>
-            <h2 className="luxury-heading-lg mb-4">ההזמנה נקלטה בהצלחה!</h2>
-            <p className="luxury-text-body max-w-md mx-auto mb-3">
-              המאמן/ת יקבל/תקבל את פרטי ההזמנה. מספר הזמנה: {bookingId || "בבדיקה"}
-            </p>
-            <p className="luxury-text-small max-w-md mx-auto mb-8">
-              פרטי התשלום ישלחו בהודעה נפרדת.
-            </p>
-            <Button
-              className="luxury-btn-primary luxury-shadow-xl px-12"
-              onClick={() => setLocation("/dashboard")}
-              data-testid="button-dashboard"
-            >
-              חזרה ללוח הבקרה
-            </Button>
+
+            {bookingFinanceState !== 'none' && (
+              <div className="max-w-md mx-auto mb-6">
+                <WalletLifecycleMessage
+                  financeState={bookingFinanceState}
+                  amountCents={bookingWalletHoldCents}
+                />
+              </div>
+            )}
+
+            <div className="text-center">
+              <p className="luxury-text-small max-w-md mx-auto mb-8">
+                פרטי התשלום ישלחו בהודעה נפרדת.
+              </p>
+              <Button
+                className="luxury-btn-primary luxury-shadow-xl px-12"
+                onClick={() => setLocation("/dashboard")}
+                data-testid="button-dashboard"
+              >
+                חזרה ללוח הבקרה
+              </Button>
+            </div>
           </div>
         )}
       </div>

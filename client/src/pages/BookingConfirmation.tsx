@@ -17,6 +17,7 @@ import {
   Phone, Mail, Download, Share2, ArrowLeft, CheckCircle2, Loader2,
   RefreshCw, Search, XCircle, AlertTriangle, MessageCircle, Coins,
 } from 'lucide-react';
+import { WalletLifecycleMessage } from '@/components/wallet/WalletLifecycleMessage';
 
 const SERVICE_TO_ROUTE: Record<string, string> = {
   k9000_wash:  '/k9000/booking',
@@ -489,6 +490,22 @@ export default function BookingConfirmation() {
                     <span className="text-sm font-bold text-[#7A5C1E]">
                       -₪{(booking.loyaltyRedeemedCents / 100).toFixed(2)}
                     </span>
+                  </div>
+                )}
+
+                {/* Wallet lifecycle status */}
+                {booking.financeState && booking.financeState !== 'none' && (
+                  <div className="pt-3">
+                    <WalletLifecycleMessage
+                      financeState={booking.financeState}
+                      amountCents={
+                        booking.financeState === 'debited'
+                          ? (booking.walletDebitedCents ?? 0)
+                          : booking.financeState === 'refunded'
+                          ? (booking.walletRefundedCents ?? 0)
+                          : (booking.walletHoldCents ?? 0)
+                      }
+                    />
                   </div>
                 )}
 

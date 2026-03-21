@@ -11,6 +11,7 @@ import {
   CheckCircle2, CircleDot, Ban, Star, Timer, Hourglass,
   Loader2, MessageSquare, MapPin, Coins,
 } from 'lucide-react';
+import { WalletLifecycleMessage } from '@/components/wallet/WalletLifecycleMessage';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -141,6 +142,10 @@ interface Booking {
   statusHistory?: Array<{ status: string; timestamp: string; note?: string }>;
   petIds?: string[];
   addonCodes?: string[];
+  financeState?: string;
+  walletHoldCents?: number;
+  walletDebitedCents?: number;
+  walletRefundedCents?: number;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -659,6 +664,22 @@ function BookingCard({
                       ? `קרדיטים מומשו ₪${((booking.loyaltyRedeemedCents ?? 0) / 100).toFixed(0)}`
                       : `₪${((booking.loyaltyRedeemedCents ?? 0) / 100).toFixed(0)} credits used`}
                   </span>
+                </div>
+              )}
+
+              {/* Wallet lifecycle message */}
+              {booking.financeState && booking.financeState !== 'none' && (
+                <div className="mt-2">
+                  <WalletLifecycleMessage
+                    financeState={booking.financeState}
+                    amountCents={
+                      booking.financeState === 'debited'
+                        ? (booking.walletDebitedCents ?? 0)
+                        : booking.financeState === 'refunded'
+                        ? (booking.walletRefundedCents ?? 0)
+                        : (booking.walletHoldCents ?? 0)
+                    }
+                  />
                 </div>
               )}
             </div>
