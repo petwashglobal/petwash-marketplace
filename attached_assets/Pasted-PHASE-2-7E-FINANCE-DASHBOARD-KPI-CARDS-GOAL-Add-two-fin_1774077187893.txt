@@ -1,0 +1,179 @@
+PHASE 2.7E — FINANCE DASHBOARD KPI CARDS
+
+GOAL
+Add two finance-complete KPI cards to Finance Today so ops can see override volume and refund volume without opening audits.
+
+==================================================
+2.7E SCOPE
+==================================================
+
+CARD 1 — Admin Overrides Today
+Shows:
+- count
+- total ILS
+- orange accent
+Definition:
+- source IN ('admin_override', 'admin_release', 'admin_refund', 'admin_credit', 'admin_debit')
+- today only
+- derived from wallet_ledger_entries
+
+CARD 2 — Refunds Today
+Shows:
+- count
+- total ILS
+- blue accent
+Definition:
+- booking_requests.wallet_refunded_cents > 0 settled today
+- trainer_bookings.wallet_refunded_cents > 0 settled today
+- union both flows
+- count = distinct booking rows refunded today
+- total = refunded cents sum
+
+==================================================
+BACKEND
+==================================================
+
+FILE
+- server/routes/prestige-pass.ts
+
+EXTEND
+GET /api/prestige-pass/admin/wallet/finance-today
+
+ADD RESPONSE FIELDS
+{
+  ...
+  overridesToday: {
+    count: number,
+    totalCents: number
+  },
+  refundsToday: {
+    count: number,
+    totalCents: number
+  }
+}
+
+QUERY RULES
+
+1. overridesToday
+Source of truth:
+wallet_ledger_entries
+
+Filter:
+- created_at >= start of today
+- event_type IN ('admin_credit', 'admin_debit', 'release', 'refund', 'debit')
+- AND metadata->>'adminId' IS NOT NULL
+
+Why this filter:
+- admin_release and admin_refund are still represented by normal ledger event types
+- admin identity lives in metadata
+- this catches real admin-triggered financial actions, not user-triggered ones
+
+2. refundsToday
+Source of truth:
+- booking_requests
+- trainer_bookings
+
+Filter:
+- wallet_refunded_cents > 0
+- updated_at >= start of today
+Return:
+- count of rows
+- sum(wallet_refunded_cents)
+
+Optional:
+also return split by source:
+{
+  marketplaceCount,
+  academyCount
+}
+Not required for first pass.
+
+==================================================
+FRONTEND
+==================================================
+
+FILE
+- client/src/pages/AdminWalletDashboard.tsx
+
+TAB
+- Finance Today
+
+ADD TWO KPI CARDS
+Place after existing KPI row or extend row to 6 cards if layout still works.
+Recommended:
+- keep first row operational finance
+- second row override/refund cards if width gets cramped
+
+CARD STYLES
+
+Admin Overrides Today
+- title: "Admin Overrides Today"
+- subtitle: "credits, debits, releases, refunds"
+- count large
+- total ILS below
+- orange border/accent
+
+Refunds Today
+- title: "Refunds Today"
+- subtitle: "all booking divisions"
+- count large
+- total ILS below
+- blue border/accent
+
+==================================================
+ACCEPTANCE CHECKLIST
+==================================================
+
+1. No activity day
+- overridesToday.count = 0
+- overridesToday.totalCents = 0
+- refundsToday.count = 0
+- refundsToday.totalCents = 0
+
+2. Manual credit/debit
+- perform one admin wallet adjust
+- overridesToday count increments
+- total reflects absolute ledger amount for the row set
+
+3. Admin release / refund
+- perform one admin release or refund from Booking Audit
+- overridesToday increments
+- refundsToday only increments if actual refund happened, not release
+
+4. Trainer booking refund
+- cancel a debited academy booking
+- refundsToday increments
+- amount matches wallet_refunded_cents
+
+5. Marketplace refund
+- cancel a debited sitter/walker booking
+- refundsToday increments
+- amount matches booking_requests.wallet_refunded_cents
+
+==================================================
+IMPLEMENTATION NOTES
+==================================================
+
+- Use start-of-day in one timezone consistently
+- Match whatever Finance Today already uses for "today"
+- Keep totals in cents on the wire, format to ILS in UI
+- Do not infer override actions from booking tables
+- Override card must stay ledger-derived
+- Refund card must stay booking-derived
+
+==================================================
+RECOMMENDED BUILD ORDER
+==================================================
+
+1. Extend finance-today endpoint
+2. Verify JSON payload manually
+3. Add two cards in AdminWalletDashboard
+4. Run one admin adjust + one refund proof
+5. Ship
+
+After 2.7E, Phase 2.7 is fully closed.
+Then the clean next layer is 2.8:
+- action alerts inside admin UI
+- signed audit bundles
+- support workflow shortcuts
+- finance anomaly banners

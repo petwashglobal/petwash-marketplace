@@ -1168,6 +1168,33 @@ export default function AdminWalletDashboard() {
                       ))}
                     </div>
 
+                    {/* Override + Refund KPI cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Admin Overrides Today */}
+                      <div className="p-4 rounded-lg border border-orange-200 bg-orange-50">
+                        <p className="text-xs font-semibold text-orange-700 mb-0.5">Admin Overrides Today</p>
+                        <p className="text-xs text-orange-400 mb-3">credits, debits, releases, refunds</p>
+                        <p className="text-3xl font-bold text-orange-700 tabular-nums">
+                          {financeToday.overridesToday?.count ?? 0}
+                        </p>
+                        <p className="text-sm font-mono text-orange-600 mt-1">
+                          {centsToILS(Number(financeToday.overridesToday?.totalCents ?? 0))}
+                        </p>
+                      </div>
+
+                      {/* Refunds Today */}
+                      <div className="p-4 rounded-lg border border-blue-200 bg-blue-50">
+                        <p className="text-xs font-semibold text-blue-700 mb-0.5">Refunds Today</p>
+                        <p className="text-xs text-blue-400 mb-3">all booking divisions</p>
+                        <p className="text-3xl font-bold text-blue-700 tabular-nums">
+                          {financeToday.refundsToday?.count ?? 0}
+                        </p>
+                        <p className="text-sm font-mono text-blue-600 mt-1">
+                          {centsToILS(Number(financeToday.refundsToday?.totalCents ?? 0))}
+                        </p>
+                      </div>
+                    </div>
+
                     {/* Booking counts */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {[

@@ -3552,7 +3552,54 @@ router.get('/admin/wallet/finance-today', async (req: Request, res: Response) =>
     const totalRevenueCents = revenue.reduce((s: number, r: any) => s + r.revenueCents, 0);
     const totalHoldCents    = holds.reduce((s: number, r: any)   => s + r.holdCents,    0);
 
-    return res.json({ ok: true, revenue, holds, totalRevenueCents, totalHoldCents, generatedAt: new Date().toISOString() });
+    // ── Overrides Today (ledger-derived, admin-tagged rows only) ────────────────
+    // Start of calendar day in Asia/Jerusalem (matches UI label "00:00 IL → now")
+    const overrideRows: any = await db.execute(sql`
+      SELECT COUNT(*) AS override_count,
+             COALESCE(SUM(amount_cents), 0) AS override_cents
+      FROM wallet_ledger_entries
+      WHERE created_at >= (DATE_TRUNC('day', NOW() AT TIME ZONE 'Asia/Jerusalem') AT TIME ZONE 'Asia/Jerusalem')
+        AND metadata->>'adminId' IS NOT NULL
+        AND metadata->>'adminId' != ''
+    `);
+    const overrideRow = (overrideRows?.rows ?? overrideRows ?? [])[0] ?? {};
+    const overridesToday = {
+      count:      Number(overrideRow.override_count ?? 0),
+      totalCents: Number(overrideRow.override_cents ?? 0),
+    };
+
+    // ── Refunds Today (booking-derived: marketplace + academy) ─────────────────
+    const refundRows: any = await db.execute(sql`
+      SELECT COUNT(*) AS refund_count,
+             COALESCE(SUM(wallet_refunded_cents), 0) AS refund_cents
+      FROM (
+        SELECT wallet_refunded_cents
+        FROM booking_requests
+        WHERE wallet_refunded_cents > 0
+          AND updated_at >= (DATE_TRUNC('day', NOW() AT TIME ZONE 'Asia/Jerusalem') AT TIME ZONE 'Asia/Jerusalem')
+        UNION ALL
+        SELECT wallet_refunded_cents
+        FROM trainer_bookings
+        WHERE wallet_refunded_cents > 0
+          AND updated_at >= (DATE_TRUNC('day', NOW() AT TIME ZONE 'Asia/Jerusalem') AT TIME ZONE 'Asia/Jerusalem')
+      ) r
+    `);
+    const refundRow = (refundRows?.rows ?? refundRows ?? [])[0] ?? {};
+    const refundsToday = {
+      count:      Number(refundRow.refund_count ?? 0),
+      totalCents: Number(refundRow.refund_cents ?? 0),
+    };
+
+    return res.json({
+      ok: true,
+      revenue,
+      holds,
+      totalRevenueCents,
+      totalHoldCents,
+      overridesToday,
+      refundsToday,
+      generatedAt: new Date().toISOString(),
+    });
   } catch (err: any) {
     logger.error('[AdminWallet][FinanceToday] error', { error: err.message });
     return res.status(500).json({ error: 'Failed to fetch finance today', detail: err.message });
