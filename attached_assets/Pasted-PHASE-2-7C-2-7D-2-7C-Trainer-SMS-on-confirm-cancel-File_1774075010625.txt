@@ -1,0 +1,122 @@
+PHASE 2.7C + 2.7D
+
+2.7C - Trainer SMS on confirm / cancel
+Files:
+- server/routes/academy.ts
+- server/routes/prestige-pass.ts
+- server/services/twilioSMSService.ts
+
+Triggers:
+1. Trainer self-confirm
+   POST /api/academy/bookings/:id/confirm
+   Send SMS to trainer
+   Send SMS to customer
+
+2. Trainer self-cancel
+   POST /api/academy/bookings/:id/cancel
+   Send SMS to trainer
+   Send SMS to customer
+
+3. Admin force-confirm
+   POST /api/prestige-pass/admin/wallet/force-confirm
+   Send SMS to trainer
+   Send SMS to customer
+
+4. Admin force-cancel
+   POST /api/prestige-pass/admin/wallet/force-cancel
+   Send SMS to trainer
+   Send SMS to customer
+
+Phone source priority:
+- academy_trainer_profiles.phone
+- users.phone fallback
+
+Trainer confirm copy:
+הזמנה #<id> אושרה. החיוב בוצע. סכום: ₪<amount>.
+
+Trainer cancel copy:
+הזמנה #<id> בוטלה. ההחזר יועבר לארנק תוך 24 שעות.
+
+Rules:
+- fire only after DB success
+- fire-and-forget, never block HTTP response
+- log warn on Twilio failure, do not roll back financial action
+- add metadata in logs: bookingId, trainerId, userId, division=academy, smsType
+
+2.7D - Academy customer wording alignment
+Files:
+- server/routes/academy.ts
+- server/routes/prestige-pass.ts
+- any Academy-specific SMS helper if extracted
+
+Canonical customer SMS templates:
+1. Hold placed
+תשלום ₪<amount> הוחזק עבור שיעור עם <trainerName>. הארנק יחויב עם האישור.
+
+2. Confirmed
+שיעורך עם <trainerName> אושר! ₪<amount> נוכה מהארנק.
+
+3. Cancelled + refund
+שיעורך בוטל. ₪<amount> הוחזרו לארנק.
+
+4. Cancelled + hold released
+שיעורך בוטל. ₪<amount> שוחררו חזרה לארנק.
+
+Logic:
+- if finance_state was hold_active and release happened:
+  use "שוחררו חזרה לארנק"
+- if finance_state was debited and refund happened:
+  use "הוחזרו לארנק"
+- if confirm debited from hold:
+  use "נוכה מהארנק"
+
+Implementation discipline:
+- one helper function for academy SMS copy
+- no inline text duplication across routes
+- same helper used by trainer-confirm, trainer-cancel, admin force-confirm, admin force-cancel
+
+Recommended helper shape:
+buildAcademySmsCopy({
+  bookingId,
+  trainerName,
+  amountCents,
+  event,        // hold | confirmed | cancelled_release | cancelled_refund
+  audience      // trainer | customer
+})
+
+Acceptance checklist:
+1. Trainer confirm:
+- booking confirmed
+- finance_state debited
+- trainer gets confirm SMS
+- customer gets confirmed SMS
+
+2. Trainer cancel before debit:
+- finance_state released
+- trainer gets cancel SMS
+- customer gets "שוחררו חזרה לארנק"
+
+3. Trainer cancel after debit:
+- finance_state refunded
+- trainer gets cancel SMS
+- customer gets "הוחזרו לארנק"
+
+4. Admin force-confirm:
+- same wording as trainer confirm
+- no duplicate SMS
+
+5. Admin force-cancel:
+- same wording as trainer cancel path
+- release vs refund wording correct
+
+6. Failure behavior:
+- Twilio failure does not fail booking action
+- warn log includes bookingId + audience + smsType
+
+Best implementation order:
+1. Extract Academy SMS helper
+2. Patch academy confirm route
+3. Patch academy cancel route
+4. Patch prestige-pass force-confirm
+5. Patch prestige-pass force-cancel
+6. Run live smoke test with one confirm and one cancel

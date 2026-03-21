@@ -101,6 +101,7 @@ import {
   buildPassJson as applePassJson,
   isAppleWalletConfigured,
 } from '../services/AppleWalletService';
+import { dispatchAcademySms } from '../services/academySmsHelper';
 
 const router = Router();
 
@@ -3689,6 +3690,15 @@ router.post('/admin/wallet/academy/:id/force-confirm', async (req: Request, res:
       financeState: walletUpdates.finance_state ?? booking.finance_state,
     });
 
+    // 2.7C/D — fire-and-forget SMS (same wording as trainer self-confirm)
+    dispatchAcademySms({
+      bookingId,
+      amountCents:    Number(booking.wallet_hold_cents),
+      event:          'confirmed',
+      trainerUserId:  booking.trainer_user_id,
+      customerUserId: booking.user_id,
+    });
+
     return res.json({
       ok: true,
       bookingId,
@@ -3722,7 +3732,7 @@ router.post('/admin/wallet/academy/:id/force-cancel', async (req: Request, res: 
     if (!reason?.trim()) return res.status(400).json({ error: 'reason required' });
 
     const rows: any = await db.execute(sql`
-      SELECT booking_id, user_id, finance_state, booking_status,
+      SELECT booking_id, user_id, trainer_user_id, finance_state, booking_status,
              wallet_hold_cents, wallet_debited_cents
       FROM trainer_bookings WHERE booking_id = ${bookingId} LIMIT 1
     `);
@@ -3789,6 +3799,18 @@ router.post('/admin/wallet/academy/:id/force-cancel', async (req: Request, res: 
 
     logger.info('[AdminWallet][ForceCancel] Academy booking force-cancelled', {
       bookingId, adminUid: uid, reason, action,
+    });
+
+    // 2.7C/D — fire-and-forget SMS (same wording as trainer self-cancel)
+    const cancelSmsEvent = action === 'refunded' ? 'cancelled_refund' : 'cancelled_release';
+    dispatchAcademySms({
+      bookingId,
+      amountCents:    action === 'refunded'
+                        ? Number(booking.wallet_debited_cents)
+                        : Number(booking.wallet_hold_cents),
+      event:          cancelSmsEvent,
+      trainerUserId:  booking.trainer_user_id,
+      customerUserId: booking.user_id,
     });
 
     return res.json({

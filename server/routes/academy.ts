@@ -25,6 +25,7 @@ import { requireAuth } from '../customAuth';
 import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { walletService } from '../services/WalletService';
+import { dispatchAcademySms } from '../services/academySmsHelper';
 
 const router = Router();
 
@@ -477,7 +478,21 @@ router.post('/bookings/:id/cancel', async (req, res) => {
       cancelledBy: req.user.uid,
       reason,
     });
-    
+
+    // 2.7C/D — fire-and-forget SMS to trainer + customer
+    const cancelEvent = (walletUpdates.financeState === 'refunded')
+      ? 'cancelled_refund'
+      : 'cancelled_release';
+    dispatchAcademySms({
+      bookingId,
+      amountCents:    cancelEvent === 'cancelled_refund'
+                        ? booking.walletDebitedCents
+                        : booking.walletHoldCents,
+      event:          cancelEvent,
+      trainerUserId:  booking.trainerUserId,
+      customerUserId: booking.userId,
+    });
+
     res.json({ ...updatedBooking, ...walletUpdates });
   } catch (error) {
     logger.error('[Academy] Error cancelling booking', error);
@@ -536,6 +551,16 @@ router.post('/bookings/:id/confirm', requireAuth, async (req, res) => {
       .returning();
 
     logger.info('[Academy] Booking confirmed', { bookingId, trainerId: booking.trainerId });
+
+    // 2.7C/D — fire-and-forget SMS to trainer + customer
+    dispatchAcademySms({
+      bookingId,
+      amountCents:    booking.walletHoldCents,
+      event:          'confirmed',
+      trainerUserId:  booking.trainerUserId,
+      customerUserId: booking.userId,
+    });
+
     res.json(confirmed);
   } catch (error) {
     logger.error('[Academy] Error confirming booking', error);
