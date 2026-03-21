@@ -13308,3 +13308,86 @@ export const anomalyClusters = pgTable("anomaly_clusters", {
 });
 export type AnomalyCluster       = typeof anomalyClusters.$inferSelect;
 export type InsertAnomalyCluster = typeof anomalyClusters.$inferInsert;
+
+// 4.1A — Action Recommendation Confidence Scores
+export const recommendationScores = pgTable("recommendation_scores", {
+  id:                 serial("id").primaryKey(),
+  recommendationType: varchar("recommendation_type",  { length: 64  }).notNull(),
+  targetEntityType:   varchar("target_entity_type",   { length: 64  }).notNull(),
+  targetEntityId:     varchar("target_entity_id",     { length: 128 }).notNull(),
+  confidenceScore:    numeric("confidence_score", { precision: 5, scale: 2 }).notNull().default('0'),
+  impactScore:        numeric("impact_score",     { precision: 5, scale: 2 }).notNull().default('0'),
+  urgencyScore:       numeric("urgency_score",    { precision: 5, scale: 2 }).notNull().default('0'),
+  explanationJson:    jsonb("explanation_json").notNull().default(sql`'{}'::jsonb`),
+  createdAt:          timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type RecommendationScore       = typeof recommendationScores.$inferSelect;
+export type InsertRecommendationScore = typeof recommendationScores.$inferInsert;
+
+// 4.1C — Auto-Generated Remediation Plans
+export const remediationPlans = pgTable("remediation_plans", {
+  id:               serial("id").primaryKey(),
+  issueType:        varchar("issue_type",          { length: 64  }).notNull(),
+  targetEntityType: varchar("target_entity_type",  { length: 64  }).notNull(),
+  targetEntityId:   varchar("target_entity_id",    { length: 128 }).notNull(),
+  planJson:         jsonb("plan_json").notNull().default(sql`'{}'::jsonb`),
+  confidenceScore:  numeric("confidence_score", { precision: 5, scale: 2 }).notNull().default('0'),
+  status:           varchar("status", { length: 24 }).notNull().default('suggested'),
+  createdAt:        timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type RemediationPlan       = typeof remediationPlans.$inferSelect;
+export type InsertRemediationPlan = typeof remediationPlans.$inferInsert;
+
+// 4.1D — Approval Workload Snapshots
+export const approvalWorkloadSnapshots = pgTable("approval_workload_snapshots", {
+  id:                    serial("id").primaryKey(),
+  snapshotAt:            timestamp("snapshot_at",    { withTimezone: true }).notNull().defaultNow(),
+  approverUid:           varchar("approver_uid",      { length: 128 }).notNull(),
+  openCount:             integer("open_count").notNull().default(0),
+  avgAgeHours:           numeric("avg_age_hours", { precision: 8, scale: 2 }).notNull().default('0'),
+  overdueCount:          integer("overdue_count").notNull().default(0),
+  recommendedRebalance:  boolean("recommended_rebalance").notNull().default(false),
+  detailJson:            jsonb("detail_json").notNull().default(sql`'{}'::jsonb`),
+});
+export type ApprovalWorkloadSnapshot       = typeof approvalWorkloadSnapshots.$inferSelect;
+export type InsertApprovalWorkloadSnapshot = typeof approvalWorkloadSnapshots.$inferInsert;
+
+// 4.1E — Governance Delivery Analytics
+export const governanceDeliveryAnalytics = pgTable("governance_delivery_analytics", {
+  id:             serial("id").primaryKey(),
+  packType:       varchar("pack_type",      { length: 32  }).notNull(),
+  audienceName:   varchar("audience_name",  { length: 128 }).notNull(),
+  periodKey:      varchar("period_key",     { length: 32  }).notNull(),
+  recipientCount: integer("recipient_count").notNull().default(0),
+  deliveredCount: integer("delivered_count").notNull().default(0),
+  failedCount:    integer("failed_count").notNull().default(0),
+  sentAt:         timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  detailJson:     jsonb("detail_json").notNull().default(sql`'{}'::jsonb`),
+});
+export type GovernanceDeliveryAnalytic       = typeof governanceDeliveryAnalytics.$inferSelect;
+export type InsertGovernanceDeliveryAnalytic = typeof governanceDeliveryAnalytics.$inferInsert;
+
+// 4.1F — Scenario Library Quality Scores
+export const scenarioQualityScores = pgTable("scenario_quality_scores", {
+  id:               serial("id").primaryKey(),
+  scenarioId:       integer("scenario_id").notNull(),
+  reuseCount:       integer("reuse_count").notNull().default(0),
+  avgBacktestScore: numeric("avg_backtest_score", { precision: 8, scale: 2 }).notNull().default('0'),
+  avgEntityScore:   numeric("avg_entity_score",   { precision: 8, scale: 2 }).notNull().default('0'),
+  qualityRank:      varchar("quality_rank", { length: 16 }).notNull().default('unranked'),
+  detailJson:       jsonb("detail_json").notNull().default(sql`'{}'::jsonb`),
+  updatedAt:        timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type ScenarioQualityScore       = typeof scenarioQualityScores.$inferSelect;
+export type InsertScenarioQualityScore = typeof scenarioQualityScores.$inferInsert;
+
+// 4.1G — Monthly Operating Review Packs
+export const operatingReviewPacks = pgTable("operating_review_packs", {
+  id:          serial("id").primaryKey(),
+  month:       varchar("month", { length: 7 }).notNull().unique(),
+  packJson:    jsonb("pack_json").notNull().default(sql`'{}'::jsonb`),
+  signature:   varchar("signature", { length: 255 }).notNull().default(''),
+  generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type OperatingReviewPack       = typeof operatingReviewPacks.$inferSelect;
+export type InsertOperatingReviewPack = typeof operatingReviewPacks.$inferInsert;

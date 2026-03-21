@@ -38,6 +38,7 @@ import {
   Download,
   History,
   SlidersHorizontal,
+  Star,
   Settings,
   FileDown,
   Unlock,
@@ -1706,6 +1707,107 @@ export default function AdminWalletDashboard() {
     refetchInterval: 60_000,
   });
 
+  // ── Phase 4.1 State & Hooks ────────────────────────────────────────────────
+
+  // 4.1A — Recommendation Confidence Scoring
+  const [recScoreFilter, setRecScoreFilter] = useState({ recommendationType: '', targetEntityType: '', from: '', to: '' });
+  const [showRecScoreForm, setShowRecScoreForm] = useState(false);
+  const [newRecScore, setNewRecScore] = useState({ recommendationType: '', targetEntityType: '', targetEntityId: '', confidenceScore: '', impactScore: '', urgencyScore: '', note: '' });
+  const { data: recScoresData, isLoading: recScoresLoading, refetch: refetchRecScores } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/recommendation-scores', recScoreFilter],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (recScoreFilter.recommendationType) p.set('recommendationType', recScoreFilter.recommendationType);
+      if (recScoreFilter.targetEntityType)   p.set('targetEntityType',   recScoreFilter.targetEntityType);
+      if (recScoreFilter.from) p.set('from', recScoreFilter.from);
+      if (recScoreFilter.to)   p.set('to',   recScoreFilter.to);
+      return fetch(`/api/prestige-pass/admin/wallet/recommendation-scores?${p}`).then(r => r.json());
+    },
+  });
+  const { mutate: recordRecScore, isPending: recordRecScorePending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/recommendation-scores/recompute', body),
+    onSuccess: () => { toast({ title: 'Recommendation score recorded' }); refetchRecScores(); setShowRecScoreForm(false); setNewRecScore({ recommendationType: '', targetEntityType: '', targetEntityId: '', confidenceScore: '', impactScore: '', urgencyScore: '', note: '' }); },
+  });
+
+  // 4.1B — Drill-through (controlled tab navigation)
+  const [activeTab, setActiveTab] = useState('proof');
+
+  // 4.1C — Remediation Plans
+  const [remediationFilter, setRemediationFilter] = useState({ issueType: '', status: '' });
+  const [showGeneratePlan, setShowGeneratePlan] = useState(false);
+  const [newPlanForm, setNewPlanForm] = useState({ issueType: '', targetEntityType: 'booking', targetEntityId: '', confidenceScore: '75' });
+  const { data: remediationData, isLoading: remediationLoading, refetch: refetchRemediation } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/remediation-plans', remediationFilter],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (remediationFilter.issueType) p.set('issueType', remediationFilter.issueType);
+      if (remediationFilter.status)    p.set('status',    remediationFilter.status);
+      return fetch(`/api/prestige-pass/admin/wallet/remediation-plans?${p}`).then(r => r.json());
+    },
+  });
+  const { mutate: generatePlan, isPending: generatePlanPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/remediation-plans/generate', body),
+    onSuccess: () => { toast({ title: 'Remediation plan generated' }); refetchRemediation(); setShowGeneratePlan(false); },
+  });
+  const { mutate: patchPlan, isPending: patchPlanPending } = useMutation<any, any, { id: number; status: string }>({
+    mutationFn: ({ id, status }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/remediation-plans/${id}`, { status }),
+    onSuccess: () => { toast({ title: 'Plan updated' }); refetchRemediation(); },
+  });
+
+  // 4.1D — Approval Workload Balancing
+  const [workloadReassignForm, setWorkloadReassignForm] = useState({ requestId: '', targetApproverUid: '' });
+  const [workloadPreview, setWorkloadPreview] = useState<any>(null);
+  const [showReassignForm, setShowReassignForm] = useState(false);
+  const { data: workloadData, isLoading: workloadLoading, refetch: refetchWorkload } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/approval-workload'],
+  });
+  const { mutate: previewRebalance, isPending: previewRebalancePending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/approval-workload/rebalance-preview', body),
+    onSuccess: (d) => { setWorkloadPreview(d.preview); },
+  });
+  const { mutate: doReassign, isPending: doReassignPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/approval-workload/reassign', body),
+    onSuccess: () => { toast({ title: 'Reassignment complete — audit logged' }); refetchWorkload(); setWorkloadPreview(null); setShowReassignForm(false); },
+  });
+
+  // 4.1E — Governance Delivery Analytics
+  const [govDeliveryFilter, setGovDeliveryFilter] = useState({ packType: '', audienceName: '', from: '', to: '' });
+  const [showGovDeliveryForm, setShowGovDeliveryForm] = useState(false);
+  const [newGovDelivery, setNewGovDelivery] = useState({ packType: '', audienceName: '', periodKey: '', recipientCount: '', deliveredCount: '', failedCount: '' });
+  const { data: govDeliveryData, isLoading: govDeliveryLoading, refetch: refetchGovDelivery } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/governance-delivery-analytics', govDeliveryFilter],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (govDeliveryFilter.packType)     p.set('packType',     govDeliveryFilter.packType);
+      if (govDeliveryFilter.audienceName) p.set('audienceName', govDeliveryFilter.audienceName);
+      if (govDeliveryFilter.from) p.set('from', govDeliveryFilter.from);
+      if (govDeliveryFilter.to)   p.set('to',   govDeliveryFilter.to);
+      return fetch(`/api/prestige-pass/admin/wallet/governance-delivery-analytics?${p}`).then(r => r.json());
+    },
+  });
+  const { mutate: recordGovDelivery, isPending: recordGovDeliveryPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/governance-delivery-analytics/record', body),
+    onSuccess: () => { toast({ title: 'Delivery record saved' }); refetchGovDelivery(); setShowGovDeliveryForm(false); },
+  });
+
+  // 4.1F — Scenario Quality Ranking
+  const [showQualityForm, setShowQualityForm] = useState(false);
+  const [qualityForm, setQualityForm] = useState({ scenarioId: '', reuseCount: '', avgBacktestScore: '', avgEntityScore: '' });
+  const { data: scenarioQualityData, isLoading: scenarioQualityLoading, refetch: refetchScenarioQuality } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/scenario-quality'],
+  });
+  const { mutate: recomputeQuality, isPending: recomputeQualityPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/scenario-quality/recompute', body),
+    onSuccess: (d) => { toast({ title: `Quality ranked: ${d.rank}`, description: `Composite score: ${d.composite}` }); refetchScenarioQuality(); setShowQualityForm(false); },
+  });
+
+  // 4.1G — Monthly Operating Review Pack
+  const [reviewMonth, setReviewMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const { data: reviewPackData, isLoading: reviewPackLoading, refetch: refetchReviewPack } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/operating-review-pack', reviewMonth],
+    queryFn: () => fetch(`/api/prestige-pass/admin/wallet/operating-review-pack?month=${reviewMonth}`).then(r => r.json()),
+  });
+
   // ── Phase 3.6 UI aliases & supplemental state ──────────────────────────────
   // 3.6A — weight form state for the UI card
   const [weightForm, setWeightForm] = useState({ signalKey: '', divisionCode: '', weight: '' });
@@ -1906,7 +2008,7 @@ export default function AdminWalletDashboard() {
           </div>
         )}
 
-        <Tabs defaultValue="proof">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-gray-100 flex-wrap h-auto">
             <TabsTrigger value="proof">
               <ShieldCheck className="w-4 h-4 mr-2" />
@@ -8698,6 +8800,78 @@ export default function AdminWalletDashboard() {
                 }
               </CardContent>
             </Card>
+            {/* 4.1F — SCENARIO LIBRARY QUALITY RANKING */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Star className="w-4 h-4 text-yellow-500" /> Scenario Library Quality Ranking
+                </CardTitle>
+                <button onClick={() => setShowQualityForm(v => !v)} className="text-xs px-2 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700">
+                  {showQualityForm ? 'Cancel' : '+ Score Scenario'}
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-2">
+                  Composite rank = 40% backtest score + 35% entity impact score + 25% reuse frequency (capped at 20 uses). Ranked: gold ≥ 80, silver ≥ 55, bronze ≥ 30.
+                </div>
+                {showQualityForm && (
+                  <div className="border border-yellow-200 rounded p-3 bg-yellow-50 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="number" placeholder="Scenario ID" value={qualityForm.scenarioId}
+                        onChange={e => setQualityForm(v => ({ ...v, scenarioId: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Reuse count" value={qualityForm.reuseCount}
+                        onChange={e => setQualityForm(v => ({ ...v, reuseCount: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Avg backtest score (0-100)" value={qualityForm.avgBacktestScore}
+                        onChange={e => setQualityForm(v => ({ ...v, avgBacktestScore: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Avg entity score (0-100)" value={qualityForm.avgEntityScore}
+                        onChange={e => setQualityForm(v => ({ ...v, avgEntityScore: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                    </div>
+                    <button disabled={recomputeQualityPending || !qualityForm.scenarioId}
+                      onClick={() => recomputeQuality({ scenarioId: qualityForm.scenarioId, reuseCount: qualityForm.reuseCount, avgBacktestScore: qualityForm.avgBacktestScore, avgEntityScore: qualityForm.avgEntityScore })}
+                      className="text-xs px-3 py-1.5 bg-yellow-600 text-white rounded hover:bg-yellow-700 disabled:opacity-40 flex items-center gap-1">
+                      {recomputeQualityPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Star className="w-3 h-3" />} Compute Rank
+                    </button>
+                  </div>
+                )}
+                {scenarioQualityLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  !scenarioQualityData?.scores?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No scenario quality scores yet — score a scenario above</div>
+                  ) : (
+                    <div className="space-y-1">
+                      {scenarioQualityData.topScenario && (
+                        <div className="border border-yellow-200 bg-yellow-50 rounded p-2 text-xs flex items-center gap-2">
+                          <Star className="w-3 h-3 text-yellow-500" />
+                          <span className="font-semibold text-yellow-700">Top scenario:</span>
+                          <span className="font-mono text-gray-700">{scenarioQualityData.topScenario.scenario_name ?? `#${scenarioQualityData.topScenario.scenario_id}`}</span>
+                          <span className={`ml-auto px-1.5 py-0.5 rounded text-[10px] font-semibold ${scenarioQualityData.topScenario.quality_rank === 'gold' ? 'bg-yellow-200 text-yellow-800' : scenarioQualityData.topScenario.quality_rank === 'silver' ? 'bg-gray-200 text-gray-700' : 'bg-orange-200 text-orange-700'}`}>
+                            {scenarioQualityData.topScenario.quality_rank}
+                          </span>
+                        </div>
+                      )}
+                      <div className="border rounded-lg overflow-hidden">
+                        <table className="w-full text-xs"><thead className="bg-gray-50">
+                          <tr className="text-gray-500"><th className="text-left p-2">Scenario</th><th className="text-right p-2">Rank</th><th className="text-right p-2">Reuse</th><th className="text-right p-2">Backtest</th><th className="text-right p-2">Entity</th></tr>
+                        </thead><tbody>
+                          {scenarioQualityData.scores.map((s: any) => (
+                            <tr key={s.id} className="border-t hover:bg-gray-50">
+                              <td className="p-2 text-gray-700">{s.scenario_name ?? <span className="font-mono text-gray-500">#{s.scenario_id}</span>}</td>
+                              <td className="p-2 text-right">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${s.quality_rank === 'gold' ? 'bg-yellow-100 text-yellow-700' : s.quality_rank === 'silver' ? 'bg-gray-100 text-gray-600' : s.quality_rank === 'bronze' ? 'bg-orange-100 text-orange-700' : 'bg-gray-50 text-gray-400'}`}>
+                                  {s.quality_rank}
+                                </span>
+                              </td>
+                              <td className="p-2 text-right font-mono text-gray-600">{s.reuse_count}</td>
+                              <td className="p-2 text-right text-indigo-600">{parseFloat(s.avg_backtest_score).toFixed(1)}</td>
+                              <td className="p-2 text-right text-violet-600">{parseFloat(s.avg_entity_score).toFixed(1)}</td>
+                            </tr>
+                          ))}
+                        </tbody></table>
+                      </div>
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -9322,6 +9496,161 @@ export default function AdminWalletDashboard() {
                 }
               </CardContent>
             </Card>
+
+            {/* 4.1E — GOVERNANCE DELIVERY ANALYTICS */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-indigo-600" /> Governance Delivery Analytics
+                </CardTitle>
+                <button onClick={() => setShowGovDeliveryForm(v => !v)} className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+                  {showGovDeliveryForm ? 'Cancel' : '+ Record Delivery'}
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 rounded p-2">
+                  Observational before gating — track whether governance packs are reaching the right audiences at the right cadence.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input type="text" placeholder="Pack type" value={govDeliveryFilter.packType}
+                    onChange={e => setGovDeliveryFilter(v => ({ ...v, packType: e.target.value }))} className="border rounded px-2 py-1 text-xs w-28" />
+                  <input type="text" placeholder="Audience name" value={govDeliveryFilter.audienceName}
+                    onChange={e => setGovDeliveryFilter(v => ({ ...v, audienceName: e.target.value }))} className="border rounded px-2 py-1 text-xs w-32" />
+                  <input type="date" value={govDeliveryFilter.from} onChange={e => setGovDeliveryFilter(v => ({ ...v, from: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                  <input type="date" value={govDeliveryFilter.to}   onChange={e => setGovDeliveryFilter(v => ({ ...v, to:   e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                  <button onClick={() => refetchGovDelivery()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                </div>
+                {showGovDeliveryForm && (
+                  <div className="border border-indigo-200 rounded p-3 bg-indigo-50 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <select value={newGovDelivery.packType} onChange={e => setNewGovDelivery(v => ({ ...v, packType: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                        <option value="">Pack type…</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="quarter">Quarterly</option>
+                        <option value="year">Annual</option>
+                      </select>
+                      <input type="text" placeholder="Audience name" value={newGovDelivery.audienceName}
+                        onChange={e => setNewGovDelivery(v => ({ ...v, audienceName: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="text" placeholder="Period key (e.g. 2026-03)" value={newGovDelivery.periodKey}
+                        onChange={e => setNewGovDelivery(v => ({ ...v, periodKey: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <div className="grid grid-cols-3 gap-1">
+                        <input type="number" placeholder="Recipients" value={newGovDelivery.recipientCount}
+                          onChange={e => setNewGovDelivery(v => ({ ...v, recipientCount: e.target.value }))} className="border rounded px-1 py-1 text-xs" />
+                        <input type="number" placeholder="Delivered" value={newGovDelivery.deliveredCount}
+                          onChange={e => setNewGovDelivery(v => ({ ...v, deliveredCount: e.target.value }))} className="border rounded px-1 py-1 text-xs" />
+                        <input type="number" placeholder="Failed" value={newGovDelivery.failedCount}
+                          onChange={e => setNewGovDelivery(v => ({ ...v, failedCount: e.target.value }))} className="border rounded px-1 py-1 text-xs" />
+                      </div>
+                    </div>
+                    <button disabled={recordGovDeliveryPending || !newGovDelivery.packType || !newGovDelivery.audienceName || !newGovDelivery.periodKey}
+                      onClick={() => recordGovDelivery({ packType: newGovDelivery.packType, audienceName: newGovDelivery.audienceName, periodKey: newGovDelivery.periodKey, recipientCount: parseInt(newGovDelivery.recipientCount || '0'), deliveredCount: parseInt(newGovDelivery.deliveredCount || '0'), failedCount: parseInt(newGovDelivery.failedCount || '0') })}
+                      className="text-xs px-3 py-1.5 bg-indigo-700 text-white rounded hover:bg-indigo-800 disabled:opacity-40 flex items-center gap-1">
+                      {recordGovDeliveryPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <BarChart3 className="w-3 h-3" />} Record Delivery
+                    </button>
+                  </div>
+                )}
+                {govDeliveryLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  govDeliveryData && (
+                    <div className="space-y-3">
+                      {govDeliveryData.summary && (
+                        <div className="grid grid-cols-4 gap-2">
+                          {[
+                            { label: 'Sent',      value: govDeliveryData.summary.totalSent,      color: 'text-gray-700' },
+                            { label: 'Delivered', value: govDeliveryData.summary.totalDelivered,  color: 'text-green-700' },
+                            { label: 'Failed',    value: govDeliveryData.summary.totalFailed,     color: govDeliveryData.summary.totalFailed > 0 ? 'text-red-600' : 'text-gray-500' },
+                            { label: 'Rate',      value: govDeliveryData.summary.deliveryRate != null ? `${govDeliveryData.summary.deliveryRate}%` : '—', color: 'text-indigo-700' },
+                          ].map(k => (
+                            <div key={k.label} className="border rounded p-2 text-center">
+                              <div className={`text-lg font-bold ${k.color}`}>{k.value ?? '—'}</div>
+                              <div className="text-[10px] text-gray-500">{k.label}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {govDeliveryData.worstAudience && (
+                        <div className="text-xs border border-red-200 bg-red-50 rounded p-2 text-red-700">
+                          Lowest delivery rate: <span className="font-semibold">{govDeliveryData.worstAudience}</span>
+                        </div>
+                      )}
+                      {govDeliveryData.analytics?.length > 0 && (
+                        <div className="border rounded-lg overflow-hidden">
+                          <table className="w-full text-xs"><thead className="bg-gray-50">
+                            <tr className="text-gray-500"><th className="text-left p-2">Audience</th><th className="text-left p-2">Pack</th><th className="text-left p-2">Period</th><th className="text-right p-2">Sent</th><th className="text-right p-2">Delivered</th><th className="text-right p-2">Failed</th></tr>
+                          </thead><tbody>
+                            {govDeliveryData.analytics.map((a: any) => (
+                              <tr key={a.id} className={`border-t hover:bg-gray-50 ${parseInt(a.failed_count) > 0 ? 'bg-red-50' : ''}`}>
+                                <td className="p-2 font-semibold text-gray-800">{a.audience_name}</td>
+                                <td className="p-2 capitalize text-gray-600">{a.pack_type}</td>
+                                <td className="p-2 font-mono text-gray-500">{a.period_key}</td>
+                                <td className="p-2 text-right text-gray-600">{a.recipient_count}</td>
+                                <td className="p-2 text-right text-green-600">{a.delivered_count}</td>
+                                <td className="p-2 text-right text-red-500">{a.failed_count}</td>
+                              </tr>
+                            ))}
+                          </tbody></table>
+                        </div>
+                      )}
+                      {!govDeliveryData.analytics?.length && <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No delivery records yet — record the first one above</div>}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.1G — MONTHLY OPERATING REVIEW PACK */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-gray-800" /> Monthly Operating Review Pack
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <input type="month" value={reviewMonth} onChange={e => setReviewMonth(e.target.value)} className="border rounded px-2 py-1 text-xs" />
+                  <button onClick={() => refetchReviewPack()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Generate
+                  </button>
+                  <a href={`/api/prestige-pass/admin/wallet/operating-review-pack/export?month=${reviewMonth}`} target="_blank" rel="noreferrer"
+                    className="text-xs px-2 py-1 bg-gray-800 text-white rounded hover:bg-gray-700 flex items-center gap-1">
+                    <Download className="w-3 h-3" /> Export JSON
+                  </a>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded p-2">
+                  Deterministic and reproducible — same month always produces the same pack from the same source data. Pack is signed for audit integrity.
+                </div>
+                {reviewPackLoading ? <div className="h-24 bg-gray-100 animate-pulse rounded" /> :
+                  reviewPackData?.pack ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-xs text-gray-400">
+                        <span>Month: <span className="font-mono font-semibold text-gray-700">{reviewPackData.pack.month}</span></span>
+                        <span>Sig: <span className="font-mono text-[10px]">{reviewPackData.signature?.slice(0, 20)}…</span></span>
+                        <span>{reviewPackData.cached ? '(cached)' : '(freshly generated)'}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {[
+                          { label: 'Finance Close',   value: reviewPackData.pack.financeClose?.closed != null ? `${reviewPackData.pack.financeClose.closed}/${reviewPackData.pack.financeClose.total}` : '—', color: 'text-gray-700' },
+                          { label: 'Payouts Released',value: reviewPackData.pack.payouts?.released != null ? `${reviewPackData.pack.payouts.released}/${reviewPackData.pack.payouts.total}` : '—', color: 'text-green-700' },
+                          { label: 'Stuck Approvals', value: reviewPackData.pack.bottleneck?.stuckApprovals ?? '—', color: parseInt(reviewPackData.pack.bottleneck?.stuckApprovals ?? '0') > 0 ? 'text-red-600' : 'text-gray-500' },
+                          { label: 'Anomaly Clusters',value: reviewPackData.pack.anomalies?.clusterCount ?? '—', color: 'text-amber-600' },
+                          { label: 'Gold Scenarios',  value: reviewPackData.pack.scenarios?.goldCount ?? '—', color: 'text-yellow-700' },
+                          { label: 'Delivery Rate',   value: reviewPackData.pack.govDelivery?.delivered != null && reviewPackData.pack.govDelivery?.total > 0 ? `${((reviewPackData.pack.govDelivery.delivered / reviewPackData.pack.govDelivery.total) * 100).toFixed(0)}%` : '—', color: 'text-sky-700' },
+                          { label: 'Avg Rec Conf.',   value: reviewPackData.pack.recommendations?.avgConfidence != null ? `${reviewPackData.pack.recommendations.avgConfidence}%` : '—', color: 'text-blue-700' },
+                          { label: 'Settlements',     value: reviewPackData.pack.settlement?.total ?? '—', color: 'text-gray-600' },
+                        ].map(k => (
+                          <div key={k.label} className="border rounded p-2 text-center">
+                            <div className={`text-lg font-bold ${k.color}`}>{k.value}</div>
+                            <div className="text-[10px] text-gray-500 mt-0.5">{k.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">Select a month and click Generate to assemble the operating review pack</div>
+                  )
+                }
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -9472,6 +9801,107 @@ export default function AdminWalletDashboard() {
                 )}
                 {!traceResult && !traceLoading && (
                   <div className="text-xs text-gray-400 text-center py-6 border border-dashed rounded">Enter an entity type and ID, then click Trace</div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 4.1D — APPROVAL WORKLOAD BALANCING */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Users className="w-4 h-4 text-cyan-700" /> Approval Workload Balancing
+                </CardTitle>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowReassignForm(v => !v)} className="text-xs px-2 py-1 bg-cyan-600 text-white rounded hover:bg-cyan-700">
+                    {showReassignForm ? 'Cancel' : '+ Reassign'}
+                  </button>
+                  <button onClick={() => refetchWorkload()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-cyan-700 bg-cyan-50 border border-cyan-200 rounded p-2">
+                  Balancing is assignment guidance first — not forced reassignment. Every actual reassignment is fully audited.
+                </div>
+                {workloadLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  workloadData && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="border rounded p-2 text-center">
+                          <div className="text-xl font-bold text-gray-700">{workloadData.totalOpen ?? '—'}</div>
+                          <div className="text-[10px] text-gray-500">Total Open</div>
+                        </div>
+                        <div className="border rounded p-2 text-center">
+                          <div className="text-sm font-semibold text-amber-600 truncate">{workloadData.mostLoadedApprover ?? '—'}</div>
+                          <div className="text-[10px] text-gray-500">Most Loaded</div>
+                        </div>
+                        <div className="border rounded p-2 text-center">
+                          <div className="text-sm font-semibold text-green-600 truncate">{workloadData.leastLoadedApprover ?? '—'}</div>
+                          <div className="text-[10px] text-gray-500">Least Loaded</div>
+                        </div>
+                      </div>
+                      {workloadData.suggestedReassignments?.length > 0 && (
+                        <div className="border border-amber-200 bg-amber-50 rounded p-2 text-xs">
+                          <div className="font-semibold text-amber-700 mb-1">Suggested Rebalancing</div>
+                          {workloadData.suggestedReassignments.map((r: any, i: number) => (
+                            <div key={i} className="text-amber-600">{r.reason}</div>
+                          ))}
+                        </div>
+                      )}
+                      {workloadData.byApprover?.length > 0 && (
+                        <div className="border rounded-lg overflow-hidden">
+                          <table className="w-full text-xs"><thead className="bg-gray-50">
+                            <tr className="text-gray-500"><th className="text-left p-2">Approver</th><th className="text-right p-2">Open</th><th className="text-right p-2">Avg Age</th><th className="text-right p-2">Overdue</th><th className="text-right p-2">Rebalance?</th></tr>
+                          </thead><tbody>
+                            {workloadData.byApprover.map((a: any) => (
+                              <tr key={a.approver_uid} className={`border-t hover:bg-gray-50 ${a.recommended_rebalance ? 'bg-amber-50' : ''}`}>
+                                <td className="p-2 font-mono text-gray-700 text-[10px] max-w-[120px] truncate">{a.approver_uid}</td>
+                                <td className="p-2 text-right font-semibold text-gray-800">{a.open_count}</td>
+                                <td className="p-2 text-right text-gray-500">{parseFloat(a.avg_age_hours ?? '0').toFixed(1)}h</td>
+                                <td className="p-2 text-right text-red-500 font-semibold">{a.overdue_count}</td>
+                                <td className="p-2 text-right">
+                                  {a.recommended_rebalance && <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded">Yes</span>}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody></table>
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+                {showReassignForm && (
+                  <div className="border border-cyan-200 rounded p-3 bg-cyan-50 space-y-2">
+                    <div className="text-xs font-semibold text-cyan-800">Reassign Request</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="text" placeholder="Request ID" value={workloadReassignForm.requestId}
+                        onChange={e => setWorkloadReassignForm(v => ({ ...v, requestId: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="text" placeholder="Target approver UID" value={workloadReassignForm.targetApproverUid}
+                        onChange={e => setWorkloadReassignForm(v => ({ ...v, targetApproverUid: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button disabled={previewRebalancePending || !workloadReassignForm.requestId || !workloadReassignForm.targetApproverUid}
+                        onClick={() => previewRebalance({ requestId: workloadReassignForm.requestId, targetApproverUid: workloadReassignForm.targetApproverUid })}
+                        className="text-xs px-3 py-1.5 border border-cyan-400 text-cyan-700 rounded hover:bg-cyan-100 disabled:opacity-40 flex items-center gap-1">
+                        {previewRebalancePending ? <Loader2 className="w-3 h-3 animate-spin" /> : null} Preview
+                      </button>
+                      <button disabled={doReassignPending || !workloadPreview}
+                        onClick={() => doReassign({ requestId: workloadReassignForm.requestId, targetApproverUid: workloadReassignForm.targetApproverUid, reason: `Manual rebalance from workload dashboard` })}
+                        className="text-xs px-3 py-1.5 bg-cyan-700 text-white rounded hover:bg-cyan-800 disabled:opacity-40 flex items-center gap-1">
+                        {doReassignPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Users className="w-3 h-3" />} Reassign (Audited)
+                      </button>
+                    </div>
+                    {workloadPreview && (
+                      <div className="border border-cyan-300 rounded p-2 bg-white text-xs space-y-1">
+                        <div className="font-semibold text-cyan-800">Preview</div>
+                        <div>Request <span className="font-mono">#{workloadPreview.requestId}</span> ({workloadPreview.chainType})</div>
+                        <div>From: <span className="font-mono text-red-500">{workloadPreview.currentOwner}</span> → To: <span className="font-mono text-green-600">{workloadPreview.targetOwner}</span></div>
+                        <div className="text-gray-400">Age: {workloadPreview.ageHours}h | Status: {workloadPreview.status}</div>
+                        <div className="text-gray-500">{workloadPreview.reason}</div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -9692,10 +10122,12 @@ export default function AdminWalletDashboard() {
                           { label: 'Active Subscriptions',value: commandCenterData.summary?.activeSubscriptions, color: 'text-sky-700 bg-sky-50 border-sky-200', tab: 'governance' },
                           { label: 'Orch Runs (24h)',     value: commandCenterData.orchestration?.total24h,     color: 'text-gray-700 bg-gray-50 border-gray-200', tab: 'orchestration' },
                         ].map(k => (
-                          <div key={k.label} className={`border rounded-lg p-3 text-center ${k.color}`}>
+                          <button key={k.label} onClick={() => k.tab && setActiveTab(k.tab)}
+                            className={`border rounded-lg p-3 text-center w-full transition-opacity hover:opacity-80 cursor-pointer ${k.color}`}>
                             <div className="text-2xl font-bold">{k.value ?? '—'}</div>
                             <div className="text-[10px] mt-0.5 opacity-75">{k.label}</div>
-                          </div>
+                            {k.tab && <div className="text-[9px] mt-0.5 opacity-40">→ {k.tab}</div>}
+                          </button>
                         ))}
                       </div>
 
@@ -9738,6 +10170,195 @@ export default function AdminWalletDashboard() {
                 {!commandCenterData && !commandCenterLoading && (
                   <div className="text-xs text-gray-400 text-center py-8 border border-dashed rounded">Command center loading…</div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* 4.1A — RECOMMENDATION CONFIDENCE SCORING */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-blue-600" /> Recommendation Confidence Scoring
+                </CardTitle>
+                <button onClick={() => setShowRecScoreForm(v => !v)} className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
+                  {showRecScoreForm ? 'Cancel' : '+ Record Score'}
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded p-2">
+                  Quantify how confident the platform is that a recommended action is the correct next move. Scores are deterministic from source data — no direct execution from here.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input type="text" placeholder="Type (e.g. hold_release)" value={recScoreFilter.recommendationType}
+                    onChange={e => setRecScoreFilter(v => ({ ...v, recommendationType: e.target.value }))} className="border rounded px-2 py-1 text-xs w-36" />
+                  <input type="text" placeholder="Entity type" value={recScoreFilter.targetEntityType}
+                    onChange={e => setRecScoreFilter(v => ({ ...v, targetEntityType: e.target.value }))} className="border rounded px-2 py-1 text-xs w-28" />
+                  <input type="date" value={recScoreFilter.from} onChange={e => setRecScoreFilter(v => ({ ...v, from: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                  <input type="date" value={recScoreFilter.to}   onChange={e => setRecScoreFilter(v => ({ ...v, to:   e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                  <button onClick={() => refetchRecScores()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                </div>
+                {showRecScoreForm && (
+                  <div className="border border-blue-200 rounded p-3 bg-blue-50 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="text" placeholder="Recommendation type" value={newRecScore.recommendationType}
+                        onChange={e => setNewRecScore(v => ({ ...v, recommendationType: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="text" placeholder="Entity type" value={newRecScore.targetEntityType}
+                        onChange={e => setNewRecScore(v => ({ ...v, targetEntityType: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="text" placeholder="Entity ID" value={newRecScore.targetEntityId}
+                        onChange={e => setNewRecScore(v => ({ ...v, targetEntityId: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="text" placeholder="Note (explanation)" value={newRecScore.note}
+                        onChange={e => setNewRecScore(v => ({ ...v, note: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div><label className="text-[10px] text-gray-500 block mb-0.5">Confidence %</label>
+                        <input type="number" min="0" max="100" value={newRecScore.confidenceScore}
+                          onChange={e => setNewRecScore(v => ({ ...v, confidenceScore: e.target.value }))} className="border rounded px-2 py-1 text-xs w-full" /></div>
+                      <div><label className="text-[10px] text-gray-500 block mb-0.5">Impact %</label>
+                        <input type="number" min="0" max="100" value={newRecScore.impactScore}
+                          onChange={e => setNewRecScore(v => ({ ...v, impactScore: e.target.value }))} className="border rounded px-2 py-1 text-xs w-full" /></div>
+                      <div><label className="text-[10px] text-gray-500 block mb-0.5">Urgency %</label>
+                        <input type="number" min="0" max="100" value={newRecScore.urgencyScore}
+                          onChange={e => setNewRecScore(v => ({ ...v, urgencyScore: e.target.value }))} className="border rounded px-2 py-1 text-xs w-full" /></div>
+                    </div>
+                    <button disabled={recordRecScorePending || !newRecScore.recommendationType || !newRecScore.targetEntityId}
+                      onClick={() => recordRecScore({ ...newRecScore, explanationFactors: { note: newRecScore.note || 'Manual record', confidence: newRecScore.confidenceScore, impact: newRecScore.impactScore, urgency: newRecScore.urgencyScore } })}
+                      className="text-xs px-3 py-1.5 bg-blue-700 text-white rounded hover:bg-blue-800 disabled:opacity-40 flex items-center gap-1">
+                      {recordRecScorePending ? <Loader2 className="w-3 h-3 animate-spin" /> : <TrendingUp className="w-3 h-3" />} Record Score
+                    </button>
+                  </div>
+                )}
+                {recScoresLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                  !recScoresData?.scores?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No recommendation scores yet — record the first one above</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Type</th><th className="text-left p-2">Entity</th><th className="text-right p-2">Confidence</th><th className="text-right p-2">Impact</th><th className="text-right p-2">Urgency</th><th className="text-left p-2">Note</th></tr>
+                      </thead><tbody>
+                        {recScoresData.scores.map((s: any) => (
+                          <tr key={s.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 font-mono text-gray-700 text-[10px]">{s.recommendation_type}</td>
+                            <td className="p-2 text-gray-500 text-[10px]">{s.target_entity_type}/{s.target_entity_id}</td>
+                            <td className="p-2 text-right font-semibold" style={{ color: parseFloat(s.confidence_score) >= 70 ? '#16a34a' : parseFloat(s.confidence_score) >= 40 ? '#d97706' : '#dc2626' }}>
+                              {parseFloat(s.confidence_score).toFixed(0)}%
+                            </td>
+                            <td className="p-2 text-right text-blue-600">{parseFloat(s.impact_score).toFixed(0)}%</td>
+                            <td className="p-2 text-right text-amber-600">{parseFloat(s.urgency_score).toFixed(0)}%</td>
+                            <td className="p-2 text-gray-400 text-[10px] max-w-[120px] truncate" title={(s.explanation_json as any)?.note}>{(s.explanation_json as any)?.note ?? '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.1C — AUTO-GENERATED REMEDIATION PLANS */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-teal-600" /> Auto-Generated Remediation Plans
+                </CardTitle>
+                <button onClick={() => setShowGeneratePlan(v => !v)} className="text-xs px-2 py-1 bg-teal-600 text-white rounded hover:bg-teal-700">
+                  {showGeneratePlan ? 'Cancel' : '+ Generate Plan'}
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded p-2">
+                  For major issue classes, the platform generates a step-by-step remediation plan with linked actions. Plans are advisory — no direct mutation occurs from here.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <select value={remediationFilter.issueType} onChange={e => setRemediationFilter(v => ({ ...v, issueType: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                    <option value="">All issue types</option>
+                    <option value="stale_hold">stale_hold</option>
+                    <option value="failed_remittance">failed_remittance</option>
+                    <option value="blocked_close">blocked_close</option>
+                    <option value="breached_dispute">breached_dispute</option>
+                    <option value="reconciliation_exception">reconciliation_exception</option>
+                  </select>
+                  <select value={remediationFilter.status} onChange={e => setRemediationFilter(v => ({ ...v, status: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                    <option value="">All statuses</option>
+                    <option value="suggested">Suggested</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="dismissed">Dismissed</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                  <button onClick={() => refetchRemediation()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                </div>
+                {showGeneratePlan && (
+                  <div className="border border-teal-200 rounded p-3 bg-teal-50 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <select value={newPlanForm.issueType} onChange={e => setNewPlanForm(v => ({ ...v, issueType: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                        <option value="">Select issue type…</option>
+                        <option value="stale_hold">stale_hold</option>
+                        <option value="failed_remittance">failed_remittance</option>
+                        <option value="blocked_close">blocked_close</option>
+                        <option value="breached_dispute">breached_dispute</option>
+                        <option value="reconciliation_exception">reconciliation_exception</option>
+                      </select>
+                      <select value={newPlanForm.targetEntityType} onChange={e => setNewPlanForm(v => ({ ...v, targetEntityType: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                        <option value="booking">booking</option>
+                        <option value="payout_batch">payout_batch</option>
+                        <option value="wallet">wallet</option>
+                        <option value="dispute">dispute</option>
+                        <option value="finance_close">finance_close</option>
+                      </select>
+                      <input type="text" placeholder="Entity ID" value={newPlanForm.targetEntityId}
+                        onChange={e => setNewPlanForm(v => ({ ...v, targetEntityId: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Confidence %" value={newPlanForm.confidenceScore}
+                        onChange={e => setNewPlanForm(v => ({ ...v, confidenceScore: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                    </div>
+                    <button disabled={generatePlanPending || !newPlanForm.issueType || !newPlanForm.targetEntityId}
+                      onClick={() => generatePlan({ issueType: newPlanForm.issueType, targetEntityType: newPlanForm.targetEntityType, targetEntityId: newPlanForm.targetEntityId, confidenceScore: newPlanForm.confidenceScore })}
+                      className="text-xs px-3 py-1.5 bg-teal-700 text-white rounded hover:bg-teal-800 disabled:opacity-40 flex items-center gap-1">
+                      {generatePlanPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />} Generate Plan
+                    </button>
+                  </div>
+                )}
+                {remediationLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                  !remediationData?.plans?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No remediation plans yet — generate one above for a major issue class</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {remediationData.plans.map((p: any) => (
+                        <div key={p.id} className="border rounded-lg p-3 text-xs space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-semibold text-gray-800">{p.issue_type}</span>
+                                <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px]">{p.target_entity_type}/{p.target_entity_id}</span>
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${p.status === 'accepted' ? 'bg-green-100 text-green-700' : p.status === 'completed' ? 'bg-blue-100 text-blue-700' : p.status === 'dismissed' ? 'bg-red-100 text-red-500' : 'bg-yellow-100 text-yellow-700'}`}>{p.status}</span>
+                              </div>
+                              <div className="text-[10px] text-gray-400 mt-0.5">Confidence: {parseFloat(p.confidence_score).toFixed(0)}%</div>
+                            </div>
+                            <div className="flex gap-1 shrink-0">
+                              {p.status === 'suggested' && <button disabled={patchPlanPending} onClick={() => patchPlan({ id: p.id, status: 'accepted' })} className="text-[10px] px-1.5 py-0.5 bg-green-600 text-white rounded hover:bg-green-700">Accept</button>}
+                              {p.status === 'accepted'  && <button disabled={patchPlanPending} onClick={() => patchPlan({ id: p.id, status: 'completed' })} className="text-[10px] px-1.5 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700">Complete</button>}
+                              {(p.status === 'suggested' || p.status === 'accepted') && <button disabled={patchPlanPending} onClick={() => patchPlan({ id: p.id, status: 'dismissed' })} className="text-[10px] px-1.5 py-0.5 border border-red-200 text-red-500 rounded hover:bg-red-50">Dismiss</button>}
+                            </div>
+                          </div>
+                          {(p.plan_json as any)?.steps?.length > 0 && (
+                            <div className="border-t pt-2 space-y-1">
+                              {(p.plan_json as any).steps.map((step: string, i: number) => (
+                                <div key={i} className="flex items-start gap-2">
+                                  <span className="shrink-0 w-4 h-4 rounded-full bg-teal-100 text-teal-700 text-[9px] flex items-center justify-center font-bold">{i+1}</span>
+                                  <span className="text-gray-600">{step}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {(p.plan_json as any)?.linkedActions?.length > 0 && (
+                            <div className="flex flex-wrap gap-1 border-t pt-1">
+                              {(p.plan_json as any).linkedActions.map((a: any) => (
+                                <span key={a.label} className="text-[10px] px-2 py-0.5 border border-teal-200 text-teal-700 rounded">{a.label}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }
               </CardContent>
             </Card>
           </TabsContent>

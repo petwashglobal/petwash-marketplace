@@ -13969,4 +13969,400 @@ router.get('/admin/wallet/ops-command-center', async (_req: Request, res: Respon
   }
 });
 
+// ══════════════════════════════════════════════════════════════════════════════
+// PHASE 4.1 — REMEDIATION INTELLIGENCE, DRILL-THROUGH ACTIONS & OPERATING REVIEW
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── 4.1A: Recommendation Confidence Scoring ────────────────────────────────
+router.get('/admin/wallet/recommendation-scores', async (req: Request, res: Response) => {
+  try {
+    const { recommendationType, targetEntityType, from, to } = req.query as Record<string, string>;
+    const conditions: string[] = [];
+    if (recommendationType) conditions.push(`recommendation_type = '${recommendationType}'`);
+    if (targetEntityType)   conditions.push(`target_entity_type = '${targetEntityType}'`);
+    if (from) conditions.push(`created_at >= '${from}'`);
+    if (to)   conditions.push(`created_at <= '${to}'`);
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const result = await pool.query(`SELECT * FROM recommendation_scores ${where} ORDER BY created_at DESC LIMIT 100`);
+    return res.json({ ok: true, scores: result.rows });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch recommendation scores', detail: err.message });
+  }
+});
+
+router.get('/admin/wallet/recommendation-scores/:entityType/:entityId', async (req: Request, res: Response) => {
+  try {
+    const { entityType, entityId } = req.params;
+    const result = await pool.query(
+      `SELECT * FROM recommendation_scores WHERE target_entity_type = '${entityType}' AND target_entity_id = '${entityId}' ORDER BY created_at DESC LIMIT 20`
+    );
+    return res.json({ ok: true, scores: result.rows });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch entity recommendation scores', detail: err.message });
+  }
+});
+
+router.post('/admin/wallet/recommendation-scores/recompute', async (req: Request, res: Response) => {
+  try {
+    const { recommendationType, targetEntityType, targetEntityId, confidenceScore, impactScore, urgencyScore, explanationFactors } = req.body;
+    if (!recommendationType || !targetEntityType || !targetEntityId) {
+      return res.status(400).json({ error: 'recommendationType, targetEntityType, targetEntityId required' });
+    }
+    const conf    = parseFloat(confidenceScore ?? '0');
+    const impact  = parseFloat(impactScore ?? '0');
+    const urgency = parseFloat(urgencyScore ?? '0');
+    const explanation = JSON.stringify(explanationFactors ?? { note: 'Manual override — factors not provided' });
+    await pool.query(`
+      INSERT INTO recommendation_scores
+        (recommendation_type, target_entity_type, target_entity_id, confidence_score, impact_score, urgency_score, explanation_json)
+      VALUES
+        ('${recommendationType}', '${targetEntityType}', '${targetEntityId}', ${conf}, ${impact}, ${urgency}, '${explanation}'::jsonb)
+    `);
+    return res.json({ ok: true, message: 'Recommendation score recorded' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to record recommendation score', detail: err.message });
+  }
+});
+
+// ── 4.1B: Command-Center Drill-Through Helper ───────────────────────────────
+router.get('/admin/wallet/command-center/drillthrough/:widgetKey', async (_req: Request, res: Response) => {
+  const { widgetKey } = _req.params;
+  const mappings: Record<string, object> = {
+    criticalAlerts:       { targetTab: 'control-center', description: 'Open active alerts and filter by Critical severity' },
+    pendingApprovals:     { targetTab: 'approvals',      description: 'Open approval queue and filter by Pending status' },
+    orchestrationFailures:{ targetTab: 'orchestration',  description: 'Open orchestration runs and filter by Failed status in last 24h' },
+    disputeEscalations:   { targetTab: 'disputes',       description: 'Open disputes drawer and filter by Escalated status' },
+    anomalyClusters:      { targetTab: 'control-center', description: 'Open control center and scroll to anomaly cluster section' },
+    activeScenarios:      { targetTab: 'simulation',     description: 'Open simulation tab and view active forecast scenarios' },
+    activeSubscriptions:  { targetTab: 'governance',     description: 'Open governance tab and view pack subscriptions' },
+    forecastPressure:     { targetTab: 'simulation',     description: 'Open simulation tab and inspect high-risk scenarios' },
+    closeBlocked:         { targetTab: 'finance-close',  description: 'Open finance close and review blocked period-end items' },
+    staleReconExceptions: { targetTab: 'reconciliation', description: 'Open reconciliation tab and filter by open exceptions' },
+  };
+  const map = mappings[widgetKey];
+  if (!map) return res.status(404).json({ error: `Unknown widget key: ${widgetKey}` });
+  return res.json({ ok: true, widgetKey, ...map });
+});
+
+// ── 4.1C: Auto-Generated Remediation Plans ──────────────────────────────────
+router.get('/admin/wallet/remediation-plans', async (req: Request, res: Response) => {
+  try {
+    const { issueType, status, targetEntityType } = req.query as Record<string, string>;
+    const conditions: string[] = [];
+    if (issueType)         conditions.push(`issue_type = '${issueType}'`);
+    if (status)            conditions.push(`status = '${status}'`);
+    if (targetEntityType)  conditions.push(`target_entity_type = '${targetEntityType}'`);
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const result = await pool.query(`SELECT * FROM remediation_plans ${where} ORDER BY created_at DESC LIMIT 100`);
+    return res.json({ ok: true, plans: result.rows });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch remediation plans', detail: err.message });
+  }
+});
+
+const REMEDIATION_TEMPLATES: Record<string, { steps: string[]; linkedActions: { label: string; actionUrl: string }[] }> = {
+  stale_hold: {
+    steps: ['Open booking audit trail', 'Verify hold amount matches booking total', 'Confirm provider has not responded in 72h', 'Release hold via wallet release endpoint', 'Notify affected user by email', 'Log exception with reason code STALE_HOLD'],
+    linkedActions: [{ label: 'Open Booking Audit', actionUrl: '/api/prestige-pass/admin/wallet/audit-log' }, { label: 'Release Hold', actionUrl: '/api/wallet/release-hold' }],
+  },
+  failed_remittance: {
+    steps: ['Identify failed payout batch row', 'Verify provider bank details on file', 'Check for duplicate payout attempt', 'Re-trigger payout via payout batch endpoint', 'Log attempt in finance audit log'],
+    linkedActions: [{ label: 'View Payout Batches', actionUrl: '/api/prestige-pass/admin/wallet/payout-batches' }],
+  },
+  blocked_close: {
+    steps: ['Open current period-end close record', 'Identify blocking condition (open dispute, unreconciled hold, missing approval)', 'Resolve each blocking item in sequence', 'Re-run period close validation', 'Confirm reconciliation integrity before sign-off'],
+    linkedActions: [{ label: 'View Finance Close', actionUrl: '/api/prestige-pass/admin/wallet/finance-close' }],
+  },
+  breached_dispute: {
+    steps: ['Open dispute detail', 'Verify SLA breach date and reason', 'Escalate to senior resolver', 'Draft resolution memo', 'Apply resolution and close dispute with audit note'],
+    linkedActions: [{ label: 'View Disputes', actionUrl: '/api/prestige-pass/admin/wallet/disputes' }],
+  },
+  reconciliation_exception: {
+    steps: ['Identify exception type (hold drift, payout mismatch, ledger gap)', 'Pull matching ledger entries', 'Reconcile against source booking', 'Apply correction memo if under threshold', 'Escalate if correction exceeds authority limit'],
+    linkedActions: [{ label: 'View Recon Exceptions', actionUrl: '/api/prestige-pass/admin/wallet/reconciliation-exceptions' }],
+  },
+};
+
+router.post('/admin/wallet/remediation-plans/generate', async (req: Request, res: Response) => {
+  try {
+    const { issueType, targetEntityType, targetEntityId, confidenceScore } = req.body;
+    if (!issueType || !targetEntityType || !targetEntityId) {
+      return res.status(400).json({ error: 'issueType, targetEntityType, targetEntityId required' });
+    }
+    const template = REMEDIATION_TEMPLATES[issueType] ?? {
+      steps: [`Review ${issueType} issue for entity ${targetEntityId}`, 'Identify root cause', 'Apply corrective action', 'Log outcome'],
+      linkedActions: [],
+    };
+    const conf = parseFloat(confidenceScore ?? '75');
+    const planJson = JSON.stringify(template).replace(/'/g, "''");
+    const result = await pool.query(`
+      INSERT INTO remediation_plans (issue_type, target_entity_type, target_entity_id, plan_json, confidence_score)
+      VALUES ('${issueType}', '${targetEntityType}', '${targetEntityId}', '${planJson}'::jsonb, ${conf})
+      RETURNING *
+    `);
+    return res.json({ ok: true, plan: result.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to generate remediation plan', detail: err.message });
+  }
+});
+
+router.patch('/admin/wallet/remediation-plans/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const allowed = ['suggested', 'accepted', 'dismissed', 'completed'];
+    if (!status || !allowed.includes(status)) return res.status(400).json({ error: `status must be one of: ${allowed.join(', ')}` });
+    const result = await pool.query(`UPDATE remediation_plans SET status = '${status}' WHERE id = ${parseInt(id, 10)} RETURNING *`);
+    if (!result.rows.length) return res.status(404).json({ error: 'Plan not found' });
+    return res.json({ ok: true, plan: result.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update remediation plan', detail: err.message });
+  }
+});
+
+// ── 4.1D: Approval Workload Balancing ──────────────────────────────────────
+router.get('/admin/wallet/approval-workload', async (_req: Request, res: Response) => {
+  try {
+    // Aggregate live approval requests by assigned approver
+    const byApproverRaw = await pool.query(`
+      SELECT
+        COALESCE(assigned_to, 'unassigned') AS approver_uid,
+        COUNT(*) FILTER (WHERE status = 'pending') AS open_count,
+        AVG(EXTRACT(EPOCH FROM (NOW() - created_at))/3600) FILTER (WHERE status = 'pending') AS avg_age_hours,
+        COUNT(*) FILTER (WHERE status = 'pending' AND created_at < NOW() - INTERVAL '24 hours') AS overdue_count
+      FROM approval_requests
+      GROUP BY COALESCE(assigned_to, 'unassigned')
+      ORDER BY open_count DESC
+    `);
+    const rows = byApproverRaw.rows;
+    const totalOpen = rows.reduce((s: number, r: any) => s + parseInt(r.open_count ?? '0', 10), 0);
+    const mostLoaded  = rows[0]?.approver_uid ?? null;
+    const leastLoaded = rows[rows.length - 1]?.approver_uid ?? null;
+
+    // Simple rebalance: if top approver has ≥2× the average, suggest moving some to least loaded
+    const avg = rows.length ? totalOpen / rows.length : 0;
+    const suggestedReassignments: any[] = [];
+    if (rows.length > 1 && parseInt(rows[0]?.open_count ?? '0', 10) >= 2 * avg) {
+      suggestedReassignments.push({
+        fromApprover: mostLoaded,
+        toApprover:   leastLoaded,
+        reason:       `${mostLoaded} carries ${rows[0]?.open_count} requests vs avg ${avg.toFixed(1)}`,
+      });
+    }
+
+    // Snapshot latest workload per approver
+    for (const r of rows) {
+      await pool.query(`
+        INSERT INTO approval_workload_snapshots (approver_uid, open_count, avg_age_hours, overdue_count, recommended_rebalance)
+        VALUES ('${r.approver_uid}', ${parseInt(r.open_count ?? '0', 10)}, ${parseFloat(r.avg_age_hours ?? '0').toFixed(2)}, ${parseInt(r.overdue_count ?? '0', 10)}, ${suggestedReassignments.some(s => s.fromApprover === r.approver_uid)})
+      `);
+    }
+
+    return res.json({ ok: true, byApprover: rows, totalOpen, mostLoadedApprover: mostLoaded, leastLoadedApprover: leastLoaded, suggestedReassignments });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch approval workload', detail: err.message });
+  }
+});
+
+router.post('/admin/wallet/approval-workload/rebalance-preview', async (req: Request, res: Response) => {
+  try {
+    const { requestId, targetApproverUid } = req.body;
+    if (!requestId || !targetApproverUid) return res.status(400).json({ error: 'requestId and targetApproverUid required' });
+    const reqRow = await pool.query(`SELECT * FROM approval_requests WHERE id = ${parseInt(requestId, 10)}`);
+    if (!reqRow.rows.length) return res.status(404).json({ error: 'Approval request not found' });
+    const r = reqRow.rows[0];
+    const ageHours = ((Date.now() - new Date(r.created_at).getTime()) / 3600000).toFixed(1);
+    return res.json({
+      ok: true,
+      preview: {
+        requestId: r.id,
+        currentOwner:  r.assigned_to ?? 'unassigned',
+        targetOwner:   targetApproverUid,
+        chainType:     r.chain_type,
+        status:        r.status,
+        ageHours,
+        reason: `Rebalancing from ${r.assigned_to ?? 'unassigned'} to ${targetApproverUid} — age ${ageHours}h`,
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Rebalance preview failed', detail: err.message });
+  }
+});
+
+router.post('/admin/wallet/approval-workload/reassign', async (req: Request, res: Response) => {
+  try {
+    const { requestId, targetApproverUid, reason } = req.body;
+    if (!requestId || !targetApproverUid) return res.status(400).json({ error: 'requestId and targetApproverUid required' });
+    const result = await pool.query(
+      `UPDATE approval_requests SET assigned_to = '${targetApproverUid}' WHERE id = ${parseInt(requestId, 10)} AND status = 'pending' RETURNING *`
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Approval request not found or not pending' });
+    await pool.query(`
+      INSERT INTO finance_audit_log (event_type, actor_uid, detail_json)
+      VALUES ('approval_reassigned', 'system', '{"requestId": ${parseInt(requestId, 10)}, "targetApproverUid": "${targetApproverUid}", "reason": "${(reason ?? '').replace(/"/g, '\\"')}"}'::jsonb)
+    `).catch(() => {});
+    return res.json({ ok: true, request: result.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Reassignment failed', detail: err.message });
+  }
+});
+
+// ── 4.1E: Governance Delivery Analytics ────────────────────────────────────
+router.get('/admin/wallet/governance-delivery-analytics', async (req: Request, res: Response) => {
+  try {
+    const { packType, audienceName, from, to } = req.query as Record<string, string>;
+    const conditions: string[] = [];
+    if (packType)     conditions.push(`pack_type = '${packType}'`);
+    if (audienceName) conditions.push(`audience_name = '${audienceName}'`);
+    if (from) conditions.push(`sent_at >= '${from}'`);
+    if (to)   conditions.push(`sent_at <= '${to}'`);
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const rows = (await pool.query(`SELECT * FROM governance_delivery_analytics ${where} ORDER BY sent_at DESC LIMIT 100`)).rows;
+    const totalDelivered = rows.reduce((s: number, r: any) => s + parseInt(r.delivered_count ?? '0', 10), 0);
+    const totalFailed    = rows.reduce((s: number, r: any) => s + parseInt(r.failed_count    ?? '0', 10), 0);
+    const totalSent      = rows.reduce((s: number, r: any) => s + parseInt(r.recipient_count ?? '0', 10), 0);
+    const deliveryRate   = totalSent > 0 ? ((totalDelivered / totalSent) * 100).toFixed(1) : null;
+    // Find worst-performing audience
+    const byAudience: Record<string, {delivered: number; failed: number; total: number}> = {};
+    for (const r of rows) {
+      const k = r.audience_name;
+      if (!byAudience[k]) byAudience[k] = { delivered: 0, failed: 0, total: 0 };
+      byAudience[k].delivered += parseInt(r.delivered_count ?? '0', 10);
+      byAudience[k].failed    += parseInt(r.failed_count    ?? '0', 10);
+      byAudience[k].total     += parseInt(r.recipient_count ?? '0', 10);
+    }
+    let worstAudience: string | null = null;
+    let worstRate = Infinity;
+    for (const [k, v] of Object.entries(byAudience)) {
+      const rate = v.total > 0 ? v.delivered / v.total : 0;
+      if (rate < worstRate) { worstRate = rate; worstAudience = k; }
+    }
+    return res.json({ ok: true, analytics: rows, summary: { totalSent, totalDelivered, totalFailed, deliveryRate }, worstAudience });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch governance delivery analytics', detail: err.message });
+  }
+});
+
+router.post('/admin/wallet/governance-delivery-analytics/record', async (req: Request, res: Response) => {
+  try {
+    const { packType, audienceName, periodKey, recipientCount, deliveredCount, failedCount } = req.body;
+    if (!packType || !audienceName || !periodKey) return res.status(400).json({ error: 'packType, audienceName, periodKey required' });
+    const result = await pool.query(`
+      INSERT INTO governance_delivery_analytics (pack_type, audience_name, period_key, recipient_count, delivered_count, failed_count)
+      VALUES ('${packType}', '${audienceName}', '${periodKey}', ${parseInt(recipientCount ?? '0', 10)}, ${parseInt(deliveredCount ?? '0', 10)}, ${parseInt(failedCount ?? '0', 10)})
+      RETURNING *
+    `);
+    return res.json({ ok: true, record: result.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to record delivery analytics', detail: err.message });
+  }
+});
+
+// ── 4.1F: Scenario Library Quality Ranking ─────────────────────────────────
+router.get('/admin/wallet/scenario-quality', async (_req: Request, res: Response) => {
+  try {
+    const result = await pool.query(`
+      SELECT sq.*, fs.name AS scenario_name
+      FROM scenario_quality_scores sq
+      LEFT JOIN forecast_scenarios fs ON fs.id = sq.scenario_id
+      ORDER BY
+        CASE quality_rank WHEN 'gold' THEN 1 WHEN 'silver' THEN 2 WHEN 'bronze' THEN 3 ELSE 4 END,
+        reuse_count DESC,
+        avg_backtest_score DESC
+      LIMIT 100
+    `);
+    const topScenario = result.rows[0] ?? null;
+    return res.json({ ok: true, scores: result.rows, topScenario });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch scenario quality scores', detail: err.message });
+  }
+});
+
+router.post('/admin/wallet/scenario-quality/recompute', async (req: Request, res: Response) => {
+  try {
+    const { scenarioId, reuseCount, avgBacktestScore, avgEntityScore } = req.body;
+    if (!scenarioId) return res.status(400).json({ error: 'scenarioId required' });
+    const reuse   = parseInt(reuseCount      ?? '0',  10);
+    const backtest = parseFloat(avgBacktestScore ?? '0');
+    const entity   = parseFloat(avgEntityScore   ?? '0');
+    // Weighted composite: 40% backtest, 35% entity, 25% reuse (capped at 100)
+    const composite = (backtest * 0.4) + (entity * 0.35) + (Math.min(reuse, 20) * 5 * 0.25);
+    const rank = composite >= 80 ? 'gold' : composite >= 55 ? 'silver' : composite >= 30 ? 'bronze' : 'unranked';
+    const detail = JSON.stringify({ composite, weights: { backtest: 0.4, entity: 0.35, reuse: 0.25 } });
+    await pool.query(`
+      INSERT INTO scenario_quality_scores (scenario_id, reuse_count, avg_backtest_score, avg_entity_score, quality_rank, detail_json, updated_at)
+      VALUES (${parseInt(scenarioId, 10)}, ${reuse}, ${backtest}, ${entity}, '${rank}', '${detail}'::jsonb, NOW())
+      ON CONFLICT (scenario_id) DO UPDATE SET
+        reuse_count        = EXCLUDED.reuse_count,
+        avg_backtest_score = EXCLUDED.avg_backtest_score,
+        avg_entity_score   = EXCLUDED.avg_entity_score,
+        quality_rank       = EXCLUDED.quality_rank,
+        detail_json        = EXCLUDED.detail_json,
+        updated_at         = NOW()
+    `);
+    return res.json({ ok: true, rank, composite: composite.toFixed(2) });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to recompute scenario quality', detail: err.message });
+  }
+});
+
+// ── 4.1G: Monthly Operating Review Pack ────────────────────────────────────
+router.get('/admin/wallet/operating-review-pack', async (req: Request, res: Response) => {
+  try {
+    const month = (req.query.month as string) || new Date().toISOString().slice(0, 7);
+    // Try cache first
+    const cached = await pool.query(`SELECT * FROM operating_review_packs WHERE month = '${month}'`);
+    if (cached.rows.length) return res.json({ ok: true, cached: true, pack: cached.rows[0].pack_json, signature: cached.rows[0].signature, generatedAt: cached.rows[0].generated_at });
+
+    // Assemble pack from live data
+    const [closeRow, settlementRow, payoutRow, bottleneckRow, deliveryRow, scenarioRow, anomalyRow, recScoreRow] = await Promise.all([
+      pool.query(`SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'closed') AS closed FROM finance_close_periods WHERE period_key LIKE '${month}%'`).catch(() => ({ rows: [{}] })),
+      pool.query(`SELECT COUNT(*) AS total, SUM(net_amount_cents) AS total_net FROM wallet_transactions WHERE transaction_type = 'settlement' AND created_at >= '${month}-01' AND created_at < '${month}-01'::date + INTERVAL '1 month'`).catch(() => ({ rows: [{}] })),
+      pool.query(`SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'released') AS released FROM payout_batches WHERE created_at >= '${month}-01' AND created_at < '${month}-01'::date + INTERVAL '1 month'`).catch(() => ({ rows: [{}] })),
+      pool.query(`SELECT COUNT(*) FILTER (WHERE status = 'pending' AND created_at < NOW() - INTERVAL '24 hours') AS stuck FROM approval_requests`).catch(() => ({ rows: [{}] })),
+      pool.query(`SELECT COUNT(*) AS total, SUM(delivered_count) AS delivered, SUM(failed_count) AS failed FROM governance_delivery_analytics WHERE sent_at >= '${month}-01' AND sent_at < '${month}-01'::date + INTERVAL '1 month'`).catch(() => ({ rows: [{}] })),
+      pool.query(`SELECT COUNT(*) AS gold, COUNT(*) FILTER (WHERE quality_rank = 'silver') AS silver FROM scenario_quality_scores WHERE quality_rank IN ('gold', 'silver')`).catch(() => ({ rows: [{}] })),
+      pool.query(`SELECT COUNT(*) AS total FROM anomaly_clusters`).catch(() => ({ rows: [{}] })),
+      pool.query(`SELECT AVG(confidence_score) AS avg_conf FROM recommendation_scores WHERE created_at >= '${month}-01' AND created_at < '${month}-01'::date + INTERVAL '1 month'`).catch(() => ({ rows: [{}] })),
+    ]);
+    const p = (r: any[], col: string) => r[0]?.[col] ?? null;
+    const packJson = {
+      month,
+      financeClose:    { total: p(closeRow.rows, 'total'),      closed: p(closeRow.rows, 'closed') },
+      settlement:      { total: p(settlementRow.rows, 'total'), totalNetCents: p(settlementRow.rows, 'total_net') },
+      payouts:         { total: p(payoutRow.rows, 'total'),     released: p(payoutRow.rows, 'released') },
+      bottleneck:      { stuckApprovals: p(bottleneckRow.rows, 'stuck') },
+      govDelivery:     { total: p(deliveryRow.rows, 'total'),   delivered: p(deliveryRow.rows, 'delivered'), failed: p(deliveryRow.rows, 'failed') },
+      scenarios:       { goldCount: p(scenarioRow.rows, 'gold'), silverCount: p(scenarioRow.rows, 'silver') },
+      anomalies:       { clusterCount: p(anomalyRow.rows, 'total') },
+      recommendations: { avgConfidence: p(recScoreRow.rows, 'avg_conf') ? parseFloat(p(recScoreRow.rows, 'avg_conf')).toFixed(1) : null },
+    };
+    // Deterministic signature: sha256 of month + JSON content (simple hash without crypto dep)
+    const signatureSource = `${month}:${JSON.stringify(packJson)}`;
+    const signature = Buffer.from(signatureSource).toString('base64').slice(0, 64);
+    const packStr = JSON.stringify(packJson).replace(/'/g, "''");
+    await pool.query(`
+      INSERT INTO operating_review_packs (month, pack_json, signature)
+      VALUES ('${month}', '${packStr}'::jsonb, '${signature}')
+      ON CONFLICT (month) DO UPDATE SET pack_json = EXCLUDED.pack_json, signature = EXCLUDED.signature, generated_at = NOW()
+    `);
+    return res.json({ ok: true, cached: false, pack: packJson, signature, generatedAt: new Date().toISOString() });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to generate operating review pack', detail: err.message });
+  }
+});
+
+router.get('/admin/wallet/operating-review-pack/export', async (req: Request, res: Response) => {
+  try {
+    const month = (req.query.month as string) || new Date().toISOString().slice(0, 7);
+    const cached = await pool.query(`SELECT * FROM operating_review_packs WHERE month = '${month}'`);
+    if (!cached.rows.length) return res.status(404).json({ error: 'Pack not generated yet — call GET /operating-review-pack first' });
+    res.setHeader('Content-Disposition', `attachment; filename="operating-review-${month}.json"`);
+    res.setHeader('Content-Type', 'application/json');
+    return res.send(JSON.stringify({ month, signature: cached.rows[0].signature, generatedAt: cached.rows[0].generated_at, pack: cached.rows[0].pack_json }, null, 2));
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Export failed', detail: err.message });
+  }
+});
+
 export default router;
