@@ -929,11 +929,12 @@ export default function AdminWalletDashboard() {
                     <Clock className="w-4 h-4" style={{ color: GOLD }} />
                     Admin Wallet Action History
                   </div>
-                  {actionHistory?.rows?.length > 0 && (
+                  <div className="flex flex-col items-end gap-0.5">
                     <Button
                       size="sm"
                       variant="outline"
                       className="gap-1 text-xs"
+                      disabled={!ahApplied || ahLoading || !actionHistory?.rows?.length}
                       onClick={() => {
                         const params = new URLSearchParams();
                         if (ahFrom)      params.set("from",         ahFrom);
@@ -943,13 +944,15 @@ export default function AdminWalletDashboard() {
                         if (ahBookingId) params.set("bookingId",    ahBookingId);
                         const a = document.createElement("a");
                         a.href = `/api/prestige-pass/admin/wallet/action-history/export?${params.toString()}`;
-                        a.download = `petwash-wallet-action-history-${new Date().toISOString().slice(0,10)}.csv`;
                         a.click();
                       }}
                     >
                       <FileDown className="w-3 h-3" /> Export Audit CSV
                     </Button>
-                  )}
+                    <span className="text-[10px] text-gray-400 text-right leading-none">
+                      Exports current filters · limit 5,000 rows
+                    </span>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -999,6 +1002,21 @@ export default function AdminWalletDashboard() {
                   )}
                 </div>
 
+                {/* B6 — Filter echo strip (shown once search applied) */}
+                {ahApplied && (
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded px-3 py-2">
+                    <span><span className="font-medium text-gray-700">Range:</span> {ahFrom || "—"} → {ahTo || "—"}</span>
+                    <span><span className="font-medium text-gray-700">Division:</span> {ahDivision || "all"}</span>
+                    <span><span className="font-medium text-gray-700">Admin:</span> {ahAdminUid || "all"}</span>
+                    <span><span className="font-medium text-gray-700">Booking:</span> {ahBookingId || "all"}</span>
+                    {actionHistory?.total != null && (
+                      <span className="ml-auto font-medium text-gray-600">
+                        Rows shown: {actionHistory.total}
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* Results */}
                 {!ahApplied ? (
                   <p className="text-sm text-gray-400 py-6 text-center">
@@ -1031,6 +1049,16 @@ export default function AdminWalletDashboard() {
                         {(actionHistory.rows as any[]).map((row: any, i: number) => {
                           const amountILS = (row.amountCents / 100).toFixed(2);
                           const isDebit   = row.source === 'admin_debit';
+
+                          // B7 — Human-readable action label (raw source kept in CSV)
+                          const sourceLabel: Record<string, string> = {
+                            admin_credit:   "Manual Credit",
+                            admin_debit:    "Manual Debit",
+                            admin_override: "Admin Override",
+                            admin_release:  "Hold Release",
+                            admin_refund:   "Refund",
+                            admin_adjust:   "Adjustment",
+                          };
                           const actionColor: Record<string, string> = {
                             admin_credit:   "bg-green-100 text-green-800",
                             admin_debit:    "bg-red-100 text-red-800",
@@ -1040,10 +1068,12 @@ export default function AdminWalletDashboard() {
                             admin_adjust:   "bg-gray-100 text-gray-800",
                           };
                           const chipClass = actionColor[row.source] ?? "bg-gray-100 text-gray-700";
+                          const chipLabel = sourceLabel[row.source]  ?? row.source;
+
                           const divisionChip: Record<string, string> = {
-                            walkers: "bg-green-50 text-green-700",
-                            petsitter: "bg-blue-50 text-blue-700",
-                            academy: "bg-purple-50 text-purple-700",
+                            walkers:       "bg-green-50 text-green-700",
+                            petsitter:     "bg-blue-50 text-blue-700",
+                            academy:       "bg-purple-50 text-purple-700",
                             station_k9000: "bg-amber-50 text-amber-700",
                           };
                           const divChip = divisionChip[row.divisionCode] ?? "bg-gray-50 text-gray-600";
@@ -1071,7 +1101,9 @@ export default function AdminWalletDashboard() {
                                 ) : "—"}
                               </TableCell>
                               <TableCell>
-                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${chipClass}`}>{row.source}</span>
+                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${chipClass}`} title={row.source}>
+                                  {chipLabel}
+                                </span>
                               </TableCell>
                               <TableCell className={`text-xs font-mono text-right font-semibold ${isDebit ? "text-red-600" : "text-green-700"}`}>
                                 {isDebit ? "-" : "+"}₪{amountILS}
@@ -1087,7 +1119,7 @@ export default function AdminWalletDashboard() {
                       </TableBody>
                     </Table>
                     <p className="text-xs text-gray-400 mt-2 text-right">
-                      {actionHistory.total} result{actionHistory.total !== 1 ? "s" : ""} — max 200 rows per query
+                      {actionHistory.total} result{actionHistory.total !== 1 ? "s" : ""}
                     </p>
                   </div>
                 )}

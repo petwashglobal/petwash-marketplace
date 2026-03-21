@@ -3828,6 +3828,7 @@ async function queryActionHistory(filters: {
   divisionCode: string | null;
   source: string;
   amountCents: number;
+  balanceAfterCents: number | null;
   reason: string | null;
   createdAt: string;
 }>> {
@@ -3852,18 +3853,19 @@ async function queryActionHistory(filters: {
   const whereClause = conditions.reduce((acc, cond, i) =>
     i === 0 ? cond : sql`${acc} AND ${cond}`, conditions[0]);
 
-  const lim = Math.min(filters.limit ?? 200, 500);
+  const lim = filters.limit ?? 200;
 
   const rows: any = await db.execute(sql`
     SELECT
-      entry_id                        AS txn_id,
-      COALESCE(metadata->>'adminId', created_by) AS admin_uid,
+      entry_id                                         AS txn_id,
+      COALESCE(metadata->>'adminId', created_by)       AS admin_uid,
       user_id,
       booking_id,
       division_code,
-      COALESCE(metadata->>'actorSource', event_type) AS source,
+      COALESCE(metadata->>'actorSource', event_type)   AS source,
       amount_cents,
-      metadata->>'reason'                      AS reason,
+      balance_after_cents,
+      metadata->>'reason'                              AS reason,
       created_at
     FROM wallet_ledger_entries
     WHERE ${whereClause}
@@ -3873,15 +3875,16 @@ async function queryActionHistory(filters: {
   `);
 
   return (rows?.rows ?? rows ?? []).map((r: any) => ({
-    txnId:        r.txn_id,
-    adminUid:     r.admin_uid   ?? null,
-    userId:       r.user_id,
-    bookingId:    r.booking_id  ?? null,
-    divisionCode: r.division_code ?? null,
-    source:       r.source      ?? 'unknown',
-    amountCents:  Number(r.amount_cents),
-    reason:       r.reason      ?? null,
-    createdAt:    r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+    txnId:             r.txn_id,
+    adminUid:          r.admin_uid          ?? null,
+    userId:            r.user_id,
+    bookingId:         r.booking_id         ?? null,
+    divisionCode:      r.division_code      ?? null,
+    source:            r.source             ?? 'unknown',
+    amountCents:       Number(r.amount_cents),
+    balanceAfterCents: r.balance_after_cents != null ? Number(r.balance_after_cents) : null,
+    reason:            r.reason             ?? null,
+    createdAt:         r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
   }));
 }
 
@@ -3920,28 +3923,50 @@ router.get('/admin/wallet/action-history/export', async (req: Request, res: Resp
 
     const { divisionCode, adminUid, bookingId, from, to } = req.query as Record<string, string | undefined>;
 
-    const rows = await queryActionHistory({ divisionCode, adminUid, bookingId, from, to, limit: 500 });
+    // Probe with limit+1 to detect overflow before returning a partial file
+    const EXPORT_LIMIT = 5000;
+    const rows = await queryActionHistory({ divisionCode, adminUid, bookingId, from, to, limit: EXPORT_LIMIT + 1 });
+    if (rows.length > EXPORT_LIMIT) {
+      return res.status(400).json({
+        error: 'Date range too wide for one export. Narrow the range.',
+        rowsMatched: `>${EXPORT_LIMIT}`,
+      });
+    }
 
-    const escape = (v: string | null | undefined) => {
+    const escape = (v: string | null | undefined): string => {
       if (v === null || v === undefined) return '';
       const s = String(v);
       if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
       return s;
     };
 
-    const header  = ['txnId', 'adminUid', 'userId', 'bookingId', 'divisionCode', 'source', 'amountCents', 'amountILS', 'reason', 'createdAt'];
+    // 12 canonical audit columns — order is contractual, do not reorder
+    const header = [
+      'txnId', 'adminUid', 'userId', 'bookingId', 'divisionCode',
+      'source', 'amountCents', 'amountILS', 'balanceAfterCents', 'balanceAfterILS',
+      'reason', 'createdAt',
+    ];
     const csvRows = rows.map(r => [
-      r.txnId, r.adminUid, r.userId, r.bookingId, r.divisionCode,
-      r.source, r.amountCents,
+      r.txnId,
+      r.adminUid,
+      r.userId,
+      r.bookingId,
+      r.divisionCode,
+      r.source,
+      r.amountCents,
       (r.amountCents / 100).toFixed(2),
-      r.reason, r.createdAt,
+      r.balanceAfterCents ?? '',
+      r.balanceAfterCents != null ? (r.balanceAfterCents / 100).toFixed(2) : '',
+      r.reason,
+      r.createdAt,
     ].map(v => escape(v == null ? null : String(v))).join(','));
 
+    // B2: immutable, timestamped filename — safe to attach to tickets
+    const ts        = new Date().toISOString().replace(/[:\-]/g, '').replace(/\..+/, '') + 'Z';
     const fromLabel = from ?? 'all';
     const toLabel   = to   ?? 'all';
-    const filename  = from || to
-      ? `petwash-wallet-action-history-${fromLabel}_to_${toLabel}.csv`
-      : `petwash-wallet-action-history-all.csv`;
+    const rangeSlug = (from || to) ? `${fromLabel}_to_${toLabel}` : 'all';
+    const filename  = `petwash-wallet-action-audit-${rangeSlug}-${ts}.csv`;
 
     // UTF-8 BOM for Excel compatibility
     const bom = '\uFEFF';

@@ -1,0 +1,223 @@
+PHASE 2.7B — IMMUTABLE OVERRIDE AUDIT EXPORT
+
+GOAL
+Turn the new Action History into a compliance-grade export that ops can download for any date range, with the same exact query logic as the JSON table and no drift.
+
+YOU ALREADY HAVE
+- queryActionHistory() shared helper in prestige-pass.ts
+- GET /api/prestige-pass/admin/wallet/action-history
+- GET /api/prestige-pass/admin/wallet/action-history/export
+- metadata tagging for adminId + reason
+- frontend Action History tab + Export button
+
+SO 2.7B IS NOT A NEW FEATURE SET
+It is a hardening pass on the export so it is audit-safe, timestamped, and presentation-clean.
+
+==================================================
+2.7B BUILD SCOPE
+==================================================
+
+B1. BACKEND — EXPORT SHAPE HARDENING
+FILE:
+- server/routes/prestige-pass.ts
+
+TARGET EXPORT COLUMNS
+Keep these in this exact order:
+
+1. txnId
+2. adminUid
+3. userId
+4. bookingId
+5. divisionCode
+6. source
+7. amountCents
+8. amountILS
+9. balanceAfterCents
+10. balanceAfterILS
+11. reason
+12. createdAt
+
+NOTES
+- balanceAfterCents should come from the ledger snapshot if present
+- if balanceAfterCents is missing in current query, extend queryActionHistory() to select it
+- amountILS and balanceAfterILS are convenience columns for ops, not source of truth
+
+==================================================
+B2. BACKEND — FILENAME HARDENING
+FILE:
+- server/routes/prestige-pass.ts
+
+FILENAME FORMAT
+petwash-wallet-action-audit-<from>_to_<to>-<timestamp>.csv
+
+EXAMPLES
+- petwash-wallet-action-audit-2026-03-01_to_2026-03-21-20260321T184500Z.csv
+- petwash-wallet-action-audit-all-20260321T184500Z.csv
+
+WHY
+- immutable snapshot feel
+- safe to attach to tickets
+- no overwriting in Downloads folder
+
+==================================================
+B3. BACKEND — CSV HEADER COMMENT BLOCK
+FILE:
+- server/routes/prestige-pass.ts
+
+ADD A LEADING COMMENT LINE BLOCK BEFORE CSV DATA
+Example:
+
+# PetWash Wallet Action Audit Export
+# GeneratedAtUTC: 2026-03-21T18:45:00.000Z
+# Filters: from=2026-03-01,to=2026-03-21,divisionCode=academy,adminUid=all,bookingId=all
+# QuerySource: queryActionHistory()
+
+Then the CSV header row.
+
+WHY
+- makes the export self-describing
+- useful for compliance and ticket attachments
+- no signing yet, but this gets 80% of the value
+
+If you want strict Excel compatibility only, skip comment lines and instead add:
+- exportGeneratedAt
+- exportFilters
+as repeated columns or put them in the filename only
+
+MY RECOMMENDATION
+For ops readability: use filename only, not comment lines.
+For spreadsheet compatibility: safer.
+
+==================================================
+B4. BACKEND — LIMIT / PAGINATION POLICY
+FILE:
+- server/routes/prestige-pass.ts
+
+RULE
+- JSON endpoint keeps limit 200 or paginated
+- CSV export raises to 5000 rows
+- if more than 5000 rows match, return:
+  400 with message:
+  "Date range too wide for one export. Narrow the range."
+
+WHY
+- protects memory
+- avoids giant compliance downloads by accident
+
+==================================================
+B5. FRONTEND — EXPORT BUTTON HARDENING
+FILE:
+- client/src/pages/AdminWalletDashboard.tsx
+
+IN ACTION HISTORY TAB HEADER
+Button label:
+- "Export Audit CSV"
+
+BUTTON BEHAVIOR
+- uses same active filters as table
+- disables while export URL is being prepared
+- shows tiny subtitle:
+  "Exports current filters"
+
+OPTIONAL SMALL UX WIN
+Add text under button:
+- "Rows shown: X"
+- "Export limit: 5000"
+
+==================================================
+B6. FRONTEND — FILTER ECHO
+FILE:
+- client/src/pages/AdminWalletDashboard.tsx
+
+ADD A SMALL FILTER SUMMARY STRIP ABOVE TABLE
+Example:
+- Range: 2026-03-01 → 2026-03-21
+- Division: Academy
+- Admin: all
+- Booking: all
+
+WHY
+- user sees exactly what the CSV will contain
+- avoids exporting wrong range by mistake
+
+==================================================
+B7. FRONTEND — ACTION LABEL NORMALIZATION
+FILE:
+- client/src/pages/AdminWalletDashboard.tsx
+
+MAP SOURCE VALUES TO HUMAN LABELS
+- admin_credit   → Manual Credit
+- admin_debit    → Manual Debit
+- admin_override → Admin Override
+- admin_release  → Hold Release
+- admin_refund   → Refund
+
+HEBREW IF THIS SCREEN IS HEBREW-FIRST
+- admin_credit   → זיכוי ידני
+- admin_debit    → חיוב ידני
+- admin_override → עקיפה ניהולית
+- admin_release  → שחרור החזקה
+- admin_refund   → החזר
+
+Keep raw source in CSV, friendly label in UI.
+
+==================================================
+B8. ACCEPTANCE CHECKLIST
+==================================================
+
+PASS 1 — JSON/UI
+- filter by academy only
+- table shows academy rows only
+- total matches rows.length
+
+PASS 2 — CSV parity
+- export with same filters
+- row count in CSV matches UI total
+- first 3 rows match exactly:
+  txnId / bookingId / source / amount / reason / createdAt
+
+PASS 3 — date range
+- narrow date range cuts rows correctly
+- filename includes exact date range
+
+PASS 4 — booking filter
+- bookingId filter returns only that booking's overrides
+- export contains only that booking
+
+PASS 5 — missing metadata
+- rows without adminUid or reason render "-" in UI
+- CSV leaves field blank, not "undefined"
+
+==================================================
+B9. WHAT NOT TO DO
+==================================================
+
+- Do not create a second query for export
+- Do not transform source names in CSV
+- Do not paginate CSV
+- Do not include mutable values from booking tables
+- Do not infer adminUid from session at export time
+
+CSV must remain ledger-snapshot driven.
+
+==================================================
+RECOMMENDED CODE CHANGE ORDER
+==================================================
+
+1. Extend queryActionHistory() to include balanceAfterCents
+2. Harden export filename
+3. Raise export row cap with guard
+4. Add filter summary strip in Action History tab
+5. Normalize source labels in UI
+6. Run parity check: UI vs CSV
+
+==================================================
+AFTER 2.7B
+==================================================
+
+Best next move is 2.7C and 2.7D together:
+- trainer SMS on confirm/cancel
+- academy customer wording alignment
+
+That closes the operational loop:
+audit trail + export + human notification
