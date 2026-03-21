@@ -11342,4 +11342,510 @@ router.get('/admin/wallet/replay/reports/:runId', async (req: Request, res: Resp
   }
 });
 
+// ════════════════════════════════════════════════════════════════════════════
+// PHASE 3.6A — FORECAST TUNING & MODEL WEIGHTING
+// ════════════════════════════════════════════════════════════════════════════
+
+// GET /admin/wallet/cash-forecast/weights
+router.get('/admin/wallet/cash-forecast/weights', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const horizon = req.query.horizon ? parseInt(req.query.horizon as string, 10) : null;
+    const raw: any = await db.execute(horizon
+      ? sql`SELECT * FROM cash_forecast_weights WHERE horizon_days = ${horizon} ORDER BY factor_name`
+      : sql`SELECT * FROM cash_forecast_weights ORDER BY horizon_days, factor_name`
+    );
+    const rows = (raw?.rows ?? raw) || [];
+    return res.json({ ok: true, weights: rows.map((r: any) => ({
+      id: r.id, horizonDays: r.horizon_days, factorName: r.factor_name,
+      weight: parseFloat(r.weight), enabled: r.enabled, updatedAt: r.updated_at,
+    }))});
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch weights', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/cash-forecast/weights
+router.post('/admin/wallet/cash-forecast/weights', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const uid = session.user.uid ?? session.user.id ?? 'unknown';
+    const { horizonDays, factorName, weight, enabled } = req.body;
+    if (!horizonDays || !factorName || weight === undefined) return res.status(400).json({ error: 'horizonDays, factorName, weight required' });
+    const raw: any = await db.execute(sql`
+      INSERT INTO cash_forecast_weights (horizon_days, factor_name, weight, enabled, updated_by_uid, updated_at)
+      VALUES (${horizonDays}, ${factorName}, ${weight}, ${enabled ?? true}, ${uid}, NOW())
+      ON CONFLICT DO NOTHING
+      RETURNING *
+    `);
+    const w = (raw?.rows ?? raw)?.[0];
+    await db.execute(sql`INSERT INTO finance_audit_log (action, actor_uid, target_type, target_id, meta_json, created_at)
+      VALUES ('forecast_weight_created', ${uid}, 'cash_forecast_weights', ${w?.id?.toString() ?? '0'}, ${JSON.stringify({ horizonDays, factorName, weight })}::jsonb, NOW())`);
+    return res.json({ ok: true, weight: w });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create weight', detail: err.message });
+  }
+});
+
+// PATCH /admin/wallet/cash-forecast/weights/:id
+router.patch('/admin/wallet/cash-forecast/weights/:id', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const uid = session.user.uid ?? session.user.id ?? 'unknown';
+    const id = parseInt(req.params.id, 10);
+    const { weight, enabled } = req.body;
+    if (weight !== undefined) {
+      await db.execute(sql`UPDATE cash_forecast_weights SET weight=${weight}, updated_by_uid=${uid}, updated_at=NOW() WHERE id=${id}`);
+    }
+    if (enabled !== undefined) {
+      await db.execute(sql`UPDATE cash_forecast_weights SET enabled=${enabled}, updated_by_uid=${uid}, updated_at=NOW() WHERE id=${id}`);
+    }
+    await db.execute(sql`INSERT INTO finance_audit_log (action, actor_uid, target_type, target_id, meta_json, created_at)
+      VALUES ('forecast_weight_updated', ${uid}, 'cash_forecast_weights', ${id.toString()}, ${JSON.stringify({ weight, enabled })}::jsonb, NOW())`);
+    return res.json({ ok: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update weight', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/cash-forecast/recompute
+router.post('/admin/wallet/cash-forecast/recompute', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const horizon = parseInt((req.query.horizon as string) || '7', 10);
+    // Load weights for this horizon
+    const wRaw: any = await db.execute(sql`SELECT * FROM cash_forecast_weights WHERE horizon_days=${horizon} AND enabled=true ORDER BY factor_name`);
+    const weights: Record<string, number> = {};
+    for (const w of (wRaw?.rows ?? wRaw) || []) weights[w.factor_name] = parseFloat(w.weight);
+    // Fetch latest snapshot
+    const snapRaw: any = await db.execute(sql`SELECT * FROM cash_forecast_snapshots ORDER BY snapshot_date DESC LIMIT 1`);
+    const snap = (snapRaw?.rows ?? snapRaw)?.[0];
+    if (!snap) return res.json({ ok: true, message: 'No snapshot data available', horizon, weights, forecast: null });
+    // Apply weights to snapshot components
+    const basePayouts   = parseFloat(snap.projected_payouts_cents  ?? '0');
+    const baseRefunds   = parseFloat(snap.projected_refunds_cents   ?? '0');
+    const baseVat       = parseFloat(snap.projected_vat_cents       ?? '0');
+    const adjustedPayouts = basePayouts * (weights['payouts']    ?? 1);
+    const adjustedRefunds = baseRefunds * (weights['refunds']    ?? 1);
+    const adjustedVat     = baseVat     * (weights['vat']        ?? 1);
+    const grossCents      = parseFloat(snap.projected_gross_cents ?? '0');
+    const netCents        = Math.round(grossCents - adjustedPayouts - adjustedRefunds - adjustedVat);
+    return res.json({ ok: true, horizon, weights, forecast: {
+      grossCents, adjustedPayouts, adjustedRefunds, adjustedVat, netCents,
+      snapshotDate: snap.snapshot_date,
+    }});
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to recompute forecast', detail: err.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// PHASE 3.6B — PAYOUT APPROVAL POLICY AUTOMATION
+// ════════════════════════════════════════════════════════════════════════════
+
+// GET /admin/wallet/payout-release-policies
+router.get('/admin/wallet/payout-release-policies', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const raw: any = await db.execute(sql`SELECT * FROM payout_release_policies ORDER BY updated_at DESC`);
+    const rows = (raw?.rows ?? raw) || [];
+    return res.json({ ok: true, policies: rows.map((r: any) => ({
+      id: r.id, divisionCode: r.division_code,
+      minAmountCents: r.min_amount_cents, maxAmountCents: r.max_amount_cents,
+      requiresSecondApproval: r.requires_second_approval, allowedAutoRelease: r.allowed_auto_release,
+      enabled: r.enabled, notes: r.notes, updatedAt: r.updated_at,
+    }))});
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch policies', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/payout-release-policies
+router.post('/admin/wallet/payout-release-policies', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const uid = session.user.uid ?? session.user.id ?? 'unknown';
+    const { divisionCode, minAmountCents, maxAmountCents, requiresSecondApproval, allowedAutoRelease, notes } = req.body;
+    const raw: any = await db.execute(sql`
+      INSERT INTO payout_release_policies (division_code, min_amount_cents, max_amount_cents, requires_second_approval, allowed_auto_release, enabled, notes, updated_by_uid, updated_at)
+      VALUES (${divisionCode ?? null}, ${minAmountCents ?? 0}, ${maxAmountCents ?? null}, ${requiresSecondApproval ?? true}, ${allowedAutoRelease ?? false}, true, ${notes ?? ''}, ${uid}, NOW())
+      RETURNING *
+    `);
+    return res.json({ ok: true, policy: (raw?.rows ?? raw)?.[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create policy', detail: err.message });
+  }
+});
+
+// PATCH /admin/wallet/payout-release-policies/:id
+router.patch('/admin/wallet/payout-release-policies/:id', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const uid = session.user.uid ?? session.user.id ?? 'unknown';
+    const id = parseInt(req.params.id, 10);
+    const { divisionCode, minAmountCents, maxAmountCents, requiresSecondApproval, allowedAutoRelease, enabled, notes } = req.body;
+    if (enabled !== undefined) await db.execute(sql`UPDATE payout_release_policies SET enabled=${enabled}, updated_by_uid=${uid}, updated_at=NOW() WHERE id=${id}`);
+    if (notes !== undefined) await db.execute(sql`UPDATE payout_release_policies SET notes=${notes}, updated_by_uid=${uid}, updated_at=NOW() WHERE id=${id}`);
+    if (requiresSecondApproval !== undefined) await db.execute(sql`UPDATE payout_release_policies SET requires_second_approval=${requiresSecondApproval}, updated_by_uid=${uid}, updated_at=NOW() WHERE id=${id}`);
+    if (allowedAutoRelease !== undefined) await db.execute(sql`UPDATE payout_release_policies SET allowed_auto_release=${allowedAutoRelease}, updated_by_uid=${uid}, updated_at=NOW() WHERE id=${id}`);
+    if (minAmountCents !== undefined) await db.execute(sql`UPDATE payout_release_policies SET min_amount_cents=${minAmountCents}, updated_by_uid=${uid}, updated_at=NOW() WHERE id=${id}`);
+    if (maxAmountCents !== undefined) await db.execute(sql`UPDATE payout_release_policies SET max_amount_cents=${maxAmountCents}, updated_by_uid=${uid}, updated_at=NOW() WHERE id=${id}`);
+    if (divisionCode !== undefined) await db.execute(sql`UPDATE payout_release_policies SET division_code=${divisionCode}, updated_by_uid=${uid}, updated_at=NOW() WHERE id=${id}`);
+    return res.json({ ok: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update policy', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/payout-batches/:batchId/evaluate-release-policy
+router.post('/admin/wallet/payout-batches/:batchId/evaluate-release-policy', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const batchId = parseInt(req.params.batchId, 10);
+    const batchRaw: any = await db.execute(sql`SELECT * FROM payout_schedule_runs WHERE id=${batchId}`);
+    const batch = (batchRaw?.rows ?? batchRaw)?.[0];
+    if (!batch) return res.status(404).json({ error: 'Batch not found' });
+    const totalCents = parseInt(batch.total_amount_cents ?? '0', 10);
+    // Load all enabled policies ordered by specificity (division-specific first)
+    const polRaw: any = await db.execute(sql`SELECT * FROM payout_release_policies WHERE enabled=true ORDER BY division_code NULLS LAST, min_amount_cents`);
+    const policies = (polRaw?.rows ?? polRaw) || [];
+    let matchedPolicy: any = null;
+    for (const p of policies) {
+      const withinMin = totalCents >= (p.min_amount_cents ?? 0);
+      const withinMax = !p.max_amount_cents || totalCents <= p.max_amount_cents;
+      const divisionMatch = !p.division_code || p.division_code === batch.division_code;
+      if (withinMin && withinMax && divisionMatch) { matchedPolicy = p; break; }
+    }
+    // Fallback to env var
+    const fallbackLimitCents = parseInt(process.env.PAYOUT_AUTO_RELEASE_LIMIT_CENTS ?? '100000', 10);
+    let autoReleaseAllowed: boolean;
+    let secondApprovalRequired: boolean;
+    let reasoning: string;
+    if (matchedPolicy) {
+      autoReleaseAllowed      = matchedPolicy.allowed_auto_release;
+      secondApprovalRequired  = matchedPolicy.requires_second_approval;
+      reasoning = `Matched policy #${matchedPolicy.id}${matchedPolicy.division_code ? ` (division: ${matchedPolicy.division_code})` : ' (global)'} — range ₪${(matchedPolicy.min_amount_cents/100).toFixed(0)}–${matchedPolicy.max_amount_cents ? '₪'+(matchedPolicy.max_amount_cents/100).toFixed(0) : '∞'}`;
+    } else {
+      autoReleaseAllowed     = totalCents < fallbackLimitCents;
+      secondApprovalRequired = totalCents >= fallbackLimitCents;
+      reasoning = `No matching policy — fallback to env PAYOUT_AUTO_RELEASE_LIMIT_CENTS (₪${(fallbackLimitCents/100).toFixed(0)})`;
+    }
+    return res.json({ ok: true, batchId, totalCents, matchedPolicy: matchedPolicy ? {
+      id: matchedPolicy.id, divisionCode: matchedPolicy.division_code,
+      minAmountCents: matchedPolicy.min_amount_cents, maxAmountCents: matchedPolicy.max_amount_cents,
+      allowedAutoRelease: matchedPolicy.allowed_auto_release, requiresSecondApproval: matchedPolicy.requires_second_approval,
+    } : null, autoReleaseAllowed, secondApprovalRequired, reasoning });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to evaluate policy', detail: err.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// PHASE 3.6C — ALERT FATIGUE CONTROLS & DIGEST PERSONALIZATION
+// ════════════════════════════════════════════════════════════════════════════
+
+// GET /admin/wallet/digest-preferences
+router.get('/admin/wallet/digest-preferences', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const raw: any = await db.execute(sql`SELECT * FROM finance_digest_preferences ORDER BY updated_at DESC`);
+    const rows = (raw?.rows ?? raw) || [];
+    return res.json({ ok: true, preferences: rows.map((r: any) => ({
+      id: r.id, userUid: r.user_uid, digestType: r.digest_type,
+      minSeverity: r.min_severity, includeControlCenter: r.include_control_center,
+      includeExecutiveSummary: r.include_executive_summary, enabled: r.enabled, updatedAt: r.updated_at,
+    }))});
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch preferences', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/digest-preferences
+router.post('/admin/wallet/digest-preferences', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { userUid, digestType, minSeverity, includeControlCenter, includeExecutiveSummary } = req.body;
+    if (!userUid || !digestType) return res.status(400).json({ error: 'userUid and digestType required' });
+    const raw: any = await db.execute(sql`
+      INSERT INTO finance_digest_preferences (user_uid, digest_type, min_severity, include_control_center, include_executive_summary, enabled, updated_at)
+      VALUES (${userUid}, ${digestType}, ${minSeverity ?? 'warning'}, ${includeControlCenter ?? true}, ${includeExecutiveSummary ?? false}, true, NOW())
+      ON CONFLICT DO NOTHING RETURNING *
+    `);
+    return res.json({ ok: true, preference: (raw?.rows ?? raw)?.[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create preference', detail: err.message });
+  }
+});
+
+// PATCH /admin/wallet/digest-preferences/:id
+router.patch('/admin/wallet/digest-preferences/:id', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const id = parseInt(req.params.id, 10);
+    const { digestType, minSeverity, includeControlCenter, includeExecutiveSummary, enabled } = req.body;
+    if (digestType !== undefined)              await db.execute(sql`UPDATE finance_digest_preferences SET digest_type=${digestType}, updated_at=NOW() WHERE id=${id}`);
+    if (minSeverity !== undefined)             await db.execute(sql`UPDATE finance_digest_preferences SET min_severity=${minSeverity}, updated_at=NOW() WHERE id=${id}`);
+    if (includeControlCenter !== undefined)    await db.execute(sql`UPDATE finance_digest_preferences SET include_control_center=${includeControlCenter}, updated_at=NOW() WHERE id=${id}`);
+    if (includeExecutiveSummary !== undefined) await db.execute(sql`UPDATE finance_digest_preferences SET include_executive_summary=${includeExecutiveSummary}, updated_at=NOW() WHERE id=${id}`);
+    if (enabled !== undefined)                 await db.execute(sql`UPDATE finance_digest_preferences SET enabled=${enabled}, updated_at=NOW() WHERE id=${id}`);
+    return res.json({ ok: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update preference', detail: err.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// PHASE 3.6D — ARCHIVE RETRIEVAL WORKFLOW
+// ════════════════════════════════════════════════════════════════════════════
+
+// POST /admin/wallet/archive/retrieve
+router.post('/admin/wallet/archive/retrieve', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const uid = session.user.uid ?? session.user.id ?? 'unknown';
+    const { artifactId, reason } = req.body;
+    if (!artifactId) return res.status(400).json({ error: 'artifactId required' });
+    // Verify artifact exists
+    const artRaw: any = await db.execute(sql`SELECT * FROM finance_archive_artifacts WHERE id=${parseInt(artifactId, 10)}`);
+    const artifact = (artRaw?.rows ?? artRaw)?.[0];
+    if (!artifact) return res.status(404).json({ error: 'Artifact not found' });
+    const raw: any = await db.execute(sql`
+      INSERT INTO finance_archive_retrievals (artifact_id, requested_by_uid, reason, status, requested_at)
+      VALUES (${parseInt(artifactId, 10)}, ${uid}, ${reason ?? ''}, 'pending', NOW())
+      RETURNING *
+    `);
+    const retrieval = (raw?.rows ?? raw)?.[0];
+    await db.execute(sql`INSERT INTO finance_audit_log (action, actor_uid, target_type, target_id, meta_json, created_at)
+      VALUES ('archive_retrieval_requested', ${uid}, 'finance_archive_artifacts', ${artifactId.toString()}, ${JSON.stringify({ reason, artifactId })}::jsonb, NOW())`);
+    return res.json({ ok: true, retrieval: { id: retrieval?.id, artifactId, status: 'pending', requestedAt: retrieval?.requested_at } });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to request retrieval', detail: err.message });
+  }
+});
+
+// GET /admin/wallet/archive/retrievals
+router.get('/admin/wallet/archive/retrievals', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const raw: any = await db.execute(sql`SELECT * FROM finance_archive_retrievals ORDER BY requested_at DESC LIMIT 50`);
+    const rows = (raw?.rows ?? raw) || [];
+    return res.json({ ok: true, retrievals: rows.map((r: any) => ({
+      id: r.id, artifactId: r.artifact_id, requestedByUid: r.requested_by_uid,
+      reason: r.reason, status: r.status, retrievalRef: r.retrieval_ref,
+      requestedAt: r.requested_at, completedAt: r.completed_at, errorDetail: r.error_detail,
+    }))});
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch retrievals', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/archive/retrievals/:id/mark-ready
+router.post('/admin/wallet/archive/retrievals/:id/mark-ready', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'finance_admin only' });
+    const uid = session.user.uid ?? session.user.id ?? 'unknown';
+    const id = parseInt(req.params.id, 10);
+    const { retrievalRef, errorDetail } = req.body;
+    const status = errorDetail ? 'failed' : 'ready';
+    await db.execute(sql`UPDATE finance_archive_retrievals SET status=${status}, retrieval_ref=${retrievalRef ?? null}, completed_at=NOW(), error_detail=${errorDetail ?? ''} WHERE id=${id}`);
+    await db.execute(sql`INSERT INTO finance_audit_log (action, actor_uid, target_type, target_id, meta_json, created_at)
+      VALUES ('archive_retrieval_marked_' || ${status}, ${uid}, 'finance_archive_retrievals', ${id.toString()}, ${JSON.stringify({ retrievalRef, status })}::jsonb, NOW())`);
+    return res.json({ ok: true, id, status });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to mark retrieval', detail: err.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// PHASE 3.6E — REPLAY DIFF VISUALIZATION
+// ════════════════════════════════════════════════════════════════════════════
+
+// GET /admin/wallet/replay/diff/:runId
+router.get('/admin/wallet/replay/diff/:runId', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const runId = parseInt(req.params.runId, 10);
+    // Load diffs if stored
+    const diffRaw: any = await db.execute(sql`SELECT * FROM finance_replay_diffs WHERE replay_run_id=${runId} ORDER BY entity_type, entity_id`);
+    const diffs = (diffRaw?.rows ?? diffRaw) || [];
+    // Load report for findings-based diff extraction
+    const repRaw: any = await db.execute(sql`SELECT * FROM finance_replay_reports WHERE replay_run_id=${runId} ORDER BY created_at DESC LIMIT 1`);
+    const report = (repRaw?.rows ?? repRaw)?.[0];
+    const findings = report?.report_json?.findings ?? [];
+    // Normalize findings into diff-like rows
+    const normalizedDiffs = diffs.length > 0 ? diffs.map((d: any) => ({
+      id: d.id, entityType: d.entity_type, entityId: d.entity_id,
+      before: d.before, after: d.after,
+      changedFields: Object.keys(d.after ?? {}).filter(k => JSON.stringify(d.before?.[k]) !== JSON.stringify(d.after?.[k])),
+    })) : findings.map((f: any, i: number) => ({
+      id: i, entityType: f.entityType ?? f.table ?? 'unknown',
+      entityId: f.entityId ?? f.id?.toString() ?? String(i),
+      before: f.before ?? {}, after: f.after ?? f,
+      changedFields: f.changedFields ?? Object.keys(f.after ?? f ?? {}),
+    }));
+    return res.json({ ok: true, runId, totalDiffs: normalizedDiffs.length, diffs: normalizedDiffs });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch replay diff', detail: err.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// PHASE 3.6F — FINANCE POLICY ENGINE
+// ════════════════════════════════════════════════════════════════════════════
+
+// GET /admin/wallet/policies
+router.get('/admin/wallet/policies', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const raw: any = await db.execute(sql`SELECT * FROM finance_policy_rules ORDER BY policy_scope, policy_key`);
+    const rows = (raw?.rows ?? raw) || [];
+    return res.json({ ok: true, policies: rows.map((r: any) => ({
+      id: r.id, policyKey: r.policy_key, policyScope: r.policy_scope,
+      divisionCode: r.division_code, valueJson: r.value_json,
+      enabled: r.enabled, updatedByUid: r.updated_by_uid, updatedAt: r.updated_at,
+    }))});
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch policies', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/policies
+router.post('/admin/wallet/policies', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const uid = session.user.uid ?? session.user.id ?? 'unknown';
+    const { policyKey, policyScope, divisionCode, valueJson } = req.body;
+    if (!policyKey || !policyScope || valueJson === undefined) return res.status(400).json({ error: 'policyKey, policyScope, valueJson required' });
+    const raw: any = await db.execute(sql`
+      INSERT INTO finance_policy_rules (policy_key, policy_scope, division_code, value_json, enabled, updated_by_uid, updated_at)
+      VALUES (${policyKey}, ${policyScope}, ${divisionCode ?? null}, ${JSON.stringify(valueJson)}::jsonb, true, ${uid}, NOW())
+      ON CONFLICT (policy_key) DO UPDATE SET value_json=${JSON.stringify(valueJson)}::jsonb, updated_by_uid=${uid}, updated_at=NOW()
+      RETURNING *
+    `);
+    await db.execute(sql`INSERT INTO finance_audit_log (action, actor_uid, target_type, target_id, meta_json, created_at)
+      VALUES ('policy_upserted', ${uid}, 'finance_policy_rules', ${policyKey}, ${JSON.stringify({ policyKey, policyScope, valueJson })}::jsonb, NOW())`);
+    return res.json({ ok: true, policy: (raw?.rows ?? raw)?.[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to upsert policy', detail: err.message });
+  }
+});
+
+// PATCH /admin/wallet/policies/:policyKey
+router.patch('/admin/wallet/policies/:policyKey', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const uid = session.user.uid ?? session.user.id ?? 'unknown';
+    const { policyKey } = req.params;
+    const { valueJson, enabled } = req.body;
+    if (valueJson !== undefined) await db.execute(sql`UPDATE finance_policy_rules SET value_json=${JSON.stringify(valueJson)}::jsonb, updated_by_uid=${uid}, updated_at=NOW() WHERE policy_key=${policyKey}`);
+    if (enabled !== undefined)   await db.execute(sql`UPDATE finance_policy_rules SET enabled=${enabled}, updated_by_uid=${uid}, updated_at=NOW() WHERE policy_key=${policyKey}`);
+    await db.execute(sql`INSERT INTO finance_audit_log (action, actor_uid, target_type, target_id, meta_json, created_at)
+      VALUES ('policy_updated', ${uid}, 'finance_policy_rules', ${policyKey}, ${JSON.stringify({ valueJson, enabled })}::jsonb, NOW())`);
+    return res.json({ ok: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update policy', detail: err.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// PHASE 3.6G — QUARTER-END & YEAR-END CLOSE PACKS
+// ════════════════════════════════════════════════════════════════════════════
+
+// GET /admin/wallet/period-pack
+router.get('/admin/wallet/period-pack', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { type, period } = req.query;
+    if (!type || !period) return res.status(400).json({ error: 'type (quarter|year) and period (e.g. 2026-Q1 or 2026) required' });
+    // Check cache first
+    const cached: any = await db.execute(sql`SELECT * FROM period_close_packs WHERE period_type=${type as string} AND period_key=${period as string} ORDER BY generated_at DESC LIMIT 1`);
+    const cachedPack = (cached?.rows ?? cached)?.[0];
+    // Determine date range from period key
+    let startDate: string, endDate: string;
+    if (type === 'year') {
+      startDate = `${period}-01-01`; endDate = `${period}-12-31`;
+    } else if (type === 'quarter') {
+      const [yr, q] = (period as string).split('-Q');
+      const qn = parseInt(q, 10);
+      const months = [[1,3],[4,6],[7,9],[10,12]][qn-1];
+      startDate = `${yr}-${String(months[0]).padStart(2,'0')}-01`;
+      endDate   = `${yr}-${String(months[1]).padStart(2,'0')}-${[3,6,9,12].includes(months[1]) ? qn===1?'31':qn===2?'30':qn===3?'30':'31' : '30'}`;
+    } else { return res.status(400).json({ error: 'type must be quarter or year' }); }
+    // Aggregate from monthly closes
+    const closesRaw: any = await db.execute(sql`SELECT * FROM finance_close_records WHERE close_date >= ${startDate} AND close_date <= ${endDate}`);
+    const closes = (closesRaw?.rows ?? closesRaw) || [];
+    const totalGross     = closes.reduce((s: number, c: any) => s + parseInt(c.total_collected_cents ?? '0', 10), 0);
+    const totalPayouts   = closes.reduce((s: number, c: any) => s + parseInt(c.total_payouts_cents ?? '0', 10), 0);
+    const totalRefunds   = closes.reduce((s: number, c: any) => s + parseInt(c.total_refunds_cents ?? '0', 10), 0);
+    const totalVat       = closes.reduce((s: number, c: any) => s + parseInt(c.total_vat_cents ?? '0', 10), 0);
+    const margin         = totalGross > 0 ? Math.round((totalGross - totalPayouts - totalRefunds - totalVat) / totalGross * 10000) / 100 : 0;
+    // Disputes summary
+    const dispRaw: any = await db.execute(sql`SELECT status, COUNT(*) as cnt FROM dispute_cases WHERE created_at >= ${startDate} AND created_at <= ${endDate} GROUP BY status`);
+    const disputes: Record<string, number> = {};
+    for (const d of (dispRaw?.rows ?? dispRaw) || []) disputes[d.status] = parseInt(d.cnt, 10);
+    // Signoff coverage
+    const signoffRaw: any = await db.execute(sql`SELECT COUNT(*) as signed FROM monthly_signoffs WHERE signed_at IS NOT NULL AND period_start >= ${startDate} AND period_start <= ${endDate}`);
+    const signoffCount = parseInt((signoffRaw?.rows ?? signoffRaw)?.[0]?.signed ?? '0', 10);
+    // Recon exceptions
+    const reconRaw: any = await db.execute(sql`SELECT status, COUNT(*) as cnt FROM recon_exceptions WHERE created_at >= ${startDate} AND created_at <= ${endDate} GROUP BY status`);
+    const reconExceptions: Record<string, number> = {};
+    for (const r of (reconRaw?.rows ?? reconRaw) || []) reconExceptions[r.status] = parseInt(r.cnt, 10);
+    const packJson = {
+      periodType: type, periodKey: period, generatedAt: new Date().toISOString(),
+      dateRange: { startDate, endDate }, closedMonths: closes.length,
+      totals: { grossCents: totalGross, payoutsCents: totalPayouts, refundsCents: totalRefunds, vatCents: totalVat },
+      marginPct: margin, disputes, signoffCoverage: signoffCount,
+      reconExceptions, varianceCommentary: closes.map((c: any) => c.notes ?? '').filter(Boolean),
+    };
+    const crypto = await import('crypto');
+    const signature = crypto.createHash('sha256').update(JSON.stringify(packJson)).digest('hex');
+    // Cache it
+    await db.execute(sql`
+      INSERT INTO period_close_packs (period_type, period_key, generated_at, pack_json, signature)
+      VALUES (${type as string}, ${period as string}, NOW(), ${JSON.stringify(packJson)}::jsonb, ${signature})
+    `);
+    return res.json({ ok: true, cached: !!cachedPack, pack: { ...packJson, signature } });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to generate period pack', detail: err.message });
+  }
+});
+
+// GET /admin/wallet/period-pack/export
+router.get('/admin/wallet/period-pack/export', async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    const { type, period } = req.query;
+    if (!type || !period) return res.status(400).json({ error: 'type and period required' });
+    const raw: any = await db.execute(sql`SELECT * FROM period_close_packs WHERE period_type=${type as string} AND period_key=${period as string} ORDER BY generated_at DESC LIMIT 1`);
+    const pack = (raw?.rows ?? raw)?.[0];
+    if (!pack) return res.status(404).json({ error: 'No pack found — generate it first via GET /period-pack' });
+    const json = JSON.stringify(pack.pack_json, null, 2);
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="period-pack-${type}-${period}-${pack.signature?.slice(0,8)}.json"`);
+    return res.send(json);
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to export pack', detail: err.message });
+  }
+});
+
 export default router;

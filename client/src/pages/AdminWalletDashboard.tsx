@@ -38,6 +38,7 @@ import {
   Download,
   History,
   SlidersHorizontal,
+  Settings,
   FileDown,
   Unlock,
   RotateCcw,
@@ -68,6 +69,9 @@ import {
   Bell,
   Send,
   FileSignature,
+  FolderSearch,
+  GitCompare,
+  Scale,
 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -1184,6 +1188,170 @@ export default function AdminWalletDashboard() {
     enabled: !!viewingReportRunId,
   });
 
+  // ── Phase 3.6A: Forecast Model Weights ────────────────────────────────────
+  const [weightHorizon, setWeightHorizon] = useState<number>(7);
+  const [editingWeight, setEditingWeight] = useState<{ id: number; value: string } | null>(null);
+  const [newWeight, setNewWeight] = useState({ horizonDays: 7, factorName: 'payouts', weight: '1.0' });
+  const { data: forecastWeights, isLoading: forecastWeightsLoading, refetch: refetchForecastWeights } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/cash-forecast/weights', weightHorizon],
+  });
+  const { data: recomputeResult, isLoading: recomputeLoading, refetch: refetchRecompute } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/cash-forecast/recompute', weightHorizon],
+    enabled: false,
+  });
+  const { mutate: createForecastWeight, isPending: createWeightPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/cash-forecast/weights', body),
+    onSuccess: () => { toast({ title: 'Weight added' }); refetchForecastWeights(); setNewWeight({ horizonDays: 7, factorName: 'payouts', weight: '1.0' }); },
+  });
+  const { mutate: patchForecastWeight, isPending: patchWeightPending } = useMutation<any, any, { id: number; body: any }>({
+    mutationFn: ({ id, body }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/cash-forecast/weights/${id}`, body),
+    onSuccess: () => { toast({ title: 'Weight updated' }); refetchForecastWeights(); setEditingWeight(null); },
+  });
+
+  // ── Phase 3.6B: Payout Release Policies ───────────────────────────────────
+  const [showNewPolicyForm, setShowNewPolicyForm] = useState(false);
+  const [newPolicy, setNewPolicy] = useState({ minAmountCents: '', maxAmountCents: '', divisionCode: '', requiresSecondApproval: true, allowedAutoRelease: false, notes: '' });
+  const [evaluatingBatchId, setEvaluatingBatchId] = useState<string>('');
+  const { data: releasePolicies, isLoading: releasePoliciesLoading, refetch: refetchReleasePolicies } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/payout-release-policies'],
+  });
+  const { data: policyEvalResult, isLoading: policyEvalLoading, refetch: refetchPolicyEval } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/payout-batches', evaluatingBatchId, 'evaluate-release-policy'],
+    enabled: false,
+  });
+  const { mutate: createReleasePolicy, isPending: createPolicyPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/payout-release-policies', body),
+    onSuccess: () => { toast({ title: 'Policy created' }); refetchReleasePolicies(); setShowNewPolicyForm(false); },
+  });
+  const { mutate: patchReleasePolicy, isPending: patchPolicyPending } = useMutation<any, any, { id: number; body: any }>({
+    mutationFn: ({ id, body }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/payout-release-policies/${id}`, body),
+    onSuccess: () => { toast({ title: 'Policy updated' }); refetchReleasePolicies(); },
+  });
+  const { mutate: evaluateReleasePolicy, isPending: evaluatePolicyPending } = useMutation<any, any, string>({
+    mutationFn: (batchId) => apiRequest('POST', `/api/prestige-pass/admin/wallet/payout-batches/${batchId}/evaluate-release-policy`, {}),
+    onSuccess: (d) => { toast({ title: 'Policy evaluated', description: d.reasoning }); queryClient.setQueryData(['/api/prestige-pass/admin/wallet/payout-batches', evaluatingBatchId, 'evaluate-release-policy'], d); },
+  });
+
+  // ── Phase 3.6C: Digest Preferences ────────────────────────────────────────
+  const [showNewPrefForm, setShowNewPrefForm] = useState(false);
+  const [newPref, setNewPref] = useState({ userUid: '', digestType: 'weekly', minSeverity: 'warning', includeControlCenter: true, includeExecutiveSummary: false });
+  const { data: digestPrefs, isLoading: digestPrefsLoading, refetch: refetchDigestPrefs } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/digest-preferences'],
+  });
+  const { mutate: createDigestPref, isPending: createPrefPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/digest-preferences', body),
+    onSuccess: () => { toast({ title: 'Preference saved' }); refetchDigestPrefs(); setShowNewPrefForm(false); },
+  });
+  const { mutate: patchDigestPref, isPending: patchPrefPending } = useMutation<any, any, { id: number; body: any }>({
+    mutationFn: ({ id, body }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/digest-preferences/${id}`, body),
+    onSuccess: () => { toast({ title: 'Preference updated' }); refetchDigestPrefs(); },
+  });
+
+  // ── Phase 3.6D: Archive Retrievals ────────────────────────────────────────
+  const [retrievalReason, setRetrievalReason] = useState('');
+  const [retrievalArtifactId, setRetrievalArtifactId] = useState<string>('');
+  const [markReadyId, setMarkReadyId] = useState<string>('');
+  const [markReadyRef, setMarkReadyRef] = useState('');
+  const { data: archiveRetrievals, isLoading: archiveRetrievalsLoading, refetch: refetchArchiveRetrievals } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/archive/retrievals'],
+  });
+  const { mutate: requestRetrieval, isPending: requestRetrievalPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/archive/retrieve', body),
+    onSuccess: (d) => { toast({ title: 'Retrieval requested', description: `ID: ${d.retrieval?.id}` }); refetchArchiveRetrievals(); setRetrievalReason(''); setRetrievalArtifactId(''); },
+  });
+  const { mutate: markRetrievalReady, isPending: markReadyPending } = useMutation<any, any, { id: number; retrievalRef: string }>({
+    mutationFn: ({ id, retrievalRef }) => apiRequest('POST', `/api/prestige-pass/admin/wallet/archive/retrievals/${id}/mark-ready`, { retrievalRef }),
+    onSuccess: () => { toast({ title: 'Retrieval marked ready' }); refetchArchiveRetrievals(); setMarkReadyId(''); setMarkReadyRef(''); },
+  });
+
+  // ── Phase 3.6E: Replay Diff ────────────────────────────────────────────────
+  const [diffRunId, setDiffRunId] = useState<string>('');
+  const [diffEntityFilter, setDiffEntityFilter] = useState('');
+  const { data: replayDiffData, isLoading: replayDiffLoading, refetch: refetchReplayDiff } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/replay/diff', diffRunId],
+    enabled: !!diffRunId,
+  });
+
+  // ── Phase 3.6F: Finance Policy Engine ─────────────────────────────────────
+  const [editingPolicyKey, setEditingPolicyKey] = useState<string | null>(null);
+  const [policyEditValue, setPolicyEditValue] = useState('');
+  const [showNewFinancePolicyForm, setShowNewFinancePolicyForm] = useState(false);
+  const [newFinancePolicy, setNewFinancePolicy] = useState({ policyKey: '', policyScope: 'global', divisionCode: '', valueJson: '{}' });
+  const { data: financePolicies, isLoading: financePoliciesLoading, refetch: refetchFinancePolicies } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/policies'],
+  });
+  const { mutate: upsertFinancePolicy, isPending: upsertPolicyPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/policies', body),
+    onSuccess: () => { toast({ title: 'Policy saved' }); refetchFinancePolicies(); setShowNewFinancePolicyForm(false); setEditingPolicyKey(null); },
+  });
+  const { mutate: patchFinancePolicy, isPending: patchFinancePolicyPending } = useMutation<any, any, { policyKey: string; body: any }>({
+    mutationFn: ({ policyKey, body }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/policies/${policyKey}`, body),
+    onSuccess: () => { toast({ title: 'Policy updated' }); refetchFinancePolicies(); setEditingPolicyKey(null); },
+  });
+
+  // ── Phase 3.6G: Period Close Packs ────────────────────────────────────────
+  const [packType, setPackType] = useState<'quarter' | 'year'>('quarter');
+  const [packPeriod, setPackPeriod] = useState('2026-Q1');
+  const { data: periodPackData, isLoading: periodPackLoading, refetch: refetchPeriodPack } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/period-pack', packType, packPeriod],
+    enabled: false,
+  });
+
+  // ── Phase 3.6 UI aliases & supplemental state ──────────────────────────────
+  // 3.6A — weight form state for the UI card
+  const [weightForm, setWeightForm] = useState({ signalKey: '', divisionCode: '', weight: '' });
+  const { mutate: upsertForecastWeight, isPending: upsertWeightPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/cash-forecast/weights', body),
+    onSuccess: () => { toast({ title: 'Weight saved' }); refetchForecastWeights(); setWeightForm({ signalKey: '', divisionCode: '', weight: '' }); },
+  });
+  const { mutate: recomputeForecast, isPending: recomputeForecastPending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest('POST', '/api/prestige-pass/admin/wallet/cash-forecast/recompute', { horizonDays: 30 }),
+    onSuccess: (d) => { toast({ title: 'Forecast recomputed', description: `Horizon: ${d.horizonDays}d` }); },
+  });
+  // 3.6C — single upsert helper that always POSTs (backend handles UPSERT)
+  const { mutate: upsertDigestPref } = useMutation<any, any, { key: string; value: any }>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/digest-preferences', body),
+    onSuccess: () => { toast({ title: 'Preference updated' }); refetchDigestPrefs(); },
+  });
+  // 3.6D — retrieval form & aliases matching UI expectations
+  const [retrievalForm, setRetrievalForm] = useState({ entityType: '', entityId: '', reason: '', dateRange: '' });
+  const retrievals = archiveRetrievals;
+  const retrievalsLoading = archiveRetrievalsLoading;
+  const { mutate: createRetrieval, isPending: createRetrievalPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/archive/retrieve', body),
+    onSuccess: (d) => { toast({ title: 'Retrieval requested', description: `ID: ${d.retrieval?.id}` }); refetchArchiveRetrievals(); setRetrievalForm({ entityType: '', entityId: '', reason: '', dateRange: '' }); },
+  });
+  const markRetrievalReadyPending = markReadyPending;
+  // 3.6E — diff viewer state (two run IDs comparison)
+  const [diffRunA, setDiffRunA] = useState('');
+  const [diffRunB, setDiffRunB] = useState('');
+  const [replayDiff, setReplayDiff] = useState<any>(null);
+  const { mutate: computeReplayDiff, isPending: computeDiffPending } = useMutation<any, any, { runAId: number; runBId: number }>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/replay/diff', body),
+    onSuccess: (d) => { setReplayDiff(d); toast({ title: 'Diff computed', description: `${d.divergenceCount ?? 0} divergence(s)` }); },
+  });
+  // 3.6F — policy engine aliases
+  const policyRules = financePolicies;
+  const policyRulesLoading = financePoliciesLoading;
+  const [newRuleForm, setNewRuleForm] = useState({ policyKey: '', value: '', divisionCode: '', description: '' });
+  const { mutate: upsertPolicyRule, isPending: upsertPolicyRulePending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/policies', body),
+    onSuccess: () => { toast({ title: 'Policy rule saved' }); refetchFinancePolicies(); setNewRuleForm({ policyKey: '', value: '', divisionCode: '', description: '' }); },
+  });
+  // 3.6G — period close pack aliases
+  const periodPacks = periodPackData;
+  const periodPacksLoading = periodPackLoading;
+  const [closePeriodType, setClosePeriodType] = useState<'quarter' | 'year'>('quarter');
+  const [closePeriodValue, setClosePeriodValue] = useState('');
+  const { mutate: generatePeriodPack, isPending: generatePeriodPackPending } = useMutation<any, any, { type: string; period: string }>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/period-pack/generate', body),
+    onSuccess: (d) => { toast({ title: 'Period pack generated', description: `${d.pack?.period} — ${d.pack?.recordCount} records` }); refetchPeriodPack(); },
+  });
+  const { mutate: exportPeriodPack, isPending: exportPeriodPackPending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest('GET', '/api/prestige-pass/admin/wallet/period-pack/export'),
+    onSuccess: (d) => { toast({ title: 'Export ready', description: d.filename ?? 'period-pack.json' }); },
+  });
+
   function handleAuditSearch() {
     if (!auditId.trim()) return;
     setAuditSearch(auditId.trim());
@@ -1439,6 +1607,10 @@ export default function AdminWalletDashboard() {
             <TabsTrigger value="recovery">
               <RefreshCcw className="w-4 h-4 mr-2" />
               Recovery
+            </TabsTrigger>
+            <TabsTrigger value="policies">
+              <Settings className="w-4 h-4 mr-2" />
+              Policies
             </TabsTrigger>
           </TabsList>
 
@@ -4176,6 +4348,98 @@ export default function AdminWalletDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* 3.6B: Payout Release Policies */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-blue-600" /> Release Policies (Phase 3.6)
+                  </CardTitle>
+                  <button onClick={() => setShowNewPolicyForm(!showNewPolicyForm)} className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1">
+                    <Plus className="w-3 h-3"/> New Policy
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded p-2">
+                  Division-specific policies override the global PAYOUT_AUTO_RELEASE_LIMIT_CENTS. Unmatched batches fall back to the env var. Requesters cannot self-approve.
+                </div>
+                {showNewPolicyForm && (
+                  <div className="border rounded-lg p-3 bg-gray-50 space-y-2 text-xs">
+                    <div className="font-semibold text-gray-700">New Release Policy</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><label className="text-gray-500 mb-0.5 block">Min (₪)</label>
+                        <input type="number" placeholder="0" value={newPolicy.minAmountCents} onChange={e=>setNewPolicy(p=>({...p, minAmountCents: e.target.value}))} className="border rounded px-2 py-1 w-full"/></div>
+                      <div><label className="text-gray-500 mb-0.5 block">Max (₪, blank=∞)</label>
+                        <input type="number" placeholder="∞" value={newPolicy.maxAmountCents} onChange={e=>setNewPolicy(p=>({...p, maxAmountCents: e.target.value}))} className="border rounded px-2 py-1 w-full"/></div>
+                      <div><label className="text-gray-500 mb-0.5 block">Division Code</label>
+                        <input placeholder="(global)" value={newPolicy.divisionCode} onChange={e=>setNewPolicy(p=>({...p, divisionCode: e.target.value}))} className="border rounded px-2 py-1 w-full"/></div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="flex items-center gap-2"><input type="checkbox" checked={newPolicy.requiresSecondApproval} onChange={e=>setNewPolicy(p=>({...p, requiresSecondApproval: e.target.checked}))}/> Requires 2nd approval</label>
+                        <label className="flex items-center gap-2"><input type="checkbox" checked={newPolicy.allowedAutoRelease} onChange={e=>setNewPolicy(p=>({...p, allowedAutoRelease: e.target.checked}))}/> Allow auto-release</label>
+                      </div>
+                    </div>
+                    <input placeholder="Notes" value={newPolicy.notes} onChange={e=>setNewPolicy(p=>({...p, notes: e.target.value}))} className="border rounded px-2 py-1 w-full"/>
+                    <div className="flex gap-2">
+                      <button disabled={createPolicyPending} onClick={() => createReleasePolicy({ ...newPolicy, minAmountCents: parseInt(newPolicy.minAmountCents||'0',10)*100, maxAmountCents: newPolicy.maxAmountCents ? parseInt(newPolicy.maxAmountCents,10)*100 : null })}
+                        className="px-3 py-1.5 bg-blue-700 text-white rounded text-xs hover:bg-blue-800 disabled:opacity-40">
+                        {createPolicyPending ? <Loader2 className="w-3 h-3 animate-spin inline"/> : 'Create Policy'}
+                      </button>
+                      <button onClick={() => setShowNewPolicyForm(false)} className="px-3 py-1.5 border rounded text-xs">Cancel</button>
+                    </div>
+                  </div>
+                )}
+                {releasePoliciesLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded"/> :
+                  !releasePolicies?.policies?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No release policies — all batches use the global env var fallback</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Division</th><th className="text-left p-2">Range (₪)</th><th className="text-left p-2">Auto-Release</th><th className="text-left p-2">2nd Approval</th><th className="text-left p-2">Status</th></tr>
+                      </thead><tbody>
+                        {releasePolicies.policies.map((p: any) => (
+                          <tr key={p.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 text-gray-700">{p.divisionCode || <span className="text-gray-400 italic">global</span>}</td>
+                            <td className="p-2 font-mono text-gray-600">₪{(p.minAmountCents/100).toFixed(0)}–{p.maxAmountCents ? '₪'+(p.maxAmountCents/100).toFixed(0) : '∞'}</td>
+                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${p.allowedAutoRelease ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{p.allowedAutoRelease ? 'Yes' : 'No'}</span></td>
+                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${p.requiresSecondApproval ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>{p.requiresSecondApproval ? 'Required' : 'Optional'}</span></td>
+                            <td className="p-2">
+                              <button onClick={() => patchReleasePolicy({ id: p.id, body: { enabled: !p.enabled } })}
+                                className={`px-1.5 py-0.5 rounded text-xs ${p.enabled ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                                {p.enabled ? 'Active' : 'Off'}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )
+                }
+                {/* Evaluate batch */}
+                <div className="border-t pt-3">
+                  <div className="text-xs font-semibold text-gray-600 mb-2">Evaluate Batch Against Policy</div>
+                  <div className="flex gap-2">
+                    <input type="number" placeholder="Batch ID" value={evaluatingBatchId} onChange={e=>setEvaluatingBatchId(e.target.value)} className="border rounded px-2 py-1 text-xs w-28"/>
+                    <button disabled={evaluatePolicyPending || !evaluatingBatchId} onClick={() => evaluateReleasePolicy(evaluatingBatchId)}
+                      className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40">
+                      {evaluatePolicyPending ? <Loader2 className="w-3 h-3 animate-spin inline"/> : 'Evaluate'}
+                    </button>
+                  </div>
+                  {policyEvalResult?.ok && (
+                    <div className="mt-2 border rounded-lg p-3 bg-blue-50 border-blue-200 text-xs space-y-1.5">
+                      <div className="font-semibold text-blue-800">Evaluation result for Batch #{policyEvalResult.batchId}</div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="bg-white border border-blue-100 rounded p-2 text-center"><div className="font-bold text-blue-800">{policyEvalResult.autoReleaseAllowed ? '✓ Yes' : '✗ No'}</div><div className="text-gray-500 mt-0.5">Auto-Release</div></div>
+                        <div className="bg-white border border-blue-100 rounded p-2 text-center"><div className="font-bold text-blue-800">{policyEvalResult.secondApprovalRequired ? '✓ Yes' : '✗ No'}</div><div className="text-gray-500 mt-0.5">2nd Approval</div></div>
+                        <div className="bg-white border border-blue-100 rounded p-2 text-center"><div className="font-bold text-blue-800">#{policyEvalResult.matchedPolicy?.id ?? 'env'}</div><div className="text-gray-500 mt-0.5">Matched Policy</div></div>
+                      </div>
+                      <div className="text-gray-600 italic">{policyEvalResult.reasoning}</div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ── DISPUTES (2.9C) ── */}
@@ -5981,6 +6245,59 @@ export default function AdminWalletDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* 3.6A: Forecast Model Weights */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Settings className="w-4 h-4 text-violet-600" /> Forecast Model Weights (Phase 3.6)
+                  </CardTitle>
+                  <button onClick={() => recomputeForecast()} disabled={recomputeForecastPending}
+                    className="text-xs px-3 py-1 bg-violet-600 text-white rounded hover:bg-violet-700 disabled:opacity-40 flex items-center gap-1">
+                    {recomputeForecastPending ? <Loader2 className="w-3 h-3 animate-spin"/> : <RefreshCw className="w-3 h-3"/>} Recompute
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded p-2">
+                  Weights adjust how much each historical signal contributes to the 30-day revenue forecast. All active weights are normalised to sum to 1 before computation. Changes take effect on the next scheduled recompute.
+                </div>
+                {forecastWeightsLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded"/> :
+                  !forecastWeights?.weights?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No forecast weight overrides — using system defaults</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Signal</th><th className="text-left p-2">Division</th><th className="text-right p-2">Weight</th><th className="text-left p-2">Last Updated</th></tr>
+                      </thead><tbody>
+                        {forecastWeights.weights.map((w: any) => (
+                          <tr key={w.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 font-mono text-gray-700">{w.signalKey}</td>
+                            <td className="p-2 text-gray-600">{w.divisionCode || <span className="text-gray-400 italic">all</span>}</td>
+                            <td className="p-2 text-right font-semibold">{w.weight.toFixed(4)}</td>
+                            <td className="p-2 text-gray-400">{new Date(w.updatedAt).toLocaleDateString('he-IL')}</td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )
+                }
+                {/* Update weight form */}
+                <div className="border-t pt-3">
+                  <div className="text-xs font-semibold text-gray-600 mb-2">Update Signal Weight</div>
+                  <div className="flex flex-wrap gap-2">
+                    <input placeholder="signalKey (e.g. bookings_7d)" value={weightForm.signalKey} onChange={e=>setWeightForm(f=>({...f, signalKey: e.target.value}))} className="border rounded px-2 py-1 text-xs flex-1 min-w-32"/>
+                    <input placeholder="divisionCode (blank=all)" value={weightForm.divisionCode} onChange={e=>setWeightForm(f=>({...f, divisionCode: e.target.value}))} className="border rounded px-2 py-1 text-xs w-36"/>
+                    <input type="number" step="0.01" placeholder="weight" value={weightForm.weight} onChange={e=>setWeightForm(f=>({...f, weight: e.target.value}))} className="border rounded px-2 py-1 text-xs w-24"/>
+                    <button disabled={upsertWeightPending || !weightForm.signalKey || !weightForm.weight} onClick={() => upsertForecastWeight({ signalKey: weightForm.signalKey, divisionCode: weightForm.divisionCode||null, weight: parseFloat(weightForm.weight) })}
+                      className="text-xs px-3 py-1.5 bg-violet-600 text-white rounded hover:bg-violet-700 disabled:opacity-40">
+                      {upsertWeightPending ? <Loader2 className="w-3 h-3 animate-spin inline"/> : 'Save'}
+                    </button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -6252,6 +6569,45 @@ export default function AdminWalletDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* 3.6C: Finance Digest Preferences */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-orange-600" /> Finance Alert Preferences (Phase 3.6)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {digestPrefsLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded"/> : (
+                  <div className="space-y-3 text-xs">
+                    <div className="text-gray-500">Customize which events trigger finance digest emails and at what threshold.</div>
+                    {[
+                      { key: 'digest_daily_enabled', label: 'Daily digest email', type: 'boolean' },
+                      { key: 'digest_weekly_enabled', label: 'Weekly executive digest', type: 'boolean' },
+                      { key: 'alert_anomaly_threshold_pct', label: 'Anomaly alert threshold (%)', type: 'number' },
+                      { key: 'alert_forecast_deviation_pct', label: 'Forecast deviation alert (%)', type: 'number' },
+                      { key: 'alert_payout_above_cents', label: 'Payout alert above (₪)', type: 'cents' },
+                    ].map(pref => (
+                      <div key={pref.key} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
+                        <span className="text-gray-700">{pref.label}</span>
+                        {pref.type === 'boolean' ? (
+                          <button onClick={() => upsertDigestPref({ key: pref.key, value: !(digestPrefs?.prefs?.[pref.key]) })}
+                            className={`px-2 py-0.5 rounded text-xs ${digestPrefs?.prefs?.[pref.key] ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {digestPrefs?.prefs?.[pref.key] ? 'On' : 'Off'}
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <span className="text-gray-500 font-mono">{pref.type === 'cents' ? `₪${((digestPrefs?.prefs?.[pref.key] ?? 0)/100).toFixed(0)}` : `${digestPrefs?.prefs?.[pref.key] ?? '—'}${pref.type==='number'?'%':''}`}</span>
+                            <button onClick={() => { const v = prompt(pref.label, String(digestPrefs?.prefs?.[pref.key] ?? '')); if(v!==null) upsertDigestPref({ key: pref.key, value: pref.type==='cents' ? parseFloat(v)*100 : parseFloat(v) }); }}
+                              className="text-xs px-1.5 py-0.5 border rounded hover:bg-gray-50">Edit</button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -6491,6 +6847,60 @@ export default function AdminWalletDashboard() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* 3.6G: Period Close Packs */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Archive className="w-4 h-4 text-slate-600" /> Period Close Packs (Phase 3.6)
+                  </CardTitle>
+                  <button onClick={() => exportPeriodPack()} disabled={exportPeriodPackPending}
+                    className="text-xs px-3 py-1 border border-slate-400 text-slate-700 rounded hover:bg-slate-50 disabled:opacity-40 flex items-center gap-1">
+                    {exportPeriodPackPending ? <Loader2 className="w-3 h-3 animate-spin"/> : <Download className="w-3 h-3"/>} Export Latest
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded p-2">
+                  Generate signed quarter/year-end close packages that bundle all finance close records into a tamper-evident SHA-256-signed artifact. Required for audit submission.
+                </div>
+                {/* Generate form */}
+                <div className="flex flex-wrap gap-2">
+                  <select value={closePeriodType} onChange={e=>setClosePeriodType(e.target.value as any)}
+                    className="border rounded px-2 py-1 text-xs">
+                    <option value="quarter">Quarter</option>
+                    <option value="year">Year</option>
+                  </select>
+                  <input placeholder={closePeriodType==='quarter' ? '2026-Q1' : '2026'} value={closePeriodValue} onChange={e=>setClosePeriodValue(e.target.value)} className="border rounded px-2 py-1 text-xs w-28"/>
+                  <button disabled={generatePeriodPackPending || !closePeriodValue} onClick={() => generatePeriodPack({ type: closePeriodType, period: closePeriodValue })}
+                    className="text-xs px-3 py-1.5 bg-slate-700 text-white rounded hover:bg-slate-800 disabled:opacity-40">
+                    {generatePeriodPackPending ? <Loader2 className="w-3 h-3 animate-spin inline"/> : 'Generate Pack'}
+                  </button>
+                </div>
+                {periodPacksLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded"/> :
+                  !periodPacks?.packs?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No close packs generated yet</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Period</th><th className="text-left p-2">Type</th><th className="text-left p-2">Records</th><th className="text-left p-2">Signature</th><th className="text-left p-2">Generated</th></tr>
+                      </thead><tbody>
+                        {periodPacks.packs.map((pk: any) => (
+                          <tr key={pk.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 font-mono text-gray-700">{pk.period}</td>
+                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${pk.packType === 'year' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{pk.packType}</span></td>
+                            <td className="p-2 text-gray-600">{pk.recordCount}</td>
+                            <td className="p-2 font-mono text-gray-400 text-[10px]">{pk.signatureHash?.slice(0,16)}…</td>
+                            <td className="p-2 text-gray-400">{new Date(pk.generatedAt).toLocaleString('he-IL')}</td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -6631,6 +7041,66 @@ export default function AdminWalletDashboard() {
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* 3.6D: Archive Retrieval Requests */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <FolderSearch className="w-4 h-4 text-teal-600" /> Archive Retrievals (Phase 3.6)
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded p-2">
+                  Request a full data retrieval from the archive for audit, dispute investigation, or compliance. Retrievals are processed asynchronously and marked ready when complete.
+                </div>
+                {/* New retrieval */}
+                <div className="border rounded-lg p-3 bg-gray-50 space-y-2 text-xs">
+                  <div className="font-semibold text-gray-700">New Retrieval Request</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><label className="text-gray-500 mb-0.5 block">Entity Type</label>
+                      <input placeholder="e.g. booking, payout, refund" value={retrievalForm.entityType} onChange={e=>setRetrievalForm(f=>({...f, entityType: e.target.value}))} className="border rounded px-2 py-1 w-full"/></div>
+                    <div><label className="text-gray-500 mb-0.5 block">Entity ID</label>
+                      <input placeholder="ID or range" value={retrievalForm.entityId} onChange={e=>setRetrievalForm(f=>({...f, entityId: e.target.value}))} className="border rounded px-2 py-1 w-full"/></div>
+                    <div><label className="text-gray-500 mb-0.5 block">Reason</label>
+                      <input placeholder="audit / dispute / compliance" value={retrievalForm.reason} onChange={e=>setRetrievalForm(f=>({...f, reason: e.target.value}))} className="border rounded px-2 py-1 w-full"/></div>
+                    <div><label className="text-gray-500 mb-0.5 block">Date Range</label>
+                      <input placeholder="2026-01-01 → 2026-03-31" value={retrievalForm.dateRange} onChange={e=>setRetrievalForm(f=>({...f, dateRange: e.target.value}))} className="border rounded px-2 py-1 w-full"/></div>
+                  </div>
+                  <button disabled={createRetrievalPending || !retrievalForm.entityType} onClick={() => createRetrieval(retrievalForm)}
+                    className="px-3 py-1.5 bg-teal-600 text-white rounded text-xs hover:bg-teal-700 disabled:opacity-40">
+                    {createRetrievalPending ? <Loader2 className="w-3 h-3 animate-spin inline"/> : 'Request Retrieval'}
+                  </button>
+                </div>
+                {retrievalsLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded"/> :
+                  !retrievals?.retrievals?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No archive retrievals requested yet</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Entity</th><th className="text-left p-2">Reason</th><th className="text-left p-2">Status</th><th className="text-left p-2">Requested</th><th className="text-left p-2">Actions</th></tr>
+                      </thead><tbody>
+                        {retrievals.retrievals.map((r: any) => (
+                          <tr key={r.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2"><span className="font-mono text-gray-700">{r.entityType}</span><span className="text-gray-400"> #{r.entityId}</span></td>
+                            <td className="p-2 text-gray-600">{r.reason}</td>
+                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${r.status==='ready' ? 'bg-green-100 text-green-700' : r.status==='processing' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>{r.status}</span></td>
+                            <td className="p-2 text-gray-400">{new Date(r.requestedAt).toLocaleDateString('he-IL')}</td>
+                            <td className="p-2">
+                              {r.status !== 'ready' && (
+                                <button onClick={() => markRetrievalReady({ id: r.id, retrievalRef: '' })} disabled={markRetrievalReadyPending}
+                                  className="text-xs px-1.5 py-0.5 border border-teal-300 text-teal-700 rounded hover:bg-teal-50">Mark Ready</button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )
+                }
               </CardContent>
             </Card>
           </TabsContent>
@@ -6821,6 +7291,127 @@ export default function AdminWalletDashboard() {
                     </div>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* 3.6E: Replay Diff Viewer */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <GitCompare className="w-4 h-4 text-rose-600" /> Replay Diff Viewer (Phase 3.6)
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">
+                  Compare two replay runs to identify divergent computation paths, changed amounts, or missing records. Useful for validating close-record idempotency.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input type="number" placeholder="Run A ID" value={diffRunA} onChange={e=>setDiffRunA(e.target.value)} className="border rounded px-2 py-1 text-xs w-28"/>
+                  <input type="number" placeholder="Run B ID" value={diffRunB} onChange={e=>setDiffRunB(e.target.value)} className="border rounded px-2 py-1 text-xs w-28"/>
+                  <button disabled={computeDiffPending || !diffRunA || !diffRunB} onClick={() => computeReplayDiff({ runAId: parseInt(diffRunA, 10), runBId: parseInt(diffRunB, 10) })}
+                    className="text-xs px-3 py-1.5 bg-rose-600 text-white rounded hover:bg-rose-700 disabled:opacity-40">
+                    {computeDiffPending ? <Loader2 className="w-3 h-3 animate-spin inline"/> : 'Compare Runs'}
+                  </button>
+                </div>
+                {replayDiff?.ok && (
+                  <div className="border rounded-lg p-3 bg-rose-50 border-rose-200 text-xs space-y-2">
+                    <div className="flex items-center gap-3 font-semibold text-rose-800">
+                      <span>Run #{replayDiff.runA} vs Run #{replayDiff.runB}</span>
+                      <span className={`px-1.5 py-0.5 rounded ${replayDiff.divergenceCount > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                        {replayDiff.divergenceCount} divergence{replayDiff.divergenceCount !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    {replayDiff.diffs?.length > 0 && (
+                      <div className="border rounded-lg overflow-hidden bg-white">
+                        <table className="w-full text-xs"><thead className="bg-gray-50">
+                          <tr className="text-gray-500"><th className="text-left p-2">Record</th><th className="text-left p-2">Field</th><th className="text-right p-2">Run A</th><th className="text-right p-2">Run B</th></tr>
+                        </thead><tbody>
+                          {replayDiff.diffs.map((d: any, i: number) => (
+                            <tr key={i} className="border-t hover:bg-rose-50">
+                              <td className="p-2 font-mono text-gray-700">{d.recordKey}</td>
+                              <td className="p-2 text-gray-600">{d.field}</td>
+                              <td className="p-2 text-right font-mono text-red-600">{d.valueA ?? '—'}</td>
+                              <td className="p-2 text-right font-mono text-green-700">{d.valueB ?? '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody></table>
+                      </div>
+                    )}
+                    {replayDiff.divergenceCount === 0 && (
+                      <div className="text-center text-green-700 py-2">Runs are identical — no divergence detected</div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/* 3.6F — POLICY ENGINE                                          */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          <TabsContent value="policies" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Scale className="w-4 h-4 text-indigo-600" /> Finance Policy Engine
+                  </CardTitle>
+                  <div className="text-xs text-gray-500">5 default policies seeded — override values to adjust system behaviour without code changes</div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 rounded p-2 space-y-0.5">
+                  <div className="font-semibold">System Policy Keys</div>
+                  <div>• <code>refund_auto_approve_limit</code> — max refund auto-approved (₪ cents)</div>
+                  <div>• <code>payout_auto_release_limit</code> — max payout auto-released (₪ cents)</div>
+                  <div>• <code>dispute_sla_hours</code> — SLA window for dispute resolution</div>
+                  <div>• <code>forecast_default_horizon</code> — forecast horizon in days</div>
+                  <div>• <code>archive_protected_entities</code> — comma-separated entity types immune to archival</div>
+                </div>
+                {policyRulesLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded"/> :
+                  !policyRules?.rules?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No policy rules found</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Policy Key</th><th className="text-left p-2">Value</th><th className="text-left p-2">Division</th><th className="text-left p-2">Active</th><th className="text-left p-2">Actions</th></tr>
+                      </thead><tbody>
+                        {policyRules.rules.map((rule: any) => (
+                          <tr key={rule.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 font-mono text-gray-700">{rule.policyKey}</td>
+                            <td className="p-2 font-mono text-indigo-700">{rule.value}</td>
+                            <td className="p-2 text-gray-500">{rule.divisionCode || <span className="italic text-gray-400">global</span>}</td>
+                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${rule.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{rule.isActive ? 'Active' : 'Off'}</span></td>
+                            <td className="p-2">
+                              <button onClick={() => { const v = prompt(`New value for ${rule.policyKey}:`, rule.value); if(v!==null) upsertPolicyRule({ policyKey: rule.policyKey, value: v, divisionCode: rule.divisionCode || null, description: rule.description }) }}
+                                className="text-xs px-1.5 py-0.5 border border-indigo-300 text-indigo-700 rounded hover:bg-indigo-50 mr-1">Edit</button>
+                              <button onClick={() => upsertPolicyRule({ policyKey: rule.policyKey, value: rule.value, divisionCode: rule.divisionCode || null, description: rule.description, isActive: !rule.isActive })}
+                                className={`text-xs px-1.5 py-0.5 border rounded hover:bg-gray-50 ${rule.isActive ? 'border-red-200 text-red-600' : 'border-green-200 text-green-700'}`}>
+                                {rule.isActive ? 'Disable' : 'Enable'}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )
+                }
+                {/* Add new rule */}
+                <div className="border-t pt-3">
+                  <div className="text-xs font-semibold text-gray-600 mb-2">Add / Override Policy Rule</div>
+                  <div className="flex flex-wrap gap-2">
+                    <input placeholder="policy_key" value={newRuleForm.policyKey} onChange={e=>setNewRuleForm(f=>({...f, policyKey: e.target.value}))} className="border rounded px-2 py-1 text-xs flex-1 min-w-32"/>
+                    <input placeholder="value" value={newRuleForm.value} onChange={e=>setNewRuleForm(f=>({...f, value: e.target.value}))} className="border rounded px-2 py-1 text-xs w-28"/>
+                    <input placeholder="divisionCode (blank=global)" value={newRuleForm.divisionCode} onChange={e=>setNewRuleForm(f=>({...f, divisionCode: e.target.value}))} className="border rounded px-2 py-1 text-xs w-36"/>
+                    <input placeholder="description" value={newRuleForm.description} onChange={e=>setNewRuleForm(f=>({...f, description: e.target.value}))} className="border rounded px-2 py-1 text-xs flex-1 min-w-32"/>
+                    <button disabled={upsertPolicyRulePending || !newRuleForm.policyKey || !newRuleForm.value} onClick={() => upsertPolicyRule({ policyKey: newRuleForm.policyKey, value: newRuleForm.value, divisionCode: newRuleForm.divisionCode||null, description: newRuleForm.description })}
+                      className="text-xs px-3 py-1.5 bg-indigo-700 text-white rounded hover:bg-indigo-800 disabled:opacity-40">
+                      {upsertPolicyRulePending ? <Loader2 className="w-3 h-3 animate-spin inline"/> : 'Save Rule'}
+                    </button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

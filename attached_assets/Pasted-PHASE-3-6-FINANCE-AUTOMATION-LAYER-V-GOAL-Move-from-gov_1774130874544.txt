@@ -1,0 +1,391 @@
+PHASE 3.6 - FINANCE AUTOMATION LAYER V
+
+GOAL
+Move from governed automation to adaptive finance operations.
+The platform should now:
+- improve its own forecasts
+- automate payout approvals safely by policy
+- reduce alert fatigue with personalization
+- allow archived finance data to be retrieved on demand
+- make replay outputs human-reviewable
+- centralize finance rules in one policy engine
+- support quarter-end and year-end close packs
+
+LOCKED PRINCIPLES
+- no wallet-core changes
+- no mutation of original financial facts
+- every adaptive action must be explainable
+- every execution path must still have a dry-run or preview
+- policy decisions must be centrally stored, not scattered across routes
+- archive retrieval is additive only
+- replay diffing compares derived state only, never raw immutable source facts
+- close packs remain deterministic and reproducible
+
+==================================================
+3.6A - FORECAST TUNING & MODEL WEIGHTING
+==================================================
+
+GOAL
+Improve forecast quality using measured error from 3.5A.
+
+DB
+Create table: cash_forecast_weights
+- id SERIAL PRIMARY KEY
+- horizon_days INTEGER NOT NULL
+- factor_name VARCHAR(64) NOT NULL   // payouts | refunds | vat | seasonality | disputes
+- weight NUMERIC(8,4) NOT NULL DEFAULT 1
+- enabled BOOLEAN NOT NULL DEFAULT true
+- updated_by_uid VARCHAR(128)
+- updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+Indexes
+- horizon_days
+- factor_name
+- enabled
+
+BACKEND
+1. GET /api/prestige-pass/admin/wallet/cash-forecast/weights?horizon=7|14|30
+2. POST /api/prestige-pass/admin/wallet/cash-forecast/weights
+3. PATCH /api/prestige-pass/admin/wallet/cash-forecast/weights/:id
+4. POST /api/prestige-pass/admin/wallet/cash-forecast/recompute?horizon=...
+Logic:
+- apply weights to component forecast factors
+- keep output deterministic
+- write finance audit log on change
+
+FRONTEND
+Forecast tab
+- "Model Weights" panel
+- rows for each factor with editable weight
+- enable/disable toggle
+- recompute button
+- preview of impact on next forecast totals
+
+ACCEPTANCE
+- changing a weight changes forecast outputs predictably
+- same weights + same source data always produce same forecast
+- audit log captures weight changes
+
+==================================================
+3.6B - PAYOUT APPROVAL POLICY AUTOMATION
+==================================================
+
+GOAL
+Move payout approval thresholds from one env var into explicit policy rules.
+
+DB
+Create table: payout_release_policies
+- id SERIAL PRIMARY KEY
+- division_code VARCHAR(40)
+- min_amount_cents INTEGER NOT NULL DEFAULT 0
+- max_amount_cents INTEGER
+- requires_second_approval BOOLEAN NOT NULL DEFAULT true
+- allowed_auto_release BOOLEAN NOT NULL DEFAULT false
+- enabled BOOLEAN NOT NULL DEFAULT true
+- notes TEXT NOT NULL DEFAULT ''
+- updated_by_uid VARCHAR(128)
+- updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+BACKEND
+1. GET /api/prestige-pass/admin/wallet/payout-release-policies
+2. POST /api/prestige-pass/admin/wallet/payout-release-policies
+3. PATCH /api/prestige-pass/admin/wallet/payout-release-policies/:id
+4. POST /api/prestige-pass/admin/wallet/payout-batches/:batchId/evaluate-release-policy
+Returns:
+- matchedPolicy
+- autoReleaseAllowed
+- secondApprovalRequired
+- reasoning
+
+Integrate with 3.5B:
+- release-request now uses policy table first
+- fallback to PAYOUT_AUTO_RELEASE_LIMIT_CENTS only if no policy matches
+
+FRONTEND
+Batches tab
+- "Release Policy" card
+- policy table
+- evaluate button in batch detail
+- matched policy shown in approval request flow
+
+ACCEPTANCE
+- division-specific policies override generic env threshold
+- unmatched cases fall back safely
+- requester still cannot self-approve
+
+==================================================
+3.6C - ALERT FATIGUE CONTROLS & DIGEST PERSONALIZATION
+==================================================
+
+GOAL
+Let users choose how often and how much they get notified.
+
+DB
+Create table: finance_digest_preferences
+- id SERIAL PRIMARY KEY
+- user_uid VARCHAR(128) NOT NULL
+- digest_type VARCHAR(32) NOT NULL   // daily | weekly | alerts_only
+- min_severity VARCHAR(16) NOT NULL DEFAULT 'warning'
+- include_control_center BOOLEAN NOT NULL DEFAULT true
+- include_executive_summary BOOLEAN NOT NULL DEFAULT false
+- enabled BOOLEAN NOT NULL DEFAULT true
+- updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+Indexes
+- user_uid
+- digest_type
+- enabled
+
+BACKEND
+1. GET /api/prestige-pass/admin/wallet/digest-preferences
+2. POST /api/prestige-pass/admin/wallet/digest-preferences
+3. PATCH /api/prestige-pass/admin/wallet/digest-preferences/:id
+4. Extend digest jobs from 3.3B and 3.5E:
+- filter alerts by severity preference
+- respect digest cadence
+- avoid duplicate sends across daily + weekly
+
+FRONTEND
+Control Center / Executive tabs
+- "Digest Preferences" card
+- cadence selector
+- minimum severity
+- content toggles
+
+ACCEPTANCE
+- user gets only configured digest type
+- critical alerts still escalate independently
+- duplicate weekly + daily summaries suppressed
+
+==================================================
+3.6D - ARCHIVE RETRIEVAL WORKFLOW
+==================================================
+
+GOAL
+Archived data should not be a dead end. Finance must be able to request retrieval safely.
+
+DB
+Create table: finance_archive_retrievals
+- id SERIAL PRIMARY KEY
+- artifact_id INTEGER NOT NULL
+- requested_by_uid VARCHAR(128) NOT NULL
+- reason TEXT NOT NULL DEFAULT ''
+- status VARCHAR(20) NOT NULL DEFAULT 'pending'   // pending | ready | failed
+- retrieval_ref VARCHAR(255)
+- requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+- completed_at TIMESTAMPTZ
+- error_detail TEXT NOT NULL DEFAULT ''
+
+BACKEND
+1. POST /api/prestige-pass/admin/wallet/archive/retrieve
+Body:
+{
+  "artifactId": 123,
+  "reason": "Audit review"
+}
+2. GET /api/prestige-pass/admin/wallet/archive/retrievals
+3. POST /api/prestige-pass/admin/wallet/archive/retrievals/:id/mark-ready
+- finance_admin only
+- can be manual in this phase if storage backend is not automated yet
+
+FRONTEND
+Archive tab
+- "Request Retrieval" button per artifact
+- retrieval queue table
+- ready/failed badges
+- retrieval reference field shown when available
+
+ACCEPTANCE
+- retrieval request never mutates archive source
+- queue shows lifecycle clearly
+- ready state can be acknowledged and downloaded later
+
+==================================================
+3.6E - REPLAY DIFF VISUALIZATION
+==================================================
+
+GOAL
+Turn replay findings into something humans can review fast.
+
+DB
+No new core table required
+Optional if needed later:
+finance_replay_diffs
+- id SERIAL PRIMARY KEY
+- replay_run_id INTEGER NOT NULL
+- entity_type VARCHAR(64) NOT NULL
+- entity_id VARCHAR(128) NOT NULL
+- before JSONB NOT NULL
+- after JSONB NOT NULL
+- created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+BACKEND
+1. Extend GET /api/prestige-pass/admin/wallet/replay/reports/:runId
+Return:
+- summary
+- signed report
+- normalized diff rows:
+  - entityType
+  - entityId
+  - before
+  - after
+  - changedFields[]
+
+2. Optional:
+GET /api/prestige-pass/admin/wallet/replay/diff/:runId
+
+FRONTEND
+Recovery & Replay tab
+- "Diff Viewer" panel
+- side-by-side before/after JSON
+- changed fields chip list
+- filter by entity type
+- copy diff button
+
+ACCEPTANCE
+- dry-run findings are human-readable
+- execute reports show the exact delta clearly
+- no raw ledger mutations ever shown as editable
+
+==================================================
+3.6F - FINANCE POLICY ENGINE
+==================================================
+
+GOAL
+Centralize finance rules now spread across code and env vars.
+
+DB
+Create table: finance_policy_rules
+- id SERIAL PRIMARY KEY
+- policy_key VARCHAR(64) UNIQUE NOT NULL
+- policy_scope VARCHAR(32) NOT NULL   // global | division
+- division_code VARCHAR(40)
+- value_json JSONB NOT NULL
+- enabled BOOLEAN NOT NULL DEFAULT true
+- updated_by_uid VARCHAR(128)
+- updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+Seed examples:
+- refund_auto_approve_limit
+- payout_auto_release_limit
+- dispute_sla_hours
+- forecast_default_horizon
+- archive_protected_entities
+
+BACKEND
+1. GET /api/prestige-pass/admin/wallet/policies
+2. POST /api/prestige-pass/admin/wallet/policies
+3. PATCH /api/prestige-pass/admin/wallet/policies/:policyKey
+4. Refactor selected 3.5/3.4 logic to read policy first, env/config second
+
+FRONTEND
+New "Policies" tab
+- table of policies
+- JSON value editor
+- enable/disable
+- scope and division display
+
+ACCEPTANCE
+- policy values override previous defaults safely
+- missing policy falls back to current behavior
+- policy changes are audited
+
+==================================================
+3.6G - QUARTER-END & YEAR-END CLOSE PACKS
+==================================================
+
+GOAL
+Extend month-end reporting into board/audit-ready quarter and year packs.
+
+DB
+No required new table
+Optional cache:
+period_close_packs
+- id SERIAL PRIMARY KEY
+- period_type VARCHAR(16) NOT NULL   // quarter | year
+- period_key VARCHAR(16) NOT NULL    // 2026-Q1, 2026
+- generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+- pack_json JSONB NOT NULL
+- signature VARCHAR(255) NOT NULL
+
+BACKEND
+1. GET /api/prestige-pass/admin/wallet/period-pack?type=quarter|year&period=2026-Q1
+Returns:
+- total collected
+- total payouts
+- total refunds
+- total VAT
+- margin
+- dispute summary
+- SLA summary
+- reconciliation exception summary
+- signoff coverage
+- variance commentary rollup
+- signature
+
+2. GET /api/prestige-pass/admin/wallet/period-pack/export?type=quarter|year&period=...
+- deterministic JSON or CSV/ZIP export
+
+FRONTEND
+Executive / Finance Close area
+- "Quarter-End Pack" and "Year-End Pack" controls
+- summary tiles
+- export button
+- signoff coverage indicator
+
+ACCEPTANCE
+- period totals reconcile to monthly closes
+- output deterministic and signed
+- commentary rollup preserved
+
+==================================================
+RECOMMENDED BUILD ORDER
+==================================================
+
+1. 3.6A - forecast tuning & model weighting
+2. 3.6B - payout approval policy automation
+3. 3.6C - alert fatigue controls & digest personalization
+4. 3.6D - archive retrieval workflow
+5. 3.6E - replay diff visualization
+6. 3.6F - finance policy engine
+7. 3.6G - quarter-end & year-end close packs
+
+==================================================
+PARALLELIZATION
+==================================================
+
+Can build in parallel:
+- 3.6A + 3.6B
+- 3.6C + 3.6D
+- 3.6E + 3.6F after state model is stable
+
+Do last:
+- 3.6G, because it depends on stable period data and commentary
+
+==================================================
+WHAT DOES NOT CHANGE
+==================================================
+
+- wallet hold / release / debit / refund architecture
+- payout batch math
+- dispute case source-of-truth
+- daily close record structure
+- monthly sign-off structure
+- replay approval workflow
+- existing role hierarchy
+- existing audit bundle signature approach
+
+==================================================
+SUCCESS CRITERIA
+==================================================
+
+By the end of 3.6:
+- finance can tune forecast behavior explicitly
+- payout approvals are policy-driven, not env-driven
+- users control digest fatigue without losing critical alerts
+- archive is retrievable, not just executable
+- replay findings are reviewable by humans
+- finance rules live in one policy engine
+- quarter and year packs are exportable and signed
+
+This phase turns governed automation into configurable finance intelligence.

@@ -12902,3 +12902,102 @@ export const financeReplayReports = pgTable("finance_replay_reports", {
 });
 export type FinanceReplayReport       = typeof financeReplayReports.$inferSelect;
 export type InsertFinanceReplayReport = typeof financeReplayReports.$inferInsert;
+
+// ── Phase 3.6 ────────────────────────────────────────────────────────────────
+
+// 3.6A — Forecast Model Weights
+export const cashForecastWeights = pgTable("cash_forecast_weights", {
+  id:            serial("id").primaryKey(),
+  horizonDays:   integer("horizon_days").notNull(),
+  factorName:    varchar("factor_name",    { length: 64 }).notNull(),
+  weight:        numeric("weight",         { precision: 8, scale: 4 }).notNull().default("1"),
+  enabled:       boolean("enabled").notNull().default(true),
+  updatedByUid:  varchar("updated_by_uid", { length: 128 }),
+  updatedAt:     timestamp("updated_at",   { withTimezone: true }).notNull().defaultNow(),
+});
+export type CashForecastWeight       = typeof cashForecastWeights.$inferSelect;
+export type InsertCashForecastWeight = typeof cashForecastWeights.$inferInsert;
+
+// 3.6B — Payout Release Policies
+export const payoutReleasePolicies = pgTable("payout_release_policies", {
+  id:                    serial("id").primaryKey(),
+  divisionCode:          varchar("division_code",   { length: 40 }),
+  minAmountCents:        integer("min_amount_cents").notNull().default(0),
+  maxAmountCents:        integer("max_amount_cents"),
+  requiresSecondApproval: boolean("requires_second_approval").notNull().default(true),
+  allowedAutoRelease:    boolean("allowed_auto_release").notNull().default(false),
+  enabled:               boolean("enabled").notNull().default(true),
+  notes:                 text("notes").notNull().default(""),
+  updatedByUid:          varchar("updated_by_uid",  { length: 128 }),
+  updatedAt:             timestamp("updated_at",     { withTimezone: true }).notNull().defaultNow(),
+});
+export type PayoutReleasePolicy       = typeof payoutReleasePolicies.$inferSelect;
+export type InsertPayoutReleasePolicy = typeof payoutReleasePolicies.$inferInsert;
+
+// 3.6C — Finance Digest Preferences
+export const financeDigestPreferences = pgTable("finance_digest_preferences", {
+  id:                      serial("id").primaryKey(),
+  userUid:                 varchar("user_uid",    { length: 128 }).notNull(),
+  digestType:              varchar("digest_type", { length: 32 }).notNull(),
+  minSeverity:             varchar("min_severity",{ length: 16 }).notNull().default("warning"),
+  includeControlCenter:    boolean("include_control_center").notNull().default(true),
+  includeExecutiveSummary: boolean("include_executive_summary").notNull().default(false),
+  enabled:                 boolean("enabled").notNull().default(true),
+  updatedAt:               timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type FinanceDigestPreference       = typeof financeDigestPreferences.$inferSelect;
+export type InsertFinanceDigestPreference = typeof financeDigestPreferences.$inferInsert;
+
+// 3.6D — Archive Retrievals
+export const financeArchiveRetrievals = pgTable("finance_archive_retrievals", {
+  id:              serial("id").primaryKey(),
+  artifactId:      integer("artifact_id").notNull(),
+  requestedByUid:  varchar("requested_by_uid", { length: 128 }).notNull(),
+  reason:          text("reason").notNull().default(""),
+  status:          varchar("status",            { length: 20 }).notNull().default("pending"),
+  retrievalRef:    varchar("retrieval_ref",     { length: 255 }),
+  requestedAt:     timestamp("requested_at",    { withTimezone: true }).notNull().defaultNow(),
+  completedAt:     timestamp("completed_at",    { withTimezone: true }),
+  errorDetail:     text("error_detail").notNull().default(""),
+});
+export type FinanceArchiveRetrieval       = typeof financeArchiveRetrievals.$inferSelect;
+export type InsertFinanceArchiveRetrieval = typeof financeArchiveRetrievals.$inferInsert;
+
+// 3.6E — Replay Diffs
+export const financeReplayDiffs = pgTable("finance_replay_diffs", {
+  id:           serial("id").primaryKey(),
+  replayRunId:  integer("replay_run_id").notNull(),
+  entityType:   varchar("entity_type",  { length: 64 }).notNull(),
+  entityId:     varchar("entity_id",    { length: 128 }).notNull(),
+  before:       jsonb("before").notNull().default(sql`'{}'::jsonb`),
+  after:        jsonb("after").notNull().default(sql`'{}'::jsonb`),
+  createdAt:    timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type FinanceReplayDiff       = typeof financeReplayDiffs.$inferSelect;
+export type InsertFinanceReplayDiff = typeof financeReplayDiffs.$inferInsert;
+
+// 3.6F — Finance Policy Rules
+export const financePolicyRules = pgTable("finance_policy_rules", {
+  id:            serial("id").primaryKey(),
+  policyKey:     varchar("policy_key",    { length: 64 }).notNull().unique(),
+  policyScope:   varchar("policy_scope",  { length: 32 }).notNull(),
+  divisionCode:  varchar("division_code", { length: 40 }),
+  valueJson:     jsonb("value_json").notNull().default(sql`'{}'::jsonb`),
+  enabled:       boolean("enabled").notNull().default(true),
+  updatedByUid:  varchar("updated_by_uid",{ length: 128 }),
+  updatedAt:     timestamp("updated_at",  { withTimezone: true }).notNull().defaultNow(),
+});
+export type FinancePolicyRule       = typeof financePolicyRules.$inferSelect;
+export type InsertFinancePolicyRule = typeof financePolicyRules.$inferInsert;
+
+// 3.6G — Period Close Packs
+export const periodClosePacks = pgTable("period_close_packs", {
+  id:          serial("id").primaryKey(),
+  periodType:  varchar("period_type", { length: 16 }).notNull(),
+  periodKey:   varchar("period_key",  { length: 16 }).notNull(),
+  generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+  packJson:    jsonb("pack_json").notNull().default(sql`'{}'::jsonb`),
+  signature:   varchar("signature",   { length: 255 }).notNull(),
+});
+export type PeriodClosePack       = typeof periodClosePacks.$inferSelect;
+export type InsertPeriodClosePack = typeof periodClosePacks.$inferInsert;
