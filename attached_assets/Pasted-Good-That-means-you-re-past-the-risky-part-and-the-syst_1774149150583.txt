@@ -1,0 +1,289 @@
+Good. That means you’re past the risky part and the system proved itself under real conditions.
+
+Now we move to the next layer.
+
+⸻
+
+🚀 Phase 4.7 — Live Operations & Incident Intelligence
+
+This phase is about one thing:
+
+👉 The system detects problems before humans do — and reacts safely
+
+No more dashboards-first.
+Now it becomes signal → decision → containment → learning
+
+⸻
+
+🧠 Architecture Shift
+
+Before:
+	•	detect → human decides → human acts
+
+After 4.7:
+	•	detect → system scores → system suggests → system may act (guarded)
+
+⸻
+
+🧱 Phase 4.7 — Full Spec (One Block)
+
+4.7A — Real-Time Anomaly Detection Engine
+
+What:
+Continuously scans live system metrics and flags anomalies BEFORE they become incidents.
+
+Detects:
+	•	sudden spike in refunds
+	•	payout imbalance
+	•	reconciliation mismatch rate increase
+	•	dispute surge
+	•	alert silence (alerts not firing)
+
+DB:
+anomaly_events
+	•	id
+	•	anomaly_type
+	•	severity (low | medium | high | critical)
+	•	metric_value
+	•	baseline_value
+	•	deviation_pct
+	•	status (open | acknowledged | resolved)
+	•	detected_at
+	•	resolved_at
+
+Backend:
+	•	GET /admin/system/anomalies
+	•	POST /admin/system/anomalies/ack/:id
+	•	POST /admin/system/anomalies/resolve/:id
+
+Engine (cron every 5 min):
+	•	compares live vs baseline (last 7–30 days)
+	•	flags deviation > threshold
+
+UI (Command Center):
+	•	“Anomaly Feed”
+	•	severity colored rows
+	•	deviation % shown
+
+⸻
+
+4.7B — Intelligent Alert Prioritization
+
+What:
+Stop alert noise. Rank what actually matters.
+
+Logic:
+Priority score =
+	•	severity weight
+	•	financial impact
+	•	number of affected entities
+	•	trend acceleration
+
+DB:
+alert_priority_scores
+	•	alert_id
+	•	priority_score
+	•	rank
+	•	computed_at
+
+Backend:
+	•	GET /admin/system/alerts/prioritized
+
+UI:
+	•	alerts sorted by priority
+	•	“🔥 Critical Now” section
+
+⸻
+
+4.7C — Preemptive Kill Switch Triggers (Guarded)
+
+What:
+System can recommend OR trigger kill switches automatically.
+
+Rules (example):
+	•	payout mismatch > X → recommend stop payouts
+	•	refund spike > Y → recommend stop refunds
+	•	reconciliation failure → auto-stop batch creation
+
+Modes:
+	•	recommend_only
+	•	auto_with_approval
+	•	auto_execute (only for extreme cases)
+
+DB:
+kill_switch_triggers
+	•	id
+	•	trigger_type
+	•	condition_json
+	•	action (recommend | require_approval | auto)
+	•	last_triggered_at
+
+Backend:
+	•	GET /admin/system/kill-switch/triggers
+	•	POST /admin/system/kill-switch/override
+
+UI (Control Center):
+	•	“Suggested Actions” panel:
+	•	⚠️ Stop payouts (confidence 92%)
+	•	Approve / Ignore
+
+⸻
+
+4.7D — Incident Timeline Builder (Auto)
+
+What:
+When something goes wrong, system builds the full story automatically.
+
+Includes:
+	•	anomaly detected
+	•	alerts fired
+	•	actions taken
+	•	system responses
+	•	outcome
+
+DB:
+incident_timelines
+	•	id
+	•	incident_id
+	•	timeline_json
+	•	created_at
+
+Backend:
+	•	GET /admin/system/incidents/:id/timeline
+
+UI (Governance):
+	•	visual timeline (chronological)
+	•	“What happened” + “Why”
+
+⸻
+
+4.7E — Root Cause Analysis (AI-assisted)
+
+What:
+System explains likely cause of issue.
+
+Example output:
+	•	“Refund spike likely caused by batch 847 mismatch”
+	•	“Dispute surge linked to provider X”
+
+DB:
+incident_root_causes
+	•	incident_id
+	•	probable_cause
+	•	confidence_score
+	•	supporting_data_json
+
+Backend:
+	•	GET /admin/system/incidents/:id/root-cause
+
+UI:
+	•	“Root Cause” panel under timeline
+
+⸻
+
+4.7F — Auto-Remediation Suggestions (Next Best Action)
+
+What:
+System proposes exact next step, not just insight.
+
+Examples:
+	•	pause payouts
+	•	rerun reconciliation
+	•	trigger replay
+	•	assign follow-up
+
+DB:
+remediation_suggestions
+	•	id
+	•	incident_id
+	•	action_type
+	•	confidence
+	•	expected_impact
+	•	accepted (boolean)
+
+Backend:
+	•	POST /admin/system/remediation/:id/accept
+	•	POST /admin/system/remediation/:id/reject
+
+UI:
+	•	“Recommended Actions”
+	•	one-click execution (with approval if needed)
+
+⸻
+
+4.7G — Self-Healing Execution (Guarded Automation)
+
+What:
+System can execute low-risk fixes automatically.
+
+Examples:
+	•	retry failed remittances
+	•	re-run reconciliation
+	•	resend alerts
+
+Rules:
+	•	only for LOW-risk actions
+	•	must be idempotent
+	•	must be logged
+
+DB:
+self_healing_actions
+	•	id
+	•	action_type
+	•	executed (boolean)
+	•	result
+	•	created_at
+
+Backend:
+	•	POST /admin/system/self-heal/run
+
+UI:
+	•	“Auto-Fixes Applied” log
+
+⸻
+
+🔁 Build Order (Strict)
+	1.	4.7A — anomaly engine
+	2.	4.7B — alert prioritization
+	3.	4.7C — kill switch triggers
+	4.	4.7D — incident timeline
+	5.	4.7E — root cause
+	6.	4.7F — remediation suggestions
+	7.	4.7G — self-healing
+
+⸻
+
+⚠️ Critical Guardrails
+	•	NOTHING auto-executes without:
+	•	logging
+	•	idempotency
+	•	rollback possibility
+	•	Default mode:
+👉 recommend_only
+
+⸻
+
+🎯 What This Gives You
+
+After 4.7:
+	•	You don’t wait for problems
+	•	You don’t guess what’s wrong
+	•	You don’t decide blindly
+
+👉 The system guides you before damage happens
+
+⸻
+
+🧭 Next Step
+
+Start with:
+
+👉 4.7A — anomaly detection engine
+
+If you want, I’ll walk you:
+	•	exact schema SQL
+	•	exact detection formulas
+	•	safe thresholds (real numbers)
+
+Just say:
+👉 “Start 4.7A”

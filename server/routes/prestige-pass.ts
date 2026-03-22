@@ -17179,4 +17179,170 @@ router.post('/admin/system/rollout/set-phase', async (req, res) => {
   }
 });
 
+// ─── 4.7A — REAL-TIME ANOMALY DETECTION ENGINE ───────────────────────────────
+
+const ANOMALY_THRESHOLDS: Record<string, { deviationPct: number; severity: string }> = {
+  refund_spike:                { deviationPct: 50,  severity: 'high' },
+  payout_imbalance:            { deviationPct: 20,  severity: 'high' },
+  reconciliation_mismatch_rate:{ deviationPct: 30,  severity: 'critical' },
+  dispute_surge:               { deviationPct: 60,  severity: 'high' },
+  alert_silence:               { deviationPct: 100, severity: 'medium' },
+};
+
+async function runAnomalyDetection() {
+  try {
+    const now = new Date();
+
+    // ── 1. Refund spike: refunds in last 60 min vs 7-day hourly average ──
+    const refundRecent = await pool.query(`
+      SELECT COUNT(*) AS cnt FROM wallet_transactions
+      WHERE type = 'refund' AND created_at >= NOW() - INTERVAL '60 minutes'
+    `);
+    const refundBaseline = await pool.query(`
+      SELECT COALESCE(COUNT(*) / 168.0, 0) AS avg_per_hour FROM wallet_transactions
+      WHERE type = 'refund' AND created_at >= NOW() - INTERVAL '7 days'
+    `);
+    const refundCurrent  = parseFloat(refundRecent.rows[0]?.cnt ?? '0');
+    const refundBase     = parseFloat(refundBaseline.rows[0]?.avg_per_hour ?? '0');
+    if (refundBase > 0) {
+      const devPct = ((refundCurrent - refundBase) / refundBase) * 100;
+      if (devPct > ANOMALY_THRESHOLDS.refund_spike.deviationPct) {
+        const existing = await pool.query(`SELECT id FROM anomaly_events WHERE anomaly_type = 'refund_spike' AND status = 'open' AND detected_at >= NOW() - INTERVAL '30 minutes'`);
+        if (!existing.rows.length) {
+          await pool.query(`INSERT INTO anomaly_events (anomaly_type, severity, metric_value, baseline_value, deviation_pct, context_json)
+            VALUES ('refund_spike', '${ANOMALY_THRESHOLDS.refund_spike.severity}', ${refundCurrent}, ${refundBase}, ${devPct.toFixed(1)}, '{"window":"60m","baseline_window":"7d"}'::jsonb)`);
+        }
+      }
+    }
+
+    // ── 2. Payout imbalance: payout amount vs booking amount last 24h ──
+    const payoutSum = await pool.query(`SELECT COALESCE(SUM(ABS(amount)),0) AS total FROM wallet_transactions WHERE type = 'payout' AND created_at >= NOW() - INTERVAL '24 hours'`);
+    const bookingSum = await pool.query(`SELECT COALESCE(SUM(ABS(amount)),0) AS total FROM wallet_transactions WHERE type IN ('booking','payment') AND created_at >= NOW() - INTERVAL '24 hours'`);
+    const payoutTotal  = parseFloat(payoutSum.rows[0]?.total ?? '0');
+    const bookingTotal = parseFloat(bookingSum.rows[0]?.total ?? '0');
+    if (bookingTotal > 0) {
+      const imbalancePct = Math.abs(((payoutTotal - bookingTotal) / bookingTotal) * 100);
+      if (imbalancePct > ANOMALY_THRESHOLDS.payout_imbalance.deviationPct) {
+        const existing = await pool.query(`SELECT id FROM anomaly_events WHERE anomaly_type = 'payout_imbalance' AND status = 'open' AND detected_at >= NOW() - INTERVAL '30 minutes'`);
+        if (!existing.rows.length) {
+          await pool.query(`INSERT INTO anomaly_events (anomaly_type, severity, metric_value, baseline_value, deviation_pct, context_json)
+            VALUES ('payout_imbalance', '${ANOMALY_THRESHOLDS.payout_imbalance.severity}', ${payoutTotal}, ${bookingTotal}, ${imbalancePct.toFixed(1)}, '{"window":"24h","note":"payout_vs_booking"}'::jsonb)`);
+        }
+      }
+    }
+
+    // ── 3. Reconciliation mismatch rate ──
+    const recentMismatches = await pool.query(`SELECT COUNT(*) AS cnt FROM reconciliation_reports WHERE status = 'mismatch' AND created_at >= NOW() - INTERVAL '2 hours'`);
+    const baselineMismatches = await pool.query(`SELECT COALESCE(COUNT(*) / 14.0, 0) AS avg_per_2h FROM reconciliation_reports WHERE status = 'mismatch' AND created_at >= NOW() - INTERVAL '7 days'`);
+    const reconCurrent = parseFloat(recentMismatches.rows[0]?.cnt ?? '0');
+    const reconBase    = parseFloat(baselineMismatches.rows[0]?.avg_per_2h ?? '0');
+    if (reconBase > 0) {
+      const reconDevPct = ((reconCurrent - reconBase) / reconBase) * 100;
+      if (reconDevPct > ANOMALY_THRESHOLDS.reconciliation_mismatch_rate.deviationPct) {
+        const existing = await pool.query(`SELECT id FROM anomaly_events WHERE anomaly_type = 'reconciliation_mismatch_rate' AND status = 'open' AND detected_at >= NOW() - INTERVAL '30 minutes'`);
+        if (!existing.rows.length) {
+          await pool.query(`INSERT INTO anomaly_events (anomaly_type, severity, metric_value, baseline_value, deviation_pct, context_json)
+            VALUES ('reconciliation_mismatch_rate', '${ANOMALY_THRESHOLDS.reconciliation_mismatch_rate.severity}', ${reconCurrent}, ${reconBase}, ${reconDevPct.toFixed(1)}, '{"window":"2h","baseline_window":"7d"}'::jsonb)`);
+        }
+      }
+    }
+
+    // ── 4. Dispute surge ──
+    const disputeRecent = await pool.query(`SELECT COUNT(*) AS cnt FROM disputes WHERE created_at >= NOW() - INTERVAL '60 minutes'`);
+    const disputeBaseline = await pool.query(`SELECT COALESCE(COUNT(*) / 168.0, 0) AS avg_per_hour FROM disputes WHERE created_at >= NOW() - INTERVAL '7 days'`);
+    const disputeCurrent = parseFloat(disputeRecent.rows[0]?.cnt ?? '0');
+    const disputeBase    = parseFloat(disputeBaseline.rows[0]?.avg_per_hour ?? '0');
+    if (disputeBase > 0) {
+      const disputeDevPct = ((disputeCurrent - disputeBase) / disputeBase) * 100;
+      if (disputeDevPct > ANOMALY_THRESHOLDS.dispute_surge.deviationPct) {
+        const existing = await pool.query(`SELECT id FROM anomaly_events WHERE anomaly_type = 'dispute_surge' AND status = 'open' AND detected_at >= NOW() - INTERVAL '30 minutes'`);
+        if (!existing.rows.length) {
+          await pool.query(`INSERT INTO anomaly_events (anomaly_type, severity, metric_value, baseline_value, deviation_pct, context_json)
+            VALUES ('dispute_surge', '${ANOMALY_THRESHOLDS.dispute_surge.severity}', ${disputeCurrent}, ${disputeBase}, ${disputeDevPct.toFixed(1)}, '{"window":"60m","baseline_window":"7d"}'::jsonb)`);
+        }
+      }
+    }
+
+    // ── 5. Alert silence: no alerts in last 60 min but system has recent activity ──
+    const alertCount = await pool.query(`SELECT COUNT(*) AS cnt FROM governance_alerts WHERE created_at >= NOW() - INTERVAL '60 minutes'`);
+    const activityCount = await pool.query(`SELECT COUNT(*) AS cnt FROM wallet_transactions WHERE created_at >= NOW() - INTERVAL '60 minutes'`);
+    const alertsRecent   = parseInt(alertCount.rows[0]?.cnt ?? '0');
+    const activityRecent = parseInt(activityCount.rows[0]?.cnt ?? '0');
+    if (alertsRecent === 0 && activityRecent >= 5) {
+      const existing = await pool.query(`SELECT id FROM anomaly_events WHERE anomaly_type = 'alert_silence' AND status = 'open' AND detected_at >= NOW() - INTERVAL '60 minutes'`);
+      if (!existing.rows.length) {
+        await pool.query(`INSERT INTO anomaly_events (anomaly_type, severity, metric_value, baseline_value, deviation_pct, context_json)
+          VALUES ('alert_silence', '${ANOMALY_THRESHOLDS.alert_silence.severity}', 0, ${activityRecent}, 100, '{"note":"no_alerts_despite_activity","activity_count":${activityRecent}}'::jsonb)`);
+      }
+    }
+
+  } catch (err: any) {
+    console.error('[AnomalyEngine] Detection run failed:', err.message);
+  }
+}
+
+// Run anomaly detection every 5 minutes
+setInterval(runAnomalyDetection, 5 * 60 * 1000);
+// Run once on startup (after 30s to allow DB to be ready)
+setTimeout(runAnomalyDetection, 30_000);
+
+// GET /admin/system/anomalies
+router.get('/admin/system/anomalies', async (req, res) => {
+  try {
+    const { status, severity } = req.query;
+    let where = 'WHERE 1=1';
+    if (status)   where += ` AND status = '${status}'`;
+    if (severity) where += ` AND severity = '${severity}'`;
+
+    const rows = await pool.query(`
+      SELECT * FROM anomaly_events ${where}
+      ORDER BY detected_at DESC LIMIT 100
+    `);
+
+    const summary = {
+      total: rows.rows.length,
+      open:     rows.rows.filter((r: any) => r.status === 'open').length,
+      critical: rows.rows.filter((r: any) => r.severity === 'critical').length,
+      high:     rows.rows.filter((r: any) => r.severity === 'high').length,
+    };
+
+    return res.json({ anomalies: rows.rows, summary });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Anomaly fetch failed', detail: err.message });
+  }
+});
+
+// POST /admin/system/anomalies/ack/:id
+router.post('/admin/system/anomalies/ack/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    await pool.query(`UPDATE anomaly_events SET status = 'acknowledged' WHERE id = ${id}`);
+    return res.json({ id, status: 'acknowledged', message: 'Anomaly acknowledged' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Acknowledge failed', detail: err.message });
+  }
+});
+
+// POST /admin/system/anomalies/resolve/:id
+router.post('/admin/system/anomalies/resolve/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    await pool.query(`UPDATE anomaly_events SET status = 'resolved', resolved_at = NOW() WHERE id = ${id}`);
+    return res.json({ id, status: 'resolved', resolvedAt: new Date().toISOString(), message: 'Anomaly resolved' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Resolve failed', detail: err.message });
+  }
+});
+
+// POST /admin/system/anomalies/run-detection (manual trigger)
+router.post('/admin/system/anomalies/run-detection', async (req, res) => {
+  try {
+    await runAnomalyDetection();
+    const rows = await pool.query(`SELECT * FROM anomaly_events WHERE status = 'open' ORDER BY detected_at DESC LIMIT 20`);
+    return res.json({ message: 'Detection run complete', openAnomalies: rows.rows.length, anomalies: rows.rows });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Detection run failed', detail: err.message });
+  }
+});
+
 export default router;

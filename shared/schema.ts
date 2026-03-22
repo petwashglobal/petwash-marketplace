@@ -13740,3 +13740,21 @@ export const rolloutPhases = pgTable("rollout_phases", {
 });
 export type RolloutPhase       = typeof rolloutPhases.$inferSelect;
 export type InsertRolloutPhase = typeof rolloutPhases.$inferInsert;
+
+// ─── Phase 4.7 — Live Operations & Incident Intelligence ────────────────────
+
+// 4.7A — Anomaly Events
+export const anomalyEvents = pgTable("anomaly_events", {
+  id:            serial("id").primaryKey(),
+  anomalyType:   text("anomaly_type").notNull(),
+  severity:      text("severity").notNull().default('medium'),
+  metricValue:   numeric("metric_value").notNull().default('0'),
+  baselineValue: numeric("baseline_value").notNull().default('0'),
+  deviationPct:  numeric("deviation_pct").notNull().default('0'),
+  status:        text("status").notNull().default('open'),
+  contextJson:   jsonb("context_json"),
+  detectedAt:    timestamp("detected_at", { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt:    timestamp("resolved_at",  { withTimezone: true }),
+});
+export type AnomalyEvent       = typeof anomalyEvents.$inferSelect;
+export type InsertAnomalyEvent = typeof anomalyEvents.$inferInsert;

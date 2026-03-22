@@ -2356,6 +2356,28 @@ export default function AdminWalletDashboard() {
     onError: (e: any) => toast({ title: e?.message ?? 'Phase change failed', variant: 'destructive' }),
   });
 
+  // ─── Phase 4.7 — Live Operations & Incident Intelligence ────────────────────
+
+  // 4.7A — Anomaly Detection Feed
+  const [anomalyStatusFilter, setAnomalyStatusFilter] = useState<string>('open');
+  const { data: anomalyFeed, isLoading: anomalyLoading, refetch: refetchAnomalies } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/system/anomalies', anomalyStatusFilter],
+    queryFn: () => fetch(`/api/prestige-pass/admin/system/anomalies?status=${anomalyStatusFilter}`).then(r => r.json()),
+    refetchInterval: 30_000,
+  });
+  const { mutate: ackAnomaly } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest('POST', `/api/prestige-pass/admin/system/anomalies/ack/${id}`, {}),
+    onSuccess: () => { refetchAnomalies(); toast({ title: 'Anomaly acknowledged' }); },
+  });
+  const { mutate: resolveAnomaly } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest('POST', `/api/prestige-pass/admin/system/anomalies/resolve/${id}`, {}),
+    onSuccess: () => { refetchAnomalies(); toast({ title: 'Anomaly resolved' }); },
+  });
+  const { mutate: runDetection, isPending: detectionPending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest('POST', '/api/prestige-pass/admin/system/anomalies/run-detection', {}),
+    onSuccess: (d) => { refetchAnomalies(); toast({ title: `Detection complete — ${d.openAnomalies} open` }); },
+  });
+
   // ── Phase 3.6 UI aliases & supplemental state ──────────────────────────────
   // 3.6A — weight form state for the UI card
   const [weightForm, setWeightForm] = useState({ signalKey: '', divisionCode: '', weight: '' });
@@ -13457,6 +13479,102 @@ export default function AdminWalletDashboard() {
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded-lg">Click "Check Now" to run consistency scan</div>
                   )
                 }
+              </CardContent>
+            </Card>
+
+            {/* 4.7A — ANOMALY DETECTION FEED */}
+            <Card className={anomalyFeed?.summary?.critical > 0 ? 'border-red-400 border-2' : anomalyFeed?.summary?.high > 0 ? 'border-orange-300 border-2' : ''}>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-red-600" /> Anomaly Feed
+                  {anomalyFeed?.summary && anomalyFeed.summary.open > 0 && (
+                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold animate-pulse ${anomalyFeed.summary.critical > 0 ? 'bg-red-600 text-white' : anomalyFeed.summary.high > 0 ? 'bg-orange-500 text-white' : 'bg-amber-100 text-amber-800'}`}>
+                      {anomalyFeed.summary.open} OPEN {anomalyFeed.summary.critical > 0 ? '— CRITICAL' : anomalyFeed.summary.high > 0 ? '— HIGH' : ''}
+                    </span>
+                  )}
+                  {anomalyFeed?.summary?.open === 0 && (
+                    <span className="text-[9px] px-2 py-0.5 rounded-full font-bold bg-green-100 text-green-700">✓ CLEAN</span>
+                  )}
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <select value={anomalyStatusFilter} onChange={e => { setAnomalyStatusFilter(e.target.value); refetchAnomalies(); }} className="border rounded px-2 py-0.5 text-xs">
+                    <option value="open">Open</option>
+                    <option value="acknowledged">Acknowledged</option>
+                    <option value="resolved">Resolved</option>
+                  </select>
+                  <button disabled={detectionPending} onClick={() => runDetection()}
+                    className="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-40 flex items-center gap-1">
+                    {detectionPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Scan Now
+                  </button>
+                  <button onClick={() => refetchAnomalies()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">
+                    <RefreshCw className="w-3 h-3" />
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="text-xs text-gray-500 bg-gray-50 border rounded p-2">
+                  Scans every 5 min. Detects: refund spikes, payout imbalances, reconciliation drift, dispute surges, alert silence. Thresholds are deviation from 7-day baseline.
+                </div>
+                {anomalyLoading ? (
+                  <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 bg-gray-100 animate-pulse rounded" />)}</div>
+                ) : anomalyFeed?.anomalies?.length > 0 ? (
+                  <div className="space-y-2">
+                    {anomalyFeed.anomalies.map((a: any) => {
+                      const sev = a.severity;
+                      const sevColor = sev === 'critical' ? 'border-red-400 bg-red-50/30' : sev === 'high' ? 'border-orange-300 bg-orange-50/20' : sev === 'medium' ? 'border-amber-200 bg-amber-50/10' : 'border-gray-200';
+                      const sevBadge = sev === 'critical' ? 'bg-red-600 text-white' : sev === 'high' ? 'bg-orange-500 text-white' : sev === 'medium' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600';
+                      return (
+                        <div key={a.id} className={`border rounded-lg p-2.5 ${sevColor}`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${sevBadge}`}>{sev}</span>
+                                <span className="text-xs font-semibold text-gray-800 capitalize">{a.anomaly_type?.replace(/_/g, ' ')}</span>
+                                <span className={`text-[10px] font-bold ${parseFloat(a.deviation_pct) > 100 ? 'text-red-600' : 'text-orange-600'}`}>+{parseFloat(a.deviation_pct).toFixed(1)}% deviation</span>
+                              </div>
+                              <div className="text-[10px] text-gray-500 mt-0.5 flex gap-3">
+                                <span>Current: <strong>{parseFloat(a.metric_value).toFixed(2)}</strong></span>
+                                <span>Baseline: {parseFloat(a.baseline_value).toFixed(2)}</span>
+                                <span className="text-gray-400">{new Date(a.detected_at).toLocaleString('he-IL')}</span>
+                              </div>
+                              {a.context_json && (
+                                <div className="text-[10px] text-gray-400 mt-0.5">
+                                  {Object.entries(a.context_json as Record<string, any>).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex gap-1 shrink-0">
+                              {a.status === 'open' && (
+                                <button onClick={() => ackAnomaly(a.id)} className="text-[10px] px-2 py-1 border border-amber-300 text-amber-700 rounded hover:bg-amber-50">Ack</button>
+                              )}
+                              {(a.status === 'open' || a.status === 'acknowledged') && (
+                                <button onClick={() => resolveAnomaly(a.id)} className="text-[10px] px-2 py-1 border border-green-300 text-green-700 rounded hover:bg-green-50">Resolve</button>
+                              )}
+                              {a.status === 'acknowledged' && (
+                                <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded">ACK</span>
+                              )}
+                              {a.status === 'resolved' && (
+                                <span className="text-[9px] px-1.5 py-0.5 bg-green-100 text-green-700 rounded">✓ RESOLVED</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-xs text-green-700 bg-green-50 border border-green-100 rounded p-4 text-center">
+                    ✓ No {anomalyStatusFilter} anomalies — system signals are within baseline thresholds
+                  </div>
+                )}
+                {anomalyFeed?.summary && (
+                  <div className="flex gap-4 text-xs pt-1 border-t">
+                    <span className="text-gray-600">Open: <strong>{anomalyFeed.summary.open}</strong></span>
+                    <span className="text-red-600">Critical: <strong>{anomalyFeed.summary.critical}</strong></span>
+                    <span className="text-orange-600">High: <strong>{anomalyFeed.summary.high}</strong></span>
+                    <span className="text-gray-400 ml-auto text-[10px]">Auto-scans every 5 min</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

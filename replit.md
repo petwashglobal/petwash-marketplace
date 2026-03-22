@@ -1719,3 +1719,27 @@ All endpoints under `/api/prestige-pass/admin/wallet/`. Admin-only. All schema c
 - 4.6F → Governance (TOP): Go-Live Readiness Gate — large colour-coded status banner (🔴/🟡/🟢/🚀), 6-condition grid, Approve button with approver name input
 - 4.6B → Governance: Config & Secrets Audit card — per-check valid/warning/critical badges, summary counts
 - 4.6E → Governance: Incident Drills card — scenario selector, step-by-step execution view, recovery time, history with success rate badge
+
+### Phase 4.7 — Live Operations & Incident Intelligence (IN PROGRESS)
+
+#### 4.7A — Real-Time Anomaly Detection Engine (COMPLETE)
+- **DB**: `anomaly_events` table — id, anomaly_type, severity (low/medium/high/critical), metric_value, baseline_value, deviation_pct, status (open/acknowledged/resolved), context_json, detected_at, resolved_at
+- **Engine**: `runAnomalyDetection()` runs every 5 min via `setInterval` + once on startup (30s delay). 5 detection checks:
+  - `refund_spike`: refunds last 60 min vs 7-day hourly average, threshold 50% deviation
+  - `payout_imbalance`: payout amount vs booking amount last 24h, threshold 20% deviation
+  - `reconciliation_mismatch_rate`: recon mismatches last 2h vs 7-day baseline, threshold 30%
+  - `dispute_surge`: disputes last 60 min vs 7-day hourly baseline, threshold 60%
+  - `alert_silence`: 0 alerts in last 60 min despite ≥5 wallet transactions
+  - Deduplication: skips insert if same open anomaly exists in last 30 min
+- **Routes** (all in `prestige-pass.ts`):
+  - `GET /admin/system/anomalies?status=&severity=` — list with summary
+  - `POST /admin/system/anomalies/ack/:id` — set status = acknowledged
+  - `POST /admin/system/anomalies/resolve/:id` — set status = resolved + resolved_at
+  - `POST /admin/system/anomalies/run-detection` — manual trigger
+- **Frontend** (Command Center tab — Anomaly Feed card):
+  - Card border turns red/orange when critical/high anomalies are open
+  - Pulsing badge: "N OPEN — CRITICAL/HIGH" or "✓ CLEAN"
+  - Status filter (open/acknowledged/resolved), Scan Now button, Refresh button
+  - Per-anomaly rows: severity badge, type label, deviation%, current/baseline values, context, Ack + Resolve buttons
+  - Summary row: open/critical/high counts, "Auto-scans every 5 min" note
+  - Auto-refetches every 30 seconds
