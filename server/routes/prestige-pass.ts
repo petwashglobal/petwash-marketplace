@@ -14365,4 +14365,536 @@ router.get('/admin/wallet/operating-review-pack/export', async (req: Request, re
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// PHASE 4.2 — CONTROLLED EXECUTION & LEARNING LOOP
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── 4.2A: Recommendation Action Workflow ────────────────────────────────────
+// GET  /recommendation-actions?scoreId=&actionType=&actorUid=
+router.get('/admin/wallet/recommendation-actions', async (req, res) => {
+  try {
+    const { scoreId, actionType, actorUid } = req.query as Record<string, string>;
+    const conditions: string[] = [];
+    if (scoreId)     conditions.push(`recommendation_score_id = ${parseInt(scoreId)}`);
+    if (actionType)  conditions.push(`action_type = '${actionType}'`);
+    if (actorUid)    conditions.push(`actor_uid = '${actorUid.replace(/'/g,"''")}'`);
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const rows = await pool.query(`
+      SELECT ra.*,
+             rs.recommendation_type, rs.target_entity_type, rs.target_entity_id,
+             rs.confidence_score
+      FROM recommendation_actions ra
+      LEFT JOIN recommendation_scores rs ON rs.id = ra.recommendation_score_id
+      ${where}
+      ORDER BY ra.created_at DESC LIMIT 100
+    `);
+    // SLA breach check — mark sla_met=false for overdue accepted items
+    const now = new Date();
+    const breached = rows.rows.filter((r: any) => r.action_type === 'accept' && r.sla_due_at && new Date(r.sla_due_at) < now && r.sla_met === null);
+    for (const b of breached) {
+      await pool.query(`UPDATE recommendation_actions SET sla_met = false WHERE id = ${b.id}`);
+      b.sla_met = false;
+    }
+    const byType = rows.rows.reduce((acc: any, r: any) => { acc[r.action_type] = (acc[r.action_type] || 0) + 1; return acc; }, {});
+    const slaBreaches = rows.rows.filter((r: any) => r.sla_met === false).length;
+    return res.json({ actions: rows.rows, byType, slaBreaches, total: rows.rows.length });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch recommendation actions', detail: err.message });
+  }
+});
+
+// POST /recommendation-actions  { recommendationScoreId, actionType, actorUid, reason, assignedTo, snoozedUntil, slaDueAt }
+router.post('/admin/wallet/recommendation-actions', async (req, res) => {
+  try {
+    const { recommendationScoreId, actionType, actorUid, reason, assignedTo, snoozedUntil, slaDueAt } = req.body;
+    if (!recommendationScoreId || !actionType || !actorUid) return res.status(400).json({ error: 'recommendationScoreId, actionType, actorUid required' });
+    if (actionType === 'reject' && !reason) return res.status(400).json({ error: 'Reason is mandatory when rejecting a recommendation' });
+    const validActions = ['accept', 'reject', 'snooze', 'assign'];
+    if (!validActions.includes(actionType)) return res.status(400).json({ error: `actionType must be one of: ${validActions.join(', ')}` });
+    // Compute SLA due: accept → 48 h default, assign → 72 h default, snooze → snoozedUntil
+    let computedSlaDueAt = slaDueAt || null;
+    if (!computedSlaDueAt) {
+      if (actionType === 'accept')  computedSlaDueAt = new Date(Date.now() + 48 * 3600 * 1000).toISOString();
+      if (actionType === 'assign')  computedSlaDueAt = new Date(Date.now() + 72 * 3600 * 1000).toISOString();
+      if (actionType === 'snooze' && snoozedUntil) computedSlaDueAt = snoozedUntil;
+    }
+    const snoozedUntilVal  = snoozedUntil  ? `'${snoozedUntil}'`  : 'NULL';
+    const slaDueAtVal      = computedSlaDueAt ? `'${computedSlaDueAt}'` : 'NULL';
+    const assignedToVal    = assignedTo ? `'${assignedTo.replace(/'/g,"''")}'` : 'NULL';
+    const reasonVal        = reason     ? `'${reason.replace(/'/g,"''")}'`     : 'NULL';
+    const inserted = await pool.query(`
+      INSERT INTO recommendation_actions (recommendation_score_id, action_type, actor_uid, reason, assigned_to, snoozed_until, sla_due_at, sla_met)
+      VALUES (${recommendationScoreId}, '${actionType}', '${actorUid.replace(/'/g,"''")}', ${reasonVal}, ${assignedToVal}, ${snoozedUntilVal}, ${slaDueAtVal}, NULL)
+      RETURNING *
+    `);
+    // If reject, apply confidence penalty on the source score
+    if (actionType === 'reject') {
+      await pool.query(`UPDATE recommendation_scores SET confidence_score = GREATEST(0, confidence_score - 5) WHERE id = ${recommendationScoreId}`);
+    }
+    return res.status(201).json({ action: inserted.rows[0], message: `Recommendation ${actionType}d successfully` });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to record recommendation action', detail: err.message });
+  }
+});
+
+// PATCH /recommendation-actions/:id  { slaMet }
+router.patch('/admin/wallet/recommendation-actions/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { slaMet } = req.body;
+    if (slaMet === undefined) return res.status(400).json({ error: 'slaMet required' });
+    const r = await pool.query(`UPDATE recommendation_actions SET sla_met = ${!!slaMet} WHERE id = ${id} RETURNING *`);
+    if (!r.rows.length) return res.status(404).json({ error: 'Action not found' });
+    return res.json({ action: r.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update action', detail: err.message });
+  }
+});
+
+// ── 4.2B: Remediation Outcome Scoring ───────────────────────────────────────
+// GET  /remediation-outcomes?planId=&outcomeStatus=
+router.get('/admin/wallet/remediation-outcomes', async (req, res) => {
+  try {
+    const { planId, outcomeStatus } = req.query as Record<string, string>;
+    const conditions: string[] = [];
+    if (planId)        conditions.push(`ro.remediation_plan_id = ${parseInt(planId)}`);
+    if (outcomeStatus) conditions.push(`ro.outcome_status = '${outcomeStatus}'`);
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const rows = await pool.query(`
+      SELECT ro.*, rp.issue_type, rp.target_entity_type, rp.target_entity_id, rp.status AS plan_status
+      FROM remediation_outcomes ro
+      LEFT JOIN remediation_plans rp ON rp.id = ro.remediation_plan_id
+      ${where}
+      ORDER BY ro.measured_at DESC LIMIT 200
+    `);
+    // Aggregate: improvement rate, avg delta
+    const improved  = rows.rows.filter((r: any) => r.outcome_status === 'improved').length;
+    const worsened  = rows.rows.filter((r: any) => r.outcome_status === 'worsened').length;
+    const unchanged = rows.rows.filter((r: any) => r.outcome_status === 'unchanged').length;
+    const total     = rows.rows.length;
+    const improvementRate = total > 0 ? ((improved / total) * 100).toFixed(1) : null;
+    return res.json({ outcomes: rows.rows, summary: { improved, worsened, unchanged, total, improvementRate } });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch remediation outcomes', detail: err.message });
+  }
+});
+
+// POST /remediation-outcomes  { remediationPlanId, metricName, beforeValue, afterValue, unit }
+router.post('/admin/wallet/remediation-outcomes', async (req, res) => {
+  try {
+    const { remediationPlanId, metricName, beforeValue, afterValue, unit } = req.body;
+    if (!remediationPlanId || !metricName) return res.status(400).json({ error: 'remediationPlanId, metricName required' });
+    const before = parseFloat(beforeValue ?? '0');
+    const after  = parseFloat(afterValue  ?? '0');
+    // Determine outcome status
+    const delta = after - before;
+    let outcomeStatus = 'unchanged';
+    // For metrics where lower is better (e.g. risk, stuck count), a negative delta is improvement
+    const lowerIsBetter = ['stuck_count', 'risk_score', 'alert_noise', 'error_rate', 'dispute_rate'].some(k => metricName.toLowerCase().includes(k));
+    if (lowerIsBetter) outcomeStatus = delta < -0.01 ? 'improved' : delta > 0.01 ? 'worsened' : 'unchanged';
+    else               outcomeStatus = delta >  0.01 ? 'improved' : delta < -0.01 ? 'worsened' : 'unchanged';
+    const unitVal = unit ? `'${unit.replace(/'/g,"''")}'` : 'NULL';
+    const inserted = await pool.query(`
+      INSERT INTO remediation_outcomes (remediation_plan_id, metric_name, before_value, after_value, unit, outcome_status)
+      VALUES (${remediationPlanId}, '${metricName.replace(/'/g,"''")}', ${before}, ${after}, ${unitVal}, '${outcomeStatus}')
+      RETURNING *
+    `);
+    // Trigger: if improved → boost confidence on associated rec scores; if worsened → reduce
+    if (outcomeStatus === 'improved') {
+      await pool.query(`
+        UPDATE recommendation_scores SET confidence_score = LEAST(100, confidence_score + 3)
+        WHERE target_entity_type = (SELECT target_entity_type FROM remediation_plans WHERE id = ${remediationPlanId} LIMIT 1)
+          AND target_entity_id   = (SELECT target_entity_id   FROM remediation_plans WHERE id = ${remediationPlanId} LIMIT 1)
+      `);
+    } else if (outcomeStatus === 'worsened') {
+      await pool.query(`
+        UPDATE recommendation_scores SET confidence_score = GREATEST(0, confidence_score - 5)
+        WHERE target_entity_type = (SELECT target_entity_type FROM remediation_plans WHERE id = ${remediationPlanId} LIMIT 1)
+          AND target_entity_id   = (SELECT target_entity_id   FROM remediation_plans WHERE id = ${remediationPlanId} LIMIT 1)
+      `);
+    }
+    return res.status(201).json({ outcome: inserted.rows[0], outcomeStatus });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to record outcome', detail: err.message });
+  }
+});
+
+// ── 4.2C: Policy Learning Suggestions ───────────────────────────────────────
+// GET /policy-learning-suggestions?status=&policyArea=&suggestionType=
+router.get('/admin/wallet/policy-learning-suggestions', async (req, res) => {
+  try {
+    const { status, policyArea, suggestionType } = req.query as Record<string, string>;
+    const conditions: string[] = [];
+    if (status)         conditions.push(`status = '${status}'`);
+    if (policyArea)     conditions.push(`policy_area ILIKE '%${policyArea.replace(/'/g,"''")}%'`);
+    if (suggestionType) conditions.push(`suggestion_type = '${suggestionType}'`);
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const rows = await pool.query(`SELECT * FROM policy_learning_suggestions ${where} ORDER BY created_at DESC LIMIT 100`);
+    const byStatus = rows.rows.reduce((acc: any, r: any) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {});
+    return res.json({ suggestions: rows.rows, byStatus, total: rows.rows.length });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch policy suggestions', detail: err.message });
+  }
+});
+
+// POST /policy-learning-suggestions  (manual entry or auto-generated from outcome)
+router.post('/admin/wallet/policy-learning-suggestions', async (req, res) => {
+  try {
+    const { sourcePlanId, suggestionType, policyArea, suggestedChange, triggerReason, confidenceDelta } = req.body;
+    if (!suggestionType || !policyArea) return res.status(400).json({ error: 'suggestionType, policyArea required' });
+    const validTypes = ['tighten', 'relax', 'new_rule', 'deprecate'];
+    if (!validTypes.includes(suggestionType)) return res.status(400).json({ error: `suggestionType must be one of: ${validTypes.join(', ')}` });
+    const sourcePlanIdVal = sourcePlanId ? parseInt(sourcePlanId) : 'NULL';
+    const cdelta = parseFloat(confidenceDelta ?? '0');
+    const change = suggestedChange ? JSON.stringify(suggestedChange) : '{}';
+    const reasonVal = triggerReason ? `'${triggerReason.replace(/'/g,"''")}'` : 'NULL';
+    const inserted = await pool.query(`
+      INSERT INTO policy_learning_suggestions (source_plan_id, suggestion_type, policy_area, suggested_change, trigger_reason, confidence_delta)
+      VALUES (${sourcePlanIdVal}, '${suggestionType}', '${policyArea.replace(/'/g,"''")}', '${change.replace(/'/g,"''")}', ${reasonVal}, ${cdelta})
+      RETURNING *
+    `);
+    return res.status(201).json({ suggestion: inserted.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create policy suggestion', detail: err.message });
+  }
+});
+
+// PATCH /policy-learning-suggestions/:id  { status, reviewedBy }
+router.patch('/admin/wallet/policy-learning-suggestions/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { status, reviewedBy } = req.body;
+    const validStatuses = ['pending', 'accepted', 'rejected', 'deferred'];
+    if (!status || !validStatuses.includes(status)) return res.status(400).json({ error: `status must be one of: ${validStatuses.join(', ')}` });
+    const reviewedByVal = reviewedBy ? `'${reviewedBy.replace(/'/g,"''")}'` : 'NULL';
+    const r = await pool.query(`
+      UPDATE policy_learning_suggestions
+      SET status = '${status}', reviewed_by = ${reviewedByVal}, reviewed_at = NOW()
+      WHERE id = ${id} RETURNING *
+    `);
+    if (!r.rows.length) return res.status(404).json({ error: 'Suggestion not found' });
+    // If accepted, apply confidence delta to relevant scores
+    if (status === 'accepted' && parseFloat(r.rows[0].confidence_delta) !== 0) {
+      const delta = parseFloat(r.rows[0].confidence_delta);
+      if (delta > 0) {
+        await pool.query(`UPDATE recommendation_scores SET confidence_score = LEAST(100, confidence_score + ${delta}) WHERE recommendation_type ILIKE '%${r.rows[0].policy_area.replace(/'/g,"''")}%'`);
+      } else {
+        await pool.query(`UPDATE recommendation_scores SET confidence_score = GREATEST(0, confidence_score + ${delta}) WHERE recommendation_type ILIKE '%${r.rows[0].policy_area.replace(/'/g,"''")}%'`);
+      }
+    }
+    return res.json({ suggestion: r.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update suggestion', detail: err.message });
+  }
+});
+
+// POST /policy-learning-suggestions/auto-generate  { planId } — derives suggestions from plan outcomes
+router.post('/admin/wallet/policy-learning-suggestions/auto-generate', async (req, res) => {
+  try {
+    const { planId } = req.body;
+    if (!planId) return res.status(400).json({ error: 'planId required' });
+    const planResult = await pool.query(`SELECT * FROM remediation_plans WHERE id = ${parseInt(planId)}`);
+    if (!planResult.rows.length) return res.status(404).json({ error: 'Remediation plan not found' });
+    const plan = planResult.rows[0];
+    const outcomesResult = await pool.query(`SELECT * FROM remediation_outcomes WHERE remediation_plan_id = ${parseInt(planId)}`);
+    const outcomes = outcomesResult.rows;
+    if (!outcomes.length) return res.status(400).json({ error: 'No outcomes recorded for this plan — record outcomes first' });
+    const improved  = outcomes.filter((o: any) => o.outcome_status === 'improved').length;
+    const worsened  = outcomes.filter((o: any) => o.outcome_status === 'worsened').length;
+    const total     = outcomes.length;
+    const improvementRate = improved / total;
+    let suggestionType: string;
+    let triggerReason: string;
+    let confidenceDelta: number;
+    if (improvementRate >= 0.7) {
+      suggestionType = 'tighten';
+      triggerReason = `Plan #${planId} (${plan.issue_type}) achieved ${(improvementRate * 100).toFixed(0)}% improvement rate — policy can be tightened to enforce this pattern.`;
+      confidenceDelta = 5;
+    } else if (worsened / total >= 0.5) {
+      suggestionType = 'relax';
+      triggerReason = `Plan #${planId} (${plan.issue_type}) had ${(worsened / total * 100).toFixed(0)}% worsened outcomes — policy may be too aggressive; consider relaxing.`;
+      confidenceDelta = -8;
+    } else {
+      suggestionType = 'new_rule';
+      triggerReason = `Plan #${planId} (${plan.issue_type}) had mixed results (${(improvementRate * 100).toFixed(0)}% improved) — a refined rule may be needed.`;
+      confidenceDelta = 0;
+    }
+    const policyArea = plan.issue_type;
+    const suggestedChange = { planId, issueType: plan.issue_type, improvementRate, outcomes: total, suggestionType };
+    const inserted = await pool.query(`
+      INSERT INTO policy_learning_suggestions (source_plan_id, suggestion_type, policy_area, suggested_change, trigger_reason, confidence_delta)
+      VALUES (${parseInt(planId)}, '${suggestionType}', '${policyArea.replace(/'/g,"''")}', '${JSON.stringify(suggestedChange).replace(/'/g,"''")}', '${triggerReason.replace(/'/g,"''")}', ${confidenceDelta})
+      RETURNING *
+    `);
+    return res.status(201).json({ suggestion: inserted.rows[0], derivedFrom: { improved, worsened, total, improvementRate } });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to auto-generate suggestion', detail: err.message });
+  }
+});
+
+// ── 4.2D: Reviewer Performance Analytics ────────────────────────────────────
+// GET /reviewer-performance?reviewerUid=&periodKey=
+router.get('/admin/wallet/reviewer-performance', async (req, res) => {
+  try {
+    const { reviewerUid, periodKey } = req.query as Record<string, string>;
+    const conditions: string[] = [];
+    if (reviewerUid) conditions.push(`reviewer_uid = '${reviewerUid.replace(/'/g,"''")}'`);
+    if (periodKey)   conditions.push(`period_key = '${periodKey}'`);
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const rows = await pool.query(`SELECT * FROM reviewer_performance_snapshots ${where} ORDER BY period_key DESC, outcome_quality_score DESC LIMIT 100`);
+    // Live workload from recommendation_actions in the last 30 days
+    const liveWorkload = await pool.query(`
+      SELECT actor_uid,
+             COUNT(*) FILTER (WHERE action_type = 'accept')  AS accepted,
+             COUNT(*) FILTER (WHERE action_type = 'reject')  AS rejected,
+             COUNT(*) FILTER (WHERE action_type = 'snooze')  AS snoozed,
+             COUNT(*) FILTER (WHERE action_type = 'assign')  AS assigned,
+             COUNT(*) FILTER (WHERE sla_met = false)         AS sla_breaches,
+             AVG(EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600) AS avg_age_hours
+      FROM recommendation_actions
+      WHERE created_at > NOW() - INTERVAL '30 days'
+      GROUP BY actor_uid
+      ORDER BY COUNT(*) DESC
+    `);
+    return res.json({ snapshots: rows.rows, liveWorkload: liveWorkload.rows, total: rows.rows.length });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch reviewer performance', detail: err.message });
+  }
+});
+
+// POST /reviewer-performance/snapshot  { reviewerUid, periodKey }
+router.post('/admin/wallet/reviewer-performance/snapshot', async (req, res) => {
+  try {
+    const { reviewerUid, periodKey } = req.body;
+    if (!reviewerUid || !periodKey) return res.status(400).json({ error: 'reviewerUid, periodKey required' });
+    // Compute from recommendation_actions for this reviewer in this period
+    const monthStart = `${periodKey}-01`;
+    const actions = await pool.query(`
+      SELECT action_type, sla_met, created_at FROM recommendation_actions
+      WHERE actor_uid = '${reviewerUid.replace(/'/g,"''")}' AND created_at >= '${monthStart}'::date AND created_at < ('${monthStart}'::date + INTERVAL '1 month')
+    `);
+    const total      = actions.rows.length;
+    const rejected   = actions.rows.filter((a: any) => a.action_type === 'reject').length;
+    const slaBreaches= actions.rows.filter((a: any) => a.sla_met === false).length;
+    const reversalRate = total > 0 ? (rejected / total) : 0;
+    const overdueRate  = total > 0 ? (slaBreaches / total) : 0;
+    const outcomeQualityScore = Math.max(0, 100 - reversalRate * 30 - overdueRate * 20);
+    const avgApprovalHours = 0; // computed from SLA data — placeholder if no timing stored
+    const snapshotJson = { total, rejected, slaBreaches, actions: actions.rows.length };
+    const safeUid = reviewerUid.replace(/'/g,"''");
+    const inserted = await pool.query(`
+      INSERT INTO reviewer_performance_snapshots (reviewer_uid, period_key, total_reviewed, avg_approval_hours, reversal_rate, overdue_rate, outcome_quality_score, snapshot_json)
+      VALUES ('${safeUid}', '${periodKey}', ${total}, ${avgApprovalHours}, ${reversalRate}, ${overdueRate}, ${outcomeQualityScore}, '${JSON.stringify(snapshotJson).replace(/'/g,"''")}')
+      ON CONFLICT DO NOTHING RETURNING *
+    `);
+    const snap = inserted.rows[0] ?? { reviewerUid, periodKey, totalReviewed: total, reversalRate, overdueRate, outcomeQualityScore };
+    return res.status(201).json({ snapshot: snap, computed: { total, rejected, slaBreaches, reversalRate, overdueRate, outcomeQualityScore } });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create performance snapshot', detail: err.message });
+  }
+});
+
+// ── 4.2E: Operating Review Follow-Up Actions ────────────────────────────────
+// GET  /review-follow-up-actions?month=&status=&ownerUid=
+router.get('/admin/wallet/review-follow-up-actions', async (req, res) => {
+  try {
+    const { month, status, ownerUid } = req.query as Record<string, string>;
+    const conditions: string[] = [];
+    if (month)    conditions.push(`month = '${month}'`);
+    if (status)   conditions.push(`status = '${status}'`);
+    if (ownerUid) conditions.push(`owner_uid = '${ownerUid.replace(/'/g,"''")}'`);
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const rows = await pool.query(`SELECT * FROM review_follow_up_actions ${where} ORDER BY priority DESC, due_date ASC LIMIT 200`);
+    // Overdue detection
+    const today = new Date().toISOString().slice(0, 10);
+    const overdue = rows.rows.filter((r: any) => r.status !== 'closed' && r.status !== 'cancelled' && r.due_date < today);
+    const byStatus = rows.rows.reduce((acc: any, r: any) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {});
+    return res.json({ actions: rows.rows, overdue, byStatus, total: rows.rows.length });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch follow-up actions', detail: err.message });
+  }
+});
+
+// POST /review-follow-up-actions  { month, title, ownerUid, dueDate, priority, notes }
+router.post('/admin/wallet/review-follow-up-actions', async (req, res) => {
+  try {
+    const { month, title, ownerUid, dueDate, priority, notes } = req.body;
+    if (!month || !title || !ownerUid || !dueDate) return res.status(400).json({ error: 'month, title, ownerUid, dueDate required' });
+    const validPriorities = ['low', 'medium', 'high', 'critical'];
+    const p = validPriorities.includes(priority) ? priority : 'medium';
+    const notesVal = notes ? `'${notes.replace(/'/g,"''")}'` : 'NULL';
+    const inserted = await pool.query(`
+      INSERT INTO review_follow_up_actions (month, title, owner_uid, due_date, priority, notes)
+      VALUES ('${month}', '${title.replace(/'/g,"''")}', '${ownerUid.replace(/'/g,"''")}', '${dueDate}', '${p}', ${notesVal})
+      RETURNING *
+    `);
+    return res.status(201).json({ action: inserted.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create follow-up action', detail: err.message });
+  }
+});
+
+// PATCH /review-follow-up-actions/:id  { status, notes }
+router.patch('/admin/wallet/review-follow-up-actions/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { status, notes } = req.body;
+    const validStatuses = ['open', 'in_progress', 'closed', 'cancelled'];
+    if (!status || !validStatuses.includes(status)) return res.status(400).json({ error: `status must be one of: ${validStatuses.join(', ')}` });
+    const closedAt    = (status === 'closed' || status === 'cancelled') ? 'NOW()' : 'NULL';
+    const notesClause = notes !== undefined ? `, notes = '${notes.replace(/'/g,"''")}'` : '';
+    const r = await pool.query(`
+      UPDATE review_follow_up_actions SET status = '${status}', closed_at = ${closedAt}${notesClause} WHERE id = ${id} RETURNING *
+    `);
+    if (!r.rows.length) return res.status(404).json({ error: 'Follow-up action not found' });
+    return res.json({ action: r.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update follow-up action', detail: err.message });
+  }
+});
+
+// ── 4.2F: Unified Recommendation Object (cross-tab memory) ──────────────────
+// GET  /unified-recommendations?status=&sourceTab=&priority=&visibilityTab=
+router.get('/admin/wallet/unified-recommendations', async (req, res) => {
+  try {
+    const { status, sourceTab, priority, visibilityTab } = req.query as Record<string, string>;
+    const conditions: string[] = [];
+    if (status)        conditions.push(`status = '${status}'`);
+    if (sourceTab)     conditions.push(`source_tab = '${sourceTab}'`);
+    if (priority)      conditions.push(`priority = '${priority}'`);
+    if (visibilityTab) conditions.push(`'${visibilityTab}' = ANY(visibility_tabs)`);
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const rows = await pool.query(`SELECT * FROM unified_recommendations ${where} ORDER BY created_at DESC LIMIT 200`);
+    const byStatus = rows.rows.reduce((acc: any, r: any) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {});
+    const byTab    = rows.rows.reduce((acc: any, r: any) => { acc[r.source_tab] = (acc[r.source_tab] || 0) + 1; return acc; }, {});
+    return res.json({ recommendations: rows.rows, byStatus, byTab, total: rows.rows.length });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch unified recommendations', detail: err.message });
+  }
+});
+
+// POST /unified-recommendations  { title, description, entityType, entityId, sourceTab, visibilityTabs, priority, assignedTo, confidenceScore, recommendationScoreId }
+router.post('/admin/wallet/unified-recommendations', async (req, res) => {
+  try {
+    const { title, description, entityType, entityId, sourceTab, visibilityTabs, priority, assignedTo, confidenceScore, recommendationScoreId } = req.body;
+    if (!title || !sourceTab) return res.status(400).json({ error: 'title, sourceTab required' });
+    const validTabs = ['command-center', 'governance', 'orchestration', 'simulation', 'policies'];
+    const vtabs = (Array.isArray(visibilityTabs) ? visibilityTabs : [sourceTab]).filter((t: string) => validTabs.includes(t));
+    const tabsArray = `ARRAY[${vtabs.map((t: string) => `'${t}'`).join(',')}]::TEXT[]`;
+    const descVal   = description ? `'${description.replace(/'/g,"''")}'` : 'NULL';
+    const etVal     = entityType  ? `'${entityType.replace(/'/g,"''")}'` : 'NULL';
+    const eidVal    = entityId    ? `'${entityId.replace(/'/g,"''")}'`   : 'NULL';
+    const atoVal    = assignedTo  ? `'${assignedTo.replace(/'/g,"''")}'` : 'NULL';
+    const csVal     = parseFloat(confidenceScore ?? '0');
+    const rscoreId  = recommendationScoreId ? parseInt(recommendationScoreId) : 'NULL';
+    const validPriorities = ['low', 'medium', 'high', 'critical'];
+    const p = validPriorities.includes(priority) ? priority : 'medium';
+    const inserted = await pool.query(`
+      INSERT INTO unified_recommendations (recommendation_score_id, title, description, entity_type, entity_id, source_tab, visibility_tabs, priority, assigned_to, confidence_score)
+      VALUES (${rscoreId}, '${title.replace(/'/g,"''")}', ${descVal}, ${etVal}, ${eidVal}, '${sourceTab}', ${tabsArray}, '${p}', ${atoVal}, ${csVal})
+      RETURNING *
+    `);
+    return res.status(201).json({ recommendation: inserted.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create unified recommendation', detail: err.message });
+  }
+});
+
+// PATCH /unified-recommendations/:id  { status, assignedTo, notes }
+router.patch('/admin/wallet/unified-recommendations/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { status, assignedTo } = req.body;
+    const validStatuses = ['open', 'accepted', 'rejected', 'snoozed', 'resolved'];
+    if (!status || !validStatuses.includes(status)) return res.status(400).json({ error: `status must be one of: ${validStatuses.join(', ')}` });
+    const resolvedAt  = (status === 'resolved' || status === 'rejected') ? 'NOW()' : 'NULL';
+    const assignedVal = assignedTo ? `, assigned_to = '${assignedTo.replace(/'/g,"''")}' ` : '';
+    const r = await pool.query(`
+      UPDATE unified_recommendations SET status = '${status}', resolved_at = ${resolvedAt}${assignedVal} WHERE id = ${id} RETURNING *
+    `);
+    if (!r.rows.length) return res.status(404).json({ error: 'Unified recommendation not found' });
+    return res.json({ recommendation: r.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update unified recommendation', detail: err.message });
+  }
+});
+
+// ── 4.2G: Execution Feedback → Confidence Scoring ───────────────────────────
+// POST /execution-feedback  { sourceType, sourceId, feedbackType, feedbackNote, actorUid }
+router.post('/admin/wallet/execution-feedback', async (req, res) => {
+  try {
+    const { sourceType, sourceId, feedbackType, feedbackNote, actorUid } = req.body;
+    if (!sourceType || !sourceId || !feedbackType) return res.status(400).json({ error: 'sourceType, sourceId, feedbackType required' });
+    // sourceType: 'recommendation_action' | 'remediation_outcome' | 'unified_recommendation'
+    // feedbackType: 'confirmed_effective' | 'confirmed_ineffective' | 'false_positive' | 'overridden'
+    const deltas: Record<string, number> = {
+      confirmed_effective:   +8,
+      confirmed_ineffective: -10,
+      false_positive:        -6,
+      overridden:            -4,
+    };
+    const delta = deltas[feedbackType] ?? 0;
+    const updates: string[] = [];
+    // Apply delta to affected recommendation_scores
+    if (sourceType === 'recommendation_action') {
+      const actionResult = await pool.query(`SELECT recommendation_score_id FROM recommendation_actions WHERE id = ${parseInt(sourceId)}`);
+      if (actionResult.rows.length) {
+        const scoreId = actionResult.rows[0].recommendation_score_id;
+        await pool.query(`UPDATE recommendation_scores SET confidence_score = GREATEST(0, LEAST(100, confidence_score + ${delta})) WHERE id = ${scoreId}`);
+        updates.push(`recommendation_score #${scoreId} adjusted by ${delta > 0 ? '+' : ''}${delta}`);
+      }
+    } else if (sourceType === 'remediation_outcome') {
+      const outcomeResult = await pool.query(`SELECT remediation_plan_id FROM remediation_outcomes WHERE id = ${parseInt(sourceId)}`);
+      if (outcomeResult.rows.length) {
+        const planId = outcomeResult.rows[0].remediation_plan_id;
+        await pool.query(`
+          UPDATE recommendation_scores SET confidence_score = GREATEST(0, LEAST(100, confidence_score + ${delta}))
+          WHERE target_entity_type = (SELECT target_entity_type FROM remediation_plans WHERE id = ${planId} LIMIT 1)
+        `);
+        updates.push(`confidence adjusted by ${delta > 0 ? '+' : ''}${delta} for entity type of plan #${planId}`);
+      }
+    } else if (sourceType === 'unified_recommendation') {
+      const urResult = await pool.query(`SELECT recommendation_score_id FROM unified_recommendations WHERE id = ${parseInt(sourceId)}`);
+      if (urResult.rows.length && urResult.rows[0].recommendation_score_id) {
+        const scoreId = urResult.rows[0].recommendation_score_id;
+        await pool.query(`UPDATE recommendation_scores SET confidence_score = GREATEST(0, LEAST(100, confidence_score + ${delta})) WHERE id = ${scoreId}`);
+        updates.push(`recommendation_score #${scoreId} adjusted by ${delta > 0 ? '+' : ''}${delta}`);
+      }
+    }
+    // Auto-create a policy learning suggestion on strong negative feedback
+    if (feedbackType === 'confirmed_ineffective' || feedbackType === 'false_positive') {
+      await pool.query(`
+        INSERT INTO policy_learning_suggestions (suggestion_type, policy_area, suggested_change, trigger_reason, confidence_delta)
+        VALUES ('relax', '${sourceType.replace(/'/g,"''")}', '{"sourceId":${parseInt(sourceId)},"feedbackType":"${feedbackType}"}', 'Auto-generated from ${feedbackType} feedback on ${sourceType} #${sourceId}', ${delta})
+      `);
+      updates.push('policy_learning_suggestion auto-created');
+    }
+    return res.json({ applied: updates, delta, feedbackType, actorUid });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to apply execution feedback', detail: err.message });
+  }
+});
+
+// GET /execution-feedback/summary  — overall confidence health
+router.get('/admin/wallet/execution-feedback/summary', async (req, res) => {
+  try {
+    const scores   = await pool.query(`SELECT AVG(confidence_score) AS avg, MIN(confidence_score) AS min, MAX(confidence_score) AS max, COUNT(*) AS total FROM recommendation_scores`);
+    const actions  = await pool.query(`SELECT action_type, COUNT(*) AS cnt FROM recommendation_actions GROUP BY action_type`);
+    const outcomes = await pool.query(`SELECT outcome_status, COUNT(*) AS cnt FROM remediation_outcomes GROUP BY outcome_status`);
+    const suggestions = await pool.query(`SELECT status, COUNT(*) AS cnt FROM policy_learning_suggestions GROUP BY status`);
+    const slaBreaches = await pool.query(`SELECT COUNT(*) AS cnt FROM recommendation_actions WHERE sla_met = false`);
+    const unifRecs = await pool.query(`SELECT status, COUNT(*) AS cnt FROM unified_recommendations GROUP BY status`);
+    return res.json({
+      confidenceHealth: { avg: scores.rows[0]?.avg, min: scores.rows[0]?.min, max: scores.rows[0]?.max, total: scores.rows[0]?.total },
+      actionBreakdown:  actions.rows.reduce((acc: any, r: any) => { acc[r.action_type] = parseInt(r.cnt); return acc; }, {}),
+      outcomeBreakdown: outcomes.rows.reduce((acc: any, r: any) => { acc[r.outcome_status] = parseInt(r.cnt); return acc; }, {}),
+      suggestionStatus: suggestions.rows.reduce((acc: any, r: any) => { acc[r.status] = parseInt(r.cnt); return acc; }, {}),
+      slaBreaches:      parseInt(slaBreaches.rows[0]?.cnt ?? '0'),
+      unifiedRecStatus: unifRecs.rows.reduce((acc: any, r: any) => { acc[r.status] = parseInt(r.cnt); return acc; }, {}),
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch feedback summary', detail: err.message });
+  }
+});
+
 export default router;

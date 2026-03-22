@@ -13391,3 +13391,104 @@ export const operatingReviewPacks = pgTable("operating_review_packs", {
 });
 export type OperatingReviewPack       = typeof operatingReviewPacks.$inferSelect;
 export type InsertOperatingReviewPack = typeof operatingReviewPacks.$inferInsert;
+
+// ── PHASE 4.2 ────────────────────────────────────────────────────────────────
+
+// 4.2A — Recommendation Action Workflow
+export const recommendationActions = pgTable("recommendation_actions", {
+  id:                   serial("id").primaryKey(),
+  recommendationScoreId: integer("recommendation_score_id").notNull(),
+  actionType:           varchar("action_type", { length: 20 }).notNull(), // accept | reject | snooze | assign
+  actorUid:             varchar("actor_uid", { length: 255 }).notNull(),
+  reason:               text("reason"),
+  assignedTo:           varchar("assigned_to", { length: 255 }),
+  snoozedUntil:         timestamp("snoozed_until", { withTimezone: true }),
+  slaDueAt:             timestamp("sla_due_at", { withTimezone: true }),
+  slaMet:               boolean("sla_met"),
+  createdAt:            timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type RecommendationAction       = typeof recommendationActions.$inferSelect;
+export type InsertRecommendationAction = typeof recommendationActions.$inferInsert;
+
+// 4.2B — Remediation Outcome Scoring
+export const remediationOutcomes = pgTable("remediation_outcomes", {
+  id:               serial("id").primaryKey(),
+  remediationPlanId: integer("remediation_plan_id").notNull(),
+  metricName:       varchar("metric_name", { length: 100 }).notNull(),
+  beforeValue:      numeric("before_value", { precision: 18, scale: 4 }).notNull().default('0'),
+  afterValue:       numeric("after_value",  { precision: 18, scale: 4 }).notNull().default('0'),
+  unit:             varchar("unit", { length: 30 }),
+  outcomeStatus:    varchar("outcome_status", { length: 20 }).notNull().default('unchanged'), // improved | unchanged | worsened
+  measuredAt:       timestamp("measured_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type RemediationOutcome       = typeof remediationOutcomes.$inferSelect;
+export type InsertRemediationOutcome = typeof remediationOutcomes.$inferInsert;
+
+// 4.2C — Policy Learning Suggestions
+export const policyLearningSuggestions = pgTable("policy_learning_suggestions", {
+  id:               serial("id").primaryKey(),
+  sourcePlanId:     integer("source_plan_id"),
+  suggestionType:   varchar("suggestion_type", { length: 30 }).notNull(), // tighten | relax | new_rule | deprecate
+  policyArea:       varchar("policy_area", { length: 100 }).notNull(),
+  suggestedChange:  jsonb("suggested_change").notNull().default(sql`'{}'::jsonb`),
+  triggerReason:    text("trigger_reason"),
+  confidenceDelta:  numeric("confidence_delta", { precision: 8, scale: 4 }).default('0'),
+  status:           varchar("status", { length: 20 }).notNull().default('pending'), // pending | accepted | rejected | deferred
+  reviewedBy:       varchar("reviewed_by", { length: 255 }),
+  reviewedAt:       timestamp("reviewed_at", { withTimezone: true }),
+  createdAt:        timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type PolicyLearningSuggestion       = typeof policyLearningSuggestions.$inferSelect;
+export type InsertPolicyLearningSuggestion = typeof policyLearningSuggestions.$inferInsert;
+
+// 4.2D — Reviewer Performance Snapshots
+export const reviewerPerformanceSnapshots = pgTable("reviewer_performance_snapshots", {
+  id:                  serial("id").primaryKey(),
+  reviewerUid:         varchar("reviewer_uid", { length: 255 }).notNull(),
+  periodKey:           varchar("period_key", { length: 10 }).notNull(),
+  totalReviewed:       integer("total_reviewed").notNull().default(0),
+  avgApprovalHours:    numeric("avg_approval_hours", { precision: 8, scale: 2 }).default('0'),
+  reversalRate:        numeric("reversal_rate", { precision: 6, scale: 4 }).default('0'),
+  overdueRate:         numeric("overdue_rate", { precision: 6, scale: 4 }).default('0'),
+  outcomeQualityScore: numeric("outcome_quality_score", { precision: 6, scale: 2 }).default('0'),
+  snapshotJson:        jsonb("snapshot_json").notNull().default(sql`'{}'::jsonb`),
+  createdAt:           timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type ReviewerPerformanceSnapshot       = typeof reviewerPerformanceSnapshots.$inferSelect;
+export type InsertReviewerPerformanceSnapshot = typeof reviewerPerformanceSnapshots.$inferInsert;
+
+// 4.2E — Operating Review Follow-Up Actions
+export const reviewFollowUpActions = pgTable("review_follow_up_actions", {
+  id:        serial("id").primaryKey(),
+  month:     varchar("month", { length: 7 }).notNull(),
+  title:     varchar("title", { length: 255 }).notNull(),
+  ownerUid:  varchar("owner_uid", { length: 255 }).notNull(),
+  dueDate:   varchar("due_date", { length: 10 }).notNull(),
+  priority:  varchar("priority", { length: 10 }).notNull().default('medium'), // low | medium | high | critical
+  status:    varchar("status", { length: 20 }).notNull().default('open'), // open | in_progress | closed | cancelled
+  notes:     text("notes"),
+  closedAt:  timestamp("closed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type ReviewFollowUpAction       = typeof reviewFollowUpActions.$inferSelect;
+export type InsertReviewFollowUpAction = typeof reviewFollowUpActions.$inferInsert;
+
+// 4.2F — Unified Recommendation Object (cross-tab memory)
+export const unifiedRecommendations = pgTable("unified_recommendations", {
+  id:                   serial("id").primaryKey(),
+  recommendationScoreId: integer("recommendation_score_id"),
+  title:                varchar("title", { length: 255 }).notNull(),
+  description:          text("description"),
+  entityType:           varchar("entity_type", { length: 50 }),
+  entityId:             varchar("entity_id", { length: 100 }),
+  sourceTab:            varchar("source_tab", { length: 50 }).notNull(),
+  visibilityTabs:       text("visibility_tabs").array().notNull().default(sql`ARRAY[]::text[]`),
+  status:               varchar("status", { length: 20 }).notNull().default('open'), // open | accepted | rejected | snoozed | resolved
+  priority:             varchar("priority", { length: 10 }).notNull().default('medium'),
+  assignedTo:           varchar("assigned_to", { length: 255 }),
+  confidenceScore:      numeric("confidence_score", { precision: 6, scale: 2 }).default('0'),
+  resolvedAt:           timestamp("resolved_at", { withTimezone: true }),
+  createdAt:            timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type UnifiedRecommendation       = typeof unifiedRecommendations.$inferSelect;
+export type InsertUnifiedRecommendation = typeof unifiedRecommendations.$inferInsert;

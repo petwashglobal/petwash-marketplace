@@ -1808,6 +1808,162 @@ export default function AdminWalletDashboard() {
     queryFn: () => fetch(`/api/prestige-pass/admin/wallet/operating-review-pack?month=${reviewMonth}`).then(r => r.json()),
   });
 
+  // ── PHASE 4.2 — Controlled Execution & Learning Loop ─────────────────────
+
+  // 4.2A — Recommendation Action Workflow
+  const [recActionFilter, setRecActionFilter] = useState({ scoreId: '', actionType: '', actorUid: '' });
+  const [showRecActionForm, setShowRecActionForm] = useState(false);
+  const [newRecAction, setNewRecAction] = useState({ recommendationScoreId: '', actionType: 'accept', actorUid: '', reason: '', assignedTo: '', snoozedUntil: '' });
+  const { data: recActionsData, isLoading: recActionsLoading, refetch: refetchRecActions } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/recommendation-actions', recActionFilter],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (recActionFilter.scoreId)    p.set('scoreId',    recActionFilter.scoreId);
+      if (recActionFilter.actionType) p.set('actionType', recActionFilter.actionType);
+      if (recActionFilter.actorUid)   p.set('actorUid',   recActionFilter.actorUid);
+      return fetch(`/api/prestige-pass/admin/wallet/recommendation-actions?${p}`).then(r => r.json());
+    },
+  });
+  const { mutate: postRecAction, isPending: postRecActionPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/recommendation-actions', body),
+    onSuccess: (d) => { toast({ title: `Recommendation ${d.action?.action_type}d` }); refetchRecActions(); setShowRecActionForm(false); setNewRecAction({ recommendationScoreId: '', actionType: 'accept', actorUid: '', reason: '', assignedTo: '', snoozedUntil: '' }); },
+    onError: (e: any) => toast({ title: 'Error', description: e?.message || 'Failed', variant: 'destructive' }),
+  });
+  const { mutate: patchRecAction, isPending: patchRecActionPending } = useMutation<any, any, { id: number; slaMet: boolean }>({
+    mutationFn: ({ id, slaMet }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/recommendation-actions/${id}`, { slaMet }),
+    onSuccess: () => { toast({ title: 'SLA status updated' }); refetchRecActions(); },
+  });
+
+  // 4.2B — Remediation Outcome Scoring
+  const [outcomeFilter, setOutcomeFilter] = useState({ planId: '', outcomeStatus: '' });
+  const [showOutcomeForm, setShowOutcomeForm] = useState(false);
+  const [newOutcome, setNewOutcome] = useState({ remediationPlanId: '', metricName: '', beforeValue: '', afterValue: '', unit: '' });
+  const { data: outcomesData, isLoading: outcomesLoading, refetch: refetchOutcomes } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/remediation-outcomes', outcomeFilter],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (outcomeFilter.planId)        p.set('planId',        outcomeFilter.planId);
+      if (outcomeFilter.outcomeStatus) p.set('outcomeStatus', outcomeFilter.outcomeStatus);
+      return fetch(`/api/prestige-pass/admin/wallet/remediation-outcomes?${p}`).then(r => r.json());
+    },
+  });
+  const { mutate: postOutcome, isPending: postOutcomePending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/remediation-outcomes', body),
+    onSuccess: (d) => { toast({ title: `Outcome recorded — ${d.outcomeStatus}` }); refetchOutcomes(); setShowOutcomeForm(false); setNewOutcome({ remediationPlanId: '', metricName: '', beforeValue: '', afterValue: '', unit: '' }); },
+    onError: (e: any) => toast({ title: 'Error', description: e?.message || 'Failed', variant: 'destructive' }),
+  });
+
+  // 4.2C — Policy Learning Suggestions
+  const [policySuggestFilter, setPolicySuggestFilter] = useState({ status: '', policyArea: '', suggestionType: '' });
+  const [showPolicySuggestForm, setShowPolicySuggestForm] = useState(false);
+  const [newPolicySuggest, setNewPolicySuggest] = useState({ sourcePlanId: '', suggestionType: 'tighten', policyArea: '', triggerReason: '', confidenceDelta: '' });
+  const [autoGenPlanId, setAutoGenPlanId] = useState('');
+  const { data: policySuggestData, isLoading: policySuggestLoading, refetch: refetchPolicySuggest } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/policy-learning-suggestions', policySuggestFilter],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (policySuggestFilter.status)         p.set('status',         policySuggestFilter.status);
+      if (policySuggestFilter.policyArea)     p.set('policyArea',     policySuggestFilter.policyArea);
+      if (policySuggestFilter.suggestionType) p.set('suggestionType', policySuggestFilter.suggestionType);
+      return fetch(`/api/prestige-pass/admin/wallet/policy-learning-suggestions?${p}`).then(r => r.json());
+    },
+  });
+  const { mutate: postPolicySuggest, isPending: postPolicySuggestPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/policy-learning-suggestions', body),
+    onSuccess: () => { toast({ title: 'Policy suggestion created' }); refetchPolicySuggest(); setShowPolicySuggestForm(false); },
+    onError: (e: any) => toast({ title: 'Error', description: e?.message || 'Failed', variant: 'destructive' }),
+  });
+  const { mutate: patchPolicySuggest, isPending: patchPolicySuggestPending } = useMutation<any, any, { id: number; status: string; reviewedBy?: string }>({
+    mutationFn: ({ id, status, reviewedBy }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/policy-learning-suggestions/${id}`, { status, reviewedBy }),
+    onSuccess: (d) => { toast({ title: `Suggestion ${d.suggestion?.status}` }); refetchPolicySuggest(); },
+  });
+  const { mutate: autoGenPolicySuggest, isPending: autoGenPolicySuggestPending } = useMutation<any, any, { planId: string }>({
+    mutationFn: ({ planId }) => apiRequest('POST', '/api/prestige-pass/admin/wallet/policy-learning-suggestions/auto-generate', { planId }),
+    onSuccess: (d) => { toast({ title: 'Auto-suggestion generated', description: d.suggestion?.suggestion_type }); refetchPolicySuggest(); setAutoGenPlanId(''); },
+    onError: (e: any) => toast({ title: 'Error', description: e?.message || 'Failed', variant: 'destructive' }),
+  });
+
+  // 4.2D — Reviewer Performance Analytics
+  const [reviewerPerfFilter, setReviewerPerfFilter] = useState({ reviewerUid: '', periodKey: '' });
+  const [showSnapshotForm, setShowSnapshotForm] = useState(false);
+  const [newSnapshot, setNewSnapshot] = useState({ reviewerUid: '', periodKey: new Date().toISOString().slice(0, 7) });
+  const { data: reviewerPerfData, isLoading: reviewerPerfLoading, refetch: refetchReviewerPerf } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/reviewer-performance', reviewerPerfFilter],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (reviewerPerfFilter.reviewerUid) p.set('reviewerUid', reviewerPerfFilter.reviewerUid);
+      if (reviewerPerfFilter.periodKey)   p.set('periodKey',   reviewerPerfFilter.periodKey);
+      return fetch(`/api/prestige-pass/admin/wallet/reviewer-performance?${p}`).then(r => r.json());
+    },
+  });
+  const { mutate: postSnapshot, isPending: postSnapshotPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/reviewer-performance/snapshot', body),
+    onSuccess: (d) => { toast({ title: 'Snapshot computed', description: `${d.computed?.total} actions reviewed` }); refetchReviewerPerf(); setShowSnapshotForm(false); },
+    onError: (e: any) => toast({ title: 'Error', description: e?.message || 'Failed', variant: 'destructive' }),
+  });
+
+  // 4.2E — Operating Review Follow-Up Actions
+  const [followUpFilter, setFollowUpFilter] = useState({ month: new Date().toISOString().slice(0, 7), status: '', ownerUid: '' });
+  const [showFollowUpForm, setShowFollowUpForm] = useState(false);
+  const [newFollowUp, setNewFollowUp] = useState({ month: new Date().toISOString().slice(0, 7), title: '', ownerUid: '', dueDate: '', priority: 'medium', notes: '' });
+  const { data: followUpData, isLoading: followUpLoading, refetch: refetchFollowUp } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/review-follow-up-actions', followUpFilter],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (followUpFilter.month)    p.set('month',    followUpFilter.month);
+      if (followUpFilter.status)   p.set('status',   followUpFilter.status);
+      if (followUpFilter.ownerUid) p.set('ownerUid', followUpFilter.ownerUid);
+      return fetch(`/api/prestige-pass/admin/wallet/review-follow-up-actions?${p}`).then(r => r.json());
+    },
+  });
+  const { mutate: postFollowUp, isPending: postFollowUpPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/review-follow-up-actions', body),
+    onSuccess: () => { toast({ title: 'Follow-up action created' }); refetchFollowUp(); setShowFollowUpForm(false); setNewFollowUp({ month: new Date().toISOString().slice(0, 7), title: '', ownerUid: '', dueDate: '', priority: 'medium', notes: '' }); },
+    onError: (e: any) => toast({ title: 'Error', description: e?.message || 'Failed', variant: 'destructive' }),
+  });
+  const { mutate: patchFollowUp, isPending: patchFollowUpPending } = useMutation<any, any, { id: number; status: string; notes?: string }>({
+    mutationFn: ({ id, status, notes }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/review-follow-up-actions/${id}`, { status, notes }),
+    onSuccess: () => { toast({ title: 'Action updated' }); refetchFollowUp(); },
+  });
+
+  // 4.2F — Unified Recommendation Object (cross-tab memory)
+  const [unifiedRecFilter, setUnifiedRecFilter] = useState({ status: '', sourceTab: '', priority: '', visibilityTab: '' });
+  const [showUnifiedRecForm, setShowUnifiedRecForm] = useState(false);
+  const [newUnifiedRec, setNewUnifiedRec] = useState({ title: '', description: '', entityType: '', entityId: '', sourceTab: 'command-center', visibilityTabs: ['command-center', 'governance'], priority: 'medium', assignedTo: '', confidenceScore: '', recommendationScoreId: '' });
+  const { data: unifiedRecData, isLoading: unifiedRecLoading, refetch: refetchUnifiedRec } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/unified-recommendations', unifiedRecFilter],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (unifiedRecFilter.status)        p.set('status',        unifiedRecFilter.status);
+      if (unifiedRecFilter.sourceTab)     p.set('sourceTab',     unifiedRecFilter.sourceTab);
+      if (unifiedRecFilter.priority)      p.set('priority',      unifiedRecFilter.priority);
+      if (unifiedRecFilter.visibilityTab) p.set('visibilityTab', unifiedRecFilter.visibilityTab);
+      return fetch(`/api/prestige-pass/admin/wallet/unified-recommendations?${p}`).then(r => r.json());
+    },
+  });
+  const { mutate: postUnifiedRec, isPending: postUnifiedRecPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/unified-recommendations', body),
+    onSuccess: () => { toast({ title: 'Unified recommendation created' }); refetchUnifiedRec(); setShowUnifiedRecForm(false); setNewUnifiedRec({ title: '', description: '', entityType: '', entityId: '', sourceTab: 'command-center', visibilityTabs: ['command-center', 'governance'], priority: 'medium', assignedTo: '', confidenceScore: '', recommendationScoreId: '' }); },
+    onError: (e: any) => toast({ title: 'Error', description: e?.message || 'Failed', variant: 'destructive' }),
+  });
+  const { mutate: patchUnifiedRec, isPending: patchUnifiedRecPending } = useMutation<any, any, { id: number; status: string; assignedTo?: string }>({
+    mutationFn: ({ id, status, assignedTo }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/unified-recommendations/${id}`, { status, assignedTo }),
+    onSuccess: (d) => { toast({ title: `Rec ${d.recommendation?.status}` }); refetchUnifiedRec(); },
+  });
+
+  // 4.2G — Execution Feedback → Confidence Scoring
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [newFeedback, setNewFeedback] = useState({ sourceType: 'recommendation_action', sourceId: '', feedbackType: 'confirmed_effective', feedbackNote: '', actorUid: '' });
+  const { data: feedbackSummaryData, isLoading: feedbackSummaryLoading, refetch: refetchFeedbackSummary } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/execution-feedback/summary'],
+    queryFn: () => fetch('/api/prestige-pass/admin/wallet/execution-feedback/summary').then(r => r.json()),
+  });
+  const { mutate: postFeedback, isPending: postFeedbackPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/execution-feedback', body),
+    onSuccess: (d) => { toast({ title: 'Feedback applied', description: d.applied?.join(' | ') || `Δ${d.delta}` }); refetchFeedbackSummary(); refetchRecScores(); setShowFeedbackForm(false); setNewFeedback({ sourceType: 'recommendation_action', sourceId: '', feedbackType: 'confirmed_effective', feedbackNote: '', actorUid: '' }); },
+    onError: (e: any) => toast({ title: 'Error', description: e?.message || 'Failed', variant: 'destructive' }),
+  });
+
   // ── Phase 3.6 UI aliases & supplemental state ──────────────────────────────
   // 3.6A — weight form state for the UI card
   const [weightForm, setWeightForm] = useState({ signalKey: '', divisionCode: '', weight: '' });
@@ -8337,6 +8493,104 @@ export default function AdminWalletDashboard() {
                 }
               </CardContent>
             </Card>
+            {/* 4.2C — POLICY LEARNING SUGGESTIONS */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-purple-600" /> Policy Learning Suggestions
+                </CardTitle>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowPolicySuggestForm(v => !v)} className="text-xs px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700">
+                    {showPolicySuggestForm ? 'Cancel' : '+ Add Suggestion'}
+                  </button>
+                  <div className="flex items-center gap-1">
+                    <input type="number" placeholder="Plan ID" value={autoGenPlanId} onChange={e => setAutoGenPlanId(e.target.value)} className="border rounded px-2 py-1 text-xs w-20" />
+                    <button disabled={autoGenPolicySuggestPending || !autoGenPlanId} onClick={() => autoGenPolicySuggest({ planId: autoGenPlanId })}
+                      className="text-xs px-2 py-1 border border-purple-300 text-purple-700 rounded hover:bg-purple-50 disabled:opacity-40 flex items-center gap-1">
+                      {autoGenPolicySuggestPending ? <Loader2 className="w-3 h-3 animate-spin" /> : null} Auto-Gen
+                    </button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-purple-700 bg-purple-50 border border-purple-200 rounded p-2">
+                  Successful remediations generate tighten suggestions; failed ones generate relax/review suggestions. Accepting a suggestion adjusts confidence scores across the affected policy area.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <select value={policySuggestFilter.status} onChange={e => setPolicySuggestFilter(v => ({ ...v, status: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                    <option value="">All statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="deferred">Deferred</option>
+                  </select>
+                  <select value={policySuggestFilter.suggestionType} onChange={e => setPolicySuggestFilter(v => ({ ...v, suggestionType: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                    <option value="">All types</option>
+                    <option value="tighten">tighten</option>
+                    <option value="relax">relax</option>
+                    <option value="new_rule">new_rule</option>
+                    <option value="deprecate">deprecate</option>
+                  </select>
+                  <input type="text" placeholder="Policy area" value={policySuggestFilter.policyArea} onChange={e => setPolicySuggestFilter(v => ({ ...v, policyArea: e.target.value }))} className="border rounded px-2 py-1 text-xs w-28" />
+                  <button onClick={() => refetchPolicySuggest()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                </div>
+                {showPolicySuggestForm && (
+                  <div className="border border-purple-200 rounded p-3 bg-purple-50 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <select value={newPolicySuggest.suggestionType} onChange={e => setNewPolicySuggest(v => ({ ...v, suggestionType: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                        <option value="tighten">tighten</option>
+                        <option value="relax">relax</option>
+                        <option value="new_rule">new_rule</option>
+                        <option value="deprecate">deprecate</option>
+                      </select>
+                      <input type="text" placeholder="Policy area" value={newPolicySuggest.policyArea} onChange={e => setNewPolicySuggest(v => ({ ...v, policyArea: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Source plan ID" value={newPolicySuggest.sourcePlanId} onChange={e => setNewPolicySuggest(v => ({ ...v, sourcePlanId: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Confidence Δ (e.g. +5 or -8)" value={newPolicySuggest.confidenceDelta} onChange={e => setNewPolicySuggest(v => ({ ...v, confidenceDelta: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                    </div>
+                    <textarea placeholder="Trigger reason" value={newPolicySuggest.triggerReason} onChange={e => setNewPolicySuggest(v => ({ ...v, triggerReason: e.target.value }))} className="border rounded px-2 py-1 text-xs w-full h-16 resize-none" />
+                    <button disabled={postPolicySuggestPending || !newPolicySuggest.policyArea} onClick={() => postPolicySuggest({ ...newPolicySuggest })}
+                      className="text-xs px-3 py-1.5 bg-purple-700 text-white rounded hover:bg-purple-800 disabled:opacity-40 flex items-center gap-1">
+                      {postPolicySuggestPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <TrendingUp className="w-3 h-3" />} Create Suggestion
+                    </button>
+                  </div>
+                )}
+                {policySuggestLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  !policySuggestData?.suggestions?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No policy learning suggestions yet — run Auto-Gen on a completed plan or add one manually</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {policySuggestData.byStatus && (
+                        <div className="flex gap-2 flex-wrap">
+                          {Object.entries(policySuggestData.byStatus).map(([k, v]: any) => (
+                            <span key={k} className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded">{k}: {v}</span>
+                          ))}
+                        </div>
+                      )}
+                      {policySuggestData.suggestions.map((s: any) => (
+                        <div key={s.id} className="border rounded-lg p-3 text-xs space-y-1.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${s.suggestion_type === 'tighten' ? 'bg-red-100 text-red-700' : s.suggestion_type === 'relax' ? 'bg-green-100 text-green-700' : s.suggestion_type === 'new_rule' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>{s.suggestion_type}</span>
+                              <span className="font-semibold text-gray-800">{s.policy_area}</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] ${s.status === 'accepted' ? 'bg-green-100 text-green-700' : s.status === 'rejected' ? 'bg-red-100 text-red-500' : s.status === 'deferred' ? 'bg-gray-100 text-gray-500' : 'bg-yellow-100 text-yellow-700'}`}>{s.status}</span>
+                              {parseFloat(s.confidence_delta) !== 0 && <span className={`text-[10px] font-mono ${parseFloat(s.confidence_delta) > 0 ? 'text-green-600' : 'text-red-500'}`}>{parseFloat(s.confidence_delta) > 0 ? '+' : ''}{s.confidence_delta} confidence</span>}
+                            </div>
+                            {s.status === 'pending' && (
+                              <div className="flex gap-1 shrink-0">
+                                <button disabled={patchPolicySuggestPending} onClick={() => patchPolicySuggest({ id: s.id, status: 'accepted' })} className="text-[10px] px-1.5 py-0.5 bg-green-600 text-white rounded hover:bg-green-700">Accept</button>
+                                <button disabled={patchPolicySuggestPending} onClick={() => patchPolicySuggest({ id: s.id, status: 'deferred' })} className="text-[10px] px-1.5 py-0.5 border text-gray-500 rounded hover:bg-gray-50">Defer</button>
+                                <button disabled={patchPolicySuggestPending} onClick={() => patchPolicySuggest({ id: s.id, status: 'rejected' })} className="text-[10px] px-1.5 py-0.5 border border-red-200 text-red-500 rounded hover:bg-red-50">Reject</button>
+                              </div>
+                            )}
+                          </div>
+                          {s.trigger_reason && <div className="text-gray-500 text-[10px] border-t pt-1">{s.trigger_reason}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -9651,6 +9905,105 @@ export default function AdminWalletDashboard() {
                 }
               </CardContent>
             </Card>
+
+            {/* 4.2E — OPERATING REVIEW FOLLOW-UP ACTIONS */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Operating Review Follow-Up Actions
+                </CardTitle>
+                <button onClick={() => setShowFollowUpForm(v => !v)} className="text-xs px-2 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700">
+                  {showFollowUpForm ? 'Cancel' : '+ Add Action'}
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded p-2">
+                  Monthly packs generate tracked follow-up actions with an owner, due date, and priority. Actions are audited — closing or cancelling is logged. Overdue actions are surfaced automatically.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input type="month" value={followUpFilter.month} onChange={e => setFollowUpFilter(v => ({ ...v, month: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                  <select value={followUpFilter.status} onChange={e => setFollowUpFilter(v => ({ ...v, status: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                    <option value="">All statuses</option>
+                    <option value="open">Open</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="closed">Closed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                  <input type="text" placeholder="Owner UID" value={followUpFilter.ownerUid} onChange={e => setFollowUpFilter(v => ({ ...v, ownerUid: e.target.value }))} className="border rounded px-2 py-1 text-xs w-32" />
+                  <button onClick={() => refetchFollowUp()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                </div>
+                {showFollowUpForm && (
+                  <div className="border border-emerald-200 rounded p-3 bg-emerald-50 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="text" placeholder="Title" value={newFollowUp.title} onChange={e => setNewFollowUp(v => ({ ...v, title: e.target.value }))} className="border rounded px-2 py-1 text-xs col-span-2" />
+                      <input type="text" placeholder="Owner UID" value={newFollowUp.ownerUid} onChange={e => setNewFollowUp(v => ({ ...v, ownerUid: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="date" value={newFollowUp.dueDate} onChange={e => setNewFollowUp(v => ({ ...v, dueDate: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="month" value={newFollowUp.month} onChange={e => setNewFollowUp(v => ({ ...v, month: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <select value={newFollowUp.priority} onChange={e => setNewFollowUp(v => ({ ...v, priority: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="critical">Critical</option>
+                      </select>
+                    </div>
+                    <textarea placeholder="Notes" value={newFollowUp.notes} onChange={e => setNewFollowUp(v => ({ ...v, notes: e.target.value }))} className="border rounded px-2 py-1 text-xs w-full h-14 resize-none" />
+                    <button disabled={postFollowUpPending || !newFollowUp.title || !newFollowUp.ownerUid || !newFollowUp.dueDate} onClick={() => postFollowUp(newFollowUp)}
+                      className="text-xs px-3 py-1.5 bg-emerald-700 text-white rounded hover:bg-emerald-800 disabled:opacity-40 flex items-center gap-1">
+                      {postFollowUpPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />} Create Action
+                    </button>
+                  </div>
+                )}
+                {followUpLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  followUpData && (
+                    <div className="space-y-2">
+                      {followUpData.overdue?.length > 0 && (
+                        <div className="border border-red-200 bg-red-50 rounded p-2 text-xs text-red-700">
+                          <span className="font-semibold">⚠ {followUpData.overdue.length} overdue:</span>{' '}
+                          {followUpData.overdue.map((a: any) => a.title).join(', ')}
+                        </div>
+                      )}
+                      {followUpData.byStatus && (
+                        <div className="flex gap-2 flex-wrap">
+                          {Object.entries(followUpData.byStatus).map(([k, v]: any) => (
+                            <span key={k} className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded">{k}: {v}</span>
+                          ))}
+                        </div>
+                      )}
+                      {!followUpData.actions?.length ? (
+                        <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No follow-up actions for this filter — create the first one above</div>
+                      ) : (
+                        <div className="border rounded-lg overflow-hidden">
+                          <table className="w-full text-xs"><thead className="bg-gray-50">
+                            <tr className="text-gray-500"><th className="text-left p-2">Title</th><th className="text-left p-2">Owner</th><th className="text-left p-2">Due</th><th className="text-left p-2">Priority</th><th className="text-left p-2">Status</th><th className="p-2"></th></tr>
+                          </thead><tbody>
+                            {followUpData.actions.map((a: any) => {
+                              const today = new Date().toISOString().slice(0, 10);
+                              const overdue = a.status !== 'closed' && a.status !== 'cancelled' && a.due_date < today;
+                              return (
+                                <tr key={a.id} className={`border-t hover:bg-gray-50 ${overdue ? 'bg-red-50' : ''}`}>
+                                  <td className="p-2 font-semibold text-gray-800 max-w-[140px] truncate" title={a.title}>{a.title}</td>
+                                  <td className="p-2 font-mono text-gray-500 text-[10px] max-w-[80px] truncate">{a.owner_uid}</td>
+                                  <td className={`p-2 font-mono text-[10px] ${overdue ? 'text-red-600 font-bold' : 'text-gray-600'}`}>{a.due_date}{overdue ? ' ⚠' : ''}</td>
+                                  <td className="p-2"><span className={`text-[10px] px-1.5 py-0.5 rounded ${a.priority === 'critical' ? 'bg-red-100 text-red-700' : a.priority === 'high' ? 'bg-orange-100 text-orange-700' : a.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>{a.priority}</span></td>
+                                  <td className="p-2"><span className={`text-[10px] px-1.5 py-0.5 rounded ${a.status === 'closed' ? 'bg-green-100 text-green-700' : a.status === 'cancelled' ? 'bg-gray-100 text-gray-400' : a.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>{a.status}</span></td>
+                                  <td className="p-2">
+                                    <div className="flex gap-1">
+                                      {a.status === 'open'        && <button disabled={patchFollowUpPending} onClick={() => patchFollowUp({ id: a.id, status: 'in_progress' })} className="text-[10px] px-1 py-0.5 border rounded hover:bg-blue-50 text-blue-600">→ In Progress</button>}
+                                      {a.status === 'in_progress' && <button disabled={patchFollowUpPending} onClick={() => patchFollowUp({ id: a.id, status: 'closed' })}      className="text-[10px] px-1 py-0.5 border rounded hover:bg-green-50 text-green-600">✓ Close</button>}
+                                      {(a.status === 'open' || a.status === 'in_progress') && <button disabled={patchFollowUpPending} onClick={() => patchFollowUp({ id: a.id, status: 'cancelled' })} className="text-[10px] px-1 py-0.5 border border-red-200 rounded hover:bg-red-50 text-red-500">✕</button>}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody></table>
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -10083,6 +10436,97 @@ export default function AdminWalletDashboard() {
                 }
               </CardContent>
             </Card>
+
+            {/* 4.2D — REVIEWER AND APPROVER PERFORMANCE ANALYTICS */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-rose-600" /> Reviewer Performance Analytics
+                </CardTitle>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowSnapshotForm(v => !v)} className="text-xs px-2 py-1 bg-rose-600 text-white rounded hover:bg-rose-700">
+                    {showSnapshotForm ? 'Cancel' : '+ Snapshot'}
+                  </button>
+                  <button onClick={() => refetchReviewerPerf()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">
+                  Approval speed, reversal rate, and outcome quality are computed per reviewer per period. High reversal rates or overdue rates degrade the outcome quality score.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input type="text" placeholder="Reviewer UID" value={reviewerPerfFilter.reviewerUid} onChange={e => setReviewerPerfFilter(v => ({ ...v, reviewerUid: e.target.value }))} className="border rounded px-2 py-1 text-xs w-36" />
+                  <input type="month" value={reviewerPerfFilter.periodKey} onChange={e => setReviewerPerfFilter(v => ({ ...v, periodKey: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                </div>
+                {showSnapshotForm && (
+                  <div className="border border-rose-200 rounded p-3 bg-rose-50 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="text" placeholder="Reviewer UID" value={newSnapshot.reviewerUid} onChange={e => setNewSnapshot(v => ({ ...v, reviewerUid: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="month" value={newSnapshot.periodKey} onChange={e => setNewSnapshot(v => ({ ...v, periodKey: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                    </div>
+                    <button disabled={postSnapshotPending || !newSnapshot.reviewerUid} onClick={() => postSnapshot(newSnapshot)}
+                      className="text-xs px-3 py-1.5 bg-rose-700 text-white rounded hover:bg-rose-800 disabled:opacity-40 flex items-center gap-1">
+                      {postSnapshotPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Activity className="w-3 h-3" />} Compute Snapshot
+                    </button>
+                  </div>
+                )}
+                {reviewerPerfLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  reviewerPerfData && (
+                    <div className="space-y-3">
+                      {reviewerPerfData.liveWorkload?.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-semibold text-gray-500 mb-1 uppercase tracking-wide">Live Workload — Last 30 Days</div>
+                          <div className="border rounded-lg overflow-hidden">
+                            <table className="w-full text-xs"><thead className="bg-gray-50">
+                              <tr className="text-gray-500"><th className="text-left p-2">Reviewer</th><th className="text-right p-2">Accepted</th><th className="text-right p-2">Rejected</th><th className="text-right p-2">Snoozed</th><th className="text-right p-2">SLA Breaches</th><th className="text-right p-2">Avg Age</th></tr>
+                            </thead><tbody>
+                              {reviewerPerfData.liveWorkload.map((r: any) => (
+                                <tr key={r.actor_uid} className="border-t hover:bg-gray-50">
+                                  <td className="p-2 font-mono text-gray-700 text-[10px] max-w-[120px] truncate">{r.actor_uid}</td>
+                                  <td className="p-2 text-right text-green-600">{r.accepted}</td>
+                                  <td className="p-2 text-right text-red-500">{r.rejected}</td>
+                                  <td className="p-2 text-right text-amber-600">{r.snoozed}</td>
+                                  <td className="p-2 text-right text-red-600 font-semibold">{r.sla_breaches}</td>
+                                  <td className="p-2 text-right text-gray-500">{parseFloat(r.avg_age_hours ?? '0').toFixed(1)}h</td>
+                                </tr>
+                              ))}
+                            </tbody></table>
+                          </div>
+                        </div>
+                      )}
+                      {reviewerPerfData.snapshots?.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-semibold text-gray-500 mb-1 uppercase tracking-wide">Historical Snapshots</div>
+                          <div className="border rounded-lg overflow-hidden">
+                            <table className="w-full text-xs"><thead className="bg-gray-50">
+                              <tr className="text-gray-500"><th className="text-left p-2">Reviewer</th><th className="text-left p-2">Period</th><th className="text-right p-2">Reviewed</th><th className="text-right p-2">Reversal %</th><th className="text-right p-2">Overdue %</th><th className="text-right p-2">Quality Score</th></tr>
+                            </thead><tbody>
+                              {reviewerPerfData.snapshots.map((s: any) => (
+                                <tr key={s.id} className="border-t hover:bg-gray-50">
+                                  <td className="p-2 font-mono text-gray-700 text-[10px] max-w-[120px] truncate">{s.reviewer_uid}</td>
+                                  <td className="p-2 font-mono text-gray-500">{s.period_key}</td>
+                                  <td className="p-2 text-right text-gray-600">{s.total_reviewed}</td>
+                                  <td className="p-2 text-right text-amber-600">{(parseFloat(s.reversal_rate) * 100).toFixed(1)}%</td>
+                                  <td className="p-2 text-right text-red-500">{(parseFloat(s.overdue_rate) * 100).toFixed(1)}%</td>
+                                  <td className="p-2 text-right font-semibold" style={{ color: parseFloat(s.outcome_quality_score) >= 80 ? '#16a34a' : parseFloat(s.outcome_quality_score) >= 50 ? '#d97706' : '#dc2626' }}>
+                                    {parseFloat(s.outcome_quality_score).toFixed(1)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody></table>
+                          </div>
+                        </div>
+                      )}
+                      {!reviewerPerfData.liveWorkload?.length && !reviewerPerfData.snapshots?.length && (
+                        <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No reviewer data yet — actions will appear here once recommendations have been actioned</div>
+                      )}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -10170,6 +10614,98 @@ export default function AdminWalletDashboard() {
                 {!commandCenterData && !commandCenterLoading && (
                   <div className="text-xs text-gray-400 text-center py-8 border border-dashed rounded">Command center loading…</div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* 4.2G — EXECUTION FEEDBACK SUMMARY */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-fuchsia-600" /> Execution Feedback & Confidence Health
+                </CardTitle>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowFeedbackForm(v => !v)} className="text-xs px-2 py-1 bg-fuchsia-600 text-white rounded hover:bg-fuchsia-700">
+                    {showFeedbackForm ? 'Cancel' : '+ Submit Feedback'}
+                  </button>
+                  <button onClick={() => refetchFeedbackSummary()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-fuchsia-700 bg-fuchsia-50 border border-fuchsia-200 rounded p-2">
+                  Feedback closes the learning loop: confirmed effective actions boost confidence; false positives and overrides reduce it and auto-generate policy learning suggestions.
+                </div>
+                {showFeedbackForm && (
+                  <div className="border border-fuchsia-200 rounded p-3 bg-fuchsia-50 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <select value={newFeedback.sourceType} onChange={e => setNewFeedback(v => ({ ...v, sourceType: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                        <option value="recommendation_action">Rec Action</option>
+                        <option value="remediation_outcome">Remediation Outcome</option>
+                        <option value="unified_recommendation">Unified Rec</option>
+                      </select>
+                      <input type="number" placeholder="Source ID" value={newFeedback.sourceId} onChange={e => setNewFeedback(v => ({ ...v, sourceId: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <select value={newFeedback.feedbackType} onChange={e => setNewFeedback(v => ({ ...v, feedbackType: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                        <option value="confirmed_effective">Confirmed Effective (+8)</option>
+                        <option value="confirmed_ineffective">Confirmed Ineffective (−10)</option>
+                        <option value="false_positive">False Positive (−6)</option>
+                        <option value="overridden">Overridden (−4)</option>
+                      </select>
+                      <input type="text" placeholder="Actor UID" value={newFeedback.actorUid} onChange={e => setNewFeedback(v => ({ ...v, actorUid: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                    </div>
+                    <button disabled={postFeedbackPending || !newFeedback.sourceId} onClick={() => postFeedback(newFeedback)}
+                      className="text-xs px-3 py-1.5 bg-fuchsia-700 text-white rounded hover:bg-fuchsia-800 disabled:opacity-40 flex items-center gap-1">
+                      {postFeedbackPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Activity className="w-3 h-3" />} Apply Feedback
+                    </button>
+                  </div>
+                )}
+                {feedbackSummaryLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  feedbackSummaryData && (
+                    <div className="space-y-3">
+                      {feedbackSummaryData.confidenceHealth && (
+                        <div className="grid grid-cols-4 gap-2">
+                          {[
+                            { label: 'Avg Confidence', value: feedbackSummaryData.confidenceHealth.avg ? `${parseFloat(feedbackSummaryData.confidenceHealth.avg).toFixed(1)}%` : '—', color: 'text-blue-700' },
+                            { label: 'Min',            value: feedbackSummaryData.confidenceHealth.min ? `${parseFloat(feedbackSummaryData.confidenceHealth.min).toFixed(1)}%` : '—', color: 'text-red-500' },
+                            { label: 'Max',            value: feedbackSummaryData.confidenceHealth.max ? `${parseFloat(feedbackSummaryData.confidenceHealth.max).toFixed(1)}%` : '—', color: 'text-green-600' },
+                            { label: 'SLA Breaches',   value: feedbackSummaryData.slaBreaches ?? '—', color: parseInt(feedbackSummaryData.slaBreaches) > 0 ? 'text-red-600 font-bold' : 'text-gray-500' },
+                          ].map(k => (
+                            <div key={k.label} className="border rounded p-2 text-center">
+                              <div className={`text-lg font-bold ${k.color}`}>{k.value}</div>
+                              <div className="text-[10px] text-gray-500">{k.label}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        {feedbackSummaryData.actionBreakdown && Object.keys(feedbackSummaryData.actionBreakdown).length > 0 && (
+                          <div className="border rounded p-2">
+                            <div className="text-[10px] font-semibold text-gray-500 mb-1">Action Breakdown</div>
+                            {Object.entries(feedbackSummaryData.actionBreakdown).map(([k, v]: any) => (
+                              <div key={k} className="flex justify-between"><span className="text-gray-600 capitalize">{k}</span><span className="font-mono font-semibold">{v}</span></div>
+                            ))}
+                          </div>
+                        )}
+                        {feedbackSummaryData.outcomeBreakdown && Object.keys(feedbackSummaryData.outcomeBreakdown).length > 0 && (
+                          <div className="border rounded p-2">
+                            <div className="text-[10px] font-semibold text-gray-500 mb-1">Outcome Breakdown</div>
+                            {Object.entries(feedbackSummaryData.outcomeBreakdown).map(([k, v]: any) => (
+                              <div key={k} className="flex justify-between"><span className={`capitalize ${k === 'improved' ? 'text-green-600' : k === 'worsened' ? 'text-red-500' : 'text-gray-500'}`}>{k}</span><span className="font-mono font-semibold">{v}</span></div>
+                            ))}
+                          </div>
+                        )}
+                        {feedbackSummaryData.suggestionStatus && Object.keys(feedbackSummaryData.suggestionStatus).length > 0 && (
+                          <div className="border rounded p-2">
+                            <div className="text-[10px] font-semibold text-gray-500 mb-1">Policy Suggestions</div>
+                            {Object.entries(feedbackSummaryData.suggestionStatus).map(([k, v]: any) => (
+                              <div key={k} className="flex justify-between"><span className="text-gray-600 capitalize">{k}</span><span className="font-mono font-semibold">{v}</span></div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                }
               </CardContent>
             </Card>
 
@@ -10354,6 +10890,301 @@ export default function AdminWalletDashboard() {
                               ))}
                             </div>
                           )}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.2A — RECOMMENDATION ACTION WORKFLOW */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-sky-600" /> Recommendation Action Workflow
+                </CardTitle>
+                <button onClick={() => setShowRecActionForm(v => !v)} className="text-xs px-2 py-1 bg-sky-600 text-white rounded hover:bg-sky-700">
+                  {showRecActionForm ? 'Cancel' : '+ Record Action'}
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-sky-700 bg-sky-50 border border-sky-200 rounded p-2">
+                  Accept → 48 h SLA. Assign → 72 h SLA. Reject → reason mandatory (−5 confidence). Snooze → specify until date. SLA breaches are auto-detected on every GET.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input type="number" placeholder="Score ID" value={recActionFilter.scoreId} onChange={e => setRecActionFilter(v => ({ ...v, scoreId: e.target.value }))} className="border rounded px-2 py-1 text-xs w-24" />
+                  <select value={recActionFilter.actionType} onChange={e => setRecActionFilter(v => ({ ...v, actionType: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                    <option value="">All actions</option>
+                    <option value="accept">Accept</option>
+                    <option value="reject">Reject</option>
+                    <option value="snooze">Snooze</option>
+                    <option value="assign">Assign</option>
+                  </select>
+                  <input type="text" placeholder="Actor UID" value={recActionFilter.actorUid} onChange={e => setRecActionFilter(v => ({ ...v, actorUid: e.target.value }))} className="border rounded px-2 py-1 text-xs w-32" />
+                  <button onClick={() => refetchRecActions()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                </div>
+                {showRecActionForm && (
+                  <div className="border border-sky-200 rounded p-3 bg-sky-50 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="number" placeholder="Score ID" value={newRecAction.recommendationScoreId} onChange={e => setNewRecAction(v => ({ ...v, recommendationScoreId: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <select value={newRecAction.actionType} onChange={e => setNewRecAction(v => ({ ...v, actionType: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                        <option value="accept">Accept (48 h SLA)</option>
+                        <option value="reject">Reject (mandatory reason)</option>
+                        <option value="snooze">Snooze</option>
+                        <option value="assign">Assign (72 h SLA)</option>
+                      </select>
+                      <input type="text" placeholder="Actor UID" value={newRecAction.actorUid} onChange={e => setNewRecAction(v => ({ ...v, actorUid: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      {newRecAction.actionType === 'assign' && <input type="text" placeholder="Assign to UID" value={newRecAction.assignedTo} onChange={e => setNewRecAction(v => ({ ...v, assignedTo: e.target.value }))} className="border rounded px-2 py-1 text-xs" />}
+                      {newRecAction.actionType === 'snooze' && <input type="datetime-local" value={newRecAction.snoozedUntil} onChange={e => setNewRecAction(v => ({ ...v, snoozedUntil: e.target.value }))} className="border rounded px-2 py-1 text-xs" />}
+                    </div>
+                    {newRecAction.actionType === 'reject' && (
+                      <textarea placeholder="Reason (mandatory for reject)" value={newRecAction.reason} onChange={e => setNewRecAction(v => ({ ...v, reason: e.target.value }))} className="border rounded px-2 py-1 text-xs w-full h-14 resize-none border-red-300" />
+                    )}
+                    <button disabled={postRecActionPending || !newRecAction.recommendationScoreId || !newRecAction.actorUid || (newRecAction.actionType === 'reject' && !newRecAction.reason)}
+                      onClick={() => postRecAction(newRecAction)}
+                      className="text-xs px-3 py-1.5 bg-sky-700 text-white rounded hover:bg-sky-800 disabled:opacity-40 flex items-center gap-1">
+                      {postRecActionPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />} Record Action
+                    </button>
+                  </div>
+                )}
+                {recActionsLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  !recActionsData?.actions?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No actions yet — accept, reject, snooze, or assign a recommendation above</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {recActionsData.slaBreaches > 0 && (
+                        <div className="text-xs border border-red-200 bg-red-50 rounded p-2 text-red-700 font-semibold">⚠ {recActionsData.slaBreaches} SLA breach{recActionsData.slaBreaches > 1 ? 'es' : ''} detected</div>
+                      )}
+                      {recActionsData.byType && (
+                        <div className="flex gap-2 flex-wrap">
+                          {Object.entries(recActionsData.byType).map(([k, v]: any) => (
+                            <span key={k} className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded capitalize">{k}: {v}</span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="border rounded-lg overflow-hidden">
+                        <table className="w-full text-xs"><thead className="bg-gray-50">
+                          <tr className="text-gray-500"><th className="text-left p-2">Score</th><th className="text-left p-2">Action</th><th className="text-left p-2">Actor</th><th className="text-left p-2">SLA Due</th><th className="text-left p-2">SLA Met</th><th className="text-left p-2">Reason</th></tr>
+                        </thead><tbody>
+                          {recActionsData.actions.map((a: any) => (
+                            <tr key={a.id} className={`border-t hover:bg-gray-50 ${a.sla_met === false ? 'bg-red-50' : ''}`}>
+                              <td className="p-2 font-mono text-gray-500 text-[10px]">#{a.recommendation_score_id}</td>
+                              <td className="p-2"><span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${a.action_type === 'accept' ? 'bg-green-100 text-green-700' : a.action_type === 'reject' ? 'bg-red-100 text-red-700' : a.action_type === 'snooze' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>{a.action_type}</span></td>
+                              <td className="p-2 font-mono text-[10px] text-gray-600 max-w-[100px] truncate">{a.actor_uid}</td>
+                              <td className="p-2 text-[10px] text-gray-500">{a.sla_due_at ? new Date(a.sla_due_at).toLocaleDateString('he-IL') : '—'}</td>
+                              <td className="p-2 text-center">{a.sla_met === true ? '✓' : a.sla_met === false ? <span className="text-red-600 font-bold">⚠</span> : <span className="text-gray-400">—</span>}</td>
+                              <td className="p-2 text-[10px] text-gray-400 max-w-[100px] truncate" title={a.reason}>{a.reason || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody></table>
+                      </div>
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.2B — REMEDIATION OUTCOME SCORING */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-teal-700" /> Remediation Outcome Scoring
+                </CardTitle>
+                <button onClick={() => setShowOutcomeForm(v => !v)} className="text-xs px-2 py-1 bg-teal-600 text-white rounded hover:bg-teal-700">
+                  {showOutcomeForm ? 'Cancel' : '+ Record Outcome'}
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded p-2">
+                  Before vs after metrics per plan. Improved outcomes boost confidence on linked recommendation scores; worsened outcomes reduce it. Metric direction is auto-detected (lower-is-better for risk/alert metrics).
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input type="number" placeholder="Plan ID" value={outcomeFilter.planId} onChange={e => setOutcomeFilter(v => ({ ...v, planId: e.target.value }))} className="border rounded px-2 py-1 text-xs w-24" />
+                  <select value={outcomeFilter.outcomeStatus} onChange={e => setOutcomeFilter(v => ({ ...v, outcomeStatus: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                    <option value="">All outcomes</option>
+                    <option value="improved">Improved</option>
+                    <option value="unchanged">Unchanged</option>
+                    <option value="worsened">Worsened</option>
+                  </select>
+                  <button onClick={() => refetchOutcomes()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                </div>
+                {showOutcomeForm && (
+                  <div className="border border-teal-200 rounded p-3 bg-teal-50 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="number" placeholder="Plan ID" value={newOutcome.remediationPlanId} onChange={e => setNewOutcome(v => ({ ...v, remediationPlanId: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="text" placeholder="Metric name (e.g. stuck_count)" value={newOutcome.metricName} onChange={e => setNewOutcome(v => ({ ...v, metricName: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Before value" value={newOutcome.beforeValue} onChange={e => setNewOutcome(v => ({ ...v, beforeValue: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="After value" value={newOutcome.afterValue} onChange={e => setNewOutcome(v => ({ ...v, afterValue: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="text" placeholder="Unit (optional, e.g. ₪, count)" value={newOutcome.unit} onChange={e => setNewOutcome(v => ({ ...v, unit: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                    </div>
+                    <button disabled={postOutcomePending || !newOutcome.remediationPlanId || !newOutcome.metricName}
+                      onClick={() => postOutcome(newOutcome)}
+                      className="text-xs px-3 py-1.5 bg-teal-700 text-white rounded hover:bg-teal-800 disabled:opacity-40 flex items-center gap-1">
+                      {postOutcomePending ? <Loader2 className="w-3 h-3 animate-spin" /> : <BarChart3 className="w-3 h-3" />} Record Outcome
+                    </button>
+                  </div>
+                )}
+                {outcomesLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  outcomesData && (
+                    <div className="space-y-2">
+                      {outcomesData.summary && (
+                        <div className="grid grid-cols-4 gap-2">
+                          {[
+                            { label: 'Improved',  value: outcomesData.summary.improved,  color: 'text-green-700' },
+                            { label: 'Unchanged', value: outcomesData.summary.unchanged, color: 'text-gray-500' },
+                            { label: 'Worsened',  value: outcomesData.summary.worsened,  color: outcomesData.summary.worsened > 0 ? 'text-red-600' : 'text-gray-500' },
+                            { label: 'Rate',      value: outcomesData.summary.improvementRate != null ? `${outcomesData.summary.improvementRate}%` : '—', color: 'text-teal-700' },
+                          ].map(k => (
+                            <div key={k.label} className="border rounded p-2 text-center">
+                              <div className={`text-lg font-bold ${k.color}`}>{k.value ?? '—'}</div>
+                              <div className="text-[10px] text-gray-500">{k.label}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {!outcomesData.outcomes?.length ? (
+                        <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No outcome records yet — record before/after metrics for a completed plan</div>
+                      ) : (
+                        <div className="border rounded-lg overflow-hidden">
+                          <table className="w-full text-xs"><thead className="bg-gray-50">
+                            <tr className="text-gray-500"><th className="text-left p-2">Plan</th><th className="text-left p-2">Metric</th><th className="text-right p-2">Before</th><th className="text-right p-2">After</th><th className="text-left p-2">Unit</th><th className="text-left p-2">Status</th></tr>
+                          </thead><tbody>
+                            {outcomesData.outcomes.map((o: any) => (
+                              <tr key={o.id} className={`border-t hover:bg-gray-50 ${o.outcome_status === 'improved' ? 'bg-green-50/30' : o.outcome_status === 'worsened' ? 'bg-red-50/30' : ''}`}>
+                                <td className="p-2 font-mono text-[10px] text-gray-500">#{o.remediation_plan_id}</td>
+                                <td className="p-2 font-mono text-gray-700">{o.metric_name}</td>
+                                <td className="p-2 text-right text-gray-500">{parseFloat(o.before_value).toFixed(2)}</td>
+                                <td className="p-2 text-right font-semibold text-gray-800">{parseFloat(o.after_value).toFixed(2)}</td>
+                                <td className="p-2 text-gray-400 text-[10px]">{o.unit || '—'}</td>
+                                <td className="p-2"><span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${o.outcome_status === 'improved' ? 'bg-green-100 text-green-700' : o.outcome_status === 'worsened' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}>{o.outcome_status}</span></td>
+                              </tr>
+                            ))}
+                          </tbody></table>
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.2F — UNIFIED RECOMMENDATIONS (Cross-Tab Memory) */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <LayoutDashboard className="w-4 h-4 text-violet-600" /> Unified Recommendations
+                </CardTitle>
+                <button onClick={() => setShowUnifiedRecForm(v => !v)} className="text-xs px-2 py-1 bg-violet-600 text-white rounded hover:bg-violet-700">
+                  {showUnifiedRecForm ? 'Cancel' : '+ Create Rec'}
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded p-2">
+                  A recommendation accepted in Command Center is the same tracked object in Governance, Orchestration, and Operating Review — linked by ID, visible across all pinned tabs, and never duplicated.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <select value={unifiedRecFilter.status} onChange={e => setUnifiedRecFilter(v => ({ ...v, status: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                    <option value="">All statuses</option>
+                    <option value="open">Open</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="snoozed">Snoozed</option>
+                    <option value="resolved">Resolved</option>
+                  </select>
+                  <select value={unifiedRecFilter.sourceTab} onChange={e => setUnifiedRecFilter(v => ({ ...v, sourceTab: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                    <option value="">All tabs</option>
+                    <option value="command-center">Command Center</option>
+                    <option value="governance">Governance</option>
+                    <option value="orchestration">Orchestration</option>
+                    <option value="simulation">Simulation</option>
+                    <option value="policies">Policies</option>
+                  </select>
+                  <select value={unifiedRecFilter.priority} onChange={e => setUnifiedRecFilter(v => ({ ...v, priority: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                    <option value="">All priorities</option>
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                  <button onClick={() => refetchUnifiedRec()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50">Filter</button>
+                </div>
+                {showUnifiedRecForm && (
+                  <div className="border border-violet-200 rounded p-3 bg-violet-50 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="text" placeholder="Title" value={newUnifiedRec.title} onChange={e => setNewUnifiedRec(v => ({ ...v, title: e.target.value }))} className="border rounded px-2 py-1 text-xs col-span-2" />
+                      <select value={newUnifiedRec.sourceTab} onChange={e => setNewUnifiedRec(v => ({ ...v, sourceTab: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                        <option value="command-center">Command Center</option>
+                        <option value="governance">Governance</option>
+                        <option value="orchestration">Orchestration</option>
+                        <option value="simulation">Simulation</option>
+                        <option value="policies">Policies</option>
+                      </select>
+                      <select value={newUnifiedRec.priority} onChange={e => setNewUnifiedRec(v => ({ ...v, priority: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="critical">Critical</option>
+                      </select>
+                      <input type="text" placeholder="Entity type" value={newUnifiedRec.entityType} onChange={e => setNewUnifiedRec(v => ({ ...v, entityType: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="text" placeholder="Entity ID" value={newUnifiedRec.entityId} onChange={e => setNewUnifiedRec(v => ({ ...v, entityId: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="text" placeholder="Assign to UID" value={newUnifiedRec.assignedTo} onChange={e => setNewUnifiedRec(v => ({ ...v, assignedTo: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Confidence %" value={newUnifiedRec.confidenceScore} onChange={e => setNewUnifiedRec(v => ({ ...v, confidenceScore: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="number" placeholder="Linked Score ID (optional)" value={newUnifiedRec.recommendationScoreId} onChange={e => setNewUnifiedRec(v => ({ ...v, recommendationScoreId: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-gray-500 mb-1">Visible on tabs (click to toggle):</div>
+                      <div className="flex gap-1 flex-wrap">
+                        {['command-center', 'governance', 'orchestration', 'simulation', 'policies'].map(tab => (
+                          <button key={tab} onClick={() => setNewUnifiedRec(v => ({ ...v, visibilityTabs: v.visibilityTabs.includes(tab) ? v.visibilityTabs.filter(t => t !== tab) : [...v.visibilityTabs, tab] }))}
+                            className={`text-[10px] px-2 py-0.5 rounded border ${newUnifiedRec.visibilityTabs.includes(tab) ? 'bg-violet-600 text-white border-violet-600' : 'border-gray-200 text-gray-500'}`}>
+                            {tab}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <textarea placeholder="Description" value={newUnifiedRec.description} onChange={e => setNewUnifiedRec(v => ({ ...v, description: e.target.value }))} className="border rounded px-2 py-1 text-xs w-full h-14 resize-none" />
+                    <button disabled={postUnifiedRecPending || !newUnifiedRec.title} onClick={() => postUnifiedRec({ ...newUnifiedRec })}
+                      className="text-xs px-3 py-1.5 bg-violet-700 text-white rounded hover:bg-violet-800 disabled:opacity-40 flex items-center gap-1">
+                      {postUnifiedRecPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <LayoutDashboard className="w-3 h-3" />} Create Unified Rec
+                    </button>
+                  </div>
+                )}
+                {unifiedRecLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  !unifiedRecData?.recommendations?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No unified recommendations yet — create one above or promote from any tab</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {unifiedRecData.byStatus && (
+                        <div className="flex gap-2 flex-wrap">
+                          {Object.entries(unifiedRecData.byStatus).map(([k, v]: any) => (
+                            <span key={k} className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded capitalize">{k}: {v}</span>
+                          ))}
+                        </div>
+                      )}
+                      {unifiedRecData.recommendations.map((r: any) => (
+                        <div key={r.id} className="border rounded-lg p-3 text-xs space-y-1.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-semibold text-gray-800">{r.title}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${r.priority === 'critical' ? 'bg-red-100 text-red-700' : r.priority === 'high' ? 'bg-orange-100 text-orange-700' : r.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>{r.priority}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${r.status === 'accepted' ? 'bg-green-100 text-green-700' : r.status === 'resolved' ? 'bg-blue-100 text-blue-700' : r.status === 'rejected' ? 'bg-red-100 text-red-500' : r.status === 'snoozed' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>{r.status}</span>
+                              {parseFloat(r.confidence_score) > 0 && <span className="text-[10px] text-blue-600 font-mono">{parseFloat(r.confidence_score).toFixed(0)}% conf</span>}
+                            </div>
+                            <div className="flex gap-1 shrink-0">
+                              {r.status === 'open' && <button disabled={patchUnifiedRecPending} onClick={() => patchUnifiedRec({ id: r.id, status: 'accepted' })} className="text-[10px] px-1.5 py-0.5 bg-green-600 text-white rounded hover:bg-green-700">Accept</button>}
+                              {r.status === 'open' && <button disabled={patchUnifiedRecPending} onClick={() => patchUnifiedRec({ id: r.id, status: 'snoozed' })} className="text-[10px] px-1.5 py-0.5 border text-amber-600 rounded hover:bg-amber-50">Snooze</button>}
+                              {(r.status === 'open' || r.status === 'accepted') && <button disabled={patchUnifiedRecPending} onClick={() => patchUnifiedRec({ id: r.id, status: 'resolved' })} className="text-[10px] px-1.5 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700">Resolve</button>}
+                              {r.status !== 'rejected' && r.status !== 'resolved' && <button disabled={patchUnifiedRecPending} onClick={() => patchUnifiedRec({ id: r.id, status: 'rejected' })} className="text-[10px] px-1.5 py-0.5 border border-red-200 text-red-500 rounded hover:bg-red-50">Reject</button>}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-1 items-center text-[10px] text-gray-400">
+                            <span>Source: <span className="font-semibold text-gray-600">{r.source_tab}</span></span>
+                            {r.entity_type && <span>| {r.entity_type}/{r.entity_id}</span>}
+                            {r.assigned_to && <span>| Assigned: <span className="font-mono">{r.assigned_to}</span></span>}
+                            {r.visibility_tabs?.length > 0 && <span>| Tabs: {r.visibility_tabs.join(', ')}</span>}
+                          </div>
+                          {r.description && <div className="text-gray-500 border-t pt-1">{r.description}</div>}
                         </div>
                       ))}
                     </div>
