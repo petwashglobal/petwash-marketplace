@@ -341,7 +341,7 @@ const STATUS_CONTEXT: Record<string, {
     bg: 'bg-violet-50', border: 'border-violet-200', textColor: 'text-violet-800',
     icon: Star, iconColor: '#7C3AED',
     he: 'השירות הושלם! נשמח לשמוע מה חשבת — השאר ביקורת.',
-    en: 'Service completed! We'd love your feedback — please leave a review.',
+    en: "Service completed! We'd love your feedback — please leave a review.",
   },
   reviewed: {
     bg: 'bg-emerald-50', border: 'border-emerald-200', textColor: 'text-emerald-800',
