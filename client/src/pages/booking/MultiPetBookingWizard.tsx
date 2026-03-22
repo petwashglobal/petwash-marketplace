@@ -1388,6 +1388,7 @@ function ConfirmStep({
         <Shield className="w-3 h-3 inline mr-1" />
         ההזמנה תאושר רק לאחר אישור נותן השירות
       </p>
+      </div>
     </div>
   );
 }
