@@ -1317,13 +1317,13 @@ export default function AdminWalletDashboard() {
   const [simPolicyKey, setSimPolicyKey] = useState('refund_auto_approve_limit');
   const [simProposedValue, setSimProposedValue] = useState('');
   const [simDivision, setSimDivision] = useState('');
-  const [simResult, setSimResult] = useState<any>(null);
+  const [policySimResult, setPolicySimResult] = useState<any>(null);
   const { data: simHistory, isLoading: simHistoryLoading, refetch: refetchSimHistory } = useQuery<any>({
     queryKey: ['/api/prestige-pass/admin/wallet/policy-simulation/history'],
   });
-  const { mutate: runSimulation, isPending: runSimulationPending } = useMutation<any, any, any>({
+  const { mutate: runPolicySimulation, isPending: runPolicySimulationPending } = useMutation<any, any, any>({
     mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/policy-simulation/run', body),
-    onSuccess: (d) => { setSimResult(d); toast({ title: 'Simulation complete', description: d.outcomeSummary }); refetchSimHistory(); },
+    onSuccess: (d) => { setPolicySimResult(d); toast({ title: 'Simulation complete', description: d.outcomeSummary }); refetchSimHistory(); },
   });
 
   // ── Phase 3.7B: Approval Chains ────────────────────────────────────────────
@@ -1665,13 +1665,13 @@ export default function AdminWalletDashboard() {
 
   // 4.0D — Governance Pack Subscriptions
   const [showNewSubForm, setShowNewSubForm] = useState(false);
-  const [newSub, setNewSub] = useState({ audienceName: '', packType: 'monthly', entityCode: '', recipients: '', includeCommentary: true, includeControlCenter: false });
+  const [newPackSub, setNewPackSub] = useState({ audienceName: '', packType: 'monthly', entityCode: '', recipients: '', includeCommentary: true, includeControlCenter: false });
   const { data: packSubsData, isLoading: packSubsLoading, refetch: refetchPackSubs } = useQuery<any>({
     queryKey: ['/api/prestige-pass/admin/wallet/governance-pack-subscriptions'],
   });
   const { mutate: createPackSub, isPending: createPackSubPending } = useMutation<any, any, any>({
     mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/governance-pack-subscriptions', body),
-    onSuccess: () => { toast({ title: 'Subscription created' }); refetchPackSubs(); setShowNewSubForm(false); setNewSub({ audienceName: '', packType: 'monthly', entityCode: '', recipients: '', includeCommentary: true, includeControlCenter: false }); },
+    onSuccess: () => { toast({ title: 'Subscription created' }); refetchPackSubs(); setShowNewSubForm(false); setNewPackSub({ audienceName: '', packType: 'monthly', entityCode: '', recipients: '', includeCommentary: true, includeControlCenter: false }); },
   });
   const { mutate: patchPackSub } = useMutation<any, any, { id: number; body: any }>({
     mutationFn: ({ id, body }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/governance-pack-subscriptions/${id}`, body),
@@ -1837,15 +1837,15 @@ export default function AdminWalletDashboard() {
   });
 
   // 4.2B — Remediation Outcome Scoring
-  const [outcomeFilter, setOutcomeFilter] = useState({ planId: '', outcomeStatus: '' });
+  const [remOutcomeFilter, setRemOutcomeFilter] = useState({ planId: '', outcomeStatus: '' });
   const [showOutcomeForm, setShowOutcomeForm] = useState(false);
   const [newOutcome, setNewOutcome] = useState({ remediationPlanId: '', metricName: '', beforeValue: '', afterValue: '', unit: '' });
   const { data: outcomesData, isLoading: outcomesLoading, refetch: refetchOutcomes } = useQuery<any>({
-    queryKey: ['/api/prestige-pass/admin/wallet/remediation-outcomes', outcomeFilter],
+    queryKey: ['/api/prestige-pass/admin/wallet/remediation-outcomes', remOutcomeFilter],
     queryFn: () => {
       const p = new URLSearchParams();
-      if (outcomeFilter.planId)        p.set('planId',        outcomeFilter.planId);
-      if (outcomeFilter.outcomeStatus) p.set('outcomeStatus', outcomeFilter.outcomeStatus);
+      if (remOutcomeFilter.planId)        p.set('planId',        remOutcomeFilter.planId);
+      if (remOutcomeFilter.outcomeStatus) p.set('outcomeStatus', remOutcomeFilter.outcomeStatus);
       return fetch(`/api/prestige-pass/admin/wallet/remediation-outcomes?${p}`).then(r => r.json());
     },
   });
@@ -2028,7 +2028,7 @@ export default function AdminWalletDashboard() {
     onSuccess: (d) => { toast({ title: 'Follow-ups generated', description: `${d.generated} items` }); refetchFollowUps43(); },
     onError: (e: any) => toast({ title: 'Error', description: e?.message || 'Failed', variant: 'destructive' }),
   });
-  const { mutate: escalateOverdue, isPending: escalatePending } = useMutation<any, any, void>({
+  const { mutate: escalateOverdue, isPending: escalateOverduePending } = useMutation<any, any, void>({
     mutationFn: () => apiRequest('POST', '/api/prestige-pass/admin/wallet/followups/escalate-overdue', {}),
     onSuccess: (d) => { toast({ title: 'Escalation complete', description: `${d.escalated} items escalated` }); refetchFollowUps43(); },
     onError: (e: any) => toast({ title: 'Error', description: e?.message || 'Failed', variant: 'destructive' }),
@@ -2133,18 +2133,18 @@ export default function AdminWalletDashboard() {
   });
 
   // 4.4D — Reviewer Workload Optimization
-  const { data: workloadSuggestions, isLoading: workloadLoading, refetch: refetchWorkload } = useQuery<any>({
+  const { data: workloadSuggestions, isLoading: suggestionsLoading, refetch: refetchSuggestions } = useQuery<any>({
     queryKey: ['/api/prestige-pass/admin/wallet/reviewers/workload-suggestions'],
     queryFn: () => fetch('/api/prestige-pass/admin/wallet/reviewers/workload-suggestions').then(r => r.json()),
   });
   const { mutate: generateWorkload, isPending: generateWorkloadPending } = useMutation<any, any, void>({
     mutationFn: () => apiRequest('POST', '/api/prestige-pass/admin/wallet/reviewers/generate-workload-suggestions', {}),
-    onSuccess: (d) => { toast({ title: `Generated ${d.generated} workload suggestion(s)` }); refetchWorkload(); },
+    onSuccess: (d) => { toast({ title: `Generated ${d.generated} workload suggestion(s)` }); refetchSuggestions(); },
     onError: () => toast({ title: 'Generation failed', variant: 'destructive' }),
   });
   const { mutate: applyWorkload, isPending: applyWorkloadPending } = useMutation<any, any, number>({
     mutationFn: (id) => apiRequest('POST', '/api/prestige-pass/admin/wallet/reviewers/apply-workload-adjustment', { suggestionId: id }),
-    onSuccess: () => { toast({ title: 'Workload adjustment confirmed — manual reassignment required' }); refetchWorkload(); },
+    onSuccess: () => { toast({ title: 'Workload adjustment confirmed — manual reassignment required' }); refetchSuggestions(); },
   });
 
   // 4.4E — Operating Review Deliveries
@@ -2414,7 +2414,7 @@ export default function AdminWalletDashboard() {
     queryFn: () => fetch(`/api/prestige-pass/admin/system/incidents?status=${incidentStatusFilter}`).then(r => r.json()),
     refetchInterval: 60_000,
   });
-  const { data: selectedTimeline, isLoading: timelineLoading, refetch: refetchTimeline } = useQuery<any>({
+  const { data: selectedTimeline, isLoading: selectedTimelineLoading, refetch: refetchSelectedTimeline } = useQuery<any>({
     queryKey: ['/api/prestige-pass/admin/system/incidents', selectedIncidentId, 'timeline'],
     queryFn: () => selectedIncidentId ? fetch(`/api/prestige-pass/admin/system/incidents/${selectedIncidentId}/timeline`).then(r => r.json()) : Promise.resolve(null),
     enabled: !!selectedIncidentId,
@@ -2425,11 +2425,11 @@ export default function AdminWalletDashboard() {
   });
   const { mutate: addTimelineEntry, isPending: addingEntry } = useMutation<any, any, any>({
     mutationFn: ({ id, body }: any) => apiRequest('POST', `/api/prestige-pass/admin/system/incidents/${id}/timeline`, body),
-    onSuccess: () => { refetchTimeline(); setNewEntryContent(''); toast({ title: 'Timeline entry added' }); },
+    onSuccess: () => { refetchSelectedTimeline(); setNewEntryContent(''); toast({ title: 'Timeline entry added' }); },
   });
   const { mutate: resolveIncident, isPending: resolvingIncident } = useMutation<any, any, any>({
     mutationFn: ({ id, summary }: any) => apiRequest('POST', `/api/prestige-pass/admin/system/incidents/${id}/resolve`, { summary }),
-    onSuccess: () => { refetchIncidents(); refetchTimeline(); toast({ title: 'Incident resolved' }); },
+    onSuccess: () => { refetchIncidents(); refetchSelectedTimeline(); toast({ title: 'Incident resolved' }); },
   });
   const { mutate: autoBuildIncidents, isPending: autoBuildPending } = useMutation<any, any, void>({
     mutationFn: () => apiRequest('POST', '/api/prestige-pass/admin/system/incidents/auto-build', {}),
@@ -2469,7 +2469,7 @@ export default function AdminWalletDashboard() {
       });
       const d = await res.json();
       setRcaData(p => ({ ...p, [incidentId]: d.rca }));
-      if (exportToTimeline) { refetchTimeline(); toast({ title: 'RCA exported to timeline' }); }
+      if (exportToTimeline) { refetchSelectedTimeline(); toast({ title: 'RCA exported to timeline' }); }
       else { toast({ title: `RCA complete — ${d.hypothesesCount} hypotheses, ${d.overallConfidence} confidence` }); }
     } catch { toast({ title: 'RCA failed', variant: 'destructive' }); }
     finally { setRcaLoading(p => ({ ...p, [incidentId]: false })); }
@@ -2566,7 +2566,7 @@ export default function AdminWalletDashboard() {
       const d = await res.json();
       setRemData(p => ({ ...p, [incidentId]: d.suggestions ?? [] }));
       toast({ title: `${d.count} remediation suggestions generated` });
-      refetchTimeline();
+      refetchSelectedTimeline();
     } catch { toast({ title: 'Remediation generation failed', variant: 'destructive' }); }
     finally { setRemLoading(p => ({ ...p, [incidentId]: false })); }
   };
@@ -2582,7 +2582,7 @@ export default function AdminWalletDashboard() {
       if (!res.ok) { toast({ title: d.error ?? 'Apply failed', variant: 'destructive' }); return; }
       setRemData(p => ({ ...p, [incidentId]: (p[incidentId] ?? []).map(s => s.id === sid ? d.suggestion : s) }));
       toast({ title: `Applied: ${d.suggestion.action_label}`, description: d.executionNote });
-      refetchTimeline();
+      refetchSelectedTimeline();
     } catch { toast({ title: 'Apply failed', variant: 'destructive' }); }
     finally { setRemActing(p => ({ ...p, [sid]: false })); }
   };
@@ -2598,7 +2598,7 @@ export default function AdminWalletDashboard() {
       if (!res.ok) { toast({ title: d.error ?? 'Dismiss failed', variant: 'destructive' }); return; }
       setRemData(p => ({ ...p, [incidentId]: (p[incidentId] ?? []).map(s => s.id === sid ? d.suggestion : s) }));
       toast({ title: 'Suggestion dismissed' });
-      refetchTimeline();
+      refetchSelectedTimeline();
     } catch { toast({ title: 'Dismiss failed', variant: 'destructive' }); }
     finally { setRemActing(p => ({ ...p, [sid]: false })); }
   };
@@ -10052,22 +10052,22 @@ export default function AdminWalletDashboard() {
                     className="border rounded px-2 py-1 text-xs w-48" />
                   <input placeholder="Division (blank=global)" value={simDivision} onChange={e => setSimDivision(e.target.value)}
                     className="border rounded px-2 py-1 text-xs w-40" />
-                  <button disabled={runSimulationPending || !simProposedValue}
-                    onClick={() => runSimulation({ policyKey: simPolicyKey, proposedValue: simProposedValue, divisionCode: simDivision || undefined })}
+                  <button disabled={runPolicySimulationPending || !simProposedValue}
+                    onClick={() => runPolicySimulation({ policyKey: simPolicyKey, proposedValue: simProposedValue, divisionCode: simDivision || undefined })}
                     className="text-xs px-3 py-1.5 bg-teal-700 text-white rounded hover:bg-teal-800 disabled:opacity-40 flex items-center gap-1">
-                    {runSimulationPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <FlaskConical className="w-3 h-3" />} Run Simulation
+                    {runPolicySimulationPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <FlaskConical className="w-3 h-3" />} Run Simulation
                   </button>
                 </div>
-                {simResult && (
+                {policySimResult && (
                   <div className="border border-teal-200 rounded-lg p-3 bg-teal-50 text-xs space-y-2">
                     <div className="font-semibold text-teal-800">Simulation Result</div>
-                    <div className="text-gray-700">{simResult.outcomeSummary}</div>
+                    <div className="text-gray-700">{policySimResult.outcomeSummary}</div>
                     <div className="flex flex-wrap gap-4 mt-2">
-                      <div className="flex flex-col"><span className="text-gray-500">Current</span><span className="font-mono text-gray-800">{simResult.originalValue ?? 'unset'}</span></div>
-                      <div className="flex flex-col"><span className="text-gray-500">Proposed</span><span className="font-mono text-teal-700">{simResult.proposedValue}</span></div>
-                      <div className="flex flex-col"><span className="text-gray-500">Affected entities</span><span className="font-mono text-orange-700">{simResult.affectedEntities}</span></div>
-                      <div className="flex flex-col"><span className="text-gray-500">Risk score</span><span className={`font-mono font-semibold ${simResult.riskScore > 60 ? 'text-red-600' : simResult.riskScore > 30 ? 'text-orange-500' : 'text-green-600'}`}>{simResult.riskScore}/100</span></div>
-                      {simResult.wouldSaveCents > 0 && <div className="flex flex-col"><span className="text-gray-500">Value impacted</span><span className="font-mono text-blue-700">₪{(simResult.wouldSaveCents/100).toFixed(2)}</span></div>}
+                      <div className="flex flex-col"><span className="text-gray-500">Current</span><span className="font-mono text-gray-800">{policySimResult.originalValue ?? 'unset'}</span></div>
+                      <div className="flex flex-col"><span className="text-gray-500">Proposed</span><span className="font-mono text-teal-700">{policySimResult.proposedValue}</span></div>
+                      <div className="flex flex-col"><span className="text-gray-500">Affected entities</span><span className="font-mono text-orange-700">{policySimResult.affectedEntities}</span></div>
+                      <div className="flex flex-col"><span className="text-gray-500">Risk score</span><span className={`font-mono font-semibold ${policySimResult.riskScore > 60 ? 'text-red-600' : policySimResult.riskScore > 30 ? 'text-orange-500' : 'text-green-600'}`}>{policySimResult.riskScore}/100</span></div>
+                      {policySimResult.wouldSaveCents > 0 && <div className="flex flex-col"><span className="text-gray-500">Value impacted</span><span className="font-mono text-blue-700">₪{(policySimResult.wouldSaveCents/100).toFixed(2)}</span></div>}
                     </div>
                   </div>
                 )}
@@ -11109,31 +11109,31 @@ export default function AdminWalletDashboard() {
                 {showNewSubForm && (
                   <div className="border border-sky-200 rounded p-3 bg-sky-50 space-y-2">
                     <div className="grid grid-cols-2 gap-2">
-                      <input type="text" placeholder="Audience name" value={newSub.audienceName}
-                        onChange={e => setNewSub(v => ({ ...v, audienceName: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
-                      <select value={newSub.packType} onChange={e => setNewSub(v => ({ ...v, packType: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                      <input type="text" placeholder="Audience name" value={newPackSub.audienceName}
+                        onChange={e => setNewPackSub(v => ({ ...v, audienceName: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <select value={newPackSub.packType} onChange={e => setNewPackSub(v => ({ ...v, packType: e.target.value }))} className="border rounded px-2 py-1 text-xs">
                         <option value="weekly">Weekly</option>
                         <option value="monthly">Monthly</option>
                         <option value="quarter">Quarterly</option>
                         <option value="year">Annual</option>
                       </select>
-                      <input type="text" placeholder="Entity code (optional)" value={newSub.entityCode}
-                        onChange={e => setNewSub(v => ({ ...v, entityCode: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
-                      <input type="text" placeholder="Recipients (comma-sep emails)" value={newSub.recipients}
-                        onChange={e => setNewSub(v => ({ ...v, recipients: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="text" placeholder="Entity code (optional)" value={newPackSub.entityCode}
+                        onChange={e => setNewPackSub(v => ({ ...v, entityCode: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                      <input type="text" placeholder="Recipients (comma-sep emails)" value={newPackSub.recipients}
+                        onChange={e => setNewPackSub(v => ({ ...v, recipients: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
                     </div>
                     <div className="flex gap-4 text-xs">
                       <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="checkbox" checked={newSub.includeCommentary} onChange={e => setNewSub(v => ({ ...v, includeCommentary: e.target.checked }))} />
+                        <input type="checkbox" checked={newPackSub.includeCommentary} onChange={e => setNewPackSub(v => ({ ...v, includeCommentary: e.target.checked }))} />
                         Include commentary
                       </label>
                       <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="checkbox" checked={newSub.includeControlCenter} onChange={e => setNewSub(v => ({ ...v, includeControlCenter: e.target.checked }))} />
+                        <input type="checkbox" checked={newPackSub.includeControlCenter} onChange={e => setNewPackSub(v => ({ ...v, includeControlCenter: e.target.checked }))} />
                         Include command center
                       </label>
                     </div>
-                    <button disabled={createPackSubPending || !newSub.audienceName}
-                      onClick={() => createPackSub({ audienceName: newSub.audienceName, packType: newSub.packType, entityCode: newSub.entityCode || undefined, recipients: newSub.recipients.split(',').map(s=>s.trim()).filter(Boolean), includeCommentary: newSub.includeCommentary, includeControlCenter: newSub.includeControlCenter })}
+                    <button disabled={createPackSubPending || !newPackSub.audienceName}
+                      onClick={() => createPackSub({ audienceName: newPackSub.audienceName, packType: newPackSub.packType, entityCode: newPackSub.entityCode || undefined, recipients: newPackSub.recipients.split(',').map(s=>s.trim()).filter(Boolean), includeCommentary: newPackSub.includeCommentary, includeControlCenter: newPackSub.includeControlCenter })}
                       className="text-xs px-3 py-1.5 bg-sky-700 text-white rounded hover:bg-sky-800 disabled:opacity-40 flex items-center gap-1">
                       {createPackSubPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} Create Subscription
                     </button>
@@ -11433,8 +11433,8 @@ export default function AdminWalletDashboard() {
                   <AlertTriangle className="w-4 h-4 text-orange-600" /> Follow-Up Automation & Escalation
                 </CardTitle>
                 <div className="flex gap-2 flex-wrap">
-                  <button onClick={() => escalateOverdue()} disabled={escalatePending} className="text-xs px-2 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-40 flex items-center gap-1">
-                    {escalatePending ? <Loader2 className="w-3 h-3 animate-spin" /> : <AlertTriangle className="w-3 h-3" />} Escalate Overdue
+                  <button onClick={() => escalateOverdue()} disabled={escalateOverduePending} className="text-xs px-2 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-40 flex items-center gap-1">
+                    {escalateOverduePending ? <Loader2 className="w-3 h-3 animate-spin" /> : <AlertTriangle className="w-3 h-3" />} Escalate Overdue
                   </button>
                   <button onClick={() => refetchFollowUps43()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh
@@ -12822,7 +12822,7 @@ export default function AdminWalletDashboard() {
                     className="text-xs px-2 py-1 bg-violet-600 text-white rounded hover:bg-violet-700 disabled:opacity-40 flex items-center gap-1">
                     {generateWorkloadPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Analyze Load
                   </button>
-                  <button onClick={() => refetchWorkload()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <button onClick={() => refetchSuggestions()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
                     <RefreshCw className="w-3 h-3" /> Refresh
                   </button>
                 </div>
@@ -12849,7 +12849,7 @@ export default function AdminWalletDashboard() {
                     </div>
                   </div>
                 )}
-                {workloadLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                {suggestionsLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
                   !workloadSuggestions?.suggestions?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No workload suggestions — click Analyze Load to generate rebalance recommendations</div>
                   ) : (
@@ -13355,8 +13355,8 @@ export default function AdminWalletDashboard() {
                   Before vs after metrics per plan. Improved outcomes boost confidence on linked recommendation scores; worsened outcomes reduce it. Metric direction is auto-detected (lower-is-better for risk/alert metrics).
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <input type="number" placeholder="Plan ID" value={outcomeFilter.planId} onChange={e => setOutcomeFilter(v => ({ ...v, planId: e.target.value }))} className="border rounded px-2 py-1 text-xs w-24" />
-                  <select value={outcomeFilter.outcomeStatus} onChange={e => setOutcomeFilter(v => ({ ...v, outcomeStatus: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                  <input type="number" placeholder="Plan ID" value={remOutcomeFilter.planId} onChange={e => setRemOutcomeFilter(v => ({ ...v, planId: e.target.value }))} className="border rounded px-2 py-1 text-xs w-24" />
+                  <select value={remOutcomeFilter.outcomeStatus} onChange={e => setRemOutcomeFilter(v => ({ ...v, outcomeStatus: e.target.value }))} className="border rounded px-2 py-1 text-xs">
                     <option value="">All outcomes</option>
                     <option value="improved">Improved</option>
                     <option value="unchanged">Unchanged</option>
@@ -14478,7 +14478,7 @@ export default function AdminWalletDashboard() {
                         {/* Inline timeline expansion */}
                         {selectedIncidentId === inc.id && (
                           <div className="mt-3 border-t pt-3 space-y-3" onClick={e => e.stopPropagation()}>
-                            {timelineLoading ? (
+                            {selectedTimelineLoading ? (
                               <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-8 bg-gray-100 animate-pulse rounded" />)}</div>
                             ) : selectedTimeline?.timeline?.length ? (
                               <div className="relative">
