@@ -13825,3 +13825,17 @@ export const incidentTimelineEntries = pgTable("incident_timeline_entries", {
   occurredAt:   timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
 });
 export type IncidentTimelineEntry = typeof incidentTimelineEntries.$inferSelect;
+
+// 4.7E — Root Cause Analysis
+export const incidentRca = pgTable("incident_rca", {
+  id:                serial("id").primaryKey(),
+  incidentId:        integer("incident_id").notNull(),
+  anomalyType:       varchar("anomaly_type", { length: 80 }),
+  generatedAt:       timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+  hypothesesJson:    jsonb("hypotheses_json").notNull().default(sql`'[]'::jsonb`),
+  conclusion:        text("conclusion"),
+  recommendedAction: text("recommended_action"),
+  confidenceOverall: varchar("confidence_overall", { length: 20 }).default('low'),
+  generatedBy:       varchar("generated_by", { length: 50 }).notNull().default('rca_engine'),
+});
+export type IncidentRca = typeof incidentRca.$inferSelect;

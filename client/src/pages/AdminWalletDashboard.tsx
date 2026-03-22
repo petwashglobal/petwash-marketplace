@@ -2436,6 +2436,24 @@ export default function AdminWalletDashboard() {
     onSuccess: (d) => { refetchIncidents(); toast({ title: `Auto-built ${d.created} incident(s)` }); },
   });
 
+  // 4.7E — RCA per incident
+  const [rcaData, setRcaData] = useState<Record<number, any>>({});
+  const [rcaLoading, setRcaLoading] = useState<Record<number, boolean>>({});
+  const runRCA = async (incidentId: number, exportToTimeline = false) => {
+    setRcaLoading(p => ({ ...p, [incidentId]: true }));
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/incidents/${incidentId}/rca`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exportToTimeline })
+      });
+      const d = await res.json();
+      setRcaData(p => ({ ...p, [incidentId]: d.rca }));
+      if (exportToTimeline) { refetchTimeline(); toast({ title: 'RCA exported to timeline' }); }
+      else { toast({ title: `RCA complete — ${d.hypothesesCount} hypotheses, ${d.overallConfidence} confidence` }); }
+    } catch { toast({ title: 'RCA failed', variant: 'destructive' }); }
+    finally { setRcaLoading(p => ({ ...p, [incidentId]: false })); }
+  };
+
   // ── Phase 3.6 UI aliases & supplemental state ──────────────────────────────
   // 3.6A — weight form state for the UI card
   const [weightForm, setWeightForm] = useState({ signalKey: '', divisionCode: '', weight: '' });
@@ -13990,6 +14008,88 @@ export default function AdminWalletDashboard() {
                                 </div>
                               </div>
                             )}
+
+                            {/* 4.7E — RCA Panel */}
+                            <div className="border-t pt-2 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-indigo-800 flex items-center gap-1">
+                                  <Search className="w-2.5 h-2.5" /> Root Cause Analysis
+                                </span>
+                                <div className="flex gap-1">
+                                  <button disabled={rcaLoading[inc.id]}
+                                    onClick={() => runRCA(inc.id, false)}
+                                    className="text-[9px] px-2 py-0.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-semibold disabled:opacity-50 flex items-center gap-0.5">
+                                    <Zap className="w-2 h-2" />{rcaLoading[inc.id] ? 'Analysing…' : rcaData[inc.id] ? 'Re-run RCA' : 'Run RCA'}
+                                  </button>
+                                  {rcaData[inc.id] && (
+                                    <button disabled={rcaLoading[inc.id]}
+                                      onClick={() => runRCA(inc.id, true)}
+                                      className="text-[9px] px-2 py-0.5 border border-indigo-300 hover:bg-indigo-50 text-indigo-700 rounded font-semibold disabled:opacity-50">
+                                      Export to Timeline
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {rcaLoading[inc.id] && (
+                                <div className="space-y-1.5">
+                                  {[1,2].map(i => <div key={i} className="h-10 bg-indigo-50 animate-pulse rounded" />)}
+                                </div>
+                              )}
+
+                              {!rcaLoading[inc.id] && rcaData[inc.id] && (() => {
+                                const rca = rcaData[inc.id];
+                                const hyps: any[] = rca.hypotheses_json ?? [];
+                                return (
+                                  <div className="space-y-2">
+                                    {/* Overall confidence */}
+                                    <div className="flex items-center gap-2">
+                                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                                        rca.confidence_overall === 'high'   ? 'bg-red-600 text-white' :
+                                        rca.confidence_overall === 'medium' ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                                        {rca.confidence_overall} confidence
+                                      </span>
+                                      <span className="text-[9px] text-gray-400">{rca.anomaly_type?.replace(/_/g, ' ')} · {new Date(rca.generated_at).toLocaleTimeString('he-IL', { timeZone: 'Asia/Jerusalem' })}</span>
+                                    </div>
+
+                                    {/* Hypotheses */}
+                                    {hyps.map((h: any, i: number) => (
+                                      <div key={i} className={`rounded border p-2 text-xs ${
+                                        h.confidence === 'high'   ? 'border-red-300 bg-red-50/40' :
+                                        h.confidence === 'medium' ? 'border-amber-200 bg-amber-50/30' : 'border-gray-200 bg-gray-50/50'}`}>
+                                        <div className="flex items-start gap-1.5">
+                                          <span className={`shrink-0 mt-0.5 text-[8px] font-black px-1 py-0.5 rounded ${
+                                            h.confidence === 'high' ? 'bg-red-600 text-white' :
+                                            h.confidence === 'medium' ? 'bg-amber-500 text-white' : 'bg-gray-300 text-gray-700'}`}>
+                                            H{h.rank}
+                                          </span>
+                                          <div className="flex-1 min-w-0">
+                                            <div className="text-[10px] font-semibold text-gray-800 leading-snug mb-0.5">{h.hypothesis}</div>
+                                            <div className="text-[9px] text-gray-500 italic mb-1">Evidence: {h.evidence}</div>
+                                            <div className="flex items-start gap-1">
+                                              <span className="text-[8px] px-1 py-0.5 bg-indigo-100 text-indigo-700 rounded shrink-0 font-medium">{h.signalType?.replace(/_/g, ' ')}</span>
+                                              <span className="text-[9px] text-indigo-700 font-medium leading-tight">→ {h.suggestedAction}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+
+                                    {/* Conclusion + recommended action */}
+                                    <div className="rounded border border-indigo-200 bg-indigo-50/40 p-2 space-y-1">
+                                      <div className="text-[9px] font-bold text-indigo-900 uppercase tracking-wide">Conclusion</div>
+                                      <div className="text-[10px] text-indigo-800 leading-snug">{rca.conclusion}</div>
+                                      <div className="text-[9px] font-bold text-indigo-900 uppercase tracking-wide mt-1">Recommended Action</div>
+                                      <div className="text-[10px] text-indigo-700 font-medium leading-snug">{rca.recommended_action}</div>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
+                              {!rcaLoading[inc.id] && !rcaData[inc.id] && (
+                                <div className="text-[9px] text-gray-400 text-center py-1">Run RCA to generate diagnostic hypotheses for this incident</div>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>

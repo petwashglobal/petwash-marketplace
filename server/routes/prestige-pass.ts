@@ -17191,88 +17191,86 @@ const ANOMALY_THRESHOLDS: Record<string, { deviationPct: number; severity: strin
 
 async function runAnomalyDetection() {
   try {
-    const now = new Date();
-
-    // ── 1. Refund spike: refunds in last 60 min vs 7-day hourly average ──
-    const refundRecent = await pool.query(`
-      SELECT COUNT(*) AS cnt FROM wallet_transactions
-      WHERE type = 'refund' AND created_at >= NOW() - INTERVAL '60 minutes'
+    // ── 1. Ledger event spike: unusual ledger entries in last 60 min vs 7-day hourly avg ──
+    const eventRecent = await pool.query(`
+      SELECT COUNT(*) AS cnt FROM wallet_ledger_entries
+      WHERE event_type = 'redeem_online' AND created_at >= NOW() - INTERVAL '60 minutes'
     `);
-    const refundBaseline = await pool.query(`
-      SELECT COALESCE(COUNT(*) / 168.0, 0) AS avg_per_hour FROM wallet_transactions
-      WHERE type = 'refund' AND created_at >= NOW() - INTERVAL '7 days'
+    const eventBaseline = await pool.query(`
+      SELECT COALESCE(COUNT(*) / 168.0, 0) AS avg_per_hour FROM wallet_ledger_entries
+      WHERE event_type = 'redeem_online' AND created_at >= NOW() - INTERVAL '7 days'
     `);
-    const refundCurrent  = parseFloat(refundRecent.rows[0]?.cnt ?? '0');
-    const refundBase     = parseFloat(refundBaseline.rows[0]?.avg_per_hour ?? '0');
-    if (refundBase > 0) {
-      const devPct = ((refundCurrent - refundBase) / refundBase) * 100;
+    const eventCurrent = parseFloat(eventRecent.rows[0]?.cnt ?? '0');
+    const eventBase    = parseFloat(eventBaseline.rows[0]?.avg_per_hour ?? '0');
+    if (eventBase > 0) {
+      const devPct = ((eventCurrent - eventBase) / eventBase) * 100;
       if (devPct > ANOMALY_THRESHOLDS.refund_spike.deviationPct) {
         const existing = await pool.query(`SELECT id FROM anomaly_events WHERE anomaly_type = 'refund_spike' AND status = 'open' AND detected_at >= NOW() - INTERVAL '30 minutes'`);
         if (!existing.rows.length) {
           await pool.query(`INSERT INTO anomaly_events (anomaly_type, severity, metric_value, baseline_value, deviation_pct, context_json)
-            VALUES ('refund_spike', '${ANOMALY_THRESHOLDS.refund_spike.severity}', ${refundCurrent}, ${refundBase}, ${devPct.toFixed(1)}, '{"window":"60m","baseline_window":"7d"}'::jsonb)`);
+            VALUES ('refund_spike', '${ANOMALY_THRESHOLDS.refund_spike.severity}', ${eventCurrent}, ${eventBase}, ${devPct.toFixed(1)}, '{"window":"60m","baseline_window":"7d","signal":"ledger_event_spike"}'::jsonb)`);
         }
       }
     }
 
-    // ── 2. Payout imbalance: payout amount vs booking amount last 24h ──
-    const payoutSum = await pool.query(`SELECT COALESCE(SUM(ABS(amount)),0) AS total FROM wallet_transactions WHERE type = 'payout' AND created_at >= NOW() - INTERVAL '24 hours'`);
-    const bookingSum = await pool.query(`SELECT COALESCE(SUM(ABS(amount)),0) AS total FROM wallet_transactions WHERE type IN ('booking','payment') AND created_at >= NOW() - INTERVAL '24 hours'`);
-    const payoutTotal  = parseFloat(payoutSum.rows[0]?.total ?? '0');
-    const bookingTotal = parseFloat(bookingSum.rows[0]?.total ?? '0');
-    if (bookingTotal > 0) {
-      const imbalancePct = Math.abs(((payoutTotal - bookingTotal) / bookingTotal) * 100);
+    // ── 2. Payout imbalance: debit amount vs credit amount in wallet_holds last 24h ──
+    const debitSum  = await pool.query(`SELECT COALESCE(SUM(ABS(amount_cents)),0) AS total FROM wallet_ledger_entries WHERE direction = 'debit' AND created_at >= NOW() - INTERVAL '24 hours'`);
+    const creditSum = await pool.query(`SELECT COALESCE(SUM(ABS(amount_cents)),0) AS total FROM wallet_ledger_entries WHERE direction = 'credit' AND created_at >= NOW() - INTERVAL '24 hours'`);
+    const debitTotal  = parseFloat(debitSum.rows[0]?.total ?? '0');
+    const creditTotal = parseFloat(creditSum.rows[0]?.total ?? '0');
+    if (creditTotal > 0) {
+      const imbalancePct = Math.abs(((debitTotal - creditTotal) / creditTotal) * 100);
       if (imbalancePct > ANOMALY_THRESHOLDS.payout_imbalance.deviationPct) {
         const existing = await pool.query(`SELECT id FROM anomaly_events WHERE anomaly_type = 'payout_imbalance' AND status = 'open' AND detected_at >= NOW() - INTERVAL '30 minutes'`);
         if (!existing.rows.length) {
           await pool.query(`INSERT INTO anomaly_events (anomaly_type, severity, metric_value, baseline_value, deviation_pct, context_json)
-            VALUES ('payout_imbalance', '${ANOMALY_THRESHOLDS.payout_imbalance.severity}', ${payoutTotal}, ${bookingTotal}, ${imbalancePct.toFixed(1)}, '{"window":"24h","note":"payout_vs_booking"}'::jsonb)`);
+            VALUES ('payout_imbalance', '${ANOMALY_THRESHOLDS.payout_imbalance.severity}', ${(debitTotal/100).toFixed(2)}, ${(creditTotal/100).toFixed(2)}, ${imbalancePct.toFixed(1)}, '{"window":"24h","note":"debit_vs_credit_ledger"}'::jsonb)`);
         }
       }
     }
 
-    // ── 3. Reconciliation mismatch rate ──
-    const recentMismatches = await pool.query(`SELECT COUNT(*) AS cnt FROM reconciliation_reports WHERE status = 'mismatch' AND created_at >= NOW() - INTERVAL '2 hours'`);
-    const baselineMismatches = await pool.query(`SELECT COALESCE(COUNT(*) / 14.0, 0) AS avg_per_2h FROM reconciliation_reports WHERE status = 'mismatch' AND created_at >= NOW() - INTERVAL '7 days'`);
-    const reconCurrent = parseFloat(recentMismatches.rows[0]?.cnt ?? '0');
-    const reconBase    = parseFloat(baselineMismatches.rows[0]?.avg_per_2h ?? '0');
-    if (reconBase > 0) {
-      const reconDevPct = ((reconCurrent - reconBase) / reconBase) * 100;
-      if (reconDevPct > ANOMALY_THRESHOLDS.reconciliation_mismatch_rate.deviationPct) {
+    // ── 3. Wallet hold anomaly: holds stuck longer than 2h vs 7-day baseline ──
+    const stuckHolds = await pool.query(`SELECT COUNT(*) AS cnt FROM wallet_holds WHERE status = 'active' AND created_at <= NOW() - INTERVAL '2 hours'`);
+    const baselineHolds = await pool.query(`SELECT COALESCE(AVG(cnt),0) AS avg FROM (SELECT DATE_TRUNC('day', created_at) AS d, COUNT(*) AS cnt FROM wallet_holds WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY d) sub`);
+    const holdCurrent = parseFloat(stuckHolds.rows[0]?.cnt ?? '0');
+    const holdBase    = parseFloat(baselineHolds.rows[0]?.avg ?? '0');
+    if (holdBase > 0) {
+      const holdDevPct = ((holdCurrent - holdBase) / holdBase) * 100;
+      if (holdDevPct > ANOMALY_THRESHOLDS.reconciliation_mismatch_rate.deviationPct) {
         const existing = await pool.query(`SELECT id FROM anomaly_events WHERE anomaly_type = 'reconciliation_mismatch_rate' AND status = 'open' AND detected_at >= NOW() - INTERVAL '30 minutes'`);
         if (!existing.rows.length) {
           await pool.query(`INSERT INTO anomaly_events (anomaly_type, severity, metric_value, baseline_value, deviation_pct, context_json)
-            VALUES ('reconciliation_mismatch_rate', '${ANOMALY_THRESHOLDS.reconciliation_mismatch_rate.severity}', ${reconCurrent}, ${reconBase}, ${reconDevPct.toFixed(1)}, '{"window":"2h","baseline_window":"7d"}'::jsonb)`);
+            VALUES ('reconciliation_mismatch_rate', '${ANOMALY_THRESHOLDS.reconciliation_mismatch_rate.severity}', ${holdCurrent}, ${holdBase}, ${holdDevPct.toFixed(1)}, '{"window":"2h","signal":"stuck_wallet_holds","note":"holds_stuck_>2h"}'::jsonb)`);
         }
       }
     }
 
-    // ── 4. Dispute surge ──
-    const disputeRecent = await pool.query(`SELECT COUNT(*) AS cnt FROM disputes WHERE created_at >= NOW() - INTERVAL '60 minutes'`);
-    const disputeBaseline = await pool.query(`SELECT COALESCE(COUNT(*) / 168.0, 0) AS avg_per_hour FROM disputes WHERE created_at >= NOW() - INTERVAL '7 days'`);
-    const disputeCurrent = parseFloat(disputeRecent.rows[0]?.cnt ?? '0');
-    const disputeBase    = parseFloat(disputeBaseline.rows[0]?.avg_per_hour ?? '0');
-    if (disputeBase > 0) {
-      const disputeDevPct = ((disputeCurrent - disputeBase) / disputeBase) * 100;
-      if (disputeDevPct > ANOMALY_THRESHOLDS.dispute_surge.deviationPct) {
+    // ── 4. Booking surge: booking_requests in last 60 min vs 7-day hourly average ──
+    const bookingRecent = await pool.query(`SELECT COUNT(*) AS cnt FROM booking_requests WHERE created_at >= NOW() - INTERVAL '60 minutes'`);
+    const bookingBase   = await pool.query(`SELECT COALESCE(COUNT(*) / 168.0, 0) AS avg_per_hour FROM booking_requests WHERE created_at >= NOW() - INTERVAL '7 days'`);
+    const bookCurrent = parseFloat(bookingRecent.rows[0]?.cnt ?? '0');
+    const bookBase    = parseFloat(bookingBase.rows[0]?.avg_per_hour ?? '0');
+    if (bookBase > 0) {
+      const bookDevPct = ((bookCurrent - bookBase) / bookBase) * 100;
+      if (bookDevPct > ANOMALY_THRESHOLDS.dispute_surge.deviationPct) {
         const existing = await pool.query(`SELECT id FROM anomaly_events WHERE anomaly_type = 'dispute_surge' AND status = 'open' AND detected_at >= NOW() - INTERVAL '30 minutes'`);
         if (!existing.rows.length) {
           await pool.query(`INSERT INTO anomaly_events (anomaly_type, severity, metric_value, baseline_value, deviation_pct, context_json)
-            VALUES ('dispute_surge', '${ANOMALY_THRESHOLDS.dispute_surge.severity}', ${disputeCurrent}, ${disputeBase}, ${disputeDevPct.toFixed(1)}, '{"window":"60m","baseline_window":"7d"}'::jsonb)`);
+            VALUES ('dispute_surge', '${ANOMALY_THRESHOLDS.dispute_surge.severity}', ${bookCurrent}, ${bookBase}, ${bookDevPct.toFixed(1)}, '{"window":"60m","signal":"booking_surge","note":"unusual_booking_volume"}'::jsonb)`);
         }
       }
     }
 
-    // ── 5. Alert silence: no alerts in last 60 min but system has recent activity ──
-    const alertCount = await pool.query(`SELECT COUNT(*) AS cnt FROM governance_alerts WHERE created_at >= NOW() - INTERVAL '60 minutes'`);
-    const activityCount = await pool.query(`SELECT COUNT(*) AS cnt FROM wallet_transactions WHERE created_at >= NOW() - INTERVAL '60 minutes'`);
+    // ── 5. Alert silence: no governance_alerts in last 60 min but system has recent ledger activity ──
+    const alertCount    = await pool.query(`SELECT COUNT(*) AS cnt FROM governance_alerts WHERE created_at >= NOW() - INTERVAL '60 minutes'`);
+    const activityCount = await pool.query(`SELECT COUNT(*) AS cnt FROM wallet_ledger_entries WHERE created_at >= NOW() - INTERVAL '60 minutes'`);
     const alertsRecent   = parseInt(alertCount.rows[0]?.cnt ?? '0');
     const activityRecent = parseInt(activityCount.rows[0]?.cnt ?? '0');
     if (alertsRecent === 0 && activityRecent >= 5) {
       const existing = await pool.query(`SELECT id FROM anomaly_events WHERE anomaly_type = 'alert_silence' AND status = 'open' AND detected_at >= NOW() - INTERVAL '60 minutes'`);
       if (!existing.rows.length) {
         await pool.query(`INSERT INTO anomaly_events (anomaly_type, severity, metric_value, baseline_value, deviation_pct, context_json)
-          VALUES ('alert_silence', '${ANOMALY_THRESHOLDS.alert_silence.severity}', 0, ${activityRecent}, 100, '{"note":"no_alerts_despite_activity","activity_count":${activityRecent}}'::jsonb)`);
+          VALUES ('alert_silence', '${ANOMALY_THRESHOLDS.alert_silence.severity}', 0, ${activityRecent}, 100, '{"note":"no_alerts_despite_ledger_activity","activity_count":${activityRecent}}'::jsonb)`);
       }
     }
 
@@ -17607,6 +17605,324 @@ router.get('/admin/system/kill-switch-triggers/log', async (req, res) => {
     return res.json({ log: rows.rows });
   } catch (err: any) {
     return res.status(500).json({ error: 'Log fetch failed', detail: err.message });
+  }
+});
+
+// ─── 4.7E — ROOT CAUSE ANALYSIS ENGINE ──────────────────────────────────────
+
+// ── Internal expert-system helper ──────────────────────────────────────────
+
+interface RCAHypothesis {
+  rank:            number;
+  confidence:      'high' | 'medium' | 'low';
+  hypothesis:      string;
+  evidence:        string;
+  signalType:      string;
+  suggestedAction: string;
+  dataPoints:      Record<string, any>;
+}
+
+async function runRCAForAnomaly(anomalyType: string, windowStart: Date): Promise<{ hypotheses: RCAHypothesis[]; conclusion: string; recommendedAction: string; overallConfidence: string }> {
+  const hypotheses: RCAHypothesis[] = [];
+  let conclusion = '';
+  let recommendedAction = '';
+
+  try {
+    if (anomalyType === 'refund_spike') {
+      // H1: Single-user concentration in ledger debit events
+      const provConc = await pool.query(`
+        SELECT user_id, COUNT(*) AS cnt, SUM(ABS(amount_cents)) / 100.0 AS total_ils
+        FROM wallet_ledger_entries
+        WHERE direction = 'debit' AND created_at >= NOW() - INTERVAL '60 minutes'
+        GROUP BY user_id ORDER BY cnt DESC LIMIT 1
+      `);
+      const totalEvents = await pool.query(`SELECT COUNT(*) AS cnt FROM wallet_ledger_entries WHERE direction = 'debit' AND created_at >= NOW() - INTERVAL '60 minutes'`);
+      const total = parseInt(totalEvents.rows[0]?.cnt ?? '0');
+
+      if (provConc.rows.length && total > 0) {
+        const top = provConc.rows[0];
+        const pct = Math.round((parseInt(top.cnt) / total) * 100);
+        const conf: 'high' | 'medium' | 'low' = pct >= 60 ? 'high' : pct >= 30 ? 'medium' : 'low';
+        hypotheses.push({
+          rank: 1, confidence: conf,
+          hypothesis: `User ID ${top.user_id} accounts for ${pct}% of debit ledger events in the last 60 minutes (${top.cnt} of ${total}, ₪${parseFloat(top.total_ils).toFixed(2)} total)`,
+          evidence: `wallet_ledger_entries direction='debit' last 60 min grouped by user_id`,
+          signalType: 'user_debit_concentration',
+          suggestedAction: `Review wallet ledger for user ${top.user_id}; check for unexpected automated debit events`,
+          dataPoints: { userId: top.user_id, count: parseInt(top.cnt), pct, totalEvents: total }
+        });
+      }
+
+      // H2: Time acceleration (last 15 min vs prior 45 min)
+      const recent15 = await pool.query(`SELECT COUNT(*) AS cnt FROM wallet_ledger_entries WHERE direction = 'debit' AND created_at >= NOW() - INTERVAL '15 minutes'`);
+      const prior45  = await pool.query(`SELECT COUNT(*) AS cnt FROM wallet_ledger_entries WHERE direction = 'debit' AND created_at BETWEEN NOW() - INTERVAL '60 minutes' AND NOW() - INTERVAL '15 minutes'`);
+      const r15 = parseInt(recent15.rows[0]?.cnt ?? '0');
+      const p45 = parseInt(prior45.rows[0]?.cnt ?? '0');
+      if (r15 > p45 && r15 >= 2) {
+        hypotheses.push({
+          rank: hypotheses.length + 1,
+          confidence: r15 >= p45 * 2 ? 'high' : 'medium',
+          hypothesis: `Debit event rate is accelerating: ${r15} in the last 15 min vs ${p45} in the prior 45 min — active incident pattern, not slow drift`,
+          evidence: `wallet_ledger_entries direction='debit' split: last-15min vs 15-60 min`,
+          signalType: 'rate_acceleration',
+          suggestedAction: `Disable automation_enabled kill switch to halt further automated debit processing`,
+          dataPoints: { last15Min: r15, prior45Min: p45 }
+        });
+      }
+
+      conclusion = hypotheses.some(h => h.confidence === 'high')
+        ? 'Root cause likely localised to a specific user — debit concentration signal is strong.'
+        : 'Spike is diffuse across users — may indicate a pricing rule or automation defect.';
+      recommendedAction = hypotheses[0]?.suggestedAction ?? 'Review wallet_ledger_entries for unusual debit patterns and disable automation until cause is identified.';
+
+    } else if (anomalyType === 'payout_imbalance') {
+      // H1: Debit-to-credit ratio breakdown in wallet_ledger_entries
+      const debitSum  = await pool.query(`SELECT COALESCE(SUM(ABS(amount_cents)),0) AS total FROM wallet_ledger_entries WHERE direction = 'debit' AND created_at >= NOW() - INTERVAL '24 hours'`);
+      const creditSum = await pool.query(`SELECT COALESCE(SUM(ABS(amount_cents)),0) AS total FROM wallet_ledger_entries WHERE direction = 'credit' AND created_at >= NOW() - INTERVAL '24 hours'`);
+      const pOut  = parseFloat(debitSum.rows[0]?.total ?? '0') / 100;
+      const pBook = parseFloat(creditSum.rows[0]?.total ?? '0') / 100;
+      const ratio = pBook > 0 ? (pOut / pBook) : 0;
+
+      hypotheses.push({
+        rank: 1,
+        confidence: ratio > 1.5 ? 'high' : ratio > 1.1 ? 'medium' : 'low',
+        hypothesis: `Debit total (₪${pOut.toFixed(2)}) is ${(ratio * 100).toFixed(0)}% of credit total (₪${pBook.toFixed(2)}) in the last 24 hours — debit-to-credit ratio: ${ratio.toFixed(2)}x`,
+        evidence: `wallet_ledger_entries direction debit vs credit last 24h`,
+        signalType: 'debit_credit_imbalance',
+        suggestedAction: ratio > 1.2 ? 'Disable payouts_enabled immediately — debits exceed credits, suggesting over-disbursement' : 'Review pending wallet_holds for large unreleased holds',
+        dataPoints: { debitTotal: pOut, creditTotal: pBook, ratio: parseFloat(ratio.toFixed(3)) }
+      });
+
+      // H2: Single top debit user concentration
+      const topUser = await pool.query(`SELECT user_id, SUM(ABS(amount_cents)) / 100.0 AS total_ils FROM wallet_ledger_entries WHERE direction = 'debit' AND created_at >= NOW() - INTERVAL '24 hours' GROUP BY user_id ORDER BY total_ils DESC LIMIT 1`);
+      if (topUser.rows.length && pOut > 0) {
+        const tp = topUser.rows[0];
+        const tpPct = Math.round((parseFloat(tp.total_ils) / pOut) * 100);
+        hypotheses.push({
+          rank: 2,
+          confidence: tpPct >= 50 ? 'high' : tpPct >= 25 ? 'medium' : 'low',
+          hypothesis: `User ${tp.user_id} responsible for ${tpPct}% of all debits (₪${parseFloat(tp.total_ils).toFixed(2)}) in the last 24 hours`,
+          evidence: `wallet_ledger_entries direction='debit' last 24h grouped by user_id`,
+          signalType: 'top_debit_user_concentration',
+          suggestedAction: `Audit all debit ledger entries for user ${tp.user_id}; check for duplicate or erroneous automated debits`,
+          dataPoints: { userId: tp.user_id, amount: parseFloat(tp.total_ils), pct: tpPct }
+        });
+      }
+
+      conclusion = ratio > 1.2
+        ? 'Debits are exceeding credits — over-disbursement or duplicate automated debits are the most likely cause.'
+        : 'Imbalance is moderate — review for timing mismatches between booking settlements and payout execution.';
+      recommendedAction = hypotheses[0]?.suggestedAction ?? 'Pause payouts and reconcile wallet_ledger_entries balances.';
+
+    } else if (anomalyType === 'reconciliation_mismatch_rate') {
+      // H1: Stuck wallet holds (unreleased > 2h)
+      const stuckHolds = await pool.query(`SELECT COUNT(*) AS cnt, COALESCE(SUM(amount_cents)/100.0, 0) AS total_ils FROM wallet_holds WHERE status = 'active' AND created_at <= NOW() - INTERVAL '2 hours'`);
+      const cnt = parseInt(stuckHolds.rows[0]?.cnt ?? '0');
+      const gap = parseFloat(stuckHolds.rows[0]?.total_ils ?? '0');
+
+      if (cnt > 0) {
+        hypotheses.push({
+          rank: 1,
+          confidence: cnt >= 5 ? 'high' : cnt >= 2 ? 'medium' : 'low',
+          hypothesis: `${cnt} wallet hold(s) have been active for more than 2 hours (total ₪${gap.toFixed(2)} stuck) — these should have been released after booking completion or cancellation`,
+          evidence: `wallet_holds.status='active' AND created_at <= NOW() - INTERVAL '2 hours'`,
+          signalType: 'stuck_wallet_holds',
+          suggestedAction: 'Audit stuck wallet_holds immediately; force-release or reconcile holds where the triggering booking is already resolved',
+          dataPoints: { count: cnt, totalGap: gap }
+        });
+      }
+
+      // H2: Off-hours ledger activity (high debit volume at night)
+      const offHoursActivity = await pool.query(`SELECT COUNT(*) AS cnt FROM wallet_ledger_entries WHERE direction = 'debit' AND EXTRACT(HOUR FROM created_at AT TIME ZONE 'Asia/Jerusalem') BETWEEN 22 AND 6 AND created_at >= NOW() - INTERVAL '24 hours'`);
+      const offHours = parseInt(offHoursActivity.rows[0]?.cnt ?? '0');
+      if (offHours >= 3) {
+        hypotheses.push({
+          rank: cnt > 0 ? 2 : 1,
+          confidence: 'medium',
+          hypothesis: `${offHours} debit ledger events occurred outside business hours (22:00–06:00 Jerusalem) in the last 24 hours — may indicate automated processes running without oversight`,
+          evidence: `wallet_ledger_entries direction='debit' EXTRACT(HOUR) 22-6 last 24h`,
+          signalType: 'off_hours_debit_activity',
+          suggestedAction: 'Review automation job schedules; add alerting for off-hours high-value debit events',
+          dataPoints: { offHoursCount: offHours }
+        });
+      }
+
+      conclusion = cnt >= 3
+        ? `Systematic hold reconciliation failure — ${cnt} stuck holds suggest the hold-release pipeline is broken.`
+        : 'Isolated wallet hold anomalies — likely a timing issue in a specific booking flow.';
+      recommendedAction = hypotheses[0]?.suggestedAction ?? 'Review wallet_holds and wallet_ledger_entries for unresolved hold entries.';
+
+    } else if (anomalyType === 'dispute_surge') {
+      // H1: Booking volume spike (proxy for dispute-prone activity)
+      const recentBookings = await pool.query(`SELECT COUNT(*) AS cnt FROM booking_requests WHERE created_at >= NOW() - INTERVAL '60 minutes'`);
+      const baselineBookings = await pool.query(`SELECT COALESCE(COUNT(*) / 168.0, 0) AS avg_per_hour FROM booking_requests WHERE created_at >= NOW() - INTERVAL '7 days'`);
+      const bookRecent = parseInt(recentBookings.rows[0]?.cnt ?? '0');
+      const bookBase   = parseFloat(baselineBookings.rows[0]?.avg_per_hour ?? '0');
+
+      hypotheses.push({
+        rank: 1,
+        confidence: bookBase > 0 && bookRecent > bookBase * 2 ? 'high' : bookRecent > 0 ? 'medium' : 'low',
+        hypothesis: `${bookRecent} bookings in the last 60 minutes (${bookBase > 0 ? `vs. baseline of ${bookBase.toFixed(1)}/hr` : 'no baseline yet'}) — unusual booking volume can correlate with service quality disputes`,
+        evidence: `booking_requests.created_at last 60 min vs 7-day hourly baseline`,
+        signalType: 'booking_volume_spike',
+        suggestedAction: 'Monitor newly created bookings for completion rate; if volume is abnormal, pause automation_enabled to prevent auto-confirmations',
+        dataPoints: { recentCount: bookRecent, baselineHourly: parseFloat(bookBase.toFixed(2)) }
+      });
+
+      // H2: Provider wallet concentration
+      const topProvider = await pool.query(`SELECT provider_id, COUNT(*) AS cnt FROM wallet_ledger_entries WHERE created_at >= NOW() - INTERVAL '60 minutes' AND provider_id IS NOT NULL GROUP BY provider_id ORDER BY cnt DESC LIMIT 1`);
+      if (topProvider.rows.length) {
+        const tp = topProvider.rows[0];
+        hypotheses.push({
+          rank: 2,
+          confidence: parseInt(tp.cnt) >= 10 ? 'high' : 'medium',
+          hypothesis: `Provider ${tp.provider_id} generated ${tp.cnt} ledger events in the last hour — high activity provider may be overloaded or behaving unexpectedly`,
+          evidence: `wallet_ledger_entries.provider_id last 60 min grouped by provider_id`,
+          signalType: 'provider_activity_concentration',
+          suggestedAction: `Review provider ${tp.provider_id} booking quality and hold status; consider restricting their capacity temporarily`,
+          dataPoints: { providerId: tp.provider_id, count: parseInt(tp.cnt) }
+        });
+      }
+
+      conclusion = bookRecent > (bookBase * 1.5) && bookBase > 0
+        ? `Booking surge of ${bookRecent} in last hour (${((bookRecent/Math.max(bookBase,0.1) - 1)*100).toFixed(0)}% above baseline) — likely driving downstream quality issues.`
+        : 'Volume is within normal range — investigate specific provider quality rather than systemic volume issue.';
+      recommendedAction = hypotheses[0]?.suggestedAction ?? 'Review booking_requests and wallet_ledger_entries for the affected time window.';
+
+    } else if (anomalyType === 'alert_silence') {
+      // H1: Kill switches blocking alert generation
+      const disabledKS = await pool.query(`SELECT key FROM system_kill_switches WHERE enabled = false`);
+      const ksKeys = disabledKS.rows.map((r: any) => r.key).join(', ');
+      if (disabledKS.rows.length) {
+        hypotheses.push({
+          rank: 1,
+          confidence: 'high',
+          hypothesis: `${disabledKS.rows.length} kill switch(es) are currently disabled: [${ksKeys}] — these may be suppressing alert generation pathways`,
+          evidence: `system_kill_switches.enabled=false`,
+          signalType: 'kill_switch_suppression',
+          suggestedAction: 'Review whether disabled kill switches are intentional; if automation is halted, manual oversight must compensate to generate alerts',
+          dataPoints: { disabledCount: disabledKS.rows.length, disabledKeys: ksKeys }
+        });
+      }
+
+      // H2: Genuine ledger activity with no alert output
+      const activity = await pool.query(`SELECT COUNT(*) AS cnt FROM wallet_ledger_entries WHERE created_at >= NOW() - INTERVAL '60 minutes'`);
+      const alerts = await pool.query(`SELECT COUNT(*) AS cnt FROM governance_alerts WHERE created_at >= NOW() - INTERVAL '60 minutes'`);
+      const actCnt = parseInt(activity.rows[0]?.cnt ?? '0');
+      const altCnt = parseInt(alerts.rows[0]?.cnt ?? '0');
+      if (actCnt >= 5 && altCnt === 0) {
+        hypotheses.push({
+          rank: disabledKS.rows.length ? 2 : 1,
+          confidence: 'medium',
+          hypothesis: `${actCnt} ledger entries occurred in the last 60 minutes but generated 0 governance alerts — alert routing or threshold configuration may be misconfigured`,
+          evidence: `wallet_ledger_entries count vs governance_alerts count last 60 min`,
+          signalType: 'alert_routing_failure',
+          suggestedAction: 'Check governance alert thresholds and ensure alert generation jobs are not hung; consider triggering a manual alert sweep',
+          dataPoints: { transactionCount: actCnt, alertCount: altCnt }
+        });
+      }
+
+      conclusion = disabledKS.rows.length
+        ? 'Alert silence most likely caused by disabled kill switches suppressing automated monitoring pipelines.'
+        : 'Alert routing or threshold misconfiguration is the most probable root cause of silence despite active system usage.';
+      recommendedAction = hypotheses[0]?.suggestedAction ?? 'Manually verify all alert generation pipelines and review kill switch states.';
+
+    } else {
+      // Generic / unknown anomaly type
+      hypotheses.push({
+        rank: 1,
+        confidence: 'low',
+        hypothesis: `No specific diagnostic playbook found for anomaly type '${anomalyType}' — manual investigation required`,
+        evidence: 'No targeted signals available',
+        signalType: 'unknown',
+        suggestedAction: 'Review raw anomaly_events and wallet_transactions manually for the relevant time window',
+        dataPoints: { anomalyType }
+      });
+      conclusion = 'Anomaly type is not covered by automated diagnostic playbooks. Manual RCA required.';
+      recommendedAction = 'Open the anomaly_events table and review the context_json for clues; cross-reference with wallet_transactions and reconciliation_reports.';
+    }
+
+    // Sort by rank
+    hypotheses.sort((a, b) => a.rank - b.rank);
+    const overallConfidence = hypotheses.some(h => h.confidence === 'high') ? 'high' : hypotheses.some(h => h.confidence === 'medium') ? 'medium' : 'low';
+    return { hypotheses, conclusion, recommendedAction, overallConfidence };
+
+  } catch (err: any) {
+    return {
+      hypotheses: [{ rank: 1, confidence: 'low', hypothesis: `RCA diagnostic failed: ${err.message}`, evidence: 'engine error', signalType: 'error', suggestedAction: 'Check server logs', dataPoints: {} }],
+      conclusion: 'RCA engine encountered an error during diagnostic queries.',
+      recommendedAction: 'Review server logs and retry.',
+      overallConfidence: 'low'
+    };
+  }
+}
+
+// GET /admin/system/incidents/:id/rca — fetch existing RCA
+router.get('/admin/system/incidents/:id/rca', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const rca = await pool.query(`SELECT * FROM incident_rca WHERE incident_id = ${id} ORDER BY generated_at DESC LIMIT 1`);
+    if (!rca.rows.length) return res.status(404).json({ error: 'No RCA found for this incident', incidentId: id });
+    return res.json({ rca: rca.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'RCA fetch failed', detail: err.message });
+  }
+});
+
+// POST /admin/system/incidents/:id/rca — run / re-run RCA
+router.post('/admin/system/incidents/:id/rca', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { exportToTimeline = false } = req.body;
+
+    // Load incident
+    const incRow = await pool.query(`SELECT * FROM incidents WHERE id = ${id}`);
+    if (!incRow.rows.length) return res.status(404).json({ error: 'Incident not found' });
+    const incident = incRow.rows[0];
+
+    // Determine anomaly type
+    let anomalyType = 'unknown';
+    if (incident.anomaly_event_id) {
+      const ae = await pool.query(`SELECT anomaly_type, detected_at FROM anomaly_events WHERE id = ${incident.anomaly_event_id}`);
+      if (ae.rows.length) anomalyType = ae.rows[0].anomaly_type;
+    } else {
+      // Try to infer from incident title
+      const titleLower = incident.title.toLowerCase();
+      const types = ['refund_spike', 'payout_imbalance', 'reconciliation_mismatch_rate', 'dispute_surge', 'alert_silence'];
+      for (const t of types) { if (titleLower.includes(t.replace(/_/g, ' ')) || titleLower.includes(t)) { anomalyType = t; break; } }
+    }
+
+    const windowStart = new Date(Date.now() - 60 * 60 * 1000); // last 60 min
+    const { hypotheses, conclusion, recommendedAction, overallConfidence } = await runRCAForAnomaly(anomalyType, windowStart);
+
+    // Upsert RCA
+    await pool.query(`
+      INSERT INTO incident_rca (incident_id, anomaly_type, hypotheses_json, conclusion, recommended_action, confidence_overall)
+      VALUES (${id}, '${anomalyType}', '${JSON.stringify(hypotheses).replace(/'/g, "''")}'::jsonb,
+        '${conclusion.replace(/'/g, "''")}', '${recommendedAction.replace(/'/g, "''")}', '${overallConfidence}')
+      ON CONFLICT (incident_id) DO UPDATE SET
+        anomaly_type = EXCLUDED.anomaly_type,
+        hypotheses_json = EXCLUDED.hypotheses_json,
+        conclusion = EXCLUDED.conclusion,
+        recommended_action = EXCLUDED.recommended_action,
+        confidence_overall = EXCLUDED.confidence_overall,
+        generated_at = NOW()
+    `);
+
+    const rcaRow = await pool.query(`SELECT * FROM incident_rca WHERE incident_id = ${id}`);
+
+    // Optionally export conclusion to timeline
+    if (exportToTimeline) {
+      const summary = `RCA (${overallConfidence} confidence): ${conclusion} — Action: ${recommendedAction}`;
+      await pool.query(`
+        INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json)
+        VALUES (${id}, 'rca_generated', '${summary.replace(/'/g, "''")}', 'rca_engine', '{"hypotheses_count":${hypotheses.length},"overall_confidence":"${overallConfidence}"}'::jsonb)
+      `);
+    }
+
+    return res.json({ rca: rcaRow.rows[0], anomalyType, hypothesesCount: hypotheses.length, overallConfidence });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'RCA generation failed', detail: err.message });
   }
 });
 

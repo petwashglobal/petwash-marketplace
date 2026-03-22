@@ -1,0 +1,48 @@
+4.7D — Incident Timeline Builder. Building all three layers in parallel:
+Tables created. Now building schema, backend, and frontend simultaneously:
+Now adding the 4.7D hooks and UI card to the frontend:
+Now adding the 4.7D UI card after the 4.7C card:
+Now inserting the 4.7D card before </TabsContent>:
+Now verifying the lucide-react imports include all icons used in the new card:
+All icons already imported. Let me restart to verify clean compilation:
+Completely clean. Server running with no errors at all.
+
+4.7D — Incident Timeline Builder is complete.
+
+What was built:
+
+DB tables:
+
+incidents — id, title, severity, status (open/investigating/resolved), anomaly_event_id (FK), started_at, resolved_at, created_by, summary
+incident_timeline_entries — id, incident_id, event_type, content, actor, metadata_json, occurred_at — with index on (incident_id, occurred_at DESC) for fast timeline retrieval
+Backend (6 routes):
+
+GET /admin/system/incidents — paginated list with entry count, filterable by status
+POST /admin/system/incidents — create incident, auto-seeds timeline with anomaly detection + priority + kill switch events if linked to an anomaly
+GET /admin/system/incidents/:id/timeline — full timeline for selected incident
+POST /admin/system/incidents/:id/timeline — add manual note
+POST /admin/system/incidents/:id/resolve — close incident + auto-writes "incident_resolved" timeline entry
+POST /admin/system/incidents/auto-build — creates incidents for all open anomalies with priority score ≥ 50 that don't yet have one, and backfills the full timeline automatically
+UI card — "Incident Timeline":
+
+Status filter tabs: open / investigating / resolved
+"Auto-Build" button — one click to generate incidents from all qualifying anomalies
+"+ New" form — manual incident creation
+Incident list: severity badge, title, entry count, status pill, timestamp, creator
+Click to expand — inline vertical timeline with:
+Colour-coded dots (red = anomaly, purple = priority, green = resolved, blue = manual note, etc.)
+Emoji icons per event type
+Actor attribution + Jerusalem timestamp on every entry
+Add manual note textarea at the bottom of each expanded incident
+Resolve button writes closing entry and flips status to resolved
+60s auto-refetch
+4.7 status:
+
+4.7A Anomaly Detection Engine ✅
+4.7B Intelligent Alert Prioritization ✅
+4.7C Preemptive Kill Switch Triggers ✅
+4.7D Incident Timeline Builder ✅
+4.7E Root Cause Analysis ⏳ next
+4.7F Auto-Remediation Suggestions
+4.7G Self-Healing Execution
+Say "continue 4.7E" when ready.
