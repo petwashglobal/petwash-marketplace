@@ -4367,3 +4367,23 @@ html[dir="rtl"] .rdp-cell:has(.rdp-day_range_end:not(.rdp-day_range_start))::aft
   min-height: 44px !important;
   min-width: 48px !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ABSOLUTE FINAL OVERRIDE — Pure White Page Background
+   This block MUST remain at the end of the file to win the cascade.
+   ═══════════════════════════════════════════════════════════════ */
+html,
+body,
+#root {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+}
+
+/* Dashboard and all page-level wrappers */
+body > #root > *,
+[class*="min-h-screen"],
+[class*="min-h-\\[100dvh\\]"],
+main[role="main"],
+main {
+  background-color: #ffffff !important;
+}
