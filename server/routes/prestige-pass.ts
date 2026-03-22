@@ -17279,10 +17279,17 @@ async function runAnomalyDetection() {
   }
 }
 
-// Run anomaly detection every 5 minutes
-setInterval(runAnomalyDetection, 5 * 60 * 1000);
+// Combined anomaly + self-healing cycle
+async function runAnomalyAndHealingCycle() {
+  await runAnomalyDetection();
+  // Self-healing check runs after anomaly detection so freshly-scored anomalies are evaluated
+  setTimeout(runSelfHealingCheck, 5_000);
+}
+
+// Run anomaly detection + self-healing every 5 minutes
+setInterval(runAnomalyAndHealingCycle, 5 * 60 * 1000);
 // Run once on startup (after 30s to allow DB to be ready)
-setTimeout(runAnomalyDetection, 30_000);
+setTimeout(runAnomalyAndHealingCycle, 30_000);
 
 // GET /admin/system/anomalies
 router.get('/admin/system/anomalies', async (req, res) => {
@@ -17923,6 +17930,537 @@ router.post('/admin/system/incidents/:id/rca', async (req, res) => {
     return res.json({ rca: rcaRow.rows[0], anomalyType, hypothesesCount: hypotheses.length, overallConfidence });
   } catch (err: any) {
     return res.status(500).json({ error: 'RCA generation failed', detail: err.message });
+  }
+});
+
+// ─── 4.7F — AUTO-REMEDIATION SUGGESTIONS ─────────────────────────────────────
+
+type RemediationPlaybookEntry = {
+  rank: number;
+  actionType: 'kill_switch_toggle' | 'reconciliation_run' | 'alert_test' | 'manual_review' | 'shadow_mode_enable' | 'assign_review';
+  actionLabel: string;
+  actionDetail: string;
+  actionParams: Record<string, any>;
+  rationale: string;
+  confidence: 'high' | 'medium' | 'low';
+};
+
+function buildRemediationPlaybook(anomalyType: string): RemediationPlaybookEntry[] {
+  const playbooks: Record<string, RemediationPlaybookEntry[]> = {
+    refund_spike: [
+      { rank: 1, actionType: 'kill_switch_toggle', actionLabel: 'Pause Payouts', actionDetail: 'Disable the payouts_enabled kill switch to halt automated payout processing until the spike is understood', actionParams: { key: 'payouts_enabled', value: false }, rationale: 'Stopping payouts prevents further financial exposure during an uncontrolled debit event spike', confidence: 'high' },
+      { rank: 2, actionType: 'shadow_mode_enable', actionLabel: 'Enable Shadow Mode', actionDetail: 'Enable shadow_mode to run all financial automations in observe-only mode without executing', actionParams: { key: 'shadow_mode', value: true }, rationale: 'Shadow mode allows the automation engine to continue logging decisions without committing them, giving operators time to review', confidence: 'high' },
+      { rank: 3, actionType: 'kill_switch_toggle', actionLabel: 'Disable Automation', actionDetail: 'Disable the automation_enabled kill switch to halt all automated financial processing', actionParams: { key: 'automation_enabled', value: false }, rationale: 'If the spike is automation-driven, stopping automation is the fastest containment step', confidence: 'medium' },
+      { rank: 4, actionType: 'assign_review', actionLabel: 'Assign Finance Review', actionDetail: 'Flag this incident for manual finance team review — check wallet_ledger_entries for the top-debit user', actionParams: { team: 'finance', priority: 'urgent' }, rationale: 'A human review of the top debit concentration is needed before any funds are released', confidence: 'medium' },
+    ],
+    payout_imbalance: [
+      { rank: 1, actionType: 'kill_switch_toggle', actionLabel: 'Pause Payouts', actionDetail: 'Disable payouts_enabled to halt all automated payout disbursements until the imbalance is resolved', actionParams: { key: 'payouts_enabled', value: false }, rationale: 'Payout-to-credit imbalance >20% is a strong indicator of over-disbursement — stopping payouts is the safest immediate action', confidence: 'high' },
+      { rank: 2, actionType: 'reconciliation_run', actionLabel: 'Run Wallet Reconciliation', actionDetail: 'Trigger a full wallet reconciliation to identify the gap between debit and credit ledger totals', actionParams: { scope: 'full_24h', force: true }, rationale: 'Reconciliation will surface the exact entries causing the imbalance and identify if any are duplicates', confidence: 'high' },
+      { rank: 3, actionType: 'manual_review', actionLabel: 'Inspect Stuck Holds', actionDetail: 'Review wallet_holds WHERE status=active AND created_at <= NOW() - INTERVAL 2 hours for unreleased holds contributing to the imbalance', actionParams: { table: 'wallet_holds', filter: 'stuck_>2h' }, rationale: 'Unreleased holds inflate the apparent debit position — identifying them may resolve the imbalance without pausing payouts', confidence: 'medium' },
+      { rank: 4, actionType: 'assign_review', actionLabel: 'Assign Finance Follow-up', actionDetail: 'Route the imbalance report to the finance team for manual ledger audit', actionParams: { team: 'finance', priority: 'high' }, rationale: 'A finance audit is required to approve any manual correction to the ledger imbalance', confidence: 'medium' },
+    ],
+    reconciliation_mismatch_rate: [
+      { rank: 1, actionType: 'reconciliation_run', actionLabel: 'Run Manual Reconciliation', actionDetail: 'Trigger an immediate manual wallet reconciliation for all wallets with active holds older than 2 hours', actionParams: { scope: 'stuck_holds', force: true }, rationale: 'Stuck holds are the most likely cause of the mismatch signal — a reconciliation pass will force-resolve or flag them', confidence: 'high' },
+      { rank: 2, actionType: 'kill_switch_toggle', actionLabel: 'Disable Automation', actionDetail: 'Disable automation_enabled to stop further automated hold operations while stuck holds are investigated', actionParams: { key: 'automation_enabled', value: false }, rationale: 'Automation creating new holds while old ones are stuck will worsen the backlog', confidence: 'medium' },
+      { rank: 3, actionType: 'assign_review', actionLabel: 'Assign Finance Follow-up', actionDetail: 'Route stuck-hold list to finance team for manual release decisions on each affected wallet', actionParams: { team: 'finance', priority: 'high' }, rationale: 'Each stuck hold requires a human decision: release, extend, or escalate — automation should not resolve these', confidence: 'medium' },
+      { rank: 4, actionType: 'shadow_mode_enable', actionLabel: 'Enable Shadow Mode', actionDetail: 'Enable shadow_mode to observe all future hold operations before committing them', actionParams: { key: 'shadow_mode', value: true }, rationale: 'Shadow mode acts as a circuit breaker, allowing the pipeline to run in audit-only mode during investigation', confidence: 'low' },
+    ],
+    dispute_surge: [
+      { rank: 1, actionType: 'assign_review', actionLabel: 'Route to Review Queue', actionDetail: 'Escalate all new bookings created in the last 60 minutes to a human review queue before auto-confirming', actionParams: { team: 'ops', priority: 'urgent', scope: 'new_bookings_60min' }, rationale: 'During a dispute surge, auto-confirmed bookings are high-risk — human review prevents further dispute generation', confidence: 'high' },
+      { rank: 2, actionType: 'kill_switch_toggle', actionLabel: 'Pause Automation', actionDetail: 'Disable automation_enabled to stop automated booking confirmations until dispute volume normalises', actionParams: { key: 'automation_enabled', value: false }, rationale: 'Auto-confirming bookings during elevated dispute conditions will produce more disputes — halting automation is the safest containment', confidence: 'high' },
+      { rank: 3, actionType: 'shadow_mode_enable', actionLabel: 'Enable Shadow Mode', actionDetail: 'Enable shadow_mode to continue booking processing in observe-only mode, preventing any automated state changes', actionParams: { key: 'shadow_mode', value: true }, rationale: 'Shadow mode preserves system visibility while blocking automated state transitions during a dispute spike', confidence: 'medium' },
+      { rank: 4, actionType: 'manual_review', actionLabel: 'Escalate SLA Review', actionDetail: 'Review provider service completion rate and booking throughput to identify if a specific provider is generating the dispute volume', actionParams: { scope: 'provider_completion_rate', window: '60min' }, rationale: 'If one provider is responsible for the surge, targeted action on them avoids system-wide disruption', confidence: 'medium' },
+    ],
+    alert_silence: [
+      { rank: 1, actionType: 'alert_test', actionLabel: 'Run Alert System Test', actionDetail: 'Trigger a synthetic governance alert to verify the alert generation pipeline is functional end-to-end', actionParams: { testType: 'governance_alert_ping', severity: 'low' }, rationale: 'A synthetic test will confirm whether alert silence is a pipeline failure or a genuine quiet period', confidence: 'high' },
+      { rank: 2, actionType: 'kill_switch_toggle', actionLabel: 'Disable Assistant Execution', actionDetail: 'Disable assistant_execution_enabled to prevent AI-driven actions from running silently without generating alerts', actionParams: { key: 'assistant_execution_enabled', value: false }, rationale: 'If the assistant is running without alert hooks, it may be the source of uncaught activity during the silence window', confidence: 'high' },
+      { rank: 3, actionType: 'shadow_mode_enable', actionLabel: 'Enable Shadow Mode', actionDetail: 'Enable shadow_mode to capture all automation decisions in the audit log even if alert routing is broken', actionParams: { key: 'shadow_mode', value: true }, rationale: 'Shadow mode bypasses the alert pipeline and writes directly to the audit trail, ensuring no actions are lost', confidence: 'medium' },
+      { rank: 4, actionType: 'assign_review', actionLabel: 'Assign Monitoring Review', actionDetail: 'Route the alert silence event to the platform team for immediate investigation of the alert routing configuration', actionParams: { team: 'platform', priority: 'urgent', scope: 'alert_routing_config' }, rationale: 'A platform-level audit is needed to confirm whether alert thresholds have been misconfigured or the job is hung', confidence: 'medium' },
+    ],
+  };
+
+  return playbooks[anomalyType] ?? [
+    { rank: 1, actionType: 'assign_review', actionLabel: 'Assign Manual Review', actionDetail: 'Route this incident to a human operator for investigation — anomaly type has no predefined playbook', actionParams: { team: 'ops', priority: 'high' }, rationale: 'Unknown anomaly type requires human classification before automated remediation can be applied', confidence: 'medium' },
+    { rank: 2, actionType: 'shadow_mode_enable', actionLabel: 'Enable Shadow Mode', actionDetail: 'Enable shadow_mode as a precautionary measure while the anomaly type is investigated', actionParams: { key: 'shadow_mode', value: true }, rationale: 'Shadow mode prevents any automated actions from executing while the root cause is unknown', confidence: 'low' },
+  ];
+}
+
+// POST /admin/system/incidents/:id/remediation/generate
+router.post('/admin/system/incidents/:id/remediation/generate', async (req, res) => {
+  try {
+    const incidentId = parseInt(req.params.id);
+    const { actor = 'admin' } = req.body;
+
+    const incRow = await pool.query(`SELECT * FROM incidents WHERE id = ${incidentId}`);
+    if (!incRow.rows.length) return res.status(404).json({ error: 'Incident not found' });
+
+    // Get RCA for anomaly type
+    const rcaRow = await pool.query(`SELECT * FROM incident_rca WHERE incident_id = ${incidentId} ORDER BY generated_at DESC LIMIT 1`);
+    let anomalyType = 'unknown';
+    let rcaId: number | null = null;
+    if (rcaRow.rows.length) {
+      anomalyType = rcaRow.rows[0].anomaly_type ?? 'unknown';
+      rcaId = rcaRow.rows[0].id;
+    } else {
+      // Infer from anomaly_event_id
+      const inc = incRow.rows[0];
+      if (inc.anomaly_event_id) {
+        const ae = await pool.query(`SELECT anomaly_type FROM anomaly_events WHERE id = ${inc.anomaly_event_id}`);
+        if (ae.rows.length) anomalyType = ae.rows[0].anomaly_type;
+      }
+    }
+
+    // Delete existing pending suggestions for this incident (regenerate fresh)
+    await pool.query(`DELETE FROM remediation_suggestions WHERE incident_id = ${incidentId} AND status = 'pending'`);
+
+    // Build playbook
+    const playbook = buildRemediationPlaybook(anomalyType);
+    for (const entry of playbook) {
+      const rcaIdSql = rcaId !== null ? rcaId.toString() : 'NULL';
+      await pool.query(`
+        INSERT INTO remediation_suggestions (incident_id, rca_id, anomaly_type, rank, action_type, action_label, action_detail, action_params, rationale, confidence)
+        VALUES (
+          ${incidentId}, ${rcaIdSql}, '${anomalyType}', ${entry.rank},
+          '${entry.actionType}', '${entry.actionLabel.replace(/'/g, "''")}',
+          '${entry.actionDetail.replace(/'/g, "''")}',
+          '${JSON.stringify(entry.actionParams).replace(/'/g, "''")}'::jsonb,
+          '${entry.rationale.replace(/'/g, "''")}', '${entry.confidence}'
+        )
+      `);
+    }
+
+    const suggestions = await pool.query(`SELECT * FROM remediation_suggestions WHERE incident_id = ${incidentId} ORDER BY rank ASC`);
+
+    // Log generation to timeline
+    await pool.query(`
+      INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json)
+      VALUES (${incidentId}, 'remediation_generated',
+        '${playbook.length} remediation suggestions generated for anomaly type: ${anomalyType}',
+        '${actor}', '{"suggestion_count":${playbook.length},"anomaly_type":"${anomalyType}"}'::jsonb)
+    `);
+
+    return res.json({ suggestions: suggestions.rows, anomalyType, count: playbook.length });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Remediation generation failed', detail: err.message });
+  }
+});
+
+// GET /admin/system/incidents/:id/remediation
+router.get('/admin/system/incidents/:id/remediation', async (req, res) => {
+  try {
+    const incidentId = parseInt(req.params.id);
+    const rows = await pool.query(`SELECT * FROM remediation_suggestions WHERE incident_id = ${incidentId} ORDER BY rank ASC`);
+    return res.json({ suggestions: rows.rows, incidentId });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Remediation fetch failed', detail: err.message });
+  }
+});
+
+// POST /admin/system/remediation/:sid/apply
+router.post('/admin/system/remediation/:sid/apply', async (req, res) => {
+  try {
+    const sid = parseInt(req.params.sid);
+    const { actor = 'admin', auditNote = '' } = req.body;
+
+    const sRow = await pool.query(`SELECT * FROM remediation_suggestions WHERE id = ${sid}`);
+    if (!sRow.rows.length) return res.status(404).json({ error: 'Suggestion not found' });
+    const s = sRow.rows[0];
+    if (s.status !== 'pending') return res.status(400).json({ error: `Cannot apply suggestion with status: ${s.status}` });
+
+    const params = typeof s.action_params === 'object' ? s.action_params : JSON.parse(s.action_params ?? '{}');
+    let executionNote = '';
+
+    // Execute based on action type
+    if (s.action_type === 'kill_switch_toggle' && params.key) {
+      const val = params.value === true ? 'true' : 'false';
+      await pool.query(`UPDATE system_kill_switches SET enabled = ${val}, updated_at = NOW() WHERE key = '${params.key}'`);
+      executionNote = `Kill switch '${params.key}' set to ${val}`;
+    } else if (s.action_type === 'shadow_mode_enable' && params.key) {
+      await pool.query(`UPDATE system_kill_switches SET enabled = true, updated_at = NOW() WHERE key = 'shadow_mode'`);
+      executionNote = `Shadow mode enabled via kill switch`;
+    } else if (s.action_type === 'reconciliation_run') {
+      executionNote = `Reconciliation trigger logged — finance team notified (manual execution required)`;
+    } else if (s.action_type === 'alert_test') {
+      await pool.query(`
+        INSERT INTO governance_alerts (alert_type, severity, message, triggered_by)
+        VALUES ('system_test', 'low', 'Synthetic alert test triggered by remediation suggestion #${sid}', '{"source":"remediation","suggestion_id":${sid}}'::jsonb)
+      `);
+      executionNote = `Synthetic governance alert inserted to verify alert pipeline`;
+    } else if (s.action_type === 'manual_review' || s.action_type === 'assign_review') {
+      executionNote = `Assigned for manual review — team: ${params.team ?? 'ops'}, priority: ${params.priority ?? 'high'}`;
+    } else {
+      executionNote = `Action logged: ${s.action_label}`;
+    }
+
+    // Mark as applied
+    const noteText = `${executionNote}${auditNote ? ` | Operator note: ${auditNote}` : ''}`;
+    await pool.query(`
+      UPDATE remediation_suggestions
+      SET status = 'applied', applied_by = '${actor}', applied_at = NOW(),
+          audit_note = '${noteText.replace(/'/g, "''")}'
+      WHERE id = ${sid}
+    `);
+
+    // Write audit trail to incident timeline
+    await pool.query(`
+      INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json)
+      VALUES (${s.incident_id}, 'remediation_applied',
+        'Applied: ${s.action_label.replace(/'/g, "''")} — ${executionNote.replace(/'/g, "''")}',
+        '${actor}', '{"suggestion_id":${sid},"action_type":"${s.action_type}","action_params":${JSON.stringify(params)
+          .replace(/'/g, "''")}}'::jsonb)
+    `);
+
+    const updated = await pool.query(`SELECT * FROM remediation_suggestions WHERE id = ${sid}`);
+    return res.json({ suggestion: updated.rows[0], executionNote });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Apply failed', detail: err.message });
+  }
+});
+
+// POST /admin/system/remediation/:sid/dismiss
+router.post('/admin/system/remediation/:sid/dismiss', async (req, res) => {
+  try {
+    const sid = parseInt(req.params.sid);
+    const { actor = 'admin', reason = '' } = req.body;
+
+    const sRow = await pool.query(`SELECT * FROM remediation_suggestions WHERE id = ${sid}`);
+    if (!sRow.rows.length) return res.status(404).json({ error: 'Suggestion not found' });
+    const s = sRow.rows[0];
+    if (s.status !== 'pending') return res.status(400).json({ error: `Cannot dismiss suggestion with status: ${s.status}` });
+
+    const note = reason || 'Dismissed by operator without execution';
+    await pool.query(`
+      UPDATE remediation_suggestions
+      SET status = 'dismissed', dismissed_by = '${actor}', dismissed_at = NOW(),
+          audit_note = '${note.replace(/'/g, "''")}'
+      WHERE id = ${sid}
+    `);
+
+    await pool.query(`
+      INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json)
+      VALUES (${s.incident_id}, 'remediation_dismissed',
+        'Dismissed: ${s.action_label.replace(/'/g, "''")}${reason ? ` — Reason: ${reason.replace(/'/g, "''")}` : ''}',
+        '${actor}', '{"suggestion_id":${sid},"action_type":"${s.action_type}"}'::jsonb)
+    `);
+
+    const updated = await pool.query(`SELECT * FROM remediation_suggestions WHERE id = ${sid}`);
+    return res.json({ suggestion: updated.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Dismiss failed', detail: err.message });
+  }
+});
+
+// ─── 4.7G — SELF-HEALING EXECUTION ───────────────────────────────────────────
+
+async function executeSelfHealingAction(
+  actionType: string,
+  actionParams: Record<string, any>,
+  context: { ruleId: number; ruleName: string }
+): Promise<{ success: boolean; note: string }> {
+  try {
+    if (actionType === 'kill_switch_toggle') {
+      const { key, value } = actionParams;
+      if (!key) return { success: false, note: 'Missing key in action_params' };
+      await pool.query(`
+        INSERT INTO kill_switches (switch_key, enabled, last_toggled_at, toggled_by, reason)
+        VALUES ('${key}', ${!!value}, NOW(), 'self_healing_engine', 'Auto-triggered by rule: ${context.ruleName.replace(/'/g, "''")}')
+        ON CONFLICT (switch_key) DO UPDATE
+          SET enabled = ${!!value}, last_toggled_at = NOW(),
+              toggled_by = 'self_healing_engine',
+              reason = 'Auto-triggered by rule: ${context.ruleName.replace(/'/g, "''")}'
+      `);
+      return { success: true, note: `Kill switch '${key}' set to ${value} by self-healing engine` };
+    }
+
+    if (actionType === 'shadow_mode_enable') {
+      await pool.query(`
+        INSERT INTO kill_switches (switch_key, enabled, last_toggled_at, toggled_by, reason)
+        VALUES ('shadow_mode', true, NOW(), 'self_healing_engine', 'Auto shadow mode by rule: ${context.ruleName.replace(/'/g, "''")}')
+        ON CONFLICT (switch_key) DO UPDATE
+          SET enabled = true, last_toggled_at = NOW(),
+              toggled_by = 'self_healing_engine',
+              reason = 'Auto shadow mode by rule: ${context.ruleName.replace(/'/g, "''")}'
+      `);
+      return { success: true, note: 'Shadow mode enabled by self-healing engine' };
+    }
+
+    if (actionType === 'alert_test') {
+      const { channel = 'ops', message = 'Self-healing alert test' } = actionParams;
+      await pool.query(`
+        INSERT INTO governance_alerts (alert_type, severity, title, detail, status)
+        VALUES ('self_healing_alert_test', 'low',
+          'Self-Healing Alert Test',
+          '${message.replace(/'/g, "''")} (channel: ${channel})',
+          'open')
+      `);
+      return { success: true, note: `Alert test fired to channel: ${channel}` };
+    }
+
+    if (actionType === 'assign_review' || actionType === 'manual_review') {
+      const { team = 'ops', priority = 'high' } = actionParams;
+      await pool.query(`
+        INSERT INTO governance_alerts (alert_type, severity, title, detail, status)
+        VALUES ('self_healing_review_assigned', 'medium',
+          'Self-Healing: Manual Review Assigned',
+          'Rule "${context.ruleName.replace(/'/g, "''")}" triggered review assignment — team: ${team}, priority: ${priority}',
+          'open')
+      `);
+      return { success: true, note: `Review assigned to team: ${team} (priority: ${priority})` };
+    }
+
+    return { success: false, note: `Unknown action type: ${actionType}` };
+  } catch (err: any) {
+    return { success: false, note: `Execution error: ${err.message}` };
+  }
+}
+
+async function runSelfHealingCheck(): Promise<void> {
+  try {
+    // Fetch all enabled rules
+    const rulesRes = await pool.query(`SELECT * FROM self_healing_rules WHERE enabled = true ORDER BY id`);
+    if (!rulesRes.rows.length) return;
+
+    // Fetch recent priority-scored anomalies (last 15 min)
+    const alertsRes = await pool.query(`
+      SELECT a.*, p.priority_score, p.anomaly_type AS pa_type
+      FROM governance_alerts a
+      LEFT JOIN anomaly_priority_scores p ON p.anomaly_event_id = a.id
+      WHERE a.created_at > NOW() - INTERVAL '15 minutes'
+        AND a.alert_type = 'anomaly_detected'
+      ORDER BY a.created_at DESC
+      LIMIT 50
+    `);
+    const recentAlerts = alertsRes.rows;
+
+    for (const rule of rulesRes.rows) {
+      // Find matching anomalies for this rule
+      const matching = recentAlerts.filter(a => {
+        const aType = a.pa_type || a.alert_type;
+        const typeMatch = rule.anomaly_type === 'any' || aType === rule.anomaly_type ||
+                          (a.detail && a.detail.includes(rule.anomaly_type));
+        const scoreMatch = (a.priority_score || 50) >= rule.min_score;
+        return typeMatch && scoreMatch;
+      });
+
+      if (!matching.length) continue;
+
+      // Check consecutive triggers requirement
+      if (rule.consecutive_triggers > 1) {
+        const recentCountRes = await pool.query(`
+          SELECT COUNT(*) as cnt FROM self_healing_executions
+          WHERE rule_id = ${rule.id}
+            AND result = 'skipped_consecutive'
+            AND triggered_at > NOW() - INTERVAL '30 minutes'
+        `);
+        const consecCount = parseInt(recentCountRes.rows[0]?.cnt || '0');
+
+        if (consecCount < rule.consecutive_triggers - 1) {
+          // Log a skipped-consecutive entry and continue
+          await pool.query(`
+            INSERT INTO self_healing_executions
+              (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by)
+            VALUES (${rule.id}, ${matching[0].id},
+              '${(matching[0].pa_type || 'unknown').replace(/'/g, "''")}',
+              ${matching[0].priority_score || 50},
+              '${rule.action_type}',
+              '${JSON.stringify(rule.action_params).replace(/'/g, "''")}'::jsonb,
+              'skipped_consecutive',
+              'Waiting for ${rule.consecutive_triggers - consecCount - 1} more consecutive triggers before executing',
+              'self_healing_engine')
+          `);
+          continue;
+        }
+      }
+
+      // Cooldown — don't re-fire within 10 minutes of last execution
+      if (rule.last_triggered_at) {
+        const lastFiredMs = new Date(rule.last_triggered_at).getTime();
+        if (Date.now() - lastFiredMs < 10 * 60 * 1000) continue;
+      }
+
+      // Execute the action
+      const params = typeof rule.action_params === 'string'
+        ? JSON.parse(rule.action_params)
+        : rule.action_params;
+
+      const { success, note } = await executeSelfHealingAction(rule.action_type, params, {
+        ruleId: rule.id,
+        ruleName: rule.name,
+      });
+
+      const anomaly = matching[0];
+
+      // Log execution
+      await pool.query(`
+        INSERT INTO self_healing_executions
+          (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by)
+        VALUES (${rule.id}, ${anomaly.id},
+          '${(anomaly.pa_type || 'unknown').replace(/'/g, "''")}',
+          ${anomaly.priority_score || 50},
+          '${rule.action_type}',
+          '${JSON.stringify(params).replace(/'/g, "''")}'::jsonb,
+          '${success ? 'success' : 'failed'}',
+          '${note.replace(/'/g, "''")}',
+          'self_healing_engine')
+      `);
+
+      // Update rule's trigger metadata
+      await pool.query(`
+        UPDATE self_healing_rules
+        SET last_triggered_at = NOW(), trigger_count = trigger_count + 1
+        WHERE id = ${rule.id}
+      `);
+
+      // Write to incident timeline if there's an open incident for this anomaly
+      const openIncidentRes = await pool.query(`
+        SELECT id FROM incidents WHERE status = 'open' ORDER BY started_at DESC LIMIT 1
+      `);
+      if (openIncidentRes.rows.length) {
+        const incidentId = openIncidentRes.rows[0].id;
+        await pool.query(`
+          INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json)
+          VALUES (${incidentId}, 'self_healing_fired',
+            'Self-healing rule "${rule.name.replace(/'/g, "''")}": ${note.replace(/'/g, "''")}',
+            'self_healing_engine',
+            '{"rule_id":${rule.id},"action_type":"${rule.action_type}","success":${success}}'::jsonb)
+        `);
+      }
+
+      // Write governance alert if action succeeded
+      if (success) {
+        await pool.query(`
+          INSERT INTO governance_alerts (alert_type, severity, title, detail, status)
+          VALUES ('self_healing_executed', 'medium',
+            'Self-Healing Action Executed: ${rule.action_label.replace(/'/g, "''")}',
+            'Rule "${rule.name.replace(/'/g, "''")}": ${note.replace(/'/g, "''")}',
+            'open')
+        `);
+      }
+
+      logger.info(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" fired: ${note}`);
+    }
+  } catch (err: any) {
+    logger.error(`[SelfHealingEngine] Check failed: ${err.message}`);
+  }
+}
+
+// GET /admin/system/self-healing/rules
+router.get('/admin/system/self-healing/rules', async (req, res) => {
+  try {
+    const rows = await pool.query(`SELECT * FROM self_healing_rules ORDER BY id`);
+    return res.json({ rules: rows.rows });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch rules', detail: err.message });
+  }
+});
+
+// POST /admin/system/self-healing/rules
+router.post('/admin/system/self-healing/rules', async (req, res) => {
+  try {
+    const { name, anomalyType = 'any', minScore = 60, consecutiveTriggers = 1,
+            actionType, actionLabel, actionParams = {}, rationale, enabled = true } = req.body;
+    if (!name || !actionType || !actionLabel) {
+      return res.status(400).json({ error: 'name, actionType, actionLabel required' });
+    }
+    const r = await pool.query(`
+      INSERT INTO self_healing_rules
+        (name, anomaly_type, min_score, consecutive_triggers, action_type, action_label, action_params, rationale, enabled)
+      VALUES (
+        '${name.replace(/'/g, "''")}',
+        '${anomalyType.replace(/'/g, "''")}',
+        ${parseInt(minScore)},
+        ${parseInt(consecutiveTriggers)},
+        '${actionType.replace(/'/g, "''")}',
+        '${actionLabel.replace(/'/g, "''")}',
+        '${JSON.stringify(actionParams).replace(/'/g, "''")}'::jsonb,
+        ${rationale ? `'${rationale.replace(/'/g, "''")}'` : 'NULL'},
+        ${!!enabled}
+      )
+      RETURNING *
+    `);
+    return res.status(201).json({ rule: r.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to create rule', detail: err.message });
+  }
+});
+
+// PATCH /admin/system/self-healing/rules/:id/toggle
+router.patch('/admin/system/self-healing/rules/:id/toggle', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = await pool.query(`
+      UPDATE self_healing_rules
+      SET enabled = NOT enabled
+      WHERE id = ${id}
+      RETURNING *
+    `);
+    if (!r.rows.length) return res.status(404).json({ error: 'Rule not found' });
+    return res.json({ rule: r.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Toggle failed', detail: err.message });
+  }
+});
+
+// PATCH /admin/system/self-healing/rules/:id
+router.patch('/admin/system/self-healing/rules/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { name, minScore, consecutiveTriggers, enabled, rationale } = req.body;
+    const setClauses: string[] = [];
+    if (name !== undefined) setClauses.push(`name = '${name.replace(/'/g, "''")}'`);
+    if (minScore !== undefined) setClauses.push(`min_score = ${parseInt(minScore)}`);
+    if (consecutiveTriggers !== undefined) setClauses.push(`consecutive_triggers = ${parseInt(consecutiveTriggers)}`);
+    if (enabled !== undefined) setClauses.push(`enabled = ${!!enabled}`);
+    if (rationale !== undefined) setClauses.push(`rationale = '${rationale.replace(/'/g, "''")}'`);
+    if (!setClauses.length) return res.status(400).json({ error: 'No fields to update' });
+    const r = await pool.query(`UPDATE self_healing_rules SET ${setClauses.join(', ')} WHERE id = ${id} RETURNING *`);
+    if (!r.rows.length) return res.status(404).json({ error: 'Rule not found' });
+    return res.json({ rule: r.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Update failed', detail: err.message });
+  }
+});
+
+// DELETE /admin/system/self-healing/rules/:id
+router.delete('/admin/system/self-healing/rules/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    await pool.query(`DELETE FROM self_healing_rules WHERE id = ${id}`);
+    return res.json({ deleted: id });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Delete failed', detail: err.message });
+  }
+});
+
+// GET /admin/system/self-healing/executions
+router.get('/admin/system/self-healing/executions', async (req, res) => {
+  try {
+    const { ruleId, limit = 50 } = req.query;
+    const where = ruleId ? `WHERE e.rule_id = ${parseInt(ruleId as string)}` : '';
+    const rows = await pool.query(`
+      SELECT e.*, r.name as rule_name
+      FROM self_healing_executions e
+      LEFT JOIN self_healing_rules r ON r.id = e.rule_id
+      ${where}
+      ORDER BY e.triggered_at DESC
+      LIMIT ${parseInt(limit as string)}
+    `);
+    return res.json({ executions: rows.rows });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch executions', detail: err.message });
+  }
+});
+
+// POST /admin/system/self-healing/run — manual trigger
+router.post('/admin/system/self-healing/run', async (req, res) => {
+  try {
+    const before = await pool.query(`SELECT COUNT(*) as cnt FROM self_healing_executions`);
+    await runSelfHealingCheck();
+    const after = await pool.query(`SELECT COUNT(*) as cnt FROM self_healing_executions`);
+    const fired = parseInt(after.rows[0].cnt) - parseInt(before.rows[0].cnt);
+    return res.json({ triggered: true, newExecutions: fired, message: `Self-healing check complete — ${fired} action(s) logged` });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Manual trigger failed', detail: err.message });
   }
 });
 

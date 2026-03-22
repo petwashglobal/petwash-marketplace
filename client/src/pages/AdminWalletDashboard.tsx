@@ -2454,6 +2454,121 @@ export default function AdminWalletDashboard() {
     finally { setRcaLoading(p => ({ ...p, [incidentId]: false })); }
   };
 
+  // 4.7F — Remediation suggestions per incident
+  const [remData, setRemData] = useState<Record<number, any[]>>({});
+  const [remLoading, setRemLoading] = useState<Record<number, boolean>>({});
+  const [remActing, setRemActing] = useState<Record<number, boolean>>({});
+
+  // 4.7G — Self-Healing
+  const [shRules, setShRules] = useState<any[]>([]);
+  const [shExecs, setShExecs] = useState<any[]>([]);
+  const [shLoading, setShLoading] = useState(false);
+  const [shRunning, setShRunning] = useState(false);
+  const [shTogglingId, setShTogglingId] = useState<number | null>(null);
+
+  const fetchRemediation = async (incidentId: number) => {
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/incidents/${incidentId}/remediation`);
+      const d = await res.json();
+      setRemData(p => ({ ...p, [incidentId]: d.suggestions ?? [] }));
+    } catch { /* silent */ }
+  };
+
+  const generateRemediation = async (incidentId: number) => {
+    setRemLoading(p => ({ ...p, [incidentId]: true }));
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/incidents/${incidentId}/remediation/generate`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actor: 'admin' })
+      });
+      const d = await res.json();
+      setRemData(p => ({ ...p, [incidentId]: d.suggestions ?? [] }));
+      toast({ title: `${d.count} remediation suggestions generated` });
+      refetchTimeline();
+    } catch { toast({ title: 'Remediation generation failed', variant: 'destructive' }); }
+    finally { setRemLoading(p => ({ ...p, [incidentId]: false })); }
+  };
+
+  const applyRemediation = async (incidentId: number, sid: number) => {
+    setRemActing(p => ({ ...p, [sid]: true }));
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/remediation/${sid}/apply`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actor: 'admin' })
+      });
+      const d = await res.json();
+      if (!res.ok) { toast({ title: d.error ?? 'Apply failed', variant: 'destructive' }); return; }
+      setRemData(p => ({ ...p, [incidentId]: (p[incidentId] ?? []).map(s => s.id === sid ? d.suggestion : s) }));
+      toast({ title: `Applied: ${d.suggestion.action_label}`, description: d.executionNote });
+      refetchTimeline();
+    } catch { toast({ title: 'Apply failed', variant: 'destructive' }); }
+    finally { setRemActing(p => ({ ...p, [sid]: false })); }
+  };
+
+  const dismissRemediation = async (incidentId: number, sid: number) => {
+    setRemActing(p => ({ ...p, [sid]: true }));
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/remediation/${sid}/dismiss`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actor: 'admin' })
+      });
+      const d = await res.json();
+      if (!res.ok) { toast({ title: d.error ?? 'Dismiss failed', variant: 'destructive' }); return; }
+      setRemData(p => ({ ...p, [incidentId]: (p[incidentId] ?? []).map(s => s.id === sid ? d.suggestion : s) }));
+      toast({ title: 'Suggestion dismissed' });
+      refetchTimeline();
+    } catch { toast({ title: 'Dismiss failed', variant: 'destructive' }); }
+    finally { setRemActing(p => ({ ...p, [sid]: false })); }
+  };
+
+  // 4.7G — Self-Healing handlers
+  const fetchShRules = async () => {
+    setShLoading(true);
+    try {
+      const res = await fetch('/api/prestige-pass/admin/system/self-healing/rules');
+      const d = await res.json();
+      setShRules(d.rules ?? []);
+    } catch { /* silent */ }
+    finally { setShLoading(false); }
+  };
+
+  const fetchShExecs = async () => {
+    try {
+      const res = await fetch('/api/prestige-pass/admin/system/self-healing/executions?limit=20');
+      const d = await res.json();
+      setShExecs(d.executions ?? []);
+    } catch { /* silent */ }
+  };
+
+  const toggleShRule = async (ruleId: number) => {
+    setShTogglingId(ruleId);
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/self-healing/rules/${ruleId}/toggle`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }
+      });
+      const d = await res.json();
+      if (!res.ok) { toast({ title: d.error ?? 'Toggle failed', variant: 'destructive' }); return; }
+      setShRules(p => p.map(r => r.id === ruleId ? d.rule : r));
+      toast({ title: d.rule.enabled ? 'Rule enabled' : 'Rule disabled' });
+    } catch { toast({ title: 'Toggle failed', variant: 'destructive' }); }
+    finally { setShTogglingId(null); }
+  };
+
+  const runSelfHealingManually = async () => {
+    setShRunning(true);
+    try {
+      const res = await fetch('/api/prestige-pass/admin/system/self-healing/run', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }
+      });
+      const d = await res.json();
+      if (!res.ok) { toast({ title: d.error ?? 'Run failed', variant: 'destructive' }); return; }
+      toast({ title: d.message ?? `Self-healing check complete` });
+      await fetchShExecs();
+      await fetchShRules();
+    } catch { toast({ title: 'Run failed', variant: 'destructive' }); }
+    finally { setShRunning(false); }
+  };
+
   // ── Phase 3.6 UI aliases & supplemental state ──────────────────────────────
   // 3.6A — weight form state for the UI card
   const [weightForm, setWeightForm] = useState({ signalKey: '', divisionCode: '', weight: '' });
@@ -13917,7 +14032,7 @@ export default function AdminWalletDashboard() {
                   <div className="space-y-1">
                     {incidentsList.incidents.map((inc: any) => (
                       <div key={inc.id}
-                        onClick={() => setSelectedIncidentId(selectedIncidentId === inc.id ? null : inc.id)}
+                        onClick={() => { const next = selectedIncidentId === inc.id ? null : inc.id; setSelectedIncidentId(next); if (next) { fetchRemediation(next); } }}
                         className={`cursor-pointer rounded-lg border p-2.5 transition-colors ${selectedIncidentId === inc.id ? 'border-blue-500 bg-blue-50/40' : 'hover:bg-gray-50 border-gray-200'}`}>
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
@@ -14090,6 +14205,125 @@ export default function AdminWalletDashboard() {
                                 <div className="text-[9px] text-gray-400 text-center py-1">Run RCA to generate diagnostic hypotheses for this incident</div>
                               )}
                             </div>
+
+                            {/* ── 4.7F Auto-Remediation Suggestions ── */}
+                            <div className="border-t border-orange-100 pt-3 space-y-2" onClick={e => e.stopPropagation()}>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[9px] font-bold text-orange-900 uppercase tracking-wide">Auto-Remediation</span>
+                                  {(remData[inc.id] ?? []).length > 0 && (
+                                    <span className="text-[8px] px-1.5 py-0.5 bg-orange-100 text-orange-700 rounded font-semibold">
+                                      {(remData[inc.id] ?? []).filter((s: any) => s.status === 'pending').length} pending
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex gap-1">
+                                  {(remData[inc.id] ?? []).length > 0 && (
+                                    <button onClick={() => fetchRemediation(inc.id)}
+                                      className="text-[9px] px-2 py-0.5 border border-orange-200 text-orange-700 hover:bg-orange-50 rounded font-medium">
+                                      Refresh
+                                    </button>
+                                  )}
+                                  <button disabled={remLoading[inc.id]}
+                                    onClick={() => generateRemediation(inc.id)}
+                                    className="text-[9px] px-2 py-0.5 bg-orange-600 hover:bg-orange-700 text-white rounded font-semibold disabled:opacity-50 flex items-center gap-0.5">
+                                    <Zap className="w-2 h-2" />
+                                    {remLoading[inc.id] ? 'Generating…' : (remData[inc.id] ?? []).length > 0 ? 'Regenerate' : 'Generate'}
+                                  </button>
+                                </div>
+                              </div>
+
+                              {remLoading[inc.id] && (
+                                <div className="space-y-1.5">
+                                  {[1,2,3].map(i => <div key={i} className="h-10 bg-orange-50 animate-pulse rounded" />)}
+                                </div>
+                              )}
+
+                              {!remLoading[inc.id] && (remData[inc.id] ?? []).length > 0 && (
+                                <div className="space-y-1.5">
+                                  {(remData[inc.id] ?? []).map((s: any) => {
+                                    const isPending = s.status === 'pending';
+                                    const isApplied = s.status === 'applied';
+                                    const actionTypeColor: Record<string, string> = {
+                                      kill_switch_toggle: 'bg-red-100 text-red-700',
+                                      shadow_mode_enable: 'bg-purple-100 text-purple-700',
+                                      reconciliation_run: 'bg-blue-100 text-blue-700',
+                                      alert_test:         'bg-amber-100 text-amber-700',
+                                      manual_review:      'bg-gray-100 text-gray-700',
+                                      assign_review:      'bg-teal-100 text-teal-700',
+                                    };
+                                    const actionTypeLabel: Record<string, string> = {
+                                      kill_switch_toggle: 'Kill Switch',
+                                      shadow_mode_enable: 'Shadow Mode',
+                                      reconciliation_run: 'Reconciliation',
+                                      alert_test:         'Alert Test',
+                                      manual_review:      'Manual Review',
+                                      assign_review:      'Assign Review',
+                                    };
+                                    return (
+                                      <div key={s.id} className={`rounded border p-2 text-xs transition-opacity ${
+                                        isApplied ? 'border-green-300 bg-green-50/30' :
+                                        s.status === 'dismissed' ? 'border-gray-200 bg-gray-50/30 opacity-60' :
+                                        'border-orange-200 bg-orange-50/20'}`}>
+                                        <div className="flex items-start gap-1.5">
+                                          {/* Rank */}
+                                          <span className={`shrink-0 mt-0.5 text-[8px] font-black px-1 py-0.5 rounded ${
+                                            s.confidence === 'high' ? 'bg-red-600 text-white' :
+                                            s.confidence === 'medium' ? 'bg-orange-500 text-white' : 'bg-gray-300 text-gray-700'}`}>
+                                            #{s.rank}
+                                          </span>
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                                              <span className={`text-[8px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${actionTypeColor[s.action_type] ?? 'bg-gray-100 text-gray-700'}`}>
+                                                {actionTypeLabel[s.action_type] ?? s.action_type}
+                                              </span>
+                                              <span className="text-[10px] font-bold text-gray-800">{s.action_label}</span>
+                                              {/* Status badge */}
+                                              {isApplied && (
+                                                <span className="text-[8px] px-1.5 py-0.5 bg-green-600 text-white rounded font-bold shrink-0">APPLIED</span>
+                                              )}
+                                              {s.status === 'dismissed' && (
+                                                <span className="text-[8px] px-1.5 py-0.5 bg-gray-400 text-white rounded font-bold shrink-0">DISMISSED</span>
+                                              )}
+                                            </div>
+                                            <div className="text-[9px] text-gray-600 leading-snug mb-1">{s.action_detail}</div>
+                                            <div className="text-[9px] text-orange-700 italic leading-snug mb-1">Why: {s.rationale}</div>
+                                            {/* Audit note for applied/dismissed */}
+                                            {s.audit_note && (
+                                              <div className="text-[8px] text-gray-500 leading-snug border-t border-gray-100 pt-0.5 mt-0.5">
+                                                {isApplied ? `Applied by ${s.applied_by}` : `Dismissed by ${s.dismissed_by}`}
+                                                {' · '}{s.audit_note}
+                                              </div>
+                                            )}
+                                            {/* Action buttons for pending */}
+                                            {isPending && (
+                                              <div className="flex gap-1 mt-1.5">
+                                                <button
+                                                  disabled={!!remActing[s.id]}
+                                                  onClick={(e) => { e.stopPropagation(); applyRemediation(inc.id, s.id); }}
+                                                  className="text-[9px] px-2 py-0.5 bg-green-600 hover:bg-green-700 text-white rounded font-semibold disabled:opacity-50 flex items-center gap-0.5">
+                                                  {remActing[s.id] ? '…' : '✓ Apply'}
+                                                </button>
+                                                <button
+                                                  disabled={!!remActing[s.id]}
+                                                  onClick={(e) => { e.stopPropagation(); dismissRemediation(inc.id, s.id); }}
+                                                  className="text-[9px] px-2 py-0.5 border border-gray-300 hover:bg-gray-50 text-gray-600 rounded font-medium disabled:opacity-50">
+                                                  Dismiss
+                                                </button>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {!remLoading[inc.id] && (remData[inc.id] ?? []).length === 0 && (
+                                <div className="text-[9px] text-gray-400 text-center py-1">Generate remediation suggestions to see ranked actions for this incident</div>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -14105,6 +14339,129 @@ export default function AdminWalletDashboard() {
                   <span>Auto-Build creates incidents for anomalies with score ≥ 50</span>
                   <span>·</span>
                   <span>Timeline pulls in anomaly, priority, and kill switch events automatically</span>
+                </div>
+
+                {/* ── 4.7G — Self-Healing Engine ──────────────────────────────────────── */}
+                <div className="mt-4 border rounded-lg bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200">
+                  <div className="flex items-center justify-between px-3 py-2 border-b border-emerald-200">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold text-emerald-800">⚙ Self-Healing Engine</span>
+                      {shRules.length > 0 && (
+                        <span className="text-[9px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-semibold">
+                          {shRules.filter((r: any) => r.enabled).length}/{shRules.length} active
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        disabled={shLoading}
+                        onClick={() => { fetchShRules(); fetchShExecs(); }}
+                        className="text-[9px] px-2 py-0.5 border border-emerald-300 bg-white hover:bg-emerald-50 text-emerald-700 rounded font-medium disabled:opacity-50">
+                        {shLoading ? 'Loading…' : shRules.length > 0 ? '↻ Refresh' : 'Load Rules'}
+                      </button>
+                      <button
+                        disabled={shRunning}
+                        onClick={runSelfHealingManually}
+                        className="text-[9px] px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-semibold disabled:opacity-50 flex items-center gap-0.5">
+                        {shRunning ? '…' : '▶ Run Now'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {shRules.length === 0 && !shLoading && (
+                    <div className="text-[9px] text-gray-400 text-center py-3">Load rules to see configured self-healing triggers</div>
+                  )}
+
+                  {shRules.length > 0 && (
+                    <div className="p-2 space-y-1">
+                      {/* Rules table */}
+                      <div className="text-[8px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Configured Rules</div>
+                      <div className="space-y-1">
+                        {shRules.map((rule: any) => (
+                          <div key={rule.id}
+                            className={`flex items-start gap-2 p-1.5 rounded border text-[9px] ${rule.enabled ? 'bg-white border-emerald-200' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
+                            {/* Enable toggle */}
+                            <button
+                              disabled={shTogglingId === rule.id}
+                              onClick={() => toggleShRule(rule.id)}
+                              className={`mt-0.5 shrink-0 w-7 h-3.5 rounded-full transition-colors relative ${rule.enabled ? 'bg-emerald-500' : 'bg-gray-300'} disabled:opacity-50`}
+                              title={rule.enabled ? 'Disable rule' : 'Enable rule'}>
+                              <span className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full shadow transition-all ${rule.enabled ? 'left-4' : 'left-0.5'}`} />
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1 flex-wrap">
+                                <span className="font-semibold text-gray-800 leading-snug">{rule.name}</span>
+                                <span className={`text-[7px] px-1 py-0 rounded font-bold ${
+                                  rule.anomaly_type === 'any' ? 'bg-gray-200 text-gray-600' :
+                                  rule.anomaly_type === 'refund_spike' ? 'bg-red-100 text-red-700' :
+                                  rule.anomaly_type === 'payout_imbalance' ? 'bg-orange-100 text-orange-700' :
+                                  rule.anomaly_type === 'reconciliation_mismatch_rate' ? 'bg-yellow-100 text-yellow-700' :
+                                  rule.anomaly_type === 'dispute_surge' ? 'bg-purple-100 text-purple-700' :
+                                  rule.anomaly_type === 'alert_silence' ? 'bg-blue-100 text-blue-700' :
+                                  'bg-gray-100 text-gray-600'
+                                }`}>{rule.anomaly_type}</span>
+                                <span className="text-[7px] px-1 py-0 bg-indigo-100 text-indigo-700 rounded font-bold">{rule.action_type}</span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5 text-gray-500">
+                                <span>Score ≥ {rule.min_score}</span>
+                                <span>·</span>
+                                <span>{rule.consecutive_triggers}× consecutive</span>
+                                <span>·</span>
+                                <span>Fired {rule.trigger_count}×</span>
+                                {rule.last_triggered_at && (
+                                  <>
+                                    <span>·</span>
+                                    <span>Last: {new Date(rule.last_triggered_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                  </>
+                                )}
+                              </div>
+                              {rule.rationale && (
+                                <div className="text-[8px] text-emerald-700 italic mt-0.5 leading-snug">{rule.rationale}</div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Execution history */}
+                      {shExecs.length > 0 && (
+                        <div className="mt-3">
+                          <div className="text-[8px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Recent Executions</div>
+                          <div className="space-y-0.5">
+                            {shExecs.slice(0, 10).map((ex: any) => (
+                              <div key={ex.id} className={`flex items-start gap-1.5 p-1 rounded text-[8px] ${
+                                ex.result === 'success' ? 'bg-emerald-50 border border-emerald-100' :
+                                ex.result === 'failed' ? 'bg-red-50 border border-red-100' :
+                                'bg-gray-50 border border-gray-100'
+                              }`}>
+                                <span className={`shrink-0 font-bold ${ex.result === 'success' ? 'text-emerald-600' : ex.result === 'failed' ? 'text-red-600' : 'text-gray-400'}`}>
+                                  {ex.result === 'success' ? '✓' : ex.result === 'failed' ? '✕' : '⧖'}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <span className="font-medium text-gray-800">{ex.rule_name ?? `Rule #${ex.rule_id}`}</span>
+                                  <span className="text-gray-400 mx-1">·</span>
+                                  <span className="text-gray-600">{ex.action_type}</span>
+                                  {ex.anomaly_score && (
+                                    <span className="ml-1 text-gray-400">score {ex.anomaly_score}</span>
+                                  )}
+                                  <div className="text-gray-500 leading-snug">{ex.result_note}</div>
+                                </div>
+                                <span className="text-gray-400 shrink-0 text-[7px]">
+                                  {new Date(ex.triggered_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="px-3 py-1.5 border-t border-emerald-200 text-[8px] text-emerald-700 flex items-center gap-2">
+                    <span>Engine runs automatically after each anomaly detection cycle (every 5 min)</span>
+                    <span>·</span>
+                    <span>10-minute cooldown between rule firings</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>

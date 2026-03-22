@@ -1720,7 +1720,28 @@ All endpoints under `/api/prestige-pass/admin/wallet/`. Admin-only. All schema c
 - 4.6B → Governance: Config & Secrets Audit card — per-check valid/warning/critical badges, summary counts
 - 4.6E → Governance: Incident Drills card — scenario selector, step-by-step execution view, recovery time, history with success rate badge
 
-### Phase 4.7 — Live Operations & Incident Intelligence (IN PROGRESS)
+### Phase 4.7 — Live Operations & Incident Intelligence (COMPLETE)
+
+#### 4.7G — Self-Healing Execution Engine (COMPLETE)
+- **DB Tables**:
+  - `self_healing_rules` — id, name, anomaly_type, min_score, consecutive_triggers, action_type, action_label, action_params (jsonb), rationale, enabled, last_triggered_at, trigger_count, created_at
+  - `self_healing_executions` — id, rule_id, incident_id, anomaly_event_id, triggered_at, anomaly_type, anomaly_score, action_type, action_params, result (success/failed/skipped_consecutive), result_note, executed_by
+- **5 Pre-Seeded Default Rules**: refund_spike → kill_switch payouts; payout_imbalance → shadow_mode; reconciliation_mismatch_rate → kill_switch remittances; dispute_surge → assign_review; alert_silence → alert_test
+- **Engine**: `runSelfHealingCheck()` runs automatically 5 seconds after every anomaly detection cycle (every 5 min). Evaluates all enabled rules against recent governance_alerts with priority scores. 10-minute cooldown per rule, consecutive-trigger anti-flap protection. Writes governance alert + incident timeline entry on every successful execution.
+- **Action Executor**: `executeSelfHealingAction()` handles kill_switch_toggle (upserts kill_switches), shadow_mode_enable, alert_test (inserts governance_alert), assign_review/manual_review (inserts governance_alert)
+- **API Routes** (all in `prestige-pass.ts`):
+  - `GET /admin/system/self-healing/rules` — list all rules with metadata
+  - `POST /admin/system/self-healing/rules` — create new rule
+  - `PATCH /admin/system/self-healing/rules/:id` — update rule fields
+  - `PATCH /admin/system/self-healing/rules/:id/toggle` — enable/disable toggle
+  - `DELETE /admin/system/self-healing/rules/:id` — delete rule
+  - `GET /admin/system/self-healing/executions?ruleId=&limit=` — execution history with rule name join
+  - `POST /admin/system/self-healing/run` — manual trigger with execution count diff
+- **Frontend** (Command Center tab — Self-Healing Engine panel, below incident section):
+  - Emerald/teal gradient panel with active rules counter badge
+  - Load Rules + Run Now action buttons
+  - Per-rule rows: toggle switch, name, anomaly_type badge (color-coded), action_type chip, min_score, consecutive triggers, fire count, last triggered timestamp, rationale text
+  - Execution history log (last 10): ✓/✕/⧖ status icon, rule name, action type, anomaly score, result note, time
 
 #### 4.7A — Real-Time Anomaly Detection Engine (COMPLETE)
 - **DB**: `anomaly_events` table — id, anomaly_type, severity (low/medium/high/critical), metric_value, baseline_value, deviation_pct, status (open/acknowledged/resolved), context_json, detected_at, resolved_at

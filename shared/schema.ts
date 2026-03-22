@@ -13826,6 +13826,29 @@ export const incidentTimelineEntries = pgTable("incident_timeline_entries", {
 });
 export type IncidentTimelineEntry = typeof incidentTimelineEntries.$inferSelect;
 
+// 4.7F — Auto-Remediation Suggestions
+export const remediationSuggestions = pgTable("remediation_suggestions", {
+  id:            serial("id").primaryKey(),
+  incidentId:    integer("incident_id").notNull(),
+  rcaId:         integer("rca_id"),
+  anomalyType:   varchar("anomaly_type", { length: 80 }),
+  rank:          integer("rank").notNull().default(1),
+  actionType:    varchar("action_type", { length: 60 }).notNull(),
+  actionLabel:   varchar("action_label", { length: 200 }).notNull(),
+  actionDetail:  text("action_detail"),
+  actionParams:  jsonb("action_params").default(sql`'{}'::jsonb`),
+  rationale:     text("rationale"),
+  confidence:    varchar("confidence", { length: 20 }).default('medium'),
+  status:        varchar("status", { length: 20 }).notNull().default('pending'),
+  appliedBy:     varchar("applied_by", { length: 100 }),
+  appliedAt:     timestamp("applied_at", { withTimezone: true }),
+  dismissedBy:   varchar("dismissed_by", { length: 100 }),
+  dismissedAt:   timestamp("dismissed_at", { withTimezone: true }),
+  auditNote:     text("audit_note"),
+  createdAt:     timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type RemediationSuggestion = typeof remediationSuggestions.$inferSelect;
+
 // 4.7E — Root Cause Analysis
 export const incidentRca = pgTable("incident_rca", {
   id:                serial("id").primaryKey(),
@@ -13839,3 +13862,38 @@ export const incidentRca = pgTable("incident_rca", {
   generatedBy:       varchar("generated_by", { length: 50 }).notNull().default('rca_engine'),
 });
 export type IncidentRca = typeof incidentRca.$inferSelect;
+
+// 4.7G — Self-Healing Rules
+export const selfHealingRules = pgTable("self_healing_rules", {
+  id:                   serial("id").primaryKey(),
+  name:                 varchar("name", { length: 200 }).notNull(),
+  anomalyType:          varchar("anomaly_type", { length: 80 }).notNull().default('any'),
+  minScore:             integer("min_score").notNull().default(60),
+  consecutiveTriggers:  integer("consecutive_triggers").notNull().default(1),
+  actionType:           varchar("action_type", { length: 60 }).notNull(),
+  actionLabel:          varchar("action_label", { length: 200 }).notNull(),
+  actionParams:         jsonb("action_params").notNull().default(sql`'{}'::jsonb`),
+  rationale:            text("rationale"),
+  enabled:              boolean("enabled").notNull().default(true),
+  lastTriggeredAt:      timestamp("last_triggered_at", { withTimezone: true }),
+  triggerCount:         integer("trigger_count").notNull().default(0),
+  createdAt:            timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type SelfHealingRule = typeof selfHealingRules.$inferSelect;
+
+// 4.7G — Self-Healing Executions Log
+export const selfHealingExecutions = pgTable("self_healing_executions", {
+  id:              serial("id").primaryKey(),
+  ruleId:          integer("rule_id").notNull(),
+  incidentId:      integer("incident_id"),
+  anomalyEventId:  integer("anomaly_event_id"),
+  triggeredAt:     timestamp("triggered_at", { withTimezone: true }).notNull().defaultNow(),
+  anomalyType:     varchar("anomaly_type", { length: 80 }),
+  anomalyScore:    integer("anomaly_score"),
+  actionType:      varchar("action_type", { length: 60 }).notNull(),
+  actionParams:    jsonb("action_params").notNull().default(sql`'{}'::jsonb`),
+  result:          varchar("result", { length: 20 }).notNull().default('success'),
+  resultNote:      text("result_note"),
+  executedBy:      varchar("executed_by", { length: 80 }).notNull().default('self_healing_engine'),
+});
+export type SelfHealingExecution = typeof selfHealingExecutions.$inferSelect;
