@@ -172,10 +172,6 @@ export default function LoyaltyDashboard() {
     document.documentElement.classList.contains('dark')
   );
 
-  // Mock data (replace with API)
-  const mockPoints = 400;
-  const mockStatus = 'Silver';
-  const mockPointsHistory = [0, 50, 200, 350, 400];
   const mockRewards = [
     { id: 1, name: isHebrew ? 'שטיפה חינם' : 'Free Wash', points: 500, available: false },
     { id: 2, name: isHebrew ? '10% הנחה' : '10% Discount', points: 200, available: true },
@@ -187,8 +183,9 @@ export default function LoyaltyDashboard() {
     queryKey: ['/api/loyalty/profile'],
   });
 
-  const currentTier = loyaltyProfile?.tier || mockStatus;
-  const currentPoints = loyaltyProfile?.points || mockPoints;
+  const currentTier = loyaltyProfile?.tier ?? 'bronze';
+  const currentPoints = loyaltyProfile?.points ?? 0;
+  const mockPointsHistory = loyaltyProfile?.pointsHistory ?? [0, 0, 0, 0, currentPoints];
 
   // T012: Gemini AI personalized loyalty message
   const [aiLoyaltyMsg, setAiLoyaltyMsg]     = useState<string | null>(null);
