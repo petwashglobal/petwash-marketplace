@@ -28,7 +28,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { nanoid } from 'nanoid';
 import rateLimit from 'express-rate-limit';
 import { db as firestoreDb, auth as firebaseAuth } from '../lib/firebase-admin';
-import { db } from '../db';
+import { db, pool } from '../db';
 import { walletAccounts, creditTransactions, walletLedgerEntries, walletReconciliationRuns, adminActionReversals, providerPayoutEntries } from '@shared/schema';
 import { eq, desc, and, sql, gte, lte } from 'drizzle-orm';
 import { logger } from '../lib/logger';
@@ -17447,6 +17447,166 @@ router.get('/admin/system/alerts/prioritized', async (req, res) => {
     });
   } catch (err: any) {
     return res.status(500).json({ error: 'Priority compute failed', detail: err.message });
+  }
+});
+
+// ─── 4.7C — PREEMPTIVE KILL SWITCH TRIGGERS ──────────────────────────────────
+
+// GET /admin/system/kill-switch-triggers/evaluate
+// Matches open anomalies (with priority scores) against enabled rules and returns
+// actionable suggestions. Excludes anomaly+rule pairs dismissed in the last 60 min.
+router.get('/admin/system/kill-switch-triggers/evaluate', async (req, res) => {
+  try {
+    // 1. Fetch enabled rules
+    const rules = await pool.query(`SELECT * FROM kill_switch_trigger_rules WHERE enabled = true ORDER BY min_score DESC`);
+    if (!rules.rows.length) return res.json({ suggestions: [], summary: { total: 0 } });
+
+    // 2. Fetch open anomalies with their priority scores
+    const anomalies = await pool.query(`
+      SELECT ae.*, aps.priority_score, aps.reason_chips
+      FROM anomaly_events ae
+      LEFT JOIN alert_priority_scores aps ON aps.alert_id = ae.id
+      WHERE ae.status = 'open'
+    `);
+    if (!anomalies.rows.length) return res.json({ suggestions: [], summary: { total: 0 } });
+
+    // 3. Fetch recently dismissed pairs (last 60 min) to suppress re-showing
+    const dismissed = await pool.query(`
+      SELECT rule_id, anomaly_event_id FROM kill_switch_trigger_log
+      WHERE action_taken = 'dismissed' AND triggered_at > NOW() - INTERVAL '60 minutes'
+    `);
+    const dismissedSet = new Set(dismissed.rows.map((d: any) => `${d.rule_id}:${d.anomaly_event_id}`));
+
+    // 4. Fetch current kill switch states
+    const ksRows = await pool.query(`SELECT key, enabled FROM system_kill_switches`);
+    const ksState: Record<string, boolean> = {};
+    ksRows.rows.forEach((r: any) => { ksState[r.key] = r.enabled; });
+
+    // 5. Match anomalies to rules
+    const suggestions: any[] = [];
+    for (const rule of rules.rows) {
+      for (const anomaly of anomalies.rows) {
+        if (anomaly.anomaly_type !== rule.anomaly_type) continue;
+        const score = parseFloat(anomaly.priority_score ?? '0');
+        if (score < rule.min_score) continue;
+        if (dismissedSet.has(`${rule.id}:${anomaly.id}`)) continue;
+
+        // Check if this kill switch is already disabled (action already taken)
+        const ksCurrentlyEnabled = ksState[rule.kill_switch_key] ?? null;
+        const alreadyExecuted = ksCurrentlyEnabled === false;
+
+        suggestions.push({
+          ruleId:            rule.id,
+          anomalyEventId:    anomaly.id,
+          anomalyType:       anomaly.anomaly_type,
+          severity:          anomaly.severity,
+          priorityScore:     score,
+          reasonChips:       anomaly.reason_chips ?? [],
+          killSwitchKey:     rule.kill_switch_key,
+          description:       rule.description,
+          action:            rule.action,
+          ksCurrentlyEnabled,
+          alreadyExecuted,
+          detectedAt:        anomaly.detected_at,
+          deviationPct:      anomaly.deviation_pct,
+        });
+      }
+    }
+
+    // Deduplicate: one suggestion per kill_switch_key (highest score wins)
+    const deduped: Record<string, any> = {};
+    for (const s of suggestions) {
+      const existing = deduped[s.killSwitchKey];
+      if (!existing || s.priorityScore > existing.priorityScore) deduped[s.killSwitchKey] = s;
+    }
+    const final = Object.values(deduped).sort((a: any, b: any) => b.priorityScore - a.priorityScore);
+
+    return res.json({
+      suggestions: final,
+      summary: {
+        total:           final.length,
+        pendingAction:   final.filter((s: any) => !s.alreadyExecuted).length,
+        alreadyExecuted: final.filter((s: any) => s.alreadyExecuted).length,
+      },
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Trigger evaluation failed', detail: err.message });
+  }
+});
+
+// POST /admin/system/kill-switch-triggers/execute
+router.post('/admin/system/kill-switch-triggers/execute', async (req, res) => {
+  try {
+    const { ruleId, anomalyEventId, killSwitchKey, operatorNote } = req.body;
+    if (!ruleId || !anomalyEventId || !killSwitchKey) {
+      return res.status(400).json({ error: 'ruleId, anomalyEventId and killSwitchKey required' });
+    }
+
+    // Get current score for logging
+    const aps = await pool.query(`SELECT priority_score FROM alert_priority_scores WHERE alert_id = ${anomalyEventId}`);
+    const score = aps.rows[0]?.priority_score ?? 0;
+
+    // Disable the kill switch (set enabled = false to halt the feature)
+    const current = await pool.query(`SELECT enabled FROM system_kill_switches WHERE key = '${killSwitchKey}'`);
+    if (!current.rows.length) {
+      // Insert it disabled if it doesn't exist yet
+      await pool.query(`INSERT INTO system_kill_switches (key, enabled) VALUES ('${killSwitchKey}', false) ON CONFLICT (key) DO UPDATE SET enabled = false, updated_at = NOW()`);
+    } else {
+      await pool.query(`UPDATE system_kill_switches SET enabled = false, updated_at = NOW() WHERE key = '${killSwitchKey}'`);
+    }
+
+    // Log the trigger event
+    await pool.query(`
+      INSERT INTO kill_switch_trigger_log (rule_id, anomaly_event_id, priority_score, kill_switch_key, action_taken, operator_note)
+      VALUES (${ruleId}, ${anomalyEventId}, ${score}, '${killSwitchKey}', 'executed', ${operatorNote ? `'${operatorNote.replace(/'/g, "''")}'` : 'NULL'})
+    `);
+
+    return res.json({
+      success: true,
+      killSwitchKey,
+      newState: false,
+      message: `Kill switch '${killSwitchKey}' has been DISABLED — feature is now halted`,
+      loggedAt: new Date().toISOString(),
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Execute trigger failed', detail: err.message });
+  }
+});
+
+// POST /admin/system/kill-switch-triggers/dismiss
+router.post('/admin/system/kill-switch-triggers/dismiss', async (req, res) => {
+  try {
+    const { ruleId, anomalyEventId, killSwitchKey, operatorNote } = req.body;
+    if (!ruleId || !anomalyEventId || !killSwitchKey) {
+      return res.status(400).json({ error: 'ruleId, anomalyEventId and killSwitchKey required' });
+    }
+
+    const aps = await pool.query(`SELECT priority_score FROM alert_priority_scores WHERE alert_id = ${anomalyEventId}`);
+    const score = aps.rows[0]?.priority_score ?? 0;
+
+    await pool.query(`
+      INSERT INTO kill_switch_trigger_log (rule_id, anomaly_event_id, priority_score, kill_switch_key, action_taken, operator_note)
+      VALUES (${ruleId}, ${anomalyEventId}, ${score}, '${killSwitchKey}', 'dismissed', ${operatorNote ? `'${operatorNote.replace(/'/g, "''")}'` : 'NULL'})
+    `);
+
+    return res.json({ success: true, message: `Trigger dismissed — will re-evaluate after 60 minutes`, suppressedUntil: new Date(Date.now() + 60 * 60 * 1000).toISOString() });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Dismiss trigger failed', detail: err.message });
+  }
+});
+
+// GET /admin/system/kill-switch-triggers/log
+router.get('/admin/system/kill-switch-triggers/log', async (req, res) => {
+  try {
+    const rows = await pool.query(`
+      SELECT l.*, r.description AS rule_description, r.anomaly_type
+      FROM kill_switch_trigger_log l
+      LEFT JOIN kill_switch_trigger_rules r ON r.id = l.rule_id
+      ORDER BY l.triggered_at DESC LIMIT 50
+    `);
+    return res.json({ log: rows.rows });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Log fetch failed', detail: err.message });
   }
 });
 

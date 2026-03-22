@@ -13774,3 +13774,28 @@ export const alertPriorityScores = pgTable("alert_priority_scores", {
 });
 export type AlertPriorityScore       = typeof alertPriorityScores.$inferSelect;
 export type InsertAlertPriorityScore = typeof alertPriorityScores.$inferInsert;
+
+// 4.7C — Kill Switch Trigger Rules + Log
+export const killSwitchTriggerRules = pgTable("kill_switch_trigger_rules", {
+  id:             serial("id").primaryKey(),
+  anomalyType:    varchar("anomaly_type", { length: 100 }).notNull(),
+  minScore:       integer("min_score").notNull().default(70),
+  killSwitchKey:  varchar("kill_switch_key", { length: 100 }).notNull(),
+  description:    text("description").notNull(),
+  action:         varchar("action", { length: 20 }).notNull().default('suggest'),
+  enabled:        boolean("enabled").notNull().default(true),
+  createdAt:      timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type KillSwitchTriggerRule = typeof killSwitchTriggerRules.$inferSelect;
+
+export const killSwitchTriggerLog = pgTable("kill_switch_trigger_log", {
+  id:             serial("id").primaryKey(),
+  ruleId:         integer("rule_id").notNull(),
+  anomalyEventId: integer("anomaly_event_id").notNull(),
+  priorityScore:  numeric("priority_score").notNull(),
+  killSwitchKey:  varchar("kill_switch_key", { length: 100 }).notNull(),
+  actionTaken:    varchar("action_taken", { length: 20 }).notNull(),
+  operatorNote:   text("operator_note"),
+  triggeredAt:    timestamp("triggered_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type KillSwitchTriggerLogEntry = typeof killSwitchTriggerLog.$inferSelect;
