@@ -17,11 +17,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Fingerprint, Shield, Mail, Lock, Sparkles, CheckCircle2, XCircle } from "lucide-react";
+import { Fingerprint, Mail, Lock, Sparkles, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { SiGoogle } from "react-icons/si";
 import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import LuxuryEmoji from "@/components/luxury/LuxuryEmoji";
+
+const isMobileBrowser = () => {
+  const ua = navigator.userAgent;
+  return /iPhone|iPad|iPod|Android/i.test(ua);
+};
+
+const extractErrorMessage = (error: any): string => {
+  if (error?.body?.error) return error.body.error;
+  if (error?.body?.message) return error.body.message;
+  if (error?.error) return error.error;
+  if (error?.message) return error.message;
+  return "Please try again";
+};
 
 export default function AdminLoginV2() {
   const [, setLocation] = useLocation();
@@ -30,6 +43,7 @@ export default function AdminLoginV2() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [supportsWebAuthn, setSupportsWebAuthn] = useState(false);
   
   const [biometricStatus, setBiometricStatus] = useState<"idle" | "scanning" | "success" | "error">("idle");
@@ -42,6 +56,42 @@ export default function AdminLoginV2() {
       }
     };
     checkWebAuthn();
+
+    // Handle Google redirect result (fires after signInWithRedirect on mobile)
+    const handleRedirectResult = async () => {
+      try {
+        const { getRedirectResult } = await import("firebase/auth");
+        const { auth } = await import("@/lib/firebase");
+        const result = await getRedirectResult(auth);
+        if (!result) return;
+
+        setIsGoogleLoading(true);
+        const idToken = await result.user.getIdToken();
+        const googleRes = await apiRequest("/auth/login/google", {
+          method: "POST",
+          body: JSON.stringify({
+            idToken,
+            deviceInfo: { userAgent: navigator.userAgent, timestamp: new Date().toISOString() },
+          }),
+        });
+        const googleData = await googleRes.json();
+
+        localStorage.setItem("access_token", googleData.tokens.accessToken);
+        localStorage.setItem("refresh_token", googleData.tokens.refreshToken);
+
+        toast({ title: "Welcome back! ✨", description: "Successfully logged in with Google" });
+        setLocation("/admin/dashboard");
+      } catch (err: any) {
+        if (err?.code === "auth/popup-closed-by-user" || err?.code === "auth/cancelled-popup-request") return;
+        const desc = extractErrorMessage(err);
+        if (desc !== "Please try again") {
+          toast({ title: "Google Sign-In Failed", description: desc, variant: "destructive" });
+        }
+      } finally {
+        setIsGoogleLoading(false);
+      }
+    };
+    handleRedirectResult();
   }, []);
 
   const triggerHaptic = () => {
@@ -74,7 +124,7 @@ export default function AdminLoginV2() {
     } catch (error: any) {
       toast({
         title: "Login Failed",
-        description: error.error || "Please check your credentials and try again",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -187,46 +237,51 @@ export default function AdminLoginV2() {
 
   const handleGoogleLogin = async () => {
     triggerHaptic();
-    
+    setIsGoogleLoading(true);
+
     try {
-      const { signInWithPopup, GoogleAuthProvider } = await import("firebase/auth");
+      const { signInWithPopup, signInWithRedirect, GoogleAuthProvider } = await import("firebase/auth");
       const { auth } = await import("@/lib/firebase");
 
       const provider = new GoogleAuthProvider();
+
+      if (isMobileBrowser()) {
+        // Mobile Safari/iOS blocks popups — use redirect flow instead
+        await signInWithRedirect(auth, provider);
+        // Page will reload; result is handled in the useEffect above
+        return;
+      }
+
+      // Desktop: popup flow
       const result = await signInWithPopup(auth, provider);
-      
       const idToken = await result.user.getIdToken();
 
       const googleRes = await apiRequest("/auth/login/google", {
         method: "POST",
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           idToken,
-          deviceInfo: {
-            userAgent: navigator.userAgent,
-            timestamp: new Date().toISOString(),
-          },
+          deviceInfo: { userAgent: navigator.userAgent, timestamp: new Date().toISOString() },
         }),
       });
       const googleData = await googleRes.json();
 
-      toast({
-        title: "Welcome back! ✨",
-        description: "Successfully logged in with Google",
-      });
-
       localStorage.setItem("access_token", googleData.tokens.accessToken);
       localStorage.setItem("refresh_token", googleData.tokens.refreshToken);
 
+      toast({ title: "Welcome back! ✨", description: "Successfully logged in with Google" });
       setLocation("/admin/dashboard");
     } catch (error: any) {
-      if (error.code === "auth/popup-closed-by-user") {
+      if (error?.code === "auth/popup-closed-by-user" || error?.code === "auth/cancelled-popup-request") {
+        setIsGoogleLoading(false);
         return;
       }
       toast({
         title: "Google Sign-In Failed",
-        description: error.error || error.message || "Please try again",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
@@ -316,11 +371,21 @@ export default function AdminLoginV2() {
           >
             <Button
               onClick={handleGoogleLogin}
+              disabled={isGoogleLoading}
               className="w-full h-12 bg-white text-gray-700 border-2 border-gray-200 hover:border-purple-300 shadow-md hover:shadow-lg transition-all"
               data-testid="button-google-login"
             >
-              <SiGoogle className="h-5 w-5 mr-2 text-blue-500" />
-              Continue with Google
+              {isGoogleLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin text-blue-500" />
+                  Signing in with Google...
+                </>
+              ) : (
+                <>
+                  <SiGoogle className="h-5 w-5 mr-2 text-blue-500" />
+                  Continue with Google
+                </>
+              )}
             </Button>
           </motion.div>
         </div>
