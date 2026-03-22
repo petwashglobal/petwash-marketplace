@@ -2378,6 +2378,14 @@ export default function AdminWalletDashboard() {
     onSuccess: (d) => { refetchAnomalies(); toast({ title: `Detection complete — ${d.openAnomalies} open` }); },
   });
 
+  // 4.7B — Alert Priority Feed
+  const [priorityStatusFilter, setPriorityStatusFilter] = useState<string>('open');
+  const { data: priorityFeed, isLoading: priorityLoading, refetch: refetchPriority } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/system/alerts/prioritized', priorityStatusFilter],
+    queryFn: () => fetch(`/api/prestige-pass/admin/system/alerts/prioritized?status=${priorityStatusFilter}`).then(r => r.json()),
+    refetchInterval: 60_000,
+  });
+
   // ── Phase 3.6 UI aliases & supplemental state ──────────────────────────────
   // 3.6A — weight form state for the UI card
   const [weightForm, setWeightForm] = useState({ signalKey: '', divisionCode: '', weight: '' });
@@ -13573,6 +13581,109 @@ export default function AdminWalletDashboard() {
                     <span className="text-red-600">Critical: <strong>{anomalyFeed.summary.critical}</strong></span>
                     <span className="text-orange-600">High: <strong>{anomalyFeed.summary.high}</strong></span>
                     <span className="text-gray-400 ml-auto text-[10px]">Auto-scans every 5 min</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 4.7B — ALERT PRIORITY FEED */}
+            <Card className={priorityFeed?.summary?.critical > 0 ? 'border-red-400 border-2' : ''}>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-purple-600" /> Alert Priority
+                  {priorityFeed?.summary?.critical > 0 && (
+                    <span className="text-[9px] px-2 py-0.5 rounded-full font-bold bg-red-600 text-white animate-pulse">
+                      🔥 {priorityFeed.summary.critical} CRITICAL NOW
+                    </span>
+                  )}
+                  {priorityFeed?.summary?.total > 0 && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">
+                      Top score: {priorityFeed.summary.topScore}/100
+                    </span>
+                  )}
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <select value={priorityStatusFilter} onChange={e => { setPriorityStatusFilter(e.target.value); refetchPriority(); }} className="border rounded px-2 py-0.5 text-xs">
+                    <option value="open">Open</option>
+                    <option value="acknowledged">Acknowledged</option>
+                    <option value="resolved">Resolved</option>
+                  </select>
+                  <button onClick={() => refetchPriority()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-gray-500 bg-gray-50 border rounded p-2">
+                  Score = severity (40%) + financial impact (30%) + affected entities (20%) + trend acceleration (10%). Additive only — anomaly events are never modified.
+                </div>
+
+                {/* 🔥 Critical Now section */}
+                {priorityFeed?.criticalNow?.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] font-bold text-red-700 uppercase tracking-wide flex items-center gap-1">🔥 Critical Now (score ≥ 70)</div>
+                    {priorityFeed.criticalNow.map((a: any) => (
+                      <div key={a.id} className="border-2 border-red-400 bg-red-50/30 rounded-lg p-2.5">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs font-bold text-red-700 capitalize">{a.anomaly_type?.replace(/_/g, ' ')}</span>
+                              <span className="text-[10px] font-black text-red-600 bg-red-100 px-1.5 py-0.5 rounded">{a.priorityScore}/100</span>
+                              <span className="text-[10px] text-gray-500">rank #{a.rank}</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {a.reasonChips?.map((chip: string, i: number) => (
+                                <span key={i} className="text-[9px] px-1.5 py-0.5 bg-white border border-red-200 text-red-700 rounded-full">{chip}</span>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="text-[10px] text-gray-400">{new Date(a.detected_at).toLocaleString('he-IL')}</div>
+                            <div className="text-[10px] font-semibold text-red-600 mt-0.5">+{parseFloat(a.deviation_pct).toFixed(1)}% deviation</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Full sorted list */}
+                {priorityLoading ? (
+                  <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-10 bg-gray-100 animate-pulse rounded" />)}</div>
+                ) : priorityFeed?.prioritized?.length > 0 ? (
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">All Alerts — Ranked by Priority</div>
+                    {priorityFeed.prioritized.map((a: any) => {
+                      const scoreColor = a.priorityScore >= 70 ? 'text-red-600 bg-red-50' : a.priorityScore >= 50 ? 'text-orange-600 bg-orange-50' : 'text-gray-600 bg-gray-50';
+                      return (
+                        <div key={a.id} className="flex items-center gap-2 border rounded p-2 hover:bg-gray-50 text-xs">
+                          <span className="text-[10px] font-bold text-gray-400 w-5 shrink-0">#{a.rank}</span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${scoreColor}`}>{a.priorityScore}</span>
+                          <span className={`text-[9px] px-1 py-0.5 rounded font-bold shrink-0 ${a.severity === 'critical' ? 'bg-red-600 text-white' : a.severity === 'high' ? 'bg-orange-500 text-white' : 'bg-amber-100 text-amber-800'}`}>
+                            {a.severity}
+                          </span>
+                          <span className="flex-1 capitalize text-gray-700 truncate">{a.anomaly_type?.replace(/_/g, ' ')}</span>
+                          <div className="flex flex-wrap gap-0.5 shrink-0 max-w-[180px]">
+                            {a.reasonChips?.map((chip: string, i: number) => (
+                              <span key={i} className="text-[8px] px-1 py-0.5 bg-gray-100 text-gray-600 rounded">{chip}</span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : priorityFeed?.prioritized?.length === 0 ? (
+                  <div className="text-xs text-green-700 bg-green-50 border border-green-100 rounded p-4 text-center">
+                    ✓ No {priorityStatusFilter} alerts to prioritize
+                  </div>
+                ) : null}
+
+                {priorityFeed?.summary && priorityFeed.summary.total > 0 && (
+                  <div className="flex gap-4 text-xs pt-1 border-t">
+                    <span className="text-gray-600">Total: <strong>{priorityFeed.summary.total}</strong></span>
+                    <span className="text-red-600">Critical now: <strong>{priorityFeed.summary.critical}</strong></span>
+                    <span className="text-gray-500">Avg score: <strong>{priorityFeed.summary.avgScore}</strong></span>
+                    <span className="text-gray-400 ml-auto text-[10px]">Refreshes every 60 s</span>
                   </div>
                 )}
               </CardContent>

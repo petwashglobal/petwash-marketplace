@@ -17345,4 +17345,109 @@ router.post('/admin/system/anomalies/run-detection', async (req, res) => {
   }
 });
 
+// ─── 4.7B — INTELLIGENT ALERT PRIORITIZATION ─────────────────────────────────
+
+const FINANCIAL_IMPACT_PTS: Record<string, number> = {
+  payout_imbalance:             30,
+  reconciliation_mismatch_rate: 25,
+  refund_spike:                 20,
+  dispute_surge:                15,
+  alert_silence:                 5,
+};
+
+function computePriorityScore(anomaly: any): {
+  priorityScore: number; severityPts: number; financialPts: number;
+  entitiesPts: number; trendPts: number; reasonChips: string[];
+} {
+  const reasonChips: string[] = [];
+
+  // Severity (40 pts max)
+  const SEV_MAP: Record<string, number> = { critical: 40, high: 30, medium: 15, low: 5 };
+  const severityPts = SEV_MAP[anomaly.severity] ?? 5;
+  reasonChips.push(`${anomaly.severity} severity (+${severityPts})`);
+
+  // Financial impact (30 pts max)
+  const financialPts = FINANCIAL_IMPACT_PTS[anomaly.anomaly_type] ?? 5;
+  reasonChips.push(`${anomaly.anomaly_type.replace(/_/g, ' ')} impact (+${financialPts})`);
+
+  // Affected entities proxy via metric_value (20 pts max)
+  const metricVal = parseFloat(anomaly.metric_value ?? '0');
+  let entitiesPts = 2;
+  if (metricVal >= 20) entitiesPts = 20;
+  else if (metricVal >= 6) entitiesPts = 14;
+  else if (metricVal >= 2) entitiesPts = 8;
+  reasonChips.push(`${metricVal.toFixed(0)} affected (+${entitiesPts})`);
+
+  // Trend acceleration via deviation_pct (10 pts max)
+  const devPct = parseFloat(anomaly.deviation_pct ?? '0');
+  let trendPts = 1;
+  if (devPct >= 200) trendPts = 10;
+  else if (devPct >= 100) trendPts = 7;
+  else if (devPct >= 50) trendPts = 4;
+  reasonChips.push(`+${devPct.toFixed(0)}% deviation (+${trendPts})`);
+
+  const priorityScore = severityPts + financialPts + entitiesPts + trendPts;
+  return { priorityScore, severityPts, financialPts, entitiesPts, trendPts, reasonChips };
+}
+
+// GET /admin/system/alerts/prioritized
+router.get('/admin/system/alerts/prioritized', async (req, res) => {
+  try {
+    const { status = 'open' } = req.query;
+    const anomalies = await pool.query(`
+      SELECT * FROM anomaly_events
+      WHERE status = '${status}'
+      ORDER BY detected_at DESC LIMIT 100
+    `);
+
+    if (!anomalies.rows.length) {
+      return res.json({ prioritized: [], criticalNow: [], summary: { total: 0, critical: 0, avgScore: 0 } });
+    }
+
+    // Compute scores for each anomaly and upsert
+    const scored = anomalies.rows.map((a: any) => {
+      const scores = computePriorityScore(a);
+      return { ...a, ...scores };
+    }).sort((a: any, b: any) => b.priorityScore - a.priorityScore);
+
+    // Assign ranks and upsert into alert_priority_scores
+    for (let i = 0; i < scored.length; i++) {
+      const s = scored[i];
+      const rank = i + 1;
+      await pool.query(`
+        INSERT INTO alert_priority_scores
+          (alert_id, priority_score, severity_pts, financial_pts, entities_pts, trend_pts, rank, reason_chips, computed_at)
+        VALUES
+          (${s.id}, ${s.priorityScore}, ${s.severityPts}, ${s.financialPts}, ${s.entitiesPts}, ${s.trendPts}, ${rank}, '${JSON.stringify(s.reasonChips)}'::jsonb, NOW())
+        ON CONFLICT (alert_id) DO UPDATE SET
+          priority_score = EXCLUDED.priority_score,
+          severity_pts   = EXCLUDED.severity_pts,
+          financial_pts  = EXCLUDED.financial_pts,
+          entities_pts   = EXCLUDED.entities_pts,
+          trend_pts      = EXCLUDED.trend_pts,
+          rank           = EXCLUDED.rank,
+          reason_chips   = EXCLUDED.reason_chips,
+          computed_at    = NOW()
+      `);
+      s.rank = rank;
+    }
+
+    const criticalNow = scored.filter((s: any) => s.priorityScore >= 70);
+    const avgScore = scored.reduce((sum: number, s: any) => sum + s.priorityScore, 0) / scored.length;
+
+    return res.json({
+      prioritized: scored,
+      criticalNow,
+      summary: {
+        total: scored.length,
+        critical: criticalNow.length,
+        avgScore: parseFloat(avgScore.toFixed(1)),
+        topScore: scored[0]?.priorityScore ?? 0,
+      },
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Priority compute failed', detail: err.message });
+  }
+});
+
 export default router;

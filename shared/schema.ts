@@ -13758,3 +13758,19 @@ export const anomalyEvents = pgTable("anomaly_events", {
 });
 export type AnomalyEvent       = typeof anomalyEvents.$inferSelect;
 export type InsertAnomalyEvent = typeof anomalyEvents.$inferInsert;
+
+// 4.7B — Alert Priority Scores
+export const alertPriorityScores = pgTable("alert_priority_scores", {
+  id:           serial("id").primaryKey(),
+  alertId:      integer("alert_id").notNull(),
+  priorityScore: numeric("priority_score").notNull().default('0'),
+  severityPts:  numeric("severity_pts").notNull().default('0'),
+  financialPts: numeric("financial_pts").notNull().default('0'),
+  entitiesPts:  numeric("entities_pts").notNull().default('0'),
+  trendPts:     numeric("trend_pts").notNull().default('0'),
+  rank:         integer("rank").notNull().default(0),
+  reasonChips:  jsonb("reason_chips").notNull().default(sql`'[]'::jsonb`),
+  computedAt:   timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type AlertPriorityScore       = typeof alertPriorityScores.$inferSelect;
+export type InsertAlertPriorityScore = typeof alertPriorityScores.$inferInsert;
