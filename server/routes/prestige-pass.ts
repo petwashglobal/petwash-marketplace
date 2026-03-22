@@ -18222,9 +18222,9 @@ async function runSelfHealingCheck(): Promise<void> {
 
     // Fetch recent priority-scored anomalies (last 15 min)
     const alertsRes = await pool.query(`
-      SELECT a.*, p.priority_score, p.anomaly_type AS pa_type
+      SELECT a.*, p.priority_score
       FROM governance_alerts a
-      LEFT JOIN anomaly_priority_scores p ON p.anomaly_event_id = a.id
+      LEFT JOIN alert_priority_scores p ON p.alert_id = a.id
       WHERE a.created_at > NOW() - INTERVAL '15 minutes'
         AND a.alert_type = 'anomaly_detected'
       ORDER BY a.created_at DESC
@@ -18235,9 +18235,8 @@ async function runSelfHealingCheck(): Promise<void> {
     for (const rule of rulesRes.rows) {
       // Find matching anomalies for this rule
       const matching = recentAlerts.filter(a => {
-        const aType = a.pa_type || a.alert_type;
-        const typeMatch = rule.anomaly_type === 'any' || aType === rule.anomaly_type ||
-                          (a.detail && a.detail.includes(rule.anomaly_type));
+        const typeMatch = rule.anomaly_type === 'any' ||
+                          (a.message && a.message.includes(rule.anomaly_type));
         const scoreMatch = (a.priority_score || 50) >= rule.min_score;
         return typeMatch && scoreMatch;
       });
@@ -18272,10 +18271,11 @@ async function runSelfHealingCheck(): Promise<void> {
         }
       }
 
-      // Cooldown — don't re-fire within 10 minutes of last execution
+      // Cooldown — don't re-fire within rule.cooldown_minutes of last execution
       if (rule.last_triggered_at) {
         const lastFiredMs = new Date(rule.last_triggered_at).getTime();
-        if (Date.now() - lastFiredMs < 10 * 60 * 1000) continue;
+        const cooldownMs = (rule.cooldown_minutes ?? 10) * 60 * 1000;
+        if (Date.now() - lastFiredMs < cooldownMs) continue;
       }
 
       // Execute the action
@@ -18432,6 +18432,163 @@ router.delete('/admin/system/self-healing/rules/:id', async (req, res) => {
   }
 });
 
+// ── 4.8A — Threshold Tuning ───────────────────────────────────────────────────
+
+// PATCH /admin/system/self-healing/rules/:id/tune
+// Audited threshold update — every field change is a separate immutable audit row
+router.patch('/admin/system/self-healing/rules/:id/tune', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { actor = 'admin', reason, minScore, consecutiveTriggers, cooldownMinutes } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: 'reason is required for all threshold changes' });
+    }
+
+    const ruleRes = await pool.query(`SELECT * FROM self_healing_rules WHERE id = ${id}`);
+    if (!ruleRes.rows.length) return res.status(404).json({ error: 'Rule not found' });
+    const rule = ruleRes.rows[0];
+
+    const setClauses: string[] = [];
+    const auditRows: Array<{ field: string; oldVal: string; newVal: string }> = [];
+
+    if (minScore !== undefined) {
+      const v = parseInt(minScore);
+      if (v < 1 || v > 100) return res.status(400).json({ error: 'min_score must be 1–100' });
+      if (v !== rule.min_score) {
+        setClauses.push(`min_score = ${v}`);
+        auditRows.push({ field: 'min_score', oldVal: String(rule.min_score), newVal: String(v) });
+      }
+    }
+
+    if (consecutiveTriggers !== undefined) {
+      const v = parseInt(consecutiveTriggers);
+      if (v < 1 || v > 10) return res.status(400).json({ error: 'consecutive_triggers must be 1–10' });
+      if (v !== rule.consecutive_triggers) {
+        setClauses.push(`consecutive_triggers = ${v}`);
+        auditRows.push({ field: 'consecutive_triggers', oldVal: String(rule.consecutive_triggers), newVal: String(v) });
+      }
+    }
+
+    if (cooldownMinutes !== undefined) {
+      const v = parseInt(cooldownMinutes);
+      if (v < 1 || v > 1440) return res.status(400).json({ error: 'cooldown_minutes must be 1–1440' });
+      if (v !== rule.cooldown_minutes) {
+        setClauses.push(`cooldown_minutes = ${v}`);
+        auditRows.push({ field: 'cooldown_minutes', oldVal: String(rule.cooldown_minutes ?? 10), newVal: String(v) });
+      }
+    }
+
+    if (!auditRows.length) {
+      return res.json({ rule, changes: [], message: 'No values changed' });
+    }
+
+    await pool.query(`UPDATE self_healing_rules SET ${setClauses.join(', ')} WHERE id = ${id}`);
+
+    for (const row of auditRows) {
+      await pool.query(`
+        INSERT INTO self_healing_rule_changes
+          (rule_id, changed_by, field_changed, old_value, new_value, reason)
+        VALUES (${id}, '${actor.replace(/'/g, "''")}',
+          '${row.field}',
+          '${row.oldVal.replace(/'/g, "''")}',
+          '${row.newVal.replace(/'/g, "''")}',
+          '${reason.replace(/'/g, "''")}')
+      `);
+    }
+
+    const updated = await pool.query(`SELECT * FROM self_healing_rules WHERE id = ${id}`);
+    return res.json({ rule: updated.rows[0], changes: auditRows });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Tune failed', detail: err.message });
+  }
+});
+
+// GET /admin/system/self-healing/rules/:id/history
+router.get('/admin/system/self-healing/rules/:id/history', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const rows = await pool.query(`
+      SELECT * FROM self_healing_rule_changes
+      WHERE rule_id = ${id}
+      ORDER BY changed_at DESC
+      LIMIT 50
+    `);
+    return res.json({ changes: rows.rows, ruleId: id });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch history', detail: err.message });
+  }
+});
+
+// GET /admin/system/self-healing/rules/:id/preview?minScore=&consecutiveTriggers=
+// Dry-run — how many of the last 30 days of anomaly alerts would have triggered at the proposed thresholds
+router.get('/admin/system/self-healing/rules/:id/preview', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const ruleRes = await pool.query(`SELECT * FROM self_healing_rules WHERE id = ${id}`);
+    if (!ruleRes.rows.length) return res.status(404).json({ error: 'Rule not found' });
+    const rule = ruleRes.rows[0];
+
+    const proposedScore = parseInt((req.query.minScore as string) || String(rule.min_score));
+    const proposedConsec = parseInt((req.query.consecutiveTriggers as string) || String(rule.consecutive_triggers));
+    const proposedCooldown = parseInt((req.query.cooldownMinutes as string) || String(rule.cooldown_minutes ?? 10));
+
+    // Count executions from the last 30 days matching this rule's anomaly type
+    const execRes = await pool.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE result = 'success') AS actual_fires,
+        COUNT(*) FILTER (WHERE result = 'failed') AS actual_failures,
+        COUNT(*) FILTER (WHERE result = 'skipped_consecutive') AS consecutive_skips,
+        COUNT(*) AS total_checks
+      FROM self_healing_executions
+      WHERE rule_id = ${id}
+        AND triggered_at > NOW() - INTERVAL '30 days'
+    `);
+
+    // Count governance alerts matching this rule's anomaly type + score in last 30 days
+    const alertRes = await pool.query(`
+      SELECT COUNT(*) as total_matching,
+             COUNT(*) FILTER (WHERE COALESCE(p.priority_score, 50) >= ${proposedScore}) as would_qualify
+      FROM governance_alerts a
+      LEFT JOIN alert_priority_scores p ON p.alert_id = a.id
+      WHERE a.created_at > NOW() - INTERVAL '30 days'
+        AND a.alert_type = 'anomaly_detected'
+        AND ('${rule.anomaly_type.replace(/'/g, "''")}' = 'any'
+             OR a.message ILIKE '%${rule.anomaly_type.replace(/'/g, "''")}%')
+    `);
+
+    const stats = execRes.rows[0];
+    const alertStats = alertRes.rows[0];
+    const qualifyingAlerts = parseInt(alertStats.would_qualify || '0');
+    // With consecutive requirement, approximate firing opportunities
+    const estFiresAtProposed = proposedConsec <= 1
+      ? qualifyingAlerts
+      : Math.floor(qualifyingAlerts / proposedConsec);
+    const estFiresAtCurrent = parseInt(stats.actual_fires || '0');
+
+    return res.json({
+      ruleId: id,
+      current: {
+        minScore: rule.min_score,
+        consecutiveTriggers: rule.consecutive_triggers,
+        cooldownMinutes: rule.cooldown_minutes ?? 10,
+        actualFiresLast30Days: estFiresAtCurrent,
+      },
+      proposed: {
+        minScore: proposedScore,
+        consecutiveTriggers: proposedConsec,
+        cooldownMinutes: proposedCooldown,
+        estimatedFiresLast30Days: estFiresAtProposed,
+        qualifyingAnomaliesLast30Days: qualifyingAlerts,
+        totalAnomaliesChecked: parseInt(alertStats.total_matching || '0'),
+      },
+      delta: estFiresAtProposed - estFiresAtCurrent,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Preview failed', detail: err.message });
+  }
+});
+
 // GET /admin/system/self-healing/executions
 router.get('/admin/system/self-healing/executions', async (req, res) => {
   try {
@@ -18461,6 +18618,119 @@ router.post('/admin/system/self-healing/run', async (req, res) => {
     return res.json({ triggered: true, newExecutions: fired, message: `Self-healing check complete — ${fired} action(s) logged` });
   } catch (err: any) {
     return res.status(500).json({ error: 'Manual trigger failed', detail: err.message });
+  }
+});
+
+// ── 4.8B — False Positive Review Flow ────────────────────────────────────────
+
+// POST /admin/system/self-healing/executions/:id/false-positive — mark execution as FP
+router.post('/admin/system/self-healing/executions/:id/false-positive', async (req, res) => {
+  try {
+    const execId = parseInt(req.params.id);
+    if (isNaN(execId)) return res.status(400).json({ error: 'Invalid execution ID' });
+
+    const { reviewed_by, reason } = req.body;
+    if (!reason || !reason.trim()) return res.status(400).json({ error: 'reason is required to mark a false positive' });
+    if (!reviewed_by || !reviewed_by.trim()) return res.status(400).json({ error: 'reviewed_by is required' });
+
+    // Verify execution exists
+    const execRes = await pool.query(`SELECT id, rule_id FROM self_healing_executions WHERE id = ${execId}`);
+    if (!execRes.rows.length) return res.status(404).json({ error: 'Execution not found' });
+    const ruleId = execRes.rows[0].rule_id;
+
+    // Idempotent — only one FP review per execution
+    const existing = await pool.query(`SELECT id FROM false_positive_reviews WHERE execution_id = ${execId}`);
+    if (existing.rows.length) return res.status(409).json({ error: 'This execution is already marked as a false positive', reviewId: existing.rows[0].id });
+
+    const ins = await pool.query(`
+      INSERT INTO false_positive_reviews (execution_id, rule_id, reviewed_by, reason)
+      VALUES (${execId}, ${ruleId}, '${reviewed_by.replace(/'/g, "''")}', '${reason.replace(/'/g, "''")}')
+      RETURNING *
+    `);
+
+    return res.json({ review: ins.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to mark false positive', detail: err.message });
+  }
+});
+
+// DELETE /admin/system/self-healing/executions/:id/false-positive — undo FP review
+router.delete('/admin/system/self-healing/executions/:id/false-positive', async (req, res) => {
+  try {
+    const execId = parseInt(req.params.id);
+    if (isNaN(execId)) return res.status(400).json({ error: 'Invalid execution ID' });
+
+    const del = await pool.query(`DELETE FROM false_positive_reviews WHERE execution_id = ${execId} RETURNING id`);
+    if (!del.rows.length) return res.status(404).json({ error: 'No false positive review found for this execution' });
+
+    return res.json({ removed: true, reviewId: del.rows[0].id });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to remove false positive', detail: err.message });
+  }
+});
+
+// GET /admin/system/self-healing/rules/:id/false-positive-rate — FP rate + recent reviews
+router.get('/admin/system/self-healing/rules/:id/false-positive-rate', async (req, res) => {
+  try {
+    const ruleId = parseInt(req.params.id);
+    if (isNaN(ruleId)) return res.status(400).json({ error: 'Invalid rule ID' });
+
+    const ruleRes = await pool.query(`SELECT id, name FROM self_healing_rules WHERE id = ${ruleId}`);
+    if (!ruleRes.rows.length) return res.status(404).json({ error: 'Rule not found' });
+
+    // Total executions for this rule (last 30 days)
+    const totalRes = await pool.query(`
+      SELECT COUNT(*) as total
+      FROM self_healing_executions
+      WHERE rule_id = ${ruleId}
+        AND triggered_at > NOW() - INTERVAL '30 days'
+    `);
+
+    // FP count for this rule (last 30 days)
+    const fpRes = await pool.query(`
+      SELECT COUNT(*) as fp_count
+      FROM false_positive_reviews
+      WHERE rule_id = ${ruleId}
+        AND reviewed_at > NOW() - INTERVAL '30 days'
+    `);
+
+    // Recent FP reviews with execution context
+    const reviewsRes = await pool.query(`
+      SELECT fpr.*, e.action_type, e.triggered_at, e.result, e.result_note
+      FROM false_positive_reviews fpr
+      JOIN self_healing_executions e ON e.id = fpr.execution_id
+      WHERE fpr.rule_id = ${ruleId}
+      ORDER BY fpr.reviewed_at DESC
+      LIMIT 10
+    `);
+
+    const total = parseInt(totalRes.rows[0].total);
+    const fpCount = parseInt(fpRes.rows[0].fp_count);
+    const fpRate = total > 0 ? Math.round((fpCount / total) * 100) : 0;
+
+    return res.json({
+      ruleId,
+      ruleName: ruleRes.rows[0].name,
+      last30Days: { total, fpCount, fpRate },
+      recentReviews: reviewsRes.rows
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch FP rate', detail: err.message });
+  }
+});
+
+// GET /admin/system/self-healing/executions/:id/false-positive — check FP status of one execution
+router.get('/admin/system/self-healing/executions/:id/false-positive', async (req, res) => {
+  try {
+    const execId = parseInt(req.params.id);
+    if (isNaN(execId)) return res.status(400).json({ error: 'Invalid execution ID' });
+
+    const r = await pool.query(`SELECT * FROM false_positive_reviews WHERE execution_id = ${execId}`);
+    if (!r.rows.length) return res.json({ isFalsePositive: false });
+
+    return res.json({ isFalsePositive: true, review: r.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to check FP status', detail: err.message });
   }
 });
 

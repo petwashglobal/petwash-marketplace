@@ -13870,6 +13870,7 @@ export const selfHealingRules = pgTable("self_healing_rules", {
   anomalyType:          varchar("anomaly_type", { length: 80 }).notNull().default('any'),
   minScore:             integer("min_score").notNull().default(60),
   consecutiveTriggers:  integer("consecutive_triggers").notNull().default(1),
+  cooldownMinutes:      integer("cooldown_minutes").notNull().default(10),
   actionType:           varchar("action_type", { length: 60 }).notNull(),
   actionLabel:          varchar("action_label", { length: 200 }).notNull(),
   actionParams:         jsonb("action_params").notNull().default(sql`'{}'::jsonb`),
@@ -13880,6 +13881,19 @@ export const selfHealingRules = pgTable("self_healing_rules", {
   createdAt:            timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 export type SelfHealingRule = typeof selfHealingRules.$inferSelect;
+
+// 4.8A — Threshold Tuning Audit Trail
+export const selfHealingRuleChanges = pgTable("self_healing_rule_changes", {
+  id:          serial("id").primaryKey(),
+  ruleId:      integer("rule_id").notNull(),
+  changedBy:   varchar("changed_by", { length: 100 }).notNull(),
+  changedAt:   timestamp("changed_at", { withTimezone: true }).notNull().defaultNow(),
+  fieldChanged: varchar("field_changed", { length: 60 }).notNull(),
+  oldValue:    varchar("old_value", { length: 200 }),
+  newValue:    varchar("new_value", { length: 200 }).notNull(),
+  reason:      text("reason").notNull(),
+});
+export type SelfHealingRuleChange = typeof selfHealingRuleChanges.$inferSelect;
 
 // 4.7G — Self-Healing Executions Log
 export const selfHealingExecutions = pgTable("self_healing_executions", {

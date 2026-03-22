@@ -2466,6 +2466,21 @@ export default function AdminWalletDashboard() {
   const [shRunning, setShRunning] = useState(false);
   const [shTogglingId, setShTogglingId] = useState<number | null>(null);
 
+  // 4.8A — Threshold Tuning
+  const [shTuningId, setShTuningId] = useState<number | null>(null);
+  const [shTuneForm, setShTuneForm] = useState({ minScore: '', consecutiveTriggers: '', cooldownMinutes: '', reason: '' });
+  const [shPreview, setShPreview] = useState<Record<number, any>>({});
+  const [shHistory, setShHistory] = useState<Record<number, any[]>>({});
+  const [shPreviewLoading, setShPreviewLoading] = useState<Record<number, boolean>>({});
+  const [shTuneSaving, setShTuneSaving] = useState(false);
+
+  // 4.8B — False Positive Review
+  const [shFpRates, setShFpRates] = useState<Record<number, any>>({});
+  const [shFpStatuses, setShFpStatuses] = useState<Record<number, { isFalsePositive: boolean; review?: any }>>({});
+  const [shFpReviewing, setShFpReviewing] = useState<number | null>(null);
+  const [shFpReason, setShFpReason] = useState('');
+  const [shFpSaving, setShFpSaving] = useState(false);
+
   const fetchRemediation = async (incidentId: number) => {
     try {
       const res = await fetch(`/api/prestige-pass/admin/system/incidents/${incidentId}/remediation`);
@@ -2567,6 +2582,138 @@ export default function AdminWalletDashboard() {
       await fetchShRules();
     } catch { toast({ title: 'Run failed', variant: 'destructive' }); }
     finally { setShRunning(false); }
+  };
+
+  // 4.8A — Threshold Tuning handlers
+  const openTuning = (rule: any) => {
+    setShTuningId(rule.id);
+    setShTuneForm({
+      minScore: String(rule.min_score),
+      consecutiveTriggers: String(rule.consecutive_triggers),
+      cooldownMinutes: String(rule.cooldown_minutes ?? 10),
+      reason: '',
+    });
+    setShPreview(p => ({ ...p, [rule.id]: null }));
+    // Auto-load history when tuning opens
+    fetchRuleHistory(rule.id);
+  };
+
+  const closeTuning = () => {
+    setShTuningId(null);
+    setShTuneForm({ minScore: '', consecutiveTriggers: '', cooldownMinutes: '', reason: '' });
+  };
+
+  const fetchTunePreview = async (ruleId: number) => {
+    setShPreviewLoading(p => ({ ...p, [ruleId]: true }));
+    try {
+      const params = new URLSearchParams({
+        minScore: shTuneForm.minScore,
+        consecutiveTriggers: shTuneForm.consecutiveTriggers,
+        cooldownMinutes: shTuneForm.cooldownMinutes,
+      });
+      const res = await fetch(`/api/prestige-pass/admin/system/self-healing/rules/${ruleId}/preview?${params}`);
+      const d = await res.json();
+      setShPreview(p => ({ ...p, [ruleId]: d }));
+    } catch { toast({ title: 'Preview failed', variant: 'destructive' }); }
+    finally { setShPreviewLoading(p => ({ ...p, [ruleId]: false })); }
+  };
+
+  const fetchRuleHistory = async (ruleId: number) => {
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/self-healing/rules/${ruleId}/history`);
+      const d = await res.json();
+      setShHistory(p => ({ ...p, [ruleId]: d.changes ?? [] }));
+    } catch { /* silent */ }
+  };
+
+  const submitTune = async (ruleId: number) => {
+    if (!shTuneForm.reason.trim()) {
+      toast({ title: 'Reason is required for all threshold changes', variant: 'destructive' }); return;
+    }
+    setShTuneSaving(true);
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/self-healing/rules/${ruleId}/tune`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actor: 'admin',
+          reason: shTuneForm.reason,
+          minScore: parseInt(shTuneForm.minScore),
+          consecutiveTriggers: parseInt(shTuneForm.consecutiveTriggers),
+          cooldownMinutes: parseInt(shTuneForm.cooldownMinutes),
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) { toast({ title: d.error ?? 'Save failed', variant: 'destructive' }); return; }
+      setShRules(p => p.map(r => r.id === ruleId ? d.rule : r));
+      if (d.changes?.length) {
+        toast({ title: `Saved — ${d.changes.length} threshold(s) updated with audit record` });
+      } else {
+        toast({ title: d.message ?? 'No changes detected' });
+      }
+      await fetchRuleHistory(ruleId);
+      closeTuning();
+    } catch { toast({ title: 'Save failed', variant: 'destructive' }); }
+    finally { setShTuneSaving(false); }
+  };
+
+  // 4.8B — False Positive handlers
+  const loadFpRate = async (ruleId: number) => {
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/self-healing/rules/${ruleId}/false-positive-rate`);
+      const d = await res.json();
+      if (res.ok) setShFpRates(p => ({ ...p, [ruleId]: d }));
+    } catch { /* silent */ }
+  };
+
+  const checkFpStatus = async (execId: number) => {
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/self-healing/executions/${execId}/false-positive`);
+      const d = await res.json();
+      if (res.ok) setShFpStatuses(p => ({ ...p, [execId]: d }));
+    } catch { /* silent */ }
+  };
+
+  const openFpReview = (execId: number) => {
+    setShFpReviewing(execId);
+    setShFpReason('');
+    checkFpStatus(execId);
+  };
+
+  const submitFpReview = async (execId: number, ruleId: number) => {
+    if (!shFpReason.trim()) {
+      toast({ title: 'Reason required to mark a false positive', variant: 'destructive' }); return;
+    }
+    setShFpSaving(true);
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/self-healing/executions/${execId}/false-positive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewed_by: 'admin', reason: shFpReason }),
+      });
+      const d = await res.json();
+      if (res.status === 409) {
+        toast({ title: 'Already marked as false positive' }); setShFpReviewing(null); return;
+      }
+      if (!res.ok) { toast({ title: d.error ?? 'Failed to mark FP', variant: 'destructive' }); return; }
+      setShFpStatuses(p => ({ ...p, [execId]: { isFalsePositive: true, review: d.review } }));
+      toast({ title: 'Marked as false positive', description: 'FP rate for this rule will be updated' });
+      setShFpReviewing(null);
+      setShFpReason('');
+      await loadFpRate(ruleId);
+    } catch { toast({ title: 'Mark FP failed', variant: 'destructive' }); }
+    finally { setShFpSaving(false); }
+  };
+
+  const undoFpReview = async (execId: number, ruleId: number) => {
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/self-healing/executions/${execId}/false-positive`, { method: 'DELETE' });
+      const d = await res.json();
+      if (!res.ok) { toast({ title: d.error ?? 'Undo failed', variant: 'destructive' }); return; }
+      setShFpStatuses(p => ({ ...p, [execId]: { isFalsePositive: false } }));
+      toast({ title: 'False positive marking removed' });
+      await loadFpRate(ruleId);
+    } catch { toast({ title: 'Undo failed', variant: 'destructive' }); }
   };
 
   // ── Phase 3.6 UI aliases & supplemental state ──────────────────────────────
@@ -14377,80 +14524,310 @@ export default function AdminWalletDashboard() {
                       {/* Rules table */}
                       <div className="text-[8px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Configured Rules</div>
                       <div className="space-y-1">
-                        {shRules.map((rule: any) => (
-                          <div key={rule.id}
-                            className={`flex items-start gap-2 p-1.5 rounded border text-[9px] ${rule.enabled ? 'bg-white border-emerald-200' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
-                            {/* Enable toggle */}
-                            <button
-                              disabled={shTogglingId === rule.id}
-                              onClick={() => toggleShRule(rule.id)}
-                              className={`mt-0.5 shrink-0 w-7 h-3.5 rounded-full transition-colors relative ${rule.enabled ? 'bg-emerald-500' : 'bg-gray-300'} disabled:opacity-50`}
-                              title={rule.enabled ? 'Disable rule' : 'Enable rule'}>
-                              <span className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full shadow transition-all ${rule.enabled ? 'left-4' : 'left-0.5'}`} />
-                            </button>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1 flex-wrap">
-                                <span className="font-semibold text-gray-800 leading-snug">{rule.name}</span>
-                                <span className={`text-[7px] px-1 py-0 rounded font-bold ${
-                                  rule.anomaly_type === 'any' ? 'bg-gray-200 text-gray-600' :
-                                  rule.anomaly_type === 'refund_spike' ? 'bg-red-100 text-red-700' :
-                                  rule.anomaly_type === 'payout_imbalance' ? 'bg-orange-100 text-orange-700' :
-                                  rule.anomaly_type === 'reconciliation_mismatch_rate' ? 'bg-yellow-100 text-yellow-700' :
-                                  rule.anomaly_type === 'dispute_surge' ? 'bg-purple-100 text-purple-700' :
-                                  rule.anomaly_type === 'alert_silence' ? 'bg-blue-100 text-blue-700' :
-                                  'bg-gray-100 text-gray-600'
-                                }`}>{rule.anomaly_type}</span>
-                                <span className="text-[7px] px-1 py-0 bg-indigo-100 text-indigo-700 rounded font-bold">{rule.action_type}</span>
-                              </div>
-                              <div className="flex items-center gap-2 mt-0.5 text-gray-500">
-                                <span>Score ≥ {rule.min_score}</span>
-                                <span>·</span>
-                                <span>{rule.consecutive_triggers}× consecutive</span>
-                                <span>·</span>
-                                <span>Fired {rule.trigger_count}×</span>
-                                {rule.last_triggered_at && (
-                                  <>
+                        {shRules.map((rule: any) => {
+                          const isTuning = shTuningId === rule.id;
+                          const preview = shPreview[rule.id];
+                          const history = shHistory[rule.id] ?? [];
+                          return (
+                            <div key={rule.id}
+                              className={`rounded border text-[9px] ${rule.enabled ? 'bg-white border-emerald-200' : 'bg-gray-50 border-gray-200 opacity-70'} ${isTuning ? 'ring-1 ring-emerald-400' : ''}`}>
+                              {/* ── Rule summary row ── */}
+                              <div className="flex items-start gap-2 p-1.5">
+                                {/* Enable toggle */}
+                                <button
+                                  disabled={shTogglingId === rule.id}
+                                  onClick={() => toggleShRule(rule.id)}
+                                  className={`mt-0.5 shrink-0 w-7 h-3.5 rounded-full transition-colors relative ${rule.enabled ? 'bg-emerald-500' : 'bg-gray-300'} disabled:opacity-50`}
+                                  title={rule.enabled ? 'Disable rule' : 'Enable rule'}>
+                                  <span className={`absolute top-0.5 w-2.5 h-2.5 bg-white rounded-full shadow transition-all ${rule.enabled ? 'left-4' : 'left-0.5'}`} />
+                                </button>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1 flex-wrap">
+                                    <span className="font-semibold text-gray-800 leading-snug">{rule.name}</span>
+                                    <span className={`text-[7px] px-1 py-0 rounded font-bold ${
+                                      rule.anomaly_type === 'any' ? 'bg-gray-200 text-gray-600' :
+                                      rule.anomaly_type === 'refund_spike' ? 'bg-red-100 text-red-700' :
+                                      rule.anomaly_type === 'payout_imbalance' ? 'bg-orange-100 text-orange-700' :
+                                      rule.anomaly_type === 'reconciliation_mismatch_rate' ? 'bg-yellow-100 text-yellow-700' :
+                                      rule.anomaly_type === 'dispute_surge' ? 'bg-purple-100 text-purple-700' :
+                                      rule.anomaly_type === 'alert_silence' ? 'bg-blue-100 text-blue-700' :
+                                      'bg-gray-100 text-gray-600'
+                                    }`}>{rule.anomaly_type}</span>
+                                    <span className="text-[7px] px-1 py-0 bg-indigo-100 text-indigo-700 rounded font-bold">{rule.action_type}</span>
+                                    {shFpRates[rule.id] && (() => {
+                                      const rate = shFpRates[rule.id].last30Days;
+                                      return (
+                                        <span className={`text-[7px] px-1 py-0 rounded font-bold ${
+                                          rate.fpRate >= 30 ? 'bg-red-100 text-red-700' :
+                                          rate.fpRate >= 15 ? 'bg-amber-100 text-amber-700' :
+                                          'bg-emerald-50 text-emerald-700'
+                                        }`}>
+                                          FP {rate.fpRate}% ({rate.fpCount}/{rate.total})
+                                        </span>
+                                      );
+                                    })()}
+                                    {!shFpRates[rule.id] && (
+                                      <button
+                                        onClick={() => loadFpRate(rule.id)}
+                                        className="text-[7px] px-1 py-0 rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 border border-dashed border-gray-200">
+                                        FP rate
+                                      </button>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-0.5 text-gray-500">
+                                    <span>Score ≥ {rule.min_score}</span>
                                     <span>·</span>
-                                    <span>Last: {new Date(rule.last_triggered_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                                  </>
-                                )}
+                                    <span>{rule.consecutive_triggers}× consec</span>
+                                    <span>·</span>
+                                    <span>{rule.cooldown_minutes ?? 10}min cooldown</span>
+                                    <span>·</span>
+                                    <span>Fired {rule.trigger_count}×</span>
+                                    {rule.last_triggered_at && (
+                                      <>
+                                        <span>·</span>
+                                        <span>Last: {new Date(rule.last_triggered_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                  {rule.rationale && (
+                                    <div className="text-[8px] text-emerald-700 italic mt-0.5 leading-snug">{rule.rationale}</div>
+                                  )}
+                                </div>
+                                {/* Tune button */}
+                                <button
+                                  onClick={() => isTuning ? closeTuning() : openTuning(rule)}
+                                  className={`text-[8px] px-1.5 py-0.5 rounded font-medium shrink-0 ${isTuning ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'border border-gray-200 hover:bg-emerald-50 text-gray-500 hover:text-emerald-700'}`}>
+                                  {isTuning ? 'Close' : '⚙ Tune'}
+                                </button>
                               </div>
-                              {rule.rationale && (
-                                <div className="text-[8px] text-emerald-700 italic mt-0.5 leading-snug">{rule.rationale}</div>
+
+                              {/* ── Tuning panel (inline, only when open) ── */}
+                              {isTuning && (
+                                <div className="border-t border-emerald-100 bg-emerald-50/60 p-2 space-y-2">
+                                  {/* Current vs proposed thresholds */}
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <div>
+                                      <label className="text-[7px] font-bold text-gray-500 uppercase block mb-0.5">Min Score (1–100)</label>
+                                      <div className="text-[7px] text-gray-400 mb-0.5">Current: {rule.min_score}</div>
+                                      <input
+                                        type="number" min={1} max={100}
+                                        value={shTuneForm.minScore}
+                                        onChange={e => setShTuneForm(p => ({ ...p, minScore: e.target.value }))}
+                                        className="w-full text-[9px] border border-gray-200 rounded px-1 py-0.5 focus:ring-1 focus:ring-emerald-400 outline-none"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-[7px] font-bold text-gray-500 uppercase block mb-0.5">Consec. Triggers (1–10)</label>
+                                      <div className="text-[7px] text-gray-400 mb-0.5">Current: {rule.consecutive_triggers}</div>
+                                      <input
+                                        type="number" min={1} max={10}
+                                        value={shTuneForm.consecutiveTriggers}
+                                        onChange={e => setShTuneForm(p => ({ ...p, consecutiveTriggers: e.target.value }))}
+                                        className="w-full text-[9px] border border-gray-200 rounded px-1 py-0.5 focus:ring-1 focus:ring-emerald-400 outline-none"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-[7px] font-bold text-gray-500 uppercase block mb-0.5">Cooldown Minutes (1–1440)</label>
+                                      <div className="text-[7px] text-gray-400 mb-0.5">Current: {rule.cooldown_minutes ?? 10}</div>
+                                      <input
+                                        type="number" min={1} max={1440}
+                                        value={shTuneForm.cooldownMinutes}
+                                        onChange={e => setShTuneForm(p => ({ ...p, cooldownMinutes: e.target.value }))}
+                                        className="w-full text-[9px] border border-gray-200 rounded px-1 py-0.5 focus:ring-1 focus:ring-emerald-400 outline-none"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {/* Preview button + result */}
+                                  <div className="flex items-start gap-2">
+                                    <button
+                                      disabled={!!shPreviewLoading[rule.id]}
+                                      onClick={() => fetchTunePreview(rule.id)}
+                                      className="text-[8px] px-2 py-0.5 border border-emerald-300 bg-white hover:bg-emerald-50 text-emerald-700 rounded font-medium disabled:opacity-50 shrink-0">
+                                      {shPreviewLoading[rule.id] ? 'Loading…' : '▷ Preview Impact'}
+                                    </button>
+                                    {preview && (
+                                      <div className="flex-1 text-[8px] bg-white border border-emerald-100 rounded p-1.5 leading-snug">
+                                        <div className="font-semibold text-gray-700 mb-0.5">Last 30 days · {preview.proposed?.totalAnomaliesChecked ?? 0} anomalies checked</div>
+                                        <div className="flex gap-3">
+                                          <span className="text-gray-500">
+                                            Current ({preview.current?.minScore}/
+                                            {preview.current?.consecutiveTriggers}×/
+                                            {preview.current?.cooldownMinutes}min):
+                                            <span className="font-bold text-gray-800 ml-1">{preview.current?.actualFiresLast30Days} fires</span>
+                                          </span>
+                                          <span className="text-emerald-600">→</span>
+                                          <span className="text-gray-500">
+                                            Proposed:
+                                            <span className={`font-bold ml-1 ${
+                                              (preview.delta ?? 0) > 0 ? 'text-orange-600' :
+                                              (preview.delta ?? 0) < 0 ? 'text-emerald-600' :
+                                              'text-gray-800'
+                                            }`}>
+                                              ~{preview.proposed?.estimatedFiresLast30Days} fires
+                                              {(preview.delta ?? 0) !== 0 && (
+                                                <span className="ml-1">({(preview.delta ?? 0) > 0 ? '+' : ''}{preview.delta} vs current)</span>
+                                              )}
+                                            </span>
+                                          </span>
+                                        </div>
+                                        <div className="text-gray-400 mt-0.5">{preview.proposed?.qualifyingAnomaliesLast30Days} anomalies would qualify at proposed score threshold</div>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Reason textarea — required */}
+                                  <div>
+                                    <label className="text-[7px] font-bold text-gray-500 uppercase block mb-0.5">
+                                      Reason for change <span className="text-red-500">*</span>
+                                    </label>
+                                    <textarea
+                                      rows={2}
+                                      value={shTuneForm.reason}
+                                      onChange={e => setShTuneForm(p => ({ ...p, reason: e.target.value }))}
+                                      placeholder="Explain why these thresholds are being adjusted (e.g. false positive rate too high, reducing min_score to catch more early signals)"
+                                      className="w-full text-[9px] border border-gray-200 rounded px-1.5 py-1 focus:ring-1 focus:ring-emerald-400 outline-none resize-none"
+                                    />
+                                  </div>
+
+                                  {/* Save / Cancel */}
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      disabled={shTuneSaving || !shTuneForm.reason.trim()}
+                                      onClick={() => submitTune(rule.id)}
+                                      className="text-[9px] px-2.5 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-semibold disabled:opacity-50">
+                                      {shTuneSaving ? 'Saving…' : 'Save Thresholds'}
+                                    </button>
+                                    <button
+                                      onClick={closeTuning}
+                                      className="text-[9px] px-2 py-0.5 border border-gray-200 hover:bg-gray-50 text-gray-500 rounded">
+                                      Cancel
+                                    </button>
+                                    <span className="text-[8px] text-gray-400 ml-1">Every change is audited — reason required</span>
+                                  </div>
+
+                                  {/* Change history for this rule */}
+                                  {history.length > 0 && (
+                                    <div className="border-t border-emerald-100 pt-1.5">
+                                      <div className="text-[7px] font-bold text-gray-500 uppercase mb-1">Threshold History</div>
+                                      <div className="space-y-0.5">
+                                        {history.slice(0, 5).map((ch: any) => (
+                                          <div key={ch.id} className="flex items-start gap-1.5 text-[8px] text-gray-600">
+                                            <span className="text-gray-300 shrink-0">│</span>
+                                            <span className="font-mono text-gray-400 shrink-0">
+                                              {new Date(ch.changed_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
+                                            </span>
+                                            <span className="shrink-0 font-medium">{ch.field_changed}</span>
+                                            <span className="text-gray-400">{ch.old_value} → <span className="font-semibold text-gray-700">{ch.new_value}</span></span>
+                                            <span className="text-gray-400 shrink-0">by {ch.changed_by}</span>
+                                            <span className="italic text-gray-400 truncate" title={ch.reason}>"{ch.reason}"</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {history.length === 0 && (
+                                    <div className="text-[8px] text-gray-400 border-t border-emerald-100 pt-1">No threshold changes recorded yet for this rule</div>
+                                  )}
+                                </div>
                               )}
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
                       {/* Execution history */}
                       {shExecs.length > 0 && (
                         <div className="mt-3">
-                          <div className="text-[8px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Recent Executions</div>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-[8px] font-semibold text-gray-500 uppercase tracking-wide">Recent Executions</div>
+                            <div className="text-[7px] text-indigo-500">Click FP to flag false positives · FP rate shown per rule</div>
+                          </div>
                           <div className="space-y-0.5">
-                            {shExecs.slice(0, 10).map((ex: any) => (
-                              <div key={ex.id} className={`flex items-start gap-1.5 p-1 rounded text-[8px] ${
-                                ex.result === 'success' ? 'bg-emerald-50 border border-emerald-100' :
-                                ex.result === 'failed' ? 'bg-red-50 border border-red-100' :
-                                'bg-gray-50 border border-gray-100'
-                              }`}>
-                                <span className={`shrink-0 font-bold ${ex.result === 'success' ? 'text-emerald-600' : ex.result === 'failed' ? 'text-red-600' : 'text-gray-400'}`}>
-                                  {ex.result === 'success' ? '✓' : ex.result === 'failed' ? '✕' : '⧖'}
-                                </span>
-                                <div className="flex-1 min-w-0">
-                                  <span className="font-medium text-gray-800">{ex.rule_name ?? `Rule #${ex.rule_id}`}</span>
-                                  <span className="text-gray-400 mx-1">·</span>
-                                  <span className="text-gray-600">{ex.action_type}</span>
-                                  {ex.anomaly_score && (
-                                    <span className="ml-1 text-gray-400">score {ex.anomaly_score}</span>
+                            {shExecs.slice(0, 10).map((ex: any) => {
+                              const fpStatus = shFpStatuses[ex.id];
+                              const isMarkedFp = fpStatus?.isFalsePositive;
+                              const isReviewing = shFpReviewing === ex.id;
+                              return (
+                                <div key={ex.id} className={`rounded text-[8px] border ${
+                                  isMarkedFp ? 'bg-amber-50 border-amber-200' :
+                                  ex.result === 'success' ? 'bg-emerald-50 border-emerald-100' :
+                                  ex.result === 'failed' ? 'bg-red-50 border-red-100' :
+                                  'bg-gray-50 border-gray-100'
+                                }`}>
+                                  <div className="flex items-start gap-1.5 p-1">
+                                    <span className={`shrink-0 font-bold mt-0.5 ${isMarkedFp ? 'text-amber-500' : ex.result === 'success' ? 'text-emerald-600' : ex.result === 'failed' ? 'text-red-600' : 'text-gray-400'}`}>
+                                      {isMarkedFp ? '⚑' : ex.result === 'success' ? '✓' : ex.result === 'failed' ? '✕' : '⧖'}
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-1 flex-wrap">
+                                        <span className="font-medium text-gray-800">{ex.rule_name ?? `Rule #${ex.rule_id}`}</span>
+                                        <span className="text-gray-400">·</span>
+                                        <span className="text-gray-600">{ex.action_type}</span>
+                                        {ex.anomaly_score && (
+                                          <span className="text-gray-400">score {ex.anomaly_score}</span>
+                                        )}
+                                        {isMarkedFp && (
+                                          <span className="text-[7px] px-1 py-0 bg-amber-100 text-amber-700 rounded font-bold">FALSE POSITIVE</span>
+                                        )}
+                                      </div>
+                                      <div className="text-gray-500 leading-snug">{ex.result_note}</div>
+                                      {isMarkedFp && fpStatus?.review && (
+                                        <div className="text-[7px] text-amber-700 mt-0.5 italic">
+                                          FP: {fpStatus.review.reason} — {fpStatus.review.reviewed_by}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <span className="text-gray-400 text-[7px]">
+                                        {new Date(ex.triggered_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                      {!isMarkedFp && !isReviewing && (
+                                        <button
+                                          onClick={() => openFpReview(ex.id)}
+                                          className="text-[7px] px-1 py-0.5 rounded border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50">
+                                          FP?
+                                        </button>
+                                      )}
+                                      {isMarkedFp && (
+                                        <button
+                                          onClick={() => undoFpReview(ex.id, ex.rule_id)}
+                                          className="text-[7px] px-1 py-0.5 rounded border border-amber-200 text-amber-500 hover:bg-amber-100">
+                                          undo
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {/* Inline FP review form */}
+                                  {isReviewing && !isMarkedFp && (
+                                    <div className="px-2 pb-1.5 border-t border-amber-100 bg-amber-50/50">
+                                      <div className="text-[7px] text-amber-700 font-semibold mt-1 mb-0.5">Mark as False Positive — requires reason</div>
+                                      <textarea
+                                        value={shFpReason}
+                                        onChange={e => setShFpReason(e.target.value)}
+                                        placeholder="Why was this a false positive? (e.g. spike caused by scheduled import, not real anomaly)"
+                                        rows={2}
+                                        className="w-full text-[8px] rounded border border-amber-200 px-1.5 py-1 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white"
+                                      />
+                                      <div className="flex items-center gap-1 mt-1">
+                                        <button
+                                          disabled={shFpSaving || !shFpReason.trim()}
+                                          onClick={() => submitFpReview(ex.id, ex.rule_id)}
+                                          className="text-[8px] px-2 py-0.5 rounded bg-amber-600 text-white disabled:opacity-50 hover:bg-amber-700">
+                                          {shFpSaving ? 'Saving…' : 'Confirm FP'}
+                                        </button>
+                                        <button
+                                          onClick={() => { setShFpReviewing(null); setShFpReason(''); }}
+                                          className="text-[8px] px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50">
+                                          Cancel
+                                        </button>
+                                        <span className="text-[7px] text-gray-400 ml-auto">{shFpReason.length} chars</span>
+                                      </div>
+                                    </div>
                                   )}
-                                  <div className="text-gray-500 leading-snug">{ex.result_note}</div>
                                 </div>
-                                <span className="text-gray-400 shrink-0 text-[7px]">
-                                  {new Date(ex.triggered_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}
