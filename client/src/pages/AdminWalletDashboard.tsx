@@ -86,6 +86,7 @@ import {
   Zap,
   ArrowUpCircle,
   PackageCheck,
+  GitBranch,
 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -1962,6 +1963,125 @@ export default function AdminWalletDashboard() {
     mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/execution-feedback', body),
     onSuccess: (d) => { toast({ title: 'Feedback applied', description: d.applied?.join(' | ') || `Δ${d.delta}` }); refetchFeedbackSummary(); refetchRecScores(); setShowFeedbackForm(false); setNewFeedback({ sourceType: 'recommendation_action', sourceId: '', feedbackType: 'confirmed_effective', feedbackNote: '', actorUid: '' }); },
     onError: (e: any) => toast({ title: 'Error', description: e?.message || 'Failed', variant: 'destructive' }),
+  });
+
+  // ══════════════════════════════════════════════════════════
+  // PHASE 4.3 — EXECUTION INTELLIGENCE & CLOSED-LOOP OPERATIONS
+  // ══════════════════════════════════════════════════════════
+
+  // 4.3A — Recommendation Priority Engine
+  const [priorityFilter, setPriorityFilter] = useState({ status: '', tab: '' });
+  const [priorityRecId, setPriorityRecId] = useState('');
+  const { data: prioritizedRecs, isLoading: prioritizedLoading, refetch: refetchPrioritized } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/recommendations/prioritized', priorityFilter],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (priorityFilter.status) p.set('status', priorityFilter.status);
+      if (priorityFilter.tab)    p.set('tab', priorityFilter.tab);
+      return fetch(`/api/prestige-pass/admin/wallet/recommendations/prioritized?${p}`).then(r => r.json());
+    },
+  });
+  const { mutate: recomputePriority, isPending: recomputePriorityPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/recommendations/recompute-priority', body),
+    onSuccess: (d) => { toast({ title: 'Priority recomputed', description: `Score: ${d.priorityScore}` }); refetchPrioritized(); setPriorityRecId(''); },
+    onError: (e: any) => toast({ title: 'Error', description: e?.message || 'Failed', variant: 'destructive' }),
+  });
+  const [reasoningDrawer, setReasoningDrawer] = useState<any>(null);
+
+  // 4.3B — Execution Outcome Effectiveness
+  const [effectFilter, setEffectFilter] = useState({ planId: '' });
+  const { data: effectivenessData, isLoading: effectivenessLoading, refetch: refetchEffectiveness } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/outcomes/effectiveness', effectFilter],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (effectFilter.planId) p.set('planId', effectFilter.planId);
+      return fetch(`/api/prestige-pass/admin/wallet/outcomes/effectiveness?${p}`).then(r => r.json());
+    },
+  });
+  const [scoreOutcomeId, setScoreOutcomeId] = useState('');
+  const [scoreValue, setScoreValue] = useState('');
+  const [scoreReason, setScoreReason] = useState('');
+  const { mutate: scoreOutcome, isPending: scoreOutcomePending } = useMutation<any, any, any>({
+    mutationFn: ({ id, ...body }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/outcomes/${id}/effectiveness`, body),
+    onSuccess: () => { toast({ title: 'Effectiveness scored' }); refetchEffectiveness(); setScoreOutcomeId(''); setScoreValue(''); setScoreReason(''); },
+    onError: (e: any) => toast({ title: 'Error', description: e?.message || 'Failed', variant: 'destructive' }),
+  });
+
+  // 4.3C — Follow-up Automation & Escalation
+  const [followUpFilter43, setFollowUpFilter43] = useState({ status: '', ownerUid: '', priority: '', overdue: false, escalated: false });
+  const { data: followUps43, isLoading: followUpsLoading43, refetch: refetchFollowUps43 } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/followups', followUpFilter43],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (followUpFilter43.status)   p.set('status', followUpFilter43.status);
+      if (followUpFilter43.ownerUid) p.set('ownerUid', followUpFilter43.ownerUid);
+      if (followUpFilter43.priority) p.set('priority', followUpFilter43.priority);
+      if (followUpFilter43.overdue)   p.set('overdue', 'true');
+      if (followUpFilter43.escalated) p.set('escalated', 'true');
+      return fetch(`/api/prestige-pass/admin/wallet/followups?${p}`).then(r => r.json());
+    },
+  });
+  const [autoGenForm, setAutoGenForm] = useState({ ownerUid: '', month: new Date().toISOString().slice(0, 7) });
+  const { mutate: autoGenFollowUps, isPending: autoGenPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/followups/auto-generate', body),
+    onSuccess: (d) => { toast({ title: 'Follow-ups generated', description: `${d.generated} items` }); refetchFollowUps43(); },
+    onError: (e: any) => toast({ title: 'Error', description: e?.message || 'Failed', variant: 'destructive' }),
+  });
+  const { mutate: escalateOverdue, isPending: escalatePending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest('POST', '/api/prestige-pass/admin/wallet/followups/escalate-overdue', {}),
+    onSuccess: (d) => { toast({ title: 'Escalation complete', description: `${d.escalated} items escalated` }); refetchFollowUps43(); },
+    onError: (e: any) => toast({ title: 'Error', description: e?.message || 'Failed', variant: 'destructive' }),
+  });
+  const { mutate: patchFollowUp43, isPending: patchFollowUp43Pending } = useMutation<any, any, any>({
+    mutationFn: ({ id, ...body }) => apiRequest('PATCH', `/api/prestige-pass/admin/wallet/followups/${id}`, body),
+    onSuccess: () => { toast({ title: 'Follow-up updated' }); refetchFollowUps43(); },
+    onError: (e: any) => toast({ title: 'Error', description: e?.message || 'Failed', variant: 'destructive' }),
+  });
+
+  // 4.3E — Bottleneck Detection
+  const { data: bottlenecks43, isLoading: bottlenecksLoading43, refetch: refetchBottlenecks43 } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/bottlenecks'],
+    queryFn: () => fetch('/api/prestige-pass/admin/wallet/bottlenecks').then(r => r.json()),
+    refetchInterval: 60_000,
+  });
+
+  // 4.3D — Reviewer / Operator Quality Analytics
+  const [reviewerFilter43, setReviewerFilter43] = useState({ periodKey: '', qualityBand: '' });
+  const { data: reviewerAnalytics, isLoading: reviewerAnalyticsLoading, refetch: refetchReviewerAnalytics } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/reviewer-analytics', reviewerFilter43],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (reviewerFilter43.periodKey)   p.set('periodKey', reviewerFilter43.periodKey);
+      if (reviewerFilter43.qualityBand) p.set('qualityBand', reviewerFilter43.qualityBand);
+      return fetch(`/api/prestige-pass/admin/wallet/reviewer-analytics?${p}`).then(r => r.json());
+    },
+  });
+  const [drillUid, setDrillUid] = useState('');
+  const { data: reviewerDrill, isLoading: reviewerDrillLoading } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/reviewer-analytics', drillUid],
+    queryFn: () => drillUid ? fetch(`/api/prestige-pass/admin/wallet/reviewer-analytics/${drillUid}`).then(r => r.json()) : Promise.resolve(null),
+    enabled: !!drillUid,
+  });
+  const [qualityComputeForm, setQualityComputeForm] = useState({ reviewerUid: '', periodKey: '' });
+  const { mutate: computeQuality, isPending: computeQualityPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/reviewer-analytics/compute-quality', body),
+    onSuccess: (d) => { toast({ title: 'Quality band computed', description: `${d.qualityBand} (${d.composite})` }); refetchReviewerAnalytics(); setQualityComputeForm({ reviewerUid: '', periodKey: '' }); },
+    onError: (e: any) => toast({ title: 'Error', description: e?.message || 'Failed', variant: 'destructive' }),
+  });
+
+  // 4.3F — Unified Execution Timeline
+  const [timelineRecId, setTimelineRecId] = useState('');
+  const { data: executionTimeline, isLoading: timelineLoading, refetch: refetchTimeline } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/execution-timeline', timelineRecId],
+    queryFn: () => timelineRecId ? fetch(`/api/prestige-pass/admin/wallet/execution-timeline/${timelineRecId}`).then(r => r.json()) : Promise.resolve(null),
+    enabled: !!timelineRecId,
+  });
+
+  // 4.3G — Management Execution Review
+  const [reviewPeriod, setReviewPeriod] = useState<'weekly' | 'monthly'>('monthly');
+  const { data: executionReview, isLoading: executionReviewLoading, refetch: refetchExecutionReview } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/execution-review', reviewPeriod],
+    queryFn: () => fetch(`/api/prestige-pass/admin/wallet/execution-review?period=${reviewPeriod}`).then(r => r.json()),
   });
 
   // ── Phase 3.6 UI aliases & supplemental state ──────────────────────────────
@@ -10004,6 +10124,240 @@ export default function AdminWalletDashboard() {
                 }
               </CardContent>
             </Card>
+
+            {/* 4.3C — FOLLOW-UP AUTOMATION & ESCALATION */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-orange-600" /> Follow-Up Automation & Escalation
+                </CardTitle>
+                <div className="flex gap-2 flex-wrap">
+                  <button onClick={() => escalateOverdue()} disabled={escalatePending} className="text-xs px-2 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-40 flex items-center gap-1">
+                    {escalatePending ? <Loader2 className="w-3 h-3 animate-spin" /> : <AlertTriangle className="w-3 h-3" />} Escalate Overdue
+                  </button>
+                  <button onClick={() => refetchFollowUps43()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded p-2">
+                  Overdue follow-ups escalate once per hour. Closed items never escalate. Auto-generate creates follow-ups from SLA breaches and worsened outcomes detected in the last 7 days.
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="text" placeholder="Owner UID (auto-generate target)" value={autoGenForm.ownerUid} onChange={e => setAutoGenForm(v => ({ ...v, ownerUid: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                  <input type="month" value={autoGenForm.month} onChange={e => setAutoGenForm(v => ({ ...v, month: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                </div>
+                <button disabled={autoGenPending || !autoGenForm.ownerUid} onClick={() => autoGenFollowUps(autoGenForm)}
+                  className="text-xs px-3 py-1.5 bg-orange-700 text-white rounded hover:bg-orange-800 disabled:opacity-40 flex items-center gap-1">
+                  {autoGenPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Activity className="w-3 h-3" />} Auto-Generate from Breaches & Worsened Outcomes
+                </button>
+                <div className="flex flex-wrap gap-2">
+                  <select value={followUpFilter43.status} onChange={e => setFollowUpFilter43(v => ({ ...v, status: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                    <option value="">All statuses</option>
+                    <option value="open">Open</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="closed">Closed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                  <select value={followUpFilter43.priority} onChange={e => setFollowUpFilter43(v => ({ ...v, priority: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                    <option value="">All priorities</option>
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                  <label className="flex items-center gap-1 text-xs cursor-pointer">
+                    <input type="checkbox" checked={followUpFilter43.overdue} onChange={e => setFollowUpFilter43(v => ({ ...v, overdue: e.target.checked }))} />
+                    Overdue only
+                  </label>
+                  <label className="flex items-center gap-1 text-xs cursor-pointer">
+                    <input type="checkbox" checked={followUpFilter43.escalated} onChange={e => setFollowUpFilter43(v => ({ ...v, escalated: e.target.checked }))} />
+                    Escalated only
+                  </label>
+                </div>
+                {followUpsLoading43 ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  followUps43 && (
+                    <div className="space-y-2">
+                      <div className="flex gap-3 text-xs">
+                        <span className="text-gray-500">Total: <strong>{followUps43.total}</strong></span>
+                        {followUps43.overdueCount > 0  && <span className="text-red-600 font-semibold">⚠ {followUps43.overdueCount} overdue</span>}
+                        {followUps43.escalatedCount > 0 && <span className="text-orange-600 font-semibold">↑ {followUps43.escalatedCount} escalated</span>}
+                      </div>
+                      {!followUps43.followUps?.length ? (
+                        <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No follow-ups match the current filter</div>
+                      ) : (
+                        <div className="border rounded-lg overflow-hidden">
+                          <table className="w-full text-xs"><thead className="bg-gray-50">
+                            <tr className="text-gray-500"><th className="text-left p-2">Title</th><th className="text-left p-2">Owner</th><th className="text-left p-2">Due</th><th className="text-left p-2">Priority</th><th className="text-left p-2">Status</th><th className="text-right p-2">Escalation</th><th className="text-left p-2">Actions</th></tr>
+                          </thead><tbody>
+                            {followUps43.followUps.map((f: any) => (
+                              <tr key={f.id} className={`border-t hover:bg-gray-50 ${f.is_overdue ? 'bg-red-50/30' : ''} ${f.escalation_level > 0 ? 'bg-orange-50/20' : ''}`}>
+                                <td className="p-2 max-w-[160px] truncate" title={f.title}>{f.title}</td>
+                                <td className="p-2 font-mono text-[10px] text-gray-600 max-w-[80px] truncate">{f.owner_uid}</td>
+                                <td className={`p-2 text-[10px] ${f.is_overdue ? 'text-red-600 font-bold' : 'text-gray-500'}`}>{f.due_date}</td>
+                                <td className="p-2"><span className={`text-[10px] px-1.5 py-0.5 rounded ${f.priority === 'critical' ? 'bg-red-100 text-red-700' : f.priority === 'high' ? 'bg-orange-100 text-orange-600' : f.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>{f.priority}</span></td>
+                                <td className="p-2"><span className={`text-[10px] px-1.5 py-0.5 rounded ${f.status === 'closed' ? 'bg-green-100 text-green-700' : f.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : f.status === 'cancelled' ? 'bg-gray-100 text-gray-400' : 'bg-gray-100 text-gray-600'}`}>{f.status}</span></td>
+                                <td className="p-2 text-right">
+                                  {f.escalation_level > 0 ? <span className="text-[10px] text-orange-600 font-semibold">L{f.escalation_level}</span> : <span className="text-[10px] text-gray-300">—</span>}
+                                </td>
+                                <td className="p-2">
+                                  <div className="flex gap-1">
+                                    {f.status === 'open'        && <button disabled={patchFollowUp43Pending} onClick={() => patchFollowUp43({ id: f.id, status: 'in_progress' })} className="text-[10px] px-1 py-0.5 border rounded hover:bg-blue-50 text-blue-600">→ Start</button>}
+                                    {f.status === 'in_progress' && <button disabled={patchFollowUp43Pending} onClick={() => patchFollowUp43({ id: f.id, status: 'closed' })}      className="text-[10px] px-1 py-0.5 border rounded hover:bg-green-50 text-green-600">✓ Close</button>}
+                                    {f.status !== 'closed' && f.status !== 'cancelled' && <button disabled={patchFollowUp43Pending} onClick={() => patchFollowUp43({ id: f.id, status: 'cancelled' })} className="text-[10px] px-1 py-0.5 border border-red-200 rounded hover:bg-red-50 text-red-500">✕</button>}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody></table>
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.3G — MANAGEMENT EXECUTION REVIEW */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-slate-700" /> Management Execution Review
+                </CardTitle>
+                <div className="flex gap-2 items-center">
+                  <select value={reviewPeriod} onChange={e => setReviewPeriod(e.target.value as 'weekly' | 'monthly')} className="border rounded px-2 py-1 text-xs">
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                  <button onClick={() => refetchExecutionReview()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                  {executionReview && (
+                    <button onClick={() => { const blob = new Blob([JSON.stringify(executionReview, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `execution-review-${executionReview.periodKey}.json`; a.click(); }}
+                      className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                      <Download className="w-3 h-3" /> Export JSON
+                    </button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded p-2">
+                  Periodic view of whether the operating system is improving — recommendations created, accepted, completed; action SLA rate; outcome improvement rate; reviewer quality; policy learning.
+                </div>
+                {executionReviewLoading ? <div className="h-32 bg-gray-100 animate-pulse rounded" /> :
+                  executionReview && !executionReview.error && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <span className="font-semibold text-gray-700">{executionReview.periodKey}</span>
+                        {executionReview.cached && <span className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px]">cached</span>}
+                        <span className="ml-auto">Generated: {executionReview.generatedAt ? new Date(executionReview.generatedAt).toLocaleString('he-IL') : '—'}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Recommendations */}
+                        {executionReview.recommendations && (
+                          <div className="border rounded-lg p-3 space-y-1.5">
+                            <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Recommendations</div>
+                            {[
+                              { label: 'Created',         value: executionReview.recommendations.created },
+                              { label: 'Accepted rate',   value: `${executionReview.recommendations.acceptedRate}%`, color: executionReview.recommendations.acceptedRate >= 60 ? 'text-green-600' : 'text-amber-600' },
+                              { label: 'Completion rate', value: `${executionReview.recommendations.completionRate}%`, color: executionReview.recommendations.completionRate >= 40 ? 'text-green-600' : 'text-red-500' },
+                            ].map(k => (
+                              <div key={k.label} className="flex justify-between text-xs">
+                                <span className="text-gray-500">{k.label}</span>
+                                <span className={`font-semibold ${(k as any).color || 'text-gray-800'}`}>{k.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {/* Actions */}
+                        {executionReview.actions && (
+                          <div className="border rounded-lg p-3 space-y-1.5">
+                            <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Actions</div>
+                            {[
+                              { label: 'Total',    value: executionReview.actions.total },
+                              { label: 'SLA met',  value: executionReview.actions.slaMet },
+                              { label: 'SLA rate', value: `${executionReview.actions.slaRate}%`, color: executionReview.actions.slaRate >= 80 ? 'text-green-600' : 'text-red-500' },
+                            ].map(k => (
+                              <div key={k.label} className="flex justify-between text-xs">
+                                <span className="text-gray-500">{k.label}</span>
+                                <span className={`font-semibold ${(k as any).color || 'text-gray-800'}`}>{k.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {/* Outcomes */}
+                        {executionReview.outcomes && (
+                          <div className="border rounded-lg p-3 space-y-1.5">
+                            <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Outcomes</div>
+                            {[
+                              { label: 'Total',            value: executionReview.outcomes.total },
+                              { label: 'Improvement rate', value: `${executionReview.outcomes.improvementRate}%`, color: executionReview.outcomes.improvementRate >= 50 ? 'text-green-600' : 'text-amber-600' },
+                              { label: 'Avg effectiveness', value: parseFloat(executionReview.outcomes.avgEffectiveness || '0').toFixed(1) },
+                            ].map(k => (
+                              <div key={k.label} className="flex justify-between text-xs">
+                                <span className="text-gray-500">{k.label}</span>
+                                <span className={`font-semibold ${(k as any).color || 'text-gray-800'}`}>{k.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {/* Follow-ups */}
+                        {executionReview.followUps && (
+                          <div className="border rounded-lg p-3 space-y-1.5">
+                            <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Follow-Ups</div>
+                            {[
+                              { label: 'Total',   value: executionReview.followUps.total },
+                              { label: 'Overdue', value: executionReview.followUps.overdue, color: executionReview.followUps.overdue > 0 ? 'text-red-600' : 'text-green-600' },
+                              { label: 'Closed',  value: executionReview.followUps.closed },
+                            ].map(k => (
+                              <div key={k.label} className="flex justify-between text-xs">
+                                <span className="text-gray-500">{k.label}</span>
+                                <span className={`font-semibold ${(k as any).color || 'text-gray-800'}`}>{k.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {/* Top reviewers */}
+                      {executionReview.topReviewers?.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Top Reviewers</div>
+                          <div className="flex flex-wrap gap-2">
+                            {executionReview.topReviewers.map((r: any) => (
+                              <div key={r.reviewer_uid} className="border rounded px-2 py-1 text-xs flex items-center gap-2">
+                                <span className="font-mono text-gray-600 text-[10px] max-w-[80px] truncate">{r.reviewer_uid}</span>
+                                <span className={`text-[10px] px-1 py-0.5 rounded ${r.quality_band === 'excellent' ? 'bg-green-100 text-green-700' : r.quality_band === 'good' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{r.quality_band}</span>
+                                <span className="text-gray-400 text-[10px]">{parseFloat(r.outcome_quality_score).toFixed(1)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {/* Top policy suggestions */}
+                      {executionReview.topPolicySuggestions?.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Top Policy Learning Items</div>
+                          <div className="space-y-1">
+                            {executionReview.topPolicySuggestions.map((s: any, i: number) => (
+                              <div key={i} className="text-xs flex items-center gap-2 border rounded px-2 py-1">
+                                <span className="text-gray-600 font-semibold">{s.policy_area}</span>
+                                <span className="text-gray-400 capitalize">{s.suggestion_type}</span>
+                                <span className={`ml-auto text-[10px] font-mono ${parseFloat(s.confidence_delta) >= 0 ? 'text-green-600' : 'text-red-500'}`}>Δ{parseFloat(s.confidence_delta).toFixed(2)}</span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${s.status === 'accepted' ? 'bg-green-100 text-green-700' : s.status === 'pending' ? 'bg-gray-100 text-gray-500' : 'bg-red-100 text-red-500'}`}>{s.status}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+                {!executionReview && !executionReviewLoading && (
+                  <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No review data yet — select a period and refresh</div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -10521,6 +10875,145 @@ export default function AdminWalletDashboard() {
                       )}
                       {!reviewerPerfData.liveWorkload?.length && !reviewerPerfData.snapshots?.length && (
                         <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No reviewer data yet — actions will appear here once recommendations have been actioned</div>
+                      )}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.3D — REVIEWER / OPERATOR QUALITY ANALYTICS */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Star className="w-4 h-4 text-amber-500" /> Reviewer Quality Analytics
+                </CardTitle>
+                <div className="flex gap-2 flex-wrap">
+                  <button disabled={computeQualityPending || !qualityComputeForm.reviewerUid || !qualityComputeForm.periodKey}
+                    onClick={() => computeQuality(qualityComputeForm)}
+                    className="text-xs px-2 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-40 flex items-center gap-1">
+                    {computeQualityPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Star className="w-3 h-3" />} Compute Quality Band
+                  </button>
+                  <button onClick={() => refetchReviewerAnalytics()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                  Quality band (excellent/good/fair/poor) is computed from stored actions and outcomes — not from heuristics. Composite = 40% SLA rate + 30% (1−reversal) + 20% (1−followup overdue rate) + 10% outcome quality.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input type="month" placeholder="Period" value={reviewerFilter43.periodKey} onChange={e => setReviewerFilter43(v => ({ ...v, periodKey: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                  <select value={reviewerFilter43.qualityBand} onChange={e => setReviewerFilter43(v => ({ ...v, qualityBand: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                    <option value="">All bands</option>
+                    <option value="excellent">Excellent</option>
+                    <option value="good">Good</option>
+                    <option value="fair">Fair</option>
+                    <option value="poor">Poor</option>
+                    <option value="unrated">Unrated</option>
+                  </select>
+                  <input type="text" placeholder="UID to compute band" value={qualityComputeForm.reviewerUid} onChange={e => setQualityComputeForm(v => ({ ...v, reviewerUid: e.target.value }))} className="border rounded px-2 py-1 text-xs w-32" />
+                  <input type="month" value={qualityComputeForm.periodKey} onChange={e => setQualityComputeForm(v => ({ ...v, periodKey: e.target.value }))} className="border rounded px-2 py-1 text-xs" />
+                </div>
+                {/* Drill-down section */}
+                <div className="flex gap-2">
+                  <input type="text" placeholder="Drill into reviewer UID…" value={drillUid} onChange={e => setDrillUid(e.target.value)} className="border rounded px-2 py-1 text-xs flex-1" />
+                  <button onClick={() => setDrillUid('')} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 text-gray-500">Clear</button>
+                </div>
+                {drillUid && reviewerDrillLoading && <div className="h-16 bg-gray-100 animate-pulse rounded" />}
+                {drillUid && reviewerDrill && !reviewerDrill.error && (
+                  <div className="border border-amber-200 rounded-lg p-3 bg-amber-50 space-y-2">
+                    <div className="text-xs font-semibold text-amber-800">Reviewer: {reviewerDrill.uid}</div>
+                    {reviewerDrill.latestSnapshot && (
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: 'Quality Band',  value: reviewerDrill.latestSnapshot.quality_band ?? 'unrated', color: reviewerDrill.latestSnapshot.quality_band === 'excellent' ? 'text-green-700' : reviewerDrill.latestSnapshot.quality_band === 'good' ? 'text-blue-700' : reviewerDrill.latestSnapshot.quality_band === 'fair' ? 'text-amber-700' : 'text-red-600' },
+                          { label: 'Accept Rate',  value: `${(parseFloat(reviewerDrill.latestSnapshot.action_accept_rate ?? '0') * 100).toFixed(1)}%` },
+                          { label: 'SLA Rate',     value: `${(parseFloat(reviewerDrill.latestSnapshot.action_success_rate ?? '0') * 100).toFixed(1)}%` },
+                          { label: 'Avg Resol.',   value: `${parseFloat(reviewerDrill.latestSnapshot.avg_time_to_resolution_hours ?? '0').toFixed(1)}h` },
+                          { label: 'Overdue %',    value: `${(parseFloat(reviewerDrill.latestSnapshot.followup_overdue_rate ?? '0') * 100).toFixed(1)}%`, color: parseFloat(reviewerDrill.latestSnapshot.followup_overdue_rate ?? '0') > 0.2 ? 'text-red-600' : '' },
+                          { label: 'Quality Score', value: parseFloat(reviewerDrill.latestSnapshot.outcome_quality_score ?? '0').toFixed(1) },
+                        ].map(k => (
+                          <div key={k.label} className="border bg-white rounded p-1.5 text-center">
+                            <div className={`text-sm font-bold ${k.color ?? 'text-gray-800'}`}>{k.value}</div>
+                            <div className="text-[10px] text-gray-400">{k.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {reviewerDrill.actionBreakdown?.length > 0 && (
+                      <div className="text-xs">
+                        <div className="text-[10px] text-amber-700 font-semibold mb-1">Action Breakdown</div>
+                        <div className="flex flex-wrap gap-2">
+                          {reviewerDrill.actionBreakdown.map((a: any) => (
+                            <span key={a.action_type} className="bg-white border rounded px-2 py-0.5 text-[10px]">
+                              {a.action_type}: <strong>{a.cnt}</strong> · SLA met: {a.sla_met}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {reviewerAnalyticsLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  reviewerAnalytics && (
+                    <div className="space-y-3">
+                      {reviewerAnalytics.bandDistribution && Object.keys(reviewerAnalytics.bandDistribution).length > 0 && (
+                        <div className="flex gap-2 flex-wrap">
+                          {Object.entries(reviewerAnalytics.bandDistribution).map(([band, cnt]: any) => (
+                            <span key={band} className={`text-[10px] px-2 py-0.5 rounded capitalize ${band === 'excellent' ? 'bg-green-100 text-green-700' : band === 'good' ? 'bg-blue-100 text-blue-700' : band === 'fair' ? 'bg-amber-100 text-amber-700' : band === 'poor' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
+                              {band}: {cnt}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {reviewerAnalytics.liveWorkload?.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-semibold text-gray-500 mb-1 uppercase tracking-wide">Live Workload — 30 Days</div>
+                          <div className="border rounded-lg overflow-hidden">
+                            <table className="w-full text-xs"><thead className="bg-gray-50">
+                              <tr className="text-gray-500"><th className="text-left p-2">Reviewer</th><th className="text-right p-2">Total</th><th className="text-right p-2">Accept</th><th className="text-right p-2">Reject</th><th className="text-right p-2">SLA Breaches</th><th className="text-right p-2">Avg SLA h</th></tr>
+                            </thead><tbody>
+                              {reviewerAnalytics.liveWorkload.map((r: any) => (
+                                <tr key={r.actor_uid} className="border-t hover:bg-gray-50 cursor-pointer" onClick={() => setDrillUid(r.actor_uid)}>
+                                  <td className="p-2 font-mono text-[10px] text-blue-600 underline">{r.actor_uid}</td>
+                                  <td className="p-2 text-right">{r.total_actions}</td>
+                                  <td className="p-2 text-right text-green-600">{r.accepted}</td>
+                                  <td className="p-2 text-right text-red-500">{r.rejected}</td>
+                                  <td className="p-2 text-right text-red-600 font-semibold">{r.sla_breaches}</td>
+                                  <td className="p-2 text-right text-gray-500">{r.avg_sla_hours}h</td>
+                                </tr>
+                              ))}
+                            </tbody></table>
+                          </div>
+                        </div>
+                      )}
+                      {reviewerAnalytics.snapshots?.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-semibold text-gray-500 mb-1 uppercase tracking-wide">Historical Snapshots (with Quality Band)</div>
+                          <div className="border rounded-lg overflow-hidden">
+                            <table className="w-full text-xs"><thead className="bg-gray-50">
+                              <tr className="text-gray-500"><th className="text-left p-2">Reviewer</th><th className="text-left p-2">Period</th><th className="text-right p-2">Accept Rate</th><th className="text-right p-2">SLA Rate</th><th className="text-right p-2">Overdue %</th><th className="text-left p-2">Band</th></tr>
+                            </thead><tbody>
+                              {reviewerAnalytics.snapshots.map((s: any) => (
+                                <tr key={s.id} className="border-t hover:bg-gray-50">
+                                  <td className="p-2 font-mono text-[10px] text-gray-700 max-w-[100px] truncate">{s.reviewer_uid}</td>
+                                  <td className="p-2 font-mono text-gray-500">{s.period_key}</td>
+                                  <td className="p-2 text-right text-gray-600">{(parseFloat(s.action_accept_rate ?? '0') * 100).toFixed(1)}%</td>
+                                  <td className="p-2 text-right text-gray-600">{(parseFloat(s.action_success_rate ?? '0') * 100).toFixed(1)}%</td>
+                                  <td className="p-2 text-right text-gray-600">{(parseFloat(s.followup_overdue_rate ?? '0') * 100).toFixed(1)}%</td>
+                                  <td className="p-2">
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded capitalize ${s.quality_band === 'excellent' ? 'bg-green-100 text-green-700' : s.quality_band === 'good' ? 'bg-blue-100 text-blue-700' : s.quality_band === 'fair' ? 'bg-amber-100 text-amber-700' : s.quality_band === 'poor' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-400'}`}>{s.quality_band ?? 'unrated'}</span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody></table>
+                          </div>
+                        </div>
+                      )}
+                      {!reviewerAnalytics.liveWorkload?.length && !reviewerAnalytics.snapshots?.length && (
+                        <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No quality data — compute quality bands for snapshots above to populate this view</div>
                       )}
                     </div>
                   )
@@ -11190,6 +11683,264 @@ export default function AdminWalletDashboard() {
                     </div>
                   )
                 }
+              </CardContent>
+            </Card>
+
+            {/* 4.3E — BOTTLENECK DETECTION */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" /> System Bottleneck Detection
+                </CardTitle>
+                <button onClick={() => refetchBottlenecks43()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> Refresh
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                  Traffic-light status: 🟢 green = healthy, 🟡 amber = watch, 🔴 red = action needed. Counts reconcile to source tabs. Refresh every 60 seconds.
+                </div>
+                {bottlenecksLoading43 ? <div className="h-24 bg-gray-100 animate-pulse rounded" /> :
+                  bottlenecks43 && !bottlenecks43.error && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { label: 'Approval Backlog', data: bottlenecks43.approvalBacklog,   detail: `${bottlenecks43.approvalBacklog?.pending ?? 0} pending · ${bottlenecks43.approvalBacklog?.avgAgeHours ?? 0}h avg age` },
+                          { label: 'Overdue Follow-Ups', data: bottlenecks43.overdueFollowUps, detail: `${bottlenecks43.overdueFollowUps?.escalated ?? 0} escalated` },
+                          { label: 'Open Disputes',    data: bottlenecks43.disputes,          detail: `${bottlenecks43.disputes?.over7d ?? 0} >7d · ${bottlenecks43.disputes?.over30d ?? 0} >30d` },
+                          { label: 'SLA Breaches',     data: { total: bottlenecks43.slaBreaches?.totalBreached ?? 0, status: bottlenecks43.slaBreaches?.status }, detail: `across all action types` },
+                          { label: 'Stale Suggestions', data: bottlenecks43.stalePolicySuggestions, detail: 'pending >7d' },
+                        ].map(({ label, data, detail }) => (
+                          <div key={label} className={`border rounded-lg p-3 space-y-1 ${data?.status === 'red' ? 'border-red-200 bg-red-50/30' : data?.status === 'amber' ? 'border-amber-200 bg-amber-50/30' : 'border-green-100 bg-green-50/20'}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-gray-700">{label}</span>
+                              <span className={`text-lg font-bold ${data?.status === 'red' ? '🔴' : data?.status === 'amber' ? '🟡' : '🟢'}`}>
+                                {data?.status === 'red' ? '🔴' : data?.status === 'amber' ? '🟡' : '🟢'}
+                              </span>
+                            </div>
+                            <div className="text-xl font-bold text-gray-800">{data?.total ?? 0}</div>
+                            <div className="text-[10px] text-gray-500">{detail}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {bottlenecks43.blockedOwners?.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Top Blocked Owners</div>
+                          <div className="border rounded-lg overflow-hidden">
+                            <table className="w-full text-xs"><thead className="bg-gray-50">
+                              <tr className="text-gray-500"><th className="text-left p-2">Owner</th><th className="text-right p-2">Overdue</th><th className="text-right p-2">Max Escalation</th></tr>
+                            </thead><tbody>
+                              {bottlenecks43.blockedOwners.map((o: any) => (
+                                <tr key={o.ownerUid} className="border-t hover:bg-gray-50">
+                                  <td className="p-2 font-mono text-[10px] text-gray-700 max-w-[160px] truncate">{o.ownerUid}</td>
+                                  <td className="p-2 text-right text-red-600 font-semibold">{o.overdueCount}</td>
+                                  <td className="p-2 text-right text-orange-600">L{o.maxEscalation}</td>
+                                </tr>
+                              ))}
+                            </tbody></table>
+                          </div>
+                        </div>
+                      )}
+                      {bottlenecks43.slaBreaches?.byType?.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">SLA Breaches by Action Type</div>
+                          <div className="flex flex-wrap gap-2">
+                            {bottlenecks43.slaBreaches.byType.map((b: any) => (
+                              <span key={b.actionType} className={`text-[10px] px-2 py-0.5 rounded border ${b.breached > 0 ? 'border-red-200 bg-red-50 text-red-700' : 'border-gray-200 text-gray-500'}`}>
+                                {b.actionType}: {b.breached}/{b.total} breached
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.3A — RECOMMENDATION PRIORITY ENGINE */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-indigo-600" /> Recommendation Priority Engine
+                </CardTitle>
+                <div className="flex gap-2 flex-wrap">
+                  <button disabled={recomputePriorityPending || !priorityRecId}
+                    onClick={() => recomputePriority({ recommendationId: parseInt(priorityRecId) })}
+                    className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-40 flex items-center gap-1">
+                    {recomputePriorityPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <TrendingUp className="w-3 h-3" />} Compute Priority
+                  </button>
+                  <button onClick={() => refetchPrioritized()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 rounded p-2">
+                  Priority = 30% urgency (age-based) + 30% value (priority level) + 20% confidence + 20% bottleneck exposure. Same inputs always produce the same score. Reasoning is always visible.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input type="number" placeholder="Rec ID to compute" value={priorityRecId} onChange={e => setPriorityRecId(e.target.value)} className="border rounded px-2 py-1 text-xs w-28" />
+                  <select value={priorityFilter.status} onChange={e => setPriorityFilter(v => ({ ...v, status: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                    <option value="">All statuses</option>
+                    <option value="open">Open</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="snoozed">Snoozed</option>
+                  </select>
+                  <select value={priorityFilter.tab} onChange={e => setPriorityFilter(v => ({ ...v, tab: e.target.value }))} className="border rounded px-2 py-1 text-xs">
+                    <option value="">All tabs</option>
+                    <option value="command-center">Command Center</option>
+                    <option value="governance">Governance</option>
+                    <option value="orchestration">Orchestration</option>
+                    <option value="simulation">Simulation</option>
+                    <option value="policies">Policies</option>
+                  </select>
+                </div>
+                {prioritizedLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  !prioritizedRecs?.recommendations?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No recommendations with priority scores yet — create a Unified Rec above, then compute its priority score</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {/* Reasoning drawer */}
+                      {reasoningDrawer && (
+                        <div className="border border-indigo-200 rounded-lg p-3 bg-indigo-50 space-y-2">
+                          <div className="flex justify-between items-start">
+                            <div className="text-xs font-semibold text-indigo-800">Why this is prioritized — #{reasoningDrawer.id}</div>
+                            <button onClick={() => setReasoningDrawer(null)} className="text-[10px] text-gray-400 hover:text-gray-600">✕ Close</button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {reasoningDrawer.reasoning_json && Object.entries(reasoningDrawer.reasoning_json).map(([k, v]: any) => (
+                              <div key={k} className="border rounded bg-white p-2 text-xs">
+                                <div className="text-[10px] text-indigo-600 font-semibold capitalize">{k}</div>
+                                <div className="font-bold text-gray-800">{typeof v.score === 'number' ? v.score.toFixed(1) : v.score}</div>
+                                <div className="text-[10px] text-gray-400">{v.note}</div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="text-[10px] text-indigo-600">
+                            Composite priority score: <strong className="text-indigo-800">{parseFloat(reasoningDrawer.priority_score ?? '0').toFixed(1)}</strong>
+                          </div>
+                        </div>
+                      )}
+                      <div className="border rounded-lg overflow-hidden">
+                        <table className="w-full text-xs"><thead className="bg-gray-50">
+                          <tr className="text-gray-500"><th className="text-left p-2">#</th><th className="text-left p-2">Title</th><th className="text-right p-2">Priority Score</th><th className="text-right p-2">Urgency</th><th className="text-right p-2">Value</th><th className="text-right p-2">Bottleneck</th><th className="text-left p-2">Why?</th></tr>
+                        </thead><tbody>
+                          {prioritizedRecs.recommendations.map((r: any, idx: number) => (
+                            <tr key={r.id} className="border-t hover:bg-gray-50">
+                              <td className="p-2 text-[10px] font-mono text-gray-400">{idx + 1}</td>
+                              <td className="p-2 max-w-[140px] truncate" title={r.title}>{r.title}</td>
+                              <td className="p-2 text-right">
+                                {r.priority_score != null ? (
+                                  <span className={`font-bold text-sm ${parseFloat(r.priority_score) >= 70 ? 'text-red-600' : parseFloat(r.priority_score) >= 40 ? 'text-amber-600' : 'text-green-600'}`}>
+                                    {parseFloat(r.priority_score).toFixed(1)}
+                                  </span>
+                                ) : <span className="text-gray-300 text-[10px]">unscored</span>}
+                              </td>
+                              <td className="p-2 text-right text-gray-500 text-[10px]">{r.urgency_score != null ? parseFloat(r.urgency_score).toFixed(1) : '—'}</td>
+                              <td className="p-2 text-right text-gray-500 text-[10px]">{r.value_score != null ? parseFloat(r.value_score).toFixed(1) : '—'}</td>
+                              <td className="p-2 text-right text-gray-500 text-[10px]">{r.bottleneck_score != null ? parseFloat(r.bottleneck_score).toFixed(1) : '—'}</td>
+                              <td className="p-2">
+                                {r.reasoning_json && Object.keys(r.reasoning_json).length > 0 ? (
+                                  <button onClick={() => setReasoningDrawer(r)} className="text-[10px] text-indigo-600 underline hover:text-indigo-800">Explain</button>
+                                ) : <span className="text-gray-300 text-[10px]">—</span>}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody></table>
+                      </div>
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.3F — UNIFIED EXECUTION TIMELINE */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <GitBranch className="w-4 h-4 text-cyan-700" /> Unified Execution Timeline
+                </CardTitle>
+                <div className="flex gap-2 items-center">
+                  <input type="number" placeholder="Rec ID" value={timelineRecId} onChange={e => setTimelineRecId(e.target.value)} className="border rounded px-2 py-1 text-xs w-24" />
+                  <button onClick={() => refetchTimeline()} disabled={!timelineRecId} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1 disabled:opacity-40">
+                    <RefreshCw className="w-3 h-3" /> Load
+                  </button>
+                  <button onClick={() => setTimelineRecId('')} className="text-xs px-1 py-1 text-gray-400 hover:text-gray-600">✕</button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-cyan-700 bg-cyan-50 border border-cyan-200 rounded p-2">
+                  Enter a Unified Recommendation ID to trace its full lifecycle: creation → priority → actions → plans → outcomes → policy suggestions → follow-ups. One recommendation, one traceable story.
+                </div>
+                {timelineLoading ? <div className="h-24 bg-gray-100 animate-pulse rounded" /> :
+                  !timelineRecId ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">Enter a Recommendation ID above to load the timeline</div>
+                  ) : executionTimeline && !executionTimeline.error && (
+                    <div className="space-y-3">
+                      {/* Summary badges */}
+                      <div className="flex flex-wrap gap-2 text-[10px]">
+                        {[
+                          { label: 'Actions',     value: executionTimeline.summary?.actionsCount },
+                          { label: 'Plans',       value: executionTimeline.summary?.plansCount },
+                          { label: 'Outcomes',    value: executionTimeline.summary?.outcomesCount },
+                          { label: 'Follow-Ups',  value: executionTimeline.summary?.followUpsCount },
+                          { label: 'Suggestions', value: executionTimeline.summary?.suggestionsCount },
+                        ].map(k => (
+                          <span key={k.label} className="bg-cyan-50 border border-cyan-100 rounded px-2 py-0.5 text-cyan-700">
+                            {k.label}: <strong>{k.value ?? 0}</strong>
+                          </span>
+                        ))}
+                      </div>
+                      {/* Recommendation header */}
+                      {executionTimeline.recommendation && (
+                        <div className="border border-cyan-200 rounded p-2 bg-cyan-50 text-xs">
+                          <div className="font-semibold text-cyan-800">{executionTimeline.recommendation.title}</div>
+                          <div className="text-[10px] text-cyan-600 mt-0.5">
+                            {executionTimeline.recommendation.source_tab} · {executionTimeline.recommendation.status} · {executionTimeline.recommendation.priority}
+                          </div>
+                        </div>
+                      )}
+                      {/* Timeline events */}
+                      {executionTimeline.timeline?.length > 0 ? (
+                        <div className="space-y-1.5 max-h-96 overflow-y-auto">
+                          {executionTimeline.timeline.map((e: any, i: number) => {
+                            const typeColor: Record<string, string> = {
+                              recommendation_created: 'bg-blue-100 text-blue-700',
+                              priority_computed:       'bg-indigo-100 text-indigo-700',
+                              plan_created:            'bg-purple-100 text-purple-700',
+                              policy_suggestion:       'bg-fuchsia-100 text-fuchsia-700',
+                            };
+                            const color = typeColor[e.type] ?? (e.type.startsWith('action_') ? 'bg-sky-100 text-sky-700' : e.type.startsWith('outcome_') ? 'bg-teal-100 text-teal-700' : e.type.startsWith('followup_') ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600');
+                            return (
+                              <div key={i} className="flex gap-2 items-start text-xs">
+                                <div className="w-20 shrink-0 text-[10px] text-gray-400 pt-0.5">{new Date(e.ts).toLocaleString('he-IL', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                                <div className="w-1 shrink-0 flex flex-col items-center">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-gray-300 mt-1.5" />
+                                  {i < executionTimeline.timeline.length - 1 && <div className="flex-1 w-px bg-gray-200 mt-0.5" style={{ minHeight: '12px' }} />}
+                                </div>
+                                <div className="flex-1 border rounded p-1.5 bg-white">
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded mr-1.5 ${color}`}>{e.type.replace(/_/g, ' ')}</span>
+                                  <span className="text-gray-500 text-[10px]">
+                                    {e.data?.action_type ?? e.data?.outcome_status ?? e.data?.status ?? e.data?.priority_score != null ? `score: ${parseFloat(e.data?.priority_score).toFixed(1)}` : ''}
+                                    {e.data?.actor_uid && ` · by ${e.data.actor_uid}`}
+                                    {e.data?.metric_name && ` · ${e.data.metric_name}: ${e.data.before_value}→${e.data.after_value}`}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No timeline events yet — actions and outcomes will appear here as they are recorded</div>
+                      )}
+                    </div>
+                  )
+                }
+                {executionTimeline?.error && (
+                  <div className="text-xs text-red-500 border border-red-200 rounded p-2">{executionTimeline.error}</div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

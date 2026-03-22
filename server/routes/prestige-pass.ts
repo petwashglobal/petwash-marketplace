@@ -14897,4 +14897,774 @@ router.get('/admin/wallet/execution-feedback/summary', async (req, res) => {
   }
 });
 
+// ════════════════════════════════════════════════════════════════════════════
+// PHASE 4.3 — EXECUTION INTELLIGENCE & CLOSED-LOOP OPERATIONS
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── 4.3A — RECOMMENDATION PRIORITY ENGINE ────────────────────────────────
+
+// GET /admin/wallet/recommendations/prioritized
+router.get('/admin/wallet/recommendations/prioritized', async (req: Request, res: Response) => {
+  try {
+    const limit  = parseInt(req.query.limit  as string) || 50;
+    const status = (req.query.status  as string) || '';
+    const tab    = (req.query.tab     as string) || '';
+
+    // Fetch unified recs joined with latest priority score
+    const recs = await pool.query(`
+      SELECT ur.*,
+             rps.priority_score, rps.urgency_score, rps.value_score,
+             rps.confidence_score AS priority_conf, rps.bottleneck_score,
+             rps.reasoning_json, rps.created_at AS priority_computed_at
+      FROM unified_recommendations ur
+      LEFT JOIN LATERAL (
+        SELECT * FROM recommendation_priority_scores
+        WHERE recommendation_id = ur.id
+        ORDER BY created_at DESC LIMIT 1
+      ) rps ON true
+      WHERE 1=1
+        ${status ? `AND ur.status = '${status}'` : ''}
+        ${tab    ? `AND ur.source_tab = '${tab}'` : ''}
+      ORDER BY COALESCE(rps.priority_score, 0) DESC, ur.created_at DESC
+      LIMIT ${limit}
+    `);
+
+    return res.json({
+      recommendations: recs.rows,
+      total: recs.rows.length,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch prioritized recommendations', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/recommendations/recompute-priority
+router.post('/admin/wallet/recommendations/recompute-priority', async (req: Request, res: Response) => {
+  try {
+    const { recommendationId } = req.body;
+    if (!recommendationId) return res.status(400).json({ error: 'recommendationId required' });
+
+    // Fetch the unified recommendation
+    const recRow = await pool.query(`SELECT * FROM unified_recommendations WHERE id = ${recommendationId}`);
+    if (!recRow.rows.length) return res.status(404).json({ error: 'Recommendation not found' });
+    const rec = recRow.rows[0];
+
+    // --- Urgency: older = higher, snoozed = lower
+    const ageHours = (Date.now() - new Date(rec.created_at).getTime()) / 3_600_000;
+    const urgencyScore = Math.min(100, parseFloat((ageHours * 2).toFixed(2)));
+    // snoozed penalty
+    const urgencyAdj = rec.status === 'snoozed' ? Math.max(0, urgencyScore - 30) : urgencyScore;
+
+    // --- Value: priority rank
+    const priorityRank: Record<string, number> = { critical: 100, high: 75, medium: 50, low: 25 };
+    const valueScore = priorityRank[rec.priority] ?? 25;
+
+    // --- Confidence: from stored field
+    const confidenceScore = Math.min(100, parseFloat(rec.confidence_score ?? '50'));
+
+    // --- Bottleneck: check if there are open follow-up actions or pending rec actions
+    const fuCount = await pool.query(`
+      SELECT COUNT(*) AS cnt FROM review_follow_up_actions
+      WHERE status NOT IN ('closed','cancelled')
+    `);
+    const raCount = await pool.query(`
+      SELECT COUNT(*) AS cnt FROM recommendation_actions
+      WHERE recommendation_score_id = ${recommendationId} AND action_type = 'accept'
+    `);
+    const openFollowUps = parseInt(fuCount.rows[0].cnt);
+    const hasAccepted   = parseInt(raCount.rows[0].cnt) > 0;
+    const bottleneckScore = Math.min(100, openFollowUps * 5 + (hasAccepted ? 0 : 20));
+
+    // --- Overall priority: weighted composite
+    const priorityScore = parseFloat(
+      ((urgencyAdj * 0.3) + (valueScore * 0.3) + (confidenceScore * 0.2) + (bottleneckScore * 0.2)).toFixed(2)
+    );
+
+    const reasoning = {
+      urgency:    { score: urgencyAdj,     note: `${ageHours.toFixed(1)}h old${rec.status === 'snoozed' ? ', snoozed-30' : ''}` },
+      value:      { score: valueScore,     note: `priority=${rec.priority}` },
+      confidence: { score: confidenceScore, note: `stored confidence` },
+      bottleneck: { score: bottleneckScore, note: `${openFollowUps} open follow-ups, accepted=${hasAccepted}` },
+    };
+
+    await pool.query(`
+      INSERT INTO recommendation_priority_scores
+        (recommendation_id, priority_score, urgency_score, value_score, confidence_score, bottleneck_score, reasoning_json)
+      VALUES (${recommendationId}, ${priorityScore}, ${urgencyAdj}, ${valueScore}, ${confidenceScore}, ${bottleneckScore},
+              '${JSON.stringify(reasoning).replace(/'/g, "''")}')
+    `);
+
+    return res.json({ ok: true, recommendationId, priorityScore, urgencyScore: urgencyAdj, valueScore, confidenceScore, bottleneckScore, reasoning });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to recompute priority', detail: err.message });
+  }
+});
+
+// ── 4.3B — EXECUTION OUTCOME EFFECTIVENESS ───────────────────────────────
+
+// GET /admin/wallet/outcomes/effectiveness
+router.get('/admin/wallet/outcomes/effectiveness', async (req: Request, res: Response) => {
+  try {
+    const planId = req.query.planId as string;
+
+    // Aggregate counts
+    const counts = await pool.query(`
+      SELECT outcome_status, COUNT(*) AS cnt,
+             ROUND(AVG(effectiveness_score),2) AS avg_eff
+      FROM remediation_outcomes
+      ${planId ? `WHERE remediation_plan_id = ${planId}` : ''}
+      GROUP BY outcome_status
+    `);
+
+    const summary: Record<string, any> = {};
+    let totalEffectiveness = 0; let totalRows = 0;
+    for (const r of counts.rows) {
+      summary[r.outcome_status] = { count: parseInt(r.cnt), avgEffectiveness: parseFloat(r.avg_eff ?? '0') };
+      totalEffectiveness += parseFloat(r.avg_eff ?? '0') * parseInt(r.cnt);
+      totalRows += parseInt(r.cnt);
+    }
+    const avgEffectiveness = totalRows ? parseFloat((totalEffectiveness / totalRows).toFixed(2)) : 0;
+
+    // Top successful action types (from recommendation_actions linked via plan → rec_score → action)
+    const topSuccess = await pool.query(`
+      SELECT ra.action_type,
+             COUNT(*) FILTER (WHERE ro.outcome_status = 'improved')  AS improved,
+             COUNT(*) FILTER (WHERE ro.outcome_status = 'worsened') AS worsened,
+             COUNT(*) AS total
+      FROM remediation_outcomes ro
+      JOIN remediation_plans rp ON rp.id = ro.remediation_plan_id
+      JOIN recommendation_actions ra ON ra.recommendation_score_id = rp.recommendation_score_id
+      ${planId ? `WHERE ro.remediation_plan_id = ${planId}` : ''}
+      GROUP BY ra.action_type
+      ORDER BY improved DESC
+      LIMIT 10
+    `).catch(() => ({ rows: [] }));
+
+    // All outcome rows with effectiveness
+    const rows = await pool.query(`
+      SELECT ro.*, rp.recommendation_score_id
+      FROM remediation_outcomes ro
+      LEFT JOIN remediation_plans rp ON rp.id = ro.remediation_plan_id
+      ${planId ? `WHERE ro.remediation_plan_id = ${planId}` : ''}
+      ORDER BY ro.measured_at DESC
+      LIMIT 100
+    `).catch(() => ({ rows: [] }));
+
+    return res.json({ summary, avgEffectiveness, topActionTypes: topSuccess.rows, outcomes: rows.rows });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch effectiveness', detail: err.message });
+  }
+});
+
+// PATCH /admin/wallet/outcomes/:id/effectiveness — score an individual outcome
+router.patch('/admin/wallet/outcomes/:id/effectiveness', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { effectivenessScore, effectivenessReason } = req.body;
+    if (effectivenessScore == null) return res.status(400).json({ error: 'effectivenessScore required' });
+
+    await pool.query(`
+      UPDATE remediation_outcomes
+      SET effectiveness_score = ${parseFloat(effectivenessScore)},
+          effectiveness_reason = '${(effectivenessReason ?? '').replace(/'/g, "''")}'
+      WHERE id = ${id}
+    `);
+    return res.json({ ok: true, id: parseInt(id) });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update effectiveness', detail: err.message });
+  }
+});
+
+// ── 4.3C — FOLLOW-UP AUTOMATION & ESCALATION ─────────────────────────────
+
+// GET /admin/wallet/followups (enhanced — includes escalation fields)
+router.get('/admin/wallet/followups', async (req: Request, res: Response) => {
+  try {
+    const status    = (req.query.status    as string) || '';
+    const ownerUid  = (req.query.ownerUid  as string) || '';
+    const priority  = (req.query.priority  as string) || '';
+    const overdue   = req.query.overdue === 'true';
+    const escalated = req.query.escalated === 'true';
+
+    const rows = await pool.query(`
+      SELECT *,
+        (status NOT IN ('closed','cancelled') AND due_date < NOW()::date::text) AS is_overdue
+      FROM review_follow_up_actions
+      WHERE 1=1
+        ${status    ? `AND status = '${status}'`       : ''}
+        ${ownerUid  ? `AND owner_uid = '${ownerUid}'`  : ''}
+        ${priority  ? `AND priority = '${priority}'`   : ''}
+        ${overdue   ? `AND due_date < NOW()::date::text AND status NOT IN ('closed','cancelled')` : ''}
+        ${escalated ? `AND escalation_level > 0`       : ''}
+      ORDER BY
+        CASE priority WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END,
+        due_date ASC
+    `);
+
+    const overdueCount  = rows.rows.filter((r: any) => r.is_overdue).length;
+    const escalatedCount = rows.rows.filter((r: any) => r.escalation_level > 0).length;
+
+    return res.json({ followUps: rows.rows, overdueCount, escalatedCount, total: rows.rows.length });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch follow-ups', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/followups/auto-generate
+router.post('/admin/wallet/followups/auto-generate', async (req: Request, res: Response) => {
+  try {
+    const { sourceType, sourceId, ownerUid, month } = req.body;
+    if (!ownerUid || !month) return res.status(400).json({ error: 'ownerUid and month required' });
+
+    const generated: any[] = [];
+    const now = new Date().toISOString();
+    const dueDate = new Date(Date.now() + 72 * 3_600_000).toISOString().slice(0, 10);
+
+    // Auto-generate follow-ups for: overdue rec actions
+    const slaBreached = await pool.query(`
+      SELECT id, recommendation_score_id, action_type, actor_uid, sla_due_at
+      FROM recommendation_actions
+      WHERE sla_met = false AND sla_due_at < NOW()
+      LIMIT 20
+    `);
+
+    for (const ra of slaBreached.rows) {
+      const title = `SLA breach: ${ra.action_type} on rec #${ra.recommendation_score_id}`;
+      const r = await pool.query(`
+        INSERT INTO review_follow_up_actions (month, title, owner_uid, due_date, priority, notes)
+        VALUES ('${month}', '${title.replace(/'/g, "''")}', '${ownerUid}', '${dueDate}', 'high',
+                'Auto-generated: SLA breach detected for recommendation action #${ra.id}')
+        RETURNING *
+      `);
+      generated.push(r.rows[0]);
+    }
+
+    // Auto-generate for worsened remediation outcomes
+    const worsened = await pool.query(`
+      SELECT id, remediation_plan_id, metric_name
+      FROM remediation_outcomes WHERE outcome_status = 'worsened'
+      AND measured_at > NOW() - INTERVAL '7 days'
+      LIMIT 10
+    `);
+
+    for (const wo of worsened.rows) {
+      const title = `Worsened outcome: ${wo.metric_name} on plan #${wo.remediation_plan_id}`;
+      const r = await pool.query(`
+        INSERT INTO review_follow_up_actions (month, title, owner_uid, due_date, priority, notes)
+        VALUES ('${month}', '${title.replace(/'/g, "''")}', '${ownerUid}', '${dueDate}', 'critical',
+                'Auto-generated: metric ${wo.metric_name} worsened after remediation plan #${wo.remediation_plan_id}')
+        RETURNING *
+      `);
+      generated.push(r.rows[0]);
+    }
+
+    return res.json({ ok: true, generated: generated.length, items: generated });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to auto-generate follow-ups', detail: err.message });
+  }
+});
+
+// PATCH /admin/wallet/followups/:id
+router.patch('/admin/wallet/followups/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status, notes, ownerUid, priority, blockedReason, dueDate } = req.body;
+    const now = new Date().toISOString();
+
+    const sets: string[] = [];
+    if (status)       sets.push(`status = '${status}'`);
+    if (notes)        sets.push(`notes = '${notes.replace(/'/g, "''")}'`);
+    if (ownerUid)     sets.push(`owner_uid = '${ownerUid}'`);
+    if (priority)     sets.push(`priority = '${priority}'`);
+    if (blockedReason !== undefined) sets.push(`blocked_reason = '${blockedReason.replace(/'/g, "''")}'`);
+    if (dueDate)      sets.push(`due_date = '${dueDate}'`);
+    if (status === 'closed') sets.push(`closed_at = '${now}'`);
+    if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
+
+    const r = await pool.query(`UPDATE review_follow_up_actions SET ${sets.join(', ')} WHERE id = ${id} RETURNING *`);
+    if (!r.rows.length) return res.status(404).json({ error: 'Follow-up not found' });
+
+    return res.json({ ok: true, followUp: r.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to update follow-up', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/followups/escalate-overdue — run by scheduler or manually
+router.post('/admin/wallet/followups/escalate-overdue', async (req: Request, res: Response) => {
+  try {
+    const now = new Date().toISOString();
+    // Find overdue open follow-ups that haven't been escalated this hour
+    const overdue = await pool.query(`
+      SELECT id, title, owner_uid, escalation_level, due_date
+      FROM review_follow_up_actions
+      WHERE status NOT IN ('closed','cancelled')
+        AND due_date < NOW()::date::text
+        AND (escalated_at IS NULL OR escalated_at < NOW() - INTERVAL '1 hour')
+      LIMIT 50
+    `);
+
+    const escalated: number[] = [];
+    for (const fu of overdue.rows) {
+      const newLevel = fu.escalation_level + 1;
+      await pool.query(`
+        UPDATE review_follow_up_actions
+        SET escalation_level = ${newLevel}, escalated_at = '${now}', status = 'in_progress'
+        WHERE id = ${fu.id}
+      `);
+      escalated.push(fu.id);
+    }
+
+    return res.json({ ok: true, escalated: escalated.length, ids: escalated });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to escalate overdue follow-ups', detail: err.message });
+  }
+});
+
+// ── 4.3E — BOTTLENECK DETECTION ──────────────────────────────────────────
+
+// GET /admin/wallet/bottlenecks
+router.get('/admin/wallet/bottlenecks', async (req: Request, res: Response) => {
+  try {
+    // 1. Approval backlog
+    const approvalBacklog = await pool.query(`
+      SELECT COUNT(*) AS cnt,
+             COUNT(*) FILTER (WHERE status = 'pending') AS pending,
+             COUNT(*) FILTER (WHERE status = 'escalated') AS escalated,
+             ROUND(AVG(EXTRACT(EPOCH FROM (NOW() - created_at))/3600),1) AS avg_age_hours
+      FROM approval_requests WHERE status NOT IN ('approved','rejected')
+    `).catch(() => ({ rows: [{ cnt: 0, pending: 0, escalated: 0, avg_age_hours: 0 }] }));
+
+    // 2. Overdue follow-ups
+    const overdueFollowUps = await pool.query(`
+      SELECT COUNT(*) AS cnt,
+             COUNT(*) FILTER (WHERE escalation_level > 0) AS escalated,
+             COUNT(*) FILTER (WHERE escalation_level = 0) AS first_level
+      FROM review_follow_up_actions
+      WHERE status NOT IN ('closed','cancelled') AND due_date < NOW()::date::text
+    `).catch(() => ({ rows: [{ cnt: 0, escalated: 0, first_level: 0 }] }));
+
+    // 3. Unresolved disputes by age
+    const disputes = await pool.query(`
+      SELECT COUNT(*) AS cnt,
+             COUNT(*) FILTER (WHERE opened_at < NOW() - INTERVAL '7 days')  AS over_7d,
+             COUNT(*) FILTER (WHERE opened_at < NOW() - INTERVAL '30 days') AS over_30d
+      FROM dispute_cases WHERE status NOT IN ('resolved','closed')
+    `).catch(() => ({ rows: [{ cnt: 0, over_7d: 0, over_30d: 0 }] }));
+
+    // 4. SLA-breached recommendation actions
+    const slaBreaches = await pool.query(`
+      SELECT COUNT(*) AS cnt, action_type,
+             COUNT(*) FILTER (WHERE sla_met = false) AS breached
+      FROM recommendation_actions
+      WHERE sla_due_at IS NOT NULL
+      GROUP BY action_type
+    `).catch(() => ({ rows: [] }));
+
+    // 5. Top blocked owners (most overdue follow-ups)
+    const blockedOwners = await pool.query(`
+      SELECT owner_uid, COUNT(*) AS overdue_count,
+             MAX(escalation_level) AS max_escalation
+      FROM review_follow_up_actions
+      WHERE status NOT IN ('closed','cancelled') AND due_date < NOW()::date::text
+      GROUP BY owner_uid ORDER BY overdue_count DESC LIMIT 10
+    `).catch(() => ({ rows: [] }));
+
+    // 6. Stale policy suggestions
+    const staleSuggestions = await pool.query(`
+      SELECT COUNT(*) AS cnt
+      FROM policy_learning_suggestions
+      WHERE status = 'pending' AND created_at < NOW() - INTERVAL '7 days'
+    `).catch(() => ({ rows: [{ cnt: 0 }] }));
+
+    const ab  = approvalBacklog.rows[0];
+    const ofu = overdueFollowUps.rows[0];
+    const dis = disputes.rows[0];
+
+    const trafficLight = (count: number, warnAt: number, critAt: number) =>
+      count >= critAt ? 'red' : count >= warnAt ? 'amber' : 'green';
+
+    return res.json({
+      approvalBacklog: {
+        total: parseInt(ab.cnt), pending: parseInt(ab.pending), escalated: parseInt(ab.escalated),
+        avgAgeHours: parseFloat(ab.avg_age_hours ?? '0'),
+        status: trafficLight(parseInt(ab.cnt), 5, 20),
+      },
+      overdueFollowUps: {
+        total: parseInt(ofu.cnt), escalated: parseInt(ofu.escalated), firstLevel: parseInt(ofu.first_level),
+        status: trafficLight(parseInt(ofu.cnt), 3, 10),
+      },
+      disputes: {
+        total: parseInt(dis.cnt), over7d: parseInt(dis.over_7d), over30d: parseInt(dis.over_30d),
+        status: trafficLight(parseInt(dis.cnt), 5, 15),
+      },
+      slaBreaches: {
+        byType: slaBreaches.rows.map((r: any) => ({ actionType: r.action_type, total: parseInt(r.cnt), breached: parseInt(r.breached) })),
+        totalBreached: slaBreaches.rows.reduce((s: number, r: any) => s + parseInt(r.breached), 0),
+        status: trafficLight(slaBreaches.rows.reduce((s: number, r: any) => s + parseInt(r.breached), 0), 2, 10),
+      },
+      stalePolicySuggestions: {
+        total: parseInt(staleSuggestions.rows[0].cnt),
+        status: trafficLight(parseInt(staleSuggestions.rows[0].cnt), 3, 10),
+      },
+      blockedOwners: blockedOwners.rows.map((r: any) => ({
+        ownerUid: r.owner_uid, overdueCount: parseInt(r.overdue_count), maxEscalation: parseInt(r.max_escalation),
+      })),
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch bottlenecks', detail: err.message });
+  }
+});
+
+// ── 4.3D — REVIEWER / OPERATOR QUALITY ANALYTICS ─────────────────────────
+
+// GET /admin/wallet/reviewer-analytics
+router.get('/admin/wallet/reviewer-analytics', async (req: Request, res: Response) => {
+  try {
+    const periodKey  = (req.query.periodKey  as string) || '';
+    const qualityBand = (req.query.qualityBand as string) || '';
+
+    // Historical snapshots
+    const snapshots = await pool.query(`
+      SELECT * FROM reviewer_performance_snapshots
+      WHERE 1=1
+        ${periodKey   ? `AND period_key = '${periodKey}'`     : ''}
+        ${qualityBand ? `AND quality_band = '${qualityBand}'` : ''}
+      ORDER BY created_at DESC LIMIT 100
+    `);
+
+    // Live workload (last 30 days)
+    const liveWorkload = await pool.query(`
+      SELECT actor_uid,
+             COUNT(*) AS total_actions,
+             COUNT(*) FILTER (WHERE action_type = 'accept') AS accepted,
+             COUNT(*) FILTER (WHERE action_type = 'reject') AS rejected,
+             COUNT(*) FILTER (WHERE action_type = 'snooze') AS snoozed,
+             COUNT(*) FILTER (WHERE action_type = 'assign') AS assigned,
+             COUNT(*) FILTER (WHERE sla_met = false)        AS sla_breaches,
+             ROUND(AVG(EXTRACT(EPOCH FROM (COALESCE(sla_due_at, NOW()) - created_at))/3600),1) AS avg_sla_hours
+      FROM recommendation_actions
+      WHERE created_at > NOW() - INTERVAL '30 days'
+      GROUP BY actor_uid
+      ORDER BY total_actions DESC
+    `).catch(() => ({ rows: [] }));
+
+    // Band distribution
+    const bandDist = await pool.query(`
+      SELECT quality_band, COUNT(*) AS cnt
+      FROM reviewer_performance_snapshots
+      ${periodKey ? `WHERE period_key = '${periodKey}'` : ''}
+      GROUP BY quality_band
+    `).catch(() => ({ rows: [] }));
+
+    return res.json({
+      snapshots: snapshots.rows,
+      liveWorkload: liveWorkload.rows,
+      bandDistribution: bandDist.rows.reduce((acc: any, r: any) => { acc[r.quality_band] = parseInt(r.cnt); return acc; }, {}),
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch reviewer analytics', detail: err.message });
+  }
+});
+
+// GET /admin/wallet/reviewer-analytics/:uid
+router.get('/admin/wallet/reviewer-analytics/:uid', async (req: Request, res: Response) => {
+  try {
+    const { uid } = req.params;
+
+    const snapshots = await pool.query(`
+      SELECT * FROM reviewer_performance_snapshots
+      WHERE reviewer_uid = '${uid}' ORDER BY period_key DESC LIMIT 24
+    `);
+
+    const actions = await pool.query(`
+      SELECT action_type, COUNT(*) AS cnt,
+             COUNT(*) FILTER (WHERE sla_met = true)  AS sla_met,
+             COUNT(*) FILTER (WHERE sla_met = false) AS sla_missed,
+             ROUND(AVG(EXTRACT(EPOCH FROM (COALESCE(sla_due_at,NOW()) - created_at))/3600),1) AS avg_hours
+      FROM recommendation_actions
+      WHERE actor_uid = '${uid}'
+      GROUP BY action_type
+    `).catch(() => ({ rows: [] }));
+
+    const followUps = await pool.query(`
+      SELECT status, COUNT(*) AS cnt,
+             COUNT(*) FILTER (WHERE escalation_level > 0) AS escalated
+      FROM review_follow_up_actions WHERE owner_uid = '${uid}' GROUP BY status
+    `).catch(() => ({ rows: [] }));
+
+    return res.json({
+      uid,
+      snapshots: snapshots.rows,
+      actionBreakdown: actions.rows,
+      followUpBreakdown: followUps.rows,
+      latestSnapshot: snapshots.rows[0] ?? null,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch reviewer detail', detail: err.message });
+  }
+});
+
+// POST /admin/wallet/reviewer-analytics/compute-quality — recompute quality_band for a snapshot
+router.post('/admin/wallet/reviewer-analytics/compute-quality', async (req: Request, res: Response) => {
+  try {
+    const { reviewerUid, periodKey } = req.body;
+    if (!reviewerUid || !periodKey) return res.status(400).json({ error: 'reviewerUid and periodKey required' });
+
+    // Fetch existing snapshot
+    const snap = await pool.query(`
+      SELECT * FROM reviewer_performance_snapshots
+      WHERE reviewer_uid = '${reviewerUid}' AND period_key = '${periodKey}'
+      ORDER BY created_at DESC LIMIT 1
+    `);
+    if (!snap.rows.length) return res.status(404).json({ error: 'Snapshot not found — compute it first' });
+    const s = snap.rows[0];
+
+    // Live metrics from actions
+    const actionStats = await pool.query(`
+      SELECT COUNT(*) AS total,
+             COUNT(*) FILTER (WHERE action_type = 'accept') AS accepted,
+             COUNT(*) FILTER (WHERE sla_met = true)  AS sla_met,
+             ROUND(AVG(EXTRACT(EPOCH FROM (COALESCE(sla_due_at,NOW()) - created_at))/3600),2) AS avg_hours
+      FROM recommendation_actions
+      WHERE actor_uid = '${reviewerUid}'
+        AND created_at >= '${periodKey}-01'
+        AND created_at < ('${periodKey}-01'::date + INTERVAL '1 month')
+    `).catch(() => ({ rows: [{ total: 0, accepted: 0, sla_met: 0, avg_hours: 0 }] }));
+
+    const as_ = actionStats.rows[0];
+    const total = parseInt(as_.total) || 1;
+    const actionAcceptRate  = parseFloat((parseInt(as_.accepted) / total).toFixed(4));
+    const actionSuccessRate = parseFloat((parseInt(as_.sla_met) / total).toFixed(4));
+    const avgTime = parseFloat(as_.avg_hours ?? '0');
+
+    // Follow-up overdue rate
+    const fuStats = await pool.query(`
+      SELECT COUNT(*) AS total,
+             COUNT(*) FILTER (WHERE due_date < NOW()::date::text AND status NOT IN ('closed','cancelled')) AS overdue
+      FROM review_follow_up_actions WHERE owner_uid = '${reviewerUid}'
+    `).catch(() => ({ rows: [{ total: 1, overdue: 0 }] }));
+    const fuTotal = parseInt(fuStats.rows[0].total) || 1;
+    const followupOverdueRate = parseFloat((parseInt(fuStats.rows[0].overdue) / fuTotal).toFixed(4));
+
+    // Quality band: composite score → band
+    const reversalRate = parseFloat(s.reversal_rate ?? '0');
+    const qualityScore = parseFloat(s.outcome_quality_score ?? '50');
+    const composite = (actionSuccessRate * 40) + ((1 - reversalRate) * 30) + ((1 - followupOverdueRate) * 20) + (qualityScore / 100 * 10);
+    const qualityBand = composite >= 85 ? 'excellent' : composite >= 70 ? 'good' : composite >= 50 ? 'fair' : 'poor';
+
+    await pool.query(`
+      UPDATE reviewer_performance_snapshots
+      SET action_accept_rate = ${actionAcceptRate},
+          action_success_rate = ${actionSuccessRate},
+          avg_time_to_resolution_hours = ${avgTime},
+          followup_overdue_rate = ${followupOverdueRate},
+          quality_band = '${qualityBand}'
+      WHERE reviewer_uid = '${reviewerUid}' AND period_key = '${periodKey}'
+    `);
+
+    return res.json({ ok: true, reviewerUid, periodKey, actionAcceptRate, actionSuccessRate, avgTime, followupOverdueRate, qualityBand, composite: parseFloat(composite.toFixed(2)) });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to compute quality band', detail: err.message });
+  }
+});
+
+// ── 4.3F — UNIFIED EXECUTION TIMELINE ────────────────────────────────────
+
+// GET /admin/wallet/execution-timeline/:recommendationId
+router.get('/admin/wallet/execution-timeline/:recommendationId', async (req: Request, res: Response) => {
+  try {
+    const recId = parseInt(req.params.recommendationId);
+
+    // Core recommendation
+    const recRow = await pool.query(`SELECT * FROM unified_recommendations WHERE id = ${recId}`);
+    if (!recRow.rows.length) return res.status(404).json({ error: 'Recommendation not found' });
+    const rec = recRow.rows[0];
+
+    // Priority scores
+    const priorities = await pool.query(`
+      SELECT * FROM recommendation_priority_scores
+      WHERE recommendation_id = ${recId} ORDER BY created_at ASC
+    `).catch(() => ({ rows: [] }));
+
+    // Recommendation actions (via linked score)
+    const actions = rec.recommendation_score_id ? await pool.query(`
+      SELECT * FROM recommendation_actions
+      WHERE recommendation_score_id = ${rec.recommendation_score_id}
+      ORDER BY created_at ASC
+    `).catch(() => ({ rows: [] })) : { rows: [] };
+
+    // Remediation plans linked to score
+    const plans = rec.recommendation_score_id ? await pool.query(`
+      SELECT * FROM remediation_plans
+      WHERE recommendation_score_id = ${rec.recommendation_score_id}
+      ORDER BY created_at ASC
+    `).catch(() => ({ rows: [] })) : { rows: [] };
+
+    // Outcomes for those plans
+    const planIds = plans.rows.map((p: any) => p.id);
+    const outcomes = planIds.length ? await pool.query(`
+      SELECT * FROM remediation_outcomes
+      WHERE remediation_plan_id IN (${planIds.join(',')})
+      ORDER BY measured_at ASC
+    `).catch(() => ({ rows: [] })) : { rows: [] };
+
+    // Policy learning suggestions
+    const suggestions = await pool.query(`
+      SELECT * FROM policy_learning_suggestions
+      WHERE source_plan_id IN (${planIds.length ? planIds.join(',') : '0'})
+      ORDER BY created_at ASC
+    `).catch(() => ({ rows: [] }));
+
+    // Follow-up actions — linked by month/context
+    const followUps = await pool.query(`
+      SELECT * FROM review_follow_up_actions
+      WHERE notes LIKE '%#${recId}%' OR notes LIKE '%rec #${rec.recommendation_score_id ?? 0}%'
+      ORDER BY created_at ASC
+    `).catch(() => ({ rows: [] }));
+
+    // Build chronological timeline
+    type TEvent = { ts: Date; type: string; data: any };
+    const events: TEvent[] = [
+      { ts: new Date(rec.created_at), type: 'recommendation_created', data: rec },
+      ...priorities.rows.map((p: any) => ({ ts: new Date(p.created_at), type: 'priority_computed', data: p })),
+      ...actions.rows.map((a: any) => ({ ts: new Date(a.created_at), type: `action_${a.action_type}`, data: a })),
+      ...plans.rows.map((p: any)   => ({ ts: new Date(p.created_at), type: 'plan_created',    data: p })),
+      ...outcomes.rows.map((o: any) => ({ ts: new Date(o.measured_at), type: `outcome_${o.outcome_status}`, data: o })),
+      ...suggestions.rows.map((s: any) => ({ ts: new Date(s.created_at), type: 'policy_suggestion', data: s })),
+      ...followUps.rows.map((f: any) => ({ ts: new Date(f.created_at), type: `followup_${f.status}`, data: f })),
+    ].sort((a, b) => a.ts.getTime() - b.ts.getTime());
+
+    return res.json({
+      recommendation: rec,
+      timeline: events.map(e => ({ ...e, ts: e.ts.toISOString() })),
+      summary: {
+        actionsCount: actions.rows.length,
+        plansCount: plans.rows.length,
+        outcomesCount: outcomes.rows.length,
+        followUpsCount: followUps.rows.length,
+        suggestionsCount: suggestions.rows.length,
+      },
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch execution timeline', detail: err.message });
+  }
+});
+
+// ── 4.3G — MANAGEMENT EXECUTION REVIEW ───────────────────────────────────
+
+// GET /admin/wallet/execution-review
+router.get('/admin/wallet/execution-review', async (req: Request, res: Response) => {
+  try {
+    const period = (req.query.period as string) || 'monthly';
+    const interval = period === 'weekly' ? '7 days' : '30 days';
+    const now = new Date().toISOString();
+    const periodKey = period === 'weekly'
+      ? `${new Date().getFullYear()}-W${String(Math.ceil((new Date().getDate()) / 7)).padStart(2,'0')}`
+      : now.slice(0, 7);
+
+    // Check cache first
+    const cached = await pool.query(`
+      SELECT snapshot_json FROM execution_review_snapshots
+      WHERE period_key = '${periodKey}' AND created_at > NOW() - INTERVAL '1 hour'
+      ORDER BY created_at DESC LIMIT 1
+    `);
+    if (cached.rows.length) {
+      return res.json({ ...cached.rows[0].snapshot_json, cached: true, periodKey });
+    }
+
+    // Recommendations
+    const recStats = await pool.query(`
+      SELECT COUNT(*) AS total,
+             COUNT(*) FILTER (WHERE status IN ('accepted','resolved')) AS accepted,
+             COUNT(*) FILTER (WHERE status = 'resolved') AS resolved
+      FROM unified_recommendations WHERE created_at > NOW() - INTERVAL '${interval}'
+    `).catch(() => ({ rows: [{ total: 0, accepted: 0, resolved: 0 }] }));
+
+    // Actions
+    const actionStats = await pool.query(`
+      SELECT COUNT(*) AS total,
+             COUNT(*) FILTER (WHERE sla_met = true)  AS sla_met,
+             COUNT(*) FILTER (WHERE sla_met = false) AS sla_missed
+      FROM recommendation_actions WHERE created_at > NOW() - INTERVAL '${interval}'
+    `).catch(() => ({ rows: [{ total: 0, sla_met: 0, sla_missed: 0 }] }));
+
+    // Outcomes
+    const outcomeStats = await pool.query(`
+      SELECT COUNT(*) AS total,
+             COUNT(*) FILTER (WHERE outcome_status = 'improved')  AS improved,
+             COUNT(*) FILTER (WHERE outcome_status = 'worsened') AS worsened,
+             ROUND(AVG(effectiveness_score),2) AS avg_effectiveness
+      FROM remediation_outcomes WHERE measured_at > NOW() - INTERVAL '${interval}'
+    `).catch(() => ({ rows: [{ total: 0, improved: 0, worsened: 0, avg_effectiveness: 0 }] }));
+
+    // Follow-ups
+    const fuStats = await pool.query(`
+      SELECT COUNT(*) AS total,
+             COUNT(*) FILTER (WHERE status NOT IN ('closed','cancelled') AND due_date < NOW()::date::text) AS overdue,
+             COUNT(*) FILTER (WHERE status = 'closed') AS closed
+      FROM review_follow_up_actions WHERE created_at > NOW() - INTERVAL '${interval}'
+    `).catch(() => ({ rows: [{ total: 0, overdue: 0, closed: 0 }] }));
+
+    // Top reviewers (by quality score)
+    const topReviewers = await pool.query(`
+      SELECT reviewer_uid, quality_band, outcome_quality_score, action_success_rate, period_key
+      FROM reviewer_performance_snapshots
+      WHERE quality_band IN ('excellent','good')
+      ORDER BY outcome_quality_score DESC LIMIT 5
+    `).catch(() => ({ rows: [] }));
+
+    // Top policy suggestions
+    const topSuggestions = await pool.query(`
+      SELECT policy_area, suggestion_type, confidence_delta, status
+      FROM policy_learning_suggestions
+      WHERE created_at > NOW() - INTERVAL '${interval}'
+      ORDER BY ABS(confidence_delta::numeric) DESC LIMIT 5
+    `).catch(() => ({ rows: [] }));
+
+    const rs  = recStats.rows[0];
+    const as_ = actionStats.rows[0];
+    const os  = outcomeStats.rows[0];
+    const fs  = fuStats.rows[0];
+
+    const recTotal    = parseInt(rs.total) || 1;
+    const actionTotal = parseInt(as_.total) || 1;
+    const outTotal    = parseInt(os.total) || 1;
+
+    const snapshot = {
+      period, periodKey,
+      recommendations: {
+        created: parseInt(rs.total), accepted: parseInt(rs.accepted), resolved: parseInt(rs.resolved),
+        acceptedRate: parseFloat(((parseInt(rs.accepted) / recTotal) * 100).toFixed(1)),
+        completionRate: parseFloat(((parseInt(rs.resolved) / recTotal) * 100).toFixed(1)),
+      },
+      actions: {
+        total: parseInt(as_.total), slaMet: parseInt(as_.sla_met), slaMissed: parseInt(as_.sla_missed),
+        slaRate: parseFloat(((parseInt(as_.sla_met) / actionTotal) * 100).toFixed(1)),
+      },
+      outcomes: {
+        total: parseInt(os.total), improved: parseInt(os.improved), worsened: parseInt(os.worsened),
+        improvementRate: parseFloat(((parseInt(os.improved) / outTotal) * 100).toFixed(1)),
+        avgEffectiveness: parseFloat(os.avg_effectiveness ?? '0'),
+      },
+      followUps: {
+        total: parseInt(fs.total), overdue: parseInt(fs.overdue), closed: parseInt(fs.closed),
+      },
+      topReviewers: topReviewers.rows,
+      topPolicySuggestions: topSuggestions.rows,
+      generatedAt: now,
+    };
+
+    // Cache it
+    await pool.query(`
+      INSERT INTO execution_review_snapshots (period_key, snapshot_json)
+      VALUES ('${periodKey}', '${JSON.stringify(snapshot).replace(/'/g, "''")}')
+    `);
+
+    return res.json({ ...snapshot, cached: false });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to generate execution review', detail: err.message });
+  }
+});
+
 export default router;

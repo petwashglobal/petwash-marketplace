@@ -13418,8 +13418,10 @@ export const remediationOutcomes = pgTable("remediation_outcomes", {
   beforeValue:      numeric("before_value", { precision: 18, scale: 4 }).notNull().default('0'),
   afterValue:       numeric("after_value",  { precision: 18, scale: 4 }).notNull().default('0'),
   unit:             varchar("unit", { length: 30 }),
-  outcomeStatus:    varchar("outcome_status", { length: 20 }).notNull().default('unchanged'), // improved | unchanged | worsened
-  measuredAt:       timestamp("measured_at", { withTimezone: true }).notNull().defaultNow(),
+  outcomeStatus:        varchar("outcome_status", { length: 20 }).notNull().default('unchanged'), // improved | unchanged | worsened
+  effectivenessScore:   numeric("effectiveness_score", { precision: 8, scale: 2 }).default('0'),
+  effectivenessReason:  text("effectiveness_reason").default(''),
+  measuredAt:           timestamp("measured_at", { withTimezone: true }).notNull().defaultNow(),
 });
 export type RemediationOutcome       = typeof remediationOutcomes.$inferSelect;
 export type InsertRemediationOutcome = typeof remediationOutcomes.$inferInsert;
@@ -13450,9 +13452,14 @@ export const reviewerPerformanceSnapshots = pgTable("reviewer_performance_snapsh
   avgApprovalHours:    numeric("avg_approval_hours", { precision: 8, scale: 2 }).default('0'),
   reversalRate:        numeric("reversal_rate", { precision: 6, scale: 4 }).default('0'),
   overdueRate:         numeric("overdue_rate", { precision: 6, scale: 4 }).default('0'),
-  outcomeQualityScore: numeric("outcome_quality_score", { precision: 6, scale: 2 }).default('0'),
-  snapshotJson:        jsonb("snapshot_json").notNull().default(sql`'{}'::jsonb`),
-  createdAt:           timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  outcomeQualityScore:          numeric("outcome_quality_score", { precision: 6, scale: 2 }).default('0'),
+  actionAcceptRate:             numeric("action_accept_rate", { precision: 6, scale: 4 }).default('0'),
+  actionSuccessRate:            numeric("action_success_rate", { precision: 6, scale: 4 }).default('0'),
+  avgTimeToResolutionHours:     numeric("avg_time_to_resolution_hours", { precision: 8, scale: 2 }).default('0'),
+  followupOverdueRate:          numeric("followup_overdue_rate", { precision: 6, scale: 4 }).default('0'),
+  qualityBand:                  varchar("quality_band", { length: 16 }).default('unrated'), // excellent | good | fair | poor | unrated
+  snapshotJson:                 jsonb("snapshot_json").notNull().default(sql`'{}'::jsonb`),
+  createdAt:                    timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 export type ReviewerPerformanceSnapshot       = typeof reviewerPerformanceSnapshots.$inferSelect;
 export type InsertReviewerPerformanceSnapshot = typeof reviewerPerformanceSnapshots.$inferInsert;
@@ -13465,10 +13472,13 @@ export const reviewFollowUpActions = pgTable("review_follow_up_actions", {
   ownerUid:  varchar("owner_uid", { length: 255 }).notNull(),
   dueDate:   varchar("due_date", { length: 10 }).notNull(),
   priority:  varchar("priority", { length: 10 }).notNull().default('medium'), // low | medium | high | critical
-  status:    varchar("status", { length: 20 }).notNull().default('open'), // open | in_progress | closed | cancelled
-  notes:     text("notes"),
-  closedAt:  timestamp("closed_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  status:          varchar("status", { length: 20 }).notNull().default('open'), // open | in_progress | closed | cancelled
+  notes:           text("notes"),
+  closedAt:        timestamp("closed_at", { withTimezone: true }),
+  escalatedAt:     timestamp("escalated_at", { withTimezone: true }),
+  escalationLevel: integer("escalation_level").notNull().default(0),
+  blockedReason:   text("blocked_reason").default(''),
+  createdAt:       timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 export type ReviewFollowUpAction       = typeof reviewFollowUpActions.$inferSelect;
 export type InsertReviewFollowUpAction = typeof reviewFollowUpActions.$inferInsert;
@@ -13492,3 +13502,28 @@ export const unifiedRecommendations = pgTable("unified_recommendations", {
 });
 export type UnifiedRecommendation       = typeof unifiedRecommendations.$inferSelect;
 export type InsertUnifiedRecommendation = typeof unifiedRecommendations.$inferInsert;
+
+// 4.3A — Recommendation Priority Scores
+export const recommendationPriorityScores = pgTable("recommendation_priority_scores", {
+  id:               serial("id").primaryKey(),
+  recommendationId: integer("recommendation_id").notNull(),
+  priorityScore:    numeric("priority_score",    { precision: 8, scale: 2 }).notNull().default('0'),
+  urgencyScore:     numeric("urgency_score",     { precision: 8, scale: 2 }).notNull().default('0'),
+  valueScore:       numeric("value_score",       { precision: 8, scale: 2 }).notNull().default('0'),
+  confidenceScore:  numeric("confidence_score",  { precision: 8, scale: 2 }).notNull().default('0'),
+  bottleneckScore:  numeric("bottleneck_score",  { precision: 8, scale: 2 }).notNull().default('0'),
+  reasoningJson:    jsonb("reasoning_json").notNull().default(sql`'{}'::jsonb`),
+  createdAt:        timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type RecommendationPriorityScore       = typeof recommendationPriorityScores.$inferSelect;
+export type InsertRecommendationPriorityScore = typeof recommendationPriorityScores.$inferInsert;
+
+// 4.3G — Execution Review Snapshots (management cache)
+export const executionReviewSnapshots = pgTable("execution_review_snapshots", {
+  id:           serial("id").primaryKey(),
+  periodKey:    varchar("period_key", { length: 32 }).notNull(),
+  snapshotJson: jsonb("snapshot_json").notNull().default(sql`'{}'::jsonb`),
+  createdAt:    timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type ExecutionReviewSnapshot       = typeof executionReviewSnapshots.$inferSelect;
+export type InsertExecutionReviewSnapshot = typeof executionReviewSnapshots.$inferInsert;
