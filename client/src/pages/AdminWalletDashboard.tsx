@@ -66,6 +66,7 @@ import {
   RefreshCcw,
   PlayCircle,
   Eye,
+  EyeOff,
   ShieldAlert,
   Bell,
   Send,
@@ -2267,6 +2268,93 @@ export default function AdminWalletDashboard() {
     queryFn: () => fetch('/api/prestige-pass/admin/wallet/rollback-plan').then(r => r.json()),
   });
   const [showRollback, setShowRollback] = useState(false);
+
+  // ─── Phase 4.6 — Controlled Go-Live & Production Readiness ───────────────
+
+  // 4.6A — E2E Proof Engine
+  const [e2eRunType, setE2eRunType] = useState<string>('full');
+  const [e2eLatestResult, setE2eLatestResult] = useState<any>(null);
+  const { data: e2eHistory, isLoading: e2eHistoryLoading, refetch: refetchE2eHistory } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/system/e2e/history'],
+    queryFn: () => fetch('/api/prestige-pass/admin/system/e2e/history').then(r => r.json()),
+  });
+  const { mutate: runE2E, isPending: runE2EPending } = useMutation<any, any, string>({
+    mutationFn: (runType) => apiRequest('POST', '/api/prestige-pass/admin/system/e2e/run', { runType }),
+    onSuccess: (d) => { setE2eLatestResult(d); refetchE2eHistory(); toast({ title: d.passed ? '✓ E2E test passed' : `E2E test FAILED — ${d.failures?.length} step(s)`, variant: d.passed ? 'default' : 'destructive' }); },
+    onError: () => toast({ title: 'E2E run failed', variant: 'destructive' }),
+  });
+
+  // 4.6B — Config Audit
+  const { data: configAuditLatest, isLoading: configAuditLoading, refetch: refetchConfigAudit } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/system/config-audit/latest'],
+    queryFn: () => fetch('/api/prestige-pass/admin/system/config-audit/latest').then(r => r.json()),
+  });
+  const { mutate: runConfigAudit, isPending: runConfigAuditPending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest('POST', '/api/prestige-pass/admin/system/config-audit/run', {}),
+    onSuccess: (d) => { refetchConfigAudit(); toast({ title: d.status === 'passed' ? '✓ Config audit passed' : d.status === 'warning' ? 'Config audit: warnings found' : 'Config audit: critical failures', variant: d.status === 'passed' ? 'default' : 'destructive' }); },
+  });
+
+  // 4.6C — Alert Delivery Tests
+  const [alertTestType, setAlertTestType] = useState('system_health');
+  const [alertTestRecipient, setAlertTestRecipient] = useState('admin');
+  const { data: alertTestHistory, isLoading: alertHistoryLoading, refetch: refetchAlertHistory } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/system/alerts/test-history'],
+    queryFn: () => fetch('/api/prestige-pass/admin/system/alerts/test-history').then(r => r.json()),
+  });
+  const { mutate: sendTestAlert, isPending: sendAlertPending, data: latestAlertResult } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/system/alerts/test', body),
+    onSuccess: (d) => { refetchAlertHistory(); toast({ title: `Alert delivered in ${d.response_time_ms}ms` }); },
+  });
+
+  // 4.6D — Shadow Mode
+  const { data: shadowLogs, isLoading: shadowLogsLoading, refetch: refetchShadowLogs } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/system/shadow/logs'],
+    queryFn: () => fetch('/api/prestige-pass/admin/system/shadow/logs').then(r => r.json()),
+  });
+  const { mutate: enableShadow, isPending: enableShadowPending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest('POST', '/api/prestige-pass/admin/system/shadow/enable', {}),
+    onSuccess: () => { refetchShadowLogs(); refetchKillSwitches(); toast({ title: 'Shadow mode ENABLED — writes suppressed' }); },
+  });
+  const { mutate: disableShadow, isPending: disableShadowPending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest('POST', '/api/prestige-pass/admin/system/shadow/disable', {}),
+    onSuccess: (d) => { refetchShadowLogs(); refetchKillSwitches(); toast({ title: `Shadow mode disabled — ${d.mismatchCount} mismatches found`, variant: d.mismatchCount > 0 ? 'destructive' : 'default' }); },
+  });
+
+  // 4.6E — Incident Drills
+  const [drillScenario, setDrillScenario] = useState('payment_failure_spike');
+  const [latestDrillResult, setLatestDrillResult] = useState<any>(null);
+  const { data: drillHistory, isLoading: drillHistoryLoading, refetch: refetchDrillHistory } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/system/drill/history'],
+    queryFn: () => fetch('/api/prestige-pass/admin/system/drill/history').then(r => r.json()),
+  });
+  const { mutate: runDrill, isPending: runDrillPending } = useMutation<any, any, string>({
+    mutationFn: (scenario) => apiRequest('POST', '/api/prestige-pass/admin/system/drill/run', { scenario }),
+    onSuccess: (d) => { setLatestDrillResult(d); refetchDrillHistory(); refetchGoLiveGate(); toast({ title: `Drill "${d.label}" — ${d.recoveryTimeSeconds}s recovery` }); },
+  });
+
+  // 4.6F — Go-Live Gate
+  const { data: goLiveGate, isLoading: gateLoading, refetch: refetchGoLiveGate } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/system/go-live/status'],
+    queryFn: () => fetch('/api/prestige-pass/admin/system/go-live/status').then(r => r.json()),
+    refetchInterval: 10000,
+  });
+  const [gateApproverName, setGateApproverName] = useState('');
+  const { mutate: approveGoLive, isPending: approveGoLivePending } = useMutation<any, any, string>({
+    mutationFn: (approvedBy) => apiRequest('POST', '/api/prestige-pass/admin/system/go-live/approve', { approvedBy }),
+    onSuccess: (d) => { refetchGoLiveGate(); toast({ title: '🚀 Go-live approved!' }); },
+    onError: (e: any) => toast({ title: e?.message ?? 'Approval failed — not all conditions met', variant: 'destructive' }),
+  });
+
+  // 4.6G — Rollout Control
+  const { data: rolloutStatus, isLoading: rolloutLoading, refetch: refetchRollout } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/system/rollout/status'],
+    queryFn: () => fetch('/api/prestige-pass/admin/system/rollout/status').then(r => r.json()),
+  });
+  const { mutate: setRolloutPhase, isPending: rolloutPhasePending } = useMutation<any, any, { phase: string; trafficPercentage?: number }>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/system/rollout/set-phase', body),
+    onSuccess: (d) => { refetchRollout(); toast({ title: d.message, variant: d.jumpWarning ? 'destructive' : 'default' }); },
+    onError: (e: any) => toast({ title: e?.message ?? 'Phase change failed', variant: 'destructive' }),
+  });
 
   // ── Phase 3.6 UI aliases & supplemental state ──────────────────────────────
   // 3.6A — weight form state for the UI card
@@ -8536,6 +8624,248 @@ export default function AdminWalletDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* 4.6A — END-TO-END PROOF PASS ENGINE */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-blue-600" /> Full System Test (E2E)
+                  {e2eLatestResult && (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${e2eLatestResult.passed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {e2eLatestResult.passed ? '✓ PASSED' : `✗ ${e2eLatestResult.failures?.length} FAILED`}
+                    </span>
+                  )}
+                </CardTitle>
+                <button onClick={() => refetchE2eHistory()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> History
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded p-2">
+                  Runs real invariant checks across all critical flows — no mutations, no side effects. Validates: wallet balances, batch totals, orphan records, refund overflow, ledger linkage.
+                </div>
+                <div className="flex gap-2 items-center flex-wrap">
+                  <select value={e2eRunType} onChange={e => setE2eRunType(e.target.value)} className="border rounded px-2 py-1 text-xs">
+                    {['full','payouts','disputes','recommendations','forecasts'].map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <button disabled={runE2EPending} onClick={() => runE2E(e2eRunType)}
+                    className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40 flex items-center gap-1">
+                    {runE2EPending ? <><Loader2 className="w-3 h-3 animate-spin" /> Running…</> : <><Zap className="w-3 h-3" /> Run Full System Test</>}
+                  </button>
+                </div>
+                {runE2EPending && (
+                  <div className="border rounded-lg p-3 bg-blue-50/30 space-y-1.5">
+                    <div className="text-xs font-semibold text-blue-700 flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> Running proof checks…</div>
+                    <div className="text-[10px] text-gray-500">Checking wallet balances, batch integrity, dispute outcomes, recon linkage…</div>
+                  </div>
+                )}
+                {e2eLatestResult && !runE2EPending && (
+                  <div className={`border rounded-lg p-3 space-y-2 ${e2eLatestResult.passed ? 'border-green-200 bg-green-50/20' : 'border-red-200 bg-red-50/20'}`}>
+                    <div className={`text-xs font-bold flex items-center gap-2 ${e2eLatestResult.passed ? 'text-green-700' : 'text-red-700'}`}>
+                      {e2eLatestResult.passed ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                      {e2eLatestResult.passed ? 'All checks passed' : `${e2eLatestResult.failures?.length} check(s) failed`}
+                      <span className="font-normal text-[10px] text-gray-400 ml-auto">{new Date(e2eLatestResult.completedAt).toLocaleString('he-IL')}</span>
+                    </div>
+                    {e2eLatestResult.steps?.map((s: any, i: number) => (
+                      <div key={i} className={`flex items-start gap-2 text-xs border rounded p-1.5 ${s.status === 'passed' ? 'border-green-100 bg-green-50/10' : 'border-red-200 bg-red-50/20'}`}>
+                        <span className={`shrink-0 text-[10px] font-bold ${s.status === 'passed' ? 'text-green-600' : 'text-red-600'}`}>{s.status === 'passed' ? '✓' : '✗'}</span>
+                        <div>
+                          <div className="font-medium text-gray-700">{s.name}</div>
+                          <div className="text-[10px] text-gray-500 mt-0.5">{s.detail}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!e2eHistoryLoading && e2eHistory?.runs?.length > 0 && !e2eLatestResult && (
+                  <div className="text-[10px] text-gray-400 border rounded p-2">
+                    Last run: {e2eHistory.runs[0].status === 'passed' ? '✓ Passed' : '✗ Failed'} — {new Date(e2eHistory.runs[0].started_at).toLocaleString('he-IL')}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 4.6C — ALERT DELIVERY TEST */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-orange-600" /> Alert Routing Test
+                  {alertTestHistory?.latestStatus && (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${alertTestHistory.latestStatus === 'delivered' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {alertTestHistory.latestStatus === 'delivered' ? '✓ DELIVERED' : '✗ FAILED'}
+                    </span>
+                  )}
+                </CardTitle>
+                <button onClick={() => refetchAlertHistory()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> Refresh
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded p-2">
+                  Sends a test alert and verifies it appears in the UI governance alerts feed. Measures delivery time — green &lt;100ms, amber &lt;500ms, red &gt;500ms.
+                </div>
+                <div className="flex gap-2 items-center flex-wrap">
+                  <select value={alertTestType} onChange={e => setAlertTestType(e.target.value)} className="border rounded px-2 py-1 text-xs">
+                    {['system_health','payment_alert','dispute_alert','payout_alert'].map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <input type="text" placeholder="Recipient" value={alertTestRecipient} onChange={e => setAlertTestRecipient(e.target.value)} className="border rounded px-2 py-1 text-xs w-28" />
+                  <button disabled={sendAlertPending} onClick={() => sendTestAlert({ alertType: alertTestType, channel: 'ui', recipient: alertTestRecipient })}
+                    className="text-xs px-3 py-1.5 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-40 flex items-center gap-1">
+                    {sendAlertPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bell className="w-3 h-3" />} Send Test Alert
+                  </button>
+                </div>
+                {latestAlertResult && (
+                  <div className={`border rounded p-2 text-xs flex items-center gap-3 ${latestAlertResult.responseGrade === 'green' ? 'border-green-200 bg-green-50' : latestAlertResult.responseGrade === 'amber' ? 'border-amber-200 bg-amber-50' : 'border-red-200 bg-red-50'}`}>
+                    <span className={`text-lg ${latestAlertResult.responseGrade === 'green' ? 'text-green-600' : latestAlertResult.responseGrade === 'amber' ? 'text-amber-600' : 'text-red-600'}`}>●</span>
+                    <div>
+                      <div className="font-semibold">{latestAlertResult.message}</div>
+                      <div className="text-[10px] text-gray-500">{latestAlertResult.responseGrade} — threshold: {latestAlertResult.threshold}ms</div>
+                    </div>
+                  </div>
+                )}
+                {alertHistoryLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                  alertTestHistory?.tests?.length > 0 && (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Type</th><th className="text-left p-2">Channel</th><th className="text-right p-2">Response</th><th className="text-center p-2">Status</th></tr>
+                      </thead><tbody>
+                        {alertTestHistory.tests.slice(0, 5).map((t: any) => (
+                          <tr key={t.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 text-[10px]">{t.alert_type}</td>
+                            <td className="p-2 text-[10px] text-gray-500">{t.channel}</td>
+                            <td className="p-2 text-right text-[10px]">{t.response_time_ms}ms</td>
+                            <td className="p-2 text-center">
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${t.delivered ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {t.delivered ? '✓' : '✗'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.6D — SHADOW MODE */}
+            <Card className="border-yellow-200">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-yellow-600" /> Shadow Mode
+                  {shadowLogs?.shadowMode && (
+                    <span className="bg-yellow-400 text-yellow-900 text-[9px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">ACTIVE</span>
+                  )}
+                </CardTitle>
+                <button onClick={() => refetchShadowLogs()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> Refresh
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-yellow-800 bg-yellow-50 border border-yellow-200 rounded p-2">
+                  In shadow mode, all operations execute against real data but financial mutations (payouts, refunds) are suppressed. Use to verify system behaviour with live data before full launch.
+                </div>
+                <div className="flex gap-2 items-center">
+                  {shadowLogs?.shadowMode ? (
+                    <button disabled={disableShadowPending} onClick={() => disableShadow()}
+                      className="text-xs px-3 py-1.5 bg-gray-700 text-white rounded hover:bg-gray-800 disabled:opacity-40 flex items-center gap-1">
+                      {disableShadowPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <EyeOff className="w-3 h-3" />} Disable Shadow Mode
+                    </button>
+                  ) : (
+                    <button disabled={enableShadowPending} onClick={() => enableShadow()}
+                      className="text-xs px-3 py-1.5 bg-yellow-500 text-white rounded hover:bg-yellow-600 disabled:opacity-40 flex items-center gap-1">
+                      {enableShadowPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />} Enable Shadow Mode
+                    </button>
+                  )}
+                  {shadowLogs?.summary?.totalMismatches > 0 && (
+                    <span className="text-xs text-red-600 font-semibold">{shadowLogs.summary.totalMismatches} mismatch(es) recorded</span>
+                  )}
+                </div>
+                {shadowLogsLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  shadowLogs?.logs?.filter((l: any) => l.mismatch_flag)?.length > 0 ? (
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">Mismatches</div>
+                      {shadowLogs.logs.filter((l: any) => l.mismatch_flag).slice(0, 5).map((l: any) => (
+                        <div key={l.id} className="border border-amber-200 bg-amber-50/30 rounded p-2 text-xs">
+                          <div className="font-medium">{l.entity_type} #{l.entity_id} — {l.action}</div>
+                          <div className="text-[10px] text-gray-500 mt-0.5">Expected: {JSON.stringify(l.expected_result)} · Got: {JSON.stringify(l.actual_result)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : shadowLogs?.logs?.length > 0 ? (
+                    <div className="text-xs text-green-700 bg-green-50 border border-green-100 rounded p-2 text-center">✓ No mismatches — system behaving as expected in shadow</div>
+                  ) : (
+                    <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded-lg">Enable shadow mode to begin tracking operations</div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.6G — ROLLOUT CONTROL */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-teal-600" /> Controlled Rollout
+                  {rolloutStatus?.activePhase && (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                      rolloutStatus.activePhase.phase === 'full' ? 'bg-green-100 text-green-700' :
+                      rolloutStatus.activePhase.phase === 'limited' ? 'bg-blue-100 text-blue-700' :
+                      rolloutStatus.activePhase.phase === 'beta' ? 'bg-violet-100 text-violet-700' :
+                      'bg-gray-100 text-gray-700'}`}>
+                      {rolloutStatus.activePhase.phase.toUpperCase()} — {rolloutStatus.activePhase.traffic_percentage}%
+                    </span>
+                  )}
+                </CardTitle>
+                <button onClick={() => refetchRollout()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> Refresh
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded p-2">
+                  Never go from 0 → 100%. Step through phases: Internal → Beta (5%) → Limited (25%) → Full (100%). Gate must be at least partial before advancing beyond Internal.
+                </div>
+                {rolloutStatus?.warning && (
+                  <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 flex items-center gap-2">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {rolloutStatus.warning}
+                  </div>
+                )}
+                {rolloutLoading ? <div className="h-24 bg-gray-100 animate-pulse rounded" /> :
+                  rolloutStatus?.phases && (
+                    <div className="space-y-2">
+                      {rolloutStatus.phases.map((p: any) => {
+                        const isActive = p.enabled;
+                        const phaseColors: Record<string, string> = { internal: 'gray', beta: 'violet', limited: 'blue', full: 'green' };
+                        const color = phaseColors[p.phase] || 'gray';
+                        return (
+                          <div key={p.id} className={`border rounded-lg p-3 flex items-center justify-between ${isActive ? `border-${color}-300 bg-${color}-50/30` : 'border-gray-200'}`}>
+                            <div>
+                              <div className={`text-xs font-semibold capitalize ${isActive ? `text-${color}-700` : 'text-gray-600'}`}>
+                                {p.phase} {isActive && <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded ml-1">ACTIVE</span>}
+                              </div>
+                              <div className="text-[10px] text-gray-400 mt-0.5">{p.description ?? ({ internal: 'Team-only access', beta: '5% of users', limited: '25% of users', full: '100% of users' } as any)[p.phase]}</div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs font-bold ${isActive ? 'text-green-700' : 'text-gray-400'}`}>{p.traffic_percentage}%</span>
+                              {!isActive && (
+                                <button disabled={rolloutPhasePending} onClick={() => setRolloutPhase({ phase: p.phase })}
+                                  className="text-[10px] px-2.5 py-1 border border-teal-300 text-teal-700 rounded hover:bg-teal-50 disabled:opacity-40">
+                                  Set Active
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )
+                }
+                {rolloutStatus?.gateStatus === 'locked' && (
+                  <div className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded p-2 flex items-center gap-2">
+                    <Lock className="w-3.5 h-3.5 shrink-0" /> Go-live gate locked — complete system checks before advancing beyond Internal
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -10986,6 +11316,207 @@ export default function AdminWalletDashboard() {
                     </div>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* 4.6F — GO-LIVE READINESS GATE (TOP — most prominent) */}
+            <Card className={`border-2 ${goLiveGate?.gateStatus === 'ready' || goLiveGate?.status === 'approved' ? 'border-green-400' : goLiveGate?.gateStatus === 'partial' ? 'border-amber-400' : 'border-red-300'}`}>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Shield className="w-4 h-4" /> Go-Live Readiness Gate
+                  {goLiveGate?.progress && (
+                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${goLiveGate.gateStatus === 'ready' ? 'bg-green-100 text-green-700' : goLiveGate.gateStatus === 'partial' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                      {goLiveGate.progress}
+                    </span>
+                  )}
+                </CardTitle>
+                <button onClick={() => refetchGoLiveGate()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> Refresh
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Big Status Banner */}
+                {gateLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded-lg" /> :
+                  goLiveGate && (
+                    <div className={`rounded-lg p-4 text-center border-2 ${
+                      goLiveGate.status === 'approved' ? 'bg-green-100 border-green-400' :
+                      goLiveGate.gateStatus === 'ready' ? 'bg-green-50 border-green-300' :
+                      goLiveGate.gateStatus === 'partial' ? 'bg-amber-50 border-amber-300' :
+                      'bg-red-50 border-red-300'
+                    }`}>
+                      <div className={`text-2xl font-black tracking-tight ${
+                        goLiveGate.status === 'approved' ? 'text-green-700' :
+                        goLiveGate.gateStatus === 'ready' ? 'text-green-700' :
+                        goLiveGate.gateStatus === 'partial' ? 'text-amber-700' :
+                        'text-red-700'
+                      }`}>
+                        {goLiveGate.status === 'approved' ? '🚀 APPROVED — LAUNCH READY' :
+                         goLiveGate.gateStatus === 'ready' ? '🟢 READY FOR LAUNCH' :
+                         goLiveGate.gateStatus === 'partial' ? '🟡 PARTIALLY READY' :
+                         '🔴 NOT READY'}
+                      </div>
+                      {goLiveGate.status === 'approved' && goLiveGate.approved_by && (
+                        <div className="text-xs text-green-600 mt-1">Approved by {goLiveGate.approved_by} · {new Date(goLiveGate.approved_at).toLocaleString('he-IL')}</div>
+                      )}
+                    </div>
+                  )
+                }
+                {/* Gate condition checklist */}
+                {goLiveGate?.checks && (
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      { key: 'e2e_passed',           label: 'E2E Test Passed' },
+                      { key: 'config_audit_passed',  label: 'Config Audit Passed' },
+                      { key: 'alert_test_passed',    label: 'Alert Delivery Verified' },
+                      { key: 'shadow_no_mismatches', label: 'Shadow Mode Clean' },
+                      { key: 'drill_success_rate_ok',label: 'Drill Success ≥80%' },
+                      { key: 'checklist_complete',   label: 'Checklist 100% Done' },
+                    ].map(c => (
+                      <div key={c.key} className={`flex items-center gap-1.5 border rounded p-2 text-xs ${goLiveGate.checks[c.key] ? 'border-green-200 bg-green-50/20' : 'border-red-200 bg-red-50/10'}`}>
+                        <span className={`text-[10px] font-bold ${goLiveGate.checks[c.key] ? 'text-green-600' : 'text-red-500'}`}>
+                          {goLiveGate.checks[c.key] ? '✓' : '✗'}
+                        </span>
+                        <span className={goLiveGate.checks[c.key] ? 'text-gray-700' : 'text-gray-500'}>{c.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Approve button */}
+                {goLiveGate?.gateStatus === 'ready' && goLiveGate?.status !== 'approved' && (
+                  <div className="space-y-2">
+                    <input type="text" placeholder="Your name (approver)" value={gateApproverName} onChange={e => setGateApproverName(e.target.value)} className="border rounded px-2 py-1 text-xs w-full" />
+                    <button disabled={approveGoLivePending || !gateApproverName} onClick={() => approveGoLive(gateApproverName)}
+                      className="w-full text-sm px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-40 font-semibold flex items-center justify-center gap-2">
+                      {approveGoLivePending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                      Approve Go-Live
+                    </button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 4.6B — PRODUCTION CONFIG & SECRETS AUDIT */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Settings className="w-4 h-4 text-gray-600" /> Config & Secrets Audit
+                  {configAuditLatest?.status && configAuditLatest.status !== 'not_run' && (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${configAuditLatest.status === 'passed' ? 'bg-green-100 text-green-700' : configAuditLatest.status === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                      {configAuditLatest.status === 'passed' ? '✓ PASSED' : configAuditLatest.status === 'warning' ? '⚠ WARNINGS' : '✗ CRITICAL'}
+                    </span>
+                  )}
+                </CardTitle>
+                <button disabled={runConfigAuditPending} onClick={() => runConfigAudit()}
+                  className="text-xs px-3 py-1.5 bg-gray-700 text-white rounded hover:bg-gray-800 disabled:opacity-40 flex items-center gap-1">
+                  {runConfigAuditPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Run Audit
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded p-2">
+                  Checks all required environment variables, validates no test keys are in use, confirms admin roles exist, and verifies kill switch state. Run before every deployment.
+                </div>
+                {configAuditLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                  configAuditLatest?.checks_json?.length ? (
+                    <div className="space-y-1.5">
+                      {configAuditLatest.checks_json.map((c: any) => (
+                        <div key={c.id} className={`flex items-center gap-2 border rounded p-1.5 text-xs ${c.status === 'valid' ? 'border-green-100 bg-green-50/10' : c.status === 'warning' ? 'border-amber-100 bg-amber-50/10' : 'border-red-200 bg-red-50/20'}`}>
+                          <span className={`shrink-0 text-[10px] font-bold ${c.status === 'valid' ? 'text-green-600' : c.status === 'warning' ? 'text-amber-600' : 'text-red-600'}`}>
+                            {c.status === 'valid' ? '✓' : c.status === 'warning' ? '⚠' : '✗'}
+                          </span>
+                          <span className="flex-1 text-gray-700">{c.label}</span>
+                          {c.reason !== 'OK' && <span className="text-[10px] text-gray-400 truncate max-w-[120px]" title={c.reason}>{c.reason}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  ) : configAuditLatest?.status === 'not_run' || !configAuditLatest ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded-lg">No audit run yet — click "Run Audit"</div>
+                  ) : null
+                }
+                {configAuditLatest?.summary && (
+                  <div className="flex gap-3 text-xs pt-1 border-t">
+                    <span className="text-green-700">✓ Valid: {configAuditLatest.summary.valid}</span>
+                    <span className="text-amber-700">⚠ Warnings: {configAuditLatest.summary.warnings}</span>
+                    {configAuditLatest.summary.criticals > 0 && <span className="text-red-700 font-bold">✗ Critical: {configAuditLatest.summary.criticals}</span>}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 4.6E — INCIDENT DRILL & ROLLBACK SIMULATION */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" /> Incident Drills
+                  {drillHistory?.summary && (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${drillHistory.summary.successRate >= 80 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {drillHistory.summary.successRate}% success
+                    </span>
+                  )}
+                </CardTitle>
+                <button onClick={() => refetchDrillHistory()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> History
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                  Practice failure scenarios before they happen. Each drill simulates a real incident, walks through required recovery steps, and records recovery time. Target: ≥80% success rate before go-live.
+                </div>
+                <div className="flex gap-2 items-center flex-wrap">
+                  <select value={drillScenario} onChange={e => setDrillScenario(e.target.value)} className="border rounded px-2 py-1 text-xs flex-1">
+                    {[
+                      ['payment_failure_spike', 'Payment Failure Spike'],
+                      ['batch_mismatch',        'Batch Sum Mismatch'],
+                      ['stuck_payouts',         'Stuck Payouts'],
+                      ['dispute_overload',      'Dispute Volume Overload'],
+                      ['alert_failure',         'Alert System Failure'],
+                    ].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                  <button disabled={runDrillPending} onClick={() => runDrill(drillScenario)}
+                    className="text-xs px-3 py-1.5 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-40 flex items-center gap-1">
+                    {runDrillPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Run Drill
+                  </button>
+                </div>
+                {runDrillPending && (
+                  <div className="border border-amber-200 rounded-lg p-3 bg-amber-50/30 text-xs text-amber-700 flex items-center gap-2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Executing drill steps…
+                  </div>
+                )}
+                {latestDrillResult && !runDrillPending && (
+                  <div className={`border rounded-lg p-3 space-y-2 ${latestDrillResult.success ? 'border-green-200 bg-green-50/20' : 'border-red-200 bg-red-50/20'}`}>
+                    <div className={`text-xs font-bold flex items-center gap-2 ${latestDrillResult.success ? 'text-green-700' : 'text-red-700'}`}>
+                      {latestDrillResult.success ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+                      {latestDrillResult.label} — recovered in {latestDrillResult.recoveryTimeSeconds}s
+                    </div>
+                    <div className="grid grid-cols-1 gap-1">
+                      {latestDrillResult.actionsTaken?.map((a: any) => (
+                        <div key={a.stepNumber} className="flex items-center gap-1.5 text-xs text-gray-600">
+                          <span className="w-4 h-4 bg-green-100 text-green-700 text-[9px] font-bold rounded-full flex items-center justify-center shrink-0">{a.stepNumber}</span>
+                          {a.action}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {drillHistoryLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                  drillHistory?.drills?.length > 0 && (
+                    <div>
+                      <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Recent Drills ({drillHistory.summary.total} total · {drillHistory.summary.successRate}% success rate)</div>
+                      <div className="space-y-1">
+                        {drillHistory.drills.slice(0, 4).map((d: any) => (
+                          <div key={d.id} className="flex items-center justify-between border rounded p-1.5 text-xs hover:bg-gray-50">
+                            <span className="capitalize text-gray-700">{d.scenario?.replace(/_/g, ' ')}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-gray-400">{d.recovery_time_seconds}s</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${d.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {d.success ? '✓' : '✗'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                }
               </CardContent>
             </Card>
           </TabsContent>

@@ -1,0 +1,310 @@
+Perfect. This is the phase that decides whether everything you built actually survives real users.
+
+Here is Phase 4.6 — Controlled Go-Live & Production Readiness, structured exactly like your previous phases, but focused only on safety, verification, and rollout control.
+
+⸻
+
+Phase 4.6 — Go-Live, Verification & Safe Rollout
+
+4.6A — End-to-End Proof Pass Engine (Critical)
+
+What:
+A deterministic system that runs full business flows and verifies outcomes automatically.
+
+Flows to simulate:
+	•	Booking → hold → capture → payout → batch → reconciliation
+	•	Dispute → resolution → refund → clawback
+	•	Recommendation → action → execution → outcome → feedback loop
+	•	Forecast → batch → actual → variance → accuracy
+
+DB:
+e2e_proof_runs
+	•	id
+	•	run_type (full | payouts | disputes | recommendations)
+	•	status (running | passed | failed)
+	•	steps_json (each step + result)
+	•	failures_json
+	•	started_at
+	•	completed_at
+
+Backend:
+	•	POST /admin/system/e2e/run
+	•	GET /admin/system/e2e/:id
+	•	GET /admin/system/e2e/history
+
+Each run:
+	•	executes real endpoints in sequence (safe sandbox mode)
+	•	validates invariants:
+	•	no negative balances
+	•	totals match across tables
+	•	batch totals = ledger totals
+	•	no orphan records
+
+UI (Control Center):
+	•	“Run Full System Test” button
+	•	Progress tracker (step-by-step)
+	•	Result:
+	•	✅ Passed (green)
+	•	❌ Failed (with exact failing step)
+
+⸻
+
+4.6B — Production Config & Secrets Audit
+
+What:
+Verify nothing critical is misconfigured before go-live.
+
+DB:
+system_config_audit_runs
+	•	id
+	•	checks_json
+	•	failures_json
+	•	status
+	•	created_at
+
+Checks:
+	•	All required ENV variables exist
+	•	No test keys in production
+	•	Payment provider keys valid
+	•	Email provider configured
+	•	Cron enabled flags correct
+	•	Kill switches default OFF
+	•	Admin roles exist
+
+Backend:
+	•	POST /admin/system/config-audit/run
+	•	GET /admin/system/config-audit/latest
+
+UI (Governance):
+	•	“Run Config Audit”
+	•	Checklist with:
+	•	✅ valid
+	•	⚠️ warning
+	•	❌ critical
+
+⸻
+
+4.6C — Monitoring & Alert Routing Verification
+
+What:
+Ensure alerts actually reach humans.
+
+DB:
+alert_delivery_tests
+	•	id
+	•	alert_type
+	•	channel (email | ui)
+	•	recipient
+	•	delivered (boolean)
+	•	response_time_ms
+	•	created_at
+
+Backend:
+	•	POST /admin/system/alerts/test
+	•	GET /admin/system/alerts/test-history
+
+Tests:
+	•	Trigger test alert
+	•	Verify:
+	•	appears in UI
+	•	email delivered
+	•	delivery time < threshold
+
+UI (Control Center):
+	•	“Send Test Alert”
+	•	Delivery results table
+	•	Response time badge (green/amber/red)
+
+⸻
+
+4.6D — Shadow Mode (Read-Only Live Simulation)
+
+What:
+Run the system with real data but no financial mutations.
+
+Mechanism:
+	•	Global flag: SHADOW_MODE=true
+
+Behavior:
+	•	All flows execute
+	•	Writes redirected to:
+	•	_shadow tables OR
+	•	flagged records (is_shadow=true)
+	•	No real payouts / refunds executed
+
+DB:
+shadow_activity_log
+	•	id
+	•	entity_type
+	•	entity_id
+	•	action
+	•	expected_result
+	•	actual_result
+	•	mismatch_flag
+	•	created_at
+
+Backend:
+	•	POST /admin/system/shadow/enable
+	•	POST /admin/system/shadow/disable
+	•	GET /admin/system/shadow/logs
+
+UI (Control Center):
+	•	Shadow Mode toggle (⚠️ yellow state)
+	•	Mismatch dashboard:
+	•	expected vs actual
+
+⸻
+
+4.6E — Incident Drill & Rollback Simulation
+
+What:
+Practice failure scenarios before they happen.
+
+Drills:
+	•	Payment failure spike
+	•	Batch mismatch
+	•	Stuck payouts
+	•	Dispute overload
+	•	Alert failure
+
+DB:
+incident_drills
+	•	id
+	•	scenario
+	•	actions_taken_json
+	•	recovery_time_seconds
+	•	success (boolean)
+	•	created_at
+
+Backend:
+	•	POST /admin/system/drill/run
+	•	GET /admin/system/drill/history
+
+Each drill:
+	•	simulates failure
+	•	requires:
+	•	kill switch usage
+	•	rollback execution
+	•	system recovery
+
+UI (Governance):
+	•	“Run Drill”
+	•	Timer + steps
+	•	Result:
+	•	recovery time
+	•	missed actions
+
+⸻
+
+4.6F — Go-Live Readiness Gate (Final Lock)
+
+What:
+You cannot go live unless ALL conditions pass.
+
+Gate conditions:
+	•	Latest E2E test = PASSED
+	•	Config audit = no critical failures
+	•	Alert test = success
+	•	Shadow mode run = no mismatches
+	•	Drill success rate ≥ threshold
+	•	Go-live checklist = 100% complete
+
+DB:
+go_live_gates
+	•	id
+	•	status (locked | ready | failed)
+	•	checks_json
+	•	approved_by
+	•	approved_at
+
+Backend:
+	•	GET /admin/system/go-live/status
+	•	POST /admin/system/go-live/approve (finance_admin only)
+
+UI (Governance):
+	•	Big status banner:
+	•	🔴 NOT READY
+	•	🟡 PARTIAL
+	•	🟢 READY FOR LAUNCH
+	•	“Approve Go-Live” button (only when all pass)
+
+⸻
+
+4.6G — Controlled Rollout & Traffic Ramp
+
+What:
+Do NOT go from 0 → 100%.
+
+DB:
+rollout_phases
+	•	id
+	•	phase (internal | beta | limited | full)
+	•	traffic_percentage
+	•	enabled
+	•	created_at
+
+Backend:
+	•	POST /admin/system/rollout/set-phase
+	•	GET /admin/system/rollout/status
+
+Phases:
+	1.	Internal (team only)
+	2.	Beta (5–10%)
+	3.	Limited (25–50%)
+	4.	Full (100%)
+
+UI (Control Center):
+	•	Traffic slider
+	•	Current phase badge
+	•	Warning if increasing too fast
+
+⸻
+
+Build Order (Strict)
+	1.	4.6A — E2E proof engine
+	2.	4.6B — config audit
+	3.	4.6C — alert verification
+	4.	4.6D — shadow mode
+	5.	4.6E — drills
+	6.	4.6F — go-live gate
+	7.	4.6G — rollout control
+
+⸻
+
+Critical Rules
+	•	NO new business features
+	•	NO schema rewrites of core finance tables
+	•	EVERYTHING must be:
+	•	observable
+	•	reversible
+	•	testable
+
+⸻
+
+What “Done” Looks Like
+
+You press:
+
+👉 “Run Full System Test” → PASS
+👉 “Run Config Audit” → PASS
+👉 “Send Test Alert” → Delivered
+👉 Shadow Mode → No mismatches
+👉 Drill → Successful recovery
+👉 Go-Live Gate → GREEN
+
+Then:
+
+👉 Gradual rollout → controlled, observable, reversible
+
+⸻
+
+If you want, next step after this is:
+
+Phase 4.7 — Live Operations & Incident Intelligence
+	•	real incident auto-detection
+	•	anomaly prediction
+	•	auto-remediation triggers
+
+But first — this phase gets you safely into production.
+
+Say when you want to start 4.6A and I’ll guide you step-by-step.

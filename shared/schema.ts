@@ -13652,3 +13652,91 @@ export const goLiveChecklist = pgTable("go_live_checklist", {
 });
 export type GoLiveChecklistItem       = typeof goLiveChecklist.$inferSelect;
 export type InsertGoLiveChecklistItem = typeof goLiveChecklist.$inferInsert;
+
+// ─── PHASE 4.6 — Controlled Go-Live & Production Readiness ───────────────────
+
+// 4.6A — E2E Proof Runs
+export const e2eProofRuns = pgTable("e2e_proof_runs", {
+  id:           serial("id").primaryKey(),
+  runType:      varchar("run_type",  { length: 32 }).notNull().default('full'),
+  status:       varchar("status",   { length: 16 }).notNull().default('running'),
+  stepsJson:    jsonb("steps_json").notNull().default(sql`'[]'::jsonb`),
+  failuresJson: jsonb("failures_json").notNull().default(sql`'[]'::jsonb`),
+  startedAt:    timestamp("started_at",   { withTimezone: true }).notNull().defaultNow(),
+  completedAt:  timestamp("completed_at", { withTimezone: true }),
+});
+export type E2EProofRun       = typeof e2eProofRuns.$inferSelect;
+export type InsertE2EProofRun = typeof e2eProofRuns.$inferInsert;
+
+// 4.6B — Config Audit Runs
+export const systemConfigAuditRuns = pgTable("system_config_audit_runs", {
+  id:           serial("id").primaryKey(),
+  checksJson:   jsonb("checks_json").notNull().default(sql`'[]'::jsonb`),
+  failuresJson: jsonb("failures_json").notNull().default(sql`'[]'::jsonb`),
+  status:       varchar("status", { length: 16 }).notNull().default('pending'),
+  createdAt:    timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type SystemConfigAuditRun       = typeof systemConfigAuditRuns.$inferSelect;
+export type InsertSystemConfigAuditRun = typeof systemConfigAuditRuns.$inferInsert;
+
+// 4.6C — Alert Delivery Tests
+export const alertDeliveryTests = pgTable("alert_delivery_tests", {
+  id:             serial("id").primaryKey(),
+  alertType:      varchar("alert_type",      { length: 64 }),
+  channel:        varchar("channel",         { length: 16 }),
+  recipient:      varchar("recipient",       { length: 128 }),
+  delivered:      boolean("delivered").notNull().default(false),
+  responseTimeMs: integer("response_time_ms"),
+  createdAt:      timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type AlertDeliveryTest       = typeof alertDeliveryTests.$inferSelect;
+export type InsertAlertDeliveryTest = typeof alertDeliveryTests.$inferInsert;
+
+// 4.6D — Shadow Activity Log
+export const shadowActivityLog = pgTable("shadow_activity_log", {
+  id:             serial("id").primaryKey(),
+  entityType:     varchar("entity_type", { length: 64 }),
+  entityId:       varchar("entity_id",   { length: 128 }),
+  action:         varchar("action",      { length: 128 }),
+  expectedResult: jsonb("expected_result"),
+  actualResult:   jsonb("actual_result"),
+  mismatchFlag:   boolean("mismatch_flag").notNull().default(false),
+  createdAt:      timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type ShadowActivityLog       = typeof shadowActivityLog.$inferSelect;
+export type InsertShadowActivityLog = typeof shadowActivityLog.$inferInsert;
+
+// 4.6E — Incident Drills
+export const incidentDrills = pgTable("incident_drills", {
+  id:                  serial("id").primaryKey(),
+  scenario:            varchar("scenario", { length: 64 }),
+  actionsTakenJson:    jsonb("actions_taken_json").notNull().default(sql`'[]'::jsonb`),
+  recoveryTimeSeconds: integer("recovery_time_seconds"),
+  success:             boolean("success").notNull().default(false),
+  createdAt:           timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type IncidentDrill       = typeof incidentDrills.$inferSelect;
+export type InsertIncidentDrill = typeof incidentDrills.$inferInsert;
+
+// 4.6F — Go-Live Gates
+export const goLiveGates = pgTable("go_live_gates", {
+  id:         serial("id").primaryKey(),
+  status:     varchar("status", { length: 16 }).notNull().default('locked'),
+  checksJson: jsonb("checks_json").notNull().default(sql`'{}'::jsonb`),
+  approvedBy: varchar("approved_by", { length: 128 }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  createdAt:  timestamp("created_at",  { withTimezone: true }).notNull().defaultNow(),
+});
+export type GoLiveGate       = typeof goLiveGates.$inferSelect;
+export type InsertGoLiveGate = typeof goLiveGates.$inferInsert;
+
+// 4.6G — Rollout Phases
+export const rolloutPhases = pgTable("rollout_phases", {
+  id:                serial("id").primaryKey(),
+  phase:             varchar("phase", { length: 16 }).notNull().default('internal'),
+  trafficPercentage: integer("traffic_percentage").notNull().default(0),
+  enabled:           boolean("enabled").notNull().default(false),
+  createdAt:         timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type RolloutPhase       = typeof rolloutPhases.$inferSelect;
+export type InsertRolloutPhase = typeof rolloutPhases.$inferInsert;

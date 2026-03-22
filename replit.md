@@ -1690,3 +1690,32 @@ All endpoints under `/api/prestige-pass/admin/wallet/`. Admin-only. All schema c
 - 4.5G → Governance tab: Go-Live Checklist + Rollback Plan card — item-level verify/reset, rollback drawer with 9 steps + urgency levels
 - 4.5B → Command Center tab: Money Flow Integrity card — run checks button, per-check pass/fail display
 - 4.5F → Command Center tab: Consistency Check card — on-demand scan, mismatch type breakdown with sample IDs
+
+### Phase 4.6 — Controlled Go-Live & Production Readiness (COMPLETE)
+
+#### New Tables (7)
+- `e2e_proof_runs` — stores each proof run: type (full/payouts/disputes/recommendations/forecasts), status (running/passed/failed), steps_json, failures_json, timing
+- `system_config_audit_runs` — records each config audit: checks_json (per-check status), failures_json, overall status
+- `alert_delivery_tests` — records each alert delivery test: type, channel, recipient, delivered boolean, response_time_ms
+- `shadow_activity_log` — logs all shadow-mode operations: entity_type/id, action, expected vs actual result, mismatch_flag
+- `incident_drills` — records each drill: scenario, actions_taken_json (step-by-step), recovery_time_seconds, success boolean
+- `go_live_gates` — tracks the 6-condition launch gate: checks_json, status (locked/partial/ready/approved), approved_by + timestamp
+- `rollout_phases` — 4 phases (internal/beta/limited/full) with traffic_percentage and enabled flag; seeded with defaults
+
+#### Backend Routes (7 sections, all in `server/routes/prestige-pass.ts`)
+- 4.6A: `POST /admin/system/e2e/run` + `GET /admin/system/e2e/:id` + `GET /admin/system/e2e/history` — real invariant checks across 10 steps across 4 flow groups; updates gate on pass
+- 4.6B: `POST /admin/system/config-audit/run` + `GET /admin/system/config-audit/latest` — checks 8 ENV vars + kill switch state + admin role existence; severity: valid/warning/critical
+- 4.6C: `POST /admin/system/alerts/test` + `GET /admin/system/alerts/test-history` — injects test alert to governance_alerts feed; measures response_time_ms; grades green/amber/red
+- 4.6D: `POST /admin/system/shadow/enable|disable` + `GET /admin/system/shadow/logs` — shadow_mode stored as kill switch key; disable computes mismatch count; updates gate
+- 4.6E: `POST /admin/system/drill/run` + `GET /admin/system/drill/history` — 5 drill scenarios (payment_failure, batch_mismatch, stuck_payouts, dispute_overload, alert_failure); records step-by-step recovery
+- 4.6F: `GET /admin/system/go-live/status` (auto-refreshes all 6 conditions live) + `POST /admin/system/go-live/approve` (requires all-pass + approver name)
+- 4.6G: `GET /admin/system/rollout/status` + `POST /admin/system/rollout/set-phase` — enforces gate before non-internal advance; warns on phase jumps
+
+#### Frontend UI (AdminWalletDashboard.tsx)
+- 4.6A → Control Center: E2E System Test card — type selector, animated running state, step-by-step pass/fail result display
+- 4.6C → Control Center: Alert Routing Test card — type/recipient selectors, response time grade badge, delivery history table
+- 4.6D → Control Center: Shadow Mode card — yellow ACTIVE pulse badge, enable/disable toggle, mismatch display
+- 4.6G → Control Center: Controlled Rollout card — phase-by-phase cards with traffic %, Set Active button, gate-locked warning
+- 4.6F → Governance (TOP): Go-Live Readiness Gate — large colour-coded status banner (🔴/🟡/🟢/🚀), 6-condition grid, Approve button with approver name input
+- 4.6B → Governance: Config & Secrets Audit card — per-check valid/warning/critical badges, summary counts
+- 4.6E → Governance: Incident Drills card — scenario selector, step-by-step execution view, recovery time, history with success rate badge
