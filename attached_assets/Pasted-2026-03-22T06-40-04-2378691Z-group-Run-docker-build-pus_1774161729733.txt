@@ -1,0 +1,410 @@
+2026-03-22T06:40:04.2378691Z ##[group]Run docker/build-push-action@v6
+2026-03-22T06:40:04.2379061Z with:
+2026-03-22T06:40:04.2379580Z   context: .
+2026-03-22T06:40:04.2379825Z   push: true
+2026-03-22T06:40:04.2380560Z   tags: me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:d5b12487b8e12f5aa4c84fbbbca99b957f6e583f
+me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:latest
+
+2026-03-22T06:40:04.2381347Z   cache-from: type=gha
+2026-03-22T06:40:04.2381626Z   cache-to: type=gha,mode=max
+2026-03-22T06:40:04.2382234Z   load: false
+2026-03-22T06:40:04.2382466Z   no-cache: false
+2026-03-22T06:40:04.2382746Z   pull: false
+2026-03-22T06:40:04.2383095Z   github-token: ***
+2026-03-22T06:40:04.2383346Z env:
+2026-03-22T06:40:04.2383584Z   PROJECT_ID: signinpetwash
+2026-03-22T06:40:04.2383863Z   REGION: me-west1
+2026-03-22T06:40:04.2384120Z   SERVICE_NAME: petwash-api
+2026-03-22T06:40:04.2384397Z   REPO_NAME: petwash-api
+2026-03-22T06:40:04.2384777Z   IMAGE: me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend
+2026-03-22T06:40:04.2385238Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-03-22T06:40:04.2385889Z   CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE: /home/runner/work/petwash-marketplace/petwash-marketplace/gha-creds-c40611e4ce64c752.json
+2026-03-22T06:40:04.2386826Z   GOOGLE_APPLICATION_CREDENTIALS: /home/runner/work/petwash-marketplace/petwash-marketplace/gha-creds-c40611e4ce64c752.json
+2026-03-22T06:40:04.2387676Z   GOOGLE_GHA_CREDS_PATH: /home/runner/work/petwash-marketplace/petwash-marketplace/gha-creds-c40611e4ce64c752.json
+2026-03-22T06:40:04.2388260Z   CLOUDSDK_CORE_PROJECT: signinpetwash
+2026-03-22T06:40:04.2388582Z   CLOUDSDK_PROJECT: signinpetwash
+2026-03-22T06:40:04.2388879Z   GCLOUD_PROJECT: signinpetwash
+2026-03-22T06:40:04.2389345Z   GCP_PROJECT: signinpetwash
+2026-03-22T06:40:04.2389848Z   GOOGLE_CLOUD_PROJECT: signinpetwash
+2026-03-22T06:40:04.2390246Z   CLOUDSDK_METRICS_ENVIRONMENT: github-actions-setup-gcloud
+2026-03-22T06:40:04.2390650Z   CLOUDSDK_METRICS_ENVIRONMENT_VERSION: 2.2.1
+2026-03-22T06:40:04.2390972Z ##[endgroup]
+2026-03-22T06:40:04.4876262Z (node:3132) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-03-22T06:40:04.4877247Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-03-22T06:40:04.4897737Z ##[group]GitHub Actions runtime token ACs
+2026-03-22T06:40:04.4907370Z refs/heads/main: read/write
+2026-03-22T06:40:04.4908519Z ##[endgroup]
+2026-03-22T06:40:04.4909404Z ##[group]Docker info
+2026-03-22T06:40:04.4946630Z [command]/usr/bin/docker version
+2026-03-22T06:40:04.5149123Z Client: Docker Engine - Community
+2026-03-22T06:40:04.5154505Z  Version:           28.0.4
+2026-03-22T06:40:04.5155609Z  API version:       1.48
+2026-03-22T06:40:04.5156441Z  Go version:        go1.23.7
+2026-03-22T06:40:04.5156955Z  Git commit:        b8034c0
+2026-03-22T06:40:04.5157476Z  Built:             Tue Mar 25 15:07:16 2025
+2026-03-22T06:40:04.5158029Z  OS/Arch:           linux/amd64
+2026-03-22T06:40:04.5158559Z  Context:           default
+2026-03-22T06:40:04.5158894Z 
+2026-03-22T06:40:04.5159110Z Server: Docker Engine - Community
+2026-03-22T06:40:04.5159839Z  Engine:
+2026-03-22T06:40:04.5160235Z   Version:          28.0.4
+2026-03-22T06:40:04.5160899Z   API version:      1.48 (minimum version 1.24)
+2026-03-22T06:40:04.5161295Z   Go version:       go1.23.7
+2026-03-22T06:40:04.5161628Z   Git commit:       6430e49
+2026-03-22T06:40:04.5161973Z   Built:            Tue Mar 25 15:07:16 2025
+2026-03-22T06:40:04.5162422Z   OS/Arch:          linux/amd64
+2026-03-22T06:40:04.5163070Z   Experimental:     false
+2026-03-22T06:40:04.5163567Z  containerd:
+2026-03-22T06:40:04.5164032Z   Version:          v2.2.1
+2026-03-22T06:40:04.5164646Z   GitCommit:        dea7da592f5d1d2b7755e3a161be07f43fad8f75
+2026-03-22T06:40:04.5165308Z  runc:
+2026-03-22T06:40:04.5165745Z   Version:          1.3.4
+2026-03-22T06:40:04.5166263Z   GitCommit:        v1.3.4-0-gd6d73eb8
+2026-03-22T06:40:04.5166807Z  docker-init:
+2026-03-22T06:40:04.5167263Z   Version:          0.19.0
+2026-03-22T06:40:04.5168376Z   GitCommit:        de40ad0
+2026-03-22T06:40:04.5201602Z [command]/usr/bin/docker info
+2026-03-22T06:40:04.5763727Z Client: Docker Engine - Community
+2026-03-22T06:40:04.5764382Z  Version:    28.0.4
+2026-03-22T06:40:04.5764829Z  Context:    default
+2026-03-22T06:40:04.5765278Z  Debug Mode: false
+2026-03-22T06:40:04.5765700Z  Plugins:
+2026-03-22T06:40:04.5766123Z   buildx: Docker Buildx (Docker Inc.)
+2026-03-22T06:40:04.5766667Z     Version:  v0.32.1
+2026-03-22T06:40:04.5767592Z     Path:     /usr/libexec/docker/cli-plugins/docker-buildx
+2026-03-22T06:40:04.5768262Z   compose: Docker Compose (Docker Inc.)
+2026-03-22T06:40:04.5768793Z     Version:  v2.38.2
+2026-03-22T06:40:04.5769538Z     Path:     /usr/libexec/docker/cli-plugins/docker-compose
+2026-03-22T06:40:04.5769985Z 
+2026-03-22T06:40:04.5770155Z Server:
+2026-03-22T06:40:04.5770551Z  Containers: 1
+2026-03-22T06:40:04.5770967Z   Running: 1
+2026-03-22T06:40:04.5771376Z   Paused: 0
+2026-03-22T06:40:04.5771756Z   Stopped: 0
+2026-03-22T06:40:04.5772152Z  Images: 7
+2026-03-22T06:40:04.5772556Z  Server Version: 28.0.4
+2026-03-22T06:40:04.5773006Z  Storage Driver: overlay2
+2026-03-22T06:40:04.5773459Z   Backing Filesystem: extfs
+2026-03-22T06:40:04.5773924Z   Supports d_type: true
+2026-03-22T06:40:04.5774364Z   Using metacopy: false
+2026-03-22T06:40:04.5774853Z   Native Overlay Diff: false
+2026-03-22T06:40:04.5775322Z   userxattr: false
+2026-03-22T06:40:04.5775742Z  Logging Driver: json-file
+2026-03-22T06:40:04.5776194Z  Cgroup Driver: systemd
+2026-03-22T06:40:04.5776634Z  Cgroup Version: 2
+2026-03-22T06:40:04.5777033Z  Plugins:
+2026-03-22T06:40:04.5777425Z   Volume: local
+2026-03-22T06:40:04.5777893Z   Network: bridge host ipvlan macvlan null overlay
+2026-03-22T06:40:04.5778722Z   Log: awslogs fluentd gcplogs gelf journald json-file local splunk syslog
+2026-03-22T06:40:04.5779706Z  Swarm: inactive
+2026-03-22T06:40:04.5780178Z  Runtimes: io.containerd.runc.v2 runc
+2026-03-22T06:40:04.5780721Z  Default Runtime: runc
+2026-03-22T06:40:04.5781185Z  Init Binary: docker-init
+2026-03-22T06:40:04.5781845Z  containerd version: dea7da592f5d1d2b7755e3a161be07f43fad8f75
+2026-03-22T06:40:04.5782515Z  runc version: v1.3.4-0-gd6d73eb8
+2026-03-22T06:40:04.5783068Z  init version: de40ad0
+2026-03-22T06:40:04.5783433Z  Security Options:
+2026-03-22T06:40:04.5783832Z   apparmor
+2026-03-22T06:40:04.5784185Z   seccomp
+2026-03-22T06:40:04.5784484Z    Profile: builtin
+2026-03-22T06:40:04.5784770Z   cgroupns
+2026-03-22T06:40:04.5785061Z  Kernel Version: 6.14.0-1017-azure
+2026-03-22T06:40:04.5785447Z  Operating System: Ubuntu 24.04.3 LTS
+2026-03-22T06:40:04.5785799Z  OSType: linux
+2026-03-22T06:40:04.5786100Z  Architecture: x86_64
+2026-03-22T06:40:04.5786400Z  CPUs: 4
+2026-03-22T06:40:04.5786738Z  Total Memory: 15.62GiB
+2026-03-22T06:40:04.5787214Z  Name: runnervm46oaq
+2026-03-22T06:40:04.5787597Z  ID: d09189cb-1d3f-4984-a57a-14f8dab86177
+2026-03-22T06:40:04.5787978Z  Docker Root Dir: /var/lib/docker
+2026-03-22T06:40:04.5797679Z  Debug Mode: false
+2026-03-22T06:40:04.5798074Z  Username: githubactions
+2026-03-22T06:40:04.5798527Z  Experimental: false
+2026-03-22T06:40:04.5798914Z  Insecure Registries:
+2026-03-22T06:40:04.5799453Z   ::1/128
+2026-03-22T06:40:04.5799855Z   127.0.0.0/8
+2026-03-22T06:40:04.5800161Z  Live Restore Enabled: false
+2026-03-22T06:40:04.5800363Z 
+2026-03-22T06:40:04.5800887Z ##[endgroup]
+2026-03-22T06:40:04.5801470Z ##[group]Proxy configuration
+2026-03-22T06:40:04.5801801Z No proxy configuration found
+2026-03-22T06:40:04.5802415Z ##[endgroup]
+2026-03-22T06:40:04.6471966Z ##[group]Buildx version
+2026-03-22T06:40:04.6498254Z [command]/usr/bin/docker buildx version
+2026-03-22T06:40:04.7112802Z github.com/docker/buildx v0.32.1 d3bfb3f4e48a67dda56e957a6636f4fab6c5fcb2
+2026-03-22T06:40:04.7155547Z ##[endgroup]
+2026-03-22T06:40:04.7156316Z ##[group]Builder info
+2026-03-22T06:40:04.8202554Z ***
+2026-03-22T06:40:04.8204634Z   "nodes": [
+2026-03-22T06:40:04.8205381Z     ***
+2026-03-22T06:40:04.8206123Z       "name": "builder-edc22e3a-3278-4d0f-b671-398409ffe7260",
+2026-03-22T06:40:04.8207226Z       "endpoint": "unix:///var/run/docker.sock",
+2026-03-22T06:40:04.8207814Z       "status": "running",
+2026-03-22T06:40:04.8208817Z       "buildkitd-flags": "--allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host",
+2026-03-22T06:40:04.8210208Z       "buildkit": "v0.28.0",
+2026-03-22T06:40:04.8210923Z       "platforms": "linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/386",
+2026-03-22T06:40:04.8211690Z       "features": ***
+2026-03-22T06:40:04.8212700Z         "Automatically load images to the Docker Engine image store": true,
+2026-03-22T06:40:04.8213471Z         "Cache export": true,
+2026-03-22T06:40:04.8214009Z         "Direct push": true,
+2026-03-22T06:40:04.8214533Z         "Docker exporter": true,
+2026-03-22T06:40:04.8215088Z         "Multi-platform build": true,
+2026-03-22T06:40:04.8215656Z         "OCI exporter": true
+2026-03-22T06:40:04.8216135Z       ***,
+2026-03-22T06:40:04.8216546Z       "labels": ***
+2026-03-22T06:40:04.8217142Z         "org.mobyproject.buildkit.worker.executor": "oci",
+2026-03-22T06:40:04.8218006Z         "org.mobyproject.buildkit.worker.hostname": "de66d912dc21",
+2026-03-22T06:40:04.8218855Z         "org.mobyproject.buildkit.worker.network": "host",
+2026-03-22T06:40:04.8220349Z         "org.mobyproject.buildkit.worker.oci.process-mode": "sandbox",
+2026-03-22T06:40:04.8221301Z         "org.mobyproject.buildkit.worker.selinux.enabled": "false",
+2026-03-22T06:40:04.8222193Z         "org.mobyproject.buildkit.worker.snapshotter": "overlayfs"
+2026-03-22T06:40:04.8222938Z       ***,
+2026-03-22T06:40:04.8223347Z       "gcPolicy": [
+2026-03-22T06:40:04.8223790Z         ***
+2026-03-22T06:40:04.8224194Z           "all": false,
+2026-03-22T06:40:04.8224656Z           "filter": [
+2026-03-22T06:40:04.8225142Z             "type==source.local",
+2026-03-22T06:40:04.8225694Z             "type==exec.cachemount",
+2026-03-22T06:40:04.8226281Z             "type==source.git.checkout"
+2026-03-22T06:40:04.8226831Z           ],
+2026-03-22T06:40:04.8227301Z           "keepDuration": "48h0m0s",
+2026-03-22T06:40:04.8227865Z           "maxUsedSpace": "488.3MiB"
+2026-03-22T06:40:04.8228429Z         ***,
+2026-03-22T06:40:04.8228848Z         ***
+2026-03-22T06:40:04.8229527Z           "all": false,
+2026-03-22T06:40:04.8230035Z           "keepDuration": "1440h0m0s",
+2026-03-22T06:40:04.8230616Z           "reservedSpace": "9.313GiB",
+2026-03-22T06:40:04.8231213Z           "maxUsedSpace": "93.13GiB",
+2026-03-22T06:40:04.8231801Z           "minFreeSpace": "27.01GiB"
+2026-03-22T06:40:04.8232335Z         ***,
+2026-03-22T06:40:04.8232754Z         ***
+2026-03-22T06:40:04.8233167Z           "all": false,
+2026-03-22T06:40:04.8233673Z           "reservedSpace": "9.313GiB",
+2026-03-22T06:40:04.8234249Z           "maxUsedSpace": "93.13GiB",
+2026-03-22T06:40:04.8234824Z           "minFreeSpace": "27.01GiB"
+2026-03-22T06:40:04.8235369Z         ***,
+2026-03-22T06:40:04.8235825Z         ***
+2026-03-22T06:40:04.8236238Z           "all": true,
+2026-03-22T06:40:04.8236735Z           "reservedSpace": "9.313GiB",
+2026-03-22T06:40:04.8237329Z           "maxUsedSpace": "93.13GiB",
+2026-03-22T06:40:04.8237898Z           "minFreeSpace": "27.01GiB"
+2026-03-22T06:40:04.8238449Z         ***
+2026-03-22T06:40:04.8238848Z       ]
+2026-03-22T06:40:04.8239482Z     ***
+2026-03-22T06:40:04.8239883Z   ],
+2026-03-22T06:40:04.8240414Z   "name": "builder-edc22e3a-3278-4d0f-b671-398409ffe726",
+2026-03-22T06:40:04.8241129Z   "driver": "docker-container",
+2026-03-22T06:40:04.8241716Z   "lastActivity": "2026-03-22T06:39:59.000Z"
+2026-03-22T06:40:04.8242314Z ***
+2026-03-22T06:40:04.8243151Z ##[endgroup]
+2026-03-22T06:40:05.0044199Z [command]/usr/bin/docker buildx build --cache-from type=gha --cache-to type=gha,mode=max --iidfile /home/runner/work/_temp/docker-actions-toolkit-EO1BIG/build-iidfile-090c7645db.txt --attest type=provenance,mode=max,builder-id=https://github.com/petwashglobal/petwash-marketplace/actions/runs/23397526742/attempts/1 --tag me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:d5b12487b8e12f5aa4c84fbbbca99b957f6e583f --tag me-west1-docker.pkg.dev/signinpetwash/petwash-api/backend:latest --metadata-file /home/runner/work/_temp/docker-actions-toolkit-EO1BIG/build-metadata-8c55836219.json --push .
+2026-03-22T06:40:05.3591773Z #0 building with "builder-edc22e3a-3278-4d0f-b671-398409ffe726" instance using docker-container driver
+2026-03-22T06:40:05.3592532Z 
+2026-03-22T06:40:05.3592760Z #1 [internal] load build definition from Dockerfile
+2026-03-22T06:40:05.3593295Z #1 transferring dockerfile: 3.74kB done
+2026-03-22T06:40:05.3594124Z #1 DONE 0.0s
+2026-03-22T06:40:05.3594319Z 
+2026-03-22T06:40:05.3594572Z #2 [auth] library/node:pull token for registry-1.docker.io
+2026-03-22T06:40:05.3595094Z #2 DONE 0.0s
+2026-03-22T06:40:05.3595298Z 
+2026-03-22T06:40:05.3595570Z #3 [internal] load metadata for docker.io/library/node:20-slim
+2026-03-22T06:40:05.6147682Z #3 DONE 0.5s
+2026-03-22T06:40:05.7840255Z 
+2026-03-22T06:40:05.7840863Z #4 [internal] load .dockerignore
+2026-03-22T06:40:05.7841574Z #4 transferring context: 290B done
+2026-03-22T06:40:05.7842210Z #4 DONE 0.0s
+2026-03-22T06:40:05.7842481Z 
+2026-03-22T06:40:05.7842637Z #5 [internal] load build context
+2026-03-22T06:40:05.7843011Z #5 DONE 0.0s
+2026-03-22T06:40:05.7843180Z 
+2026-03-22T06:40:05.7843704Z #6 [builder 1/6] FROM docker.io/library/node:20-slim@sha256:17281e8d1dc4d671976c6b89a12f47a44c2f390b63a989e2e327631041f544fd
+2026-03-22T06:40:05.7844834Z #6 resolve docker.io/library/node:20-slim@sha256:17281e8d1dc4d671976c6b89a12f47a44c2f390b63a989e2e327631041f544fd done
+2026-03-22T06:40:05.7845588Z #6 DONE 0.0s
+2026-03-22T06:40:05.7845759Z 
+2026-03-22T06:40:05.7845980Z #7 importing cache manifest from gha:7680774560650794218
+2026-03-22T06:40:05.7987284Z #7 DONE 0.2s
+2026-03-22T06:40:05.9048436Z 
+2026-03-22T06:40:05.9049714Z #5 [internal] load build context
+2026-03-22T06:40:10.6324915Z #5 transferring context: 773.72MB 4.8s
+2026-03-22T06:40:12.4425956Z #5 transferring context: 979.61MB 6.6s done
+2026-03-22T06:40:12.5640358Z #5 DONE 6.7s
+2026-03-22T06:40:12.5640966Z 
+2026-03-22T06:40:12.5641710Z #8 [builder 4/6] RUN npm install --legacy-peer-deps
+2026-03-22T06:40:12.5647797Z #8 ERROR: blob sha256:cd109496182f48ac89395e36b9eb2b6afe88cc5e20d1b530b84d903345bf7a2b: not found
+2026-03-22T06:40:12.5648507Z 
+2026-03-22T06:40:12.5648681Z #9 [builder 3/6] COPY package*.json ./
+2026-03-22T06:40:12.5649644Z #9 ERROR: blob sha256:c6c881bb1f1fda10240ba71543c61ee25c0aa9fd4bb9d6d59afc8d7c2beb4dce: not found
+2026-03-22T06:40:12.5650231Z 
+2026-03-22T06:40:12.5650404Z #10 [builder 2/6] WORKDIR /app
+2026-03-22T06:40:12.5651147Z #10 ERROR: blob sha256:159a0df014c3ed054a5fd960d12baf2ae43106661abba125743641fdc6436ad2: not found
+2026-03-22T06:40:12.6739559Z 
+2026-03-22T06:40:12.6740756Z #6 [builder 1/6] FROM docker.io/library/node:20-slim@sha256:17281e8d1dc4d671976c6b89a12f47a44c2f390b63a989e2e327631041f544fd
+2026-03-22T06:40:12.6742300Z #6 sha256:44d7c76471e26ea07b364506ecc994ce1989cef868eaed50679d122774ffe435 445B / 445B 0.0s done
+2026-03-22T06:40:12.6743624Z #6 sha256:74251002e6ddbd63bef74e22f6e690c88dfbb143bfbdc160191aadf8c02c3432 1.71MB / 1.71MB 0.1s done
+2026-03-22T06:40:12.7815200Z #6 sha256:826a82fd63cc5f414d92dd9851c9462290322549302fed79c0d200e0734ecccf 3.31kB / 3.31kB 0.1s done
+2026-03-22T06:40:12.7817189Z #6 sha256:cd109496182f48ac89395e36b9eb2b6afe88cc5e20d1b530b84d903345bf7a2b 19.92MB / 41.42MB 0.2s
+2026-03-22T06:40:12.7818721Z #6 sha256:6db0909c4473287ed4d1f950d26b8bc5b7b4206d365a0e7740cb89e46979153e 25.17MB / 28.24MB 0.2s
+2026-03-22T06:40:12.9860527Z #6 sha256:cd109496182f48ac89395e36b9eb2b6afe88cc5e20d1b530b84d903345bf7a2b 41.42MB / 41.42MB 0.3s done
+2026-03-22T06:40:12.9862111Z #6 sha256:6db0909c4473287ed4d1f950d26b8bc5b7b4206d365a0e7740cb89e46979153e 28.24MB / 28.24MB 0.2s done
+2026-03-22T06:40:12.9863380Z #6 extracting sha256:6db0909c4473287ed4d1f950d26b8bc5b7b4206d365a0e7740cb89e46979153e
+2026-03-22T06:40:13.6761667Z #6 extracting sha256:6db0909c4473287ed4d1f950d26b8bc5b7b4206d365a0e7740cb89e46979153e 0.9s done
+2026-03-22T06:40:13.6762601Z #6 DONE 1.1s
+2026-03-22T06:40:13.8336338Z 
+2026-03-22T06:40:13.8337361Z #6 [builder 1/6] FROM docker.io/library/node:20-slim@sha256:17281e8d1dc4d671976c6b89a12f47a44c2f390b63a989e2e327631041f544fd
+2026-03-22T06:40:13.8338315Z #6 extracting sha256:826a82fd63cc5f414d92dd9851c9462290322549302fed79c0d200e0734ecccf done
+2026-03-22T06:40:13.8341186Z #6 extracting sha256:cd109496182f48ac89395e36b9eb2b6afe88cc5e20d1b530b84d903345bf7a2b
+2026-03-22T06:40:14.7925349Z #6 extracting sha256:cd109496182f48ac89395e36b9eb2b6afe88cc5e20d1b530b84d903345bf7a2b 1.1s done
+2026-03-22T06:40:14.7927160Z #6 DONE 2.2s
+2026-03-22T06:40:14.9429729Z 
+2026-03-22T06:40:14.9430574Z #6 [builder 1/6] FROM docker.io/library/node:20-slim@sha256:17281e8d1dc4d671976c6b89a12f47a44c2f390b63a989e2e327631041f544fd
+2026-03-22T06:40:14.9431443Z #6 extracting sha256:74251002e6ddbd63bef74e22f6e690c88dfbb143bfbdc160191aadf8c02c3432
+2026-03-22T06:40:15.0441133Z #6 extracting sha256:74251002e6ddbd63bef74e22f6e690c88dfbb143bfbdc160191aadf8c02c3432 0.3s done
+2026-03-22T06:40:15.0442393Z #6 DONE 2.5s
+2026-03-22T06:40:15.2031770Z 
+2026-03-22T06:40:15.2033554Z #6 [builder 1/6] FROM docker.io/library/node:20-slim@sha256:17281e8d1dc4d671976c6b89a12f47a44c2f390b63a989e2e327631041f544fd
+2026-03-22T06:40:15.2035706Z #6 extracting sha256:44d7c76471e26ea07b364506ecc994ce1989cef868eaed50679d122774ffe435 done
+2026-03-22T06:40:15.2037761Z #6 DONE 2.5s
+2026-03-22T06:40:15.2038136Z 
+2026-03-22T06:40:15.2038785Z #10 [builder 2/6] WORKDIR /app
+2026-03-22T06:40:16.2995622Z #10 DONE 1.3s
+2026-03-22T06:40:16.4820383Z 
+2026-03-22T06:40:16.4821001Z #9 [builder 3/6] COPY package*.json ./
+2026-03-22T06:40:16.4821624Z #9 DONE 0.1s
+2026-03-22T06:40:16.4821875Z 
+2026-03-22T06:40:16.4822177Z #8 [builder 4/6] RUN npm install --legacy-peer-deps
+2026-03-22T06:40:21.5365845Z #8 5.205 npm warn deprecated scmp@2.1.0: Just use Node.js's crypto.timingSafeEqual()
+2026-03-22T06:40:23.0851306Z #8 6.754 npm warn deprecated lodash.isequal@4.5.0: This package is deprecated. Use require('node:util').isDeepStrictEqual instead.
+2026-03-22T06:40:23.6265265Z #8 7.295 npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+2026-03-22T06:40:23.7978504Z #8 7.319 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+2026-03-22T06:40:23.7980077Z #8 7.466 npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+2026-03-22T06:40:24.5958541Z #8 8.264 npm warn deprecated fstream@1.0.12: This package is no longer supported.
+2026-03-22T06:40:27.7775567Z #8 11.45 npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+2026-03-22T06:40:27.9541658Z #8 11.47 npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+2026-03-22T06:40:29.2094954Z #8 12.88 npm warn deprecated rimraf@2.7.1: Rimraf versions prior to v4 are no longer supported
+2026-03-22T06:40:51.8212755Z #8 35.49 
+2026-03-22T06:40:51.8213606Z #8 35.49 added 1676 packages, and audited 1677 packages in 35s
+2026-03-22T06:40:52.0216114Z #8 35.49 
+2026-03-22T06:40:52.0217300Z #8 35.49 258 packages are looking for funding
+2026-03-22T06:40:52.0217998Z #8 35.49   run `npm fund` for details
+2026-03-22T06:40:52.0218529Z #8 35.54 
+2026-03-22T06:40:52.0218899Z #8 35.54 24 vulnerabilities (15 low, 6 moderate, 3 high)
+2026-03-22T06:40:52.0219585Z #8 35.54 
+2026-03-22T06:40:52.0219950Z #8 35.54 To address issues that do not require attention, run:
+2026-03-22T06:40:52.0220423Z #8 35.54   npm audit fix
+2026-03-22T06:40:52.0220720Z #8 35.54 
+2026-03-22T06:40:52.0221079Z #8 35.54 To address all issues (including breaking changes), run:
+2026-03-22T06:40:52.0221551Z #8 35.54   npm audit fix --force
+2026-03-22T06:40:52.0221908Z #8 35.54 
+2026-03-22T06:40:52.0222185Z #8 35.54 Run `npm audit` for details.
+2026-03-22T06:40:52.0222536Z #8 35.54 npm notice
+2026-03-22T06:40:52.0222971Z #8 35.54 npm notice New major version of npm available! 10.8.2 -> 11.12.0
+2026-03-22T06:40:52.0224044Z #8 35.54 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.12.0
+2026-03-22T06:40:52.0224677Z #8 35.54 npm notice To update run: npm install -g npm@11.12.0
+2026-03-22T06:40:52.0225114Z #8 35.54 npm notice
+2026-03-22T06:40:52.8048592Z #8 DONE 36.5s
+2026-03-22T06:40:52.9561998Z 
+2026-03-22T06:40:52.9562586Z #11 [builder 5/6] COPY . .
+2026-03-22T06:40:57.0057592Z #11 DONE 4.2s
+2026-03-22T06:40:57.1570024Z 
+2026-03-22T06:40:57.1571106Z #12 [builder 6/6] RUN npm run build
+2026-03-22T06:40:57.1886681Z #12 0.182 
+2026-03-22T06:40:57.1887684Z #12 0.182 > rest-express@1.0.0 prebuild
+2026-03-22T06:40:57.1888480Z #12 0.182 > npm run preflight
+2026-03-22T06:40:57.1888987Z #12 0.182 
+2026-03-22T06:40:57.3000751Z #12 0.293 
+2026-03-22T06:40:57.3001492Z #12 0.293 > rest-express@1.0.0 preflight
+2026-03-22T06:40:57.3002196Z #12 0.293 > tsx scripts/petwash-preflight.ts
+2026-03-22T06:40:57.3002785Z #12 0.293 
+2026-03-22T06:40:57.5731983Z #12 0.566 🛡️  PETWASH™ PREFLIGHT GUARDIAN v2 - CONTENT SCANNER
+2026-03-22T06:40:57.5735448Z #12 0.566 
+2026-03-22T06:40:57.7337275Z #12 0.567 ================================
+2026-03-22T06:40:57.7338049Z #12 0.567 
+2026-03-22T06:40:57.7338905Z #12 0.567 🔍 Scanning for forbidden file names...
+2026-03-22T06:40:57.7342643Z #12 0.567 
+2026-03-22T06:40:57.7345178Z #12 0.577 📖 Scanning file CONTENTS for forbidden identifiers (comprehensive)...
+2026-03-22T06:40:57.7346016Z #12 0.577 
+2026-03-22T06:40:57.7777788Z #12 0.771 🎨 Verifying CSS files (HARD FAIL)...
+2026-03-22T06:40:57.7778938Z #12 0.771 
+2026-03-22T06:40:57.9534092Z #12 0.777 📐 Checking for parallel layout systems...
+2026-03-22T06:40:57.9534855Z #12 0.777 
+2026-03-22T06:40:57.9535256Z #12 0.779 
+2026-03-22T06:40:57.9535673Z #12 0.779 ================================
+2026-03-22T06:40:57.9536224Z #12 0.779 
+2026-03-22T06:40:57.9536728Z #12 0.779 📊 PREFLIGHT REPORT:
+2026-03-22T06:40:57.9537232Z #12 0.779 
+2026-03-22T06:40:57.9537803Z #12 0.779 ✅ PREFLIGHT PASSED - All guards green
+2026-03-22T06:40:57.9538430Z #12 0.779 
+2026-03-22T06:40:57.9538777Z #12 0.779 🎯 Luxury UI integrity: 100%
+2026-03-22T06:40:57.9539350Z #12 0.779 🚀 Ready for build/deploy
+2026-03-22T06:40:57.9539854Z #12 0.779 
+2026-03-22T06:40:57.9540242Z #12 0.796 
+2026-03-22T06:40:57.9540685Z #12 0.796 > rest-express@1.0.0 build
+2026-03-22T06:40:57.9541049Z #12 0.796 > vite build
+2026-03-22T06:40:57.9541588Z #12 0.796 
+2026-03-22T06:40:58.0007544Z #12 0.994 vite v5.4.21 building for production...
+2026-03-22T06:40:58.2257082Z #12 1.068 transforming...
+2026-03-22T06:41:00.2376689Z #12 3.231 ✓ 1269 modules transformed.
+2026-03-22T06:41:00.3083714Z #12 3.232 x Build failed in 2.21s
+2026-03-22T06:41:00.3085046Z #12 3.233 error during build:
+2026-03-22T06:41:00.3085952Z #12 3.233 [vite:esbuild] Transform failed with 1 error:
+2026-03-22T06:41:00.3087246Z #12 3.233 /app/client/src/pages/CustomerBookings.tsx:339:31: ERROR: Expected "***" but found "d"
+2026-03-22T06:41:00.3088772Z #12 3.233 file: /app/client/src/pages/CustomerBookings.tsx:339:31
+2026-03-22T06:41:00.3090074Z #12 3.233 
+2026-03-22T06:41:00.3090389Z #12 3.233 Expected "***" but found "d"
+2026-03-22T06:41:00.3090991Z #12 3.233 337|      icon: Star, iconColor: '#7C3AED',
+2026-03-22T06:41:00.3091915Z #12 3.233 338|      he: 'השירות הושלם! נשמח לשמוע מה חשבת — השאר ביקורת.',
+2026-03-22T06:41:00.3093241Z #12 3.233 339|      en: 'Service completed! We'd love your feedback — please leave a review.',
+2026-03-22T06:41:00.3094133Z #12 3.233    |                                 ^
+2026-03-22T06:41:00.3094769Z #12 3.233 340|    ***,
+2026-03-22T06:41:00.3095274Z #12 3.233 341|    reviewed: ***
+2026-03-22T06:41:00.3095786Z #12 3.233 
+2026-03-22T06:41:00.3096597Z #12 3.233     at failureErrorWithLog (/app/node_modules/vite/node_modules/esbuild/lib/main.js:1472:15)
+2026-03-22T06:41:00.3097700Z #12 3.233     at /app/node_modules/vite/node_modules/esbuild/lib/main.js:755:50
+2026-03-22T06:41:00.3098784Z #12 3.233     at responseCallbacks.<computed> (/app/node_modules/vite/node_modules/esbuild/lib/main.js:622:9)
+2026-03-22T06:41:00.3100570Z #12 3.233     at handleIncomingPacket (/app/node_modules/vite/node_modules/esbuild/lib/main.js:677:12)
+2026-03-22T06:41:00.3101728Z #12 3.233     at Socket.readFromStdout (/app/node_modules/vite/node_modules/esbuild/lib/main.js:600:7)
+2026-03-22T06:41:00.3102667Z #12 3.233     at Socket.emit (node:events:524:28)
+2026-03-22T06:41:00.3103305Z #12 3.233     at addChunk (node:internal/streams/readable:561:12)
+2026-03-22T06:41:00.3104453Z #12 3.233     at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-03-22T06:41:00.3105331Z #12 3.233     at Readable.push (node:internal/streams/readable:392:5)
+2026-03-22T06:41:00.3106195Z #12 3.233     at Pipe.onStreamRead (node:internal/stream_base_commons:191:23)
+2026-03-22T06:41:00.3107159Z #12 ERROR: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
+2026-03-22T06:41:00.3107908Z ------
+2026-03-22T06:41:00.3108323Z  > [builder 6/6] RUN npm run build:
+2026-03-22T06:41:00.3109399Z 3.233     at failureErrorWithLog (/app/node_modules/vite/node_modules/esbuild/lib/main.js:1472:15)
+2026-03-22T06:41:00.3110464Z 3.233     at /app/node_modules/vite/node_modules/esbuild/lib/main.js:755:50
+2026-03-22T06:41:00.3111543Z 3.233     at responseCallbacks.<computed> (/app/node_modules/vite/node_modules/esbuild/lib/main.js:622:9)
+2026-03-22T06:41:00.3112777Z 3.233     at handleIncomingPacket (/app/node_modules/vite/node_modules/esbuild/lib/main.js:677:12)
+2026-03-22T06:41:00.3113970Z 3.233     at Socket.readFromStdout (/app/node_modules/vite/node_modules/esbuild/lib/main.js:600:7)
+2026-03-22T06:41:00.3114879Z 3.233     at Socket.emit (node:events:524:28)
+2026-03-22T06:41:00.3115592Z 3.233     at addChunk (node:internal/streams/readable:561:12)
+2026-03-22T06:41:00.3116397Z 3.233     at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-03-22T06:41:00.3117322Z 3.233     at Readable.push (node:internal/streams/readable:392:5)
+2026-03-22T06:41:00.3118136Z 3.233     at Pipe.onStreamRead (node:internal/stream_base_commons:191:23)
+2026-03-22T06:41:00.3118790Z ------
+2026-03-22T06:41:00.3166797Z 
+2026-03-22T06:41:00.3168837Z  [33m8 warnings found (use docker --debug to expand):
+2026-03-22T06:41:00.3170829Z [0m - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "VITE_FIREBASE_VAPID_KEY") (line 33)
+2026-03-22T06:41:00.3173429Z  - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "VITE_RECAPTCHA_SITE_KEY") (line 34)
+2026-03-22T06:41:00.3177256Z  - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "VITE_FIREBASE_API_KEY") (line 13)
+2026-03-22T06:41:00.3178730Z  - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "VITE_FIREBASE_AUTH_DOMAIN") (line 14)
+2026-03-22T06:41:00.3180404Z  - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "VITE_FIREBASE_VAPID_KEY") (line 20)
+2026-03-22T06:41:00.3181889Z  - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "VITE_RECAPTCHA_SITE_KEY") (line 21)
+2026-03-22T06:41:00.3193452Z  - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "VITE_FIREBASE_API_KEY") (line 26)
+2026-03-22T06:41:00.3194853Z  - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "VITE_FIREBASE_AUTH_DOMAIN") (line 27)
+2026-03-22T06:41:00.3195813Z Dockerfile:42
+2026-03-22T06:41:00.3196199Z --------------------
+2026-03-22T06:41:00.3196590Z   40 |     
+2026-03-22T06:41:00.3196919Z   41 |     COPY . .
+2026-03-22T06:41:00.3197315Z   42 | >>> RUN npm run build
+2026-03-22T06:41:00.3197715Z   43 |     
+2026-03-22T06:41:00.3198128Z   44 |     # Stage 2: Production runtime (minimal)
+2026-03-22T06:41:00.3198641Z --------------------
+2026-03-22T06:41:00.3199569Z ERROR: failed to build: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
+2026-03-22T06:41:00.3336303Z ##[group]Reference
+2026-03-22T06:41:00.5554466Z builder-edc22e3a-3278-4d0f-b671-398409ffe726/builder-edc22e3a-3278-4d0f-b671-398409ffe7260/wcju6j204td2fub2f5g9mjqtl
+2026-03-22T06:41:00.5556593Z ##[endgroup]
+2026-03-22T06:41:00.5557462Z ##[group]Check build summary support
+2026-03-22T06:41:00.5564512Z Build summary supported!
+2026-03-22T06:41:00.5575677Z ##[endgroup]
+2026-03-22T06:41:00.5665778Z ##[error]buildx failed with: ERROR: failed to build: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
