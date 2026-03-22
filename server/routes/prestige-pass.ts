@@ -18214,6 +18214,42 @@ async function executeSelfHealingAction(
   }
 }
 
+// ── 4.8D — Confidence Score Helper ───────────────────────────────────────────
+async function computeConfidenceScore(
+  ruleId: number,
+  anomalyScore: number,
+  consecutiveTriggersRequired: number
+): Promise<{ confidence: number; priorityComponent: number; fpPenalty: number; triggerBonus: number; fpRate: number }> {
+  // Fetch FP rate for this rule over last 30 days
+  const totalRes = await pool.query(`
+    SELECT COUNT(*) as total FROM self_healing_executions
+    WHERE rule_id = ${ruleId}
+      AND triggered_at > NOW() - INTERVAL '30 days'
+      AND result IN ('success', 'failed', 'notify_only')
+  `);
+  const fpRes = await pool.query(`
+    SELECT COUNT(*) as fp_count FROM false_positive_reviews
+    WHERE rule_id = ${ruleId}
+      AND reviewed_at > NOW() - INTERVAL '30 days'
+  `);
+  const total = parseInt(totalRes.rows[0].total);
+  const fpCount = parseInt(fpRes.rows[0].fp_count);
+  const fpRate = total > 0 ? (fpCount / total) * 100 : 0;
+
+  // Priority component: 50% weight of anomaly score → 0-50 pts
+  const priorityComponent = (Math.min(anomalyScore, 100) / 100) * 50;
+
+  // FP penalty: fp_rate × 0.30 → 0-30 pts reduction
+  const fpPenalty = (fpRate / 100) * 30;
+
+  // Consecutive trigger bonus: stricter rules → higher confidence → up to 20 pts
+  // Each required consecutive trigger adds 4 pts (1→4, 2→8, 3→12, 4→16, 5+→20)
+  const triggerBonus = Math.min((consecutiveTriggersRequired / 5), 1) * 20;
+
+  const confidence = Math.max(0, Math.min(100, Math.round(priorityComponent - fpPenalty + triggerBonus)));
+  return { confidence, priorityComponent: Math.round(priorityComponent), fpPenalty: Math.round(fpPenalty), triggerBonus: Math.round(triggerBonus), fpRate: Math.round(fpRate) };
+}
+
 async function runSelfHealingCheck(): Promise<void> {
   try {
     // Fetch all enabled rules
@@ -18254,18 +18290,18 @@ async function runSelfHealingCheck(): Promise<void> {
         const consecCount = parseInt(recentCountRes.rows[0]?.cnt || '0');
 
         if (consecCount < rule.consecutive_triggers - 1) {
-          // Log a skipped-consecutive entry and continue
           await pool.query(`
             INSERT INTO self_healing_executions
-              (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by)
+              (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by, confidence_score)
             VALUES (${rule.id}, ${matching[0].id},
-              '${(matching[0].pa_type || 'unknown').replace(/'/g, "''")}',
+              '${(matching[0].alert_type || 'unknown').replace(/'/g, "''")}',
               ${matching[0].priority_score || 50},
               '${rule.action_type}',
               '${JSON.stringify(rule.action_params).replace(/'/g, "''")}'::jsonb,
               'skipped_consecutive',
               'Waiting for ${rule.consecutive_triggers - consecCount - 1} more consecutive triggers before executing',
-              'self_healing_engine')
+              'self_healing_engine',
+              NULL)
           `);
           continue;
         }
@@ -18278,6 +18314,32 @@ async function runSelfHealingCheck(): Promise<void> {
         if (Date.now() - lastFiredMs < cooldownMs) continue;
       }
 
+      const anomaly = matching[0];
+      const anomalyScore = anomaly.priority_score || 50;
+
+      // 4.8D — Compute confidence score at execution time (immutable, stored on row)
+      const { confidence, priorityComponent, fpPenalty, triggerBonus, fpRate } =
+        await computeConfidenceScore(rule.id, anomalyScore, rule.consecutive_triggers);
+
+      // If confidence < 40 → notify-only (do not execute destructive action)
+      if (confidence < 40) {
+        await pool.query(`
+          INSERT INTO self_healing_executions
+            (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by, confidence_score)
+          VALUES (${rule.id}, ${anomaly.id},
+            '${(anomaly.alert_type || 'unknown').replace(/'/g, "''")}',
+            ${anomalyScore},
+            '${rule.action_type}',
+            '${JSON.stringify(typeof rule.action_params === 'string' ? JSON.parse(rule.action_params) : rule.action_params).replace(/'/g, "''")}'::jsonb,
+            'notify_only',
+            'Confidence too low (${confidence}/100) to execute — priority:${priorityComponent} fp_penalty:${fpPenalty} trigger_bonus:${triggerBonus} fp_rate:${Math.round(fpRate)}%',
+            'self_healing_engine',
+            ${confidence})
+        `);
+        logger.warn(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" confidence ${confidence} < 40 — notify-only (fp_rate ${Math.round(fpRate)}%)`);
+        continue;
+      }
+
       // Execute the action
       const params = typeof rule.action_params === 'string'
         ? JSON.parse(rule.action_params)
@@ -18288,20 +18350,19 @@ async function runSelfHealingCheck(): Promise<void> {
         ruleName: rule.name,
       });
 
-      const anomaly = matching[0];
-
-      // Log execution
+      // Log execution with confidence score (immutable from here)
       await pool.query(`
         INSERT INTO self_healing_executions
-          (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by)
+          (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by, confidence_score)
         VALUES (${rule.id}, ${anomaly.id},
-          '${(anomaly.pa_type || 'unknown').replace(/'/g, "''")}',
-          ${anomaly.priority_score || 50},
+          '${(anomaly.alert_type || 'unknown').replace(/'/g, "''")}',
+          ${anomalyScore},
           '${rule.action_type}',
           '${JSON.stringify(params).replace(/'/g, "''")}'::jsonb,
           '${success ? 'success' : 'failed'}',
-          '${note.replace(/'/g, "''")}',
-          'self_healing_engine')
+          '[conf:${confidence}] ${note.replace(/'/g, "''")}',
+          'self_healing_engine',
+          ${confidence})
       `);
 
       // Update rule's trigger metadata
@@ -18731,6 +18792,111 @@ router.get('/admin/system/self-healing/executions/:id/false-positive', async (re
     return res.json({ isFalsePositive: true, review: r.rows[0] });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to check FP status', detail: err.message });
+  }
+});
+
+// ── 4.8D — Confidence Scoring ─────────────────────────────────────────────────
+
+// GET /admin/system/self-healing/rules/:id/confidence-summary — rule-level confidence breakdown
+router.get('/admin/system/self-healing/rules/:id/confidence-summary', async (req, res) => {
+  try {
+    const ruleId = parseInt(req.params.id);
+    if (isNaN(ruleId)) return res.status(400).json({ error: 'Invalid rule ID' });
+
+    const ruleRes = await pool.query(`SELECT * FROM self_healing_rules WHERE id = ${ruleId}`);
+    if (!ruleRes.rows.length) return res.status(404).json({ error: 'Rule not found' });
+    const rule = ruleRes.rows[0];
+
+    // Confidence breakdown using current rule thresholds
+    const { confidence, priorityComponent, fpPenalty, triggerBonus, fpRate } =
+      await computeConfidenceScore(ruleId, rule.min_score, rule.consecutive_triggers);
+
+    // Recent executions with confidence scores
+    const execRes = await pool.query(`
+      SELECT id, result, confidence_score, anomaly_score, triggered_at, result_note
+      FROM self_healing_executions
+      WHERE rule_id = ${ruleId}
+        AND confidence_score IS NOT NULL
+      ORDER BY triggered_at DESC
+      LIMIT 20
+    `);
+
+    // Aggregate stats
+    const execsWithConf = execRes.rows;
+    const avgConfidence = execsWithConf.length > 0
+      ? Math.round(execsWithConf.reduce((sum, e) => sum + (e.confidence_score || 0), 0) / execsWithConf.length)
+      : null;
+    const notifyOnlyCount = execsWithConf.filter(e => e.result === 'notify_only').length;
+    const executedCount = execsWithConf.filter(e => e.result === 'success' || e.result === 'failed').length;
+
+    return res.json({
+      ruleId,
+      ruleName: rule.name,
+      currentThresholdConfidence: {
+        confidence,
+        priorityComponent,
+        fpPenalty,
+        triggerBonus,
+        fpRate,
+        wouldExecute: confidence >= 40,
+      },
+      historicalStats: {
+        avgConfidence,
+        totalWithScore: execsWithConf.length,
+        notifyOnlyCount,
+        executedCount,
+      },
+      recentExecutions: execsWithConf.slice(0, 10),
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch confidence summary', detail: err.message });
+  }
+});
+
+// GET /admin/system/self-healing/executions/:id/confidence — confidence for a single execution
+router.get('/admin/system/self-healing/executions/:id/confidence', async (req, res) => {
+  try {
+    const execId = parseInt(req.params.id);
+    if (isNaN(execId)) return res.status(400).json({ error: 'Invalid execution ID' });
+
+    const r = await pool.query(`
+      SELECT e.id, e.rule_id, e.result, e.confidence_score, e.anomaly_score, e.result_note, e.triggered_at,
+             r.name as rule_name, r.min_score, r.consecutive_triggers
+      FROM self_healing_executions e
+      JOIN self_healing_rules r ON r.id = e.rule_id
+      WHERE e.id = ${execId}
+    `);
+    if (!r.rows.length) return res.status(404).json({ error: 'Execution not found' });
+
+    return res.json({ execution: r.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch execution confidence', detail: err.message });
+  }
+});
+
+// POST /admin/system/self-healing/rules/:id/confidence-preview — preview confidence for proposed thresholds
+router.post('/admin/system/self-healing/rules/:id/confidence-preview', async (req, res) => {
+  try {
+    const ruleId = parseInt(req.params.id);
+    if (isNaN(ruleId)) return res.status(400).json({ error: 'Invalid rule ID' });
+
+    const { anomalyScore = 75, consecutiveTriggers = 2 } = req.body;
+
+    const ruleRes = await pool.query(`SELECT name FROM self_healing_rules WHERE id = ${ruleId}`);
+    if (!ruleRes.rows.length) return res.status(404).json({ error: 'Rule not found' });
+
+    const result = await computeConfidenceScore(ruleId, parseInt(anomalyScore), parseInt(consecutiveTriggers));
+
+    return res.json({
+      ruleId,
+      ruleName: ruleRes.rows[0].name,
+      inputs: { anomalyScore, consecutiveTriggers },
+      ...result,
+      wouldExecute: result.confidence >= 40,
+      threshold: 40,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Confidence preview failed', detail: err.message });
   }
 });
 

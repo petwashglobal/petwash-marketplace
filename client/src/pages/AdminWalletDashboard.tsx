@@ -2481,6 +2481,9 @@ export default function AdminWalletDashboard() {
   const [shFpReason, setShFpReason] = useState('');
   const [shFpSaving, setShFpSaving] = useState(false);
 
+  // 4.8D — Confidence Scoring
+  const [shConfSummaries, setShConfSummaries] = useState<Record<number, any>>({});
+
   const fetchRemediation = async (incidentId: number) => {
     try {
       const res = await fetch(`/api/prestige-pass/admin/system/incidents/${incidentId}/remediation`);
@@ -2714,6 +2717,15 @@ export default function AdminWalletDashboard() {
       toast({ title: 'False positive marking removed' });
       await loadFpRate(ruleId);
     } catch { toast({ title: 'Undo failed', variant: 'destructive' }); }
+  };
+
+  // 4.8D — Confidence summary handler
+  const loadConfSummary = async (ruleId: number) => {
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/self-healing/rules/${ruleId}/confidence-summary`);
+      const d = await res.json();
+      if (res.ok) setShConfSummaries(p => ({ ...p, [ruleId]: d }));
+    } catch { /* silent */ }
   };
 
   // ── Phase 3.6 UI aliases & supplemental state ──────────────────────────────
@@ -14592,6 +14604,37 @@ export default function AdminWalletDashboard() {
                                   {rule.rationale && (
                                     <div className="text-[8px] text-emerald-700 italic mt-0.5 leading-snug">{rule.rationale}</div>
                                   )}
+                                  {/* 4.8D — Confidence summary inline */}
+                                  {shConfSummaries[rule.id] ? (() => {
+                                    const cs = shConfSummaries[rule.id].currentThresholdConfidence;
+                                    const hs = shConfSummaries[rule.id].historicalStats;
+                                    return (
+                                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                        <span className={`text-[7px] px-1.5 py-0.5 rounded font-bold ${
+                                          cs.confidence >= 70 ? 'bg-emerald-100 text-emerald-700' :
+                                          cs.confidence >= 40 ? 'bg-amber-100 text-amber-700' :
+                                          'bg-red-100 text-red-700'
+                                        }`}>
+                                          conf {cs.confidence} — {cs.wouldExecute ? 'EXECUTES' : 'NOTIFY ONLY'}
+                                        </span>
+                                        <span className="text-[7px] text-gray-400">
+                                          priority:{cs.priorityComponent} − fp:{cs.fpPenalty} + trigger:{cs.triggerBonus}
+                                        </span>
+                                        {hs.totalWithScore > 0 && (
+                                          <span className="text-[7px] text-gray-400">
+                                            avg {hs.avgConfidence} over {hs.totalWithScore} execs
+                                            {hs.notifyOnlyCount > 0 && ` · ${hs.notifyOnlyCount} notify-only`}
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })() : (
+                                    <button
+                                      onClick={() => loadConfSummary(rule.id)}
+                                      className="text-[7px] mt-1 px-1 py-0 rounded text-gray-400 hover:text-violet-600 hover:bg-violet-50 border border-dashed border-gray-200">
+                                      confidence
+                                    </button>
+                                  )}
                                 </div>
                                 {/* Tune button */}
                                 <button
@@ -14769,6 +14812,18 @@ export default function AdminWalletDashboard() {
                                         )}
                                         {isMarkedFp && (
                                           <span className="text-[7px] px-1 py-0 bg-amber-100 text-amber-700 rounded font-bold">FALSE POSITIVE</span>
+                                        )}
+                                        {ex.result === 'notify_only' && (
+                                          <span className="text-[7px] px-1 py-0 bg-blue-100 text-blue-700 rounded font-bold">NOTIFY ONLY</span>
+                                        )}
+                                        {ex.confidence_score != null && (
+                                          <span className={`text-[7px] px-1 py-0 rounded font-bold ${
+                                            ex.confidence_score >= 70 ? 'bg-emerald-100 text-emerald-700' :
+                                            ex.confidence_score >= 40 ? 'bg-amber-100 text-amber-700' :
+                                            'bg-red-100 text-red-700'
+                                          }`} title="Confidence score — computed at execution time">
+                                            conf {ex.confidence_score}
+                                          </span>
                                         )}
                                       </div>
                                       <div className="text-gray-500 leading-snug">{ex.result_note}</div>
