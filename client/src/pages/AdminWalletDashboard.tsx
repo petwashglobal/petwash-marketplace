@@ -2402,6 +2402,40 @@ export default function AdminWalletDashboard() {
     onSuccess: () => { refetchTriggers(); toast({ title: 'Trigger dismissed — suppressed for 60 min' }); },
   });
 
+  // 4.7D — Incident Timeline
+  const [incidentStatusFilter, setIncidentStatusFilter] = useState<string>('open');
+  const [selectedIncidentId, setSelectedIncidentId] = useState<number | null>(null);
+  const [newIncidentTitle, setNewIncidentTitle] = useState('');
+  const [newEntryContent, setNewEntryContent] = useState('');
+  const [showNewIncidentForm, setShowNewIncidentForm] = useState(false);
+
+  const { data: incidentsList, isLoading: incidentsLoading, refetch: refetchIncidents } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/system/incidents', incidentStatusFilter],
+    queryFn: () => fetch(`/api/prestige-pass/admin/system/incidents?status=${incidentStatusFilter}`).then(r => r.json()),
+    refetchInterval: 60_000,
+  });
+  const { data: selectedTimeline, isLoading: timelineLoading, refetch: refetchTimeline } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/system/incidents', selectedIncidentId, 'timeline'],
+    queryFn: () => selectedIncidentId ? fetch(`/api/prestige-pass/admin/system/incidents/${selectedIncidentId}/timeline`).then(r => r.json()) : Promise.resolve(null),
+    enabled: !!selectedIncidentId,
+  });
+  const { mutate: createIncident, isPending: creatingIncident } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/system/incidents', body),
+    onSuccess: (d) => { refetchIncidents(); setNewIncidentTitle(''); setShowNewIncidentForm(false); setSelectedIncidentId(d.incident.id); toast({ title: `Incident #${d.incident.id} created` }); },
+  });
+  const { mutate: addTimelineEntry, isPending: addingEntry } = useMutation<any, any, any>({
+    mutationFn: ({ id, body }: any) => apiRequest('POST', `/api/prestige-pass/admin/system/incidents/${id}/timeline`, body),
+    onSuccess: () => { refetchTimeline(); setNewEntryContent(''); toast({ title: 'Timeline entry added' }); },
+  });
+  const { mutate: resolveIncident, isPending: resolvingIncident } = useMutation<any, any, any>({
+    mutationFn: ({ id, summary }: any) => apiRequest('POST', `/api/prestige-pass/admin/system/incidents/${id}/resolve`, { summary }),
+    onSuccess: () => { refetchIncidents(); refetchTimeline(); toast({ title: 'Incident resolved' }); },
+  });
+  const { mutate: autoBuildIncidents, isPending: autoBuildPending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest('POST', '/api/prestige-pass/admin/system/incidents/auto-build', {}),
+    onSuccess: (d) => { refetchIncidents(); toast({ title: `Auto-built ${d.created} incident(s)` }); },
+  });
+
   // ── Phase 3.6 UI aliases & supplemental state ──────────────────────────────
   // 3.6A — weight form state for the UI card
   const [weightForm, setWeightForm] = useState({ signalKey: '', divisionCode: '', weight: '' });
@@ -13802,6 +13836,176 @@ export default function AdminWalletDashboard() {
                     <span className="text-gray-400 ml-auto text-[10px]">Dismissed suppress 60 min</span>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* 4.7D — INCIDENT TIMELINE BUILDER */}
+            <Card className="border-blue-200">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-blue-600" /> Incident Timeline
+                  {incidentsList?.total > 0 && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-600 text-white font-bold">{incidentsList.total}</span>
+                  )}
+                </CardTitle>
+                <div className="flex items-center gap-1.5">
+                  <button onClick={() => autoBuildIncidents()} disabled={autoBuildPending}
+                    className="text-[10px] px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-semibold disabled:opacity-50 flex items-center gap-1">
+                    <Zap className="w-2.5 h-2.5" />{autoBuildPending ? 'Building…' : 'Auto-Build'}
+                  </button>
+                  <button onClick={() => setShowNewIncidentForm(v => !v)}
+                    className="text-[10px] px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <Plus className="w-2.5 h-2.5" /> New
+                  </button>
+                  <button onClick={() => refetchIncidents()} className="text-[10px] px-2 py-1 border rounded hover:bg-gray-50">
+                    <RefreshCw className="w-3 h-3" />
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+
+                {/* Filter tabs */}
+                <div className="flex gap-1">
+                  {['open','investigating','resolved'].map(s => (
+                    <button key={s} onClick={() => { setIncidentStatusFilter(s); setSelectedIncidentId(null); }}
+                      className={`text-[10px] px-2 py-1 rounded capitalize font-medium ${incidentStatusFilter === s ? 'bg-blue-600 text-white' : 'border hover:bg-gray-50 text-gray-600'}`}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+
+                {/* New incident form */}
+                {showNewIncidentForm && (
+                  <div className="border rounded p-3 space-y-2 bg-blue-50/40">
+                    <div className="text-[10px] font-semibold text-blue-800">New Incident</div>
+                    <input value={newIncidentTitle} onChange={e => setNewIncidentTitle(e.target.value)}
+                      placeholder="Incident title…"
+                      className="w-full text-xs border rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                    <div className="flex gap-2">
+                      <button disabled={!newIncidentTitle || creatingIncident}
+                        onClick={() => createIncident({ title: newIncidentTitle, severity: 'medium', createdBy: 'operator' })}
+                        className="text-[10px] px-3 py-1 bg-blue-600 text-white rounded font-semibold disabled:opacity-50">
+                        {creatingIncident ? 'Creating…' : 'Create'}
+                      </button>
+                      <button onClick={() => setShowNewIncidentForm(false)} className="text-[10px] px-2 py-1 border rounded text-gray-500 hover:bg-gray-50">Cancel</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Incident list */}
+                {incidentsLoading ? (
+                  <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-12 bg-gray-100 animate-pulse rounded" />)}</div>
+                ) : incidentsList?.incidents?.length ? (
+                  <div className="space-y-1">
+                    {incidentsList.incidents.map((inc: any) => (
+                      <div key={inc.id}
+                        onClick={() => setSelectedIncidentId(selectedIncidentId === inc.id ? null : inc.id)}
+                        className={`cursor-pointer rounded-lg border p-2.5 transition-colors ${selectedIncidentId === inc.id ? 'border-blue-500 bg-blue-50/40' : 'hover:bg-gray-50 border-gray-200'}`}>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={`shrink-0 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                              inc.severity === 'critical' ? 'bg-red-600 text-white' :
+                              inc.severity === 'high'     ? 'bg-orange-500 text-white' :
+                              inc.severity === 'medium'   ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>
+                              {inc.severity}
+                            </span>
+                            <span className="text-xs font-medium text-gray-800 truncate">{inc.title}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[9px] text-gray-400">{parseInt(inc.entry_count)} entries</span>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${
+                              inc.status === 'resolved' ? 'bg-green-100 text-green-700' :
+                              inc.status === 'investigating' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                              {inc.status}
+                            </span>
+                            <ChevronRight className={`w-3 h-3 text-gray-400 transition-transform ${selectedIncidentId === inc.id ? 'rotate-90' : ''}`} />
+                          </div>
+                        </div>
+                        <div className="text-[9px] text-gray-400 mt-0.5 pl-1">
+                          #{inc.id} · {new Date(inc.started_at).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })}
+                          {inc.created_by && ` · by ${inc.created_by}`}
+                        </div>
+
+                        {/* Inline timeline expansion */}
+                        {selectedIncidentId === inc.id && (
+                          <div className="mt-3 border-t pt-3 space-y-3" onClick={e => e.stopPropagation()}>
+                            {timelineLoading ? (
+                              <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-8 bg-gray-100 animate-pulse rounded" />)}</div>
+                            ) : selectedTimeline?.timeline?.length ? (
+                              <div className="relative">
+                                <div className="absolute left-2 top-0 bottom-0 w-px bg-blue-100" />
+                                <div className="space-y-2 pl-6">
+                                  {selectedTimeline.timeline.map((entry: any) => {
+                                    const typeStyles: Record<string, { dot: string; label: string }> = {
+                                      incident_opened:      { dot: 'bg-blue-400', label: '📂' },
+                                      anomaly_detected:     { dot: 'bg-red-500',  label: '🔴' },
+                                      priority_scored:      { dot: 'bg-purple-500', label: '🎯' },
+                                      kill_switch_execute:  { dot: 'bg-red-700',  label: '⚡' },
+                                      kill_switch_dismiss:  { dot: 'bg-amber-500', label: '🔕' },
+                                      manual_note:          { dot: 'bg-blue-500', label: '📝' },
+                                      incident_resolved:    { dot: 'bg-green-500', label: '✅' },
+                                      status_change:        { dot: 'bg-indigo-400', label: '🔄' },
+                                    };
+                                    const style = typeStyles[entry.event_type] ?? { dot: 'bg-gray-400', label: '•' };
+                                    return (
+                                      <div key={entry.id} className="relative">
+                                        <div className={`absolute -left-4 top-1 w-2 h-2 rounded-full ${style.dot} border-2 border-white`} />
+                                        <div className="text-[9px] text-gray-400 mb-0.5 flex items-center gap-1">
+                                          <span>{style.label}</span>
+                                          <span className="capitalize font-medium text-gray-600">{entry.event_type.replace(/_/g, ' ')}</span>
+                                          <span>·</span>
+                                          <span>{new Date(entry.occurred_at).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })}</span>
+                                          <span>·</span>
+                                          <span className="text-blue-500">{entry.actor}</span>
+                                        </div>
+                                        <div className="text-xs text-gray-700 leading-snug">{entry.content}</div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-400 text-center py-2">No timeline entries yet</div>
+                            )}
+
+                            {/* Add manual note */}
+                            {inc.status !== 'resolved' && (
+                              <div className="space-y-1.5 border-t pt-2">
+                                <textarea value={newEntryContent} onChange={e => setNewEntryContent(e.target.value)}
+                                  placeholder="Add a note to the timeline…"
+                                  rows={2}
+                                  className="w-full text-xs border rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                                <div className="flex gap-2">
+                                  <button disabled={!newEntryContent || addingEntry}
+                                    onClick={() => addTimelineEntry({ id: inc.id, body: { content: newEntryContent, actor: 'operator', eventType: 'manual_note' } })}
+                                    className="text-[10px] px-2 py-1 bg-blue-600 text-white rounded font-semibold disabled:opacity-50">
+                                    {addingEntry ? 'Adding…' : 'Add Note'}
+                                  </button>
+                                  <button
+                                    disabled={resolvingIncident}
+                                    onClick={() => resolveIncident({ id: inc.id, summary: newEntryContent || undefined })}
+                                    className="text-[10px] px-2 py-1 bg-green-600 text-white rounded font-semibold disabled:opacity-50 flex items-center gap-1">
+                                    <CheckCircle className="w-2.5 h-2.5" />{resolvingIncident ? 'Resolving…' : 'Resolve'}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-400 bg-gray-50 border rounded p-4 text-center">
+                    No {incidentStatusFilter} incidents — use Auto-Build to generate from high-priority anomalies
+                  </div>
+                )}
+
+                <div className="text-[9px] text-gray-400 border-t pt-1 flex items-center gap-2">
+                  <span>Auto-Build creates incidents for anomalies with score ≥ 50</span>
+                  <span>·</span>
+                  <span>Timeline pulls in anomaly, priority, and kill switch events automatically</span>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

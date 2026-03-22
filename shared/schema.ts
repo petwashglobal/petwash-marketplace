@@ -13799,3 +13799,29 @@ export const killSwitchTriggerLog = pgTable("kill_switch_trigger_log", {
   triggeredAt:    timestamp("triggered_at", { withTimezone: true }).notNull().defaultNow(),
 });
 export type KillSwitchTriggerLogEntry = typeof killSwitchTriggerLog.$inferSelect;
+
+// 4.7D — Incident Timeline
+export const incidents = pgTable("incidents", {
+  id:             serial("id").primaryKey(),
+  title:          varchar("title", { length: 300 }).notNull(),
+  severity:       varchar("severity", { length: 20 }).notNull().default('medium'),
+  status:         varchar("status", { length: 30 }).notNull().default('open'),
+  anomalyEventId: integer("anomaly_event_id"),
+  startedAt:      timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt:     timestamp("resolved_at",  { withTimezone: true }),
+  createdBy:      varchar("created_by", { length: 100 }).notNull().default('system'),
+  summary:        text("summary"),
+});
+export type Incident       = typeof incidents.$inferSelect;
+export type InsertIncident = typeof incidents.$inferInsert;
+
+export const incidentTimelineEntries = pgTable("incident_timeline_entries", {
+  id:           serial("id").primaryKey(),
+  incidentId:   integer("incident_id").notNull(),
+  eventType:    varchar("event_type", { length: 50 }).notNull(),
+  content:      text("content").notNull(),
+  actor:        varchar("actor", { length: 100 }).notNull().default('system'),
+  metadataJson: jsonb("metadata_json").notNull().default(sql`'{}'::jsonb`),
+  occurredAt:   timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type IncidentTimelineEntry = typeof incidentTimelineEntries.$inferSelect;

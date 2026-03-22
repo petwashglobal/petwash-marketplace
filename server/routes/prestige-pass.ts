@@ -17610,4 +17610,183 @@ router.get('/admin/system/kill-switch-triggers/log', async (req, res) => {
   }
 });
 
+// ─── 4.7D — INCIDENT TIMELINE BUILDER ────────────────────────────────────────
+
+// GET /admin/system/incidents
+router.get('/admin/system/incidents', async (req, res) => {
+  try {
+    const { status } = req.query;
+    const where = status ? `WHERE i.status = '${status}'` : '';
+    const rows = await pool.query(`
+      SELECT i.*,
+        COUNT(e.id) AS entry_count
+      FROM incidents i
+      LEFT JOIN incident_timeline_entries e ON e.incident_id = i.id
+      ${where}
+      GROUP BY i.id
+      ORDER BY i.started_at DESC
+      LIMIT 100
+    `);
+    return res.json({ incidents: rows.rows, total: rows.rows.length });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Incident list failed', detail: err.message });
+  }
+});
+
+// POST /admin/system/incidents
+router.post('/admin/system/incidents', async (req, res) => {
+  try {
+    const { title, severity = 'medium', anomalyEventId, createdBy = 'operator', summary } = req.body;
+    if (!title) return res.status(400).json({ error: 'title required' });
+
+    const inc = await pool.query(`
+      INSERT INTO incidents (title, severity, status, anomaly_event_id, created_by, summary)
+      VALUES ('${title.replace(/'/g, "''")}', '${severity}', 'open', ${anomalyEventId ?? 'NULL'}, '${createdBy.replace(/'/g, "''")}', ${summary ? `'${summary.replace(/'/g, "''")}'` : 'NULL'})
+      RETURNING *
+    `);
+    const incident = inc.rows[0];
+
+    // Seed first timeline entry
+    await pool.query(`
+      INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, occurred_at)
+      VALUES (${incident.id}, 'incident_opened', 'Incident created: ${title.replace(/'/g, "''")}', '${createdBy.replace(/'/g, "''")}', NOW())
+    `);
+
+    // If linked to an anomaly, pull in its detection + priority events
+    if (anomalyEventId) {
+      const anomaly = await pool.query(`SELECT * FROM anomaly_events WHERE id = ${anomalyEventId}`);
+      if (anomaly.rows.length) {
+        const a = anomaly.rows[0];
+        await pool.query(`
+          INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json, occurred_at)
+          VALUES (${incident.id}, 'anomaly_detected',
+            'Anomaly detected: ${a.anomaly_type} — ${a.severity} severity, +${parseFloat(a.deviation_pct).toFixed(1)}% deviation',
+            'anomaly_engine', '{"anomaly_id":${a.id},"severity":"${a.severity}","deviation_pct":${a.deviation_pct}}'::jsonb, '${a.detected_at}')
+        `);
+        const aps = await pool.query(`SELECT * FROM alert_priority_scores WHERE alert_id = ${anomalyEventId}`);
+        if (aps.rows.length) {
+          const s = aps.rows[0];
+          await pool.query(`
+            INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json, occurred_at)
+            VALUES (${incident.id}, 'priority_scored',
+              'Alert prioritized: score ${s.priority_score}/100, rank #${s.rank}',
+              'priority_engine', '{"score":${s.priority_score},"rank":${s.rank}}'::jsonb, '${s.computed_at}')
+          `);
+        }
+        const ksLogs = await pool.query(`SELECT * FROM kill_switch_trigger_log WHERE anomaly_event_id = ${anomalyEventId} ORDER BY triggered_at ASC`);
+        for (const ks of ksLogs.rows) {
+          await pool.query(`
+            INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json, occurred_at)
+            VALUES (${incident.id}, 'kill_switch_${ks.action_taken}',
+              'Kill switch ${ks.kill_switch_key} ${ks.action_taken} (score: ${ks.priority_score})',
+              'operator', '{"kill_switch_key":"${ks.kill_switch_key}","score":${ks.priority_score}}'::jsonb, '${ks.triggered_at}')
+          `);
+        }
+      }
+    }
+
+    return res.json({ incident, message: 'Incident created with initial timeline' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Create incident failed', detail: err.message });
+  }
+});
+
+// GET /admin/system/incidents/:id/timeline
+router.get('/admin/system/incidents/:id/timeline', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const inc = await pool.query(`SELECT * FROM incidents WHERE id = ${id}`);
+    if (!inc.rows.length) return res.status(404).json({ error: 'Incident not found' });
+
+    const entries = await pool.query(`
+      SELECT * FROM incident_timeline_entries WHERE incident_id = ${id} ORDER BY occurred_at ASC
+    `);
+    return res.json({ incident: inc.rows[0], timeline: entries.rows });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Timeline fetch failed', detail: err.message });
+  }
+});
+
+// POST /admin/system/incidents/:id/timeline
+router.post('/admin/system/incidents/:id/timeline', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { content, actor = 'operator', eventType = 'manual_note' } = req.body;
+    if (!content) return res.status(400).json({ error: 'content required' });
+
+    const entry = await pool.query(`
+      INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor)
+      VALUES (${id}, '${eventType}', '${content.replace(/'/g, "''")}', '${actor.replace(/'/g, "''")}')
+      RETURNING *
+    `);
+    return res.json({ entry: entry.rows[0], message: 'Timeline entry added' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Add entry failed', detail: err.message });
+  }
+});
+
+// POST /admin/system/incidents/:id/resolve
+router.post('/admin/system/incidents/:id/resolve', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { summary, actor = 'operator' } = req.body;
+
+    await pool.query(`UPDATE incidents SET status = 'resolved', resolved_at = NOW()${summary ? `, summary = '${summary.replace(/'/g, "''")}'` : ''} WHERE id = ${id}`);
+    await pool.query(`
+      INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor)
+      VALUES (${id}, 'incident_resolved', 'Incident resolved${summary ? ': ' + summary.replace(/'/g, "''") : ''}', '${actor.replace(/'/g, "''")}')
+    `);
+
+    return res.json({ id, status: 'resolved', resolvedAt: new Date().toISOString() });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Resolve failed', detail: err.message });
+  }
+});
+
+// POST /admin/system/incidents/auto-build
+// Creates incidents for any open anomaly with score >= 50 that lacks one
+router.post('/admin/system/incidents/auto-build', async (req, res) => {
+  try {
+    const candidates = await pool.query(`
+      SELECT ae.*, aps.priority_score, aps.rank
+      FROM anomaly_events ae
+      JOIN alert_priority_scores aps ON aps.alert_id = ae.id
+      WHERE ae.status = 'open'
+        AND aps.priority_score >= 50
+        AND ae.id NOT IN (SELECT anomaly_event_id FROM incidents WHERE anomaly_event_id IS NOT NULL)
+      ORDER BY aps.priority_score DESC
+    `);
+
+    const created: any[] = [];
+    for (const a of candidates.rows) {
+      const title = `[Auto] ${a.anomaly_type.replace(/_/g, ' ')} — ${a.severity} (score ${a.priority_score})`;
+      const inc = await pool.query(`
+        INSERT INTO incidents (title, severity, status, anomaly_event_id, created_by)
+        VALUES ('${title}', '${a.severity}', 'open', ${a.id}, 'auto_builder')
+        RETURNING *
+      `);
+      const incident = inc.rows[0];
+
+      await pool.query(`INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json, occurred_at) VALUES (${incident.id}, 'anomaly_detected', 'Anomaly detected: ${a.anomaly_type} — ${a.severity} severity, +${parseFloat(a.deviation_pct).toFixed(1)}% deviation', 'anomaly_engine', '{"anomaly_id":${a.id},"severity":"${a.severity}","score":${a.priority_score}}'::jsonb, '${a.detected_at}')`);
+
+      const aps = await pool.query(`SELECT * FROM alert_priority_scores WHERE alert_id = ${a.id}`);
+      if (aps.rows.length) {
+        const s = aps.rows[0];
+        await pool.query(`INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json, occurred_at) VALUES (${incident.id}, 'priority_scored', 'Alert prioritized: score ${s.priority_score}/100, rank #${s.rank}', 'priority_engine', '{"score":${s.priority_score},"rank":${s.rank}}'::jsonb, '${s.computed_at}')`);
+      }
+
+      const ksLogs = await pool.query(`SELECT * FROM kill_switch_trigger_log WHERE anomaly_event_id = ${a.id} ORDER BY triggered_at ASC`);
+      for (const ks of ksLogs.rows) {
+        await pool.query(`INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json, occurred_at) VALUES (${incident.id}, 'kill_switch_${ks.action_taken}', 'Kill switch ${ks.kill_switch_key} ${ks.action_taken}', 'operator', '{"kill_switch_key":"${ks.kill_switch_key}","score":${ks.priority_score}}'::jsonb, '${ks.triggered_at}')`);
+      }
+
+      created.push({ incidentId: incident.id, title, anomalyEventId: a.id, score: a.priority_score });
+    }
+
+    return res.json({ created: created.length, incidents: created, message: `Auto-built ${created.length} incident(s)` });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Auto-build failed', detail: err.message });
+  }
+});
+
 export default router;
