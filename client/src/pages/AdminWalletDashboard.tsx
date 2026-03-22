@@ -2189,6 +2189,85 @@ export default function AdminWalletDashboard() {
     onError: () => toast({ title: 'Alert check failed', variant: 'destructive' }),
   });
 
+  // ─── Phase 4.5 — Business Survival Hardening ─────────────────────────────
+
+  // 4.5C — Kill Switches
+  const { data: killSwitches, isLoading: killSwitchesLoading, refetch: refetchKillSwitches } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/kill-switches'],
+    queryFn: () => fetch('/api/prestige-pass/admin/wallet/kill-switches').then(r => r.json()),
+  });
+  const { mutate: toggleKillSwitch, isPending: toggleKsPending } = useMutation<any, any, string>({
+    mutationFn: (key) => apiRequest('POST', `/api/prestige-pass/admin/wallet/kill-switches/${key}/toggle`, {}),
+    onSuccess: (d) => { toast({ title: d.enabled ? `${d.key} re-enabled` : `${d.key} DISABLED`, variant: d.enabled ? 'default' : 'destructive' }); refetchKillSwitches(); },
+    onError: () => toast({ title: 'Toggle failed', variant: 'destructive' }),
+  });
+
+  // 4.5D — Idempotency test
+  const [idempotencyTestKey, setIdempotencyTestKey] = useState('');
+  const { data: idempotencyKeys45, isLoading: idempKeyLoading, refetch: refetchIdempKeys } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/idempotency-keys'],
+    queryFn: () => fetch('/api/prestige-pass/admin/wallet/idempotency-keys').then(r => r.json()),
+  });
+  const { mutate: testRetry, isPending: testRetryPending, data: retryResult } = useMutation<any, any, string>({
+    mutationFn: (key) => apiRequest('POST', '/api/prestige-pass/admin/wallet/test-retry-safety', { idempotencyKey: key }),
+    onSuccess: (d) => { toast({ title: d.duplicate ? 'Duplicate blocked ✓' : 'First call recorded' }); refetchIdempKeys(); },
+    onError: () => toast({ title: 'Retry test failed', variant: 'destructive' }),
+  });
+
+  // 4.5A — Permission Audit
+  const { data: permissionAudit, isLoading: permAuditLoading, refetch: refetchPermAudit } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/permission-audit'],
+    queryFn: () => fetch('/api/prestige-pass/admin/wallet/permission-audit').then(r => r.json()),
+  });
+
+  // 4.5B — Money Flow Checks
+  const { data: moneyCheckResults, isLoading: moneyCheckLoading, refetch: refetchMoneyChecks } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/money-check-results'],
+    queryFn: () => fetch('/api/prestige-pass/admin/wallet/money-check-results').then(r => r.json()),
+  });
+  const { mutate: runMoneyChecks, isPending: runMoneyChecksPending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest('POST', '/api/prestige-pass/admin/wallet/run-money-checks', {}),
+    onSuccess: (d) => { toast({ title: d.summary?.allClear ? 'All checks passed ✓' : `${d.summary?.failed} check(s) failed`, variant: d.summary?.allClear ? 'default' : 'destructive' }); refetchMoneyChecks(); },
+    onError: () => toast({ title: 'Money check failed', variant: 'destructive' }),
+  });
+
+  // 4.5E — Security Audit
+  const { data: securityAudit, isLoading: secAuditLoading, refetch: refetchSecAudit } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/security-audit'],
+    queryFn: () => fetch('/api/prestige-pass/admin/wallet/security-audit').then(r => r.json()),
+  });
+
+  // 4.5F — Consistency Check
+  const { data: consistencyCheck, isLoading: consistencyLoading, refetch: refetchConsistency } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/consistency-check'],
+    queryFn: () => fetch('/api/prestige-pass/admin/wallet/consistency-check').then(r => r.json()),
+    enabled: false,
+  });
+  const { mutate: runConsistencyCheck, isPending: consistencyCheckPending } = useMutation<any, any, void>({
+    mutationFn: () => fetch('/api/prestige-pass/admin/wallet/consistency-check').then(r => r.json()),
+    onSuccess: () => { refetchConsistency(); toast({ title: 'Consistency check complete' }); },
+  });
+
+  // 4.5G — Go-Live Checklist + Rollback Plan
+  const { data: goLiveChecklist45, isLoading: goLiveLoading, refetch: refetchGoLive } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/go-live-checklist'],
+    queryFn: () => fetch('/api/prestige-pass/admin/wallet/go-live-checklist').then(r => r.json()),
+  });
+  const [rollbackVerifiedBy, setRollbackVerifiedBy] = useState('');
+  const { mutate: verifyChecklistItem } = useMutation<any, any, { id: number; verifiedBy: string }>({
+    mutationFn: ({ id, verifiedBy }) => apiRequest('POST', `/api/prestige-pass/admin/wallet/go-live-checklist/${id}/verify`, { verifiedBy }),
+    onSuccess: () => { toast({ title: 'Item verified' }); refetchGoLive(); },
+  });
+  const { mutate: unverifyChecklistItem } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest('POST', `/api/prestige-pass/admin/wallet/go-live-checklist/${id}/unverify`, {}),
+    onSuccess: () => { toast({ title: 'Item reset to pending' }); refetchGoLive(); },
+  });
+  const { data: rollbackPlan, isLoading: rollbackLoading } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/rollback-plan'],
+    queryFn: () => fetch('/api/prestige-pass/admin/wallet/rollback-plan').then(r => r.json()),
+  });
+  const [showRollback, setShowRollback] = useState(false);
+
   // ── Phase 3.6 UI aliases & supplemental state ──────────────────────────────
   // 3.6A — weight form state for the UI card
   const [weightForm, setWeightForm] = useState({ signalKey: '', divisionCode: '', weight: '' });
@@ -8358,6 +8437,105 @@ export default function AdminWalletDashboard() {
                 }
               </CardContent>
             </Card>
+
+            {/* 4.5C — GLOBAL KILL SWITCHES */}
+            <Card className="border-red-200">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-red-600" /> System Kill Switches
+                  {killSwitches?.switches?.some((s: any) => !s.enabled) && (
+                    <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">ACTIVE</span>
+                  )}
+                </CardTitle>
+                <button onClick={() => refetchKillSwitches()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> Refresh
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded p-2">
+                  Disabling a switch blocks that operation system-wide immediately — no exceptions. Toggling is instant. Re-enable carefully. All changes are timestamped. Use this first in any incident.
+                </div>
+                {killSwitchesLoading ? <div className="h-24 bg-gray-100 animate-pulse rounded" /> :
+                  killSwitches?.switches?.length ? (
+                    <div className="space-y-2">
+                      {killSwitches.switches.map((sw: any) => {
+                        const isEnabled = sw.enabled;
+                        const label = sw.key.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+                        return (
+                          <div key={sw.key} className={`border rounded-lg p-3 flex items-center justify-between ${isEnabled ? 'border-green-200 bg-green-50/20' : 'border-red-300 bg-red-50/40'}`}>
+                            <div>
+                              <div className={`text-xs font-semibold ${isEnabled ? 'text-gray-700' : 'text-red-700'}`}>{label}</div>
+                              <div className="text-[10px] text-gray-400 mt-0.5">
+                                {sw.updated_at ? `Last changed: ${new Date(sw.updated_at).toLocaleString('he-IL')}` : 'Never changed'}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${isEnabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {isEnabled ? 'ENABLED' : 'DISABLED'}
+                              </span>
+                              <button disabled={toggleKsPending} onClick={() => toggleKillSwitch(sw.key)}
+                                className={`text-xs px-3 py-1 rounded font-medium ${isEnabled ? 'border border-red-300 text-red-700 hover:bg-red-50' : 'bg-green-600 text-white hover:bg-green-700'} disabled:opacity-40`}>
+                                {isEnabled ? 'Disable' : 'Re-enable'}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : <div className="text-xs text-gray-400 text-center py-3">No kill switches configured</div>
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.5D — RETRY SAFETY TESTER */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4 text-sky-600" /> Idempotency & Retry Safety
+                </CardTitle>
+                <button onClick={() => refetchIdempKeys()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> Refresh
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-sky-700 bg-sky-50 border border-sky-200 rounded p-2">
+                  Send the same idempotency key twice — the second call must return the same result without creating a duplicate entry. If both calls produce different results, the guard is broken.
+                </div>
+                <div className="flex gap-2 items-center">
+                  <input type="text" placeholder="Idempotency key (e.g. test-001)" value={idempotencyTestKey} onChange={e => setIdempotencyTestKey(e.target.value)} className="border rounded px-2 py-1 text-xs flex-1" />
+                  <button disabled={testRetryPending || !idempotencyTestKey} onClick={() => testRetry(idempotencyTestKey)}
+                    className="text-xs px-3 py-1.5 bg-sky-600 text-white rounded hover:bg-sky-700 disabled:opacity-40 flex items-center gap-1">
+                    {testRetryPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Send
+                  </button>
+                </div>
+                {retryResult && (
+                  <div className={`border rounded p-2 text-xs space-y-1 ${retryResult.duplicate ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-blue-50'}`}>
+                    <div className="flex items-center gap-2 font-semibold">
+                      {retryResult.duplicate ? <span className="text-green-700">✓ Duplicate blocked — idempotency working</span> : <span className="text-blue-700">First call recorded</span>}
+                    </div>
+                    {retryResult.originalResponseHash && <div className="text-[10px] text-gray-500 font-mono">Hash: {retryResult.originalResponseHash.slice(0, 40)}…</div>}
+                  </div>
+                )}
+                {!idempKeyLoading && idempotencyKeys45?.keys?.length > 0 && (
+                  <div>
+                    <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Recent Idempotency Records ({idempotencyKeys45.total})</div>
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Key</th><th className="text-left p-2">Endpoint</th><th className="text-right p-2">Recorded</th></tr>
+                      </thead><tbody>
+                        {idempotencyKeys45.keys.slice(0, 5).map((k: any) => (
+                          <tr key={k.key} className="border-t hover:bg-gray-50">
+                            <td className="p-2 font-mono text-[10px] max-w-[100px] truncate">{k.key}</td>
+                            <td className="p-2 text-[10px] text-gray-500 max-w-[140px] truncate">{k.endpoint}</td>
+                            <td className="p-2 text-right text-[10px] text-gray-400">{new Date(k.created_at).toLocaleString('he-IL')}</td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -10633,6 +10811,183 @@ export default function AdminWalletDashboard() {
                 {execTrends?.error && <div className="text-xs text-red-500 border border-red-200 rounded p-2">{execTrends.error}</div>}
               </CardContent>
             </Card>
+
+            {/* 4.5A — PERMISSION AUDIT */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-violet-600" /> Permission Audit
+                  {permissionAudit && (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${permissionAudit.auditPassed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {permissionAudit.auditPassed ? '✓ CLEAN' : '⚠ ISSUES'}
+                    </span>
+                  )}
+                </CardTitle>
+                <button onClick={() => refetchPermAudit()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> Refresh
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded p-2">
+                  Static audit of all critical endpoint groups. Every endpoint must show a guard type. Zero unprotected endpoints is the required state before go-live.
+                </div>
+                {permAuditLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                  permissionAudit && (
+                    <div className="space-y-2">
+                      <div className="flex gap-3 text-xs">
+                        <span className="text-green-700 font-semibold">✓ Protected: {permissionAudit.summary?.protected}</span>
+                        <span className={permissionAudit.summary?.unprotected > 0 ? 'text-red-700 font-bold' : 'text-gray-400'}>
+                          ✗ Unprotected: {permissionAudit.summary?.unprotected}
+                        </span>
+                      </div>
+                      <div className="border rounded-lg overflow-hidden">
+                        <table className="w-full text-xs"><thead className="bg-gray-50">
+                          <tr className="text-gray-500"><th className="text-left p-2">Endpoint</th><th className="text-left p-2">Required Role</th><th className="text-left p-2">Guard</th><th className="text-center p-2">Status</th></tr>
+                        </thead><tbody>
+                          {permissionAudit.endpoints?.map((e: any) => (
+                            <tr key={e.endpoint} className={`border-t hover:bg-gray-50 ${!e.hasGuard ? 'bg-red-50/40' : ''}`}>
+                              <td className="p-2 font-mono text-[10px] max-w-[160px] truncate" title={e.endpoint}>{e.endpoint}</td>
+                              <td className="p-2 text-[10px] text-violet-700">{e.requiredRole}</td>
+                              <td className="p-2 text-[10px] text-gray-500">{e.guardType}</td>
+                              <td className="p-2 text-center">
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${e.hasGuard ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                  {e.hasGuard ? '✓' : '✗ UNPROTECTED'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody></table>
+                      </div>
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.5E — SECURITY AUDIT */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-slate-700" /> Security Audit
+                  {securityAudit && (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${securityAudit.summary?.auditPassed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {securityAudit.summary?.auditPassed ? '✓ PASSED' : `${securityAudit.summary?.critical} CRITICAL`}
+                    </span>
+                  )}
+                </CardTitle>
+                <button onClick={() => refetchSecAudit()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> Refresh
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded p-2">
+                  Static security surface audit. Pass = implemented. Review = requires manual verification before go-live. Critical = must be fixed before launch.
+                </div>
+                {secAuditLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                  securityAudit && (
+                    <div className="space-y-2">
+                      <div className="flex gap-3 text-xs flex-wrap">
+                        <span className="text-green-700 font-semibold">✓ Passed: {securityAudit.summary?.passed}</span>
+                        <span className="text-amber-700">⚠ Review: {securityAudit.summary?.review}</span>
+                        {securityAudit.summary?.critical > 0 && <span className="text-red-700 font-bold">✗ Critical: {securityAudit.summary?.critical}</span>}
+                      </div>
+                      <div className="space-y-1.5">
+                        {securityAudit.checks?.map((c: any) => (
+                          <div key={c.id} className={`flex items-start gap-2 border rounded p-2 text-xs ${c.status === 'pass' ? 'border-green-100 bg-green-50/20' : c.status === 'review' ? 'border-amber-100 bg-amber-50/20' : 'border-red-200 bg-red-50/30'}`}>
+                            <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-bold ${c.status === 'pass' ? 'bg-green-100 text-green-700' : c.status === 'review' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                              {c.status === 'pass' ? '✓' : c.status === 'review' ? '⚠' : '✗'}
+                            </span>
+                            <div className="flex-1">
+                              <div className="text-gray-700">{c.description}</div>
+                              {c.risk !== 'none' && <div className="text-[10px] text-amber-600 mt-0.5">Risk: {c.risk}</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.5G — GO-LIVE CHECKLIST & ROLLBACK RUNBOOK */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600" /> Go-Live Checklist
+                  {goLiveChecklist45?.summary && (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${goLiveChecklist45.summary.allReady ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {goLiveChecklist45.summary.verified}/{goLiveChecklist45.summary.total} verified
+                    </span>
+                  )}
+                </CardTitle>
+                <div className="flex gap-2 items-center">
+                  <button onClick={() => setShowRollback(v => !v)} className={`text-xs px-2 py-1 rounded border flex items-center gap-1 ${showRollback ? 'bg-amber-50 border-amber-200 text-amber-700' : 'hover:bg-gray-50'}`}>
+                    <FileText className="w-3 h-3" /> Rollback Plan
+                  </button>
+                  <button onClick={() => refetchGoLive()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex gap-2">
+                  <input type="text" placeholder="Verified by (name)" value={rollbackVerifiedBy} onChange={e => setRollbackVerifiedBy(e.target.value)} className="border rounded px-2 py-1 text-xs flex-1" />
+                </div>
+                {goLiveChecklist45?.summary?.allReady && (
+                  <div className="text-xs text-green-700 bg-green-50 border border-green-200 rounded p-2 font-semibold text-center">
+                    ✓ All items verified — platform ready for go-live
+                  </div>
+                )}
+                {goLiveLoading ? <div className="h-24 bg-gray-100 animate-pulse rounded" /> :
+                  goLiveChecklist45?.items?.map((item: any) => (
+                    <div key={item.id} className={`flex items-center justify-between border rounded-lg p-2.5 ${item.status === 'verified' ? 'border-green-200 bg-green-50/20' : 'border-gray-200'}`}>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${item.status === 'verified' ? 'border-green-500 bg-green-500' : 'border-gray-300'}`}>
+                          {item.status === 'verified' && <span className="text-white text-[8px]">✓</span>}
+                        </div>
+                        <div>
+                          <div className={`text-xs font-medium capitalize ${item.status === 'verified' ? 'text-green-800' : 'text-gray-700'}`}>{item.item}</div>
+                          {item.verified_by && <div className="text-[10px] text-gray-400">by {item.verified_by} · {new Date(item.verified_at).toLocaleString('he-IL')}</div>}
+                        </div>
+                      </div>
+                      {item.status === 'verified' ? (
+                        <button onClick={() => unverifyChecklistItem(item.id)} className="text-[10px] text-gray-400 hover:text-gray-600 border rounded px-1.5 py-0.5">Reset</button>
+                      ) : (
+                        <button onClick={() => verifyChecklistItem({ id: item.id, verifiedBy: rollbackVerifiedBy || 'admin' })}
+                          className="text-[10px] px-2 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" /> Verify
+                        </button>
+                      )}
+                    </div>
+                  ))
+                }
+                {/* Rollback Plan Drawer */}
+                {showRollback && !rollbackLoading && rollbackPlan && (
+                  <div className="border border-amber-200 rounded-lg p-3 bg-amber-50/40 space-y-3">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-amber-800">
+                      <AlertTriangle className="w-4 h-4" /> Rollback Runbook v{rollbackPlan.version}
+                    </div>
+                    <div className="space-y-2">
+                      {rollbackPlan.steps?.map((step: any) => (
+                        <div key={step.step} className="flex gap-2 text-xs">
+                          <span className="w-5 h-5 shrink-0 bg-amber-100 text-amber-800 rounded-full text-[10px] font-bold flex items-center justify-center">{step.step}</span>
+                          <div>
+                            <div className="font-semibold text-amber-900">{step.action}</div>
+                            <div className="text-[10px] text-amber-700 mt-0.5 font-mono">{step.command}</div>
+                            <div className={`text-[10px] mt-0.5 ${step.urgency.startsWith('immediate') ? 'text-red-600 font-bold' : 'text-gray-500'}`}>⏱ {step.urgency}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t border-amber-200 pt-2">
+                      <div className="text-[10px] font-semibold text-amber-800 mb-1">Data Protection Principles:</div>
+                      {rollbackPlan.dataProtection?.map((p: string) => <div key={p} className="text-[10px] text-amber-700">• {p}</div>)}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -12468,6 +12823,107 @@ export default function AdminWalletDashboard() {
                         </div>
                       ))}
                     </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.5B — MONEY FLOW INTEGRITY CHECKS */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-emerald-600" /> Money Flow Integrity
+                  {moneyCheckResults?.summary && (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${moneyCheckResults.summary.allClear ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {moneyCheckResults.summary.allClear ? '✓ ALL CLEAR' : `${moneyCheckResults.summary.failed} FAILED`}
+                    </span>
+                  )}
+                </CardTitle>
+                <div className="flex gap-2">
+                  <button disabled={runMoneyChecksPending} onClick={() => runMoneyChecks()}
+                    className="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-40 flex items-center gap-1">
+                    {runMoneyChecksPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Run Checks
+                  </button>
+                  <button onClick={() => refetchMoneyChecks()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded p-2">
+                  Runs 4 automated checks: (1) negative wallet balances, (2) batch total vs entry sum mismatch, (3) refund overflow vs debits, (4) settled vs reconciled count. Run before each payout cycle.
+                </div>
+                {moneyCheckResults?.summary?.lastRun && (
+                  <div className="text-[10px] text-gray-400">Last run: {new Date(moneyCheckResults.summary.lastRun).toLocaleString('he-IL')}</div>
+                )}
+                {moneyCheckLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                  moneyCheckResults?.checks?.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {moneyCheckResults.checks.map((c: any, i: number) => (
+                        <div key={i} className={`flex items-start gap-2 border rounded p-2 text-xs ${c.status === 'pass' ? 'border-green-100 bg-green-50/20' : 'border-red-200 bg-red-50/30'}`}>
+                          <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-bold ${c.status === 'pass' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            {c.status === 'pass' ? '✓' : '✗'}
+                          </span>
+                          <div className="flex-1">
+                            <div className="font-medium capitalize">{(c.check_type || '').replace(/_/g, ' ')}</div>
+                            {c.entity_id && <div className="text-[10px] text-gray-500">Entity: {c.entity_id}</div>}
+                            {(c.expected_value !== undefined || c.actual_value !== undefined) && (
+                              <div className="text-[10px] text-amber-700">Expected: {c.expected_value} · Got: {c.actual_value}</div>
+                            )}
+                            <div className="text-[10px] text-gray-400 mt-0.5">{new Date(c.created_at).toLocaleString('he-IL')}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded-lg">No checks run yet — click "Run Checks" to begin</div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.5F — CROSS-PLATFORM CONSISTENCY CHECK */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <GitBranch className="w-4 h-4 text-indigo-600" /> Consistency Check
+                  {consistencyCheck && (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${consistencyCheck.summary?.allClear ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {consistencyCheck.summary?.allClear ? '✓ IN SYNC' : `${consistencyCheck.summary?.totalMismatchTypes} type(s) out of sync`}
+                    </span>
+                  )}
+                </CardTitle>
+                <button disabled={consistencyCheckPending} onClick={() => runConsistencyCheck()}
+                  className="text-xs px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-40 flex items-center gap-1">
+                  {consistencyCheckPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Check Now
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 rounded p-2">
+                  Detects state drift across 4 cross-table relationship pairs: booking↔wallet holds, dispute↔refund linkage, settled entries↔transactions, and recon↔batch linkage.
+                </div>
+                {consistencyCheckPending ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  consistencyCheck ? (
+                    consistencyCheck.summary?.allClear ? (
+                      <div className="text-xs text-green-700 bg-green-50 border border-green-200 rounded p-3 text-center font-semibold">
+                        ✓ All cross-table relationships are consistent
+                        <div className="text-[10px] text-gray-400 mt-1 font-normal">Checked at: {new Date(consistencyCheck.checkedAt).toLocaleString('he-IL')}</div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {consistencyCheck.mismatches?.map((m: any, i: number) => (
+                          <div key={i} className="border border-amber-200 bg-amber-50/30 rounded-lg p-3 text-xs">
+                            <div className="flex items-center gap-2 font-semibold text-amber-800 capitalize">
+                              <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {m.type.replace(/_/g, ' ')} ({m.count} affected)
+                            </div>
+                            {m.samples?.length > 0 && <div className="text-[10px] text-gray-500 mt-1">Sample: {m.samples.join(', ')}</div>}
+                          </div>
+                        ))}
+                        <div className="text-[10px] text-gray-400">Checked at: {new Date(consistencyCheck.checkedAt).toLocaleString('he-IL')}</div>
+                      </div>
+                    )
+                  ) : (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded-lg">Click "Check Now" to run consistency scan</div>
                   )
                 }
               </CardContent>

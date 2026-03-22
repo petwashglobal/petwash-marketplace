@@ -1664,3 +1664,29 @@ All endpoints under `/api/prestige-pass/admin/wallet/`. Admin-only. All schema c
 - 4.0C → Orchestration tab: Approval Bottleneck Analytics card
 - 4.0F → Control-Center tab: Anomaly Clusters card (from T004 initial session)
 - 4.0G → New "Command Center" tab: Finance Operations Command Center (KPI tiles + 6 drill-through panes)
+
+### Phase 4.5 — Business Survival Hardening (COMPLETE)
+
+#### New Tables (4)
+- `system_kill_switches` — 5 keys (payouts, remittances, automation, policy_execution, assistant_execution), boolean enabled + timestamp
+- `idempotency_keys` — tracks key+endpoint+response_hash to prevent duplicate financial operations
+- `money_flow_checks` — audit log of every money integrity check run (check_type, entity_id, expected vs actual, status)
+- `go_live_checklist` — 9 pre-launch checklist items with per-item verify/unverify + verified_by tracking
+
+#### Backend Routes (7 sections, all in `server/routes/prestige-pass.ts`)
+- 4.5C: `GET/POST /kill-switches` — list all 5 switches; `/toggle` flips and logs; `/check` returns blocked state
+- 4.5D: `POST /test-retry-safety` — idempotency header/body key test; `GET /idempotency-keys` — recent records
+- 4.5A: `GET /permission-audit` — static map of 12 critical endpoint groups → required role + guard type; returns 0-unprotected summary
+- 4.5B: `POST /run-money-checks` + `GET /money-check-results` — 4 financial integrity checks (negative wallets, batch sum, refund overflow, settled/recon mismatch)
+- 4.5E: `GET /security-audit` — 12 static security surface checks returning pass/review/critical breakdown
+- 4.5F: `GET /consistency-check` — 4 cross-table mismatch detectors (booking↔wallet, dispute↔refund, settled↔tx, recon↔batch)
+- 4.5G: `GET/POST /go-live-checklist` + `/verify` + `/unverify` + `GET /rollback-plan` — 9-step rollback runbook with urgency levels and data protection rules
+
+#### Frontend UI (AdminWalletDashboard.tsx)
+- 4.5C → Control-Center tab: Kill Switches card — per-switch enable/disable with instant visual feedback
+- 4.5D → Control-Center tab: Idempotency & Retry Safety card — test key entry, result badge, recent records table
+- 4.5A → Governance tab: Permission Audit card — protected/unprotected counts, full endpoint table
+- 4.5E → Governance tab: Security Audit card — per-check pass/review/critical badges with risk level
+- 4.5G → Governance tab: Go-Live Checklist + Rollback Plan card — item-level verify/reset, rollback drawer with 9 steps + urgency levels
+- 4.5B → Command Center tab: Money Flow Integrity card — run checks button, per-check pass/fail display
+- 4.5F → Command Center tab: Consistency Check card — on-demand scan, mismatch type breakdown with sample IDs

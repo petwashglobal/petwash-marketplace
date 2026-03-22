@@ -13607,3 +13607,48 @@ export const governanceAlerts = pgTable("governance_alerts", {
 });
 export type GovernanceAlert       = typeof governanceAlerts.$inferSelect;
 export type InsertGovernanceAlert = typeof governanceAlerts.$inferInsert;
+
+// ─── PHASE 4.5 — Business Survival Hardening ─────────────────────────────────
+
+// 4.5C — System Kill Switches
+export const systemKillSwitches = pgTable("system_kill_switches", {
+  key:       varchar("key", { length: 64 }).primaryKey(),
+  enabled:   boolean("enabled").notNull().default(true),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type SystemKillSwitch       = typeof systemKillSwitches.$inferSelect;
+export type InsertSystemKillSwitch = typeof systemKillSwitches.$inferInsert;
+
+// 4.5D — Idempotency Keys
+export const idempotencyKeys = pgTable("idempotency_keys", {
+  key:          varchar("key", { length: 128 }).primaryKey(),
+  endpoint:     varchar("endpoint", { length: 128 }),
+  responseHash: text("response_hash"),
+  createdAt:    timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type IdempotencyKey       = typeof idempotencyKeys.$inferSelect;
+export type InsertIdempotencyKey = typeof idempotencyKeys.$inferInsert;
+
+// 4.5B — Money Flow Checks
+export const moneyFlowChecks = pgTable("money_flow_checks", {
+  id:            serial("id").primaryKey(),
+  checkType:     varchar("check_type",  { length: 64 }),
+  entityId:      varchar("entity_id",   { length: 128 }),
+  expectedValue: numeric("expected_value", { precision: 12, scale: 2 }),
+  actualValue:   numeric("actual_value",   { precision: 12, scale: 2 }),
+  status:        varchar("status",      { length: 16 }),
+  createdAt:     timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type MoneyFlowCheck       = typeof moneyFlowChecks.$inferSelect;
+export type InsertMoneyFlowCheck = typeof moneyFlowChecks.$inferInsert;
+
+// 4.5G — Go-Live Checklist
+export const goLiveChecklist = pgTable("go_live_checklist", {
+  id:         serial("id").primaryKey(),
+  item:       varchar("item", { length: 128 }),
+  status:     varchar("status", { length: 16 }).notNull().default('pending'),
+  verifiedBy: varchar("verified_by", { length: 128 }),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+});
+export type GoLiveChecklistItem       = typeof goLiveChecklist.$inferSelect;
+export type InsertGoLiveChecklistItem = typeof goLiveChecklist.$inferInsert;
