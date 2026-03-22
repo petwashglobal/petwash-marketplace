@@ -2439,6 +2439,27 @@ export default function AdminWalletDashboard() {
   // 4.7E — RCA per incident
   const [rcaData, setRcaData] = useState<Record<number, any>>({});
   const [rcaLoading, setRcaLoading] = useState<Record<number, boolean>>({});
+
+  // 4.8E — Incident Postmortem
+  const [incPostmortem, setIncPostmortem] = useState<Record<number, string>>({});
+  const [incPostmortemLoading, setIncPostmortemLoading] = useState<Record<number, boolean>>({});
+  const [incPostmortemExpanded, setIncPostmortemExpanded] = useState<Record<number, boolean>>({});
+
+  const generatePostmortem = async (incidentId: number) => {
+    setIncPostmortemLoading(p => ({ ...p, [incidentId]: true }));
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/incidents/${incidentId}/postmortem`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+      });
+      const d = await res.json();
+      if (!res.ok) { toast({ title: d.error ?? 'Postmortem generation failed', variant: 'destructive' }); return; }
+      setIncPostmortem(p => ({ ...p, [incidentId]: d.postmortemText }));
+      setIncPostmortemExpanded(p => ({ ...p, [incidentId]: true }));
+      toast({ title: 'Postmortem generated', description: 'AI postmortem written and saved to incident' });
+    } catch { toast({ title: 'Postmortem generation failed', variant: 'destructive' }); }
+    finally { setIncPostmortemLoading(p => ({ ...p, [incidentId]: false })); }
+  };
+
   const runRCA = async (incidentId: number, exportToTimeline = false) => {
     setRcaLoading(p => ({ ...p, [incidentId]: true }));
     try {
@@ -2483,6 +2504,22 @@ export default function AdminWalletDashboard() {
 
   // 4.8D — Confidence Scoring
   const [shConfSummaries, setShConfSummaries] = useState<Record<number, any>>({});
+
+  // 4.8C — Approval Mode
+  const [shModeChanging, setShModeChanging] = useState<Record<number, boolean>>({});
+  const [shModePending, setShModePending] = useState<{ ruleId: number; mode: string } | null>(null);
+  const [shModeReason, setShModeReason] = useState('');
+
+  // 4.8F — Trust Metrics
+  const [shTrustMetrics, setShTrustMetrics] = useState<Record<number, any>>({});
+  const [shTrustLoading, setShTrustLoading] = useState<Record<number, boolean>>({});
+  const [shTrustExpanded, setShTrustExpanded] = useState<Record<number, boolean>>({});
+  const [shTrustOverview, setShTrustOverview] = useState<any>(null);
+
+  // 4.8G — Readiness Score
+  const [shReadiness, setShReadiness] = useState<any>(null);
+  const [shReadinessLoading, setShReadinessLoading] = useState(false);
+  const [shReadinessExpanded, setShReadinessExpanded] = useState(false);
 
   const fetchRemediation = async (incidentId: number) => {
     try {
@@ -2548,6 +2585,7 @@ export default function AdminWalletDashboard() {
       setShRules(d.rules ?? []);
     } catch { /* silent */ }
     finally { setShLoading(false); }
+    loadTrustOverview();
   };
 
   const fetchShExecs = async () => {
@@ -2717,6 +2755,69 @@ export default function AdminWalletDashboard() {
       toast({ title: 'False positive marking removed' });
       await loadFpRate(ruleId);
     } catch { toast({ title: 'Undo failed', variant: 'destructive' }); }
+  };
+
+  // 4.8C — Approval mode handler
+  const submitModeChange = async () => {
+    if (!shModePending) return;
+    if (!shModeReason.trim()) {
+      toast({ title: 'Reason required for mode changes', variant: 'destructive' }); return;
+    }
+    const { ruleId, mode } = shModePending;
+    setShModeChanging(p => ({ ...p, [ruleId]: true }));
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/self-healing/rules/${ruleId}/mode`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approvalMode: mode, actor: 'admin', reason: shModeReason }),
+      });
+      const d = await res.json();
+      if (!res.ok) { toast({ title: d.error ?? 'Mode change failed', variant: 'destructive' }); return; }
+      if (d.message) { toast({ title: d.message }); }
+      else {
+        setShRules(p => p.map(r => r.id === ruleId ? d.rule : r));
+        toast({ title: `Mode changed to ${mode.toUpperCase()}`, description: `Audit record created` });
+      }
+      setShModePending(null);
+      setShModeReason('');
+    } catch { toast({ title: 'Mode change failed', variant: 'destructive' }); }
+    finally { setShModeChanging(p => ({ ...p, [ruleId]: false })); }
+  };
+
+  // 4.8F — Trust Metrics handlers
+  const loadTrustMetrics = async (ruleId: number) => {
+    setShTrustLoading(p => ({ ...p, [ruleId]: true }));
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/self-healing/rules/${ruleId}/trust-metrics`);
+      const d = await res.json();
+      if (res.ok) {
+        setShTrustMetrics(p => ({ ...p, [ruleId]: d }));
+        setShTrustExpanded(p => ({ ...p, [ruleId]: true }));
+      } else {
+        toast({ title: d.error ?? 'Trust metrics failed', variant: 'destructive' });
+      }
+    } catch { toast({ title: 'Trust metrics fetch failed', variant: 'destructive' }); }
+    finally { setShTrustLoading(p => ({ ...p, [ruleId]: false })); }
+  };
+
+  const loadTrustOverview = async () => {
+    try {
+      const res = await fetch('/api/prestige-pass/admin/system/self-healing/trust-overview');
+      const d = await res.json();
+      if (res.ok) setShTrustOverview(d);
+    } catch { /* non-blocking */ }
+  };
+
+  // 4.8G — Readiness score loader
+  const loadReadinessScore = async () => {
+    setShReadinessLoading(true);
+    try {
+      const res = await fetch('/api/prestige-pass/admin/system/self-healing/readiness-score');
+      const d = await res.json();
+      if (res.ok) { setShReadiness(d); setShReadinessExpanded(true); }
+      else toast({ title: d.error ?? 'Readiness score failed', variant: 'destructive' });
+    } catch { toast({ title: 'Readiness score failed', variant: 'destructive' }); }
+    finally { setShReadinessLoading(false); }
   };
 
   // 4.8D — Confidence summary handler
@@ -14279,6 +14380,19 @@ export default function AdminWalletDashboard() {
                                     className="text-[10px] px-2 py-1 bg-green-600 text-white rounded font-semibold disabled:opacity-50 flex items-center gap-1">
                                     <CheckCircle className="w-2.5 h-2.5" />{resolvingIncident ? 'Resolving…' : 'Resolve'}
                                   </button>
+                                  {/* 4.8E — Postmortem button */}
+                                  <button
+                                    disabled={incPostmortemLoading[inc.id]}
+                                    onClick={() => incPostmortem[inc.id]
+                                      ? setIncPostmortemExpanded(p => ({ ...p, [inc.id]: !p[inc.id] }))
+                                      : generatePostmortem(inc.id)
+                                    }
+                                    className="text-[10px] px-2 py-1 bg-violet-600 text-white rounded font-semibold disabled:opacity-50 flex items-center gap-1">
+                                    {incPostmortemLoading[inc.id] ? '✍ Generating…'
+                                      : incPostmortem[inc.id]
+                                        ? (incPostmortemExpanded[inc.id] ? '📋 Hide' : '📋 Postmortem')
+                                        : '✍ Postmortem'}
+                                  </button>
                                 </div>
                               </div>
                             )}
@@ -14364,6 +14478,28 @@ export default function AdminWalletDashboard() {
                                 <div className="text-[9px] text-gray-400 text-center py-1">Run RCA to generate diagnostic hypotheses for this incident</div>
                               )}
                             </div>
+
+                            {/* ── 4.8E — Incident Postmortem Panel ── */}
+                            {incPostmortemExpanded[inc.id] && incPostmortem[inc.id] && (
+                              <div className="border-t border-violet-100 pt-2 space-y-1.5" onClick={e => e.stopPropagation()}>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] font-bold text-violet-800 flex items-center gap-1">
+                                    📋 AI-Generated Postmortem
+                                  </span>
+                                  <button
+                                    onClick={() => navigator.clipboard.writeText(incPostmortem[inc.id]).then(() => toast({ title: 'Copied to clipboard' }))}
+                                    className="text-[9px] px-2 py-0.5 border border-violet-200 text-violet-600 hover:bg-violet-50 rounded">
+                                    Copy
+                                  </button>
+                                </div>
+                                <div className="bg-violet-50 border border-violet-100 rounded p-2 text-[9px] text-gray-800 leading-relaxed whitespace-pre-wrap max-h-80 overflow-y-auto font-mono">
+                                  {incPostmortem[inc.id]}
+                                </div>
+                                <div className="text-[8px] text-violet-400 italic">
+                                  Generated by Gemini AI — saved to incident record — review before sharing externally
+                                </div>
+                              </div>
+                            )}
 
                             {/* ── 4.7F Auto-Remediation Suggestions ── */}
                             <div className="border-t border-orange-100 pt-3 space-y-2" onClick={e => e.stopPropagation()}>
@@ -14519,6 +14655,21 @@ export default function AdminWalletDashboard() {
                         {shLoading ? 'Loading…' : shRules.length > 0 ? '↻ Refresh' : 'Load Rules'}
                       </button>
                       <button
+                        disabled={shReadinessLoading}
+                        onClick={() => shReadiness && shReadinessExpanded
+                          ? setShReadinessExpanded(false)
+                          : loadReadinessScore()
+                        }
+                        className={`text-[9px] px-2 py-0.5 rounded font-semibold disabled:opacity-50 flex items-center gap-0.5 ${
+                          shReadiness
+                            ? shReadiness.readinessLabel === 'READY' ? 'bg-emerald-100 text-emerald-700 border border-emerald-300 hover:bg-emerald-200'
+                              : shReadiness.readinessLabel === 'CALIBRATING' ? 'bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200'
+                              : 'bg-red-100 text-red-700 border border-red-300 hover:bg-red-200'
+                            : 'border border-gray-200 bg-white hover:bg-gray-50 text-gray-600'
+                        }`}>
+                        {shReadinessLoading ? '…' : shReadiness ? `${shReadiness.compositeScore}/100 ${shReadiness.readinessLabel}` : '🎯 Readiness'}
+                      </button>
+                      <button
                         disabled={shRunning}
                         onClick={runSelfHealingManually}
                         className="text-[9px] px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-semibold disabled:opacity-50 flex items-center gap-0.5">
@@ -14533,6 +14684,71 @@ export default function AdminWalletDashboard() {
 
                   {shRules.length > 0 && (
                     <div className="p-2 space-y-1">
+                      {/* 4.8F — Trust Overview Banner */}
+                      {shTrustOverview?.summary && (() => {
+                        const s = shTrustOverview.summary;
+                        const overallColor = s.overallHealth === 'healthy' ? 'emerald' : s.overallHealth === 'caution' ? 'amber' : 'red';
+                        return (
+                          <div className={`flex items-center gap-2 p-1.5 rounded border bg-${overallColor}-50 border-${overallColor}-200 mb-1.5`}>
+                            <span className={`text-[8px] font-bold text-${overallColor}-700`}>
+                              Fleet Trust: {s.avgHealthScore}/100 — {s.overallHealth.toUpperCase()}
+                            </span>
+                            <span className="text-[7px] text-emerald-600">{s.healthyCount} healthy</span>
+                            {s.cautionCount > 0 && <span className="text-[7px] text-amber-600">{s.cautionCount} caution</span>}
+                            {s.atRiskCount > 0 && <span className="text-[7px] text-red-600">{s.atRiskCount} at-risk</span>}
+                            <span className="text-[7px] text-gray-400 ml-auto">click 🔍 Trust on any rule for detail</span>
+                          </div>
+                        );
+                      })()}
+                      {/* 4.8G — Readiness Score Panel */}
+                      {shReadiness && shReadinessExpanded && (() => {
+                        const r = shReadiness;
+                        const compositeColor = r.readinessLabel === 'READY' ? 'emerald' : r.readinessLabel === 'CALIBRATING' ? 'amber' : 'red';
+                        return (
+                          <div className={`p-2 rounded border bg-${compositeColor}-50 border-${compositeColor}-200 mb-1.5 space-y-2`}>
+                            {/* Header */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[11px] font-extrabold text-${compositeColor}-700`}>
+                                  🎯 {r.compositeScore}/100 — {r.readinessLabel.replace('_', ' ')}
+                                </span>
+                                <span className="text-[9px] font-semibold text-gray-600">Autonomous Mode Readiness</span>
+                              </div>
+                              <button onClick={loadReadinessScore} disabled={shReadinessLoading}
+                                className="text-[8px] px-1.5 py-0.5 border border-gray-200 text-gray-500 rounded hover:bg-white">
+                                {shReadinessLoading ? '…' : '↻'}
+                              </button>
+                            </div>
+
+                            {/* Recommendation */}
+                            <div className={`text-[9px] text-${compositeColor}-800 italic`}>{r.recommendation}</div>
+
+                            {/* Component breakdown bars */}
+                            <div className="space-y-1">
+                              {r.components.map((c: any) => (
+                                <div key={c.name}>
+                                  <div className="flex items-center justify-between mb-0.5">
+                                    <span className="text-[8px] font-medium text-gray-700">{c.name}</span>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[8px] text-gray-400">{c.weight}% weight</span>
+                                      <span className={`text-[8px] font-bold ${c.score >= 70 ? 'text-emerald-600' : c.score >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                                        {c.score}/100
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="h-1.5 bg-gray-100 rounded overflow-hidden">
+                                    <div
+                                      style={{ width: `${c.score}%` }}
+                                      className={`h-full rounded ${c.score >= 70 ? 'bg-emerald-400' : c.score >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}
+                                    />
+                                  </div>
+                                  <div className="text-[7px] text-gray-400 mt-0.5">{c.detail}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
                       {/* Rules table */}
                       <div className="text-[8px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Configured Rules</div>
                       <div className="space-y-1">
@@ -14601,6 +14817,64 @@ export default function AdminWalletDashboard() {
                                       </>
                                     )}
                                   </div>
+                                  {/* 4.8C — Approval mode selector */}
+                                  {(() => {
+                                    const currentMode = rule.approval_mode ?? 'auto';
+                                    const isPendingThis = shModePending?.ruleId === rule.id;
+                                    return (
+                                      <div className="mt-1">
+                                        <div className="flex items-center gap-0.5">
+                                          <span className="text-[7px] text-gray-400 mr-1">Mode:</span>
+                                          {(['auto', 'notify', 'manual'] as const).map(m => (
+                                            <button key={m}
+                                              disabled={shModeChanging[rule.id]}
+                                              onClick={() => {
+                                                if (m === currentMode) return;
+                                                setShModePending({ ruleId: rule.id, mode: m });
+                                                setShModeReason('');
+                                              }}
+                                              className={`text-[7px] px-1.5 py-0.5 rounded font-bold transition-colors ${
+                                                currentMode === m
+                                                  ? m === 'auto' ? 'bg-emerald-500 text-white'
+                                                    : m === 'notify' ? 'bg-amber-500 text-white'
+                                                    : 'bg-blue-500 text-white'
+                                                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                                              }`}>
+                                              {m === 'auto' ? '⚡ Auto' : m === 'notify' ? '🔔 Notify' : '⏳ Manual'}
+                                            </button>
+                                          ))}
+                                        </div>
+                                        {/* Inline reason form when changing this rule's mode */}
+                                        {isPendingThis && (
+                                          <div className="mt-1 p-1.5 border border-blue-200 rounded bg-blue-50/60">
+                                            <div className="text-[7px] text-blue-700 font-semibold mb-0.5">
+                                              Change mode to {shModePending!.mode.toUpperCase()} — reason required
+                                            </div>
+                                            <textarea
+                                              value={shModeReason}
+                                              onChange={e => setShModeReason(e.target.value)}
+                                              placeholder="Why is this mode being changed? (e.g. entering stabilization period, require manual review during high-risk window)"
+                                              rows={2}
+                                              className="w-full text-[8px] rounded border border-blue-200 px-1.5 py-1 resize-none focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+                                            />
+                                            <div className="flex gap-1 mt-1">
+                                              <button
+                                                disabled={shModeChanging[rule.id] || !shModeReason.trim()}
+                                                onClick={submitModeChange}
+                                                className="text-[8px] px-2 py-0.5 rounded bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700">
+                                                {shModeChanging[rule.id] ? 'Saving…' : 'Confirm'}
+                                              </button>
+                                              <button
+                                                onClick={() => { setShModePending(null); setShModeReason(''); }}
+                                                className="text-[8px] px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50">
+                                                Cancel
+                                              </button>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                   {rule.rationale && (
                                     <div className="text-[8px] text-emerald-700 italic mt-0.5 leading-snug">{rule.rationale}</div>
                                   )}
@@ -14636,6 +14910,19 @@ export default function AdminWalletDashboard() {
                                     </button>
                                   )}
                                 </div>
+                                {/* Trust Metrics button */}
+                                <button
+                                  onClick={() => {
+                                    if (shTrustExpanded[rule.id]) {
+                                      setShTrustExpanded(p => ({ ...p, [rule.id]: false }));
+                                    } else {
+                                      loadTrustMetrics(rule.id);
+                                    }
+                                  }}
+                                  disabled={shTrustLoading[rule.id]}
+                                  className={`text-[8px] px-1.5 py-0.5 rounded font-medium shrink-0 ${shTrustExpanded[rule.id] ? 'bg-indigo-100 text-indigo-700 border border-indigo-300' : 'border border-gray-200 hover:bg-indigo-50 text-gray-500 hover:text-indigo-700'}`}>
+                                  {shTrustLoading[rule.id] ? '…' : shTrustExpanded[rule.id] ? 'Trust ▲' : '🔍 Trust'}
+                                </button>
                                 {/* Tune button */}
                                 <button
                                   onClick={() => isTuning ? closeTuning() : openTuning(rule)}
@@ -14774,6 +15061,117 @@ export default function AdminWalletDashboard() {
                                   )}
                                 </div>
                               )}
+
+                              {/* ── 4.8F — Trust Metrics panel ── */}
+                              {shTrustExpanded[rule.id] && shTrustMetrics[rule.id] && (() => {
+                                const tm = shTrustMetrics[rule.id];
+                                const es = tm.executionStats;
+                                const cs = tm.confidenceStats;
+                                const fps = tm.fpStats;
+                                const total = es.total || 1;
+                                const healthColor = tm.healthLabel === 'healthy' ? 'emerald' : tm.healthLabel === 'caution' ? 'amber' : 'red';
+                                return (
+                                  <div className="border-t border-indigo-100 bg-indigo-50/40 p-2 space-y-1.5">
+                                    {/* Health score header */}
+                                    <div className="flex items-center gap-2">
+                                      <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full bg-${healthColor}-100 text-${healthColor}-700`}>
+                                        Health {tm.healthScore}/100 — {tm.healthLabel.replace('_', ' ').toUpperCase()}
+                                      </span>
+                                      <span className="text-[7px] text-gray-400">Rule Trust Metrics</span>
+                                    </div>
+
+                                    {/* Outcome breakdown bar */}
+                                    <div>
+                                      <div className="text-[7px] font-bold text-gray-500 mb-0.5">Executions: {es.total} total</div>
+                                      {es.total > 0 ? (
+                                        <div className="flex rounded overflow-hidden h-2 w-full">
+                                          {es.executed > 0 && (
+                                            <div style={{ width: `${100 * es.executed / total}%` }}
+                                              className="bg-emerald-400" title={`Executed: ${es.executed}`} />
+                                          )}
+                                          {es.notifyOnly > 0 && (
+                                            <div style={{ width: `${100 * es.notifyOnly / total}%` }}
+                                              className="bg-blue-400" title={`Notify only: ${es.notifyOnly}`} />
+                                          )}
+                                          {es.pendingManual > 0 && (
+                                            <div style={{ width: `${100 * es.pendingManual / total}%` }}
+                                              className="bg-violet-400" title={`Pending manual: ${es.pendingManual}`} />
+                                          )}
+                                          {es.failed > 0 && (
+                                            <div style={{ width: `${100 * es.failed / total}%` }}
+                                              className="bg-red-400" title={`Failed: ${es.failed}`} />
+                                          )}
+                                          {es.skipped > 0 && (
+                                            <div style={{ width: `${100 * es.skipped / total}%` }}
+                                              className="bg-gray-300" title={`Skipped: ${es.skipped}`} />
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <div className="h-2 bg-gray-100 rounded" />
+                                      )}
+                                      <div className="flex gap-2 mt-0.5 flex-wrap">
+                                        {es.executed > 0 && <span className="text-[7px] text-emerald-600">⚡ {es.executed} exec</span>}
+                                        {es.notifyOnly > 0 && <span className="text-[7px] text-blue-600">🔔 {es.notifyOnly} notify</span>}
+                                        {es.pendingManual > 0 && <span className="text-[7px] text-violet-600">⏳ {es.pendingManual} manual</span>}
+                                        {es.failed > 0 && <span className="text-[7px] text-red-600">✕ {es.failed} failed</span>}
+                                        {es.skipped > 0 && <span className="text-[7px] text-gray-400">⊘ {es.skipped} skipped</span>}
+                                      </div>
+                                    </div>
+
+                                    {/* FP rate + confidence row */}
+                                    <div className="flex gap-3 flex-wrap">
+                                      <div>
+                                        <div className="text-[7px] font-bold text-gray-500 mb-0.5">FP Rate</div>
+                                        <div className="flex items-center gap-1">
+                                          <span className={`text-[8px] font-bold ${fps.fpRateAll > 20 ? 'text-red-600' : fps.fpRateAll > 10 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                            {fps.fpRateAll}%
+                                          </span>
+                                          {fps.trend !== 'insufficient_data' && (
+                                            <span className={`text-[7px] ${fps.trend === 'worsening' ? 'text-red-500' : fps.trend === 'improving' ? 'text-emerald-500' : 'text-gray-400'}`}>
+                                              {fps.trend === 'worsening' ? '↑' : fps.trend === 'improving' ? '↓' : '→'} {fps.trend}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {fps.fpRate7d != null && fps.fpRate30d != null && (
+                                          <div className="text-[7px] text-gray-400">7d: {fps.fpRate7d}% · prev30d: {fps.fpRate30d}%</div>
+                                        )}
+                                      </div>
+                                      {cs.avg != null && (
+                                        <div>
+                                          <div className="text-[7px] font-bold text-gray-500 mb-0.5">Confidence</div>
+                                          <span className={`text-[8px] font-bold ${cs.avg >= 70 ? 'text-emerald-600' : cs.avg >= 40 ? 'text-amber-600' : 'text-red-600'}`}>
+                                            avg {cs.avg}
+                                          </span>
+                                          <span className="text-[7px] text-gray-400 ml-1">({cs.min}–{cs.max})</span>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Mode history */}
+                                    {tm.modeHistory?.length > 0 && (
+                                      <div>
+                                        <div className="text-[7px] font-bold text-gray-500 mb-0.5 uppercase">Mode Change History</div>
+                                        <div className="space-y-0.5">
+                                          {tm.modeHistory.slice(0, 3).map((mh: any) => (
+                                            <div key={mh.id} className="flex items-center gap-1.5 text-[7px] text-gray-600">
+                                              <span className="text-gray-300 shrink-0">│</span>
+                                              <span className="text-gray-400 shrink-0">
+                                                {new Date(mh.changed_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
+                                              </span>
+                                              <span className="font-medium">{mh.old_value} → {mh.new_value}</span>
+                                              <span className="text-gray-400 shrink-0">by {mh.changed_by}</span>
+                                              <span className="italic text-gray-400 truncate" title={mh.reason}>"{mh.reason}"</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                    {(!tm.modeHistory || tm.modeHistory.length === 0) && (
+                                      <div className="text-[7px] text-gray-400">No mode changes recorded</div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           );
                         })}
@@ -14791,16 +15189,29 @@ export default function AdminWalletDashboard() {
                               const fpStatus = shFpStatuses[ex.id];
                               const isMarkedFp = fpStatus?.isFalsePositive;
                               const isReviewing = shFpReviewing === ex.id;
+                              const isExecuted = ex.result === 'success' || ex.result === 'executed';
+                              const isFailed = ex.result === 'failed';
+                              const isNotifyOnly = ex.result === 'notify_only';
+                              const isPendingManual = ex.result === 'pending_manual';
                               return (
                                 <div key={ex.id} className={`rounded text-[8px] border ${
                                   isMarkedFp ? 'bg-amber-50 border-amber-200' :
-                                  ex.result === 'success' ? 'bg-emerald-50 border-emerald-100' :
-                                  ex.result === 'failed' ? 'bg-red-50 border-red-100' :
+                                  isExecuted ? 'bg-emerald-50 border-emerald-100' :
+                                  isFailed ? 'bg-red-50 border-red-100' :
+                                  isNotifyOnly ? 'bg-blue-50 border-blue-100' :
+                                  isPendingManual ? 'bg-violet-50 border-violet-200' :
                                   'bg-gray-50 border-gray-100'
                                 }`}>
                                   <div className="flex items-start gap-1.5 p-1">
-                                    <span className={`shrink-0 font-bold mt-0.5 ${isMarkedFp ? 'text-amber-500' : ex.result === 'success' ? 'text-emerald-600' : ex.result === 'failed' ? 'text-red-600' : 'text-gray-400'}`}>
-                                      {isMarkedFp ? '⚑' : ex.result === 'success' ? '✓' : ex.result === 'failed' ? '✕' : '⧖'}
+                                    <span className={`shrink-0 font-bold mt-0.5 ${
+                                      isMarkedFp ? 'text-amber-500' :
+                                      isExecuted ? 'text-emerald-600' :
+                                      isFailed ? 'text-red-600' :
+                                      isNotifyOnly ? 'text-blue-500' :
+                                      isPendingManual ? 'text-violet-600' :
+                                      'text-gray-400'
+                                    }`}>
+                                      {isMarkedFp ? '⚑' : isExecuted ? '⚡' : isFailed ? '✕' : isNotifyOnly ? '🔔' : isPendingManual ? '⏳' : '⧖'}
                                     </span>
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-1 flex-wrap">
@@ -14813,8 +15224,17 @@ export default function AdminWalletDashboard() {
                                         {isMarkedFp && (
                                           <span className="text-[7px] px-1 py-0 bg-amber-100 text-amber-700 rounded font-bold">FALSE POSITIVE</span>
                                         )}
-                                        {ex.result === 'notify_only' && (
+                                        {isExecuted && (
+                                          <span className="text-[7px] px-1 py-0 bg-emerald-100 text-emerald-700 rounded font-bold">EXECUTED</span>
+                                        )}
+                                        {isNotifyOnly && (
                                           <span className="text-[7px] px-1 py-0 bg-blue-100 text-blue-700 rounded font-bold">NOTIFY ONLY</span>
+                                        )}
+                                        {isPendingManual && (
+                                          <span className="text-[7px] px-1 py-0 bg-violet-100 text-violet-700 rounded font-bold">PENDING MANUAL</span>
+                                        )}
+                                        {isFailed && (
+                                          <span className="text-[7px] px-1 py-0 bg-red-100 text-red-700 rounded font-bold">FAILED</span>
                                         )}
                                         {ex.confidence_score != null && (
                                           <span className={`text-[7px] px-1 py-0 rounded font-bold ${

@@ -106,6 +106,7 @@ import {
   isAppleWalletConfigured,
 } from '../services/AppleWalletService';
 import { dispatchAcademySms } from '../services/academySmsHelper';
+import { GoogleGenAI } from '@google/genai';
 
 const router = Router();
 
@@ -18316,89 +18317,173 @@ async function runSelfHealingCheck(): Promise<void> {
 
       const anomaly = matching[0];
       const anomalyScore = anomaly.priority_score || 50;
+      const approvalMode: string = rule.approval_mode ?? 'auto';
 
       // 4.8D — Compute confidence score at execution time (immutable, stored on row)
       const { confidence, priorityComponent, fpPenalty, triggerBonus, fpRate } =
         await computeConfidenceScore(rule.id, anomalyScore, rule.consecutive_triggers);
 
-      // If confidence < 40 → notify-only (do not execute destructive action)
+      const actionParamsJson = JSON.stringify(
+        typeof rule.action_params === 'string' ? JSON.parse(rule.action_params) : rule.action_params
+      ).replace(/'/g, "''");
+      const anomalyType = (anomaly.alert_type || 'unknown').replace(/'/g, "''");
+
+      // ── 4.8C — Execution decision table ───────────────────────────────────
+      // confidence < 40 always overrides mode → notify_only
       if (confidence < 40) {
         await pool.query(`
           INSERT INTO self_healing_executions
             (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by, confidence_score)
-          VALUES (${rule.id}, ${anomaly.id},
-            '${(anomaly.alert_type || 'unknown').replace(/'/g, "''")}',
-            ${anomalyScore},
-            '${rule.action_type}',
-            '${JSON.stringify(typeof rule.action_params === 'string' ? JSON.parse(rule.action_params) : rule.action_params).replace(/'/g, "''")}'::jsonb,
+          VALUES (${rule.id}, ${anomaly.id}, '${anomalyType}', ${anomalyScore},
+            '${rule.action_type}', '${actionParamsJson}'::jsonb,
             'notify_only',
-            'Confidence too low (${confidence}/100) to execute — priority:${priorityComponent} fp_penalty:${fpPenalty} trigger_bonus:${triggerBonus} fp_rate:${Math.round(fpRate)}%',
-            'self_healing_engine',
-            ${confidence})
+            'Low confidence (${confidence}/100) — priority:${priorityComponent} fp_penalty:${fpPenalty} trigger_bonus:${triggerBonus}',
+            'self_healing_engine', ${confidence})
         `);
-        logger.warn(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" confidence ${confidence} < 40 — notify-only (fp_rate ${Math.round(fpRate)}%)`);
+        await pool.query(`
+          INSERT INTO governance_alerts (alert_type, severity, message, triggered_by)
+          VALUES ('self_healing_notify', 'warning',
+            'Self-healing rule "${rule.name.replace(/'/g, "''")}": low confidence ${confidence}/100 — action not executed',
+            'self_healing_engine')
+        `);
+        logger.warn(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" conf ${confidence} < 40 → notify_only`);
         continue;
       }
 
-      // Execute the action
-      const params = typeof rule.action_params === 'string'
-        ? JSON.parse(rule.action_params)
-        : rule.action_params;
+      if (approvalMode === 'notify') {
+        // notify mode — never executes, always logs notify_only
+        await pool.query(`
+          INSERT INTO self_healing_executions
+            (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by, confidence_score)
+          VALUES (${rule.id}, ${anomaly.id}, '${anomalyType}', ${anomalyScore},
+            '${rule.action_type}', '${actionParamsJson}'::jsonb,
+            'notify_only',
+            '[conf:${confidence}] Rule is in notify mode — action not executed',
+            'self_healing_engine', ${confidence})
+        `);
+        await pool.query(`
+          INSERT INTO governance_alerts (alert_type, severity, message, triggered_by)
+          VALUES ('self_healing_notify', 'warning',
+            'Self-healing rule "${rule.name.replace(/'/g, "''")}": notify mode — action blocked (conf ${confidence}/100)',
+            'self_healing_engine')
+        `);
+        logger.info(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" notify mode → notify_only (conf ${confidence})`);
 
-      const { success, note } = await executeSelfHealingAction(rule.action_type, params, {
-        ruleId: rule.id,
-        ruleName: rule.name,
-      });
+      } else if (approvalMode === 'manual') {
+        // manual mode — create remediation_suggestion, log pending_manual, NEVER execute
+        // Find or create an incident to attach the suggestion to
+        let manualIncidentId: number;
+        const openIncRes = await pool.query(`SELECT id FROM incidents WHERE status = 'open' ORDER BY started_at DESC LIMIT 1`);
+        if (openIncRes.rows.length) {
+          manualIncidentId = openIncRes.rows[0].id;
+        } else {
+          // Auto-create a self-healing review incident
+          const newInc = await pool.query(`
+            INSERT INTO incidents (title, status, severity, description, started_at)
+            VALUES (
+              'Self-Healing Manual Review: ${rule.name.replace(/'/g, "''")}',
+              'open', 'medium',
+              'Auto-created for manual approval of self-healing rule ${rule.id}',
+              NOW()
+            ) RETURNING id
+          `);
+          manualIncidentId = newInc.rows[0].id;
+        }
 
-      // Log execution with confidence score (immutable from here)
-      await pool.query(`
-        INSERT INTO self_healing_executions
-          (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by, confidence_score)
-        VALUES (${rule.id}, ${anomaly.id},
-          '${(anomaly.alert_type || 'unknown').replace(/'/g, "''")}',
-          ${anomalyScore},
-          '${rule.action_type}',
-          '${JSON.stringify(params).replace(/'/g, "''")}'::jsonb,
-          '${success ? 'success' : 'failed'}',
-          '[conf:${confidence}] ${note.replace(/'/g, "''")}',
-          'self_healing_engine',
-          ${confidence})
-      `);
+        // Insert remediation suggestion for operator to approve
+        await pool.query(`
+          INSERT INTO remediation_suggestions
+            (incident_id, anomaly_type, action_type, action_label, action_detail, action_params, confidence, status)
+          VALUES (
+            ${manualIncidentId},
+            '${anomalyType}',
+            '${rule.action_type.replace(/'/g, "''")}',
+            'Self-Healing: ${rule.action_label.replace(/'/g, "''")}',
+            'Rule "${rule.name.replace(/'/g, "''")}": conf ${confidence}/100 — awaiting operator approval to execute ${rule.action_type}',
+            '{"source":"self_healing","rule_id":${rule.id},"anomaly_event_id":${anomaly.id},"confidence_score":${confidence}}'::jsonb,
+            '${confidence >= 70 ? 'high' : confidence >= 40 ? 'medium' : 'low'}',
+            'pending'
+          )
+        `);
 
-      // Update rule's trigger metadata
-      await pool.query(`
-        UPDATE self_healing_rules
-        SET last_triggered_at = NOW(), trigger_count = trigger_count + 1
-        WHERE id = ${rule.id}
-      `);
+        // Log pending_manual execution row
+        await pool.query(`
+          INSERT INTO self_healing_executions
+            (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by, confidence_score)
+          VALUES (${rule.id}, ${anomaly.id}, '${anomalyType}', ${anomalyScore},
+            '${rule.action_type}', '${actionParamsJson}'::jsonb,
+            'pending_manual',
+            '[conf:${confidence}] Awaiting operator approval via remediation panel (incident #${manualIncidentId})',
+            'self_healing_engine', ${confidence})
+        `);
 
-      // Write to incident timeline if there's an open incident for this anomaly
-      const openIncidentRes = await pool.query(`
-        SELECT id FROM incidents WHERE status = 'open' ORDER BY started_at DESC LIMIT 1
-      `);
-      if (openIncidentRes.rows.length) {
-        const incidentId = openIncidentRes.rows[0].id;
+        // Update rule trigger metadata
+        await pool.query(`
+          UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = ${rule.id}
+        `);
+
+        // Timeline entry
         await pool.query(`
           INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json)
-          VALUES (${incidentId}, 'self_healing_fired',
-            'Self-healing rule "${rule.name.replace(/'/g, "''")}": ${note.replace(/'/g, "''")}',
+          VALUES (${manualIncidentId}, 'self_healing_pending_manual',
+            'Self-healing rule "${rule.name.replace(/'/g, "''")}": manual approval required (conf ${confidence}/100)',
             'self_healing_engine',
-            '{"rule_id":${rule.id},"action_type":"${rule.action_type}","success":${success}}'::jsonb)
+            '{"rule_id":${rule.id},"action_type":"${rule.action_type}","confidence":${confidence}}'::jsonb)
         `);
-      }
+        logger.info(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" manual mode → pending_manual (incident #${manualIncidentId}, conf ${confidence})`);
 
-      // Write governance alert if action succeeded
-      if (success) {
+      } else {
+        // auto mode — execute immediately (confidence already ≥ 40)
+        const params = typeof rule.action_params === 'string'
+          ? JSON.parse(rule.action_params)
+          : rule.action_params;
+
+        const { success, note } = await executeSelfHealingAction(rule.action_type, params, {
+          ruleId: rule.id,
+          ruleName: rule.name,
+        });
+
+        // Log execution (result = 'executed' for new runs, keeps backward compat)
         await pool.query(`
-          INSERT INTO governance_alerts (alert_type, severity, title, detail, status)
-          VALUES ('self_healing_executed', 'medium',
-            'Self-Healing Action Executed: ${rule.action_label.replace(/'/g, "''")}',
-            'Rule "${rule.name.replace(/'/g, "''")}": ${note.replace(/'/g, "''")}',
-            'open')
+          INSERT INTO self_healing_executions
+            (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by, confidence_score)
+          VALUES (${rule.id}, ${anomaly.id}, '${anomalyType}', ${anomalyScore},
+            '${rule.action_type}', '${JSON.stringify(params).replace(/'/g, "''")}'::jsonb,
+            '${success ? 'executed' : 'failed'}',
+            '[conf:${confidence}] ${note.replace(/'/g, "''")}',
+            'self_healing_engine', ${confidence})
         `);
-      }
 
-      logger.info(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" fired: ${note}`);
+        // Update rule trigger metadata
+        await pool.query(`
+          UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = ${rule.id}
+        `);
+
+        // Write to incident timeline if there's an open incident
+        const openIncidentRes = await pool.query(`SELECT id FROM incidents WHERE status = 'open' ORDER BY started_at DESC LIMIT 1`);
+        if (openIncidentRes.rows.length) {
+          const incidentId = openIncidentRes.rows[0].id;
+          await pool.query(`
+            INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json)
+            VALUES (${incidentId}, 'self_healing_fired',
+              'Self-healing rule "${rule.name.replace(/'/g, "''")}": [conf:${confidence}] ${note.replace(/'/g, "''")}',
+              'self_healing_engine',
+              '{"rule_id":${rule.id},"action_type":"${rule.action_type}","success":${success},"confidence":${confidence}}'::jsonb)
+          `);
+        }
+
+        // Governance alert on successful execution
+        if (success) {
+          await pool.query(`
+            INSERT INTO governance_alerts (alert_type, severity, message, triggered_by)
+            VALUES ('self_healing_executed', 'medium',
+              'Self-healing rule "${rule.name.replace(/'/g, "''")}": executed ${rule.action_type} (conf ${confidence}/100)',
+              'self_healing_engine')
+          `);
+        }
+
+        logger.info(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" auto executed: ${note} (conf ${confidence})`);
+      }
     }
   } catch (err: any) {
     logger.error(`[SelfHealingEngine] Check failed: ${err.message}`);
@@ -18679,6 +18764,47 @@ router.post('/admin/system/self-healing/run', async (req, res) => {
     return res.json({ triggered: true, newExecutions: fired, message: `Self-healing check complete — ${fired} action(s) logged` });
   } catch (err: any) {
     return res.status(500).json({ error: 'Manual trigger failed', detail: err.message });
+  }
+});
+
+// ── 4.8C — Approval Mode ─────────────────────────────────────────────────────
+
+// PATCH /admin/system/self-healing/rules/:id/mode — update approval_mode with audit trail
+router.patch('/admin/system/self-healing/rules/:id/mode', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid rule ID' });
+
+    const { approvalMode, actor, reason } = req.body;
+    if (!approvalMode || !['auto', 'notify', 'manual'].includes(approvalMode)) {
+      return res.status(400).json({ error: 'approvalMode must be one of: auto, notify, manual' });
+    }
+    if (!reason || !reason.trim()) return res.status(400).json({ error: 'reason is required for mode changes' });
+    if (!actor || !actor.trim()) return res.status(400).json({ error: 'actor is required' });
+
+    const ruleRes = await pool.query(`SELECT * FROM self_healing_rules WHERE id = ${id}`);
+    if (!ruleRes.rows.length) return res.status(404).json({ error: 'Rule not found' });
+    const rule = ruleRes.rows[0];
+
+    const oldMode = rule.approval_mode ?? 'auto';
+    if (oldMode === approvalMode) {
+      return res.json({ message: 'No change — rule is already in this mode', rule });
+    }
+
+    // Update the mode
+    const updated = await pool.query(`
+      UPDATE self_healing_rules SET approval_mode = '${approvalMode}' WHERE id = ${id} RETURNING *
+    `);
+
+    // Immutable audit record
+    await pool.query(`
+      INSERT INTO self_healing_rule_changes (rule_id, changed_by, field_changed, old_value, new_value, reason)
+      VALUES (${id}, '${actor.replace(/'/g, "''")}', 'approval_mode', '${oldMode}', '${approvalMode}', '${reason.replace(/'/g, "''")}')
+    `);
+
+    return res.json({ rule: updated.rows[0], oldMode, newMode: approvalMode });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Mode update failed', detail: err.message });
   }
 });
 
@@ -19076,6 +19202,470 @@ router.post('/admin/system/incidents/auto-build', async (req, res) => {
     return res.json({ created: created.length, incidents: created, message: `Auto-built ${created.length} incident(s)` });
   } catch (err: any) {
     return res.status(500).json({ error: 'Auto-build failed', detail: err.message });
+  }
+});
+
+// ── 4.8E — Incident Postmortem Generation ────────────────────────────────────
+
+// POST /admin/system/incidents/:id/postmortem — AI-generated incident postmortem via Gemini
+router.post('/admin/system/incidents/:id/postmortem', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid incident ID' });
+
+    // Fetch incident + timeline + self-healing executions linked to it
+    const incRes = await pool.query(`SELECT * FROM incidents WHERE id = ${id}`);
+    if (!incRes.rows.length) return res.status(404).json({ error: 'Incident not found' });
+    const inc = incRes.rows[0];
+
+    const timelineRes = await pool.query(`
+      SELECT event_type, content, actor, occurred_at, metadata_json
+      FROM incident_timeline_entries WHERE incident_id = ${id}
+      ORDER BY occurred_at ASC
+    `);
+
+    // Self-healing actions that fired during the incident window
+    let shExecsData = '';
+    if (inc.anomaly_event_id) {
+      const shRes = await pool.query(`
+        SELECT e.*, r.name as rule_name, r.action_type
+        FROM self_healing_executions e
+        LEFT JOIN self_healing_rules r ON r.id = e.rule_id
+        WHERE e.anomaly_event_id = ${inc.anomaly_event_id}
+        ORDER BY e.executed_at ASC
+      `);
+      if (shRes.rows.length) {
+        shExecsData = '\n\nSelf-Healing Actions Fired:\n' + shRes.rows.map((e: any) =>
+          `  - [${e.result?.toUpperCase()}] ${e.rule_name ?? 'Rule #' + e.rule_id} (${e.action_type}) — score ${e.anomaly_score} — conf ${e.confidence_score ?? 'N/A'} — ${new Date(e.executed_at).toISOString()}`
+        ).join('\n');
+      }
+    }
+
+    const duration = inc.resolved_at
+      ? `${Math.round((new Date(inc.resolved_at).getTime() - new Date(inc.started_at).getTime()) / 60000)} minutes`
+      : 'Not yet resolved';
+
+    const timelineText = timelineRes.rows.map((t: any) =>
+      `  [${new Date(t.occurred_at).toISOString()}] [${t.event_type}] ${t.content} — by ${t.actor}`
+    ).join('\n') || '  (No timeline entries)';
+
+    const prompt = `You are an expert Site Reliability Engineer writing an incident postmortem for a pet care SaaS platform (PetWash).
+
+Incident Details:
+  ID: ${id}
+  Title: ${inc.title}
+  Severity: ${inc.severity?.toUpperCase()}
+  Status: ${inc.status}
+  Duration: ${duration}
+  Started: ${new Date(inc.started_at).toISOString()}
+  ${inc.resolved_at ? 'Resolved: ' + new Date(inc.resolved_at).toISOString() : 'STILL OPEN'}
+  ${inc.summary ? 'Summary: ' + inc.summary : ''}
+
+Timeline of Events:
+${timelineText}${shExecsData}
+
+Write a structured incident postmortem in the following format:
+1. **Executive Summary** (2-3 sentences: what happened, impact, resolution)
+2. **Timeline** (chronological key events in bullet points)
+3. **Root Cause Analysis** (what triggered the incident, technical or process root cause)
+4. **Impact Assessment** (who was affected, what systems, estimated duration of user impact)
+5. **What Went Well** (detection speed, automation, response)
+6. **What Needs Improvement** (gaps in monitoring, response, or process)
+7. **Action Items** (3-5 concrete tasks with owners like "SRE team", "Platform team", etc.)
+
+Write in a professional but concise style. Focus on technical accuracy. This is for internal engineering review.`;
+
+    const genAI = new GoogleGenAI({ apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY! });
+    const aiRes = await genAI.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    });
+
+    const postmortemText = aiRes.text ?? '';
+
+    // Persist to incidents table
+    await pool.query(`UPDATE incidents SET postmortem_text = '${postmortemText.replace(/'/g, "''")}' WHERE id = ${id}`);
+
+    // Timeline entry
+    await pool.query(`
+      INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, occurred_at)
+      VALUES (${id}, 'postmortem_generated', 'AI-generated postmortem created', 'gemini_ai', NOW())
+    `);
+
+    return res.json({ incidentId: id, postmortemText, generated: true });
+  } catch (err: any) {
+    logger.error(`[PostmortemGen] Failed for incident ${req.params.id}: ${err.message}`);
+    return res.status(500).json({ error: 'Postmortem generation failed', detail: err.message });
+  }
+});
+
+// GET /admin/system/incidents/:id/postmortem — fetch stored postmortem
+router.get('/admin/system/incidents/:id/postmortem', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid incident ID' });
+    const res2 = await pool.query(`SELECT id, title, postmortem_text FROM incidents WHERE id = ${id}`);
+    if (!res2.rows.length) return res.status(404).json({ error: 'Incident not found' });
+    const inc = res2.rows[0];
+    return res.json({
+      incidentId: id,
+      title: inc.title,
+      postmortemText: inc.postmortem_text ?? null,
+      hasPostmortem: !!inc.postmortem_text,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Fetch failed', detail: err.message });
+  }
+});
+
+// ── 4.8G — Autonomous Mode Readiness Score ───────────────────────────────────
+
+// GET /admin/system/self-healing/readiness-score — composite readiness score with full component breakdown
+router.get('/admin/system/self-healing/readiness-score', async (req, res) => {
+  try {
+    // ── Component 1: Fleet Rule Health (30%) ─────────────────────────────────
+    // Avg health score across all rules (derived from same algo as trust-overview)
+    const healthQ = await pool.query(`
+      SELECT
+        r.id,
+        COUNT(e.id)::int                                                        AS total_exec,
+        COUNT(CASE WHEN e.result IN ('success','executed') THEN 1 END)::int     AS executed,
+        COUNT(CASE WHEN e.result = 'failed' THEN 1 END)::int                    AS failed,
+        ROUND(AVG(e.confidence_score))::int                                     AS avg_conf,
+        COUNT(fpr.id)::int                                                      AS fp_count
+      FROM self_healing_rules r
+      LEFT JOIN self_healing_executions e ON e.rule_id = r.id
+      LEFT JOIN false_positive_reviews fpr ON fpr.execution_id = e.id AND fpr.is_false_positive = true
+      WHERE r.enabled = true
+      GROUP BY r.id
+    `);
+    const enabledRules = healthQ.rows;
+    const numRules = enabledRules.length;
+
+    let avgHealthScore = 100;
+    if (numRules > 0) {
+      const healthScores = enabledRules.map((r: any) => {
+        const fpRate = r.total_exec > 0 ? (r.fp_count / r.total_exec) * 100 : 0;
+        let h = 100;
+        h -= Math.min(40, Math.round(fpRate * 1.5));
+        if ((r.avg_conf ?? 100) < 40) h -= 15;
+        const failRate = r.total_exec > 0 ? r.failed / r.total_exec : 0;
+        if (failRate > 0.2) h -= 20;
+        else if (failRate > 0.1) h -= 10;
+        return Math.max(0, Math.min(100, h));
+      });
+      avgHealthScore = Math.round(healthScores.reduce((a: number, b: number) => a + b, 0) / numRules);
+    }
+
+    // ── Component 2: False Positive Rate (25%) ────────────────────────────────
+    // Fleet-wide FP rate last 30d — penalise anything above 10%
+    const fpQ = await pool.query(`
+      SELECT
+        COUNT(e.id)::int AS total_exec,
+        COUNT(fpr.id)::int AS total_fp
+      FROM self_healing_executions e
+      LEFT JOIN false_positive_reviews fpr ON fpr.execution_id = e.id AND fpr.is_false_positive = true
+      WHERE e.executed_at >= NOW() - INTERVAL '30 days'
+    `);
+    const fpRow = fpQ.rows[0];
+    const fpRateFleet = fpRow.total_exec > 0 ? (fpRow.total_fp / fpRow.total_exec) * 100 : 0;
+    // 0% FP → 100 score; 10% FP → 50 score; 20%+ FP → 0 score (linear interpolation)
+    const fpScore = Math.max(0, Math.min(100, Math.round(100 - fpRateFleet * 5)));
+
+    // ── Component 3: Confidence Coverage (20%) ────────────────────────────────
+    // % of enabled rules with avg confidence ≥ 70 (high confidence rules can run auto safely)
+    let confCoverageScore = 100;
+    let highConfRules = 0;
+    if (numRules > 0) {
+      highConfRules = enabledRules.filter((r: any) => (r.avg_conf ?? 0) >= 70 || r.total_exec === 0).length;
+      confCoverageScore = Math.round((highConfRules / numRules) * 100);
+    }
+
+    // ── Component 4: Auto Mode Ratio (15%) ───────────────────────────────────
+    // % of enabled rules that are in 'auto' mode
+    const modeQ = await pool.query(`
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(CASE WHEN approval_mode = 'auto' OR approval_mode IS NULL THEN 1 END)::int AS auto_count
+      FROM self_healing_rules WHERE enabled = true
+    `);
+    const modeRow = modeQ.rows[0];
+    const autoRatio = modeRow.total > 0 ? (modeRow.auto_count / modeRow.total) : 1;
+    const autoModeScore = Math.round(autoRatio * 100);
+
+    // ── Component 5: Recent Failure Rate (10%) ────────────────────────────────
+    // % of executions in last 7d that succeeded (executed or notify_only) vs failed
+    const recentQ = await pool.query(`
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(CASE WHEN result IN ('success','executed','notify_only','pending_manual') THEN 1 END)::int AS ok_count,
+        COUNT(CASE WHEN result = 'failed' THEN 1 END)::int AS fail_count
+      FROM self_healing_executions
+      WHERE executed_at >= NOW() - INTERVAL '7 days'
+    `);
+    const recentRow = recentQ.rows[0];
+    const recentOkRate = recentRow.total > 0 ? recentRow.ok_count / recentRow.total : 1;
+    const recentFailScore = Math.round(recentOkRate * 100);
+
+    // ── Composite score (weighted) ─────────────────────────────────────────────
+    const composite = Math.round(
+      avgHealthScore   * 0.30 +
+      fpScore          * 0.25 +
+      confCoverageScore * 0.20 +
+      autoModeScore    * 0.15 +
+      recentFailScore  * 0.10
+    );
+
+    const readinessLabel = composite >= 75 ? 'READY' : composite >= 50 ? 'CALIBRATING' : 'NOT_READY';
+    const recommendation =
+      composite >= 75
+        ? 'System is ready for fully autonomous operation. All rules can be switched to Auto mode.'
+        : composite >= 50
+        ? 'System is calibrating. Enable auto mode only on high-confidence, low-FP rules. Monitor closely.'
+        : 'System is not ready for autonomous operation. Address FP rates and confidence scores before enabling auto mode.';
+
+    return res.json({
+      compositeScore: composite,
+      readinessLabel,
+      recommendation,
+      components: [
+        {
+          name: 'Fleet Rule Health',
+          score: avgHealthScore,
+          weight: 30,
+          detail: numRules > 0
+            ? `${numRules} enabled rules — avg health ${avgHealthScore}/100`
+            : 'No enabled rules configured',
+        },
+        {
+          name: 'False Positive Rate (30d)',
+          score: fpScore,
+          weight: 25,
+          detail: fpRow.total_exec > 0
+            ? `${fpRow.total_fp} FP reviews from ${fpRow.total_exec} executions (${fpRateFleet.toFixed(1)}% FP rate)`
+            : 'No executions in last 30 days',
+        },
+        {
+          name: 'Confidence Coverage',
+          score: confCoverageScore,
+          weight: 20,
+          detail: numRules > 0
+            ? `${highConfRules}/${numRules} rules with avg confidence ≥ 70`
+            : 'No enabled rules',
+        },
+        {
+          name: 'Auto Mode Adoption',
+          score: autoModeScore,
+          weight: 15,
+          detail: modeRow.total > 0
+            ? `${modeRow.auto_count}/${modeRow.total} enabled rules in auto mode`
+            : 'No enabled rules',
+        },
+        {
+          name: 'Recent Execution Reliability (7d)',
+          score: recentFailScore,
+          weight: 10,
+          detail: recentRow.total > 0
+            ? `${recentRow.ok_count}/${recentRow.total} executions OK — ${recentRow.fail_count} failed`
+            : 'No recent executions',
+        },
+      ],
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Readiness score failed', detail: err.message });
+  }
+});
+
+// ── 4.8F — Operator Trust Metrics Dashboard ──────────────────────────────────
+
+// GET /admin/system/self-healing/rules/:id/trust-metrics
+// Aggregates execution outcomes, FP rate, avg confidence, mode history → per-rule trust panel
+router.get('/admin/system/self-healing/rules/:id/trust-metrics', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid rule ID' });
+
+    // Rule existence check
+    const ruleRes = await pool.query(`SELECT * FROM self_healing_rules WHERE id = ${id}`);
+    if (!ruleRes.rows.length) return res.status(404).json({ error: 'Rule not found' });
+    const rule = ruleRes.rows[0];
+
+    // Execution outcome breakdown + confidence stats
+    const execStats = await pool.query(`
+      SELECT
+        COUNT(*)::int                                                            AS total_executions,
+        COUNT(CASE WHEN result IN ('success','executed') THEN 1 END)::int       AS executed_count,
+        COUNT(CASE WHEN result = 'notify_only' THEN 1 END)::int                 AS notify_only_count,
+        COUNT(CASE WHEN result = 'pending_manual' THEN 1 END)::int              AS pending_manual_count,
+        COUNT(CASE WHEN result = 'failed' THEN 1 END)::int                      AS failed_count,
+        COUNT(CASE WHEN result = 'skipped_consecutive' THEN 1 END)::int         AS skipped_count,
+        ROUND(AVG(confidence_score))::int                                        AS avg_confidence,
+        ROUND(MIN(confidence_score))::int                                        AS min_confidence,
+        ROUND(MAX(confidence_score))::int                                        AS max_confidence
+      FROM self_healing_executions
+      WHERE rule_id = ${id}
+    `);
+    const stats = execStats.rows[0];
+
+    // FP totals (all time)
+    const fpAll = await pool.query(`
+      SELECT COUNT(fpr.id)::int AS fp_count
+      FROM self_healing_executions e
+      JOIN false_positive_reviews fpr ON fpr.execution_id = e.id AND fpr.is_false_positive = true
+      WHERE e.rule_id = ${id}
+    `);
+    const fpCount = fpAll.rows[0].fp_count ?? 0;
+    const fpRate = stats.total_executions > 0
+      ? Math.round(1000 * fpCount / stats.total_executions) / 10  // 1 decimal
+      : 0;
+
+    // FP rate last 7d vs 7-30d (trend window comparison)
+    const fp7d = await pool.query(`
+      SELECT
+        COUNT(CASE WHEN fpr.id IS NOT NULL THEN 1 END)::int AS fp_7d,
+        COUNT(e.id)::int AS exec_7d
+      FROM self_healing_executions e
+      LEFT JOIN false_positive_reviews fpr ON fpr.execution_id = e.id AND fpr.is_false_positive = true
+      WHERE e.rule_id = ${id} AND e.executed_at >= NOW() - INTERVAL '7 days'
+    `);
+    const fp30d = await pool.query(`
+      SELECT
+        COUNT(CASE WHEN fpr.id IS NOT NULL THEN 1 END)::int AS fp_30d,
+        COUNT(e.id)::int AS exec_30d
+      FROM self_healing_executions e
+      LEFT JOIN false_positive_reviews fpr ON fpr.execution_id = e.id AND fpr.is_false_positive = true
+      WHERE e.rule_id = ${id} AND e.executed_at >= NOW() - INTERVAL '30 days' AND e.executed_at < NOW() - INTERVAL '7 days'
+    `);
+    const r7 = fp7d.rows[0];
+    const r30 = fp30d.rows[0];
+    const fpRate7d = r7.exec_7d > 0 ? Math.round(1000 * r7.fp_7d / r7.exec_7d) / 10 : null;
+    const fpRate30d = r30.exec_30d > 0 ? Math.round(1000 * r30.fp_30d / r30.exec_30d) / 10 : null;
+
+    // Mode change history (last 5)
+    const modeHistory = await pool.query(`
+      SELECT * FROM self_healing_rule_changes
+      WHERE rule_id = ${id} AND field_changed = 'approval_mode'
+      ORDER BY changed_at DESC LIMIT 5
+    `);
+
+    // Compute rule health score:
+    // Start 100, penalise FP rate (up to -40), low confidence (-15 if avg<40), failures (-20 if >20% fail rate)
+    let healthScore = 100;
+    healthScore -= Math.min(40, Math.round(fpRate * 1.5));  // FP penalty
+    if ((stats.avg_confidence ?? 100) < 40) healthScore -= 15;
+    const failRate = stats.total_executions > 0
+      ? stats.failed_count / stats.total_executions
+      : 0;
+    if (failRate > 0.2) healthScore -= 20;
+    else if (failRate > 0.1) healthScore -= 10;
+    healthScore = Math.max(0, Math.min(100, healthScore));
+
+    const healthLabel = healthScore >= 75 ? 'healthy' : healthScore >= 50 ? 'caution' : 'at_risk';
+
+    return res.json({
+      ruleId: id,
+      ruleName: rule.name,
+      actionType: rule.action_type,
+      approvalMode: rule.approval_mode ?? 'auto',
+      enabled: rule.enabled,
+      executionStats: {
+        total: stats.total_executions,
+        executed: stats.executed_count,
+        notifyOnly: stats.notify_only_count,
+        pendingManual: stats.pending_manual_count,
+        failed: stats.failed_count,
+        skipped: stats.skipped_count,
+      },
+      confidenceStats: {
+        avg: stats.avg_confidence,
+        min: stats.min_confidence,
+        max: stats.max_confidence,
+      },
+      fpStats: {
+        totalFpReviews: fpCount,
+        fpRateAll: fpRate,
+        fpRate7d,
+        fpRate30d,
+        trend: fpRate7d != null && fpRate30d != null
+          ? fpRate7d > fpRate30d ? 'worsening' : fpRate7d < fpRate30d ? 'improving' : 'stable'
+          : 'insufficient_data',
+      },
+      modeHistory: modeHistory.rows,
+      healthScore,
+      healthLabel,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Trust metrics failed', detail: err.message });
+  }
+});
+
+// GET /admin/system/self-healing/trust-overview — aggregate trust health across all rules
+router.get('/admin/system/self-healing/trust-overview', async (req, res) => {
+  try {
+    const rules = await pool.query(`SELECT id FROM self_healing_rules ORDER BY id`);
+    if (!rules.rows.length) return res.json({ rules: [], summary: null });
+
+    const metrics = await pool.query(`
+      SELECT
+        r.id,
+        r.name,
+        r.action_type,
+        r.approval_mode,
+        r.enabled,
+        COUNT(e.id)::int                                                          AS total_executions,
+        COUNT(CASE WHEN e.result IN ('success','executed') THEN 1 END)::int       AS executed_count,
+        COUNT(CASE WHEN e.result = 'failed' THEN 1 END)::int                      AS failed_count,
+        COUNT(CASE WHEN e.result = 'notify_only' THEN 1 END)::int                 AS notify_only_count,
+        COUNT(CASE WHEN e.result = 'pending_manual' THEN 1 END)::int              AS pending_manual_count,
+        ROUND(AVG(e.confidence_score))::int                                        AS avg_confidence,
+        COUNT(fpr.id)::int                                                         AS fp_count
+      FROM self_healing_rules r
+      LEFT JOIN self_healing_executions e ON e.rule_id = r.id
+      LEFT JOIN false_positive_reviews fpr ON fpr.execution_id = e.id AND fpr.is_false_positive = true
+      GROUP BY r.id
+      ORDER BY r.id
+    `);
+
+    const ruleMetrics = metrics.rows.map((row: any) => {
+      const fpRate = row.total_executions > 0
+        ? Math.round(1000 * row.fp_count / row.total_executions) / 10
+        : 0;
+      let healthScore = 100;
+      healthScore -= Math.min(40, Math.round(fpRate * 1.5));
+      if ((row.avg_confidence ?? 100) < 40) healthScore -= 15;
+      const failRate = row.total_executions > 0 ? row.failed_count / row.total_executions : 0;
+      if (failRate > 0.2) healthScore -= 20;
+      else if (failRate > 0.1) healthScore -= 10;
+      healthScore = Math.max(0, Math.min(100, healthScore));
+      return {
+        ...row,
+        fpRate,
+        healthScore,
+        healthLabel: healthScore >= 75 ? 'healthy' : healthScore >= 50 ? 'caution' : 'at_risk',
+      };
+    });
+
+    const totalRules = ruleMetrics.length;
+    const healthyCount = ruleMetrics.filter((r: any) => r.healthLabel === 'healthy').length;
+    const cautionCount = ruleMetrics.filter((r: any) => r.healthLabel === 'caution').length;
+    const atRiskCount = ruleMetrics.filter((r: any) => r.healthLabel === 'at_risk').length;
+    const avgHealth = totalRules > 0
+      ? Math.round(ruleMetrics.reduce((s: number, r: any) => s + r.healthScore, 0) / totalRules)
+      : 0;
+
+    return res.json({
+      rules: ruleMetrics,
+      summary: {
+        totalRules,
+        healthyCount,
+        cautionCount,
+        atRiskCount,
+        avgHealthScore: avgHealth,
+        overallHealth: avgHealth >= 75 ? 'healthy' : avgHealth >= 50 ? 'caution' : 'at_risk',
+      },
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Trust overview failed', detail: err.message });
   }
 });
 

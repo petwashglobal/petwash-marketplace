@@ -1764,3 +1764,52 @@ All endpoints under `/api/prestige-pass/admin/wallet/`. Admin-only. All schema c
   - Per-anomaly rows: severity badge, type label, deviation%, current/baseline values, context, Ack + Resolve buttons
   - Summary row: open/critical/high counts, "Auto-scans every 5 min" note
   - Auto-refetches every 30 seconds
+
+### Phase 4.8 — Trust Calibration & Production Autonomy (COMPLETE)
+
+All 7 sub-phases complete. Self-healing engine now production-ready with full trust visibility, autonomous mode governance, and a composite readiness score.
+
+#### 4.8A — Threshold Tuning Workspace (COMPLETE)
+- Per-rule UI sliders in self-healing panel to edit `min_score` (0–100) and `consecutive_triggers` (1–10)
+- PATCH `/admin/system/self-healing/rules/:id` handles field updates
+- Inline save/cancel with success toast
+
+#### 4.8B — False Positive Review Flow (COMPLETE)
+- `false_positive_reviews` table: id, execution_id, reviewed_by, is_false_positive, reason, reviewed_at
+- POST `/admin/system/self-healing/executions/:id/fp-review` — create FP review
+- GET `/admin/system/self-healing/executions/:id/fp-review` — fetch review
+- Per-execution 🚩 FP button in AdminWalletDashboard, expandable FP review form (Yes/No + reason), saved to DB
+
+#### 4.8D — Self-Healing Confidence Scoring (COMPLETE)
+- `confidence_score` INTEGER column added to `self_healing_executions`
+- Engine calculates 0–100 confidence from: anomaly score (40%), consecutive triggers (25%), FP rate (25%), recency (10%)
+- GET `/admin/system/self-healing/executions/:id/confidence` — per-execution breakdown
+- GET `/admin/system/self-healing/rules/:id/confidence-summary` — fleet confidence stats for a rule
+- Frontend: per-execution confidence badge (color-coded), 🧠 Confidence button per rule with expandable panel showing avg/min/max/high-confidence count
+
+#### 4.8C — Auto-Action Approval Modes (COMPLETE)
+- `approval_mode` TEXT column added to `self_healing_rules` (values: auto / notify / manual)
+- `self_healing_rule_changes` audit table: id, rule_id, changed_by, old_mode, new_mode, reason, changed_at
+- PATCH `/admin/system/self-healing/rules/:id/mode` — update mode with audit trail
+- Frontend: 3-button segmented control (⚡ Auto / 🔔 Notify / ⏳ Manual) per rule; inline reason form; 5-state execution badges: EXECUTED / NOTIFY ONLY / PENDING MANUAL / FAILED / skipped
+
+#### 4.8F — Operator Trust Metrics Dashboard (COMPLETE)
+- GET `/admin/system/self-healing/rules/:id/trust-metrics` — per-rule trust metrics (FP rate, avg confidence, health score, FP trend, mode history)
+- GET `/admin/system/self-healing/trust-overview` — fleet summary: healthy/caution/at-risk rule counts
+- Frontend: Fleet health banner (healthy/caution/at-risk counts with color-coded chips); per-rule 🔍 Trust button; expandable panel with CSS outcome bar, FP trend arrows, confidence stats, mode change history
+
+#### 4.8E — Incident Postmortem Generation (COMPLETE)
+- `postmortem_text TEXT` column added to `incidents` table via executeSql
+- POST `/admin/system/incidents/:id/postmortem` — Gemini AI generates structured postmortem (timeline, root cause, impact, remediation, prevention, lessons)
+- GET `/admin/system/incidents/:id/postmortem` — fetch saved postmortem
+- Frontend: ✍ Postmortem button per incident card; expandable violet panel with Copy to clipboard; text auto-saved to DB
+
+#### 4.8G — Autonomous Mode Readiness Score (COMPLETE)
+- GET `/admin/system/self-healing/readiness-score` — 5-component weighted composite score (0–100)
+  - Fleet Rule Health (30%): avg health score across all enabled rules
+  - False Positive Rate 30d (25%): fleet-wide FP rate → 0% FP = 100 score, 20%+ FP = 0
+  - Confidence Coverage (20%): % of rules with avg confidence ≥ 70
+  - Auto Mode Adoption (15%): % of enabled rules in auto mode
+  - Recent Execution Reliability 7d (10%): % of recent executions that didn't fail
+  - Labels: READY (≥75) / CALIBRATING (50–74) / NOT_READY (<50)
+- Frontend: 🎯 Readiness button in self-healing panel header (color-coded by label); expandable panel with composite score, recommendation text, per-component score bars with weight labels and detail text
