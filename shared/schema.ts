@@ -13527,3 +13527,83 @@ export const executionReviewSnapshots = pgTable("execution_review_snapshots", {
 });
 export type ExecutionReviewSnapshot       = typeof executionReviewSnapshots.$inferSelect;
 export type InsertExecutionReviewSnapshot = typeof executionReviewSnapshots.$inferInsert;
+
+// ─── PHASE 4.4 — Adaptive Execution & Self-Optimizing Operations ────────────
+
+// 4.4A — Priority Feedback Adjustments
+export const priorityFeedbackAdjustments = pgTable("priority_feedback_adjustments", {
+  id:                 serial("id").primaryKey(),
+  recommendationId:   integer("recommendation_id"),
+  previousScore:      numeric("previous_score",   { precision: 8, scale: 2 }),
+  adjustedScore:      numeric("adjusted_score",   { precision: 8, scale: 2 }),
+  delta:              numeric("delta",             { precision: 8, scale: 2 }),
+  adjustmentReason:   text("adjustment_reason"),
+  basedOnOutcomeId:   integer("based_on_outcome_id"),
+  createdAt:          timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type PriorityFeedbackAdjustment       = typeof priorityFeedbackAdjustments.$inferSelect;
+export type InsertPriorityFeedbackAdjustment = typeof priorityFeedbackAdjustments.$inferInsert;
+
+// 4.4B — Action Sequences
+export const actionSequences = pgTable("action_sequences", {
+  id:                  serial("id").primaryKey(),
+  recommendationGroup: varchar("recommendation_group", { length: 64 }),
+  sequenceJson:        jsonb("sequence_json").notNull().default(sql`'{}'::jsonb`),
+  expectedImpact:      numeric("expected_impact", { precision: 10, scale: 2 }),
+  confidence:          numeric("confidence",      { precision: 5,  scale: 2 }),
+  createdAt:           timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type ActionSequence       = typeof actionSequences.$inferSelect;
+export type InsertActionSequence = typeof actionSequences.$inferInsert;
+
+// 4.4C — Escalation Policy Adjustments
+export const escalationPolicyAdjustments = pgTable("escalation_policy_adjustments", {
+  id:                      serial("id").primaryKey(),
+  policyId:                integer("policy_id"),
+  previousThresholdHours:  integer("previous_threshold_hours"),
+  suggestedThresholdHours: integer("suggested_threshold_hours"),
+  reason:                  text("reason"),
+  impactEstimate:          numeric("impact_estimate", { precision: 8, scale: 2 }),
+  status:                  varchar("status", { length: 16 }).notNull().default('pending'),
+  createdAt:               timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type EscalationPolicyAdjustment       = typeof escalationPolicyAdjustments.$inferSelect;
+export type InsertEscalationPolicyAdjustment = typeof escalationPolicyAdjustments.$inferInsert;
+
+// 4.4D — Reviewer Workload Suggestions
+export const reviewerWorkloadSuggestions = pgTable("reviewer_workload_suggestions", {
+  id:             serial("id").primaryKey(),
+  reviewerUid:    varchar("reviewer_uid", { length: 128 }),
+  currentLoad:    integer("current_load"),
+  optimalLoad:    integer("optimal_load"),
+  suggestedShift: integer("suggested_shift"),
+  reason:         text("reason"),
+  createdAt:      timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type ReviewerWorkloadSuggestion       = typeof reviewerWorkloadSuggestions.$inferSelect;
+export type InsertReviewerWorkloadSuggestion = typeof reviewerWorkloadSuggestions.$inferInsert;
+
+// 4.4E — Operating Review Deliveries
+export const operatingReviewDeliveries = pgTable("operating_review_deliveries", {
+  id:         serial("id").primaryKey(),
+  periodKey:  varchar("period_key", { length: 32 }),
+  recipients: jsonb("recipients").notNull().default(sql`'[]'::jsonb`),
+  status:     varchar("status", { length: 16 }).notNull().default('pending'),
+  sentAt:     timestamp("sent_at", { withTimezone: true }),
+  createdAt:  timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type OperatingReviewDelivery       = typeof operatingReviewDeliveries.$inferSelect;
+export type InsertOperatingReviewDelivery = typeof operatingReviewDeliveries.$inferInsert;
+
+// 4.4G — Governance Alerts
+export const governanceAlerts = pgTable("governance_alerts", {
+  id:           serial("id").primaryKey(),
+  alertType:    varchar("alert_type", { length: 64 }),
+  severity:     varchar("severity",   { length: 16 }),
+  message:      text("message"),
+  triggeredBy:  jsonb("triggered_by").notNull().default(sql`'{}'::jsonb`),
+  acknowledged: boolean("acknowledged").notNull().default(false),
+  createdAt:    timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type GovernanceAlert       = typeof governanceAlerts.$inferSelect;
+export type InsertGovernanceAlert = typeof governanceAlerts.$inferInsert;

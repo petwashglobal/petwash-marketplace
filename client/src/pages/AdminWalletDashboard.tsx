@@ -2084,6 +2084,111 @@ export default function AdminWalletDashboard() {
     queryFn: () => fetch(`/api/prestige-pass/admin/wallet/execution-review?period=${reviewPeriod}`).then(r => r.json()),
   });
 
+  // ─── Phase 4.4 — Adaptive Execution & Self-Optimizing Operations ─────────
+
+  // 4.4A — Priority Feedback Loop
+  const { data: priorityAdjustments, isLoading: priorityAdjLoading, refetch: refetchPriorityAdj } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/recommendations/priority-adjustments'],
+    queryFn: () => fetch('/api/prestige-pass/admin/wallet/recommendations/priority-adjustments').then(r => r.json()),
+  });
+  const { mutate: applyFeedbackLoop, isPending: feedbackLoopPending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest('POST', '/api/prestige-pass/admin/wallet/recommendations/apply-feedback-loop', {}),
+    onSuccess: (d) => { toast({ title: 'Feedback loop applied', description: `${d.applied} adjustment(s)` }); refetchPriorityAdj(); },
+    onError: () => toast({ title: 'Feedback loop failed', variant: 'destructive' }),
+  });
+
+  // 4.4B — Action Sequencing
+  const [seqGroup, setSeqGroup] = useState('');
+  const [seqActionIds, setSeqActionIds] = useState('');
+  const { data: actionSeqs, isLoading: actionSeqsLoading, refetch: refetchActionSeqs } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/recommendations/action-sequences', seqGroup],
+    queryFn: () => fetch(`/api/prestige-pass/admin/wallet/recommendations/action-sequences${seqGroup ? `?group=${encodeURIComponent(seqGroup)}` : ''}`).then(r => r.json()),
+  });
+  const [simulatedSeq, setSimulatedSeq] = useState<any>(null);
+  const { mutate: simulateSequence, isPending: simulatePending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/recommendations/simulate-sequence', body),
+    onSuccess: (d) => { setSimulatedSeq(d); toast({ title: 'Sequence simulated' }); refetchActionSeqs(); },
+    onError: () => toast({ title: 'Simulation failed', variant: 'destructive' }),
+  });
+
+  // 4.4C — Escalation Policy Tuning
+  const [escAdjFilter, setEscAdjFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+  const { data: escAdj, isLoading: escAdjLoading, refetch: refetchEscAdj } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/policies/escalation-adjustments', escAdjFilter],
+    queryFn: () => fetch(`/api/prestige-pass/admin/wallet/policies/escalation-adjustments?status=${escAdjFilter}`).then(r => r.json()),
+  });
+  const { mutate: generateEscAdj, isPending: generateEscPending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest('POST', '/api/prestige-pass/admin/wallet/policies/escalation-adjustments/generate', {}),
+    onSuccess: (d) => { toast({ title: `Generated ${d.generated} suggestion(s)` }); refetchEscAdj(); },
+    onError: () => toast({ title: 'Generation failed', variant: 'destructive' }),
+  });
+  const { mutate: approveEscAdj } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest('POST', `/api/prestige-pass/admin/wallet/policies/escalation-adjustments/${id}/approve`, {}),
+    onSuccess: () => { toast({ title: 'Adjustment approved' }); refetchEscAdj(); },
+  });
+  const { mutate: rejectEscAdj } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest('POST', `/api/prestige-pass/admin/wallet/policies/escalation-adjustments/${id}/reject`, {}),
+    onSuccess: () => { toast({ title: 'Adjustment rejected' }); refetchEscAdj(); },
+  });
+
+  // 4.4D — Reviewer Workload Optimization
+  const { data: workloadSuggestions, isLoading: workloadLoading, refetch: refetchWorkload } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/reviewers/workload-suggestions'],
+    queryFn: () => fetch('/api/prestige-pass/admin/wallet/reviewers/workload-suggestions').then(r => r.json()),
+  });
+  const { mutate: generateWorkload, isPending: generateWorkloadPending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest('POST', '/api/prestige-pass/admin/wallet/reviewers/generate-workload-suggestions', {}),
+    onSuccess: (d) => { toast({ title: `Generated ${d.generated} workload suggestion(s)` }); refetchWorkload(); },
+    onError: () => toast({ title: 'Generation failed', variant: 'destructive' }),
+  });
+  const { mutate: applyWorkload, isPending: applyWorkloadPending } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest('POST', '/api/prestige-pass/admin/wallet/reviewers/apply-workload-adjustment', { suggestionId: id }),
+    onSuccess: () => { toast({ title: 'Workload adjustment confirmed — manual reassignment required' }); refetchWorkload(); },
+  });
+
+  // 4.4E — Operating Review Deliveries
+  const [deliveryRecipients, setDeliveryRecipients] = useState('');
+  const [deliveryPeriodKey, setDeliveryPeriodKey] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-W${Math.ceil(now.getDate() / 7)}`;
+  });
+  const { data: reviewDeliveries, isLoading: deliveriesLoading, refetch: refetchDeliveries } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/execution-review/deliveries'],
+    queryFn: () => fetch('/api/prestige-pass/admin/wallet/execution-review/deliveries').then(r => r.json()),
+  });
+  const { mutate: sendReview, isPending: sendReviewPending } = useMutation<any, any, any>({
+    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/execution-review/send', body),
+    onSuccess: (d) => {
+      if (d.skipped) { toast({ title: 'Already sent for this period', description: d.reason }); }
+      else { toast({ title: `Report sent to ${d.recipientCount} recipient(s)` }); }
+      refetchDeliveries();
+    },
+    onError: () => toast({ title: 'Send failed', variant: 'destructive' }),
+  });
+
+  // 4.4F — Cross-Period Execution Trends
+  const [trendPeriod, setTrendPeriod] = useState<'weekly' | 'monthly'>('weekly');
+  const { data: execTrends, isLoading: trendsLoading, refetch: refetchTrends } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/execution-trends', trendPeriod],
+    queryFn: () => fetch(`/api/prestige-pass/admin/wallet/execution-trends?period=${trendPeriod}`).then(r => r.json()),
+  });
+
+  // 4.4G — Governance Alert Engine
+  const [alertsUnackedOnly, setAlertsUnackedOnly] = useState(false);
+  const { data: govAlerts, isLoading: govAlertsLoading, refetch: refetchGovAlerts } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/admin/wallet/governance-alerts', alertsUnackedOnly],
+    queryFn: () => fetch(`/api/prestige-pass/admin/wallet/governance-alerts?unacked=${alertsUnackedOnly}`).then(r => r.json()),
+  });
+  const { mutate: ackAlert } = useMutation<any, any, number>({
+    mutationFn: (id) => apiRequest('POST', `/api/prestige-pass/admin/wallet/governance-alerts/${id}/ack`, {}),
+    onSuccess: () => { toast({ title: 'Alert acknowledged' }); refetchGovAlerts(); },
+  });
+  const { mutate: triggerAlerts, isPending: triggerAlertsPending } = useMutation<any, any, void>({
+    mutationFn: () => apiRequest('POST', '/api/prestige-pass/admin/wallet/governance-alerts/trigger', {}),
+    onSuccess: (d) => { toast({ title: `${d.triggered} new alert(s) triggered` }); refetchGovAlerts(); },
+    onError: () => toast({ title: 'Alert check failed', variant: 'destructive' }),
+  });
+
   // ── Phase 3.6 UI aliases & supplemental state ──────────────────────────────
   // 3.6A — weight form state for the UI card
   const [weightForm, setWeightForm] = useState({ signalKey: '', divisionCode: '', weight: '' });
@@ -9246,6 +9351,65 @@ export default function AdminWalletDashboard() {
                 }
               </CardContent>
             </Card>
+
+            {/* 4.4C — ESCALATION POLICY TUNING */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-orange-600" /> Escalation Policy Optimization
+                </CardTitle>
+                <div className="flex gap-2 flex-wrap">
+                  <button disabled={generateEscPending} onClick={() => generateEscAdj()}
+                    className="text-xs px-2 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-40 flex items-center gap-1">
+                    {generateEscPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Generate Suggestions
+                  </button>
+                  <select value={escAdjFilter} onChange={e => setEscAdjFilter(e.target.value as any)} className="border rounded px-2 py-1 text-xs">
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="all">All</option>
+                  </select>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded p-2">
+                  System analyzes SLA performance over 30 days and suggests threshold reductions where overdue rates exceed 30%. All changes require manual approval — no silent policy mutations.
+                </div>
+                {escAdjLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                  !escAdj?.adjustments?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No {escAdjFilter === 'all' ? '' : escAdjFilter} suggestions — click Generate to analyze current SLA data</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {escAdj.adjustments.map((a: any) => (
+                        <div key={a.id} className={`border rounded-lg p-3 space-y-2 ${a.status === 'pending' ? 'border-orange-200 bg-orange-50/30' : a.status === 'approved' ? 'border-green-200 bg-green-50/20' : 'border-gray-200'}`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-semibold text-gray-800 truncate">{a.policy_name ?? `Policy #${a.policy_id}`}</div>
+                              <div className="text-[10px] text-gray-500 mt-0.5">{a.reason}</div>
+                            </div>
+                            <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-semibold ${a.status === 'pending' ? 'bg-orange-100 text-orange-700' : a.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{a.status}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs">
+                            <span className="text-gray-500">Threshold: <span className="font-semibold text-gray-700">{a.previous_threshold_hours}h</span> → <span className="font-bold text-orange-700">{a.suggested_threshold_hours}h</span></span>
+                            {a.impact_estimate && <span className="text-gray-400">Impact est: {parseFloat(a.impact_estimate).toFixed(1)}%</span>}
+                          </div>
+                          {a.status === 'pending' && (
+                            <div className="flex gap-2 pt-1 border-t">
+                              <button onClick={() => approveEscAdj(a.id)} className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" /> Approve
+                              </button>
+                              <button onClick={() => rejectEscAdj(a.id)} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 text-gray-600 flex items-center gap-1">
+                                <XCircle className="w-3 h-3" /> Reject
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -10358,6 +10522,117 @@ export default function AdminWalletDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* 4.4E — OPERATING REVIEW AUTO-DISTRIBUTION */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Send className="w-4 h-4 text-sky-600" /> Operating Review Distribution
+                </CardTitle>
+                <button onClick={() => refetchDeliveries()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> Refresh
+                </button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-sky-700 bg-sky-50 border border-sky-200 rounded p-2">
+                  Distribute the current execution review pack to stakeholders. One send per period key — duplicate sends are blocked automatically. Full delivery trace is maintained.
+                </div>
+                <div className="flex flex-wrap gap-2 items-end">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] text-gray-500">Period Key</label>
+                    <input type="text" value={deliveryPeriodKey} onChange={e => setDeliveryPeriodKey(e.target.value)} placeholder="e.g. 2026-W12" className="border rounded px-2 py-1 text-xs w-28" />
+                  </div>
+                  <div className="flex flex-col gap-1 flex-1 min-w-[180px]">
+                    <label className="text-[10px] text-gray-500">Recipients (comma-separated emails)</label>
+                    <input type="text" value={deliveryRecipients} onChange={e => setDeliveryRecipients(e.target.value)} placeholder="cfo@example.com, ceo@example.com" className="border rounded px-2 py-1 text-xs w-full" />
+                  </div>
+                  <button disabled={sendReviewPending || !deliveryPeriodKey || !deliveryRecipients.trim()} onClick={() => sendReview({ periodKey: deliveryPeriodKey, recipients: deliveryRecipients.split(',').map(s => s.trim()).filter(Boolean) })}
+                    className="text-xs px-3 py-1.5 bg-sky-600 text-white rounded hover:bg-sky-700 disabled:opacity-40 flex items-center gap-1">
+                    {sendReviewPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} Send Report
+                  </button>
+                </div>
+                {deliveriesLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  reviewDeliveries?.deliveries?.length ? (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Period</th><th className="text-left p-2">Recipients</th><th className="text-center p-2">Status</th><th className="text-right p-2">Sent At</th></tr>
+                      </thead><tbody>
+                        {reviewDeliveries.deliveries.map((d: any) => (
+                          <tr key={d.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 font-mono text-[10px] text-gray-700">{d.period_key}</td>
+                            <td className="p-2 text-[10px] text-gray-500 max-w-[180px] truncate">{Array.isArray(d.recipients) ? d.recipients.join(', ') : JSON.stringify(d.recipients)}</td>
+                            <td className="p-2 text-center"><span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${d.status === 'sent' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{d.status}</span></td>
+                            <td className="p-2 text-right text-[10px] text-gray-400">{d.sent_at ? new Date(d.sent_at).toLocaleString('he-IL') : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  ) : <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No deliveries recorded yet</div>
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.4F — CROSS-PERIOD EXECUTION TRENDS */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-emerald-600" /> Cross-Period Execution Trends
+                </CardTitle>
+                <div className="flex gap-2 items-center">
+                  <select value={trendPeriod} onChange={e => setTrendPeriod(e.target.value as any)} className="border rounded px-2 py-1 text-xs">
+                    <option value="weekly">Weekly (last 8 weeks)</option>
+                    <option value="monthly">Monthly (last 6 months)</option>
+                  </select>
+                  <button onClick={() => refetchTrends()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded p-2">
+                  Trends are derived from execution records — no fabricated metrics. Direction markers: ↑ improving, ↓ degrading, → stable. Aligned with execution review data.
+                </div>
+                {trendsLoading ? <div className="h-24 bg-gray-100 animate-pulse rounded" /> :
+                  execTrends && !execTrends.error && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 gap-3">
+                        {[
+                          { key: 'acceptanceRate', label: execTrends.acceptanceRate?.label, trend: execTrends.acceptanceRate?.trend, data: execTrends.acceptanceRate?.data, field: 'rate', format: (v: any) => `${(parseFloat(v || '0') * 100).toFixed(0)}%`, color: 'emerald' },
+                          { key: 'effectiveness',   label: execTrends.effectiveness?.label,   trend: execTrends.effectiveness?.trend,   data: execTrends.effectiveness?.data,   field: 'avg_eff', format: (v: any) => parseFloat(v || '0').toFixed(1), color: 'blue' },
+                          { key: 'slaBreaches',    label: execTrends.slaBreaches?.label,    trend: execTrends.slaBreaches?.trend,    data: execTrends.slaBreaches?.data,    field: 'breach_rate', format: (v: any) => `${(parseFloat(v || '0') * 100).toFixed(0)}%`, color: 'red' },
+                          { key: 'reviewerQuality', label: execTrends.reviewerQuality?.label ?? 'Reviewer Quality', trend: execTrends.reviewerQuality?.trend, data: execTrends.reviewerQuality?.data, field: 'avg_quality', format: (v: any) => parseFloat(v || '0').toFixed(1), color: 'indigo' },
+                          { key: 'bottlenecks',    label: execTrends.bottlenecks?.label,    trend: execTrends.bottlenecks?.trend,    data: execTrends.bottlenecks?.data,    field: 'overdue_count', format: (v: any) => v ?? 0, color: 'amber' },
+                        ].map(({ key, label, trend, data, field, format, color }) => {
+                          const trendIcon = trend === 'improving' ? '↑' : trend === 'degrading' ? '↓' : '→';
+                          const trendColor = trend === 'improving' ? 'text-green-600' : trend === 'degrading' ? 'text-red-600' : 'text-gray-500';
+                          const latest = data?.[data.length - 1];
+                          return (
+                            <div key={key} className={`border rounded-lg p-3 space-y-2 border-${color}-100`}>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-gray-700">{label ?? key}</span>
+                                <span className={`text-sm font-bold ${trendColor}`}>{trendIcon} {trend ?? 'stable'}</span>
+                              </div>
+                              {latest && <div className="text-xl font-bold text-gray-800">{format(latest[field])}</div>}
+                              {data?.length > 0 ? (
+                                <div className="flex items-end gap-0.5 h-8">
+                                  {data.map((pt: any, i: number) => {
+                                    const val = parseFloat(pt[field] ?? '0');
+                                    const max = Math.max(...data.map((d: any) => parseFloat(d[field] ?? '0')));
+                                    const pct = max > 0 ? (val / max) * 100 : 0;
+                                    return <div key={i} style={{ height: `${Math.max(4, pct)}%`, minHeight: '4px' }} className={`flex-1 rounded-sm bg-${color}-400 opacity-80`} title={`${pt.period?.slice(0,10)}: ${format(pt[field])}`} />;
+                                  })}
+                                </div>
+                              ) : <div className="text-[10px] text-gray-400">No data for this period</div>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )
+                }
+                {execTrends?.error && <div className="text-xs text-red-500 border border-red-200 rounded p-2">{execTrends.error}</div>}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════ */}
@@ -11015,6 +11290,78 @@ export default function AdminWalletDashboard() {
                       {!reviewerAnalytics.liveWorkload?.length && !reviewerAnalytics.snapshots?.length && (
                         <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No quality data — compute quality bands for snapshots above to populate this view</div>
                       )}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.4D — REVIEWER WORKLOAD OPTIMIZATION */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Users className="w-4 h-4 text-violet-600" /> Reviewer Workload Optimization
+                </CardTitle>
+                <div className="flex gap-2">
+                  <button disabled={generateWorkloadPending} onClick={() => generateWorkload()}
+                    className="text-xs px-2 py-1 bg-violet-600 text-white rounded hover:bg-violet-700 disabled:opacity-40 flex items-center gap-1">
+                    {generateWorkloadPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Analyze Load
+                  </button>
+                  <button onClick={() => refetchWorkload()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded p-2">
+                  Workload balance uses open follow-up counts. Suggestions ≥2 item delta trigger rebalance recommendations. All suggestions require manual confirmation — never auto-applied.
+                </div>
+                {/* Current loads heatmap */}
+                {workloadSuggestions?.currentLoads?.length > 0 && (
+                  <div>
+                    <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Current Open Load per Reviewer</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {workloadSuggestions.currentLoads.map((r: any) => {
+                        const load = parseInt(r.open_count);
+                        const color = load > 10 ? 'bg-red-100 border-red-200 text-red-700' : load > 5 ? 'bg-amber-100 border-amber-200 text-amber-700' : 'bg-green-100 border-green-200 text-green-700';
+                        return (
+                          <div key={r.uid} className={`border rounded px-2 py-1 text-[10px] ${color}`}>
+                            <div className="font-mono truncate max-w-[80px]" title={r.uid}>{r.uid.slice(-8)}</div>
+                            <div className="font-bold text-center">{load}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {workloadLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                  !workloadSuggestions?.suggestions?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No workload suggestions — click Analyze Load to generate rebalance recommendations</div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Rebalance Suggestions</div>
+                      {workloadSuggestions.suggestions.map((s: any) => (
+                        <div key={s.id} className={`border rounded-lg p-3 space-y-2 ${s.suggested_shift < 0 ? 'border-red-100 bg-red-50/20' : 'border-blue-100 bg-blue-50/20'}`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="font-mono text-[10px] text-gray-600">{s.reviewer_uid}</div>
+                              <div className="text-xs text-gray-500 mt-0.5">{s.reason}</div>
+                            </div>
+                            <span className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded ${s.suggested_shift < 0 ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                              {s.suggested_shift > 0 ? `+${s.suggested_shift}` : s.suggested_shift} items
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-[10px] text-gray-400">
+                            <span>Current: <strong className="text-gray-700">{s.current_load}</strong></span>
+                            <span>Optimal: <strong className="text-gray-700">{s.optimal_load}</strong></span>
+                            {s.quality_band && <span className="capitalize">Quality: <strong>{s.quality_band}</strong></span>}
+                          </div>
+                          <button disabled={applyWorkloadPending} onClick={() => applyWorkload(s.id)}
+                            className="text-[10px] px-2 py-1 border border-violet-200 text-violet-700 rounded hover:bg-violet-50 disabled:opacity-40 flex items-center gap-1">
+                            {applyWorkloadPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />} Confirm Rebalance
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   )
                 }
@@ -11941,6 +12288,188 @@ export default function AdminWalletDashboard() {
                 {executionTimeline?.error && (
                   <div className="text-xs text-red-500 border border-red-200 rounded p-2">{executionTimeline.error}</div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* 4.4G — GOVERNANCE ALERT ENGINE */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-red-600" /> Governance Alert Engine
+                  {govAlerts?.unackedCount > 0 && (
+                    <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">{govAlerts.unackedCount}</span>
+                  )}
+                </CardTitle>
+                <div className="flex gap-2 items-center">
+                  <label className="flex items-center gap-1 text-xs text-gray-500 cursor-pointer">
+                    <input type="checkbox" checked={alertsUnackedOnly} onChange={e => setAlertsUnackedOnly(e.target.checked)} className="rounded" /> Unacked only
+                  </label>
+                  <button disabled={triggerAlertsPending} onClick={() => triggerAlerts()}
+                    className="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-40 flex items-center gap-1">
+                    {triggerAlertsPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Check System
+                  </button>
+                  <button onClick={() => refetchGovAlerts()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded p-2">
+                  Alerts fire when effectiveness drops below 40%, SLA breaches exceed 40%, or reviewer quality degrades. All alerts are deduplicated (once per 24h) and fully traceable. Click Check System to run manually.
+                </div>
+                {govAlertsLoading ? <div className="h-20 bg-gray-100 animate-pulse rounded" /> :
+                  !govAlerts?.alerts?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No alerts — system is operating within thresholds</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {govAlerts.alerts.map((a: any) => (
+                        <div key={a.id} className={`border rounded-lg p-3 space-y-1.5 ${a.severity === 'critical' ? 'border-red-200 bg-red-50/40' : a.severity === 'warning' ? 'border-amber-200 bg-amber-50/30' : 'border-blue-100 bg-blue-50/20'} ${a.acknowledged ? 'opacity-60' : ''}`}>
+                          <div className="flex items-start gap-2">
+                            <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${a.severity === 'critical' ? 'bg-red-100 text-red-700' : a.severity === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>{a.severity}</span>
+                            <span className="text-xs text-gray-700 flex-1">{a.message}</span>
+                            {!a.acknowledged && (
+                              <button onClick={() => ackAlert(a.id)} className="shrink-0 text-[10px] px-2 py-0.5 border rounded hover:bg-gray-50 text-gray-500 flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" /> Ack
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex gap-3 text-[10px] text-gray-400">
+                            <span className="font-mono">{a.alert_type}</span>
+                            <span>{new Date(a.created_at).toLocaleString('he-IL')}</span>
+                            {a.acknowledged && <span className="text-green-600">✓ Acknowledged</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.4A — PRIORITY FEEDBACK LOOP */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-indigo-600" /> Priority Feedback Loop
+                </CardTitle>
+                <div className="flex gap-2">
+                  <button disabled={feedbackLoopPending} onClick={() => applyFeedbackLoop()}
+                    className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-40 flex items-center gap-1">
+                    {feedbackLoopPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Run Feedback Loop
+                  </button>
+                  <button onClick={() => refetchPriorityAdj()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Refresh
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 rounded p-2">
+                  Scans outcomes from the last 24h with effectiveness scores set. Improved outcomes raise priority weights; worsened outcomes reduce them. Adjustments are bounded ±20% and never overwrite original scores. Every change links to its source outcome.
+                </div>
+                {priorityAdjLoading ? <div className="h-16 bg-gray-100 animate-pulse rounded" /> :
+                  !priorityAdjustments?.adjustments?.length ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No adjustments yet — run feedback loop after outcomes have effectiveness scores recorded</div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-xs"><thead className="bg-gray-50">
+                        <tr className="text-gray-500"><th className="text-left p-2">Recommendation</th><th className="text-right p-2">Before</th><th className="text-right p-2">After</th><th className="text-right p-2">Delta</th><th className="text-left p-2">Reason</th></tr>
+                      </thead><tbody>
+                        {priorityAdjustments.adjustments.map((a: any) => (
+                          <tr key={a.id} className="border-t hover:bg-gray-50">
+                            <td className="p-2 max-w-[120px] truncate" title={a.recommendation_title}>{a.recommendation_title ?? `#${a.recommendation_id}`}</td>
+                            <td className="p-2 text-right font-mono text-gray-500">{parseFloat(a.previous_score).toFixed(1)}</td>
+                            <td className="p-2 text-right font-mono font-bold text-gray-800">{parseFloat(a.adjusted_score).toFixed(1)}</td>
+                            <td className="p-2 text-right">
+                              <span className={`font-bold text-xs ${parseFloat(a.delta) > 0 ? 'text-green-600' : parseFloat(a.delta) < 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                                {parseFloat(a.delta) > 0 ? '+' : ''}{parseFloat(a.delta).toFixed(2)}
+                              </span>
+                            </td>
+                            <td className="p-2 text-[10px] text-gray-400 max-w-[160px] truncate" title={a.adjustment_reason}>{a.adjustment_reason}</td>
+                          </tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                  )
+                }
+              </CardContent>
+            </Card>
+
+            {/* 4.4B — ACTION SEQUENCING ENGINE */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <ListChecks className="w-4 h-4 text-teal-600" /> Suggested Action Plan
+                </CardTitle>
+                <div className="flex gap-2 items-center">
+                  <input type="text" placeholder="Group / tag" value={seqGroup} onChange={e => setSeqGroup(e.target.value)} className="border rounded px-2 py-1 text-xs w-28" />
+                  <button onClick={() => refetchActionSeqs()} className="text-xs px-2 py-1 border rounded hover:bg-gray-50 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" /> Load
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded p-2">
+                  Simulates the optimal action order for a set of recommendation actions. Confidence is derived from historical outcome rates for those action types. Impact estimates are additive across steps.
+                </div>
+                {/* Simulate form */}
+                <div className="border rounded-lg p-3 bg-gray-50 space-y-2">
+                  <div className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Simulate New Sequence</div>
+                  <div className="flex flex-wrap gap-2">
+                    <input type="text" placeholder="Recommendation group" value={seqGroup} onChange={e => setSeqGroup(e.target.value)} className="border rounded px-2 py-1 text-xs w-36 bg-white" />
+                    <input type="text" placeholder="Action IDs (comma-sep)" value={seqActionIds} onChange={e => setSeqActionIds(e.target.value)} className="border rounded px-2 py-1 text-xs w-40 bg-white" />
+                    <button disabled={simulatePending || !seqGroup || !seqActionIds}
+                      onClick={() => simulateSequence({ recommendationGroup: seqGroup, actionIds: seqActionIds.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)) })}
+                      className="text-xs px-2 py-1 bg-teal-600 text-white rounded hover:bg-teal-700 disabled:opacity-40 flex items-center gap-1">
+                      {simulatePending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Simulate
+                    </button>
+                  </div>
+                  {simulatedSeq && (
+                    <div className="border border-teal-200 rounded-lg p-2 space-y-1.5 bg-white">
+                      <div className="text-[10px] text-teal-600 flex gap-4">
+                        <span>Confidence: <strong>{simulatedSeq.confidence}%</strong></span>
+                        <span>Expected impact: <strong>{simulatedSeq.expectedImpact}</strong></span>
+                      </div>
+                      {simulatedSeq.steps?.map((step: any) => (
+                        <div key={step.step} className="flex items-start gap-2 text-xs">
+                          <span className="w-5 h-5 shrink-0 bg-teal-100 text-teal-700 rounded-full text-[10px] font-bold flex items-center justify-center">{step.step}</span>
+                          <div>
+                            <span className="font-medium text-gray-700">{step.actionType}</span>
+                            <span className="text-gray-400 ml-1">· impact: {step.estimatedImpact}</span>
+                            {step.description && <div className="text-[10px] text-gray-400">{step.description}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* Saved sequences */}
+                {actionSeqsLoading ? <div className="h-12 bg-gray-100 animate-pulse rounded" /> :
+                  actionSeqs?.sequences?.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Saved Sequences</div>
+                      {actionSeqs.sequences.map((s: any) => (
+                        <div key={s.id} className="border rounded-lg p-2.5 space-y-1 hover:bg-gray-50">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-gray-700">{s.recommendation_group}</span>
+                            <div className="flex gap-3 text-[10px] text-gray-500">
+                              <span>Confidence: <strong>{parseFloat(s.confidence).toFixed(0)}%</strong></span>
+                              <span>Impact: <strong>{parseFloat(s.expected_impact).toFixed(1)}</strong></span>
+                            </div>
+                          </div>
+                          {s.sequence_json?.steps?.length > 0 && (
+                            <div className="flex gap-1 flex-wrap">
+                              {s.sequence_json.steps.map((step: any) => (
+                                <span key={step.step} className="text-[10px] bg-teal-50 border border-teal-100 text-teal-700 px-1.5 py-0.5 rounded">
+                                  {step.step}. {step.actionType}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }
               </CardContent>
             </Card>
           </TabsContent>
