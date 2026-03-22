@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithCustomToken, getAdditionalUserInfo } from "firebase/auth";
+import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithCustomToken, getAdditionalUserInfo, getRedirectResult } from "firebase/auth";
 import { signInWithBestMethod, isIOS, createGoogleProvider, createAppleProvider, createFacebookProvider, getDeviceInfo } from "@/lib/iosAuthHandler";
 import { auth } from "../lib/firebase";
 import { getApiUrl } from "@/lib/apiConfig";
@@ -375,6 +375,67 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     }
   }, [user, switchingAccount, loading, navigate]);
 
+  // Handle Google redirect result after iOS signInWithRedirect flow
+  useEffect(() => {
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (!result) return;
+
+        const provider = sessionStorage.getItem('pw_redirect_provider') || 'google';
+        sessionStorage.removeItem('pw_redirect_provider');
+
+        logger.info(`[Auth] Processing redirect result for provider: ${provider}`);
+        setSocialLoading(provider as any);
+
+        const idToken = await result.user.getIdToken();
+
+        try {
+          await fetch(getApiUrl('/api/auth/session'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ idToken }),
+          });
+        } catch (sessionErr) {
+          logger.warn('[Auth] Session cookie request failed (non-blocking):', sessionErr);
+        }
+
+        const additionalInfo = getAdditionalUserInfo(result);
+        if (additionalInfo?.isNewUser) {
+          try {
+            await fetch(getApiUrl('/api/loyalty/auto-enroll'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+              credentials: 'include',
+              body: JSON.stringify({
+                userId: result.user.uid,
+                email: result.user.email,
+                displayName: result.user.displayName,
+                provider,
+                role: 'pet_parent',
+              }),
+            });
+          } catch (e) { logger.warn('[Auth] Loyalty auto-enroll failed (non-blocking):', e); }
+        }
+
+        storeLastAuthMethod('social');
+        toast({ title: t('signin.successTitle', language), description: t('signin.redirecting', language) });
+        setTimeout(() => {
+          const redirect = new URLSearchParams(window.location.search).get('redirect') || '';
+          if (redirect) { window.scrollTo(0, 0); navigate(redirect); }
+          else { navigatePostLogin(); }
+        }, 800);
+      } catch (err: any) {
+        if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') return;
+        logger.error('[Auth] Redirect result error:', err);
+      } finally {
+        setSocialLoading(null);
+      }
+    };
+    handleRedirectResult();
+  }, []);
+
   const handleSwitchAccount = async () => {
     try {
       setSwitchingAccount(true);
@@ -668,8 +729,17 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       }
 
       let userCredential: import('firebase/auth').UserCredential | null = null;
-      
-      logger.info(`[Auth] Using popup auth for ${provider} (${isIOSDevice ? 'iOS' : 'desktop'} browser, webview=${isGenericWebview})`);
+
+      if (isIOSDevice) {
+        // iOS Safari blocks popups — use redirect flow; result is handled in the useEffect above
+        logger.info(`[Auth] iOS detected — using redirect for ${provider}`);
+        sessionStorage.setItem('pw_redirect_provider', provider);
+        await signInWithBestMethod(auth, authProvider);
+        setSocialLoading(null);
+        return;
+      }
+
+      logger.info(`[Auth] Using popup auth for ${provider} (desktop browser, webview=${isGenericWebview})`);
       userCredential = await signInWithPopup(auth, authProvider);
 
       const additionalInfo = getAdditionalUserInfo(userCredential);

@@ -9,6 +9,7 @@
 
 import { 
   signInWithPopup,
+  signInWithRedirect,
   GoogleAuthProvider,
   FacebookAuthProvider,
   OAuthProvider,
@@ -56,7 +57,12 @@ export async function signInWithBestMethod(
   provider: AuthProvider,
   _preferredMethod?: 'popup' | 'redirect'
 ): Promise<UserCredential | null> {
-  console.log(`[Auth] Using popup-based sign-in (${isIOS() ? 'iOS' : 'desktop'})`);
+  if (isIOS()) {
+    console.log('[Auth] iOS detected — using redirect-based sign-in');
+    await signInWithRedirect(auth, provider);
+    return null; // Page will redirect; result handled by getRedirectResult in useEffect
+  }
+  console.log('[Auth] Desktop — using popup-based sign-in');
   return await signInWithPopup(auth, provider);
 }
 
