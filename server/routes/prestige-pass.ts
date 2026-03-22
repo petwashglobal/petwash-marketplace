@@ -18269,6 +18269,24 @@ async function runSelfHealingCheck(): Promise<void> {
     `);
     const recentAlerts = alertsRes.rows;
 
+    // ── 4.9G — Fetch global autonomy mode cap ─────────────────────────────────
+    const globalModeRes = await pool.query(`SELECT mode FROM system_autonomy_mode ORDER BY id DESC LIMIT 1`);
+    const globalMode: string = globalModeRes.rows[0]?.mode ?? 'assisted';
+    const globalModeCap = globalMode === 'manual' ? 1 : globalMode === 'assisted' ? 2 : globalMode === 'partial_auto' ? 3 : 4;
+
+    // ── 4.9D — Fetch domain autonomy caps ─────────────────────────────────────
+    const domainsRes = await pool.query(`SELECT domain_name, current_autonomy_cap FROM autonomy_domains`);
+    const domainCaps: Record<string, number> = {};
+    for (const d of domainsRes.rows) domainCaps[d.domain_name] = d.current_autonomy_cap;
+
+    const anomalyTypeToDomain: Record<string, string> = {
+      refund_spike: 'payments',
+      payout_imbalance: 'payout',
+      reconciliation_mismatch_rate: 'reconciliation',
+      dispute_surge: 'disputes',
+      alert_silence: 'alerts',
+    };
+
     for (const rule of rulesRes.rows) {
       // Find matching anomalies for this rule
       const matching = recentAlerts.filter(a => {
@@ -18317,10 +18335,9 @@ async function runSelfHealingCheck(): Promise<void> {
 
       const anomaly = matching[0];
       const anomalyScore = anomaly.priority_score || 50;
-      const approvalMode: string = rule.approval_mode ?? 'auto';
 
       // 4.8D — Compute confidence score at execution time (immutable, stored on row)
-      const { confidence, priorityComponent, fpPenalty, triggerBonus, fpRate } =
+      const { confidence, priorityComponent, fpPenalty, triggerBonus } =
         await computeConfidenceScore(rule.id, anomalyScore, rule.consecutive_triggers);
 
       const actionParamsJson = JSON.stringify(
@@ -18328,161 +18345,211 @@ async function runSelfHealingCheck(): Promise<void> {
       ).replace(/'/g, "''");
       const anomalyType = (anomaly.alert_type || 'unknown').replace(/'/g, "''");
 
-      // ── 4.8C — Execution decision table ───────────────────────────────────
-      // confidence < 40 always overrides mode → notify_only
-      if (confidence < 40) {
-        await pool.query(`
-          INSERT INTO self_healing_executions
-            (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by, confidence_score)
-          VALUES (${rule.id}, ${anomaly.id}, '${anomalyType}', ${anomalyScore},
-            '${rule.action_type}', '${actionParamsJson}'::jsonb,
-            'notify_only',
-            'Low confidence (${confidence}/100) — priority:${priorityComponent} fp_penalty:${fpPenalty} trigger_bonus:${triggerBonus}',
-            'self_healing_engine', ${confidence})
+      // ── 4.9 — Autonomy governance layer ────────────────────────────────────
+      const ruleLevel: number = rule.autonomy_level ?? 3;
+      const domainKey = anomalyTypeToDomain[rule.anomaly_type] ?? 'alerts';
+      const domainCap: number = domainCaps[domainKey] ?? 4;
+      const finalLevel = Math.min(ruleLevel, domainCap, globalModeCap);
+
+      // ── 4.9E — Guardrail check ─────────────────────────────────────────────
+      const guardrailRes = await pool.query(`
+        SELECT max_daily_executions, enabled FROM autonomy_guardrails
+        WHERE rule_type = '${rule.action_type.replace(/'/g, "''")}' AND enabled = true LIMIT 1
+      `);
+      if (guardrailRes.rows.length) {
+        const maxDaily = guardrailRes.rows[0].max_daily_executions;
+        const todayCountRes = await pool.query(`
+          SELECT COUNT(*) AS cnt FROM self_healing_executions
+          WHERE action_type = '${rule.action_type.replace(/'/g, "''")}' AND result = 'executed'
+            AND executed_at >= NOW()::date
         `);
-        await pool.query(`
-          INSERT INTO governance_alerts (alert_type, severity, message, triggered_by)
-          VALUES ('self_healing_notify', 'warning',
-            'Self-healing rule "${rule.name.replace(/'/g, "''")}": low confidence ${confidence}/100 — action not executed',
-            'self_healing_engine')
-        `);
-        logger.warn(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" conf ${confidence} < 40 → notify_only`);
-        continue;
+        const todayCount = parseInt(todayCountRes.rows[0]?.cnt ?? '0');
+        if (todayCount >= maxDaily) {
+          // Guardrail exceeded — block execution
+          await pool.query(`
+            INSERT INTO self_healing_executions
+              (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by, confidence_score)
+            VALUES (${rule.id}, ${anomaly.id}, '${anomalyType}', ${anomalyScore},
+              '${rule.action_type}', '${actionParamsJson}'::jsonb,
+              'failed',
+              '[GUARDRAIL] Daily limit of ${maxDaily} executions for ${rule.action_type} reached (today: ${todayCount})',
+              'self_healing_engine', ${confidence})
+          `);
+          await pool.query(`
+            INSERT INTO governance_alerts (alert_type, severity, message, triggered_by)
+            VALUES ('guardrail_exceeded', 'high',
+              'Autonomy guardrail exceeded for action type "${rule.action_type}": ${todayCount}/${maxDaily} daily executions',
+              'self_healing_engine')
+          `);
+          await pool.query(`
+            INSERT INTO autonomy_decision_log
+              (rule_id, anomaly_id, autonomy_level, domain_cap, global_mode_cap, final_level, confidence_score, decision, reasoning_json)
+            VALUES (${rule.id}, ${anomaly.id}, ${ruleLevel}, ${domainCap}, ${globalModeCap}, ${finalLevel}, ${confidence},
+              'blocked',
+              '{"reason":"guardrail_exceeded","action_type":"${rule.action_type}","today_count":${todayCount},"max_daily":${maxDaily},"global_mode":"${globalMode}"}'::jsonb)
+          `);
+          logger.warn(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" GUARDRAIL exceeded — blocked`);
+          continue;
+        }
       }
 
-      if (approvalMode === 'notify') {
-        // notify mode — never executes, always logs notify_only
+      // ── 4.9F — Decision log helper (written for every decision) ──────────────
+      const logDecision = async (decision: string, extra: Record<string, unknown> = {}) => {
         await pool.query(`
-          INSERT INTO self_healing_executions
-            (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by, confidence_score)
-          VALUES (${rule.id}, ${anomaly.id}, '${anomalyType}', ${anomalyScore},
-            '${rule.action_type}', '${actionParamsJson}'::jsonb,
-            'notify_only',
-            '[conf:${confidence}] Rule is in notify mode — action not executed',
-            'self_healing_engine', ${confidence})
-        `);
-        await pool.query(`
-          INSERT INTO governance_alerts (alert_type, severity, message, triggered_by)
-          VALUES ('self_healing_notify', 'warning',
-            'Self-healing rule "${rule.name.replace(/'/g, "''")}": notify mode — action blocked (conf ${confidence}/100)',
-            'self_healing_engine')
-        `);
-        logger.info(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" notify mode → notify_only (conf ${confidence})`);
+          INSERT INTO autonomy_decision_log
+            (rule_id, anomaly_id, autonomy_level, domain_cap, global_mode_cap, final_level, confidence_score, decision, reasoning_json)
+          VALUES (${rule.id}, ${anomaly.id}, ${ruleLevel}, ${domainCap}, ${globalModeCap}, ${finalLevel}, ${confidence},
+            '${decision}',
+            '${JSON.stringify({ rule_level: ruleLevel, domain_cap: domainCap, global_mode: globalMode, global_mode_cap: globalModeCap, final_level: finalLevel, domain_key: domainKey, confidence, priority_component: priorityComponent, fp_penalty: fpPenalty, trigger_bonus: triggerBonus, ...extra }).replace(/'/g, "''")}'::jsonb)
+        `).catch(() => {}); // non-blocking
+      };
 
-      } else if (approvalMode === 'manual') {
-        // manual mode — create remediation_suggestion, log pending_manual, NEVER execute
-        // Find or create an incident to attach the suggestion to
+      // ── 4.9A — Final level decision table ──────────────────────────────────
+      if (finalLevel === 1) {
+        // Level 1 — always manual, always pending_manual
         let manualIncidentId: number;
         const openIncRes = await pool.query(`SELECT id FROM incidents WHERE status = 'open' ORDER BY started_at DESC LIMIT 1`);
         if (openIncRes.rows.length) {
           manualIncidentId = openIncRes.rows[0].id;
         } else {
-          // Auto-create a self-healing review incident
           const newInc = await pool.query(`
             INSERT INTO incidents (title, status, severity, description, started_at)
-            VALUES (
-              'Self-Healing Manual Review: ${rule.name.replace(/'/g, "''")}',
-              'open', 'medium',
-              'Auto-created for manual approval of self-healing rule ${rule.id}',
-              NOW()
-            ) RETURNING id
+            VALUES ('Self-Healing Manual Review: ${rule.name.replace(/'/g, "''")}', 'open', 'medium',
+              'Auto-created for manual approval of self-healing rule ${rule.id}', NOW()) RETURNING id
           `);
           manualIncidentId = newInc.rows[0].id;
         }
-
-        // Insert remediation suggestion for operator to approve
         await pool.query(`
           INSERT INTO remediation_suggestions
             (incident_id, anomaly_type, action_type, action_label, action_detail, action_params, confidence, status)
-          VALUES (
-            ${manualIncidentId},
-            '${anomalyType}',
-            '${rule.action_type.replace(/'/g, "''")}',
+          VALUES (${manualIncidentId}, '${anomalyType}', '${rule.action_type.replace(/'/g, "''")}',
             'Self-Healing: ${rule.action_label.replace(/'/g, "''")}',
-            'Rule "${rule.name.replace(/'/g, "''")}": conf ${confidence}/100 — awaiting operator approval to execute ${rule.action_type}',
-            '{"source":"self_healing","rule_id":${rule.id},"anomaly_event_id":${anomaly.id},"confidence_score":${confidence}}'::jsonb,
-            '${confidence >= 70 ? 'high' : confidence >= 40 ? 'medium' : 'low'}',
-            'pending'
-          )
+            'Rule "${rule.name.replace(/'/g, "''")}": conf ${confidence}/100 — level 1 manual required',
+            '{"source":"self_healing","rule_id":${rule.id},"autonomy_level":1}'::jsonb,
+            '${confidence >= 70 ? 'high' : 'medium'}', 'pending')
         `);
-
-        // Log pending_manual execution row
         await pool.query(`
           INSERT INTO self_healing_executions
             (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by, confidence_score)
           VALUES (${rule.id}, ${anomaly.id}, '${anomalyType}', ${anomalyScore},
-            '${rule.action_type}', '${actionParamsJson}'::jsonb,
-            'pending_manual',
-            '[conf:${confidence}] Awaiting operator approval via remediation panel (incident #${manualIncidentId})',
+            '${rule.action_type}', '${actionParamsJson}'::jsonb, 'pending_manual',
+            '[L1/conf:${confidence}] Autonomy level 1 — human approval required (global_mode:${globalMode}, domain_cap:${domainCap})',
             'self_healing_engine', ${confidence})
         `);
+        await pool.query(`UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = ${rule.id}`);
+        await logDecision('manual', { incident_id: manualIncidentId });
+        logger.info(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" L1 → pending_manual`);
 
-        // Update rule trigger metadata
+      } else if (finalLevel === 2) {
+        // Level 2 — always notify, never execute
         await pool.query(`
-          UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = ${rule.id}
+          INSERT INTO self_healing_executions
+            (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by, confidence_score)
+          VALUES (${rule.id}, ${anomaly.id}, '${anomalyType}', ${anomalyScore},
+            '${rule.action_type}', '${actionParamsJson}'::jsonb, 'notify_only',
+            '[L2/conf:${confidence}] Autonomy level 2 — notify only (global_mode:${globalMode}, domain_cap:${domainCap})',
+            'self_healing_engine', ${confidence})
         `);
+        await pool.query(`
+          INSERT INTO governance_alerts (alert_type, severity, message, triggered_by)
+          VALUES ('self_healing_notify', 'warning',
+            'Self-healing rule "${rule.name.replace(/'/g, "''")}": level 2 — action notified but not executed (conf ${confidence}/100)',
+            'self_healing_engine')
+        `);
+        await pool.query(`UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = ${rule.id}`);
+        await logDecision('notify');
+        logger.info(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" L2 → notify_only (conf ${confidence})`);
 
-        // Timeline entry
-        await pool.query(`
-          INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json)
-          VALUES (${manualIncidentId}, 'self_healing_pending_manual',
-            'Self-healing rule "${rule.name.replace(/'/g, "''")}": manual approval required (conf ${confidence}/100)',
-            'self_healing_engine',
-            '{"rule_id":${rule.id},"action_type":"${rule.action_type}","confidence":${confidence}}'::jsonb)
-        `);
-        logger.info(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" manual mode → pending_manual (incident #${manualIncidentId}, conf ${confidence})`);
+      } else if (finalLevel === 3) {
+        // Level 3 — conditional auto: confidence < 40 → notify, else execute
+        if (confidence < 40) {
+          await pool.query(`
+            INSERT INTO self_healing_executions
+              (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by, confidence_score)
+            VALUES (${rule.id}, ${anomaly.id}, '${anomalyType}', ${anomalyScore},
+              '${rule.action_type}', '${actionParamsJson}'::jsonb, 'notify_only',
+              '[L3/conf:${confidence}] Low confidence gate — not executed (priority:${priorityComponent} fp_penalty:${fpPenalty})',
+              'self_healing_engine', ${confidence})
+          `);
+          await pool.query(`
+            INSERT INTO governance_alerts (alert_type, severity, message, triggered_by)
+            VALUES ('self_healing_notify', 'warning',
+              'Self-healing rule "${rule.name.replace(/'/g, "''")}": level 3 low confidence ${confidence}/100 — not executed',
+              'self_healing_engine')
+          `);
+          await pool.query(`UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = ${rule.id}`);
+          await logDecision('notify', { reason: 'confidence_below_40' });
+          logger.warn(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" L3 conf ${confidence} < 40 → notify_only`);
+        } else {
+          // execute
+          const params = typeof rule.action_params === 'string' ? JSON.parse(rule.action_params) : rule.action_params;
+          const { success, note } = await executeSelfHealingAction(rule.action_type, params, { ruleId: rule.id, ruleName: rule.name });
+          await pool.query(`
+            INSERT INTO self_healing_executions
+              (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by, confidence_score)
+            VALUES (${rule.id}, ${anomaly.id}, '${anomalyType}', ${anomalyScore},
+              '${rule.action_type}', '${JSON.stringify(params).replace(/'/g, "''")}'::jsonb,
+              '${success ? 'executed' : 'failed'}',
+              '[L3/conf:${confidence}] ${note.replace(/'/g, "''")}',
+              'self_healing_engine', ${confidence})
+          `);
+          await pool.query(`UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = ${rule.id}`);
+          const openIncRes3 = await pool.query(`SELECT id FROM incidents WHERE status = 'open' ORDER BY started_at DESC LIMIT 1`);
+          if (openIncRes3.rows.length) {
+            await pool.query(`
+              INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json)
+              VALUES (${openIncRes3.rows[0].id}, 'self_healing_fired',
+                'Self-healing rule "${rule.name.replace(/'/g, "''")}": [L3/conf:${confidence}] ${note.replace(/'/g, "''")}',
+                'self_healing_engine',
+                '{"rule_id":${rule.id},"autonomy_level":3,"success":${success},"confidence":${confidence}}'::jsonb)
+            `);
+          }
+          if (success) {
+            await pool.query(`
+              INSERT INTO governance_alerts (alert_type, severity, message, triggered_by)
+              VALUES ('self_healing_executed', 'medium',
+                'Self-healing rule "${rule.name.replace(/'/g, "''")}": L3 executed ${rule.action_type} (conf ${confidence}/100)',
+                'self_healing_engine')
+            `);
+          }
+          await logDecision(success ? 'executed' : 'failed', { note: note.replace(/'/g, "''") });
+          logger.info(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" L3 executed: ${note} (conf ${confidence})`);
+        }
 
       } else {
-        // auto mode — execute immediately (confidence already ≥ 40)
-        const params = typeof rule.action_params === 'string'
-          ? JSON.parse(rule.action_params)
-          : rule.action_params;
-
-        const { success, note } = await executeSelfHealingAction(rule.action_type, params, {
-          ruleId: rule.id,
-          ruleName: rule.name,
-        });
-
-        // Log execution (result = 'executed' for new runs, keeps backward compat)
+        // Level 4 — full auto: always execute, ignore confidence gate
+        const params = typeof rule.action_params === 'string' ? JSON.parse(rule.action_params) : rule.action_params;
+        const { success, note } = await executeSelfHealingAction(rule.action_type, params, { ruleId: rule.id, ruleName: rule.name });
         await pool.query(`
           INSERT INTO self_healing_executions
             (rule_id, anomaly_event_id, anomaly_type, anomaly_score, action_type, action_params, result, result_note, executed_by, confidence_score)
           VALUES (${rule.id}, ${anomaly.id}, '${anomalyType}', ${anomalyScore},
             '${rule.action_type}', '${JSON.stringify(params).replace(/'/g, "''")}'::jsonb,
             '${success ? 'executed' : 'failed'}',
-            '[conf:${confidence}] ${note.replace(/'/g, "''")}',
+            '[L4-FULL_AUTO/conf:${confidence}] ${note.replace(/'/g, "''")}',
             'self_healing_engine', ${confidence})
         `);
-
-        // Update rule trigger metadata
-        await pool.query(`
-          UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = ${rule.id}
-        `);
-
-        // Write to incident timeline if there's an open incident
-        const openIncidentRes = await pool.query(`SELECT id FROM incidents WHERE status = 'open' ORDER BY started_at DESC LIMIT 1`);
-        if (openIncidentRes.rows.length) {
-          const incidentId = openIncidentRes.rows[0].id;
+        await pool.query(`UPDATE self_healing_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = ${rule.id}`);
+        const openIncRes4 = await pool.query(`SELECT id FROM incidents WHERE status = 'open' ORDER BY started_at DESC LIMIT 1`);
+        if (openIncRes4.rows.length) {
           await pool.query(`
             INSERT INTO incident_timeline_entries (incident_id, event_type, content, actor, metadata_json)
-            VALUES (${incidentId}, 'self_healing_fired',
-              'Self-healing rule "${rule.name.replace(/'/g, "''")}": [conf:${confidence}] ${note.replace(/'/g, "''")}',
+            VALUES (${openIncRes4.rows[0].id}, 'self_healing_fired',
+              'Self-healing rule "${rule.name.replace(/'/g, "''")}": [L4 FULL AUTO/conf:${confidence}] ${note.replace(/'/g, "''")}',
               'self_healing_engine',
-              '{"rule_id":${rule.id},"action_type":"${rule.action_type}","success":${success},"confidence":${confidence}}'::jsonb)
+              '{"rule_id":${rule.id},"autonomy_level":4,"success":${success},"confidence":${confidence}}'::jsonb)
           `);
         }
-
-        // Governance alert on successful execution
         if (success) {
           await pool.query(`
             INSERT INTO governance_alerts (alert_type, severity, message, triggered_by)
             VALUES ('self_healing_executed', 'medium',
-              'Self-healing rule "${rule.name.replace(/'/g, "''")}": executed ${rule.action_type} (conf ${confidence}/100)',
+              'Self-healing rule "${rule.name.replace(/'/g, "''")}": L4 FULL AUTO executed ${rule.action_type} (conf ${confidence}/100)',
               'self_healing_engine')
           `);
         }
-
-        logger.info(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" auto executed: ${note} (conf ${confidence})`);
+        await logDecision(success ? 'executed' : 'failed', { full_auto: true, note: note.replace(/'/g, "''") });
+        logger.info(`[SelfHealingEngine] Rule ${rule.id} "${rule.name}" L4 FULL AUTO executed: ${note} (conf ${confidence})`);
       }
     }
   } catch (err: any) {
@@ -19315,6 +19382,297 @@ router.get('/admin/system/incidents/:id/postmortem', async (req, res) => {
     });
   } catch (err: any) {
     return res.status(500).json({ error: 'Fetch failed', detail: err.message });
+  }
+});
+
+// ── PHASE 4.9 — PROGRESSIVE AUTONOMY CONTROL ─────────────────────────────────
+
+// ── 4.9C — Auto-Demotion Engine (runs hourly) ─────────────────────────────────
+async function runAutonomyDemotionCheck(): Promise<void> {
+  try {
+    const rulesRes = await pool.query(`SELECT * FROM self_healing_rules WHERE enabled = true ORDER BY id`);
+    for (const rule of rulesRes.rows) {
+      const lvl: number = rule.autonomy_level ?? 1;
+      if (lvl <= 1) continue; // already at floor
+
+      // Compute demotion triggers
+      const stats = await pool.query(`
+        SELECT
+          COUNT(*)::int AS total_exec,
+          COUNT(CASE WHEN result = 'failed' THEN 1 END)::int AS failed,
+          ROUND(AVG(confidence_score))::int AS avg_conf,
+          COUNT(fpr.id)::int AS fp_count
+        FROM self_healing_executions e
+        LEFT JOIN false_positive_reviews fpr ON fpr.execution_id = e.id AND fpr.is_false_positive = true
+        WHERE e.rule_id = ${rule.id}
+          AND e.executed_at >= NOW() - INTERVAL '7 days'
+      `);
+      const s = stats.rows[0];
+      const fpRate = s.total_exec > 0 ? (s.fp_count / s.total_exec) * 100 : 0;
+      const failRate = s.total_exec > 0 ? (s.failed / s.total_exec) : 0;
+      const avgConf = s.avg_conf ?? 100;
+
+      // Check consecutive failures
+      const consecRes = await pool.query(`
+        SELECT COUNT(*) AS cnt FROM (
+          SELECT result FROM self_healing_executions
+          WHERE rule_id = ${rule.id} ORDER BY executed_at DESC LIMIT 3
+        ) sub WHERE result = 'failed'
+      `);
+      const consecFails = parseInt(consecRes.rows[0]?.cnt ?? '0');
+
+      let demoteReason: string | null = null;
+      if (fpRate > 25) demoteReason = `FP rate ${fpRate.toFixed(1)}% > 25%`;
+      else if (consecFails >= 3) demoteReason = `3 consecutive failures`;
+      else if (avgConf < 40) demoteReason = `Avg confidence ${avgConf} < 40`;
+      else if (failRate > 0.4 && s.total_exec >= 5) demoteReason = `Failure rate ${(failRate * 100).toFixed(0)}% > 40%`;
+
+      if (!demoteReason) continue;
+
+      const newLevel = Math.max(1, lvl - 1);
+      const metricsSnap = JSON.stringify({ fp_rate: fpRate, fail_rate: failRate, avg_conf: avgConf, consec_fails: consecFails, total_exec: s.total_exec }).replace(/'/g, "''");
+
+      await pool.query(`
+        UPDATE self_healing_rules SET autonomy_level = ${newLevel} WHERE id = ${rule.id}
+      `);
+      await pool.query(`
+        INSERT INTO autonomy_demotions (rule_id, from_level, to_level, trigger_reason, metrics_snapshot_json)
+        VALUES (${rule.id}, ${lvl}, ${newLevel}, '${demoteReason.replace(/'/g, "''")}', '${metricsSnap}'::jsonb)
+      `);
+      await pool.query(`
+        INSERT INTO governance_alerts (alert_type, severity, message, triggered_by)
+        VALUES ('autonomy_demotion', 'high',
+          'Rule "${rule.name.replace(/'/g, "''")}": autonomy demoted L${lvl}→L${newLevel} — ${demoteReason.replace(/'/g, "''")}',
+          'autonomy_engine')
+      `);
+      logger.warn(`[AutonomyEngine] Rule ${rule.id} "${rule.name}" DEMOTED L${lvl}→L${newLevel}: ${demoteReason}`);
+    }
+  } catch (err: any) {
+    logger.error(`[AutonomyEngine] Demotion check failed: ${err.message}`);
+  }
+}
+
+// Start demotion job: run hourly
+setInterval(() => runAutonomyDemotionCheck(), 60 * 60 * 1000);
+
+// ── 4.9B — Promotion route ────────────────────────────────────────────────────
+
+// POST /admin/system/self-healing/rules/:id/promote — promote autonomy level (requires human approval)
+router.post('/admin/system/self-healing/rules/:id/promote', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { approvedBy = 'operator', reason = '' } = req.body;
+
+    const ruleRes = await pool.query(`SELECT * FROM self_healing_rules WHERE id = ${id}`);
+    if (!ruleRes.rows.length) return res.status(404).json({ error: 'Rule not found' });
+    const rule = ruleRes.rows[0];
+    const currentLevel: number = rule.autonomy_level ?? 1;
+
+    if (currentLevel >= 4) return res.status(400).json({ error: 'Already at maximum autonomy level (4)' });
+
+    // Check promotion criteria
+    const stats = await pool.query(`
+      SELECT
+        COUNT(*)::int AS total_exec,
+        COUNT(CASE WHEN result IN ('executed','success') THEN 1 END)::int AS ok_count,
+        ROUND(AVG(confidence_score))::int AS avg_conf,
+        COUNT(fpr.id)::int AS fp_count
+      FROM self_healing_executions e
+      LEFT JOIN false_positive_reviews fpr ON fpr.execution_id = e.id AND fpr.is_false_positive = true
+      WHERE e.rule_id = ${id}
+    `);
+    const s = stats.rows[0];
+    const fpRate = s.total_exec > 0 ? (s.fp_count / s.total_exec) * 100 : 0;
+    const successRate = s.total_exec > 0 ? (s.ok_count / s.total_exec) * 100 : 0;
+    const avgConf = s.avg_conf ?? 0;
+
+    const criteria = {
+      executions_met: s.total_exec >= 20,
+      fp_rate_met: fpRate < 10,
+      confidence_met: avgConf >= 60,
+      success_rate_met: successRate >= 80,
+    };
+    const allMet = Object.values(criteria).every(Boolean);
+    if (!allMet) {
+      return res.status(400).json({
+        error: 'Promotion criteria not met',
+        criteria,
+        current: { total_exec: s.total_exec, fp_rate: fpRate, avg_conf: avgConf, success_rate: successRate },
+        required: { min_executions: 20, max_fp_rate: 10, min_avg_conf: 60, min_success_rate: 80 },
+      });
+    }
+
+    const newLevel = currentLevel + 1;
+    const metricsSnap = JSON.stringify({ total_exec: s.total_exec, fp_rate: fpRate, avg_conf: avgConf, success_rate: successRate }).replace(/'/g, "''");
+
+    await pool.query(`UPDATE self_healing_rules SET autonomy_level = ${newLevel} WHERE id = ${id}`);
+    await pool.query(`
+      INSERT INTO autonomy_promotions (rule_id, from_level, to_level, reason, metrics_snapshot_json, approved_by)
+      VALUES (${id}, ${currentLevel}, ${newLevel}, '${reason.replace(/'/g, "''")}', '${metricsSnap}'::jsonb, '${approvedBy.replace(/'/g, "''")}')
+    `);
+    await pool.query(`
+      INSERT INTO governance_alerts (alert_type, severity, message, triggered_by)
+      VALUES ('autonomy_promotion', 'low',
+        'Rule "${rule.name.replace(/'/g, "''")}": autonomy promoted L${currentLevel}→L${newLevel} by ${approvedBy.replace(/'/g, "''")}',
+        'operator')
+    `);
+
+    return res.json({ promoted: true, from_level: currentLevel, to_level: newLevel, criteria, metrics: { total_exec: s.total_exec, fp_rate: fpRate, avg_conf: avgConf, success_rate: successRate } });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Promotion failed', detail: err.message });
+  }
+});
+
+// GET /admin/system/self-healing/rules/:id/autonomy — promotion + demotion history for a rule
+router.get('/admin/system/self-healing/rules/:id/autonomy', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const ruleRes = await pool.query(`SELECT id, name, autonomy_level, approval_mode FROM self_healing_rules WHERE id = ${id}`);
+    if (!ruleRes.rows.length) return res.status(404).json({ error: 'Rule not found' });
+
+    const promotions = await pool.query(`SELECT * FROM autonomy_promotions WHERE rule_id = ${id} ORDER BY promoted_at DESC LIMIT 20`);
+    const demotions = await pool.query(`SELECT * FROM autonomy_demotions WHERE rule_id = ${id} ORDER BY demoted_at DESC LIMIT 20`);
+
+    return res.json({
+      rule: ruleRes.rows[0],
+      promotions: promotions.rows,
+      demotions: demotions.rows,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Fetch failed', detail: err.message });
+  }
+});
+
+// ── 4.9D — Domain-level autonomy control ─────────────────────────────────────
+
+// GET /admin/system/autonomy/domains
+router.get('/admin/system/autonomy/domains', async (req, res) => {
+  try {
+    const rows = await pool.query(`SELECT * FROM autonomy_domains ORDER BY domain_name`);
+    return res.json({ domains: rows.rows });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Fetch failed', detail: err.message });
+  }
+});
+
+// PATCH /admin/system/autonomy/domains/:name — update domain cap
+router.patch('/admin/system/autonomy/domains/:name', async (req, res) => {
+  try {
+    const name = req.params.name;
+    const { currentAutonomyCap } = req.body;
+    if (currentAutonomyCap === undefined) return res.status(400).json({ error: 'currentAutonomyCap required' });
+    const cap = Math.max(1, Math.min(4, parseInt(currentAutonomyCap)));
+    const r = await pool.query(`
+      UPDATE autonomy_domains
+      SET current_autonomy_cap = ${cap}, updated_at = NOW()
+      WHERE domain_name = '${name.replace(/'/g, "''")}'
+      RETURNING *
+    `);
+    if (!r.rows.length) return res.status(404).json({ error: 'Domain not found' });
+    return res.json({ domain: r.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Update failed', detail: err.message });
+  }
+});
+
+// ── 4.9E — Guardrails control ─────────────────────────────────────────────────
+
+// GET /admin/system/autonomy/guardrails
+router.get('/admin/system/autonomy/guardrails', async (req, res) => {
+  try {
+    const rows = await pool.query(`SELECT * FROM autonomy_guardrails ORDER BY rule_type`);
+    return res.json({ guardrails: rows.rows });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Fetch failed', detail: err.message });
+  }
+});
+
+// PATCH /admin/system/autonomy/guardrails/:ruleType — update guardrail limits
+router.patch('/admin/system/autonomy/guardrails/:ruleType', async (req, res) => {
+  try {
+    const ruleType = req.params.ruleType;
+    const { maxDailyExecutions, enabled } = req.body;
+    const setClauses: string[] = [];
+    if (maxDailyExecutions !== undefined) setClauses.push(`max_daily_executions = ${Math.max(1, parseInt(maxDailyExecutions))}`);
+    if (enabled !== undefined) setClauses.push(`enabled = ${!!enabled}`);
+    if (!setClauses.length) return res.status(400).json({ error: 'No update fields provided' });
+    const r = await pool.query(`
+      UPDATE autonomy_guardrails SET ${setClauses.join(', ')} WHERE rule_type = '${ruleType.replace(/'/g, "''")}' RETURNING *
+    `);
+    if (!r.rows.length) return res.status(404).json({ error: 'Guardrail not found' });
+    return res.json({ guardrail: r.rows[0] });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Update failed', detail: err.message });
+  }
+});
+
+// ── 4.9F — Autonomy Decision Log ─────────────────────────────────────────────
+
+// GET /admin/system/autonomy/decision-log?ruleId=&limit=
+router.get('/admin/system/autonomy/decision-log', async (req, res) => {
+  try {
+    const ruleId = req.query.ruleId ? parseInt(req.query.ruleId as string) : null;
+    const limit = Math.min(200, parseInt((req.query.limit as string) ?? '50'));
+    const where = ruleId ? `WHERE adl.rule_id = ${ruleId}` : '';
+    const rows = await pool.query(`
+      SELECT adl.*, r.name AS rule_name
+      FROM autonomy_decision_log adl
+      LEFT JOIN self_healing_rules r ON r.id = adl.rule_id
+      ${where}
+      ORDER BY adl.created_at DESC
+      LIMIT ${limit}
+    `);
+    return res.json({ entries: rows.rows, total: rows.rows.length });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Fetch failed', detail: err.message });
+  }
+});
+
+// ── 4.9G — Global Autonomy Mode ───────────────────────────────────────────────
+
+// GET /admin/system/autonomy/mode
+router.get('/admin/system/autonomy/mode', async (req, res) => {
+  try {
+    const r = await pool.query(`SELECT * FROM system_autonomy_mode ORDER BY id DESC LIMIT 1`);
+    const modeCap = (m: string) => m === 'manual' ? 1 : m === 'assisted' ? 2 : m === 'partial_auto' ? 3 : 4;
+    const row = r.rows[0] ?? { mode: 'assisted', updated_at: new Date(), updated_by: 'system', id: 0 };
+    return res.json({ ...row, mode_cap: modeCap(row.mode) });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Fetch failed', detail: err.message });
+  }
+});
+
+// PATCH /admin/system/autonomy/mode — set global mode
+router.patch('/admin/system/autonomy/mode', async (req, res) => {
+  try {
+    const { mode, updatedBy = 'operator' } = req.body;
+    const valid = ['manual', 'assisted', 'partial_auto', 'full_auto'];
+    if (!valid.includes(mode)) return res.status(400).json({ error: `mode must be one of: ${valid.join(', ')}` });
+    const modeCap = mode === 'manual' ? 1 : mode === 'assisted' ? 2 : mode === 'partial_auto' ? 3 : 4;
+    const r = await pool.query(`
+      INSERT INTO system_autonomy_mode (mode, updated_by)
+      VALUES ('${mode}', '${updatedBy.replace(/'/g, "''")}')
+      RETURNING *
+    `);
+    await pool.query(`
+      INSERT INTO governance_alerts (alert_type, severity, message, triggered_by)
+      VALUES ('global_autonomy_mode_changed', '${mode === 'full_auto' ? 'high' : mode === 'manual' ? 'medium' : 'low'}',
+        'Global autonomy mode changed to "${mode}" (cap: L${modeCap}) by ${updatedBy.replace(/'/g, "''")}',
+        'operator')
+    `);
+    return res.json({ ...r.rows[0], mode_cap: modeCap });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Update failed', detail: err.message });
+  }
+});
+
+// POST /admin/system/autonomy/demote-check — manual trigger for demotion engine
+router.post('/admin/system/autonomy/demote-check', async (req, res) => {
+  try {
+    await runAutonomyDemotionCheck();
+    return res.json({ ok: true, message: 'Demotion check complete' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Demotion check failed', detail: err.message });
   }
 });
 

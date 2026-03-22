@@ -1,0 +1,298 @@
+PHASE 4.9 — PROGRESSIVE AUTONOMY CONTROL
+======================================
+
+OBJECTIVE
+---------
+Move from calibrated autonomy → controlled, self-evolving autonomy.
+
+The system should:
+- Gradually increase autonomy where trust is proven
+- Automatically reduce autonomy where risk increases
+- Operate with clear boundaries, auditability, and reversibility
+
+This phase introduces **autonomy governance as a first-class system**.
+
+
+==================================================
+4.9A — PER-RULE AUTONOMY LEVELS
+==================================================
+
+Add to self_healing_rules:
+
+autonomy_level INTEGER DEFAULT 1
+
+Levels:
+1 = manual only
+2 = notify (no execution)
+3 = conditional auto (confidence + thresholds)
+4 = full auto (trusted)
+
+Mapping:
+
+| Level | Behavior                          |
+|------|-----------------------------------|
+| 1    | always manual                     |
+| 2    | always notify                     |
+| 3    | auto only if confidence ≥ threshold |
+| 4    | always auto (ignore threshold)    |
+
+Execution logic update:
+
+IF autonomy_level == 1 → manual
+IF autonomy_level == 2 → notify
+IF autonomy_level == 3 → use confidence gating (existing logic)
+IF autonomy_level == 4 → force execute
+
+
+--------------------------------------------------
+
+
+==================================================
+4.9B — AUTONOMY PROMOTION ENGINE
+==================================================
+
+New table:
+autonomy_promotions
+- id
+- rule_id
+- from_level
+- to_level
+- reason
+- metrics_snapshot_json
+- promoted_at
+- approved_by
+
+Promotion criteria (evaluated daily):
+
+Promote if ALL:
+- ≥ 20 executions
+- false positive rate < 10%
+- avg confidence ≥ 60
+- success rate ≥ 80%
+
+Route:
+POST /admin/system/self-healing/rules/:id/promote
+
+Frontend:
+- “Promote to Level X” button on rule card
+- Show promotion history
+
+
+--------------------------------------------------
+
+
+==================================================
+4.9C — AUTONOMY DEMOTION ENGINE
+==================================================
+
+New table:
+autonomy_demotions
+- id
+- rule_id
+- from_level
+- to_level
+- trigger_reason
+- metrics_snapshot_json
+- demoted_at
+
+Auto-demotion triggers:
+
+IF ANY:
+- FP rate > 25%
+- 3 consecutive failures
+- confidence avg < 40
+- critical anomaly misfire
+
+System auto-demotes:
+4 → 3 → 2 → 1
+
+Runs every hour.
+
+NO human approval required for demotion.
+
+
+--------------------------------------------------
+
+
+==================================================
+4.9D — DOMAIN-LEVEL AUTONOMY CONTROL
+==================================================
+
+New table:
+autonomy_domains
+- id
+- domain_name (payments, disputes, alerts, etc.)
+- max_autonomy_level
+- current_autonomy_cap
+- updated_at
+
+Rule execution must obey:
+
+effective_level = MIN(rule.autonomy_level, domain.current_autonomy_cap)
+
+Example:
+- payments capped at level 2 → no auto payouts ever
+
+Frontend:
+- Domain control panel (slider per domain)
+
+
+--------------------------------------------------
+
+
+==================================================
+4.9E — AUTONOMY GUARDRAILS ENGINE
+==================================================
+
+New table:
+autonomy_guardrails
+- id
+- rule_type
+- max_daily_executions
+- max_value_per_day
+- cooldown_override
+- enabled
+
+Enforcement:
+
+Before execution:
+IF guardrail exceeded:
+  → block execution
+  → log governance_alert
+  → mark execution as blocked_guardrail
+
+Prevents runaway automation.
+
+
+--------------------------------------------------
+
+
+==================================================
+4.9F — AUTONOMY DECISION LOG
+==================================================
+
+New table:
+autonomy_decision_log
+- id
+- rule_id
+- anomaly_id
+- autonomy_level
+- confidence_score
+- decision (executed / notify / manual / blocked)
+- reasoning_json
+- created_at
+
+Every self-healing decision must log:
+
+WHY the system acted or did not act.
+
+This becomes:
+- audit layer
+- debugging layer
+- explainability layer
+
+
+--------------------------------------------------
+
+
+==================================================
+4.9G — GLOBAL AUTONOMY MODE SWITCH
+==================================================
+
+New table:
+system_autonomy_mode
+- id
+- mode ('manual', 'assisted', 'partial_auto', 'full_auto')
+- updated_at
+- updated_by
+
+Mode mapping:
+
+manual:
+  → force all rules to level 1
+
+assisted:
+  → allow up to level 2
+
+partial_auto:
+  → allow up to level 3
+
+full_auto:
+  → allow up to level 4
+
+Execution uses:
+
+final_level = MIN(
+  rule.autonomy_level,
+  domain_cap,
+  global_mode_cap
+)
+
+Frontend:
+- Global mode selector (top of Command Center)
+- Warning banner when switching modes
+
+
+--------------------------------------------------
+
+
+==================================================
+SYSTEM EXECUTION FLOW (FINAL MODEL)
+==================================================
+
+ANOMALY →
+PRIORITY SCORE →
+CONFIDENCE →
+AUTONOMY LEVEL →
+DOMAIN CAP →
+GLOBAL MODE →
+GUARDRAILS →
+DECISION →
+EXECUTION / NOTIFY / MANUAL / BLOCKED →
+DECISION LOG →
+GOVERNANCE ALERT →
+INCIDENT →
+POSTMORTEM →
+TRUST METRICS →
+PROMOTION / DEMOTION
+
+
+--------------------------------------------------
+
+
+==================================================
+CRITICAL SAFETY PRINCIPLES
+==================================================
+
+- Promotion requires human approval
+- Demotion is automatic
+- Guardrails override everything
+- Global mode can shut down autonomy instantly
+- Every decision must be explainable
+- No silent execution ever
+
+
+--------------------------------------------------
+
+
+==================================================
+EXPECTED OUTCOME
+==================================================
+
+After Phase 4.9:
+
+- The system controls HOW autonomous it is
+- Autonomy evolves based on performance
+- Risk is bounded at all times
+- Humans supervise, not operate
+
+This is the transition from:
+“automation system”
+→
+“self-governing operational intelligence”
+
+
+--------------------------------------------------
+
+END OF PHASE 4.9
+--------------------------------------------------

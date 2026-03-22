@@ -2521,6 +2521,33 @@ export default function AdminWalletDashboard() {
   const [shReadinessLoading, setShReadinessLoading] = useState(false);
   const [shReadinessExpanded, setShReadinessExpanded] = useState(false);
 
+  // 4.9A/B/C — Per-rule autonomy level + promote
+  const [shPromoting, setShPromoting] = useState<Record<number, boolean>>({});
+  const [shAutonomyHistory, setShAutonomyHistory] = useState<Record<number, any>>({});
+  const [shAutonomyHistoryExpanded, setShAutonomyHistoryExpanded] = useState<Record<number, boolean>>({});
+
+  // 4.9D — Domain control
+  const [autonomyDomains, setAutonomyDomains] = useState<any[]>([]);
+  const [domainsLoading, setDomainsLoading] = useState(false);
+  const [domainsExpanded, setDomainsExpanded] = useState(false);
+  const [domainUpdating, setDomainUpdating] = useState<Record<string, boolean>>({});
+
+  // 4.9E — Guardrails
+  const [autonomyGuardrails, setAutonomyGuardrails] = useState<any[]>([]);
+  const [guardrailsLoading, setGuardrailsLoading] = useState(false);
+  const [guardrailsExpanded, setGuardrailsExpanded] = useState(false);
+  const [guardrailUpdating, setGuardrailUpdating] = useState<Record<string, boolean>>({});
+
+  // 4.9F — Decision log
+  const [decisionLog, setDecisionLog] = useState<any[]>([]);
+  const [decisionLogLoading, setDecisionLogLoading] = useState(false);
+  const [decisionLogExpanded, setDecisionLogExpanded] = useState(false);
+
+  // 4.9G — Global autonomy mode
+  const [globalAutonomyMode, setGlobalAutonomyMode] = useState<any>(null);
+  const [globalModeLoading, setGlobalModeLoading] = useState(false);
+  const [globalModeSetting, setGlobalModeSetting] = useState(false);
+
   const fetchRemediation = async (incidentId: number) => {
     try {
       const res = await fetch(`/api/prestige-pass/admin/system/incidents/${incidentId}/remediation`);
@@ -2586,6 +2613,7 @@ export default function AdminWalletDashboard() {
     } catch { /* silent */ }
     finally { setShLoading(false); }
     loadTrustOverview();
+    loadGlobalMode();
   };
 
   const fetchShExecs = async () => {
@@ -2818,6 +2846,134 @@ export default function AdminWalletDashboard() {
       else toast({ title: d.error ?? 'Readiness score failed', variant: 'destructive' });
     } catch { toast({ title: 'Readiness score failed', variant: 'destructive' }); }
     finally { setShReadinessLoading(false); }
+  };
+
+  // ── 4.9G — Global autonomy mode ────────────────────────────────────────────
+  const loadGlobalMode = async () => {
+    setGlobalModeLoading(true);
+    try {
+      const res = await fetch('/api/prestige-pass/admin/system/autonomy/mode');
+      const d = await res.json();
+      if (res.ok) setGlobalAutonomyMode(d);
+    } catch { /* non-blocking */ }
+    finally { setGlobalModeLoading(false); }
+  };
+
+  const setGlobalMode = async (mode: string) => {
+    if (globalModeSetting) return;
+    setGlobalModeSetting(true);
+    try {
+      const res = await fetch('/api/prestige-pass/admin/system/autonomy/mode', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode }),
+      });
+      const d = await res.json();
+      if (res.ok) { setGlobalAutonomyMode(d); toast({ title: `Global mode set to ${mode}` }); }
+      else toast({ title: d.error ?? 'Mode change failed', variant: 'destructive' });
+    } catch { toast({ title: 'Mode change failed', variant: 'destructive' }); }
+    finally { setGlobalModeSetting(false); }
+  };
+
+  // ── 4.9B — Promote rule ────────────────────────────────────────────────────
+  const promoteRule = async (ruleId: number) => {
+    setShPromoting(p => ({ ...p, [ruleId]: true }));
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/self-healing/rules/${ruleId}/promote`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approvedBy: 'operator', reason: 'Manual promotion via dashboard' }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        toast({ title: `Rule promoted to Level ${d.to_level}` });
+        fetchShRules();
+      } else {
+        const msg = d.error === 'Promotion criteria not met'
+          ? `Criteria not met: ${Object.entries(d.criteria ?? {}).filter(([, v]) => !v).map(([k]) => k.replace(/_/g, ' ')).join(', ')}`
+          : d.error ?? 'Promotion failed';
+        toast({ title: msg, variant: 'destructive' });
+      }
+    } catch { toast({ title: 'Promotion failed', variant: 'destructive' }); }
+    finally { setShPromoting(p => ({ ...p, [ruleId]: false })); }
+  };
+
+  // ── 4.9A/C — Per-rule autonomy history ────────────────────────────────────
+  const loadAutonomyHistory = async (ruleId: number) => {
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/self-healing/rules/${ruleId}/autonomy`);
+      const d = await res.json();
+      if (res.ok) {
+        setShAutonomyHistory(p => ({ ...p, [ruleId]: d }));
+        setShAutonomyHistoryExpanded(p => ({ ...p, [ruleId]: true }));
+      }
+    } catch { /* non-blocking */ }
+  };
+
+  // ── 4.9D — Domain caps ────────────────────────────────────────────────────
+  const loadDomains = async () => {
+    setDomainsLoading(true);
+    try {
+      const res = await fetch('/api/prestige-pass/admin/system/autonomy/domains');
+      const d = await res.json();
+      if (res.ok) { setAutonomyDomains(d.domains); setDomainsExpanded(true); }
+    } catch { /* non-blocking */ }
+    finally { setDomainsLoading(false); }
+  };
+
+  const updateDomainCap = async (name: string, cap: number) => {
+    setDomainUpdating(p => ({ ...p, [name]: true }));
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/autonomy/domains/${encodeURIComponent(name)}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentAutonomyCap: cap }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        setAutonomyDomains(prev => prev.map(dom => dom.domain_name === name ? d.domain : dom));
+        toast({ title: `${name} cap set to L${cap}` });
+      } else toast({ title: d.error ?? 'Update failed', variant: 'destructive' });
+    } catch { toast({ title: 'Update failed', variant: 'destructive' }); }
+    finally { setDomainUpdating(p => ({ ...p, [name]: false })); }
+  };
+
+  // ── 4.9E — Guardrails ────────────────────────────────────────────────────
+  const loadGuardrails = async () => {
+    setGuardrailsLoading(true);
+    try {
+      const res = await fetch('/api/prestige-pass/admin/system/autonomy/guardrails');
+      const d = await res.json();
+      if (res.ok) { setAutonomyGuardrails(d.guardrails); setGuardrailsExpanded(true); }
+    } catch { /* non-blocking */ }
+    finally { setGuardrailsLoading(false); }
+  };
+
+  const updateGuardrail = async (ruleType: string, maxDaily: number) => {
+    setGuardrailUpdating(p => ({ ...p, [ruleType]: true }));
+    try {
+      const res = await fetch(`/api/prestige-pass/admin/system/autonomy/guardrails/${encodeURIComponent(ruleType)}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ maxDailyExecutions: maxDaily }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        setAutonomyGuardrails(prev => prev.map(g => g.rule_type === ruleType ? d.guardrail : g));
+        toast({ title: `Guardrail for ${ruleType}: max ${maxDaily}/day` });
+      } else toast({ title: d.error ?? 'Guardrail update failed', variant: 'destructive' });
+    } catch { toast({ title: 'Guardrail update failed', variant: 'destructive' }); }
+    finally { setGuardrailUpdating(p => ({ ...p, [ruleType]: false })); }
+  };
+
+  // ── 4.9F — Decision log ───────────────────────────────────────────────────
+  const loadDecisionLog = async (ruleId?: number) => {
+    setDecisionLogLoading(true);
+    try {
+      const url = ruleId
+        ? `/api/prestige-pass/admin/system/autonomy/decision-log?ruleId=${ruleId}&limit=50`
+        : '/api/prestige-pass/admin/system/autonomy/decision-log?limit=50';
+      const res = await fetch(url);
+      const d = await res.json();
+      if (res.ok) { setDecisionLog(d.entries); setDecisionLogExpanded(true); }
+    } catch { /* non-blocking */ }
+    finally { setDecisionLogLoading(false); }
   };
 
   // 4.8D — Confidence summary handler
@@ -14684,6 +14840,33 @@ export default function AdminWalletDashboard() {
 
                   {shRules.length > 0 && (
                     <div className="p-2 space-y-1">
+                      {/* ── 4.9G — Global Autonomy Mode Selector ── */}
+                      {globalAutonomyMode && (() => {
+                        const m = globalAutonomyMode;
+                        const modeColor = m.mode === 'manual' ? 'gray' : m.mode === 'assisted' ? 'blue' : m.mode === 'partial_auto' ? 'amber' : 'emerald';
+                        const modeLabel: Record<string, string> = { manual: '⏸ Manual', assisted: '👁 Assisted', partial_auto: '⚡ Partial Auto', full_auto: '🤖 Full Auto' };
+                        return (
+                          <div className={`flex items-center gap-2 p-1.5 rounded border bg-${modeColor}-50 border-${modeColor}-200 mb-1.5`}>
+                            <span className={`text-[8px] font-extrabold text-${modeColor}-700 shrink-0`}>GLOBAL MODE:</span>
+                            {(['manual','assisted','partial_auto','full_auto'] as const).map(mode => (
+                              <button key={mode} disabled={globalModeSetting}
+                                onClick={() => m.mode !== mode && setGlobalMode(mode)}
+                                className={`text-[8px] px-1.5 py-0.5 rounded font-semibold transition-colors ${
+                                  m.mode === mode
+                                    ? 'bg-gray-800 text-white'
+                                    : 'border border-gray-200 bg-white text-gray-500 hover:bg-gray-50'
+                                } disabled:opacity-50`}>
+                                {modeLabel[mode]}
+                              </button>
+                            ))}
+                            <span className="text-[7px] text-gray-400 ml-auto">cap: L{m.mode_cap} — {m.mode === 'full_auto' ? 'all levels allowed' : m.mode === 'partial_auto' ? 'max L3' : m.mode === 'assisted' ? 'max L2 notify' : 'force manual'}</span>
+                            {m.mode === 'full_auto' && (
+                              <span className="text-[7px] text-red-600 font-bold animate-pulse">⚠ FULL AUTO</span>
+                            )}
+                          </div>
+                        );
+                      })()}
+
                       {/* 4.8F — Trust Overview Banner */}
                       {shTrustOverview?.summary && (() => {
                         const s = shTrustOverview.summary;
@@ -14749,6 +14932,111 @@ export default function AdminWalletDashboard() {
                           </div>
                         );
                       })()}
+                      {/* ── 4.9D — Domain Control Panel ── */}
+                      {domainsExpanded && autonomyDomains.length > 0 && (
+                        <div className="border border-blue-100 rounded bg-blue-50 p-2 mb-1.5 space-y-1.5">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[9px] font-bold text-blue-800">🏛 Domain Autonomy Caps</span>
+                            <span className="text-[7px] text-blue-400 italic">effective_level = MIN(rule, domain, global)</span>
+                          </div>
+                          {autonomyDomains.map((dom: any) => (
+                            <div key={dom.domain_name} className="flex items-center gap-2">
+                              <span className="text-[8px] font-medium text-gray-700 w-28 capitalize">{dom.domain_name}</span>
+                              <div className="flex gap-0.5">
+                                {[1, 2, 3, 4].map(lvl => (
+                                  <button key={lvl} disabled={domainUpdating[dom.domain_name]}
+                                    onClick={() => dom.current_autonomy_cap !== lvl && updateDomainCap(dom.domain_name, lvl)}
+                                    className={`text-[7px] px-1.5 py-0.5 rounded font-bold ${
+                                      dom.current_autonomy_cap === lvl
+                                        ? lvl === 4 ? 'bg-emerald-500 text-white' : lvl === 3 ? 'bg-blue-500 text-white' : lvl === 2 ? 'bg-amber-500 text-white' : 'bg-red-500 text-white'
+                                        : 'bg-white border border-gray-200 text-gray-400 hover:bg-gray-50'
+                                    } disabled:opacity-50`}>
+                                    L{lvl}
+                                  </button>
+                                ))}
+                              </div>
+                              <span className="text-[7px] text-gray-400">{dom.current_autonomy_cap === 4 ? 'full auto' : dom.current_autonomy_cap === 3 ? 'conditional' : dom.current_autonomy_cap === 2 ? 'notify' : 'manual'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* ── 4.9E — Guardrails Panel ── */}
+                      {guardrailsExpanded && autonomyGuardrails.length > 0 && (
+                        <div className="border border-orange-100 rounded bg-orange-50 p-2 mb-1.5 space-y-1.5">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[9px] font-bold text-orange-800">🛡 Guardrails — Daily Execution Limits</span>
+                            <span className="text-[7px] text-orange-400 italic">exceeded → blocked_guardrail</span>
+                          </div>
+                          {autonomyGuardrails.map((gr: any) => (
+                            <div key={gr.rule_type} className="flex items-center gap-2">
+                              <span className="text-[8px] font-mono text-gray-700 w-36">{gr.rule_type}</span>
+                              <div className="flex gap-1 items-center">
+                                {[5, 10, 20, 50].map(limit => (
+                                  <button key={limit} disabled={guardrailUpdating[gr.rule_type]}
+                                    onClick={() => gr.max_daily_executions !== limit && updateGuardrail(gr.rule_type, limit)}
+                                    className={`text-[7px] px-1.5 py-0.5 rounded font-bold ${
+                                      gr.max_daily_executions === limit
+                                        ? 'bg-orange-500 text-white'
+                                        : 'bg-white border border-gray-200 text-gray-400 hover:bg-orange-50'
+                                    } disabled:opacity-50`}>
+                                    {limit}/d
+                                  </button>
+                                ))}
+                              </div>
+                              <span className={`text-[7px] px-1 rounded ${gr.enabled ? 'text-emerald-600' : 'text-red-500'}`}>
+                                {gr.enabled ? '✓ on' : '✗ off'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* ── 4.9F — Decision Log Panel ── */}
+                      {decisionLogExpanded && decisionLog.length > 0 && (
+                        <div className="border border-purple-100 rounded bg-purple-50 p-2 mb-1.5">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[9px] font-bold text-purple-800">📓 Autonomy Decision Log</span>
+                            <span className="text-[7px] text-purple-400">{decisionLog.length} entries</span>
+                          </div>
+                          <div className="space-y-0.5 max-h-48 overflow-y-auto">
+                            {decisionLog.map((entry: any) => (
+                              <div key={entry.id} className="flex items-start gap-1.5 py-0.5 border-b border-purple-100 last:border-0">
+                                <span className={`text-[7px] font-bold px-1 py-0.5 rounded shrink-0 ${
+                                  entry.decision === 'executed' ? 'bg-emerald-100 text-emerald-700'
+                                  : entry.decision === 'notify' ? 'bg-amber-100 text-amber-700'
+                                  : entry.decision === 'manual' ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-red-100 text-red-700'
+                                }`}>{entry.decision}</span>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-[7px] text-gray-700 truncate">{entry.rule_name ?? `Rule #${entry.rule_id}`}</div>
+                                  <div className="text-[6px] text-gray-400">
+                                    L{entry.final_level} (rule:{entry.autonomy_level} ∩ dom:{entry.domain_cap} ∩ global:{entry.global_mode_cap}) — conf:{entry.confidence_score ?? '—'}
+                                  </div>
+                                </div>
+                                <span className="text-[6px] text-gray-400 shrink-0">{entry.created_at ? new Date(entry.created_at).toLocaleTimeString() : ''}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ── 4.9 control row of buttons ── */}
+                      <div className="flex items-center gap-1 pb-1">
+                        <button onClick={() => domainsExpanded ? setDomainsExpanded(false) : loadDomains()} disabled={domainsLoading}
+                          className={`text-[8px] px-1.5 py-0.5 rounded border font-medium ${domainsExpanded ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                          {domainsLoading ? '…' : '🏛 Domains'}
+                        </button>
+                        <button onClick={() => guardrailsExpanded ? setGuardrailsExpanded(false) : loadGuardrails()} disabled={guardrailsLoading}
+                          className={`text-[8px] px-1.5 py-0.5 rounded border font-medium ${guardrailsExpanded ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                          {guardrailsLoading ? '…' : '🛡 Guardrails'}
+                        </button>
+                        <button onClick={() => decisionLogExpanded ? setDecisionLogExpanded(false) : loadDecisionLog()} disabled={decisionLogLoading}
+                          className={`text-[8px] px-1.5 py-0.5 rounded border font-medium ${decisionLogExpanded ? 'bg-purple-100 border-purple-300 text-purple-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                          {decisionLogLoading ? '…' : '📓 Decision Log'}
+                        </button>
+                      </div>
+
                       {/* Rules table */}
                       <div className="text-[8px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Configured Rules</div>
                       <div className="space-y-1">
@@ -14910,6 +15198,29 @@ export default function AdminWalletDashboard() {
                                     </button>
                                   )}
                                 </div>
+                                {/* 4.9A — Autonomy Level Badge + promote/history */}
+                                {(() => {
+                                  const lvl: number = rule.autonomy_level ?? 3;
+                                  const lvlColor = lvl === 4 ? 'bg-emerald-500 text-white' : lvl === 3 ? 'bg-blue-500 text-white' : lvl === 2 ? 'bg-amber-500 text-white' : 'bg-gray-500 text-white';
+                                  const lvlLabel = lvl === 4 ? 'L4 Auto' : lvl === 3 ? 'L3 Cond' : lvl === 2 ? 'L2 Notify' : 'L1 Manual';
+                                  return (
+                                    <>
+                                      <span className={`text-[7px] px-1 py-0.5 rounded font-bold ${lvlColor}`}>{lvlLabel}</span>
+                                      {lvl < 4 && (
+                                        <button disabled={shPromoting[rule.id]}
+                                          onClick={() => promoteRule(rule.id)}
+                                          title="Promote autonomy level (requires criteria met)"
+                                          className="text-[7px] px-1.5 py-0.5 border border-emerald-200 bg-white hover:bg-emerald-50 text-emerald-700 rounded font-semibold disabled:opacity-50">
+                                          {shPromoting[rule.id] ? '…' : '↑ Promote'}
+                                        </button>
+                                      )}
+                                      <button onClick={() => shAutonomyHistoryExpanded[rule.id] ? setShAutonomyHistoryExpanded(p => ({ ...p, [rule.id]: false })) : loadAutonomyHistory(rule.id)}
+                                        className={`text-[7px] px-1.5 py-0.5 rounded border font-medium ${shAutonomyHistoryExpanded[rule.id] ? 'bg-gray-100 border-gray-300 text-gray-700' : 'border-gray-200 bg-white text-gray-400 hover:text-gray-600'}`}>
+                                        {shAutonomyHistoryExpanded[rule.id] ? 'History ▲' : '📈 History'}
+                                      </button>
+                                    </>
+                                  );
+                                })()}
                                 {/* Trust Metrics button */}
                                 <button
                                   onClick={() => {
@@ -15061,6 +15372,44 @@ export default function AdminWalletDashboard() {
                                   )}
                                 </div>
                               )}
+
+                              {/* ── 4.9A/B/C — Autonomy History panel ── */}
+                              {shAutonomyHistoryExpanded[rule.id] && shAutonomyHistory[rule.id] && (() => {
+                                const h = shAutonomyHistory[rule.id];
+                                return (
+                                  <div className="border border-gray-200 rounded bg-gray-50 p-2 mt-1 space-y-1.5">
+                                    <div className="text-[9px] font-bold text-gray-700">📈 Autonomy History — {h.rule?.name}</div>
+                                    <div className="text-[8px] text-gray-500 mb-1">Current level: <span className="font-bold text-gray-800">L{h.rule?.autonomy_level ?? '?'}</span></div>
+                                    {h.promotions?.length === 0 && h.demotions?.length === 0 && (
+                                      <div className="text-[8px] text-gray-400 italic">No autonomy level changes recorded</div>
+                                    )}
+                                    {h.promotions?.length > 0 && (
+                                      <div>
+                                        <div className="text-[7px] font-semibold text-emerald-700 mb-0.5">Promotions ↑</div>
+                                        {h.promotions.slice(0, 5).map((p: any) => (
+                                          <div key={p.id} className="flex items-center gap-2 py-0.5">
+                                            <span className="text-[7px] bg-emerald-100 text-emerald-700 px-1 rounded">L{p.from_level}→L{p.to_level}</span>
+                                            <span className="text-[7px] text-gray-500">{p.approved_by}</span>
+                                            <span className="text-[6px] text-gray-400 ml-auto">{p.promoted_at ? new Date(p.promoted_at).toLocaleDateString() : ''}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {h.demotions?.length > 0 && (
+                                      <div>
+                                        <div className="text-[7px] font-semibold text-red-700 mb-0.5">Demotions ↓ (auto)</div>
+                                        {h.demotions.slice(0, 5).map((d: any) => (
+                                          <div key={d.id} className="flex items-center gap-2 py-0.5">
+                                            <span className="text-[7px] bg-red-100 text-red-700 px-1 rounded">L{d.from_level}→L{d.to_level}</span>
+                                            <span className="text-[7px] text-gray-500 truncate max-w-40">{d.trigger_reason}</span>
+                                            <span className="text-[6px] text-gray-400 ml-auto">{d.demoted_at ? new Date(d.demoted_at).toLocaleDateString() : ''}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
 
                               {/* ── 4.8F — Trust Metrics panel ── */}
                               {shTrustExpanded[rule.id] && shTrustMetrics[rule.id] && (() => {
