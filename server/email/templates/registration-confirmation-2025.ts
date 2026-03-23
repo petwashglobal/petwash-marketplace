@@ -144,8 +144,18 @@ export function generateNewUserConfirmationEmail(params: NewUserEmailParams): { 
     
     <div class="footer">
       <p>${isHebrew ? 'תודה שבחרת ב-⁦Pet Wash™⁩' : 'Thank you for choosing ⁦Pet Wash™⁩'}</p>
+      <div style="margin:20px 0 14px;">
+        <a href="https://www.instagram.com/petwashltd" target="_blank" style="display:inline-block;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">📷 Instagram</a>
+        <a href="https://www.facebook.com/petwashltd" target="_blank" style="display:inline-block;background:#1877F2;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">f Facebook</a>
+        <a href="https://www.tiktok.com/@petwashltd" target="_blank" style="display:inline-block;background:#010101;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;border:1px solid #444;">♪ TikTok</a>
+        <a href="https://wa.me/972549833355" target="_blank" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">💬 WhatsApp</a>
+      </div>
       <p><a href="https://petwash.co.il">petwash.co.il</a> | <a href="mailto:Support@PetWash.co.il">Support@PetWash.co.il</a></p>
-      <p style="font-size: 12px; margin-top: 16px;">© ${new Date().getFullYear()} ⁦Pet Wash™⁩. ${isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
+      <p style="font-size: 11px; margin-top: 10px;">
+        <a href="https://petwash.co.il/privacy" style="color:#6B7280;text-decoration:none;margin:0 6px;">Privacy / פרטיות</a> ·
+        <a href="https://petwash.co.il/terms" style="color:#6B7280;text-decoration:none;margin:0 6px;">Terms / תנאי שימוש</a>
+      </p>
+      <p style="font-size: 12px; margin-top: 12px;">© ${new Date().getFullYear()} ⁦Pet Wash™⁩. ${isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
     </div>
   </div>
 </body>
@@ -246,8 +256,18 @@ export function generateLoyaltyEnrollmentEmail(params: LoyaltyEnrollmentEmailPar
     
     <div class="footer">
       <p>${isHebrew ? 'תודה שבחרת ב-⁦Pet Wash™⁩' : 'Thank you for choosing ⁦Pet Wash™⁩'}</p>
+      <div style="margin:20px 0 14px;">
+        <a href="https://www.instagram.com/petwashltd" target="_blank" style="display:inline-block;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">📷 Instagram</a>
+        <a href="https://www.facebook.com/petwashltd" target="_blank" style="display:inline-block;background:#1877F2;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">f Facebook</a>
+        <a href="https://www.tiktok.com/@petwashltd" target="_blank" style="display:inline-block;background:#010101;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;border:1px solid #444;">♪ TikTok</a>
+        <a href="https://wa.me/972549833355" target="_blank" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">💬 WhatsApp</a>
+      </div>
       <p><a href="https://petwash.co.il">petwash.co.il</a> | <a href="mailto:Support@PetWash.co.il">Support@PetWash.co.il</a></p>
-      <p style="font-size: 12px; margin-top: 16px;">© ${new Date().getFullYear()} ⁦Pet Wash™⁩. ${isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
+      <p style="font-size: 11px; margin-top: 10px;">
+        <a href="https://petwash.co.il/privacy" style="color:#6B7280;text-decoration:none;margin:0 6px;">Privacy / פרטיות</a> ·
+        <a href="https://petwash.co.il/terms" style="color:#6B7280;text-decoration:none;margin:0 6px;">Terms / תנאי שימוש</a>
+      </p>
+      <p style="font-size: 12px; margin-top: 12px;">© ${new Date().getFullYear()} ⁦Pet Wash™⁩. ${isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
     </div>
   </div>
 </body>
@@ -349,8 +369,18 @@ export function generateProviderEnrollmentEmail(params: ProviderEnrollmentEmailP
     
     <div class="footer">
       <p>${isHebrew ? 'תודה שבחרת להצטרף לצוות ⁦Pet Wash™⁩' : 'Thank you for joining the ⁦Pet Wash™⁩ team'}</p>
+      <div style="margin:20px 0 14px;">
+        <a href="https://www.instagram.com/petwashltd" target="_blank" style="display:inline-block;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">📷 Instagram</a>
+        <a href="https://www.facebook.com/petwashltd" target="_blank" style="display:inline-block;background:#1877F2;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">f Facebook</a>
+        <a href="https://www.tiktok.com/@petwashltd" target="_blank" style="display:inline-block;background:#010101;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;border:1px solid #444;">♪ TikTok</a>
+        <a href="https://wa.me/972549833355" target="_blank" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">💬 WhatsApp</a>
+      </div>
       <p><a href="https://petwash.co.il">petwash.co.il</a> | <a href="mailto:Support@PetWash.co.il">Support@PetWash.co.il</a></p>
-      <p style="font-size: 12px; margin-top: 16px;">© ${new Date().getFullYear()} ⁦Pet Wash™⁩. ${isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
+      <p style="font-size: 11px; margin-top: 10px;">
+        <a href="https://petwash.co.il/privacy" style="color:#6B7280;text-decoration:none;margin:0 6px;">Privacy / פרטיות</a> ·
+        <a href="https://petwash.co.il/terms" style="color:#6B7280;text-decoration:none;margin:0 6px;">Terms / תנאי שימוש</a>
+      </p>
+      <p style="font-size: 12px; margin-top: 12px;">© ${new Date().getFullYear()} ⁦Pet Wash™⁩. ${isHebrew ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
     </div>
   </div>
 </body>

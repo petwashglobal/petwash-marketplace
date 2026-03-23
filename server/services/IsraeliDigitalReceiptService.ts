@@ -527,11 +527,86 @@ export class IsraeliDigitalReceiptService {
       </td>
     </tr>
 
+    <!-- Social Media Buttons -->
+    <tr>
+      <td style="padding:28px 40px 20px;text-align:center;background:#fafafa;border-top:1px solid #f0f0f0;">
+        <p style="margin:0 0 16px;font-size:12px;color:#888;letter-spacing:0.5px;">עקבו אחרינו / Follow us</p>
+        <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+          <tr>
+            <!-- Instagram -->
+            <td style="padding:0 6px;">
+              <a href="https://www.instagram.com/petwashltd" target="_blank" style="display:inline-block;text-decoration:none;">
+                <table cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);border-radius:10px;padding:10px 16px;">
+                      <span style="color:#ffffff;font-size:13px;font-weight:bold;font-family:Arial,sans-serif;letter-spacing:0.3px;">📷 Instagram</span>
+                    </td>
+                  </tr>
+                </table>
+              </a>
+            </td>
+            <!-- Facebook -->
+            <td style="padding:0 6px;">
+              <a href="https://www.facebook.com/petwashltd" target="_blank" style="display:inline-block;text-decoration:none;">
+                <table cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="background:#1877F2;border-radius:10px;padding:10px 16px;">
+                      <span style="color:#ffffff;font-size:13px;font-weight:bold;font-family:Arial,sans-serif;letter-spacing:0.3px;">f Facebook</span>
+                    </td>
+                  </tr>
+                </table>
+              </a>
+            </td>
+            <!-- TikTok -->
+            <td style="padding:0 6px;">
+              <a href="https://www.tiktok.com/@petwashltd" target="_blank" style="display:inline-block;text-decoration:none;">
+                <table cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="background:#010101;border-radius:10px;padding:10px 16px;border:1px solid #333;">
+                      <span style="color:#ffffff;font-size:13px;font-weight:bold;font-family:Arial,sans-serif;letter-spacing:0.3px;">♪ TikTok</span>
+                    </td>
+                  </tr>
+                </table>
+              </a>
+            </td>
+            <!-- WhatsApp -->
+            <td style="padding:0 6px;">
+              <a href="https://wa.me/972549833355" target="_blank" style="display:inline-block;text-decoration:none;">
+                <table cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="background:#25D366;border-radius:10px;padding:10px 16px;">
+                      <span style="color:#ffffff;font-size:13px;font-weight:bold;font-family:Arial,sans-serif;letter-spacing:0.3px;">💬 WhatsApp</span>
+                    </td>
+                  </tr>
+                </table>
+              </a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- Privacy / Links bar -->
+    <tr>
+      <td style="padding:14px 40px;text-align:center;background:#fafafa;">
+        <a href="https://petwash.co.il/privacy" style="color:#999;font-size:11px;text-decoration:none;margin:0 10px;font-family:Arial,sans-serif;">Privacy Policy / פרטיות</a>
+        <span style="color:#ddd;font-size:11px;">|</span>
+        <a href="mailto:support@petwash.co.il" style="color:#999;font-size:11px;text-decoration:none;margin:0 10px;font-family:Arial,sans-serif;">Contact / צור קשר</a>
+        <span style="color:#ddd;font-size:11px;">|</span>
+        <a href="https://petwash.co.il/terms" style="color:#999;font-size:11px;text-decoration:none;margin:0 10px;font-family:Arial,sans-serif;">Terms / תנאי שימוש</a>
+      </td>
+    </tr>
+
     <!-- Footer -->
     <tr>
       <td style="background:#000000;padding:20px 40px;text-align:center;">
-        <p style="margin:0;color:#ffffff;font-size:12px;">⁦Pet Wash™⁩ | ${COMPANY_NAME_HE}</p>
-        <p style="margin:4px 0;color:#666666;font-size:11px;">petwash.co.il</p>
+        <p style="margin:0;color:#ffffff;font-size:12px;font-family:Arial,sans-serif;">⁦Pet Wash™⁩ | ${COMPANY_NAME_HE}</p>
+        <p style="margin:6px 0 0;color:#666666;font-size:11px;font-family:Arial,sans-serif;">
+          <a href="https://petwash.co.il" style="color:#888;text-decoration:none;">petwash.co.il</a>
+          &nbsp;·&nbsp;
+          <a href="mailto:support@petwash.co.il" style="color:#888;text-decoration:none;">support@petwash.co.il</a>
+        </p>
+        <p style="margin:6px 0 0;color:#444444;font-size:10px;font-family:Arial,sans-serif;">© ${new Date().getFullYear()} ${COMPANY_NAME_HE}. All rights reserved.</p>
       </td>
     </tr>
   </table>
