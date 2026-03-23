@@ -298,6 +298,7 @@ const AuditTrail = lazy(() => import("@/pages/AuditTrail"));
 const FraudDashboard = lazy(() => import("@/pages/admin/FraudDashboard"));
 const ProviderReview = lazy(() => import("@/pages/admin/ProviderReview"));
 const AdminLoyaltyRules = lazy(() => import("@/pages/admin/AdminLoyaltyRules"));
+const AdminOpsMonitor = lazy(() => import("@/pages/admin/AdminOpsMonitor"));
 
 // Pet Wash Ltd Executive Suite - Centralized C-Suite Management
 const ExecutiveSuiteHome = lazy(() => import("@/pages/ExecutiveSuiteHome"));
@@ -1709,7 +1710,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         <Route path="/admin/compliance-control-tower">{() => <Redirect to="/pet-wash-ltd/executive/compliance" />}</Route>
-        
+
+        <Route path="/admin/ops-monitor">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<div />}>
+                <AdminOpsMonitor />
+              </Suspense>
+            </AdminRouteGuard>
+          )}
+        </Route>
+
         {/* Gemini AI Watchdog Dashboard */}
         <Route path="/admin/gemini-watchdog">
           {() => (
