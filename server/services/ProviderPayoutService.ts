@@ -12,11 +12,13 @@
  */
 
 import { db } from "../db";
-import { superAppPayouts, providers } from "@shared/schema";
+import { superAppPayouts, providers, users } from "@shared/schema";
 import { eq, and, lte, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { nanoid } from "nanoid";
 import { AIPayoutVerificationService } from "./AIPayoutVerificationService";
+import { FinancialDocumentService } from "./FinancialDocumentService";
+import { dispatchNotifications, buildPayoutIssuedSms } from "./PetWashNotificationEngine";
 
 export class ProviderPayoutService {
   
@@ -172,6 +174,68 @@ export class ProviderPayoutService {
           bankTransferReference: transferResult.bankTransferReference,
           netAmount: payout.netAmount,
         });
+
+        // ── Financial document + provider notification (fire-and-forget) ──
+        (async () => {
+          try {
+            const providerUserId: string = provider.userId;
+            const [provUser] = await db.select({ phone: users.phone, firstName: users.firstName })
+              .from(users).where(eq(users.id, providerUserId)).limit(1);
+
+            const payoutRef = transferResult.bankTransferReference ?? payoutId;
+            const netAmountStr = parseFloat(payout.netAmount).toLocaleString('he-IL', { minimumFractionDigits: 2 });
+            const providerName = provUser?.firstName || provider.businessName || 'ספק';
+
+            const payoutHtml = `<!DOCTYPE html><html><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;">
+<h2>PetWash™ — תשלום הועבר 💸</h2>
+<table style="border-collapse:collapse;width:100%;max-width:480px;">
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">שם</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${providerName}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">מס׳ תשלום</td><td style="padding:8px;border-bottom:1px solid #eee;font-family:monospace;">${payoutRef}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">סכום ברוטו</td><td style="padding:8px;border-bottom:1px solid #eee;">${parseFloat(payout.amount).toLocaleString('he-IL', { minimumFractionDigits: 2 })} ₪</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">עמלת פלטפורמה</td><td style="padding:8px;border-bottom:1px solid #eee;">${parseFloat(payout.platformFee).toLocaleString('he-IL', { minimumFractionDigits: 2 })} ₪</td></tr>
+  <tr><td style="padding:8px;color:#555;font-weight:bold;">סכום נטו להעברה</td><td style="padding:8px;font-weight:bold;color:#16a34a;">${netAmountStr} ₪</td></tr>
+</table>
+<p style="margin-top:16px;"><a href="https://petwash.co.il/provider/earnings" style="background:#000;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">צפה/י בדוח הרווחים</a></p>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il | petwash.co.il</p>
+</body></html>`;
+
+            await FinancialDocumentService.create({
+              userId: providerUserId,
+              documentType: 'provider_payout_statement',
+              issuedByEntity: 'PetWash',
+              documentPayloadJson: {
+                payoutId,
+                bankTransferReference: payoutRef,
+                amount: payout.amount,
+                platformFee: payout.platformFee,
+                netAmount: payout.netAmount,
+                currency: payout.currency,
+                paidAt: new Date().toISOString(),
+              },
+              renderedHtml: payoutHtml,
+            });
+
+            await dispatchNotifications({
+              userId: providerUserId,
+              eventType: 'payout_issued',
+              templateKey: 'provider_payout_issued',
+              channels: ['sms', 'push'],
+              sms: provUser?.phone ? {
+                to: provUser.phone,
+                text: buildPayoutIssuedSms({ payoutRef, netAmount: netAmountStr }),
+              } : undefined,
+              push: {
+                userId: providerUserId,
+                title: `תשלום הועבר – Pet Wash™ 💸`,
+                body: `${netAmountStr} ₪ הועברו לחשבונך. מס׳ העברה: ${payoutRef}`,
+                data: { type: 'payout_issued', payoutId },
+              },
+              debugPayload: { payoutId, netAmount: payout.netAmount },
+            });
+          } catch (notifErr: any) {
+            logger.warn('[ProviderPayout] Post-payout notification failed (non-fatal)', { error: notifErr?.message });
+          }
+        })();
 
         return {
           success: true,

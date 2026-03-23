@@ -16,12 +16,15 @@ import {
   walkerProfiles,
   sitterProfiles,
   trainers,
+  users,
   type InsertProviderApprovalQueue,
   type ProviderApprovalQueue,
 } from '@shared/schema';
 import { eq, and, desc, sql, or, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { auth as firebaseAuth } from '../lib/firebase-admin';
+import { FinancialDocumentService } from './FinancialDocumentService';
+import { dispatchNotifications, buildProviderApprovedSms } from './PetWashNotificationEngine';
 
 // Approval queue status types
 export type ApprovalStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'on_hold';
@@ -413,6 +416,60 @@ class AdminProviderReviewService {
             providerApprovedAt: new Date().toISOString(),
           });
           logger.info('[AdminReview] Firebase claims set for approved provider', { firebaseUid, platform });
+
+          // ── Financial document + multi-channel notification (fire-and-forget) ──
+          (async () => {
+            try {
+              const [provUser] = await db.select({ phone: users.phone, email: users.email, firstName: users.firstName })
+                .from(users).where(eq(users.id, firebaseUid)).limit(1);
+
+              const providerName = provUser?.firstName || 'ספק';
+              const approvalHtml = `<!DOCTYPE html><html><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;">
+<h2>PetWash™ — בקשת הצטרפות אושרה ✅</h2>
+<table style="border-collapse:collapse;width:100%;max-width:480px;">
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">שם</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${providerName}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">פלטפורמה</td><td style="padding:8px;border-bottom:1px solid #eee;">${review.application.platform}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">סטטוס</td><td style="padding:8px;border-bottom:1px solid #eee;color:#16a34a;font-weight:bold;">מאושר</td></tr>
+  <tr><td style="padding:8px;color:#555;">תאריך אישור</td><td style="padding:8px;">${new Date().toLocaleDateString('he-IL')}</td></tr>
+</table>
+<p style="margin-top:16px;"><a href="https://petwash.co.il/provider/onboarding" style="background:#000;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">התחל/י כספק</a></p>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il | petwash.co.il</p>
+</body></html>`;
+
+              await FinancialDocumentService.create({
+                userId: firebaseUid,
+                documentType: 'booking_earnings_notice',
+                issuedByEntity: 'PetWash',
+                documentPayloadJson: {
+                  event: 'provider_approved',
+                  platform: review.application.platform,
+                  providerId: review.application.providerId,
+                  approvedAt: new Date().toISOString(),
+                },
+                renderedHtml: approvalHtml,
+              });
+
+              await dispatchNotifications({
+                userId: firebaseUid,
+                eventType: 'provider_approved',
+                templateKey: 'provider_registration_approved',
+                channels: ['sms', 'push'],
+                sms: provUser?.phone ? {
+                  to: provUser.phone,
+                  text: buildProviderApprovedSms({ providerName }),
+                } : undefined,
+                push: {
+                  userId: firebaseUid,
+                  title: `בקשתך אושרה! – Pet Wash™ ✅`,
+                  body: `חשבון הספק שלך אושר. לחץ/י להתחיל את תהליך ה-Onboarding.`,
+                  data: { type: 'provider_approved', platform: review.application.platform },
+                },
+                debugPayload: { applicationId, platform: review.application.platform },
+              });
+            } catch (notifErr: any) {
+              logger.warn('[AdminReview] Post-approval notification failed (non-fatal)', { error: notifErr?.message });
+            }
+          })();
         }
       } catch (claimsErr) {
         logger.warn('[AdminReview] Could not set Firebase claims (non-fatal)', { claimsErr });

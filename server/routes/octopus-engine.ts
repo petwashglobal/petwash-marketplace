@@ -31,6 +31,8 @@ import { logger } from "../lib/logger";
 import { egiftFinancialService } from "../services/EgiftFinancialService";
 import escrowService from "../services/EscrowService";
 import { backupFinancialDocument } from "../services/gcsBackupService";
+import { FinancialDocumentService } from "../services/FinancialDocumentService";
+import { dispatchNotifications, buildEgiftPurchasedSms } from "../services/PetWashNotificationEngine";
 const router = Router();
 
 const PLATFORM_FEE_RATE = 0.15;
@@ -749,6 +751,72 @@ router.post("/v1/egift/purchase", async (req: Request, res: Response) => {
       userId: body.userId,
       idempotent: result.idempotent,
     });
+
+    // ── Financial document + multi-channel notification (fire-and-forget) ──
+    if (!result.idempotent) {
+      (async () => {
+        try {
+          const [buyer] = await db.select({ email: users.email, phone: users.phone })
+            .from(users).where(eq(users.id, body.userId)).limit(1);
+
+          const giftValueILS = (body.amountCents / 100).toFixed(2);
+          const giftRef = result.invoiceId || body.egiftId;
+
+          const receiptHtml = `<!DOCTYPE html><html><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;">
+<h2>PetWash™ — אישור רכישת כרטיס מתנה</h2>
+<table style="border-collapse:collapse;width:100%;max-width:480px;">
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">מס׳ מתנה</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${giftRef}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">שווי</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">₪${giftValueILS}</td></tr>
+  ${body.recipientName ? `<tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">מקבל המתנה</td><td style="padding:8px;border-bottom:1px solid #eee;">${body.recipientName}</td></tr>` : ''}
+  <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${new Date().toLocaleDateString('he-IL')}</td></tr>
+</table>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il | petwash.co.il</p>
+</body></html>`;
+
+          const docRef = await FinancialDocumentService.create({
+            userId: body.userId,
+            transactionId: result.invoiceId,
+            documentType: 'egift_receipt',
+            issuedByEntity: 'PetWash',
+            documentPayloadJson: {
+              egiftId: body.egiftId,
+              giftRef,
+              amountCents: body.amountCents,
+              currency: body.currency || 'ILS',
+              recipientEmail: body.recipientEmail,
+              recipientName: body.recipientName,
+              invoiceId: result.invoiceId,
+            },
+            renderedHtml: receiptHtml,
+          });
+
+          await dispatchNotifications({
+            userId: body.userId,
+            eventType: 'egift_purchased',
+            templateKey: 'customer_egift_purchased',
+            transactionId: result.invoiceId,
+            channels: ['sms', 'push'],
+            sms: buyer?.phone ? {
+              to: buyer.phone,
+              text: buildEgiftPurchasedSms({
+                giftRef,
+                giftValue: giftValueILS,
+                recipientName: body.recipientName,
+              }),
+            } : undefined,
+            push: {
+              userId: body.userId,
+              title: `כרטיס מתנה נרכש – Pet Wash™ 🎁`,
+              body: `כרטיס מתנה בשווי ₪${giftValueILS} נרכש בהצלחה! מס׳ ${giftRef}`,
+              data: { egiftId: body.egiftId, documentRef: docRef, type: 'egift_purchased' },
+            },
+            debugPayload: { egiftId: body.egiftId, invoiceId: result.invoiceId, documentRef: docRef },
+          });
+        } catch (notifErr: any) {
+          logger.error('[Egift] Post-purchase notification failed silently', { error: notifErr?.message });
+        }
+      })();
+    }
 
     return res.status(result.idempotent ? 200 : 201).json({
       success: true,

@@ -190,12 +190,39 @@ export const notificationLogs = pgTable("notification_logs", {
   createdAt: timestamp("created_at").defaultNow(),
   isRead: boolean("is_read").default(false),
   readAt: timestamp("read_at"),
+  // Financial event linkage (added for PetWash notification engine)
+  bookingId: varchar("booking_id"),
+  transactionId: varchar("transaction_id"),
+  eventType: varchar("event_type"), // "booking_confirmed" | "egift_purchased" | "prestige_joined" | "provider_approved" | "payout_issued"
 }, (table) => [
   index("idx_notification_logs_template").on(table.templateKey),
   index("idx_notification_logs_user").on(table.recipientUserId),
   index("idx_notification_logs_status").on(table.status),
   index("idx_notification_logs_channel").on(table.channel),
   index("idx_notification_logs_created").on(table.createdAt),
+]);
+
+// Financial Documents — rendered receipts, earnings notices, eGift receipts, membership receipts
+// PetWash is merchant of record: customer gets a receipt from PetWash; provider gets an earnings/payout statement
+export const financialDocuments = pgTable("financial_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentReference: varchar("document_reference", { length: 64 }).notNull().unique(),
+  userId: varchar("user_id").notNull(),
+  bookingId: varchar("booking_id"),
+  transactionId: varchar("transaction_id"),
+  documentType: varchar("document_type", { length: 60 }).notNull(),
+  // "booking_receipt" | "booking_earnings_notice" | "egift_receipt" | "membership_receipt" | "provider_payout_statement"
+  issuedByEntity: varchar("issued_by_entity", { length: 100 }).notNull().default("PetWash"),
+  documentPayloadJson: jsonb("document_payload_json").notNull(),
+  renderedHtml: text("rendered_html").notNull(),
+  renderedPdfUrl: varchar("rendered_pdf_url"),
+  issuedAt: timestamp("issued_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_fin_docs_user").on(table.userId),
+  index("idx_fin_docs_booking").on(table.bookingId),
+  index("idx_fin_docs_type").on(table.documentType),
+  index("idx_fin_docs_issued").on(table.issuedAt),
 ]);
 
 // Customer table (for custom authentication system)
@@ -605,6 +632,10 @@ export type NotificationTemplate = typeof notificationTemplates.$inferSelect;
 export type InsertNotificationTemplate = typeof notificationTemplates.$inferInsert;
 export type NotificationLog = typeof notificationLogs.$inferSelect;
 export type InsertNotificationLog = typeof notificationLogs.$inferInsert;
+
+// Financial Documents types
+export type FinancialDocument = typeof financialDocuments.$inferSelect;
+export type InsertFinancialDocument = typeof financialDocuments.$inferInsert;
 
 // Zod schemas
 export const insertCustomerSchema = createInsertSchema(customers);

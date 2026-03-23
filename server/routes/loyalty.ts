@@ -38,6 +38,8 @@ import { adminAuth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { sendLoyaltyEnrollmentConfirmation, sendClubWelcomeEmail, sendTierUpgradeEmail, sendPurchaseRewardEmail, detectTierUpgrade } from '../email/luxury-email-service';
 import { logLoyaltyEnrollment } from '../services/googleSheetsIntegration';
+import { FinancialDocumentService } from '../services/FinancialDocumentService';
+import { dispatchNotifications, buildPrestigeJoinedSms } from '../services/PetWashNotificationEngine';
 import { z } from 'zod';
 
 const router = Router();
@@ -242,6 +244,56 @@ router.post('/auto-enroll', async (req: AuthenticatedRequest, res: Response) => 
       });
     } catch (sheetErr) {
       logger.warn('[Loyalty] Failed to log enrollment to Google Sheets', { sheetErr, userId });
+    }
+
+    // ── Financial document (membership_receipt) + SMS/push (fire-and-forget) ──
+    try {
+      const memberNumber = `PW-${userId.slice(-8).toUpperCase()}`;
+      const firstName = (displayName || '').split(' ')[0] || 'חבר יקר';
+      const tier = 'bronze';
+
+      const membershipHtml = `<!DOCTYPE html><html><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;">
+<h2>PetWash™ Prestige — ברוך הבא לתוכנית!</h2>
+<table style="border-collapse:collapse;width:100%;max-width:480px;">
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">שם</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${firstName}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">מס׳ חבר</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${memberNumber}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">רמה</td><td style="padding:8px;border-bottom:1px solid #eee;">Bronze</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">נקודות פתיחה</td><td style="padding:8px;border-bottom:1px solid #eee;">${welcomePoints}</td></tr>
+  <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${new Date().toLocaleDateString('he-IL')}</td></tr>
+</table>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il | petwash.co.il</p>
+</body></html>`;
+
+      const [userRow] = await db.select({ phone: users.phone })
+        .from(users).where(eq(users.id, userId)).limit(1);
+
+      const docRef = await FinancialDocumentService.create({
+        userId,
+        documentType: 'membership_receipt',
+        issuedByEntity: 'PetWash',
+        documentPayloadJson: { memberNumber, tier, welcomePoints, enrolledAt: new Date().toISOString() },
+        renderedHtml: membershipHtml,
+      });
+
+      dispatchNotifications({
+        userId,
+        eventType: 'prestige_joined',
+        templateKey: 'customer_prestige_joined',
+        channels: ['sms', 'push'],
+        sms: userRow?.phone ? {
+          to: userRow.phone,
+          text: buildPrestigeJoinedSms({ memberNumber, tier }),
+        } : undefined,
+        push: {
+          userId,
+          title: `ברוך הבא ל-Prestige! 👑`,
+          body: `הצטרפת לתוכנית הנאמנות של PetWash™. מס׳ חבר: ${memberNumber}`,
+          data: { documentRef: docRef, type: 'prestige_joined', memberNumber, tier },
+        },
+        debugPayload: { memberNumber, tier, documentRef: docRef },
+      }).catch((e) => logger.error('[Loyalty] Notification dispatch failed silently', { error: e?.message }));
+    } catch (notifErr: any) {
+      logger.warn('[Loyalty] Financial doc / notification post-enroll failed (non-blocking)', { error: notifErr?.message });
     }
 
     logger.info(`[Loyalty] New user auto-enrolled via ${provider} as ${userRole}`, { userId, welcomePoints });

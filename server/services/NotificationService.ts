@@ -12,6 +12,7 @@ import { logger } from '../lib/logger';
 import { EmailService } from '../emailService';
 import { WhatsAppService } from './WhatsAppService';
 import { FCMService } from './FCMService';
+import { twilioSMSService } from './TwilioSMSService';
 
 type NotificationChannel = 'email' | 'sms' | 'whatsapp' | 'push' | 'in_app';
 
@@ -235,21 +236,24 @@ export class NotificationService {
   }
   
   /**
-   * Send SMS (placeholder for Twilio integration)
+   * Send SMS via Twilio (live integration)
    */
   static async sendToSMS(phone: string, message: string): Promise<boolean> {
     if (!phone) {
-      logger.warn('[NotificationService] No phone provided');
+      logger.warn('[NotificationService] No phone provided for SMS');
       return false;
     }
-    
-    // TODO: Integrate Twilio for SMS
-    logger.info('[NotificationService] SMS placeholder', {
-      phone,
-      message,
-    });
-    
-    return true; // Return true for now (placeholder)
+
+    try {
+      const result = await twilioSMSService.sendSMS(phone, message);
+      if (!result.success) {
+        logger.warn('[NotificationService] SMS send failed', { phone: phone.slice(0, 6) + '****', error: result.error });
+      }
+      return result.success;
+    } catch (err: any) {
+      logger.error('[NotificationService] SMS dispatch error', { error: err?.message });
+      return false;
+    }
   }
   
   /**

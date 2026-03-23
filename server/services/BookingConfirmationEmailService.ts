@@ -12,6 +12,11 @@ import { logger } from '../lib/logger';
 import { createMailService, isSendGridConfigured } from '../lib/sendgrid';
 import type { UnifiedBooking } from './unified-booking/types';
 import type { CreditBreakdown } from './unified-booking/types';
+import { FinancialDocumentService } from './FinancialDocumentService';
+import {
+  dispatchNotifications,
+  buildBookingConfirmedSms,
+} from './PetWashNotificationEngine';
 
 const FROM_EMAIL = 'noreply@petwash.co.il';
 const FROM_NAME = '⁦Pet Wash™⁩';
@@ -138,11 +143,15 @@ export class BookingConfirmationEmailService {
       // ── Lookup provider name/email ───────────────────────────────────────
       let providerName: string = params.booking.metadata?.providerName as string || 'ממתין לשיבוץ / Pending assignment';
       let providerEmail: string | null = null;
+      let providerPhone: string | null = null;
+      let providerUserId: string | null = null;
 
       if (params.booking.resourceType === 'HUMAN' && params.booking.resourceId) {
         const [provRow] = await db
           .select({
             email: users.email,
+            phone: users.phone,
+            userId: users.id,
             firstName: users.firstName,
             lastName: users.lastName,
             businessName: providers.businessName,
@@ -157,6 +166,8 @@ export class BookingConfirmationEmailService {
             || `${provRow.firstName || ''} ${provRow.lastName || ''}`.trim()
             || providerName;
           providerEmail = provRow.email || null;
+          providerPhone = provRow.phone || null;
+          providerUserId = provRow.userId || null;
         }
       }
 
@@ -405,6 +416,66 @@ export class BookingConfirmationEmailService {
           bookingNumber: params.booking.bookingNumber,
           to: customer.email,
         });
+
+        // ── Financial document (booking_receipt) ─────────────────────────────
+        const customerDocRef = await FinancialDocumentService.create({
+          userId: params.booking.userId,
+          bookingId: params.booking.id,
+          transactionId: params.transactionId,
+          documentType: 'booking_receipt',
+          issuedByEntity: 'PetWash',
+          documentPayloadJson: {
+            bookingNumber: params.booking.bookingNumber,
+            serviceId: params.booking.serviceId,
+            gross,
+            vatAmount,
+            netAmount,
+            loyaltyDiscount,
+            promoDiscount,
+            creditsApplied,
+            cashPaid,
+            paymentMethod: paymentMethodStr,
+            transactionId: params.transactionId,
+          },
+          renderedHtml: customerHtml,
+        });
+
+        // ── SMS + push for customer (fire-and-forget) ─────────────────────────
+        const smsDateStr = params.booking.startTime
+          ? `${formatDate(params.booking.startTime)} ${formatTime(params.booking.startTime)}`
+          : '—';
+        dispatchNotifications({
+          userId: params.booking.userId,
+          eventType: 'booking_confirmed',
+          templateKey: 'customer_booking_confirmed',
+          bookingId: params.booking.id,
+          transactionId: params.transactionId,
+          channels: ['sms', 'push'],
+          sms: customer.phone ? {
+            to: customer.phone,
+            text: buildBookingConfirmedSms({
+              bookingRef: params.booking.bookingNumber || params.booking.id,
+              serviceName: serviceInfo.he,
+              dateStr: smsDateStr,
+              totalAmount: gross.toFixed(2),
+            }),
+          } : undefined,
+          push: {
+            userId: params.booking.userId,
+            title: `הזמנה אושרה – Pet Wash™ 🐾`,
+            body: `הזמנה #${params.booking.bookingNumber} אושרה. ${serviceInfo.he} – ${smsDateStr}`,
+            data: {
+              bookingId: params.booking.id,
+              bookingNumber: params.booking.bookingNumber || '',
+              documentRef: customerDocRef,
+              type: 'booking_confirmed',
+            },
+          },
+          debugPayload: {
+            bookingId: params.booking.id,
+            documentRef: customerDocRef,
+          },
+        }).catch((e) => logger.error('[BookingConfirmation] Customer notifications failed silently', { error: e?.message }));
       }
 
       // ════════════════════════════════════════════════════════════════════
@@ -574,6 +645,66 @@ export class BookingConfirmationEmailService {
           bookingNumber: params.booking.bookingNumber,
           to: providerEmail,
         });
+
+        // ── Financial document (booking_earnings_notice) ──────────────────────
+        if (providerUserId) {
+          const providerDocRef = await FinancialDocumentService.create({
+            userId: providerUserId,
+            bookingId: params.booking.id,
+            transactionId: params.transactionId,
+            documentType: 'booking_earnings_notice',
+            issuedByEntity: 'PetWash',
+            documentPayloadJson: {
+              bookingNumber: params.booking.bookingNumber,
+              serviceId: params.booking.serviceId,
+              gross,
+              platformFee,
+              providerPayout,
+              vatAmount,
+              transactionId: params.transactionId,
+            },
+            renderedHtml: providerHtml,
+          });
+
+          // ── SMS + push for provider (fire-and-forget) ─────────────────────
+          const provSmsDateStr = params.booking.startTime
+            ? `${formatDate(params.booking.startTime)} ${formatTime(params.booking.startTime)}`
+            : '—';
+          dispatchNotifications({
+            userId: providerUserId,
+            eventType: 'booking_confirmed',
+            templateKey: 'provider_booking_assigned',
+            bookingId: params.booking.id,
+            transactionId: params.transactionId,
+            channels: ['sms', 'push'],
+            sms: providerPhone ? {
+              to: providerPhone,
+              text: (
+                `PetWash™ - הזמנה חדשה 📋\n` +
+                `מס' הזמנה: ${params.booking.bookingNumber}\n` +
+                `שירות: ${serviceInfo.he}\n` +
+                `תאריך: ${provSmsDateStr}\n` +
+                `תשלום נטו: ₪${providerPayout.toFixed(2)}\n` +
+                `https://petwash.co.il/provider/bookings`
+              ),
+            } : undefined,
+            push: {
+              userId: providerUserId,
+              title: `הזמנה חדשה – Pet Wash™ 📋`,
+              body: `הזמנה #${params.booking.bookingNumber} שובצה אליך. ${serviceInfo.he} – ${provSmsDateStr}`,
+              data: {
+                bookingId: params.booking.id,
+                bookingNumber: params.booking.bookingNumber || '',
+                documentRef: providerDocRef,
+                type: 'provider_booking_assigned',
+              },
+            },
+            debugPayload: {
+              bookingId: params.booking.id,
+              documentRef: providerDocRef,
+            },
+          }).catch((e) => logger.error('[BookingConfirmation] Provider notifications failed silently', { error: e?.message }));
+        }
       }
 
     } catch (err: any) {
