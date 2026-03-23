@@ -7551,6 +7551,10 @@ export const bookings = pgTable("bookings", {
   confirmedAt: timestamp("confirmed_at"),
   startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
+  taxAmount: decimal("tax_amount", { precision: 12, scale: 2 }),
+  transactionStampedAt: timestamp("transaction_stamped_at"),
+  confirmationEmailSentAtCustomer: timestamp("confirmation_email_sent_at_customer"),
+  confirmationEmailSentAtProvider: timestamp("confirmation_email_sent_at_provider"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({

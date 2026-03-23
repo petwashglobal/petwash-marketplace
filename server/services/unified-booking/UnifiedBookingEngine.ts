@@ -22,6 +22,7 @@ import { eq } from 'drizzle-orm';
 import { logger } from '../../lib/logger';
 import { transactionStampService } from './TransactionStampService';
 import { eventLogService } from './EventLogService';
+import { BookingConfirmationEmailService } from '../BookingConfirmationEmailService';
 import type {
   UnifiedBooking,
   UnifiedBookingStatus,
@@ -288,6 +289,8 @@ export class UnifiedBookingEngine {
           paymentIntentId: paymentReference,
           confirmedAt: new Date(),
           platformData: paymentMetadata,
+          taxAmount: booking.priceSnapshot.vat.toFixed(2),
+          transactionStampedAt: new Date(),
           updatedAt: new Date()
         })
         .where(eq(bookings.id, booking.id));
@@ -331,6 +334,26 @@ export class UnifiedBookingEngine {
           creditsApplied: (creditsAppliedCents / 100).toFixed(2),
           cashPaid: (cashPaidCents / 100).toFixed(2),
         } : undefined,
+      });
+
+      // ── Fire-and-forget booking confirmation emails (customer + provider) ──
+      BookingConfirmationEmailService.send({
+        booking,
+        transactionId: transaction.id,
+        paymentProvider: effectiveProvider,
+        paymentReference,
+        creditBreakdown,
+      }).then(({ customerSent, providerSent }) => {
+        const tsUpdate: Record<string, any> = { updatedAt: new Date() };
+        if (customerSent) tsUpdate.confirmationEmailSentAtCustomer = new Date();
+        if (providerSent) tsUpdate.confirmationEmailSentAtProvider = new Date();
+        db.update(bookings).set(tsUpdate).where(eq(bookings.id, booking.id))
+          .catch((e: any) => logger.error('[UnifiedBooking] Email timestamp update failed', { error: e.message }));
+      }).catch((e: any) => {
+        logger.error('[UnifiedBooking] Confirmation email dispatch failed', {
+          bookingId: booking.id,
+          error: e.message,
+        });
       });
 
       return { booking, transactionId: transaction.id, creditBreakdown };
