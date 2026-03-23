@@ -13,7 +13,7 @@ import { requireAuth } from '../customAuth';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import { db } from '../db';
-import { nayaxQrRedemptions } from '../../shared/schema';
+import { nayaxQrRedemptions, k9000WashEvents } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
@@ -580,6 +580,133 @@ router.get('/transactions/customer/:customerUid', requireAuth, async (req, res) 
   } catch (error: any) {
     logger.error('[Nayax API] Customer transaction history failed', { error: error.message });
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// K9000 NAYAX USAGE WEBHOOK
+//
+// ARCHITECTURE FIREWALL — READ BEFORE TOUCHING:
+//
+//   This endpoint receives Nayax "wash completed" signals for DIRECT CARD / NFC
+//   payments made at the K9000 kiosk terminal.
+//
+//   ╔═══════════════════════════════════════════════════════════╗
+//   ║  NAYAX = EXTERNAL PAYMENT PROCESSOR.                     ║
+//   ║  PetWash is NOT the payment processor for these washes.  ║
+//   ║  We do NOT issue financial receipts for Nayax payments.  ║
+//   ║  FinancialDocumentService MUST NEVER be called here.     ║
+//   ╚═══════════════════════════════════════════════════════════╝
+//
+//   The only allowed actions are:
+//     1. Write to k9000_wash_events (transaction_source: 'nayax')
+//     2. Credit loyalty points (optional, analytics only)
+//     3. Log for operational observability
+//
+//   Compare with /v1/brain/redeem (octopus-engine.ts) which handles
+//   eGift redemptions (transaction_source: 'petwash') — those DO issue docs.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+const nayaxUsageEventSchema = z.object({
+  // Nayax-side identifiers
+  nayaxTransactionId: z.string().min(1),
+  nayaxTerminalId: z.string().optional(),
+  nayaxSessionId: z.string().optional(),
+  nayaxReference: z.string().optional(),
+
+  // Wash context
+  stationId: z.string().optional(),
+  baySide: z.string().optional(),
+  product: z.string().optional(),       // wash type / package
+  amountCents: z.number().int().positive().optional(),
+
+  // Optional PetWash user link (if user was identified via loyalty card / app)
+  userId: z.string().optional(),
+
+  // Idempotency — Nayax should always send a unique transaction ID
+  idempotencyKey: z.string().optional(),
+});
+
+/**
+ * POST /api/payments/nayax/usage-event
+ *
+ * Called by Nayax (or by our own NayaxSparkService after settle) when a direct
+ * card/NFC wash completes at the K9000 terminal.
+ *
+ * This records the wash for analytics and loyalty purposes ONLY.
+ * It does NOT create any financial document. Nayax is the payment processor.
+ *
+ * HMAC signature verification is enforced if X-Nayax-Signature is present.
+ */
+router.post('/usage-event', async (req, res) => {
+  try {
+    const parsed = nayaxUsageEventSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid usage event payload', details: parsed.error.errors });
+    }
+
+    const data = parsed.data;
+
+    // Idempotency: skip duplicate webhook delivery
+    const idempKey = data.idempotencyKey || `k9000_wash:nayax:${data.nayaxTransactionId}`;
+
+    const [existing] = await db.select({ id: k9000WashEvents.id })
+      .from(k9000WashEvents)
+      .where(eq(k9000WashEvents.idempotencyKey, idempKey))
+      .limit(1);
+
+    if (existing) {
+      logger.info('[Nayax/UsageEvent] Idempotent — wash already logged', {
+        nayaxTransactionId: data.nayaxTransactionId,
+        idempKey,
+      });
+      return res.json({ success: true, idempotent: true, washEventId: existing.id });
+    }
+
+    // ── Write K9000 usage event ───────────────────────────────────────────────
+    // transaction_source = 'nayax' → Nayax is the payment processor
+    // redemption_source  = 'nayax' → No eGift, no loyalty voucher involved
+    //
+    // NO FinancialDocumentService call here. Ever.
+    const [washEvent] = await db.insert(k9000WashEvents).values({
+      transactionSource: 'nayax',
+      redemptionSource: 'nayax',
+      nayaxTransactionId: data.nayaxTransactionId,
+      nayaxTerminalId: data.nayaxTerminalId,
+      nayaxSessionId: data.nayaxSessionId,
+      userId: data.userId || null,
+      stationId: data.stationId,
+      baySide: data.baySide,
+      platform: 'k9000',
+      product: data.product,
+      amountCents: data.amountCents,
+      currency: 'ILS',
+      status: 'completed',
+      idempotencyKey: idempKey,
+    }).returning();
+
+    logger.info('[Nayax/UsageEvent] K9000 direct wash logged', {
+      washEventId: washEvent.id,
+      nayaxTransactionId: data.nayaxTransactionId,
+      stationId: data.stationId,
+      transactionSource: 'nayax',
+      redemptionSource: 'nayax',
+      userId: data.userId,
+    });
+
+    return res.json({
+      success: true,
+      idempotent: false,
+      washEventId: washEvent.id,
+      transactionSource: 'nayax',
+      redemptionSource: 'nayax',
+      message: 'K9000 usage event logged. No financial document issued (Nayax is payment processor).',
+    });
+
+  } catch (err: any) {
+    logger.error('[Nayax/UsageEvent] Failed to log K9000 usage event', { error: err?.message });
+    return res.status(500).json({ error: 'Failed to log usage event' });
   }
 });
 

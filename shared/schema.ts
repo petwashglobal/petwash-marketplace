@@ -605,6 +605,71 @@ export const nayaxStationKeys = pgTable("nayax_station_keys", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// K9000 Wash Usage Events
+//
+// ARCHITECTURE RULE (enforced here):
+//   transaction_source = "petwash" → eGift / loyalty voucher stored in PetWash DB
+//   transaction_source = "nayax"   → direct card/NFC payment via Nayax terminal
+//
+//   redemption_source = "egift"          → PetWash eGift card (has egift_id)
+//   redemption_source = "nayax"          → Nayax direct payment (has nayax_transaction_id)
+//   redemption_source = "loyalty_voucher"→ K9000 loyalty redemption voucher
+//
+// This table is the ONLY unified K9000 usage log for analytics and loyalty credits.
+// It NEVER triggers FinancialDocumentService for Nayax rows.
+// Financial documents (PW-EGR, PW-RFD, etc.) are only created for petwash rows.
+// ─────────────────────────────────────────────────────────────────────────────
+export const k9000WashEvents = pgTable("k9000_wash_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  // Source discrimination — CRITICAL SEPARATION
+  transactionSource: varchar("transaction_source").notNull(), // "petwash" | "nayax"
+  redemptionSource: varchar("redemption_source").notNull(),   // "egift" | "nayax" | "loyalty_voucher"
+
+  // PetWash-side references (populated for transaction_source = "petwash")
+  egiftId: varchar("egift_id"),
+  userId: varchar("user_id").references(() => users.id),
+  documentReference: varchar("document_reference"), // PW-EGR-xxx link to financial_documents
+
+  // Nayax-side references (populated for transaction_source = "nayax")
+  nayaxTransactionId: varchar("nayax_transaction_id"),
+  nayaxTerminalId: varchar("nayax_terminal_id"),
+  nayaxSessionId: varchar("nayax_session_id"),
+
+  // Shared wash context
+  stationId: varchar("station_id"),
+  baySide: varchar("bay_side"),
+  platform: varchar("platform"),          // "k9000", "walk_my_pet", etc.
+  product: varchar("product"),            // wash type / package name
+  amountCents: integer("amount_cents"),   // Always in agorot (ILS cents)
+  currency: varchar("currency", { length: 3 }).default("ILS"),
+
+  // Loyalty & analytics
+  loyaltyPointsAwarded: integer("loyalty_points_awarded").default(0),
+  loyaltyEventLogged: boolean("loyalty_event_logged").default(false),
+
+  // Status
+  status: varchar("status").notNull().default("completed"), // "completed" | "failed" | "reversed"
+  failureReason: text("failure_reason"),
+
+  // Idempotency — prevent double-logging on webhook retry
+  idempotencyKey: varchar("idempotency_key").unique(),
+
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_k9000_wash_source").on(table.transactionSource),
+  index("idx_k9000_wash_redemption").on(table.redemptionSource),
+  index("idx_k9000_wash_user").on(table.userId),
+  index("idx_k9000_wash_station").on(table.stationId),
+  index("idx_k9000_wash_egift").on(table.egiftId),
+  index("idx_k9000_wash_nayax_tx").on(table.nayaxTransactionId),
+  index("idx_k9000_wash_created").on(table.createdAt),
+]);
+
+export type K9000WashEvent = typeof k9000WashEvents.$inferSelect;
+export type InsertK9000WashEvent = typeof k9000WashEvents.$inferInsert;
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type Customer = typeof customers.$inferSelect;

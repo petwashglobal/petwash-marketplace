@@ -25,6 +25,7 @@ import {
   octopusInvoices,
   egiftEvents,
   users,
+  k9000WashEvents,
 } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
@@ -752,6 +753,27 @@ router.post("/v1/brain/redeem", async (req: Request, res: Response) => {
             renderedHtml: redemptionHtml,
             idempotencyKey: `egift_redemption_receipt:${body.egiftId}:${body.userId}`,
           });
+
+          // ── K9000 usage event (transaction_source: petwash) ──────────────
+          // ARCHITECTURE: eGift redemptions are a PetWash transaction.
+          // This row is the canonical K9000 analytics record for this wash.
+          // Nayax direct payments are logged separately via the Nayax usage
+          // webhook (transaction_source: nayax) and NEVER issue financial docs.
+          await db.insert(k9000WashEvents).values({
+            transactionSource: 'petwash',
+            redemptionSource: 'egift',
+            egiftId: body.egiftId,
+            userId: body.userId,
+            documentReference: docRef,
+            stationId: body.stationId,
+            baySide: body.baySide,
+            platform: body.platform,
+            product: body.product,
+            amountCents: body.amountCents,
+            currency: 'ILS',
+            status: 'completed',
+            idempotencyKey: `k9000_wash:egift:${body.egiftId}:${body.userId}`,
+          }).onConflictDoNothing();
 
           await dispatchNotifications({
             userId: body.userId,
