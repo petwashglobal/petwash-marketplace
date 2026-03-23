@@ -536,6 +536,13 @@ if (isProduction) {
     await registerRoutes(app);
     healthState.app.routesReady = true;
 
+    // Non-blocking: start notification retry sweeper (runs every 2 minutes).
+    setImmediate(() => {
+      import('./services/NotificationRetryService').then(({ NotificationRetryService }) => {
+        NotificationRetryService.startSweeper();
+      }).catch(err => console.warn('[RetryService] Failed to start sweeper', err));
+    });
+
     // Non-blocking: backfill trust metrics for all providers missing or stale data.
     // Runs once per cold start — safe to re-run (idempotent).
     setImmediate(() => {

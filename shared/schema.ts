@@ -182,7 +182,7 @@ export const notificationLogs = pgTable("notification_logs", {
   recipientUserId: varchar("recipient_user_id"),
   recipientEmail: varchar("recipient_email"),
   recipientPhone: varchar("recipient_phone"),
-  status: varchar("status").default("pending"), // "pending", "sent", "delivered", "failed", "bounced"
+  status: varchar("status").default("pending"), // "queued" | "sent" | "delivered" | "failed" | "permanently_failed"
   payload: jsonb("payload"), // Variables used in template
   sentAt: timestamp("sent_at"),
   deliveredAt: timestamp("delivered_at"),
@@ -190,10 +190,18 @@ export const notificationLogs = pgTable("notification_logs", {
   createdAt: timestamp("created_at").defaultNow(),
   isRead: boolean("is_read").default(false),
   readAt: timestamp("read_at"),
-  // Financial event linkage (added for PetWash notification engine)
+  // Financial event linkage
   bookingId: varchar("booking_id"),
   transactionId: varchar("transaction_id"),
   eventType: varchar("event_type"), // "booking_confirmed" | "egift_purchased" | "prestige_joined" | "provider_approved" | "payout_issued"
+  // Retry fields
+  retryCount: integer("retry_count").notNull().default(0),
+  maxRetries: integer("max_retries").notNull().default(3),
+  nextRetryAt: timestamp("next_retry_at"),
+  permanentlyFailed: boolean("permanently_failed").notNull().default(false),
+  // Idempotency + provider tracking
+  idempotencyKey: varchar("idempotency_key", { length: 255 }),
+  providerMessageId: varchar("provider_message_id", { length: 255 }), // Twilio SID, FCM message ID
 }, (table) => [
   index("idx_notification_logs_template").on(table.templateKey),
   index("idx_notification_logs_user").on(table.recipientUserId),
@@ -212,10 +220,13 @@ export const financialDocuments = pgTable("financial_documents", {
   transactionId: varchar("transaction_id"),
   documentType: varchar("document_type", { length: 60 }).notNull(),
   // "booking_receipt" | "booking_earnings_notice" | "egift_receipt" | "membership_receipt" | "provider_payout_statement"
+  // Additional document types for business events:
+  // "refund_receipt" | "cancellation_notice" | "provider_rejection_notice" | "egift_redemption_receipt"
   issuedByEntity: varchar("issued_by_entity", { length: 100 }).notNull().default("PetWash"),
   documentPayloadJson: jsonb("document_payload_json").notNull(),
   renderedHtml: text("rendered_html").notNull(),
   renderedPdfUrl: varchar("rendered_pdf_url"),
+  idempotencyKey: varchar("idempotency_key", { length: 255 }), // Prevents duplicate documents on repeated callbacks
   issuedAt: timestamp("issued_at").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [

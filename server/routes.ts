@@ -127,6 +127,7 @@ import { postLoginDecider, chooseRole, approveAccess, completeProfile, getWhoami
 import accessRequestsRoutes from "./routes/access-requests";
 import adminProviderReviewRoutes from "./routes/admin-provider-review";
 import adminLoyaltyRoutes from "./routes/admin-loyalty";
+import adminNotificationsRoutes from "./routes/admin-notifications";
 import winbackTrackingRouter from "./routes/winback-tracking";
 import aiPayoutVerificationRoutes from "./routes/ai-payout-verification";
 import israeliCompliance2025Routes from "./routes/israeli-compliance-2025";
@@ -9232,6 +9233,7 @@ self.addEventListener('notificationclick', (event) => {
   const adminRoutes = await import('./routes/admin');
   app.use('/api/admin', adminLimiter, requireAdminMfa, adminRoutes.default);
   app.use('/api/admin/loyalty', adminLimiter, adminLoyaltyRoutes);
+  app.use('/api/admin', adminLimiter, adminNotificationsRoutes);
   // Phase 6.12 — winback click-tracking (no auth; JWT-gated internally)
   app.use('/w', winbackTrackingRouter);
   

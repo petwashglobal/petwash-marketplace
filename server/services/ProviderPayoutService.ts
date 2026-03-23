@@ -12,7 +12,7 @@
  */
 
 import { db } from "../db";
-import { superAppPayouts, providers, users } from "@shared/schema";
+import { superAppPayouts, providers, users, bookings } from "@shared/schema";
 import { eq, and, lte, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { nanoid } from "nanoid";
@@ -179,40 +179,65 @@ export class ProviderPayoutService {
         (async () => {
           try {
             const providerUserId: string = provider.userId;
+
+            // Resolve booking reference for statement clarity
+            let bookingRef: string | null = null;
+            if (payout.bookingId) {
+              const [bk] = await db.select({ bookingNumber: bookings.bookingNumber })
+                .from(bookings).where(eq(bookings.id, payout.bookingId)).limit(1);
+              bookingRef = bk?.bookingNumber ?? payout.bookingId;
+            }
+
             const [provUser] = await db.select({ phone: users.phone, firstName: users.firstName })
               .from(users).where(eq(users.id, providerUserId)).limit(1);
 
             const payoutRef = transferResult.bankTransferReference ?? payoutId;
+            const grossStr   = parseFloat(payout.amount).toLocaleString('he-IL', { minimumFractionDigits: 2 });
+            const feeStr     = parseFloat(payout.platformFee).toLocaleString('he-IL', { minimumFractionDigits: 2 });
             const netAmountStr = parseFloat(payout.netAmount).toLocaleString('he-IL', { minimumFractionDigits: 2 });
             const providerName = provUser?.firstName || provider.businessName || 'ספק';
+            const paidAtStr  = new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' });
 
-            const payoutHtml = `<!DOCTYPE html><html><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;">
-<h2>PetWash™ — תשלום הועבר 💸</h2>
-<table style="border-collapse:collapse;width:100%;max-width:480px;">
-  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">שם</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${providerName}</td></tr>
-  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">מס׳ תשלום</td><td style="padding:8px;border-bottom:1px solid #eee;font-family:monospace;">${payoutRef}</td></tr>
-  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">סכום ברוטו</td><td style="padding:8px;border-bottom:1px solid #eee;">${parseFloat(payout.amount).toLocaleString('he-IL', { minimumFractionDigits: 2 })} ₪</td></tr>
-  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">עמלת פלטפורמה</td><td style="padding:8px;border-bottom:1px solid #eee;">${parseFloat(payout.platformFee).toLocaleString('he-IL', { minimumFractionDigits: 2 })} ₪</td></tr>
-  <tr><td style="padding:8px;color:#555;font-weight:bold;">סכום נטו להעברה</td><td style="padding:8px;font-weight:bold;color:#16a34a;">${netAmountStr} ₪</td></tr>
+            const bookingRow = bookingRef
+              ? `  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">מס׳ הזמנה</td><td style="padding:8px;border-bottom:1px solid #eee;font-family:monospace;">${bookingRef}</td></tr>`
+              : '';
+
+            const payoutHtml = `<!DOCTYPE html><html lang="he"><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;">
+<h2 style="font-size:20px;margin-bottom:16px;">PetWash™ — פירוט תשלום לספק 💸</h2>
+<table style="border-collapse:collapse;width:100%;max-width:520px;font-size:14px;">
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">שם הספק</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${providerName}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">מס׳ העברה</td><td style="padding:8px;border-bottom:1px solid #eee;font-family:monospace;font-size:13px;">${payoutRef}</td></tr>
+${bookingRow}
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">סכום ברוטו</td><td style="padding:8px;border-bottom:1px solid #eee;">${grossStr} ₪</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">עמלת PetWash (פלטפורמה)</td><td style="padding:8px;border-bottom:1px solid #eee;color:#b91c1c;">−${feeStr} ₪</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;font-weight:bold;">סכום נטו להעברה</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;color:#16a34a;">${netAmountStr} ₪</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">מטבע</td><td style="padding:8px;border-bottom:1px solid #eee;">${payout.currency ?? 'ILS'}</td></tr>
+  <tr><td style="padding:8px;color:#555;">תאריך ושעת תשלום</td><td style="padding:8px;">${paidAtStr}</td></tr>
 </table>
-<p style="margin-top:16px;"><a href="https://petwash.co.il/provider/earnings" style="background:#000;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">צפה/י בדוח הרווחים</a></p>
-<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il | petwash.co.il</p>
+<p style="margin-top:16px;"><a href="https://petwash.co.il/provider/earnings" style="background:#000;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">צפה/י בדוח הרווחים המלא</a></p>
+<p style="margin-top:16px;font-size:11px;color:#888;">PetWash Ltd. | ח.פ. ​| support@petwash.co.il | petwash.co.il</p>
 </body></html>`;
+
+            const idempotencyKey = `payout_issued:${payoutId}:${providerUserId}`;
 
             await FinancialDocumentService.create({
               userId: providerUserId,
+              bookingId: payout.bookingId ?? undefined,
               documentType: 'provider_payout_statement',
               issuedByEntity: 'PetWash',
               documentPayloadJson: {
                 payoutId,
+                bookingId: payout.bookingId ?? null,
+                bookingRef: bookingRef ?? null,
                 bankTransferReference: payoutRef,
                 amount: payout.amount,
                 platformFee: payout.platformFee,
                 netAmount: payout.netAmount,
-                currency: payout.currency,
+                currency: payout.currency ?? 'ILS',
                 paidAt: new Date().toISOString(),
               },
               renderedHtml: payoutHtml,
+              idempotencyKey,
             });
 
             await dispatchNotifications({
@@ -220,17 +245,26 @@ export class ProviderPayoutService {
               eventType: 'payout_issued',
               templateKey: 'provider_payout_issued',
               channels: ['sms', 'push'],
+              bookingId: payout.bookingId ?? undefined,
+              idempotencyKey,
               sms: provUser?.phone ? {
                 to: provUser.phone,
-                text: buildPayoutIssuedSms({ payoutRef, netAmount: netAmountStr }),
+                text: buildPayoutIssuedSms({ payoutRef, netAmount: netAmountStr, bookingRef: bookingRef ?? undefined }),
               } : undefined,
               push: {
                 userId: providerUserId,
                 title: `תשלום הועבר – Pet Wash™ 💸`,
                 body: `${netAmountStr} ₪ הועברו לחשבונך. מס׳ העברה: ${payoutRef}`,
-                data: { type: 'payout_issued', payoutId },
+                data: { type: 'payout_issued', payoutId, ...(bookingRef ? { bookingRef } : {}) },
               },
-              debugPayload: { payoutId, netAmount: payout.netAmount },
+              debugPayload: {
+                payoutId,
+                netAmount: payout.netAmount,
+                bookingRef: bookingRef ?? null,
+                smsText: buildPayoutIssuedSms({ payoutRef, netAmount: netAmountStr, bookingRef: bookingRef ?? undefined }),
+                pushTitle: `תשלום הועבר – Pet Wash™ 💸`,
+                pushBody: `${netAmountStr} ₪ הועברו לחשבונך. מס׳ העברה: ${payoutRef}`,
+              },
             });
           } catch (notifErr: any) {
             logger.warn('[ProviderPayout] Post-payout notification failed (non-fatal)', { error: notifErr?.message });
