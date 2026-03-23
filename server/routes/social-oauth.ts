@@ -9,7 +9,12 @@ const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY;
 const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET;
 const INSTAGRAM_CLIENT_ID = process.env.INSTAGRAM_CLIENT_ID;
 const INSTAGRAM_CLIENT_SECRET = process.env.INSTAGRAM_CLIENT_SECRET;
-const COOKIE_SECRET = process.env.COOKIE_SECRET || 'petwash-oauth-fallback-secret';
+const COOKIE_SECRET: string = process.env.COOKIE_SECRET ?? (() => {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('[social-oauth] COOKIE_SECRET env var must be set in production');
+  }
+  return 'dev-only-insecure-placeholder';
+})();
 
 const pendingTokens = new Map<string, { customToken: string; provider: string; isNew: boolean; expiresAt: number }>();
 

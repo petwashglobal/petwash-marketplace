@@ -564,7 +564,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         : (process.env.VITE_FIREBASE_AUTH_DOMAIN || 'signinpetwash.firebaseapp.com');
 
       const config = {
-        apiKey: process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY || 'AIzaSyDzbXi3-hnitnEtaTOQqakoxOetGvOCP0E',
+        apiKey: process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY || '',
         authDomain,
         projectId: process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'signinpetwash',
         storageBucket: process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET || 'signinpetwash.firebasestorage.app',
@@ -793,7 +793,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get('/firebase-messaging-sw.js', (req, res) => {
     try {
       const firebaseConfig = {
-        apiKey: process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY || 'AIzaSyDzbXi3-hnitnEtaTOQqakoxOetGvOCP0E',
+        apiKey: process.env.FIREBASE_WEB_API_KEY || process.env.VITE_FIREBASE_API_KEY || '',
         authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || 'signinpetwash.firebaseapp.com',
         projectId: process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'signinpetwash',
         storageBucket: process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET || 'signinpetwash.firebasestorage.app',
