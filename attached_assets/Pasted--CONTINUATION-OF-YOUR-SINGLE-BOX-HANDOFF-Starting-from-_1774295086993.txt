@@ -1,0 +1,1564 @@
+/*
+CONTINUATION OF YOUR SINGLE-BOX HANDOFF
+Starting from the cut-off point inside placeBookingAndCapturePayment()
+
+This block completes:
+- booking payment flow
+- receipt / invoice creation
+- provider earnings recording
+- eGift purchase flow
+- Prestige loyalty join flow
+- provider onboarding flow
+- notification orchestration
+- email / SMS / push template generation
+- secure audit and helper functions
+- example API endpoints
+
+NOTE
+----
+This is framework-neutral TypeScript-style service code.
+Replace dbInsert / dbQuery / sendEmail / sendSms / sendPush with your real implementations.
+Use real DB transactions and queue workers in production.
+*/
+
+/*
+================================================================================
+SECTION 11 - CUSTOMER BOOKING FLOW (CONTINUED)
+================================================================================
+*/
+
+async function placeBookingAndCapturePayment(input: BookingPlacedInput) {
+  return withDbTransaction(async () => {
+    // 1. Validate input
+    if (input.totalAmount < 0) throw new Error("Invalid total");
+    if (!input.customerUserId) throw new Error("Missing customer");
+
+    // 2. Load users
+    const customer = await loadUser(input.customerUserId);
+    if (!customer) throw new Error("Customer not found");
+
+    const provider = input.providerUserId
+      ? await loadUser(input.providerUserId)
+      : null;
+
+    // 3. Generate references
+    const bookingId = randomUUID();
+    const bookingReference = generateBookingReference();
+    const transactionId = randomUUID();
+    const transactionReference = generateTransactionReference("PWT");
+
+    // 4. Create booking record
+    await dbInsert("bookings", {
+      id: bookingId,
+      booking_reference: bookingReference,
+      customer_user_id: input.customerUserId,
+      provider_user_id: input.providerUserId ?? null,
+      pet_id: input.petId ?? null,
+      service_type: input.serviceType,
+      service_name: input.serviceName,
+      status: provider ? "placed" : "provider_pending",
+      scheduled_start_at: input.scheduledStartAt,
+      scheduled_end_at: input.scheduledEndAt ?? null,
+      location_text: input.locationText ?? null,
+      subtotal_amount: input.subtotalAmount,
+      discount_amount: input.discountAmount,
+      tax_amount: input.taxAmount,
+      total_amount: input.totalAmount,
+      provider_gross_amount: calculateProviderGross(input.totalAmount),
+      platform_fee_amount: calculatePlatformFee(input.totalAmount),
+      provider_net_amount: calculateProviderNet(input.totalAmount),
+      currency: input.currency,
+      promo_code: input.promoCode ?? null,
+      placed_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    // 5. Create payment transaction
+    const auditHash = createAuditHash({
+      bookingReference,
+      transactionReference,
+      totalAmount: input.totalAmount,
+      customerUserId: input.customerUserId,
+      externalPaymentReference: input.externalPaymentReference ?? null,
+      stampedAt: new Date().toISOString(),
+    });
+
+    await dbInsert("payment_transactions", {
+      id: transactionId,
+      transaction_reference: transactionReference,
+      user_id: input.customerUserId,
+      booking_id: bookingId,
+      transaction_type: "booking_payment",
+      payment_provider: input.paymentProvider,
+      payment_method: input.paymentMethod,
+      payment_status: "captured",
+      subtotal_amount: input.subtotalAmount,
+      discount_amount: input.discountAmount,
+      tax_amount: input.taxAmount,
+      total_amount: input.totalAmount,
+      currency: input.currency,
+      external_payment_reference: input.externalPaymentReference ?? null,
+      audit_hash: auditHash,
+      transaction_stamped_at: new Date().toISOString(),
+      raw_gateway_payload: {
+        provider: input.paymentProvider,
+        method: input.paymentMethod,
+      },
+      metadata_json: {
+        promoCode: input.promoCode ?? null,
+      },
+      created_at: new Date().toISOString(),
+    });
+
+    // 6. Create customer receipt / invoice
+    const customerDocumentId = randomUUID();
+    const customerDocReference = generateTransactionReference("PWR");
+
+    const receiptPayload = buildCustomerBookingReceiptPayload({
+      bookingReference,
+      transactionReference,
+      customer,
+      provider,
+      petName: input.petName ?? null,
+      serviceName: input.serviceName,
+      scheduledStartAt: input.scheduledStartAt,
+      scheduledEndAt: input.scheduledEndAt ?? null,
+      locationText: input.locationText ?? null,
+      paymentMethod: input.paymentMethod,
+      subtotalAmount: input.subtotalAmount,
+      discountAmount: input.discountAmount,
+      taxAmount: input.taxAmount,
+      totalAmount: input.totalAmount,
+      currency: input.currency,
+      nextSteps: provider
+        ? "Your booking has been placed. The provider will review and confirm shortly."
+        : "Your booking has been placed. Provider assignment is pending.",
+    });
+
+    await dbInsert("financial_documents", {
+      id: customerDocumentId,
+      document_reference: customerDocReference,
+      user_id: input.customerUserId,
+      booking_id: bookingId,
+      transaction_id: transactionId,
+      document_type: "customer_receipt",
+      issued_by_entity: "PetWash",
+      document_payload_json: receiptPayload,
+      rendered_html: renderCustomerBookingEmailHtml(receiptPayload),
+      rendered_pdf_url: null,
+      issued_at: new Date().toISOString(),
+    });
+
+    // 7. Record provider earnings if provider exists
+    if (provider) {
+      await dbInsert("provider_earnings", {
+        id: randomUUID(),
+        provider_user_id: provider.id,
+        booking_id: bookingId,
+        transaction_id: transactionId,
+        gross_amount: calculateProviderGross(input.totalAmount),
+        platform_fee_amount: calculatePlatformFee(input.totalAmount),
+        net_amount: calculateProviderNet(input.totalAmount),
+        currency: input.currency,
+        settlement_status: "pending",
+        recorded_at: new Date().toISOString(),
+      });
+
+      // Provider-side earnings notice document
+      const providerDocumentId = randomUUID();
+      const providerDocReference = generateTransactionReference("PWPAY");
+
+      const providerPayload = buildProviderBookingNoticePayload({
+        bookingReference,
+        customerFirstName: customer.first_name ?? customer.display_name ?? "Customer",
+        petName: input.petName ?? null,
+        serviceName: input.serviceName,
+        scheduledStartAt: input.scheduledStartAt,
+        scheduledEndAt: input.scheduledEndAt ?? null,
+        locationText: input.locationText ?? null,
+        grossAmount: calculateProviderGross(input.totalAmount),
+        platformFeeAmount: calculatePlatformFee(input.totalAmount),
+        netAmount: calculateProviderNet(input.totalAmount),
+        currency: input.currency,
+      });
+
+      await dbInsert("financial_documents", {
+        id: providerDocumentId,
+        document_reference: providerDocReference,
+        user_id: provider.id,
+        booking_id: bookingId,
+        transaction_id: transactionId,
+        document_type: "provider_earnings_notice",
+        issued_by_entity: "PetWash",
+        document_payload_json: providerPayload,
+        rendered_html: renderProviderBookingEmailHtml(providerPayload),
+        rendered_pdf_url: null,
+        issued_at: new Date().toISOString(),
+      });
+    }
+
+    // 8. Write audit event
+    await dbInsert("audit_events", {
+      id: randomUUID(),
+      actor_user_id: input.customerUserId,
+      entity_type: "booking",
+      entity_id: bookingId,
+      action_key: "booking_placed_and_paid",
+      before_json: null,
+      after_json: {
+        bookingReference,
+        transactionReference,
+        paymentStatus: "captured",
+      },
+      audit_hash: auditHash,
+      ip_address: null,
+      user_agent: null,
+      created_at: new Date().toISOString(),
+    });
+
+    // 9. Queue notifications AFTER commit-ready data exists
+    await dispatchNotifications({
+      userId: input.customerUserId,
+      bookingId,
+      transactionId,
+      eventType: "booking_placed",
+      templateKey: "customer_booking_placed",
+      channels: ["email", "sms", "push"],
+      payload: receiptPayload,
+    });
+
+    if (provider) {
+      await dispatchNotifications({
+        userId: provider.id,
+        bookingId,
+        transactionId,
+        eventType: "provider_booking_assigned",
+        templateKey: "provider_new_booking_assigned",
+        channels: ["email", "sms", "push"],
+        payload: buildProviderBookingNoticePayload({
+          bookingReference,
+          customerFirstName: customer.first_name ?? customer.display_name ?? "Customer",
+          petName: input.petName ?? null,
+          serviceName: input.serviceName,
+          scheduledStartAt: input.scheduledStartAt,
+          scheduledEndAt: input.scheduledEndAt ?? null,
+          locationText: input.locationText ?? null,
+          grossAmount: calculateProviderGross(input.totalAmount),
+          platformFeeAmount: calculatePlatformFee(input.totalAmount),
+          netAmount: calculateProviderNet(input.totalAmount),
+          currency: input.currency,
+        }),
+      });
+    }
+
+    return {
+      bookingId,
+      bookingReference,
+      transactionId,
+      transactionReference,
+      auditHash,
+    };
+  });
+}
+
+/*
+================================================================================
+SECTION 12 - PRESTIGE LOYALTY JOIN FLOW
+================================================================================
+*/
+
+async function joinPrestigeMembership(input: LoyaltyJoinInput) {
+  return withDbTransaction(async () => {
+    const user = await loadUser(input.userId);
+    if (!user) throw new Error("User not found");
+
+    const membershipId = randomUUID();
+    const memberNumber = generateMembershipNumber();
+    const transactionId = randomUUID();
+    const transactionReference = generateTransactionReference("PWM");
+
+    if (input.paymentRequired) {
+      const auditHash = createAuditHash({
+        userId: input.userId,
+        transactionReference,
+        totalAmount: input.totalAmount,
+        stampedAt: new Date().toISOString(),
+      });
+
+      await dbInsert("payment_transactions", {
+        id: transactionId,
+        transaction_reference: transactionReference,
+        user_id: input.userId,
+        booking_id: null,
+        transaction_type: "loyalty_membership_purchase",
+        payment_provider: input.paymentProvider ?? null,
+        payment_method: input.paymentMethod ?? null,
+        payment_status: "captured",
+        subtotal_amount: input.subtotalAmount,
+        discount_amount: 0,
+        tax_amount: input.taxAmount,
+        total_amount: input.totalAmount,
+        currency: input.currency,
+        external_payment_reference: input.externalPaymentReference ?? null,
+        audit_hash: auditHash,
+        transaction_stamped_at: new Date().toISOString(),
+        raw_gateway_payload: {},
+        metadata_json: {
+          tierName: input.tierName,
+        },
+        created_at: new Date().toISOString(),
+      });
+
+      await dbInsert("audit_events", {
+        id: randomUUID(),
+        actor_user_id: input.userId,
+        entity_type: "membership",
+        entity_id: membershipId,
+        action_key: "prestige_membership_payment_captured",
+        before_json: null,
+        after_json: {
+          tierName: input.tierName,
+          transactionReference,
+        },
+        audit_hash: auditHash,
+        ip_address: null,
+        user_agent: null,
+        created_at: new Date().toISOString(),
+      });
+    }
+
+    await dbInsert("prestige_memberships", {
+      id: membershipId,
+      user_id: input.userId,
+      member_number: memberNumber,
+      tier_name: input.tierName,
+      points_balance: 0,
+      points_lifetime: 0,
+      next_reward_threshold: 1000,
+      status: "active",
+      joined_at: new Date().toISOString(),
+      renewed_at: null,
+      metadata_json: {},
+    });
+
+    const membershipDocumentId = randomUUID();
+    const membershipDocumentRef = generateTransactionReference("PWDOC");
+
+    const membershipPayload = {
+      memberNumber,
+      tierName: input.tierName,
+      joinedAt: new Date().toISOString(),
+      totalAmount: input.totalAmount,
+      taxAmount: input.taxAmount,
+      currency: input.currency,
+      benefitsSummary: [
+        "Prestige rewards access",
+        "Exclusive member offers",
+        "Wallet-ready QR membership ID",
+      ],
+      supportUrl: "https://petwash.co.il/support",
+      prestigeUrl: "https://petwash.co.il/prestige",
+    };
+
+    await dbInsert("financial_documents", {
+      id: membershipDocumentId,
+      document_reference: membershipDocumentRef,
+      user_id: input.userId,
+      booking_id: null,
+      transaction_id: input.paymentRequired ? transactionId : null,
+      document_type: "membership_receipt",
+      issued_by_entity: "PetWash",
+      document_payload_json: membershipPayload,
+      rendered_html: renderPrestigeJoinEmailHtml(membershipPayload),
+      rendered_pdf_url: null,
+      issued_at: new Date().toISOString(),
+    });
+
+    await dispatchNotifications({
+      userId: input.userId,
+      transactionId: input.paymentRequired ? transactionId : undefined,
+      eventType: "prestige_joined",
+      templateKey: "customer_prestige_joined",
+      channels: ["email", "sms", "push"],
+      payload: membershipPayload,
+    });
+
+    return {
+      membershipId,
+      memberNumber,
+      transactionId: input.paymentRequired ? transactionId : null,
+    };
+  });
+}
+
+/*
+================================================================================
+SECTION 13 - EGIFT PURCHASE FLOW
+================================================================================
+*/
+
+async function purchaseEGift(input: EGiftPurchaseInput) {
+  return withDbTransaction(async () => {
+    const purchaser = await loadUser(input.purchaserUserId);
+    if (!purchaser) throw new Error("Purchaser not found");
+
+    const transactionId = randomUUID();
+    const transactionReference = generateTransactionReference("PWE");
+    const giftId = randomUUID();
+    const giftReference = generateGiftReference();
+    const giftCode = generateGiftCode();
+    const qrToken = generateGiftQrToken(giftCode);
+
+    const auditHash = createAuditHash({
+      transactionReference,
+      purchaserUserId: input.purchaserUserId,
+      giftReference,
+      giftValue: input.giftValue,
+      stampedAt: new Date().toISOString(),
+    });
+
+    await dbInsert("payment_transactions", {
+      id: transactionId,
+      transaction_reference: transactionReference,
+      user_id: input.purchaserUserId,
+      booking_id: null,
+      transaction_type: "egift_purchase",
+      payment_provider: input.paymentProvider,
+      payment_method: input.paymentMethod,
+      payment_status: "captured",
+      subtotal_amount: input.giftValue,
+      discount_amount: 0,
+      tax_amount: 0,
+      total_amount: input.giftValue,
+      currency: input.currency,
+      external_payment_reference: input.externalPaymentReference ?? null,
+      audit_hash: auditHash,
+      transaction_stamped_at: new Date().toISOString(),
+      raw_gateway_payload: {},
+      metadata_json: {
+        recipientEmail: input.recipientEmail ?? null,
+      },
+      created_at: new Date().toISOString(),
+    });
+
+    await dbInsert("egift_cards", {
+      id: giftId,
+      gift_reference: giftReference,
+      purchaser_user_id: input.purchaserUserId,
+      recipient_email: input.recipientEmail ?? null,
+      recipient_name: input.recipientName ?? null,
+      gift_value: input.giftValue,
+      currency: input.currency,
+      code: giftCode,
+      qr_token: qrToken,
+      status: "active",
+      expires_at: addMonths(new Date(), 12).toISOString(),
+      redeemed_at: null,
+      metadata_json: {},
+      created_at: new Date().toISOString(),
+    });
+
+    const egiftPayload = {
+      giftReference,
+      giftValue: input.giftValue,
+      currency: input.currency,
+      code: giftCode,
+      qrToken,
+      expiresAt: addMonths(new Date(), 12).toISOString(),
+      recipientEmail: input.recipientEmail ?? null,
+      recipientName: input.recipientName ?? null,
+      supportUrl: "https://petwash.co.il/support",
+      redeemUrl: "https://petwash.co.il/egift/redeem",
+    };
+
+    await dbInsert("financial_documents", {
+      id: randomUUID(),
+      document_reference: generateTransactionReference("PWEG"),
+      user_id: input.purchaserUserId,
+      booking_id: null,
+      transaction_id: transactionId,
+      document_type: "egift_receipt",
+      issued_by_entity: "PetWash",
+      document_payload_json: egiftPayload,
+      rendered_html: renderEGiftPurchaseEmailHtml(egiftPayload),
+      rendered_pdf_url: null,
+      issued_at: new Date().toISOString(),
+    });
+
+    await dispatchNotifications({
+      userId: input.purchaserUserId,
+      transactionId,
+      eventType: "egift_purchased",
+      templateKey: "customer_egift_purchased",
+      channels: ["email", "sms", "push"],
+      payload: egiftPayload,
+    });
+
+    if (input.recipientEmail) {
+      await queueDirectEmail({
+        to: input.recipientEmail,
+        subject: `You've received a PetWash eGift - ${giftReference}`,
+        html: renderEGiftRecipientEmailHtml(egiftPayload),
+      });
+    }
+
+    await dbInsert("audit_events", {
+      id: randomUUID(),
+      actor_user_id: input.purchaserUserId,
+      entity_type: "egift_card",
+      entity_id: giftId,
+      action_key: "egift_purchased",
+      before_json: null,
+      after_json: egiftPayload,
+      audit_hash: auditHash,
+      ip_address: null,
+      user_agent: null,
+      created_at: new Date().toISOString(),
+    });
+
+    return {
+      giftId,
+      giftReference,
+      giftCode,
+      transactionId,
+      transactionReference,
+    };
+  });
+}
+
+/*
+================================================================================
+SECTION 14 - PROVIDER REGISTRATION / ONBOARDING FLOW
+================================================================================
+*/
+
+interface ProviderRegistrationInput {
+  userId: UUID;
+  providerType: string;
+  legalName?: string;
+  taxProfileJson?: Record<string, unknown>;
+}
+
+async function submitProviderRegistration(input: ProviderRegistrationInput) {
+  return withDbTransaction(async () => {
+    const user = await loadUser(input.userId);
+    if (!user) throw new Error("User not found");
+
+    const providerProfileId = randomUUID();
+
+    await dbInsert("provider_profiles", {
+      id: providerProfileId,
+      user_id: input.userId,
+      provider_type: input.providerType,
+      legal_name: input.legalName ?? null,
+      status: "submitted",
+      payout_method: null,
+      payout_reference: null,
+      tax_profile_json: input.taxProfileJson ?? {},
+      commission_bps: 1500,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    await dbInsert("audit_events", {
+      id: randomUUID(),
+      actor_user_id: input.userId,
+      entity_type: "provider_profile",
+      entity_id: providerProfileId,
+      action_key: "provider_registration_submitted",
+      before_json: null,
+      after_json: {
+        providerType: input.providerType,
+        legalName: input.legalName ?? null,
+      },
+      audit_hash: createAuditHash({
+        providerProfileId,
+        userId: input.userId,
+        createdAt: new Date().toISOString(),
+      }),
+      ip_address: null,
+      user_agent: null,
+      created_at: new Date().toISOString(),
+    });
+
+    const payload = {
+      providerType: input.providerType,
+      legalName: input.legalName ?? null,
+      status: "submitted",
+      nextSteps: [
+        "Our team will review your application",
+        "You may be asked for additional compliance documents",
+        "You will receive confirmation once approved",
+      ],
+      supportUrl: "https://petwash.co.il/support",
+    };
+
+    await dispatchNotifications({
+      userId: input.userId,
+      eventType: "provider_registration_submitted",
+      templateKey: "provider_registration_received",
+      channels: ["email", "sms", "push"],
+      payload,
+    });
+
+    return {
+      providerProfileId,
+      status: "submitted",
+    };
+  });
+}
+
+async function approveProviderRegistration(providerUserId: UUID, adminUserId: UUID) {
+  return withDbTransaction(async () => {
+    const profile = await dbQueryOne(
+      "SELECT * FROM provider_profiles WHERE user_id = $1",
+      [providerUserId]
+    );
+    if (!profile) throw new Error("Provider profile not found");
+
+    await dbExecute(
+      "UPDATE provider_profiles SET status = $1, updated_at = NOW() WHERE user_id = $2",
+      ["approved", providerUserId]
+    );
+
+    await dbInsert("audit_events", {
+      id: randomUUID(),
+      actor_user_id: adminUserId,
+      entity_type: "provider_profile",
+      entity_id: profile.id,
+      action_key: "provider_registration_approved",
+      before_json: { status: profile.status },
+      after_json: { status: "approved" },
+      audit_hash: createAuditHash({
+        providerProfileId: profile.id,
+        approvedBy: adminUserId,
+      }),
+      ip_address: null,
+      user_agent: null,
+      created_at: new Date().toISOString(),
+    });
+
+    await dispatchNotifications({
+      userId: providerUserId,
+      eventType: "provider_registration_approved",
+      templateKey: "provider_registration_approved",
+      channels: ["email", "sms", "push"],
+      payload: {
+        status: "approved",
+        onboardingUrl: "https://petwash.co.il/provider/onboarding",
+        supportUrl: "https://petwash.co.il/support",
+      },
+    });
+
+    return { ok: true };
+  });
+}
+
+/*
+================================================================================
+SECTION 15 - NOTIFICATION IMPLEMENTATION DETAILS
+================================================================================
+*/
+
+async function dispatchNotifications(job: NotificationJob): Promise<void> {
+  const user = await loadUser(job.userId);
+  if (!user) return;
+
+  const prefs = await loadNotificationPreferences(job.userId);
+
+  const effectiveChannels: NotificationChannel[] = [];
+
+  for (const channel of job.channels) {
+    if (channel === "email" && user.email && prefs.email_enabled && user.email_notifications_enabled) {
+      effectiveChannels.push("email");
+    }
+    if (channel === "sms" && user.phone_e164 && prefs.sms_enabled && user.sms_notifications_enabled) {
+      effectiveChannels.push("sms");
+    }
+    if (channel === "push" && prefs.push_enabled && user.push_notifications_enabled) {
+      effectiveChannels.push("push");
+    }
+  }
+
+  const template = resolveNotificationTemplate(job.templateKey, user.preferred_language, job.payload);
+
+  for (const channel of effectiveChannels) {
+    const eventId = randomUUID();
+
+    await dbInsert("notification_events", {
+      id: eventId,
+      user_id: job.userId,
+      booking_id: job.bookingId ?? null,
+      transaction_id: job.transactionId ?? null,
+      event_type: job.eventType,
+      channel,
+      template_key: job.templateKey,
+      destination:
+        channel === "email"
+          ? user.email ?? null
+          : channel === "sms"
+            ? user.phone_e164 ?? null
+            : user.id,
+      subject: template.subject,
+      payload_json: job.payload,
+      send_status: "queued",
+      provider_message_id: null,
+      failure_reason: null,
+      sent_at: null,
+      created_at: new Date().toISOString(),
+    });
+
+    try {
+      if (channel === "email") {
+        const providerMessageId = await sendEmail({
+          to: user.email!,
+          subject: template.subject,
+          html: template.html,
+          text: template.text,
+        });
+
+        await markNotificationSent(eventId, providerMessageId);
+      }
+
+      if (channel === "sms") {
+        const providerMessageId = await sendSms({
+          to: user.phone_e164!,
+          message: template.smsText,
+        });
+
+        await markNotificationSent(eventId, providerMessageId);
+      }
+
+      if (channel === "push") {
+        const providerMessageId = await sendPush({
+          userId: user.id,
+          title: template.pushTitle,
+          body: template.pushBody,
+          data: template.pushData,
+        });
+
+        await markNotificationSent(eventId, providerMessageId);
+      }
+    } catch (error: any) {
+      await markNotificationFailed(eventId, error?.message ?? "Unknown failure");
+    }
+  }
+}
+
+async function markNotificationSent(notificationEventId: UUID, providerMessageId: string | null) {
+  await dbExecute(
+    `
+      UPDATE notification_events
+      SET send_status = 'sent',
+          provider_message_id = $2,
+          sent_at = NOW()
+      WHERE id = $1
+    `,
+    [notificationEventId, providerMessageId]
+  );
+}
+
+async function markNotificationFailed(notificationEventId: UUID, failureReason: string) {
+  await dbExecute(
+    `
+      UPDATE notification_events
+      SET send_status = 'failed',
+          failure_reason = $2
+      WHERE id = $1
+    `,
+    [notificationEventId, failureReason]
+  );
+}
+
+/*
+================================================================================
+SECTION 16 - TEMPLATES
+================================================================================
+*/
+
+interface NotificationTemplate {
+  subject: string;
+  html: string;
+  text: string;
+  smsText: string;
+  pushTitle: string;
+  pushBody: string;
+  pushData: Record<string, unknown>;
+}
+
+function resolveNotificationTemplate(
+  templateKey: string,
+  language: string,
+  payload: Record<string, unknown>
+): NotificationTemplate {
+  switch (templateKey) {
+    case "customer_booking_placed":
+      return buildCustomerBookingPlacedTemplate(payload);
+
+    case "provider_new_booking_assigned":
+      return buildProviderNewBookingAssignedTemplate(payload);
+
+    case "customer_prestige_joined":
+      return buildCustomerPrestigeJoinedTemplate(payload);
+
+    case "customer_egift_purchased":
+      return buildCustomerEGiftPurchasedTemplate(payload);
+
+    case "provider_registration_received":
+      return buildProviderRegistrationReceivedTemplate(payload);
+
+    case "provider_registration_approved":
+      return buildProviderRegistrationApprovedTemplate(payload);
+
+    default:
+      return {
+        subject: "PetWash update",
+        html: "<p>PetWash update</p>",
+        text: "PetWash update",
+        smsText: "PetWash update",
+        pushTitle: "PetWash",
+        pushBody: "You have a new update",
+        pushData: {},
+      };
+  }
+}
+
+/*
+--------------------------------
+Customer booking placed template
+--------------------------------
+*/
+
+function buildCustomerBookingPlacedTemplate(payload: any): NotificationTemplate {
+  const subject = `Booking Confirmed - PetWash #${payload.bookingReference}`;
+
+  const html = `
+    <h1>Booking Confirmed</h1>
+    <p>Thank you for your booking with PetWash.</p>
+
+    <h2>Booking Reference</h2>
+    <p><strong>${payload.bookingReference}</strong></p>
+
+    <h2>Booking Summary</h2>
+    <ul>
+      <li>Pet: ${payload.petName ?? "Not specified"}</li>
+      <li>Service: ${payload.serviceName}</li>
+      <li>Date & Time: ${formatDateTime(payload.scheduledStartAt)}</li>
+      <li>Location: ${payload.locationText ?? "Not specified"}</li>
+      <li>Provider: ${payload.providerName ?? "Pending assignment"}</li>
+    </ul>
+
+    <h2>Payment Summary</h2>
+    <ul>
+      <li>Subtotal: ${formatMoney(payload.subtotalAmount, payload.currency)}</li>
+      <li>Discount: ${formatMoney(payload.discountAmount, payload.currency)}</li>
+      <li>VAT / Tax: ${formatMoney(payload.taxAmount, payload.currency)}</li>
+      <li>Total Paid: ${formatMoney(payload.totalAmount, payload.currency)}</li>
+      <li>Payment Method: ${payload.paymentMethod}</li>
+      <li>Transaction Reference: ${payload.transactionReference}</li>
+    </ul>
+
+    <h2>What Happens Next</h2>
+    <p>${payload.nextSteps}</p>
+
+    <p>
+      <a href="https://petwash.co.il/bookings/${payload.bookingReference}">
+        Manage booking
+      </a>
+      &nbsp;|&nbsp;
+      <a href="https://petwash.co.il/support">
+        Support
+      </a>
+    </p>
+  `;
+
+  const text =
+    `Booking Confirmed\n` +
+    `Reference: ${payload.bookingReference}\n` +
+    `Service: ${payload.serviceName}\n` +
+    `Date: ${formatDateTime(payload.scheduledStartAt)}\n` +
+    `Pet: ${payload.petName ?? "Not specified"}\n` +
+    `Total Paid: ${formatMoney(payload.totalAmount, payload.currency)}\n` +
+    `Payment Method: ${payload.paymentMethod}`;
+
+  return {
+    subject,
+    html,
+    text,
+    smsText: `PetWash booking confirmed. Ref ${payload.bookingReference}. ${payload.serviceName} on ${formatShortDate(payload.scheduledStartAt)}.`,
+    pushTitle: "Booking confirmed",
+    pushBody: `Ref ${payload.bookingReference} • ${payload.serviceName}`,
+    pushData: {
+      bookingReference: payload.bookingReference,
+    },
+  };
+}
+
+/*
+--------------------------------
+Provider new booking assigned
+--------------------------------
+*/
+
+function buildProviderNewBookingAssignedTemplate(payload: any): NotificationTemplate {
+  const subject = `New Booking Confirmed - PetWash #${payload.bookingReference}`;
+
+  const html = `
+    <h1>New Booking Assigned</h1>
+    <p>You have a new PetWash booking.</p>
+
+    <h2>Booking Reference</h2>
+    <p><strong>${payload.bookingReference}</strong></p>
+
+    <h2>Service Details</h2>
+    <ul>
+      <li>Customer: ${payload.customerFirstName}</li>
+      <li>Pet: ${payload.petName ?? "Not specified"}</li>
+      <li>Service: ${payload.serviceName}</li>
+      <li>Date & Time: ${formatDateTime(payload.scheduledStartAt)}</li>
+      <li>Location: ${payload.locationText ?? "Not specified"}</li>
+    </ul>
+
+    <h2>Earnings Breakdown</h2>
+    <ul>
+      <li>Gross: ${formatMoney(payload.grossAmount, payload.currency)}</li>
+      <li>Platform Fee: ${formatMoney(payload.platformFeeAmount, payload.currency)}</li>
+      <li>Net: ${formatMoney(payload.netAmount, payload.currency)}</li>
+    </ul>
+
+    <p>
+      <a href="https://petwash.co.il/provider/bookings/${payload.bookingReference}">
+        Manage booking
+      </a>
+    </p>
+  `;
+
+  const text =
+    `New Booking Assigned\n` +
+    `Reference: ${payload.bookingReference}\n` +
+    `Service: ${payload.serviceName}\n` +
+    `When: ${formatDateTime(payload.scheduledStartAt)}\n` +
+    `Net earnings: ${formatMoney(payload.netAmount, payload.currency)}`;
+
+  return {
+    subject,
+    html,
+    text,
+    smsText: `New PetWash booking assigned. Ref ${payload.bookingReference}. Net ${formatMoney(payload.netAmount, payload.currency)}.`,
+    pushTitle: "New booking assigned",
+    pushBody: `Ref ${payload.bookingReference} • Net ${formatMoney(payload.netAmount, payload.currency)}`,
+    pushData: {
+      bookingReference: payload.bookingReference,
+    },
+  };
+}
+
+function buildCustomerPrestigeJoinedTemplate(payload: any): NotificationTemplate {
+  return {
+    subject: `Welcome to PetWash Prestige - ${payload.tierName}`,
+    html: `
+      <h1>Welcome to PetWash Prestige</h1>
+      <p>Your membership is now active.</p>
+      <ul>
+        <li>Member Number: ${payload.memberNumber}</li>
+        <li>Tier: ${payload.tierName}</li>
+        <li>Joined: ${formatDateTime(payload.joinedAt)}</li>
+      </ul>
+      <p><a href="${payload.prestigeUrl}">Explore your benefits</a></p>
+    `,
+    text: `Welcome to PetWash Prestige. Member Number ${payload.memberNumber}. Tier ${payload.tierName}.`,
+    smsText: `Welcome to PetWash Prestige. Member ${payload.memberNumber}.`,
+    pushTitle: "Prestige activated",
+    pushBody: `${payload.tierName} membership is now active`,
+    pushData: {
+      memberNumber: payload.memberNumber,
+    },
+  };
+}
+
+function buildCustomerEGiftPurchasedTemplate(payload: any): NotificationTemplate {
+  return {
+    subject: `PetWash eGift purchased - ${payload.giftReference}`,
+    html: `
+      <h1>eGift Purchased Successfully</h1>
+      <ul>
+        <li>Gift Reference: ${payload.giftReference}</li>
+        <li>Value: ${formatMoney(payload.giftValue, payload.currency)}</li>
+        <li>Code: ${payload.code}</li>
+        <li>Expires: ${formatDateTime(payload.expiresAt)}</li>
+      </ul>
+      <p><a href="${payload.redeemUrl}">Redeem eGift</a></p>
+    `,
+    text: `PetWash eGift purchased. Ref ${payload.giftReference}. Code ${payload.code}.`,
+    smsText: `PetWash eGift purchased. Ref ${payload.giftReference}.`,
+    pushTitle: "eGift purchased",
+    pushBody: `${formatMoney(payload.giftValue, payload.currency)} eGift ready`,
+    pushData: {
+      giftReference: payload.giftReference,
+    },
+  };
+}
+
+function buildProviderRegistrationReceivedTemplate(payload: any): NotificationTemplate {
+  return {
+    subject: `Provider registration received - PetWash`,
+    html: `
+      <h1>Provider registration received</h1>
+      <p>Your application has been submitted successfully.</p>
+      <ul>
+        <li>Provider Type: ${payload.providerType}</li>
+        <li>Status: ${payload.status}</li>
+      </ul>
+      <p><a href="${payload.supportUrl}">Support</a></p>
+    `,
+    text: `Provider registration received. Status: ${payload.status}.`,
+    smsText: `PetWash provider registration received.`,
+    pushTitle: "Registration received",
+    pushBody: "We received your provider application",
+    pushData: {},
+  };
+}
+
+function buildProviderRegistrationApprovedTemplate(payload: any): NotificationTemplate {
+  return {
+    subject: `Provider registration approved - PetWash`,
+    html: `
+      <h1>You are approved</h1>
+      <p>Your provider registration is approved.</p>
+      <p><a href="${payload.onboardingUrl}">Continue onboarding</a></p>
+    `,
+    text: `Your PetWash provider registration is approved.`,
+    smsText: `PetWash provider registration approved.`,
+    pushTitle: "Provider approved",
+    pushBody: "Your onboarding is ready",
+    pushData: {},
+  };
+}
+
+/*
+================================================================================
+SECTION 17 - PAYLOAD BUILDERS
+================================================================================
+*/
+
+function buildCustomerBookingReceiptPayload(input: {
+  bookingReference: string;
+  transactionReference: string;
+  customer: UserRecord;
+  provider: UserRecord | null;
+  petName: string | null;
+  serviceName: string;
+  scheduledStartAt: string;
+  scheduledEndAt: string | null;
+  locationText: string | null;
+  paymentMethod: string;
+  subtotalAmount: number;
+  discountAmount: number;
+  taxAmount: number;
+  totalAmount: number;
+  currency: string;
+  nextSteps: string;
+}) {
+  return {
+    bookingReference: input.bookingReference,
+    transactionReference: input.transactionReference,
+    customerName: input.customer.display_name ?? input.customer.first_name ?? "Customer",
+    providerName: input.provider?.display_name ?? null,
+    petName: input.petName,
+    serviceName: input.serviceName,
+    scheduledStartAt: input.scheduledStartAt,
+    scheduledEndAt: input.scheduledEndAt,
+    locationText: input.locationText,
+    paymentMethod: input.paymentMethod,
+    subtotalAmount: input.subtotalAmount,
+    discountAmount: input.discountAmount,
+    taxAmount: input.taxAmount,
+    totalAmount: input.totalAmount,
+    currency: input.currency,
+    nextSteps: input.nextSteps,
+  };
+}
+
+function buildProviderBookingNoticePayload(input: {
+  bookingReference: string;
+  customerFirstName: string;
+  petName: string | null;
+  serviceName: string;
+  scheduledStartAt: string;
+  scheduledEndAt: string | null;
+  locationText: string | null;
+  grossAmount: number;
+  platformFeeAmount: number;
+  netAmount: number;
+  currency: string;
+}) {
+  return {
+    bookingReference: input.bookingReference,
+    customerFirstName: input.customerFirstName,
+    petName: input.petName,
+    serviceName: input.serviceName,
+    scheduledStartAt: input.scheduledStartAt,
+    scheduledEndAt: input.scheduledEndAt,
+    locationText: input.locationText,
+    grossAmount: input.grossAmount,
+    platformFeeAmount: input.platformFeeAmount,
+    netAmount: input.netAmount,
+    currency: input.currency,
+  };
+}
+
+/*
+================================================================================
+SECTION 18 - RENDER HELPERS
+================================================================================
+*/
+
+function renderCustomerBookingEmailHtml(payload: any): string {
+  return buildCustomerBookingPlacedTemplate(payload).html;
+}
+
+function renderProviderBookingEmailHtml(payload: any): string {
+  return buildProviderNewBookingAssignedTemplate(payload).html;
+}
+
+function renderPrestigeJoinEmailHtml(payload: any): string {
+  return buildCustomerPrestigeJoinedTemplate(payload).html;
+}
+
+function renderEGiftPurchaseEmailHtml(payload: any): string {
+  return buildCustomerEGiftPurchasedTemplate(payload).html;
+}
+
+function renderEGiftRecipientEmailHtml(payload: any): string {
+  return `
+    <h1>You've received a PetWash eGift</h1>
+    <ul>
+      <li>Gift Reference: ${payload.giftReference}</li>
+      <li>Code: ${payload.code}</li>
+      <li>Value: ${formatMoney(payload.giftValue, payload.currency)}</li>
+      <li>Expires: ${formatDateTime(payload.expiresAt)}</li>
+    </ul>
+    <p><a href="${payload.redeemUrl}">Redeem now</a></p>
+  `;
+}
+
+/*
+================================================================================
+SECTION 19 - PROVIDER INVOICE / RECEIPT POLICY COMMENT
+================================================================================
+
+DEFAULT PLATFORM POLICY:
+- Customer receipt / tax invoice is issued by PetWash
+- Provider receives earnings notice / payout statement
+- Provider is not the customer-facing merchant by default
+- This behavior must be configurable by jurisdiction if ever needed
+
+If country-specific legal mode requires provider-side invoicing,
+implement a configuration flag:
+  settlement_mode = 'platform_merchant' | 'provider_merchant'
+
+Default:
+  settlement_mode = 'platform_merchant'
+*/
+
+/*
+================================================================================
+SECTION 20 - SMS / PUSH MESSAGE GUIDELINES
+================================================================================
+
+GENERAL RULES:
+--------------
+SMS:
+- short
+- include reference number
+- include next action
+- no sensitive financial excess detail if not needed
+- use support link shortener where permitted
+
+PUSH:
+- concise
+- immediate
+- click opens deep-linked app screen
+
+EMAIL:
+- full details
+- formal financial record
+- links to support / manage booking
+
+Examples:
+---------
+Booking SMS:
+"PetWash booking confirmed. Ref PWB-20260324-123456. Check email for full details."
+
+Provider SMS:
+"New PetWash job assigned. Ref PWB-20260324-123456. Open provider dashboard."
+
+eGift SMS:
+"Your PetWash eGift purchase is complete. Ref PWG-... Check email for code and details."
+
+Prestige SMS:
+"Welcome to PetWash Prestige. Your membership is active."
+*/
+
+/*
+================================================================================
+SECTION 21 - SECURITY AND STORAGE RULES
+================================================================================
+
+MANDATORY RULES:
+----------------
+1. Financial records must be created before communication
+2. Each payment transaction must have:
+   - transaction_reference
+   - transaction_stamped_at
+   - payment status
+   - audit hash
+3. Emails / SMS / push sends must be logged in notification_events
+4. Sensitive gateway payloads must be stored server-side only
+5. Never trust frontend pricing
+6. All totals must be recalculated on backend
+7. All receipt / invoice payloads must be reproducible
+8. Idempotency keys should be used for:
+   - booking place
+   - payment capture callback
+   - egift purchase
+   - loyalty purchase
+9. Use queue workers for notification dispatch in production
+10. PDF generation should happen asynchronously if heavy
+
+RECOMMENDED EXTRA TABLE:
+------------------------
+idempotency_keys(
+  id,
+  key,
+  entity_type,
+  entity_id,
+  created_at
+)
+*/
+
+/*
+================================================================================
+SECTION 22 - UTILITY FUNCTIONS
+================================================================================
+*/
+
+function randomUUID(): UUID {
+  return cryptoRandomUuid();
+}
+
+function calculateProviderGross(totalAmount: number): number {
+  return roundMoney(totalAmount);
+}
+
+function calculatePlatformFee(totalAmount: number): number {
+  return roundMoney(totalAmount * 0.15);
+}
+
+function calculateProviderNet(totalAmount: number): number {
+  return roundMoney(calculateProviderGross(totalAmount) - calculatePlatformFee(totalAmount));
+}
+
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function createAuditHash(payload: Record<string, unknown>): string {
+  // Replace with real SHA-256 hashing in production
+  return `sha256_${Buffer.from(JSON.stringify(payload)).toString("base64").slice(0, 32)}`;
+}
+
+function formatMoney(amount: number, currency: string): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+  }).format(amount);
+}
+
+function formatDateTime(value: string): string {
+  return new Date(value).toLocaleString("en-AU", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function formatShortDate(value: string): string {
+  return new Date(value).toLocaleDateString("en-AU");
+}
+
+function addMonths(date: Date, months: number): Date {
+  const copy = new Date(date);
+  copy.setMonth(copy.getMonth() + months);
+  return copy;
+}
+
+function generateGiftCode(): string {
+  const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `PWGIFT-${rand}`;
+}
+
+function generateGiftQrToken(code: string): string {
+  return `petwash:egift:${code}:${Date.now()}`;
+}
+
+/*
+================================================================================
+SECTION 23 - DATA ACCESS STUBS
+================================================================================
+
+Replace these with real ORM / SQL functions.
+*/
+
+async function loadUser(userId: UUID): Promise<UserRecord | null> {
+  // query users
+  return {
+    id: userId,
+    email: "demo@petwash.co.il",
+    phone_e164: "+972500000000",
+    first_name: "Demo",
+    last_name: "User",
+    display_name: "Demo User",
+    role: "customer",
+    email_notifications_enabled: true,
+    sms_notifications_enabled: true,
+    push_notifications_enabled: true,
+    preferred_language: "en",
+    timezone: "Asia/Jerusalem",
+  };
+}
+
+async function loadNotificationPreferences(userId: UUID) {
+  return {
+    email_enabled: true,
+    sms_enabled: true,
+    push_enabled: true,
+    booking_enabled: true,
+    payment_enabled: true,
+    loyalty_enabled: true,
+    marketing_enabled: false,
+    provider_job_enabled: true,
+  };
+}
+
+async function dbInsert(table: string, payload: Record<string, unknown>): Promise<void> {
+  console.log("DB INSERT", table, payload);
+}
+
+async function dbExecute(sql: string, params: unknown[]): Promise<void> {
+  console.log("DB EXECUTE", sql, params);
+}
+
+async function dbQueryOne(sql: string, params: unknown[]): Promise<any> {
+  console.log("DB QUERY ONE", sql, params);
+  return null;
+}
+
+/*
+================================================================================
+SECTION 24 - CHANNEL PROVIDER STUBS
+================================================================================
+*/
+
+async function sendEmail(input: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}): Promise<string> {
+  console.log("SEND EMAIL", input);
+  return `email_${Date.now()}`;
+}
+
+async function sendSms(input: {
+  to: string;
+  message: string;
+}): Promise<string> {
+  console.log("SEND SMS", input);
+  return `sms_${Date.now()}`;
+}
+
+async function sendPush(input: {
+  userId: UUID;
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+}): Promise<string> {
+  console.log("SEND PUSH", input);
+  return `push_${Date.now()}`;
+}
+
+async function queueDirectEmail(input: {
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<void> {
+  console.log("QUEUE DIRECT EMAIL", input);
+}
+
+/*
+================================================================================
+SECTION 25 - EXAMPLE EXPRESS ENDPOINTS
+================================================================================
+
+These are minimal endpoints showing where to call the core flows.
+*/
+
+interface RequestLike {
+  body: any;
+  user?: { id: UUID };
+}
+
+interface ResponseLike {
+  status(code: number): ResponseLike;
+  json(payload: unknown): void;
+}
+
+async function postBookingController(req: RequestLike, res: ResponseLike) {
+  try {
+    const result = await placeBookingAndCapturePayment({
+      customerUserId: req.user!.id,
+      providerUserId: req.body.providerUserId,
+      petId: req.body.petId,
+      petName: req.body.petName,
+      serviceType: req.body.serviceType,
+      serviceName: req.body.serviceName,
+      scheduledStartAt: req.body.scheduledStartAt,
+      scheduledEndAt: req.body.scheduledEndAt,
+      locationText: req.body.locationText,
+      subtotalAmount: req.body.subtotalAmount,
+      discountAmount: req.body.discountAmount ?? 0,
+      taxAmount: req.body.taxAmount ?? 0,
+      totalAmount: req.body.totalAmount,
+      currency: req.body.currency ?? "ILS",
+      paymentMethod: req.body.paymentMethod,
+      paymentProvider: req.body.paymentProvider,
+      externalPaymentReference: req.body.externalPaymentReference,
+      promoCode: req.body.promoCode,
+    });
+
+    res.status(201).json({
+      ok: true,
+      bookingReference: result.bookingReference,
+      transactionReference: result.transactionReference,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      ok: false,
+      error: error.message,
+    });
+  }
+}
+
+async function postPrestigeJoinController(req: RequestLike, res: ResponseLike) {
+  try {
+    const result = await joinPrestigeMembership({
+      userId: req.user!.id,
+      tierName: req.body.tierName,
+      paymentRequired: req.body.paymentRequired,
+      subtotalAmount: req.body.subtotalAmount ?? 0,
+      taxAmount: req.body.taxAmount ?? 0,
+      totalAmount: req.body.totalAmount ?? 0,
+      currency: req.body.currency ?? "ILS",
+      paymentMethod: req.body.paymentMethod,
+      paymentProvider: req.body.paymentProvider,
+      externalPaymentReference: req.body.externalPaymentReference,
+    });
+
+    res.status(201).json({
+      ok: true,
+      memberNumber: result.memberNumber,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      ok: false,
+      error: error.message,
+    });
+  }
+}
+
+async function postEGiftPurchaseController(req: RequestLike, res: ResponseLike) {
+  try {
+    const result = await purchaseEGift({
+      purchaserUserId: req.user!.id,
+      recipientEmail: req.body.recipientEmail,
+      recipientName: req.body.recipientName,
+      giftValue: req.body.giftValue,
+      currency: req.body.currency ?? "ILS",
+      paymentMethod: req.body.paymentMethod,
+      paymentProvider: req.body.paymentProvider,
+      externalPaymentReference: req.body.externalPaymentReference,
+    });
+
+    res.status(201).json({
+      ok: true,
+      giftReference: result.giftReference,
+      giftCode: result.giftCode,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      ok: false,
+      error: error.message,
+    });
+  }
+}
+
+async function postProviderRegistrationController(req: RequestLike, res: ResponseLike) {
+  try {
+    const result = await submitProviderRegistration({
+      userId: req.user!.id,
+      providerType: req.body.providerType,
+      legalName: req.body.legalName,
+      taxProfileJson: req.body.taxProfileJson,
+    });
+
+    res.status(201).json({
+      ok: true,
+      status: result.status,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      ok: false,
+      error: error.message,
+    });
+  }
+}
+
+/*
+================================================================================
+SECTION 26 - FINAL PLATFORM RULES FOR TEAM
+================================================================================
+
+NON-NEGOTIABLE RULES
+--------------------
+1. Backend first, notifications second
+2. Customer receipt/invoice by PetWash by default
+3. Provider gets payout notice / statement, not customer receipt
+4. Every purchase, booking, loyalty join, eGift, provider approval must:
+   - create record
+   - create reference
+   - create audit trail
+   - then notify
+5. Support all channels:
+   - email
+   - SMS
+   - push
+6. Respect user preferences
+7. Keep every notification logged
+8. Keep every financial event stamped
+9. Keep every provider earning recorded
+10. Keep secure history forever or per policy
+
+THIS IS THE TARGET UX
+---------------------
+Like Uber / iHerb level:
+- immediate confirmation
+- full transparency
+- both sides informed
+- financial detail recorded
+- support-ready references
+- auditable backend history
+
+END OF SINGLE-BOX HANDOFF
+================================================================================
+*/
