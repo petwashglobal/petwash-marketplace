@@ -24,7 +24,11 @@ import { eq, and, desc, sql, or, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { auth as firebaseAuth } from '../lib/firebase-admin';
 import { FinancialDocumentService } from './FinancialDocumentService';
-import { dispatchNotifications, buildProviderApprovedSms } from './PetWashNotificationEngine';
+import {
+  dispatchNotifications,
+  buildProviderApprovedSms,
+  buildProviderRejectedSms,
+} from './PetWashNotificationEngine';
 
 // Approval queue status types
 export type ApprovalStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'on_hold';
@@ -522,6 +526,91 @@ class AdminProviderReviewService {
         reviewerId,
         reason: rejectionReason,
       });
+
+      // ── Provider rejection document + notifications (fire-and-forget) ──
+      (async () => {
+        try {
+          const { providerId, platform } = review.application;
+          let firebaseUid: string | null = null;
+
+          if (platform === 'walk_my_pet') {
+            const [walker] = await db.select({ userId: walkerProfiles.userId })
+              .from(walkerProfiles).where(eq(walkerProfiles.walkerId, providerId)).limit(1);
+            if (walker) firebaseUid = walker.userId;
+          } else if (platform === 'sitter_suite') {
+            const numId = parseInt(providerId);
+            const [sitter] = await db.select({ userId: sitterProfiles.userId })
+              .from(sitterProfiles).where(eq(sitterProfiles.id, numId)).limit(1);
+            if (sitter) firebaseUid = sitter.userId;
+          } else if (platform === 'pettrek') {
+            const [trainer] = await db.select({ userId: trainers.userId })
+              .from(trainers).where(eq(trainers.id, parseInt(providerId))).limit(1);
+            if (trainer) firebaseUid = trainer.userId;
+          }
+
+          if (!firebaseUid) return;
+
+          const [provUser] = await db.select({ phone: users.phone, email: users.email, firstName: users.firstName })
+            .from(users).where(eq(users.id, firebaseUid)).limit(1);
+
+          const providerName = provUser?.firstName || 'ספק';
+          const issuedAt = new Date().toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
+
+          const rejectionHtml = `<!DOCTYPE html><html><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;">
+<h2>PetWash™ — הודעה על דחיית בקשה</h2>
+<table style="border-collapse:collapse;width:100%;max-width:480px;">
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">שם</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${providerName}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">פלטפורמה</td><td style="padding:8px;border-bottom:1px solid #eee;">${platform}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">סיבת הדחייה</td><td style="padding:8px;border-bottom:1px solid #eee;">${rejectionReason}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">השלב הבא</td><td style="padding:8px;border-bottom:1px solid #eee;">צור/י קשר עם support@petwash.co.il לבירורים</td></tr>
+  <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${issuedAt}</td></tr>
+</table>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il</p>
+</body></html>`;
+
+          const docRef = await FinancialDocumentService.create({
+            userId: firebaseUid,
+            documentType: 'provider_rejection_notice',
+            issuedByEntity: 'PetWash',
+            documentPayloadJson: {
+              applicationId,
+              providerId,
+              platform,
+              rejectionReason,
+              reviewerId,
+              nextStep: 'Contact support@petwash.co.il',
+            },
+            renderedHtml: rejectionHtml,
+            idempotencyKey: `provider_rejection_notice:${applicationId}:${firebaseUid}`,
+          });
+
+          const smsText = buildProviderRejectedSms({ providerName });
+          await dispatchNotifications({
+            userId: firebaseUid,
+            eventType: 'provider_rejected',
+            templateKey: 'provider_application_rejected',
+            channels: ['sms', 'push'],
+            sms: provUser?.phone ? { to: provUser.phone, text: smsText } : undefined,
+            push: {
+              userId: firebaseUid,
+              title: `PetWash™ — בקשת הספק לא אושרה`,
+              body: `לצערנו לא ניתן לאשר את בקשתך בשלב זה. פנה/י לתמיכה.`,
+              data: { applicationId: String(applicationId), documentRef: docRef, type: 'provider_rejected' },
+            },
+            debugPayload: {
+              applicationId,
+              providerName,
+              rejectionReason,
+              smsText,
+              pushTitle: `PetWash™ — בקשת הספק לא אושרה`,
+              pushBody: `לצערנו לא ניתן לאשר את בקשתך`,
+              documentRef: docRef,
+            },
+          });
+        } catch (notifErr: any) {
+          logger.error('[AdminReview] Post-rejection notification failed silently', { error: notifErr?.message });
+        }
+      })();
 
       return {
         success: true,

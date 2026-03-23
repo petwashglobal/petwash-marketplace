@@ -437,3 +437,59 @@ export function buildProviderRejectedSms(params: {
     `פנה/י לתמיכה: support@petwash.co.il`
   );
 }
+
+export function buildEgiftRedeemedSms(params: {
+  redemptionRef: string;
+  amountILS: string;
+  stationId?: string;
+}): string {
+  const stationLine = params.stationId ? `עמדה: ${params.stationId}\n` : '';
+  return (
+    `PetWash™ - כרטיס מתנה מומש ✅\n` +
+    `מס׳ מימוש: ${params.redemptionRef}\n` +
+    `שווי מומש: ₪${params.amountILS}\n` +
+    stationLine +
+    `לפרטים: https://petwash.co.il/egift`
+  );
+}
+
+export function buildPointsRedeemedSms(params: {
+  rewardName: string;
+  pointsCost: number;
+  voucherCode: string;
+  newBalance: number;
+}): string {
+  return (
+    `PetWash™ - נקודות מומשו 🏆\n` +
+    `פרס: ${params.rewardName}\n` +
+    `נקודות שנוצלו: ${params.pointsCost}\n` +
+    `קוד קופון: ${params.voucherCode}\n` +
+    `יתרת נקודות: ${params.newBalance}\n` +
+    `petwash.co.il/prestige`
+  );
+}
+
+export function buildMembershipRenewedSms(params: {
+  tier: string;
+  renewedUntil: string;
+}): string {
+  return (
+    `PetWash™ Prestige 👑\n` +
+    `חברות מורחבת!\n` +
+    `רמה: ${params.tier}\n` +
+    `תקף עד: ${params.renewedUntil}\n` +
+    `petwash.co.il/prestige`
+  );
+}
+
+export function buildMembershipCancelledSms(params: {
+  tier: string;
+  effectiveDate: string;
+}): string {
+  return (
+    `PetWash™ - חברות בוטלה\n` +
+    `רמת חברות ${params.tier} בוטלה.\n` +
+    `תוקף הטבות עד: ${params.effectiveDate}\n` +
+    `להצטרפות מחדש: petwash.co.il/prestige`
+  );
+}

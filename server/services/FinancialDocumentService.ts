@@ -29,6 +29,7 @@ export type FinancialDocumentType =
   | 'booking_earnings_notice'
   | 'egift_receipt'
   | 'egift_redemption_receipt'
+  | 'loyalty_redemption_receipt'
   | 'membership_receipt'
   | 'provider_payout_statement'
   | 'refund_receipt'
@@ -56,6 +57,7 @@ const REFERENCE_PREFIXES: Record<FinancialDocumentType, string> = {
   booking_earnings_notice:      'PW-ERN',
   egift_receipt:                'PW-EGF',
   egift_redemption_receipt:     'PW-EGR',
+  loyalty_redemption_receipt:   'PW-LRR',
   membership_receipt:           'PW-MBR',
   provider_payout_statement:    'PW-PAY',
   refund_receipt:               'PW-RFD',

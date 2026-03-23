@@ -4,6 +4,12 @@ import { requireAuth } from '../customAuth';
 import { apiLimiter } from '../middleware/rateLimiter';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
+import { FinancialDocumentService } from '../services/FinancialDocumentService';
+import {
+  dispatchNotifications,
+  buildBookingCancelledSms,
+  buildRefundIssuedSms,
+} from '../services/PetWashNotificationEngine';
 
 const router = Router();
 
@@ -1028,6 +1034,8 @@ router.post(
         .where(eq(superAppPayouts.bookingId, bookingId))
         .limit(1);
 
+      const refundAmount = payout?.amount ?? updatedBooking.totalPrice ?? '0';
+
       if (payout && payout.status === 'in_escrow') {
         await ProviderPayoutService.cancelEscrowAndRefund(payout.id, reason);
       }
@@ -1038,6 +1046,138 @@ router.post(
         cancelledBy: isCustomer ? 'customer' : 'provider',
         reason,
       });
+
+      // ── Financial documents + notifications (fire-and-forget) ──
+      (async () => {
+        try {
+          const { users } = await import('@shared/schema');
+          const { eq } = await import('drizzle-orm');
+          const { db } = await import('../db');
+
+          const [customer] = await db.select({ email: users.email, phone: users.phone })
+            .from(users).where(eq(users.id, updatedBooking.userId)).limit(1);
+
+          const bookingRef = updatedBooking.bookingNumber || bookingId;
+          const serviceName = updatedBooking.serviceType || updatedBooking.platformId || 'שירות';
+          const cancelledByLabel = isCustomer ? 'לקוח' : 'ספק';
+          const issuedAt = new Date().toLocaleDateString('he-IL');
+          const refundILS = parseFloat(String(refundAmount)).toFixed(2);
+
+          const cancelHtml = `<!DOCTYPE html><html><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;">
+<h2>PetWash™ — הזמנה בוטלה</h2>
+<table style="border-collapse:collapse;width:100%;max-width:480px;">
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">מס׳ הזמנה</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${bookingRef}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">שירות</td><td style="padding:8px;border-bottom:1px solid #eee;">${serviceName}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">בוטל על ידי</td><td style="padding:8px;border-bottom:1px solid #eee;">${cancelledByLabel}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">סיבה</td><td style="padding:8px;border-bottom:1px solid #eee;">${reason}</td></tr>
+  <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${issuedAt}</td></tr>
+</table>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il</p>
+</body></html>`;
+
+          const cancellationDocRef = await FinancialDocumentService.create({
+            userId: updatedBooking.userId,
+            bookingId,
+            documentType: 'cancellation_notice',
+            issuedByEntity: 'PetWash',
+            documentPayloadJson: {
+              bookingRef,
+              serviceName,
+              cancelledBy: isCustomer ? 'customer' : 'provider',
+              reason,
+              refundAmount: refundILS,
+              currency: 'ILS',
+            },
+            renderedHtml: cancelHtml,
+            idempotencyKey: `cancellation_notice:${bookingId}:${updatedBooking.userId}`,
+          });
+
+          await dispatchNotifications({
+            userId: updatedBooking.userId,
+            eventType: 'booking_cancelled',
+            templateKey: 'customer_booking_cancelled',
+            bookingId,
+            channels: ['sms', 'push'],
+            sms: customer?.phone ? {
+              to: customer.phone,
+              text: buildBookingCancelledSms({ bookingRef, serviceName }),
+            } : undefined,
+            push: {
+              userId: updatedBooking.userId,
+              title: `הזמנה בוטלה – Pet Wash™`,
+              body: `הזמנה מס׳ ${bookingRef} בוטלה. ${payout ? 'זיכוי יועבר תוך 5-7 ימי עסקים.' : ''}`,
+              data: { bookingId, documentRef: cancellationDocRef, type: 'booking_cancelled' },
+            },
+            debugPayload: {
+              bookingRef,
+              smsText: buildBookingCancelledSms({ bookingRef, serviceName }),
+              pushTitle: `הזמנה בוטלה – Pet Wash™`,
+              pushBody: `הזמנה מס׳ ${bookingRef} בוטלה`,
+              documentRef: cancellationDocRef,
+            },
+          });
+
+          // ── Refund receipt (only when a payout was in escrow) ──
+          if (payout) {
+            const refundHtml = `<!DOCTYPE html><html><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;">
+<h2>PetWash™ — אישור זיכוי</h2>
+<table style="border-collapse:collapse;width:100%;max-width:480px;">
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">מס׳ הזמנה</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${bookingRef}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">סכום זיכוי</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;color:#1a7a1a;">₪${refundILS}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">עיבוד זיכוי</td><td style="padding:8px;border-bottom:1px solid #eee;">5-7 ימי עסקים</td></tr>
+  <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${issuedAt}</td></tr>
+</table>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il</p>
+</body></html>`;
+
+            const refundDocRef = await FinancialDocumentService.create({
+              userId: updatedBooking.userId,
+              bookingId,
+              transactionId: payout.id,
+              documentType: 'refund_receipt',
+              issuedByEntity: 'PetWash',
+              documentPayloadJson: {
+                bookingRef,
+                refundAmount: refundILS,
+                currency: payout.currency || 'ILS',
+                payoutId: payout.id,
+                reason,
+              },
+              renderedHtml: refundHtml,
+              idempotencyKey: `refund_receipt:${bookingId}:${updatedBooking.userId}`,
+            });
+
+            await dispatchNotifications({
+              userId: updatedBooking.userId,
+              eventType: 'refund_issued',
+              templateKey: 'customer_refund_issued',
+              bookingId,
+              transactionId: payout.id,
+              channels: ['sms', 'push'],
+              sms: customer?.phone ? {
+                to: customer.phone,
+                text: buildRefundIssuedSms({ bookingRef, refundAmount: refundILS }),
+              } : undefined,
+              push: {
+                userId: updatedBooking.userId,
+                title: `זיכוי יועבר – Pet Wash™ ↩️`,
+                body: `זיכוי של ₪${refundILS} עבור הזמנה ${bookingRef} יועבר תוך 5-7 ימי עסקים`,
+                data: { bookingId, documentRef: refundDocRef, type: 'refund_issued' },
+              },
+              debugPayload: {
+                bookingRef,
+                refundAmount: refundILS,
+                smsText: buildRefundIssuedSms({ bookingRef, refundAmount: refundILS }),
+                pushTitle: `זיכוי יועבר – Pet Wash™ ↩️`,
+                pushBody: `זיכוי ₪${refundILS} עבור הזמנה ${bookingRef}`,
+                documentRef: refundDocRef,
+              },
+            });
+          }
+        } catch (notifErr: any) {
+          logger.error('[Booking] Post-cancellation notification failed silently', { error: notifErr?.message });
+        }
+      })();
 
       res.json({ 
         success: true,

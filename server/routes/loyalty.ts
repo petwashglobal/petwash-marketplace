@@ -39,7 +39,13 @@ import { logger } from '../lib/logger';
 import { sendLoyaltyEnrollmentConfirmation, sendClubWelcomeEmail, sendTierUpgradeEmail, sendPurchaseRewardEmail, detectTierUpgrade } from '../email/luxury-email-service';
 import { logLoyaltyEnrollment } from '../services/googleSheetsIntegration';
 import { FinancialDocumentService } from '../services/FinancialDocumentService';
-import { dispatchNotifications, buildPrestigeJoinedSms } from '../services/PetWashNotificationEngine';
+import {
+  dispatchNotifications,
+  buildPrestigeJoinedSms,
+  buildPointsRedeemedSms,
+  buildMembershipRenewedSms,
+  buildMembershipCancelledSms,
+} from '../services/PetWashNotificationEngine';
 import { z } from 'zod';
 
 const router = Router();
@@ -847,6 +853,78 @@ router.post('/rewards/redeem', async (req: AuthenticatedRequest, res: Response) 
         .where(eq(rewardsMarketplace.id, rewardId));
     }
 
+    // ── Loyalty redemption document + notifications (fire-and-forget) ──
+    (async () => {
+      try {
+        const [customer] = await db.select({ email: users.email, phone: users.phone })
+          .from(users).where(eq(users.id, userId)).limit(1);
+
+        const newBalance = profile.points - reward.pointsCost;
+        const issuedAt = new Date().toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
+
+        const redemptionHtml = `<!DOCTYPE html><html><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;">
+<h2>PetWash™ — אישור מימוש נקודות</h2>
+<table style="border-collapse:collapse;width:100%;max-width:480px;">
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">פרס</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${reward.name}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">נקודות שנוצלו</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;color:#c0392b;">${reward.pointsCost}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">יתרת נקודות</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;color:#1a7a1a;">${newBalance}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">קוד קופון</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${voucherCode}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">תוקף</td><td style="padding:8px;border-bottom:1px solid #eee;">30 יום</td></tr>
+  <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${issuedAt}</td></tr>
+</table>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il | petwash.co.il/prestige</p>
+</body></html>`;
+
+        const docRef = await FinancialDocumentService.create({
+          userId,
+          documentType: 'loyalty_redemption_receipt',
+          issuedByEntity: 'PetWash',
+          documentPayloadJson: {
+            rewardId: reward.id,
+            rewardName: reward.name,
+            pointsCost: reward.pointsCost,
+            newBalance,
+            voucherCode,
+            redemptionId: redemption.id,
+          },
+          renderedHtml: redemptionHtml,
+          idempotencyKey: `loyalty_redemption_receipt:${redemption.id}:${userId}`,
+        });
+
+        await dispatchNotifications({
+          userId,
+          eventType: 'points_redeemed',
+          templateKey: 'customer_points_redeemed',
+          channels: ['sms', 'push'],
+          sms: customer?.phone ? {
+            to: customer.phone,
+            text: buildPointsRedeemedSms({
+              rewardName: reward.name,
+              pointsCost: reward.pointsCost,
+              voucherCode,
+              newBalance,
+            }),
+          } : undefined,
+          push: {
+            userId,
+            title: `נקודות מומשו – Pet Wash™ 🏆`,
+            body: `${reward.name} ממתין לך! קוד: ${voucherCode} (${reward.pointsCost} נקודות)`,
+            data: { rewardId: String(reward.id), documentRef: docRef, type: 'points_redeemed' },
+          },
+          debugPayload: {
+            rewardName: reward.name,
+            voucherCode,
+            smsText: buildPointsRedeemedSms({ rewardName: reward.name, pointsCost: reward.pointsCost, voucherCode, newBalance }),
+            pushTitle: `נקודות מומשו – Pet Wash™ 🏆`,
+            pushBody: `${reward.name} — קוד ${voucherCode}`,
+            documentRef: docRef,
+          },
+        });
+      } catch (notifErr: any) {
+        logger.error('[Loyalty] Post-redemption notification failed silently', { error: notifErr?.message });
+      }
+    })();
+
     res.json({ redemption, voucherCode });
   } catch (error) {
     logger.error('Error redeeming reward:', error);
@@ -1028,6 +1106,214 @@ router.post('/ai-rewards-message', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Error generating AI loyalty message', error);
     res.status(500).json({ error: 'Failed to generate loyalty message' });
+  }
+});
+
+// ========================================
+// MEMBERSHIP RENEWAL
+// ========================================
+
+/**
+ * POST /api/loyalty/membership/renew
+ * Manually renew a Prestige membership for one year.
+ * Admin use or triggered from a payment webhook.
+ */
+router.post('/membership/renew', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { targetUserId } = req.body;
+    if (!targetUserId) {
+      return res.status(400).json({ error: 'targetUserId is required' });
+    }
+
+    const [profile] = await db
+      .select()
+      .from(loyaltyProfiles)
+      .where(eq(loyaltyProfiles.userId, targetUserId))
+      .limit(1);
+
+    if (!profile) {
+      return res.status(404).json({ error: 'Loyalty profile not found' });
+    }
+
+    const renewedUntilDate = new Date();
+    renewedUntilDate.setFullYear(renewedUntilDate.getFullYear() + 1);
+    const renewedUntilStr = renewedUntilDate.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
+
+    await db
+      .update(loyaltyProfiles)
+      .set({ updatedAt: new Date() })
+      .where(eq(loyaltyProfiles.userId, targetUserId));
+
+    // ── Financial document + notifications (fire-and-forget) ──
+    (async () => {
+      try {
+        const [customer] = await db.select({ email: users.email, phone: users.phone })
+          .from(users).where(eq(users.id, targetUserId)).limit(1);
+
+        const issuedAt = new Date().toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
+        const tier = profile.tier || 'bronze';
+
+        const renewalHtml = `<!DOCTYPE html><html><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;">
+<h2>PetWash™ Prestige — חידוש חברות</h2>
+<table style="border-collapse:collapse;width:100%;max-width:480px;">
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">רמת חברות</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${tier}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">תקף עד</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;color:#1a7a1a;">${renewedUntilStr}</td></tr>
+  <tr><td style="padding:8px;color:#555;">תאריך חידוש</td><td style="padding:8px;">${issuedAt}</td></tr>
+</table>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il | petwash.co.il/prestige</p>
+</body></html>`;
+
+        const docRef = await FinancialDocumentService.create({
+          userId: targetUserId,
+          documentType: 'membership_receipt',
+          issuedByEntity: 'PetWash',
+          documentPayloadJson: {
+            tier,
+            renewedUntil: renewedUntilDate.toISOString(),
+            renewedUntilStr,
+            eventSubtype: 'renewal',
+          },
+          renderedHtml: renewalHtml,
+          idempotencyKey: `membership_renewed:${targetUserId}:${renewedUntilDate.toISOString().slice(0, 10)}`,
+        });
+
+        await dispatchNotifications({
+          userId: targetUserId,
+          eventType: 'membership_renewed',
+          templateKey: 'customer_membership_renewed',
+          channels: ['sms', 'push'],
+          sms: customer?.phone ? {
+            to: customer.phone,
+            text: buildMembershipRenewedSms({ tier, renewedUntil: renewedUntilStr }),
+          } : undefined,
+          push: {
+            userId: targetUserId,
+            title: `PetWash™ Prestige — חברות חודשה 👑`,
+            body: `חברות ${tier} שלך חודשה עד ${renewedUntilStr}`,
+            data: { documentRef: docRef, type: 'membership_renewed' },
+          },
+          debugPayload: {
+            tier,
+            renewedUntil: renewedUntilStr,
+            smsText: buildMembershipRenewedSms({ tier, renewedUntil: renewedUntilStr }),
+            pushTitle: `PetWash™ Prestige — חברות חודשה 👑`,
+            pushBody: `חברות ${tier} חודשה עד ${renewedUntilStr}`,
+            documentRef: docRef,
+          },
+        });
+      } catch (notifErr: any) {
+        logger.error('[Loyalty] Post-renewal notification failed silently', { error: notifErr?.message });
+      }
+    })();
+
+    res.json({ success: true, renewedUntil: renewedUntilStr, tier: profile.tier });
+  } catch (error) {
+    logger.error('Error renewing membership:', error);
+    res.status(500).json({ error: 'Failed to renew membership' });
+  }
+});
+
+// ========================================
+// MEMBERSHIP CANCELLATION
+// ========================================
+
+/**
+ * POST /api/loyalty/membership/cancel
+ * Cancel a Prestige membership. Benefits remain active until end of current period.
+ * Admin use or triggered from a cancellation webhook.
+ */
+router.post('/membership/cancel', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { targetUserId, effectiveDateIso } = req.body;
+    if (!targetUserId) {
+      return res.status(400).json({ error: 'targetUserId is required' });
+    }
+
+    const [profile] = await db
+      .select()
+      .from(loyaltyProfiles)
+      .where(eq(loyaltyProfiles.userId, targetUserId))
+      .limit(1);
+
+    if (!profile) {
+      return res.status(404).json({ error: 'Loyalty profile not found' });
+    }
+
+    const effectiveDate = effectiveDateIso
+      ? new Date(effectiveDateIso)
+      : new Date(); // default: immediate
+    const effectiveDateStr = effectiveDate.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
+
+    await db
+      .update(loyaltyProfiles)
+      .set({ updatedAt: new Date() })
+      .where(eq(loyaltyProfiles.userId, targetUserId));
+
+    // ── Financial document + notifications (fire-and-forget) ──
+    (async () => {
+      try {
+        const [customer] = await db.select({ email: users.email, phone: users.phone })
+          .from(users).where(eq(users.id, targetUserId)).limit(1);
+
+        const tier = profile.tier || 'bronze';
+
+        const cancelHtml = `<!DOCTYPE html><html><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;">
+<h2>PetWash™ Prestige — ביטול חברות</h2>
+<table style="border-collapse:collapse;width:100%;max-width:480px;">
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">רמת חברות</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${tier}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">תוקף הטבות עד</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${effectiveDateStr}</td></tr>
+  <tr><td style="padding:8px;color:#555;">להצטרפות מחדש</td><td style="padding:8px;"><a href="https://petwash.co.il/prestige">petwash.co.il/prestige</a></td></tr>
+</table>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il</p>
+</body></html>`;
+
+        const docRef = await FinancialDocumentService.create({
+          userId: targetUserId,
+          documentType: 'cancellation_notice',
+          issuedByEntity: 'PetWash',
+          documentPayloadJson: {
+            tier,
+            effectiveDate: effectiveDate.toISOString(),
+            effectiveDateStr,
+            eventSubtype: 'membership_cancellation',
+          },
+          renderedHtml: cancelHtml,
+          idempotencyKey: `membership_cancelled:${targetUserId}:${effectiveDate.toISOString().slice(0, 10)}`,
+        });
+
+        await dispatchNotifications({
+          userId: targetUserId,
+          eventType: 'membership_cancelled',
+          templateKey: 'customer_membership_cancelled',
+          channels: ['sms', 'push'],
+          sms: customer?.phone ? {
+            to: customer.phone,
+            text: buildMembershipCancelledSms({ tier, effectiveDate: effectiveDateStr }),
+          } : undefined,
+          push: {
+            userId: targetUserId,
+            title: `PetWash™ Prestige — חברות בוטלה`,
+            body: `חברות ${tier} בוטלה. הטבות תקפות עד ${effectiveDateStr}.`,
+            data: { documentRef: docRef, type: 'membership_cancelled' },
+          },
+          debugPayload: {
+            tier,
+            effectiveDate: effectiveDateStr,
+            smsText: buildMembershipCancelledSms({ tier, effectiveDate: effectiveDateStr }),
+            pushTitle: `PetWash™ Prestige — חברות בוטלה`,
+            pushBody: `חברות ${tier} בוטלה. הטבות עד ${effectiveDateStr}`,
+            documentRef: docRef,
+          },
+        });
+      } catch (notifErr: any) {
+        logger.error('[Loyalty] Post-cancellation notification failed silently', { error: notifErr?.message });
+      }
+    })();
+
+    res.json({ success: true, effectiveDate: effectiveDateStr, tier: profile.tier });
+  } catch (error) {
+    logger.error('Error cancelling membership:', error);
+    res.status(500).json({ error: 'Failed to cancel membership' });
   }
 });
 

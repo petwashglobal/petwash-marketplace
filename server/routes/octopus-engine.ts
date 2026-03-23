@@ -32,7 +32,11 @@ import { egiftFinancialService } from "../services/EgiftFinancialService";
 import escrowService from "../services/EscrowService";
 import { backupFinancialDocument } from "../services/gcsBackupService";
 import { FinancialDocumentService } from "../services/FinancialDocumentService";
-import { dispatchNotifications, buildEgiftPurchasedSms } from "../services/PetWashNotificationEngine";
+import {
+  dispatchNotifications,
+  buildEgiftPurchasedSms,
+  buildEgiftRedeemedSms,
+} from "../services/PetWashNotificationEngine";
 const router = Router();
 
 const PLATFORM_FEE_RATE = 0.15;
@@ -703,6 +707,87 @@ router.post("/v1/brain/redeem", async (req: Request, res: Response) => {
       amountCents: body.amountCents,
       idempotent: result.idempotent,
     });
+
+    // ── eGift redemption document + notifications (fire-and-forget) ──
+    if (!result.idempotent) {
+      (async () => {
+        try {
+          const [redeemer] = await db.select({ email: users.email, phone: users.phone })
+            .from(users).where(eq(users.id, body.userId)).limit(1);
+
+          const redemptionRef = result.bookingId || `RDM-${Date.now()}`;
+          const amountILS = (body.amountCents / 100).toFixed(2);
+          const issuedAt = new Date().toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
+
+          const redemptionHtml = `<!DOCTYPE html><html><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;">
+<h2>PetWash™ — אישור מימוש כרטיס מתנה</h2>
+<table style="border-collapse:collapse;width:100%;max-width:480px;">
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">מס׳ מימוש</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${redemptionRef}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">מס׳ כרטיס מתנה</td><td style="padding:8px;border-bottom:1px solid #eee;">${body.egiftId}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">סכום מומש</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;color:#1a7a1a;">₪${amountILS}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">פלטפורמה</td><td style="padding:8px;border-bottom:1px solid #eee;">${body.platform}</td></tr>
+  ${body.stationId ? `<tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">עמדה</td><td style="padding:8px;border-bottom:1px solid #eee;">${body.stationId}</td></tr>` : ''}
+  <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${issuedAt}</td></tr>
+</table>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | support@petwash.co.il</p>
+</body></html>`;
+
+          const docRef = await FinancialDocumentService.create({
+            userId: body.userId,
+            bookingId: result.bookingId,
+            transactionId: body.idempotencyKey,
+            documentType: 'egift_redemption_receipt',
+            issuedByEntity: 'PetWash',
+            documentPayloadJson: {
+              egiftId: body.egiftId,
+              redemptionRef,
+              amountCents: body.amountCents,
+              amountILS,
+              currency: 'ILS',
+              platform: body.platform,
+              product: body.product,
+              stationId: body.stationId,
+              baySide: body.baySide,
+            },
+            renderedHtml: redemptionHtml,
+            idempotencyKey: `egift_redemption_receipt:${body.egiftId}:${body.userId}`,
+          });
+
+          await dispatchNotifications({
+            userId: body.userId,
+            eventType: 'egift_redeemed',
+            templateKey: 'customer_egift_redeemed',
+            transactionId: body.idempotencyKey,
+            channels: ['sms', 'push'],
+            sms: redeemer?.phone ? {
+              to: redeemer.phone,
+              text: buildEgiftRedeemedSms({
+                redemptionRef,
+                amountILS,
+                stationId: body.stationId,
+              }),
+            } : undefined,
+            push: {
+              userId: body.userId,
+              title: `כרטיס מתנה מומש – Pet Wash™ ✅`,
+              body: `₪${amountILS} מומשו בהצלחה! מס׳ ${redemptionRef}`,
+              data: { egiftId: body.egiftId, documentRef: docRef, type: 'egift_redeemed' },
+            },
+            debugPayload: {
+              egiftId: body.egiftId,
+              redemptionRef,
+              amountILS,
+              smsText: buildEgiftRedeemedSms({ redemptionRef, amountILS, stationId: body.stationId }),
+              pushTitle: `כרטיס מתנה מומש – Pet Wash™ ✅`,
+              pushBody: `₪${amountILS} מומשו בהצלחה`,
+              documentRef: docRef,
+            },
+          });
+        } catch (notifErr: any) {
+          logger.error('[Brain] Post-redeem notification failed silently', { error: notifErr?.message });
+        }
+      })();
+    }
 
     return res.json({
       success: true,
