@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/Layout";
 import { Card } from "@/components/ui/card";
@@ -162,6 +162,8 @@ interface Driver {
   languages?: string[];
   verified?: boolean;
   featured?: boolean;
+  distanceKm?: number | null;
+  proximityLabel?: string | null;
 }
 
 export default function BrowseDrivers() {
@@ -179,6 +181,35 @@ export default function BrowseDrivers() {
   });
   const [showWizard, setShowWizard] = useState(false);
   const [bookingFilters, setBookingFilters] = useState<BookingFilters | null>(null);
+  const [searchLat, setSearchLat] = useState<number | null>(null);
+  const [searchLng, setSearchLng] = useState<number | null>(null);
+  const autoLocateDoneRef = useRef(false);
+
+  useEffect(() => {
+    if (autoLocateDoneRef.current || !navigator.geolocation) return;
+    autoLocateDoneRef.current = true;
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return;
+        setSearchLat(latitude);
+        setSearchLng(longitude);
+        try {
+          const lang = navigator.language?.startsWith('he') ? 'he' : 'en';
+          const { getApiUrl } = await import('@/lib/apiConfig');
+          const res = await fetch(getApiUrl(`/api/geocode/reverse?lat=${latitude}&lng=${longitude}&language=${lang}`));
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.name) setFilters(prev => ({ ...prev, location: data.name }));
+          }
+        } catch {
+          // no-op — coordinates stored, readable address unavailable
+        }
+      },
+      () => { /* permission denied or unavailable */ },
+      { timeout: 8000, maximumAge: 60000 }
+    );
+  }, []);
 
   const handleWizardComplete = (wizardFilters: BookingFilters) => {
     setBookingFilters(wizardFilters);
@@ -190,11 +221,17 @@ export default function BrowseDrivers() {
   };
 
   const { data, isLoading } = useQuery<{ drivers: Driver[] }>({
-    queryKey: ["/api/providers/drivers", filters, sortBy],
+    queryKey: ["/api/providers/drivers", filters, sortBy, searchLat, searchLng],
     queryFn: async () => {
       try {
         const { getApiUrl } = await import('@/lib/apiConfig');
-        const response = await fetch(getApiUrl(`/api/marketplace-bookings/search/providers?platform=pet_trek&city=${encodeURIComponent(filters.location || '')}`));
+        const params = new URLSearchParams();
+        params.set('platform', 'pet_trek');
+        params.set('sortBy', 'distance');
+        if (filters.location) params.set('city', filters.location);
+        if (searchLat !== null) params.set('lat', String(searchLat));
+        if (searchLng !== null) params.set('lng', String(searchLng));
+        const response = await fetch(getApiUrl(`/api/marketplace-bookings/search/providers?${params.toString()}`));
         if (!response.ok) return { drivers: DEMO_DRIVERS };
         const result = await response.json();
         if (result.providers && result.providers.length > 0) {
@@ -216,6 +253,8 @@ export default function BrowseDrivers() {
             languages: [],
             verified: p.isVerified || false,
             featured: false,
+            distanceKm: p.distanceKm ?? null,
+            proximityLabel: p.proximityLabel ?? null,
           })) };
         }
         return { drivers: DEMO_DRIVERS };
@@ -643,6 +682,18 @@ export default function BrowseDrivers() {
                       <div className="flex items-center gap-2 luxury-text-body">
                         <MapPin className="h-4 w-4 text-purple-600" />
                         <span>{driver.serviceArea}</span>
+                        {driver.distanceKm != null && (
+                          <span className="text-xs font-medium text-green-600 ml-auto">
+                            {driver.proximityLabel === 'same_building' ? '🏠 Same building'
+                              : driver.proximityLabel === 'same_street' ? '📍 Same street'
+                              : driver.proximityLabel === 'nearby' ? '✅ Very close'
+                              : driver.proximityLabel === 'neighbourhood' ? '🌿 Neighbourhood'
+                              : driver.proximityLabel === 'same_city' ? '🏙️ Same city'
+                              : driver.proximityLabel === 'metro_area' ? '🗺️ Metro area'
+                              : driver.proximityLabel?.endsWith('m') ? `${driver.proximityLabel}`
+                              : `${driver.distanceKm} km`}
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-2 luxury-text-body">

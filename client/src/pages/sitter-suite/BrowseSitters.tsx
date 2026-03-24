@@ -627,15 +627,18 @@ export default function BrowseSitters() {
                 const pricePerNight = provider.pricing.perNight ? parseFloat(provider.pricing.perNight) : 0;
                 
                 const proximityBadge = (() => {
-                  if (provider.proximityLabel === 'same_building') return isHebrew ? 'אותו מבנה' : 'Same building';
-                  if (provider.proximityLabel === 'same_street') return isHebrew ? 'אותה רחוב' : 'Same street';
-                  if (provider.proximityLabel === 'nearby') return isHebrew ? 'קרוב' : 'Nearby';
+                  if (provider.proximityLabel === 'same_building') return isHebrew ? '🏠 אותו מבנה' : '🏠 Same building';
+                  if (provider.proximityLabel === 'same_street') return isHebrew ? '📍 אותה רחוב' : '📍 Same street';
+                  if (provider.proximityLabel === 'nearby') return isHebrew ? '✅ קרוב מאוד' : '✅ Very close';
                   if (provider.proximityLabel?.endsWith('m')) {
                     const meters = parseInt(provider.proximityLabel);
-                    return `${meters} ${isHebrew ? 'מ\'' : 'm'}`;
+                    return `${meters} ${isHebrew ? 'מ׳' : 'm'}`;
                   }
+                  if (provider.proximityLabel === 'neighbourhood') return isHebrew ? '🌿 שכונה' : '🌿 Neighbourhood';
+                  if (provider.proximityLabel === 'same_city') return isHebrew ? '🏙️ אותה עיר' : '🏙️ Same city';
+                  if (provider.proximityLabel === 'metro_area') return isHebrew ? '🗺️ אזור מטרו' : '🗺️ Metro area';
                   if (provider.distanceMeters !== null && provider.distanceMeters !== undefined && provider.distanceMeters < 1000) {
-                    return `${provider.distanceMeters} ${isHebrew ? 'מ\'' : 'm'}`;
+                    return `${provider.distanceMeters} ${isHebrew ? 'מ׳' : 'm'}`;
                   }
                   if (provider.distanceKm !== null) return `${provider.distanceKm} ${isHebrew ? 'ק״מ' : 'km'}`;
                   return undefined;

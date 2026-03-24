@@ -473,15 +473,18 @@ export default function BrowseWalkers() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {displayWalkers.map((walker) => {
                 const proximityBadge = (() => {
-                  if (walker.proximityLabel === 'same_building') return isHebrew ? 'אותו מבנה' : 'Same building';
-                  if (walker.proximityLabel === 'same_street') return isHebrew ? 'אותה רחוב' : 'Same street';
-                  if (walker.proximityLabel === 'nearby') return isHebrew ? 'קרוב' : 'Nearby';
+                  if (walker.proximityLabel === 'same_building') return isHebrew ? '🏠 אותו מבנה' : '🏠 Same building';
+                  if (walker.proximityLabel === 'same_street') return isHebrew ? '📍 אותה רחוב' : '📍 Same street';
+                  if (walker.proximityLabel === 'nearby') return isHebrew ? '✅ קרוב מאוד' : '✅ Very close';
                   if (walker.proximityLabel?.endsWith('m')) {
                     const meters = parseInt(walker.proximityLabel);
-                    return `${meters} ${isHebrew ? 'מ\'' : 'm'}`;
+                    return `${meters} ${isHebrew ? 'מ׳' : 'm'}`;
                   }
+                  if (walker.proximityLabel === 'neighbourhood') return isHebrew ? '🌿 שכונה' : '🌿 Neighbourhood';
+                  if (walker.proximityLabel === 'same_city') return isHebrew ? '🏙️ אותה עיר' : '🏙️ Same city';
+                  if (walker.proximityLabel === 'metro_area') return isHebrew ? '🗺️ אזור מטרו' : '🗺️ Metro area';
                   if (walker.distanceMeters !== null && walker.distanceMeters !== undefined && walker.distanceMeters < 1000) {
-                    return `${walker.distanceMeters} ${isHebrew ? 'מ\'' : 'm'}`;
+                    return `${walker.distanceMeters} ${isHebrew ? 'מ׳' : 'm'}`;
                   }
                   if (walker.distanceKm !== null && walker.distanceKm !== undefined) {
                     return `${walker.distanceKm} ${isHebrew ? 'ק״מ' : 'km'}`;

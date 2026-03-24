@@ -792,9 +792,11 @@ router.get('/search/providers', async (req, res) => {
       }
     }
 
-    const searchLat = lat ? parseFloat(lat as string) : null;
-    const searchLng = lng ? parseFloat(lng as string) : null;
-    const searchRadius = Number(radius) || 50;
+    const _rawLat = lat ? parseFloat(lat as string) : null;
+    const _rawLng = lng ? parseFloat(lng as string) : null;
+    const searchLat = (_rawLat !== null && !isNaN(_rawLat) && _rawLat >= -90 && _rawLat <= 90) ? _rawLat : null;
+    const searchLng = (_rawLng !== null && !isNaN(_rawLng) && _rawLng >= -180 && _rawLng <= 180) ? _rawLng : null;
+    const searchRadius = Math.min(Math.max(Number(radius) || 50, 1), 200);
 
     // Enrich with profile data based on platform
     const providerIds = availableRateCards.map(rc => rc.providerId);
@@ -1013,8 +1015,14 @@ router.get('/search/providers', async (req, res) => {
           proximityLabel = 'nearby';
         } else if (distanceMeters < 1000) {
           proximityLabel = `${distanceMeters}m`;
+        } else if (rawKm <= 2) {
+          proximityLabel = 'neighbourhood';
+        } else if (rawKm <= 15) {
+          proximityLabel = 'same_city';
+        } else if (rawKm <= 50) {
+          proximityLabel = 'metro_area';
         } else {
-          proximityLabel = null; // frontend will format km
+          proximityLabel = null;
         }
       }
 
