@@ -314,6 +314,7 @@ function GooglePlacesLocationInput({
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const sessionTokenRef = useRef<string>(() => crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+  const selectingRef = useRef(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
@@ -385,6 +386,8 @@ function GooglePlacesLocationInput({
         }
       }
     } catch {
+    } finally {
+      selectingRef.current = false;
     }
   };
 
@@ -451,7 +454,14 @@ function GooglePlacesLocationInput({
   };
 
   useEffect(() => {
+    const handlePointerOutside = (e: PointerEvent) => {
+      if (selectingRef.current) return;
+      if (inputRef.current && inputRef.current.contains(e.target as Node)) return;
+      setShowCitySuggestions(false);
+    };
+    document.addEventListener('pointerdown', handlePointerOutside);
     return () => {
+      document.removeEventListener('pointerdown', handlePointerOutside);
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       if (abortRef.current) abortRef.current.abort();
     };
@@ -479,11 +489,7 @@ function GooglePlacesLocationInput({
           debounceTimerRef.current = setTimeout(() => fetchPredictions(newValue), 300);
         }}
         onFocus={() => {
-          if (value.length >= 3 && predictions.length > 0) setShowCitySuggestions(true);
-          else if (value.length > 0 && predictions.length === 0) setShowCitySuggestions(true);
-        }}
-        onBlur={() => {
-          setTimeout(() => setShowCitySuggestions(false), 200);
+          if (predictions.length > 0) setShowCitySuggestions(true);
         }}
         className={`ps-10 pe-12 h-12 border-gray-200 rounded-xl focus:ring-2 ${focusRing} ${focusBorder}`}
         data-testid="input-search-location"
@@ -525,8 +531,10 @@ function GooglePlacesLocationInput({
               key={pred.placeId}
               type="button"
               className="w-full px-4 py-3 text-start hover:bg-gray-50 flex items-start gap-3 text-sm border-b border-gray-50 last:border-b-0"
-              onMouseDown={(e) => {
+              style={{ minHeight: '48px', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+              onPointerDown={(e) => {
                 e.preventDefault();
+                selectingRef.current = true;
                 selectPrediction(pred);
               }}
             >
