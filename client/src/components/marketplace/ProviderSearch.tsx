@@ -415,17 +415,19 @@ function GooglePlacesLocationInput({
             const res = await fetch(`/api/google/reverse-geocode?${params}`, { credentials: 'include' });
             if (res.ok) {
               const data = await res.json();
-              if (data.name) {
-                onChange(data.name);
+              const label = data.name || data.formattedAddress;
+              if (label) {
+                onChange(label);
                 return;
               }
             }
           } catch {
-            // Reverse geocode failed — fall through to coordinate display
+            // Reverse geocode failed — fall through to generic label
           }
 
-          // Fallback: show coordinates as a readable label
-          onChange(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          // Fallback: human-readable label — NEVER show raw coordinates in the input
+          const currentLocationLabel = mapsLang === 'iw' ? 'מיקום נוכחי' : 'Current location';
+          onChange(currentLocationLabel);
         } finally {
           setIsGettingLocation(false);
         }
