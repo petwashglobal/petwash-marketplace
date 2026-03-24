@@ -14,7 +14,13 @@ import {
 
 const router = Router();
 
-const APP_SESSION_SECRET = process.env.APP_SESSION_SECRET || 'petwash-session-secret-replace';
+const APP_SESSION_SECRET = (() => {
+  const s = process.env.APP_SESSION_SECRET;
+  if (!s && process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL: APP_SESSION_SECRET must be set in production');
+  }
+  return s || crypto.randomBytes(32).toString('hex'); // dev-only random fallback
+})();
 const ACTIVATION_TOKEN_TTL_SECONDS = 120;  // 2 min window to tap "Start"
 const QR_MAX_AGE_SECONDS = 90;             // dynamic QR only
 const VEND_SENT_TIMEOUT_SECONDS = 60;      // rollback if machine never acked the vend

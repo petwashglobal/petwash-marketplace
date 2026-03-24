@@ -634,10 +634,11 @@ router.get('/expiring-credits', async (req, res) => {
 router.post('/admin/process-expired-credits', async (req, res) => {
   try {
     const cronSecret = req.headers['x-cron-secret'] as string;
-    const expectedCronSecret = process.env.CRON_SECRET || 'petwash-cron-2025';
+    const expectedCronSecret = process.env.CRON_SECRET;
     const adminEmail = (req.firebaseUser as any)?.email || (req.user as any)?.email || '';
 
-    if (cronSecret !== expectedCronSecret && !isSuperAdmin(adminEmail)) {
+    const validCronSecret = expectedCronSecret && cronSecret === expectedCronSecret;
+    if (!validCronSecret && !isSuperAdmin(adminEmail)) {
       logger.warn('[Credit Wallet] Unauthorized expired-credits trigger', { ip: req.ip, email: adminEmail });
       return res.status(403).json({ success: false, error: 'Unauthorized' });
     }
