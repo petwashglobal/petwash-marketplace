@@ -680,6 +680,11 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     });
     if (!sessionResponse.ok) {
       logger.error(`[Auth] Session creation failed (${sessionResponse.status}) — signing out Firebase client to prevent split-brain state`);
+      // Log before signOut — signOut may redirect and interrupt a subsequent fetch.
+      logClientEvent('SESSION_CREATION_FAILED', {
+        reason: `HTTP_${sessionResponse.status}`,
+        traceId,
+      });
       await auth.signOut();
       throw new Error(language === 'he' ? 'שגיאה ביצירת הפגישה. אנא נסה שוב.' : 'Session creation failed. Please try again.');
     }

@@ -126,6 +126,9 @@ router.get('/config', (_req, res) => {
  * Health check — for admin diagnostics.
  */
 router.get('/health', async (_req, res) => {
+  const rawSuperAdminEmails = process.env.SUPER_ADMIN_EMAILS || '';
+  const superAdminList = rawSuperAdminEmails.split(',').map(e => e.trim()).filter(Boolean);
+
   const status: Record<string, any> = {
     siteKey: RECAPTCHA_SITE_KEY ? '✅ set' : '❌ missing',
     secretKey: RECAPTCHA_SECRET_KEY ? '✅ set' : '❌ missing',
@@ -137,6 +140,8 @@ router.get('/health', async (_req, res) => {
       (process.env.GOOGLE_SERVICE_ACCOUNT_JSON || '').trim().startsWith('{') ||
       (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || '').trim().startsWith('{')
     ),
+    superAdminEmailsConfigured: superAdminList.length > 0 ? '✅ set' : '❌ missing',
+    superAdminEmailsCount: superAdminList.length,
   };
   res.json(status);
 });
