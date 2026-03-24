@@ -70,6 +70,13 @@ async function backupToGoogleCloud() {
 
     for (const tableName of tableNames) {
       try {
+        // Safety guard: table names come from information_schema but we validate the
+        // pattern before passing to sql.raw(). Only [a-z0-9_] are safe in identifiers.
+        if (!/^[a-z_][a-z0-9_]*$/.test(tableName)) {
+          console.log(`   ⚠️  Skipping suspicious table name: ${tableName}`);
+          errorCount++;
+          continue;
+        }
         const data = await db.execute(sql.raw(`SELECT * FROM ${tableName}`));
         const recordCount = data.rows.length;
         

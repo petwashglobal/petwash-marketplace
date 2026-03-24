@@ -34,3 +34,7 @@ tmp/
 load-test-results.json
 *.results.json
 *-results.json
+# Private keys — never commit
+*.key
+*.pem
+petwash-wallet.key

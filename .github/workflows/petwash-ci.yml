@@ -64,8 +64,11 @@ jobs:
           # RECAPTCHA_SITE_KEY — reCAPTCHA Enterprise site key (server-side)
           ensure_secret "RECAPTCHA_SITE_KEY" "6LfPr3ksAAAAAAk-gDoRZk6T3bA_t9UNavopPTDJ"
 
-          # FIREBASE_WEB_API_KEY — Firebase client-side API key (public, safe to store)
-          ensure_secret "FIREBASE_WEB_API_KEY" "AIzaSyDzbXi3-hnitnEtaTOQqakoxOetGvOCP0E"
+          # FIREBASE_WEB_API_KEY — Firebase client-side API key. Must be set as a GCP Secret before running.
+          # Value must be supplied manually (gcloud secrets create FIREBASE_WEB_API_KEY --data-file=-).
+          if ! gcloud secrets describe "FIREBASE_WEB_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+            echo "❌ FIREBASE_WEB_API_KEY secret not found in GCP Secret Manager. Create it before running CI." && exit 1
+          fi
 
           # ACCOUNTING_SPREADSHEET_ID — BookingExportService accounting exports
           ensure_secret "ACCOUNTING_SPREADSHEET_ID" "1dGgGUwiTI0htO0SvkzPEkXDWnjiOp8PUZRI3RDk_LJk"
@@ -97,6 +100,18 @@ jobs:
             ${{ env.IMAGE }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}
+            VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN || 'signinpetwash.firebaseapp.com' }}
+            VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID || 'signinpetwash' }}
+            VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET || 'signinpetwash.firebasestorage.app' }}
+            VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID || '136197986889' }}
+            VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID || '1:136197986889:web:51bc2ff5f721d22da67d98' }}
+            VITE_FIREBASE_MEASUREMENT_ID=${{ secrets.VITE_FIREBASE_MEASUREMENT_ID || 'G-B30RXHEX6R' }}
+            VITE_FIREBASE_VAPID_KEY=${{ secrets.VITE_FIREBASE_VAPID_KEY }}
+            VITE_RECAPTCHA_SITE_KEY=${{ secrets.VITE_RECAPTCHA_SITE_KEY || '6LfPr3ksAAAAAAk-gDoRZk6T3bA_t9UNavopPTDJ' }}
+            VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+            VITE_WEBAUTHN_RP_ID=${{ secrets.VITE_WEBAUTHN_RP_ID || 'petwash.co.il' }}
 
       - name: Deploy to Cloud Run
         id: deploy
@@ -209,18 +224,18 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
-          # Public client-side keys — safe to hardcode as fallbacks (visible in JS bundle anyway).
-          # GitHub Secrets take priority; these defaults ensure the build never fails if a secret is missing.
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY || 'AIzaSyDzbXi3-hnitnEtaTOQqakoxOetGvOCP0E' }}
+          # All values are read from GitHub Secrets. VITE_FIREBASE_API_KEY, VITE_FIREBASE_VAPID_KEY,
+          # and VITE_GOOGLE_CLIENT_ID must be set as repository secrets — the build will fail without them.
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN || 'signinpetwash.firebaseapp.com' }}
           VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID || 'signinpetwash' }}
           VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET || 'signinpetwash.firebasestorage.app' }}
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID || '136197986889' }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID || '1:136197986889:web:51bc2ff5f721d22da67d98' }}
           VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID || 'G-B30RXHEX6R' }}
-          VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY || 'BGkI_w5HJH7PP6GeTtMWsX0Bj8J_KnC6auuGNyDv9ozlyAM5CdhGFzOv3svsWDc8UtSx7bOkqUktm9D9a-Sj8fQ' }}
+          VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY }}
           VITE_RECAPTCHA_SITE_KEY: ${{ secrets.VITE_RECAPTCHA_SITE_KEY || '6LfPr3ksAAAAAAk-gDoRZk6T3bA_t9UNavopPTDJ' }}
-          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID || '136197986889-vannurqgm5jc7f1q2napctp8jbhs5l8a.apps.googleusercontent.com' }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_WEBAUTHN_RP_ID: ${{ secrets.VITE_WEBAUTHN_RP_ID || 'petwash.co.il' }}
 
       - name: Authenticate to Google Cloud

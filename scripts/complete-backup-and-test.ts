@@ -43,6 +43,11 @@ async function completeBackupAndTest() {
 
     for (const tableName of tableNames) {
       try {
+        // Validate table name before use — only [a-z0-9_] are safe SQL identifiers.
+        if (!/^[a-z_][a-z0-9_]*$/.test(tableName)) {
+          console.log(`   ⚠️  Skipping suspicious table name: ${tableName}`);
+          continue;
+        }
         const data = await db.execute(sql.raw(`SELECT * FROM ${tableName}`));
         backupData.tables[tableName] = {
           count: data.rows.length,

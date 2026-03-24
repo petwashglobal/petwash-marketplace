@@ -8,18 +8,19 @@
 FROM node:20-slim AS builder
 WORKDIR /app
 
-# Public client-side keys — safe to bake into the bundle (visible in JS anyway).
-# Pass as build-args in CI to override, or use these defaults.
-ARG VITE_FIREBASE_API_KEY=AIzaSyDzbXi3-hnitnEtaTOQqakoxOetGvOCP0E
+# Build-time variables for Vite frontend bundle.
+# VITE_FIREBASE_API_KEY, VITE_FIREBASE_VAPID_KEY, and VITE_GOOGLE_CLIENT_ID
+# must be supplied via --build-arg (no defaults to avoid committing credentials).
+ARG VITE_FIREBASE_API_KEY
 ARG VITE_FIREBASE_AUTH_DOMAIN=signinpetwash.firebaseapp.com
 ARG VITE_FIREBASE_PROJECT_ID=signinpetwash
 ARG VITE_FIREBASE_STORAGE_BUCKET=signinpetwash.firebasestorage.app
 ARG VITE_FIREBASE_MESSAGING_SENDER_ID=136197986889
 ARG VITE_FIREBASE_APP_ID=1:136197986889:web:51bc2ff5f721d22da67d98
 ARG VITE_FIREBASE_MEASUREMENT_ID=G-B30RXHEX6R
-ARG VITE_FIREBASE_VAPID_KEY=BGkI_w5HJH7PP6GeTtMWsX0Bj8J_KnC6auuGNyDv9ozlyAM5CdhGFzOv3svsWDc8UtSx7bOkqUktm9D9a-Sj8fQ
+ARG VITE_FIREBASE_VAPID_KEY
 ARG VITE_RECAPTCHA_SITE_KEY=6LfPr3ksAAAAAAk-gDoRZk6T3bA_t9UNavopPTDJ
-ARG VITE_GOOGLE_CLIENT_ID=136197986889-vannurqgm5jc7f1q2napctp8jbhs5l8a.apps.googleusercontent.com
+ARG VITE_GOOGLE_CLIENT_ID
 ARG VITE_WEBAUTHN_RP_ID=petwash.co.il
 
 # Export ARGs as ENV so Vite picks them up during `npm run build`
