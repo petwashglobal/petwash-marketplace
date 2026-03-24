@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { GooglePlacesAutocomplete } from "@/components/ui/google-places-autocomplete";
 import { 
   ArrowLeft, Camera, Save, User, MapPin, Phone, 
   DollarSign, Star, Shield, Loader2, Check
@@ -55,6 +56,8 @@ export default function SitterEditProfile() {
     bio: '',
     yearsOfExperience: 0,
     pricePerDayCents: 0,
+    latitude: null as number | null,
+    longitude: null as number | null,
   });
 
   useState(() => {
@@ -67,6 +70,8 @@ export default function SitterEditProfile() {
         bio: profile.bio || '',
         yearsOfExperience: profile.yearsOfExperience || 0,
         pricePerDayCents: profile.pricePerDayCents || 0,
+        latitude: profile.latitude ? parseFloat(String(profile.latitude)) : null,
+        longitude: profile.longitude ? parseFloat(String(profile.longitude)) : null,
       });
     }
   });
@@ -275,11 +280,21 @@ export default function SitterEditProfile() {
                   <MapPin className="h-4 w-4" />
                   {t.city}
                 </Label>
-                <Input
-                  id="city"
+                <GooglePlacesAutocomplete
                   value={formData.city || profile?.city || ''}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className="h-12 rounded-xl border-purple-200 focus:border-purple-500 focus:ring-purple-500"
+                  onChange={(value, details) => {
+                    const cityName = details?.city || value;
+                    const lat = details?.lat ?? null;
+                    const lng = details?.lng ?? null;
+                    setFormData(prev => ({
+                      ...prev,
+                      city: cityName,
+                      ...(lat !== null && lng !== null ? { latitude: lat, longitude: lng } : {}),
+                    }));
+                  }}
+                  placeholder={isHebrew ? 'התחל להקליד עיר...' : 'Start typing city or address...'}
+                  country={['il']}
+                  inputClassName="h-12 rounded-xl border-purple-200 focus:border-purple-500"
                 />
               </div>
             </div>

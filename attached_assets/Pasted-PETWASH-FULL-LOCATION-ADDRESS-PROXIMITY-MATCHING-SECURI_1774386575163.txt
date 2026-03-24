@@ -1,0 +1,540 @@
+PETWASH - FULL LOCATION / ADDRESS / PROXIMITY / MATCHING / SECURITY / MOBILE DIRECTIVE
+LATEST VERIFIED STATE INCLUDING REAL AUDIT AND FIXES
+
+CORE PRINCIPLE
+Location is not just a form field.
+Location is a core marketplace input that must:
+1. help the user enter address easily
+2. store structured address and coordinates correctly
+3. power nearest-provider matching
+4. improve cost, speed, trust, and conversion
+5. support fraud prevention and data integrity
+6. stay reliable on iPhone, Android, desktop, and after browser / firmware updates
+
+================================================================
+1. ADDRESS / LOCATION INPUT RULE
+================================================================
+
+Every field such as:
+- כתובת
+- מיקום
+- Location
+- Search location
+- Booking address
+- Provider service area
+
+must follow the same logic:
+
+User types -> Google Places suggestions appear -> user selects -> UI shows human-readable address -> system stores structured location data internally
+
+USER MUST SEE:
+- readable address
+- readable city / street / neighbourhood
+- never raw coordinates
+
+CORRECT DISPLAY:
+"עוזי חיטמן 8 ראשון לציון ישראל"
+
+WRONG DISPLAY:
+"-37.8857, 145.0202"
+
+CORRECT FRONTEND PRINCIPLE:
+input.value = place.formatted_address
+
+const locationData = {
+  formattedAddress: place.formatted_address,
+  lat: place.geometry.location.lat(),
+  lng: place.geometry.location.lng(),
+  placeId: place.place_id
+}
+
+CRITICAL RULE:
+Display value and stored value must be separate.
+Never overwrite visible address field with lat/lng.
+
+================================================================
+2. GPS BUTTON RULE
+================================================================
+
+The GPS / current-location button must never write raw coordinates into the visible input.
+
+NEVER:
+input.value = `${lat}, ${lng}`
+
+ALWAYS:
+input.value = "מיקום נוכחי"
+or
+input.value = "Current location"
+
+Coordinates must stay internal only.
+
+If reverse geocode fails:
+- do not show coordinates
+- keep lat/lng internally
+- show current location label
+- continue matching/search from stored coordinates
+
+VERIFIED ROOT CAUSE THAT EXISTED:
+The coordinate leak was caused by GPS fallback behavior, not by normal Google suggestion selection.
+
+VERIFIED FIX:
+The GPS fallback no longer shows raw coordinates in the visible field.
+
+================================================================
+3. FULL INTERNAL LOCATION STRUCTURE
+================================================================
+
+Every location should support storing:
+
+formattedAddress
+placeId
+lat
+lng
+street
+streetNumber
+city
+postalCode
+country
+apartment
+floor
+entrance
+notes
+
+BUSINESS REALITY:
+Google often does not return apartment, floor, entrance, or access notes.
+Therefore the product must allow manual completion where fulfillment requires it.
+
+Examples that must be supported:
+- 8 ראש העין ישראל, בית פרטי
+- דירה 77 בניין 18 רמת גן ישראל קומה 20
+
+================================================================
+4. WHEN ONE FIELD IS ENOUGH VS WHEN EXTRA FIELDS ARE REQUIRED
+================================================================
+
+One smart Google address field is enough only if:
+- user sees readable address
+- system stores full coordinates and place components
+- missing details can be completed separately where needed
+
+Extra fields are needed in flows where operational fulfillment matters:
+- apartment / unit
+- floor
+- entrance
+- notes
+- postal code where relevant
+
+Browsing nearest providers can be simpler.
+Actual booking, hosting, walker arrival, sitter arrival, transport, and service fulfillment often need richer address capture.
+
+================================================================
+5. LOCATION IS THE MATCHING ENGINE
+================================================================
+
+Location is not only for display.
+It is the hook connecting the searching user to the nearest suitable available provider.
+
+Priority must strongly favor:
+1. same building
+2. same street
+3. same block
+4. neighbourhood
+5. same city
+6. metro area
+7. wider region
+
+This must drive:
+- sitter discovery
+- walker discovery
+- host discovery
+- driver / transport discovery
+- any location-sensitive service
+- future pricing and travel logic
+
+BUSINESS REASON:
+Nearest trusted available provider usually gives:
+- higher conversion
+- lower friction
+- lower travel cost
+- faster response
+- better user confidence
+- better economics
+
+================================================================
+6. WHAT ALREADY EXISTED IN THE CODEBASE
+================================================================
+
+The schema already had most of the foundation:
+- sitterProfiles had latitude / longitude
+- walkerProfiles had currentLatitude / currentLongitude
+- walkerProfiles had serviceRadiusKm
+- bookingSearchFiltersSchema already had latitude, longitude, radiusKm, sortBy: "distance"
+- stations used locationId linked to locations table with lat/lng
+
+SO THE PLATFORM BACKBONE EXISTED.
+THE PROBLEM WAS WIRING AND EXECUTION.
+
+================================================================
+7. WHAT WAS BROKEN
+================================================================
+
+Verified gaps that were found:
+
+1. booking-search.ts originally ignored latitude and longitude entirely
+2. sortBy: "distance" existed but was not actually computed there
+3. BookingSearch.tsx did not send latitude / longitude in POST body
+4. ProviderSearch wrote lat/lng into URL params, but one search path did not forward them to API
+5. paw-finder.ts still had TODO for distance filtering
+6. GPS fallback wrote raw coordinates into visible field
+7. BrowseDrivers.tsx (PetTrek) was proximity-blind and used only text city, no GPS coordinates
+8. server-side coordinate validation was missing
+9. proximity tier labels were incomplete and could fall back to plain distance without clear context
+
+================================================================
+8. WHAT IS NOW IMPLEMENTED
+================================================================
+
+VERIFIED COMMITS:
+- 91e349dc
+- a24548dc
+- plus related fixes before these
+
+A. PROXIMITY MATCHING ENGINE
+Implemented server-side proximity logic using haversine distance and composite ranking.
+
+Implemented:
+1. haversineKm(lat1, lon1, lat2, lon2)
+2. proximityScore(distanceKm)
+3. compositeScore():
+   - proximity 60%
+   - rating 25%
+   - trust 10%
+   - volume 5%
+4. proximityTier():
+   - same_building
+   - same_street
+   - same_block
+   - neighbourhood
+   - same_city
+   - metro_area
+   - region
+   - wider_area
+
+B. SITTER / WALKER / STATION MATCHING
+When lat/lng exist:
+- fetch qualifying candidates
+- compute haversine distance
+- filter by radius
+- rank by composite score
+- paginate after ranking
+
+When coordinates do not exist:
+- graceful fallback to text-based search remains
+
+Walkers:
+- also respect provider's own serviceRadiusKm
+
+Stations:
+- use joined location coordinates for ranking
+
+C. API RESPONSE NOW SUPPORTS
+- distanceKm
+- proximityTier
+- matchScore
+
+================================================================
+9. FRONTEND WIRING NOW IN PLACE
+================================================================
+
+BookingSearch.tsx now:
+- reads lat/lng from URL params
+- sends latitude, longitude, radiusKm, sortBy: "distance" to API when available
+- preserves coordinates when clearing filters
+- shows readable distance on provider cards
+
+BrowseSitters.tsx:
+- already sent lat/lng correctly
+- verified good
+
+BrowseWalkers.tsx:
+- already sent lat/lng correctly
+- verified good
+
+BrowseDrivers.tsx (PetTrek):
+- was broken before
+- now fixed
+- now captures GPS on page load
+- reverse-geocodes to readable city label
+- never shows raw coordinates
+- sends lat/lng and sortBy=distance to API
+- shows distance badge on driver cards
+
+IMPORTANT AUDIT RESULT:
+The real browse flows were not all using the same endpoint.
+Some already had haversine ranking wired.
+The critical remaining browse gap was PetTrek BrowseDrivers, and that is now fixed.
+
+================================================================
+10. FULL PROXIMITY LABELS NOW REQUIRED / VERIFIED
+================================================================
+
+The UI should render clear distance meaning, not just numbers.
+
+Current clear tier display should support labels like:
+- Same building
+- Same street
+- Very close
+- Neighbourhood
+- Same city
+- Metro area
+- Region / wider area if needed
+
+No provider distance should silently fall through to raw unlabeled numbers.
+
+================================================================
+11. PAW FINDER / NOTIFICATIONS
+================================================================
+
+paw-finder.ts had a TODO before.
+Now implemented:
+- real haversine filtering for nearby lost/found push notifications
+- default radius around 5 km
+- users without location still get fallback notifications
+
+================================================================
+12. SERVER-SIDE COORDINATE VALIDATION
+================================================================
+
+This is now required and was fixed as a real security / integrity gap.
+
+Server must reject:
+- lat outside -90 to 90
+- lng outside -180 to 180
+- NaN values
+- abuse radius outside allowed range
+
+Radius should be clamped to safe bounds such as 1 to 200 km.
+
+This prevents:
+- malformed requests
+- spoofed coordinates
+- abuse of large search areas
+
+================================================================
+13. UI DISPLAY RULES
+================================================================
+
+Always show:
+- readable address
+- readable distance
+- meaningful proximity label
+
+Display guidance:
+- under 1 km -> metres
+- 1 km and above -> km
+
+Suggested visible logic:
+- same building
+- same street
+- very close
+- X km away
+
+Never show raw coordinates to the user.
+
+================================================================
+14. PERFORMANCE MODEL
+================================================================
+
+Current approach:
+fetch -> compute -> filter -> rank -> paginate
+
+This is acceptable now because:
+- Israel is geographically small
+- provider volume is still manageable
+
+Future scale plan:
+When provider count becomes much larger:
+- move to DB-level geo filtering
+- add bounding-box prefilter
+- consider PostGIS or equivalent geo indexing
+
+================================================================
+15. SECURITY, FRAUD, DATA INTEGRITY
+================================================================
+
+Never trust client coordinates.
+
+Always validate:
+- lat
+- lng
+- radius
+
+Required protections:
+- rate limiting on auth, SMS, search, session creation
+- abuse detection for spoofing and unrealistic jumps
+- logging of location-driven search usage
+- monitoring of suspicious repeated patterns
+
+Fraud / abuse signals:
+- malformed or fake coordinates
+- repeated location spoofing
+- abnormal rapid location jumps
+- huge-radius scraping behavior
+- mismatch between chosen area and later operational data
+
+================================================================
+16. MOBILE RELIABILITY
+================================================================
+
+System must continue to work on:
+- iPhone Safari
+- Android Chrome
+- desktop browsers
+
+Must handle:
+- iOS redirect auth quirks
+- Safari storage issues
+- popup vs redirect auth differences
+- GPS permission differences
+- browser updates
+- firmware / OS updates
+
+Rule:
+Do not rely on one browser behavior only.
+Always keep fallback logic.
+
+================================================================
+17. AUTH / SESSION HARDENING ALREADY APPLIED
+================================================================
+
+Three important auth hardening changes were applied:
+1. Safari redirect marker moved from sessionStorage to localStorage with short TTL
+2. After session creation, /api/simple-auth/me verification confirms cookie actually landed
+3. Admin auth-events endpoint now requires verified email
+
+Useful auth signals now include:
+- REDIRECT_RESULT_NULL
+- COOKIE_NOT_RECEIVED
+- OTP_VERIFY_FAILED
+- SESSION_CREATION_FAILED
+
+================================================================
+18. CSP / RECAPTCHA / LIVE ENVIRONMENT STATUS
+================================================================
+
+Confirmed in production:
+- backend secrets are set
+- RECAPTCHA site key and secret are set
+- Firebase service account is set
+- SUPER_ADMIN_EMAILS configured
+- CSP header present
+- Firebase auth frames allowed
+- custom reCAPTCHA loader uses api.js
+- enterprise.js removed from custom loader path
+
+Important note:
+Console screenshots do not prove end-to-end live behavior.
+Real proof comes from:
+- live response headers
+- live scripts
+- device behavior
+- logs
+- network traces
+- auth events
+
+================================================================
+19. GEMINI AI / ALWAYS-ON MONITORING
+================================================================
+
+Gemini AI should remain on watch for:
+- auth failures
+- location inconsistencies
+- matching anomalies
+- API failures
+- fraud signals
+- mobile regressions after updates
+
+Gemini responsibilities:
+- detect patterns
+- alert operations
+- protect reliability
+- surface likely root causes
+- help keep iPhone and Android support stable over time
+
+================================================================
+20. SYSTEM CONSISTENCY RULE
+================================================================
+
+Across all platform lines:
+- PetWash
+- Sitter Suite
+- Walkers
+- Hosting
+- PetTrek
+- K9000 where relevant
+- Paw Finder
+
+The same principle must apply:
+- same address-entry logic
+- same display rules
+- same internal storage philosophy
+- same proximity-driven matching philosophy
+
+================================================================
+21. NEVER ALLOW
+================================================================
+
+Never allow:
+- raw coordinates shown to user
+- visible input overwritten with lat/lng
+- coordinates available but ignored by search API
+- text-only matching when coordinates exist
+- missing lat/lng in relevant search flows
+- inconsistent address / proximity logic across platforms
+- "console configured" treated as proof of real user flow success
+
+================================================================
+22. CURRENT VERIFIED STATUS
+================================================================
+
+Confirmed complete or fixed:
+- readable address principle established
+- GPS coordinate leak fixed
+- normal Google suggestion selection behaves correctly
+- coordinates flow end to end
+- proximity matching engine implemented
+- frontend wiring fixed where missing
+- browse sitters verified
+- browse walkers verified
+- browse drivers fixed
+- proximity labels improved
+- server coordinate validation fixed
+- paw-finder distance filtering implemented
+- auth/session hardening applied
+- production CSP / reCAPTCHA / backend environment verified
+- system is now in observation / validation mode, not blind architecture-change mode
+
+================================================================
+23. NEXT REQUIRED ACTIONS
+================================================================
+
+1. Audit every remaining location entry point platform by platform
+2. Confirm for each:
+   - user sees readable address
+   - structured parts are stored internally
+   - lat/lng are passed where matching needs them
+3. Keep strong visible proximity labels in UI
+4. Monitor real user behavior on iPhone and Android
+5. Plan future geo-scaling when provider volume grows
+6. Do not make more blind system changes without real failure evidence
+
+================================================================
+24. FINAL BUSINESS PRINCIPLE
+================================================================
+
+Location = matching engine
+Matching engine = provider hook
+Provider hook = conversion, trust, economics, and service quality
+
+This is not just an address-box problem.
+This is a core marketplace intelligence system.
