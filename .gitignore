@@ -10,26 +10,20 @@ gcs-service-account.json
 petwash-backup-*.tar.gz
 firestore-restore/
 .env
-
 # Temporary setup files
 setup-github.js
-
 # Logs
 *.log
 npm-debug.log*
-
 # Editor
 .vscode/
 .idea/
-
 # Database
 *.sqlite
 *.sqlite3
-
 # Cache
 .cache/
 tmp/
-
 # Large test/benchmark files (exceed GitHub 100MB limit)
 load-test-results.json
 *.results.json
@@ -37,5 +31,4 @@ load-test-results.json
 # Private keys — never commit
 *.key
 *.pem
-petwash-wallet.key
 petwash-wallet.key
