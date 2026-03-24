@@ -904,7 +904,8 @@ self.addEventListener('notificationclick', (event) => {
   applySecurityAndOneTap({ app, requireAdmin, admin: firebaseAdmin });
 
   // POST /api/auth/session - Exchange ID token for session cookie (iOS-compatible)
-  app.post('/api/auth/session', async (req, res) => {
+  // Rate-limited: 20 requests/15min per IP — prevents token-spam / session flooding
+  app.post('/api/auth/session', authLimiter, async (req, res) => {
     try {
       const traceId = req.body?.traceId;
       logger.debug('[Session] Creating session cookie', { 
