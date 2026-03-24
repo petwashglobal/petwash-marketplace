@@ -65,6 +65,8 @@ export default defineConfig({
     },
     // Increase chunk warning threshold — vendor bundles are intentionally large
     chunkSizeWarningLimit: 1000,
+    // Hidden source maps: generated but not referenced in bundle — only for Sentry/error monitoring
+    sourcemap: 'hidden',
   },
   server: {
     fs: {

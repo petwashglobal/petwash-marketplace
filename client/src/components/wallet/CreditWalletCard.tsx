@@ -150,7 +150,7 @@ export function CreditWalletCard({
       return res.json();
     },
     enabled: !!platform && !!transactionAmountCents && (transactionAmountCents > 0),
-    staleTime: 10000,
+    staleTime: 60000,
   });
 
   const createRedemption = useMutation({

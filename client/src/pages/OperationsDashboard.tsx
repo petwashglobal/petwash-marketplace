@@ -31,7 +31,7 @@ export default function OperationsDashboard() {
   const [incidentCategory, setIncidentCategory] = useState("equipment_failure");
   const { toast } = useToast();
 
-  const { data: tasks, isLoading: tasksLoading } = useQuery({
+  const { data: tasks, isLoading: tasksLoading, isError: tasksError } = useQuery({
     queryKey: ["/api/enterprise/operations/tasks"],
   });
 
@@ -39,17 +39,19 @@ export default function OperationsDashboard() {
     queryKey: ["/api/enterprise/operations/tasks/overdue"],
   });
 
-  const { data: incidents, isLoading: incidentsLoading } = useQuery({
+  const { data: incidents, isLoading: incidentsLoading, isError: incidentsError } = useQuery({
     queryKey: ["/api/enterprise/operations/incidents"],
   });
 
-  const { data: slaMetrics } = useQuery({
+  const { data: slaMetrics, isError: slaError } = useQuery({
     queryKey: ["/api/enterprise/operations/sla/metrics"],
   });
 
   const { data: slaBreaches } = useQuery({
     queryKey: ["/api/enterprise/operations/sla/breaches"],
   });
+
+  const hasDataError = tasksError || incidentsError || slaError;
 
   const createTaskMutation = useMutation({
     mutationFn: async (data: any) =>
@@ -159,6 +161,12 @@ export default function OperationsDashboard() {
       subtitle="Manage tasks, incidents, and SLA compliance"
     >
       <div className="p-6 space-y-6">
+      {hasDataError && (
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg px-4 py-3 text-sm flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          One or more data sections failed to load. Displayed figures may be incomplete — please refresh.
+        </div>
+      )}
       <div className="flex justify-end items-center">
         <div className="flex gap-2">
           <Button className="luxury-btn-primary" onClick={() => setShowTaskDialog(true)} data-testid="button-create-task">

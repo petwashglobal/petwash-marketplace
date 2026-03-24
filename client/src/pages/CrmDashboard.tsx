@@ -20,6 +20,7 @@ import {
   Mail,
   Calendar,
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
 } from "lucide-react";
 import { useState } from "react";
@@ -37,15 +38,15 @@ export default function CrmDashboard() {
   const [activityType, setActivityType] = useState("call");
   const { toast } = useToast();
 
-  const { data: communications, isLoading: communicationsLoading } = useQuery({
+  const { data: communications, isLoading: communicationsLoading, isError: communicationsError } = useQuery({
     queryKey: ["/api/enterprise/sales/crm/communications"],
   });
 
-  const { data: tasks, isLoading: tasksLoading } = useQuery({
+  const { data: tasks, isLoading: tasksLoading, isError: tasksError } = useQuery({
     queryKey: ["/api/enterprise/sales/crm/tasks"],
   });
 
-  const { data: activities, isLoading: activitiesLoading } = useQuery({
+  const { data: activities, isLoading: activitiesLoading, isError: activitiesError } = useQuery({
     queryKey: ["/api/enterprise/sales/crm/activities"],
   });
 
@@ -60,6 +61,8 @@ export default function CrmDashboard() {
   const { data: upcomingTasks } = useQuery({
     queryKey: ["/api/enterprise/sales/crm/tasks/upcoming"],
   });
+
+  const hasDataError = communicationsError || tasksError || activitiesError;
 
   const createCommunicationMutation = useMutation({
     mutationFn: async (data: any) =>
@@ -229,6 +232,12 @@ export default function CrmDashboard() {
       subtitle="Manage customer relationships, communications, tasks, and activities"
     >
       <div className="p-6 space-y-6">
+      {hasDataError && (
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg px-4 py-3 text-sm flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          One or more data sections failed to load. Displayed figures may be incomplete — please refresh.
+        </div>
+      )}
       <div className="flex justify-end items-center">
         <div className="flex gap-2">
           <Button className="luxury-btn-primary" onClick={() => setShowCommunicationDialog(true)} data-testid="button-create-communication">

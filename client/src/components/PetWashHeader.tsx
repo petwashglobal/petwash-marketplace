@@ -243,8 +243,8 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
     if (role === 'provider') return '/provider/dashboard';
     if (ADMIN_ROLES.includes(role)) return '/dashboard';
     // Email-based fallback for when Firebase claim hasn't been written yet
-    const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || 'nirhadad1@gmail.com,nir.h@petwash.co.il,ceo@petwash.co.il')
-      .split(',').map((e: string) => e.trim().toLowerCase());
+    const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '')
+      .split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
     if (user.email && adminEmails.includes(user.email.toLowerCase())) return '/dashboard';
     return '/my-account';
   };

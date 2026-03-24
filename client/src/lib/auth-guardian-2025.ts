@@ -26,7 +26,7 @@ const EXPECTED = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'signinpetwash.firebaseapp.com',
-  adminEmails: (import.meta.env.VITE_ADMIN_EMAILS || 'nirhadad1@gmail.com,nir.h@petwash.co.il,ceo@petwash.co.il')
+  adminEmails: (import.meta.env.VITE_ADMIN_EMAILS || '')
     .split(',')
     .map((e: string) => e.trim().toLowerCase())
     .filter(Boolean),
