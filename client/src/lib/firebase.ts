@@ -28,9 +28,19 @@ function getFirebaseConfig() {
   
   // Fallback to build-time env vars (development or if runtime config fails)
   // ✅ SECURITY FIX: No hard-coded credentials - all must come from environment
+  //
+  // authDomain MUST be petwash.co.il in production builds — never signinpetwash.firebaseapp.com.
+  // Safari ITP treats signinpetwash.firebaseapp.com as a cross-origin tracker and blocks the
+  // storage read that Firebase needs after signInWithRedirect. getRedirectResult() returns null
+  // and every iPhone/iPad Safari Gmail login silently fails.
+  //
+  // import.meta.env.PROD is true in any Vite production build (NODE_ENV=production).
+  // In development, use the VITE_FIREBASE_AUTH_DOMAIN env var so localhost auth still works.
   const config = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    authDomain: import.meta.env.PROD
+      ? 'petwash.co.il'
+      : (import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'signinpetwash.firebaseapp.com'),
     projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
     storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
     messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
