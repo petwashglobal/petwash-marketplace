@@ -1,0 +1,136 @@
+I need a deeper logic audit from you, not only “it is configured”.
+
+I have never once reached a visible CAPTCHA challenge screen like:
+- select images
+- mark cars
+- puzzle
+- checkbox
+- anything visible at all
+
+So I need you to explain the full chain clearly, front end and back end, step by step.
+
+Please answer these questions properly:
+
+1. Exactly where is reCAPTCHA placed in the page layout?
+- On which pages/components does it exist?
+- Is it rendered visibly or invisibly?
+- What exact UI element triggers it?
+- If invisible, where in the DOM is it mounted?
+
+2. What is the exact user journey per auth method?
+For each of these:
+- Google sign-in
+- Apple sign-in
+- Email sign-up
+- Email sign-in
+- Phone OTP
+- Provider sign-up
+- New user joining loyalty
+Explain:
+- what the user clicks
+- what happens immediately in browser
+- whether reCAPTCHA runs or not
+- whether user ever sees a visible challenge
+- what request is sent next
+- what backend endpoint receives it
+- what the backend does with it
+- what response comes back
+- what happens on screen after success or failure
+
+3. Which login methods actually use reCAPTCHA and which do not?
+I want a simple truth table:
+- method
+- uses reCAPTCHA: yes/no
+- visible or invisible
+- frontend file / function
+- backend endpoint
+- validation method
+
+4. Why have I never seen a visible challenge?
+Explain whether this is because:
+- it is v3 and invisible by design
+- score threshold did not force a visual challenge
+- Firebase OAuth flow does not use it
+- phone login path uses backend verification only
+- App Check is separate and not being used
+I want the exact answer, not assumptions.
+
+5. Where exactly is it wired in frontend code?
+Show me:
+- file names
+- component names
+- function names
+- button click handlers
+- what script is loaded
+- what token is generated
+- where the token is stored temporarily
+- where it is attached to the request
+
+6. Where exactly is it wired in backend code?
+Show me:
+- endpoint names
+- verification function names
+- whether Google siteverify is called
+- whether score / action is checked
+- what minimum score is required
+- what logs are written on success/failure
+- what happens if verification fails
+
+7. What happens after the token is accepted?
+I want exact downstream flow:
+- account creation
+- session creation
+- Firebase sign-in or custom token
+- cookie/session write
+- redirect destination
+- Octopus backend linkage
+- control panel/admin tracking
+- audit logs if any
+
+8. How does this connect to the main Octopus backend / control panel?
+Explain:
+- which auth flows feed into the main backend
+- which tables / services receive the result
+- whether admin can see failed CAPTCHA / failed auth attempts
+- whether provider onboarding and customer onboarding go through the same control logic or different paths
+
+9. For provider sign-up specifically:
+- where is CAPTCHA triggered
+- where is provider registration data stored first
+- when does the Octopus control panel see the new provider
+- what happens if CAPTCHA passes but provider creation fails
+- what happens if provider record is created but auth session fails
+
+10. For loyalty / Prestige / wallet-related entry points:
+- does joining loyalty ever use CAPTCHA
+- does gift purchase use CAPTCHA
+- does redemption use CAPTCHA
+- what risk controls exist there instead
+
+11. I want a sequence diagram in words for each path:
+Example format:
+- user clicks X
+- frontend function Y runs
+- reCAPTCHA action Z executes
+- token sent to endpoint A
+- backend verifies with B
+- backend creates C
+- session/cookie D written
+- user redirected to E
+Do this for:
+- Google login on iPad
+- Google login on iPhone
+- Email sign-up
+- Phone OTP
+- Provider sign-up
+
+12. I also want you to tell me what is still not ideal.
+Do not tell me only what works.
+Tell me:
+- what is fragile
+- what is still inconsistent
+- what is invisible to the user but important
+- what could still fail on iPad Safari
+- what is not yet connected cleanly to the broader Octopus platform
+
+I want a real logic map, not just console screenshots or settings pages.
