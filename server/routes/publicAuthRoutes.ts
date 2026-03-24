@@ -921,4 +921,110 @@ publicAuthRouter.post('/api/auth/phone/otp/verify', async (req, res) => {
   }
 });
 
+// ── Rate limiter for client-side event reports (20 per IP per 5 min) ─────────
+const clientEventRateLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false, ip: false, default: false },
+  handler: (_req, res) => res.status(429).json({ ok: false, error: 'TOO_MANY_EVENTS' }),
+});
+
+// ── POST /api/auth/client-event ───────────────────────────────────────────────
+// Receives structured auth failure reports from the frontend (OAuth callback
+// errors, redirect result null on Safari, popup failures, session failures).
+// Written to auth_events for admin visibility. Rate-limited per IP.
+const clientEventSchema = z.object({
+  eventType: z.enum([
+    'OAUTH_CALLBACK_FAILED',
+    'OAUTH_POPUP_FAILED',
+    'REDIRECT_RESULT_NULL',
+    'SESSION_CREATION_FAILED',
+  ]),
+  success: z.boolean().default(false),
+  provider: z.string().max(32).optional(),
+  reason: z.string().max(512).optional(),
+  traceId: z.string().max(128).optional(),
+});
+
+publicAuthRouter.post('/api/auth/client-event', clientEventRateLimiter, async (req, res) => {
+  const parse = clientEventSchema.safeParse(req.body);
+  if (!parse.success) {
+    return res.status(400).json({ ok: false, error: 'INVALID_PAYLOAD' });
+  }
+  const { eventType, success, provider, reason, traceId } = parse.data;
+  const ip = req.ip || null;
+  const userAgent = req.headers['user-agent'] || null;
+
+  try {
+    await db.insert(authEvents).values({
+      eventType,
+      success: success ?? false,
+      reason: [provider ? `provider=${provider}` : null, reason].filter(Boolean).join(' | ') || null,
+      ip,
+      userAgent,
+      traceId: traceId || null,
+    });
+    logger.info(`[ClientEvent] ${eventType}`, { provider, reason, ip, traceId });
+  } catch (err) {
+    logger.warn('[ClientEvent] Failed to write auth_events (non-blocking)', err);
+  }
+
+  return res.json({ ok: true });
+});
+
+// ── GET /api/admin/auth-events ────────────────────────────────────────────────
+// Returns recent auth_events rows for admin visibility. Requires a valid
+// Firebase ID token belonging to SUPER_ADMIN_EMAILS.
+publicAuthRouter.get('/api/admin/auth-events', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'AUTH_REQUIRED' });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    let decodedToken: any;
+    try {
+      decodedToken = await fbAdminAuth.verifyIdToken(token, true);
+    } catch {
+      return res.status(401).json({ error: 'INVALID_TOKEN' });
+    }
+
+    const adminEmails = (process.env.SUPER_ADMIN_EMAILS || '')
+      .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+    if (!adminEmails.includes((decodedToken.email || '').toLowerCase())) {
+      return res.status(403).json({ error: 'FORBIDDEN' });
+    }
+
+    // Query params
+    const limit = Math.min(parseInt(String(req.query.limit || '100')), 500);
+    const typeFilter = String(req.query.type || '').trim();
+    const since = req.query.since ? new Date(String(req.query.since)) : null;
+
+    const rows = await db
+      .select()
+      .from(authEvents)
+      .where(
+        sql`TRUE
+          ${typeFilter ? sql`AND event_type = ${typeFilter}` : sql``}
+          ${since && !isNaN(since.getTime()) ? sql`AND created_at >= ${since.toISOString()}` : sql``}`
+      )
+      .orderBy(sql`created_at DESC`)
+      .limit(limit);
+
+    // Totals by event type for quick admin dashboard
+    const totals = rows.reduce<Record<string, number>>((acc, row) => {
+      acc[row.eventType] = (acc[row.eventType] || 0) + 1;
+      return acc;
+    }, {});
+
+    return res.json({ ok: true, count: rows.length, totals, events: rows });
+  } catch (err: any) {
+    logger.error('[AdminAuthEvents] Query failed', { err: err.message });
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
 logger.info('[PublicAuth] ✅ Public auth routes initialized (clean console mode)');

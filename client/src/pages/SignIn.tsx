@@ -369,12 +369,42 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     }
   }, [user, switchingAccount, loading, navigate]);
 
+  // Fire-and-forget: report a structured auth failure to /api/auth/client-event
+  // so it lands in the auth_events table for admin visibility.
+  const logClientEvent = (
+    eventType: 'OAUTH_CALLBACK_FAILED' | 'OAUTH_POPUP_FAILED' | 'REDIRECT_RESULT_NULL' | 'SESSION_CREATION_FAILED',
+    opts: { provider?: string; reason?: string; traceId?: string } = {}
+  ) => {
+    fetch(getApiUrl('/api/auth/client-event'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventType, success: false, ...opts }),
+    }).catch(() => {});
+  };
+
   // Handle Google redirect result after iOS signInWithRedirect flow
   useEffect(() => {
     const handleRedirectResult = async () => {
       try {
         const result = await getRedirectResult(auth);
-        if (!result) return;
+        if (!result) {
+          // If we expected a redirect result (pw_redirect_provider is set) but got
+          // null, the redirect was lost — most likely Safari ITP consumed the
+          // cross-domain state. Log it, clear the marker, and show a retry toast.
+          const expectedProvider = sessionStorage.getItem('pw_redirect_provider');
+          if (expectedProvider) {
+            sessionStorage.removeItem('pw_redirect_provider');
+            logClientEvent('REDIRECT_RESULT_NULL', { provider: expectedProvider });
+            toast({
+              variant: 'destructive',
+              title: language === 'he' ? 'ההתחברות לא הושלמה' : 'Sign-in not completed',
+              description: language === 'he'
+                ? 'לא הצלחנו לאמת את ההתחברות. אנא נסו שוב.'
+                : 'We could not verify your sign-in. Please try again.',
+            });
+          }
+          return;
+        }
 
         const provider = sessionStorage.getItem('pw_redirect_provider') || 'google';
         sessionStorage.removeItem('pw_redirect_provider');
@@ -414,6 +444,12 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       } catch (err: any) {
         if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') return;
         logger.error('[Auth] Redirect result error:', err);
+        const errProvider = sessionStorage.getItem('pw_redirect_provider') || 'unknown';
+        sessionStorage.removeItem('pw_redirect_provider');
+        logClientEvent('OAUTH_CALLBACK_FAILED', {
+          provider: errProvider,
+          reason: err?.code || err?.message || 'unknown',
+        });
       } finally {
         setSocialLoading(null);
       }
@@ -850,6 +886,13 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
         return;
       }
+
+      // Log non-user-cancelled popup/OAuth errors to auth_events for admin visibility.
+      logClientEvent('OAUTH_POPUP_FAILED', {
+        provider,
+        reason: error?.code || error?.message || 'unknown',
+        traceId,
+      });
       
       const socialErrTitle: Record<string, string> = {
         en: 'Sign-in error', he: 'שגיאה בהתחברות', ar: 'خطأ في تسجيل الدخول',
