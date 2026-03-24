@@ -17,7 +17,8 @@ export function LuxuryConsentCard() {
           alt="⁦Pet Wash™⁩"
           width={48}
           height={48}
-          className="rounded-lg ring-1 ring-white/15"
+          className="rounded-lg ring-1 ring-white/15 object-contain"
+          style={{ objectFit: 'contain' }}
         />
         <div>
           <h2

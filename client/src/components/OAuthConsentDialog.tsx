@@ -59,7 +59,7 @@ export function OAuthConsentDialog({
             <img 
               src="/brand/petwash-logo-official.png" 
               alt="⁦Pet Wash™⁩" 
-              className="h-12"
+              className="h-12 w-auto object-contain"
             />
           </div>
           <DialogHeader>
