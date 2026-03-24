@@ -592,9 +592,12 @@ router.get('/experiment-decisions', requireAdmin, async (_req, res) => {
       .orderBy(desc(experimentDecisions.updatedAt));
 
     const expKeys = decisions.map(d => d.experimentKey);
+    // Validate keys are safe identifiers before any sql.raw interpolation.
+    // Keys come from our own DB but we guard defensively against stored injection.
+    const safeExpKeys = expKeys.filter(k => /^[a-zA-Z0-9_-]+$/.test(k));
 
     const [funnel, runtimeRows] = await Promise.all([
-      expKeys.length > 0
+      safeExpKeys.length > 0
         ? db
             .select({
               experimentKey: experimentEvents.experimentKey,
@@ -603,16 +606,16 @@ router.get('/experiment-decisions', requireAdmin, async (_req, res) => {
               cnt:           count(),
             })
             .from(experimentEvents)
-            .where(inArray(experimentEvents.experimentKey, expKeys))
+            .where(inArray(experimentEvents.experimentKey, safeExpKeys))
             .groupBy(experimentEvents.experimentKey, experimentEvents.variant, experimentEvents.event)
         : Promise.resolve([]),
 
       // Phase 6.14: per-experiment first_sent_at for runtime day calculation
-      expKeys.length > 0
+      safeExpKeys.length > 0
         ? db.execute<{ experiment_key: string; first_sent_at: string }>(sql`
             SELECT experiment_key, MIN(created_at) AS first_sent_at
             FROM experiment_events
-            WHERE experiment_key = ANY(${sql.raw(`ARRAY['${expKeys.join("','")}']`)})
+            WHERE experiment_key = ANY(${sql.raw(`ARRAY['${safeExpKeys.join("','")}']`)})
               AND event = 'notification_sent'
             GROUP BY experiment_key
           `)
@@ -904,12 +907,14 @@ router.post('/proof-scenario', requireAdmin, async (req, res) => {
       // Which experiments WOULD auto-promote if the decision job ran right now?
       const decisions = await db.select().from(experimentDecisions);
       const expKeys = decisions.map(d => d.experimentKey);
+      // Validate keys are safe identifiers before sql.raw interpolation.
+      const safeExpKeys = expKeys.filter(k => /^[a-zA-Z0-9_-]+$/.test(k));
 
-      const runtimeRows = expKeys.length > 0
+      const runtimeRows = safeExpKeys.length > 0
         ? await db.execute<{ experiment_key: string; first_sent_at: string }>(sql`
             SELECT experiment_key, MIN(created_at) AS first_sent_at
             FROM experiment_events
-            WHERE experiment_key = ANY(${sql.raw(`ARRAY['${expKeys.join("','")}']`)})
+            WHERE experiment_key = ANY(${sql.raw(`ARRAY['${safeExpKeys.join("','")}']`)})
               AND event = 'notification_sent'
             GROUP BY experiment_key
           `)
