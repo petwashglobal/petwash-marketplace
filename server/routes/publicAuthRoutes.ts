@@ -927,7 +927,11 @@ const clientEventRateLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  validate: { xForwardedForHeader: false, ip: false, default: false },
+  // Explicit keyGenerator: trust proxy is set to 1 in index.ts so req.ip is
+  // the real client IP from X-Forwarded-For (set by GCP/Firebase load balancer).
+  // Not using the validate:{ ip:false } shortcut so misconfiguration surfaces
+  // as a startup warning rather than silently switching to a shared key.
+  keyGenerator: (req) => req.ip || req.socket.remoteAddress || 'unknown',
   handler: (_req, res) => res.status(429).json({ ok: false, error: 'TOO_MANY_EVENTS' }),
 });
 
