@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useLocation } from 'wouter';
+import { useLocation, useSearch } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +52,9 @@ interface SearchFilters {
   minRating: number;
   verifiedOnly: boolean;
   maxPrice: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  radiusKm: number;
 }
 
 interface Provider {
@@ -66,6 +69,9 @@ interface Provider {
   pricePerHour: number | null;
   city: string;
   distance?: number;
+  distanceKm: number | null;
+  proximityTier: string | null;
+  matchScore: number | null;
   isVerified: boolean;
   hasPoliceCheck: boolean;
   yearsExperience: number;
@@ -105,8 +111,9 @@ export function BookingSearch() {
   const { t, i18n } = useTranslation();
   const isHebrew = i18n.language === 'he';
   const [, setLocation] = useLocation();
+  const searchStr = useSearch();
   const [showFilters, setShowFilters] = useState(false);
-  
+
   const [filters, setFilters] = useState<SearchFilters>({
     serviceType: 'pet_sitting',
     petCount: 1,
@@ -118,7 +125,28 @@ export function BookingSearch() {
     minRating: 0,
     verifiedOnly: false,
     maxPrice: null,
+    latitude: null,
+    longitude: null,
+    radiusKm: 50,
   });
+
+  // Hydrate location coordinates from URL query params written by ProviderSearch
+  useEffect(() => {
+    const params = new URLSearchParams(searchStr);
+    const lat = params.get('lat');
+    const lng = params.get('lng');
+    const loc = params.get('location');
+    if (lat && lng) {
+      setFilters(prev => ({
+        ...prev,
+        latitude: parseFloat(lat),
+        longitude: parseFloat(lng),
+        city: loc ? decodeURIComponent(loc) : prev.city,
+      }));
+    } else if (loc) {
+      setFilters(prev => ({ ...prev, city: decodeURIComponent(loc) }));
+    }
+  }, [searchStr]);
 
   const [searchResults, setSearchResults] = useState<Provider[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
@@ -140,6 +168,10 @@ export function BookingSearch() {
         minRating: searchFilters.minRating || undefined,
         verifiedOnly: searchFilters.verifiedOnly,
         maxPrice: searchFilters.maxPrice || undefined,
+        latitude: searchFilters.latitude ?? undefined,
+        longitude: searchFilters.longitude ?? undefined,
+        radiusKm: searchFilters.latitude ? searchFilters.radiusKm : undefined,
+        sortBy: searchFilters.latitude ? 'distance' : 'rating',
       });
       return response.json();
     },
@@ -163,7 +195,7 @@ export function BookingSearch() {
   };
 
   const clearFilters = () => {
-    setFilters({
+    setFilters(prev => ({
       serviceType: 'pet_sitting',
       petCount: 1,
       petTypes: ['dog'],
@@ -174,7 +206,11 @@ export function BookingSearch() {
       minRating: 0,
       verifiedOnly: false,
       maxPrice: null,
-    });
+      // Preserve coordinates — clearing filters shouldn't lose the user's location
+      latitude: prev.latitude,
+      longitude: prev.longitude,
+      radiusKm: prev.radiusKm,
+    }));
   };
 
   return (
@@ -507,10 +543,16 @@ function ProviderCard({ provider, isHebrew }: { provider: Provider; isHebrew: bo
             <h3 className="font-bold text-lg">
               {provider.firstName} {provider.lastName?.[0]}.
             </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
-              <MapPin className="h-3 w-3 mr-1" />
-              {provider.city}
-              {provider.distance && ` • ${provider.distance.toFixed(1)} km`}
+            <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+              <MapPin className="h-3 w-3 shrink-0" />
+              <span>{provider.city}</span>
+              {provider.distanceKm !== null && provider.distanceKm !== undefined && (
+                <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                  • {provider.distanceKm < 1
+                    ? `${Math.round(provider.distanceKm * 1000)} m`
+                    : `${provider.distanceKm.toFixed(1)} km`}
+                </span>
+              )}
             </p>
           </div>
           <div className="text-right">

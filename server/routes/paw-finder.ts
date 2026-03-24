@@ -157,11 +157,24 @@ async function notifyNearbyMembers(location: { lat: number; lng: number }, type:
     
     const notifications: Promise<any>[] = [];
     
+    const NOTIFY_RADIUS_KM = 5;
+
     usersSnapshot.forEach((doc) => {
       const userData = doc.data();
-      
-      // Calculate distance if user has location
-      // For now, send to all members (TODO: implement distance filtering)
+
+      // Haversine distance filter — only notify members within 5 km
+      if (userData.latitude != null && userData.longitude != null) {
+        const R = 6371;
+        const toRad = (d: number) => (d * Math.PI) / 180;
+        const dLat = toRad(userData.latitude - location.lat);
+        const dLon = toRad(userData.longitude - location.lng);
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos(toRad(location.lat)) * Math.cos(toRad(userData.latitude)) *
+          Math.sin(dLon / 2) ** 2;
+        const distKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        if (distKm > NOTIFY_RADIUS_KM) return;
+      }
       
       const messaging = admin.messaging();
       const message = {
