@@ -23,10 +23,6 @@ declare global {
     grecaptcha: {
       ready: (callback: () => void) => void;
       execute: (siteKey: string, options: { action: string }) => Promise<string>;
-      enterprise: {
-        ready: (callback: () => void) => void;
-        execute: (siteKey: string, options: { action: string }) => Promise<string>;
-      };
       render?: (container: string | HTMLElement, options: any) => number;
       reset?: (widgetId?: number) => void;
     };
@@ -91,11 +87,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 const loadReCaptchaScript = async (): Promise<void> => {
   const siteKey = await getResolvedSiteKey();
 
-  if (window.grecaptcha?.enterprise?.ready) {
+  if (window.grecaptcha?.ready) {
     return;
   }
 
-  const existingScript = document.querySelector('script[src*="recaptcha/enterprise.js"]') as HTMLScriptElement | null;
+  const existingScript = document.querySelector('script[src*="recaptcha/api.js"]') as HTMLScriptElement | null;
   if (existingScript) {
     if (existingScript.dataset.loaded === 'true') return;
     return new Promise((resolve, reject) => {
@@ -110,16 +106,16 @@ const loadReCaptchaScript = async (): Promise<void> => {
     throw new Error('No reCAPTCHA site key configured');
   }
 
-  const oldScript = document.querySelector('script[src*="recaptcha/api.js"]');
-  if (oldScript) oldScript.remove();
+  const oldEnterpriseScript = document.querySelector('script[src*="recaptcha/enterprise.js"]');
+  if (oldEnterpriseScript) oldEnterpriseScript.remove();
 
   return new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = `https://www.google.com/recaptcha/enterprise.js?render=${siteKey}`;
+    script.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
     script.async = true;
     script.defer = true;
     script.onload = () => { script.dataset.loaded = 'true'; resolve(); };
-    script.onerror = () => reject(new Error('Failed to load reCAPTCHA Enterprise script'));
+    script.onerror = () => reject(new Error('Failed to load reCAPTCHA script'));
     document.head.appendChild(script);
   });
 };
@@ -133,41 +129,9 @@ export async function executeReCaptcha(action: string = 'submit'): Promise<strin
 
   logger.info('[ReCaptcha] Executing', { action, siteKeyPrefix: siteKey.slice(0, 12) });
 
-  // ── 1. Try Enterprise API ──────────────────────────────────────────────────
   try {
     await withTimeout(loadReCaptchaScript(), RECAPTCHA_TIMEOUT_MS, 'script load');
 
-    if (window.grecaptcha?.enterprise?.ready) {
-      const token = await withTimeout(
-        new Promise<string>((resolve, reject) => {
-          window.grecaptcha.enterprise.ready(async () => {
-            try {
-              const t = await window.grecaptcha.enterprise.execute(siteKey, { action });
-              resolve(t);
-            } catch (err: any) {
-              reject(err);
-            }
-          });
-        }),
-        RECAPTCHA_TIMEOUT_MS,
-        'enterprise.execute'
-      );
-      logger.info('[ReCaptcha] Enterprise token obtained', { action, tokenLength: token.length });
-      return token;
-    }
-
-    logger.warn('[ReCaptcha] Enterprise API not available on window.grecaptcha after script load — falling back to standard v3');
-  } catch (err: any) {
-    logger.error('[ReCaptcha] Enterprise execute failed — falling back to standard v3', {
-      action,
-      error: err?.message || String(err),
-      siteKeyPrefix: siteKey.slice(0, 12),
-      hint: 'If error mentions domain/hostname, register petwash.co.il in reCAPTCHA Enterprise console for this key',
-    });
-  }
-
-  // ── 2. Standard v3 fallback (uses same site key; backend already validates standard v3) ──
-  try {
     if (window.grecaptcha?.ready && window.grecaptcha?.execute) {
       const token = await withTimeout(
         new Promise<string>((resolve, reject) => {
@@ -181,17 +145,21 @@ export async function executeReCaptcha(action: string = 'submit'): Promise<strin
           });
         }),
         RECAPTCHA_TIMEOUT_MS,
-        'standard-v3.execute'
+        'v3.execute'
       );
-      logger.info('[ReCaptcha] Standard v3 token obtained (Enterprise was unavailable)', { action, tokenLength: token.length });
+      logger.info('[ReCaptcha] Token obtained', { action, tokenLength: token.length });
       return token;
     }
-    logger.warn('[ReCaptcha] Standard v3 API not available on window.grecaptcha');
+    logger.warn('[ReCaptcha] reCAPTCHA API not available on window.grecaptcha after script load');
   } catch (err: any) {
-    logger.error('[ReCaptcha] Standard v3 execute also failed', { action, error: err?.message || String(err) });
+    logger.error('[ReCaptcha] Execute failed', {
+      action,
+      error: err?.message || String(err),
+      siteKeyPrefix: siteKey.slice(0, 12),
+    });
   }
 
-  logger.error('[ReCaptcha] BLOCKED: Both Enterprise and standard v3 failed — no token generated', { action });
+  logger.error('[ReCaptcha] BLOCKED: reCAPTCHA failed — no token generated', { action });
   return null;
 }
 
