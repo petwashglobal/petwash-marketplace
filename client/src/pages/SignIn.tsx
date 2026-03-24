@@ -50,6 +50,36 @@ interface SignInProps {
   onLanguageChange?: (lang: Language) => void;
 }
 
+// ── Redirect marker helpers ───────────────────────────────────────────────────
+// Safari ITP can clear sessionStorage during cross-origin redirects, silently
+// breaking signInWithRedirect detection. We use localStorage with a 5-minute
+// TTL so the marker survives the Firebase ↔ petwash.co.il hop.
+const REDIRECT_MARKER_KEY = 'pw_redirect_provider';
+const REDIRECT_MARKER_TTL = 5 * 60 * 1000; // 5 minutes
+
+function setRedirectMarker(provider: string): void {
+  try {
+    localStorage.setItem(REDIRECT_MARKER_KEY, JSON.stringify({ provider, ts: Date.now() }));
+  } catch { /* localStorage unavailable — ignore */ }
+}
+
+function getRedirectMarker(): string | null {
+  try {
+    const raw = localStorage.getItem(REDIRECT_MARKER_KEY);
+    if (!raw) return null;
+    const { provider, ts } = JSON.parse(raw);
+    if (Date.now() - ts > REDIRECT_MARKER_TTL) {
+      localStorage.removeItem(REDIRECT_MARKER_KEY);
+      return null;
+    }
+    return provider as string;
+  } catch { return null; }
+}
+
+function clearRedirectMarker(): void {
+  try { localStorage.removeItem(REDIRECT_MARKER_KEY); } catch { /* ignore */ }
+}
+
 export default function SignIn({ language, onLanguageChange }: SignInProps) {
   useSEO(pageSEO.login);
   const { toast } = useToast();
@@ -391,9 +421,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           // If we expected a redirect result (pw_redirect_provider is set) but got
           // null, the redirect was lost — most likely Safari ITP consumed the
           // cross-domain state. Log it, clear the marker, and show a retry toast.
-          const expectedProvider = sessionStorage.getItem('pw_redirect_provider');
+          const expectedProvider = getRedirectMarker();
           if (expectedProvider) {
-            sessionStorage.removeItem('pw_redirect_provider');
+            clearRedirectMarker();
             logClientEvent('REDIRECT_RESULT_NULL', { provider: expectedProvider });
             toast({
               variant: 'destructive',
@@ -406,8 +436,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           return;
         }
 
-        const provider = sessionStorage.getItem('pw_redirect_provider') || 'google';
-        sessionStorage.removeItem('pw_redirect_provider');
+        const provider = getRedirectMarker() || 'google';
+        clearRedirectMarker();
 
         logger.info(`[Auth] Processing redirect result for provider: ${provider}`);
         setSocialLoading(provider as any);
@@ -444,8 +474,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       } catch (err: any) {
         if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') return;
         logger.error('[Auth] Redirect result error:', err);
-        const errProvider = sessionStorage.getItem('pw_redirect_provider') || 'unknown';
-        sessionStorage.removeItem('pw_redirect_provider');
+        const errProvider = getRedirectMarker() || 'unknown';
+        clearRedirectMarker();
         logClientEvent('OAUTH_CALLBACK_FAILED', {
           provider: errProvider,
           reason: err?.code || err?.message || 'unknown',
@@ -688,6 +718,29 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       await auth.signOut();
       throw new Error(language === 'he' ? 'שגיאה ביצירת הפגישה. אנא נסה שוב.' : 'Session creation failed. Please try again.');
     }
+
+    // Verify the cookie actually landed — guards against SameSite/domain mis-
+    // configuration where the server returns 200 but the browser silently drops
+    // the Set-Cookie. If /api/simple-auth/me returns 401, the session is hollow.
+    try {
+      const meResponse = await fetch(getApiUrl('/api/simple-auth/me'), {
+        credentials: 'include',
+      });
+      if (meResponse.status === 401) {
+        logger.error('[Auth] Session cookie did not land (me=401) — signing out to prevent split-brain state');
+        logClientEvent('SESSION_CREATION_FAILED', {
+          reason: 'COOKIE_NOT_RECEIVED',
+          traceId,
+        });
+        await auth.signOut();
+        throw new Error(language === 'he' ? 'הפגישה לא הוגדרה כראוי. אנא נסה שוב.' : 'Session could not be established. Please try again.');
+      }
+    } catch (meErr: any) {
+      // Network failure on the verification call — do not block login.
+      // We already confirmed the session POST succeeded; this is best-effort.
+      if (meErr?.message?.includes('Session could not')) throw meErr;
+      logger.warn('[Auth] Session verification call failed (non-blocking):', meErr);
+    }
   };
 
   const handleSocialLogin = async (provider: SocialProvider) => {
@@ -781,7 +834,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       const authStrategy = getAuthStrategy();
       if (authStrategy === 'redirect') {
         logger.info(`[Auth] iPhone detected — using redirect for ${provider}`);
-        sessionStorage.setItem('pw_redirect_provider', provider);
+        setRedirectMarker(provider);
         await signInWithRedirect(auth, authProvider);
         setSocialLoading(null);
         return;

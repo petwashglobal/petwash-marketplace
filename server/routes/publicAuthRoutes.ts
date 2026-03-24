@@ -998,7 +998,9 @@ publicAuthRouter.get('/api/admin/auth-events', async (req, res) => {
 
     const adminEmails = (process.env.SUPER_ADMIN_EMAILS || '')
       .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
-    if (!adminEmails.includes((decodedToken.email || '').toLowerCase())) {
+    const callerEmail = (decodedToken.email || '').toLowerCase();
+    const isEmailVerified = decodedToken.email_verified !== false;
+    if (!adminEmails.includes(callerEmail) || !isEmailVerified) {
       return res.status(403).json({ error: 'FORBIDDEN' });
     }
 
