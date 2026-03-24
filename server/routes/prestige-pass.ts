@@ -5505,6 +5505,13 @@ router.get('/admin/wallet/settlement-summary', async (req: Request, res: Respons
     const to           = req.query.to           as string | undefined;
     const divisionCode = req.query.divisionCode as string | undefined;
 
+    // Validate query params before SQL interpolation
+    const DATE_RE    = /^\d{4}-\d{2}-\d{2}(T[\d:.Z+\-]{0,30})?$/;
+    const DIV_RE     = /^[A-Z0-9_\-]{1,32}$/i;
+    if (from && !DATE_RE.test(from)) return res.status(400).json({ error: 'Invalid from date' });
+    if (to   && !DATE_RE.test(to))   return res.status(400).json({ error: 'Invalid to date' });
+    if (divisionCode && !DIV_RE.test(divisionCode)) return res.status(400).json({ error: 'Invalid divisionCode' });
+
     // Build date clauses
     const fromClause = from ? `AND wle.created_at >= '${from}'::timestamptz` : '';
     const toClause   = to   ? `AND wle.created_at <  '${to}'::timestamptz + INTERVAL '1 day'` : '';
@@ -5624,6 +5631,13 @@ router.get('/admin/wallet/settlement-summary/export', async (req: Request, res: 
     const from         = req.query.from         as string | undefined;
     const to           = req.query.to           as string | undefined;
     const divisionCode = req.query.divisionCode as string | undefined;
+
+    // Validate query params before SQL interpolation
+    const DATE_RE_EXP = /^\d{4}-\d{2}-\d{2}(T[\d:.Z+\-]{0,30})?$/;
+    const DIV_RE_EXP  = /^[A-Z0-9_\-]{1,32}$/i;
+    if (from && !DATE_RE_EXP.test(from)) return res.status(400).json({ error: 'Invalid from date' });
+    if (to   && !DATE_RE_EXP.test(to))   return res.status(400).json({ error: 'Invalid to date' });
+    if (divisionCode && !DIV_RE_EXP.test(divisionCode)) return res.status(400).json({ error: 'Invalid divisionCode' });
 
     // Reuse the summary endpoint logic by making an internal call
     // Build same queries inline
@@ -5806,6 +5820,16 @@ router.get('/admin/wallet/disputes', async (req: Request, res: Response) => {
     const complainantUid   = req.query.complainantUid   as string | undefined;
     const limit            = Math.min(Number(req.query.limit  ?? 50), 200);
     const offset           = Math.max(Number(req.query.offset ?? 0),  0);
+
+    // Validate all string params before SQL interpolation
+    const VALID_DISPUTE_STATUSES = new Set(['open','in_review','resolved','closed','escalated','pending']);
+    const SAFE_ID_RE  = /^[a-zA-Z0-9_\-]{1,128}$/;
+    const DIV_RE_DISP = /^[A-Z0-9_\-]{1,32}$/i;
+    if (status           && !VALID_DISPUTE_STATUSES.has(status))     return res.status(400).json({ error: 'Invalid status' });
+    if (divisionCode     && !DIV_RE_DISP.test(divisionCode))         return res.status(400).json({ error: 'Invalid divisionCode' });
+    if (assignedAdminUid && !SAFE_ID_RE.test(assignedAdminUid))      return res.status(400).json({ error: 'Invalid assignedAdminUid' });
+    if (bookingId        && !SAFE_ID_RE.test(bookingId))             return res.status(400).json({ error: 'Invalid bookingId' });
+    if (complainantUid   && !SAFE_ID_RE.test(complainantUid))        return res.status(400).json({ error: 'Invalid complainantUid' });
 
     const conditions: string[] = [];
     if (status)           conditions.push(`status = '${status}'`);
@@ -13733,7 +13757,13 @@ router.patch('/admin/wallet/orchestration-retry-policies/:id', async (req: Reque
 
 router.get('/admin/wallet/approval-bottlenecks', async (req: Request, res: Response) => {
   try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
     const { from = '', to = '' } = req.query as Record<string,string>;
+    // Validate date params before SQL interpolation
+    const DATE_RE_BTL = /^\d{4}-\d{2}-\d{2}(T[\d:.Z+\-]{0,30})?$/;
+    if (from && !DATE_RE_BTL.test(from)) return res.status(400).json({ error: 'Invalid from date' });
+    if (to   && !DATE_RE_BTL.test(to))   return res.status(400).json({ error: 'Invalid to date' });
     const dateFilter = from && to
       ? `AND ar.created_at BETWEEN '${from}' AND '${to}'`
       : from ? `AND ar.created_at >= '${from}'` : '';
@@ -13977,7 +14007,19 @@ router.get('/admin/wallet/ops-command-center', async (_req: Request, res: Respon
 // ── 4.1A: Recommendation Confidence Scoring ────────────────────────────────
 router.get('/admin/wallet/recommendation-scores', async (req: Request, res: Response) => {
   try {
+    const session = (req as any).session;
+    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
     const { recommendationType, targetEntityType, from, to } = req.query as Record<string, string>;
+
+    // Validate all params before SQL interpolation
+    const VALID_REC_TYPES    = new Set(['service','provider','upgrade','bundle','loyalty','promotion','cross_sell','retention','upsell','referral']);
+    const VALID_ENTITY_TYPES = new Set(['user','provider','service','booking','station','division']);
+    const DATE_RE_REC        = /^\d{4}-\d{2}-\d{2}(T[\d:.Z+\-]{0,30})?$/;
+    if (recommendationType && !VALID_REC_TYPES.has(recommendationType))    return res.status(400).json({ error: 'Invalid recommendationType' });
+    if (targetEntityType   && !VALID_ENTITY_TYPES.has(targetEntityType))   return res.status(400).json({ error: 'Invalid targetEntityType' });
+    if (from && !DATE_RE_REC.test(from)) return res.status(400).json({ error: 'Invalid from date' });
+    if (to   && !DATE_RE_REC.test(to))   return res.status(400).json({ error: 'Invalid to date' });
+
     const conditions: string[] = [];
     if (recommendationType) conditions.push(`recommendation_type = '${recommendationType}'`);
     if (targetEntityType)   conditions.push(`target_entity_type = '${targetEntityType}'`);

@@ -15,7 +15,8 @@ import { nanoid } from 'nanoid';
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
 
-const WALLET_SECRET = process.env.WALLET_LINK_SECRET || 'petwash-wallet-secret-2025';
+const WALLET_SECRET = process.env.WALLET_LINK_SECRET;
+if (!WALLET_SECRET) throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 
 export interface WalletSummary {
   walletId: string;

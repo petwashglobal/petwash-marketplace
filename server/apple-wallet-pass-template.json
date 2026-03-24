@@ -3,7 +3,7 @@
   "passTypeIdentifier": "pass.com.petwash.loyalty",
   "teamIdentifier": "PETWASH_TEAM_ID",
   "webServiceURL": "https://petwash.co.il/api/wallet/apple",
-  "authenticationToken": "vxwxd7J8AlNNFPS8k0a0FfUFtq0ewzFDC",
+  "authenticationToken": "__REPLACED_SET_APPLE_WALLET_AUTH_TOKEN_IN_REPLIT_SECRETS__",
   "serialNumber": "PWS-10001",
   "barcode": {
     "message": "PWS-10001",
