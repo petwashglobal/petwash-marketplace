@@ -44,6 +44,14 @@ export function isIOS(): boolean {
 }
 
 /**
+ * Returns true only for iPhone/iPod (not iPad).
+ * iPad Safari handles popups correctly so redirect is not needed there.
+ */
+export function isIPhone(): boolean {
+  return /iPhone|iPod/.test(navigator.userAgent);
+}
+
+/**
  * Enterprise-grade sign-in handler that automatically selects
  * the best auth method based on the platform
  * 
@@ -57,12 +65,14 @@ export async function signInWithBestMethod(
   provider: AuthProvider,
   _preferredMethod?: 'popup' | 'redirect'
 ): Promise<UserCredential | null> {
-  if (isIOS()) {
-    console.log('[Auth] iOS detected — using redirect-based sign-in');
+  if (isIPhone()) {
+    // iPhone only: use redirect because popup windows are too small and often blocked
+    console.log('[Auth] iPhone detected — using redirect-based sign-in');
     await signInWithRedirect(auth, provider);
     return null; // Page will redirect; result handled by getRedirectResult in useEffect
   }
-  console.log('[Auth] Desktop — using popup-based sign-in');
+  // iPad and desktop: popup works correctly when triggered by a direct user tap
+  console.log('[Auth] iPad/Desktop — using popup-based sign-in');
   return await signInWithPopup(auth, provider);
 }
 
@@ -140,6 +150,6 @@ export function getDeviceInfo(): {
     os: /Mac/.test(navigator.platform) ? 'macOS/iOS' : 'Other',
     isIOS: isIOS(),
     isIOSSafari: isIOSSafari(),
-    shouldUseRedirect: isIOSSafari() || isIOS(),
+    shouldUseRedirect: isIPhone(), // iPad uses popup; only iPhone uses redirect
   };
 }
