@@ -447,6 +447,22 @@ if (isProduction) {
   
   // Store server reference for later use
   (app as any)._server = server;
+
+  // Graceful shutdown — Cloud Run sends SIGTERM before replacing the instance.
+  // Stop accepting new connections and drain existing requests within 10 s.
+  const shutdownHandler = (signal: string) => {
+    console.warn(`[Graceful] ${signal} received — closing HTTP server`);
+    server.close(() => {
+      console.warn('[Graceful] HTTP server closed cleanly');
+      process.exit(0);
+    });
+    setTimeout(() => {
+      console.error('[Graceful] Forced exit after 10 s timeout');
+      process.exit(1);
+    }, 10_000).unref();
+  };
+  process.on('SIGTERM', () => shutdownHandler('SIGTERM'));
+  process.on('SIGINT',  () => shutdownHandler('SIGINT'));
 }
 
 // 3. Static assets, API routes, and server startup

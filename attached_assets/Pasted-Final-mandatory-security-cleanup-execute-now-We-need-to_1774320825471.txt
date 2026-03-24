@@ -1,0 +1,60 @@
+Final mandatory security cleanup — execute now
+
+We need to complete the last remaining security step from the hardening pass. The private key file was deleted from disk but is still tracked in git, which means it can still be retrieved from the repository history. This must be removed from git tracking immediately.
+
+1. Remove the private key from git tracking
+
+Run the following commands in the project shell:
+
+git rm --cached petwash-wallet.key
+git commit -m "security: remove tracked private key from git index"
+
+This removes the file from git tracking without affecting the working directory (the file is already deleted). The commit ensures it is no longer part of the tracked repository state.
+
+2. Confirm removal
+
+After running, verify:
+- git ls-files petwash-wallet.key returns nothing
+- git status is clean
+
+3. Rotate Apple Wallet key material (mandatory)
+
+Because this private key existed in git history, it must be treated as compromised.
+
+Perform the following in Apple Developer:
+
+- Go to Certificates, Identifiers & Profiles
+- Locate the pass type ID: pass.com.petwash.member (or relevant pass type)
+- Revoke the existing signing certificate
+- Generate a new certificate + private key pair
+- Download the new certificate and key
+
+4. Update environment secrets
+
+Replace all Apple Wallet related secrets with the new values:
+
+- APPLE_SIGNER_KEY_PEM
+- APPLE_SIGNER_CERT_PEM
+- APPLE_WWDR_PEM
+- APPLE_WALLET_AUTH_TOKEN (generate a new secure random token)
+
+Do not reuse any previous values.
+
+5. Re-run security scan
+
+After completing the above:
+
+- Run the Replit security scanner again
+- Provide a summary of:
+  - Remaining HIGH findings (if any)
+  - Which are real vs false positives
+  - Any new issues introduced (should be none)
+
+6. Do not proceed with new features until this is complete
+
+This step closes the only remaining real security exposure (private key leakage). No further development should continue until:
+- key is removed from git tracking
+- key material is rotated
+- scan is clean
+
+Return with confirmation once all steps are completed.

@@ -5,6 +5,7 @@ import { eq, and, or, desc, sql } from "drizzle-orm";
 import { taxRateService } from "../services/taxRateService";
 import { expensePolicyService } from "../services/expensePolicyService";
 import { receiptOCRService } from "../services/ReceiptOCRService";
+import { requireAdmin } from "../adminAuth";
 import { z } from "zod";
 import multer from "multer";
 
@@ -391,7 +392,7 @@ router.patch("/:id/reject", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/seed-tax-rates", async (req: Request, res: Response) => {
+router.post("/seed-tax-rates", requireAdmin, async (req: Request, res: Response) => {
   try {
     await taxRateService.seedInitialTaxRates();
     
