@@ -243,6 +243,14 @@ publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (
     const captchaResult = await verifyCaptchaToken(captchaToken, 'phone_login');
     if (!captchaResult.valid) {
       logger.warn('[PublicAuth] Phone send-code blocked by reCAPTCHA', { phone: phone.slice(-4), reason: captchaResult.reason });
+      db.insert(authEvents).values({
+        eventType: 'CAPTCHA_PHONE_OTP_FAILED',
+        success: false,
+        reason: `${captchaResult.reason || 'low_score'} (score=${captchaResult.score}, source=${captchaResult.source})`,
+        ip: req.ip || (req.headers['x-forwarded-for'] as string) || 'unknown',
+        userAgent: req.headers['user-agent'] || null,
+        traceId,
+      }).catch((dbErr: any) => logger.warn('[PublicAuth] authEvents captcha insert failed', { error: dbErr?.message }));
       return res.status(403).json({ ok: false, error: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed. Please refresh and try again.' });
     }
 
@@ -300,6 +308,17 @@ publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (
     }).catch((dbErr: any) => logger.warn('[PublicAuth] otp_events insert failed (non-blocking)', { error: dbErr?.message }));
     // ──────────────────────────────────────────────────────────────────────
 
+    if (!result.success) {
+      db.insert(authEvents).values({
+        eventType: 'OTP_SEND_FAILED',
+        success: false,
+        reason: result.message || 'twilio_error',
+        ip: callerIp,
+        userAgent: req.headers['user-agent'] || null,
+        traceId,
+      }).catch((dbErr: any) => logger.warn('[PublicAuth] authEvents otp_send insert failed', { error: dbErr?.message }));
+    }
+
     return res.status(result.success ? 200 : 400).json({
       ok: result.success,
       message: result.message,
@@ -353,6 +372,14 @@ publicAuthRouter.post("/api/auth/phone/verify-code", phoneVerifyRateLimiter, asy
     // ──────────────────────────────────────────────────────────────────────
 
     if (!result.success) {
+      db.insert(authEvents).values({
+        eventType: 'OTP_VERIFY_FAILED',
+        success: false,
+        reason: result.message || 'invalid_code',
+        ip: callerIp2,
+        userAgent: req.headers['user-agent'] || null,
+        traceId,
+      }).catch((dbErr: any) => logger.warn('[PublicAuth] authEvents otp_verify insert failed', { error: dbErr?.message }));
       return res.status(400).json({
         ok: false,
         error: result.message,

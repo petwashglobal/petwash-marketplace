@@ -52,6 +52,19 @@ export function isIPhone(): boolean {
 }
 
 /**
+ * Single canonical auth strategy resolver.
+ * iPhone/iPod → redirect (popup window is too small and often blocked by Safari).
+ * Everything else (iPad, Android, desktop) → popup.
+ *
+ * IMPORTANT: The caller must call signInWithPopup() or signInWithRedirect()
+ * as the very next statement after receiving 'popup' — no awaits in between,
+ * or Safari may block the popup as a non-user-initiated window.
+ */
+export function getAuthStrategy(): 'popup' | 'redirect' {
+  return /iPhone|iPod/.test(navigator.userAgent) ? 'redirect' : 'popup';
+}
+
+/**
  * Enterprise-grade sign-in handler that automatically selects
  * the best auth method based on the platform
  * 

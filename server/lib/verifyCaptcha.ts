@@ -191,7 +191,11 @@ export async function verifyCaptchaToken(token: string, action: string): Promise
 
   const siteKey = RECAPTCHA_SITE_KEY;
   if (!siteKey) {
-    logger.error('[verifyCaptcha] CRITICAL: No reCAPTCHA site key configured — failing open to prevent user lockout');
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('[verifyCaptcha] BLOCKED: No reCAPTCHA site key configured in production — fail-closed', { action });
+      return { valid: false, score: 0, source: 'misconfigured', reason: 'reCAPTCHA site key not configured' };
+    }
+    logger.error('[verifyCaptcha] WARN: reCAPTCHA site key not configured — failing open (non-production only)', { action });
     return { valid: true, score: 0.5, source: 'misconfigured-failopen', reason: 'reCAPTCHA site key not configured' };
   }
 
@@ -287,10 +291,18 @@ export async function verifyCaptchaToken(token: string, action: string): Promise
     return standardResult;
   }
 
-  // 5. Both Enterprise and standard v3 unavailable — fail-open with critical log
-  // This prevents user lockout when Google's infrastructure is unreachable.
-  // The token WAS present (checked in step 1), so the user passed the first gate.
-  logger.error('[verifyCaptcha] CRITICAL: Both Enterprise and standard v3 unavailable — failing open to prevent user lockout', {
+  // 5. Both Enterprise and standard v3 unavailable
+  // Production: fail-closed — block the action to prevent unverified access.
+  // Non-production: fail-open — allows local/dev testing without reCAPTCHA infra.
+  if (process.env.NODE_ENV === 'production') {
+    logger.error('[verifyCaptcha] BLOCKED: Production fail-closed — all verification paths exhausted', {
+      action,
+      enterpriseAuthAvailable: !!enterpriseAuth,
+      standardKeyAvailable: !!RECAPTCHA_SECRET_KEY,
+    });
+    return { valid: false, score: 0, source: 'fail-closed', reason: 'verification_infrastructure_unavailable' };
+  }
+  logger.error('[verifyCaptcha] WARN: Both Enterprise and standard v3 unavailable — failing open (non-production only)', {
     action,
     enterpriseAuthAvailable: !!enterpriseAuth,
     standardKeyAvailable: !!RECAPTCHA_SECRET_KEY,

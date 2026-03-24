@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithCustomToken, getAdditionalUserInfo, getRedirectResult } from "firebase/auth";
-import { signInWithBestMethod, isIOS, createGoogleProvider, createAppleProvider, createFacebookProvider, getDeviceInfo } from "@/lib/iosAuthHandler";
+import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signInWithCustomToken, getAdditionalUserInfo, getRedirectResult } from "firebase/auth";
+import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider, getDeviceInfo } from "@/lib/iosAuthHandler";
 import { auth } from "../lib/firebase";
 import { getApiUrl } from "@/lib/apiConfig";
 import { Layout } from "@/components/Layout";
@@ -154,12 +154,6 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   }, [magicLinkResendCountdown]);
   
   useEffect(() => {
-    if (sessionStorage.getItem('pw_redirect_handled') === 'true') {
-      sessionStorage.removeItem('pw_redirect_handled');
-      logger.info('[Auth] Redirect sign-in completed, navigating via post-login');
-      if (customRedirect) { navigate(customRedirect); } else { navigatePostLogin(); }
-      return;
-    }
     if (user && !switchingAccount && !loading) {
       logger.info('[Auth] User already signed in, redirecting');
       if (customRedirect) { navigate(customRedirect); } else { navigatePostLogin(); }
@@ -390,16 +384,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
         const idToken = await result.user.getIdToken();
 
-        try {
-          await fetch(getApiUrl('/api/auth/session'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ idToken }),
-          });
-        } catch (sessionErr) {
-          logger.warn('[Auth] Session cookie request failed (non-blocking):', sessionErr);
-        }
+        await createSessionOrSignOut(idToken);
 
         const additionalInfo = getAdditionalUserInfo(result);
         if (additionalInfo?.isNewUser) {
@@ -644,6 +629,26 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   type SocialProvider = 'google' | 'apple' | 'facebook';
   type OAuthProvider = 'tiktok' | 'instagram';
 
+  /**
+   * Creates the backend session cookie after Firebase client auth succeeds.
+   * If session creation fails, signs out the Firebase client immediately to
+   * prevent split-brain state (Firebase says "logged in", backend says 401).
+   * Throws on failure so callers can show a clear error to the user.
+   */
+  const createSessionOrSignOut = async (idToken: string, traceId?: string): Promise<void> => {
+    const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ idToken, ...(traceId ? { traceId } : {}) }),
+    });
+    if (!sessionResponse.ok) {
+      logger.error(`[Auth] Session creation failed (${sessionResponse.status}) — signing out Firebase client to prevent split-brain state`);
+      await auth.signOut();
+      throw new Error(language === 'he' ? 'שגיאה ביצירת הפגישה. אנא נסה שוב.' : 'Session creation failed. Please try again.');
+    }
+  };
+
   const handleSocialLogin = async (provider: SocialProvider) => {
     await performOAuthLogin(provider);
   };
@@ -701,7 +706,6 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       
       const isReplitWebview = /Replit-Bonsai/i.test(navigator.userAgent);
       const isGenericWebview = /wv|WebView/i.test(navigator.userAgent) && !isReplitWebview;
-      const isIOSDevice = isIOS();
       const isGmailInApp = /GSA\//i.test(navigator.userAgent);
       const isInstagramInApp = /Instagram/i.test(navigator.userAgent);
       const isTikTokInApp = /BytedanceWebview|musical_ly/i.test(navigator.userAgent);
@@ -730,16 +734,19 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       let userCredential: import('firebase/auth').UserCredential | null = null;
 
-      if (isIOSDevice) {
-        // iOS Safari blocks popups — use redirect flow; result is handled in the useEffect above
-        logger.info(`[Auth] iOS detected — using redirect for ${provider}`);
+      // Single canonical strategy resolver: iPhone → redirect, everything else → popup.
+      // IMPORTANT: signInWithRedirect / signInWithPopup must be the immediate next call
+      // after getAuthStrategy() — no awaits in between or Safari blocks the popup.
+      const authStrategy = getAuthStrategy();
+      if (authStrategy === 'redirect') {
+        logger.info(`[Auth] iPhone detected — using redirect for ${provider}`);
         sessionStorage.setItem('pw_redirect_provider', provider);
-        await signInWithBestMethod(auth, authProvider);
+        await signInWithRedirect(auth, authProvider);
         setSocialLoading(null);
         return;
       }
 
-      logger.info(`[Auth] Using popup auth for ${provider} (desktop browser, webview=${isGenericWebview})`);
+      logger.info(`[Auth] Using popup auth for ${provider} (strategy=popup, webview=${isGenericWebview})`);
       userCredential = await signInWithPopup(auth, authProvider);
 
       const additionalInfo = getAdditionalUserInfo(userCredential);
@@ -757,19 +764,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       }
       
       const idToken = await userCredential.user.getIdToken();
-      try {
-        const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ idToken, traceId }),
-        });
-        if (!sessionResponse.ok) {
-          logger.warn(`[Auth] Session cookie creation returned ${sessionResponse.status} — Firebase auth succeeded, AuthProvider will handle session`);
-        }
-      } catch (sessionErr) {
-        logger.warn('[Auth] Session cookie request failed (non-blocking):', sessionErr);
-      }
+      await createSessionOrSignOut(idToken, traceId);
 
       if (isNewUser) {
         logger.info(`[Auth] New user via ${provider} - auto-enrolling in loyalty program`);
@@ -1118,18 +1113,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         const userCredential = await signInWithCustomToken(auth, sessionData.customToken);
         const idToken = await userCredential.user.getIdToken(true);
         logger.info('[PhoneAuth] Firebase client auth state set successfully');
-        
-        try {
-          await fetch(getApiUrl('/api/auth/session'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ idToken }),
-          });
-          logger.info('[PhoneAuth] Server session cookie set');
-        } catch (sessionErr) {
-          logger.debug('[PhoneAuth] Session cookie creation failed (non-blocking)', sessionErr);
-        }
+        await createSessionOrSignOut(idToken);
+        logger.info('[PhoneAuth] Server session cookie set');
       }
 
       if (sessionData.userId) {
