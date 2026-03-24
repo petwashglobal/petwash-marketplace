@@ -15,9 +15,9 @@ import {
 const router = Router();
 
 const APP_SESSION_SECRET = (() => {
-  const s = process.env.APP_SESSION_SECRET;
+  const s = process.env.APP_SESSION_SECRET || process.env.SESSION_SECRET;
   if (!s && process.env.NODE_ENV === 'production') {
-    throw new Error('FATAL: APP_SESSION_SECRET must be set in production');
+    throw new Error('FATAL: APP_SESSION_SECRET or SESSION_SECRET must be set in production');
   }
   return s || crypto.randomBytes(32).toString('hex'); // dev-only random fallback
 })();
