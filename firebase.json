@@ -136,12 +136,7 @@
             {
               "key": "Permissions-Policy",
               "value": "camera=(), microphone=(), geolocation=(self), payment=()"
-            }
-          ]
-        },
-        {
-          "source": "/index.html",
-          "headers": [
+            },
             {
               "key": "Content-Security-Policy",
               "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.gstatic.com https://accounts.google.com https://maps.googleapis.com https://maps.gstatic.com https://www.google.com https://cdn.docuseal.com https://www.googletagmanager.com https://connect.facebook.net https://analytics.tiktok.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com wss://*.firebaseio.com https://maps.googleapis.com https://petwash.co.il https://www.petwash.co.il https://ipapi.co https://api.hubspot.com https://*.sentry.io; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://cdn.docuseal.com https://docs.google.com https://www.google.com; frame-ancestors 'none';"
