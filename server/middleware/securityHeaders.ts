@@ -44,9 +44,12 @@ const CSP_DIRECTIVES = [
     // Maps & Places widget
     "https://maps.googleapis.com",
     "https://maps.gstatic.com",
-    // reCAPTCHA Enterprise
+    // reCAPTCHA — google.com is the primary loader; recaptcha.net is used in
+    // regions where google.com is blocked or when Google routes through it.
+    // Both must be present or the widget silently fails with fail-closed active.
     "https://www.google.com/recaptcha/",
     "https://www.gstatic.com/recaptcha/",
+    "https://www.recaptcha.net",
     // Stripe
     "https://js.stripe.com",
     // Twilio
@@ -114,6 +117,8 @@ const CSP_DIRECTIVES = [
     // Google Places / Maps
     "https://places.googleapis.com",
     "https://maps.googleapis.com",
+    // reCAPTCHA connect (mirrors script-src — recaptcha.net for non-google regions)
+    "https://www.recaptcha.net",
     // Gemini AI (client-side SDK)
     "https://generativelanguage.googleapis.com",
     // SendGrid click-tracking pixel
