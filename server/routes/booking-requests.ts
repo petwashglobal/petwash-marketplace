@@ -1259,13 +1259,22 @@ router.post('/:requestId/confirm', async (req, res) => {
     // ENTERPRISE: Create earning record via payoutLedger
     const platformFeePercent = 15; // 15% platform fee
     try {
-      const bookingType = booking.providerType === 'sitter' ? 'sitter' : 
-                          booking.providerType === 'walker' ? 'walker' : 'pettrek';
-      
+      // Map providerType to payoutLedger's supported bookingType values.
+      // 'pettrek' is NOT used here — it is a legally blocked service.
+      // Non-sitter/non-walker types (trainer, groomer, etc.) map to 'walker'
+      // as the nearest valid commercial model (time-based service).
+      const bookingType: 'sitter' | 'walker' | 'pettrek' =
+        booking.providerType === 'sitter' ? 'sitter' : 'walker';
+
+      // Map providerType to payoutLedger's contractorType.
+      // 'driver' is for PetTrek, which is blocked; trainers/groomers use 'walker'.
+      const contractorType: 'sitter' | 'walker' | 'driver' =
+        booking.providerType === 'sitter' ? 'sitter' : 'walker';
+
       await createEarningRecord({
         contractorId: booking.providerId,
-        contractorType: booking.providerType as 'sitter' | 'walker' | 'driver',
-        bookingType: bookingType as 'sitter' | 'walker' | 'pettrek',
+        contractorType,
+        bookingType,
         bookingId: requestId,
         baseAmount: booking.subtotalCents / 100,
         platformFeePercent,

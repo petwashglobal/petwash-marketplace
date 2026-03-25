@@ -72,8 +72,12 @@ export async function createEarningRecord(params: CreateEarningParams) {
     const platformFee = (baseAmount * platformFeePercent) / 100;
 
     // Calculate VAT (18% on commission only, effective Jan 1, 2025)
-    // VAT is calculated on the platform fee, not the full amount
-    const vatAmount = (platformFee * 18) / 100;
+    // Israeli law mandates VAT-inclusive consumer prices. Platform fee is already
+    // VAT-inclusive (it is a portion of the gross amount paid by the customer).
+    // Back-calculation formula: vatAmount = grossInclusive × (18 / 118)
+    // WRONG (add-on): platformFee × 0.18  — overstates VAT by ~2.75%
+    // CORRECT (back-calc): platformFee × (18 / 118)
+    const vatAmount = platformFee * (18 / 118);
 
     // Calculate net earnings
     const netEarnings = baseAmount + bonusAmount - platformFee - vatAmount;

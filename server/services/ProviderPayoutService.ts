@@ -328,7 +328,7 @@ ${bookingRow}
 
       logger.info('[ProviderPayout] Initiating Israeli bank transfer', {
         providerId: provider.id,
-        providerName: provider.name,
+        providerName: provider.businessName ?? null,
         bankName: provider.bankName,
         netAmount: payout.netAmount,
         currency: payout.currency,
