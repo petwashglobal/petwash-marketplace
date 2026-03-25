@@ -179,6 +179,37 @@ export async function postLoginDecider(req: Request, res: Response) {
       return res.status(404).json({ error: "USER_NOT_FOUND" });
     }
 
+    // Canonical cross-store sync: if termsAcceptedAt is missing in PostgreSQL,
+    // check Firestore for acceptedTerms/consentTimestamp (set during registration)
+    // and backfill the PostgreSQL field. This covers all sign-in entry methods.
+    if (!(user as any).termsAcceptedAt) {
+      try {
+        const fbAdminModule = await import('../lib/firebase-admin');
+        const firestoreDb = fbAdminModule.db;
+        if (firestoreDb) {
+          const profileSnap = await firestoreDb
+            .collection('users')
+            .doc(userId)
+            .collection('profile')
+            .doc('data')
+            .get();
+          if (profileSnap.exists) {
+            const fsData = profileSnap.data() as Record<string, any>;
+            if (fsData?.acceptedTerms === true && fsData?.consentTimestamp) {
+              const consentDate = typeof fsData.consentTimestamp?.toDate === 'function'
+                ? fsData.consentTimestamp.toDate()
+                : new Date(fsData.consentTimestamp as string | number);
+              await storage.updateUser(userId, { termsAcceptedAt: consentDate });
+              (user as any).termsAcceptedAt = consentDate;
+              logger.info('[PostLogin] Backfilled termsAcceptedAt from Firestore acceptedTerms', { userId });
+            }
+          }
+        }
+      } catch (fsErr) {
+        logger.warn('[PostLogin] Could not sync termsAcceptedAt from Firestore (non-fatal)', { userId, error: String(fsErr) });
+      }
+    }
+
     if ((user as any).blocked) {
       return res.json({
         nextUrl: '/blocked',

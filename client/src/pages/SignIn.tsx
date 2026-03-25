@@ -51,32 +51,38 @@ interface SignInProps {
 }
 
 // ── Redirect marker helpers ───────────────────────────────────────────────────
-// Safari ITP can clear sessionStorage during cross-origin redirects, silently
-// breaking signInWithRedirect detection. We use localStorage with a 5-minute
-// TTL so the marker survives the Firebase ↔ petwash.co.il hop.
+// Safari ITP may clear sessionStorage during cross-origin redirects (e.g. Firebase → petwash.co.il).
+// Strategy: write the marker to BOTH sessionStorage and localStorage, then read sessionStorage first.
+// sessionStorage is preferred (auto-clears on tab close = less data leakage) and localStorage acts
+// as the ITP-resistant fallback so the marker always survives the OAuth hop.
 const REDIRECT_MARKER_KEY = 'pw_redirect_provider';
 const REDIRECT_MARKER_TTL = 5 * 60 * 1000; // 5 minutes
 
 function setRedirectMarker(provider: string): void {
-  try {
-    localStorage.setItem(REDIRECT_MARKER_KEY, JSON.stringify({ provider, ts: Date.now() }));
-  } catch { /* localStorage unavailable — ignore */ }
+  const data = JSON.stringify({ provider, ts: Date.now() });
+  try { sessionStorage.setItem(REDIRECT_MARKER_KEY, data); } catch { /* ignore */ }
+  try { localStorage.setItem(REDIRECT_MARKER_KEY, data); } catch { /* ignore */ }
 }
 
 function getRedirectMarker(): string | null {
-  try {
-    const raw = localStorage.getItem(REDIRECT_MARKER_KEY);
-    if (!raw) return null;
-    const { provider, ts } = JSON.parse(raw);
-    if (Date.now() - ts > REDIRECT_MARKER_TTL) {
-      localStorage.removeItem(REDIRECT_MARKER_KEY);
-      return null;
-    }
-    return provider as string;
-  } catch { return null; }
+  // Try sessionStorage first (preferred), fall back to localStorage (Safari ITP fallback).
+  for (const store of [sessionStorage, localStorage]) {
+    try {
+      const raw = store.getItem(REDIRECT_MARKER_KEY);
+      if (!raw) continue;
+      const { provider, ts } = JSON.parse(raw);
+      if (Date.now() - ts > REDIRECT_MARKER_TTL) {
+        store.removeItem(REDIRECT_MARKER_KEY);
+        continue;
+      }
+      return provider as string;
+    } catch { continue; }
+  }
+  return null;
 }
 
 function clearRedirectMarker(): void {
+  try { sessionStorage.removeItem(REDIRECT_MARKER_KEY); } catch { /* ignore */ }
   try { localStorage.removeItem(REDIRECT_MARKER_KEY); } catch { /* ignore */ }
 }
 
