@@ -4654,6 +4654,8 @@ export const providerIntakeQueue = pgTable("provider_intake_queue", {
   // Location
   city: varchar("city"),
   country: varchar("country").default("IL"),
+  latitude: numeric("latitude"),
+  longitude: numeric("longitude"),
   
   // Experience & Qualifications (from form)
   yearsExperience: integer("years_experience"),

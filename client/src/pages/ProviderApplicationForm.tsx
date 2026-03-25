@@ -176,6 +176,8 @@ export default function ProviderApplicationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [addressLat, setAddressLat] = useState<number | null>(null);
+  const [addressLng, setAddressLng] = useState<number | null>(null);
 
   const handleProfilePhotoChange = (e: { target: HTMLInputElement }) => {
     const file = e.target.files?.[0];
@@ -378,6 +380,8 @@ export default function ProviderApplicationForm() {
         intendedPricing: pricing,
         profilePhotoBase64: profilePhoto || undefined,
         captchaToken: freshCaptchaToken,
+        latitude: addressLat ?? undefined,
+        longitude: addressLng ?? undefined,
       };
       
       console.log('[ProviderApplication] Sending API request...');
@@ -915,6 +919,10 @@ export default function ProviderApplicationForm() {
                                     ? `${details.street}${details.streetNumber ? ' ' + details.streetNumber : ''}`
                                     : value;
                                   field.onChange(streetValue);
+                                  if (!details) {
+                                    setAddressLat(null);
+                                    setAddressLng(null);
+                                  }
                                 }}
                                 onPlaceSelected={(place: PlaceDetails) => {
                                   const streetValue = place.street 
@@ -933,6 +941,9 @@ export default function ProviderApplicationForm() {
                                   if (place.country) {
                                     form.setValue('country', place.country);
                                   }
+
+                                  if (place.lat != null) setAddressLat(place.lat);
+                                  if (place.lng != null) setAddressLng(place.lng);
                                 }}
                                 label={t.streetAddress}
                                 placeholder={isHebrew ? 'הקלד כתובת מלאה...' : 'Start typing your full address...'}

@@ -327,6 +327,9 @@ const submitApplicationSchema = z.object({
   agreeToTerms: z.boolean().refine(val => val === true, 'You must agree to the terms'),
   agreeToPrivacy: z.boolean().refine(val => val === true, 'You must agree to the privacy policy'),
   agreeToContractorStatus: z.boolean().optional().default(false),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+  captchaToken: z.string().optional(),
 });
 
 router.post('/submit', async (req, res) => {
@@ -350,6 +353,8 @@ router.post('/submit', async (req, res) => {
         intendedPricing: data.intendedPricing || {},
         city: data.city,
         country: 'IL',
+        latitude: data.latitude != null ? String(data.latitude) : null,
+        longitude: data.longitude != null ? String(data.longitude) : null,
         yearsExperience: data.yearsExperience ? parseInt(data.yearsExperience.split('-')[0]) || 0 : 0,
         hasOwnTransport: data.hasOwnTransport,
         hasPetFirstAid: data.hasPetFirstAid,
