@@ -192,8 +192,11 @@ export class ProviderPayoutService {
               .from(users).where(eq(users.id, providerUserId)).limit(1);
 
             const payoutRef = transferResult.bankTransferReference ?? payoutId;
-            const grossStr   = parseFloat(payout.amount).toLocaleString('he-IL', { minimumFractionDigits: 2 });
-            const feeStr     = parseFloat(payout.platformFee).toLocaleString('he-IL', { minimumFractionDigits: 2 });
+            const platformFeeNum = parseFloat(payout.platformFee);
+            const vatOnFeeNum  = Math.round(platformFeeNum * (18 / 118) * 100) / 100;
+            const grossStr     = parseFloat(payout.amount).toLocaleString('he-IL', { minimumFractionDigits: 2 });
+            const feeStr       = platformFeeNum.toLocaleString('he-IL', { minimumFractionDigits: 2 });
+            const vatOnFeeStr  = vatOnFeeNum.toLocaleString('he-IL', { minimumFractionDigits: 2 });
             const netAmountStr = parseFloat(payout.netAmount).toLocaleString('he-IL', { minimumFractionDigits: 2 });
             const providerName = provUser?.firstName || provider.businessName || 'ספק';
             const paidAtStr  = new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' });
@@ -210,6 +213,7 @@ export class ProviderPayoutService {
 ${bookingRow}
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">סכום ברוטו</td><td style="padding:8px;border-bottom:1px solid #eee;">${grossStr} ₪</td></tr>
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">עמלת PetWash (פלטפורמה)</td><td style="padding:8px;border-bottom:1px solid #eee;color:#b91c1c;">−${feeStr} ₪</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;font-size:12px;">מתוכם מע"מ (18%) הכלול בעמלה</td><td style="padding:8px;border-bottom:1px solid #eee;font-size:12px;color:#6b7280;">${vatOnFeeStr} ₪</td></tr>
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;font-weight:bold;">סכום נטו להעברה</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;color:#16a34a;">${netAmountStr} ₪</td></tr>
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">מטבע</td><td style="padding:8px;border-bottom:1px solid #eee;">${payout.currency ?? 'ILS'}</td></tr>
   <tr><td style="padding:8px;color:#555;">תאריך ושעת תשלום</td><td style="padding:8px;">${paidAtStr}</td></tr>
@@ -232,6 +236,7 @@ ${bookingRow}
                 bankTransferReference: payoutRef,
                 amount: payout.amount,
                 platformFee: payout.platformFee,
+                vatOnCommission: vatOnFeeNum.toFixed(2),
                 netAmount: payout.netAmount,
                 currency: payout.currency ?? 'ILS',
                 paidAt: new Date().toISOString(),
