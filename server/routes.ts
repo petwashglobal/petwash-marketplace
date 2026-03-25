@@ -9643,7 +9643,7 @@ self.addEventListener('notificationclick', (event) => {
   // Unified Voucher System 2026 - WASH_PACKAGE + PLATFORM_CREDIT with full ledger
   app.use('/api/booking-chat', bookingChatRouter);
   app.use('/api/onboarding', onboardingRouter);
-  app.use('/api/provider-console', providerConsoleRouter);
+  app.use('/api/provider-console', validateFirebaseToken, providerConsoleRouter);
   app.use('/api/finance', adminLimiter, moneyFlowRouter);
   app.use('/api/legal-stamps', apiLimiter, legalStampsRoutes);
   app.use('/api/user/activity', apiLimiter, userActivityRoutes);
@@ -9793,13 +9793,13 @@ self.addEventListener('notificationclick', (event) => {
 
   // Provider Dashboard V1 — reads from old bookings table (kept live for fallback)
   const providerDashboardRoutes = (await import('./routes/provider-dashboard')).default;
-  app.use('/api/provider-dashboard', apiLimiter, providerDashboardRoutes);
+  app.use('/api/provider-dashboard', validateFirebaseToken, apiLimiter, providerDashboardRoutes);
 
   // Provider Dashboard V2 — Phase 3 migration: reads from booking_requests (new source of truth)
   // Dual-read safety phase: both V1 and V2 live simultaneously; switch UI query keys to /v2 once
   // migration-diff confirms parity. Remove V1 routes after Phase 3 is complete.
   const providerDashboardV2Routes = (await import('./routes/provider-dashboard-v2')).default;
-  app.use('/api/provider-dashboard/v2', apiLimiter, providerDashboardV2Routes);
+  app.use('/api/provider-dashboard/v2', validateFirebaseToken, apiLimiter, providerDashboardV2Routes);
 
   // Provider phone OTP verification (no CAPTCHA — user is already authenticated)
   const { providerPhoneRouter } = await import('./routes/provider-phone');

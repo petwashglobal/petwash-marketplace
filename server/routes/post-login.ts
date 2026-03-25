@@ -163,6 +163,10 @@ function buildRoutingResponse(user: any, role: string, userStatus: string, missi
     }
   }
 
+  if (role === 'franchise_owner') {
+    return { nextUrl: '/franchise/dashboard', reason: 'OK', profileStatus: 'approved', role, userStatus };
+  }
+
   if (role === 'admin' || role === 'management' || role === 'super_admin' || role === 'staff') {
     const isApproved = !!(user as any).approvedAt && !!(user as any).approvedBy;
     if (!isApproved && role !== 'staff') {

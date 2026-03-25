@@ -502,6 +502,7 @@ export const ROLE_HIERARCHY: Record<string, number> = {
   'public': 1,
   'pet_parent': 1,
   'provider': 2,
+  'franchise_owner': 3,
   'pending_staff': 3,
   'staff': 4,
   'admin': 6,
