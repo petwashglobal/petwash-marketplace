@@ -1,0 +1,245 @@
+🔒 FINAL PRE-LAUNCH VALIDATION MODE - PETWASH MARKETPLACE
+
+SYSTEM STATE:
+- LOCKED
+- NO NEW FEATURES
+- NO REFACTORING
+- NO DESIGN CHANGES
+- ONLY REAL TESTING → FAILURE → FIX → RE-TEST
+
+====================================================
+
+🧠 BUSINESS + SYSTEM LOGIC (FULL OVERVIEW)
+
+Pet Wash Ltd operates as a full marketplace controlled by a central system:
+
+CORE STRUCTURE:
+- Frontend (web + mobile)
+- Backend (Node / API layer)
+- Octopus Brain (central logic + control)
+- Admin Control Panel (operations + approvals)
+- Payment Processor (Nayax / provider)
+- AI Layer (Gemini monitoring + logic)
+- Financial Engine (calculations + validation)
+
+OCTOPUS BRAIN RESPONSIBILITIES:
+- Booking orchestration
+- Provider matching logic
+- Pricing + commission calculation
+- Payment validation
+- Fraud detection signals
+- System health monitoring
+- Event logging
+- AI-driven anomaly detection
+
+====================================================
+
+💰 FINANCIAL ENGINE (CRITICAL LOGIC)
+
+For every transaction:
+
+1. USER PAYMENT
+- Full amount charged to customer
+- Payment processor holds funds
+
+2. SYSTEM CALCULATION
+- Commission deducted (example: 15%)
+- VAT calculated correctly
+- Net provider payout calculated
+
+3. VALIDATION LAYER (MATHEMATICAL CHECK)
+- Ensure:
+  charged amount = commission + payout + tax
+- No rounding errors
+- No negative balances
+- No duplication
+
+4. PROVIDER PAYOUT
+- Provider receives net amount only
+- Logged in ledger
+
+5. REFUND LOGIC
+- Full refund → reverse full flow
+- Partial refund → recalculate commission impact
+- Ensure no double refund
+
+====================================================
+
+📄 DIGITAL DOCUMENT AUTOMATION
+
+AUTO GENERATED:
+- E-Receipt (user)
+- E-Tax Invoice (legal compliant)
+- E-Statement (user + provider)
+- Internal ledger entries
+
+ALL:
+- timestamped
+- stored
+- linked to transaction ID
+
+====================================================
+
+🤖 GEMINI AI ROLE
+
+- Monitor transactions
+- Detect anomalies:
+  - unusual amounts
+  - rapid bookings
+  - mismatch calculations
+- Log alerts
+- Assist SecurityAdvisor layer
+
+IMPORTANT:
+FREE TIER = 20 REQUESTS / DAY → NOT USABLE IN PRODUCTION
+
+REQUIRED:
+- Paid API key
+- Stored as environment secret
+- Verified before launch
+
+====================================================
+
+📍 PROVIDER ACTIVATION RULE (MUST BE HARD)
+
+MANDATORY CONDITION:
+
+IF lat == null OR lng == null → PROVIDER CANNOT BE ACTIVE
+
+NO EXCEPTIONS
+
+Implementation:
+- Either code enforcement in admin approval endpoint
+- Or STRICT manual checklist (temporary only)
+
+====================================================
+
+📱 MOBILE REAL DEVICE TESTING (FIRST PRIORITY)
+
+DEVICE 1: iPhone Safari
+
+FLOW:
+
+1. Open site
+2. Login with Google
+   EXPECTED:
+   - redirect works
+   - returns logged in
+   FAILURE:
+   - spinner
+   - no login
+   - redirect loop
+
+3. Refresh page
+   EXPECTED:
+   - still logged in
+
+4. Address search
+   - type
+   - tap suggestion with keyboard open
+   EXPECTED:
+   - selection works instantly
+
+5. GPS permission
+   EXPECTED:
+   - prompt appears
+   - location resolves
+
+6. Booking flow
+   EXPECTED:
+   - completes without silent failure
+
+REPEAT ON:
+- Android Chrome
+
+====================================================
+
+💳 PAYMENT FLOW TESTING (FULL COVERAGE)
+
+RUN ALL CASES:
+
+1. Successful payment
+2. Failed payment
+3. Full refund
+4. Partial refund
+5. Cancel after payment
+
+VERIFY EACH:
+
+- correct charge
+- correct commission
+- correct payout
+- no duplicate charges
+- no missing funds
+
+ANY mismatch = HARD BLOCKER
+
+====================================================
+
+🧠 SYSTEM RULE - HOW TO OPERATE
+
+ONLY THIS FLOW:
+
+REAL DEVICE
+→ REAL ACTION
+→ REAL RESULT
+→ FAILURE
+→ FIX
+→ RE-TEST SAME FLOW
+
+DO NOT:
+- guess
+- assume
+- theorize
+
+====================================================
+
+🚨 FAILURE REPORT FORMAT (MANDATORY)
+
+DEVICE:
+iPhone 13 Safari
+
+FLOW:
+Google login
+
+EXPECTED:
+User logs in
+
+ACTUAL:
+Returned to login screen
+
+TIME:
+HH:MM
+
+SCREENSHOT:
+attach
+
+====================================================
+
+⛔ WHAT IS FORBIDDEN NOW
+
+- new features
+- UI redesign
+- logic changes (unless fixing bug)
+- performance tuning
+- code cleanup
+
+====================================================
+
+🟢 FINAL OBJECTIVE
+
+SYSTEM MUST BE:
+
+- stable
+- predictable
+- financially accurate
+- mobile-safe
+- production-ready
+
+====================================================
+
+⚠️ FINAL RULE
+
+IF IT WORKS → DO NOT TOUCH IT
+
+====================================================
