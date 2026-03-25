@@ -188,7 +188,8 @@ export default function AdminLogin() {
         throw new Error('This account is suspended');
       }
       
-      if (meData.user.role !== 'admin' && meData.user.role !== 'ops') {
+      const ADMIN_ALLOWED = ['admin', 'ops', 'management', 'super_admin', 'hr', 'staff'];
+      if (!ADMIN_ALLOWED.includes(meData.user.role)) {
         throw new Error('This account does not have admin access');
       }
       
@@ -487,7 +488,8 @@ export default function AdminLogin() {
                       const meRes = await fetch(getApiUrl('/api/auth/me'), { credentials: 'include' });
                       const meData = await meRes.json();
                       
-                      if (meData.user?.role !== 'admin' && meData.user?.role !== 'ops') {
+                      const ADMIN_ALLOWED = ['admin', 'ops', 'management', 'super_admin', 'hr', 'staff'];
+                      if (!ADMIN_ALLOWED.includes(meData.user?.role)) {
                         throw new Error('Not an admin account');
                       }
                       

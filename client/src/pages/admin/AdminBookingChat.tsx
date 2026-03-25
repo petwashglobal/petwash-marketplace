@@ -30,12 +30,14 @@ export default function AdminBookingChat() {
   const { toast } = useToast();
   const bookingId = params?.bookingId;
 
+  const ADMIN_ROLES = ['admin', 'management', 'super_admin', 'hr', 'staff'];
+
   const { data: chatData, isLoading, error } = useQuery<{
     conversation: BookingConversation;
     messages: BookingMessage[];
   }>({
     queryKey: ["/api/booking-chat/admin", bookingId],
-    enabled: !!bookingId && claims?.role === 'admin',
+    enabled: !!bookingId && ADMIN_ROLES.includes(claims?.role ?? ''),
   });
 
   const moderateMutation = useMutation({
@@ -55,7 +57,7 @@ export default function AdminBookingChat() {
     return <div className="p-8 text-center"><Skeleton className="h-20 w-full mb-4" /><Skeleton className="h-64 w-full" /></div>;
   }
 
-  if (claims?.role !== 'admin') {
+  if (!ADMIN_ROLES.includes(claims?.role ?? '')) {
     setLocation("/signin");
     return null;
   }
