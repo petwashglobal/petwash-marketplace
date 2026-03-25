@@ -13,11 +13,14 @@ import { userConsents, authEvents, users, smsEvidence, otpEvents } from '@shared
 import { storage } from '../storage';
 
 // Rate limiter: max 3 SMS send attempts per IP per 10 minutes
+// ipKeyGenerator normalises IPv6-mapped IPv4 addresses (e.g. "::ffff:1.2.3.4" → "1.2.3.4")
+// so that IPv4 and IPv6 connections to the same IP share the same rate-limit bucket.
 const phoneSendRateLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
   max: 3,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: ipKeyGenerator,
   validate: { xForwardedForHeader: false, ip: false, default: false },
   handler: (_req, res) => {
     logger.warn('[PublicAuth] SMS rate limit hit', { ip: _req.ip });
@@ -29,11 +32,13 @@ const phoneSendRateLimiter = rateLimit({
 });
 
 // Rate limiter: max 10 verify attempts per IP per 5 minutes
+// ipKeyGenerator normalises IPv6-mapped IPv4 addresses so bypassing via IPv6 is blocked.
 const phoneVerifyRateLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: ipKeyGenerator,
   validate: { xForwardedForHeader: false, ip: false, default: false },
   handler: (_req, res) => {
     return res.status(429).json({

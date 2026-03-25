@@ -18,8 +18,32 @@ import {
 } from "@shared/schema";
 import { eq, desc, gte, count, sql, and, lte } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { validateFirebaseToken } from "../middleware/firebase-auth";
 
 const router = Router();
+
+// ALL control-panel routes are admin-only.
+// Apply validateFirebaseToken + requireAdminOrViewer to the whole router.
+const ADMIN_EMAILS = [
+  'nirhadad1@gmail.com',
+  'nir.h@petwash.co.il',
+  'admin@petwash.co.il',
+  'support@petwash.co.il',
+  'ido.s@petwash.co.il',
+  'avner9000@gmail.com',
+  'shiri.shakarzi1@gmail.com',
+];
+
+const requireAdminOrViewer = (req: any, res: any, next: any) => {
+  const userEmail = (req.firebaseUser?.email || '').toLowerCase();
+  if (!ADMIN_EMAILS.includes(userEmail)) {
+    logger.warn('[ControlPanel] Unauthorized access attempt', { email: userEmail, path: req.path });
+    return res.status(403).json({ error: 'Access denied: Admin or viewer privileges required' });
+  }
+  next();
+};
+
+router.use(validateFirebaseToken, requireAdminOrViewer);
 
 /**
  * GET /api/control-panel/metrics
