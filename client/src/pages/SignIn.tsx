@@ -418,20 +418,29 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       try {
         const result = await getRedirectResult(auth);
         if (!result) {
-          // If we expected a redirect result (pw_redirect_provider is set) but got
-          // null, the redirect was lost — most likely Safari ITP consumed the
-          // cross-domain state. Log it, clear the marker, and show a retry toast.
+          // AuthProvider.tsx also calls getRedirectResult on mount and may have
+          // consumed the result first (Firebase clears it from IndexedDB after the
+          // first successful read). Check auth.currentUser before deciding whether
+          // the redirect genuinely failed or was already handled by AuthProvider.
           const expectedProvider = getRedirectMarker();
           if (expectedProvider) {
             clearRedirectMarker();
-            logClientEvent('REDIRECT_RESULT_NULL', { provider: expectedProvider });
-            toast({
-              variant: 'destructive',
-              title: language === 'he' ? 'ההתחברות לא הושלמה' : 'Sign-in not completed',
-              description: language === 'he'
-                ? 'לא הצלחנו לאמת את ההתחברות. אנא נסו שוב.'
-                : 'We could not verify your sign-in. Please try again.',
-            });
+            if (auth.currentUser) {
+              // AuthProvider already processed the redirect result — user is signed
+              // in. Do not show an error toast; the onAuthStateChanged handler in
+              // AuthProvider will navigate the user to the correct page.
+              logger.info('[Auth] Redirect result consumed by AuthProvider — skipping null-result error toast', { provider: expectedProvider });
+            } else {
+              // Truly lost — Safari ITP likely cleared the cross-origin state.
+              logClientEvent('REDIRECT_RESULT_NULL', { provider: expectedProvider });
+              toast({
+                variant: 'destructive',
+                title: language === 'he' ? 'ההתחברות לא הושלמה' : 'Sign-in not completed',
+                description: language === 'he'
+                  ? 'לא הצלחנו לאמת את ההתחברות. אנא נסו שוב.'
+                  : 'We could not verify your sign-in. Please try again.',
+              });
+            }
           }
           return;
         }
