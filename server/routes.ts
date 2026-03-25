@@ -9301,7 +9301,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/subcontractors/agreements', validateFirebaseToken, apiLimiter, subcontractorAgreementsRoutes);
   
   // Provider Training - ⁦Pet Wash™⁩ professional training, quizzes, certificates
-  app.use('/api/provider-training', apiLimiter, providerTrainingRoutes);
+  app.use('/api/provider-training', validateFirebaseToken, apiLimiter, providerTrainingRoutes);
   
   // Police Check Badge System - Israeli תעודת יושר verification
   app.use('/api/police-check', apiLimiter, policeCheckRoutes);
@@ -9352,7 +9352,7 @@ self.addEventListener('notificationclick', (event) => {
   // Enterprise Corporate routes (Board, JV Partners, Suppliers, Station Registry - Nov 2025)
   app.use('/api/enterprise/corporate', adminLimiter, requireAdminMfa, enterpriseCorporateRoutes);
   app.use('/api/enterprise/policy', adminLimiter, requireAdminMfa, enterprisePolicyRoutes);
-  app.use('/api/enterprise/franchise', adminLimiter, requireAdminMfa, enterpriseFranchiseRoutes);
+  app.use('/api/enterprise/franchise', validateFirebaseToken, adminLimiter, requireAdminMfa, enterpriseFranchiseRoutes);
   
   // Logistics & Fleet Management routes (Field Operations - Phase 2)
   app.use('/api/logistics', optionalFirebaseToken, apiLimiter, logisticsRoutes);
@@ -9745,7 +9745,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/loyalty-credits', apiLimiter, loyaltyCreditsRoutes);
 
   // Provider Profile Self-Edit API (GET/PATCH own profile — strict allowlist)
-  app.use('/api/provider-profile', apiLimiter, providerProfileRoutes);
+  app.use('/api/provider-profile', validateFirebaseToken, apiLimiter, providerProfileRoutes);
 
   // UNIFIED MARKETPLACE API - Aggregated search across all 6 platforms
   // Returns normalized discriminated-union types for frontend
@@ -9809,7 +9809,7 @@ self.addEventListener('notificationclick', (event) => {
 
   // Provider Availability Calendar (Uber-style online/offline per day, bulk block, calendar sync)
   const providerAvailabilityRoutes = (await import('./routes/provider-availability')).default;
-  app.use('/api/provider-availability', apiLimiter, providerAvailabilityRoutes);
+  app.use('/api/provider-availability', validateFirebaseToken, apiLimiter, providerAvailabilityRoutes);
 
   app.use('/api/onboarding-verification', onboardingVerificationRoutes);
   app.use('/api/registration', completeRegistrationRoutes);
