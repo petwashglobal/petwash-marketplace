@@ -1,11 +1,13 @@
 # .dockerignore — PetWash Cloud Run build exclusions
-# NOTE: client/ and attached_assets/ must NOT be excluded — builder needs them
+#
+# ARCHITECTURE NOTE: dist/ is pre-built by CI (npm run build with VITE_* secrets)
+# before docker build runs. dist/ MUST be in the build context so the runner stage
+# can COPY --from=builder /app/dist. Do NOT add dist here.
+#
 node_modules
 .git
 .github
 npm-debug.log
-dist
-build
 .env
 .env.*
 .replit
@@ -14,3 +16,4 @@ replit.md
 .local
 tmp
 coverage
+attached_assets
