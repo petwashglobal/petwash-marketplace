@@ -84,6 +84,29 @@ jobs:
           ensure_secret "GCS_FIRESTORE_BUCKET"          "petwash-firestore-backups"
           ensure_secret "FIREBASE_STORAGE_BUCKET"       "signinpetwash.firebasestorage.app"
 
+          # GOOGLE_MAPS_API_KEY — sync from GitHub secret if provided (fixes stale/invalid key in GCP Secret Manager).
+          # Set GOOGLE_MAPS_API_KEY as a GitHub Actions secret to keep it in sync automatically.
+          # If no GitHub secret is set, the existing GCP Secret Manager value is used as-is.
+          MAPS_KEY="${{ secrets.GOOGLE_MAPS_API_KEY }}"
+          if [ -n "$MAPS_KEY" ]; then
+            printf '%s' "$MAPS_KEY" | gcloud secrets versions add "GOOGLE_MAPS_API_KEY" \
+              --project="$PROJECT" \
+              --data-file=- \
+              --quiet 2>/dev/null || \
+            printf '%s' "$MAPS_KEY" | gcloud secrets create "GOOGLE_MAPS_API_KEY" \
+              --project="$PROJECT" \
+              --replication-policy=automatic \
+              --data-file=- \
+              --quiet
+            echo "✅ GOOGLE_MAPS_API_KEY: synced from GitHub secret (${#MAPS_KEY} chars)"
+          else
+            if gcloud secrets describe "GOOGLE_MAPS_API_KEY" --project="$PROJECT" --quiet &>/dev/null 2>&1; then
+              echo "✅ GOOGLE_MAPS_API_KEY: exists in GCP Secret Manager (no GitHub secret to sync)"
+            else
+              echo "❌ GOOGLE_MAPS_API_KEY: not found in GCP Secret Manager and no GitHub secret provided" && exit 1
+            fi
+          fi
+
       - name: Set up Node 20
         uses: actions/setup-node@v4
         with:
@@ -213,6 +236,24 @@ jobs:
             echo "✅ Backend health check passed (HTTP $STATUS)"
           else
             echo "❌ Backend health check FAILED (HTTP $STATUS)"
+            exit 1
+          fi
+
+      - name: Smoke test — Places API key validation
+        run: |
+          URL="${{ steps.deploy.outputs.url }}"
+          echo "Testing: $URL/api/google/places-health"
+          RESULT=$(curl -sf --max-time 20 "$URL/api/google/places-health" || echo '{"status":"CURL_FAIL"}')
+          PLACES_STATUS=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status','UNKNOWN'))" 2>/dev/null || echo "PARSE_FAIL")
+          HTTP_CODE=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('googleHttpStatus','?'))" 2>/dev/null || echo "?")
+          if [ "$PLACES_STATUS" = "OK" ]; then
+            echo "✅ Places API: key valid (Google HTTP $HTTP_CODE)"
+          else
+            echo "❌ CRITICAL: Places API key is INVALID (status=$PLACES_STATUS, Google HTTP=$HTTP_CODE)"
+            echo "   → Address autocomplete is broken for ALL users on petwash.co.il"
+            echo "   → Fix: add GOOGLE_MAPS_API_KEY as a GitHub Actions secret, then re-run CI"
+            echo "   → Or: update GOOGLE_MAPS_API_KEY in GCP Secret Manager manually"
+            echo "   Raw response: $RESULT"
             exit 1
           fi
 

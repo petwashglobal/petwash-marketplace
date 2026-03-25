@@ -115,7 +115,45 @@ console.log(`   Port: ${process.env.PORT || 5000}`);
 console.log(`   DATABASE_URL: ${process.env.DATABASE_URL ? '✅ SET' : '❌ NOT SET'}`);
 console.log(`   FIREBASE_SERVICE_ACCOUNT_KEY: ${process.env.FIREBASE_SERVICE_ACCOUNT_KEY ? '✅ SET' : '❌ NOT SET'}`);
 console.log(`   COOKIE_SECRET: ${process.env.COOKIE_SECRET ? '✅ SET' : '❌ NOT SET'}`);
+console.log(`   GOOGLE_MAPS_API_KEY: ${process.env.GOOGLE_MAPS_API_KEY ? `✅ SET (${process.env.GOOGLE_MAPS_API_KEY.length} chars)` : '❌ NOT SET'}`);
 console.log('--------------------------------------------------');
+
+// Validate Places API key in background — runs 10 seconds after boot to avoid slowing startup.
+// This catches the silent failure mode where the key in GCP Secret Manager is stale/invalid.
+setTimeout(async () => {
+  const key = process.env.GOOGLE_MAPS_API_KEY;
+  if (!key) {
+    console.warn('[Places] ⚠️  GOOGLE_MAPS_API_KEY not set — Places autocomplete is DISABLED for all users');
+    return;
+  }
+  try {
+    const res = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': key,
+        'X-Goog-FieldMask': 'suggestions.placePrediction.placeId',
+      },
+      body: JSON.stringify({ input: 'Tel Aviv', languageCode: 'en', includedRegionCodes: ['il'] }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const count = (data.suggestions || []).length;
+      console.log(`[Places] ✅ Places API key valid — ${count} test predictions returned`);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      console.error(
+        `[Places] ❌ CRITICAL: Places API key is INVALID (HTTP ${res.status}). ` +
+        `All address autocomplete on the live site is broken. ` +
+        `Update GOOGLE_MAPS_API_KEY in GCP Secret Manager. ` +
+        `Error: ${data?.error?.message || 'Unknown'}`
+      );
+    }
+  } catch (err: any) {
+    console.warn(`[Places] ⚠️  Places API key validation failed (network): ${err.message}`);
+  }
+}, 10_000);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
