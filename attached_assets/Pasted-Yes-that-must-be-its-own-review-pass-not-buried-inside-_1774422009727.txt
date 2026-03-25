@@ -1,0 +1,57 @@
+Yes - that must be its own review pass, not buried inside general security.
+
+For your app, sign-up / sign-in is a full system by itself because you have different entry types:
+	•	Google sign-up / sign-in
+	•	email + password
+	•	phone / SMS
+	•	public customer
+	•	provider / applicant
+	•	role selection after auth
+	•	session creation and persistence
+
+So I would make the review plan 5 passes, not 4:
+
+Pass 1 - Money path
+booking → payment → escrow → completion → payout → refund
+
+Pass 2 - Auth / sign-up / sign-in
+This should cover:
+	•	Google sign-in on iPhone Safari, iPad Safari, Android Chrome
+	•	email/password sign-up and login
+	•	phone/SMS sign-up and verification
+	•	Firebase redirect vs popup behavior
+	•	session cookie creation
+	•	/api/auth/session and /api/simple-auth/me
+	•	role routing after login
+	•	public user vs provider onboarding split
+	•	provider approval dependencies
+	•	failure logging like REDIRECT_RESULT_NULL, COOKIE_NOT_RECEIVED, SESSION_CREATION_FAILED
+
+Pass 3 - Location + matching
+address fields, GPS, lat/lng, provider coordinates, proximity ranking
+
+Pass 4 - Documents + legal flow
+receipt, tax invoice, payout statement, Model A consistency
+
+Pass 5 - Admin / control / fraud
+admin guards, approval gates, PetTrek hard block, Gemini monitoring, anomaly logging
+
+If you want the smartest place to start after money, it is exactly what you said:
+Google sign-up / sign-in, phone sign-up, and provider/public user flows.
+
+That auth pass should answer these exact questions:
+	•	Can a new public user sign up cleanly with Google, email, and phone?
+	•	Can a new provider start onboarding cleanly?
+	•	Can the system keep those two paths separate?
+	•	Does session persistence survive refresh and mobile browser quirks?
+	•	Do failed auth attempts leave clean logs and no broken partial state?
+
+So the clean order is:
+
+1. Money path
+2. Google / email / phone auth for public users and providers
+3. Location + matching
+4. Documents + legal
+5. Admin + fraud
+
+If you want, I’ll structure Pass 2 into a strict checklist for the Replit team.
