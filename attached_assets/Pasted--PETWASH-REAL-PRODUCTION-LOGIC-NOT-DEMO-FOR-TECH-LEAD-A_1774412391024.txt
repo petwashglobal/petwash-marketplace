@@ -1,0 +1,287 @@
+🔒 PETWASH — REAL PRODUCTION LOGIC (NOT DEMO)  
+FOR: TECH LEAD / ARCHITECT  
+MODE: HARD BUSINESS + LEGAL + SYSTEM CLARITY
+
+====================================================
+
+🧠 CONTEXT (READ CAREFULLY)
+
+We are NOT building a demo system.
+
+We are building a **real marketplace** operating in Israel with:
+- real money
+- real customers
+- real providers
+- real liability
+
+Wolt is the reference standard NOT because of UI,
+but because of **legal clarity + financial structure + operational discipline**.
+
+PetWash MUST reach that level.
+
+====================================================
+
+🧩 CORE MODEL (NON-NEGOTIABLE)
+
+PetWash is a **marketplace operator**.
+
+NOT:
+- employer
+- service provider
+- demo platform
+
+YES:
+- intermediary
+- orchestrator
+- payment collector
+- compliance controller
+
+====================================================
+
+💰 PAYMENT FLOW (EXACT LOGIC)
+
+1. Customer pays PetWash (via payment provider)
+
+2. PetWash acts as:
+   → “collection agent on behalf of provider”
+
+3. Legal meaning:
+   → payment to PetWash = payment to provider
+
+4. Funds state:
+
+   PAYMENT RECEIVED
+   → HELD (escrow logic / ledger)
+   → VALIDATED (Gemini + rules)
+   → RELEASED (payout cycle)
+
+====================================================
+
+🧮 FINANCIAL ENGINE (MUST MATCH EXACTLY)
+
+For EVERY transaction:
+
+charged_amount
+=
+provider_payout
++ platform_commission
++ VAT
+
+NO rounding drift allowed.
+
+ALL values:
+- stored
+- logged
+- auditable
+
+====================================================
+
+📊 REQUIRED LEDGER STRUCTURE
+
+You MUST have:
+
+1. Booking Ledger
+2. Payment Ledger
+3. Commission Ledger
+4. Provider Earnings Ledger
+5. Refund Ledger
+6. Adjustment Ledger
+
+Each entry must include:
+- transaction_id
+- user_id
+- provider_id
+- timestamp
+- status
+
+====================================================
+
+🧾 DOCUMENT GENERATION (ISRAEL COMPLIANCE)
+
+FOR EACH TRANSACTION:
+
+Customer:
+- receipt (always)
+- tax invoice (if applicable)
+
+Provider:
+- earnings statement
+- payout report
+
+Platform:
+- commission invoice (to provider)
+
+👉 This MUST be consistent with selected tax model.
+
+====================================================
+
+⚖️ CRITICAL DECISION (DO NOT IGNORE)
+
+YOU MUST LOCK ONE MODEL:
+
+MODEL A (Marketplace Agent):
+- provider issues invoice to customer
+- PetWash invoices provider (commission)
+
+MODEL B (Reseller):
+- PetWash invoices customer
+- provider invoices PetWash
+
+❗ Mixing both = legal risk
+
+====================================================
+
+🔁 REFUND ENGINE (STRICT)
+
+FULL REFUND:
+→ reverse full transaction
+
+PARTIAL REFUND:
+→ recalc commission
+→ adjust provider payout
+
+RULES:
+- no double refunds
+- no negative balances
+- provider liability defined
+
+====================================================
+
+📍 PROVIDER STATUS (LEGAL)
+
+ALL providers:
+
+- independent contractors
+- not employees
+- responsible for service delivery
+
+SYSTEM MUST:
+- store provider agreement acceptance
+- enforce terms at onboarding
+
+====================================================
+
+🐾 PET-SPECIFIC LIABILITY (CRITICAL)
+
+System must include:
+
+- injury disclaimer
+- behavior risk clause
+- health responsibility clause
+
+👉 This is NOT optional in pet services.
+
+====================================================
+
+📱 MOBILE + PERMISSIONS (REAL WORLD)
+
+Provider app logic (future split):
+
+- GPS always-on (for tracking services)
+- availability status
+- job acceptance/rejection
+- earnings tracking
+
+Customer app:
+
+- booking
+- payment
+- tracking
+
+👉 DO NOT mix heavy provider logic into customer flow
+
+====================================================
+
+🚫 PETTREK STATUS (IMPORTANT)
+
+PetTrek (pet transport):
+
+CURRENT STATUS:
+❌ NOT LEGALLY ACTIVE IN ISRAEL
+
+REQUIREMENT:
+
+- MUST be FULLY DISABLED
+- NO bookings allowed
+- NO payment allowed
+- NO provider onboarding allowed
+
+ONLY:
+- visible as “coming soon”
+
+BACKEND ENFORCEMENT:
+
+IF service == PetTrek
+→ reject request (hard block)
+
+NO exceptions.
+
+====================================================
+
+🤖 GEMINI AI (NOT DECORATION)
+
+ROLE:
+
+- transaction monitoring
+- anomaly detection
+- fraud signals
+
+MUST:
+
+- run on paid API
+- log events
+- not fail silently
+
+====================================================
+
+🔐 PRIVACY + DATA (MANDATORY)
+
+System must clearly handle:
+
+- GPS data usage
+- user-provider data sharing
+- payment data via provider
+- marketing consent + opt-out
+
+====================================================
+
+⚙️ CONTROL PANEL (OCTOPUS)
+
+Admin must control:
+
+- provider activation (with lat/lng gate)
+- payouts
+- refunds
+- disputes
+- service enable/disable (PetTrek critical)
+
+====================================================
+
+🚨 WHAT WE ARE FIXING NOW
+
+We are moving from:
+
+❌ demo thinking  
+→  
+✅ real marketplace logic
+
+Meaning:
+
+- every flow must map to money
+- every action must map to liability
+- every transaction must be auditable
+
+====================================================
+
+🎯 FINAL RULE
+
+If this system cannot answer:
+
+- who got paid
+- who owes money
+- who issued invoice
+- who is responsible
+
+→ then it is NOT production ready
+
+====================================================
