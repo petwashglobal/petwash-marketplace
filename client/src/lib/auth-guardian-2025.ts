@@ -14,9 +14,11 @@
 
 import { auth, app } from '@/lib/firebase';
 import { 
-  signInWithPopup, 
+  signInWithPopup,
+  signInWithRedirect,
   GoogleAuthProvider,
 } from 'firebase/auth';
+import { isIOSSafari } from '@/lib/iosAuthHandler';
 import { logger } from '@/lib/logger';
 import { getApiUrl } from '@/lib/apiConfig';
 
@@ -135,14 +137,24 @@ function friendlyAuthError(codeOrMsg: string): string {
 }
 
 /**
- * Normalized Google Sign-In with automatic popup→redirect fallback
- * Handles iOS Safari popup blocking gracefully
+ * Normalized Google Sign-In
+ * iOS Safari: uses signInWithRedirect (popups are killed by ITP)
+ * All other browsers: uses signInWithPopup (better UX, no full-page reload)
  */
 export async function signInWithGoogle(): Promise<void> {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+
+  if (isIOSSafari()) {
+    // Redirect flow — returns via getRedirectResult() after the page reloads.
+    // AuthProvider.tsx handles getRedirectResult() on mount.
+    logger.info('[Auth Guardian] iOS Safari detected — using signInWithRedirect');
+    beacon('auth.signin_google_redirect_start', {});
+    await signInWithRedirect(auth, provider);
+    return; // Page will navigate away; code below is unreachable
+  }
+
   try {
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    
     const result = await signInWithPopup(auth, provider);
     await refreshClaims();
     beacon('auth.signin_google_popup_ok', { uid: result.user.uid });

@@ -87,22 +87,25 @@ const CSP_DIRECTIVES = [
     replitHosts,
   ].filter(Boolean).join(" "),
 
-  // Images — wide allowlist needed for Google Maps tiles, user avatars, CDN
+  // Images — specific allowlist. No wildcard (*) — that defeats CSP protection.
+  // Provider/pet photos must be stored in Firebase Storage or GCS.
   [
     "img-src",
     "'self'",
-    "data:",
-    "blob:",
-    "https://maps.googleapis.com",
-    "https://maps.gstatic.com",
-    "https://lh3.googleusercontent.com",   // Google profile photos
-    "https://storage.googleapis.com",       // GCS / Firebase Storage
-    "https://firebasestorage.googleapis.com",
-    "https://www.google.com",
-    "https://www.gstatic.com",
-    "https://avatars.githubusercontent.com",
+    "data:",                                // Base64 inline previews (profile photo upload)
+    "blob:",                                // Camera/canvas blobs
+    "https://maps.googleapis.com",          // Google Maps tiles
+    "https://maps.gstatic.com",             // Maps static assets
+    "https://lh3.googleusercontent.com",    // Google profile photos
+    "https://lh4.googleusercontent.com",    // Google profile photos (alternate shard)
+    "https://lh5.googleusercontent.com",
+    "https://lh6.googleusercontent.com",
+    "https://storage.googleapis.com",       // GCS buckets
+    "https://firebasestorage.googleapis.com", // Firebase Storage
+    "https://www.google.com",               // reCAPTCHA iframe badge
+    "https://www.gstatic.com",              // Google static assets
+    "https://avatars.githubusercontent.com", // Dev/GitHub avatars
     replitHosts,
-    "*",                                    // Pet images from provider CDNs — tighten in v2
   ].filter(Boolean).join(" "),
 
   // Fetch / XHR — only our own backend + external APIs used by the client
@@ -181,6 +184,11 @@ export function enhancedSecurityHeaders(req: Request, res: Response, next: NextF
   if (!isDev) {
     res.setHeader('Content-Security-Policy', CSP_DIRECTIVES);
   }
+
+  // ── DNS prefetch control ─────────────────────────────────────────────────
+  // Prevents browser from pre-resolving hostnames embedded in page content,
+  // which can leak visited URLs to third-party DNS resolvers.
+  res.setHeader('X-DNS-Prefetch-Control', 'off');
 
   // ── MIME sniffing ─────────────────────────────────────────────────────────
   res.setHeader('X-Content-Type-Options', 'nosniff');

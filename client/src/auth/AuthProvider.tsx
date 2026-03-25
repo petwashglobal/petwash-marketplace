@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useRef, ReactNode } fro
 import { auth } from "../lib/firebase";
 import {
   onAuthStateChanged,
+  getRedirectResult,
   User,
   signOut,
   setPersistence,
@@ -162,8 +163,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (async () => {
       await setPersistenceWithFallback();
 
-      // Popup-only auth — no redirect fallback. Redirect fails on iOS/Safari because
-      // sessionStorage is partitioned between origins, breaking Firebase's state handshake.
+      // Handle iOS Safari redirect-based sign-in completion.
+      // After signInWithRedirect, the user is sent to Google and returns here.
+      // getRedirectResult resolves the pending result — onAuthStateChanged fires
+      // automatically afterwards with the signed-in user.
+      try {
+        const redirectResult = await getRedirectResult(auth);
+        if (redirectResult) {
+          logger.info('[AuthProvider] Redirect sign-in completed', { uid: redirectResult.user.uid });
+        }
+      } catch (err) {
+        logger.warn('[AuthProvider] getRedirectResult error (non-fatal)', err);
+      }
+
       unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
           // Ensure server session is created BEFORE marking auth as ready,

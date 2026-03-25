@@ -131,34 +131,20 @@ app.set('trust proxy', 1);
 // 1. Security and basic middleware
 const isProduction = process.env.NODE_ENV === 'production';
 
-// A. Security Headers (ENHANCED 2025 - Protects users from script injections, XSS, clickjacking)
+// A. Security Headers — Helmet (basic hardening only)
+// CSP, HSTS, X-Frame-Options, Permissions-Policy, COOP/COEP are owned by
+// enhancedSecurityHeaders middleware (server/middleware/securityHeaders.ts).
+// Helmet is kept for noSniff only to avoid duplicate / conflicting headers.
 app.use(helmet({
-  contentSecurityPolicy: isProduction ? {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://www.google.com", "https://www.gstatic.com", "https://www.googletagmanager.com", "https://connect.facebook.net", "https://analytics.tiktok.com", "https://www.clarity.ms", "https://maps.googleapis.com", "https://www.googleadservices.com"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      imgSrc: ["'self'", "data:", "blob:", "https:"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-      connectSrc: ["'self'", "https://*.googleapis.com", "https://*.google.com", "https://*.firebaseio.com", "https://*.firebaseapp.com", "https://*.cloudfunctions.net", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com", "wss://*.firebaseio.com", "https://ipapi.co", "https://ip-api.com", "https://ipinfo.io", "https://www.google-analytics.com", "https://api.hubspot.com", "https://*.sentry.io", "https://*.clarity.ms", "https://*.facebook.com", "https://*.tiktok.com"],
-      frameSrc: ["'self'", "https://www.google.com", "https://*.firebaseapp.com", "https://docs.google.com"],
-      objectSrc: ["'none'"],
-      baseUri: ["'self'"],
-      formAction: ["'self'"],
-      frameAncestors: ["'none'"],
-      manifestSrc: ["'self'"],
-      upgradeInsecureRequests: []
-    }
-  } : false,
-  crossOriginEmbedderPolicy: false,
-  hsts: isProduction ? {
-    maxAge: 31536000, // 1 year
-    includeSubDomains: true,
-    preload: true
-  } : false, // HSTS only in production
-  frameguard: { action: 'deny' }, // Prevent clickjacking
-  noSniff: true, // Prevent MIME type sniffing
-  xssFilter: false // X-XSS-Protection: 0 — disabling legacy header per 2026 OWASP guidance (can be exploited in legacy browsers)
+  contentSecurityPolicy: false,       // Owned by enhancedSecurityHeaders
+  hsts: false,                        // Owned by enhancedSecurityHeaders
+  frameguard: false,                  // Owned by enhancedSecurityHeaders
+  crossOriginEmbedderPolicy: false,   // Owned by enhancedSecurityHeaders
+  crossOriginOpenerPolicy: false,     // Owned by enhancedSecurityHeaders
+  crossOriginResourcePolicy: false,   // Owned by enhancedSecurityHeaders
+  referrerPolicy: false,              // Owned by enhancedSecurityHeaders
+  noSniff: true,                      // X-Content-Type-Options: nosniff (harmless to keep)
+  xssFilter: false,                   // X-XSS-Protection: 0 — disabled per 2026 OWASP guidance
 }));
 
 // B. Compression (Makes your site load 70% faster)
