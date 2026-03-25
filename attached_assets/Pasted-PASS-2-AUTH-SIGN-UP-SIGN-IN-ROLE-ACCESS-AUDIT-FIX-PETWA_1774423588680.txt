@@ -1,0 +1,287 @@
+PASS 2 - AUTH / SIGN-UP / SIGN-IN / ROLE ACCESS AUDIT & FIX
+PETWASH - PRODUCTION PRE-LAUNCH VALIDATION MODE
+
+GOAL:
+Audit and fix the full identity flow for every real user type in the platform.
+
+THIS PASS MUST COVER:
+- new public user registration
+- existing public user sign-in
+- new provider registration / onboarding entry
+- existing provider sign-in
+- e-gift buyer flow (guest or public user)
+- admin / management login
+- role selection / route protection
+- session persistence
+- auth failure logging
+- mobile browser behavior
+
+IMPORTANT RULES:
+- no new features
+- no refactors for style
+- only real bugs and minimal fixes
+- every fix must be verified on the same flow
+- no collateral changes outside auth / role / access / session layer
+
+==================================================
+1. USER TYPES TO AUDIT
+==================================================
+
+A. PUBLIC USER
+Use cases:
+- sign up with Google
+- sign up with email/password
+- sign up with phone/SMS
+- sign in with all 3 methods
+- buy booking
+- buy e-gift
+- receive session correctly
+- stay logged in after refresh
+
+B. PROVIDER / EXTERNAL PROVIDER
+Use cases:
+- start onboarding
+- register account
+- sign in again later
+- resume onboarding
+- access provider-only routes
+- blocked from activation if missing required fields
+- blocked from live/searchable state if no lat/lng
+
+C. ADMIN / MANAGEMENT / STAFF
+Use cases:
+- sign in securely
+- access only admin routes
+- require correct role
+- require any MFA / approval gates already designed
+- no public/provider account may reach admin tools
+
+D. E-GIFT BUYER
+Use cases:
+- public user account purchase
+- guest-like public buyer behavior if supported
+- checkout without corrupting auth state
+- post-purchase confirmation and session state remain valid
+
+==================================================
+2. FLOWS TO TEST
+==================================================
+
+FLOW 1 - GOOGLE SIGN-UP / SIGN-IN
+Check:
+- iPhone Safari
+- iPad Safari
+- Android Chrome
+- desktop browser
+
+Verify:
+- popup vs redirect logic is correct per device
+- redirect result resolves correctly
+- no silent fail after returning from Google
+- session cookie is created
+- /api/simple-auth/me confirms user after login
+- refresh keeps user logged in
+- auth events log failures like:
+  REDIRECT_RESULT_NULL
+  COOKIE_NOT_RECEIVED
+  SESSION_CREATION_FAILED
+  OAUTH_POPUP_FAILED
+
+FLOW 2 - EMAIL / PASSWORD REGISTER + LOGIN
+Verify:
+- registration succeeds
+- duplicate email handled cleanly
+- email verification logic if applicable
+- login succeeds
+- invalid password handled cleanly
+- session created and persists
+- rate limiting exists on sensitive endpoints
+
+FLOW 3 - PHONE / SMS REGISTER + LOGIN
+Verify:
+- recaptcha loads correctly
+- token generated correctly
+- SMS code sent
+- code verify works
+- wrong code handled cleanly
+- session created after verify
+- no broken state if SMS provider fails
+- no silent fail on mobile
+
+FLOW 4 - PROVIDER REGISTRATION ENTRY
+Verify:
+- provider can create account
+- provider path stays separate from public user path
+- provider onboarding state saved correctly
+- provider cannot accidentally land in public-only flow
+- provider-only dashboard gated correctly
+- incomplete onboarding cannot be mistaken as approved provider
+
+FLOW 5 - PUBLIC USER BUYING E-GIFT
+Verify:
+- public user can sign up / sign in and purchase
+- auth does not break during checkout
+- purchase confirmation does not destroy session
+- receipt / confirmation flow tied to correct user
+
+FLOW 6 - ADMIN / MANAGEMENT LOGIN
+Verify:
+- only correct role can enter admin
+- staff approval / MFA / extra gates work if designed
+- unverified or wrong-role account blocked
+- direct URL access without role returns forbidden
+- no auth bypass via stale session or local storage
+
+==================================================
+3. CORE TECHNICAL CHECKS
+==================================================
+
+A. SESSION CREATION
+Audit:
+- /api/auth/session
+- cookie flags
+- follow-up verification via /api/simple-auth/me
+- behavior when cookie does not land
+
+Confirm:
+- httpOnly true
+- secure true in production
+- sameSite logic correct for Firebase Hosting / Cloud Run split
+- domain correct for petwash.co.il and www
+
+B. SESSION PERSISTENCE
+Verify:
+- stays logged in after refresh
+- stays logged in after leaving and returning
+- Safari redirect marker logic works
+- no sessionStorage-only dependency that breaks on iPhone redirect flows
+
+C. ROLE ROUTING
+Verify:
+- public user lands in public area
+- provider lands in provider onboarding/dashboard as intended
+- admin lands in admin tools only
+- no wrong auto-routing
+- no role confusion after Google login
+
+D. AUTH EVENT LOGGING
+Every failed auth path must log enough truth to diagnose:
+- device type
+- auth method
+- stage of failure
+- user role path
+- timestamp
+- error code / reason
+
+==================================================
+4. SECURITY RULES TO VERIFY
+==================================================
+
+- all admin routes protected by role middleware
+- provider routes protected by provider identity / status rules
+- public routes do not leak privileged data
+- no token values leaked in logs
+- no secret values returned in health/config endpoints
+- rate limiting on:
+  - session creation
+  - login
+  - phone send code
+  - phone verify code
+  - password reset if present
+  - sensitive onboarding endpoints
+- no emailVerified bypass on admin access
+- no provider activation through auth alone without approval logic
+
+==================================================
+5. BUSINESS LOGIC RULES TO VERIFY
+==================================================
+
+- signing in is not the same as being approved
+- registering as provider does not mean searchable/live
+- public user buying e-gift must not become provider accidentally
+- admin login must not depend only on frontend flags
+- PetTrek must remain blocked everywhere if not legally active
+- auth path must respect service availability rules
+- external provider onboarding must preserve compliance state and not skip agreements
+
+==================================================
+6. REAL FAILURE CONDITIONS
+==================================================
+
+MARK AS FAIL IF ANY OF THESE HAPPEN:
+
+- Google returns to sign-in and nothing happens
+- popup closes and user is not logged in
+- cookie set call succeeds but /api/simple-auth/me returns 401
+- SMS code verified but session not created
+- provider onboarding creates wrong role
+- admin page accessible to non-admin
+- refresh logs user out unexpectedly
+- Safari / iPhone behaves differently and breaks
+- e-gift purchase corrupts auth state
+- direct deep-link bypasses role restrictions
+
+==================================================
+7. EXPECTED OUTPUT OF THIS PASS
+==================================================
+
+For each real bug found, return exactly:
+
+BUG:
+FILE:
+ROOT CAUSE:
+REAL IMPACT:
+MINIMAL FIX:
+VERIFICATION METHOD:
+
+Do not return vague advice.
+Do not suggest redesign.
+Do not suggest future ideas.
+Only production-relevant defects.
+
+==================================================
+8. ORDER OF EXECUTION
+==================================================
+
+Step 1:
+Read the actual auth code paths first:
+- SignIn page/component
+- iOS auth handler
+- session creation endpoint
+- /api/simple-auth/me
+- provider onboarding auth entry
+- e-gift purchase auth dependency
+- admin auth guard
+
+Step 2:
+Map every user type to every allowed auth method
+
+Step 3:
+Find real mismatches / wrong routing / wrong role access / broken session behavior
+
+Step 4:
+Apply only minimal targeted fixes
+
+Step 5:
+Compile check
+
+Step 6:
+Verify same flow again
+
+Step 7:
+Stop
+
+==================================================
+9. FINAL RULE
+==================================================
+
+This pass is successful only if the system can answer clearly:
+
+- Can a new public user register and sign in cleanly?
+- Can a new provider register and remain correctly separated from public flow?
+- Can a public user buy an e-gift without auth corruption?
+- Can admin / management log in safely with correct gates?
+- Do sessions survive refresh and mobile browser quirks?
+- Are all failures visible in logs and diagnosable?
+
+If not, auth is still demo-grade.
