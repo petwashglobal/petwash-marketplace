@@ -193,6 +193,10 @@ export class ProviderPayoutService {
 
             const payoutRef = transferResult.bankTransferReference ?? payoutId;
             const platformFeeNum = parseFloat(payout.platformFee);
+            // platformFee = subtotal × 15% where subtotal is the VAT-inclusive consumer price
+            // (Israeli Consumer Protection Law §17a mandates VAT-inclusive consumer prices).
+            // Back-calc: vatInFee = platformFeeGross × (18/118) — same formula used in
+            // payoutLedger.ts and VATCalculatorService.calculateMarketplaceVAT().
             const vatOnFeeNum  = Math.round(platformFeeNum * (18 / 118) * 100) / 100;
             const grossStr     = parseFloat(payout.amount).toLocaleString('he-IL', { minimumFractionDigits: 2 });
             const feeStr       = platformFeeNum.toLocaleString('he-IL', { minimumFractionDigits: 2 });
