@@ -504,20 +504,21 @@ router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
     consumeNonce(nonce, 120_000);
 
     // Redis-backed burn for cross-process / post-restart replay protection.
-    // SETNX semantics: first writer wins. Falls back gracefully if Redis is down.
+    // Atomic SET NX EX: first writer wins, no race window between GET and SET.
+    // Falls back gracefully (in-memory nonce is the safety net) when Redis is down.
     const redisNonceKey = `k9000:nonce:${nonce}`;
-    const redisAvailable = await redis.get<boolean>(redisNonceKey);
-    if (redisAvailable) {
-      logger.warn('[K9000 Redeem] Redis replay detected — nonce already used', { nonce, userId, correlationId });
-      return res.status(409).json({
-        error: 'קוד זה כבר שומש. הצג קוד חדש.',
-        errorEn: 'QR code already used. Please generate a new one.',
-        status: 'REPLAYED',
-        correlationId,
-      });
+    if (redis.isConnected()) {
+      const claimed = await redis.setNx(redisNonceKey, true, 120);
+      if (!claimed) {
+        logger.warn('[K9000 Redeem] Redis SETNX replay detected — nonce already claimed', { nonce, userId, correlationId });
+        return res.status(409).json({
+          error: 'קוד זה כבר שומש. הצג קוד חדש.',
+          errorEn: 'QR code already used. Please generate a new one.',
+          status: 'REPLAYED',
+          correlationId,
+        });
+      }
     }
-    // Mark as used in Redis with 120s TTL (2× token TTL)
-    await redis.set(redisNonceKey, true, 120);
 
     // ── 3. Atomic decrement — guard against race conditions ────────────────
     const updated = await db

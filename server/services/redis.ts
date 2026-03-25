@@ -83,6 +83,32 @@ class RedisService {
     }
   }
 
+  /** Returns true when Redis is connected and commands will succeed. */
+  isConnected(): boolean {
+    return this.isEnabled;
+  }
+
+  /**
+   * Atomic SET NX with TTL — returns true if key was newly set (this caller wins),
+   * false if the key already existed (replay / another process already claimed it).
+   * Uses a single Redis command (SET key value NX EX ttl) so there is no race window.
+   * Falls back to false (conservative — treats as replay) when Redis is unavailable.
+   */
+  async setNx(key: string, value: unknown, ttlSeconds: number): Promise<boolean> {
+    if (!this.isEnabled || !this.client) {
+      return false;
+    }
+
+    try {
+      const serialized = JSON.stringify(value);
+      const result = await this.client.set(key, serialized, 'NX', 'EX', ttlSeconds);
+      return result === 'OK';
+    } catch (error) {
+      logger.error(`[Redis] SETNX error for key ${key}:`, error);
+      return false;
+    }
+  }
+
   async del(key: string | string[]): Promise<boolean> {
     if (!this.isEnabled || !this.client) {
       return false;
