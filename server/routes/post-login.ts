@@ -4,16 +4,9 @@ import { logger } from "../lib/logger";
 import { ALLOWED_INTENTS, type UserStatus, type UserRole } from "@shared/schema";
 import { logAuditEvent } from "../middleware/auditLog";
 import { EmailService } from "../emailService";
+import { isSuperAdmin } from "../middleware/rbac";
 
 const ADMIN_APPROVER_EMAIL = "nir.h@petwash.co.il";
-
-const SUPER_ADMINS: string[] = [
-  'nirhadad1@gmail.com',
-  'nir.h@petwash.co.il',
-  'ido.s@petwash.co.il',
-  'idoshaka@gmail.com',
-  'idoshakarzi110@gmail.com',
-];
 
 const REJECTED_INTENTS = ['admin', 'management', 'super_admin'];
 
@@ -562,9 +555,8 @@ export async function chooseRole(req: Request, res: Response) {
 export async function approveAccess(req: Request, res: Response) {
   try {
     const approverEmail = ((req as any).userEmail || '').toLowerCase();
-    const isSuperAdmin = SUPER_ADMINS.map(e => e.toLowerCase()).includes(approverEmail);
 
-    if (approverEmail !== ADMIN_APPROVER_EMAIL.toLowerCase() && !isSuperAdmin) {
+    if (approverEmail !== ADMIN_APPROVER_EMAIL.toLowerCase() && !isSuperAdmin(approverEmail)) {
       return res.status(403).json({
         error: "FORBIDDEN",
         message: "Only authorized admins can approve access",

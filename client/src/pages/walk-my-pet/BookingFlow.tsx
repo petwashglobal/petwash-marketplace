@@ -15,6 +15,7 @@ import { CreditWalletCard } from "@/components/wallet/CreditWalletCard";
 import { PrestigePassPaymentOption } from "@/components/PrestigePassPaymentOption";
 import { WalletCheckoutPreview } from "@/components/wallet/WalletCheckoutPreview";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
+import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 
 type BookingStep = "details" | "summary" | "pending_match" | "confirmation";
 
@@ -34,6 +35,8 @@ export default function WalkBookingFlow() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [appliedCredits, setAppliedCredits] = useState<{ redemptionSessionId: string; totalCreditsAppliedCents: number; cashDueCents: number } | null>(null);
+  const [pickupAddress, setPickupAddress] = useState('');
+  const [pickupDetails, setPickupDetails] = useState<PlaceDetails | null>(null);
   const [showWeatherConsent, setShowWeatherConsent] = useState(false);
   const [weatherConsentAccepted, setWeatherConsentAccepted] = useState(false);
   const [weatherConditions, setWeatherConditions] = useState<string[]>([]);
@@ -148,9 +151,9 @@ export default function WalkBookingFlow() {
         scheduledDate,
         scheduledStartTime,
         durationMinutes: duration,
-        pickupLatitude: walker.latitude || 32.0853,
-        pickupLongitude: walker.longitude || 34.7818,
-        pickupAddress: walker.serviceArea || 'Tel Aviv, Israel',
+        pickupLatitude: pickupDetails?.lat ?? walker.latitude ?? 32.0853,
+        pickupLongitude: pickupDetails?.lng ?? walker.longitude ?? 34.7818,
+        pickupAddress: pickupAddress || walker.serviceArea || '',
         petName: 'My Pet',
         petBreed: 'Mixed',
         petWeight: 15,
@@ -426,6 +429,25 @@ export default function WalkBookingFlow() {
                   <option value={120}>120 דקות</option>
                 </select>
               </div>
+            </section>
+
+            {/* Pickup Address */}
+            <section className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6">
+              <div className="mb-2 text-sm font-semibold text-slate-700">
+                כתובת לאיסוף <span className="text-red-500">*</span>
+              </div>
+              <GooglePlacesAutocomplete
+                value={pickupAddress}
+                onChange={(val, details) => {
+                  setPickupAddress(val);
+                  if (details) setPickupDetails(details);
+                }}
+                onPlaceSelected={(details) => setPickupDetails(details)}
+                placeholder="הקלד/י את כתובת האיסוף..."
+                country={['il']}
+                showExtraFields={false}
+                data-testid="input-pickup-address"
+              />
             </section>
 
             {/* Notes */}

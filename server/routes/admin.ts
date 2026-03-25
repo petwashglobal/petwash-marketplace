@@ -14,6 +14,7 @@ import { count, sql, gte } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import sanitizeHtml from 'sanitize-html';
 import { EmailService } from '../emailService';
+import { isSuperAdmin } from '../middleware/rbac';
 
 const router = Router();
 
@@ -21,48 +22,40 @@ const router = Router();
 // NOTE: Email comparison is case-insensitive (.toLowerCase()) to prevent lockouts
 // when Firebase delivers emails in non-matching case (e.g. 'Support@PetWash.co.il'
 // vs 'support@petwash.co.il'). All entries in these lists must be lowercase.
-const ADMIN_ROLES = {
-  // Full Admin Access (can create, edit, delete)
-  fullAdmin: [
-    'nirhadad1@gmail.com',      // CEO (Gmail)
-    'nir.h@petwash.co.il',      // CEO (Official)
-    'admin@petwash.co.il',      // General Admin
-    'support@petwash.co.il',    // Support Admin (normalised to lowercase)
-  ],
-  // Viewer Access (read-only, cannot modify)
-  viewer: [
-    'ido.s@petwash.co.il',       // Technical Lead - Viewer
-    'avner9000@gmail.com',       // Team Member - Viewer
-    'shiri.shakarzi1@gmail.com', // Team Member - Viewer
-  ]
-};
+//
+// Full-admin gate: delegates to isSuperAdmin() which reads SUPER_ADMIN_EMAILS env var.
+// Viewer list: separate read-only allowlist managed here.
+const ADMIN_VIEWER_EMAILS = [
+  'ido.s@petwash.co.il',
+  'avner9000@gmail.com',
+  'shiri.shakarzi1@gmail.com',
+];
 
 // Check if user has any admin/viewer access
 const requireAdminOrViewer = (req: any, res: any, next: any) => {
   const userEmail = (req.firebaseUser?.email || '').toLowerCase();
-  const allAuthorized = [...ADMIN_ROLES.fullAdmin, ...ADMIN_ROLES.viewer];
-  
-  if (!allAuthorized.includes(userEmail)) {
+  const isAdmin = isSuperAdmin(userEmail);
+  const isViewer = ADMIN_VIEWER_EMAILS.includes(userEmail);
+
+  if (!isAdmin && !isViewer) {
     return res.status(403).json({ error: 'Access denied: Admin or viewer privileges required' });
   }
-  
-  // Attach role to request for later use
-  req.userRole = ADMIN_ROLES.fullAdmin.includes(userEmail) ? 'admin' : 'viewer';
-  
+
+  req.userRole = isAdmin ? 'admin' : 'viewer';
   next();
 };
 
 // Require full admin access (no viewers)
 const requireAdmin = (req: any, res: any, next: any) => {
   const userEmail = (req.firebaseUser?.email || '').toLowerCase();
-  
-  if (!ADMIN_ROLES.fullAdmin.includes(userEmail)) {
-    return res.status(403).json({ 
+
+  if (!isSuperAdmin(userEmail)) {
+    return res.status(403).json({
       error: 'Full admin access required',
-      message: 'This action requires administrator privileges. Viewers have read-only access.'
+      message: 'This action requires administrator privileges. Viewers have read-only access.',
     });
   }
-  
+
   req.userRole = 'admin';
   next();
 };
