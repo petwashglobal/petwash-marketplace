@@ -104,17 +104,28 @@ export default function WalkerBooking() {
     },
   });
 
-  // Auto-detect user location
+  // Auto-detect user location — uses reverse-geocode to show a readable address (never raw coords)
   const detectLocation = () => {
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           const lat = position.coords.latitude.toFixed(7);
           const lon = position.coords.longitude.toFixed(7);
           setPickupLat(lat);
           setPickupLon(lon);
-          setPickupAddress(`${t('booking.location.currentLocation')} (${lat}, ${lon})`);
-          
+          // Reverse-geocode to show a human-readable neighbourhood name
+          try {
+            const params = new URLSearchParams({ lat, lng: lon, language: 'iw' });
+            const res = await fetch(`/api/google/reverse-geocode?${params}`, { credentials: 'include' });
+            if (res.ok) {
+              const data = await res.json();
+              setPickupAddress(data.name || data.formattedAddress || t('booking.location.currentLocation'));
+            } else {
+              setPickupAddress(t('booking.location.currentLocation'));
+            }
+          } catch {
+            setPickupAddress(t('booking.location.currentLocation'));
+          }
           toast({
             title: t('booking.location.detected'),
             description: t('booking.location.detectedDesc'),
@@ -366,13 +377,18 @@ export default function WalkerBooking() {
                       value={pickupAddress}
                       onChange={(value, details) => {
                         setPickupAddress(value);
-                        if (details?.lat && details?.lng) {
-                          setPickupLat(details.lat.toString());
-                          setPickupLon(details.lng.toString());
+                        if (details) {
+                          // Place selected from dropdown — capture structured data
+                          setPickupLat(details.lat != null ? details.lat.toString() : '');
+                          setPickupLon(details.lng != null ? details.lng.toString() : '');
+                          if (details.city)       setPickupCity(details.city);
+                          if (details.postalCode) setPickupPostalCode(details.postalCode);
+                          if (details.apartment)  setPickupApartment(details.apartment);
+                        } else {
+                          // User typing free text — clear stale coordinates to prevent mismatch
+                          setPickupLat('');
+                          setPickupLon('');
                         }
-                        if (details?.city)       setPickupCity(details.city);
-                        if (details?.postalCode) setPickupPostalCode(details.postalCode);
-                        if (details?.apartment)  setPickupApartment(details.apartment);
                       }}
                       placeholder={t('booking.location.enterAddress')}
                       country={['il', 'us', 'gb', 'au', 'ca']}
@@ -392,22 +408,6 @@ export default function WalkerBooking() {
                     >
                       <Navigation className="w-4 h-4" />
                     </Button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      placeholder={t('booking.location.latitude')}
-                      value={pickupLat}
-                      onChange={(e) => setPickupLat(e.target.value)}
-                      className="luxury-glass-minimal"
-                      data-testid="input-pickup-lat"
-                    />
-                    <Input
-                      placeholder={t('booking.location.longitude')}
-                      value={pickupLon}
-                      onChange={(e) => setPickupLon(e.target.value)}
-                      className="luxury-glass-minimal"
-                      data-testid="input-pickup-lon"
-                    />
                   </div>
                 </div>
 

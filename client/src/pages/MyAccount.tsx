@@ -1572,7 +1572,9 @@ export default function MyAccount() {
                                   longitude: details.lng ?? editedProfile.longitude,
                                 });
                               } else {
-                                setEditedProfile({ ...editedProfile, address: value });
+                                // User typing free text without selecting a suggestion —
+                                // clear stale coordinates to prevent mismatched location data
+                                setEditedProfile({ ...editedProfile, address: value, latitude: null, longitude: null });
                               }
                             }}
                             onPlaceSelected={(place) => {
