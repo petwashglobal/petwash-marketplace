@@ -2,44 +2,21 @@
 # PetWash™ — Cloud Run Backend Dockerfile
 # Architecture: Firebase Hosting (frontend) + Cloud Run (API backend)
 # Firebase routes /api/** → this container via firebase.json rewrites
+#
+# Frontend Vite bundle (dist/) is pre-built by CI before docker build runs.
+# No VITE_* build-args are needed here — eliminates GitHub secret-scanning
+# warnings on ARG/ENV instructions and the resulting error annotation.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Stage 1: Build
+# Stage 1: Install dependencies
 FROM node:20-slim AS builder
 WORKDIR /app
-
-# Build-time variables for Vite frontend bundle.
-# All ARGs must be supplied via --build-arg or CI secrets — no hardcoded defaults.
-ARG VITE_FIREBASE_API_KEY
-ARG VITE_FIREBASE_AUTH_DOMAIN
-ARG VITE_FIREBASE_PROJECT_ID
-ARG VITE_FIREBASE_STORAGE_BUCKET
-ARG VITE_FIREBASE_MESSAGING_SENDER_ID
-ARG VITE_FIREBASE_APP_ID
-ARG VITE_FIREBASE_MEASUREMENT_ID
-ARG VITE_FIREBASE_VAPID_KEY
-ARG VITE_RECAPTCHA_SITE_KEY
-ARG VITE_GOOGLE_CLIENT_ID
-ARG VITE_WEBAUTHN_RP_ID
-
-# Export ARGs as ENV so Vite picks them up during `npm run build`
-ENV VITE_FIREBASE_API_KEY=$VITE_FIREBASE_API_KEY
-ENV VITE_FIREBASE_AUTH_DOMAIN=$VITE_FIREBASE_AUTH_DOMAIN
-ENV VITE_FIREBASE_PROJECT_ID=$VITE_FIREBASE_PROJECT_ID
-ENV VITE_FIREBASE_STORAGE_BUCKET=$VITE_FIREBASE_STORAGE_BUCKET
-ENV VITE_FIREBASE_MESSAGING_SENDER_ID=$VITE_FIREBASE_MESSAGING_SENDER_ID
-ENV VITE_FIREBASE_APP_ID=$VITE_FIREBASE_APP_ID
-ENV VITE_FIREBASE_MEASUREMENT_ID=$VITE_FIREBASE_MEASUREMENT_ID
-ENV VITE_FIREBASE_VAPID_KEY=$VITE_FIREBASE_VAPID_KEY
-ENV VITE_RECAPTCHA_SITE_KEY=$VITE_RECAPTCHA_SITE_KEY
-ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
-ENV VITE_WEBAUTHN_RP_ID=$VITE_WEBAUTHN_RP_ID
 
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
 
+# Copy full source (dist/ is pre-built by CI and present in the build context)
 COPY . .
-RUN npm run build
 
 # Stage 2: Production runtime (minimal)
 FROM node:20-slim AS runner
