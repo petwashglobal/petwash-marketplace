@@ -22,37 +22,20 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
     if (allLoading) return;
 
     if (!firebaseUser) {
-      console.log('[AdminGuard] No Firebase user, redirecting to /admin/login');
-      setLocation("/admin/login");
+      setLocation("/signin");
       return;
     }
 
-    if (isSuperAdmin) {
-      console.log('[AdminGuard] Super admin access granted via whoami');
-      return;
-    }
+    if (isSuperAdmin) return;
 
     const whoamiHasAccess = whoami && ADMIN_ALLOWED_ROLES.includes(whoamiRole);
     const adminHasAccess = admin && admin.isActive && ADMIN_ALLOWED_ROLES.includes(admin.role);
     const claimsHasAccess = claims.role && ADMIN_ALLOWED_ROLES.includes(claims.role);
 
-    if (whoamiHasAccess || adminHasAccess || claimsHasAccess) {
-      console.log('[AdminGuard] Access granted:', { whoamiRole, adminRole: admin?.role, claimsRole: claims.role });
-      return;
-    }
+    if (whoamiHasAccess || adminHasAccess || claimsHasAccess) return;
 
-    if (claims.role === 'public' || claims.role === 'provider') {
-      console.log('[AdminGuard] Public/provider user blocked, role:', claims.role);
-      setLocation("/admin/access-denied");
-      return;
-    }
-
-    if (!adminLoading && !whoamiLoading && !whoamiHasAccess && !adminHasAccess && !claimsHasAccess) {
-      console.log('[AdminGuard] No admin access found', {
-        whoamiRole, adminRole: admin?.role, claimsRole: claims.role, isError
-      });
-      setLocation("/admin/access-denied");
-      return;
+    if (!adminLoading && !whoamiLoading) {
+      setLocation("/signin");
     }
   }, [firebaseLoading, firebaseUser, adminLoading, admin, isError, setLocation, claims, claimsLoading, whoami, whoamiLoading, isSuperAdmin, whoamiRole, allLoading]);
 

@@ -14,7 +14,7 @@ import { trackLogout } from "@/lib/analytics";
 import { logger } from "@/lib/logger";
 import { getApiUrl } from "@/lib/apiConfig";
 
-export type UserRole = 'public' | 'provider' | 'staff' | 'admin' | 'management' | 'super_admin';
+export type UserRole = 'public' | 'provider' | 'franchise_owner' | 'staff' | 'admin' | 'management' | 'super_admin';
 
 export interface UserClaims {
   role: UserRole;

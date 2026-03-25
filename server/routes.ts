@@ -9277,7 +9277,7 @@ self.addEventListener('notificationclick', (event) => {
 
   // Franchise routes
   const franchiseRoutes = await import('./routes/franchise');
-  app.use('/api/franchise', apiLimiter, franchiseRoutes.default);
+  app.use('/api/franchise', validateFirebaseToken, apiLimiter, franchiseRoutes.default);
 
   // Admin routes
   const adminRoutes = await import('./routes/admin');
@@ -9500,7 +9500,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/compliance-brain', apiLimiter, complianceBrainRoutes);
 
   // 📋 Biometric Identity Documents - Passport/ID/License upload with multer, face matching, KYC verification
-  app.use('/api/contractors', uploadLimiter, complianceIdentityRoutes);
+  app.use('/api/contractors', validateFirebaseToken, uploadLimiter, complianceIdentityRoutes);
 
   // 🏢 PET WASH LTD – GLOBAL BACKEND FRAMEWORK 2025 - Unified Contractors + Drivers + Ratings + Identity + Compliance Layer
   app.use('/api', apiLimiter, contractorsFrameworkRoutes);
@@ -9856,7 +9856,7 @@ self.addEventListener('notificationclick', (event) => {
   // HR & Employee Management
   app.use('/api/expenses', adminLimiter, expensesRoutes);
   app.use('/api/config', apiLimiter, expensesRoutes);
-  app.use('/api/contractor', adminLimiter, contractorRoutes);
+  app.use('/api/contractor', validateFirebaseToken, adminLimiter, contractorRoutes);
   app.use('/api/contracts', adminLimiter, contractsRoutes);
   app.use('/api/signatures', apiLimiter, signaturesRoutes);
   
@@ -9870,7 +9870,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/synthetic', adminLimiter, syntheticRoutes);
   
   // Franchise Management
-  app.use('/api/franchise-mgmt', adminLimiter, franchiseMgmtRoutes);
+  app.use('/api/franchise-mgmt', validateFirebaseToken, adminLimiter, franchiseMgmtRoutes);
   
   // Customer & Social Features — social-circle.ts handles /api/social (registered above)
   app.use('/api/messages', optionalFirebaseToken, apiLimiter, messagesRoutes);

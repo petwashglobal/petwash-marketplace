@@ -149,7 +149,6 @@ const DeviceManagement = lazy(() => import("@/pages/DeviceManagement"));
 const ConnectedDevices = lazy(() => import("@/pages/ConnectedDevices"));
 const AdminGuide = lazy(() => import("@/pages/AdminGuide"));
 const AdminHelpGuide = lazy(() => import("@/pages/AdminHelpGuide"));
-const FranchiseDashboard = lazy(() => import("@/pages/franchise/FranchiseDashboard"));
 const FranchiseInbox = lazy(() => import("@/pages/franchise/FranchiseInbox"));
 const FranchiseReports = lazy(() => import("@/pages/franchise/FranchiseReports"));
 const FranchiseSupport = lazy(() => import("@/pages/franchise/FranchiseSupport"));
@@ -174,7 +173,7 @@ const ConsentOnboarding = lazy(() => import("@/pages/ConsentOnboarding"));
 const NotificationConsent = lazy(() => import("@/pages/NotificationConsent"));
 const OpsDashboard = lazy(() => import("@/pages/OpsDashboard"));
 const EnterpriseHQ = lazy(() => import("@/pages/EnterpriseHQ"));
-const FranchiseeDashboard = lazy(() => import("@/pages/FranchiseeDashboard"));
+
 const TechnicianView = lazy(() => import("@/pages/TechnicianView"));
 const StatusDashboard = lazy(() => import("@/pages/StatusDashboard"));
 const DocumentManagement = lazy(() => import("@/pages/DocumentManagement"));
@@ -1738,38 +1737,38 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Franchise routes - Protected (staff+ only) */}
+        {/* Franchise routes - Protected (franchise_owner+ only) */}
         <Route path="/franchise/dashboard">
           {() => (
-            <RoleProtectedRoute minRole="staff">
-              <FranchiseDashboard />
+            <RoleProtectedRoute minRole="franchise_owner">
+              <FranchiseManagementDashboard />
             </RoleProtectedRoute>
           )}
         </Route>
         <Route path="/franchise/inbox">
           {() => (
-            <RoleProtectedRoute minRole="staff">
+            <RoleProtectedRoute minRole="franchise_owner">
               <FranchiseInbox />
             </RoleProtectedRoute>
           )}
         </Route>
         <Route path="/franchise/reports">
           {() => (
-            <RoleProtectedRoute minRole="staff">
+            <RoleProtectedRoute minRole="franchise_owner">
               <FranchiseReports />
             </RoleProtectedRoute>
           )}
         </Route>
         <Route path="/franchise/support">
           {() => (
-            <RoleProtectedRoute minRole="staff">
+            <RoleProtectedRoute minRole="franchise_owner">
               <FranchiseSupport />
             </RoleProtectedRoute>
           )}
         </Route>
         <Route path="/franchise/marketing">
           {() => (
-            <RoleProtectedRoute minRole="staff">
+            <RoleProtectedRoute minRole="franchise_owner">
               <FranchiseMarketing />
             </RoleProtectedRoute>
           )}
@@ -1938,9 +1937,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/provider-onboarding">
           {() => (
-            <Suspense fallback={<PageLoader />}>
-              <ProviderOnboarding />
-            </Suspense>
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <ProviderOnboarding />
+              </Suspense>
+            </RequireAuth>
           )}
         </Route>
         <Route path="/apply-provider">
@@ -2442,9 +2443,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         <Route path="/enterprise/franchisee/:id">
-          {(params) => (
+          {() => (
             <AdminRouteGuard>
-              <FranchiseeDashboard franchiseeId={Number(params.id)} />
+              <FranchiseManagementDashboard />
             </AdminRouteGuard>
           )}
         </Route>

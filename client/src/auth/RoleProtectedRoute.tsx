@@ -5,6 +5,7 @@ import { useWhoami, type DashboardType } from "./useWhoami";
 const ROLE_HIERARCHY: Record<UserRole, number> = {
   public: 1,
   provider: 2,
+  franchise_owner: 3,
   staff: 4,
   admin: 6,
   management: 8,

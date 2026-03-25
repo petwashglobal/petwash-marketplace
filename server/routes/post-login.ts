@@ -6,7 +6,10 @@ import { logAuditEvent } from "../middleware/auditLog";
 import { EmailService } from "../emailService";
 import { isSuperAdmin } from "../middleware/rbac";
 
-const ADMIN_APPROVER_EMAIL = process.env.ADMIN_APPROVER_EMAIL || "nir.h@petwash.co.il";
+const ADMIN_APPROVER_EMAIL = process.env.ADMIN_APPROVER_EMAIL || '';
+if (!process.env.ADMIN_APPROVER_EMAIL) {
+  logger.warn('[PostLogin] ADMIN_APPROVER_EMAIL env var is not set — approval emails will be skipped');
+}
 
 const REJECTED_INTENTS = ['admin', 'management', 'super_admin'];
 
@@ -383,12 +386,10 @@ export async function postLoginDecider(req: Request, res: Response) {
       effectiveRole = 'provider';
     }
 
-    if (userStatus === 'staff_active' && !['staff', 'management', 'admin'].includes(effectiveRole)) {
-      updates.role = 'staff';
-      updates.staffApprovedAt = new Date();
-      updates.mfaRequired = true;
-      effectiveRole = 'staff';
-    }
+    // NOTE: Removed automatic staff role escalation that was here.
+    // A user must have an explicit role assignment in the database (via admin approval)
+    // before their role is set to 'staff'. Silent escalation based on userStatus alone
+    // bypassed the approval workflow and is a security risk.
 
     await storage.updateUser(userId, updates as any);
 
