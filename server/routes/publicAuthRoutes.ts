@@ -931,7 +931,7 @@ const clientEventRateLimiter = rateLimit({
   // normalisation is applied (maps each /56 subnet to one key, preventing
   // IPv6 address-rotation bypass). Trust-proxy is set to 1 in index.ts so
   // req.ip is the real client IP from the GCP/Firebase load-balancer header.
-  keyGenerator: (req) => ipKeyGenerator(req.ip || req.socket.remoteAddress || 'unknown'),
+  keyGenerator: ipKeyGenerator,
   handler: (_req, res) => res.status(429).json({ ok: false, error: 'TOO_MANY_EVENTS' }),
 });
 
