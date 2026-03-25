@@ -24,7 +24,8 @@ interface ClientLocation {
 }
 
 interface ServiceRequest {
-  serviceType: 'pet_sitting' | 'daycare' | 'dog_walking' | 'training' | 'grooming' | 'pet_taxi' | 'k9000_wash';
+  // pet_taxi REMOVED — PetTrek not licensed in Israel (DO NOT restore without legal clearance)
+  serviceType: 'pet_sitting' | 'daycare' | 'dog_walking' | 'training' | 'grooming' | 'k9000_wash';
   petType?: string;
   petSize?: string;
   specialNeeds?: string[];
@@ -64,13 +65,16 @@ interface MatchingResult {
   error?: string;
 }
 
+// LEGAL: pet_taxi → 'pettrek' REMOVED. PetTrek is not licensed in Israel.
+// All 5 server layers already return 403 PETTREK_NOT_LICENSED.
+// Removing from the matching service prevents pettrek providers from
+// surfacing in AI recommendation results even before they hit the API.
 const SERVICE_TYPE_TO_PLATFORM: Record<string, string> = {
   pet_sitting: 'sitter-suite',
   daycare: 'daycare',
   dog_walking: 'walk-my-pet',
   training: 'training',
   grooming: 'grooming',
-  pet_taxi: 'pettrek',
   k9000_wash: 'k9000',
 };
 
@@ -142,17 +146,22 @@ export class GeminiMatchingService {
       for (const row of providersWithLocations) {
         const { provider, location } = row;
         
-        let distance = 0;
-        if (location?.latitude && location?.longitude) {
-          distance = calculateDistance(
-            clientLocation.latitude,
-            clientLocation.longitude,
-            location.latitude,
-            location.longitude
-          );
-        } else {
-          distance = Math.random() * searchRadius;
+        // Skip providers with no known location — do NOT assign a fake random
+        // distance (previous code did Math.random() × searchRadius which made
+        // unlocated providers appear in results with fabricated distances).
+        if (!location?.latitude || !location?.longitude) {
+          logger.debug('[GeminiMatching] Skipping provider with no location', {
+            providerId: provider.id,
+          });
+          continue;
         }
+
+        const distance = calculateDistance(
+          clientLocation.latitude,
+          clientLocation.longitude,
+          location.latitude,
+          location.longitude
+        );
 
         if (distance <= searchRadius) {
           const serviceRadius = provider.serviceRadius || 10;
@@ -304,6 +313,7 @@ Respond in ${langName}. Write a brief, friendly 2-3 sentence recommendation expl
     preferredLanguage: 'en' | 'he' = 'en'
   ): Promise<MatchingResult> {
     try {
+      // pet_taxi / PetTrek intentionally excluded — not licensed in Israel
       const detectPrompt = `Analyze this pet care service request and extract the service type.
       
 Request: "${query}"
@@ -314,7 +324,6 @@ Respond with ONLY one of these service types (no other text):
 - dog_walking
 - training
 - grooming
-- pet_taxi
 - k9000_wash
 
 If unclear, respond with: pet_sitting`;
@@ -325,7 +334,7 @@ If unclear, respond with: pet_sitting`;
       });
 
       const detectedService = (response.text || 'pet_sitting').trim().toLowerCase() as ServiceRequest['serviceType'];
-      const validServices = ['pet_sitting', 'daycare', 'dog_walking', 'training', 'grooming', 'pet_taxi', 'k9000_wash'];
+      const validServices = ['pet_sitting', 'daycare', 'dog_walking', 'training', 'grooming', 'k9000_wash'];
       const serviceType = validServices.includes(detectedService) ? detectedService : 'pet_sitting';
 
       return this.findMatchingProviders(
