@@ -91,6 +91,16 @@ router.post('/', async (req, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
+    // LEGAL BLOCK: PetTrek is not licensed in Israel — reject at booking-request creation layer
+    const rawServiceType = req.body?.serviceType;
+    if (rawServiceType === 'pettrek' || rawServiceType === 'pet_trek') {
+      return res.status(403).json({
+        error: 'service_legally_blocked',
+        code: 'PETTREK_NOT_LICENSED',
+        message: 'PetTrek™ bookings are not available — service pending licensing in Israel.',
+      });
+    }
+
     const data = createBookingRequestSchema.parse(req.body);
     const requestId = nanoid(12);
     
@@ -924,6 +934,15 @@ router.post('/:requestId/pay', async (req, res) => {
     
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // LEGAL BLOCK: PetTrek payments permanently blocked — not licensed in Israel
+    if (booking.serviceType === 'pettrek' || booking.serviceType === 'pet_trek') {
+      return res.status(403).json({
+        error: 'service_legally_blocked',
+        code: 'PETTREK_NOT_LICENSED',
+        message: 'PetTrek™ payments are not available — service pending licensing in Israel.',
+      });
     }
     
     if (booking.ownerId !== userId) {

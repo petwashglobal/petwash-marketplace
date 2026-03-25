@@ -14,32 +14,34 @@ import { calendarIntegrationService } from '../services/CalendarIntegrationServi
 
 const router = Router();
 
-const PETTREK_COMING_SOON = true;
-
+// ─────────────────────────────────────────────────────────────────────────────
+// PERMANENT LEGAL BLOCK — PetTrek is NOT licensed for commercial pet transport
+// in Israel. This block is NOT a feature flag. DO NOT remove or soften without
+// written legal clearance from PetWash management. Last reviewed: March 2026.
+// ─────────────────────────────────────────────────────────────────────────────
 router.use((req, res, next) => {
-  if (PETTREK_COMING_SOON) {
-    if (req.path === '/status') {
-      return next();
-    }
-    return res.status(503).json({
-      error: 'coming_soon',
-      platform: 'PetTrek',
-      message: 'PetTrek™ is coming soon! We are preparing an amazing pet transport experience for you.',
-      messageHe: 'PetTrek™ בקרוב! אנחנו מכינים חווית הסעות חיות מחמד מדהימה בשבילך.',
-      available: false,
-    });
+  if (req.path === '/status') {
+    return next(); // status endpoint is always public
   }
-  next();
+  return res.status(403).json({
+    error: 'service_legally_blocked',
+    code: 'PETTREK_NOT_LICENSED',
+    platform: 'PetTrek',
+    message: 'PetTrek™ is not currently available. This service has not received the required operational licenses in Israel.',
+    messageHe: 'PetTrek™ אינו זמין כרגע. שירות זה טרם קיבל את הרישיונות התפעוליים הנדרשים בישראל.',
+    comingSoon: true,
+    legalStatus: 'pending_licensing',
+  });
 });
 
 router.get('/status', (_req, res) => {
   res.json({
     platform: 'PetTrek',
-    available: !PETTREK_COMING_SOON,
-    comingSoon: PETTREK_COMING_SOON,
-    message: PETTREK_COMING_SOON
-      ? 'PetTrek™ is coming soon!'
-      : 'PetTrek™ is live and accepting bookings',
+    available: false,
+    comingSoon: true,
+    legalStatus: 'pending_licensing',
+    message: 'PetTrek™ is coming soon — pending operational licensing in Israel.',
+    messageHe: 'PetTrek™ בקרוב — ממתין לרישוי תפעולי בישראל.',
   });
 });
 

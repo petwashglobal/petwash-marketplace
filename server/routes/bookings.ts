@@ -13,7 +13,7 @@ import { BookingLockService } from "../services/BookingLockService";
 const router = express.Router();
 
 interface BookingRequest {
-  platform: "sitter-suite" | "walk-my-pet" | "pettrek";
+  platform: "sitter-suite" | "walk-my-pet"; // "pettrek" removed — legally blocked March 2026
   providerId: string;
   serviceDate: string;
   timeSlot?: string;
@@ -27,6 +27,15 @@ router.post("/create", requireAuth, async (req, res) => {
   try {
     const customerId = req.user!.uid;
     const booking: BookingRequest = req.body;
+
+    // LEGAL BLOCK: PetTrek is not licensed in Israel — hard reject at booking layer
+    if ((booking as any).platform === 'pettrek' || (booking as any).platform === 'pet_trek') {
+      return res.status(403).json({
+        error: 'service_legally_blocked',
+        code: 'PETTREK_NOT_LICENSED',
+        message: 'PetTrek™ bookings are not available — service pending licensing in Israel.',
+      });
+    }
 
     // Validate service date is not in the past (Israel timezone)
     const serviceDate = new Date(booking.serviceDate);

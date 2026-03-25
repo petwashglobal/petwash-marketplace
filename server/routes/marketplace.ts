@@ -57,8 +57,12 @@ router.post('/search', async (req, res) => {
         break;
       
       case 'pet_trek':
-        ({ providers, total } = await searchDrivers(filters));
-        break;
+        // LEGAL BLOCK — PetTrek not licensed in Israel. Hard reject, no provider data returned.
+        return res.status(403).json({
+          error: 'service_legally_blocked',
+          code: 'PETTREK_NOT_LICENSED',
+          message: 'PetTrek™ is not available — service pending licensing in Israel.',
+        });
       
       case 'groomers':
         ({ providers, total } = await searchGroomers(filters));

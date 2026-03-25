@@ -21,15 +21,23 @@ const requirePlatformContext = (req: any, res: any, next: any) => {
     'k9000',
     'walk_my_pet',
     'sitter_suite',
-    'pettrek',
     'groomers',
     'shared_services'
+    // 'pettrek' — LEGALLY BLOCKED: not licensed in Israel. Removed March 2026.
   ];
+
+  // LEGAL BLOCK: PetTrek-specific hard rejection before generic invalid platform check
+  if (platformId === 'pettrek' || platformId === 'pet_trek') {
+    return res.status(403).json({
+      error: 'service_legally_blocked',
+      code: 'PETTREK_NOT_LICENSED',
+      message: 'PetTrek™ is not available — service pending licensing in Israel.',
+    });
+  }
 
   if (!platformId || !validPlatforms.includes(platformId)) {
     return res.status(400).json({ 
       error: 'Invalid platform ID',
-      validPlatforms 
     });
   }
 
@@ -460,7 +468,7 @@ router.get(
       const platformId = req.platformContext.platformId;
 
       // Only marketplace platforms have providers
-      const marketplacePlatforms = ['walk_my_pet', 'sitter_suite', 'pettrek', 'groomers'];
+      const marketplacePlatforms = ['walk_my_pet', 'sitter_suite', 'groomers']; // 'pettrek' excluded — legally blocked
       if (!marketplacePlatforms.includes(platformId)) {
         return res.status(404).json({ 
           error: 'Providers not available for this platform' 
