@@ -56,7 +56,7 @@ export default function AdminBookingChat() {
   }
 
   if (claims?.role !== 'admin') {
-    setLocation("/admin/login");
+    setLocation("/signin");
     return null;
   }
 

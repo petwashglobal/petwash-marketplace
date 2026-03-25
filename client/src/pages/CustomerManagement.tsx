@@ -163,7 +163,7 @@ export default function CustomerManagement() {
   
   // Redirect if not authenticated
   if (!isAdminLoading && !isAdminAuthenticated) {
-    setLocation('/admin/login');
+    setLocation('/signin');
     return null;
   }
 

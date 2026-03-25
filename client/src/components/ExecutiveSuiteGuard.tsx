@@ -39,7 +39,7 @@ export function ExecutiveSuiteGuard({
   }
 
   if (!user) {
-    return <Redirect to={`/admin/login?redirect=${encodeURIComponent(window.location.pathname)}`} />;
+    return <Redirect to={`/signin?redirect=${encodeURIComponent(window.location.pathname)}`} />;
   }
 
   const userRole = (user as any).role || 'user';

@@ -9643,6 +9643,8 @@ self.addEventListener('notificationclick', (event) => {
   // Unified Voucher System 2026 - WASH_PACKAGE + PLATFORM_CREDIT with full ledger
   app.use('/api/booking-chat', bookingChatRouter);
   app.use('/api/onboarding', onboardingRouter);
+  // /api/provider-console serves as the provider OS (operating console) — auth-gated since Pass 6.
+  // Legacy reference to "provider-os" in task history maps to this mount point.
   app.use('/api/provider-console', validateFirebaseToken, providerConsoleRouter);
   app.use('/api/finance', adminLimiter, moneyFlowRouter);
   app.use('/api/legal-stamps', apiLimiter, legalStampsRoutes);

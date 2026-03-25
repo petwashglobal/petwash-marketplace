@@ -218,7 +218,7 @@ export default function CommunicationCenter() {
 
   // Auth check
   if (!isAuthenticated) {
-    setLocation('/admin/login');
+    setLocation('/signin');
     return null;
   }
 

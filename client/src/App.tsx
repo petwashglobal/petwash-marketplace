@@ -2119,8 +2119,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Admin routes - /admin redirects to /admin/login */}
-        <Route path="/admin">{() => <Redirect to="/admin/login-v2" />}</Route>
+        {/* Admin routes - /admin redirects to /signin for unauthenticated users */}
+        <Route path="/admin">{() => <Redirect to="/signin" />}</Route>
         <Route path="/admin/login" component={AdminLogin} />
         <Route path="/admin/backend">
           {() => (
