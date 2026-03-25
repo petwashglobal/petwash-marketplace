@@ -19,47 +19,18 @@ import {
 import { eq, desc, gte, count, sql, and, lte } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { validateFirebaseToken } from "../middleware/firebase-auth";
-import { isSuperAdmin } from "../middleware/rbac";
-import { getUserRoleLevel } from "../services/rbac";
+import { requireAdmin } from "../middleware/rbac";
 
 const router = Router();
 
-// ALL control-panel routes require:
-//   1. A valid Firebase ID token or session cookie (validateFirebaseToken verifies
-//      the token cryptographically and sets req.firebaseUser with uid + email).
-//   2. The caller must be EITHER a super-admin (SUPER_ADMIN_EMAILS env var — no
-//      hardcoded emails in source) OR have a DB role with accessLevel >= 8
-//      (Executive / Management tier in systemRoles).
-//
-// This satisfies the UID-based requirement: the uid comes from the verified Firebase
-// token, not user-supplied input.
-async function requireAdminOrManager(req: any, res: any, next: any) {
-  const firebaseUser = req.firebaseUser;
-  if (!firebaseUser?.uid || !firebaseUser?.email) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
-
-  // Fast path: super-admin env-var check (reads SUPER_ADMIN_EMAILS secret)
-  if (isSuperAdmin(firebaseUser.email.toLowerCase())) {
-    return next();
-  }
-
-  // DB path: check systemRoles access level for the authenticated UID
-  const level = await getUserRoleLevel(firebaseUser.uid);
-  if (level >= 8) {
-    return next();
-  }
-
-  logger.warn('[ControlPanel] Unauthorized access attempt', {
-    uid: firebaseUser.uid,
-    email: firebaseUser.email,
-    path: req.path,
-    roleLevel: level,
-  });
-  return res.status(403).json({ error: 'Access denied: Executive-level or super-admin access required' });
-}
-
-router.use(validateFirebaseToken, requireAdminOrManager);
+// ALL control-panel routes are restricted to super-admin accounts only.
+// validateFirebaseToken cryptographically verifies the Firebase ID token and
+// populates req.firebaseUser with the verified uid and email claim.
+// requireAdmin then checks the email against the SUPER_ADMIN_EMAILS environment
+// variable (managed via Replit secrets — no emails hardcoded in source code).
+// Any request without a valid Firebase token OR with an email not in
+// SUPER_ADMIN_EMAILS is rejected with 401/403 before any route handler runs.
+router.use(validateFirebaseToken, requireAdmin);
 
 /**
  * GET /api/control-panel/metrics
