@@ -101,9 +101,10 @@ export default function WalkBookingFlow() {
       !!walker &&
       selectedPetIds.length > 0 &&
       !!selectedDate &&
-      duration > 0
+      duration > 0 &&
+      pickupAddress.trim().length > 0
     );
-  }, [walker, selectedPetIds, selectedDate, duration]);
+  }, [walker, selectedPetIds, selectedDate, duration, pickupAddress]);
 
   async function handleNextFromDetails() {
     if (!canContinueDetails) {
@@ -440,7 +441,11 @@ export default function WalkBookingFlow() {
                 value={pickupAddress}
                 onChange={(val, details) => {
                   setPickupAddress(val);
-                  if (details) setPickupDetails(details);
+                  if (details) {
+                    setPickupDetails(details);
+                  } else if (!val) {
+                    setPickupDetails(null);
+                  }
                 }}
                 onPlaceSelected={(details) => setPickupDetails(details)}
                 placeholder="הקלד/י את כתובת האיסוף..."
