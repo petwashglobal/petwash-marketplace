@@ -32,6 +32,7 @@ import { nanoid } from 'nanoid';
 import { createHash } from 'crypto';
 import { createMailService, isSendGridConfigured } from '../lib/sendgrid';
 import { appendFormSubmission } from './googleSheetsIntegration';
+import { allocateTaxSequenceNumber } from './TaxSequenceService';
 
 const ISRAELI_VAT_RATE = 0.18;
 const PLATFORM_COMMISSION_RATE = 0.15; // Flat 15% on all platforms
@@ -96,28 +97,17 @@ export interface ProviderSettlementResult {
 export class IsraeliDigitalReceiptService {
 
   /**
-   * Generate next sequential receipt number
-   * Format: PW-2026-XXXXXX (Pet Wash - Year - Sequential)
+   * Generate next sequential receipt number — ITA compliant, concurrent-safe.
+   * Format: PW-YYYY-XXXXXX (Pet Wash - Year - Sequential)
+   *
+   * Uses TaxSequenceService (pg_advisory_lock + MAX FOR UPDATE) instead of
+   * the previous SELECT MAX + 1 pattern which was racy under concurrent
+   * inserts and could produce duplicate receipt numbers — a violation of
+   * Israeli law (חוק ניהול ספרים / ITA digital invoice regulations).
    */
   static async generateReceiptNumber(): Promise<string> {
-    const year = new Date().getFullYear();
-    const prefix = `PW-${year}`;
-
-    const [lastReceipt] = await db
-      .select({ receiptNumber: digitalReceipts.receiptNumber })
-      .from(digitalReceipts)
-      .where(sql`receipt_number LIKE ${prefix + '%'}`)
-      .orderBy(desc(digitalReceipts.id))
-      .limit(1);
-
-    let nextSeq = 1;
-    if (lastReceipt?.receiptNumber) {
-      const parts = lastReceipt.receiptNumber.split('-');
-      const lastSeq = parseInt(parts[2] || '0', 10);
-      nextSeq = lastSeq + 1;
-    }
-
-    return `${prefix}-${nextSeq.toString().padStart(6, '0')}`;
+    const { year, sequenceNumber } = await allocateTaxSequenceNumber('RECEIPT');
+    return `PW-${year}-${sequenceNumber.toString().padStart(6, '0')}`;
   }
 
   /**
