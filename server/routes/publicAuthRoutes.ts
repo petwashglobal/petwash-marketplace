@@ -57,7 +57,7 @@ async function getFirebaseUserFromRequest(req: express.Request): Promise<{uid: s
     const { auth: fbAdmin } = await import('../lib/firebase-admin');
     let decoded: any;
     if (authHeader?.startsWith('Bearer ')) {
-      decoded = await fbAdmin.verifyIdToken(authHeader.split('Bearer ', true)[1], true);
+      decoded = await fbAdmin.verifyIdToken(authHeader.substring(7), true);
     } else if (sessionCookie) {
       decoded = await fbAdmin.verifySessionCookie(sessionCookie, true);
     }
@@ -117,7 +117,7 @@ publicAuthRouter.get("/api/simple-auth/me", async (req, res) => {
         const { auth: fbAdmin } = await import('../lib/firebase-admin');
         let decoded: any;
         if (authHeader?.startsWith('Bearer ')) {
-          decoded = await fbAdmin.verifyIdToken(authHeader.split('Bearer ', true)[1], true);
+          decoded = await fbAdmin.verifyIdToken(authHeader.substring(7), true);
         } else if (sessionCookie) {
           decoded = await fbAdmin.verifySessionCookie(sessionCookie, true);
         }
