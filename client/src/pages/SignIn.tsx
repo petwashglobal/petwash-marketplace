@@ -99,7 +99,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const [phoneMode, setPhoneMode] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
-  const [confirmationResult, setConfirmationResult] = useState<any>(null);
+  const [confirmationResult, setConfirmationResult] = useState<{ phone: string } | null>(null);
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [magicLinkEmailNeeded, setMagicLinkEmailNeeded] = useState(false);
   const [magicLinkEmailInput, setMagicLinkEmailInput] = useState("");
@@ -1202,7 +1202,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         throw new Error(result.error || result.message || (phoneCodeFail[language] || phoneCodeFail.en));
       }
 
-      setConfirmationResult({ phone: formattedPhone } as any);
+      setConfirmationResult({ phone: formattedPhone });
 
       toast({
         title: phoneCodeSentTitle[language] || phoneCodeSentTitle.en,
@@ -1235,8 +1235,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     }
   };
 
-  const handleVerifyPhoneCode = async () => {
-    if (!verificationCode || verificationCode.length < 6) {
+  const handleVerifyPhoneCode = async (codeOverride?: string) => {
+    const code = codeOverride ?? verificationCode;
+    if (!code || code.length < 6) {
       toast({
         variant: "destructive",
         title: phoneErrTitle[language] || phoneErrTitle.en,
@@ -1263,7 +1264,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         credentials: 'include',
         body: JSON.stringify({ 
           phone: confirmationResult.phone, 
-          code: verificationCode,
+          code,
           language 
         }),
       });
@@ -2117,50 +2118,18 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   </>
                 ) : (
                   <>
-                    <div className="space-y-2">
-                      <Label className="text-xs text-neutral-500 uppercase tracking-wider">
-                        {language === 'he' ? 'קוד אימות' : 'Verification Code'}
-                      </Label>
-                      <Input
-                        type="text"
-                        placeholder="123456"
-                        value={verificationCode}
-                        onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        className="h-12 text-sm text-center rounded-none border border-neutral-200 bg-white focus:border-neutral-900 focus:ring-0 text-neutral-900 placeholder:text-neutral-400 tracking-[0.3em] font-mono transition-all"
-                        maxLength={6}
-                        dir="ltr"
-                        data-testid="input-verification-code"
-                      />
-                      <p className="text-[11px] text-neutral-600 text-center tracking-wide">
-                        {language === 'he' ? 'הזן את הקוד בן 6 הספרות שנשלח ל-SMS' : 'Enter the 6-digit code sent to your phone'}
-                      </p>
-                    </div>
-
-                    <Button
-                      type="button"
-                      onClick={handleVerifyPhoneCode}
-                      disabled={phoneLoading || verificationCode.length < 6}
-                      className="w-full h-12 text-sm font-medium bg-neutral-900 hover:bg-neutral-800 text-white rounded-none tracking-wider uppercase transition-all border-0"
-                      data-testid="button-verify-phone-code"
-                    >
-                      {phoneLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          {language === 'he' ? 'אמת והתחבר' : 'Verify & Sign In'}
-                          {language === 'he'
-                            ? <ArrowLeft className="w-4 h-4 ms-2" />
-                            : <ArrowRight className="w-4 h-4 ms-2" />}
-                        </>
-                      )}
-                    </Button>
-
+                    <PinKeypad
+                      pinLength={6}
+                      onComplete={(pin) => handleVerifyPhoneCode(pin)}
+                      onCancel={() => { setConfirmationResult(null); setVerificationCode(''); }}
+                      title={language === 'he' ? 'קוד אימות' : 'Verification Code'}
+                      subtitle={language === 'he' ? 'הזן את הקוד בן 6 הספרות שנשלח ל-SMS' : 'Enter the 6-digit code sent to your phone'}
+                      loading={phoneLoading}
+                      language={language === 'he' ? 'he' : 'en'}
+                    />
                     <button
                       type="button"
-                      onClick={() => {
-                        setConfirmationResult(null);
-                        setVerificationCode('');
-                      }}
+                      onClick={() => { setConfirmationResult(null); setVerificationCode(''); }}
                       className="w-full text-xs text-neutral-600 hover:text-neutral-900 tracking-wider uppercase py-2 transition-colors"
                       data-testid="button-resend-code"
                     >

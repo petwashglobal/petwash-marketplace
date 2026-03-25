@@ -1882,6 +1882,19 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ ok: false, error: 'invalid-session' });
       }
       
+      // Stale-token check for privileged roles (>24h iat is rejected for employees/management).
+      const employeeRoles = ['admin', 'management', 'super_admin', 'ceo', 'finance', 'employee', 'staff'];
+      const decodedRole = decoded.role || decoded['custom:role'] || '';
+      if (employeeRoles.includes(decodedRole) && decoded.iat) {
+        const tokenAgeSeconds = Math.floor(Date.now() / 1000) - decoded.iat;
+        if (tokenAgeSeconds > 86400) {
+          logger.warn('[Auth Me] Privileged token older than 24h — rejected', {
+            uid: decoded.uid, role: decodedRole, tokenAgeSeconds,
+          });
+          return res.status(401).json({ ok: false, error: 'stale-token' });
+        }
+      }
+
       // Check for employee profile at employees/{uid}
       const employeeDoc = await firestoreDb.collection('employees').doc(decoded.uid).get();
       const employeeData = employeeDoc.exists ? employeeDoc.data() : null;
@@ -10507,7 +10520,7 @@ self.addEventListener('notificationclick', (event) => {
             await storage.updateUser(userId, {
               termsAcceptedAt: consentNow,
               privacyAcceptedAt: consentNow,
-            } as any);
+            });
             logger.info('[Phase1] termsAcceptedAt/privacyAcceptedAt stamped', { traceId, userId });
           } catch (consentStampErr) {
             logger.warn('[Phase1] Failed to stamp termsAcceptedAt (non-blocking)', { traceId, err: String(consentStampErr) });
