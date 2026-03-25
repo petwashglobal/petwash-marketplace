@@ -137,10 +137,14 @@ function buildRoutingResponse(user: any, role: string, userStatus: string, missi
       return { nextUrl: '/provider/rejected', reason: 'PROVIDER_REJECTED', profileStatus: 'rejected', role, userStatus };
     }
     if (providerApp.status === 'approved') {
+      // postLoginDecider auto-upgrades effectiveRole to 'provider' when userStatus='provider_active'.
+      // If role is still not 'provider' here, fall through to the default routing rather than
+      // directing a non-provider user to the provider dashboard.
       if (role === 'provider') {
         return { nextUrl: '/provider/dashboard', reason: 'OK', profileStatus: 'approved', role, userStatus };
       }
-      return { nextUrl: '/provider/dashboard', reason: 'OK', profileStatus: 'approved', role, userStatus };
+      // Role mismatch — data inconsistency; route to home and let post-login re-sync on next call.
+      return { nextUrl: '/home', reason: 'ROLE_SYNC_PENDING', profileStatus: 'pending_review', role, userStatus };
     }
   }
 

@@ -23,6 +23,7 @@ export default function RoleProtectedRoute({ children, minRole, fallbackPath = '
   const { whoami, isLoading: whoamiLoading, isAuthenticated, dashboardsAllowed, role: serverRole } = useWhoami();
   const [, setLocation] = useLocation();
 
+  // Always show spinner while Firebase or whoami are still resolving.
   if (loading || whoamiLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -31,25 +32,25 @@ export default function RoleProtectedRoute({ children, minRole, fallbackPath = '
     );
   }
 
-  // Only redirect if we are SURE the user is not authenticated
-  if (!loading && !user && !whoamiLoading && !isAuthenticated) {
+  // Both have resolved — if not authenticated server-side, send to sign-in.
+  // This catches: logged-out users, expired sessions, and failed whoami calls.
+  if (!user || !isAuthenticated) {
     setLocation('/signin');
     return null;
   }
 
-  if (whoami && isAuthenticated) {
-    const serverLevel = ROLE_HIERARCHY[serverRole as UserRole] || 1;
-    const requiredLevel = ROLE_HIERARCHY[minRole] || 1;
+  // Authenticated. Now enforce role and dashboard.
+  const serverLevel = ROLE_HIERARCHY[serverRole as UserRole] || 1;
+  const requiredLevel = ROLE_HIERARCHY[minRole] || 1;
 
-    if (serverLevel < requiredLevel) {
-      setLocation(fallbackPath);
-      return null;
-    }
+  if (serverLevel < requiredLevel) {
+    setLocation(fallbackPath);
+    return null;
+  }
 
-    if (requiredDashboard && !dashboardsAllowed.includes(requiredDashboard)) {
-      setLocation(fallbackPath);
-      return null;
-    }
+  if (requiredDashboard && !dashboardsAllowed.includes(requiredDashboard)) {
+    setLocation(fallbackPath);
+    return null;
   }
 
   return children;

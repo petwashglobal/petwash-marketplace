@@ -60,9 +60,22 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 export function requireRole(...roles: string[]) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Firebase Bearer token users are deferred to route-level auth middleware
-      // (validateFirebaseToken + requireAdmin in each route handler)
+      // For Firebase Bearer-token / session-cookie users, enforce role via
+      // Firebase custom claims rather than unconditionally calling next().
       if ((req as any).firebaseUser?.uid) {
+        const claimsRole = (req as any).firebaseUser?.claims?.role || 'public';
+        if (!roles.includes(claimsRole)) {
+          logger.debug(`[requireRole] Firebase user ${(req as any).firebaseUser.uid} has claims role '${claimsRole}', required: ${roles.join(',')}`);
+          logSecurityEvent({
+            userId: (req as any).firebaseUser.uid,
+            eventType: 'role_escalation_attempt',
+            ip: req.ip || '',
+            userAgent: req.headers['user-agent'] || '',
+            riskScore: 60,
+            metadata: { attemptedRoles: roles, actualRole: claimsRole, endpoint: req.originalUrl, source: 'firebase_claims' },
+          });
+          return res.status(403).json({ error: 'ROLE_REQUIRED', requiredRoles: roles, userRole: claimsRole });
+        }
         return next();
       }
 
@@ -177,7 +190,6 @@ export async function requireProviderActive(req: Request, res: Response, next: N
  */
 export async function requireStaffApproved(req: Request, res: Response, next: NextFunction) {
   try {
-    if ((req as any).firebaseUser?.uid) return next();
     const userId = getUserId(req);
     if (!userId) {
       logger.debug('[requireStaffApproved] No userId found');
@@ -215,7 +227,6 @@ export async function requireStaffApproved(req: Request, res: Response, next: Ne
  */
 export async function requireMfaEnrolled(req: Request, res: Response, next: NextFunction) {
   try {
-    if ((req as any).firebaseUser?.uid) return next();
     const userId = getUserId(req);
     if (!userId) {
       logger.debug('[requireMfaEnrolled] No userId found');

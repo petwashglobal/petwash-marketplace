@@ -1006,6 +1006,48 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         return;
       }
 
+      // Account collision: an email/password (or phone) account already exists for
+      // this email. Firebase blocks duplicate sign-in to prevent account merges.
+      // Recovery: switch to email mode, pre-fill the email so the user can sign in
+      // with their existing method in one tap.
+      if (error.code === 'auth/account-exists-with-different-credential') {
+        const collidingEmail: string = error.customData?.email || error.email || '';
+        if (collidingEmail) {
+          setFormData(prev => ({ ...prev, email: collidingEmail }));
+        }
+        setPhoneMode(false);
+        setMagicLinkMode(false);
+        const accountExistsMsg: Record<string, string> = {
+          en: collidingEmail
+            ? `An account already exists for ${collidingEmail}. Please sign in with your email and password below.`
+            : 'An account already exists with this email. Please sign in with your email and password.',
+          he: collidingEmail
+            ? `קיים כבר חשבון עבור ${collidingEmail}. אנא התחברו עם האימייל והסיסמה למטה.`
+            : 'קיים כבר חשבון עם האימייל הזה. אנא התחברו עם האימייל והסיסמה.',
+          ar: collidingEmail
+            ? `يوجد حساب مسبق لـ ${collidingEmail}. يرجى تسجيل الدخول بالبريد الإلكتروني وكلمة المرور أدناه.`
+            : 'يوجد حساب مسبق بهذا البريد الإلكتروني. يرجى استخدام البريد وكلمة المرور.',
+          es: collidingEmail
+            ? `Ya existe una cuenta para ${collidingEmail}. Inicia sesión con tu correo y contraseña abajo.`
+            : 'Ya existe una cuenta con este correo. Inicia sesión con correo y contraseña.',
+          fr: collidingEmail
+            ? `Un compte existe déjà pour ${collidingEmail}. Connectez-vous avec votre email et mot de passe ci-dessous.`
+            : 'Un compte existe déjà avec cet email. Connectez-vous avec email et mot de passe.',
+          ru: collidingEmail
+            ? `Аккаунт для ${collidingEmail} уже существует. Войдите с помощью email и пароля ниже.`
+            : 'Аккаунт с этим email уже существует. Войдите с помощью email и пароля.',
+        };
+        toast({
+          variant: 'destructive',
+          title: language === 'he' ? 'שיטת התחברות שונה' : language === 'ar' ? 'طريقة دخول مختلفة' : 'Different sign-in method',
+          description: accountExistsMsg[language] || accountExistsMsg.en,
+          duration: 8000,
+        });
+        trackEvent({ action: `${provider}_account_collision`, category: 'authentication', label: collidingEmail ? 'email_known' : 'email_unknown', language });
+        setSocialLoading(null);
+        return;
+      }
+
       // Log non-user-cancelled popup/OAuth errors to auth_events for admin visibility.
       logClientEvent('OAUTH_POPUP_FAILED', {
         provider,
