@@ -1,0 +1,111 @@
+Do not close Pass 1 yet.
+
+I want a focused validation-and-fix pass now based on the real failures already identified.
+
+CONFIRMED FAILURES TO FIX FIRST
+
+1. PetTrek legal block is not fully enforced
+- Frontend still shows a live PetTrek booking flow and lets users proceed until backend rejection
+- Unified booking routes still keep a PET_TREK config path, so direct API flow may still create draft/flow data
+- This is not acceptable because PetTrek is not legally active in Israel
+
+Required fix:
+- hard block PetTrek in ALL backend entry points
+- remove or disable PET_TREK from unified booking draft / flow / create paths
+- frontend must show Coming Soon only
+- no quote, no booking form submit, no payment path, no provider onboarding path
+
+2. Payment payout math mismatch
+- PaymentGatewayService createEscrowPayout path appears to overpay providers because VAT treatment is not aligned with the TransactionEngine / VATCalculatorService path
+- We cannot have one payment path calculating provider net differently from another
+- This is real production risk
+
+Required fix:
+- make one single source of truth for provider payout math
+- align PaymentGatewayService with TransactionEngine and VATCalculatorService
+- verify:
+  charged_amount = provider_payout + platform_commission + VAT
+- confirm no provider overpayment and no platform understatement
+
+3. Real user validation still incomplete
+Need end-to-end validation for:
+- Google sign-up / sign-in
+- email/password
+- phone/SMS
+- provider registration and return login
+- public user e-gift purchase
+- role separation: public vs provider vs admin/staff
+- booking cycle end to end
+- Google address suggestions across all booking forms
+- reCAPTCHA behavior
+- passkey / Face ID / biometrics related flow if present
+- PetTrek blocked everywhere
+
+WHAT TO DO NOW
+
+Run a strict audit-and-fix task covering:
+A. Google Places / address autocomplete
+B. Auth and verification
+C. Booking end to end
+D. Payment math correctness
+E. PetTrek hard legal block
+
+RETURN RESULTS IN THIS FORMAT ONLY
+
+BUG:
+FILE:
+ROOT CAUSE:
+REAL IMPACT:
+MINIMAL FIX:
+VERIFICATION METHOD:
+
+IMPORTANT RULES
+- no new features
+- no refactor for style
+- no closing tasks early
+- minimal targeted fixes only
+- compile check after each fix
+- same-flow re-test after each fix
+
+AUTH / ROLE VALIDATION MUST INCLUDE
+- new public user registration
+- return public user login
+- provider registration entry
+- provider return login
+- prestige / loyalty user return login
+- admin / staff secure login
+- Gmail login for nir.h@petwash.co.il and nirhadad1@gmail.com only if role rules already allow it
+- cookie/session persistence after refresh
+- redirect vs popup behavior on iPhone/iPad
+- reCAPTCHA token generation
+- passkey / biometric consent flow if present
+
+GOOGLE ADDRESS / LOCATION VALIDATION MUST INCLUDE
+- location / city / postal code / address suggestions
+- booking forms for Pet Sitter, Walk My Pet, Pet Wash Academy and all other live booking flows
+- mobile keyboard selection behavior
+- GPS fallback behavior
+- never show raw coordinates to user
+- always store readable address separately from lat/lng
+
+PAYMENT VALIDATION MUST INCLUDE
+- quote
+- checkout
+- capture
+- escrow
+- provider earning
+- refund
+- VAT
+- commission
+- payout statement consistency
+
+PETTREK RULE
+- frozen everywhere
+- frontend blocked
+- backend blocked
+- admin blocked
+- no draft creation
+- no payment creation
+- no provider path
+
+Do not mark any pass complete until these are verified and fixed.

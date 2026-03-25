@@ -494,7 +494,7 @@ export default function Dashboard() {
                   {tx('lifetimeValue', language)}
                 </p>
                 <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
-                  <span className="text-sm" style={goldText}>&#8362;</span>{giftBalance}
+                  <span className="text-sm" style={goldText}>&#8362;</span>{formatCurrency(loyaltyPoints * 10)}
                 </p>
                 <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('totalSpending', language)}</p>
               </div>

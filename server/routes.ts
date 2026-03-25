@@ -14159,6 +14159,20 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     }
   });
 
+  // Global Express error handler — feeds GeminiPlatformSecurityMonitor.recordError()
+  // so the AI monitor has real error patterns to analyze (not always empty).
+  app.use((err: any, req: any, res: any, next: any) => {
+    const message = err?.message || String(err) || 'Unknown error';
+    logger.error('[GlobalError]', { path: req?.path, status: err?.status, message });
+    import('./services/GeminiPlatformSecurityMonitor').then(({ geminiPlatformMonitor }) => {
+      geminiPlatformMonitor.recordError('express', message);
+    }).catch(() => {});
+    const status = err?.status || err?.statusCode || 500;
+    if (!res.headersSent) {
+      res.status(status).json({ error: message });
+    }
+  });
+
 }
 
 

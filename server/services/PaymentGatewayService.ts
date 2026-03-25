@@ -30,6 +30,7 @@ import {
   processWalletTopUp,
   processChargeback,
 } from './TransactionEngine';
+import vatCalculatorService from './VATCalculatorService';
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -522,11 +523,13 @@ export class PaymentGatewayService {
    */
   private static async createEscrowPayout(booking: any, paymentIntent: any): Promise<void> {
     try {
-      // Calculate platform fee and net payout
-      const platformFeePercent = 15; // 15% platform fee for marketplaces
+      // Calculate platform fee and VAT-correct provider payout.
+      // Use VATCalculatorService (Mode B / Marketplace) to align with TransactionEngine.
+      // Formula: providerGross = gross * 0.85; providerNet = providerGross - VAT(providerGross)
       const totalAmount = parseFloat(booking.total);
-      const platformFee = (totalAmount * platformFeePercent) / 100;
-      const netAmount = totalAmount - platformFee;
+      const vatBreakdown = vatCalculatorService.calculateMarketplaceVAT(totalAmount);
+      const platformFee = vatBreakdown.platformFeeGross;
+      const netAmount = vatBreakdown.providerNet;
 
       // Calculate escrow release date (72 hours from now)
       const escrowReleaseDate = new Date();

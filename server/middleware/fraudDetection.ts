@@ -409,16 +409,21 @@ export async function walletFraudProtection(
       }) as any;
     }
 
-    // Challenge medium-risk requests (can be implemented later with 2FA)
+    // Challenge medium-risk requests — block and require additional verification
     if (analysis.action === 'challenge') {
-      logger.info('[Fraud Detection] Wallet request requires challenge', {
+      logger.warn('[Fraud Detection] Wallet request blocked pending challenge', {
         userId,
         userEmail,
-        riskScore: analysis.riskScore
+        riskScore: analysis.riskScore,
+        reason: analysis.reason,
       });
-      
-      // For now, allow but log
-      // In production, trigger 2FA or additional verification
+
+      return res.status(403).json({
+        error: 'WALLET_RISK_CHALLENGE_REQUIRED',
+        message: 'פעולה זו דורשת אימות נוסף. אנא פנה לתמיכה.',
+        messageEn: 'This action requires additional verification. Please contact support.',
+        riskScore: analysis.riskScore,
+      }) as any;
     }
 
     // Allow low-risk requests

@@ -31,6 +31,7 @@ import VATCalculatorService from '../services/VATCalculatorService';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
 import { verifySignedRedeemToken, consumeNonce } from '../lib/signedRedeemToken';
+import { redis } from '../services/redis';
 
 const router = express.Router();
 
@@ -498,6 +499,26 @@ router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
       });
     }
 
+    // ── 2b. Burn nonce BEFORE the debit (race-condition safety) ───────────────
+    // In-memory burn first (fast, same-process protection)
+    consumeNonce(nonce, 120_000);
+
+    // Redis-backed burn for cross-process / post-restart replay protection.
+    // SETNX semantics: first writer wins. Falls back gracefully if Redis is down.
+    const redisNonceKey = `k9000:nonce:${nonce}`;
+    const redisAvailable = await redis.get<boolean>(redisNonceKey);
+    if (redisAvailable) {
+      logger.warn('[K9000 Redeem] Redis replay detected — nonce already used', { nonce, userId, correlationId });
+      return res.status(409).json({
+        error: 'קוד זה כבר שומש. הצג קוד חדש.',
+        errorEn: 'QR code already used. Please generate a new one.',
+        status: 'REPLAYED',
+        correlationId,
+      });
+    }
+    // Mark as used in Redis with 120s TTL (2× token TTL)
+    await redis.set(redisNonceKey, true, 120);
+
     // ── 3. Atomic decrement — guard against race conditions ────────────────
     const updated = await db
       .update(walletAccounts)
@@ -527,8 +548,7 @@ router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
 
     const remainingWashes = updated[0].remaining ?? 0;
 
-    // ── 4. Consume nonce (replay protection) ───────────────────────────────
-    consumeNonce(nonce, 120_000); // 2-minute blacklist window
+    // ── 4. Nonce already consumed before debit (step 2b) — no action needed here
 
     // ── 5. Send START_PUMP command to K9000 controller ─────────────────────
     const washId = `WASH-${Date.now()}-${nanoid(8).toUpperCase()}`;

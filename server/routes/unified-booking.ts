@@ -92,6 +92,15 @@ router.post('/draft', requireAuth, async (req: Request, res: Response) => {
     const { serviceId, resourceId, resourceType, startTime, endTime, metadata } = req.body;
     const userId = req.firebaseUser?.uid || req.user?.uid || req.body.userId;
 
+    // PetTrek is legally blocked — no booking creation permitted under any path
+    if (serviceId === 'PET_TREK') {
+      return res.status(403).json({
+        success: false,
+        error: 'service_legally_blocked',
+        code: 'PETTREK_NOT_LICENSED',
+      });
+    }
+
     if (!serviceId || !resourceId || !userId || !startTime || !endTime) {
       return res.status(400).json({
         success: false,
@@ -560,6 +569,15 @@ router.post('/flow', requireAuth, async (req: Request, res: Response) => {
       metadata
     } = req.body;
     const userId = req.firebaseUser?.uid || req.user?.uid || req.body.userId;
+
+    // PetTrek is legally blocked — no booking flow permitted under any path
+    if (serviceId === 'PET_TREK') {
+      return res.status(403).json({
+        success: false,
+        error: 'service_legally_blocked',
+        code: 'PETTREK_NOT_LICENSED',
+      });
+    }
 
     if (!serviceId || !resourceId || !userId || !startTime || !endTime || price === undefined) {
       return res.status(400).json({
