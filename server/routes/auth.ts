@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { randomBytes } from "crypto";
-import { compare, hash } from "bcrypt";
+import { hash } from "bcrypt";
 import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
 import { db } from "../db";
@@ -199,25 +199,28 @@ router.post("/logout", async (req, res) => {
     const { refreshToken: token } = req.body;
 
     if (token) {
-      // Find and revoke refresh token
-      const tokenRecords = await db.query.refreshTokens.findMany({
-        where: and(
-          eq(refreshTokens.revokedAt, null),
-          gt(refreshTokens.expiresAt, new Date())
-        ),
-        limit: 1000,
-      });
-
-      // Find matching token by comparing hash
-      for (const record of tokenRecords) {
-        const match = await compare(token, record.tokenHash);
-        if (match) {
+      // Decode the refresh token to get its jti (JWT ID) for O(1) lookup.
+      // Previously this did eq(revokedAt, null) — which in SQL becomes
+      // "WHERE revokedAt = NULL" (always false; null requires IS NULL) — so
+      // tokens were NEVER actually revoked. It then looped up to 1,000 rows
+      // running bcrypt.compare() on each, which is O(n×bcrypt) and a DoS
+      // vector. Fixed: decode first → revoke by jti directly (same pattern
+      // as /refresh uses).
+      try {
+        const decoded = jwt.verify(token, JWT_REFRESH_SECRET) as any;
+        if (decoded?.jti) {
           await db
             .update(refreshTokens)
             .set({ revokedAt: new Date() })
-            .where(eq(refreshTokens.id, record.id));
-          break;
+            .where(
+              and(
+                eq(refreshTokens.jti, decoded.jti),
+                isNull(refreshTokens.revokedAt)
+              )
+            );
         }
+      } catch (_verifyErr) {
+        // Token is already invalid/expired — nothing to revoke, not an error.
       }
     }
 
@@ -227,7 +230,7 @@ router.post("/logout", async (req, res) => {
     });
   } catch (error: any) {
     console.error("[Mobile Auth] Logout error:", error);
-    // Even if error, return success
+    // Even if error, return success (logout is best-effort)
     res.json({
       success: true,
       message: "Logged out successfully",

@@ -1,7 +1,7 @@
 import express from "express";
 import crypto from 'crypto';
 import { z } from 'zod';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { getCurrentUser } from "../simpleAuth";
 import { logger } from "../lib/logger";
 import { verifyCaptchaToken } from "../lib/verifyCaptcha";
@@ -927,11 +927,11 @@ const clientEventRateLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  // Explicit keyGenerator: trust proxy is set to 1 in index.ts so req.ip is
-  // the real client IP from X-Forwarded-For (set by GCP/Firebase load balancer).
-  // Not using the validate:{ ip:false } shortcut so misconfiguration surfaces
-  // as a startup warning rather than silently switching to a shared key.
-  keyGenerator: (req) => req.ip || req.socket.remoteAddress || 'unknown',
+  // Use ipKeyGenerator from express-rate-limit so the library's IPv6
+  // normalisation is applied (maps each /56 subnet to one key, preventing
+  // IPv6 address-rotation bypass). Trust-proxy is set to 1 in index.ts so
+  // req.ip is the real client IP from the GCP/Firebase load-balancer header.
+  keyGenerator: (req) => ipKeyGenerator(req.ip || req.socket.remoteAddress || 'unknown'),
   handler: (_req, res) => res.status(429).json({ ok: false, error: 'TOO_MANY_EVENTS' }),
 });
 
