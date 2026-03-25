@@ -18,13 +18,16 @@ import { EmailService } from '../emailService';
 const router = Router();
 
 // Role-based access control
+// NOTE: Email comparison is case-insensitive (.toLowerCase()) to prevent lockouts
+// when Firebase delivers emails in non-matching case (e.g. 'Support@PetWash.co.il'
+// vs 'support@petwash.co.il'). All entries in these lists must be lowercase.
 const ADMIN_ROLES = {
   // Full Admin Access (can create, edit, delete)
   fullAdmin: [
     'nirhadad1@gmail.com',      // CEO (Gmail)
     'nir.h@petwash.co.il',      // CEO (Official)
     'admin@petwash.co.il',      // General Admin
-    'Support@PetWash.co.il'     // Support Admin
+    'support@petwash.co.il',    // Support Admin (normalised to lowercase)
   ],
   // Viewer Access (read-only, cannot modify)
   viewer: [
@@ -36,24 +39,24 @@ const ADMIN_ROLES = {
 
 // Check if user has any admin/viewer access
 const requireAdminOrViewer = (req: any, res: any, next: any) => {
-  const userEmail = req.firebaseUser?.email;
+  const userEmail = (req.firebaseUser?.email || '').toLowerCase();
   const allAuthorized = [...ADMIN_ROLES.fullAdmin, ...ADMIN_ROLES.viewer];
   
-  if (!allAuthorized.includes(userEmail || '')) {
+  if (!allAuthorized.includes(userEmail)) {
     return res.status(403).json({ error: 'Access denied: Admin or viewer privileges required' });
   }
   
   // Attach role to request for later use
-  req.userRole = ADMIN_ROLES.fullAdmin.includes(userEmail || '') ? 'admin' : 'viewer';
+  req.userRole = ADMIN_ROLES.fullAdmin.includes(userEmail) ? 'admin' : 'viewer';
   
   next();
 };
 
 // Require full admin access (no viewers)
 const requireAdmin = (req: any, res: any, next: any) => {
-  const userEmail = req.firebaseUser?.email;
+  const userEmail = (req.firebaseUser?.email || '').toLowerCase();
   
-  if (!ADMIN_ROLES.fullAdmin.includes(userEmail || '')) {
+  if (!ADMIN_ROLES.fullAdmin.includes(userEmail)) {
     return res.status(403).json({ 
       error: 'Full admin access required',
       message: 'This action requires administrator privileges. Viewers have read-only access.'
@@ -877,15 +880,14 @@ router.post('/test/vaccine-reminder', validateFirebaseToken, requireAdmin, async
 
 // CEO-only access middleware
 const requireCEO = (req: any, res: any, next: any) => {
-  const userEmail = req.firebaseUser?.email;
+  const userEmail = (req.firebaseUser?.email || '').toLowerCase();
   const CEO_EMAILS = ['nirhadad1@gmail.com', 'nir.h@petwash.co.il'];
   
-  if (!CEO_EMAILS.includes(userEmail || '')) {
-    logger.warn(`[Security] Unauthorized CEO endpoint access attempt by ${userEmail}`);
+  if (!CEO_EMAILS.includes(userEmail)) {
+    logger.warn(`[Security] Unauthorized CEO endpoint access attempt by ${req.firebaseUser?.email}`);
     return res.status(403).json({ 
       error: 'CEO access required',
       message: 'Only the CEO (Nir Hadad) can access this endpoint',
-      attemptedBy: userEmail
     });
   }
   

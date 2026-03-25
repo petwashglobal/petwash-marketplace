@@ -9,6 +9,7 @@ import { ImmutableStampService } from "../services/ImmutableStampService";
 import { petWashOrchestrator } from "../services/PetWashOperationsOrchestrator";
 import { logger } from "../lib/logger";
 import { BookingLockService } from "../services/BookingLockService";
+import { isSuperAdmin } from "../middleware/rbac";
 
 const router = express.Router();
 
@@ -286,10 +287,10 @@ router.post("/:bookingId/confirm", requireAuth, async (req, res) => {
     // SECURITY: Only the assigned provider, the booking owner, or an admin can confirm
     const isBookingProvider = booking.providerId === userId;
     const isBookingOwner = booking.userId === userId || booking.customerId === userId;
-    const isSuperAdmin = !!(req as any).firebaseUser?.claims?.role &&
-      ['admin', 'super_admin'].includes((req as any).firebaseUser?.claims?.role);
+    // firebaseUser.claims.role is not a custom claim we set — always use isSuperAdmin()
+    const isSuperAdminUser = isSuperAdmin(((req as any).firebaseUser?.email || '').toLowerCase());
 
-    if (!isBookingProvider && !isBookingOwner && !isSuperAdmin) {
+    if (!isBookingProvider && !isBookingOwner && !isSuperAdminUser) {
       logger.warn('[Bookings] Unauthorized confirm attempt', { userId, bookingId, providerId: booking.providerId, customerId: booking.userId });
       return res.status(403).json({ error: "Forbidden — you are not the assigned provider or booking owner" });
     }

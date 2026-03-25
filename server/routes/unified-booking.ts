@@ -11,7 +11,7 @@
 
 import { Router, type Request, type Response } from 'express';
 import { authMiddleware as requireAuth } from '../middleware/auth';
-import { requireAdmin } from '../middleware/rbac';
+import { requireAdmin, isSuperAdmin } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { bookings } from '@shared/schema';
@@ -281,7 +281,8 @@ router.post('/:bookingId/start', requireAuth, async (req: Request, res: Response
   try {
     const { bookingId } = req.params;
     const startedBy = req.firebaseUser?.uid || req.user?.uid || '';
-    const isAdmin = ((req.firebaseUser as any)?.role || req.user?.role) === 'admin' || ((req.firebaseUser as any)?.role || req.user?.role) === 'super_admin';
+    // firebaseUser.role is not a Firebase custom claim we set — always use isSuperAdmin()
+    const isAdmin = isSuperAdmin((req.firebaseUser?.email || '').toLowerCase());
 
     const booking = await loadBookingFromDB(bookingId);
     if (!booking) {
@@ -334,7 +335,8 @@ router.post('/:bookingId/complete', requireAuth, async (req: Request, res: Respo
   try {
     const { bookingId } = req.params;
     const completedBy = req.firebaseUser?.uid || req.user?.uid || '';
-    const isAdmin = ((req.firebaseUser as any)?.role || req.user?.role) === 'admin' || ((req.firebaseUser as any)?.role || req.user?.role) === 'super_admin';
+    // firebaseUser.role is not a Firebase custom claim we set — always use isSuperAdmin()
+    const isAdmin = isSuperAdmin((req.firebaseUser?.email || '').toLowerCase());
 
     const booking = await loadBookingFromDB(bookingId);
     if (!booking) {
@@ -401,7 +403,8 @@ router.post('/:bookingId/cancel', requireAuth, async (req: Request, res: Respons
     const { bookingId } = req.params;
     const { reason } = req.body;
     const cancelledBy = req.firebaseUser?.uid || req.user?.uid || '';
-    const role: Role = ((req.firebaseUser as any)?.role || req.user?.role) === 'admin' ? 'ADMIN' : 'USER';
+    // firebaseUser.role is not a Firebase custom claim we set — always use isSuperAdmin()
+    const role: Role = isSuperAdmin((req.firebaseUser?.email || '').toLowerCase()) ? 'ADMIN' : 'USER';
     const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
 
     const booking = await loadBookingFromDB(bookingId);
@@ -449,7 +452,8 @@ router.post('/:bookingId/refund', requireAuth, requireAdmin, async (req: Request
     const { bookingId } = req.params;
     const { refundAmount, reason, isPartial } = req.body;
     const processedBy = req.firebaseUser?.uid || req.user?.uid || '';
-    const role: Role = ((req.firebaseUser as any)?.role || req.user?.role) === 'super_admin' ? 'SUPER_ADMIN' : 'ADMIN';
+    // firebaseUser.role is not a Firebase custom claim we set — treat all verified admins equally here
+    const role: Role = 'ADMIN';
 
     if (!refundAmount || !reason) {
       return res.status(400).json({

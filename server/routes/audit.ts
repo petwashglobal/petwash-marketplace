@@ -7,7 +7,7 @@
 import { Router, type Request, type Response } from 'express';
 import { AuditLedgerService } from '../services/AuditLedgerService';
 import type { AuthenticatedRequest } from '../middleware/rbac';
-import { requireAdmin } from '../middleware/rbac';
+import { requireAdmin, isSuperAdmin } from '../middleware/rbac';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
@@ -53,9 +53,12 @@ router.get('/entity/:type/:id', async (req: AuthenticatedRequest, res: Response)
     
     const trail = await AuditLedgerService.getEntityAuditTrail(type, id);
     
-    // Filter to only show records for authenticated user (unless admin)
+    // Filter to only show records for authenticated user (unless admin).
+    // NOTE: firebaseUser.role is never populated by Firebase Auth (it's a custom
+    // claim that we don't set). Use isSuperAdmin() which checks SUPER_ADMIN_EMAILS
+    // env var — the same authoritative source used by requireAdmin() in rbac.ts.
     const userId = req.firebaseUser!.uid;
-    const isAdmin = req.firebaseUser!.role === 'admin';
+    const isAdmin = isSuperAdmin((req.firebaseUser!.email || '').toLowerCase());
     
     const filteredTrail = isAdmin 
       ? trail 
