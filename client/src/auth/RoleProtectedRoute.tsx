@@ -20,10 +20,10 @@ interface RoleProtectedRouteProps {
 
 export default function RoleProtectedRoute({ children, minRole, fallbackPath = '/', requiredDashboard }: RoleProtectedRouteProps) {
   const { user, loading } = useFirebaseAuth();
-  const { whoami, isLoading: whoamiLoading, isAuthenticated, dashboardsAllowed, role: serverRole } = useWhoami();
+  const { isLoading: whoamiLoading, isAuthenticated, dashboardsAllowed, role: serverRole } = useWhoami();
   const [, setLocation] = useLocation();
 
-  // Always show spinner while Firebase or whoami are still resolving.
+  // Show spinner while Firebase or the server whoami check are still in-flight.
   if (loading || whoamiLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -32,16 +32,25 @@ export default function RoleProtectedRoute({ children, minRole, fallbackPath = '
     );
   }
 
-  // Both have resolved — if not authenticated server-side, send to sign-in.
-  // This catches: logged-out users, expired sessions, and failed whoami calls.
-  if (!user || !isAuthenticated) {
+  // Both Firebase and the server have resolved.
+  // Server `isAuthenticated` is authoritative — trust it even if the Firebase
+  // client state is momentarily stale (e.g. token refresh race on remount).
+  // Only redirect when the server explicitly says the user is NOT authenticated
+  // AND there is also no local Firebase user (fully logged out / expired session).
+  if (!isAuthenticated && !user) {
     setLocation('/signin');
     return null;
   }
 
-  // Authenticated. Now enforce role and dashboard.
-  const serverLevel = ROLE_HIERARCHY[serverRole as UserRole] || 1;
-  const requiredLevel = ROLE_HIERARCHY[minRole] || 1;
+  // Firebase user exists but server session has expired — force re-login.
+  if (!isAuthenticated && user) {
+    setLocation('/signin');
+    return null;
+  }
+
+  // Server confirmed authenticated. Enforce role.
+  const serverLevel = ROLE_HIERARCHY[serverRole as UserRole] ?? 1;
+  const requiredLevel = ROLE_HIERARCHY[minRole] ?? 1;
 
   if (serverLevel < requiredLevel) {
     setLocation(fallbackPath);

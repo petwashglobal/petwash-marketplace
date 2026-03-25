@@ -12,12 +12,12 @@ import { pool, db } from '../db';
 import { userConsents, authEvents, users, smsEvidence, otpEvents } from '@shared/schema';
 import { storage } from '../storage';
 
-// Rate limiter: max 3 SMS send attempts per IP per 10 minutes
+// Rate limiter: max 10 SMS send attempts per IP per minute (matches platform auth rate limit policy).
 // ipKeyGenerator normalises IPv6-mapped IPv4 addresses (e.g. "::ffff:1.2.3.4" → "1.2.3.4")
 // so that IPv4 and IPv6 connections to the same IP share the same rate-limit bucket.
 const phoneSendRateLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000,
-  max: 3,
+  windowMs: 60 * 1000,
+  max: 10,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: ipKeyGenerator,
@@ -26,7 +26,7 @@ const phoneSendRateLimiter = rateLimit({
     logger.warn('[PublicAuth] SMS rate limit hit', { ip: _req.ip });
     return res.status(429).json({
       ok: false,
-      error: 'יותר מדי בקשות. המתינו 10 דקות.'
+      error: 'יותר מדי בקשות. המתינו דקה.'
     });
   }
 });
