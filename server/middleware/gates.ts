@@ -62,12 +62,17 @@ export function requireRole(...roles: string[]) {
     try {
       // For Firebase Bearer-token / session-cookie users, enforce role via
       // Firebase custom claims rather than unconditionally calling next().
+      // Two middleware shapes exist in the codebase:
+      //   • firebase-auth.ts  → normalises to { claims: { role } }
+      //   • customAuth.ts     → sets req.firebaseUser = decodedClaims (role at top-level)
+      // We resolve both to avoid false 403s for either path.
       if ((req as any).firebaseUser?.uid) {
-        const claimsRole = (req as any).firebaseUser?.claims?.role || 'public';
+        const fbUser = (req as any).firebaseUser;
+        const claimsRole: string = fbUser?.claims?.role || fbUser?.role || 'public';
         if (!roles.includes(claimsRole)) {
-          logger.debug(`[requireRole] Firebase user ${(req as any).firebaseUser.uid} has claims role '${claimsRole}', required: ${roles.join(',')}`);
+          logger.debug(`[requireRole] Firebase user ${fbUser.uid} has claims role '${claimsRole}', required: ${roles.join(',')}`);
           logSecurityEvent({
-            userId: (req as any).firebaseUser.uid,
+            userId: fbUser.uid,
             eventType: 'role_escalation_attempt',
             ip: req.ip || '',
             userAgent: req.headers['user-agent'] || '',
