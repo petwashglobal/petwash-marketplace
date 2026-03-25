@@ -10562,7 +10562,13 @@ self.addEventListener('notificationclick', (event) => {
       } catch (emailErr: any) {
         logger.error('[Phase2] Email generation error (non-blocking)', { traceId, error: emailErr.message });
       }
-      
+
+      // Security monitor — record new customer registration for spike detection
+      try {
+        const { geminiPlatformMonitor } = await import('./services/GeminiPlatformSecurityMonitor');
+        geminiPlatformMonitor.recordRegistration('prestige');
+      } catch { /* non-fatal — never block registration */ }
+
       res.json({ success: true, uid, userId: uid, profileId: uid });
       
     } catch (error: any) {
