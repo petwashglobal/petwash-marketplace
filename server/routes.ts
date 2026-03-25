@@ -921,6 +921,42 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(400).json({ error: 'ID token required', errorCode: 'MISSING_TOKEN' });
       }
 
+      // Pre-validate token for privileged role security checks before creating the session cookie.
+      try {
+        const preDecoded = await firebaseAdminModule.auth.verifyIdToken(idToken, true);
+        const role = (preDecoded as any).role || (preDecoded as any)['custom:role'] || '';
+        const PRIVILEGED_ROLES = ['admin', 'management', 'super_admin', 'ceo', 'finance'];
+        const isPrivileged = PRIVILEGED_ROLES.includes(role);
+
+        // 1. emailVerified enforcement — privileged users must have a verified email.
+        if (isPrivileged && !preDecoded.email_verified) {
+          logger.warn('[Session] Privileged role blocked — email not verified', {
+            uid: preDecoded.uid, role, traceId,
+          });
+          return res.status(403).json({
+            error: 'Email verification required for privileged access',
+            errorCode: 'EMAIL_NOT_VERIFIED',
+          });
+        }
+
+        // 2. Stale token (>24h iat) rejection for privileged roles.
+        if (isPrivileged && preDecoded.iat) {
+          const tokenAgeSeconds = Math.floor(Date.now() / 1000) - preDecoded.iat;
+          if (tokenAgeSeconds > 86400) {
+            logger.warn('[Session] Privileged role blocked — token older than 24h', {
+              uid: preDecoded.uid, role, tokenAgeSeconds, traceId,
+            });
+            return res.status(401).json({
+              error: 'Token is too old for privileged access. Please sign in again.',
+              errorCode: 'STALE_TOKEN',
+            });
+          }
+        }
+      } catch (preValidErr: any) {
+        logger.warn('[Session] Token pre-validation failed', { error: preValidErr?.message, traceId });
+        return res.status(401).json({ error: 'Invalid ID token', errorCode: 'INVALID_TOKEN' });
+      }
+
       logger.debug('[Session] Verifying ID token and creating session cookie');
       const { createSessionCookie } = await import('./lib/sessionCookies');
       await createSessionCookie(idToken, res);
@@ -10461,6 +10497,22 @@ self.addEventListener('notificationclick', (event) => {
         });
         userId = uid;
         logger.info(`[Phase1] PostgreSQL user created`, { traceId, userId });
+
+        // Immediately stamp termsAcceptedAt and privacyAcceptedAt so post-login
+        // getMissingFields() does not send this user to /complete-profile.
+        // acceptedTerms is validated and required above (line ~10405).
+        if (acceptedTerms) {
+          const consentNow = new Date();
+          try {
+            await storage.updateUser(userId, {
+              termsAcceptedAt: consentNow,
+              privacyAcceptedAt: consentNow,
+            } as any);
+            logger.info('[Phase1] termsAcceptedAt/privacyAcceptedAt stamped', { traceId, userId });
+          } catch (consentStampErr) {
+            logger.warn('[Phase1] Failed to stamp termsAcceptedAt (non-blocking)', { traceId, err: String(consentStampErr) });
+          }
+        }
       } catch (dbErr: any) {
         if (dbErr?.code === '23505' || dbErr?.message?.includes('unique') || dbErr?.message?.includes('duplicate')) {
           logger.info('[Phase1] User already exists in PostgreSQL, continuing', { traceId, uid });

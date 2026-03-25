@@ -101,6 +101,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const [verificationCode, setVerificationCode] = useState("");
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
   const [phoneLoading, setPhoneLoading] = useState(false);
+  const [magicLinkEmailNeeded, setMagicLinkEmailNeeded] = useState(false);
+  const [magicLinkEmailInput, setMagicLinkEmailInput] = useState("");
+  const [magicLinkHref, setMagicLinkHref] = useState("");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -278,13 +281,15 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   useEffect(() => {
     const handleMagicLinkReturn = async () => {
       if (isSignInWithEmailLink(auth, window.location.href)) {
-        let email = window.localStorage.getItem('emailForSignIn');
+        const email = window.localStorage.getItem('emailForSignIn');
         
         if (!email) {
-          email = window.prompt(language === 'he' ? 'אנא הזן את כתובת האימייל שלך לאימות:' : 'Please provide your email for confirmation:');
+          // Store the current URL so we can use it when the user submits their email
+          // inline (window.prompt is blocked on iOS — we show an inline form instead).
+          setMagicLinkHref(window.location.href);
+          setMagicLinkEmailNeeded(true);
+          return;
         }
-        
-        if (!email) return;
         
         try {
           setLoading(true);
@@ -341,6 +346,47 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     handleMagicLinkReturn();
   }, []);
   
+  // Called when user submits their email via the inline magic-link email form
+  // (replaces the window.prompt that is blocked on iOS/mobile browsers).
+  const handleMagicLinkEmailSubmit = async () => {
+    const email = magicLinkEmailInput.trim();
+    if (!email || !magicLinkHref) return;
+    try {
+      setLoading(true);
+      window.localStorage.setItem('emailForSignIn', email);
+      const userCredential = await signInWithEmailLink(auth, email, magicLinkHref);
+      window.localStorage.removeItem('emailForSignIn');
+      setMagicLinkEmailNeeded(false);
+      setMagicLinkHref('');
+      setMagicLinkEmailInput('');
+      const idToken = await userCredential.user.getIdToken();
+      const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ idToken }),
+      });
+      if (!sessionResponse.ok) throw new Error('Failed to create session');
+      if (userCredential.user.uid && userCredential.user.email) {
+        trustDevice(userCredential.user.uid, userCredential.user.email);
+        storeLastAuthMethod('magic_link');
+      }
+      const { trackLogin } = await import('@/lib/analytics');
+      trackLogin('magic_link', userCredential.user.uid);
+      toast({ title: t('signin.successTitle', language), description: t('signin.redirecting', language) });
+      setTimeout(() => navigatePostLogin(), 1000);
+    } catch (error: any) {
+      logger.error("Magic link inline email verification error:", error);
+      toast({
+        variant: 'destructive',
+        title: t('signin.error_title', language),
+        description: error.message || (language === 'he' ? 'אימות קישור קסם נכשל' : 'Magic link verification failed'),
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleUsePasswordInstead = () => {
     logger.info("User manually switched to password mode");
     setForcePasswordMode(true);
@@ -1010,6 +1056,30 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           fr: 'Un compte existe déjà avec le même e-mail mais une méthode de connexion différente.',
           ru: 'Аккаунт с таким email уже существует, но с другим методом входа.',
         },
+        'auth/user-cancelled': {
+          en: 'Sign-in was cancelled. Please try again.',
+          he: 'ההתחברות בוטלה. אנא נסו שוב.',
+          ar: 'تم إلغاء تسجيل الدخول. يرجى المحاولة مرة أخرى.',
+          es: 'El inicio de sesión fue cancelado. Inténtelo de nuevo.',
+          fr: 'La connexion a été annulée. Veuillez réessayer.',
+          ru: 'Вход был отменён. Попробуйте снова.',
+        },
+        'auth/cancelled-popup-request': {
+          en: 'The sign-in window was closed. Please try again.',
+          he: 'חלון ההתחברות נסגר. אנא נסו שוב.',
+          ar: 'تم إغلاق نافذة تسجيل الدخول. يرجى المحاولة مرة أخرى.',
+          es: 'La ventana de inicio de sesión se cerró. Inténtelo de nuevo.',
+          fr: 'La fenêtre de connexion a été fermée. Veuillez réessayer.',
+          ru: 'Окно входа было закрыто. Попробуйте снова.',
+        },
+        'auth/too-many-requests': {
+          en: 'Too many attempts. Please wait a few minutes before trying again.',
+          he: 'יותר מדי ניסיונות. אנא המתינו כמה דקות לפני הניסיון הבא.',
+          ar: 'محاولات كثيرة جداً. يرجى الانتظار بضع دقائق قبل المحاولة مرة أخرى.',
+          es: 'Demasiados intentos. Espere unos minutos antes de intentarlo de nuevo.',
+          fr: 'Trop de tentatives. Veuillez attendre quelques minutes avant de réessayer.',
+          ru: 'Слишком много попыток. Подождите несколько минут перед повторной попыткой.',
+        },
       };
       const defaultSocialErr: Record<string, string> = {
         en: 'Sign-in with Google failed. Please try again.',
@@ -1572,7 +1642,53 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             </p>
           </motion.div>
 
-          {!selectedIntent && !user && (
+          {magicLinkEmailNeeded && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4 border border-neutral-200 p-6 bg-neutral-50"
+            >
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium text-neutral-800 uppercase tracking-wider">
+                  {language === 'he' ? 'אמת את כתובת האימייל שלך' : 'Confirm your email address'}
+                </h3>
+                <p className="text-xs text-neutral-500">
+                  {language === 'he'
+                    ? 'הזן את כתובת האימייל שממנה שלחת את קישור הכניסה'
+                    : 'Enter the email address you used to request the magic link'}
+                </p>
+              </div>
+              <Input
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder={language === 'he' ? 'כתובת אימייל' : 'Email address'}
+                value={magicLinkEmailInput}
+                onChange={(e) => setMagicLinkEmailInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleMagicLinkEmailSubmit(); }}
+                className="h-12 text-sm rounded-none border border-neutral-300 bg-white focus:border-neutral-900 focus:ring-0"
+                dir="ltr"
+                disabled={loading}
+              />
+              <Button
+                type="button"
+                onClick={handleMagicLinkEmailSubmit}
+                disabled={loading || !magicLinkEmailInput.trim()}
+                className="w-full h-12 text-sm font-medium bg-neutral-900 hover:bg-neutral-800 text-white rounded-none tracking-wider uppercase border-0"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (language === 'he' ? 'אמת והתחבר' : 'Verify & Sign In')}
+              </Button>
+              <button
+                type="button"
+                onClick={() => { setMagicLinkEmailNeeded(false); setMagicLinkHref(''); setMagicLinkEmailInput(''); }}
+                className="w-full text-xs text-neutral-500 hover:text-neutral-800 tracking-wider uppercase py-1"
+              >
+                {language === 'he' ? 'ביטול' : 'Cancel'}
+              </button>
+            </motion.div>
+          )}
+
+          {!selectedIntent && !user && !magicLinkEmailNeeded && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}

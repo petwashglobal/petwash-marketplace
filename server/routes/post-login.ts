@@ -6,7 +6,7 @@ import { logAuditEvent } from "../middleware/auditLog";
 import { EmailService } from "../emailService";
 import { isSuperAdmin } from "../middleware/rbac";
 
-const ADMIN_APPROVER_EMAIL = "nir.h@petwash.co.il";
+const ADMIN_APPROVER_EMAIL = process.env.ADMIN_APPROVER_EMAIL || "nir.h@petwash.co.il";
 
 const REJECTED_INTENTS = ['admin', 'management', 'super_admin'];
 

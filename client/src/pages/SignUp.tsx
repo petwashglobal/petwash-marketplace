@@ -367,26 +367,18 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       if (!profileResponse.ok) {
         const errorData = await profileResponse.json().catch(() => ({}));
         logger.error("Profile creation API failed", { status: profileResponse.status, error: errorData });
+        // Delete the Firebase user to avoid a zombie account (authenticated in Firebase
+        // but missing the PostgreSQL profile). The user can try signing up again.
+        try {
+          await user.delete();
+          logger.info("Firebase user deleted after failed profile creation", { uid: user.uid });
+        } catch (deleteErr: any) {
+          logger.warn("Failed to clean up Firebase user after profile creation failure", { uid: user.uid, err: deleteErr?.message });
+        }
         throw new Error(errorData.error || 'Failed to create profile');
       }
       
       logger.info("User profile created via server API");
-
-      try {
-        const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ idToken }),
-        });
-        if (sessionResponse.ok) {
-          logger.info("Session cookie created after signup");
-        } else {
-          logger.warn("Session cookie creation failed after signup", { status: sessionResponse.status });
-        }
-      } catch (sessionErr) {
-        logger.warn("Session cookie creation error after signup", sessionErr);
-      }
 
       trackSignUp('email', user.uid);
 
