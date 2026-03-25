@@ -19,15 +19,47 @@ import {
 import { eq, desc, gte, count, sql, and, lte } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { validateFirebaseToken } from "../middleware/firebase-auth";
-import { requireAdmin } from "../middleware/rbac";
+import { isSuperAdmin } from "../middleware/rbac";
+import { getUserRoleLevel } from "../services/rbac";
 
 const router = Router();
 
-// ALL control-panel routes require a valid Firebase token AND super-admin access.
-// requireAdmin reads from the SUPER_ADMIN_EMAILS environment variable (set in secrets),
-// so admin access is managed via env config — no emails are hardcoded in source.
-// This is the same pattern used by server/routes/admin.ts.
-router.use(validateFirebaseToken, requireAdmin);
+// ALL control-panel routes require:
+//   1. A valid Firebase ID token or session cookie (validateFirebaseToken verifies
+//      the token cryptographically and sets req.firebaseUser with uid + email).
+//   2. The caller must be EITHER a super-admin (SUPER_ADMIN_EMAILS env var — no
+//      hardcoded emails in source) OR have a DB role with accessLevel >= 8
+//      (Executive / Management tier in systemRoles).
+//
+// This satisfies the UID-based requirement: the uid comes from the verified Firebase
+// token, not user-supplied input.
+async function requireAdminOrManager(req: any, res: any, next: any) {
+  const firebaseUser = req.firebaseUser;
+  if (!firebaseUser?.uid || !firebaseUser?.email) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  // Fast path: super-admin env-var check (reads SUPER_ADMIN_EMAILS secret)
+  if (isSuperAdmin(firebaseUser.email.toLowerCase())) {
+    return next();
+  }
+
+  // DB path: check systemRoles access level for the authenticated UID
+  const level = await getUserRoleLevel(firebaseUser.uid);
+  if (level >= 8) {
+    return next();
+  }
+
+  logger.warn('[ControlPanel] Unauthorized access attempt', {
+    uid: firebaseUser.uid,
+    email: firebaseUser.email,
+    path: req.path,
+    roleLevel: level,
+  });
+  return res.status(403).json({ error: 'Access denied: Executive-level or super-admin access required' });
+}
+
+router.use(validateFirebaseToken, requireAdminOrManager);
 
 /**
  * GET /api/control-panel/metrics
