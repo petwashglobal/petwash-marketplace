@@ -19,31 +19,15 @@ import {
 import { eq, desc, gte, count, sql, and, lte } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { validateFirebaseToken } from "../middleware/firebase-auth";
+import { requireAdmin } from "../middleware/rbac";
 
 const router = Router();
 
-// ALL control-panel routes are admin-only.
-// Apply validateFirebaseToken + requireAdminOrViewer to the whole router.
-const ADMIN_EMAILS = [
-  'nirhadad1@gmail.com',
-  'nir.h@petwash.co.il',
-  'admin@petwash.co.il',
-  'support@petwash.co.il',
-  'ido.s@petwash.co.il',
-  'avner9000@gmail.com',
-  'shiri.shakarzi1@gmail.com',
-];
-
-const requireAdminOrViewer = (req: any, res: any, next: any) => {
-  const userEmail = (req.firebaseUser?.email || '').toLowerCase();
-  if (!ADMIN_EMAILS.includes(userEmail)) {
-    logger.warn('[ControlPanel] Unauthorized access attempt', { email: userEmail, path: req.path });
-    return res.status(403).json({ error: 'Access denied: Admin or viewer privileges required' });
-  }
-  next();
-};
-
-router.use(validateFirebaseToken, requireAdminOrViewer);
+// ALL control-panel routes require a valid Firebase token AND super-admin access.
+// requireAdmin reads from the SUPER_ADMIN_EMAILS environment variable (set in secrets),
+// so admin access is managed via env config — no emails are hardcoded in source.
+// This is the same pattern used by server/routes/admin.ts.
+router.use(validateFirebaseToken, requireAdmin);
 
 /**
  * GET /api/control-panel/metrics
