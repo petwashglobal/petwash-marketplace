@@ -23,13 +23,8 @@ import { requireAdmin } from "../middleware/rbac";
 
 const router = Router();
 
-// ALL control-panel routes are restricted to super-admin accounts only.
-// validateFirebaseToken cryptographically verifies the Firebase ID token and
-// populates req.firebaseUser with the verified uid and email claim.
-// requireAdmin then checks the email against the SUPER_ADMIN_EMAILS environment
-// variable (managed via Replit secrets — no emails hardcoded in source code).
-// Any request without a valid Firebase token OR with an email not in
-// SUPER_ADMIN_EMAILS is rejected with 401/403 before any route handler runs.
+// Super-admin only. validateFirebaseToken verifies the Firebase token;
+// requireAdmin gates on SUPER_ADMIN_EMAILS env var (no hardcoded emails).
 router.use(validateFirebaseToken, requireAdmin);
 
 /**
