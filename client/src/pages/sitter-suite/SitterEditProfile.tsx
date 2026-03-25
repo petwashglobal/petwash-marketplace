@@ -289,7 +289,8 @@ export default function SitterEditProfile() {
                     setFormData(prev => ({
                       ...prev,
                       city: cityName,
-                      ...(lat !== null && lng !== null ? { latitude: lat, longitude: lng } : {}),
+                      latitude: lat,
+                      longitude: lng,
                     }));
                   }}
                   placeholder={isHebrew ? 'התחל להקליד עיר...' : 'Start typing city or address...'}

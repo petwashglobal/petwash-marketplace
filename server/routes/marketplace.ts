@@ -121,7 +121,7 @@ async function searchWalkers(filters: MarketplaceSearchFilters): Promise<{
     const conditions = [eq(walkerProfiles.isActive, true)];
 
     if (filters.city) {
-      conditions.push(eq(walkerProfiles.city, filters.city));
+      conditions.push(ilike(walkerProfiles.city, `%${filters.city}%`));
     }
 
     if (filters.minRating && filters.minRating > 0) {
@@ -200,7 +200,7 @@ async function searchSitters(filters: MarketplaceSearchFilters): Promise<{
     const conditions = [eq(sitterProfiles.isActive, true)];
 
     if (filters.city) {
-      conditions.push(eq(sitterProfiles.city, filters.city));
+      conditions.push(ilike(sitterProfiles.city, `%${filters.city}%`));
     }
 
     if (filters.minRating && filters.minRating > 0) {

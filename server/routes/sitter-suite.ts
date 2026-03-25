@@ -422,12 +422,20 @@ router.patch('/sitters/:id', async (req, res) => {
     if (pricePerDayCents !== undefined) updateData.pricePerDayCents = pricePerDayCents;
     if (profilePictureUrl !== undefined) updateData.profilePictureUrl = profilePictureUrl;
     if (isActive !== undefined) updateData.isActive = isActive;
-    // Accept coordinates when sitter updates their city via Google Places
-    const _lat = typeof latitude === 'number' ? latitude : parseFloat(latitude);
-    const _lng = typeof longitude === 'number' ? longitude : parseFloat(longitude);
-    if (!isNaN(_lat) && !isNaN(_lng) && _lat >= -90 && _lat <= 90 && _lng >= -180 && _lng <= 180) {
-      updateData.latitude = _lat.toString();
-      updateData.longitude = _lng.toString();
+    // Accept coordinates when sitter updates their city via Google Places.
+    // null means city was changed without a Places selection — clear stale coords.
+    if (latitude !== undefined || longitude !== undefined) {
+      if (latitude === null || longitude === null) {
+        updateData.latitude = null;
+        updateData.longitude = null;
+      } else {
+        const _lat = typeof latitude === 'number' ? latitude : parseFloat(latitude);
+        const _lng = typeof longitude === 'number' ? longitude : parseFloat(longitude);
+        if (!isNaN(_lat) && !isNaN(_lng) && _lat >= -90 && _lat <= 90 && _lng >= -180 && _lng <= 180) {
+          updateData.latitude = _lat.toString();
+          updateData.longitude = _lng.toString();
+        }
+      }
     }
     
     const [updatedSitter] = await db
