@@ -115,7 +115,7 @@ export default function PetTrekBooking() {
     },
   });
 
-  // Auto-detect user location for pickup
+  // Auto-detect user location for pickup — uses reverse-geocode to show readable name (never raw coords)
   const detectLocation = () => {
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -124,10 +124,18 @@ export default function PetTrekBooking() {
           const lon = position.coords.longitude.toFixed(7);
           setPickupLat(lat);
           setPickupLon(lon);
-          
-          // Reverse geocode to get address (simplified placeholder)
-          setPickupAddress(`${t('booking.location.currentLocation')} (${lat}, ${lon})`);
-          
+          try {
+            const params = new URLSearchParams({ lat, lng: lon, language: 'iw' });
+            const res = await fetch(`/api/google/reverse-geocode?${params}`, { credentials: 'include' });
+            if (res.ok) {
+              const data = await res.json();
+              setPickupAddress(data.name || data.formattedAddress || t('booking.location.currentLocation'));
+            } else {
+              setPickupAddress(t('booking.location.currentLocation'));
+            }
+          } catch {
+            setPickupAddress(t('booking.location.currentLocation'));
+          }
           toast({
             title: t('booking.location.detected'),
             description: t('booking.location.detectedDesc'),
@@ -397,30 +405,17 @@ export default function PetTrekBooking() {
                       value={pickupAddress}
                       onChange={(value, details) => {
                         setPickupAddress(value);
-                        if (details?.lat && details?.lng) {
-                          setPickupLat(details.lat.toString());
-                          setPickupLon(details.lng.toString());
+                        if (details) {
+                          setPickupLat(details.lat != null ? details.lat.toString() : '');
+                          setPickupLon(details.lng != null ? details.lng.toString() : '');
+                        } else {
+                          setPickupLat('');
+                          setPickupLon('');
                         }
                       }}
                       placeholder={t('booking.location.enterAddress')}
                       country={['il', 'us', 'gb', 'au', 'ca']}
                       className="flex-1"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      placeholder={t('booking.location.latitude')}
-                      value={pickupLat}
-                      onChange={(e) => setPickupLat(e.target.value)}
-                      data-testid="input-pickup-lat"
-                      className="luxury-glass-minimal h-10 text-sm"
-                    />
-                    <Input
-                      placeholder={t('booking.location.longitude')}
-                      value={pickupLon}
-                      onChange={(e) => setPickupLon(e.target.value)}
-                      data-testid="input-pickup-lon"
-                      className="luxury-glass-minimal h-10 text-sm"
                     />
                   </div>
                 </div>
@@ -434,31 +429,18 @@ export default function PetTrekBooking() {
                     value={dropoffAddress}
                     onChange={(value, details) => {
                       setDropoffAddress(value);
-                      if (details?.lat && details?.lng) {
-                        setDropoffLat(details.lat.toString());
-                        setDropoffLon(details.lng.toString());
+                      if (details) {
+                        setDropoffLat(details.lat != null ? details.lat.toString() : '');
+                        setDropoffLon(details.lng != null ? details.lng.toString() : '');
+                      } else {
+                        setDropoffLat('');
+                        setDropoffLon('');
                       }
                     }}
                     placeholder={t('booking.location.enterAddress')}
                     country={['il', 'us', 'gb', 'au', 'ca']}
                     className="w-full"
                   />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      placeholder={t('booking.location.latitude')}
-                      value={dropoffLat}
-                      onChange={(e) => setDropoffLat(e.target.value)}
-                      data-testid="input-dropoff-lat"
-                      className="luxury-glass-minimal h-10 text-sm"
-                    />
-                    <Input
-                      placeholder={t('booking.location.longitude')}
-                      value={dropoffLon}
-                      onChange={(e) => setDropoffLon(e.target.value)}
-                      data-testid="input-dropoff-lon"
-                      className="luxury-glass-minimal h-10 text-sm"
-                    />
-                  </div>
                 </div>
               </CardContent>
             </Card>
