@@ -71,16 +71,14 @@ export async function createEarningRecord(params: CreateEarningParams) {
     // Calculate platform fee
     const platformFee = (baseAmount * platformFeePercent) / 100;
 
-    // Calculate VAT (18% on commission only, effective Jan 1, 2025)
-    // Israeli law mandates VAT-inclusive consumer prices. Platform fee is already
-    // VAT-inclusive (it is a portion of the gross amount paid by the customer).
-    // Back-calculation formula: vatAmount = grossInclusive × (18 / 118)
-    // WRONG (add-on): platformFee × 0.18  — overstates VAT by ~2.75%
-    // CORRECT (back-calc): platformFee × (18 / 118)
+    // VAT back-calculation (18/118) — platform fee is VAT-inclusive.
+    // vatAmount is the VAT component embedded within platformFee.
+    // PetWash remits this VAT from its own commission share.
+    // It must NOT be deducted from the provider payout — that would double-count it.
     const vatAmount = platformFee * (18 / 118);
 
-    // Calculate net earnings
-    const netEarnings = baseAmount + bonusAmount - platformFee - vatAmount;
+    // Provider net: base minus the full commission (VAT is inside platformFee, not extra)
+    const netEarnings = baseAmount + bonusAmount - platformFee;
 
     // Generate unique earning ID
     const earningId = `EARN-${new Date().getFullYear()}-${nanoid(6).toUpperCase()}`;
@@ -130,8 +128,9 @@ export async function createEarningRecord(params: CreateEarningParams) {
       contractorId,
       baseAmount,
       platformFee,
-      vatAmount,
-      netEarnings,
+      vatEmbeddedInFee: parseFloat(vatAmount.toFixed(2)),
+      platformNetAfterVat: parseFloat((platformFee - vatAmount).toFixed(2)),
+      providerNet: parseFloat(netEarnings.toFixed(2)),
       escrowReleaseDate,
     });
 

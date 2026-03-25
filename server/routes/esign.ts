@@ -33,6 +33,14 @@ router.post('/create-session', requireAuth, async (req, res) => {
       });
     }
 
+    if (!process.env.DOCUSEAL_API_KEY) {
+      logger.warn('[ESign] DocuSeal not configured — DOCUSEAL_API_KEY missing');
+      return res.status(503).json({
+        error: 'E-signature service is not configured',
+        code: 'ESIGN_UNAVAILABLE'
+      });
+    }
+
     const submission = await docuSealService.createSubmission({
       templateSlug,
       signerEmail,

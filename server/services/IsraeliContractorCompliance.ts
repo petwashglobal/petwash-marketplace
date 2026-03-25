@@ -32,6 +32,7 @@ import {
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
+import { generateCommissionInvoiceNumber } from '../lib/invoiceSequence';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -278,8 +279,9 @@ export class IsraeliContractorComplianceService {
         });
       }
 
-      // Generate unique commission ID
+      // Generate unique commission ID and sequential invoice number
       const commissionId = `COMM-${new Date().getFullYear()}-${nanoid(6).toUpperCase()}`;
+      const invoiceNumber = await generateCommissionInvoiceNumber();
 
       // Save commission record
       await db.insert(providerCommissions).values({
@@ -294,6 +296,7 @@ export class IsraeliContractorComplianceService {
         includesVat,
         vatAmount: vatAmount.toString(),
         status: 'pending',
+        invoiceNumber,
       });
 
       logger.info('[Israeli Compliance] Commission calculated', {

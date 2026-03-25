@@ -33,6 +33,7 @@ import { createHash } from 'crypto';
 import { createMailService, isSendGridConfigured } from '../lib/sendgrid';
 import { appendFormSubmission } from './googleSheetsIntegration';
 import { allocateTaxSequenceNumber } from './TaxSequenceService';
+import { generateCommissionInvoiceNumber } from '../lib/invoiceSequence';
 
 const ISRAELI_VAT_RATE = 0.18;
 const PLATFORM_COMMISSION_RATE = 0.15; // Flat 15% on all platforms
@@ -306,6 +307,8 @@ export class IsraeliDigitalReceiptService {
 
       const commissionRate = params.commissionRate || PLATFORM_COMMISSION_RATE * 100;
 
+      const invoiceNumber = await generateCommissionInvoiceNumber();
+
       await db.insert(providerCommissions).values({
         commissionId: settlement.commissionId,
         providerId: params.providerId,
@@ -319,6 +322,7 @@ export class IsraeliDigitalReceiptService {
         vatAmount: settlement.vatOnCommission.toFixed(2),
         status: 'pending',
         invoiceGenerated: false,
+        invoiceNumber,
         transactionDate: new Date(),
       });
 

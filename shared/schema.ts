@@ -8551,9 +8551,9 @@ export const providerCommissions = pgTable("provider_commissions", {
   paymentMethod: varchar("payment_method"), // "bank_transfer", "direct_deposit"
   paymentReferenceId: varchar("payment_reference_id"),
   
-  // Invoice Generation
+  // Invoice Generation — sequential PW-INV-YYYY-NNNNN, enforced unique at DB level
   invoiceGenerated: boolean("invoice_generated").default(false),
-  invoiceNumber: varchar("invoice_number"),
+  invoiceNumber: varchar("invoice_number").unique().notNull(),
   invoiceUrl: varchar("invoice_url"),
   
   transactionDate: timestamp("transaction_date").defaultNow(),

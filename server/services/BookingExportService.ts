@@ -402,8 +402,9 @@ export async function exportBookingsToSheets(
         classification = await classifyTransactionWithAI(booking);
       }
 
-      const vatRate = classification?.vatCategory === 'standard_18' ? 0.18 : 0;
-      const vatAmount = (booking.serviceFeeCents / 100) * vatRate;
+      // Israeli VAT back-calc: platform fee is VAT-inclusive, so VAT = fee × (18/118)
+      const isStandardVat = classification?.vatCategory === 'standard_18';
+      const vatAmount = isStandardVat ? (booking.serviceFeeCents / 100) * (18 / 118) : 0;
 
       rows.push([
         booking.createdAt ? format(new Date(booking.createdAt), 'yyyy-MM-dd HH:mm') : '',
@@ -483,9 +484,8 @@ export async function generateComplianceReport(
   const providerPayouts = completedBookings.reduce((sum, b) => sum + b.subtotalCents, 0) / 100;
   const escrowHeld = escrowBookings.reduce((sum, b) => sum + b.totalCents, 0) / 100;
   
-  // Israeli tax calculations
-  const vatRate = 0.18;
-  const vatCollected = platformFees * vatRate;
+  // Israeli VAT back-calc: platform fees are VAT-inclusive, so VAT = fees × (18/118)
+  const vatCollected = platformFees * (18 / 118);
   const withholdingRate = 0.20; // Default 20% unless provider has exemption certificate
   const withholdingTax = providerPayouts * withholdingRate;
   const nationalInsurance = platformFees * 0.0597; // 5.97% reduced rate

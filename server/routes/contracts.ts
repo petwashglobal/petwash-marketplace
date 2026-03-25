@@ -220,6 +220,14 @@ router.post('/:contractId/send-for-signature', validateFirebaseToken, async (req
     }
 
     const docusealApiKey = process.env.DOCUSEAL_API_KEY;
+    if (!docusealApiKey) {
+      return res.status(503).json({
+        success: false,
+        error: 'E-signature service is not configured',
+        code: 'ESIGN_UNAVAILABLE'
+      });
+    }
+
     const result = await contractGenerationService.sendForSignature(contractId, docusealApiKey);
 
     res.json({
