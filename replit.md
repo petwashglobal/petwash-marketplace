@@ -1836,3 +1836,23 @@ Scanner: Replit Security Scanner (Semgrep + HoundDog). Run: 2026-03-26 14:51.
 - `server/routes/admin-loyalty.ts` — 2× `sql.raw(ARRAY[...])` → `inArray()` ORM operator
 - `server/routes/provider-trust.ts` — 2× `pool.query()` → `db.execute(sql\`...\`)`
 - `picomatch` — updated `2.3.1 → ^2.3.2` (known regex vulnerability)
+
+## Pass 4 — Documents & Legal (March 2026)
+
+### Pre-Launch Validation Pass: Financial Documents
+
+**BUG FIXED — DocuSeal ghost "sent" status** (`server/services/StaffOnboardingService.ts`)
+- Root cause: DocuSeal integration was a `// TODO` stub (actual `sendDocument()` call commented out), but `db.update(staffESignatures, { status: 'sent' })` ran unconditionally anyway. Staff e-signatures appeared as "sent" in the DB even though no signing request was ever dispatched.
+- Fix: Removed the premature status update. Signature stays `status='pending'` until DocuSeal actually confirms a submission ID. Added informational log. The send block is now clearly stubbed pending the real integration.
+
+**BUG FIXED — Customer TAX_INVOICE missing seller identity for marketplace transactions** (`server/services/TransactionEngine.ts`)
+- Root cause: `TaxDocumentService.issueTaxDocument()` stores `vatNumber = COMPANY_VAT_NUMBER` (PetWash VAT 516788400) on every document type. For `MARKETPLACE_COMMISSION` bookings (sitter-suite, walk-my-pet, pet-wash-hub, etc.) the provider is the legal seller — not PetWash. The `payload` JSON had no signal to distinguish seller identity. Since tax documents are immutable once issued, any live records would permanently lack correct seller info.
+- Fix: Added `sellerModel` to the `payload` on every Flow D TAX_INVOICE:
+  - `'MARKETPLACE_PROVIDER'` → provider is the seller (future PDF renderer must look up provider VAT via `providerId`)
+  - `'PETWASH_PRINCIPAL'` → PetWash is the seller (PDF renderer uses PetWash VAT 516788400)
+- `commercialModel` was already in the payload; `sellerModel` makes the rendering intent unambiguous without a schema change or hot-path DB query.
+
+**CONFIRMED CORRECT (no change needed):**
+- Commission invoice (`IsraeliInvoiceGenerator`): PetWash as issuer, provider as recipient, 18/118 back-calc VAT, shows commission-only amount. ✓
+- Payout statement (`ProviderPayoutService`): gross, commission, VAT on commission (`platformFee × 18/118`), net payout — all fields correct. ✓
+- `BookingExportService` 6-ledger Google Sheets export: confirmed correct in prior pass. ✓

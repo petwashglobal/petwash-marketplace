@@ -651,6 +651,10 @@ export async function processProviderBooking(params: FlowDParams): Promise<Provi
     }).returning();
 
     // Issue customer tax invoice (Spec §5.4)
+    // sellerModel is stamped into the immutable payload so the PDF renderer
+    // knows which legal entity is the seller on this invoice:
+    //   MARKETPLACE_PROVIDER → provider is the seller (customer must see provider VAT)
+    //   PETWASH_PRINCIPAL    → PetWash is the seller (customer sees PetWash VAT 516788400)
     const customerTaxDocId = await issueTaxDocument({
       documentType: 'TAX_INVOICE',
       relatedPaymentId: paymentId,
@@ -664,6 +668,9 @@ export async function processProviderBooking(params: FlowDParams): Promise<Provi
         transactionType: TRANSACTION_TYPES.PROVIDER_BOOKING_CHARGE,
         commercialModel: config.commercialModel,
         vertical: params.vertical,
+        sellerModel: config.commercialModel === 'MARKETPLACE_COMMISSION'
+          ? 'MARKETPLACE_PROVIDER'
+          : 'PETWASH_PRINCIPAL',
       },
     });
     if (!customerTaxDocId) {

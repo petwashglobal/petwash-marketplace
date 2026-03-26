@@ -187,18 +187,22 @@ export class StaffOnboardingService {
         }).returning();
 
         // Send via DocuSeal (if configured)
+        // BUG FIX: Status must NOT be set to 'sent' here — the DocuSeal call is not
+        // yet implemented. Marking 'sent' before dispatch is a false state.
+        // Status remains 'pending' until DocuSeal confirms the submission ID.
+        // When implementing: call docuSealService.createSubmission(), write the
+        // returned submissionId back, THEN set status='sent'.
         if (process.env.DOCUSEAL_API_KEY) {
           try {
             // TODO: Implement DocuSeal integration
-            // const submissionId = await docuSealService.sendDocument(...)
-            
-            await db.update(staffESignatures)
-              .set({
-                status: 'sent',
-                sentAt: new Date(),
-              })
-              .where(eq(staffESignatures.id, signature.id));
-
+            // const submission = await docuSealService.createSubmission({...});
+            // await db.update(staffESignatures)
+            //   .set({ status: 'sent', sentAt: new Date(), submissionId: submission.id })
+            //   .where(eq(staffESignatures.id, signature.id));
+            logger.info('[Onboarding] DocuSeal API key present but integration not yet implemented — signature remains pending', {
+              signatureId: signature.id,
+              applicationId,
+            });
           } catch (docusealError) {
             logger.warn('[Onboarding] DocuSeal send failed', { docusealError });
           }
