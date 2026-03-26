@@ -245,25 +245,47 @@ jobs:
           ENDPOINT="$URL/api/google/places-health"
           echo "Testing: $ENDPOINT"
 
-          # Retry up to 3 times with backoff — guards against cold-start latency.
-          # -s (silent) NOT -sf: we must read the body even on non-2xx so we can
-          # distinguish GOOGLE_KEY_MISSING / GOOGLE_KEY_INVALID / HTTP_* / NETWORK_ERROR.
+          # Retry up to 5 times with backoff.
+          # Handles two distinct failure modes:
+          #   000 — curl transport failure (service not yet listening)
+          #   503 + SERVICE_STARTING — startup guard blocking until routes are ready
+          # /api/google/places-health is exempted from the startup guard so it can
+          # always respond, but we keep retries as defence-in-depth for cold starts.
           RESULT=""
           HTTP_STATUS=""
-          for attempt in 1 2 3; do
+          for attempt in 1 2 3 4 5; do
             HTTP_STATUS=$(curl -s -o /tmp/places_response.json -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
-            if [ "$HTTP_STATUS" != "000" ]; then
-              RESULT=$(cat /tmp/places_response.json 2>/dev/null || echo "")
-              break
+            RESULT=$(cat /tmp/places_response.json 2>/dev/null || echo "")
+
+            if [ "$HTTP_STATUS" = "000" ]; then
+              echo "   Attempt $attempt: transport failure (curl exit non-zero) — retrying in 20 s..."
+              sleep 20
+              continue
             fi
-            echo "   Attempt $attempt: transport failure (curl exit non-zero) — retrying in 15 s..."
-            sleep 15
+
+            # Detect startup guard response — server is booting, not a real failure
+            ERROR_FIELD=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('error',''))" 2>/dev/null || echo "")
+            if [ "$ERROR_FIELD" = "SERVICE_STARTING" ]; then
+              echo "   Attempt $attempt: server still starting up (HTTP $HTTP_STATUS, SERVICE_STARTING) — retrying in 20 s..."
+              sleep 20
+              continue
+            fi
+
+            # Got a real response — exit retry loop
+            break
           done
 
           # Classify result
           if [ "$HTTP_STATUS" = "000" ]; then
-            echo "❌ TRANSPORT FAILURE: Could not reach $ENDPOINT after 3 attempts"
+            echo "❌ TRANSPORT FAILURE: Could not reach $ENDPOINT after 5 attempts"
             echo "   Possible causes: service not yet accepting connections, DNS, network policy"
+            echo "   This is NOT a Places API key problem — the key was not tested"
+            exit 1
+          fi
+          ERROR_FIELD=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('error',''))" 2>/dev/null || echo "")
+          if [ "$ERROR_FIELD" = "SERVICE_STARTING" ]; then
+            echo "❌ SERVER STILL STARTING after 5 attempts (100 s total wait)"
+            echo "   The Cloud Run container did not reach ready state in time"
             echo "   This is NOT a Places API key problem — the key was not tested"
             exit 1
           fi
