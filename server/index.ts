@@ -389,7 +389,7 @@ app.get('/api/health/strict', async (_req, res) => {
 
 // --- Block non-health requests until routes are registered ---
 app.use((req, res, next) => {
-  if (req.path === '/health' || req.path.startsWith('/api/health') || req.path === '/api/google/places-health') {
+  if (req.path === '/health' || req.path.startsWith('/api/health')) {
     return next();
   }
   
