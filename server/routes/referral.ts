@@ -291,10 +291,17 @@ router.post("/link-signup", async (req, res) => {
 
 /**
  * POST /api/referral/complete
- * Complete a referral after first payment (called by Nayax webhook)
+ * Complete a referral after first payment (internal — Nayax webhook handler only)
+ * Requires PETWASH_ADMIN_SECRET header to prevent unauthenticated credit grants
  */
 router.post("/complete", async (req, res) => {
   try {
+    const adminSecret = req.headers["x-admin-secret"];
+    if (!process.env.PETWASH_ADMIN_SECRET || adminSecret !== process.env.PETWASH_ADMIN_SECRET) {
+      logger.warn("[Referral] Unauthorized /complete attempt", { ip: req.ip });
+      return res.status(403).json({ error: "FORBIDDEN" });
+    }
+
     const { userId, transactionId, amountILS } = req.body;
     
     if (!userId || !transactionId || !amountILS) {

@@ -10,8 +10,12 @@ import { GoogleWalletService } from '../googleWallet';
 import { logger } from '../lib/logger';
 import { db } from '../lib/firebase-admin';
 import sgMail from '../lib/sendgrid';
+import { requireAdmin } from '../adminAuth';
 
 const router = express.Router();
+
+// All CEO wallet routes are admin-only — gate the entire router
+router.use(requireAdmin);
 
 /**
  * GET /api/ceo/wallet/business-card
