@@ -95,7 +95,7 @@ export const requireAdmin = async (req: Request, res: Response, next: NextFuncti
     const { decoded, claims, role, isSuperAdminUser, sessionAge, ip } = auth;
     const userEmail = (decoded.email || '').toLowerCase();
 
-    const adminRoles = ['admin', 'management', 'super_admin', 'staff'];
+    const adminRoles = ['admin', 'management', 'super_admin'];
     const hasAdminClaim = isSuperAdminUser || adminRoles.includes(role) || adminRoles.includes(claims.role);
 
     if (!hasAdminClaim) {
@@ -110,6 +110,7 @@ export const requireAdmin = async (req: Request, res: Response, next: NextFuncti
     logger.info(`🚨 HEAD OFFICE OVERRIDE by ${decoded.uid} | ${method} ${endpoint} | IP: ${ip}`);
 
     req.session.adminId = decoded.uid;
+    (req as any).user = { uid: decoded.uid, email: decoded.email };
 
     const admin = await storage.getAdminUser(decoded.uid);
     if (admin) {

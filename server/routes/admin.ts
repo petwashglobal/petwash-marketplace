@@ -458,12 +458,17 @@ router.patch('/campaigns/:campaignId/metrics', validateFirebaseToken, requireAdm
     const { impressions, clicks, redemptions } = req.body;
 
     const campaignRef = firestore.doc(FIRESTORE_PATHS.CAMPAIGNS(campaignId));
-    
-    await campaignRef.update({
-      'metrics.impressions': impressions || 0,
-      'metrics.clicks': clicks || 0,
-      'metrics.redemptions': redemptions || 0,
-    });
+
+    const updateData: Record<string, number> = {};
+    if (impressions !== undefined) updateData['metrics.impressions'] = impressions;
+    if (clicks !== undefined) updateData['metrics.clicks'] = clicks;
+    if (redemptions !== undefined) updateData['metrics.redemptions'] = redemptions;
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'No metrics provided to update' });
+    }
+
+    await campaignRef.update(updateData);
 
     res.json({ success: true });
   } catch (error) {

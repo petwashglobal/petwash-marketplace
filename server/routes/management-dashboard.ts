@@ -12,7 +12,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { requireAuth } from '../customAuth';
+import { requireAdmin } from '../adminAuth';
 import { managementAnalytics, type TimeFrame } from '../services/ManagementAnalyticsService';
 import { logger } from '../lib/logger';
 
@@ -50,7 +50,7 @@ const managementAuth = (req: Request, res: Response, next: Function) => {
   }
 };
 
-router.use(requireAuth);
+router.use(requireAdmin);
 router.use(managementAuth);
 
 /**
