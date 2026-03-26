@@ -94,8 +94,11 @@ class ElectronicInvoicingService {
 
   async createInvoice(params: CreateInvoiceParams) {
     try {
-      const invoiceId = params.invoiceNumber || this.generateInvoiceId();
-      const invoiceNumber = params.invoiceNumber || this.generateInvoiceNumber();
+      if (!params.invoiceNumber) {
+        throw new Error('invoiceNumber is required for ITA electronic invoicing — generate a sequential number via TaxSequenceService before calling createInvoice');
+      }
+      const invoiceId = params.invoiceNumber;
+      const invoiceNumber = params.invoiceNumber;
       const amounts = this.calculateAmounts(params);
       const invoiceType = this.determineInvoiceType(amounts.totalAmount, params.customerTaxId);
       const requiresElectronic = this.requiresElectronicInvoicing(invoiceType, amounts.totalAmount);

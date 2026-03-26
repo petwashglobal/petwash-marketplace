@@ -174,7 +174,7 @@ export class IsraeliDigitalReceiptService {
 
     const brokerCommission = parseFloat((grossPayoutAmount * PLATFORM_COMMISSION_RATE / (1 - PLATFORM_COMMISSION_RATE)).toFixed(2));
     const vatOnCommission = isVatRegistered
-      ? parseFloat((brokerCommission * ISRAELI_VAT_RATE).toFixed(2))
+      ? parseFloat((brokerCommission * 18 / 118).toFixed(2))
       : 0;
 
     const commissionId = `COMM-${new Date().getFullYear()}-${nanoid(8).toUpperCase()}`;
