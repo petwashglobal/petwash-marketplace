@@ -494,11 +494,11 @@ async function runPayoutSchedules(): Promise<void> {
         if (lastRun && (now.getTime() - lastRun.getTime()) < guardHours * 3600 * 1000) continue;
 
         // Find eligible entries
-        const divFilter = s.division_code ? ` AND division_code = '${s.division_code}'` : '';
-        const entryRaw: any = await db.execute(sql.raw(
-          `SELECT COALESCE(SUM(net_cents),0) AS net_total, COUNT(*)::int AS entry_count
-           FROM provider_payout_entries WHERE status='earned'${divFilter}`
-        ));
+        const divisionCondition = s.division_code ? sql` AND division_code = ${s.division_code}` : sql``;
+        const entryRaw: any = await db.execute(sql`
+          SELECT COALESCE(SUM(net_cents),0) AS net_total, COUNT(*)::int AS entry_count
+          FROM provider_payout_entries WHERE status='earned'${divisionCondition}
+        `);
         const netTotal   = Number((entryRaw?.rows ?? entryRaw)?.[0]?.net_total    ?? 0);
         const entryCount = Number((entryRaw?.rows ?? entryRaw)?.[0]?.entry_count  ?? 0);
 
@@ -511,17 +511,18 @@ async function runPayoutSchedules(): Promise<void> {
         }
 
         const batchId = `SCHED-${s.id}-${Date.now()}`;
-        await db.execute(sql.raw(`
+        const batchNote = `Auto-created by schedule ${s.id} (${s.cadence})`;
+        await db.execute(sql`
           INSERT INTO payout_batches (batch_id, status, gross_total_cents, commission_total_cents, net_total_cents, entry_count, created_by_uid, notes)
-          SELECT '${batchId}', 'created',
+          SELECT ${batchId}, 'created',
             SUM(gross_cents), SUM(gross_cents - net_cents), SUM(net_cents), COUNT(*),
-            'system', 'Auto-created by schedule ${s.id} (${s.cadence})'
-          FROM provider_payout_entries WHERE status='earned'${divFilter}
-        `));
-        await db.execute(sql.raw(`
-          UPDATE provider_payout_entries SET status='batched', payout_batch_id='${batchId}'
-          WHERE status='earned'${divFilter}
-        `));
+            'system', ${batchNote}
+          FROM provider_payout_entries WHERE status='earned'${divisionCondition}
+        `);
+        await db.execute(sql`
+          UPDATE provider_payout_entries SET status='batched', payout_batch_id=${batchId}
+          WHERE status='earned'${divisionCondition}
+        `);
         await db.execute(sql`UPDATE payout_schedules SET last_run_at = NOW() WHERE id = ${s.id}`);
         await db.execute(sql`
           INSERT INTO payout_schedule_runs (schedule_id, result, batch_id, summary)

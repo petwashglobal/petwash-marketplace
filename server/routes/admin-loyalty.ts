@@ -615,7 +615,7 @@ router.get('/experiment-decisions', requireAdmin, async (_req, res) => {
         ? db.execute<{ experiment_key: string; first_sent_at: string }>(sql`
             SELECT experiment_key, MIN(created_at) AS first_sent_at
             FROM experiment_events
-            WHERE experiment_key = ANY(${sql.raw(`ARRAY['${safeExpKeys.join("','")}']`)})
+            WHERE ${inArray(experimentEvents.experimentKey, safeExpKeys)}
               AND event = 'notification_sent'
             GROUP BY experiment_key
           `)
@@ -914,7 +914,7 @@ router.post('/proof-scenario', requireAdmin, async (req, res) => {
         ? await db.execute<{ experiment_key: string; first_sent_at: string }>(sql`
             SELECT experiment_key, MIN(created_at) AS first_sent_at
             FROM experiment_events
-            WHERE experiment_key = ANY(${sql.raw(`ARRAY['${safeExpKeys.join("','")}']`)})
+            WHERE ${inArray(experimentEvents.experimentKey, safeExpKeys)}
               AND event = 'notification_sent'
             GROUP BY experiment_key
           `)

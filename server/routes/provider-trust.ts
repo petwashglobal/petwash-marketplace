@@ -437,7 +437,7 @@ router.get('/admin/providers/trust-overview', async (req: Request, res: Response
   }
 
   try {
-    const result = await pool.query(`
+    const result = await db.execute(sql`
       SELECT
         pp.user_id                    AS "userId",
         TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')) AS "displayName",
@@ -459,7 +459,7 @@ router.get('/admin/providers/trust-overview', async (req: Request, res: Response
     `);
 
     return res.json({
-      providers: result.rows.map((r: any) => ({
+      providers: (result.rows as any[]).map((r: any) => ({
         ...r,
         ratingAvg: r.ratingAvg !== null ? Number(r.ratingAvg) : null,
         badges: Array.isArray(r.badges) ? r.badges : [],
@@ -568,7 +568,7 @@ router.get('/admin/ranking/overview', async (req: Request, res: Response) => {
   }
 
   try {
-    const result = await pool.query(`
+    const result = await db.execute(sql`
       SELECT
         pp.user_id                    AS "userId",
         TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')) AS "displayName",
@@ -592,7 +592,7 @@ router.get('/admin/ranking/overview', async (req: Request, res: Response) => {
     `);
 
     return res.json({
-      providers: result.rows.map((r: any) => ({
+      providers: (result.rows as any[]).map((r: any) => ({
         ...r,
         ratingAvg: r.ratingAvg !== null ? Number(r.ratingAvg) : null,
         badges: Array.isArray(r.badges) ? r.badges : [],
