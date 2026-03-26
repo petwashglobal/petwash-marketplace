@@ -576,6 +576,16 @@ if (isProduction) {
     await registerRoutes(app);
     healthState.app.routesReady = true;
 
+    // CRITICAL: Unblock API requests as soon as routes are registered.
+    // Everything below (static files, cron jobs, notification handlers) is background
+    // work and must NOT delay serverReady — they were already labelled non-blocking
+    // but the awaited imports below were still holding serverReady=false for 100+ s
+    // on a Cloud Run cold start, causing the smoke test to time out.
+    if (isProduction) {
+      serverReady = true;
+      console.log('✅ [Server] Routes ready — startup guard lifted (background init continues)');
+    }
+
     // Non-blocking: start notification retry sweeper (runs every 2 minutes).
     setImmediate(() => {
       import('./services/NotificationRetryService').then(({ NotificationRetryService }) => {
