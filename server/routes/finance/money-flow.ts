@@ -85,7 +85,7 @@ router.get('/money-flow-summary', requireRole('admin', 'management', 'staff'), a
         COALESCE(SUM((COALESCE(CAST(platform_fee_owner AS NUMERIC),0) + COALESCE(CAST(platform_fee_sitter AS NUMERIC),0)) * 100) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS fee_cents,
         COALESCE(SUM(CAST(walker_payout AS NUMERIC) * 100) FILTER (WHERE status = 'completed'), 0) AS payout_cents,
         COALESCE(SUM(
-          ROUND((COALESCE(CAST(platform_fee_owner AS NUMERIC),0) + COALESCE(CAST(platform_fee_sitter AS NUMERIC),0)) * 100 * 0.18)
+          ROUND((COALESCE(CAST(platform_fee_owner AS NUMERIC),0) + COALESCE(CAST(platform_fee_sitter AS NUMERIC),0)) * 100 * 18.0/118.0)
         ) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS vat_cents
       FROM walk_bookings
     `);
@@ -96,7 +96,7 @@ router.get('/money-flow-summary', requireRole('admin', 'management', 'staff'), a
         COALESCE(SUM(total_charge_cents) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS gross_cents,
         COALESCE(SUM(platform_service_fee_cents) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS fee_cents,
         COALESCE(SUM(sitter_payout_cents) FILTER (WHERE status = 'completed'), 0) AS payout_cents,
-        COALESCE(SUM(ROUND(platform_service_fee_cents * 0.18)) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS vat_cents
+        COALESCE(SUM(ROUND(platform_service_fee_cents * 18.0/118.0)) FILTER (WHERE status NOT IN ('cancelled','refunded')), 0) AS vat_cents
       FROM sitter_bookings
     `);
 

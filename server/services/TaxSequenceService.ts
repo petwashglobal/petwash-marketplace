@@ -90,6 +90,14 @@ export async function allocateTaxSequenceNumber(
 }
 
 /**
+ * Returns the advisory-lock key for a given (documentType, year) pair.
+ * Exported so callers can hold the same lock across sequence allocation + INSERT.
+ */
+export function getTaxSeqLockKey(documentType: string, year: number): number {
+  return stableIntFromString(`pw_tax_seq:${documentType}:${year}`);
+}
+
+/**
  * Derive a stable 32-bit integer from an arbitrary string (for advisory locks).
  * Uses a simple FNV-1a variant — output is always in the safe PostgreSQL integer range.
  */

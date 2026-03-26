@@ -24,7 +24,7 @@ import { db } from '../db';
 import { pwTaxDocuments } from '@shared/schema-payments';
 import { sql, eq, and } from 'drizzle-orm';
 import { logger } from '../lib/logger';
-import { allocateTaxSequenceNumber } from './TaxSequenceService';
+import { allocateTaxSequenceNumber, getTaxSeqLockKey } from './TaxSequenceService';
 import { enqueueGoogleJob } from './AsyncJobWorker';
 
 export type TaxDocumentType =
@@ -65,31 +65,46 @@ export async function issueTaxDocument(params: IssueTaxDocumentParams): Promise<
   const taxDocId = genTaxDocId();
 
   try {
-    // Allocate a concurrent-safe monotonic sequence number (advisory lock pattern)
-    const { year, sequenceNumber } = await allocateTaxSequenceNumber(
-      params.documentType as any,
-    );
+    // Outer advisory lock held across sequence allocation AND INSERT.
+    // pg_advisory_lock is reentrant: allocateTaxSequenceNumber acquires the same
+    // key internally and its finally decrements the refcount 2→1 (lock stays held).
+    // The INSERT completes while refcount=1. The outer finally drops it to 0.
+    // This closes the race window where two concurrent requests could read the
+    // same MAX before either inserts, producing duplicate ITA sequence numbers.
+    const lockYear = new Date().getFullYear();
+    const outerLockKey = getTaxSeqLockKey(params.documentType, lockYear);
+    await db.execute(sql`SELECT pg_advisory_lock(${outerLockKey})`);
 
-    await db.insert(pwTaxDocuments).values({
-      taxDocId,
-      documentType:     params.documentType,
-      relatedPaymentId: params.relatedPaymentId ?? null,
-      relatedPayoutId:  params.relatedPayoutId ?? null,
-      bookingId:        params.bookingId ?? null,
-      customerId:       params.customerId ?? null,
-      providerId:       params.providerId ?? null,
-      machineId:        params.machineId ?? null,
-      grossCents:       params.grossCents,
-      vatCents:         params.vatCents,
-      netCents:         params.netCents,
-      vatNumber:        COMPANY_VAT_NUMBER,
-      sequenceYear:     year,
-      sequenceNumber,
-      payload:          params.payload ?? {},
-      status:           'issued',
-      issuedAt:         new Date(),
-      // archiveStatus defaults to 'PENDING' — Drive upload queued below
-    } as any);
+    let year = 0;
+    let sequenceNumber = 0;
+    try {
+      ({ year, sequenceNumber } = await allocateTaxSequenceNumber(
+        params.documentType as any,
+      ));
+
+      await db.insert(pwTaxDocuments).values({
+        taxDocId,
+        documentType:     params.documentType,
+        relatedPaymentId: params.relatedPaymentId ?? null,
+        relatedPayoutId:  params.relatedPayoutId ?? null,
+        bookingId:        params.bookingId ?? null,
+        customerId:       params.customerId ?? null,
+        providerId:       params.providerId ?? null,
+        machineId:        params.machineId ?? null,
+        grossCents:       params.grossCents,
+        vatCents:         params.vatCents,
+        netCents:         params.netCents,
+        vatNumber:        COMPANY_VAT_NUMBER,
+        sequenceYear:     year,
+        sequenceNumber,
+        payload:          params.payload ?? {},
+        status:           'issued',
+        issuedAt:         new Date(),
+        // archiveStatus defaults to 'PENDING' — Drive upload queued below
+      } as any);
+    } finally {
+      await db.execute(sql`SELECT pg_advisory_unlock(${outerLockKey})`).catch(() => {});
+    }
 
     logger.info('[TaxDocument] Document issued', {
       taxDocId,
