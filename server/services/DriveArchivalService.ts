@@ -39,9 +39,16 @@ const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
  * exercised end-to-end before the PDF design is finalized.
  */
 function generatePdfStub(taxDocId: string, documentType: string, payload: Record<string, any>): Buffer {
+  // Seller identity: stamped into payload.sellerModel by TransactionEngine at issuance time.
+  // MARKETPLACE_PROVIDER → provider is the legal seller; providerId identifies them.
+  // PETWASH_PRINCIPAL (default) → PetWash Ltd is the seller.
+  const sellerLine = payload.sellerModel === 'MARKETPLACE_PROVIDER'
+    ? `% Seller: Provider (ID: ${payload.providerId ?? 'unknown'}) — replace with provider name/VAT in production PDF`
+    : `% Seller: PetWash Ltd (VAT 516788400)`;
+
   const text = [
     `%PDF-1.4`,
-    `% PetWash Ltd Tax Document`,
+    sellerLine,
     `% ID: ${taxDocId}`,
     `% Type: ${documentType}`,
     `% Generated: ${new Date().toISOString()}`,
@@ -126,9 +133,12 @@ export async function archiveTaxDocumentToDrive(taxDocId: string): Promise<Archi
     const payload = (doc.payload ?? {}) as Record<string, any>;
     const pdfBuffer = generatePdfStub(doc.taxDocId, doc.documentType, {
       ...payload,
-      grossCents: doc.grossCents,
-      vatCents:   doc.vatCents,
-      netCents:   doc.netCents,
+      grossCents:  doc.grossCents,
+      vatCents:    doc.vatCents,
+      netCents:    doc.netCents,
+      // providerId is needed so the stub (and future real renderer) can identify the
+      // marketplace seller when payload.sellerModel === 'MARKETPLACE_PROVIDER'.
+      providerId:  (doc as any).providerId ?? null,
     });
 
     // 4. Compute SHA-256 checksum of PDF bytes

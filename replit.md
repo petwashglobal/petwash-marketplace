@@ -1856,3 +1856,22 @@ Scanner: Replit Security Scanner (Semgrep + HoundDog). Run: 2026-03-26 14:51.
 - Commission invoice (`IsraeliInvoiceGenerator`): PetWash as issuer, provider as recipient, 18/118 back-calc VAT, shows commission-only amount. ✓
 - Payout statement (`ProviderPayoutService`): gross, commission, VAT on commission (`platformFee × 18/118`), net payout — all fields correct. ✓
 - `BookingExportService` 6-ledger Google Sheets export: confirmed correct in prior pass. ✓
+
+### Pass 4 — Final Verification Batch
+
+**BUG FIXED — `generatePdfStub` ignored `sellerModel`** (`server/services/DriveArchivalService.ts`)
+- Root cause: `generatePdfStub` hard-coded `% PetWash Ltd Tax Document` as the issuer line and never read `payload.sellerModel`. `archiveTaxDocumentToDrive` also omitted `doc.providerId` from the payload spread, so the function had no access to the provider reference.
+- Fix: (1) `archiveTaxDocumentToDrive` now passes `providerId: doc.providerId ?? null` into the payload; (2) `generatePdfStub` reads `payload.sellerModel` — emits `% Seller: Provider (ID: ...)` for `MARKETPLACE_PROVIDER`, `% Seller: PetWash Ltd (VAT 516788400)` otherwise. The stub header now correctly distinguishes seller identity; the production PDF renderer will inherit the same payload fields.
+
+**BUG FIXED — `PROVIDER_PAYOUTS` accounting sheet permanently empty** (`server/services/BookingExportService.ts`)
+- Root cause: `ACCOUNTING_SHEETS.PROVIDER_PAYOUTS` headers were initialised but no `spreadsheets.values.append` call in the file ever wrote data rows to it. Every accounting export produced a blank PROVIDER_PAYOUTS sheet. Confirmed by exhaustive audit of all 7 `values.append` calls — none targeted this sheet.
+- Fix: Added payout export within `exportBookingsToAccountingSheets`. After TRANSACTIONS rows are appended, the function now queries `pw_provider_payouts` (same `fromDate` window), maps each row to the existing headers (Payout Date / Provider ID / Provider Type / Booking IDs / Gross / Commission / Net / Tax Certificate / Status), and appends to PROVIDER_PAYOUTS. Failure is isolated in its own try/catch and appended to `errors[]` — it cannot abort the booking export.
+
+**BUG FIXED — DocuSeal catch silently swallows failure** (`server/services/StaffOnboardingService.ts`)
+- Root cause: When the real `createSubmission()` is implemented, any DocuSeal failure would hit `catch(docusealError) { logger.warn(...) }` — swallowed, no rethrow — and `updateApplicationStatus('under_review')` would still run. The admin would see "E-signature documents sent ✅" even if nothing was dispatched.
+- Fix: `logger.warn` → `logger.error`, added `throw docusealError`. The outer catch at line 220 propagates the failure through the HTTP handler, returns an error response, and the application does NOT advance to `under_review`.
+
+**CONFIRMED CORRECT — Commission invoice (no fix needed)**
+- `IsraeliInvoiceGenerator.generateInvoice()`: PetWash as issuer, provider as recipient, commission-only amount, 18/118 back-calc VAT. ✓
+- `TaxDocumentService.issueTaxDocument(COMMISSION_INVOICE)`: separate DB accounting record, correct amounts. ✓
+- Two distinct documents (PDF + DB record) with separate purposes — both correct. ✓

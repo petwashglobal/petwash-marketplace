@@ -204,7 +204,11 @@ export class StaffOnboardingService {
               applicationId,
             });
           } catch (docusealError) {
-            logger.warn('[Onboarding] DocuSeal send failed', { docusealError });
+            // DocuSeal failure must surface — do NOT swallow. The outer catch
+            // will log, rethrow, and the HTTP handler returns an error response.
+            // Signatures stay 'pending'; application does NOT advance to 'under_review'.
+            logger.error('[Onboarding] DocuSeal send failed — aborting signature step', { docusealError });
+            throw docusealError;
           }
         }
       }

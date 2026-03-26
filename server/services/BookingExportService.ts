@@ -10,6 +10,7 @@ import { google } from 'googleapis';
 import { GoogleGenAI } from '@google/genai';
 import { db } from '../db';
 import { bookingRequests } from '@shared/schema';
+import { pwProviderPayouts } from '@shared/schema-payments';
 import { eq, gte, and, isNotNull } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { format } from 'date-fns';
@@ -438,6 +439,42 @@ export async function exportBookingsToSheets(
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: rows },
       });
+    }
+
+    // Populate PROVIDER_PAYOUTS sheet — was initialised with headers but never written.
+    // One row per payout: matches the existing header columns exactly.
+    // Headers: Payout Date | Provider ID | Provider Type | Booking IDs |
+    //          Gross Amount (₪) | Withholding Tax (₪) | Net Payout (₪) | Tax Certificate | Status
+    try {
+      // Reuse the same fromDate window as bookings when provided.
+      const payouts = fromDate
+        ? await db.select().from(pwProviderPayouts)
+            .where(gte(pwProviderPayouts.escrowReleaseAt, fromDate))
+        : await db.select().from(pwProviderPayouts);
+
+      const payoutRows = payouts.map(p => [
+        p.escrowReleaseAt ? format(new Date(p.escrowReleaseAt), 'yyyy-MM-dd') : '',
+        p.providerId,
+        p.vertical,
+        p.paymentId,                                                     // closest booking reference
+        (p.grossCents / 100).toFixed(2),
+        (p.commissionCents / 100).toFixed(2),                           // platform commission withheld
+        (p.netCents / 100).toFixed(2),
+        '',                                                              // Tax Certificate: stored separately
+        p.status,
+      ]);
+
+      if (payoutRows.length > 0) {
+        await sheetsClient.spreadsheets.values.append({
+          spreadsheetId,
+          range: `'${ACCOUNTING_SHEETS.PROVIDER_PAYOUTS}'!A2`,
+          valueInputOption: 'USER_ENTERED',
+          requestBody: { values: payoutRows },
+        });
+      }
+    } catch (payoutErr: any) {
+      logger.error('[BookingExport] Failed to write PROVIDER_PAYOUTS sheet', { error: payoutErr.message });
+      errors.push(`PROVIDER_PAYOUTS: ${payoutErr.message}`);
     }
 
     return {
