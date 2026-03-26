@@ -1813,3 +1813,26 @@ All 7 sub-phases complete. Self-healing engine now production-ready with full tr
   - Recent Execution Reliability 7d (10%): % of recent executions that didn't fail
   - Labels: READY (≥75) / CALIBRATING (50–74) / NOT_READY (<50)
 - Frontend: 🎯 Readiness button in self-healing panel header (color-coded by label); expandable panel with composite score, recommendation text, per-component score bars with weight labels and detail text
+
+---
+
+## Security Scanner — Confirmed False Positives (March 2026)
+
+Scanner: Replit Security Scanner (Semgrep + HoundDog). Run: 2026-03-26 14:51.
+**Rule:** If any file below is modified, re-check the specific line for actual injection risk.
+
+| File | Line | Scanner finding | Why it is safe (do not re-fix without re-reading) |
+|---|---|---|---|
+| `server/routes/kyc.ts` | 338 | "User input in SQL string" | `logger.info(...)` call — no SQL involved. `${uid}` interpolated into a log string only. |
+| `server/routes/kyc.ts` | 351 | "User input in SQL string" | `logger.error(...)` call — no SQL involved. `${path}` interpolated into a log string only. |
+| `server/routes/super-app-bookings.ts` | 724 | "User input in SQL string" | Error message string `\`Cannot create payment intent for booking with status ${existingBooking.status}\`` — not SQL. |
+| `server/routes/provider-console.ts` | 68 | "Bracket object notation with user input" | `key` iterates a hardcoded `allowed` string array, never from `req.body`. Prototype pollution not possible. |
+| `scripts/backup-to-google-cloud-storage.ts` | 80 | "Replace db.execute(sql.raw())" | `tableName` validated with `/^[a-z_][a-z0-9_]*$/` before `sql.raw()`. Script-only, not production server. |
+| `scripts/complete-backup-and-test.ts` | 51 | "Replace db.execute(sql.raw())" | Same regex guard as above. Script-only. |
+| `scripts/migrate-bookings-to-requests.ts` | 56–207 | "Replace pool.query()" | One-time DB migration script. Not mounted in the production server. `pool.query()` acceptable here. |
+
+**Fixed in this batch (2026-03-26):**
+- `server/jobs/daily-close-reminder.ts` — 3× `sql.raw()` with `${divFilter}` → parameterized `sql` templates
+- `server/routes/admin-loyalty.ts` — 2× `sql.raw(ARRAY[...])` → `inArray()` ORM operator
+- `server/routes/provider-trust.ts` — 2× `pool.query()` → `db.execute(sql\`...\`)`
+- `picomatch` — updated `2.3.1 → ^2.3.2` (known regex vulnerability)
