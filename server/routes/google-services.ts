@@ -257,10 +257,12 @@ router.get('/places-health', async (req, res) => {
   };
 
   if (!process.env.GOOGLE_MAPS_API_KEY) {
-    checks.status = 'FAIL';
-    checks.reason = 'GOOGLE_MAPS_API_KEY not configured';
+    checks.status = 'GOOGLE_KEY_MISSING';
+    checks.reason = 'GOOGLE_MAPS_API_KEY env var not present in runtime';
     logger.error('[Places Health] API key missing', { traceId });
-    return res.status(503).json(checks);
+    // Always return HTTP 200 — callers must read the JSON status field, not the HTTP code.
+    // Returning 4xx/5xx here causes curl -f to discard the body and hide the real cause.
+    return res.status(200).json(checks);
   }
 
   try {
@@ -282,26 +284,23 @@ router.get('/places-health', async (req, res) => {
     if (response.ok) {
       checks.status = 'OK';
       logger.info('[Places Health] Google Places API v1 is working', { traceId, httpStatus: response.status });
+    } else if (response.status === 401 || response.status === 403) {
+      checks.status = 'GOOGLE_KEY_INVALID';
+      checks.reason = data.error?.message || `Google rejected key (HTTP ${response.status})`;
+      logger.error('[Places Health] Google rejected API key', { traceId, httpStatus: response.status, googleError: data.error?.message });
     } else {
-      checks.status = 'FAIL';
-      checks.reason = data.error?.message || `HTTP ${response.status}`;
-      logger.error('[Places Health] Google Places API v1 error', {
-        traceId,
-        httpStatus: response.status,
-        googleError: data.error?.message,
-      });
+      checks.status = `HTTP_${response.status}`;
+      checks.reason = data.error?.message || `Unexpected HTTP ${response.status} from Google`;
+      logger.error('[Places Health] Google Places API unexpected error', { traceId, httpStatus: response.status, googleError: data.error?.message });
     }
   } catch (error: any) {
-    checks.status = 'FAIL';
-    checks.reason = `Network error: ${error.message}`;
-    logger.error('[Places Health] Network error contacting Google', {
-      traceId,
-      message: error.message,
-    });
+    checks.status = 'NETWORK_ERROR';
+    checks.reason = `Could not reach Google Places API: ${error.message}`;
+    logger.error('[Places Health] Network error contacting Google', { traceId, message: error.message });
   }
 
-  const httpStatus = checks.status === 'OK' ? 200 : 503;
-  res.status(httpStatus).json(checks);
+  // Always HTTP 200 — status is encoded in the JSON body, not the HTTP code.
+  res.status(200).json(checks);
 });
 
 /**

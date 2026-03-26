@@ -242,20 +242,70 @@ jobs:
       - name: Smoke test — Places API key validation
         run: |
           URL="${{ steps.deploy.outputs.url }}"
-          echo "Testing: $URL/api/google/places-health"
-          RESULT=$(curl -sf --max-time 20 "$URL/api/google/places-health" || echo '{"status":"CURL_FAIL"}')
-          PLACES_STATUS=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status','UNKNOWN'))" 2>/dev/null || echo "PARSE_FAIL")
-          HTTP_CODE=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('googleHttpStatus','?'))" 2>/dev/null || echo "?")
-          if [ "$PLACES_STATUS" = "OK" ]; then
-            echo "✅ Places API: key valid (Google HTTP $HTTP_CODE)"
-          else
-            echo "❌ CRITICAL: Places API key is INVALID (status=$PLACES_STATUS, Google HTTP=$HTTP_CODE)"
-            echo "   → Address autocomplete is broken for ALL users on petwash.co.il"
-            echo "   → Fix: add GOOGLE_MAPS_API_KEY as a GitHub Actions secret, then re-run CI"
-            echo "   → Or: update GOOGLE_MAPS_API_KEY in GCP Secret Manager manually"
-            echo "   Raw response: $RESULT"
+          ENDPOINT="$URL/api/google/places-health"
+          echo "Testing: $ENDPOINT"
+
+          # Retry up to 3 times with backoff — guards against cold-start latency.
+          # -s (silent) NOT -sf: we must read the body even on non-2xx so we can
+          # distinguish GOOGLE_KEY_MISSING / GOOGLE_KEY_INVALID / HTTP_* / NETWORK_ERROR.
+          RESULT=""
+          HTTP_STATUS=""
+          for attempt in 1 2 3; do
+            HTTP_STATUS=$(curl -s -o /tmp/places_response.json -w "%{http_code}" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")
+            if [ "$HTTP_STATUS" != "000" ]; then
+              RESULT=$(cat /tmp/places_response.json 2>/dev/null || echo "")
+              break
+            fi
+            echo "   Attempt $attempt: transport failure (curl exit non-zero) — retrying in 15 s..."
+            sleep 15
+          done
+
+          # Classify result
+          if [ "$HTTP_STATUS" = "000" ]; then
+            echo "❌ TRANSPORT FAILURE: Could not reach $ENDPOINT after 3 attempts"
+            echo "   Possible causes: service not yet accepting connections, DNS, network policy"
+            echo "   This is NOT a Places API key problem — the key was not tested"
             exit 1
           fi
+
+          echo "   HTTP status from Cloud Run: $HTTP_STATUS"
+          echo "   Raw response: $RESULT"
+
+          PLACES_STATUS=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status','PARSE_FAIL'))" 2>/dev/null || echo "PARSE_FAIL")
+          GOOGLE_HTTP=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('googleHttpStatus','—'))" 2>/dev/null || echo "—")
+          REASON=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('reason',''))" 2>/dev/null || echo "")
+          KEY_LEN=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('apiKeyLength',0))" 2>/dev/null || echo "0")
+
+          case "$PLACES_STATUS" in
+            OK)
+              echo "✅ Places API: key valid (Google HTTP $GOOGLE_HTTP)"
+              ;;
+            GOOGLE_KEY_MISSING)
+              echo "❌ GOOGLE_KEY_MISSING: GOOGLE_MAPS_API_KEY env var is absent in the Cloud Run container"
+              echo "   → The secret exists in GCP Secret Manager but the Cloud Run revision did not receive it"
+              echo "   → Fix: verify the secret is bound in the Cloud Run service config and redeploy"
+              exit 1
+              ;;
+            GOOGLE_KEY_INVALID)
+              echo "❌ GOOGLE_KEY_INVALID: Google rejected the API key (Google HTTP $GOOGLE_HTTP)"
+              echo "   → Key length in container: $KEY_LEN chars"
+              echo "   → Google error: $REASON"
+              echo "   → Fix: add GOOGLE_MAPS_API_KEY as a GitHub Actions secret to sync the correct value"
+              exit 1
+              ;;
+            PARSE_FAIL)
+              echo "❌ PARSE_FAIL: endpoint returned HTTP $HTTP_STATUS but body is not valid JSON"
+              echo "   Possible causes: route not registered, server startup error, proxy returning HTML"
+              echo "   Raw body above ↑"
+              exit 1
+              ;;
+            *)
+              echo "❌ Places health check returned status=$PLACES_STATUS (Google HTTP $GOOGLE_HTTP)"
+              echo "   Reason: $REASON"
+              echo "   Raw body above ↑"
+              exit 1
+              ;;
+          esac
 
   deploy-frontend:
     name: Build & Deploy Frontend (Firebase Hosting)
