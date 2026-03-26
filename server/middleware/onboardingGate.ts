@@ -118,7 +118,7 @@ export async function requireOnboardingComplete(req: Request, res: Response, nex
     next();
   } catch (error: any) {
     logger.error(`[OnboardingGate] Error: ${error.message}`);
-    next();
+    return res.status(503).json({ error: 'SERVICE_UNAVAILABLE' });
   }
 }
 

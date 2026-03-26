@@ -356,16 +356,15 @@ router.post('/redemptions/:sessionId/confirm', async (req, res) => {
 router.post('/redemptions/:sessionId/refund', async (req, res) => {
   try {
     const adminEmail = (req.firebaseUser as any)?.email || (req.user as any)?.email || '';
-    const isInternalRequest = req.headers['x-internal-service'] === 'petwash-backend';
 
-    if (!isSuperAdmin(adminEmail) && !isInternalRequest) {
+    if (!isSuperAdmin(adminEmail)) {
       logger.warn('[Credit Wallet] Unauthorized refund attempt', { ip: req.ip, email: adminEmail });
       return res.status(403).json({ 
         success: false, 
         error: 'Admin authorization required for refunds' 
       });
     }
-    const adminId = adminEmail || 'internal-service';
+    const adminId = adminEmail;
 
     const { sessionId } = req.params;
     const { reason } = req.body;
@@ -423,16 +422,15 @@ router.post('/credits/add', async (req, res) => {
   try {
     // SECURITY: Only super admins (verified server-side via Firebase email) can add credits.
     const adminEmail = (req.firebaseUser as any)?.email || (req.user as any)?.email || '';
-    const isInternalRequest = req.headers['x-internal-service'] === 'petwash-backend';
 
-    if (!isSuperAdmin(adminEmail) && !isInternalRequest) {
+    if (!isSuperAdmin(adminEmail)) {
       logger.warn('[Credit Wallet] Unauthorized credit add attempt', { ip: req.ip, email: adminEmail });
       return res.status(403).json({ 
         success: false, 
         error: 'Admin authorization required to add credits' 
       });
     }
-    const adminId = adminEmail || 'internal-service';
+    const adminId = adminEmail;
 
     const parsed = addCreditsSchema.safeParse(req.body);
     if (!parsed.success) {
