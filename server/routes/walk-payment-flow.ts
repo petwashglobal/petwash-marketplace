@@ -12,8 +12,11 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
+import { requireAuth } from '../customAuth';
 
 const router = Router();
+
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 // =================== PAYMENT SESSION ===================
 
@@ -21,12 +24,9 @@ const router = Router();
  * POST /payments/nayax/walk-session - Start Nayax payment for walk
  * Mount: /api → effective path: /api/payments/nayax/walk-session
  */
-router.post('/payments/nayax/walk-session', async (req, res) => {
+router.post('/payments/nayax/walk-session', requireAuth, async (req, res) => {
   try {
-    const userId = req.body.userId || (req as any).user?.uid;
-    if (!userId) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
+    const userId = req.user!.uid;
 
     const { holdId, amount, service } = req.body;
 
@@ -59,8 +59,12 @@ router.post('/payments/nayax/walk-session', async (req, res) => {
 /**
  * GET /payments/nayax/redirect/:sessionId - Simulate Nayax payment page
  * Mount: /api → effective path: /api/payments/nayax/redirect/:sessionId
+ * DEV ONLY: disabled in production — real Nayax redirects go to the Nayax hosted page
  */
 router.get('/payments/nayax/redirect/:sessionId', async (req, res) => {
+  if (IS_PRODUCTION) {
+    return res.status(404).json({ error: 'Not found' });
+  }
   const { sessionId } = req.params;
   const { holdId, amount, service } = req.query;
 
@@ -122,8 +126,12 @@ router.get('/payments/nayax/redirect/:sessionId', async (req, res) => {
  * POST /payments/nayax/webhook - Nayax payment webhook
  * Creates booking ONLY after successful payment
  * Mount: /api → effective path: /api/payments/nayax/webhook
+ * DEV ONLY: disabled in production — production payments arrive at /api/webhooks/nayax/payment
  */
 router.post('/payments/nayax/webhook', async (req, res) => {
+  if (IS_PRODUCTION) {
+    return res.status(404).json({ error: 'Not found' });
+  }
   try {
     const { event, holdId, amount, paymentId } = req.body;
 
@@ -164,8 +172,12 @@ router.post('/payments/nayax/webhook', async (req, res) => {
 /**
  * POST /payments/nayax/webhook-simulate - DEV ONLY: Simulate Nayax webhook
  * Mount: /api → effective path: /api/payments/nayax/webhook-simulate
+ * Blocked in production — simulation endpoint must never be reachable on petwash.co.il
  */
 router.post('/payments/nayax/webhook-simulate', async (req, res) => {
+  if (IS_PRODUCTION) {
+    return res.status(404).json({ error: 'Not found' });
+  }
   req.url = '/payments/nayax/webhook';
   return router.handle(req as any, res, () => {});
 });

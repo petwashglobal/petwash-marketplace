@@ -332,6 +332,7 @@ router.post(
  */
 router.post(
   '/nayax/payment',
+  validateIPAllowlist, // Block unauthorized IPs (consistent with /nayax/terminal and /nayax/settlement)
   captureRawBody,
   async (req, res) => {
     try {
