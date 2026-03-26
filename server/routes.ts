@@ -9362,7 +9362,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/chat', apiLimiter, chatHistoryRoutes.default);
   
   // Document Management routes (Secure K9000 documents)
-  app.use('/api/documents', adminLimiter, documentsRoutes);
+  app.use('/api/documents', validateFirebaseToken, adminLimiter, documentsRoutes);
   
   // K9000 IoT Hardware Wash Activation (IP-secured, machine-to-server)
   // MUST be registered FIRST — IoT routes use machine-secret auth (not Firebase).
@@ -9667,7 +9667,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/ita', adminLimiter, itaApiRoutes);
   
   // Luxury Documents (Invoices, Receipts, Statements)
-  app.use('/api/luxury-documents', adminLimiter, luxuryDocumentsRoutes);
+  app.use('/api/luxury-documents', validateFirebaseToken, adminLimiter, luxuryDocumentsRoutes);
   
   
   // Launch Event Notifications (WhatsApp notifications for Kfar Saba pilot launch)
