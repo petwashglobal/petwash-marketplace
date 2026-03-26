@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { auth } from "@/lib/firebase";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
+import { signInWithGoogle } from "@/lib/auth-guardian-2025";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -102,23 +102,33 @@ export default function JoinAsSitter() {
     }
   }
 
+  // Pre-fill form from Google user after redirect sign-in completes
+  useEffect(() => {
+    if (user && !form.email) {
+      setForm(prev => ({
+        ...prev,
+        email: prev.email || user.email || "",
+        firstName: prev.firstName || user.displayName?.split(" ")[0] || "",
+        lastName: prev.lastName || user.displayName?.split(" ").slice(1).join(" ") || "",
+      }));
+    }
+  }, [user?.uid]);
+
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
     try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      setForm(prev => ({
-        ...prev,
-        email: result.user.email || "",
-        firstName: result.user.displayName?.split(" ")[0] || "",
-        lastName: result.user.displayName?.split(" ").slice(1).join(" ") || "",
-      }));
-      await apiRequest("POST", "/api/auth/session", {
-        uid: result.user.uid,
-        email: result.user.email,
-        displayName: result.user.displayName,
-        photoURL: result.user.photoURL,
-      });
+      // Uses signInWithRedirect on iOS Safari, signInWithPopup elsewhere
+      await signInWithGoogle();
+      // Popup path: fill form from auth.currentUser (redirect path navigates away before here)
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        setForm(prev => ({
+          ...prev,
+          email: prev.email || currentUser.email || "",
+          firstName: prev.firstName || currentUser.displayName?.split(" ")[0] || "",
+          lastName: prev.lastName || currentUser.displayName?.split(" ").slice(1).join(" ") || "",
+        }));
+      }
     } catch {
       toast({ title: "Sign-in failed", description: "Could not sign in with Google.", variant: "destructive" });
     } finally {
