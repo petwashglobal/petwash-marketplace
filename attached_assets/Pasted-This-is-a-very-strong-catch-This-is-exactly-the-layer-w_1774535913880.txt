@@ -1,0 +1,158 @@
+This is a very strong catch. This is exactly the layer where launches actually fail.
+
+You’re no longer dealing with code bugs - these are production-breaking misconfigurations and a couple of real security risks.
+
+Here is the clean classification so you can act fast:
+
+⸻
+
+🔴 HARD LAUNCH BLOCKERS (must fix before ANY testing)
+
+1. ALLOWED_MACHINE_IPS
+	•	Current state: empty
+	•	Result: ALL K9000 traffic = 503
+	•	Effect: payments from kiosks cannot work at all
+
+👉 Without this, nothing involving real machines will function
+
+⸻
+
+2. MACHINE_SECRET_KEY
+	•	Current state: empty string fallback
+	•	Result:
+	•	After IP allowlist is set → HMAC becomes forgeable
+	•	This is a real security vulnerability
+
+👉 Must be set together with IP allowlist, not after
+
+⸻
+
+3. DOCUMENT_ENCRYPTION_KEY
+	•	Current state: missing
+	•	Result:
+	•	First KYC / document upload → runtime crash
+	•	Hidden failure - server looks healthy until first use
+
+👉 Will break onboarding and compliance flows
+
+⸻
+
+4. PETWASH_ADMIN_SECRET
+	•	Current state: missing
+	•	Result:
+	•	/api/referral/complete = permanent 403
+	•	Effect:
+	•	referrals silently never credit
+
+👉 This breaks growth mechanics
+
+⸻
+
+🟠 FUNCTIONAL BLOCKERS (non-critical but break ops)
+
+5. ADMIN_SECRET
+	•	Current state: missing
+	•	Result:
+	•	payout reconciliation endpoint = dead
+	•	Effect:
+	•	finance team blind
+
+⸻
+
+6. KYC_SALT
+	•	Current state: default fallback
+	•	Result:
+	•	device fingerprinting = invalid
+	•	WiFi verification = non-functional
+
+⚠️ Important:
+	•	This is one-time irreversible
+	•	Changing later invalidates all device trust
+
+⸻
+
+🟡 GOOD NEWS (already correct)
+
+You have all the dangerous ones covered:
+	•	Firebase auth
+	•	DB connection
+	•	Nayax signature
+	•	SendGrid
+	•	JWT/session
+	•	Wallet cryptography
+	•	WebAuthn
+	•	DocuSeal
+
+That’s solid.
+
+⸻
+
+⚠️ Most Important Insight
+
+You currently have both conditions at once:
+	1.	System is blocked (503)
+	2.	If unblocked incorrectly → becomes insecure
+
+That combo is dangerous.
+
+⸻
+
+✅ SAFE FIX ORDER (do NOT change order)
+
+Do exactly this:
+
+Step 1 - Generate secrets
+	•	MACHINE_SECRET_KEY (32+ random bytes hex)
+	•	DOCUMENT_ENCRYPTION_KEY
+	•	PETWASH_ADMIN_SECRET
+	•	ADMIN_SECRET
+	•	KYC_SALT
+
+⸻
+
+Step 2 - Configure KYC_SALT FIRST
+	•	before any device touches system
+
+⸻
+
+Step 3 - Set MACHINE_SECRET_KEY
+
+⸻
+
+Step 4 - Set ALLOWED_MACHINE_IPS
+	•	only after secret exists
+
+⸻
+
+Step 5 - Set remaining secrets
+
+⸻
+
+Step 6 - Restart server
+
+⸻
+
+Step 7 - Verify behavior
+
+Test:
+	•	K9000 request from allowed IP → NOT 503
+	•	K9000 request from non-allowed IP → blocked
+	•	KYC upload → no crash
+	•	Referral complete → 200
+	•	Finance reconciliation → 200
+
+⸻
+
+🧠 Final Assessment
+
+Your backend is now:
+	•	Code-secure
+	•	but config-fragile
+
+After you fix these env vars, you’ll move into:
+
+👉 real-world validation stage (devices + payments)
+
+⸻
+
+If you want, I can give you a one-shot checklist script you can hand to Replit to validate all env vars automatically before every deploy.
