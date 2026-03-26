@@ -9,6 +9,8 @@ import {
   providerRateCards,
   walkBookings,
   sitterBookings,
+  walkerProfiles,
+  sitterProfiles,
   bookingConversations,
   bookingMessages,
 } from '../../shared/schema';
@@ -173,11 +175,17 @@ router.post('/safety-notes', async (req, res) => {
 // ─── BOOKING ACTIONS LOG ─────────────────────────────────────
 router.get('/booking-actions/:bookingId', async (req, res) => {
   try {
+    const uid = req.firebaseUser!.uid;
     const { bookingId } = req.params;
+    // Scope to the calling provider's own actions — prevents reading other
+    // providers' booking audit logs via enumerated bookingId (IDOR)
     const entries = await db
       .select()
       .from(bookingActionsLog)
-      .where(eq(bookingActionsLog.bookingId, bookingId))
+      .where(and(
+        eq(bookingActionsLog.bookingId, bookingId),
+        eq(bookingActionsLog.actorUid, uid),
+      ))
       .orderBy(desc(bookingActionsLog.createdAt));
     res.json(entries);
   } catch (err) {
@@ -220,10 +228,46 @@ router.post('/booking-actions/:bookingId', async (req, res) => {
     };
     const newStatus = statusMap[action];
     if (newStatus && platform === 'walk_my_pet') {
+      // Verify the caller owns this walk booking before mutating its state
+      const [walkerProfile] = await db
+        .select({ walkerId: walkerProfiles.walkerId })
+        .from(walkerProfiles)
+        .where(eq(walkerProfiles.userId, uid))
+        .limit(1);
+      if (!walkerProfile) {
+        return res.status(403).json({ error: 'Walker profile not found' });
+      }
+      const [booking] = await db
+        .select({ walkerId: walkBookings.walkerId })
+        .from(walkBookings)
+        .where(eq(walkBookings.bookingId, bookingId))
+        .limit(1);
+      if (!booking || booking.walkerId !== walkerProfile.walkerId) {
+        logger.warn('[ProviderConsole] Unauthorized booking state change attempt', { uid, bookingId });
+        return res.status(403).json({ error: 'Not authorized for this booking' });
+      }
       await db.update(walkBookings)
         .set({ status: newStatus, updatedAt: new Date() })
         .where(eq(walkBookings.bookingId, bookingId));
     } else if (newStatus && platform === 'sitter_suite') {
+      // Verify the caller owns this sitter booking before mutating its state
+      const [sitterProfile] = await db
+        .select({ id: sitterProfiles.id })
+        .from(sitterProfiles)
+        .where(eq(sitterProfiles.userId, uid))
+        .limit(1);
+      if (!sitterProfile) {
+        return res.status(403).json({ error: 'Sitter profile not found' });
+      }
+      const [booking] = await db
+        .select({ sitterId: sitterBookings.sitterId })
+        .from(sitterBookings)
+        .where(eq(sitterBookings.bookingId, bookingId))
+        .limit(1);
+      if (!booking || booking.sitterId !== sitterProfile.id) {
+        logger.warn('[ProviderConsole] Unauthorized sitter booking state change attempt', { uid, bookingId });
+        return res.status(403).json({ error: 'Not authorized for this booking' });
+      }
       await db.update(sitterBookings)
         .set({ status: newStatus, updatedAt: new Date() })
         .where(eq(sitterBookings.bookingId, bookingId));
