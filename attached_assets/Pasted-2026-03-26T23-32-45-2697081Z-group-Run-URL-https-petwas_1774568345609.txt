@@ -1,0 +1,117 @@
+2026-03-26T23:32:45.2697081Z ##[group]Run URL="https://petwash-api-gphpd64opa-zf.a.run.app"
+2026-03-26T23:32:45.2698002Z [36;1mURL="https://petwash-api-gphpd64opa-zf.a.run.app"[0m
+2026-03-26T23:32:45.2698524Z [36;1mENDPOINT="$URL/api/google/places-health"[0m
+2026-03-26T23:32:45.2698930Z [36;1mecho "Testing: $ENDPOINT"[0m
+2026-03-26T23:32:45.2699272Z [36;1m[0m
+2026-03-26T23:32:45.2699580Z [36;1m# Retry up to 5 times with backoff.[0m
+2026-03-26T23:32:45.2699983Z [36;1m# Handles two distinct failure modes:[0m
+2026-03-26T23:32:45.2700454Z [36;1m#   000 — curl transport failure (service not yet listening)[0m
+2026-03-26T23:32:45.2701046Z [36;1m#   503 + SERVICE_STARTING — startup guard blocking until routes are ready[0m
+2026-03-26T23:32:45.2701678Z [36;1m# /api/google/places-health is exempted from the startup guard so it can[0m
+2026-03-26T23:32:45.2702311Z [36;1m# always respond, but we keep retries as defence-in-depth for cold starts.[0m
+2026-03-26T23:32:45.2702791Z [36;1mRESULT=""[0m
+2026-03-26T23:32:45.2703251Z [36;1mHTTP_STATUS=""[0m
+2026-03-26T23:32:45.2703640Z [36;1mfor attempt in 1 2 3 4 5; do[0m
+2026-03-26T23:32:45.2704531Z [36;1m  HTTP_STATUS=$(curl -s -o /tmp/places_response.json -w "%***http_code***" --max-time 30 "$ENDPOINT" 2>/dev/null || echo "000")[0m
+2026-03-26T23:32:45.2705334Z [36;1m  RESULT=$(cat /tmp/places_response.json 2>/dev/null || echo "")[0m
+2026-03-26T23:32:45.2705795Z [36;1m[0m
+2026-03-26T23:32:45.2706109Z [36;1m  if [ "$HTTP_STATUS" = "000" ]; then[0m
+2026-03-26T23:32:45.2706680Z [36;1m    echo "   Attempt $attempt: transport failure (curl exit non-zero) — retrying in 20 s..."[0m
+2026-03-26T23:32:45.2707395Z [36;1m    sleep 20[0m
+2026-03-26T23:32:45.2707709Z [36;1m    continue[0m
+2026-03-26T23:32:45.2708003Z [36;1m  fi[0m
+2026-03-26T23:32:45.2708271Z [36;1m[0m
+2026-03-26T23:32:45.2708685Z [36;1m  # Detect startup guard response — server is booting, not a real failure[0m
+2026-03-26T23:32:45.2709494Z [36;1m  ERROR_FIELD=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('error',''))" 2>/dev/null || echo "")[0m
+2026-03-26T23:32:45.2710390Z [36;1m  if [ "$ERROR_FIELD" = "SERVICE_STARTING" ]; then[0m
+2026-03-26T23:32:45.2711074Z [36;1m    echo "   Attempt $attempt: server still starting up (HTTP $HTTP_STATUS, SERVICE_STARTING) — retrying in 20 s..."[0m
+2026-03-26T23:32:45.2711694Z [36;1m    sleep 20[0m
+2026-03-26T23:32:45.2711996Z [36;1m    continue[0m
+2026-03-26T23:32:45.2712286Z [36;1m  fi[0m
+2026-03-26T23:32:45.2712553Z [36;1m[0m
+2026-03-26T23:32:45.2712875Z [36;1m  # Got a real response — exit retry loop[0m
+2026-03-26T23:32:45.2713261Z [36;1m  break[0m
+2026-03-26T23:32:45.2713546Z [36;1mdone[0m
+2026-03-26T23:32:45.2713817Z [36;1m[0m
+2026-03-26T23:32:45.2714091Z [36;1m# Classify result[0m
+2026-03-26T23:32:45.2714439Z [36;1mif [ "$HTTP_STATUS" = "000" ]; then[0m
+2026-03-26T23:32:45.2714948Z [36;1m  echo "❌ TRANSPORT FAILURE: Could not reach $ENDPOINT after 5 attempts"[0m
+2026-03-26T23:32:45.2715638Z [36;1m  echo "   Possible causes: service not yet accepting connections, DNS, network policy"[0m
+2026-03-26T23:32:45.2716310Z [36;1m  echo "   This is NOT a Places API key problem — the key was not tested"[0m
+2026-03-26T23:32:45.2716976Z [36;1m  exit 1[0m
+2026-03-26T23:32:45.2717416Z [36;1mfi[0m
+2026-03-26T23:32:45.2718039Z [36;1mERROR_FIELD=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('error',''))" 2>/dev/null || echo "")[0m
+2026-03-26T23:32:45.2718785Z [36;1mif [ "$ERROR_FIELD" = "SERVICE_STARTING" ]; then[0m
+2026-03-26T23:32:45.2719314Z [36;1m  echo "❌ SERVER STILL STARTING after 5 attempts (100 s total wait)"[0m
+2026-03-26T23:32:45.2719886Z [36;1m  echo "   The Cloud Run container did not reach ready state in time"[0m
+2026-03-26T23:32:45.2720467Z [36;1m  echo "   This is NOT a Places API key problem — the key was not tested"[0m
+2026-03-26T23:32:45.2720934Z [36;1m  exit 1[0m
+2026-03-26T23:32:45.2721213Z [36;1mfi[0m
+2026-03-26T23:32:45.2721485Z [36;1m[0m
+2026-03-26T23:32:45.2721993Z [36;1mecho "   HTTP status from Cloud Run: $HTTP_STATUS"[0m
+2026-03-26T23:32:45.2722420Z [36;1mecho "   Raw response: $RESULT"[0m
+2026-03-26T23:32:45.2722774Z [36;1m[0m
+2026-03-26T23:32:45.2723449Z [36;1mPLACES_STATUS=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status','PARSE_FAIL'))" 2>/dev/null || echo "PARSE_FAIL")[0m
+2026-03-26T23:32:45.2724557Z [36;1mGOOGLE_HTTP=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('googleHttpStatus','—'))" 2>/dev/null || echo "—")[0m
+2026-03-26T23:32:45.2725580Z [36;1mREASON=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('reason',''))" 2>/dev/null || echo "")[0m
+2026-03-26T23:32:45.2726592Z [36;1mKEY_LEN=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('apiKeyLength',0))" 2>/dev/null || echo "0")[0m
+2026-03-26T23:32:45.2727501Z [36;1m[0m
+2026-03-26T23:32:45.2727792Z [36;1mcase "$PLACES_STATUS" in[0m
+2026-03-26T23:32:45.2728150Z [36;1m  OK)[0m
+2026-03-26T23:32:45.2728531Z [36;1m    echo "✅ Places API: key valid (Google HTTP $GOOGLE_HTTP)"[0m
+2026-03-26T23:32:45.2728976Z [36;1m    ;;[0m
+2026-03-26T23:32:45.2729263Z [36;1m  GOOGLE_KEY_MISSING)[0m
+2026-03-26T23:32:45.2729797Z [36;1m    echo "❌ GOOGLE_KEY_MISSING: GOOGLE_MAPS_API_KEY env var is absent in the Cloud Run container"[0m
+2026-03-26T23:32:45.2730561Z [36;1m    echo "   → The secret exists in GCP Secret Manager but the Cloud Run revision did not receive it"[0m
+2026-03-26T23:32:45.2731309Z [36;1m    echo "   → Fix: verify the secret is bound in the Cloud Run service config and redeploy"[0m
+2026-03-26T23:32:45.2731836Z [36;1m    exit 1[0m
+2026-03-26T23:32:45.2732131Z [36;1m    ;;[0m
+2026-03-26T23:32:45.2732426Z [36;1m  GOOGLE_KEY_INVALID)[0m
+2026-03-26T23:32:45.2732937Z [36;1m    echo "❌ GOOGLE_KEY_INVALID: Google rejected the API key (Google HTTP $GOOGLE_HTTP)"[0m
+2026-03-26T23:32:45.2733535Z [36;1m    echo "   → Key length in container: $KEY_LEN chars"[0m
+2026-03-26T23:32:45.2733990Z [36;1m    echo "   → Google error: $REASON"[0m
+2026-03-26T23:32:45.2734570Z [36;1m    echo "   → Fix: add GOOGLE_MAPS_API_KEY as a GitHub Actions secret to sync the correct value"[0m
+2026-03-26T23:32:45.2735122Z [36;1m    exit 1[0m
+2026-03-26T23:32:45.2735412Z [36;1m    ;;[0m
+2026-03-26T23:32:45.2735699Z [36;1m  PARSE_FAIL)[0m
+2026-03-26T23:32:45.2736192Z [36;1m    echo "❌ PARSE_FAIL: endpoint returned HTTP $HTTP_STATUS but body is not valid JSON"[0m
+2026-03-26T23:32:45.2736926Z [36;1m    echo "   Possible causes: route not registered, server startup error, proxy returning HTML"[0m
+2026-03-26T23:32:45.2737724Z [36;1m    echo "   Raw body above ↑"[0m
+2026-03-26T23:32:45.2738076Z [36;1m    exit 1[0m
+2026-03-26T23:32:45.2738363Z [36;1m    ;;[0m
+2026-03-26T23:32:45.2738634Z [36;1m  *)[0m
+2026-03-26T23:32:45.2739105Z [36;1m    echo "❌ Places health check returned status=$PLACES_STATUS (Google HTTP $GOOGLE_HTTP)"[0m
+2026-03-26T23:32:45.2739669Z [36;1m    echo "   Reason: $REASON"[0m
+2026-03-26T23:32:45.2740034Z [36;1m    echo "   Raw body above ↑"[0m
+2026-03-26T23:32:45.2740376Z [36;1m    exit 1[0m
+2026-03-26T23:32:45.2740814Z [36;1m    ;;[0m
+2026-03-26T23:32:45.2741091Z [36;1mesac[0m
+2026-03-26T23:32:45.2766442Z shell: /usr/bin/bash -e ***0***
+2026-03-26T23:32:45.2766791Z env:
+2026-03-26T23:32:45.2767083Z   PROJECT_ID: ***
+2026-03-26T23:32:45.2767648Z   REGION: me-west1
+2026-03-26T23:32:45.2767960Z   SERVICE_NAME: petwash-api
+2026-03-26T23:32:45.2768290Z   REPO_NAME: petwash-api
+2026-03-26T23:32:45.2768728Z   IMAGE: me-west1-docker.pkg.dev/***/petwash-api/backend
+2026-03-26T23:32:45.2769186Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-03-26T23:32:45.2769905Z   CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE: /home/runner/work/petwash-marketplace/petwash-marketplace/gha-creds-6dc53574298e363b.json
+2026-03-26T23:32:45.2770906Z   GOOGLE_APPLICATION_CREDENTIALS: /home/runner/work/petwash-marketplace/petwash-marketplace/gha-creds-6dc53574298e363b.json
+2026-03-26T23:32:45.2772000Z   GOOGLE_GHA_CREDS_PATH: /home/runner/work/petwash-marketplace/petwash-marketplace/gha-creds-6dc53574298e363b.json
+2026-03-26T23:32:45.2772654Z   CLOUDSDK_CORE_PROJECT: ***
+2026-03-26T23:32:45.2773004Z   CLOUDSDK_PROJECT: ***
+2026-03-26T23:32:45.2773335Z   GCLOUD_PROJECT: ***
+2026-03-26T23:32:45.2773653Z   GCP_PROJECT: ***
+2026-03-26T23:32:45.2773972Z   GOOGLE_CLOUD_PROJECT: ***
+2026-03-26T23:32:45.2774370Z   CLOUDSDK_METRICS_ENVIRONMENT: github-actions-setup-gcloud
+2026-03-26T23:32:45.2774841Z   CLOUDSDK_METRICS_ENVIRONMENT_VERSION: 2.2.1
+2026-03-26T23:32:45.2775214Z ##[endgroup]
+2026-03-26T23:32:45.2823591Z Testing: https://petwash-api-gphpd64opa-zf.a.run.app/api/google/places-health
+2026-03-26T23:32:45.6148133Z    Attempt 1: server still starting up (HTTP 503, SERVICE_STARTING) — retrying in 20 s...
+2026-03-26T23:33:05.9558034Z    Attempt 2: server still starting up (HTTP 503, SERVICE_STARTING) — retrying in 20 s...
+2026-03-26T23:33:26.2874025Z    Attempt 3: server still starting up (HTTP 503, SERVICE_STARTING) — retrying in 20 s...
+2026-03-26T23:33:46.7430434Z    Attempt 4: server still starting up (HTTP 503, SERVICE_STARTING) — retrying in 20 s...
+2026-03-26T23:34:07.0755845Z    Attempt 5: server still starting up (HTTP 503, SERVICE_STARTING) — retrying in 20 s...
+2026-03-26T23:34:27.0993742Z ❌ SERVER STILL STARTING after 5 attempts (100 s total wait)
+2026-03-26T23:34:27.0994876Z    The Cloud Run container did not reach ready state in time
+2026-03-26T23:34:27.0996030Z    This is NOT a Places API key problem — the key was not tested
+2026-03-26T23:34:27.0998549Z ##[error]Process completed with exit code 1.
