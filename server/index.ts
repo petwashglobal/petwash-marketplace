@@ -387,6 +387,55 @@ app.get('/api/health/strict', async (_req, res) => {
   });
 });
 
+// --- Places health — registered BEFORE the startup guard so it is always reachable ---
+// routes.ts takes >120 s to load on a cold start (GCP service inits).  The startup guard
+// blocks every non-health path until serverReady=true.  Registering this route here means
+// Express matches it before the guard middleware fires, bypassing the 503 window entirely.
+app.get('/api/google/places-health', async (req, res) => {
+  const traceId = (req as any).traceId || crypto.randomUUID().slice(0, 12);
+  const checks: Record<string, any> = {
+    traceId,
+    timestamp: new Date().toISOString(),
+    apiKeyConfigured: !!process.env.GOOGLE_MAPS_API_KEY,
+    apiKeyLength: process.env.GOOGLE_MAPS_API_KEY?.length || 0,
+  };
+
+  if (!process.env.GOOGLE_MAPS_API_KEY) {
+    checks.status = 'GOOGLE_KEY_MISSING';
+    checks.reason = 'GOOGLE_MAPS_API_KEY env var not present in runtime';
+    return res.status(200).json(checks);
+  }
+
+  try {
+    const response = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
+        'X-Goog-FieldMask': 'suggestions.placePrediction.placeId,suggestions.placePrediction.text',
+      },
+      body: JSON.stringify({ input: 'Tel Aviv', languageCode: 'en', includedRegionCodes: ['il'] }),
+    });
+    const data = await response.json() as any;
+    checks.googleHttpStatus = response.status;
+    checks.predictionsCount = (data.suggestions || []).length;
+    if (response.ok) {
+      checks.status = 'OK';
+    } else if (response.status === 401 || response.status === 403) {
+      checks.status = 'GOOGLE_KEY_INVALID';
+      checks.reason = data.error?.message || `Google rejected key (HTTP ${response.status})`;
+    } else {
+      checks.status = `HTTP_${response.status}`;
+      checks.reason = data.error?.message || `Unexpected HTTP ${response.status} from Google`;
+    }
+  } catch (error: any) {
+    checks.status = 'NETWORK_ERROR';
+    checks.reason = `Could not reach Google Places API: ${error.message}`;
+  }
+
+  return res.status(200).json(checks);
+});
+
 // --- Block non-health requests until routes are registered ---
 app.use((req, res, next) => {
   if (req.path === '/health' || req.path.startsWith('/api/health')) {
