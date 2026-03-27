@@ -37,6 +37,7 @@ import { logger } from '../lib/logger';
 import { syncChatToBookingStatus, checkCancellationWindow } from '../lib/booking-chat-sync';
 import { backupFinancialDocument } from '../services/gcsBackupService';
 import { verifyCaptchaToken } from '../lib/verifyCaptcha';
+import { verifyTurnstileToken } from '../lib/verifyTurnstile';
 
 const router = Router();
 
@@ -50,7 +51,7 @@ router.post('/walkers/register', async (req, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const { captchaToken, ...bodyWithoutToken } = req.body;
+    const { captchaToken, turnstileToken: walkerTurnstileToken, ...bodyWithoutToken } = req.body;
     if (!captchaToken) {
       logger.warn('[Walk My Pet] Walker registration rejected — missing captchaToken', { userId });
       return res.status(400).json({ error: 'Security verification token required. Please refresh and try again.', errorCode: 'CAPTCHA_REQUIRED' });
@@ -61,8 +62,18 @@ router.post('/walkers/register', async (req, res) => {
       return res.status(400).json({ error: 'Security check failed. Please refresh and try again.', reason: captchaResult.reason });
     }
     if (captchaResult.suspicious) {
-      logger.warn('[Walk My Pet] Suspicious traffic on walker registration — step-up required', { score: captchaResult.score, userId });
-      return res.status(400).json({ error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+      if (walkerTurnstileToken) {
+        const tip = req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
+        const tsResult = await verifyTurnstileToken(walkerTurnstileToken, tip);
+        if (!tsResult.valid) {
+          logger.warn('[Walk My Pet] Turnstile fallback rejected', { reason: tsResult.reason, score: captchaResult.score, userId });
+          return res.status(400).json({ error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+        }
+        logger.info('[Walk My Pet] Turnstile fallback accepted — suspicious reCAPTCHA score bypassed', { score: captchaResult.score, userId });
+      } else {
+        logger.warn('[Walk My Pet] Suspicious traffic on walker registration — step-up required', { score: captchaResult.score, userId });
+        return res.status(400).json({ error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+      }
     }
 
     const walkerData: InsertWalkerProfile = {

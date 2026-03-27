@@ -122,6 +122,39 @@ router.get('/config', (_req, res) => {
 });
 
 /**
+ * POST /api/recaptcha/check-score
+ * Lightweight endpoint: evaluates a reCAPTCHA token and returns whether step-up is needed.
+ * Used by the signup flow to detect suspicious scores BEFORE creating the Firebase account,
+ * so the Turnstile widget can be shown early (avoids creating and then deleting Firebase users).
+ */
+const checkScoreSchema = z.object({
+  captchaToken: z.string().min(1),
+  action: z.string().default('check'),
+});
+
+router.post('/check-score', async (req, res) => {
+  const parsed = checkScoreSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ valid: false, suspicious: false, score: 0, stepUpRequired: false, reason: 'invalid_request' });
+  }
+  const { captchaToken, action } = parsed.data;
+  try {
+    const result = await verifyCaptchaToken(captchaToken, action);
+    return res.json({
+      valid: result.valid,
+      suspicious: result.suspicious ?? false,
+      score: result.score,
+      stepUpRequired: result.suspicious ?? false,
+      source: result.source,
+      reason: result.reason,
+    });
+  } catch (err: any) {
+    logger.error('[ReCaptcha/check-score] Error', { error: err.message });
+    return res.status(500).json({ valid: false, suspicious: false, score: 0, stepUpRequired: false, reason: 'service_error' });
+  }
+});
+
+/**
  * GET /api/recaptcha/health
  * Health check — for admin diagnostics.
  */

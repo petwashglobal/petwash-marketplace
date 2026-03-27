@@ -199,6 +199,7 @@ import providerIntakeRoutes from "./routes/provider-intake";
 import pushNotificationsRoutes from "./routes/push-notifications";
 import recaptchaRoutes from "./routes/recaptcha";
 import { verifyCaptchaToken } from "./lib/verifyCaptcha";
+import { verifyTurnstileToken } from "./lib/verifyTurnstile";
 import reviewsRoutes from "./routes/reviews";
 import groomingFeedbackRoutes from "./routes/grooming-feedback";
 import securityStatusRoutes from "./routes/security-status";
@@ -914,7 +915,7 @@ self.addEventListener('notificationclick', (event) => {
         traceId,
         userAgent: req.headers['user-agent']?.substring(0, 50)
       });
-      const { idToken, expiresInMs = 432000000, captchaToken } = req.body;
+      const { idToken, expiresInMs = 432000000, captchaToken, turnstileToken } = req.body;
       
       if (!idToken) {
         logger.warn('[Session] Missing ID token in request - client error (400)', { traceId });
@@ -943,8 +944,18 @@ self.addEventListener('notificationclick', (event) => {
             return res.status(400).json({ error: 'Security check failed. Please refresh and try again.', reason: captchaResult.reason });
           }
           if (captchaResult.suspicious) {
-            logger.warn('[Session] Suspicious traffic on sign-in — step-up required', { score: captchaResult.score, uid: preDecoded.uid, traceId });
-            return res.status(400).json({ error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+            if (turnstileToken) {
+              const tip = req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
+              const tsResult = await verifyTurnstileToken(turnstileToken, tip);
+              if (!tsResult.valid) {
+                logger.warn('[Session] Turnstile fallback rejected', { reason: tsResult.reason, score: captchaResult.score, uid: preDecoded.uid, traceId });
+                return res.status(400).json({ error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+              }
+              logger.info('[Session] Turnstile fallback accepted — suspicious reCAPTCHA score bypassed', { score: captchaResult.score, uid: preDecoded.uid, traceId });
+            } else {
+              logger.warn('[Session] Suspicious traffic on sign-in — step-up required', { score: captchaResult.score, uid: preDecoded.uid, traceId });
+              return res.status(400).json({ error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+            }
           }
         }
 
@@ -10468,6 +10479,7 @@ self.addEventListener('notificationclick', (event) => {
         consentVersion,
         consentTextHash,
         captchaToken,
+        turnstileToken: createProfileTurnstileToken,
         traceId
       } = req.body;
 
@@ -10492,8 +10504,18 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(400).json({ success: false, error: 'Security check failed. Please refresh and try again.', reason: captchaResult.reason });
       }
       if (captchaResult.suspicious) {
-        logger.warn('[CreateProfile] Suspicious traffic on signup — step-up required', { score: captchaResult.score });
-        return res.status(400).json({ success: false, error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+        if (createProfileTurnstileToken) {
+          const tip = req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
+          const tsResult = await verifyTurnstileToken(createProfileTurnstileToken, tip);
+          if (!tsResult.valid) {
+            logger.warn('[CreateProfile] Turnstile fallback rejected', { reason: tsResult.reason, score: captchaResult.score });
+            return res.status(400).json({ success: false, error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+          }
+          logger.info('[CreateProfile] Turnstile fallback accepted — suspicious reCAPTCHA score bypassed', { score: captchaResult.score });
+        } else {
+          logger.warn('[CreateProfile] Suspicious traffic on signup — step-up required', { score: captchaResult.score });
+          return res.status(400).json({ success: false, error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+        }
       }
       
       const validationErrors: string[] = [];

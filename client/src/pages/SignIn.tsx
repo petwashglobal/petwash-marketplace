@@ -24,6 +24,7 @@ import { signInWithPasskey, signInWithPasskeyConditional, isPasskeySupported, ge
 import { useAutoFaceID, storePasskeyEmail, clearPasskeyEmail, storeLastAuthMethod, getConsecutiveFailures } from "@/hooks/useAutoFaceID";
 import { FaceIDLoadingState } from "@/components/FaceIDLoadingState";
 import { executeReCaptcha } from "@/components/ReCaptcha";
+import { TurnstileWidget, TURNSTILE_CONFIGURED } from "@/components/TurnstileWidget";
 import { trackAuthError } from "@/lib/authErrorTracker";
 import { trustDevice, isDeviceTrusted } from "@/lib/deviceTrust";
 import { motion, AnimatePresence } from "framer-motion";
@@ -122,6 +123,10 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const [forcePasswordMode, setForcePasswordMode] = useState(false);
   const [pinMode, setPinMode] = useState(false);
   const [pinLoading, setPinLoading] = useState(false);
+  const [signInStepUpPending, setSignInStepUpPending] = useState(false);
+  const [pendingSignInIdToken, setPendingSignInIdToken] = useState<string | null>(null);
+  const [pendingSignInCaptchaToken, setPendingSignInCaptchaToken] = useState<string | null>(null);
+  const [pendingSignInUid, setPendingSignInUid] = useState<string | null>(null);
   const [pinError, setPinError] = useState("");
   const [selectedIntent, setSelectedIntent] = useState<string | null>(
     localStorage.getItem('signup_intent') || null
@@ -1422,7 +1427,14 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       if (!sessionResponse.ok) {
         const errBody = await sessionResponse.json().catch(() => ({}));
         if (errBody?.errorCode === 'STEP_UP_REQUIRED') {
-          toast({ variant: 'destructive', title: language === 'he' ? 'נדרש אימות נוסף' : 'Additional verification required', description: language === 'he' ? 'הגישה שלך נראית חריגה. נסה להתחבר עם מספר הטלפון, או נסה מרשת אחרת.' : 'Your connection looks unusual. Try signing in with your phone number, or switch to a different network.' });
+          if (TURNSTILE_CONFIGURED) {
+            setPendingSignInIdToken(idToken);
+            setPendingSignInCaptchaToken(captchaToken);
+            setPendingSignInUid(userCredential.user.uid);
+            setSignInStepUpPending(true);
+          } else {
+            toast({ variant: 'destructive', title: language === 'he' ? 'נדרש אימות נוסף' : 'Additional verification required', description: language === 'he' ? 'הגישה שלך נראית חריגה. נסה להתחבר עם מספר הטלפון, או נסה מרשת אחרת.' : 'Your connection looks unusual. Try signing in with your phone number, or switch to a different network.' });
+          }
           setLoading(false);
           return;
         }
@@ -1507,6 +1519,44 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         timestamp: new Date().toISOString(),
         userAgent: navigator.userAgent,
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTurnstileSignInVerify = async (turnstileToken: string) => {
+    if (!pendingSignInIdToken || !pendingSignInCaptchaToken) return;
+    const storedIdToken = pendingSignInIdToken;
+    const storedCaptchaToken = pendingSignInCaptchaToken;
+    const storedUid = pendingSignInUid;
+    setSignInStepUpPending(false);
+    setPendingSignInIdToken(null);
+    setPendingSignInCaptchaToken(null);
+    setPendingSignInUid(null);
+    setLoading(true);
+    try {
+      const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ idToken: storedIdToken, captchaToken: storedCaptchaToken, turnstileToken, signInMethod: 'email' }),
+      });
+      if (!sessionResponse.ok) {
+        toast({ variant: 'destructive', title: language === 'he' ? 'אימות נכשל' : 'Verification failed', description: language === 'he' ? 'נסה שוב.' : 'Please try again.' });
+        return;
+      }
+      if (rememberDevice && storedUid && formData.email) {
+        trustDevice(storedUid, formData.email);
+      }
+      storeLastAuthMethod('password');
+      const { trackLogin } = await import('@/lib/analytics');
+      if (storedUid) trackLogin('email', storedUid);
+      toast({ title: t('signin.successTitle', language), description: t('signin.redirecting', language) });
+      setPasswordFailureCount(0);
+      setTimeout(() => { window.scrollTo(0, 0); navigatePostLogin(); }, 1200);
+    } catch (err: any) {
+      logger.error('[SignIn] Turnstile session retry failed', { error: err.message });
+      toast({ variant: 'destructive', title: language === 'he' ? 'שגיאה בהתחברות' : 'Sign in error', description: language === 'he' ? 'נסה שוב.' : 'Please try again.' });
     } finally {
       setLoading(false);
     }
@@ -2271,9 +2321,24 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 </button>
               )}
               
+              {signInStepUpPending && (
+                <div className="text-center py-2">
+                  <p className="text-xs text-neutral-500 mb-2 tracking-wide">
+                    {language === 'he' ? 'אמת שאינך רובוט כדי להמשיך:' : 'Complete the security check to continue:'}
+                  </p>
+                  <TurnstileWidget
+                    onVerify={handleTurnstileSignInVerify}
+                    onError={() => {
+                      setSignInStepUpPending(false);
+                      toast({ variant: 'destructive', title: language === 'he' ? 'אימות האבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'נסה שוב.' : 'Please try again.' });
+                    }}
+                  />
+                </div>
+              )}
+
               <Button
                 type="submit"
-                disabled={loading}
+                disabled={loading || signInStepUpPending}
                 className="w-full h-12 text-sm font-medium bg-neutral-900 hover:bg-neutral-800 text-white rounded-none tracking-wider uppercase transition-all border-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 data-testid="button-email-signin"
               >

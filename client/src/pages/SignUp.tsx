@@ -31,6 +31,7 @@ import { motion } from "framer-motion";
 import { getApiUrl } from '@/lib/apiConfig';
 import { PhoneInput } from '@/components/PhoneInput';
 import { executeReCaptcha } from '@/components/ReCaptcha';
+import { TurnstileWidget, TURNSTILE_CONFIGURED } from '@/components/TurnstileWidget';
 
 interface SignUpProps {
   language: Language;
@@ -49,7 +50,9 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
   const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [firebaseToken, setFirebaseToken] = useState<string | null>(null);
-  
+  const [stepUpPending, setStepUpPending] = useState(false);
+  const [pendingCaptchaToken, setPendingCaptchaToken] = useState<string | null>(null);
+
   const prefilledEmail = new URLSearchParams(window.location.search).get('email') || '';
   
   const [formData, setFormData] = useState({
@@ -234,6 +237,195 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     }));
   };
 
+  const proceedWithRegistration = async (captchaToken: string, turnstileToken?: string) => {
+    const traceId = 'REG-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7);
+    setLoading(true);
+    logger.debug("Loading state set to true");
+
+    try {
+      logger.debug("Firebase Auth instance", { exists: !!auth });
+      logger.debug("Attempting Firebase createUserWithEmailAndPassword", { email: formData.email });
+
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email.trim(),
+        formData.password.trim()
+      );
+
+      const user = userCredential.user;
+      logger.info("Firebase user created successfully", { uid: user.uid, email: user.email });
+
+      await updateProfile(user, {
+        displayName: `${formData.firstName.trim()} ${formData.lastName.trim()}`
+      });
+
+      const consentTimestamp = new Date().toISOString();
+      const consentVersion = '2026-02-19-v1';
+      const consentText = `Pet Wash™ Terms of Service v${consentVersion} + Privacy Policy v${consentVersion}`;
+      const consentHashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(consentText));
+      const consentTextHash = Array.from(new Uint8Array(consentHashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+      logger.debug("Creating user profile via server API");
+
+      const idToken = await user.getIdToken();
+
+      const profileResponse = await fetch(getApiUrl('/api/users/create-profile'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+          dob: formData.dob,
+          country: formData.country,
+          language,
+          loyaltyProgram: formData.loyaltyProgram,
+          reminders: formData.reminders,
+          marketing: formData.marketing,
+          pushNotifications: formData.pushNotifications,
+          acceptedTerms: formData.acceptedTerms,
+          consentTimestamp,
+          consentVersion,
+          consentTextHash,
+          captchaToken,
+          ...(turnstileToken ? { turnstileToken } : {}),
+          traceId
+        })
+      });
+
+      if (!profileResponse.ok) {
+        const errorData = await profileResponse.json().catch(() => ({}));
+        logger.error("Profile creation API failed", { status: profileResponse.status, error: errorData });
+        if (errorData?.errorCode === 'STEP_UP_REQUIRED') {
+          try { await user.delete(); } catch {}
+          toast({ variant: 'destructive', title: language === 'he' ? 'נדרש אימות נוסף' : 'Additional verification required', description: language === 'he' ? 'הגישה שלך נראית חריגה. נסה להירשם עם מספר הטלפון, או נסה מרשת אחרת.' : 'Your connection looks unusual. Try signing up with your phone number, or switch to a different network.' });
+          setLoading(false);
+          return;
+        }
+        try {
+          await user.delete();
+          logger.info("Firebase user deleted after failed profile creation", { uid: user.uid });
+        } catch (deleteErr: any) {
+          logger.warn("Failed to clean up Firebase user after profile creation failure", { uid: user.uid, err: deleteErr?.message });
+        }
+        throw new Error(errorData.error || 'Failed to create profile');
+      }
+
+      logger.info("User profile created via server API");
+
+      trackSignUp('email', user.uid);
+
+      logger.debug("Syncing to HubSpot");
+
+      syncUser({
+        uid: user.uid,
+        email: formData.email.trim(),
+        firstname: formData.firstName.trim(),
+        lastname: formData.lastName.trim(),
+        phone: formData.phone.trim(),
+        lang: language,
+        dob: formData.dob,
+        country: formData.country,
+        loyaltyProgram: formData.loyaltyProgram,
+        reminders: formData.reminders,
+        marketing: formData.marketing,
+        consent: formData.acceptedTerms,
+        consentTimestamp
+      }).catch(err => logger.warn('HubSpot sync queued or failed', err));
+
+      logger.debug("Triggering welcome email");
+      fetch(getApiUrl('/api/welcome-email'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: user.uid,
+          email: formData.email.trim(),
+          firstName: formData.firstName.trim(),
+          language
+        })
+      }).catch(err => logger.warn('Welcome email queued or failed', err));
+
+      trackEvent({
+        action: 'user_signup',
+        category: 'authentication',
+        label: 'account_created',
+        language,
+        userId: user.uid,
+      });
+
+      trackEvent({
+        action: 'signup_success',
+        category: 'authentication',
+        label: 'email_password_signup',
+        language,
+        userId: user.uid,
+      });
+
+      logger.info("Account created successfully");
+      toast({
+        title: t('signUp.accountCreatedSuccess', language),
+        description: isPasskeySupported()
+          ? t('signUp.almostDone', language)
+          : t('signUp.redirectingToDashboard', language),
+      });
+
+      const finalIdToken = await user.getIdToken(true);
+      setFirebaseToken(finalIdToken);
+
+      try {
+        await fetch(getApiUrl('/api/auth/session'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ idToken: finalIdToken }),
+        });
+        logger.info("Session cookie refreshed with final token after signup");
+      } catch (refreshErr) {
+        logger.warn("Session cookie refresh failed (non-blocking)", refreshErr);
+      }
+
+      if (isPasskeySupported()) {
+        setShowPasskeyPrompt(true);
+      } else {
+        setTimeout(() => {
+          logger.debug("Navigating to consent onboarding");
+          window.scrollTo(0, 0);
+          const consentDone = localStorage.getItem('petwash_consent_onboarding_complete');
+          navigate(consentDone ? "/dashboard" : "/consent-onboarding");
+        }, 1800);
+      }
+
+    } catch (error: any) {
+      logger.error("Signup error", { traceId, code: error?.code, message: error?.message });
+
+      let errorMessage: string;
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = t('signUp.errorEmailInUse', language);
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = t('signUp.errorInvalidEmail', language);
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = t('signUp.errorWeakPassword', language);
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = t('signUp.errorNetwork', language);
+      } else {
+        errorMessage = t('signUp.errorGeneric', language);
+      }
+
+      toast({
+        variant: "destructive",
+        title: t('signUp.errorCreatingAccount', language),
+        description: errorMessage
+      });
+    } finally {
+      logger.debug("Setting loading to false");
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const traceId = 'REG-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7);
@@ -304,203 +496,33 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       return;
     }
 
-    setLoading(true);
-    logger.debug("Loading state set to true");
-    
-    try {
-      logger.debug("Firebase Auth instance", { exists: !!auth });
-      logger.debug("Attempting Firebase createUserWithEmailAndPassword", { email: formData.email });
-      
-      // Create Firebase Auth user (trim whitespace to prevent validation errors)
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formData.email.trim(),
-        formData.password.trim()
-      );
-      
-      const user = userCredential.user;
-      logger.info("Firebase user created successfully", { uid: user.uid, email: user.email });
-      
-      // Update display name (trim whitespace)
-      await updateProfile(user, {
-        displayName: `${formData.firstName.trim()} ${formData.lastName.trim()}`
-      });
+    // Pre-check reCAPTCHA score BEFORE creating the Firebase user.
+    // If the score is suspicious, show Turnstile now so we never have to create and delete
+    // a Firebase account as part of the step-up flow.
+    const checkScoreRes = await fetch(getApiUrl('/api/recaptcha/check-score'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ captchaToken: freshCaptchaToken, action: 'register' }),
+    }).then(r => r.json()).catch(() => ({ valid: true, stepUpRequired: false }));
 
-      const consentTimestamp = new Date().toISOString();
-      const consentVersion = '2026-02-19-v1';
-      const consentText = `Pet Wash™ Terms of Service v${consentVersion} + Privacy Policy v${consentVersion}`;
-      const consentHashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(consentText));
-      const consentTextHash = Array.from(new Uint8Array(consentHashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-      const now = new Date().toISOString();
-      
-      logger.debug("Creating user profile via server API");
-      
-      const idToken = await user.getIdToken();
-      
-      const profileResponse = await fetch(getApiUrl('/api/users/create-profile'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim(),
-          email: formData.email.trim(),
-          phone: formData.phone.trim(),
-          dob: formData.dob,
-          country: formData.country,
-          language,
-          loyaltyProgram: formData.loyaltyProgram,
-          reminders: formData.reminders,
-          marketing: formData.marketing,
-          pushNotifications: formData.pushNotifications,
-          acceptedTerms: formData.acceptedTerms,
-          consentTimestamp,
-          consentVersion,
-          consentTextHash,
-          captchaToken: freshCaptchaToken,
-          traceId
-        })
-      });
-      
-      if (!profileResponse.ok) {
-        const errorData = await profileResponse.json().catch(() => ({}));
-        logger.error("Profile creation API failed", { status: profileResponse.status, error: errorData });
-        if (errorData?.errorCode === 'STEP_UP_REQUIRED') {
-          // Clean up the Firebase user so they can retry cleanly
-          try { await user.delete(); } catch {}
-          toast({ variant: 'destructive', title: language === 'he' ? 'נדרש אימות נוסף' : 'Additional verification required', description: language === 'he' ? 'הגישה שלך נראית חריגה. נסה להירשם עם מספר הטלפון, או נסה מרשת אחרת.' : 'Your connection looks unusual. Try signing up with your phone number, or switch to a different network.' });
-          setLoading(false);
-          return;
-        }
-        // Delete the Firebase user to avoid a zombie account (authenticated in Firebase
-        // but missing the PostgreSQL profile). The user can try signing up again.
-        try {
-          await user.delete();
-          logger.info("Firebase user deleted after failed profile creation", { uid: user.uid });
-        } catch (deleteErr: any) {
-          logger.warn("Failed to clean up Firebase user after profile creation failure", { uid: user.uid, err: deleteErr?.message });
-        }
-        throw new Error(errorData.error || 'Failed to create profile');
-      }
-      
-      logger.info("User profile created via server API");
-
-      trackSignUp('email', user.uid);
-
-      logger.debug("Syncing to HubSpot");
-      
-      // Sync to HubSpot (non-blocking, trim all text inputs)
-      syncUser({
-        uid: user.uid,
-        email: formData.email.trim(),
-        firstname: formData.firstName.trim(),
-        lastname: formData.lastName.trim(),
-        phone: formData.phone.trim(),
-        lang: language,
-        dob: formData.dob,
-        country: formData.country,
-        loyaltyProgram: formData.loyaltyProgram,
-        reminders: formData.reminders,
-        marketing: formData.marketing,
-        consent: formData.acceptedTerms,
-        consentTimestamp
-      }).catch(err => logger.warn('HubSpot sync queued or failed', err));
-
-      // Send welcome email (non-blocking)
-      logger.debug("Triggering welcome email");
-      fetch(getApiUrl('/api/welcome-email'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          uid: user.uid,
-          email: formData.email.trim(),
-          firstName: formData.firstName.trim(),
-          language
-        })
-      }).catch(err => logger.warn('Welcome email queued or failed', err));
-
-      // Track successful signup
-      trackEvent({
-        action: 'user_signup',
-        category: 'authentication',
-        label: 'account_created',
-        language,
-        userId: user.uid,
-      });
-      
-      // GA4 signup_success event
-      trackEvent({
-        action: 'signup_success',
-        category: 'authentication',
-        label: 'email_password_signup',
-        language,
-        userId: user.uid,
-      });
-
-      // Show success message
-      logger.info("Account created successfully");
-      toast({
-        title: t('signUp.accountCreatedSuccess', language),
-        description: isPasskeySupported() 
-          ? t('signUp.almostDone', language)
-          : t('signUp.redirectingToDashboard', language),
-      });
-
-      const finalIdToken = await user.getIdToken(true);
-      setFirebaseToken(finalIdToken);
-
-      try {
-        await fetch(getApiUrl('/api/auth/session'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ idToken: finalIdToken }),
-        });
-        logger.info("Session cookie refreshed with final token after signup");
-      } catch (refreshErr) {
-        logger.warn("Session cookie refresh failed (non-blocking)", refreshErr);
-      }
-
-      // Show passkey prompt if supported, otherwise redirect through consent journey
-      if (isPasskeySupported()) {
-        setShowPasskeyPrompt(true);
-      } else {
-        setTimeout(() => {
-          logger.debug("Navigating to consent onboarding");
-          window.scrollTo(0, 0);
-          const consentDone = localStorage.getItem('petwash_consent_onboarding_complete');
-          navigate(consentDone ? "/dashboard" : "/consent-onboarding");
-        }, 1800);
-      }
-
-    } catch (error: any) {
-      logger.error("Signup error", { traceId, code: error?.code, message: error?.message });
-      
-      // Firebase error messages - internationalized for all languages
-      let errorMessage: string;
-      if (error.code === 'auth/email-already-in-use') {
-        errorMessage = t('signUp.errorEmailInUse', language);
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = t('signUp.errorInvalidEmail', language);
-      } else if (error.code === 'auth/weak-password') {
-        errorMessage = t('signUp.errorWeakPassword', language);
-      } else if (error.code === 'auth/network-request-failed') {
-        errorMessage = t('signUp.errorNetwork', language);
-      } else {
-        errorMessage = t('signUp.errorGeneric', language);
-      }
-      
-      toast({
-        variant: "destructive",
-        title: t('signUp.errorCreatingAccount', language),
-        description: errorMessage
-      });
-    } finally {
-      logger.debug("Setting loading to false");
-      setLoading(false);
+    if (!checkScoreRes.valid) {
+      toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'נסה שוב מרשת אחרת.' : 'Please try again from a different network.' });
+      return;
     }
+
+    if (checkScoreRes.stepUpRequired) {
+      if (TURNSTILE_CONFIGURED) {
+        setPendingCaptchaToken(freshCaptchaToken);
+        setStepUpPending(true);
+        return;
+      }
+      // Turnstile not configured → show message
+      toast({ variant: 'destructive', title: language === 'he' ? 'נדרש אימות נוסף' : 'Additional verification required', description: language === 'he' ? 'הגישה שלך נראית חריגה. נסה להירשם עם מספר הטלפון, או נסה מרשת אחרת.' : 'Your connection looks unusual. Try signing up with your phone number, or switch to a different network.' });
+      return;
+    }
+
+    await proceedWithRegistration(freshCaptchaToken);
+    /* --- The rest of registration is handled inside proceedWithRegistration --- */
   };
 
   // Handle creating a passkey
@@ -839,11 +861,32 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
               )}
             </div>
 
+            {stepUpPending && (
+              <div className="text-center py-2">
+                <p className="text-sm text-gray-600 mb-3">
+                  {language === 'he' ? 'השלם את אימות האבטחה כדי להמשיך:' : 'Complete the security check to continue:'}
+                </p>
+                <TurnstileWidget
+                  onVerify={(token) => {
+                    setStepUpPending(false);
+                    const storedCaptcha = pendingCaptchaToken;
+                    setPendingCaptchaToken(null);
+                    if (storedCaptcha) proceedWithRegistration(storedCaptcha, token);
+                  }}
+                  onError={() => {
+                    setStepUpPending(false);
+                    setPendingCaptchaToken(null);
+                    toast({ variant: 'destructive', title: language === 'he' ? 'אימות האבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'נסה שוב.' : 'Please try again.' });
+                  }}
+                />
+              </div>
+            )}
+
             <Button
               id="createBtn"
               type="submit" 
               className="luxury-btn-primary luxury-shadow-xl w-full h-14 text-base font-medium"
-              disabled={loading || !formData.acceptedTerms}
+              disabled={loading || !formData.acceptedTerms || stepUpPending}
               data-testid="button-createAccount"
             >
               {loading ? (

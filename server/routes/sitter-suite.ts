@@ -43,6 +43,7 @@ import { syncChatToBookingStatus, checkCancellationWindow } from '../lib/booking
 import { backupFinancialDocument } from '../services/gcsBackupService';
 import multer from 'multer';
 import { verifyCaptchaToken } from '../lib/verifyCaptcha';
+import { verifyTurnstileToken } from '../lib/verifyTurnstile';
 import { storage, auth } from '../lib/firebase-admin';
 
 const router = Router();
@@ -346,7 +347,7 @@ router.get('/sitters/:id', async (req, res) => {
  */
 router.post('/sitters', async (req, res) => {
   try {
-    const { captchaToken, ...bodyWithoutToken } = req.body;
+    const { captchaToken, turnstileToken: sitterTurnstileToken, ...bodyWithoutToken } = req.body;
     if (!captchaToken) {
       logger.warn('[Sitter Suite] Sitter registration rejected — missing captchaToken');
       return res.status(400).json({ error: 'Security verification token required. Please refresh and try again.', errorCode: 'CAPTCHA_REQUIRED' });
@@ -357,8 +358,18 @@ router.post('/sitters', async (req, res) => {
       return res.status(400).json({ error: 'Security check failed. Please refresh and try again.', reason: captchaResult.reason });
     }
     if (captchaResult.suspicious) {
-      logger.warn('[Sitter Suite] Suspicious traffic on sitter registration — step-up required', { score: captchaResult.score });
-      return res.status(400).json({ error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+      if (sitterTurnstileToken) {
+        const tip = req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
+        const tsResult = await verifyTurnstileToken(sitterTurnstileToken, tip);
+        if (!tsResult.valid) {
+          logger.warn('[Sitter Suite] Turnstile fallback rejected', { reason: tsResult.reason, score: captchaResult.score });
+          return res.status(400).json({ error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+        }
+        logger.info('[Sitter Suite] Turnstile fallback accepted — suspicious reCAPTCHA score bypassed', { score: captchaResult.score });
+      } else {
+        logger.warn('[Sitter Suite] Suspicious traffic on sitter registration — step-up required', { score: captchaResult.score });
+        return res.status(400).json({ error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+      }
     }
 
     const validatedData = insertSitterProfileSchema.parse(bodyWithoutToken);
