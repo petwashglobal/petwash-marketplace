@@ -51,6 +51,7 @@ FIREBASE_PROJECT_ID = "signinpetwash"
 TWILIO_ACCOUNT_SID = "ACd21e697c18973a5ccf504ac2ee170b6e"
 TWILIO_MESSAGING_SERVICE_SID = "MG442e367c8e5c0f70cb245fbd21a6514d"
 VITE_TURNSTILE_SITE_KEY = "0x4AAAAAACwjyW7Iq8oy0C0Z"
+SUPER_ADMIN_EMAILS = "nirhadad1@gmail.com"
 
 [userenv.development]
 DEV_TEST_SECRET = "petwash-dev-test-2026-secret-internal"
