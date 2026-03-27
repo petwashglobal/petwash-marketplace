@@ -273,6 +273,23 @@
   color: #1a202c;
 }
 
+/* High-specificity targeting for known auth social buttons.
+   Forces white-background + dark-text even on first paint before the
+   data-auth-page attribute is set, by targeting the stable data-testid attrs. */
+button[data-testid="button-google-signup"],
+button[data-testid="button-gmail-signin"],
+button[data-testid="button-gmail-signin-quick"] {
+  background: #ffffff !important;
+  background-image: none !important;
+  color: #1f2937 !important;
+}
+
+button[data-testid="button-google-signup"]:hover,
+button[data-testid="button-gmail-signin"]:hover,
+button[data-testid="button-gmail-signin-quick"]:hover {
+  background: #f9fafb !important;
+}
+
 /* ===========================
    PREMIUM SPACING
    =========================== */
