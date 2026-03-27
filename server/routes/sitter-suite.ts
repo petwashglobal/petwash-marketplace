@@ -350,7 +350,7 @@ router.post('/sitters', async (req, res) => {
     const captchaResult = await verifyCaptchaToken(captchaToken || '', 'provider_register');
     if (!captchaResult.valid) {
       logger.warn('[Sitter Suite] Sitter registration blocked by reCAPTCHA', { reason: captchaResult.reason, score: captchaResult.score });
-      return res.status(403).json({ error: 'Security check failed. Please try again.' });
+      return res.status(400).json({ error: 'Security check failed. Please try again.', reason: captchaResult.reason });
     }
 
     const validatedData = insertSitterProfileSchema.parse(bodyWithoutToken);

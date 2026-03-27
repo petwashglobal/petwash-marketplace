@@ -54,7 +54,7 @@ router.post('/walkers/register', async (req, res) => {
     const captchaResult = await verifyCaptchaToken(captchaToken || '', 'provider_register');
     if (!captchaResult.valid) {
       logger.warn('[Walk My Pet] Walker registration blocked by reCAPTCHA', { reason: captchaResult.reason, score: captchaResult.score, userId });
-      return res.status(403).json({ error: 'Security check failed. Please try again.' });
+      return res.status(400).json({ error: 'Security check failed. Please try again.', reason: captchaResult.reason });
     }
 
     const walkerData: InsertWalkerProfile = {

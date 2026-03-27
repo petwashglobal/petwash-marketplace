@@ -251,7 +251,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     const freshCaptchaToken = await executeReCaptcha('register');
     if (!freshCaptchaToken) {
       logger.error('[SignUp] executeReCaptcha returned null — blocking registration');
-      toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'לא ניתן לאמת את הבקשה. אנא נסה שוב.' : 'Could not verify the request. Please try again in a moment.' });
+      toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'האימות לא הצליח לרוץ. לחץ שוב על "צור חשבון" לניסיון חוזר.' : 'Security check could not run. Click Create Account again to retry.' });
       return;
     }
 
@@ -851,6 +851,13 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                 </>
               )}
             </Button>
+
+            <p className="text-center text-[10px] text-neutral-400 mt-1">
+              {language === 'he' ? 'מוגן על ידי' : 'Protected by'} Google reCAPTCHA —{' '}
+              <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-neutral-600">{language === 'he' ? 'פרטיות' : 'Privacy'}</a>
+              {' · '}
+              <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-neutral-600">{language === 'he' ? 'תנאים' : 'Terms'}</a>
+            </p>
 
             <div className="text-center text-sm pt-4 space-y-2">
               <p>

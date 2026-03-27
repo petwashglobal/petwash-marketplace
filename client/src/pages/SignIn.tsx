@@ -1405,7 +1405,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       const captchaToken = await executeReCaptcha('login');
       if (!captchaToken) {
         logger.error('[SignIn] executeReCaptcha returned null for email/password login — blocking submit');
-        toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'לא ניתן לאמת את הבקשה. אנא נסה שוב.' : 'Could not verify the request. Please try again in a moment.' });
+        toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'האימות לא הצליח לרוץ. לחץ שוב על כניסה לניסיון חוזר.' : 'Security check could not run. Click Sign In again to retry.' });
         setLoading(false);
         return;
       }
@@ -2282,6 +2282,13 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   </>
                 )}
               </Button>
+
+              <p className="text-center text-[10px] text-neutral-400">
+                {language === 'he' ? 'מוגן על ידי' : 'Protected by'} Google reCAPTCHA —{' '}
+                <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-neutral-600">{language === 'he' ? 'פרטיות' : 'Privacy'}</a>
+                {' · '}
+                <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-neutral-600">{language === 'he' ? 'תנאים' : 'Terms'}</a>
+              </p>
 
               <div className="flex items-center gap-2.5 pt-1">
                 <input
