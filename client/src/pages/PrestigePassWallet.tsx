@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import prestigeLogoDiamond from '@assets/prestige-logo-diamond.png';
+import petWashBrandLogo from '@assets/CE834507-240F-494E-9540-CEC964F3A22E_1774629703208.jpeg';
 import { PremiumMemberCard } from '@/components/PremiumMemberCard';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -131,31 +132,44 @@ function PrivilegeHeroSection({ wallet, walletData, he }: { wallet: WalletData; 
       {/* Gold top bar */}
       <div style={{ height: '2px', background: 'linear-gradient(90deg,#c9a96e,#f0d060,#d4af37,#c9a96e)' }} />
 
-      {/* Hero header */}
-      <div style={{ padding: '32px 20px 24px', textAlign: 'center', background: '#FFFFFF' }}>
-        <img src={prestigeLogoDiamond} alt="PetWash Privilege"
-          style={{ width: '120px', height: 'auto', margin: '0 auto 14px', display: 'block' }} />
+      {/* Hero header — logo + privilege label + name as ONE UNIT */}
+      <div style={{ padding: '16px 20px 20px', textAlign: 'center', background: '#FFFFFF' }}>
 
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', marginBottom:'8px' }}>
-          <Shield size={12} color="#C5A55A" />
-          <span style={{ color:'#7A7068', fontSize:'0.62rem', fontWeight:600, letterSpacing:'0.18em', textTransform:'uppercase' }}>
+        {/* LOGO — dominant focal point */}
+        <img
+          src={petWashBrandLogo}
+          alt="PetWash™"
+          style={{
+            width: 'min(210px, 58vw)',
+            height: 'auto',
+            margin: '0 auto 6px',
+            display: 'block',
+            objectFit: 'contain',
+          }}
+        />
+
+        {/* Privilege label — tightly coupled to logo */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'5px', marginBottom:'4px' }}>
+          <Shield size={11} color="#C5A55A" />
+          <span style={{ color:'#7A7068', fontSize:'0.6rem', fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase' }}>
             Official Member
           </span>
         </div>
-        <h1 style={{ color:'#1A1A1A', fontSize:'1.6rem', fontWeight:800, letterSpacing:'-0.02em', margin:'0 0 6px' }}>
+        <h1 style={{ color:'#1A1A1A', fontSize:'1.15rem', fontWeight:800, letterSpacing:'-0.01em', margin:'0 0 4px' }}>
           PetWash <span style={{ color:'#C5A55A' }}>Privilege</span>
         </h1>
 
+        {/* User name — balanced with privilege label */}
         {walletData?.displayName && (
-          <p style={{ color:'#5A4A38', fontSize:'0.95rem', fontWeight:600, margin:'0 0 4px' }}>
+          <p style={{ color:'#5A4A38', fontSize:'0.88rem', fontWeight:600, margin:'0 0 2px' }}>
             {he ? `שלום, ${walletData.displayName}` : `Welcome, ${walletData.displayName}`}
           </p>
         )}
 
         {/* Tier badge */}
-        <div style={{ display:'flex', justifyContent:'center', marginTop:'10px' }}>
-          <div style={{ background:'linear-gradient(90deg,#c9a96e,#f0d060,#d4af37,#c9a96e)', padding:'5px 22px', borderRadius:'100px' }}>
-            <span style={{ color:'#fff', fontWeight:700, fontSize:'0.72rem', letterSpacing:'0.12em', textTransform:'uppercase' }}>
+        <div style={{ display:'flex', justifyContent:'center', marginTop:'6px' }}>
+          <div style={{ background:'linear-gradient(90deg,#c9a96e,#f0d060,#d4af37,#c9a96e)', padding:'4px 20px', borderRadius:'100px' }}>
+            <span style={{ color:'#fff', fontWeight:700, fontSize:'0.68rem', letterSpacing:'0.12em', textTransform:'uppercase' }}>
               {he ? pass.tierDisplay.he : pass.tierDisplay.en}
             </span>
           </div>
