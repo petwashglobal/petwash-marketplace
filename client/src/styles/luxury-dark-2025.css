@@ -231,14 +231,14 @@
 .luxury-dark-text-body {
   font-size: 1rem;
   line-height: 1.7;
-  color: #7A7068;
+  color: #111111;
   font-family: 'Inter', sans-serif;
 }
 
 .luxury-dark-text-small {
   font-size: 0.875rem;
   line-height: 1.6;
-  color: #8A8078;
+  color: #333333;
   font-family: 'Inter', sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -391,7 +391,7 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  color: #8A8078;
+  color: #333333;
   font-family: 'Inter', sans-serif;
 }
 

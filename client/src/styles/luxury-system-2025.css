@@ -331,21 +331,21 @@ button[data-testid="button-gmail-signin-quick"]:hover {
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.01em;
-  color: #1a202c;
+  color: #000000;
 }
 
 .luxury-heading-md {
   font-size: clamp(1.5rem, 3vw, 2rem);
   font-weight: 700;
   line-height: 1.3;
-  color: #2d3748;
+  color: #000000;
 }
 
 .luxury-heading-sm {
   font-size: 1.25rem;
   font-weight: 600;
   line-height: 1.4;
-  color: #2d3748;
+  color: #000000;
 }
 
 .luxury-text-gradient {
@@ -367,20 +367,20 @@ button[data-testid="button-gmail-signin-quick"]:hover {
 .luxury-subtitle-lg {
   font-size: clamp(1.125rem, 2vw, 1.375rem);
   line-height: 1.6;
-  color: #4a5568;
+  color: #111111;
   font-weight: 400;
 }
 
 .luxury-text-body {
   font-size: 1.0625rem;
   line-height: 1.7;
-  color: #4a5568;
+  color: #111111;
 }
 
 .luxury-text-small {
   font-size: 0.9375rem;
   line-height: 1.6;
-  color: #718096;
+  color: #333333;
 }
 
 /* ===========================
