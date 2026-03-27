@@ -7326,6 +7326,7 @@ export const providers = pgTable("providers", {
   totalEarnings: decimal("total_earnings", { precision: 12, scale: 2 }).default("0"),
   pendingPayouts: decimal("pending_payouts", { precision: 12, scale: 2 }).default("0"),
   platformData: jsonb("platform_data"),
+  driveFolderUrl: varchar("drive_folder_url"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

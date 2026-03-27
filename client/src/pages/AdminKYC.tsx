@@ -30,6 +30,7 @@ interface KYCSubmission {
   nameOnDoc?: string;
   dob?: string;
   rejectionReason?: string;
+  driveFolderUrl?: string | null;
 }
 
 export default function AdminKYC() {
@@ -387,8 +388,20 @@ export default function AdminKYC() {
                   </p>
                 )}
                 {submission.dob && (
-                  <p className="luxury-text-small mb-4">
+                  <p className="luxury-text-small mb-1">
                     <span className="font-medium">{t('dob')}:</span> {submission.dob}
+                  </p>
+                )}
+                {submission.driveFolderUrl && (
+                  <p className="luxury-text-small mb-4">
+                    <a
+                      href={submission.driveFolderUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline font-medium"
+                    >
+                      View in Drive
+                    </a>
                   </p>
                 )}
 
