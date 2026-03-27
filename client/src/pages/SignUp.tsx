@@ -610,6 +610,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
           >
             <Button
               type="button"
+              variant="outline"
               onClick={handleGoogleSignUp}
               disabled={loading}
               className="w-full h-14 bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 shadow-sm font-medium text-base flex items-center justify-center gap-3 rounded-2xl transition-all hover:shadow-md"
