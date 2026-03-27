@@ -250,8 +250,9 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     
     const freshCaptchaToken = await executeReCaptcha('register');
     if (!freshCaptchaToken) {
-      logger.warn('[SignUp] executeReCaptcha returned null — reCAPTCHA may not have loaded; proceeding without client-side token');
-      toast({ title: language === 'he' ? 'אימות אבטחה' : 'Security check', description: language === 'he' ? 'ממשיך ללא אימות — ייתכן שחסום. לחץ שוב על "צור חשבון" לניסיון חוזר אם הרשמה נכשלת.' : 'Security check could not run. Click Create Account again to retry if registration fails.' });
+      logger.error('[SignUp] executeReCaptcha returned null — cannot complete registration without security token');
+      toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'אנא רענן את הדף ונסה שוב. אם הבעיה נמשכת, ייתכן שחוסם פרסומות מונע טעינת Google reCAPTCHA.' : 'Please refresh the page and try again. If the issue persists, an ad blocker may be preventing Google reCAPTCHA from loading.' });
+      return;
     }
 
     if (!formData.acceptedTerms) {

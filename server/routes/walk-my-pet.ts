@@ -51,14 +51,14 @@ router.post('/walkers/register', async (req, res) => {
     }
 
     const { captchaToken, ...bodyWithoutToken } = req.body;
-    if (captchaToken) {
-      const captchaResult = await verifyCaptchaToken(captchaToken, 'provider_register');
-      if (!captchaResult.valid) {
-        logger.warn('[Walk My Pet] Walker registration blocked by reCAPTCHA', { reason: captchaResult.reason, score: captchaResult.score, userId });
-        return res.status(400).json({ error: 'Security check failed. Please try again.', reason: captchaResult.reason });
-      }
-    } else {
-      logger.warn('[Walk My Pet] No captchaToken in walker registration — reCAPTCHA may not have loaded', { userId });
+    if (!captchaToken) {
+      logger.warn('[Walk My Pet] Walker registration rejected — missing captchaToken', { userId });
+      return res.status(400).json({ error: 'Security verification token required. Please refresh and try again.', errorCode: 'CAPTCHA_REQUIRED' });
+    }
+    const captchaResult = await verifyCaptchaToken(captchaToken, 'provider_register');
+    if (!captchaResult.valid) {
+      logger.warn('[Walk My Pet] Walker registration blocked by reCAPTCHA', { reason: captchaResult.reason, score: captchaResult.score, userId });
+      return res.status(400).json({ error: 'Security check failed. Please refresh and try again.', reason: captchaResult.reason });
     }
 
     const walkerData: InsertWalkerProfile = {

@@ -1404,8 +1404,10 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       const captchaToken = await executeReCaptcha('login');
       if (!captchaToken) {
-        logger.warn('[SignIn] executeReCaptcha returned null — reCAPTCHA may not have loaded; proceeding without client-side token');
-        toast({ title: language === 'he' ? 'אימות אבטחה' : 'Security check', description: language === 'he' ? 'ממשיך ללא אימות — ייתכן שחסום. לחץ שוב על כניסה לניסיון חוזר.' : 'Security check could not run. Click Sign In again to retry if sign-in fails.' });
+        logger.error('[SignIn] executeReCaptcha returned null — cannot sign in without security token');
+        toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'אנא רענן את הדף ונסה שוב. אם הבעיה נמשכת, ייתכן שחוסם פרסומות מונע טעינת Google reCAPTCHA.' : 'Please refresh the page and try again. If the issue persists, an ad blocker may be preventing Google reCAPTCHA from loading.' });
+        setLoading(false);
+        return;
       }
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
       
@@ -1414,7 +1416,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ idToken, ...(captchaToken ? { captchaToken } : {}) }),
+        body: JSON.stringify({ idToken, captchaToken, signInMethod: 'email' }),
       });
 
       if (!sessionResponse.ok) {

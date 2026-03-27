@@ -922,15 +922,18 @@ self.addEventListener('notificationclick', (event) => {
       }
 
       // reCAPTCHA server-side enforcement for email/password sign-in.
-      // Token is optional to preserve graceful degradation (phone/Google OAuth flows don't send one).
-      if (captchaToken) {
+      // Only email/password flows send signInMethod: 'email'; Google/phone OAuth flows don't send captchaToken.
+      const { signInMethod } = req.body;
+      if (signInMethod === 'email') {
+        if (!captchaToken) {
+          logger.warn('[Session] Email sign-in rejected — missing captchaToken', { traceId });
+          return res.status(400).json({ error: 'Security verification token required', errorCode: 'CAPTCHA_REQUIRED' });
+        }
         const captchaResult = await verifyCaptchaToken(captchaToken, 'login');
         if (!captchaResult.valid) {
           logger.warn('[Session] Sign-in blocked by reCAPTCHA', { reason: captchaResult.reason, score: captchaResult.score, traceId });
-          return res.status(400).json({ error: 'Security check failed. Please try again.', reason: captchaResult.reason });
+          return res.status(400).json({ error: 'Security check failed. Please refresh and try again.', reason: captchaResult.reason });
         }
-      } else {
-        logger.warn('[Session] No captchaToken provided — reCAPTCHA may not have loaded (ad-blocker/network)', { traceId });
       }
 
       // Pre-validate token for privileged role security checks before creating the session cookie.
@@ -10474,14 +10477,14 @@ self.addEventListener('notificationclick', (event) => {
         });
       }
 
-      if (captchaToken) {
-        const captchaResult = await verifyCaptchaToken(captchaToken, 'signup');
-        if (!captchaResult.valid) {
-          logger.warn('[CreateProfile] reCAPTCHA Enterprise rejected token', { reason: captchaResult.reason, source: captchaResult.source });
-          return res.status(403).json({ success: false, error: 'Security verification failed' });
-        }
-      } else {
-        return res.status(400).json({ success: false, error: 'Security verification token required.' });
+      if (!captchaToken) {
+        logger.warn('[CreateProfile] Missing captchaToken in signup request');
+        return res.status(400).json({ success: false, error: 'Security verification token required.', errorCode: 'CAPTCHA_REQUIRED' });
+      }
+      const captchaResult = await verifyCaptchaToken(captchaToken, 'signup');
+      if (!captchaResult.valid) {
+        logger.warn('[CreateProfile] reCAPTCHA rejected token', { reason: captchaResult.reason, source: captchaResult.source });
+        return res.status(400).json({ success: false, error: 'Security check failed. Please refresh and try again.', reason: captchaResult.reason });
       }
       
       const validationErrors: string[] = [];

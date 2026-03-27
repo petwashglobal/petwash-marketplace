@@ -347,14 +347,14 @@ router.get('/sitters/:id', async (req, res) => {
 router.post('/sitters', async (req, res) => {
   try {
     const { captchaToken, ...bodyWithoutToken } = req.body;
-    if (captchaToken) {
-      const captchaResult = await verifyCaptchaToken(captchaToken, 'provider_register');
-      if (!captchaResult.valid) {
-        logger.warn('[Sitter Suite] Sitter registration blocked by reCAPTCHA', { reason: captchaResult.reason, score: captchaResult.score });
-        return res.status(400).json({ error: 'Security check failed. Please try again.', reason: captchaResult.reason });
-      }
-    } else {
-      logger.warn('[Sitter Suite] No captchaToken in sitter registration — reCAPTCHA may not have loaded');
+    if (!captchaToken) {
+      logger.warn('[Sitter Suite] Sitter registration rejected — missing captchaToken');
+      return res.status(400).json({ error: 'Security verification token required. Please refresh and try again.', errorCode: 'CAPTCHA_REQUIRED' });
+    }
+    const captchaResult = await verifyCaptchaToken(captchaToken, 'provider_register');
+    if (!captchaResult.valid) {
+      logger.warn('[Sitter Suite] Sitter registration blocked by reCAPTCHA', { reason: captchaResult.reason, score: captchaResult.score });
+      return res.status(400).json({ error: 'Security check failed. Please refresh and try again.', reason: captchaResult.reason });
     }
 
     const validatedData = insertSitterProfileSchema.parse(bodyWithoutToken);
