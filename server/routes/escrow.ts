@@ -3,6 +3,9 @@ import EscrowService, { type EscrowPayment } from "../services/EscrowService";
 import { requireAuth } from "../customAuth";
 import { requireAdmin } from "../adminAuth";
 import { logger } from "../lib/logger";
+import { logReceipt, appendFormSubmission, logOpsLiveFeed } from "../services/googleSheetsIntegration";
+
+const SHEETS_DISPUTE_CASES = 'Dispute Cases';
 
 const router = express.Router();
 
@@ -66,6 +69,36 @@ router.post("/:escrowId/release", requireAuth, async (req, res) => {
 
     await EscrowService.releaseEscrowPayment(escrowId, callerId);
     res.json({ success: true });
+
+    // ── Fire-and-forget: Sheets receipt + live feed ────────────────────────
+    setImmediate(() => {
+      const amountStr = String(escrow.amount || '');
+      Promise.all([
+        logReceipt({
+          receiptId: `escrow-release-${escrowId}`,
+          transactionId: escrow.nayaxTransactionId || escrowId,
+          customerName: '',
+          email: '',
+          amount: amountStr,
+          paymentMethod: 'Escrow Release',
+          platform: 'PetWash',
+          serviceType: 'Escrow',
+          description: `Escrow released — booking ${escrow.bookingId}`,
+          status: 'Released',
+        }),
+        logOpsLiveFeed({
+          eventType: 'escrow.released',
+          source: 'escrow_route',
+          entityId: escrowId,
+          bookingId: escrow.bookingId,
+          amountILS: amountStr,
+          platform: 'PetWash',
+          status: 'released',
+          actor: callerId,
+          details: `customer released escrow to provider`,
+        }),
+      ]).catch(e => logger.warn('[Escrow] Sheets logging error (non-blocking)', e));
+    });
   } catch (error: any) {
     logger.error("[Escrow] Error releasing", { error: error.message });
     res.status(error.status ?? 500).json({ error: error.message });
@@ -78,10 +111,40 @@ router.post("/:escrowId/refund", requireAuth, async (req, res) => {
     const { reason } = req.body;
     const callerId = req.user!.uid;
 
-    await assertEscrowParticipant(escrowId, callerId);
+    const escrow = await assertEscrowParticipant(escrowId, callerId);
 
     await EscrowService.refundEscrowPayment(escrowId, reason, callerId);
     res.json({ success: true });
+
+    // ── Fire-and-forget: Sheets receipt + live feed ────────────────────────
+    setImmediate(() => {
+      const amountStr = String(escrow.amount || '');
+      Promise.all([
+        logReceipt({
+          receiptId: `escrow-refund-${escrowId}`,
+          transactionId: escrow.nayaxTransactionId || escrowId,
+          customerName: '',
+          email: '',
+          amount: amountStr,
+          paymentMethod: 'Escrow Refund',
+          platform: 'PetWash',
+          serviceType: 'Escrow',
+          description: `Escrow refunded — booking ${escrow.bookingId}${reason ? ` — ${reason}` : ''}`,
+          status: 'Refunded',
+        }),
+        logOpsLiveFeed({
+          eventType: 'escrow.refunded',
+          source: 'escrow_route',
+          entityId: escrowId,
+          bookingId: escrow.bookingId,
+          amountILS: amountStr,
+          platform: 'PetWash',
+          status: 'refunded',
+          actor: callerId,
+          details: reason || 'escrow refunded to customer',
+        }),
+      ]).catch(e => logger.warn('[Escrow] Sheets logging error (non-blocking)', e));
+    });
   } catch (error: any) {
     logger.error("[Escrow] Error refunding", { error: error.message });
     res.status(error.status ?? 500).json({ error: error.message });
@@ -94,10 +157,45 @@ router.post("/:escrowId/dispute", requireAuth, async (req, res) => {
     const { reason } = req.body;
     const callerId = req.user!.uid;
 
-    await assertEscrowParticipant(escrowId, callerId);
+    const escrow = await assertEscrowParticipant(escrowId, callerId);
 
     await EscrowService.disputeEscrowPayment(escrowId, reason, callerId);
     res.json({ success: true });
+
+    // ── Fire-and-forget: Dispute cases sheet + live feed ──────────────────
+    setImmediate(() => {
+      const amountStr = String(escrow.amount || '');
+      Promise.all([
+        appendFormSubmission(SHEETS_DISPUTE_CASES, {
+          caseId: `escrow-dispute-${escrowId}`,
+          bookingId: escrow.bookingId,
+          customerId: escrow.customerId,
+          providerId: escrow.providerId,
+          serviceType: 'Escrow',
+          amountInDispute: amountStr,
+          customerClaim: reason || '',
+          providerResponse: '',
+          evidenceUrls: '',
+          assignedTo: '',
+          status: 'Open',
+          resolution: '',
+          resolutionDate: '',
+          compensation: '',
+          notes: `Dispute raised by ${callerId}`,
+        }),
+        logOpsLiveFeed({
+          eventType: 'escrow.disputed',
+          source: 'escrow_route',
+          entityId: escrowId,
+          bookingId: escrow.bookingId,
+          amountILS: amountStr,
+          platform: 'PetWash',
+          status: 'disputed',
+          actor: callerId,
+          details: reason || 'escrow dispute opened',
+        }),
+      ]).catch(e => logger.warn('[Escrow] Sheets logging error (non-blocking)', e));
+    });
   } catch (error: any) {
     logger.error("[Escrow] Error disputing", { error: error.message });
     res.status(error.status ?? 500).json({ error: error.message });

@@ -24,6 +24,9 @@ import { paymentIntents, bookings, bookingStatusHistory } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { createIPAllowlist } from '../middleware/ipAllowlist';
 import { NayaxOnlinePaymentService } from '../services/NayaxOnlinePaymentService';
+import { logReceipt, appendFormSubmission, logOpsLiveFeed } from '../services/googleSheetsIntegration';
+
+const SHEETS_API_ERRORS = 'API Error Log';
 
 const router = express.Router();
 
@@ -493,6 +496,37 @@ router.post(
           amountCents: payload.amountCents,
         });
 
+        // ── [Ops] Fire-and-forget: Sheets receipt + live feed ─────────────────
+        setImmediate(() => {
+          const amountILS = (payload.amountCents / 100).toFixed(2);
+          Promise.all([
+            logReceipt({
+              receiptId: `nayax-${payload.transactionId}`,
+              transactionId: payload.transactionId,
+              customerName: '',
+              email: '',
+              amount: amountILS,
+              paymentMethod: 'Nayax Online',
+              platform: booking.platform || 'PetWash',
+              serviceType: booking.serviceType || 'Booking',
+              description: `Nayax payment confirmed — booking ${payload.bookingId}`,
+              status: 'Completed',
+            }),
+            logOpsLiveFeed({
+              eventType: 'payment.success',
+              source: 'nayax_webhook',
+              entityId: payload.transactionId,
+              bookingId: payload.bookingId,
+              amountILS,
+              currency: payload.currency || 'ILS',
+              platform: booking.platform || 'PetWash',
+              status: 'confirmed',
+              actor: 'nayax',
+              details: `booking → pending_confirmation`,
+            }),
+          ]).catch(e => logger.warn('[NayaxPaymentWebhook] Sheets logging error (non-blocking)', e));
+        });
+
       } else if (payload.event === 'payment.failed') {
         // ── [7] Failed ────────────────────────────────────────────────────────
         await db
@@ -503,6 +537,38 @@ router.post(
         logger.warn('[NayaxPaymentWebhook] Payment failed — booking marked payment_failed', {
           bookingId: payload.bookingId,
           transactionId: payload.transactionId,
+        });
+
+        // ── [Ops] Fire-and-forget: API errors sheet + live feed ───────────────
+        setImmediate(() => {
+          Promise.all([
+            appendFormSubmission(SHEETS_API_ERRORS, {
+              errorId: `nayax-fail-${payload.transactionId}`,
+              endpoint: '/api/webhooks/nayax/payment',
+              method: 'POST',
+              statusCode: '402',
+              errorMessage: `payment.failed — txId: ${payload.transactionId}`,
+              userId: booking.customerId || '',
+              ipAddress: '',
+              responseTimeMs: '',
+              requestSizeKB: '',
+              service: 'nayax_payment',
+              resolved: 'false',
+              notes: `bookingId: ${payload.bookingId}`,
+            }),
+            logOpsLiveFeed({
+              eventType: 'payment.failed',
+              source: 'nayax_webhook',
+              entityId: payload.transactionId,
+              bookingId: payload.bookingId,
+              amountILS: payload.amountCents ? (payload.amountCents / 100).toFixed(2) : '',
+              currency: payload.currency || 'ILS',
+              platform: booking.platform || 'PetWash',
+              status: 'payment_failed',
+              actor: 'nayax',
+              details: `booking status → payment_failed`,
+            }),
+          ]).catch(e => logger.warn('[NayaxPaymentWebhook] Sheets logging error (non-blocking)', e));
         });
 
       } else if (payload.event === 'payment.expired') {
@@ -517,6 +583,37 @@ router.post(
           bookingId: payload.bookingId,
         });
 
+        // ── [Ops] Fire-and-forget: API errors sheet + live feed ───────────────
+        setImmediate(() => {
+          Promise.all([
+            appendFormSubmission(SHEETS_API_ERRORS, {
+              errorId: `nayax-expired-${payload.bookingId}`,
+              endpoint: '/api/webhooks/nayax/payment',
+              method: 'POST',
+              statusCode: '408',
+              errorMessage: `payment.expired — session timed out`,
+              userId: booking.customerId || '',
+              ipAddress: '',
+              responseTimeMs: '',
+              requestSizeKB: '',
+              service: 'nayax_payment',
+              resolved: 'false',
+              notes: `bookingId: ${payload.bookingId}`,
+            }),
+            logOpsLiveFeed({
+              eventType: 'payment.expired',
+              source: 'nayax_webhook',
+              entityId: payload.sessionId || payload.bookingId,
+              bookingId: payload.bookingId,
+              currency: 'ILS',
+              platform: booking.platform || 'PetWash',
+              status: 'expired',
+              actor: 'nayax',
+              details: `payment session expired — booking reverted to draft`,
+            }),
+          ]).catch(e => logger.warn('[NayaxPaymentWebhook] Sheets logging error (non-blocking)', e));
+        });
+
       } else if (payload.event === 'payment.cancelled') {
         // ── [7] Customer cancelled ────────────────────────────────────────────
         await db
@@ -526,6 +623,21 @@ router.post(
 
         logger.info('[NayaxPaymentWebhook] Payment cancelled by customer — booking reverted to draft', {
           bookingId: payload.bookingId,
+        });
+
+        // ── [Ops] Fire-and-forget: live feed ─────────────────────────────────
+        setImmediate(() => {
+          logOpsLiveFeed({
+            eventType: 'payment.cancelled',
+            source: 'nayax_webhook',
+            entityId: payload.sessionId || payload.bookingId,
+            bookingId: payload.bookingId,
+            currency: 'ILS',
+            platform: booking.platform || 'PetWash',
+            status: 'cancelled',
+            actor: 'customer',
+            details: `customer cancelled payment — booking reverted to draft`,
+          }).catch(e => logger.warn('[NayaxPaymentWebhook] Sheets logging error (non-blocking)', e));
         });
 
       } else {

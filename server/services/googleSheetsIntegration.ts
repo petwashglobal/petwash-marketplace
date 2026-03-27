@@ -47,6 +47,7 @@ const SHEETS = {
   CLUB_MEMBERS: 'Club Members',
   QUICK_BOOKINGS: 'Quick Bookings',
   LEGAL_AGREEMENTS: 'Legal Agreements',
+  OPS_LIVE_FEED: 'Ops Live Feed',
 } as const;
 
 interface GoogleSheetsClient {
@@ -231,6 +232,10 @@ const SHEET_HEADERS: Record<string, string[]> = {
     'Timestamp', 'Signature ID', 'Agreement ID', 'Version', 'Full Name',
     'ID Number', 'Email', 'Department', 'Company', 'Company Reg No',
     'Status', 'IP Address'
+  ],
+  [SHEETS.OPS_LIVE_FEED]: [
+    'Timestamp', 'Event Type', 'Source', 'Entity ID', 'Booking ID',
+    'Amount (ILS)', 'Currency', 'Platform', 'Status', 'Actor', 'Details',
   ],
 };
 
@@ -548,6 +553,10 @@ async function initializeSheetHeaders(sheets: any, spreadsheetId: string, only?:
       'Timestamp', 'Error ID', 'Endpoint', 'Method', 'Status Code',
       'Error Message', 'User ID', 'IP Address', 'Response Time (ms)',
       'Request Size (KB)', 'Service', 'Resolved', 'Notes'
+    ],
+    [SHEETS.OPS_LIVE_FEED]: [
+      'Timestamp', 'Event Type', 'Source', 'Entity ID', 'Booking ID',
+      'Amount (ILS)', 'Currency', 'Platform', 'Status', 'Actor', 'Details',
     ],
   };
 
@@ -1385,6 +1394,37 @@ export async function logOnboardingCase(oCase: {
 }
 
 /**
+ * Ops Live Feed — master real-time ops log
+ * Fire-and-forget: captures Nayax payments, escrow state changes, and failures
+ * in a single chronological tab for operations monitoring.
+ */
+export async function logOpsLiveFeed(entry: {
+  eventType: string;
+  source: string;
+  entityId: string;
+  bookingId?: string;
+  amountILS?: string | number;
+  currency?: string;
+  platform?: string;
+  status: string;
+  actor?: string;
+  details?: string;
+}): Promise<void> {
+  await appendFormSubmission(SHEETS.OPS_LIVE_FEED, {
+    eventType:  entry.eventType,
+    source:     entry.source,
+    entityId:   entry.entityId,
+    bookingId:  entry.bookingId || '',
+    amountILS:  entry.amountILS !== undefined ? String(entry.amountILS) : '',
+    currency:   entry.currency || 'ILS',
+    platform:   entry.platform || 'PetWash',
+    status:     entry.status,
+    actor:      entry.actor || 'system',
+    details:    entry.details || '',
+  });
+}
+
+/**
  * Get spreadsheet URL for admin dashboard
  */
 export function getSpreadsheetUrl(): string | null {
@@ -1418,6 +1458,7 @@ export const GoogleSheetsService = {
   logSecurityEventToSheet,
   logConsentEvent,
   logOnboardingCase,
+  logOpsLiveFeed,
   getSpreadsheetUrl,
   getPendingRetryCount,
   processStartupRetries,
