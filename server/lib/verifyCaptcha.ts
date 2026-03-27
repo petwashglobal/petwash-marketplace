@@ -156,7 +156,7 @@ async function verifyWithStandardV3(token: string): Promise<CaptchaResult | null
       // Other unknown errors — fall through to fail-open
       return null;
     }
-    if (score < 0.3) {
+    if (score < 0.5) {
       return { valid: false, score, source: 'standard-v3', reason: 'low_score' };
     }
     return { valid: true, score, source: 'standard-v3' };
@@ -238,7 +238,7 @@ export async function verifyCaptchaToken(token: string, action: string): Promise
           }
         } else {
           // Token is valid — check score
-          if (score < 0.3) {
+          if (score < 0.5) {
             return { valid: false, score, source: `enterprise-${enterpriseAuth.type}`, reason: 'low_score' };
           }
           return { valid: true, score, source: `enterprise-${enterpriseAuth.type}` };

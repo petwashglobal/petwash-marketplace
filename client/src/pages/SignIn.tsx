@@ -1405,7 +1405,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       const captchaToken = await executeReCaptcha('login');
       if (!captchaToken) {
         logger.error('[SignIn] executeReCaptcha returned null for email/password login — blocking submit');
-        toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'לא ניתן לאמת את הבקשה, אנא רענן את הדף ונסה שוב' : 'Could not verify the request. Please refresh and try again.' });
+        toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'לא ניתן לאמת את הבקשה. אנא נסה שוב.' : 'Could not verify the request. Please try again in a moment.' });
         setLoading(false);
         return;
       }

@@ -36,6 +36,7 @@ import VATCalculatorService from '../services/VATCalculatorService';
 import { logger } from '../lib/logger';
 import { syncChatToBookingStatus, checkCancellationWindow } from '../lib/booking-chat-sync';
 import { backupFinancialDocument } from '../services/gcsBackupService';
+import { verifyCaptchaToken } from '../lib/verifyCaptcha';
 
 const router = Router();
 
@@ -49,8 +50,15 @@ router.post('/walkers/register', async (req, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
+    const { captchaToken, ...bodyWithoutToken } = req.body;
+    const captchaResult = await verifyCaptchaToken(captchaToken || '', 'provider_register');
+    if (!captchaResult.valid) {
+      logger.warn('[Walk My Pet] Walker registration blocked by reCAPTCHA', { reason: captchaResult.reason, score: captchaResult.score, userId });
+      return res.status(403).json({ error: 'Security check failed. Please try again.' });
+    }
+
     const walkerData: InsertWalkerProfile = {
-      ...req.body,
+      ...bodyWithoutToken,
       userId,
       walkerId: `WALKER-${crypto.randomUUID()}`,
       verificationStatus: 'pending',

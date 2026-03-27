@@ -4,6 +4,7 @@ import { auth } from "@/lib/firebase";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { signInWithGoogle } from "@/lib/auth-guardian-2025";
 import { apiRequest } from "@/lib/queryClient";
+import { executeReCaptcha } from "@/components/ReCaptcha";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -131,6 +132,13 @@ export default function JoinAsWalker() {
   async function handleSubmit() {
     if (!user) { toast({ title: "Please sign in first", variant: "destructive" }); return; }
     if (!form.agreeToTerms || !form.agreeToBackground) { toast({ title: "Please accept all agreements", variant: "destructive" }); return; }
+
+    const captchaToken = await executeReCaptcha('provider_register');
+    if (!captchaToken) {
+      toast({ title: "Security check failed", description: "Please try again in a moment.", variant: "destructive" });
+      return;
+    }
+
     setSubmitting(true);
     try {
       await apiRequest("POST", "/api/walk-my-pet/walkers/register", {
@@ -162,6 +170,7 @@ export default function JoinAsWalker() {
         displayName: `${form.firstName} ${form.lastName}`,
         isAvailable: false,
         isActive: true,
+        captchaToken,
       });
       navigate('/provider/pending');
     } catch (err: unknown) {
@@ -412,7 +421,16 @@ export default function JoinAsWalker() {
             </div>
           )}
 
-          <div className="flex justify-between mt-8 pt-6 border-t">
+          {step === 4 && (
+            <p className="text-center text-[11px] text-slate-400 mt-6">
+              Protected by Google reCAPTCHA —{" "}
+              <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-600">Privacy</a>
+              {" · "}
+              <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-600">Terms</a>
+            </p>
+          )}
+
+          <div className="flex justify-between mt-4 pt-6 border-t">
             {step > 1 ? (
               <Button variant="outline" onClick={() => setStep(s => (s - 1) as Step)}>
                 <ChevronLeft className="h-4 w-4 mr-1" /> Back

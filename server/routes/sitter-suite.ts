@@ -42,6 +42,7 @@ import VATCalculatorService from '../services/VATCalculatorService';
 import { syncChatToBookingStatus, checkCancellationWindow } from '../lib/booking-chat-sync';
 import { backupFinancialDocument } from '../services/gcsBackupService';
 import multer from 'multer';
+import { verifyCaptchaToken } from '../lib/verifyCaptcha';
 import { storage, auth } from '../lib/firebase-admin';
 
 const router = Router();
@@ -345,7 +346,14 @@ router.get('/sitters/:id', async (req, res) => {
  */
 router.post('/sitters', async (req, res) => {
   try {
-    const validatedData = insertSitterProfileSchema.parse(req.body);
+    const { captchaToken, ...bodyWithoutToken } = req.body;
+    const captchaResult = await verifyCaptchaToken(captchaToken || '', 'provider_register');
+    if (!captchaResult.valid) {
+      logger.warn('[Sitter Suite] Sitter registration blocked by reCAPTCHA', { reason: captchaResult.reason, score: captchaResult.score });
+      return res.status(403).json({ error: 'Security check failed. Please try again.' });
+    }
+
+    const validatedData = insertSitterProfileSchema.parse(bodyWithoutToken);
     
     const [newSitter] = await db
       .insert(sitterProfiles)

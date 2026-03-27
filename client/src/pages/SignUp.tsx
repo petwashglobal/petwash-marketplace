@@ -251,7 +251,7 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     const freshCaptchaToken = await executeReCaptcha('register');
     if (!freshCaptchaToken) {
       logger.error('[SignUp] executeReCaptcha returned null — blocking registration');
-      toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'לא ניתן לאמת את הבקשה, אנא רענן את הדף ונסה שוב' : 'Could not verify the request. Please refresh and try again.' });
+      toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'לא ניתן לאמת את הבקשה. אנא נסה שוב.' : 'Could not verify the request. Please try again in a moment.' });
       return;
     }
 
