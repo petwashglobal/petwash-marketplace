@@ -921,27 +921,28 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(400).json({ error: 'ID token required', errorCode: 'MISSING_TOKEN' });
       }
 
-      // reCAPTCHA server-side enforcement for email/password sign-in.
-      // Only email/password flows send signInMethod: 'email'; Google/phone OAuth flows don't send captchaToken.
-      const { signInMethod } = req.body;
-      if (signInMethod === 'email') {
-        if (!captchaToken) {
-          logger.warn('[Session] Email sign-in rejected — missing captchaToken', { traceId });
-          return res.status(400).json({ error: 'Security verification token required', errorCode: 'CAPTCHA_REQUIRED' });
-        }
-        const captchaResult = await verifyCaptchaToken(captchaToken, 'login');
-        if (!captchaResult.valid) {
-          logger.warn('[Session] Sign-in blocked by reCAPTCHA', { reason: captchaResult.reason, score: captchaResult.score, traceId });
-          return res.status(400).json({ error: 'Security check failed. Please refresh and try again.', reason: captchaResult.reason });
-        }
-      }
-
-      // Pre-validate token for privileged role security checks before creating the session cookie.
+      // Pre-validate token — used for both privileged-role checks AND reCAPTCHA enforcement.
+      // We decode the Firebase ID token first so we can trust sign_in_provider (server-verified, not client-supplied).
       try {
         const preDecoded = await firebaseAdminModule.auth.verifyIdToken(idToken, true);
         const role = (preDecoded as any).role || (preDecoded as any)['custom:role'] || '';
         const PRIVILEGED_ROLES = ['admin', 'management', 'super_admin', 'ceo', 'finance'];
         const isPrivileged = PRIVILEGED_ROLES.includes(role);
+
+        // reCAPTCHA enforcement: require captchaToken for password sign-in.
+        // sign_in_provider comes from the decoded Firebase token — cannot be spoofed by the client.
+        const signInProvider = (preDecoded as any).firebase?.sign_in_provider || '';
+        if (signInProvider === 'password') {
+          if (!captchaToken) {
+            logger.warn('[Session] Email/password sign-in rejected — missing captchaToken', { uid: preDecoded.uid, traceId });
+            return res.status(400).json({ error: 'Security verification token required', errorCode: 'CAPTCHA_REQUIRED' });
+          }
+          const captchaResult = await verifyCaptchaToken(captchaToken, 'login');
+          if (!captchaResult.valid) {
+            logger.warn('[Session] Sign-in blocked by reCAPTCHA', { reason: captchaResult.reason, score: captchaResult.score, uid: preDecoded.uid, traceId });
+            return res.status(400).json({ error: 'Security check failed. Please refresh and try again.', reason: captchaResult.reason });
+          }
+        }
 
         // 1. emailVerified enforcement — privileged users must have a verified email.
         if (isPrivileged && !preDecoded.email_verified) {
