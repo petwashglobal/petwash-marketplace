@@ -8,6 +8,7 @@ import {
   insertSecureDocumentSchema,
   type SecureDocument
 } from '../../shared/schema-enterprise';
+import { kycQuarantineObjects } from '@shared/schema';
 import { 
   loadUserRole, 
   checkPermission, 
@@ -293,6 +294,19 @@ router.post(
         action: 'read',
         expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
       });
+
+      // Compliance: register biometric/identity files for deletion (24h max — Israeli privacy law)
+      const BIOMETRIC_DOC_TYPES = new Set(['selfie', 'id']);
+      if (BIOMETRIC_DOC_TYPES.has(documentType ?? '')) {
+        const uploaderUid = req.firebaseUser!.uid;
+        const deleteBy = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        const primaryKey = `documents/${new Date().getFullYear()}/${uniqueFilename}`;
+        const backupKey = `documents/backups/${uniqueFilename}`;
+        db.insert(kycQuarantineObjects).values([
+          { objectKey: primaryKey, providerUserId: uploaderUid, documentType: documentType!, storageSystem: 'gcs', deleteBy },
+          { objectKey: backupKey,  providerUserId: uploaderUid, documentType: documentType!, storageSystem: 'gcs', deleteBy },
+        ]).catch(e => logger.warn('[Documents] Quarantine register failed (non-fatal)', { uploaderUid, error: (e as Error).message }));
+      }
 
       // Insert document record
       const [newDocument] = await db.insert(secureDocuments).values({

@@ -19,10 +19,8 @@ import { logger } from '../lib/logger';
 import { loadUserRole, checkAccessLevel, type AuthenticatedRequest } from '../middleware/rbac';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
-import { ensureKycProviderFolder, uploadKycFileToDrive } from '../services/googleDriveBackupService';
 import { db } from '../db';
-import { providers } from '@shared/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { kycQuarantineObjects } from '@shared/schema';
 
 const router = Router();
 
@@ -130,6 +128,15 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
 
     logger.info(`KYC file uploaded: ${fileName}`);
 
+    // Register raw file for compliance deletion (24h max retention — Israeli privacy law)
+    db.insert(kycQuarantineObjects).values({
+      objectKey: fileName,
+      providerUserId: uid,
+      documentType: type,
+      storageSystem: 'firebase_storage',
+      deleteBy: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    }).catch(e => logger.warn('[KYC] Quarantine register failed (non-fatal)', { uid, error: (e as Error).message }));
+
     // Create/update KYC document in Firestore
     const kycData = {
       type: type as KYCType,
@@ -155,34 +162,6 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
       success: true,
       message: 'Document uploaded successfully. Under review.',
       filePath: fileName
-    });
-
-    // Non-blocking: upload KYC file to Google Drive and store folder URL on provider record
-    const fileBuffer = file.buffer;
-    const fileMimeType = file.mimetype;
-    setImmediate(async () => {
-      try {
-        // Derive a stable Drive filename from the document type
-        const ID_TYPES = new Set(['national_id', 'passport', 'drivers_license', 'residence_permit']);
-        const ext = fileMimeType === 'application/pdf' ? 'pdf'
-          : fileMimeType === 'image/png' ? 'png'
-          : 'jpg';
-        const driveFileName = ID_TYPES.has(type) ? `government_id.${ext}` : `${type}.${ext}`;
-
-        const { folderId, folderUrl } = await ensureKycProviderFolder(uid);
-        await uploadKycFileToDrive(folderId, driveFileName, fileBuffer, fileMimeType);
-        logger.info(`[KYC] Drive upload complete for ${uid}: ${driveFileName}`);
-
-        // Persist folder URL on any matching provider record(s)
-        await db
-          .update(providers)
-          .set({ driveFolderUrl: folderUrl })
-          .where(eq(providers.userId, uid));
-        logger.info(`[KYC] drive_folder_url saved for provider userId=${uid}`);
-      } catch (driveErr) {
-        // Non-blocking: KYC submission already succeeded — only log the failure
-        logger.warn('[KYC] Drive upload failed (non-blocking)', { uid, error: (driveErr as Error).message });
-      }
     });
 
     setImmediate(() => petWashOrchestrator.handleKYCSubmission({
@@ -255,29 +234,7 @@ router.get('/admin/pending', requireAdmin, async (req: Request, res: Response) =
     const limit = parseInt(req.query.limit as string) || 50;
     const pending = await getPendingKYCSubmissions(limit);
 
-    // Enrich each submission with drive_folder_url from PostgreSQL providers table
-    const uids = pending.map(s => s.uid);
-    let driveFolderMap: Record<string, string> = {};
-    if (uids.length > 0) {
-      try {
-        const rows = await db
-          .select({ userId: providers.userId, driveFolderUrl: providers.driveFolderUrl })
-          .from(providers)
-          .where(inArray(providers.userId, uids));
-        for (const row of rows) {
-          if (row.driveFolderUrl) driveFolderMap[row.userId] = row.driveFolderUrl;
-        }
-      } catch (pgErr) {
-        logger.warn('[KYC] Could not fetch drive_folder_url from providers', pgErr);
-      }
-    }
-
-    const enriched = pending.map(s => ({
-      ...s,
-      driveFolderUrl: driveFolderMap[s.uid] || null,
-    }));
-
-    res.json({ submissions: enriched });
+    res.json({ submissions: pending });
   } catch (error: any) {
     logger.error('Get pending submissions error', error);
     res.status(500).json({ error: error.message });
