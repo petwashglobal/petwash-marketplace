@@ -255,6 +255,25 @@
 }
 
 /* ===========================
+   AUTH PAGE CONTRAST PROTECTION
+   Applied when [data-auth-page="true"] is on <html> (set by SignUp/SignIn on mount).
+   Ensures all third-party/outline buttons (Google, Apple, Facebook) render with
+   white background and dark text regardless of dark-mode class flash timing.
+   =========================== */
+
+[data-auth-page] button:not([class*="luxury-btn-primary"]):not([class*="luxury-gradient"]):not([class*="bg-gradient"]) {
+  --tw-gradient-from: transparent !important;
+  --tw-gradient-to: transparent !important;
+  --tw-gradient-stops: transparent !important;
+}
+
+[data-auth-page] .luxury-btn-secondary,
+[data-auth-page] .luxury-btn-ghost,
+[data-auth-page] .luxury-btn-outline {
+  color: #1a202c;
+}
+
+/* ===========================
    PREMIUM SPACING
    =========================== */
 

@@ -213,7 +213,7 @@ export default function JoinAsSitter() {
           {!user && (
             <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-center">
               <p className="text-amber-800 text-sm mb-3">Sign in to save your application</p>
-              <Button onClick={handleGoogleSignIn} disabled={googleLoading} variant="outline" className="w-full border-slate-300">
+              <Button onClick={handleGoogleSignIn} disabled={googleLoading} variant="outline" className="w-full border-slate-300 bg-white hover:bg-gray-50 text-gray-800">
                 {googleLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FaGoogle className="h-4 w-4 mr-2 text-red-500" />}
                 Continue with Google
               </Button>
