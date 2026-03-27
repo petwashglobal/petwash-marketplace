@@ -347,10 +347,14 @@ router.get('/sitters/:id', async (req, res) => {
 router.post('/sitters', async (req, res) => {
   try {
     const { captchaToken, ...bodyWithoutToken } = req.body;
-    const captchaResult = await verifyCaptchaToken(captchaToken || '', 'provider_register');
-    if (!captchaResult.valid) {
-      logger.warn('[Sitter Suite] Sitter registration blocked by reCAPTCHA', { reason: captchaResult.reason, score: captchaResult.score });
-      return res.status(400).json({ error: 'Security check failed. Please try again.', reason: captchaResult.reason });
+    if (captchaToken) {
+      const captchaResult = await verifyCaptchaToken(captchaToken, 'provider_register');
+      if (!captchaResult.valid) {
+        logger.warn('[Sitter Suite] Sitter registration blocked by reCAPTCHA', { reason: captchaResult.reason, score: captchaResult.score });
+        return res.status(400).json({ error: 'Security check failed. Please try again.', reason: captchaResult.reason });
+      }
+    } else {
+      logger.warn('[Sitter Suite] No captchaToken in sitter registration — reCAPTCHA may not have loaded');
     }
 
     const validatedData = insertSitterProfileSchema.parse(bodyWithoutToken);

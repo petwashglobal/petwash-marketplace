@@ -914,11 +914,23 @@ self.addEventListener('notificationclick', (event) => {
         traceId,
         userAgent: req.headers['user-agent']?.substring(0, 50)
       });
-      const { idToken, expiresInMs = 432000000 } = req.body;
+      const { idToken, expiresInMs = 432000000, captchaToken } = req.body;
       
       if (!idToken) {
         logger.warn('[Session] Missing ID token in request - client error (400)', { traceId });
         return res.status(400).json({ error: 'ID token required', errorCode: 'MISSING_TOKEN' });
+      }
+
+      // reCAPTCHA server-side enforcement for email/password sign-in.
+      // Token is optional to preserve graceful degradation (phone/Google OAuth flows don't send one).
+      if (captchaToken) {
+        const captchaResult = await verifyCaptchaToken(captchaToken, 'login');
+        if (!captchaResult.valid) {
+          logger.warn('[Session] Sign-in blocked by reCAPTCHA', { reason: captchaResult.reason, score: captchaResult.score, traceId });
+          return res.status(400).json({ error: 'Security check failed. Please try again.', reason: captchaResult.reason });
+        }
+      } else {
+        logger.warn('[Session] No captchaToken provided — reCAPTCHA may not have loaded (ad-blocker/network)', { traceId });
       }
 
       // Pre-validate token for privileged role security checks before creating the session cookie.
