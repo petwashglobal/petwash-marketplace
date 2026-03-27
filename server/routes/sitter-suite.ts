@@ -356,6 +356,10 @@ router.post('/sitters', async (req, res) => {
       logger.warn('[Sitter Suite] Sitter registration blocked by reCAPTCHA', { reason: captchaResult.reason, score: captchaResult.score });
       return res.status(400).json({ error: 'Security check failed. Please refresh and try again.', reason: captchaResult.reason });
     }
+    if (captchaResult.suspicious) {
+      logger.warn('[Sitter Suite] Suspicious traffic on sitter registration — step-up required', { score: captchaResult.score });
+      return res.status(400).json({ error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+    }
 
     const validatedData = insertSitterProfileSchema.parse(bodyWithoutToken);
     

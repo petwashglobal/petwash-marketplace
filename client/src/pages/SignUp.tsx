@@ -367,6 +367,13 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       if (!profileResponse.ok) {
         const errorData = await profileResponse.json().catch(() => ({}));
         logger.error("Profile creation API failed", { status: profileResponse.status, error: errorData });
+        if (errorData?.errorCode === 'STEP_UP_REQUIRED') {
+          // Clean up the Firebase user so they can retry cleanly
+          try { await user.delete(); } catch {}
+          toast({ variant: 'destructive', title: language === 'he' ? 'נדרש אימות נוסף' : 'Additional verification required', description: language === 'he' ? 'הגישה שלך נראית חריגה. נסה להירשם עם מספר הטלפון, או נסה מרשת אחרת.' : 'Your connection looks unusual. Try signing up with your phone number, or switch to a different network.' });
+          setLoading(false);
+          return;
+        }
         // Delete the Firebase user to avoid a zombie account (authenticated in Firebase
         // but missing the PostgreSQL profile). The user can try signing up again.
         try {
@@ -851,13 +858,6 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
                 </>
               )}
             </Button>
-
-            <p className="text-center text-[10px] text-neutral-400 mt-1">
-              {language === 'he' ? 'מוגן על ידי' : 'Protected by'} Google reCAPTCHA —{' '}
-              <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-neutral-600">{language === 'he' ? 'פרטיות' : 'Privacy'}</a>
-              {' · '}
-              <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-neutral-600">{language === 'he' ? 'תנאים' : 'Terms'}</a>
-            </p>
 
             <div className="text-center text-sm pt-4 space-y-2">
               <p>

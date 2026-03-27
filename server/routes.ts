@@ -942,6 +942,10 @@ self.addEventListener('notificationclick', (event) => {
             logger.warn('[Session] Sign-in blocked by reCAPTCHA', { reason: captchaResult.reason, score: captchaResult.score, uid: preDecoded.uid, traceId });
             return res.status(400).json({ error: 'Security check failed. Please refresh and try again.', reason: captchaResult.reason });
           }
+          if (captchaResult.suspicious) {
+            logger.warn('[Session] Suspicious traffic on sign-in — step-up required', { score: captchaResult.score, uid: preDecoded.uid, traceId });
+            return res.status(400).json({ error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
+          }
         }
 
         // 1. emailVerified enforcement — privileged users must have a verified email.
@@ -10486,6 +10490,10 @@ self.addEventListener('notificationclick', (event) => {
       if (!captchaResult.valid) {
         logger.warn('[CreateProfile] reCAPTCHA rejected token', { reason: captchaResult.reason, source: captchaResult.source });
         return res.status(400).json({ success: false, error: 'Security check failed. Please refresh and try again.', reason: captchaResult.reason });
+      }
+      if (captchaResult.suspicious) {
+        logger.warn('[CreateProfile] Suspicious traffic on signup — step-up required', { score: captchaResult.score });
+        return res.status(400).json({ success: false, error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
       }
       
       const validationErrors: string[] = [];

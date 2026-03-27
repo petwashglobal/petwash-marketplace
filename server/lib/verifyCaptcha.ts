@@ -156,8 +156,11 @@ async function verifyWithStandardV3(token: string): Promise<CaptchaResult | null
       // Other unknown errors — fall through to fail-open
       return null;
     }
-    if (score < 0.5) {
+    if (score < SCORE_SUSPICIOUS) {
       return { valid: false, score, source: 'standard-v3', reason: 'low_score' };
+    }
+    if (score < SCORE_CLEAN) {
+      return { valid: true, suspicious: true, score, source: 'standard-v3' };
     }
     return { valid: true, score, source: 'standard-v3' };
   } catch (err: any) {
@@ -168,8 +171,16 @@ async function verifyWithStandardV3(token: string): Promise<CaptchaResult | null
 
 // ─── Public interface ─────────────────────────────────────────────────────────
 
+// Score tiers (Google 2026 guidance):
+//   0.7+          → clean traffic, allow
+//   0.4 – 0.69    → suspicious, allow on low-risk actions but step-up on high-risk
+//   below 0.4     → likely bot, block
+export const SCORE_CLEAN     = 0.7;
+export const SCORE_SUSPICIOUS = 0.4;
+
 export interface CaptchaResult {
   valid: boolean;
+  suspicious?: boolean; // true when 0.4 ≤ score < 0.7 — allow but require step-up on risky actions
   score: number;
   source: string;
   reason?: string;
@@ -237,9 +248,12 @@ export async function verifyCaptchaToken(token: string, action: string): Promise
             return { valid: false, score: 0, source: `enterprise-${enterpriseAuth.type}`, reason: errorCode || 'invalid_token' };
           }
         } else {
-          // Token is valid — check score
-          if (score < 0.5) {
+          // Token is valid — apply tiered score logic
+          if (score < SCORE_SUSPICIOUS) {
             return { valid: false, score, source: `enterprise-${enterpriseAuth.type}`, reason: 'low_score' };
+          }
+          if (score < SCORE_CLEAN) {
+            return { valid: true, suspicious: true, score, source: `enterprise-${enterpriseAuth.type}` };
           }
           return { valid: true, score, source: `enterprise-${enterpriseAuth.type}` };
         }

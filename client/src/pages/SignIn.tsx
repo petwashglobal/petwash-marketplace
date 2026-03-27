@@ -1420,6 +1420,12 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       });
 
       if (!sessionResponse.ok) {
+        const errBody = await sessionResponse.json().catch(() => ({}));
+        if (errBody?.errorCode === 'STEP_UP_REQUIRED') {
+          toast({ variant: 'destructive', title: language === 'he' ? 'נדרש אימות נוסף' : 'Additional verification required', description: language === 'he' ? 'הגישה שלך נראית חריגה. נסה להתחבר עם מספר הטלפון, או נסה מרשת אחרת.' : 'Your connection looks unusual. Try signing in with your phone number, or switch to a different network.' });
+          setLoading(false);
+          return;
+        }
         throw new Error('Failed to create session');
       }
 
@@ -2282,13 +2288,6 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   </>
                 )}
               </Button>
-
-              <p className="text-center text-[10px] text-neutral-400">
-                {language === 'he' ? 'מוגן על ידי' : 'Protected by'} Google reCAPTCHA —{' '}
-                <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-neutral-600">{language === 'he' ? 'פרטיות' : 'Privacy'}</a>
-                {' · '}
-                <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-neutral-600">{language === 'he' ? 'תנאים' : 'Terms'}</a>
-              </p>
 
               <div className="flex items-center gap-2.5 pt-1">
                 <input
