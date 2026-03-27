@@ -408,7 +408,6 @@ export async function registerRoutes(app: Express): Promise<void> {
     '/api/provider-training',
     '/api/israeli-compliance',
     '/api/provider-dashboard',
-    '/api/provider-applications',
     '/api/analytics',
     '/api/wallet-telemetry',
     '/api/platform-api',

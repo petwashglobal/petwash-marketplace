@@ -22,7 +22,7 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
     if (allLoading) return;
 
     if (!firebaseUser) {
-      setLocation("/signin");
+      setLocation("/admin/login");
       return;
     }
 
@@ -35,7 +35,7 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
     if (whoamiHasAccess || adminHasAccess || claimsHasAccess) return;
 
     if (!adminLoading && !whoamiLoading) {
-      setLocation("/signin");
+      setLocation("/admin/login");
     }
   }, [firebaseLoading, firebaseUser, adminLoading, admin, isError, setLocation, claims, claimsLoading, whoami, whoamiLoading, isSuperAdmin, whoamiRole, allLoading]);
 

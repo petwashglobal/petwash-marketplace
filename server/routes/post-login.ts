@@ -496,6 +496,7 @@ export async function getWhoami(req: Request, res: Response) {
       userStatus,
       role,
       missingFields,
+      isSuperAdmin: isSuperAdmin((user.email || '').toLowerCase()),
     });
   } catch (error: any) {
     logger.error(`[Whoami] Error: ${error.message}`, { error });
