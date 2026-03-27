@@ -743,7 +743,6 @@ if (isProduction) {
     import('./jobs/rebook-scheduler').then(m => m.startRebookScheduler()).catch(() => {});
     import('./jobs/exception-email').then(m => m.startExceptionEmailJob()).catch((e) => console.error('[ExceptionEmail] Failed to initialize:', e));
     import('./jobs/daily-close-reminder').then(m => m.startDailyCloseReminder()).catch((e) => console.error('[DailyCloseReminder] Failed to initialize:', e));
-    import('./jobs/kycDeletionJob').then(m => m.startKycDeletionJob()).catch((e) => console.error('[KycDeletion] Failed to initialize:', e));
 
     // Email Spend Guard — wire alarm callback so budget alerts reach nir.h@petwash.co.il
     import('./services/EmailSpendGuard').then(async ({ emailSpendGuard }) => {

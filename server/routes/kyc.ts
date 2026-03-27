@@ -19,8 +19,6 @@ import { logger } from '../lib/logger';
 import { loadUserRole, checkAccessLevel, type AuthenticatedRequest } from '../middleware/rbac';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
-import { db } from '../db';
-import { kycQuarantineObjects } from '@shared/schema';
 
 const router = Router();
 
@@ -127,15 +125,6 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     });
 
     logger.info(`KYC file uploaded: ${fileName}`);
-
-    // Register raw file for compliance deletion (24h max retention — Israeli privacy law)
-    db.insert(kycQuarantineObjects).values({
-      objectKey: fileName,
-      providerUserId: uid,
-      documentType: type,
-      storageSystem: 'firebase_storage',
-      deleteBy: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    }).catch(e => logger.warn('[KYC] Quarantine register failed (non-fatal)', { uid, error: (e as Error).message }));
 
     // Create/update KYC document in Firestore
     const kycData = {

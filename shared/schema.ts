@@ -14024,19 +14024,3 @@ export const selfHealingExecutions = pgTable("self_healing_executions", {
   executedBy:      varchar("executed_by", { length: 80 }).notNull().default('self_healing_engine'),
 });
 export type SelfHealingExecution = typeof selfHealingExecutions.$inferSelect;
-
-// ===== KYC QUARANTINE OBJECTS =====
-// Tracks raw identity/biometric files pending deletion (compliance retention policy)
-export const kycQuarantineObjects = pgTable("kyc_quarantine_objects", {
-  id: serial("id").primaryKey(),
-  objectKey: varchar("object_key").notNull(),
-  providerUserId: varchar("provider_user_id").notNull(),
-  documentType: varchar("document_type").notNull(),
-  storageSystem: varchar("storage_system").notNull(), // firebase_storage | gcs
-  createdAt: timestamp("created_at").defaultNow(),
-  deleteBy: timestamp("delete_by").notNull(),
-  deletedAt: timestamp("deleted_at"),
-  deletionStatus: varchar("deletion_status").default("pending"), // pending | completed | failed
-  reasonCode: varchar("reason_code"),
-});
-export type KycQuarantineObject = typeof kycQuarantineObjects.$inferSelect;
