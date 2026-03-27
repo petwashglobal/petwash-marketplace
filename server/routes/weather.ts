@@ -831,4 +831,149 @@ router.get('/comprehensive', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/weather/booking-check
+ * Lightweight weather advisory for the customer booking flow.
+ * Checks whether outdoor pet activity is safe for the requested date/location.
+ * Query params: lat, lng, date (YYYY-MM-DD, optional — defaults to today), lang (optional)
+ */
+router.get('/booking-check', async (req, res) => {
+  try {
+    const { lat, lng, date, lang } = req.query;
+    const language = validateLanguage(lang);
+
+    // Default to Tel Aviv if no coordinates given
+    const latitude  = lat  ? parseFloat(lat  as string) : 32.0853;
+    const longitude = lng  ? parseFloat(lng  as string) : 34.7818;
+
+    if (isNaN(latitude) || isNaN(longitude)) {
+      return res.status(400).json({ error: 'Invalid lat/lng' });
+    }
+
+    // Resolve the target date index (0 = today … 6)
+    const today = new Date();
+    let dayIndex = 0;
+    if (date && typeof date === 'string') {
+      const target = new Date(date);
+      const diffMs  = target.getTime() - today.getTime();
+      dayIndex = Math.max(0, Math.min(6, Math.round(diffMs / 86_400_000)));
+    }
+
+    // Fetch 7-day daily forecast from Open-Meteo (free, no key)
+    const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
+      `&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,wind_speed_10m_max,uv_index_max` +
+      `&timezone=auto&forecast_days=7`;
+
+    const forecastRes = await fetch(forecastUrl, { signal: AbortSignal.timeout(8_000) });
+    if (!forecastRes.ok) {
+      return res.status(502).json({ error: 'Weather data unavailable' });
+    }
+    const forecastData = await forecastRes.json();
+    const daily = forecastData.daily;
+
+    const tempMax      = daily.temperature_2m_max[dayIndex]              ?? 25;
+    const tempMin      = daily.temperature_2m_min[dayIndex]              ?? 15;
+    const weatherCode  = daily.weather_code[dayIndex]                    ?? 0;
+    const precipProb   = daily.precipitation_probability_max[dayIndex]   ?? 0;
+    const windSpeed    = daily.wind_speed_10m_max[dayIndex]              ?? 0;
+    const uvIndex      = daily.uv_index_max[dayIndex]                    ?? 3;
+
+    // Classify conditions for outdoor pet safety
+    const isThunderstorm = weatherCode >= 95;
+    const isHeavyRain    = [65, 67, 82].includes(weatherCode) || (precipProb > 70 && [63, 64].includes(weatherCode));
+    const isRain         = weatherCode >= 51 && !isHeavyRain && !isThunderstorm;
+    const isExtremeHeat  = tempMax >= 35;
+    const isVeryHot      = tempMax >= 31 && tempMax < 35;
+    const isStrongWind   = windSpeed > 40;
+    const isHighUV       = uvIndex >= 8;
+
+    let level: 'safe' | 'caution' | 'warning';
+    let defaultMessage: string;
+    let icon: string;
+
+    if (isThunderstorm || isHeavyRain || isExtremeHeat || (isStrongWind && isRain)) {
+      level          = 'warning';
+      icon           = isThunderstorm ? '⛈️' : isHeavyRain ? '🌧️' : isExtremeHeat ? '🌡️' : '🌪️';
+      defaultMessage = isThunderstorm
+        ? 'Thunderstorm expected — outdoor walking is unsafe. Providers may cancel.'
+        : isHeavyRain
+        ? 'Heavy rain expected — outdoor walking not recommended.'
+        : `Extreme heat (${tempMax}°C) — dangerous for dogs outdoors.`;
+    } else if (isVeryHot || isRain || isStrongWind || isHighUV) {
+      level          = 'caution';
+      icon           = isVeryHot ? '☀️' : isRain ? '🌦️' : isHighUV ? '🕶️' : '💨';
+      defaultMessage = isVeryHot
+        ? `It'll be hot (${tempMax}°C) — book early morning or evening walks.`
+        : isRain
+        ? 'Light rain possible — bring a raincoat for your pet.'
+        : `High UV index (${uvIndex}) — keep walks short and shaded.`;
+    } else {
+      level          = 'safe';
+      icon           = '✅';
+      defaultMessage = `Great conditions for an outdoor walk (${tempMax}°C, ${getWeatherConditionFromCode(weatherCode).condition}).`;
+    }
+
+    // Generate Gemini advisory if AI is available
+    const GEMINI_KEY = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    let aiMessage = defaultMessage;
+
+    if (GEMINI_KEY && level !== 'safe') {
+      try {
+        const { GoogleGenAI } = await import('@google/genai');
+        const genAI = new GoogleGenAI({
+          apiKey: GEMINI_KEY,
+          ...(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL
+            ? { httpOptions: { baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL, apiVersion: '' } }
+            : {}),
+        });
+
+        const langNames: Record<string, string> = {
+          he: 'Hebrew (עברית)', ar: 'Arabic (العربية)', ru: 'Russian', en: 'English', fr: 'French', es: 'Spanish'
+        };
+        const targetLang = langNames[language] || 'English';
+
+        const prompt = `You are a pet safety advisor for PetWash™ — a premium Israeli pet care platform.
+A customer is about to book an outdoor dog walking session. Tell them in 1-2 sentences whether it is safe, and any specific precaution.
+Respond ONLY in ${targetLang}. Be warm, concise, and direct. Do NOT use markdown.
+
+Weather for the booking day:
+- Max temperature: ${tempMax}°C
+- Weather: ${getWeatherConditionFromCode(weatherCode)}
+- Precipitation probability: ${precipProb}%
+- Wind speed: ${windSpeed} km/h
+- UV index: ${uvIndex}
+- Alert level: ${level}`;
+
+        const result = await genAI.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+        });
+        const text = (result.text || '').trim();
+        if (text.length > 10) aiMessage = text;
+      } catch (err: any) {
+        logger.warn('[Weather/booking-check] Gemini advisory failed, using fallback:', err?.message);
+      }
+    }
+
+    return res.json({
+      level,
+      icon,
+      temperature: tempMax,
+      temperatureMin: tempMin,
+      conditionCode: weatherCode,
+      condition: getWeatherConditionFromCode(weatherCode).condition,
+      precipitationProbability: precipProb,
+      windSpeed,
+      uvIndex,
+      message: aiMessage,
+      canProceed: true,
+    });
+
+  } catch (error: any) {
+    logger.error('[Weather/booking-check] Error:', error);
+    return res.status(500).json({ error: 'Failed to check weather', message: error.message });
+  }
+});
+
 export default router;
+

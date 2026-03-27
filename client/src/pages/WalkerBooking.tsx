@@ -22,6 +22,7 @@ import { useLanguage } from '@/lib/languageStore';
 import { t as ti18n } from '@/lib/i18n';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { WalletCheckoutPreview } from '@/components/wallet/WalletCheckoutPreview';
+import { BookingWeatherAlert } from '@/components/weather/BookingWeatherAlert';
 
 interface WalkerProfile {
   walkerId: string;
@@ -544,6 +545,17 @@ export default function WalkerBooking() {
                       </Alert>
                     </CardContent>
                   </Card>
+                )}
+
+                {/* Weather Advisory — shown once date is selected */}
+                {scheduledDate && (
+                  <BookingWeatherAlert
+                    lat={pickupLat || undefined}
+                    lng={pickupLon || undefined}
+                    date={scheduledDate}
+                    lang={language}
+                    className="luxury-animate-fade-in"
+                  />
                 )}
 
                 {/* Submit Button */}
