@@ -1,0 +1,102 @@
+Stop.
+
+I do not accept theory, architecture explanation, or “ready for test” language as proof.
+
+The live user experience already failed on iPhone.
+That is the truth that matters.
+
+What I saw:
+	•	phone login failed on real device
+	•	security verification failed
+	•	no smooth OTP flow
+	•	no proof of actual SMS delivery
+	•	no proof of OTP verify success
+	•	no proof of final authenticated session creation
+
+So this is NOT approved.
+
+Your report is not enough because it does not prove the real flow works end-to-end.
+
+You are mixing:
+	•	code reasoning
+with
+	•	real working verification
+
+I need the second, not the first.
+
+STRICT REQUIREMENT NOW
+
+Do not tell me “ready for test” unless you have hard proof from the real deployed environment.
+
+You must return only evidence-based verification for the full phone login flow.
+
+Required proof:
+	1.	SMS SEND PROOF
+
+	•	exact backend log when SMS send starts
+	•	exact backend log when Twilio accepts message
+	•	message SID if available
+	•	masked phone only
+
+	2.	OTP SCREEN PROOF
+
+	•	confirm frontend moves from phone entry screen to OTP screen after send
+	•	show exact state transition used
+
+	3.	OTP VERIFY PROOF
+
+	•	exact backend log when code is verified successfully
+	•	exact backend log when verification token is issued
+
+	4.	SESSION CREATION PROOF
+
+	•	exact backend log when /api/auth/phone-session succeeds
+	•	exact backend log when Firebase custom token is issued
+	•	exact backend log when session cookie is created
+
+	5.	FAILURE PROOF
+
+	•	if it still fails, return the exact failure point
+	•	not “probably”
+	•	not “should”
+	•	exact point
+
+	6.	LIVE DOMAIN PROOF
+
+	•	confirm this is tested against the real live domain flow, not just local reasoning
+
+	7.	DEVICE UX PROOF
+
+	•	confirm whether iPhone OTP autofill actually appears
+	•	if not, say clearly it does not yet work
+
+DO NOT RETURN:
+	•	broad architecture discussion
+	•	assumptions
+	•	guesses
+	•	“should work”
+	•	“code path is correct”
+
+RETURN ONLY:
+
+TASK:
+LIVE FAILURE POINT:
+WHAT IS PROVEN WORKING:
+WHAT IS NOT PROVEN:
+EXACT LOG EVIDENCE:
+NEXT FIX:
+READY FOR TEST OR NOT:
+
+And understand this clearly:
+
+Code reading is not proof.
+A flow is not finished until:
+	•	SMS is actually sent
+	•	code is actually entered
+	•	verification actually succeeds
+	•	session is actually created
+	•	user actually lands authenticated
+
+Until then, phone login is still broken.
+Do not move to another task.
+Do not say ready.
