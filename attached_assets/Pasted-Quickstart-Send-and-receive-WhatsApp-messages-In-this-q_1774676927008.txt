@@ -1,0 +1,167 @@
+Quickstart: Send and receive WhatsApp messages
+
+
+
+
+In this quickstart, you'll create an app that uses the WhatsApp Business Platform with Twilio to send and receive messages. You don't need to wait for WhatsApp sender registration because you'll use the Twilio Sandbox for WhatsApp as your sender.
+
+You'll access the Programmable Messaging REST API and build an app using your preferred programming language with the Twilio server-side SDKs.
+
+Prerequisites
+
+
+
+
+
+Select your programming language and complete the prerequisites:
+
+Python
+Node.js
+PHP
+C# (.NET Framework)
+Java
+curl
+Go
+Ruby
+Get a WhatsApp account
+
+ and install WhatsApp on your device.
+Install Node.js
+
+.
+Install Express
+
+ and the Twilio Node.js SDK
+
+:
+
+
+Copy code block
+npm install express twilio
+Install and set up ngrok
+
+.
+Sign up for Twilio and activate the Sandbox
+
+
+
+
+
+The Twilio Sandbox for WhatsApp (the Sandbox) acts as your WhatsApp sender. You can test messaging without waiting for your WhatsApp sender registration and verification.
+
+Sign up for Twilio
+
+.
+Activate and connect to the Twilio Sandbox for WhatsApp:
+Go to the Try WhatsApp page in the Console
+
+, acknowledge the terms, and click Confirm.
+To connect your WhatsApp account to the Sandbox, send join <your sandbox code> to the Sandbox number, or scan the QR code with your mobile device and send the prepopulated message. The Sandbox replies to confirm that you've joined.
+To disconnect from the Sandbox, reply to the message with stop or switch to a different Sandbox by messaging join <other sandbox keyword>.
+
+Set environment variables
+
+
+
+
+
+You need your Twilio account credentials to send requests. Follow these steps to get your account credentials and set them as environment variables.
+
+macOS Terminal
+Windows command line
+PowerShell
+Go to the Twilio Console
+
+.
+Copy your Account SID and set it as an environment variable using the following command. Replace ACCOUNT_SID with your Account SID.
+
+
+Copy code block
+export TWILIO_ACCOUNT_SID=ACCOUNT_SID
+Copy your Auth Token and set it as an environment variable using the following command. Replace AUTH_TOKEN with your Auth Token.
+
+
+Copy code block
+export TWILIO_AUTH_TOKEN=AUTH_TOKEN
+Send a WhatsApp message from the Sandbox
+
+
+
+
+
+Send a message using one of the pre-approved message templates available from the Sandbox. This quickstart uses the Appointment Reminder template. Learn more about business-initiated messages and templates.
+
+
+(warning)
+24-hour customer service window for non-template messaging
+WhatsApp Business Platform requires the use of a message template for business-initiated messages. Each time a user sends your business a message, you have a 24-hour customer service window in which to send free-form outbound messages without a template. Learn more about customer service windows.
+Follow these steps to send a message from the Sandbox number to your personal WhatsApp account:
+
+Python
+Node.js
+PHP
+C# (.NET Framework)
+Java
+curl
+Go
+Ruby
+Create and open a new file called send_whatsapp.js anywhere on your machine and paste in the following code:
+Send a message with WhatsApp, Twilio, and Node.js
+
+
+
+
+
+Report code block
+
+
+Copy code block
+// Download the helper library from https://www.twilio.com/docs/node/install
+const twilio = require("twilio"); // Or, for ESM: import twilio from "twilio";
+
+// Find your Account SID and Auth Token at twilio.com/console
+// and set the environment variables. See http://twil.io/secure
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const client = twilio(accountSid, authToken);
+
+async function createMessage() {
+  const message = await client.messages.create({
+    contentSid: "HXb5b62575e6e4ff6129ad7c8efe1f983e",
+    contentVariables: JSON.stringify({ 1: "22 July 2026", 2: "3:15pm" }),
+    from: "whatsapp:+14155238886",
+    to: "whatsapp:+16285550100",
+  });
+
+  console.log(message.body);
+}
+
+createMessage();
+Replace the value for to with the whatsapp: prefix and your personal WhatsApp number in E.164 format. For example, whatsapp:+16285550100.
+Save your changes and run the following command from your terminal in the directory that contains send_whatsapp.js:
+
+
+Copy code block
+node send_whatsapp.js
+After a few moments, you receive a WhatsApp message from the Sandbox to your personal WhatsApp account.
+
+Receive a WhatsApp message to the Sandbox and send an automated reply
+
+
+
+
+
+When someone replies to one of your WhatsApp messages, you receive a webhook request from Twilio. To handle this request, you need to configure the webhook, create a web application that responds to an incoming message with TwiML, and expose your application to the internet.
+
+Follow these steps to have the Sandbox reply to a WhatsApp message that you send from your personal WhatsApp account:
+
+Python
+Node.js
+PHP
+C# (.NET Framework)
+Java
+curl
+Go
+Ruby
+Create and open a new file called server.js anywhere on your machine and paste in the following code:
+Respond to an incoming WhatsApp message with Node.js
