@@ -188,6 +188,15 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       }
     };
   }, []);
+
+  // If redirected from provider-onboarding, auto-set intent so post-login routes correctly
+  useEffect(() => {
+    if (customRedirect && customRedirect.includes('provider-onboarding') && !selectedIntent) {
+      localStorage.setItem('signup_intent', 'provider');
+      setSelectedIntent('provider');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   useEffect(() => {
     if (magicLinkResendCountdown > 0) {

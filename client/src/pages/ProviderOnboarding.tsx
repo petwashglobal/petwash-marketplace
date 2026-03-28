@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,13 @@ export default function ProviderOnboarding() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const isHebrew = language === 'he';
+
+  // Redirect to sign-in if not authenticated
+  useEffect(() => {
+    if (user === null) {
+      navigate('/sign-in?redirect=/provider-onboarding');
+    }
+  }, [user, navigate]);
 
   // Form state
   const [step, setStep] = useState(1);
@@ -116,6 +123,35 @@ export default function ProviderOnboarding() {
   const [loading, setLoading] = useState(false);
   const [applicationSubmitted, setApplicationSubmitted] = useState(false);
   const [biometricScore, setBiometricScore] = useState<number | null>(null);
+
+  // Auto-populate and auto-verify phone from Firebase user's already-verified number
+  useEffect(() => {
+    if (!user) return;
+    if (user.phoneNumber && !phoneVerified) {
+      // Firebase phone is already verified — extract number and skip OTP
+      const raw = user.phoneNumber; // e.g. "+972501234567"
+      const matchedCode = ['+972', '+1', '+44', '+61', '+49', '+33', '+7', '+91', '+55']
+        .find(c => raw.startsWith(c));
+      if (matchedCode) {
+        setPhoneCountryCode(matchedCode);
+        setPhoneNumber(raw.slice(matchedCode.length));
+      } else {
+        setPhoneNumber(raw);
+      }
+      setPhoneVerified(true);
+    }
+    // Pre-fill name from Firebase display name if not already set
+    if (user.displayName && !firstName && !lastName) {
+      const parts = user.displayName.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        setFirstName(parts[0]);
+        setLastName(parts.slice(1).join(' '));
+      } else if (parts.length === 1) {
+        setFirstName(parts[0]);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // ── Phone OTP Verification Handlers ──────────────────────────────────
   const COUNTRY_CODES = [
@@ -1183,9 +1219,12 @@ export default function ProviderOnboarding() {
                 </div>
 
                 <div className="space-y-4">
-                  {/* Residential History (10 years) */}
+                  {/* Residential History (10 years) - REQUIRED */}
                   <div>
-                    <Label className="text-lg font-semibold">{t.residentialHistory}</Label>
+                    <Label className="text-lg font-semibold">
+                      {t.residentialHistory}
+                      <span className="text-red-500 ml-1">*</span>
+                    </Label>
                     <p className="text-sm text-gray-500 mb-3">{t.residentialHistoryHelp}</p>
                     
                     {residentialHistory.map((address, index) => (
@@ -1206,6 +1245,12 @@ export default function ProviderOnboarding() {
                         />
                       </div>
                     ))}
+                    {residentialHistory.filter(a => a.trim()).length === 0 && (
+                      <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                        <AlertTriangle className="h-4 w-4" />
+                        {isHebrew ? 'נדרשת לפחות כתובת מגורים אחת כדי להמשיך' : 'At least one address is required to continue'}
+                      </p>
+                    )}
                     
                     <Button
                       onClick={() => setResidentialHistory([...residentialHistory, ''])}

@@ -119,7 +119,7 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     }
 
     // Upload to Firebase Storage — random filename: no document type, timestamp, or original name
-    const bucket = storage.bucket('gs://signinpetwash.firebasestorage.app');
+    const bucket = storage.bucket();
     const fileName = `users/${uid}/kyc/${nanoid(24)}`;
     const fileUpload = bucket.file(fileName);
 
@@ -288,7 +288,7 @@ router.post('/admin/approve', requireAdmin, async (req: Request, res: Response) 
     await approveKYC(uid, reviewerUid, expiresAt);
 
     // Immediately delete raw identity files from Firebase Storage
-    const kycBucket = storage.bucket('gs://signinpetwash.firebasestorage.app');
+    const kycBucket = storage.bucket();
     for (const filePath of docPathsToDelete) {
       try {
         await kycBucket.file(filePath).delete();
@@ -362,7 +362,7 @@ router.post('/admin/reject', requireAdmin, async (req: Request, res: Response) =
     await rejectKYC(uid, reviewerUid, reason);
 
     // Immediately delete raw identity files from Firebase Storage
-    const kycBucketReject = storage.bucket('gs://signinpetwash.firebasestorage.app');
+    const kycBucketReject = storage.bucket();
     for (const filePath of docPathsToDeleteOnReject) {
       try {
         await kycBucketReject.file(filePath).delete();
@@ -434,7 +434,7 @@ router.get('/admin/document/:uid', requireAdmin, async (req: Request, res: Respo
     }
 
     // Generate signed URLs for viewing (max 15 minutes — temporary review only)
-    const bucket = storage.bucket('gs://signinpetwash.firebasestorage.app');
+    const bucket = storage.bucket();
     const urls: string[] = [];
 
     for (const path of kycDoc.docPaths) {
@@ -481,7 +481,7 @@ router.delete('/delete/:uid', validateFirebaseToken, loadUserRole, async (req: R
     
     if (kycDoc) {
       // Delete files from Storage
-      const bucket = storage.bucket('gs://signinpetwash.firebasestorage.app');
+      const bucket = storage.bucket();
       for (const path of kycDoc.docPaths) {
         try {
           await bucket.file(path).delete();

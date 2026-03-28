@@ -353,8 +353,8 @@ router.post('/apply', upload.fields([
       });
     }
 
-    // Upload files to Firebase Storage
-    const bucket = storage.bucket('gs://signinpetwash.firebasestorage.app');
+    // Upload files to Firebase Storage (use default bucket from initialization — no gs:// prefix)
+    const bucket = storage.bucket();
     let selfieUrl = '';
     let governmentIdUrl = '';
     let insuranceCertUrl = '';

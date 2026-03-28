@@ -122,7 +122,7 @@ router.post('/upload/profile-photo', upload.single('photo'), async (req: Request
       logger.warn('[Sitter Suite] Image moderation failed (allowing upload)', modErr);
     }
 
-    const bucket = storage.bucket('gs://signinpetwash.firebasestorage.app');
+    const bucket = storage.bucket();
     const ext = req.file.mimetype.split('/')[1] || 'jpg';
     const fileName = `providers/${user.uid}/profile/photo_${Date.now()}.${ext}`;
     const fileRef = bucket.file(fileName);
@@ -174,7 +174,7 @@ router.post('/upload/document', upload.single('document'), async (req: Request, 
     }
 
     const docType = req.body.documentType || 'general';
-    const bucket = storage.bucket('gs://signinpetwash.firebasestorage.app');
+    const bucket = storage.bucket();
     const ext = req.file.mimetype.split('/')[1] || 'jpg';
     const fileName = `providers/${user.uid}/documents/${docType}_${Date.now()}.${ext}`;
     const fileRef = bucket.file(fileName);
