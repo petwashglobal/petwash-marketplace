@@ -219,8 +219,10 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     } catch (err: any) {
       if (err.code !== 'auth/popup-closed-by-user') {
         toast({
-          title: language === 'he' ? 'שגיאה בהתחברות עם Google' : 'Google sign-in failed',
-          description: err.message,
+          title: language === 'he' ? 'התחברות עם Google אינה זמינה' : 'Google sign-in unavailable',
+          description: language === 'he'
+            ? 'אנא התחבר עם מספר הטלפון שלך.'
+            : 'Please sign in with your phone number instead.',
           variant: 'destructive',
         });
       }
