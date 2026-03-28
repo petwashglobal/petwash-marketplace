@@ -388,6 +388,21 @@ export default function ProviderApplicationForm() {
       if (result.success) {
         setSubmitted(true);
         queryClient.invalidateQueries({ queryKey: ['/api/provider-intake'] });
+
+        // Save address to user profile so it pre-fills everywhere (booking, settings, etc.)
+        // Fire-and-forget — application success is not blocked by this
+        apiRequest('PATCH', '/api/user/profile', {
+          street: data.streetAddress,
+          city: data.city,
+          postalCode: data.postalCode || '',
+          ...(addressLat != null ? { latitude: addressLat } : {}),
+          ...(addressLng != null ? { longitude: addressLng } : {}),
+        }).then(() => {
+          queryClient.invalidateQueries({ queryKey: ['/api/user/profile'] });
+        }).catch(() => {
+          // silent — don't surface this to the user
+        });
+
         toast({
           title: t.successTitle,
           description: t.successMessage,

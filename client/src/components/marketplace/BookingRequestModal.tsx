@@ -10,11 +10,12 @@
  * - Submit booking request
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -61,6 +62,14 @@ export function BookingRequestModal({
   const isHebrew = language === 'he';
   const { toast } = useToast();
 
+  // Fetch user profile to pre-fill service address
+  const { data: userProfile } = useQuery<{
+    street?: string; city?: string; postalCode?: string; address?: string;
+  }>({
+    queryKey: ['/api/user/profile'],
+    staleTime: 5 * 60 * 1000,
+  });
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const [startDate, setStartDate] = useState<Date>(initialDates?.start && initialDates.start >= today ? initialDates.start : today);
@@ -69,6 +78,21 @@ export function BookingRequestModal({
   const [message, setMessage] = useState('');
   const [specialRequirements, setSpecialRequirements] = useState('');
   const [step, setStep] = useState<'details' | 'review' | 'success'>('details');
+
+  // Service address — pre-filled from profile, user can edit
+  const [serviceAddress, setServiceAddress] = useState('');
+  const [addressFromProfile, setAddressFromProfile] = useState(false);
+
+  useEffect(() => {
+    if (userProfile && !serviceAddress) {
+      const filled = [userProfile.street, userProfile.city]
+        .filter(Boolean).join(', ') || userProfile.address || '';
+      if (filled) {
+        setServiceAddress(filled);
+        setAddressFromProfile(true);
+      }
+    }
+  }, [userProfile]);
 
   const totalDays = Math.max(1, differenceInDays(endDate, startDate) + 1);
   const dailyRate = provider?.pricePerDay || 150;
@@ -117,6 +141,7 @@ export function BookingRequestModal({
       petCount,
       message,
       specialRequirements,
+      serviceAddress: serviceAddress.trim() || undefined,
     });
   };
 
@@ -124,6 +149,8 @@ export function BookingRequestModal({
     setStep('details');
     setMessage('');
     setSpecialRequirements('');
+    setServiceAddress('');
+    setAddressFromProfile(false);
     onClose();
   };
 
@@ -202,6 +229,30 @@ export function BookingRequestModal({
 
               {step === 'details' && (
                 <>
+                  {/* Service Address */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 text-pink-500" />
+                      {isHebrew ? 'כתובת השירות' : 'Service Address'}
+                    </label>
+                    <Input
+                      value={serviceAddress}
+                      onChange={(e) => {
+                        setServiceAddress(e.target.value);
+                        setAddressFromProfile(false);
+                      }}
+                      placeholder={isHebrew ? 'הזן את הכתובת בה יינתן השירות...' : 'Enter the address where service will be provided...'}
+                      className="rounded-xl"
+                      dir={isHebrew ? 'rtl' : 'ltr'}
+                      data-testid="input-service-address"
+                    />
+                    {addressFromProfile && (
+                      <p className="text-xs text-emerald-600">
+                        {isHebrew ? '✓ מולא אוטומטית מפרטי הפרופיל שלך' : '✓ Auto-filled from your profile'}
+                      </p>
+                    )}
+                  </div>
+
                   {/* Date Selection */}
                   <div className="space-y-3">
                     <label className="text-sm font-medium text-gray-700">
