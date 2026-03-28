@@ -71,24 +71,18 @@ function generateToken(): string {
 
 // Helper: Get required documents based on service types
 function getRequiredDocuments(serviceTypes: string[]): string[] {
-  const required = ['national_id', 'profile_photo'];
-  
-  if (serviceTypes.includes('pet_transport') || serviceTypes.includes('dog_walking')) {
-    required.push('drivers_license', 'vehicle_registration', 'vehicle_insurance');
-  }
-  if (serviceTypes.includes('pet_sitting')) {
-    required.push('home_photos');
-  }
+  const required: string[] = [];
+  // Only require service-specific certifications at onboarding.
+  // ID number, background check, insurance, etc. are collected administratively post-approval.
   if (serviceTypes.includes('grooming')) {
     required.push('grooming_cert');
   }
   if (serviceTypes.includes('veterinary_house_calls')) {
     required.push('veterinary_cert');
   }
-  
-  // Always require these
-  required.push('criminal_background', 'insurance_policy', 'tax_registration', 'bank_details');
-  
+  if (serviceTypes.includes('pet_sitting')) {
+    required.push('home_photos');
+  }
   return [...new Set(required)];
 }
 
@@ -299,14 +293,26 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
     
     // Create onboarding tasks
     await createOnboardingTasks(application.id, formData.serviceTypes);
-    
+
+    // If no documents are required, auto-advance to documents_under_review immediately
+    const requiredDocs = getRequiredDocuments(formData.serviceTypes);
+    const initialStage = requiredDocs.length === 0 ? 'documents_under_review' : 'documents_pending';
+
+    if (initialStage === 'documents_under_review') {
+      await db.update(providerApplicants)
+        .set({ stage: 'documents_under_review' })
+        .where(eq(providerApplicants.id, application.id));
+    }
+
     // Record stage transition
     await recordStageTransition(
       application.id,
       'application_submitted',
-      'documents_pending',
+      initialStage,
       userId,
-      'Application submitted, awaiting document uploads',
+      initialStage === 'documents_under_review'
+        ? 'Application submitted — no documents required, auto-advanced to review'
+        : 'Application submitted, awaiting document uploads',
       { submittedFrom: 'web' },
       req
     );

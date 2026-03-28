@@ -363,11 +363,7 @@ export default function ProviderApplicationForm() {
 
   const onSubmit = async (data: ApplicationForm) => {
     console.log('[ProviderApplication] Form submit triggered with data:', data);
-    const freshCaptchaToken = await executeReCaptcha('provider_register');
-    if (!freshCaptchaToken) {
-      toast({ title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'לא ניתן לאמת את הבקשה, אנא רענן את הדף ונסה שוב' : 'Could not verify request. Please refresh and try again.', variant: 'destructive' });
-      return;
-    }
+    const freshCaptchaToken = await executeReCaptcha('provider_register').catch(() => null);
     setIsSubmitting(true);
     try {
       // Convert first selected platform to legacy providerType
@@ -988,11 +984,16 @@ export default function ProviderApplicationForm() {
                               <FormControl>
                                 <Input 
                                   {...field} 
+                                  inputMode="numeric"
                                   className="h-12 bg-white border-gray-300 text-black placeholder:text-gray-400 focus:border-amber-500 focus:ring-amber-500/20 rounded-xl"
-                                  placeholder={isHebrew ? 'מיקוד' : 'Postal Code'}
+                                  placeholder={isHebrew ? 'לדוג׳ 6291302' : 'e.g. 6291302'}
                                   data-testid="input-postal-code"
+                                  dir="ltr"
                                 />
                               </FormControl>
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                {isHebrew ? 'מיקוד לא תמיד מולא אוטומטית — ניתן להקליד ידנית (לא חובה)' : 'Postal code may not auto-fill — type manually if needed (optional)'}
+                              </p>
                               <FormMessage className="text-red-600" />
                             </FormItem>
                           )}
