@@ -49,6 +49,12 @@ export async function requireAdminMfa(
       .limit(1);
 
     if (enrollments.length === 0) {
+      // Super admins are allowed through without MFA so they can reach /settings/security to enroll.
+      // All such access is logged as a security warning.
+      if (isSuperAdmin(userEmail)) {
+        logger.warn(`[MFA-Enforcement] ⚠️ Super admin ${userEmail} accessed without MFA enrollment — please enroll at /settings/security`);
+        return next();
+      }
       logger.warn(`[MFA-Enforcement] Admin user ${userEmail} blocked - no MFA enrolled`);
       return res.status(403).json({
         error: 'MFA_REQUIRED',

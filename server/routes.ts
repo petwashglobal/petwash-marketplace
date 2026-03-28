@@ -3213,6 +3213,41 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // POST /api/system/provision-owner
+  // One-time secure endpoint to set the owner's DB role and Firebase claims.
+  // Requires x-admin-secret header (ADMIN_SECRET env var).
+  app.post('/api/system/provision-owner', async (req: any, res) => {
+    const { timingSafeAdminSecretMatch } = await import('./middleware/adminAuth');
+    if (!timingSafeAdminSecretMatch(req)) {
+      return res.status(403).json({ error: 'FORBIDDEN' });
+    }
+    const { ownerFirebaseUid, ownerEmail } = req.body;
+    if (!ownerFirebaseUid || !ownerEmail) {
+      return res.status(400).json({ error: 'ownerFirebaseUid and ownerEmail are required' });
+    }
+    try {
+      const { adminAuth } = await import('./lib/firebase-admin');
+      await adminAuth.setCustomUserClaims(ownerFirebaseUid, {
+        role: 'admin',
+        accountType: 'internal',
+      });
+      const existingUser = await storage.getUserByEmail(ownerEmail).catch(() => null);
+      if (existingUser) {
+        await storage.updateUser(existingUser.id, {
+          role: 'admin' as any,
+          userStatus: 'staff_active' as any,
+          staffApprovedAt: new Date(),
+          mfaEnrolled: false,
+        });
+      }
+      logger.info(`[provision-owner] Owner ${ownerEmail} (${ownerFirebaseUid}) provisioned as admin`);
+      res.json({ success: true, message: `Owner ${ownerEmail} provisioned as admin. Firebase claims updated. Please sign out and sign back in.` });
+    } catch (err: any) {
+      logger.error('[provision-owner] Error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // GET /api/firebase-features - Comprehensive Firebase features test
   app.get('/api/firebase-features', async (req, res) => {
     try {

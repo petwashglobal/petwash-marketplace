@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getApiUrl } from '@/lib/apiConfig';
+import { auth } from "@/lib/firebase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,17 @@ import {
   RefreshCw,
   LayoutDashboard,
 } from "lucide-react";
+
+async function adminFetch(url: string): Promise<Response> {
+  const headers: Record<string, string> = {};
+  try {
+    const user = auth?.currentUser;
+    if (user) {
+      headers["Authorization"] = `Bearer ${await user.getIdToken()}`;
+    }
+  } catch { /* no-op */ }
+  return fetch(url, { headers });
+}
 
 type TabType = "overview" | "members" | "providers" | "staff";
 
@@ -157,7 +169,7 @@ export default function AdminBackendPanel() {
       const params = new URLSearchParams();
       if (memberSearch) params.set("search", memberSearch);
       params.set("page", String(memberPage));
-      const res = await fetch(getApiUrl(`/api/admin-panel/members?${params}`));
+      const res = await adminFetch(getApiUrl(`/api/admin-panel/members?${params}`));
       return res.json();
     },
     enabled: activeTab === "members" || activeTab === "overview",
@@ -170,7 +182,7 @@ export default function AdminBackendPanel() {
       if (providerSearch) params.set("search", providerSearch);
       if (providerStatus) params.set("status", providerStatus);
       params.set("page", String(providerPage));
-      const res = await fetch(getApiUrl(`/api/admin-panel/providers?${params}`));
+      const res = await adminFetch(getApiUrl(`/api/admin-panel/providers?${params}`));
       return res.json();
     },
     enabled: activeTab === "providers" || activeTab === "overview",
@@ -183,7 +195,7 @@ export default function AdminBackendPanel() {
       if (staffSearch) params.set("search", staffSearch);
       if (staffStatus) params.set("status", staffStatus);
       params.set("page", String(staffPage));
-      const res = await fetch(getApiUrl(`/api/admin-panel/staff?${params}`));
+      const res = await adminFetch(getApiUrl(`/api/admin-panel/staff?${params}`));
       return res.json();
     },
     enabled: activeTab === "staff" || activeTab === "overview",

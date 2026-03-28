@@ -39,15 +39,24 @@ async function resolveClaimsBasedAuth(req: Request, res: Response): Promise<{
 } | null> {
   const { verifySessionCookie, SESSION_COOKIE_NAME } = await import('./lib/sessionCookies');
   const sessionCookie = req.cookies?.[SESSION_COOKIE_NAME];
+  const bearerToken = req.headers.authorization?.startsWith('Bearer ')
+    ? req.headers.authorization.slice(7)
+    : null;
 
-  if (!sessionCookie) {
+  if (!sessionCookie && !bearerToken) {
     res.status(401).json({ message: "Admin authentication required" });
     return null;
   }
 
   let decoded: any;
   try {
-    decoded = await verifySessionCookie(sessionCookie, true);
+    if (sessionCookie) {
+      decoded = await verifySessionCookie(sessionCookie, true);
+    } else {
+      // Bearer token fallback for programmatic / localStorage-based admin logins
+      const { adminAuth: fbAdmin } = await import('./lib/firebase-admin');
+      decoded = await fbAdmin.verifyIdToken(bearerToken!, true);
+    }
   } catch (error) {
     res.status(401).json({ message: "Invalid or expired session" });
     return null;

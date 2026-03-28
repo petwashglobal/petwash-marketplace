@@ -60,6 +60,13 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 export function requireRole(...roles: string[]) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
+      // Super admins bypass all role checks regardless of Firebase claims
+      const reqEmail = ((req as any).firebaseUser?.email || '').toLowerCase();
+      if (reqEmail && SUPER_ADMINS.includes(reqEmail)) {
+        logger.debug(`[requireRole] Super admin ${reqEmail} bypassing role check for [${roles.join(',')}]`);
+        return next();
+      }
+
       // For Firebase Bearer-token / session-cookie users, enforce role via
       // Firebase custom claims rather than unconditionally calling next().
       // Two middleware shapes exist in the codebase:
@@ -195,6 +202,13 @@ export async function requireProviderActive(req: Request, res: Response, next: N
  */
 export async function requireStaffApproved(req: Request, res: Response, next: NextFunction) {
   try {
+    // Super admins bypass staff approval requirement
+    const reqEmail = ((req as any).firebaseUser?.email || '').toLowerCase();
+    if (reqEmail && SUPER_ADMINS.includes(reqEmail)) {
+      logger.debug(`[requireStaffApproved] Super admin ${reqEmail} bypassing staff approval check`);
+      return next();
+    }
+
     const userId = getUserId(req);
     if (!userId) {
       logger.debug('[requireStaffApproved] No userId found');
@@ -232,6 +246,13 @@ export async function requireStaffApproved(req: Request, res: Response, next: Ne
  */
 export async function requireMfaEnrolled(req: Request, res: Response, next: NextFunction) {
   try {
+    // Super admins bypass MFA check so they can access settings to enroll
+    const reqEmail = ((req as any).firebaseUser?.email || '').toLowerCase();
+    if (reqEmail && SUPER_ADMINS.includes(reqEmail)) {
+      logger.debug(`[requireMfaEnrolled] Super admin ${reqEmail} bypassing MFA enrolled check`);
+      return next();
+    }
+
     const userId = getUserId(req);
     if (!userId) {
       logger.debug('[requireMfaEnrolled] No userId found');
