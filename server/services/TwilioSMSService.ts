@@ -87,7 +87,10 @@ function checkGlobalDailyCap(): boolean {
 const ALPHA_SENDER_ID = 'PetWash';
 
 const ALPHA_SENDER_BLOCKED_COUNTRIES = new Set([
-  '1',
+  '1',   // US/Canada — alpha sender not supported
+  '61',  // Australia — alpha sender not enabled on this account; attempting it causes a duplicate
+         // deliver (carrier accepts before Twilio returns 21612) then fallback also sends.
+         // Re-enable '61' only after Twilio alphanumeric sender for AU is registered.
 ]);
 
 class TwilioSMSService {
@@ -130,21 +133,27 @@ class TwilioSMSService {
   private getSendParams(toPhone: string, body: string): { body: string; to: string; from?: string; messagingServiceSid?: string } {
     const cleaned = toPhone.replace(/[^0-9]/g, '');
 
-    // US/Canada: alphanumeric sender IDs are not supported — use Messaging Service or fromPhone
-    const isUSCanada = cleaned.startsWith('1') && cleaned.length >= 11;
-    if (isUSCanada) {
+    // Check if this country prefix is blocked from using alphanumeric sender.
+    // Blocked = either carrier doesn't support it, or the Twilio account hasn't registered
+    // alphanumeric sender for that country.  Attempting alpha sender in a blocked country
+    // can result in TWO delivered messages (carrier accepts before Twilio returns 21612,
+    // then the catch-block fallback also delivers) — so we skip it entirely.
+    const isAlphaBlocked = Array.from(ALPHA_SENDER_BLOCKED_COUNTRIES)
+      .some(prefix => cleaned.startsWith(prefix));
+
+    if (isAlphaBlocked) {
       if (this.messagingServiceSid) {
         return { body, to: toPhone, messagingServiceSid: this.messagingServiceSid };
       }
       if (this.fromPhone) {
         return { body, to: toPhone, from: this.fromPhone };
       }
-      throw new Error('No fromPhone or messagingServiceSid configured for US/Canada');
+      throw new Error(`No Messaging Service or fromPhone configured for alpha-blocked country (${toPhone})`);
     }
 
-    // International (AU, IL, UK, EU, etc.): use alphanumeric sender 'PetWash'
+    // All other international numbers (IL, UK, EU, etc.): use alphanumeric sender 'PetWash'.
     // This delivers as "PetWash" in the recipient's SMS app (no phone number shown).
-    // Fallback to phone/Messaging Service is handled in the catch block if alpha unsupported.
+    // Fallback to Messaging Service is handled in the catch block for unexpected 21612/21659.
     return { body, to: toPhone, from: ALPHA_SENDER_ID };
   }
 
