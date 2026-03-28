@@ -462,7 +462,9 @@ router.get('/places-details', placesDetailsLimiter, async (req, res) => {
 
     const detailsHeaders: Record<string, string> = {
       'X-Goog-Api-Key': apiKey,
-      'X-Goog-FieldMask': 'formattedAddress,addressComponents,location,displayName',
+      // adrFormatAddress contains postal code as <span class="postal-code">XXXXXXX</span>
+      // — used as fallback when addressComponents lacks postal_code (common in Israel)
+      'X-Goog-FieldMask': 'formattedAddress,addressComponents,location,displayName,adrFormatAddress',
     };
     if (language) detailsHeaders['X-Goog-LanguageCode'] = language as string;
     // Closing the session token on the details call is what makes autocomplete+details
@@ -497,13 +499,26 @@ router.get('/places-details', placesDetailsLimiter, async (req, res) => {
     const getComponent = (type: string) =>
       addressComponents.find((c: any) => c.types?.includes(type))?.longText || '';
 
+    // Primary: postal code from addressComponents
+    let postalCode = getComponent('postal_code');
+
+    // Fallback: parse from adrFormatAddress HTML
+    // Google returns: <span class="postal-code">6291302</span> in this field
+    // This is reliable for Israel where addressComponents often omits postal_code
+    if (!postalCode && data.adrFormatAddress) {
+      const match = data.adrFormatAddress.match(/<span class="postal-code">([^<]+)<\/span>/);
+      if (match) {
+        postalCode = match[1].trim();
+      }
+    }
+
     const parsed = {
       formattedAddress: data.formattedAddress || '',
       streetNumber: getComponent('street_number'),
       street: getComponent('route'),
       city: getComponent('locality') || getComponent('administrative_area_level_2'),
       state: getComponent('administrative_area_level_1'),
-      postalCode: getComponent('postal_code'),
+      postalCode,
       country: getComponent('country'),
       countryCode: addressComponents.find((c: any) => c.types?.includes('country'))?.shortText || '',
       lat: data.location?.latitude ?? null,
@@ -523,6 +538,7 @@ router.get('/places-details', placesDetailsLimiter, async (req, res) => {
       hasSessionToken: !!validSession,
       addressComponentCount: addressComponents.length,
       rawPostalCodeFound: !!addressComponents.find((c: any) => c.types?.includes('postal_code')),
+      postalCodeSource: getComponent('postal_code') ? 'addressComponents' : (parsed.postalCode ? 'adrFormatAddress' : 'none'),
     });
 
     res.json(parsed);
