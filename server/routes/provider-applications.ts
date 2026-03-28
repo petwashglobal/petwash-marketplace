@@ -69,20 +69,38 @@ function generateToken(): string {
     .substring(0, 64);
 }
 
+// ─── COMPLIANCE FLAG ─────────────────────────────────────────────────────────
+// KYC_DOCUMENTS_REQUIRED_AT_ONBOARDING
+//
+// false (current) = Step 1 fast onboarding — only collect phone/name/ID number/address.
+//                   Document uploads deferred to Step 2 (KYC), triggered on payout
+//                   activation or risk flag. PENDING business/legal approval.
+//
+// true             = Full document checklist enforced at onboarding (original behaviour).
+//                   Requires explicit approval from legal + product before activating.
+//
+// DO NOT set to true without written approval.
+// ─────────────────────────────────────────────────────────────────────────────
+const KYC_DOCUMENTS_REQUIRED_AT_ONBOARDING = false;
+
 // Helper: Get required documents based on service types
 function getRequiredDocuments(serviceTypes: string[]): string[] {
   const required: string[] = [];
-  // Only require service-specific certifications at onboarding.
-  // ID number, background check, insurance, etc. are collected administratively post-approval.
-  if (serviceTypes.includes('grooming')) {
-    required.push('grooming_cert');
+
+  if (KYC_DOCUMENTS_REQUIRED_AT_ONBOARDING) {
+    // Full compliance document set — requires legal + product approval to activate
+    required.push('national_id', 'profile_photo');
+    if (serviceTypes.includes('pet_transport') || serviceTypes.includes('dog_walking')) {
+      required.push('drivers_license', 'vehicle_registration', 'vehicle_insurance');
+    }
+    required.push('criminal_background', 'insurance_policy', 'tax_registration', 'bank_details');
   }
-  if (serviceTypes.includes('veterinary_house_calls')) {
-    required.push('veterinary_cert');
-  }
-  if (serviceTypes.includes('pet_sitting')) {
-    required.push('home_photos');
-  }
+
+  // Service-specific certifications are always required regardless of KYC flag
+  if (serviceTypes.includes('grooming')) required.push('grooming_cert');
+  if (serviceTypes.includes('veterinary_house_calls')) required.push('veterinary_cert');
+  if (serviceTypes.includes('pet_sitting')) required.push('home_photos');
+
   return [...new Set(required)];
 }
 
