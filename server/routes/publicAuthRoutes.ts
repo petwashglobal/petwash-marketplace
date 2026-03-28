@@ -274,47 +274,48 @@ publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (
     }
 
     const callerIpEarly = req.ip || (req.headers['x-forwarded-for'] as string) || 'unknown';
-    let securityPassed = false;
-    let securitySource = 'none';
+    let securitySource = 'rate-limit-only';
 
-    // ── 1. Try Cloudflare Turnstile first (preferred — always configured in prod) ──
+    // ── Best-effort captcha (never blocks — phone OTP IS the authentication factor) ──
+    // Security is enforced by: rate limiter (10/min/IP) + per-phone lockout +
+    // daily SMS cap (5/phone/day) + global cap (150/day) + the OTP itself.
+    // Captcha is bonus signal only. reCAPTCHA backend credentials are not
+    // configured in Cloud Run, so blocking on captcha failure = permanent lockout.
     if (turnstileToken) {
       const turnstileResult = await verifyTurnstileToken(turnstileToken, callerIpEarly);
       if (turnstileResult.valid) {
-        securityPassed = true;
         securitySource = 'turnstile';
-        logger.info('[PublicAuth] Phone send-code passed Turnstile', { phone: phone.slice(-4) });
+        logger.info('[PublicAuth] Phone send-code: Turnstile passed (bonus)', { phone: phone.slice(-4) });
       } else {
-        logger.warn('[PublicAuth] Turnstile failed for phone send-code', { phone: phone.slice(-4), reason: turnstileResult.reason });
+        logger.warn('[PublicAuth] Phone send-code: Turnstile failed (non-blocking)', { phone: phone.slice(-4), reason: turnstileResult.reason });
       }
-    }
-
-    // ── 2. Fall back to reCAPTCHA if Turnstile not provided or failed ─────────
-    if (!securityPassed) {
-      if (!captchaToken) {
-        logger.warn('[PublicAuth] Phone send-code blocked — no security token (no turnstileToken, no captchaToken)', { phone: phone.slice(-4) });
-        return res.status(400).json({ ok: false, error: language === 'he' ? 'נדרש אימות אבטחה' : 'Security verification required' });
-      }
+    } else if (captchaToken) {
       const captchaResult = await verifyCaptchaToken(captchaToken, 'phone_login');
       if (captchaResult.valid) {
-        securityPassed = true;
         securitySource = 'recaptcha';
-        logger.info('[PublicAuth] Phone send-code passed reCAPTCHA', { phone: phone.slice(-4), score: captchaResult.score });
+        logger.info('[PublicAuth] Phone send-code: reCAPTCHA passed (bonus)', { phone: phone.slice(-4), score: captchaResult.score });
       } else {
-        logger.warn('[PublicAuth] Both Turnstile and reCAPTCHA failed for phone send-code', { phone: phone.slice(-4), reason: captchaResult.reason });
+        securitySource = 'captcha-failed-proceed';
+        logger.warn('[PublicAuth] Phone send-code: reCAPTCHA failed (non-blocking — proceeding with rate-limit protection)', {
+          phone: phone.slice(-4),
+          reason: captchaResult.reason,
+          score: captchaResult.score,
+          source: captchaResult.source,
+        });
         db.insert(authEvents).values({
           eventType: 'CAPTCHA_PHONE_OTP_FAILED',
           success: false,
-          reason: `${captchaResult.reason || 'low_score'} (score=${captchaResult.score}, source=${captchaResult.source})`,
+          reason: `${captchaResult.reason || 'low_score'} (score=${captchaResult.score}, source=${captchaResult.source}) — non-blocking`,
           ip: callerIpEarly,
           userAgent: req.headers['user-agent'] || null,
           traceId,
         }).catch((dbErr: any) => logger.warn('[PublicAuth] authEvents captcha insert failed', { error: dbErr?.message }));
-        return res.status(403).json({ ok: false, error: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed. Please refresh and try again.' });
       }
+    } else {
+      logger.info('[PublicAuth] Phone send-code: no captcha token — proceeding with rate-limit protection only', { phone: phone.slice(-4) });
     }
 
-    logger.info('[PublicAuth] Phone send-code security passed', { phone: phone.slice(-4), securitySource });
+    logger.info('[PublicAuth] Phone send-code proceeding', { phone: phone.slice(-4), securitySource });
 
     // Check per-phone lockout (too many failed verify attempts) — checks Redis + memory
     const lockout = await twilioSMSService.checkPhoneLockout(phone, language);

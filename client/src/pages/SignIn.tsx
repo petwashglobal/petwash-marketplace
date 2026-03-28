@@ -1235,8 +1235,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       logger.info('[PhoneAuth] Sending code to:', formattedPhone);
 
-      // ── Prefer Cloudflare Turnstile (configured in production) ──────────────
-      // Fall back to Google reCAPTCHA if Turnstile site key is not set.
+      // ── Best-effort captcha (non-blocking) ───────────────────────────────────
+      // Security for phone OTP is: rate limiting + phone lockout + daily SMS cap + the OTP itself.
+      // Captcha is bonus signal. Backend never blocks on captcha failure for phone send-code.
       let turnstileToken: string | null = null;
       let freshCaptchaToken: string | null = null;
 
@@ -1244,13 +1245,13 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       if (turnstileToken) {
         logger.info('[PhoneAuth] Turnstile token obtained', { tokenLength: turnstileToken.length, phone: formattedPhone.slice(-4) });
       } else {
-        logger.warn('[PhoneAuth] Turnstile unavailable, falling back to reCAPTCHA', { phone: formattedPhone.slice(-4) });
-        freshCaptchaToken = await executeReCaptcha('phone_login');
-        if (!freshCaptchaToken) {
-          logger.error('[PhoneAuth] Both Turnstile and reCAPTCHA returned null — request blocked');
-          throw new Error(language === 'he' ? 'אימות אבטחה נכשל — נסה שוב' : 'Security check failed — please try again');
+        logger.warn('[PhoneAuth] Turnstile unavailable, trying reCAPTCHA', { phone: formattedPhone.slice(-4) });
+        freshCaptchaToken = await executeReCaptcha('phone_login').catch(() => null);
+        if (freshCaptchaToken) {
+          logger.info('[PhoneAuth] reCAPTCHA token obtained', { tokenLength: freshCaptchaToken.length, phone: formattedPhone.slice(-4) });
+        } else {
+          logger.warn('[PhoneAuth] Both Turnstile and reCAPTCHA unavailable — proceeding without captcha token (rate-limit protection active)');
         }
-        logger.info('[PhoneAuth] reCAPTCHA token obtained', { tokenLength: freshCaptchaToken.length, phone: formattedPhone.slice(-4) });
       }
 
       const response = await fetch(getApiUrl('/api/auth/phone/send-code'), {
