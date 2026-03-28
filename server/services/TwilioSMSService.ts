@@ -228,13 +228,17 @@ class TwilioSMSService {
 
   private smsBody(code: string, language: string): string {
     const mins = VERIFICATION_CODE_EXPIRY_MINUTES;
+    // The last line (@petwash.co.il #CODE) is the WebOTP / WHATWG SMS OTP format.
+    // iOS Safari reads it and shows the code above the keyboard as a one-tap suggestion.
+    // Chrome on Android uses navigator.credentials.get({ otp }) to intercept it automatically.
+    const hint = `\n@petwash.co.il #${code}`;
     const bodies: Record<string, string> = {
-      en: `PetWash verification code:\n\n${code}\n\nExpires in ${mins} minutes.\nDo not share this code.`,
-      he: `PetWash קוד אימות:\n\n${code}\n\nתקף ל-${mins} דקות.\nאל תשתפו קוד זה.`,
-      ar: `PetWash رمز التحقق:\n\n${code}\n\nصالح لمدة ${mins} دقائق.\nلا تشارك هذا الرمز.`,
-      es: `PetWash codigo de verificacion:\n\n${code}\n\nExpira en ${mins} minutos.\nNo compartas este codigo.`,
-      fr: `PetWash code de verification:\n\n${code}\n\nExpire dans ${mins} minutes.\nNe partagez pas ce code.`,
-      ru: `PetWash код подтверждения:\n\n${code}\n\nДействителен ${mins} минут.\nНе сообщайте этот код.`,
+      en: `PetWash verification code:\n\n${code}\n\nExpires in ${mins} minutes.\nDo not share this code.${hint}`,
+      he: `PetWash קוד אימות:\n\n${code}\n\nתקף ל-${mins} דקות.\nאל תשתפו קוד זה.${hint}`,
+      ar: `PetWash رمز التحقق:\n\n${code}\n\nصالح لمدة ${mins} دقائق.\nلا تشارك هذا الرمز.${hint}`,
+      es: `PetWash codigo de verificacion:\n\n${code}\n\nExpira en ${mins} minutos.\nNo compartas este codigo.${hint}`,
+      fr: `PetWash code de verification:\n\n${code}\n\nExpire dans ${mins} minutes.\nNe partagez pas ce code.${hint}`,
+      ru: `PetWash код подтверждения:\n\n${code}\n\nДействителен ${mins} минут.\nНе сообщайте этот код.${hint}`,
     };
     return bodies[language] || bodies.en;
   }

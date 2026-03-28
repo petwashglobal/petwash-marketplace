@@ -13,6 +13,7 @@ import { PhoneInput } from "@/components/PhoneInput";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { PinKeypad } from "@/components/PinKeypad";
+import { OtpCodeInput } from "@/components/OtpCodeInput";
 import { Loader2, Mail, Info, Fingerprint, Smartphone, ScanFace, Phone, User, Lock, ArrowRight, Sparkles, KeyRound, X, ArrowLeft } from "lucide-react";
 import { SiFacebook, SiTiktok, SiInstagram } from "react-icons/si";
 import { Link, useLocation } from "wouter";
@@ -2222,10 +2223,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                   </>
                 ) : (
                   <>
-                    <PinKeypad
-                      pinLength={6}
-                      onComplete={(pin) => handleVerifyPhoneCode(pin)}
-                      onCancel={() => { setConfirmationResult(null); setVerificationCode(''); }}
+                    <OtpCodeInput
+                      length={6}
+                      onComplete={(code) => handleVerifyPhoneCode(code)}
                       title={language === 'he' ? 'קוד אימות' : 'Verification Code'}
                       subtitle={language === 'he' ? 'הזן את הקוד בן 6 הספרות שנשלח ל-SMS' : 'Enter the 6-digit code sent to your phone'}
                       loading={phoneLoading}
