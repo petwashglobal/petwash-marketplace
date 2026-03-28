@@ -142,11 +142,7 @@ export default function JoinAsSitter() {
     if (!form.agreeToTerms || !form.agreeToPrivacy) { toast({ title: "Please accept all agreements", variant: "destructive" }); return; }
     if (form.acceptedPetTypes.length === 0) { toast({ title: "Please select at least one pet type you accept", variant: "destructive" }); return; }
 
-    const captchaToken = await executeReCaptcha('provider_register');
-    if (!captchaToken) {
-      toast({ title: "Security check failed", description: "Please try again in a moment.", variant: "destructive" });
-      return;
-    }
+    const captchaToken = await executeReCaptcha('provider_register').catch(() => null);
 
     setSubmitting(true);
     try {

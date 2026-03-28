@@ -314,15 +314,17 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
     if (profilePhotoFile) {
       try {
         const photoBase64 = profilePhotoFile.buffer.toString('base64');
+        const photoDataUrl = `data:${profilePhotoFile.mimetype};base64,${photoBase64}`;
         await db.insert(providerDocuments).values({
           applicantId: application.id,
           documentType: 'profile_photo',
           fileName: profilePhotoFile.originalname,
+          fileUrl: photoDataUrl,
           fileSize: profilePhotoFile.size,
           mimeType: profilePhotoFile.mimetype,
           status: 'pending_review',
           uploadedBy: userId,
-          metadata: { photoBase64Length: photoBase64.length },
+          metadata: { source: 'application_form' },
         });
         logger.info('[ProviderApplication] Profile photo uploaded', {
           applicationId: application.id,
@@ -340,15 +342,17 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
         const gFile = galleryPhotoFiles[i];
         try {
           const gBase64 = gFile.buffer.toString('base64');
+          const gDataUrl = `data:${gFile.mimetype};base64,${gBase64}`;
           await db.insert(providerDocuments).values({
             applicantId: application.id,
             documentType: 'gallery_photo',
             fileName: gFile.originalname,
+            fileUrl: gDataUrl,
             fileSize: gFile.size,
             mimeType: gFile.mimetype,
             status: 'approved',
             uploadedBy: userId,
-            metadata: { sortOrder: i + 1, photoBase64Length: gBase64.length },
+            metadata: { sortOrder: i + 1, source: 'application_form' },
           });
         } catch (gError) {
           logger.error('[ProviderApplication] Failed to store gallery photo', { gError, applicationId: application.id, index: i });
@@ -516,6 +520,160 @@ router.get('/my', async (req: Request, res: Response) => {
     logger.error('[ProviderApplication] Get my application error', { error, traceId });
     res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to fetch application', traceId });
   }
+});
+
+// POST /api/provider-applications/my/documents - Upload a compliance document
+const uploadComplianceDoc = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only images (JPEG, PNG, WebP) and PDFs are allowed'));
+    }
+  },
+}).single('document');
+
+router.post('/my/documents', (req: Request, res: Response) => {
+  uploadComplianceDoc(req, res, async (multerErr) => {
+    try {
+      if (multerErr) {
+        return res.status(400).json({ error: 'UPLOAD_ERROR', message: multerErr.message || 'File upload failed' });
+      }
+
+      const userId = (req as any).firebaseUser?.uid;
+      if (!userId) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      const documentType = req.body?.documentType as string;
+      if (!documentType) {
+        return res.status(400).json({ error: 'documentType is required' });
+      }
+
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: 'No file provided' });
+      }
+
+      // Find the applicant
+      const [application] = await db.select()
+        .from(providerApplicants)
+        .where(eq(providerApplicants.userId, userId))
+        .limit(1);
+
+      if (!application) {
+        return res.status(404).json({ error: 'No application found. Submit the application form first.' });
+      }
+
+      const fileBase64 = file.buffer.toString('base64');
+      const fileDataUrl = `data:${file.mimetype};base64,${fileBase64}`;
+
+      // Check if this document type already exists (replace it)
+      const [existingDoc] = await db.select()
+        .from(providerDocuments)
+        .where(
+          and(
+            eq(providerDocuments.applicantId, application.id),
+            eq(providerDocuments.documentType, documentType)
+          )
+        )
+        .limit(1);
+
+      let docId: number;
+      if (existingDoc) {
+        await db.update(providerDocuments)
+          .set({
+            fileName: file.originalname,
+            fileUrl: fileDataUrl,
+            fileSize: file.size,
+            mimeType: file.mimetype,
+            status: 'pending_review',
+            uploadedBy: userId,
+            uploadedAt: new Date(),
+            metadata: { source: 'document_upload', replacedPrevious: true },
+          })
+          .where(eq(providerDocuments.id, existingDoc.id));
+        docId = existingDoc.id;
+      } else {
+        const [newDoc] = await db.insert(providerDocuments).values({
+          applicantId: application.id,
+          documentType,
+          fileName: file.originalname,
+          fileUrl: fileDataUrl,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+          status: 'pending_review',
+          uploadedBy: userId,
+          metadata: { source: 'document_upload' },
+        }).returning();
+        docId = newDoc.id;
+      }
+
+      // Mark the onboarding task as completed
+      const taskKey = `UPLOAD_${documentType.toUpperCase()}`;
+      await db.update(providerOnboardingTasks)
+        .set({ status: 'completed', completedAt: new Date() })
+        .where(
+          and(
+            eq(providerOnboardingTasks.applicantId, application.id),
+            eq(providerOnboardingTasks.taskKey, taskKey)
+          )
+        );
+
+      // Check if all required docs are now uploaded
+      const requiredDocs = getRequiredDocuments(application.serviceTypes);
+      const uploadedDocs = await db.select({ documentType: providerDocuments.documentType })
+        .from(providerDocuments)
+        .where(
+          and(
+            eq(providerDocuments.applicantId, application.id),
+            eq(providerDocuments.status, 'pending_review')
+          )
+        );
+      const uploadedTypes = new Set(uploadedDocs.map(d => d.documentType));
+      const allUploaded = requiredDocs.every(dt => uploadedTypes.has(dt));
+
+      if (allUploaded && application.stage === 'documents_pending') {
+        await db.update(providerApplicants)
+          .set({ stage: 'documents_under_review' })
+          .where(eq(providerApplicants.id, application.id));
+        await recordStageTransition(
+          application.id,
+          'documents_pending',
+          'documents_under_review',
+          userId,
+          'All required documents uploaded',
+          {},
+          req
+        );
+      }
+
+      logger.info('[ProviderApplication] Document uploaded', {
+        applicationId: application.id,
+        documentType,
+        fileName: file.originalname,
+        fileSize: file.size,
+        docId,
+        allUploaded,
+      });
+
+      return res.status(200).json({
+        success: true,
+        documentId: docId,
+        documentType,
+        allDocumentsUploaded: allUploaded,
+        message: allUploaded
+          ? 'All documents uploaded. Your application is now under review.'
+          : 'Document uploaded successfully.',
+      });
+    } catch (error) {
+      logger.error('[ProviderApplication] Document upload error', { error });
+      return res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to upload document' });
+    }
+  });
 });
 
 // GET /api/provider-applications/stages - Get all stage information

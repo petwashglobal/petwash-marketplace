@@ -1787,8 +1787,8 @@ export const providerDocuments = pgTable("provider_documents", {
   applicantId: integer("applicant_id").references(() => providerApplicants.id),
   
   documentType: varchar("document_type").notNull(),
-  fileName: varchar("file_name").notNull(),
-  fileUrl: text("file_url").notNull(),
+  fileName: varchar("file_name"),
+  fileUrl: text("file_url"),
   fileSize: integer("file_size"),
   mimeType: varchar("mime_type"),
   

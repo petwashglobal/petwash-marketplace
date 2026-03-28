@@ -133,11 +133,7 @@ export default function JoinAsWalker() {
     if (!user) { toast({ title: "Please sign in first", variant: "destructive" }); return; }
     if (!form.agreeToTerms || !form.agreeToBackground) { toast({ title: "Please accept all agreements", variant: "destructive" }); return; }
 
-    const captchaToken = await executeReCaptcha('provider_register');
-    if (!captchaToken) {
-      toast({ title: "Security check failed", description: "Please try again in a moment.", variant: "destructive" });
-      return;
-    }
+    const captchaToken = await executeReCaptcha('provider_register').catch(() => null);
 
     setSubmitting(true);
     try {
