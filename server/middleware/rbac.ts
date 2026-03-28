@@ -9,17 +9,22 @@ import {
 } from '../../shared/schema-enterprise';
 import { logger } from '../lib/logger';
 
-// Super Admin emails — loaded from environment variable (never hardcoded).
+// Super Admin emails — loaded from environment variable, with a hardcoded fallback.
 // Set SUPER_ADMIN_EMAILS as comma-separated list in environment secrets.
 // Example: SUPER_ADMIN_EMAILS=ceo@petwash.co.il,ops@petwash.co.il
 // Changing admin access requires only an env var update, not a code deployment.
+const HARDCODED_SUPER_ADMIN_FALLBACK = ['nirhadad1@gmail.com'];
+
 function loadSuperAdmins(): string[] {
   const raw = process.env.SUPER_ADMIN_EMAILS || '';
   if (!raw.trim()) {
-    logger.warn('[RBAC] ⚠️ SUPER_ADMIN_EMAILS env var is not set — no super-admin email bypass active');
-    return [];
+    logger.warn('[RBAC] ⚠️ SUPER_ADMIN_EMAILS env var is not set — using hardcoded fallback');
+    return HARDCODED_SUPER_ADMIN_FALLBACK;
   }
-  return raw.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+  const envList = raw.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+  // Always include the hardcoded fallback so the primary admin is never locked out
+  const merged = Array.from(new Set([...HARDCODED_SUPER_ADMIN_FALLBACK, ...envList]));
+  return merged;
 }
 
 // Lazily resolved on first call; re-read on each process if needed.

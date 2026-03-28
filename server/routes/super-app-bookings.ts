@@ -476,8 +476,42 @@ router.get(
       }
 
       const { db } = await import('../db');
-      const { providers } = await import('@shared/schema');
+      const { providers, walkerProfiles } = await import('@shared/schema');
       const { eq } = await import('drizzle-orm');
+
+      // walk_my_pet uses walkerProfiles as the source of truth (contains walkerId for booking engine)
+      if (platformId === 'walk_my_pet') {
+        const walkers = await db
+          .select()
+          .from(walkerProfiles)
+          .where(eq(walkerProfiles.isActive, true));
+
+        // Map walkerProfiles fields to the shape BookingFlow.tsx expects
+        const mappedWalkers = walkers.map((w) => ({
+          id: w.id,
+          walkerId: w.walkerId,
+          userId: w.userId,
+          businessName: w.displayName,
+          displayName: w.displayName,
+          profilePictureUrl: w.profilePhotoUrl,
+          bio: w.bio,
+          serviceArea: w.city,
+          rating: w.averageRating ? parseFloat(w.averageRating) : 5.0,
+          yearsOfExperience: w.yearsOfExperience,
+          hourlyRate: w.baseHourlyRate ? parseFloat(w.baseHourlyRate) : 60,
+          latitude: w.currentLatitude ? parseFloat(w.currentLatitude) : null,
+          longitude: w.currentLongitude ? parseFloat(w.currentLongitude) : null,
+          isAvailable: w.isAvailable,
+          verificationStatus: w.verificationStatus,
+          specializations: w.specializations,
+          certifications: w.certifications,
+          hasBodyCamera: w.hasBodyCamera,
+          hasDroneAccess: w.hasDroneAccess,
+          platformId,
+        }));
+
+        return res.json(mappedWalkers);
+      }
 
       const providerList = await db
         .select()
