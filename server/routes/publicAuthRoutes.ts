@@ -5,6 +5,7 @@ import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { getCurrentUser } from "../simpleAuth";
 import { logger } from "../lib/logger";
 import { verifyCaptchaToken } from "../lib/verifyCaptcha";
+import { verifyTurnstileToken } from "../lib/verifyTurnstile";
 import { twilioSMSService } from "../services/TwilioSMSService";
 import { db as firestoreDb, auth as fbAdminAuth } from '../lib/firebase-admin';
 import { sql, eq } from 'drizzle-orm';
@@ -263,7 +264,7 @@ publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (
   try {
     const traceId = (req as any).traceId || crypto.randomUUID();
     logger.info('[Auth] Phone code send started', { traceId, phone: req.body.phone?.slice(-4) });
-    const { phone, language = 'he', captchaToken } = req.body;
+    const { phone, language = 'he', captchaToken, turnstileToken } = req.body;
     
     if (!phone) {
       return res.status(400).json({
@@ -272,23 +273,48 @@ publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (
       });
     }
 
-    if (!captchaToken) {
-      logger.warn('[PublicAuth] Phone send-code blocked — no captchaToken', { phone: phone.slice(-4) });
-      return res.status(400).json({ ok: false, error: language === 'he' ? 'נדרש אימות אבטחה' : 'Security verification required' });
+    const callerIpEarly = req.ip || (req.headers['x-forwarded-for'] as string) || 'unknown';
+    let securityPassed = false;
+    let securitySource = 'none';
+
+    // ── 1. Try Cloudflare Turnstile first (preferred — always configured in prod) ──
+    if (turnstileToken) {
+      const turnstileResult = await verifyTurnstileToken(turnstileToken, callerIpEarly);
+      if (turnstileResult.valid) {
+        securityPassed = true;
+        securitySource = 'turnstile';
+        logger.info('[PublicAuth] Phone send-code passed Turnstile', { phone: phone.slice(-4) });
+      } else {
+        logger.warn('[PublicAuth] Turnstile failed for phone send-code', { phone: phone.slice(-4), reason: turnstileResult.reason });
+      }
     }
-    const captchaResult = await verifyCaptchaToken(captchaToken, 'phone_login');
-    if (!captchaResult.valid) {
-      logger.warn('[PublicAuth] Phone send-code blocked by reCAPTCHA', { phone: phone.slice(-4), reason: captchaResult.reason });
-      db.insert(authEvents).values({
-        eventType: 'CAPTCHA_PHONE_OTP_FAILED',
-        success: false,
-        reason: `${captchaResult.reason || 'low_score'} (score=${captchaResult.score}, source=${captchaResult.source})`,
-        ip: req.ip || (req.headers['x-forwarded-for'] as string) || 'unknown',
-        userAgent: req.headers['user-agent'] || null,
-        traceId,
-      }).catch((dbErr: any) => logger.warn('[PublicAuth] authEvents captcha insert failed', { error: dbErr?.message }));
-      return res.status(403).json({ ok: false, error: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed. Please refresh and try again.' });
+
+    // ── 2. Fall back to reCAPTCHA if Turnstile not provided or failed ─────────
+    if (!securityPassed) {
+      if (!captchaToken) {
+        logger.warn('[PublicAuth] Phone send-code blocked — no security token (no turnstileToken, no captchaToken)', { phone: phone.slice(-4) });
+        return res.status(400).json({ ok: false, error: language === 'he' ? 'נדרש אימות אבטחה' : 'Security verification required' });
+      }
+      const captchaResult = await verifyCaptchaToken(captchaToken, 'phone_login');
+      if (captchaResult.valid) {
+        securityPassed = true;
+        securitySource = 'recaptcha';
+        logger.info('[PublicAuth] Phone send-code passed reCAPTCHA', { phone: phone.slice(-4), score: captchaResult.score });
+      } else {
+        logger.warn('[PublicAuth] Both Turnstile and reCAPTCHA failed for phone send-code', { phone: phone.slice(-4), reason: captchaResult.reason });
+        db.insert(authEvents).values({
+          eventType: 'CAPTCHA_PHONE_OTP_FAILED',
+          success: false,
+          reason: `${captchaResult.reason || 'low_score'} (score=${captchaResult.score}, source=${captchaResult.source})`,
+          ip: callerIpEarly,
+          userAgent: req.headers['user-agent'] || null,
+          traceId,
+        }).catch((dbErr: any) => logger.warn('[PublicAuth] authEvents captcha insert failed', { error: dbErr?.message }));
+        return res.status(403).json({ ok: false, error: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed. Please refresh and try again.' });
+      }
     }
+
+    logger.info('[PublicAuth] Phone send-code security passed', { phone: phone.slice(-4), securitySource });
 
     // Check per-phone lockout (too many failed verify attempts) — checks Redis + memory
     const lockout = await twilioSMSService.checkPhoneLockout(phone, language);
@@ -307,7 +333,7 @@ publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (
       return res.status(429).json({ ok: false, error: dailyCheck.message });
     }
 
-    const callerIp = req.ip || (req.headers['x-forwarded-for'] as string) || 'unknown';
+    const callerIp = callerIpEarly;
     const result = await twilioSMSService.sendVerificationCode(phone, language, callerIp);
 
     // ── Persist every SMS send attempt to DB ───────────────────────────────

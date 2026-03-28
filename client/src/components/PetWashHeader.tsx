@@ -480,7 +480,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               {t("nav.loyalty", currentLanguage)}
             </button>
             <span className="pw-mobile-nav-strip-dot">·</span>
-            <button className="pw-mobile-nav-strip-link" onClick={() => { setIsPlatformsOpen((prev) => !prev); }}>
+            <button className="pw-mobile-nav-strip-link" onClick={() => setIsMobileOpen(true)}>
               {t("nav.platforms", currentLanguage)}
             </button>
           </div>

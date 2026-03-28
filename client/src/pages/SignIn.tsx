@@ -25,7 +25,7 @@ import { signInWithPasskey, signInWithPasskeyConditional, isPasskeySupported, ge
 import { useAutoFaceID, storePasskeyEmail, clearPasskeyEmail, storeLastAuthMethod, getConsecutiveFailures } from "@/hooks/useAutoFaceID";
 import { FaceIDLoadingState } from "@/components/FaceIDLoadingState";
 import { executeReCaptcha } from "@/components/ReCaptcha";
-import { TurnstileWidget, TURNSTILE_CONFIGURED } from "@/components/TurnstileWidget";
+import { TurnstileWidget, TURNSTILE_CONFIGURED, executeTurnstileInvisible } from "@/components/TurnstileWidget";
 import { trackAuthError } from "@/lib/authErrorTracker";
 import { trustDevice, isDeviceTrusted } from "@/lib/deviceTrust";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1235,19 +1235,33 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       logger.info('[PhoneAuth] Sending code to:', formattedPhone);
 
-      const freshCaptchaToken = await executeReCaptcha('phone_login');
-      if (!freshCaptchaToken) {
-        logger.error('[PhoneAuth] executeReCaptcha returned null — request blocked. Check browser console for [ReCaptcha] logs above.');
-        throw new Error(language === 'he' ? 'אימות אבטחה נכשל — נסה שוב' : 'Security check failed — please try again');
-      }
+      // ── Prefer Cloudflare Turnstile (configured in production) ──────────────
+      // Fall back to Google reCAPTCHA if Turnstile site key is not set.
+      let turnstileToken: string | null = null;
+      let freshCaptchaToken: string | null = null;
 
-      logger.info('[PhoneAuth] reCAPTCHA token confirmed, sending request', { tokenLength: freshCaptchaToken.length, phone: formattedPhone.slice(-4) });
+      turnstileToken = await executeTurnstileInvisible('phone_login');
+      if (turnstileToken) {
+        logger.info('[PhoneAuth] Turnstile token obtained', { tokenLength: turnstileToken.length, phone: formattedPhone.slice(-4) });
+      } else {
+        logger.warn('[PhoneAuth] Turnstile unavailable, falling back to reCAPTCHA', { phone: formattedPhone.slice(-4) });
+        freshCaptchaToken = await executeReCaptcha('phone_login');
+        if (!freshCaptchaToken) {
+          logger.error('[PhoneAuth] Both Turnstile and reCAPTCHA returned null — request blocked');
+          throw new Error(language === 'he' ? 'אימות אבטחה נכשל — נסה שוב' : 'Security check failed — please try again');
+        }
+        logger.info('[PhoneAuth] reCAPTCHA token obtained', { tokenLength: freshCaptchaToken.length, phone: formattedPhone.slice(-4) });
+      }
 
       const response = await fetch(getApiUrl('/api/auth/phone/send-code'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ phone: formattedPhone, language, captchaToken: freshCaptchaToken }),
+        body: JSON.stringify({
+          phone: formattedPhone,
+          language,
+          ...(turnstileToken ? { turnstileToken } : { captchaToken: freshCaptchaToken }),
+        }),
       });
 
       const result = await response.json();
@@ -1721,7 +1735,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             <div />
             <div className="flex-1 text-center">
               <h1 className="text-lg sm:text-xl font-light tracking-[0.2em] text-white uppercase" style={{ fontFamily: "'Cormorant Garamond','Playfair Display',serif" }}>
-                PetWash™
+                <span dir="ltr">PetWash™</span>
               </h1>
             </div>
             <button
