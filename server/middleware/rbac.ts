@@ -10,9 +10,10 @@ import {
 import { logger } from '../lib/logger';
 
 // Super Admin emails — loaded from environment variable, with a hardcoded fallback.
-// Set SUPER_ADMIN_EMAILS as comma-separated list in environment secrets.
+// HARDCODED_SUPER_ADMIN_FALLBACK is always merged in so the primary admin can never
+// be locked out by a missing or mis-configured SUPER_ADMIN_EMAILS env var.
+// To add more admins: set SUPER_ADMIN_EMAILS as a comma-separated list in secrets.
 // Example: SUPER_ADMIN_EMAILS=ceo@petwash.co.il,ops@petwash.co.il
-// Changing admin access requires only an env var update, not a code deployment.
 const HARDCODED_SUPER_ADMIN_FALLBACK = ['nirhadad1@gmail.com'];
 
 function loadSuperAdmins(): string[] {
