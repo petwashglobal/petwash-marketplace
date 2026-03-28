@@ -466,7 +466,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
 
     try {
-      const userRecord = await firebaseAdminModule.auth.getUser(req.firebaseUser.uid);
+      const userRecord = await fbAdminAuth.getUser(req.firebaseUser.uid);
       const claims = (userRecord.customClaims || {}) as Record<string, any>;
 
       let role = claims.role;
@@ -474,7 +474,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       if (!role) {
         role = claims.accountType === 'internal' ? 'staff' : claims.accountType === 'provider' ? 'provider' : 'public';
         try {
-          await firebaseAdminModule.auth.setCustomUserClaims(req.firebaseUser.uid, {
+          await fbAdminAuth.setCustomUserClaims(req.firebaseUser.uid, {
             ...claims,
             role,
             loyaltyMember: claims.loyaltyMember ?? true,
@@ -899,6 +899,8 @@ self.addEventListener('notificationclick', (event) => {
   const firebaseAdminModule = await import('./lib/firebase-admin');
   const firebaseAdmin = firebaseAdminModule.default;
   const firestoreDb = firebaseAdminModule.db;
+  const { getAuth: _fbGetAuth } = await import('firebase-admin/auth');
+  const fbAdminAuth = _fbGetAuth();
 
   // 🔒 SECURITY: Production hardening + secure one-tap mobile ops login
   applySecurityAndOneTap({ app, requireAdmin, admin: firebaseAdmin });
@@ -924,7 +926,7 @@ self.addEventListener('notificationclick', (event) => {
       // Pre-validate token — used for both privileged-role checks AND reCAPTCHA enforcement.
       // We decode the Firebase ID token first so we can trust sign_in_provider (server-verified, not client-supplied).
       try {
-        const preDecoded = await firebaseAdminModule.auth.verifyIdToken(idToken, true);
+        const preDecoded = await fbAdminAuth.verifyIdToken(idToken, true);
         const role = (preDecoded as any).role || (preDecoded as any)['custom:role'] || '';
         const PRIVILEGED_ROLES = ['admin', 'management', 'super_admin', 'ceo', 'finance'];
         const isPrivileged = PRIVILEGED_ROLES.includes(role);
@@ -983,7 +985,12 @@ self.addEventListener('notificationclick', (event) => {
           }
         }
       } catch (preValidErr: any) {
-        logger.warn('[Session] Token pre-validation failed', { error: preValidErr?.message, traceId });
+        logger.warn('[Session] Token pre-validation failed', { 
+          error: preValidErr?.message, 
+          code: preValidErr?.code,
+          errorInfo: preValidErr?.errorInfo,
+          traceId 
+        });
         return res.status(401).json({ error: 'Invalid ID token', errorCode: 'INVALID_TOKEN' });
       }
 
@@ -995,13 +1002,13 @@ self.addEventListener('notificationclick', (event) => {
       // getIdTokenResult(true) on the client picks up the correct role immediately.
       try {
         const { isSuperAdmin: checkSuperAdmin } = await import('./middleware/rbac');
-        const decodedForClaims = await firebaseAdminModule.auth.verifyIdToken(idToken, true);
+        const decodedForClaims = await fbAdminAuth.verifyIdToken(idToken, true);
         const emailForClaims = (decodedForClaims.email || '').toLowerCase();
         if (checkSuperAdmin(emailForClaims)) {
-          const userRecForClaims = await firebaseAdminModule.auth.getUser(decodedForClaims.uid);
+          const userRecForClaims = await fbAdminAuth.getUser(decodedForClaims.uid);
           const existClaims = (userRecForClaims.customClaims || {}) as Record<string, any>;
           if (existClaims.role !== 'super_admin') {
-            await firebaseAdminModule.auth.setCustomUserClaims(decodedForClaims.uid, {
+            await fbAdminAuth.setCustomUserClaims(decodedForClaims.uid, {
               ...existClaims,
               role: 'super_admin',
             });
@@ -1014,7 +1021,7 @@ self.addEventListener('notificationclick', (event) => {
 
       (async () => {
         try {
-          const decoded = await firebaseAdminModule.auth.verifyIdToken(idToken, true);
+          const decoded = await fbAdminAuth.verifyIdToken(idToken, true);
           const { authService } = await import('./services/AuthService');
           
           let firstName: string | undefined;
@@ -1107,8 +1114,8 @@ self.addEventListener('notificationclick', (event) => {
       const token = req.cookies?.pw_session;
       if (token) {
         try {
-          const decoded = await firebaseAdminModule.auth.verifySessionCookie(token);
-          await firebaseAdminModule.auth.revokeRefreshTokens(decoded.uid);
+          const decoded = await fbAdminAuth.verifySessionCookie(token);
+          await fbAdminAuth.revokeRefreshTokens(decoded.uid);
           logger.info('[Auth] Session revoked for user:', decoded.uid);
         } catch (revokeErr) {
           logger.debug('[Auth] Token revocation skipped (token may already be expired)');
@@ -1998,9 +2005,9 @@ self.addEventListener('notificationclick', (event) => {
       let sessionAge = 0;
       try {
         if (token) {
-          decoded = await firebaseAdminModule.auth.verifySessionCookie(token, true);
+          decoded = await fbAdminAuth.verifySessionCookie(token, true);
         } else if (bearerToken) {
-          decoded = await firebaseAdminModule.auth.verifyIdToken(bearerToken, true);
+          decoded = await fbAdminAuth.verifyIdToken(bearerToken, true);
         }
         const authTime = decoded.auth_time ? decoded.auth_time * 1000 : Date.now();
         sessionAge = Math.floor((Date.now() - authTime) / 1000);
@@ -2008,7 +2015,7 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ authenticated: false, error: 'invalid-session' });
       }
 
-      const userRecord = await firebaseAdminModule.auth.getUser(decoded.uid);
+      const userRecord = await fbAdminAuth.getUser(decoded.uid);
       const claims = (userRecord.customClaims || {}) as Record<string, any>;
 
       let role = claims.role || 'public';
