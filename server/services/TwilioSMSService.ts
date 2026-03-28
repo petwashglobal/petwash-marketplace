@@ -128,21 +128,24 @@ class TwilioSMSService {
   }
 
   private getSendParams(toPhone: string, body: string): { body: string; to: string; from?: string; messagingServiceSid?: string } {
-    if (this.messagingServiceSid) {
-      return { body, to: toPhone, messagingServiceSid: this.messagingServiceSid };
-    }
-    if (!this.fromPhone) {
-      throw new Error('No fromPhone or messagingServiceSid configured');
-    }
     const cleaned = toPhone.replace(/[^0-9]/g, '');
-    let sender = ALPHA_SENDER_ID;
-    for (const prefix of ALPHA_SENDER_BLOCKED_COUNTRIES) {
-      if (cleaned.startsWith(prefix)) {
-        sender = this.fromPhone;
-        break;
+
+    // US/Canada: alphanumeric sender IDs are not supported — use Messaging Service or fromPhone
+    const isUSCanada = cleaned.startsWith('1') && cleaned.length >= 11;
+    if (isUSCanada) {
+      if (this.messagingServiceSid) {
+        return { body, to: toPhone, messagingServiceSid: this.messagingServiceSid };
       }
+      if (this.fromPhone) {
+        return { body, to: toPhone, from: this.fromPhone };
+      }
+      throw new Error('No fromPhone or messagingServiceSid configured for US/Canada');
     }
-    return { body, to: toPhone, from: sender };
+
+    // International (AU, IL, UK, EU, etc.): use alphanumeric sender 'PetWash'
+    // This delivers as "PetWash" in the recipient's SMS app (no phone number shown).
+    // Fallback to phone/Messaging Service is handled in the catch block if alpha unsupported.
+    return { body, to: toPhone, from: ALPHA_SENDER_ID };
   }
 
   isReady(): boolean {
@@ -318,14 +321,29 @@ class TwilioSMSService {
       try {
         twilioMsg = await this.client!.messages.create(params);
       } catch (alphaErr: any) {
-        if (!params.messagingServiceSid && this.fromPhone && params.from !== this.fromPhone && (alphaErr.code === 21612 || alphaErr.code === 21659)) {
-          logger.warn('[TwilioSMS] Alphanumeric sender not supported, falling back to phone number');
-          usedSender = this.fromPhone;
-          twilioMsg = await this.client!.messages.create({
-            body: messageBody,
-            from: this.fromPhone,
-            to: formattedPhone
+        // Alpha sender rejected by carrier (21612 = alphanumeric not allowed, 21659 = not registered)
+        if (params.from === ALPHA_SENDER_ID && (alphaErr.code === 21612 || alphaErr.code === 21659)) {
+          logger.warn('[TwilioSMS] Alphanumeric sender not supported for this country — falling back', {
+            to: formattedPhone.slice(0, 6) + '****',
+            code: alphaErr.code,
           });
+          if (this.messagingServiceSid) {
+            usedSender = 'MessagingService(fallback)';
+            twilioMsg = await this.client!.messages.create({
+              body: messageBody,
+              messagingServiceSid: this.messagingServiceSid,
+              to: formattedPhone,
+            });
+          } else if (this.fromPhone) {
+            usedSender = this.fromPhone;
+            twilioMsg = await this.client!.messages.create({
+              body: messageBody,
+              from: this.fromPhone,
+              to: formattedPhone,
+            });
+          } else {
+            throw alphaErr;
+          }
         } else {
           throw alphaErr;
         }
