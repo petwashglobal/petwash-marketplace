@@ -13,12 +13,13 @@ import { pool, db } from '../db';
 import { userConsents, authEvents, users, smsEvidence, otpEvents } from '@shared/schema';
 import { storage } from '../storage';
 
-// Rate limiter: max 10 SMS send attempts per IP per minute (matches platform auth rate limit policy).
+// Rate limiter: max 3 SMS send attempts per IP per 10 minutes.
+// Tight window prevents bulk enumeration or accidental spam from a single device.
 // ipKeyGenerator normalises IPv6-mapped IPv4 addresses (e.g. "::ffff:1.2.3.4" → "1.2.3.4")
 // so that IPv4 and IPv6 connections to the same IP share the same rate-limit bucket.
 const phoneSendRateLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 10,
+  windowMs: 10 * 60 * 1000,
+  max: 3,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: ipKeyGenerator,
@@ -27,16 +28,16 @@ const phoneSendRateLimiter = rateLimit({
     logger.warn('[PublicAuth] SMS rate limit hit', { ip: _req.ip });
     return res.status(429).json({
       ok: false,
-      error: 'יותר מדי בקשות. המתינו דקה.'
+      error: 'Too many requests. Please wait 10 minutes before trying again.'
     });
   }
 });
 
-// Rate limiter: max 10 verify attempts per IP per 5 minutes
-// ipKeyGenerator normalises IPv6-mapped IPv4 addresses so bypassing via IPv6 is blocked.
+// Rate limiter: max 5 verify attempts per IP per 5 minutes.
+// Matches the per-phone lockout threshold so brute-force via multiple phones is also blocked.
 const phoneVerifyRateLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
-  max: 10,
+  max: 5,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: ipKeyGenerator,
@@ -44,7 +45,7 @@ const phoneVerifyRateLimiter = rateLimit({
   handler: (_req, res) => {
     return res.status(429).json({
       ok: false,
-      error: 'יותר מדי ניסיונות. המתינו 5 דקות.'
+      error: 'Too many attempts. Please wait 5 minutes.'
     });
   }
 });

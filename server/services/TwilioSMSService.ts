@@ -31,6 +31,9 @@ const phoneLockouts = new Map<string, number>();
 const MAX_SMS_PER_PHONE_PER_DAY = 5;
 const phoneDailySendCount = new Map<string, { count: number; resetAt: number }>();
 
+const RESEND_COOLDOWN_SECONDS = 60;
+const phoneLastSentAt = new Map<string, number>(); // phone → epoch ms of last send
+
 const MAX_GLOBAL_SMS_PER_DAY = 150;
 let globalDailySmsCount = 0;
 let globalDailyResetAt = Date.now() + 24 * 60 * 60 * 1000;
@@ -290,6 +293,32 @@ class TwilioSMSService {
 
     const formattedPhone = this.formatPhoneNumber(phone);
 
+    // ── Per-phone resend cooldown ─────────────────────────────────────────────
+    // Block sending a second code to the same number within RESEND_COOLDOWN_SECONDS.
+    // This ensures users receive exactly one SMS per explicit request and prevents
+    // accidental or automated rapid-fire sends from any IP.
+    const lastSent = phoneLastSentAt.get(formattedPhone);
+    if (lastSent) {
+      const elapsedSec = Math.floor((Date.now() - lastSent) / 1000);
+      if (elapsedSec < RESEND_COOLDOWN_SECONDS) {
+        const waitSec = RESEND_COOLDOWN_SECONDS - elapsedSec;
+        const cooldownMsgs: Record<string, string> = {
+          en: `Please wait ${waitSec} seconds before requesting a new code.`,
+          he: `יש להמתין ${waitSec} שניות לפני בקשת קוד חדש.`,
+          ar: `يرجى الانتظار ${waitSec} ثانية قبل طلب رمز جديد.`,
+          es: `Espere ${waitSec} segundos antes de solicitar un nuevo código.`,
+          fr: `Veuillez attendre ${waitSec} secondes avant de demander un nouveau code.`,
+          ru: `Подождите ${waitSec} секунд перед повторным запросом кода.`,
+        };
+        logger.warn('[TwilioSMS] Resend cooldown active', {
+          phone: formattedPhone.slice(0, 6) + '****',
+          waitSec,
+        });
+        return { success: false, message: cooldownMsgs[language] || cooldownMsgs.en };
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     // Track IP→phone mapping for enumeration attack detection
     if (callerIp) {
       smsAbuseDetector.trackIpPhoneCombo(callerIp, formattedPhone).catch(err =>
@@ -368,6 +397,7 @@ class TwilioSMSService {
       });
 
       this.incrementDailyPhoneCount(phone);
+      phoneLastSentAt.set(formattedPhone, Date.now()); // stamp cooldown timer
       smsAbuseDetector.recordSent().catch(err =>
         logger.error('[TwilioSMS] AbuseDetector.recordSent failed', { error: err?.message })
       );
