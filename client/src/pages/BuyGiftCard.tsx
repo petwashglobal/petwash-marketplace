@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/Layout";
 import { getApiUrl } from '@/lib/apiConfig';
@@ -46,6 +47,32 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
     message: "",
     deliveryDate: new Date().toISOString().split('T')[0],
   });
+
+  // Pre-fill sender + address from profile (best-effort — works if logged in)
+  const { data: userProfile } = useQuery<{
+    displayName?: string; email?: string; firstName?: string; lastName?: string;
+    street?: string; city?: string; postalCode?: string; address?: string;
+  }>({
+    queryKey: ['/api/user/profile'],
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (userProfile) {
+      const name = [userProfile.firstName, userProfile.lastName].filter(Boolean).join(' ')
+        || userProfile.displayName || '';
+      const street = userProfile.street || userProfile.address || '';
+      setFormData(prev => ({
+        ...prev,
+        senderName: prev.senderName || name,
+        senderEmail: prev.senderEmail || userProfile.email || '',
+        address: prev.address || street,
+        city: prev.city || userProfile.city || '',
+        postcode: prev.postcode || userProfile.postalCode || '',
+      }));
+    }
+  }, [userProfile]);
 
   const predefinedAmounts = [50, 100, 200, 500, 1000];
 

@@ -1,4 +1,5 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -695,6 +696,27 @@ export default function EGift() {
     senderEmail: '',
     message: ''
   });
+
+  // Pre-fill sender details from profile (best-effort — works if logged in)
+  const { data: userProfile } = useQuery<{
+    displayName?: string; email?: string; firstName?: string; lastName?: string;
+  }>({
+    queryKey: ['/api/user/profile'],
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (userProfile) {
+      const name = [userProfile.firstName, userProfile.lastName].filter(Boolean).join(' ')
+        || userProfile.displayName || '';
+      setFormData(prev => ({
+        ...prev,
+        senderName: prev.senderName || name,
+        senderEmail: prev.senderEmail || userProfile.email || '',
+      }));
+    }
+  }, [userProfile]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isProcessing, setIsProcessing] = useState(false);
