@@ -1,7 +1,12 @@
 // KYC API Routes
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
-import { storage, auth } from '../lib/firebase-admin';
+import { nanoid } from 'nanoid';
+import { storage, auth, db as firestoreDb } from '../lib/firebase-admin';
+import { db } from '../db';
+import { kycQuarantineObjects, kycEvents } from '../../shared/schema';
+import { eq, and } from 'drizzle-orm';
+import { isBiometricDocType } from '../../shared/kycDocTypes';
 import {
   hashIdNumber,
   checkDuplicateId,
@@ -113,9 +118,9 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
       }
     }
 
-    // Upload to Firebase Storage
+    // Upload to Firebase Storage — random filename: no document type, timestamp, or original name
     const bucket = storage.bucket('gs://signinpetwash.firebasestorage.app');
-    const fileName = `users/${uid}/kyc/${type}_${Date.now()}_${file.originalname}`;
+    const fileName = `users/${uid}/kyc/${nanoid(24)}`;
     const fileUpload = bucket.file(fileName);
 
     await fileUpload.save(file.buffer, {
@@ -125,6 +130,33 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     });
 
     logger.info(`KYC file uploaded: ${fileName}`);
+
+    // Register file in quarantine — must be deleted within 24h
+    const deleteBy = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    try {
+      await db.insert(kycQuarantineObjects).values({
+        objectKey: fileName,
+        userId: uid,
+        documentType: type,
+        storageSystem: 'firebase_storage',
+        deleteBy,
+      });
+    } catch (qErr) {
+      logger.error('[KYC] Quarantine insert failed — file uploaded but not tracked:', qErr);
+    }
+
+    // Audit event
+    try {
+      await db.insert(kycEvents).values({
+        userId: uid,
+        eventType: 'upload',
+        actor: uid,
+        result: 'success',
+        sourceIp: req.ip ?? null,
+      });
+    } catch (aErr) {
+      logger.warn('[KYC] Audit event insert failed on upload:', aErr);
+    }
 
     // Create/update KYC document in Firestore
     const kycData = {
@@ -249,7 +281,58 @@ router.post('/admin/approve', requireAdmin, async (req: Request, res: Response) 
       expiresAt.setFullYear(expiresAt.getFullYear() + parseInt(expiryYears));
     }
 
+    // Get docPaths before approving (approveKYC does not clear them)
+    const kycDocBeforeApprove = await getKYCDocument(uid);
+    const docPathsToDelete = kycDocBeforeApprove?.docPaths || [];
+
     await approveKYC(uid, reviewerUid, expiresAt);
+
+    // Immediately delete raw identity files from Firebase Storage
+    const kycBucket = storage.bucket('gs://signinpetwash.firebasestorage.app');
+    for (const filePath of docPathsToDelete) {
+      try {
+        await kycBucket.file(filePath).delete();
+        logger.info(`[KYC] Deleted file on approve: ${filePath}`);
+      } catch (delErr: any) {
+        if (delErr.code !== 404) {
+          logger.warn(`[KYC] Failed to delete ${filePath} on approve:`, delErr);
+        }
+      }
+    }
+
+    // Clear Firestore docPaths and mark documents as deleted
+    try {
+      await firestoreDb.collection('users').doc(uid).update({
+        'kyc.docPaths': [],
+        'kyc.documentsDeleted': true,
+      });
+    } catch (fsErr) {
+      logger.warn(`[KYC] Firestore docPaths clear failed for uid=${uid}:`, fsErr);
+    }
+
+    // Mark quarantine rows as completed
+    try {
+      await db
+        .update(kycQuarantineObjects)
+        .set({ deletionStatus: 'completed', deletedAt: new Date() })
+        .where(and(eq(kycQuarantineObjects.userId, uid), eq(kycQuarantineObjects.deletionStatus, 'pending')));
+    } catch (qErr) {
+      logger.warn('[KYC] Quarantine update failed on approve:', qErr);
+    }
+
+    // Audit event
+    try {
+      await db.insert(kycEvents).values({
+        userId: uid,
+        eventType: 'approved',
+        actor: reviewerUid,
+        result: 'success',
+        reason: `Files deleted: ${docPathsToDelete.length}`,
+        sourceIp: req.ip ?? null,
+      });
+    } catch (aErr) {
+      logger.warn('[KYC] Audit event insert failed on approve:', aErr);
+    }
 
     logger.info(`KYC approved for user ${uid} by ${reviewerUid}`);
 
@@ -272,7 +355,58 @@ router.post('/admin/reject', requireAdmin, async (req: Request, res: Response) =
     // Use verified admin UID from middleware
     const reviewerUid = adminUid;
 
+    // Get docPaths before rejecting (rejectKYC does not clear them)
+    const kycDocBeforeReject = await getKYCDocument(uid);
+    const docPathsToDeleteOnReject = kycDocBeforeReject?.docPaths || [];
+
     await rejectKYC(uid, reviewerUid, reason);
+
+    // Immediately delete raw identity files from Firebase Storage
+    const kycBucketReject = storage.bucket('gs://signinpetwash.firebasestorage.app');
+    for (const filePath of docPathsToDeleteOnReject) {
+      try {
+        await kycBucketReject.file(filePath).delete();
+        logger.info(`[KYC] Deleted file on reject: ${filePath}`);
+      } catch (delErr: any) {
+        if (delErr.code !== 404) {
+          logger.warn(`[KYC] Failed to delete ${filePath} on reject:`, delErr);
+        }
+      }
+    }
+
+    // Clear Firestore docPaths and mark documents as deleted
+    try {
+      await firestoreDb.collection('users').doc(uid).update({
+        'kyc.docPaths': [],
+        'kyc.documentsDeleted': true,
+      });
+    } catch (fsErr) {
+      logger.warn(`[KYC] Firestore docPaths clear failed for uid=${uid}:`, fsErr);
+    }
+
+    // Mark quarantine rows as completed
+    try {
+      await db
+        .update(kycQuarantineObjects)
+        .set({ deletionStatus: 'completed', deletedAt: new Date() })
+        .where(and(eq(kycQuarantineObjects.userId, uid), eq(kycQuarantineObjects.deletionStatus, 'pending')));
+    } catch (qErr) {
+      logger.warn('[KYC] Quarantine update failed on reject:', qErr);
+    }
+
+    // Audit event
+    try {
+      await db.insert(kycEvents).values({
+        userId: uid,
+        eventType: 'rejected',
+        actor: reviewerUid,
+        result: 'rejected',
+        reason,
+        sourceIp: req.ip ?? null,
+      });
+    } catch (aErr) {
+      logger.warn('[KYC] Audit event insert failed on reject:', aErr);
+    }
 
     logger.info(`KYC rejected for user ${uid} by ${reviewerUid}: ${reason}`);
 
@@ -289,12 +423,17 @@ router.get('/admin/document/:uid', requireAdmin, async (req: Request, res: Respo
     const { uid } = req.params;
     
     const kycDoc = await getKYCDocument(uid);
-    
-    if (!kycDoc || !kycDoc.docPaths || kycDoc.docPaths.length === 0) {
-      return res.status(404).json({ error: 'No documents found' });
+
+    if (!kycDoc) {
+      return res.status(404).json({ error: 'No KYC submission found' });
     }
 
-    // Generate signed URLs for viewing
+    // Documents have already been deleted after review
+    if ((kycDoc as any).documentsDeleted === true || !kycDoc.docPaths || kycDoc.docPaths.length === 0) {
+      return res.json({ deleted: true });
+    }
+
+    // Generate signed URLs for viewing (max 15 minutes — temporary review only)
     const bucket = storage.bucket('gs://signinpetwash.firebasestorage.app');
     const urls: string[] = [];
 

@@ -642,6 +642,13 @@ if (isProduction) {
       }).catch(err => console.warn('[RetryService] Failed to start sweeper', err));
     });
 
+    // Non-blocking: start KYC deletion job — deletes biometric files after review (every 15 minutes).
+    setImmediate(() => {
+      import('./jobs/kycDeletionJob').then(({ startKycDeletionJob }) => {
+        startKycDeletionJob();
+      }).catch(err => console.warn('[KycDeletionJob] Failed to start:', err));
+    });
+
     // Non-blocking: backfill trust metrics for all providers missing or stale data.
     // Runs once per cold start — safe to re-run (idempotent).
     setImmediate(() => {

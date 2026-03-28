@@ -37,6 +37,7 @@ export default function AdminKYC() {
   const language = 'en'; // Admin pages use English
   const [selectedSubmission, setSelectedSubmission] = useState<KYCSubmission | null>(null);
   const [documentUrls, setDocumentUrls] = useState<string[]>([]);
+  const [documentsDeleted, setDocumentsDeleted] = useState(false);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [expiryYears, setExpiryYears] = useState('5');
@@ -110,21 +111,26 @@ export default function AdminKYC() {
     }
   });
 
-  // Fetch document URLs
+  // Fetch document URLs — returns { urls } or { deleted: true }
   const fetchDocuments = async (uid: string) => {
     const headers = await getAuthHeaders();
     const response = await fetch(getApiUrl(`/api/kyc/admin/document/${uid}`), { headers });
     if (!response.ok) throw new Error('Failed to fetch documents');
-    const data = await response.json();
-    return data.urls;
+    return response.json();
   };
 
   // View documents
   const handleViewDocuments = async (submission: KYCSubmission) => {
     try {
-      const urls = await fetchDocuments(submission.uid);
-      setDocumentUrls(urls);
+      const data = await fetchDocuments(submission.uid);
       setSelectedSubmission(submission);
+      if (data.deleted === true) {
+        setDocumentsDeleted(true);
+        setDocumentUrls([]);
+      } else {
+        setDocumentsDeleted(false);
+        setDocumentUrls(data.urls || []);
+      }
     } catch (error) {
       logger.error('Error fetching documents', error);
     }
@@ -432,7 +438,10 @@ export default function AdminKYC() {
         </div>
 
         {/* Document Viewer Dialog */}
-        <Dialog open={documentUrls.length > 0} onOpenChange={() => setDocumentUrls([])}>
+        <Dialog
+          open={documentUrls.length > 0 || documentsDeleted}
+          onOpenChange={() => { setDocumentUrls([]); setDocumentsDeleted(false); }}
+        >
           <DialogContent className="luxury-glass-card luxury-shadow-xl max-w-4xl max-h-[90vh] overflow-auto">
             <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100">
               <X className="h-4 w-4" />
@@ -450,20 +459,33 @@ export default function AdminKYC() {
               )}
             </DialogHeader>
             <div className="space-y-4 mt-4">
-              {documentUrls.map((url, index) => (
-                <div key={index} className="luxury-glass-minimal p-4 luxury-shadow-md overflow-hidden">
-                  <img 
-                    src={url} 
-                    alt={`Document ${index + 1}`} 
-                    className="w-full rounded-lg" 
-                    data-testid={`img-document-${index}`} 
-                  />
+              {documentsDeleted ? (
+                <div className="luxury-glass-minimal p-6 text-center space-y-2">
+                  <Shield className="h-8 w-8 text-green-500 mx-auto" />
+                  <p className="luxury-heading-sm text-green-700 dark:text-green-400">
+                    Document deleted after verification
+                  </p>
+                  <p className="luxury-text-small text-gray-500">
+                    This identity document was deleted in compliance with data retention policy.
+                    Only the verification result is retained.
+                  </p>
                 </div>
-              ))}
+              ) : (
+                documentUrls.map((url, index) => (
+                  <div key={index} className="luxury-glass-minimal p-4 luxury-shadow-md overflow-hidden">
+                    <img
+                      src={url}
+                      alt={`Document ${index + 1}`}
+                      className="w-full rounded-lg"
+                      data-testid={`img-document-${index}`}
+                    />
+                  </div>
+                ))
+              )}
             </div>
             <DialogFooter className="mt-6">
               <Button
-                onClick={() => setDocumentUrls([])}
+                onClick={() => { setDocumentUrls([]); setDocumentsDeleted(false); }}
                 className="luxury-btn-secondary"
                 data-testid="button-close-documents"
               >

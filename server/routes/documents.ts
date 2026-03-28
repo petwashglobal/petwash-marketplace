@@ -6,8 +6,10 @@ import {
   secureDocuments,
   documentAccessLog,
   insertSecureDocumentSchema,
-  type SecureDocument
+  type SecureDocument,
 } from '../../shared/schema-enterprise';
+import { kycQuarantineObjects, kycEvents } from '../../shared/schema';
+import { isBiometricDocType } from '../../shared/kycDocTypes';
 import { 
   loadUserRole, 
   checkPermission, 
@@ -279,20 +281,58 @@ router.post(
       // Make file private (not publicly accessible)
       await blob.makePrivate();
 
-      // Get signed URL for access
+      const isBiometric = isBiometricDocType(documentType || '');
+
+      // Biometric docs get a 24h signed URL; business docs get 1 year
+      const signedUrlExpiry = isBiometric
+        ? Date.now() + 24 * 60 * 60 * 1000
+        : Date.now() + 365 * 24 * 60 * 60 * 1000;
+
       const [gcsUrl] = await blob.getSignedUrl({
         action: 'read',
-        expires: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year
+        expires: signedUrlExpiry,
       });
 
-      // Create backup copy
-      const backupBlob = bucket.file(`documents/backups/${uniqueFilename}`);
-      await blob.copy(backupBlob);
-      
-      const [backupGcsUrl] = await backupBlob.getSignedUrl({
-        action: 'read',
-        expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
-      });
+      // Biometric/identity documents must NOT be duplicated — skip backup entirely
+      let backupGcsUrl: string | undefined;
+      if (!isBiometric) {
+        const backupBlob = bucket.file(`documents/backups/${uniqueFilename}`);
+        await blob.copy(backupBlob);
+        const [backupUrl] = await backupBlob.getSignedUrl({
+          action: 'read',
+          expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
+        });
+        backupGcsUrl = backupUrl;
+      }
+
+      // Biometric docs are tracked for mandatory deletion within 24h
+      const gcsObjectKey = `documents/${new Date().getFullYear()}/${uniqueFilename}`;
+      if (isBiometric) {
+        try {
+          const deleteBy = new Date(Date.now() + 24 * 60 * 60 * 1000);
+          await db.insert(kycQuarantineObjects).values({
+            objectKey: gcsObjectKey,
+            userId: req.firebaseUser!.uid,
+            documentType: documentType || 'unknown',
+            storageSystem: 'gcs',
+            deleteBy,
+          });
+        } catch (qErr) {
+          logger.error('[Docs] Quarantine insert failed for biometric doc:', qErr);
+        }
+        try {
+          await db.insert(kycEvents).values({
+            userId: req.firebaseUser!.uid,
+            eventType: 'upload',
+            actor: req.firebaseUser!.uid,
+            result: 'success',
+            reason: `biometric doc uploaded via documents route: ${documentType}`,
+            sourceIp: req.ip ?? null,
+          });
+        } catch (aErr) {
+          logger.warn('[Docs] Audit event insert failed for biometric upload:', aErr);
+        }
+      }
 
       // Insert document record
       const [newDocument] = await db.insert(secureDocuments).values({

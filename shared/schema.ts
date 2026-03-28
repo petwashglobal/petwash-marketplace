@@ -7329,6 +7329,16 @@ export const providers = pgTable("providers", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  kycStatus: varchar("kyc_status", { length: 30 }),
+  kycVerifiedAt: timestamp("kyc_verified_at"),
+  kycVerificationMethod: varchar("kyc_verification_method", { length: 30 }),
+  kycDocumentType: varchar("kyc_document_type", { length: 60 }),
+  kycDocumentCountry: varchar("kyc_document_country", { length: 10 }),
+  kycDocumentExpiry: date("kyc_document_expiry"),
+  kycFaceMatchResult: varchar("kyc_face_match_result", { length: 20 }),
+  kycReviewReason: text("kyc_review_reason"),
+  kycManualReviewerId: varchar("kyc_manual_reviewer_id", { length: 128 }),
+  kycDeletionCompletedAt: timestamp("kyc_deletion_completed_at"),
 }, (table) => ({
   userPlatformUnique: uniqueIndex("provider_user_platform_unique").on(table.userId, table.platformId),
   platformIdx: index("provider_platform_idx").on(table.platformId),
@@ -14024,3 +14034,31 @@ export const selfHealingExecutions = pgTable("self_healing_executions", {
   executedBy:      varchar("executed_by", { length: 80 }).notNull().default('self_healing_engine'),
 });
 export type SelfHealingExecution = typeof selfHealingExecutions.$inferSelect;
+
+// ===== KYC QUARANTINE OBJECTS =====
+export const kycQuarantineObjects = pgTable("kyc_quarantine_objects", {
+  id: serial("id").primaryKey(),
+  objectKey: varchar("object_key", { length: 500 }).notNull(),
+  userId: varchar("user_id", { length: 128 }).notNull(),
+  documentType: varchar("document_type", { length: 60 }).notNull(),
+  storageSystem: varchar("storage_system", { length: 30 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  deleteBy: timestamp("delete_by").notNull(),
+  deletedAt: timestamp("deleted_at"),
+  deletionStatus: varchar("deletion_status", { length: 20 }).default("pending").notNull(),
+  reasonCode: varchar("reason_code", { length: 100 }),
+});
+export type KycQuarantineObject = typeof kycQuarantineObjects.$inferSelect;
+
+// ===== KYC EVENTS AUDIT LOG =====
+export const kycEvents = pgTable("kyc_events", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 128 }).notNull(),
+  eventType: varchar("event_type", { length: 40 }).notNull(),
+  actor: varchar("actor", { length: 128 }).notNull(),
+  result: varchar("result", { length: 40 }),
+  reason: text("reason"),
+  sourceIp: varchar("source_ip", { length: 60 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type KycEvent = typeof kycEvents.$inferSelect;
