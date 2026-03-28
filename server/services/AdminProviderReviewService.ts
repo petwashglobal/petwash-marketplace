@@ -382,32 +382,34 @@ class AdminProviderReviewService {
         let firebaseUid: string | null = null;
 
         if (platform === 'walk_my_pet') {
+          // providerId in the queue is the Firebase UID — join on userId, not walkerId
           const [walker] = await db.select({ userId: walkerProfiles.userId })
-            .from(walkerProfiles).where(eq(walkerProfiles.walkerId, providerId)).limit(1);
+            .from(walkerProfiles).where(eq(walkerProfiles.userId, providerId)).limit(1);
           if (walker) {
             firebaseUid = walker.userId;
             await db.update(walkerProfiles)
               .set({ verificationStatus: 'verified', isAvailable: true, isActive: true })
-              .where(eq(walkerProfiles.walkerId, providerId));
+              .where(eq(walkerProfiles.userId, providerId));
           }
         } else if (platform === 'sitter_suite') {
-          const numId = parseInt(providerId);
+          // providerId is Firebase UID — must join on userId, NOT parseInt(id)
           const [sitter] = await db.select({ userId: sitterProfiles.userId })
-            .from(sitterProfiles).where(eq(sitterProfiles.id, numId)).limit(1);
+            .from(sitterProfiles).where(eq(sitterProfiles.userId, providerId)).limit(1);
           if (sitter) {
             firebaseUid = sitter.userId;
             await db.update(sitterProfiles)
               .set({ verificationStatus: 'active', isActive: true })
-              .where(eq(sitterProfiles.id, numId));
+              .where(eq(sitterProfiles.userId, providerId));
           }
         } else if (platform === 'academy') {
+          // providerId is Firebase UID — join on userId, not trainerId (TR-YYYY-NNNN)
           const [trainer] = await db.select({ userId: trainers.userId })
-            .from(trainers).where(eq(trainers.trainerId, providerId)).limit(1);
+            .from(trainers).where(eq(trainers.userId, providerId)).limit(1);
           if (trainer) {
             firebaseUid = trainer.userId;
             await db.update(trainers)
               .set({ verificationStatus: 'approved', isActive: true })
-              .where(eq(trainers.trainerId, providerId));
+              .where(eq(trainers.userId, providerId));
           }
         }
 

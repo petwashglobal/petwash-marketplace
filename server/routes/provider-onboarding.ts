@@ -4,7 +4,7 @@
 import { Router, Request, Response } from 'express';
 import { randomBytes, randomInt } from 'crypto';
 import { db } from '../db';
-import { providerInviteCodes, providerApplications, insertProviderApplicationSchema } from '@shared/schema';
+import { providerInviteCodes, providerApplications, insertProviderApplicationSchema, providerApprovalQueue } from '@shared/schema';
 import { systemRoles, userRoleAssignments } from '@shared/schema-enterprise';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { auth, storage } from '../lib/firebase-admin';
@@ -567,6 +567,41 @@ router.post('/apply', upload.fields([
           updatedAt: new Date()
         })
         .where(eq(providerInviteCodes.inviteCode, inviteCode));
+    }
+
+    // Bridge: create providerApprovalQueue entry so the admin review panel can see this application.
+    // Map frontend providerType values to platform IDs used by AdminProviderReviewService.
+    if (!autoApproved) {
+      const platformMap: Record<string, string> = {
+        walker: 'walk_my_pet',
+        sitter: 'sitter_suite',
+        driver: 'pettrek',
+        trainer: 'academy',
+        station_operator: 'k9000',
+      };
+      const queuePlatform = platformMap[providerType] || providerType;
+
+      try {
+        const existing = await db.select({ id: providerApprovalQueue.id })
+          .from(providerApprovalQueue)
+          .where(and(
+            eq(providerApprovalQueue.providerId, authenticatedUser.uid),
+            eq(providerApprovalQueue.platform, queuePlatform)
+          ))
+          .limit(1);
+
+        if (!existing.length) {
+          await db.insert(providerApprovalQueue).values({
+            providerId: authenticatedUser.uid,
+            platform: queuePlatform,
+            status: 'pending',
+            priority: 'normal',
+          });
+          logger.info('[Provider Onboarding] Created providerApprovalQueue entry', { uid: authenticatedUser.uid, platform: queuePlatform });
+        }
+      } catch (queueErr: any) {
+        logger.warn('[Provider Onboarding] Could not create queue entry (non-fatal)', { error: queueErr?.message });
+      }
     }
 
     logger.info(`[Provider Onboarding] Application ${autoApproved ? 'AUTO-APPROVED' : 'submitted'}: ${applicationId} by ${authenticatedUser.uid}`, {
