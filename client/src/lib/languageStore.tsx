@@ -10,20 +10,38 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+function applyDirToDOM(lang: Language) {
+  document.documentElement.lang = lang;
+  document.documentElement.dir = isRTL(lang) ? 'rtl' : 'ltr';
+}
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('en');
+  const [language, setLanguageState] = useState<Language>(() => {
+    const validLanguages: Language[] = ['en', 'he', 'ar', 'ru', 'fr', 'es'];
+    const saved = (localStorage.getItem('pw_lang') || localStorage.getItem('language') || localStorage.getItem('petwash_lang')) as Language;
+    if (saved && validLanguages.includes(saved)) {
+      applyDirToDOM(saved);
+      return saved;
+    }
+    applyDirToDOM('he');
+    return 'he';
+  });
 
   useEffect(() => {
     const validLanguages: Language[] = ['en', 'he', 'ar', 'ru', 'fr', 'es'];
-    const saved = (localStorage.getItem('pw_lang') || localStorage.getItem('language')) as Language;
-    if (saved && validLanguages.includes(saved)) {
-      setLanguageState(saved);
-    }
+
+    applyDirToDOM(language);
 
     const interval = setInterval(() => {
-      const current = (localStorage.getItem('pw_lang') || localStorage.getItem('language')) as Language;
+      const current = (localStorage.getItem('pw_lang') || localStorage.getItem('language') || localStorage.getItem('petwash_lang')) as Language;
       if (current && validLanguages.includes(current)) {
-        setLanguageState(prev => prev !== current ? current : prev);
+        setLanguageState(prev => {
+          if (prev !== current) {
+            applyDirToDOM(current);
+            return current;
+          }
+          return prev;
+        });
       }
     }, 500);
 
@@ -34,8 +52,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     setLanguageState(lang);
     localStorage.setItem('language', lang);
     localStorage.setItem('pw_lang', lang);
-    document.documentElement.lang = lang;
-    document.documentElement.dir = isRTL(lang) ? 'rtl' : 'ltr';
+    localStorage.setItem('petwash_lang', lang);
+    applyDirToDOM(lang);
   };
 
   const t = (key: string) => translate(key, language);

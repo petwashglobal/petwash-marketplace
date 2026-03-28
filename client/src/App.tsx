@@ -25,6 +25,7 @@ import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { initViewportFix } from "@/lib/viewportFix";
 import { useState, useEffect, lazy, Suspense } from "react";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { isRTL } from "@/lib/i18n";
 import type { Language } from "@/lib/i18n";
 import { getDefaultLanguageByLocation } from "@/lib/geolocation";
 import { LanguageProvider, useLanguage } from "@/lib/languageStore";
@@ -2535,14 +2536,18 @@ function App() {
 
   useEffect(() => {
     // Use consistent key 'petwash_lang' - default to Hebrew for Israeli market
-    const savedLanguage = localStorage.getItem('petwash_lang') as Language;
+    const savedLanguage = (localStorage.getItem('petwash_lang') || localStorage.getItem('pw_lang') || localStorage.getItem('language')) as Language;
     if (savedLanguage && ['he', 'en', 'ar', 'ru', 'fr', 'es'].includes(savedLanguage)) {
       setCurrentLanguage(savedLanguage);
+      document.documentElement.dir = isRTL(savedLanguage) ? 'rtl' : 'ltr';
+      document.documentElement.lang = savedLanguage;
       setIsLanguageInitialized(true);
     } else {
       // Default to Hebrew for Israeli market
       setCurrentLanguage('he');
       localStorage.setItem('petwash_lang', 'he');
+      document.documentElement.dir = 'rtl';
+      document.documentElement.lang = 'he';
       setIsLanguageInitialized(true);
     }
 
@@ -2555,6 +2560,8 @@ function App() {
         if (!currentSaved) {
           setCurrentLanguage(defaultLanguage);
           localStorage.setItem('petwash_lang', defaultLanguage);
+          document.documentElement.dir = isRTL(defaultLanguage) ? 'rtl' : 'ltr';
+          document.documentElement.lang = defaultLanguage;
           
           if (typeof window !== 'undefined' && (window as any).gtag) {
             (window as any).gtag('event', 'automatic_language_detection', {
@@ -2630,6 +2637,10 @@ console.log("Build: 1769350182889");
               <Router language={currentLanguage} onLanguageChange={(newLang) => {
                 setCurrentLanguage(newLang);
                 localStorage.setItem('language', newLang);
+                localStorage.setItem('petwash_lang', newLang);
+                localStorage.setItem('pw_lang', newLang);
+                document.documentElement.dir = isRTL(newLang) ? 'rtl' : 'ltr';
+                document.documentElement.lang = newLang;
               }} />
               <NotificationPermissionPrompt />
               <MobileBottomNav />
