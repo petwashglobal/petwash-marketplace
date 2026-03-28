@@ -349,7 +349,9 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
         {/* ROW 1: Logo centered at top - crown position */}
         <div className="pw-header-row-logo">
           <button
+            type="button"
             className="pw-logo-link"
+            style={{ touchAction: 'manipulation', cursor: 'pointer' }}
             onClick={() => handleNavigate("/")}
             aria-label="Pet Wash home"
           >
@@ -381,7 +383,9 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
           <nav className="pw-nav-desktop">
             <div className="pw-nav-item pw-nav-item-platforms">
               <button
+                type="button"
                 className="pw-nav-link"
+                style={{ touchAction: 'manipulation', cursor: 'pointer' }}
                 aria-expanded={isPlatformsOpen}
                 aria-haspopup="true"
                 onClick={(e) => {
@@ -399,9 +403,11 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                         <div className="pw-mega-title">{t(group.titleKey, currentLanguage)}</div>
                         {group.items.map((item) => (
                           <button
+                            type="button"
                             key={item.id}
                             role="menuitem"
                             className={"pw-mega-link" + (item.frozen ? " pw-mega-link-frozen" : "")}
+                            style={{ touchAction: 'manipulation', cursor: item.frozen ? 'default' : 'pointer' }}
                             disabled={item.frozen}
                             onClick={() => { if (item.frozen) return; handleNavigate(item.href); }}
                           >
@@ -422,12 +428,12 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               )}
             </div>
             <div className="pw-nav-item">
-              <button className="pw-nav-link" onClick={() => handleNavigate("/loyalty")}>
+              <button type="button" className="pw-nav-link" style={{ touchAction: 'manipulation', cursor: 'pointer' }} onClick={() => handleNavigate("/loyalty")}>
                 {t("nav.loyalty", currentLanguage)}
               </button>
             </div>
             <div className="pw-nav-item">
-              <button className="pw-nav-link" onClick={() => handleNavigate("/egift")}>
+              <button type="button" className="pw-nav-link" style={{ touchAction: 'manipulation', cursor: 'pointer' }} onClick={() => handleNavigate("/egift")}>
                 {t("nav.giftCards", currentLanguage)}
               </button>
             </div>
@@ -435,7 +441,9 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
 
           <div className="pw-header-right">
             <button
+              type="button"
               className="pw-header-profile-btn"
+              style={{ touchAction: 'manipulation', cursor: 'pointer' }}
               onClick={() => handleNavigate(getDashboardPath())}
               aria-label={user ? t("mydashboard", currentLanguage) : t("signin", currentLanguage)}
               data-testid="button-header-profile"
@@ -445,7 +453,9 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               </div>
             </button>
             <button
+              type="button"
               className="pw-burger pw-burger-luxury"
+              style={{ touchAction: 'manipulation', cursor: 'pointer' }}
               onClick={() => setIsMobileOpen(true)}
               aria-label="Open menu"
               data-testid="button-hamburger"
@@ -472,15 +482,15 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
         {/* Mobile nav strip - single tight row below header on small screens only (<768px) */}
         <div className="pw-mobile-nav-strip">
           <div className="pw-mobile-nav-strip-row">
-            <button className="pw-mobile-nav-strip-link" onClick={() => handleNavigate("/egift")}>
+            <button type="button" className="pw-mobile-nav-strip-link" style={{ touchAction: 'manipulation', cursor: 'pointer' }} onClick={() => handleNavigate("/egift")}>
               {t("nav.giftCards", currentLanguage)}
             </button>
             <span className="pw-mobile-nav-strip-dot">·</span>
-            <button className="pw-mobile-nav-strip-link" onClick={() => handleNavigate("/loyalty")}>
+            <button type="button" className="pw-mobile-nav-strip-link" style={{ touchAction: 'manipulation', cursor: 'pointer' }} onClick={() => handleNavigate("/loyalty")}>
               {t("nav.loyalty", currentLanguage)}
             </button>
             <span className="pw-mobile-nav-strip-dot">·</span>
-            <button className="pw-mobile-nav-strip-link" onClick={() => setIsMobileOpen(true)}>
+            <button type="button" className="pw-mobile-nav-strip-link" style={{ touchAction: 'manipulation', cursor: 'pointer' }} onClick={() => setIsMobileOpen(true)}>
               {t("nav.platforms", currentLanguage)}
             </button>
           </div>
@@ -504,7 +514,9 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
       >
         <div className="pw-mobile-top">
           <button
+            type="button"
             className="pw-mobile-close"
+            style={{ touchAction: 'manipulation', cursor: 'pointer' }}
             onClick={() => setIsMobileOpen(false)}
             aria-label="Close menu"
             tabIndex={isMobileOpen ? 0 : -1}
@@ -515,7 +527,9 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
 
         <div className="pw-mobile-logo-wrap">
           <button
+            type="button"
             className="pw-logo-link-mobile"
+            style={{ touchAction: 'manipulation', cursor: 'pointer' }}
             onClick={() => {
               handleNavigate("/");
               setIsMobileOpen(false);
@@ -544,7 +558,9 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             ))}
           </select>
           <button
+            type="button"
             className="pw-account-btn"
+            style={{ touchAction: 'manipulation', cursor: 'pointer' }}
             onClick={() => handleNavigate(getDashboardPath())}
           >
             <div className="pw-account-circle">
@@ -564,11 +580,13 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                 <div className="pw-mobile-group-items">
                   {group.items.map((item) => (
                     <button
+                      type="button"
                       key={item.id}
                       className={
                         "pw-mobile-link" +
                         (item.frozen ? " pw-mega-link-frozen" : "")
                       }
+                      style={{ touchAction: 'manipulation', cursor: item.frozen ? 'default' : 'pointer' }}
                       onClick={() => {
                         if (item.frozen) return;
                         handleNavigate(item.href);
@@ -592,8 +610,10 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             </div>
             {USER_MENU_ITEMS.map((item) => (
               <button
+                type="button"
                 key={item.id}
                 className="pw-mobile-link"
+                style={{ touchAction: 'manipulation', cursor: 'pointer' }}
                 onClick={() => handleNavigate(item.href)}
               >
                 <span>{t(item.labelKey, currentLanguage)}</span>
@@ -606,8 +626,10 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             <div className="pw-mobile-section-title">{t("section.partners", currentLanguage)}</div>
             {PARTNER_MENU_ITEMS.map((item) => (
               <button
+                type="button"
                 key={item.id}
                 className="pw-mobile-link"
+                style={{ touchAction: 'manipulation', cursor: 'pointer' }}
                 onClick={() => handleNavigate(item.href)}
               >
                 {t(item.labelKey, currentLanguage)}
@@ -620,8 +642,10 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             <div className="pw-mobile-section-title">{t("section.company", currentLanguage)}</div>
             {COMPANY_MENU_ITEMS.map((item) => (
               <button
+                type="button"
                 key={item.id}
                 className="pw-mobile-link"
+                style={{ touchAction: 'manipulation', cursor: 'pointer' }}
                 onClick={() => handleNavigate(item.href)}
               >
                 {t(item.labelKey, currentLanguage)}
@@ -634,8 +658,10 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             <div className="pw-mobile-section-title">{t("section.legal", currentLanguage)}</div>
             {LEGAL_MENU_ITEMS.map((item) => (
               <button
+                type="button"
                 key={item.id}
                 className="pw-mobile-link"
+                style={{ touchAction: 'manipulation', cursor: 'pointer' }}
                 onClick={() => handleNavigate(item.href)}
               >
                 {t(item.labelKey, currentLanguage)}
@@ -648,8 +674,10 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             <div className="pw-mobile-section-title">{t("section.support", currentLanguage)}</div>
             {SUPPORT_MENU_ITEMS.map((item) => (
               <button
+                type="button"
                 key={item.id}
                 className="pw-mobile-link"
+                style={{ touchAction: 'manipulation', cursor: 'pointer' }}
                 onClick={() => handleNavigate(item.href)}
               >
                 {t(item.labelKey, currentLanguage)}
@@ -665,19 +693,25 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             {user ? (
               <>
                 <button
+                  type="button"
                   className="pw-mobile-link"
+                  style={{ touchAction: 'manipulation', cursor: 'pointer' }}
                   onClick={() => handleNavigate(getDashboardPath())}
                 >
                   {t("mydashboard", currentLanguage)}
                 </button>
                 <button
+                  type="button"
                   className="pw-mobile-link"
+                  style={{ touchAction: 'manipulation', cursor: 'pointer' }}
                   onClick={() => handleNavigate("/my-account")}
                 >
                   {t("myaccount", currentLanguage)}
                 </button>
                 <button
+                  type="button"
                   className="pw-mobile-link pw-logout-btn"
+                  style={{ touchAction: 'manipulation', cursor: 'pointer' }}
                   onClick={async () => {
                     await logout();
                     setIsMobileOpen(false);
@@ -690,13 +724,17 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             ) : (
               <>
                 <button
+                  type="button"
                   className="pw-mobile-link"
+                  style={{ touchAction: 'manipulation', cursor: 'pointer' }}
                   onClick={() => handleNavigate("/signin")}
                 >
                   {t("signin", currentLanguage)}
                 </button>
                 <button
+                  type="button"
                   className="pw-mobile-link"
+                  style={{ touchAction: 'manipulation', cursor: 'pointer' }}
                   onClick={() => handleNavigate("/signup")}
                 >
                   {t("signup", currentLanguage)}

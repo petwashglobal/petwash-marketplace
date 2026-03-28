@@ -278,8 +278,10 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         logger.error(`[Auth] ${oauthProvider} OAuth custom token sign-in failed:`, error);
         toast({
           variant: 'destructive',
-          title: language === 'he' ? 'שגיאה בהתחברות' : 'Sign-in error',
-          description: language === 'he' ? 'ההתחברות נכשלה. אנא נסו שוב.' : 'Sign-in failed. Please try again.',
+          title: language === 'he' ? 'התחברות עם Google אינה זמינה' : 'Google sign-in unavailable',
+          description: language === 'he'
+            ? 'אנא התחבר עם מספר הטלפון שלך.'
+            : 'Please sign in with your phone number instead.',
         });
       } finally {
         setLoading(false);
