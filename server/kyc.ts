@@ -182,6 +182,7 @@ export async function getPendingKYCSubmissions(limit: number = 50): Promise<Arra
           submittedAt: data.kyc.submittedAt?.toDate ? data.kyc.submittedAt.toDate().toISOString() : data.kyc.submittedAt,
           reviewedAt: data.kyc.reviewedAt?.toDate ? data.kyc.reviewedAt.toDate().toISOString() : data.kyc.reviewedAt,
           docPaths: data.kyc.docPaths || [],
+          documentsDeleted: data.kyc.documentsDeleted || false,
           nameOnDoc: data.kyc.nameOnDoc,
           dob: data.kyc.dob,
           rejectionReason: data.kyc.rejectionReason

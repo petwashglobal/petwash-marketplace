@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { kycQuarantineObjects, kycEvents } from '../../shared/schema';
+import { kycQuarantineObjects, kycEvents, providers } from '../../shared/schema';
 import { storage, db as firestoreDb } from '../lib/firebase-admin';
 import { Storage } from '@google-cloud/storage';
 import { eq, and, lt } from 'drizzle-orm';
@@ -61,6 +61,14 @@ async function runKycDeletion(): Promise<void> {
             await bucket.file(row.objectKey).delete();
           } catch (err: any) {
             if (err.code !== 404) throw err;
+          }
+          try {
+            await db
+              .update(providers)
+              .set({ kycDeletionCompletedAt: new Date() })
+              .where(eq(providers.userId, row.userId));
+          } catch (provErr) {
+            logger.warn(`[KycDeletionJob] providers.kyc_deletion_completed_at update failed for uid=${row.userId}:`, provErr);
           }
         }
 

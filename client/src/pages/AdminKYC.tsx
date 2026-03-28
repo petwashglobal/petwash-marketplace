@@ -27,6 +27,7 @@ interface KYCSubmission {
   submittedAt: string;
   reviewedAt?: string;
   docPaths: string[];
+  documentsDeleted?: boolean;
   nameOnDoc?: string;
   dob?: string;
   rejectionReason?: string;
@@ -403,9 +404,10 @@ export default function AdminKYC() {
                     onClick={() => handleViewDocuments(submission)}
                     className="luxury-btn-secondary text-sm py-2"
                     data-testid={`button-view-documents-${submission.uid}`}
+                    disabled={submission.documentsDeleted === true}
                   >
                     <Eye className="h-4 w-4 mr-2 inline" />
-                    {t('viewDocuments')}
+                    {submission.documentsDeleted === true ? 'Documents Deleted' : t('viewDocuments')}
                   </Button>
                   <div className="flex gap-2">
                     <Button
