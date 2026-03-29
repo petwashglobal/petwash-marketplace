@@ -1983,3 +1983,24 @@ Navigation wired:
 - `AdminStations.tsx`: 3 buttons per station card (Timeline, Bay Map, Command Log)
 - `StationTimeline.tsx`: header links to Bay Map + Command Log for same stationId
 - `App.tsx`: 3 new lazy routes with AdminRouteGuard
+
+---
+
+## Phase 6 — Provider & Operator Daily Productivity (APPROVED — commit ccc10e6c + 53d2fb41)
+
+Screens and features shipped:
+- `ProviderTaskInbox.tsx` at `/provider/tasks` — one-click accept / decline / start / complete with optimistic status chips
+- `ProviderEarningsPage.tsx` at `/provider/earnings` — operational earnings view (gross / 15% platform fee / net / payout status); **not final accounting truth**
+- Daily Summary Card on `ProviderDashboard.tsx` — today's jobs, earnings, and avg rating at a glance
+- Payout status badges on all job cards (pending / paid / processing)
+- Station Alerts section in `ProviderConsole.tsx`
+- Notification deep-link fixes in `NotificationEventHandlers.ts` (new booking → /provider/tasks; earnings → /provider/earnings)
+
+Critical bug fixed (commit 53d2fb41):
+- V2 fast-action route (`provider-dashboard-v2.ts`) was updating DB status but not notifying the customer
+- Fix: expanded ownership-check query to fetch `owner_id`, `request_id`, `service_type`; inserted `superAppNotifications` row for accept and decline; scheduled `declined_recovery` rebook nudge (1 h delay) on decline — identical side-effects to the V1 `/respond` route
+- One-click accept/decline now completes the full provider + customer side of the workflow
+
+Earnings accuracy proof (live DB):
+- All completed bookings show uniform 15% platform fee: `net = subtotal − fee` (e.g. ₪100 gross → ₪15 fee → ₪85 net)
+- Earnings endpoint reads `subtotal_cents`, `service_fee_cents`, `provider_payout_cents` from `booking_requests` directly
