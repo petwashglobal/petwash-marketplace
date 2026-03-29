@@ -314,19 +314,17 @@ export function registerNotificationEventHandlers() {
     try {
       if (event.userId) {
         await NotificationService.sendNotification({
-          templateKey: 'booking_confirmed',
+          templateKey: 'loyalty_tier_upgraded',
           userId: event.userId,
           channelsOverride: ['push', 'in_app'],
           variables: {
-            booking: {
-              serviceType: `שדרוג דרגה: ${event.data.newTier}`,
-              date: new Date().toLocaleDateString('he-IL'),
-              time: '',
-              location: '',
-              providerName: 'PetWash™',
-            },
             customer: {
               name: event.data.customerName || '',
+            },
+            tier: {
+              name: event.data.newTier,
+              previousTier: event.data.previousTier || '',
+              perks: event.data.perks || [],
             },
             timestamp: new Date().toLocaleString('he-IL'),
           },

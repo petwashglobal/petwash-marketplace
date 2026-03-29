@@ -368,7 +368,20 @@ const defaultTemplates: InsertNotificationTemplate[] = [
     isActive: true,
   },
 
-  // 11. PROVIDER REJECTED
+  // 11. LOYALTY TIER UPGRADED
+  {
+    key: 'loyalty_tier_upgraded',
+    name: 'Loyalty Tier Upgraded',
+    description: 'Sent to customer when they reach a new loyalty tier — a prestige moment requiring dedicated copy',
+    channels: ['push', 'in_app'],
+    pushTitle: '🏆 שדרוג דרגה — {{tier.name}}!',
+    pushBody: 'כל הכבוד {{customer.name}}! הגעת לדרגה {{tier.name}} ב-PetWash™. פתחת הטבות חדשות!',
+    inAppTitle: '🏆 ברכות! עלית דרגה ל-{{tier.name}}',
+    inAppBody: 'הגעת לדרגת {{tier.name}} ב-PetWash™. ההטבות החדשות שלך פעילות מעכשיו.',
+    isActive: true,
+  },
+
+  // 12. PROVIDER REJECTED
   {
     key: 'provider_rejected',
     name: 'Provider Application Rejected',
