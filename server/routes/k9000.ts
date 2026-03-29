@@ -865,16 +865,30 @@ router.get('/:stationId/bays', async (req, res) => {
     // Build per-bay readiness map (always left + right, even if only one exists)
     const bayMap: Record<string, any> = {};
     for (const bay of bays) {
+      // Display label for Octopus / admin UI
+      // "Active wash" | "Cleanup in progress" | "Ready" | "Fault" | "Maintenance" | "Offline"
+      const displayStatus =
+        bay.status === 'busy'        ? 'Active wash' :
+        bay.status === 'cleanup'     ? 'Cleanup in progress' :
+        bay.status === 'ready'       ? 'Ready' :
+        bay.status === 'fault'       ? 'Fault' :
+        bay.status === 'maintenance' ? 'Maintenance' :
+        bay.status === 'offline'     ? 'Offline' : bay.status;
+
       bayMap[bay.side] = {
         bayId:    bay.id,
         side:     bay.side,
         label:    bay.bayLabel,
         labelHe:  bay.bayLabelHe,
-        status:   bay.status,          // "ready" | "busy" | "fault" | "maintenance" | "offline"
-        isReady:  bay.status === 'ready' && bay.isActive,
-        isActive: bay.isActive,
 
-        // Current session (populated when busy)
+        // status: "ready" | "busy" | "cleanup" | "fault" | "maintenance" | "offline"
+        // "cleanup" = 30-sec complimentary tub-clean window; NOT available for new users
+        status:        bay.status,
+        displayStatus,
+        isReady:       bay.status === 'ready' && bay.isActive,
+        isActive:      bay.isActive,
+
+        // Current session (populated when busy or in cleanup)
         currentSessionId: bay.currentSessionId ?? null,
 
         // Telemetry snapshot
@@ -911,9 +925,11 @@ router.get('/:stationId/bays', async (req, res) => {
         allReady,
         anyReady,
         anyFault,
-        readySides: Object.keys(bayMap).filter((s) => bayMap[s].isReady),
-        busySides:  Object.keys(bayMap).filter((s) => bayMap[s].status === 'busy'),
-        faultSides: Object.keys(bayMap).filter((s) => bayMap[s].status === 'fault'),
+        readySides:   Object.keys(bayMap).filter((s) => bayMap[s].isReady),
+        // "busy" = active wash; "cleanup" = grace window — both are unavailable to new users
+        busySides:    Object.keys(bayMap).filter((s) => bayMap[s].status === 'busy'),
+        cleanupSides: Object.keys(bayMap).filter((s) => bayMap[s].status === 'cleanup'),
+        faultSides:   Object.keys(bayMap).filter((s) => bayMap[s].status === 'fault'),
       },
       correlationId,
     });

@@ -49,6 +49,7 @@ import {
   auditLedger,
   stationBays,
   baySessions,
+  bayEvents,
 } from '@shared/schema';
 import { eq, and, gt, gte, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -155,11 +156,14 @@ export async function authorizeRedemption(input: RedemptionInput): Promise<Redem
     throw rejectWith('BAY_INACTIVE', 'עמדת השטיפה אינה פעילה.', 503);
   }
 
-  // ── Step 5: Bay ready check — the bay must not be busy or faulted ──────────
-  const BLOCKED_BAY_STATUSES = ['busy', 'fault', 'maintenance', 'offline'];
+  // ── Step 5: Bay ready check — the bay must not be busy, in cleanup, or faulted
+  // "cleanup" = 30-sec complimentary tub-clean window after paid time ends.
+  // The bay is NOT available to new users during cleanup — treat it as busy.
+  const BLOCKED_BAY_STATUSES = ['busy', 'cleanup', 'fault', 'maintenance', 'offline'];
   if (BLOCKED_BAY_STATUSES.includes(bay.status ?? '')) {
     const statusLabels: Record<string, string> = {
       busy:        'תפוסה — שטיפה בתהליך',
+      cleanup:     'ניקוי האמבטיה — פנויה בעוד שניות',
       fault:       'תקלה טכנית',
       maintenance: 'בתחזוקה',
       offline:     'לא מחוברת',
@@ -331,6 +335,177 @@ export async function closeBaySession(
         eq(stationBays.currentSessionId, sessionId),
       ));
   });
+}
+
+/**
+ * enterCleanupPhase — called when the K9000 IoT controller signals that the
+ * PAID wash time has ended (but the machine has not yet released the tub).
+ *
+ * The machine grants the customer 30 seconds of complimentary time to:
+ *   - remove their dog from the tub
+ *   - rinse the tub with the disinfect program
+ *
+ * Source: K9000 2.0 Twin Operators Manual — "GRACE TIME … this is also the
+ * time permitted for free disinfecting the tub" (30 seconds default).
+ *
+ * During this window the bay is STILL BUSY — no new payment, no new wallet
+ * redemption, no new session start is permitted on that side.
+ *
+ * Finance: this window is NOT billable. actualDurationSeconds records only
+ * the paid wash time, not the cleanup window.
+ */
+export async function enterCleanupPhase(
+  sessionId: string,
+  actualPaidDurationSeconds?: number,
+): Promise<{ cleanupEndsAt: Date }> {
+  const now = new Date();
+  const cleanupSeconds = 30; // K9000 manual grace period
+  const cleanupEndsAt = new Date(now.getTime() + cleanupSeconds * 1000);
+
+  await db.transaction(async (tx) => {
+    // 1. Fetch session — need bayId, stationId, side, startedAt
+    const [session] = await tx
+      .select({
+        bayId:     baySessions.bayId,
+        stationId: baySessions.stationId,
+        side:      baySessions.side,
+        startedAt: baySessions.startedAt,
+      })
+      .from(baySessions)
+      .where(eq(baySessions.id, sessionId))
+      .limit(1);
+
+    if (!session) throw new Error(`[K9000Cleanup] Session not found: ${sessionId}`);
+
+    const paidDuration = actualPaidDurationSeconds ??
+      Math.round((now.getTime() - (session.startedAt?.getTime() ?? now.getTime())) / 1000);
+
+    // 2. Move session: active → cleanup
+    await tx
+      .update(baySessions)
+      .set({
+        status: 'cleanup',
+        cleanupStartedAt: now,
+        cleanupEndsAt,
+        actualDurationSeconds: paidDuration, // paid time only — excludes cleanup window
+        updatedAt: now,
+      })
+      .where(eq(baySessions.id, sessionId));
+
+    // 3. Bay stays busy (currentSessionId intact), status updated to cleanup
+    //    so the bays endpoint shows "cleanup" not "busy" to the admin
+    await tx
+      .update(stationBays)
+      .set({ status: 'cleanup', updatedAt: now })
+      .where(eq(stationBays.currentSessionId, sessionId));
+
+    // 4. Write cleanup_started bay event
+    await tx.insert(bayEvents).values({
+      bayId:     session.bayId,
+      stationId: session.stationId,
+      side:      session.side,
+      eventType: 'cleanup_started',
+      sessionId,
+      source:    'petwash_server',
+      metadata:  JSON.stringify({ cleanupSeconds, cleanupEndsAt: cleanupEndsAt.toISOString(), paidDuration }),
+      occurredAt: now,
+    });
+  });
+
+  // 5. Schedule automatic finalization after the cleanup window.
+  //    If the IoT controller sends a cleanup_complete signal first,
+  //    finalizeCleanup() will run then instead (idempotent via status guard).
+  setTimeout(() => {
+    finalizeCleanup(sessionId).catch((err: Error) => {
+      logger.error('[K9000Cleanup] Auto-finalize failed', { sessionId, error: err.message });
+    });
+  }, cleanupSeconds * 1000);
+
+  logger.info('[K9000Cleanup] Cleanup phase started', {
+    sessionId,
+    cleanupEndsAt: cleanupEndsAt.toISOString(),
+    cleanupSeconds,
+  });
+
+  return { cleanupEndsAt };
+}
+
+/**
+ * finalizeCleanup — called either:
+ *   a) by the 30-second setTimeout scheduled in enterCleanupPhase, or
+ *   b) by the IoT webhook when the K9000 controller signals cleanup_complete.
+ *
+ * Idempotent: if the session is already "completed" (e.g. called twice),
+ * it returns silently without error.
+ *
+ * After this call the bay is free for the next customer.
+ */
+export async function finalizeCleanup(sessionId: string): Promise<void> {
+  const now = new Date();
+
+  await db.transaction(async (tx) => {
+    // Fetch session — guard against double-finalization; need stationId + side for bay event
+    const [session] = await tx
+      .select({
+        bayId:     baySessions.bayId,
+        stationId: baySessions.stationId,
+        side:      baySessions.side,
+        status:    baySessions.status,
+      })
+      .from(baySessions)
+      .where(eq(baySessions.id, sessionId))
+      .limit(1);
+
+    if (!session) {
+      logger.warn('[K9000Cleanup] finalizeCleanup: session not found', { sessionId });
+      return;
+    }
+
+    // Idempotency guard — only finalize if still in cleanup state
+    if (session.status !== 'cleanup') {
+      logger.info('[K9000Cleanup] finalizeCleanup: session already in final state, skipping', {
+        sessionId, status: session.status,
+      });
+      return;
+    }
+
+    // 1. Close the session
+    await tx
+      .update(baySessions)
+      .set({
+        status: 'completed',
+        endedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(baySessions.id, sessionId));
+
+    // 2. Release the bay
+    await tx
+      .update(stationBays)
+      .set({
+        status: 'ready',
+        currentSessionId: null,
+        updatedAt: now,
+      })
+      .where(and(
+        eq(stationBays.id, session.bayId),
+        eq(stationBays.currentSessionId, sessionId),
+      ));
+
+    // 3. Write cleanup_completed bay event
+    await tx.insert(bayEvents).values({
+      bayId:     session.bayId,
+      stationId: session.stationId,
+      side:      session.side,
+      eventType: 'cleanup_completed',
+      sessionId,
+      source:    'petwash_server',
+      metadata:  JSON.stringify({ completedAt: now.toISOString() }),
+      occurredAt: now,
+    });
+  });
+
+  logger.info('[K9000Cleanup] ✅ Cleanup finalized — bay released', { sessionId });
 }
 
 // ── Balance validation per type ──────────────────────────────────────────────

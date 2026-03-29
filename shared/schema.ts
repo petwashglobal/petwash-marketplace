@@ -719,6 +719,7 @@ export const stationBays = pgTable("station_bays", {
   // Real-time status — NO booking state, only live readiness
   // ready       = tub is empty, hardware OK, customer can use now
   // busy        = wash session in progress (currentSessionId is set)
+  // cleanup     = paid time ended, 30-sec complimentary tub-clean window (still unavailable)
   // fault       = hardware error, needs attention
   // maintenance = intentionally taken offline by staff
   // offline     = no power / no connectivity
@@ -802,17 +803,29 @@ export const baySessions = pgTable("bay_sessions", {
   // Session lifecycle
   // pending     = payment/redemption accepted, waiting for IoT start confirmation
   // active      = wash in progress (IoT confirmed start)
-  // completed   = wash finished normally
+  // cleanup     = paid time ended; 30-sec complimentary tub-clean window; bay still busy
+  // completed   = cleanup window elapsed; session fully closed; bay ready for next user
   // timed_out   = no IoT confirmation within timeout window
-  // aborted     = customer / staff cancelled
+  // aborted     = customer / staff cancelled mid-session
   // fault       = hardware fault during wash
+  //
+  // Normal lifecycle: pending → active → cleanup → completed
+  // Failure paths:    pending → timed_out | aborted
+  //                   active  → fault | aborted
+  //                   cleanup → completed (always; cleanup does not fail financially)
   status: varchar("status", { length: 20 }).notNull().default("pending"),
 
   startedAt: timestamp("started_at").defaultNow(),
   activatedAt: timestamp("activated_at"),          // when IoT confirmed start
-  endedAt: timestamp("ended_at"),
+  endedAt: timestamp("ended_at"),                  // set when cleanup completes (NOT when paid time ends)
   expectedDurationSeconds: integer("expected_duration_seconds"),
-  actualDurationSeconds: integer("actual_duration_seconds"),
+  actualDurationSeconds: integer("actual_duration_seconds"), // paid wash time only; excludes cleanup
+
+  // Complimentary tub-clean window (K9000 operator manual: "GRACE TIME" / "30 secs free disinfect")
+  // Bay stays busy during this window; no financial charge; not billable duration.
+  complimentaryCleanupSeconds: integer("complimentary_cleanup_seconds").default(30),
+  cleanupStartedAt: timestamp("cleanup_started_at"),   // when paid time ended and cleanup began
+  cleanupEndsAt:    timestamp("cleanup_ends_at"),       // cleanupStartedAt + complimentaryCleanupSeconds
 
   // Cross-references
   washEventId: varchar("wash_event_id"),           // FK to k9000_wash_events.id
