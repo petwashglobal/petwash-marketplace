@@ -16,6 +16,9 @@ import {
   ArrowLeft,
   AlertCircle,
   Loader2,
+  XCircle,
+  RefreshCcw,
+  Wallet,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 import { Layout } from '@/components/Layout';
@@ -52,7 +55,9 @@ interface RedemptionResult {
 }
 
 type RedeemOption = 'wash_package' | 'egift' | 'loyalty';
-type Step = 'select' | 'qr' | 'confirmed';
+type Step = 'select' | 'qr' | 'confirmed' | 'failed';
+
+const WALLET_FUNDED_SOURCES: RedeemOption[] = ['wash_package', 'egift', 'loyalty'];
 
 const formatCurrency = (cents: number) =>
   `₪${(cents / 100).toLocaleString('en-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -72,6 +77,7 @@ export default function K9000Redeem() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState('');
+  const [failureReason, setFailureReason] = useState('');
 
   const { data: walletData, isLoading: walletLoading } = useQuery<{ success: boolean; wallet: WalletSummary }>({
     queryKey: ['/api/credit-wallet/summary'],
@@ -86,8 +92,14 @@ export default function K9000Redeem() {
   });
 
   useEffect(() => {
-    if (statusData?.status === 'completed') {
+    const st = statusData?.status;
+    if (st === 'completed') {
       setStep('confirmed');
+      queryClient.invalidateQueries({ queryKey: ['/api/credit-wallet/summary'] });
+    } else if (st === 'failed' || st === 'compensation_required') {
+      const reason = (statusData as any)?.failureReason ?? (statusData as any)?.reason ?? '';
+      setFailureReason(reason);
+      setStep('failed');
       queryClient.invalidateQueries({ queryKey: ['/api/credit-wallet/summary'] });
     }
   }, [statusData?.status, queryClient]);
@@ -589,6 +601,78 @@ export default function K9000Redeem() {
                 <ArrowLeft className="w-5 h-5" />
                 {isHebrew ? 'חזרה לארנק' : 'Back to Wallet'}
               </Button>
+            </div>
+          )}
+
+          {step === 'failed' && redemption && (
+            <div className="space-y-5 luxury-animate-slide-up">
+              <div className="text-center py-6">
+                <div className="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4">
+                  <XCircle className="w-10 h-10 text-red-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-1">
+                  {isHebrew ? 'השטיפה נכשלה' : 'Wash Failed'}
+                </h2>
+                <p className="text-sm text-gray-500">
+                  {failureReason || (isHebrew ? 'המשאבה לא הופעלה לאחר כל הניסיונות' : 'Pump could not be activated after all retries')}
+                </p>
+              </div>
+
+              {selectedOption && WALLET_FUNDED_SOURCES.includes(selectedOption as RedeemOption) && (
+                <Card className="border-emerald-200 bg-emerald-50">
+                  <CardContent className="p-4 flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <RefreshCcw className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-emerald-800">
+                        {isHebrew ? 'הכסף מוחזר לארנקך' : 'Refund Issued to Your Wallet'}
+                      </p>
+                      <p className="text-xs text-emerald-700 mt-0.5">
+                        {isHebrew
+                          ? `${formatCurrency(redemption.cashDueCents > 0 ? WASH_PRICE_CENTS - redemption.cashDueCents : WASH_PRICE_CENTS)} יוחזרו לארנק תוך דקות ספורות`
+                          : `${formatCurrency(WASH_PRICE_CENTS)} will be returned to your wallet shortly`
+                        }
+                      </p>
+                      <p className="text-[10px] text-emerald-600 mt-1 font-mono">
+                        {isHebrew ? 'סשן:' : 'Session:'} {redemption.sessionId}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Card className="border-red-100">
+                <CardContent className="p-4 space-y-2">
+                  <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-400" />
+                    {isHebrew ? 'מה קרה?' : 'What happened?'}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {isHebrew
+                      ? 'התחנה לא הגיבה לפקודת הפעלת המשאבה. הצוות שלנו יקבל התראה ויטפל בתקלה. אם שילמת מהארנק — הסכום מוחזר אוטומטית.'
+                      : 'The station did not respond to the pump start command. Our team has been alerted and will address the issue. If you paid from your wallet, the amount will be refunded automatically.'
+                    }
+                  </p>
+                </CardContent>
+              </Card>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => { setStep('select'); setRedemption(null); setQrDataUrl(''); setSecondsLeft(600); setFailureReason(''); }}
+                  className="flex-1 h-12 rounded-xl"
+                >
+                  {isHebrew ? 'נסה שוב' : 'Try Again'}
+                </Button>
+                <Button
+                  onClick={() => setLocation('/my-wallet')}
+                  className="flex-1 h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                >
+                  <Wallet className="w-4 h-4" />
+                  {isHebrew ? 'הארנק שלי' : 'My Wallet'}
+                </Button>
+              </div>
             </div>
           )}
 

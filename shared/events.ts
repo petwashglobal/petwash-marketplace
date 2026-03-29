@@ -7,6 +7,7 @@ export enum DomainEventType {
   // Wash events
   WASH_STARTED = "wash.started",
   WASH_COMPLETED = "wash.completed",
+  WASH_FAILED = "wash.failed",
   
   // Payment events
   TRANSACTION_RECORDED = "transaction.recorded",
@@ -111,6 +112,16 @@ export interface WashCompletedPayload {
   customerId?: string;
   duration: number;
   success: boolean;
+}
+
+export interface WashFailedPayload {
+  washId: string;
+  stationId: string;
+  bayId?: string;
+  customerId?: string;
+  reason: string;
+  compensationRequired: boolean;
+  amountCents?: number;
 }
 
 export interface TransactionRecordedPayload {

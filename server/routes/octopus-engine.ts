@@ -1381,14 +1381,21 @@ router.get("/v1/timeline/customer/:userId", requireAuth, async (req: Request, re
 
     for (const w of walletEntries) {
       const meta = (w.metadata as any) ?? {};
-      const description: string = meta.description ?? w.eventType ?? 'wallet_entry';
       const amountILS = (w.amountCents / 100).toFixed(2);
+      const isK9000Compensation = (w as any).sourceType === 'k9000_compensation' && w.direction === 'credit';
+      const description: string = isK9000Compensation
+        ? (meta.reason ?? 'פיצוי K9000 — השבת יתרה לארנק')
+        : (meta.description ?? w.eventType ?? 'wallet_entry');
       items.push({
         id:          `wallet:${w.entryId}`,
-        type:        w.direction === 'credit' ? 'wallet_credit' : 'wallet_debit',
+        type:        isK9000Compensation
+          ? 'k9000_refund'
+          : (w.direction === 'credit' ? 'wallet_credit' : 'wallet_debit'),
         timestamp:   w.createdAt.toISOString(),
         title:       description,
-        subtitle:    `${w.direction === 'credit' ? '+' : '-'}₪${amountILS} (${w.bucket})`,
+        subtitle:    isK9000Compensation
+          ? `₪${amountILS} הוחזרו לארנק • ${(meta.stationId ?? '')} ${(meta.bayId ?? '')}`.trim()
+          : `${w.direction === 'credit' ? '+' : '-'}₪${amountILS} (${w.bucket})`,
         status:      'completed',
         amountILS,
         reference:   w.sessionId ?? w.bookingId ?? w.entryId,
@@ -1631,6 +1638,24 @@ router.post("/compensation/:sessionId", requireAdmin, async (req: Request, res: 
       sessionId, userId: session.userId, amountCents: session.amountCents,
       txnId: result.txnId, idempotent: result.idempotent ?? false,
     });
+
+    // ── Push notification to the user ──────────────────────────────────────
+    if (!result.idempotent) {
+      const amountILS = (session.amountCents / 100).toFixed(2);
+      dispatchNotifications({
+        userId:       session.userId,
+        eventType:    'refund_issued',
+        templateKey:  'k9000_compensation',
+        channels:     ['push'],
+        push: {
+          userId: session.userId,
+          title:  `₪${amountILS} הוחזרו לארנקך`,
+          body:   `שטיפת K9000 לא הצליחה — ₪${amountILS} הושבו לארנק באופן אוטומטי`,
+          data: { type: 'k9000_compensation', sessionId, screen: '/my-wallet' },
+        },
+        idempotencyKey: `k9000:compensation:notif:${sessionId}`,
+      }).catch((e: any) => logger.warn("[Compensation] Notification dispatch failed", { error: e?.message }));
+    }
 
     return res.json({
       ok:          true,

@@ -161,7 +161,36 @@ export function registerNotificationEventHandlers() {
   }, 10);
   
   // ==================== WASH EVENTS ====================
-  
+
+  eventBus.subscribe('wash.started', async (event: PlatformEvent) => {
+    logger.info('[NotificationEventHandler] Wash started event received', {
+      washId: event.data.washId,
+      userId: event.userId,
+    });
+
+    try {
+      if (event.userId) {
+        await NotificationService.sendNotification({
+          templateKey: 'wash_started',
+          userId: event.userId,
+          channelsOverride: ['push', 'in_app'],
+          variables: {
+            wash: {
+              id: event.data.washId,
+              stationName: event.data.stationName || 'K9000',
+              side: event.data.baySide || '',
+            },
+            timestamp: new Date().toLocaleString('he-IL'),
+          },
+        });
+      }
+    } catch (error: any) {
+      logger.error('[NotificationEventHandler] Failed to send wash started notification', {
+        error: error.message,
+      });
+    }
+  }, 5);
+
   eventBus.subscribe('wash.completed', async (event: PlatformEvent) => {
     logger.info('[NotificationEventHandler] Wash completed event received', {
       washId: event.data.washId,

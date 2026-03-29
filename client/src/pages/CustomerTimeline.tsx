@@ -8,16 +8,18 @@ import { Link } from "wouter";
 import {
   CalendarDays, Droplets, Wallet, Star, ChevronLeft, RefreshCw,
   CheckCircle2, Clock, XCircle, AlertCircle, TrendingUp, TrendingDown,
+  RefreshCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TYPE_CONFIG: Record<string, { icon: any; color: string; label: string; amountSign: string }> = {
-  marketplace_booking: { icon: CalendarDays, color: "text-blue-500",   label: "הזמנה",        amountSign: "-" },
-  k9000_wash:          { icon: Droplets,     color: "text-cyan-500",   label: "K9000 שטיפה",  amountSign: "-" },
-  wallet_credit:       { icon: TrendingUp,   color: "text-green-500",  label: "טעינת ארנק",   amountSign: "+" },
-  wallet_debit:        { icon: TrendingDown, color: "text-red-400",    label: "שימוש בארנק",  amountSign: "-" },
-  loyalty_earned:      { icon: Star,         color: "text-amber-500",  label: "נקודות נצברו", amountSign: "+" },
-  loyalty_redeemed:    { icon: Star,         color: "text-amber-400",  label: "נקודות מומשו", amountSign: "-" },
+  marketplace_booking: { icon: CalendarDays, color: "text-blue-500",    label: "הזמנה",            amountSign: "-" },
+  k9000_wash:          { icon: Droplets,     color: "text-cyan-500",    label: "K9000 שטיפה",      amountSign: "-" },
+  k9000_refund:        { icon: RefreshCcw,   color: "text-emerald-600", label: "פיצוי K9000",      amountSign: "+" },
+  wallet_credit:       { icon: TrendingUp,   color: "text-green-500",   label: "טעינת ארנק",       amountSign: "+" },
+  wallet_debit:        { icon: TrendingDown, color: "text-red-400",     label: "שימוש בארנק",      amountSign: "-" },
+  loyalty_earned:      { icon: Star,         color: "text-amber-500",   label: "נקודות נצברו",     amountSign: "+" },
+  loyalty_redeemed:    { icon: Star,         color: "text-amber-400",   label: "נקודות מומשו",     amountSign: "-" },
 };
 
 const BOOKING_STATUS_LABELS: Record<string, string> = {
@@ -102,6 +104,7 @@ export default function CustomerTimeline() {
 
   const bookingCount = items.filter(i => i.type === "marketplace_booking").length;
   const k9000Count   = items.filter(i => i.type === "k9000_wash").length;
+  const refundCount  = items.filter(i => i.type === "k9000_refund").length;
   const walletCount  = items.filter(i => i.type.startsWith("wallet_")).length;
   const loyaltyCount = items.filter(i => i.type.startsWith("loyalty_")).length;
 
@@ -130,6 +133,11 @@ export default function CustomerTimeline() {
           {k9000Count > 0 && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-3 py-1">
               <Droplets className="h-3 w-3" /> {k9000Count} שטיפות K9000
+            </div>
+          )}
+          {refundCount > 0 && (
+            <div className="flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 rounded-full px-3 py-1">
+              <RefreshCcw className="h-3 w-3" /> {refundCount} פיצויי K9000
             </div>
           )}
           {walletCount > 0 && (

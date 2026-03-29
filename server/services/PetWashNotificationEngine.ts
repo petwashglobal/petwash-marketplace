@@ -51,6 +51,9 @@ const TRANSACTIONAL_EVENTS = new Set([
   'booking_cancelled',
   'membership_renewed',
   'membership_cancelled',
+  'wash_started',
+  'wash_completed',
+  'k9000_compensation',
 ]);
 
 export interface EmailChannelPayload {
