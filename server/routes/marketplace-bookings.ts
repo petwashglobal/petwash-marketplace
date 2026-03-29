@@ -327,7 +327,9 @@ router.post('/:quoteId/checkout', async (req, res) => {
         const releaseEligibleAt = new Date();
         releaseEligibleAt.setHours(releaseEligibleAt.getHours() + 72);
         const platformFeeCents = quote.platformFeeCents || 0;
-        const vatCents = Math.round(platformFeeCents * 0.18);
+        // T4: Use the stored taxCents from the quote record (DB column: tax_cents).
+        // Do NOT recompute — the quote was already persisted with the canonical VAT value.
+        const vatCents = quote.taxCents || Math.round(platformFeeCents * 0.18);
 
         await tx.insert(escrowHoldings).values({
           escrowId,
