@@ -67,17 +67,16 @@ export default function AdminLoginV2() {
 
         setIsGoogleLoading(true);
         const idToken = await result.user.getIdToken();
-        const googleRes = await apiRequest("/auth/login/google", {
-          method: "POST",
-          body: JSON.stringify({
-            idToken,
-            deviceInfo: { userAgent: navigator.userAgent, timestamp: new Date().toISOString() },
-          }),
+        const sessionRes = await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ idToken, expiresInMs: 432000000 }),
         });
-        const googleData = await googleRes.json();
-
-        localStorage.setItem("access_token", googleData.tokens.accessToken);
-        localStorage.setItem("refresh_token", googleData.tokens.refreshToken);
+        if (!sessionRes.ok) {
+          const err = await sessionRes.json();
+          throw new Error(err.error || 'Session creation failed');
+        }
 
         toast({ title: "Welcome back! ✨", description: "Successfully logged in with Google" });
         setLocation("/admin/dashboard");
@@ -106,25 +105,36 @@ export default function AdminLoginV2() {
     triggerHaptic();
 
     try {
-      const res = await apiRequest("/auth/login/standard", {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
+      const { signInWithEmailAndPassword } = await import("firebase/auth");
+      const { auth } = await import("@/lib/firebase");
+
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      const idToken = await credential.user.getIdToken();
+
+      const sessionRes = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ idToken, expiresInMs: 432000000 }),
       });
-      const responseData = await res.json();
+      if (!sessionRes.ok) {
+        const err = await sessionRes.json();
+        throw new Error(err.error || 'Session creation failed');
+      }
 
       toast({
         title: "Welcome back! ✨",
         description: "Successfully logged in",
       });
 
-      localStorage.setItem("access_token", responseData.tokens.accessToken);
-      localStorage.setItem("refresh_token", responseData.tokens.refreshToken);
-
       setLocation("/admin/dashboard");
     } catch (error: any) {
+      const msg = error?.code === 'auth/wrong-password' || error?.code === 'auth/user-not-found'
+        ? 'Invalid email or password'
+        : extractErrorMessage(error);
       toast({
         title: "Login Failed",
-        description: extractErrorMessage(error),
+        description: msg,
         variant: "destructive",
       });
     } finally {
@@ -256,17 +266,16 @@ export default function AdminLoginV2() {
       const result = await signInWithPopup(auth, provider);
       const idToken = await result.user.getIdToken();
 
-      const googleRes = await apiRequest("/auth/login/google", {
-        method: "POST",
-        body: JSON.stringify({
-          idToken,
-          deviceInfo: { userAgent: navigator.userAgent, timestamp: new Date().toISOString() },
-        }),
+      const sessionRes = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ idToken, expiresInMs: 432000000 }),
       });
-      const googleData = await googleRes.json();
-
-      localStorage.setItem("access_token", googleData.tokens.accessToken);
-      localStorage.setItem("refresh_token", googleData.tokens.refreshToken);
+      if (!sessionRes.ok) {
+        const err = await sessionRes.json();
+        throw new Error(err.error || 'Session creation failed');
+      }
 
       toast({ title: "Welcome back! ✨", description: "Successfully logged in with Google" });
       setLocation("/admin/dashboard");

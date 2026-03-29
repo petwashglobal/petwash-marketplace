@@ -349,6 +349,9 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Parse Firebase Bearer tokens FIRST so req.firebaseUser is set for all subsequent middleware
   const { optionalFirebaseToken: optFirebase } = await import('./middleware/firebase-auth');
   app.use('/api/admin/', optFirebase);
+  // Also parse for provider-review — MUST be here (before RBAC guard at line ~416) or req.firebaseUser
+  // is never set and every Bearer-token admin request is blocked by the RBAC guard with 401.
+  app.use('/api/provider-review', optFirebase);
 
   // 🔒 LATERAL MOVEMENT BARRIERS - Session hardening for admin + KYC routes
   const { ipRiskScoring, adminRouteHardening, sessionAgeGuard } = await import('./middleware/session-hardening');
@@ -933,8 +936,12 @@ self.addEventListener('notificationclick', (event) => {
 
         // reCAPTCHA enforcement: require captchaToken for password sign-in.
         // sign_in_provider comes from the decoded Firebase token — cannot be spoofed by the client.
+        // Super admins (founder / hardcoded list) bypass captchaToken — they use Google SSO or passkey in practice.
         const signInProvider = (preDecoded as any).firebase?.sign_in_provider || '';
-        if (signInProvider === 'password') {
+        const preEmail = (preDecoded.email || '').toLowerCase();
+        const { isSuperAdmin: preSuperAdminCheck } = await import('./middleware/rbac');
+        const isPreSuperAdmin = preSuperAdminCheck(preEmail);
+        if (signInProvider === 'password' && !isPreSuperAdmin) {
           if (!captchaToken) {
             logger.warn('[Session] Email/password sign-in rejected — missing captchaToken', { uid: preDecoded.uid, traceId });
             return res.status(400).json({ error: 'Security verification token required', errorCode: 'CAPTCHA_REQUIRED' });
@@ -9379,6 +9386,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/police-check', apiLimiter, policeCheckRoutes);
   
   // Admin Provider Review Queue - ⁦Pet Wash™⁩ approval workflow (P0 gates: role + status + MFA)
+  // optFirebase is registered earlier (before the RBAC guard) to ensure req.firebaseUser is set.
   app.use('/api/provider-review', apiLimiter, requireAdminMfa, requireRole('admin', 'management', 'staff'), requireStaffApproved, requireMfaEnrolled, adminProviderReviewRoutes);
   
   // AI Payout Verification - Gemini 2.5 Flash work verification before payouts (Admin only)
