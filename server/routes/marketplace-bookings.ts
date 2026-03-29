@@ -314,8 +314,10 @@ router.post('/:quoteId/checkout', async (req, res) => {
     releaseEligibleAt.setHours(releaseEligibleAt.getHours() + 72); // 72-hour escrow
 
     await db.insert(escrowHoldings).values({
-      id: escrowId,
+      escrowId,
       bookingId,
+      customerId: userId,
+      providerId: String(quote.providerId || ''),
       grossAmountCents: quote.totalCents || 0,
       platformFeeCents: quote.platformFeeCents || 0,
       vatCents: quote.vatCents || 0,

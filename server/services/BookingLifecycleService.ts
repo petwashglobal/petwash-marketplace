@@ -88,13 +88,12 @@ class BookingLifecycleService {
     try {
       const result = await db.select({
         completedCount: sql<number>`COUNT(*) FILTER (WHERE status = 'completed')`,
-        avgRating: sql<number>`AVG(customer_rating)`,
       })
       .from(bookings)
       .where(eq(bookings.userId, customerId));
 
       const completedBookings = Number(result[0]?.completedCount) || 0;
-      const averageRating = Number(result[0]?.avgRating) || 0;
+      const averageRating = 0;
 
       // Determine tier (highest matching)
       let tier = 'none';
@@ -277,7 +276,7 @@ class BookingLifecycleService {
     await db.insert(bookings).values({
       id: bookingId,
       bookingNumber,
-      platformId: input.platformId,
+      platformId: input.platformId.toUpperCase() as any,
       userId: input.customerId,
       providerId: input.providerProfileId,
       startTime: input.startTime,
