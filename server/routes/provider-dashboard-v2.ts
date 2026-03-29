@@ -13,11 +13,12 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { bookingRequests, providers } from '@shared/schema';
+import { bookingRequests, providers, superAppNotifications } from '@shared/schema';
 import { eq, sql, count, desc, inArray, and, gte, lte } from 'drizzle-orm';
 import { auth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { pool } from '../db';
+import { scheduleRebookTrigger } from '../jobs/rebook-scheduler';
 
 const router = Router();
 
@@ -528,9 +529,10 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid booking id' });
     }
 
-    // Fetch + ownership check in one query
+    // Fetch + ownership check in one query — include owner_id/request_id for downstream notifications
     const fetchResult = await pool.query(
-      `SELECT id, status, provider_id FROM booking_requests WHERE id = $1 AND provider_id = $2`,
+      `SELECT id, status, provider_id, owner_id, request_id, service_type
+       FROM booking_requests WHERE id = $1 AND provider_id = $2`,
       [bookingId, user.uid],
     );
 
@@ -617,6 +619,60 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
     }
 
     const updated = updateResult.rows[0];
+
+    // ── Customer notification on accept / decline ──────────────────────────────
+    // The V1 /respond route does this; we mirror it here so the V2 fast-action
+    // path in ProviderTaskInbox has identical side-effects.
+    if (action === 'accept' || action === 'decline') {
+      const isAccept = action === 'accept';
+      const ownerId    = booking.owner_id   as string | undefined;
+      const requestId  = booking.request_id as string | undefined;
+      const serviceTypeLbl = booking.service_type as string | undefined;
+
+      if (ownerId) {
+        try {
+          await db.insert(superAppNotifications).values({
+            userId:    ownerId,
+            type:      isAccept ? 'booking_accepted' : 'booking_declined',
+            title:     isAccept ? '✅ הספק אישר את הבקשה!' : 'הספק אינו זמין בתאריכים אלה',
+            titleHe:   isAccept ? '✅ הספק אישר את הבקשה!' : 'הספק אינו זמין בתאריכים אלה',
+            body:      isAccept
+              ? 'ההזמנה שלך אושרה — שוחח עם הספק עכשיו והכן את הפגישה.'
+              : 'אל דאגה — יש לנו ספקים נוספים שיוכלו לעזור. חפש עכשיו.',
+            bodyHe:    isAccept
+              ? 'ההזמנה שלך אושרה — שוחח עם הספק עכשיו והכן את הפגישה.'
+              : 'אל דאגה — יש לנו ספקים נוספים שיוכלו לעזור. חפש עכשיו.',
+            actionUrl:  requestId ? `/booking/confirmation/${requestId}` : '/my-bookings',
+            actionType: isAccept ? 'open_booking_chat' : 'open_booking',
+            channels:  ['in_app'],
+            isRead:    false,
+            createdAt: new Date(),
+          } as any);
+          logger.info(`[ProviderDashboardV2] Customer notification sent`, {
+            ownerId, action, bookingId, requestId,
+          });
+        } catch (notifErr: any) {
+          logger.warn('[ProviderDashboardV2] Customer notification insert failed', {
+            error: notifErr.message, bookingId,
+          });
+        }
+
+        // For decline: schedule 1-hour recovery nudge (same as V1)
+        if (!isAccept) {
+          scheduleRebookTrigger('declined_recovery', {
+            userId:      ownerId,
+            requestId:   requestId ?? String(bookingId),
+            providerId:  user.uid,
+            serviceType: serviceTypeLbl,
+            delayMs:     60 * 60 * 1000,
+          }).catch((e: any) =>
+            logger.warn('[RebookScheduler] declined_recovery schedule failed (v2)', {
+              error: e.message,
+            }),
+          );
+        }
+      }
+    }
 
     // Structured log — retained for the Phase 4 transition window
     logger.info(`[ProviderDashboardV2] ACTION:${action.toUpperCase()}`, {
