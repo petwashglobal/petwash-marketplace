@@ -502,13 +502,44 @@ router.get('/places-details', placesDetailsLimiter, async (req, res) => {
     // Primary: postal code from addressComponents
     let postalCode = getComponent('postal_code');
 
-    // Fallback: parse from adrFormatAddress HTML
+    // Fallback 1: parse from adrFormatAddress HTML
     // Google returns: <span class="postal-code">6291302</span> in this field
     // This is reliable for Israel where addressComponents often omits postal_code
     if (!postalCode && data.adrFormatAddress) {
       const match = data.adrFormatAddress.match(/<span class="postal-code">([^<]+)<\/span>/);
       if (match) {
         postalCode = match[1].trim();
+      }
+    }
+
+    // Fallback 2: Geocoding API via lat/lng — most reliable source for Israeli postal codes
+    // Only fires when both primary sources return nothing and we have coordinates
+    const placeLat = data.location?.latitude;
+    const placeLng = data.location?.longitude;
+    if (!postalCode && placeLat != null && placeLng != null) {
+      try {
+        const geocodeParams = new URLSearchParams({
+          latlng: `${placeLat},${placeLng}`,
+          key: apiKey,
+          result_type: 'postal_code',
+          language: (language as string) || 'iw',
+        });
+        const geocodeRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?${geocodeParams}`);
+        if (geocodeRes.ok) {
+          const geocodeData: any = await geocodeRes.json();
+          if (geocodeData.status === 'OK' && geocodeData.results?.length) {
+            for (const result of geocodeData.results) {
+              const pc = (result.address_components || []).find((c: any) => c.types?.includes('postal_code'));
+              if (pc?.long_name) {
+                postalCode = pc.long_name;
+                logger.info('[Places Proxy] Postal code resolved via geocoding fallback', { traceId, postalCode });
+                break;
+              }
+            }
+          }
+        }
+      } catch (geocodeErr: any) {
+        logger.warn('[Places Proxy] Geocoding postal code fallback failed', { traceId, error: geocodeErr.message });
       }
     }
 

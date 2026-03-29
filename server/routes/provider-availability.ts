@@ -7,7 +7,7 @@ import {
   bookingRequests,
   providers,
 } from '@shared/schema';
-import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
+import { eq, and, gte, lte, lt, gt, sql, desc, count } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
 
@@ -478,6 +478,28 @@ router.post('/slots', async (req, res) => {
     }
     if (end <= start) {
       return res.status(400).json({ error: 'endTime must be after startTime' });
+    }
+
+    // ── Overlap detection ─────────────────────────────────────────────────────
+    // Reject if the provider already has a non-cancelled slot that overlaps with
+    // the requested window. Two intervals [A,B) and [C,D) overlap when A < D AND B > C.
+    const [overlapCheck] = await db
+      .select({ cnt: count() })
+      .from(availabilitySlots)
+      .where(
+        and(
+          eq(availabilitySlots.providerId, provider.id),
+          sql`${availabilitySlots.status} != 'cancelled'`,
+          lt(availabilitySlots.startTime, end),   // existing starts before new ends
+          gt(availabilitySlots.endTime, start)    // existing ends after new starts
+        )
+      );
+
+    if (Number(overlapCheck?.cnt) > 0) {
+      return res.status(409).json({
+        error: 'Time conflict',
+        message: 'You already have a slot that overlaps with the requested time window. Cancel or adjust the existing slot first.',
+      });
     }
 
     const [slot] = await db.insert(availabilitySlots).values({

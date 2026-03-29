@@ -348,9 +348,9 @@ export function GooglePlacesAutocomplete({
       apartment: apt || undefined,
       postalCode: zip || base.postalCode,
     };
-    // Rebuild formatted address incorporating building number + apartment
+    // Rebuild formatted address incorporating building number + apartment + country
     let fullAddr = base.street
-      ? `${base.street}${bldg ? ' ' + bldg : ''}${base.city ? ', ' + base.city : ''}`
+      ? `${base.street}${bldg ? ' ' + bldg : ''}${base.city ? ', ' + base.city : ''}${base.country ? ', ' + base.country : ''}`
       : base.formattedAddress;
     if (apt) fullAddr = `${fullAddr}, ${apt}`;
     updated.formattedAddress = fullAddr;
