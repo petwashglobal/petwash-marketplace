@@ -191,6 +191,41 @@ export function registerNotificationEventHandlers() {
     }
   }, 5);
 
+  eventBus.subscribe('wash.failed', async (event: PlatformEvent) => {
+    logger.info('[NotificationEventHandler] Wash failed event received', {
+      washId: event.data.washId,
+      userId: event.userId,
+      compensationRequired: event.data.compensationRequired,
+    });
+
+    try {
+      if (event.userId) {
+        await NotificationService.sendNotification({
+          templateKey: 'wash_failed',
+          userId: event.userId,
+          channelsOverride: ['push', 'in_app'],
+          variables: {
+            wash: {
+              id:          event.data.washId,
+              stationName: event.data.stationName || 'K9000',
+              bayId:       event.data.bayId || '',
+            },
+            refund: {
+              amountILS:            event.data.amountCents
+                ? `₪${(event.data.amountCents / 100).toFixed(2)}`
+                : '',
+              compensationRequired: event.data.compensationRequired ?? false,
+            },
+          },
+        });
+      }
+    } catch (error: any) {
+      logger.error('[NotificationEventHandler] Failed to send wash failed notification', {
+        error: error.message,
+      });
+    }
+  }, 5);
+
   eventBus.subscribe('wash.completed', async (event: PlatformEvent) => {
     logger.info('[NotificationEventHandler] Wash completed event received', {
       washId: event.data.washId,

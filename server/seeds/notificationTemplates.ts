@@ -194,7 +194,20 @@ const defaultTemplates: InsertNotificationTemplate[] = [
     isActive: true,
   },
   
-  // 6. WASH COMPLETED
+  // 6. WASH STARTED
+  {
+    key: 'wash_started',
+    name: 'Wash Started',
+    description: 'Push + in-app notification sent to customer when a K9000 wash session begins',
+    channels: ['push', 'in_app'],
+    inAppTitle: '🐾 השטיפה החלה!',
+    inAppBody: 'השטיפה שלך ב-{{wash.stationName}} התחילה. תהנה!',
+    pushTitle: '🐾 Wash Started at {{wash.stationName}}',
+    pushBody: 'Your K9000 wash session has begun. Enjoy! 🐕',
+    isActive: true,
+  },
+
+  // 7. WASH COMPLETED
   {
     key: 'wash_completed',
     name: 'Wash Completed',
@@ -206,8 +219,21 @@ const defaultTemplates: InsertNotificationTemplate[] = [
     pushBody: 'Package: {{wash.packageName}} | Duration: {{wash.duration}}',
     isActive: true,
   },
-  
-  // 7. BOOKING CONFIRMED (bonus template)
+
+  // 8. WASH FAILED
+  {
+    key: 'wash_failed',
+    name: 'Wash Failed — Refund Issued',
+    description: 'Push + in-app notification sent to customer when a K9000 pump failed to start and a refund was triggered',
+    channels: ['push', 'in_app'],
+    inAppTitle: '⚠️ השטיפה נכשלה — הכסף הוחזר',
+    inAppBody: 'לא הצלחנו להפעיל את המשאבה ב-{{wash.stationName}}. {{refund.amountILS}} יוחזרו לארנקך.',
+    pushTitle: '⚠️ Wash Failed — Refund Issued',
+    pushBody: 'Pump could not start at {{wash.stationName}}. {{refund.amountILS}} returned to your wallet.',
+    isActive: true,
+  },
+
+  // 9. BOOKING CONFIRMED (bonus template)
   {
     key: 'booking_confirmed',
     name: 'Booking Confirmed',

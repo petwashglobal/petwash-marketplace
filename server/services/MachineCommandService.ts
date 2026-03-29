@@ -26,6 +26,8 @@ import type { MachineCommand } from '@shared/schema';
 import { eq, and, inArray, lt, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
+import { eventPublisher } from './EventPublisher';
+import { DomainEventType } from '@shared/events';
 
 // ─── Timeouts (ms) before a command is considered timed-out ─────────────────
 const COMMAND_TIMEOUT_MS: Record<string, number> = {
@@ -438,6 +440,26 @@ async function _handleTimeout(cmd: MachineCommand): Promise<void> {
         sessionId: cmd.sessionId,
         stationId: cmd.stationId,
         side:      cmd.side,
+      });
+    }
+
+    // ── Publish domain event so notification handlers and analytics can react ─
+    if (cmd.commandType === 'START_PUMP') {
+      eventPublisher.publishEvent(
+        DomainEventType.WASH_FAILED,
+        {
+          washId:               cmd.sessionId ?? cmd.commandId,
+          stationId:            cmd.stationId ?? '',
+          bayId:                cmd.bayId ?? undefined,
+          reason:               'pump_ack_timeout_after_all_retries',
+          compensationRequired: needsCompensation,
+        },
+        {
+          userId:      (cmd.payload as any)?.userId ?? undefined,
+          aggregateId: cmd.stationId ?? undefined,
+        },
+      ).catch((e: any) => {
+        logger.warn('[MachineCmd] wash.failed event publish failed', { error: e?.message });
       });
     }
   }
