@@ -47,6 +47,8 @@ import { EmailService } from '../emailService';
 import { awardLoyaltyCredit, getStreakCounts, redeemLoyaltyCredit } from '../utils/loyaltyLedger';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
 import { walletService } from '../services/WalletService';
+import { eventPublisher } from '../services/EventPublisher';
+import { DomainEventType } from '@shared/events';
 
 function getDivisionCode(serviceType?: string | null): 'petsitter' | 'walkers' | 'academy' | 'pettrek' | 'general' {
   switch (serviceType) {
@@ -365,6 +367,18 @@ router.post('/', async (req, res) => {
     logBookingEvent('created', buildEventPayload(booking), {
       customerRequestedAt: new Date().toISOString(),
     }).catch(() => {});
+
+    eventPublisher.publishEvent(
+      DomainEventType.BOOKING_CREATED,
+      {
+        bookingId: requestId,
+        userId: booking.ownerId,
+        providerId: booking.providerId,
+        serviceType: booking.serviceType,
+        totalCents: booking.totalCents,
+      },
+      { source: 'booking-requests/create', aggregateType: 'booking', aggregateId: requestId, userId: booking.ownerId },
+    ).catch((e: any) => logger.error('[BookingRequests] BOOKING_CREATED event publish failed', { error: e?.message, requestId }));
 
     // ── Loyalty credit redemption — synchronous debit after booking row exists ──
     // Amount was already reflected in the quote's totalCents.
@@ -1443,6 +1457,20 @@ router.post('/:requestId/confirm', async (req, res) => {
       }
     });
 
+    // ── Domain event: BOOKING_COMPLETED ──────────────────────────────────────
+    eventPublisher.publishEvent(
+      DomainEventType.BOOKING_COMPLETED,
+      {
+        bookingId: requestId,
+        userId: booking.ownerId,
+        providerId: booking.providerId,
+        serviceType: booking.serviceType,
+        totalCents: booking.totalCents,
+        rating: rating ?? null,
+      },
+      { source: 'booking-requests/confirm', aggregateType: 'booking', aggregateId: requestId, userId: booking.ownerId },
+    ).catch((e: any) => logger.error('[BookingRequests] BOOKING_COMPLETED event publish failed', { error: e?.message, requestId }));
+
     // Send inbox + email + SMS notifications via dispatchNotification
     const amountIls = (booking.subtotalCents / 100).toFixed(2);
     try {
@@ -1681,6 +1709,21 @@ router.post('/:requestId/cancel', async (req, res) => {
         updatedAt: new Date(),
       })
       .where(eq(bookingRequests.requestId, requestId));
+
+    // ── Domain event: BOOKING_CANCELLED ──────────────────────────────────────
+    eventPublisher.publishEvent(
+      DomainEventType.BOOKING_CANCELLED,
+      {
+        bookingId: requestId,
+        userId: booking.ownerId,
+        providerId: booking.providerId,
+        serviceType: booking.serviceType,
+        cancelledBy,
+        refundCents,
+        reason: reason || null,
+      },
+      { source: 'booking-requests/cancel', aggregateType: 'booking', aggregateId: requestId, userId: booking.ownerId },
+    ).catch((e: any) => logger.error('[BookingRequests] BOOKING_CANCELLED event publish failed', { error: e?.message, requestId }));
 
     // ── Wallet lifecycle on cancel ─────────────────────────────────────────────
     // hold_active → release (funds never spent, restore to available)

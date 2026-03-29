@@ -25,6 +25,8 @@ import {
   type UnifiedBookingStatus,
   type Role
 } from '../services/unified-booking';
+import { eventPublisher } from '../services/EventPublisher';
+import { DomainEventType } from '@shared/events';
 
 const router = Router();
 
@@ -385,6 +387,20 @@ router.post('/:bookingId/complete', requireAuth, async (req: Request, res: Respo
     };
 
     const result = await unifiedBookingEngine.complete(booking, completedBy, receiptData);
+
+    eventPublisher.publishEvent(
+      DomainEventType.BOOKING_COMPLETED,
+      {
+        bookingId,
+        userId: booking.userId,
+        resourceType: booking.resourceType,
+        resourceId: booking.resourceId,
+        serviceId: booking.serviceId,
+        receiptNumber: result.receiptNumber ?? null,
+        completedBy,
+      },
+      { source: 'unified-booking/complete', aggregateType: 'booking', aggregateId: bookingId, userId: booking.userId },
+    ).catch((e: any) => logger.error('[UnifiedBooking] BOOKING_COMPLETED event publish failed', { error: e?.message, bookingId }));
 
     res.json({
       success: true,
