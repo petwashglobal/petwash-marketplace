@@ -606,19 +606,31 @@ export const nayaxStationKeys = pgTable("nayax_station_keys", {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// K9000 Wash Usage Events
+// K9000 Wash Usage Events — unified log for BOTH payment flows
 //
-// ARCHITECTURE RULE (enforced here):
-//   transaction_source = "petwash" → eGift / loyalty voucher stored in PetWash DB
-//   transaction_source = "nayax"   → direct card/NFC payment via Nayax terminal
+// ─────────────────────────────────────────────────────────────────────────────
+// FLOW A — Direct Terminal Sale (transaction_source = "nayax")
+//   Guest pays by card/NFC at the Nayax terminal.
+//   No PetWash wallet is involved.
+//   Handler: POST /api/k9000/wash/start_cycle
 //
-//   redemption_source = "egift"          → PetWash eGift card (has egift_id)
-//   redemption_source = "nayax"          → Nayax direct payment (has nayax_transaction_id)
-//   redemption_source = "loyalty_voucher"→ K9000 loyalty redemption voucher
+// FLOW B — PetWash Wallet/Credit Redemption (transaction_source = "petwash")
+//   Authenticated user scans a 45-sec HMAC-signed QR from the PetWash app.
+//   Server debits the appropriate credit type BEFORE machine activation.
+//   Handler: POST /api/k9000/redeem-wash (via K9000RedemptionService)
+//
+// REPORTING — redemption_source values (used by finance/fraud/support)
+// ─────────────────────────────────────────────────────────────────────────────
+//   "nayax"           → Flow A: direct card/NFC terminal payment
+//   "wash_package"    → Flow B: prepaid wash-package credit (washPackageCredits)
+//   "wallet_balance"  → Flow B: cash wallet ILS deduction (cashWalletBalanceCents)
+//   "gift_credit"     → Flow B: eGift balance (egiftBalanceCents)
+//   "loyalty_benefit" → Flow B: loyalty-tier free wash (loyaltyPointsBalance)
+//   "promo_coupon"    → Flow B: promotional/coupon credit (promoBalanceCents)
 //
 // This table is the ONLY unified K9000 usage log for analytics and loyalty credits.
-// It NEVER triggers FinancialDocumentService for Nayax rows.
-// Financial documents (PW-EGR, PW-RFD, etc.) are only created for petwash rows.
+// Financial documents (PW-EGR, PW-RFD, etc.) are ONLY created for petwash rows.
+// Nayax rows NEVER trigger FinancialDocumentService.
 // ─────────────────────────────────────────────────────────────────────────────
 export const k9000WashEvents = pgTable("k9000_wash_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

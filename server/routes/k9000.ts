@@ -1,17 +1,49 @@
 /**
  * K9000 IoT Wash Activation Endpoints
- * Secure endpoints for K9000 Twin hardware control
- * 
- * Based on user's Node.js IoT backend code
- * Integrates with Nayax QR readers and loyalty program
- * 
- * Flow:
- * 1. Customer scans QR code or taps NFC (Nayax reader)
- * 2. Nayax validates payment/loyalty discount
- * 3. K9000 controller sends activation request to this endpoint
- * 4. Server validates IP + payment + machine secret
- * 5. Server sends start command back to K9000
- * 6. Wash cycle begins
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * TWO COMPLETELY SEPARATE PAYMENT FLOWS — DO NOT MIX
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * FLOW A — Direct Terminal Sale  (POST /api/k9000/wash/start_cycle)
+ * ────────────────────────────────────────────────────────────────
+ * Trigger : Guest / walk-in pays by card or NFC at the Nayax IL terminal.
+ * Auth    : IP allowlist + HMAC machine headers ONLY. No user login required.
+ * Wallet  : NOT touched. No PetWash balance is read or debited.
+ * DB log  : k9000_wash_events { transaction_source:"nayax", redemption_source:"nayax" }
+ * Finance : VATCalculatorService records 100% PetWash revenue.
+ *
+ * FLOW B — PetWash Wallet / Credit Redemption  (POST /api/k9000/redeem-wash)
+ * ───────────────────────────────────────────────────────────────────────────
+ * Trigger : Registered user opens PetWash app → Wallet → QR screen →
+ *           presents a 45-second HMAC-signed QR to the Nayax QR reader.
+ * Auth    : IP allowlist + HMAC machine headers + signed user token (user identity).
+ * Wallet  : Server MUST debit the correct credit type before activation:
+ *             wash_package    → washPackageCredits − 1
+ *             wallet_balance  → cashWalletBalanceCents − WASH_PRICE
+ *             gift_credit     → egiftBalanceCents − WASH_PRICE
+ *             loyalty_benefit → loyaltyPointsBalance − LOYALTY_WASH_COST_POINTS
+ *             promo_coupon    → promoBalanceCents − WASH_PRICE
+ * Validation: K9000RedemptionService.authorizeRedemption() enforces all 8 steps:
+ *   1. User identity (signed token, verified here)
+ *   2. Wallet ownership
+ *   3. Balance / credit sufficiency
+ *   4. Machine eligibility (kiosk registered + active)
+ *   5. Station online / ready status
+ *   6. Anti-fraud velocity check (max 3/hour)
+ *   7. Double-redemption prevention (nonce burned before service call)
+ *   8. Atomic debit + creditTransactions + k9000WashEvents + audit ledger
+ * DB log  : k9000_wash_events { transaction_source:"petwash", redemption_source:<type> }
+ *
+ * REPORTING — k9000_wash_events.redemption_source values
+ * ─────────────────────────────────────────────────────
+ *   "nayax"           → Flow A direct terminal card/NFC payment
+ *   "wash_package"    → Flow B prepaid wash-package credit
+ *   "wallet_balance"  → Flow B cash wallet (ILS) deduction
+ *   "gift_credit"     → Flow B eGift card balance
+ *   "loyalty_benefit" → Flow B loyalty-tier free wash
+ *   "promo_coupon"    → Flow B promotional/coupon credit
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 import express from 'express';
@@ -21,8 +53,9 @@ import {
   validateKioskAllowlist,
 } from '../middleware/k9000Security';
 import { NayaxSparkService } from '../services/NayaxSparkService';
+import { z } from 'zod';
 import { db } from '../db';
-import { nayaxTransactions, auditLedger, stations, walletAccounts, creditTransactions } from '@shared/schema';
+import { nayaxTransactions, auditLedger, stations, walletAccounts, creditTransactions, k9000WashEvents } from '@shared/schema';
 import { eq, and, gt, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
@@ -32,6 +65,7 @@ import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
 import { verifySignedRedeemToken, consumeNonce } from '../lib/signedRedeemToken';
 import { redis } from '../services/redis';
+import { authorizeRedemption, K9000RedemptionType } from '../services/K9000RedemptionService';
 
 const router = express.Router();
 
@@ -333,6 +367,39 @@ router.post('/wash/start_cycle', async (req, res) => {
       });
     }
 
+    // === STEP 4.8: LOG TO k9000_wash_events (FLOW A — NAYAX TERMINAL) ===
+    // transaction_source = "nayax" and redemption_source = "nayax" for ALL
+    // direct terminal payments. The PetWash wallet is never touched in this flow.
+    try {
+      const nayaxAmountRow = transactionId
+        ? await db
+            .select({ amount: nayaxTransactions.amount })
+            .from(nayaxTransactions)
+            .where(eq(nayaxTransactions.id, transactionId))
+            .limit(1)
+        : [];
+      const amountILS = nayaxAmountRow.length > 0 ? parseFloat(nayaxAmountRow[0].amount) : 0;
+
+      await db.insert(k9000WashEvents).values({
+        transactionSource: 'nayax',          // FLOW A: direct terminal sale
+        redemptionSource: 'nayax',           // reporting: direct_terminal_sale
+        stationId: stationInfo?.stationId ?? machineId,
+        nayaxTransactionId: transactionId ?? null,
+        nayaxTerminalId: stationInfo?.terminalId ?? null,
+        platform: 'k9000',
+        product: washType,
+        amountCents: Math.round(amountILS * 100),
+        currency: 'ILS',
+        loyaltyPointsAwarded: 0,
+        loyaltyEventLogged: false,
+        status: 'completed',
+        idempotencyKey: transactionId ? `nayax:${transactionId}` : `nayax:${washId}`,
+      });
+      logger.info('[K9000 Wash] k9000WashEvents logged (nayax terminal)', { washId });
+    } catch (washLogErr: any) {
+      logger.error('[K9000 Wash] Failed to write k9000WashEvents', { error: washLogErr.message, washId });
+    }
+
     // === STEP 5: SEND SUCCESS RESPONSE ===
     
     res.status(200).json({
@@ -413,52 +480,79 @@ router.get('/status/:machineId', async (req, res) => {
 
 // ─── POST /api/k9000/redeem-wash ─────────────────────────────────────────────
 /**
- * K9000 QR-scan redemption endpoint (2026 security model)
+ * FLOW B — PetWash Wallet / Credit Redemption
  *
- * Called by the K9000 kiosk when the Nayax QR reader scans a user's phone.
- * The scanned code is a 45-second HMAC-signed redeem token (Apple Wallet)
- * or an 8-digit TOTP (Google Wallet rotating barcode).
+ * Called by the K9000 kiosk when the Nayax QR reader scans a user's
+ * 45-second HMAC-signed QR code from the PetWash app or Apple Wallet pass.
  *
- * Flow:
- *   1. Verify HMAC signed token (expiry + nonce + signature)
- *   2. Lookup user wallet → assert washPackageCredits >= 1
- *   3. Atomic decrement (UPDATE ... WHERE wash_package_credits > 0)
- *   4. Consume nonce → replay-safe
- *   5. Send START_PUMP signal to K9000 controller (via HTTP or IoT relay)
- *   6. Write audit ledger entry
- *   7. Trigger Apple Wallet push update so pass shows new balance
- *   8. Return { status: 'success', washId, remainingWashes }
+ * This endpoint handles ALL five PetWash-side credit types:
+ *   wash_package    — prepaid wash-package credit (washPackageCredits)
+ *   wallet_balance  — cash wallet ILS deduction (cashWalletBalanceCents)
+ *   gift_credit     — eGift card balance (egiftBalanceCents)
+ *   loyalty_benefit — loyalty-tier free wash (loyaltyPointsBalance)
+ *   promo_coupon    — promotional credit (promoBalanceCents)
+ *
+ * Security layers in order:
+ *   Layer 1 (global) : IP allowlist         → validateK9000MachineIP
+ *   Layer 2 (global) : HMAC machine headers → validateK9000HmacHeaders
+ *   Layer 3 (here)   : DB kiosk allowlist   → validateKioskAllowlist
+ *   Layer 4 (here)   : Signed user token    → verifySignedRedeemToken
+ *   Layer 5 (here)   : Redis nonce burn     → consumeNonce (replay prevention)
+ *   Layer 6 (service): All 8 validation steps inside authorizeRedemption()
+ *
+ * Machine activation is issued ONLY after authorizeRedemption() returns success.
+ * If the service throws, the kiosk MUST NOT activate.
  */
 // Layer 3 (redeem-wash only): DB allowlist — kioskId must be registered + active
 router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
   const correlationId = nanoid(12);
 
   try {
-    const { scannedCode, kioskId } = req.body as {
-      scannedCode?: string;
-      kioskId?: string;
-    };
+    const bodySchema = z.object({
+      scannedCode:   z.string().min(10),
+      kioskId:       z.string().min(1),
+      // redemptionType defaults to 'wash_package' for backward compatibility
+      // with existing kiosk firmware that does not yet send this field.
+      redemptionType: z.enum([
+        'wash_package',
+        'wallet_balance',
+        'gift_credit',
+        'loyalty_benefit',
+        'promo_coupon',
+      ]).default('wash_package'),
+      washType: z.string().optional(),
+    });
 
-    if (!scannedCode || !kioskId) {
+    const parsed = bodySchema.safeParse(req.body);
+    if (!parsed.success) {
       return res.status(400).json({
-        error: 'שדות חסרים: scannedCode ו-kioskId הם חובה.',
-        errorEn: 'Missing required fields: scannedCode and kioskId.',
+        error: 'שדות לא תקינים בבקשה.',
+        errorEn: 'Invalid request fields.',
+        details: parsed.error.flatten().fieldErrors,
         correlationId,
       });
     }
 
-    logger.info('[K9000 Redeem] Scan received', { kioskId, correlationId, codeLen: scannedCode.length });
+    const { scannedCode, kioskId, redemptionType, washType } = parsed.data;
+    const stationInfo = (req as any).k9000Station;
 
-    // ── 1. Verify signed redeem token ──────────────────────────────────────
+    logger.info('[K9000 Redeem] Scan received', {
+      kioskId,
+      redemptionType,
+      correlationId,
+      codeLen: scannedCode.length,
+    });
+
+    // ── Step 1: Verify HMAC-signed user token (expiry + nonce + signature) ─
     const verification = verifySignedRedeemToken(scannedCode);
 
     if (!verification.valid || !verification.payload) {
       const errorMap: Record<string, string> = {
-        EXPIRED:            'הקוד פג תוקף (45 שניות). בקש קוד חדש.',
-        REPLAYED:           'קוד זה כבר שומש. אסור לעשות שימוש חוזר.',
-        INVALID_SIGNATURE:  'חתימה לא תקינה — הקוד לא יתקבל.',
-        MISSING_SECRET:     'שגיאת הגדרות שרת — PASS_TOKEN_SECRET חסר.',
-        PARSE_ERROR:        'פורמט קוד לא תקין.',
+        EXPIRED:           'הקוד פג תוקף (45 שניות). הצג קוד חדש.',
+        REPLAYED:          'קוד זה כבר שומש. אסור לעשות שימוש חוזר.',
+        INVALID_SIGNATURE: 'חתימה לא תקינה — הקוד לא יתקבל.',
+        MISSING_SECRET:    'שגיאת הגדרות שרת — PASS_TOKEN_SECRET חסר.',
+        PARSE_ERROR:       'פורמט קוד לא תקין.',
       };
       const heMsg = errorMap[verification.error || ''] || 'קוד לא תקין.';
       logger.warn('[K9000 Redeem] Token rejected', { error: verification.error, kioskId, correlationId });
@@ -472,45 +566,18 @@ router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
 
     const { uid: userId, ps: passSerial, nonce } = verification.payload;
 
-    // ── 2. Load user wallet ────────────────────────────────────────────────
-    const [wallet] = await db
-      .select()
-      .from(walletAccounts)
-      .where(eq(walletAccounts.userId, userId))
-      .limit(1);
-
-    if (!wallet) {
-      logger.warn('[K9000 Redeem] Wallet not found', { userId, correlationId });
-      return res.status(404).json({
-        error: 'ארנק לא נמצא. פנה לתמיכה.',
-        errorEn: 'Wallet not found.',
-        correlationId,
-      });
-    }
-
-    if ((wallet.washPackageCredits ?? 0) < 1) {
-      logger.warn('[K9000 Redeem] Insufficient wash credits', { userId, balance: wallet.washPackageCredits, correlationId });
-      return res.status(402).json({
-        error: 'אין עוד שטיפות בחבילה. ניתן לרכוש חבילה חדשה באפליקציה.',
-        errorEn: 'No remaining wash credits.',
-        status: 'INSUFFICIENT_CREDITS',
-        remainingWashes: 0,
-        correlationId,
-      });
-    }
-
-    // ── 2b. Burn nonce BEFORE the debit (race-condition safety) ───────────────
+    // ── Step 7 (pre-debit): Burn nonce before calling the service ──────────
     // In-memory burn first (fast, same-process protection)
     consumeNonce(nonce, 120_000);
 
     // Redis-backed burn for cross-process / post-restart replay protection.
-    // Atomic SET NX EX: first writer wins, no race window between GET and SET.
-    // Falls back gracefully (in-memory nonce is the safety net) when Redis is down.
+    // Atomic SETNX EX: first writer wins, no race window between GET and SET.
+    // Falls back gracefully to in-memory when Redis is unavailable.
     const redisNonceKey = `k9000:nonce:${nonce}`;
     if (redis.isConnected()) {
       const claimed = await redis.setNx(redisNonceKey, true, 120);
       if (!claimed) {
-        logger.warn('[K9000 Redeem] Redis SETNX replay detected — nonce already claimed', { nonce, userId, correlationId });
+        logger.warn('[K9000 Redeem] Redis SETNX replay blocked', { nonce, userId, correlationId });
         return res.status(409).json({
           error: 'קוד זה כבר שומש. הצג קוד חדש.',
           errorEn: 'QR code already used. Please generate a new one.',
@@ -520,118 +587,116 @@ router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
       }
     }
 
-    // ── 3. Atomic decrement — guard against race conditions ────────────────
-    const updated = await db
-      .update(walletAccounts)
-      .set({
-        washPackageCredits: sql`${walletAccounts.washPackageCredits} - 1`,
-        lastActivityAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(walletAccounts.userId, userId),
-          gt(walletAccounts.washPackageCredits, 0),
-        ),
-      )
-      .returning({ remaining: walletAccounts.washPackageCredits });
-
-    if (!updated.length) {
-      // Lost the race — another concurrent request already consumed the last credit
-      logger.warn('[K9000 Redeem] Race condition — credit already consumed', { userId, correlationId });
-      return res.status(402).json({
-        error: 'אין עוד שטיפות זמינות (עסקה מקבילה).',
-        errorEn: 'No remaining wash credits (race condition).',
-        status: 'INSUFFICIENT_CREDITS',
+    // ── Steps 2-8: Delegate to K9000RedemptionService ──────────────────────
+    // This service enforces wallet ownership, balance check, machine eligibility,
+    // station ready status, velocity anti-fraud, atomic debit, and full audit log.
+    // It will throw a typed error if ANY check fails.
+    let authorization;
+    try {
+      authorization = await authorizeRedemption({
+        userId,
+        redemptionType: redemptionType as K9000RedemptionType,
+        kioskId,
+        stationId: stationInfo?.stationId,
+        washType: washType || 'standard',
+        correlationId,
+      });
+    } catch (svcErr: any) {
+      // Typed rejection from the service — return the appropriate HTTP status
+      const httpStatus = svcErr.httpStatus ?? 400;
+      logger.warn('[K9000 Redeem] Authorisation rejected', {
+        code: svcErr.code,
+        userId,
+        redemptionType,
+        correlationId,
+      });
+      return res.status(httpStatus).json({
+        error: svcErr.message,
+        errorEn: svcErr.code,
+        status: svcErr.code,
         correlationId,
       });
     }
 
-    const remainingWashes = updated[0].remaining ?? 0;
+    const { washId, remainingBalance, remainingUnit } = authorization;
 
-    // ── 4. Nonce already consumed before debit (step 2b) — no action needed here
-
-    // ── 5. Send START_PUMP command to K9000 controller ─────────────────────
-    const washId = `WASH-${Date.now()}-${nanoid(8).toUpperCase()}`;
-    const stationInfo = (req as any).k9000Station;
+    // ── Step 9: Send START_PUMP activation signal to K9000 controller ──────
+    // Activation is sent ONLY after authorizeRedemption() succeeds.
+    // Failure here is non-fatal — the debit is already committed.
+    // The kiosk can poll /api/k9000/status as a fallback.
     const clientIP = stationInfo?.clientIP;
-
     if (clientIP) {
       try {
         const signal = await fetch(`http://${clientIP}/api/start`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-Machine-Id': kioskId },
-          body: JSON.stringify({ washId, command: 'START_PUMP', source: 'wallet_qr', userId }),
+          body: JSON.stringify({
+            washId,
+            command: 'START_PUMP',
+            source: 'petwash_wallet',
+            redemptionType,
+            userId,
+          }),
           signal: AbortSignal.timeout(3000),
         });
-        logger.info('[K9000 Redeem] IoT signal sent', { kioskId, status: signal.status, washId, correlationId });
+        logger.info('[K9000 Redeem] IoT activation signal sent', {
+          kioskId,
+          httpStatus: signal.status,
+          washId,
+          correlationId,
+        });
       } catch (iotErr: any) {
-        // Non-fatal — wash is authorised; kiosk may poll /api/k9000/status
-        logger.warn('[K9000 Redeem] IoT signal failed (non-fatal)', { error: iotErr.message, kioskId, correlationId });
+        logger.warn('[K9000 Redeem] IoT signal failed (non-fatal) — kiosk should poll /status', {
+          error: iotErr.message,
+          kioskId,
+          correlationId,
+        });
       }
     } else {
-      logger.info('[K9000 Redeem] No kiosk IP — authorisation logged only (dev mode)', { correlationId });
+      logger.info('[K9000 Redeem] No kiosk IP — dev mode, authorisation logged only', { correlationId });
     }
 
-    // ── 6. Audit ledger ────────────────────────────────────────────────────
-    try {
-      // blockNumber must be unique — take current max and increment atomically
-      const blockResult = await db
-        .select({ maxBlock: sql<number>`COALESCE(MAX(${auditLedger.blockNumber}), 0)` })
-        .from(auditLedger);
-      const nextBlock = (blockResult[0]?.maxBlock ?? 0) + 1;
-
-      const auditMeta = {
-        passSerial,
-        kioskId,
-        remainingWashes,
-        correlationId,
-        redeemedAt: new Date().toISOString(),
-      };
-      const crypto = await import('crypto');
-      const hashInput = `${nextBlock}:${userId}:${washId}:${JSON.stringify(auditMeta)}`;
-      const currentHash = crypto.createHash('sha256').update(hashInput).digest('hex');
-
-      await db.insert(auditLedger).values({
-        eventType: 'k9000_wallet_redemption',
-        userId,
-        entityType: 'wash_package',
-        entityId:   washId,
-        action:     'redeemed',
-        blockNumber: nextBlock,
-        currentHash,
-        previousHash: null,
-        previousState: { washPackageCredits: remainingWashes + 1 },
-        newState:      { washPackageCredits: remainingWashes },
-        metadata: auditMeta,
-      });
-      logger.info('[K9000 Redeem] Audit ledger written', { washId, blockNumber: nextBlock, correlationId });
-    } catch (auditErr: any) {
-      logger.error('[K9000 Redeem] Audit write failed (non-fatal)', { error: auditErr.message, correlationId });
-    }
-
-    // ── 7. Apple Wallet push update ─────────────────────────────────────────
-    // Notifies Apple that the pass has been modified → device fetches updated pass
-    // The wallet webServiceURL endpoint (/api/wallet/passes/:passTypeId/:serialNumber)
-    // regenerates the pass with a fresh signed token when Apple pulls it.
+    // ── Apple Wallet push update (non-blocking fire-and-forget) ────────────
+    // Notifies Apple that the pass changed → device pulls fresh pass data.
     const passTypeId = process.env.APPLE_PASS_TYPE_ID || 'pass.com.petwash.voucher';
     const appleWalletPushUrl = `${process.env.BASE_URL || 'https://petwash.co.il'}/api/wallet/notify-pass-update`;
     fetch(appleWalletPushUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, passSerial, passTypeId, remainingWashes }),
+      body: JSON.stringify({
+        userId,
+        passSerial,
+        passTypeId,
+        remainingBalance,
+        remainingUnit,
+        redemptionType,
+      }),
     }).catch(() => {});
 
-    // ── 8. Respond to kiosk ────────────────────────────────────────────────
-    logger.info('[K9000 Redeem] Wash authorised', { userId, washId, remainingWashes, kioskId, correlationId });
+    // ── Respond to kiosk ───────────────────────────────────────────────────
+    logger.info('[K9000 Redeem] Wash authorised ✅', {
+      userId,
+      washId,
+      redemptionType,
+      remainingBalance,
+      remainingUnit,
+      kioskId,
+      correlationId,
+    });
+
+    const remainingLabel = remainingUnit === 'washes'
+      ? `${remainingBalance} שטיפות`
+      : `₪${(remainingBalance / 100).toFixed(2)}`;
 
     return res.status(200).json({
       status: 'success',
       washId,
-      remainingWashes,
-      message: remainingWashes > 0
-        ? `שטיפה התחילה! נותרו ${remainingWashes} שטיפות בחבילה.`
-        : 'שטיפה התחילה! החבילה מוצתה — ניתן לחדש באפליקציה.',
+      redemptionType,
+      remainingBalance,
+      remainingUnit,
+      message: remainingBalance > 0
+        ? `שטיפה התחילה! נותרו ${remainingLabel} ביתרתך.`
+        : 'שטיפה התחילה! היתרה אוזלה — ניתן לטעון באפליקציה.',
       messageEn: 'Wash authorised. Enjoy!',
       correlationId,
     });
