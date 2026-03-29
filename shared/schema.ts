@@ -126,10 +126,40 @@ export const users = pgTable("users", {
   softDeleteAt: timestamp("soft_delete_at"),
   deviceId: varchar("device_id"),
   membershipNumber: varchar("membership_number", { length: 20 }).unique(), // PWM-XXXXXXX
-  
+
+  // ACTIVATION STATE MACHINE (Phase 1)
+  activationStatus: varchar("activation_status", { length: 30 }).notNull().default("draft"),
+  // draft | mobile_verified | email_verified | active | suspended | deleted
+  mobileVerifiedAt: timestamp("mobile_verified_at"),
+  emailVerifiedAt: timestamp("email_verified_at"),
+  accountActivatedAt: timestamp("account_activated_at"),
+  acceptedTermsAt: timestamp("accepted_terms_at"),
+  lastActivationEmailSentAt: timestamp("last_activation_email_sent_at"),
+  activationVersion: integer("activation_version").notNull().default(1),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Verification Tokens — persistent store for OTP + email activation tokens
+export const verificationTokens = pgTable("verification_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  type: varchar("type", { length: 30 }).notNull(), // email_activation | mobile_otp
+  tokenHash: varchar("token_hash", { length: 128 }).notNull(), // SHA256 of token
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  attempts: integer("attempts").default(0).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending | used | expired | locked
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_vtok_user_type").on(table.userId, table.type, table.status),
+  index("idx_vtok_hash").on(table.tokenHash),
+]);
+
+export const insertVerificationTokenSchema = createInsertSchema(verificationTokens).omit({ id: true, createdAt: true });
+export type VerificationToken = typeof verificationTokens.$inferSelect;
+export type InsertVerificationToken = typeof verificationTokens.$inferInsert;
 
 // Domain Events (Event Store for Event-Driven Architecture)
 export const domainEvents = pgTable("domain_events", {

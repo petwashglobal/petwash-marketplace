@@ -1,0 +1,171 @@
+Good. First answer the 6 machine command validation points clearly, with proof, then begin Phase 1 immediately.
+
+==================================================
+PART 1 - ANSWER THE 6 MACHINE COMMAND VALIDATION QUESTIONS
+==================================================
+
+I want exact answers, not broad summaries.
+
+1. REAL MACHINE INTEGRATION PROOF
+Show one real end-to-end proof, live or hardware-simulated, for:
+- START_PUMP dispatched
+- machine receives it
+- ACK hits the endpoint
+- command row ends as acknowledged
+- bay session remains consistent
+
+Send:
+- request payload
+- ACK payload
+- final DB row or final status
+- final bay/session state
+
+2. IDEMPOTENCY PROTECTION
+Confirm exactly:
+- repeated ACK for same commandId is safe
+- duplicate START_PUMP for same session does not double-start
+- retry path does not create a second live wash
+
+Explain the actual rule and where it is enforced.
+
+3. COMPENSATION FLOW
+Explain the full business rule, not just the timestamp.
+
+When a command fails permanently after payment or wallet debit:
+- what row is written
+- what status changes
+- what refund / compensation path is triggered
+- whether it is automatic or manual
+- what the customer / support team sees
+
+4. OCTOPUS VISIBILITY
+Show the exact response shape for:
+GET /api/k9000/stations/:stationId/commands
+
+I need to see:
+- latest command
+- last ACK time
+- failed count
+- timeout count
+- per-bay information if available
+
+5. RETENTION / CLEANUP
+State the policy clearly:
+- how long machine_commands rows are kept
+- whether they are archived later
+- what cleanup job is planned, if any
+
+6. FINAL FILE LIST
+Send exact files changed for the machine command reliability layer.
+
+==================================================
+PART 2 - BEGIN PHASE 1 NOW
+==================================================
+
+Start Phase 1 immediately in this exact order.
+
+------------------------------------------
+STEP 1 - CUSTOMER ACTIVATION
+------------------------------------------
+
+Build Implementation Map 1 now.
+
+Required result:
+- user is not active until both:
+  - mobile OTP verified
+  - email activation clicked
+
+Add and wire:
+- users.mobile_verified_at
+- users.email_verified_at
+- users.account_activated_at
+- users.accepted_terms_at
+- users.activation_status
+- users.last_activation_email_sent_at
+
+Create:
+- verification_tokens table
+
+Extend routes:
+- /api/auth/mobile/verify-code
+- /api/auth/email/activate
+- /api/auth/email/send-activation
+- /api/auth/activation/status
+
+Build:
+- requireActive guard
+- frontend activation progress flow
+- partial activation banners
+- luxury activation email template
+
+Critical:
+Activation must seed:
+- wallet shell
+- loyalty profile
+
+------------------------------------------
+STEP 2 - WALLET / E-GIFT / LEDGER INTEGRITY
+------------------------------------------
+
+Build Implementation Map 5 now, immediately after activation foundation.
+
+Required result:
+- wallet stays ledger-backed
+- e-gift purchase and redeem are idempotent
+- row locking on redemption is confirmed
+- buyer / recipient / redemption notifications are wired
+- wallet history is visible in dashboard
+- all changes are auditable
+
+Confirm or add:
+- recipient_name
+- message
+- GIFT_REDEEMED event
+- WALLET_UPDATED event
+
+------------------------------------------
+STEP 3 - OCTOPUS DOMAIN EVENTS FOUNDATION
+------------------------------------------
+
+Build Implementation Map 7 foundation next.
+
+Add missing DomainEventType values:
+- ACCOUNT_ACTIVATED
+- LOYALTY_JOINED
+- BOOKING_CREATED
+- BOOKING_COMPLETED
+- PROVIDER_APPROVED
+- PROVIDER_SUBMITTED
+- GIFT_REDEEMED
+- WALLET_UPDATED
+- ACADEMY_COMPLETED
+
+Publish the events at least for:
+- account activation
+- loyalty join
+- gift redemption
+- wallet update
+
+Do not build all timeline UI yet if not needed, but the event layer must exist now.
+
+==================================================
+DELIVERY FORMAT
+==================================================
+
+I want your next update in 2 sections only:
+
+SECTION A
+Answers to the 6 machine command validation questions with evidence
+
+SECTION B
+Phase 1 implementation plan with:
+- exact files to change
+- exact DB changes
+- exact routes to extend
+- exact screens/components to build
+- dependencies
+- rollout risk
+
+Do not ask me what to do first.
+Do not jump to other phases.
+Start now with Phase 1.

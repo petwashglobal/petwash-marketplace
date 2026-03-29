@@ -1,11 +1,20 @@
 import { Router, type Request, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
+import { eq } from 'drizzle-orm';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { EmailService } from '../emailService';
 import { logger } from '../lib/logger';
 import { verifyCaptchaToken } from '../lib/verifyCaptcha';
 import crypto from 'crypto';
+import { db } from '../db';
+import { users } from '../../shared/schema';
+import {
+  markMobileVerified,
+  markEmailVerified,
+  getActivationState,
+} from '../services/ActivationService';
+import { buildActivationEmail } from '../lib/luxuryActivationEmail';
 
 const phoneSmsSentAt = new Map<string, number[]>();
 const SMS_PER_PHONE_MAX = 3;
@@ -448,7 +457,7 @@ router.post('/verify-sms-code', async (req: Request, res: Response, next) => {
 
 router.post('/validate-tokens', async (req: Request, res: Response) => {
   try {
-    const { emailToken, smsToken } = req.body;
+    const { emailToken, smsToken, userId } = req.body;
 
     let emailValid = false;
     let emailAddress: string | undefined;
@@ -469,15 +478,120 @@ router.post('/validate-tokens', async (req: Request, res: Response) => {
       phoneNumber = result.phone;
     }
 
+    // If userId provided, persist activation state to DB
+    let activationState: Awaited<ReturnType<typeof getActivationState>> | null = null;
+    if (userId && typeof userId === 'string') {
+      try {
+        if (phoneValid) {
+          await markMobileVerified(userId);
+        }
+        if (emailValid) {
+          await markEmailVerified(userId, { acceptTerms: true });
+        }
+        activationState = await getActivationState(userId);
+      } catch (activationErr: any) {
+        // Non-fatal — token validation result still returned
+        logger.warn('[Verification] Activation write failed (non-fatal)', {
+          userId,
+          error: activationErr.message,
+        });
+      }
+    }
+
     return res.json({
       success: emailValid && phoneValid,
       emailVerified: emailValid,
       phoneVerified: phoneValid,
       email: emailAddress,
       phone: phoneNumber,
+      ...(activationState ? {
+        activationStatus: activationState.activationStatus,
+        isFullyActive: activationState.isFullyActive,
+        accountActivatedAt: activationState.accountActivatedAt,
+        missingSteps: activationState.missingSteps,
+      } : {}),
     });
   } catch (error: any) {
     logger.error('[Verification] Token validation error', { error: error.message });
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// GET /api/onboarding-verification/activation-status?userId=xxx
+router.get('/activation-status', async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.query;
+    if (!userId || typeof userId !== 'string') {
+      return res.status(400).json({ success: false, message: 'userId required' });
+    }
+    const state = await getActivationState(userId);
+    return res.json({ success: true, ...state });
+  } catch (error: any) {
+    logger.error('[Verification] Activation status error', { error: error.message });
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// POST /api/onboarding-verification/send-activation-email
+// Sends the luxury PetWash™ activation email to a user
+router.post('/send-activation-email', async (req: Request, res: Response) => {
+  try {
+    const { userId, email, firstName, language = 'en' } = req.body;
+    if (!email || !firstName) {
+      return res.status(400).json({ success: false, message: 'email and firstName required' });
+    }
+
+    // Build activation link (re-uses existing email verification flow)
+    // We create a verification token and send the email
+    const baseUrl = (() => {
+      const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+      const host = req.headers['x-forwarded-host'] || req.headers['host'] || req.hostname;
+      return `${proto}://${host}`;
+    })();
+
+    // Issue a link token for this email
+    const linkToken = crypto.randomBytes(32).toString('hex');
+    const verifyUrl = `${baseUrl}/api/onboarding-verification/verify-email-link?token=${linkToken}&lang=${language}`;
+
+    // Store in in-memory map (same mechanism as send-email-code)
+    const normalizedEmail = email.toLowerCase().trim();
+    const emailCode: Parameters<typeof emailVerificationCodes['set']>[1] = {
+      code: String(Math.floor(100000 + crypto.randomInt(900000))),
+      email: normalizedEmail,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h for activation links
+      attempts: 0,
+      linkToken,
+      linkVerified: false,
+    };
+    emailVerificationCodes.set(normalizedEmail, emailCode);
+    linkTokenToEmail.set(linkToken, normalizedEmail);
+
+    // Update last sent timestamp in DB if userId provided
+    if (userId && typeof userId === 'string') {
+      try {
+        await db.update(users)
+          .set({ lastActivationEmailSentAt: new Date() })
+          .where(eq(users.id, userId));
+      } catch { /* non-fatal */ }
+    }
+
+    // Build and send luxury email
+    const { subject, html } = buildActivationEmail({
+      firstName,
+      activationUrl: verifyUrl,
+      language: language as 'he' | 'en',
+    });
+
+    await EmailService.send({ to: normalizedEmail, subject, html });
+
+    logger.info('[Verification] Luxury activation email sent', {
+      email: normalizedEmail.slice(0, 3) + '***',
+      userId,
+    });
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    logger.error('[Verification] Send activation email error', { error: error.message });
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });

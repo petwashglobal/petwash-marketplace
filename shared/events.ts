@@ -37,6 +37,40 @@ export enum DomainEventType {
   // User events
   USER_LOGGED_IN = "user.logged_in",
   USER_ROLE_ASSIGNED = "user.role_assigned",
+
+  // Customer Activation (Phase 1)
+  ACCOUNT_CREATED = "account.created",
+  MOBILE_VERIFIED = "account.mobile_verified",
+  EMAIL_ACTIVATED = "account.email_activated",
+  ACCOUNT_ACTIVATED = "account.activated",
+
+  // Loyalty (Phase 1)
+  LOYALTY_JOINED = "loyalty.joined",
+  LOYALTY_TIER_UPGRADED = "loyalty.tier_upgraded",
+  LOYALTY_POINTS_EARNED = "loyalty.points_earned",
+
+  // Wallet (Phase 1)
+  WALLET_CREATED = "wallet.created",
+  WALLET_UPDATED = "wallet.updated",
+  WALLET_CREDIT_APPLIED = "wallet.credit_applied",
+
+  // E-Gift (Phase 1)
+  GIFT_PURCHASED = "gift.purchased",
+  GIFT_REDEEMED = "gift.redeemed",
+
+  // Booking (Phase 2)
+  BOOKING_CREATED = "booking.created",
+  BOOKING_COMPLETED = "booking.completed",
+  BOOKING_CANCELLED = "booking.cancelled",
+
+  // Provider (Phase 3)
+  PROVIDER_SUBMITTED = "provider.submitted",
+  PROVIDER_APPROVED = "provider.approved",
+  PROVIDER_REJECTED = "provider.rejected",
+
+  // Academy (Phase 4)
+  ACADEMY_COURSE_COMPLETED = "academy.course_completed",
+  ACADEMY_CERTIFICATE_ISSUED = "academy.certificate_issued",
 }
 
 export interface DomainEvent<T = any> {

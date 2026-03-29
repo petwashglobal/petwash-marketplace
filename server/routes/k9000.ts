@@ -72,6 +72,7 @@ import {
   closeBaySession,
 } from '../services/K9000RedemptionService';
 import * as MachineCommandService from '../services/MachineCommandService';
+import { requireActive } from '../middleware/requireActive';
 
 const router = express.Router();
 
@@ -715,7 +716,7 @@ router.get('/status/:machineId', async (req, res) => {
  * If the service throws, the kiosk MUST NOT activate.
  */
 // Layer 3 (redeem-wash only): DB allowlist — kioskId must be registered + active
-router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
+router.post('/redeem-wash', validateKioskAllowlist, requireActive, async (req, res) => {
   const correlationId = nanoid(12);
 
   try {

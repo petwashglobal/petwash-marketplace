@@ -1,0 +1,163 @@
+Good. This is the correct implementation map.
+
+Do not ask me which stream to start with.
+Follow this execution order exactly.
+
+==================================================
+PHASE 1 - FOUNDATION (START NOW)
+==================================================
+
+Build these first, in this exact order:
+
+1. CUSTOMER ACTIVATION
+Implementation Map 1
+
+Required outcome:
+- user is NOT active until both:
+  - mobile OTP verified
+  - email activation clicked
+- account activation timestamps are written
+- activation state machine is real
+- verification_tokens table exists
+- wallet shell is seeded on activation
+- loyalty profile is seeded on activation
+- activation status endpoint exists
+- frontend activation progress UI exists
+- luxury activation email exists
+
+2. WALLET / E-GIFT / LEDGER INTEGRITY
+Implementation Map 5
+
+Required outcome:
+- wallet is append-only ledger backed
+- e-gift purchase and redeem are idempotent
+- row locking on redeem is confirmed
+- all wallet changes are traceable
+- buyer / recipient / redemption emails fire
+- dashboard history reflects wallet and gift activity correctly
+
+3. OCTOPUS DOMAIN EVENTS FOUNDATION
+Implementation Map 7
+
+Required outcome:
+- add missing DomainEventType values
+- publish events for:
+  - ACCOUNT_ACTIVATED
+  - LOYALTY_JOINED
+  - GIFT_REDEEMED
+  - WALLET_UPDATED
+- no timeline UI yet if not ready, but event publishing must exist
+
+==================================================
+PHASE 2 - REVENUE + CUSTOMER VALUE
+==================================================
+
+After Phase 1 is fully built and tested:
+
+4. LOYALTY / PRESTIGE
+Implementation Map 4
+
+Required outcome:
+- loyalty profile auto-created on activation
+- join bonus if applicable
+- tier upgrade logic works
+- loyalty dashboard exists
+- first-wash reward support ready
+
+5. BOOKING COMPLETION WIRING
+Implementation Map 3
+
+Required outcome:
+- booking complete triggers:
+  - loyalty update
+  - wallet credit if relevant
+  - review request
+  - event publish
+  - notification
+
+Do not rebuild booking core.
+Only wire the missing completion logic.
+
+==================================================
+PHASE 3 - PROVIDER PIPELINE
+==================================================
+
+6. BECOME PROVIDER
+Implementation Map 2
+
+Required outcome:
+- provider submission requires OTP verification
+- submitted_verified state exists
+- approval / rejection emails exist
+- provider onboarding is traceable and auditable
+- provider dashboard unlocks only after approval
+
+==================================================
+PHASE 4 - K9000 GUARDS + OCTOPUS TIMELINES
+==================================================
+
+7. K9000 ACTIVATION GUARD
+Implementation Map 6
+
+Required outcome:
+- redeem-wash requires active customer account
+- no partially activated user can use wallet redemption
+- station timeline endpoint added
+
+8. OCTOPUS TIMELINES
+Implementation Map 7
+
+Required outcome:
+- customer timeline
+- provider timeline
+- station timeline
+
+==================================================
+PHASE 5 - NOTIFICATIONS + AI
+==================================================
+
+9. NOTIFICATION TEMPLATES
+Implementation Map 8
+
+Required outcome:
+- activation email
+- provider approved email
+- provider rejected email
+- gift emails
+- booking completion email
+- review request email
+
+10. AI MONITORING
+Implementation Map 9
+
+Required outcome:
+- AI suggestions table
+- confidence scores
+- anomaly flags
+- support summarization
+- NO AI writes to money ledgers or finance truth
+
+==================================================
+DELIVERY FORMAT I EXPECT
+==================================================
+
+For each phase:
+1. exact files to change
+2. exact DB/schema changes
+3. exact routes to add/extend
+4. exact screens/components to add/extend
+5. test proof
+6. rollout risk
+
+==================================================
+IMPORTANT RULES
+==================================================
+
+- do not mix K9000 with marketplace flows
+- do not skip activation state machine
+- do not update wallet without ledger
+- do not redeem gift twice
+- do not send vague summaries
+- do not ask me to choose the order again
+
+Start with Phase 1 now.

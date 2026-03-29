@@ -34,6 +34,7 @@ import { useFCMNotifications } from "@/hooks/useFCMNotifications";
 import { usePersonalizedGreeting } from "@/hooks/usePersonalizedGreeting";
 import { GoogleOneTap } from "@/components/GoogleOneTap";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
+import { ActivationBanner } from "@/components/ActivationBanner";
 
 // CRITICAL: Only the two entry-point pages stay eager (everything else lazy)
 import Landing from "@/pages/Landing";
@@ -60,6 +61,7 @@ const StaffRejected = lazy(() => import("@/pages/StaffRejected"));
 const AccessPending = lazy(() => import("@/pages/AccessPending"));
 const BlockedPage = lazy(() => import("@/pages/BlockedPage"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
+const AccountActivation = lazy(() => import("@/pages/AccountActivation"));
 const SignIn = lazy(() => import("@/pages/SignIn"));
 const SignUp = lazy(() => import("@/pages/SignUp"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
@@ -550,6 +552,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/blocked">{() => <BlockedPage />}</Route>
         <Route path="/verify-email">{() => <VerifyEmail />}</Route>
+        <Route path="/activate-account">{() => <AccountActivation />}</Route>
 
         {/* Internal onboarding - STRICTLY for invited staff/contractors/franchisees ONLY */}
         {/* NOT accessible via public sign-up - requires valid invitation token */}
@@ -2642,6 +2645,7 @@ console.log("Build: 1769350182889");
           
           <AuthProvider>
             <SimpleAuthProvider>
+              <ActivationBanner />
               <Router language={currentLanguage} onLanguageChange={(newLang) => {
                 setCurrentLanguage(newLang);
                 localStorage.setItem('language', newLang);

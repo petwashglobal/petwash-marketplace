@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import { requireAuth } from '../customAuth';
+import { requireActive } from '../middleware/requireActive';
 import { apiGateway } from '../services/APIGateway';
 import { eventBus } from '../services/EventBus';
 import { unifiedWallet } from '../services/UnifiedWalletService';
@@ -384,7 +385,7 @@ router.get('/marketing/campaigns/:id/performance', requireAuth, async (req: any,
 /**
  * Add funds to wallet
  */
-router.post('/wallet/add-funds', requireAuth, async (req: any, res) => {
+router.post('/wallet/add-funds', requireAuth, requireActive, async (req: any, res) => {
   try {
     const userId = req.user.uid;
     const { amount, platform, description } = req.body;
@@ -404,7 +405,7 @@ router.post('/wallet/add-funds', requireAuth, async (req: any, res) => {
 /**
  * Deduct funds from wallet
  */
-router.post('/wallet/deduct-funds', requireAuth, async (req: any, res) => {
+router.post('/wallet/deduct-funds', requireAuth, requireActive, async (req: any, res) => {
   try {
     const userId = req.user.uid;
     const { amount, platform, description, referenceId } = req.body;
