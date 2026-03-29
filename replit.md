@@ -66,6 +66,78 @@ ABSOLUTE REQUIREMENT: Layout must remain 100% consistent across ALL 6 languages 
 
 ## System Architecture
 
+---
+
+### ⚠️ MASTER ARCHITECTURE LAW — READ BEFORE BUILDING ANYTHING
+
+This is the governing mental model for PetWash™. Every engineer and agent must understand this before writing a single line of code.
+
+```
+PetWash™ (ecosystem / group)
+│
+├── Octopus (central intelligence layer — the brain above all domains)
+│   Shared services only — not a product itself:
+│   • Unified customer identity & auth (Firebase)
+│   • Unified loyalty system (7 tiers)
+│   • Shared notifications (push, email, WhatsApp)
+│   • Shared analytics & reporting
+│   • Shared admin permissions & RBAC
+│   • Shared finance visibility & audit ledger
+│   • Shared support dashboard
+│   • Shared campaign / CRM engine
+│   • Shared KYC / compliance
+│
+├── DOMAIN 1: K9000 Pet Wash Station (IoT / Hardware / Kiosk)
+│   This is NOT a marketplace. Think: ATM, vending machine, EV charger.
+│   Own entities: machine, site, wash session, Nayax terminal payment,
+│                 telemetry, faults, maintenance, machine pricing
+│   Own tables:   wash_machines, wash_history, wash_packages, kiosk_machines,
+│                 nayax_terminals, nayax_transactions, station_telemetry,
+│                 k9000_wash_events, k9000_led_status, pet_wash_stations
+│   Own APIs:     /api/k9000/*
+│   Own auth:     machine secret key (hardware token) — NOT Firebase JWT
+│   Own payment:  Nayax terminal (card-present, hardware-initiated)
+│   NOT used:     bookings, availability_slots, escrow, provider profiles
+│
+├── DOMAIN 2: Pet Sitting (SaaS / Marketplace)
+│   Own entities: provider, availability slots, booking, escrow, rating
+│   Own tables:   sitter_profiles, bookings, availability_slots, escrow_holdings
+│   Own APIs:     /api/sitter-suite/*, /api/marketplace-bookings/*
+│
+├── DOMAIN 3: Dog Walking (SaaS / Marketplace)
+│   Own entities: walker, route, GPS tracking, booking
+│   Own tables:   walker_profiles, walk_bookings, walk_gps_tracking
+│   Own APIs:     /api/walk-my-pet/*
+│
+├── DOMAIN 4: Grooming Bookings (SaaS / Marketplace)
+│   Own entities: groomer, appointment, salon
+│   Own tables:   grooming-specific tables
+│   Own APIs:     /api/grooming/*
+│
+├── DOMAIN 5: Pet Transport / PetTrek (SaaS / Marketplace)
+│   Own entities: driver, vehicle, trip
+│   Own tables:   pettrek_providers, vehicles
+│   Own APIs:     /api/pet-trek/*
+│
+└── DOMAIN 6+: Future service lines (Daycare, Training, etc.)
+    Each gets its own domain tables, APIs, and logic.
+    Never modeled identically to another domain.
+```
+
+**THE RULE:**
+- Octopus connects everything. It is the brain, not the template.
+- K9000 is domain 1. Pet sitting is domain 2. Dog walking is domain 3. They are separate.
+- Do NOT reuse booking logic for machines.
+- Do NOT attach availability slots to machines.
+- Do NOT treat K9000 as a "provider" in the marketplace sense.
+- Do NOT mix Nayax terminal payments (K9000) with marketplace escrow payments.
+- Each domain has its own data model, APIs, and payment flow.
+- Shared infrastructure (auth, loyalty, notifications, analytics) lives in Octopus, not in any one domain.
+
+**VIOLATION COST:** Mixing domains destroys the data model, breaks analytics, makes scaling impossible, and requires a full rebuild. This architecture was set deliberately. Do not deviate from it.
+
+---
+
 ### Production Deployment
 - **Development Environment**: Replit workspace (DEV ONLY).
 - **Production Pipeline**: GitHub → Google Cloud (Firebase Hosting / Cloud Run).
