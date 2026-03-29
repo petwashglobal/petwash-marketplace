@@ -3229,122 +3229,72 @@ export class EmailService {
         footer: isHebrew ? '⁦Pet Wash™⁩ - טיפוח יוקרתי לחיות מחמד' : '⁦Pet Wash™⁩ - Premium Pet Care'
       };
 
+      const dateFormatted = new Intl.DateTimeFormat(isHebrew ? 'he-IL' : 'en-IL', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+        timeZone: 'Asia/Jerusalem'
+      }).format(startDate);
+      const timeFormatted = new Intl.DateTimeFormat(isHebrew ? 'he-IL' : 'en-IL', {
+        hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem'
+      }).format(startDate);
+
+      const dir = isHebrew ? 'rtl' : 'ltr';
+      const alignEnd = isHebrew ? 'left' : 'right';
+
+      const row = (label: string, value: string, color = '#000', weight = '500') =>
+        `<div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:18px;direction:${dir};">` +
+        `<div style="color:#666;">${label}</div>` +
+        `<div style="font-weight:${weight};color:${color};text-align:${alignEnd};">${value}</div>` +
+        `</div>`;
+
       const htmlContent = `
 <!DOCTYPE html>
-<html dir="${isHebrew ? 'rtl' : 'ltr'}" lang="${language}">
+<html dir="${dir}" lang="${language}">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${t.subject}</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${t.subject}</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #0a0a0a;">
-    <div style="max-width: 600px; margin: 0 auto; background: #111827;">
-        
-        <!-- Header with Logo -->
-        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); padding: 40px 30px; text-align: center; border-bottom: 1px solid rgba(212, 175, 55, 0.3);">
-            <h1 style="color: #d4af37; font-size: 28px; margin: 0; font-weight: 300; letter-spacing: 2px;">⁦Pet Wash™⁩</h1>
-            <p style="color: #94a3b8; font-size: 14px; margin: 10px 0 0 0; text-transform: uppercase; letter-spacing: 1px;">Premium Pet Care</p>
-        </div>
-        
-        <!-- Success Banner -->
-        <div style="background: linear-gradient(135deg, #065f46 0%, #047857 100%); padding: 25px 30px; text-align: center;">
-            <div style="font-size: 40px; margin-bottom: 10px;">✓</div>
-            <h2 style="color: white; font-size: 22px; margin: 0; font-weight: 500;">${t.thankYou}</h2>
-        </div>
-        
-        <!-- Content -->
-        <div style="padding: 40px 30px; background: #1a1a2e;">
-            <p style="color: #e2e8f0; font-size: 18px; margin: 0 0 30px 0;">${t.greeting},</p>
-            
-            <!-- Booking Details Card -->
-            <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 16px; padding: 30px; margin-bottom: 25px;">
-                <h3 style="color: #d4af37; font-size: 18px; margin: 0 0 25px 0; border-bottom: 1px solid rgba(212, 175, 55, 0.2); padding-bottom: 15px;">
-                    ${t.bookingDetails}
-                </h3>
-                
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr>
-                        <td style="color: #94a3b8; padding: 12px 0; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">${t.invoiceLabel}</td>
-                        <td style="color: #f1f5f9; padding: 12px 0; font-size: 14px; font-weight: 600; text-align: ${isHebrew ? 'left' : 'right'}; border-bottom: 1px solid rgba(255,255,255,0.05);">${invoiceNumber}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: #94a3b8; padding: 12px 0; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">${t.bookingLabel}</td>
-                        <td style="color: #f1f5f9; padding: 12px 0; font-size: 14px; text-align: ${isHebrew ? 'left' : 'right'}; border-bottom: 1px solid rgba(255,255,255,0.05);">${bookingId}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: #94a3b8; padding: 12px 0; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">${t.platformLabel}</td>
-                        <td style="color: #f1f5f9; padding: 12px 0; font-size: 14px; text-align: ${isHebrew ? 'left' : 'right'}; border-bottom: 1px solid rgba(255,255,255,0.05);">${platformName}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: #94a3b8; padding: 12px 0; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">${t.serviceLabel}</td>
-                        <td style="color: #f1f5f9; padding: 12px 0; font-size: 14px; text-align: ${isHebrew ? 'left' : 'right'}; border-bottom: 1px solid rgba(255,255,255,0.05);">${serviceType}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: #94a3b8; padding: 12px 0; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">${t.providerLabel}</td>
-                        <td style="color: #f1f5f9; padding: 12px 0; font-size: 14px; text-align: ${isHebrew ? 'left' : 'right'}; border-bottom: 1px solid rgba(255,255,255,0.05);">${providerName}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: #94a3b8; padding: 12px 0; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">${t.dateLabel}</td>
-                        <td style="color: #f1f5f9; padding: 12px 0; font-size: 14px; text-align: ${isHebrew ? 'left' : 'right'}; border-bottom: 1px solid rgba(255,255,255,0.05);">${formatDate(startDate)}</td>
-                    </tr>
-                    ${discountFormatted ? `
-                    <tr>
-                        <td style="color: #10b981; padding: 12px 0; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);">${t.loyaltyLabel}</td>
-                        <td style="color: #10b981; padding: 12px 0; font-size: 14px; text-align: ${isHebrew ? 'left' : 'right'}; border-bottom: 1px solid rgba(255,255,255,0.05);">-₪${discountFormatted}</td>
-                    </tr>
-                    ` : ''}
-                    <tr>
-                        <td style="color: #d4af37; padding: 16px 0; font-size: 16px; font-weight: 600;">${t.totalLabel}</td>
-                        <td style="color: #d4af37; padding: 16px 0; font-size: 20px; font-weight: 700; text-align: ${isHebrew ? 'left' : 'right'};">₪${totalFormatted}</td>
-                    </tr>
-                </table>
-            </div>
-            
-            <!-- Escrow Notice -->
-            <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 25px;">
-                <p style="color: #93c5fd; font-size: 14px; margin: 0; line-height: 1.7;">
-                    🔒 ${t.escrowNote}
-                </p>
-            </div>
-            
-            <!-- Finance Department Stamp -->
-            <div style="background: linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, rgba(212, 175, 55, 0.15) 100%); border: 2px solid #d4af37; border-radius: 16px; padding: 25px; margin-bottom: 25px; text-align: center; position: relative; overflow: hidden;">
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-15deg); font-size: 80px; color: rgba(16, 185, 129, 0.08); font-weight: 900; letter-spacing: 5px; white-space: nowrap;">
-                    ${isHebrew ? 'מאושר' : 'APPROVED'}
-                </div>
-                <div style="position: relative; z-index: 1;">
-                    <div style="width: 70px; height: 70px; margin: 0 auto 15px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
-                        <span style="font-size: 36px;">✓</span>
-                    </div>
-                    <h4 style="color: #d4af37; font-size: 16px; margin: 0 0 8px 0; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;">
-                        ${isHebrew ? 'מחלקת הכספים' : 'Finance Department'}
-                    </h4>
-                    <p style="color: #10b981; font-size: 18px; margin: 0 0 5px 0; font-weight: 600;">
-                        ${isHebrew ? 'תשלום אושר' : 'Payment Approved'}
-                    </p>
-                    <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-                        ${isHebrew ? 'חותמת דיגיטלית' : 'Digital Stamp'} • ${new Date().toISOString().split('T')[0]}
-                    </p>
-                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(212, 175, 55, 0.3);">
-                        <p style="color: #64748b; font-size: 11px; margin: 0; font-style: italic;">
-                            ${isHebrew ? 'אושר אוטומטית על ידי מערכת הסליקה של ⁦Pet Wash™⁩' : 'Automatically approved by ⁦Pet Wash™⁩ payment system'}
-                        </p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Contact -->
-            <p style="color: #94a3b8; font-size: 14px; text-align: center; margin: 30px 0 0 0;">
-                ${t.contactUs}: <a href="mailto:${t.contactEmail}" style="color: #d4af37; text-decoration: none;">${t.contactEmail}</a>
-            </p>
-        </div>
-        
-        <!-- Footer -->
-        <div style="background: #0a0a0a; padding: 30px; text-align: center; border-top: 1px solid rgba(212, 175, 55, 0.2);">
-            <p style="color: #64748b; font-size: 12px; margin: 0;">${t.footer}</p>
-            <p style="color: #475569; font-size: 11px; margin: 10px 0 0 0;">© 2025 ⁦Pet Wash™⁩ All rights reserved.</p>
-        </div>
+<body style="margin:0;padding:0;background:#fff;color:#000;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;">
+  <div style="max-width:520px;margin:60px auto;padding:40px 24px;">
+
+    <!-- Logo -->
+    <div style="text-align:center;font-size:16px;letter-spacing:4px;margin-bottom:50px;">PET WASH™</div>
+
+    <!-- Title -->
+    <div style="text-align:center;font-size:28px;margin-bottom:10px;">${isHebrew ? 'הזמנה אושרה' : 'Booking Confirmed'}</div>
+
+    <!-- Subtitle: name · date · time -->
+    <div style="text-align:center;font-size:14px;color:#555;margin-bottom:50px;">
+      ${customerName} &nbsp;·&nbsp; ${dateFormatted} &nbsp;·&nbsp; ${timeFormatted}
     </div>
+
+    <!-- Detail rows -->
+    ${row(t.serviceLabel,  serviceType)}
+    ${row(t.providerLabel, providerName)}
+    ${row(t.platformLabel, platformName)}
+    ${row(t.bookingLabel,  bookingId)}
+    ${row(t.invoiceLabel,  invoiceNumber)}
+    ${discountFormatted ? row(t.loyaltyLabel, `-₪${discountFormatted}`, '#059669') : ''}
+
+    <!-- Total -->
+    <div style="margin-top:30px;padding-top:20px;border-top:1px solid #000;font-size:20px;display:flex;justify-content:space-between;direction:${dir};">
+      <div>${t.totalLabel}</div>
+      <div>₪${totalFormatted}</div>
+    </div>
+
+    <!-- Trust / Escrow notice -->
+    <div style="text-align:center;font-size:13px;margin-top:50px;line-height:1.6;color:#444;">
+      ${t.escrowNote}
+    </div>
+
+    <!-- Footer -->
+    <div style="text-align:center;font-size:12px;color:#777;margin-top:60px;line-height:1.8;">
+      Pet Wash™ &nbsp;·&nbsp; ${isHebrew ? 'מחלקת הכספים' : 'Finance Department'}<br/>
+      ${isHebrew ? 'אושר דיגיטלית' : 'Digitally Approved'} &nbsp;·&nbsp; ${new Date().getFullYear()}<br/>
+      <a href="mailto:${t.contactEmail}" style="color:#555;text-decoration:none;">${t.contactEmail}</a>
+    </div>
+
+  </div>
 </body>
 </html>`;
 
