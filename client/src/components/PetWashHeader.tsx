@@ -33,6 +33,7 @@
 import React, { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SiInstagram, SiFacebook, SiTiktok, SiSpotify } from "react-icons/si";
+import { Bell } from "lucide-react";
 import { useFirebaseAuth, type UserRole } from "../auth/AuthProvider";
 import goldUserIcon from "@assets/IMG_3329_1771419021263.jpeg";
 
@@ -264,6 +265,14 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
     return sum + myUnread;
   }, 0) ?? 0;
 
+  // Unread in-app notification count for bell badge
+  const { data: unreadCountData } = useQuery<{ count: number }>({
+    queryKey: ["/api/notifications/unread-count"],
+    refetchInterval: 60000,
+    enabled: !!user,
+  });
+  const unreadNotificationCount = unreadCountData?.count ?? 0;
+
   // Use controlled value if provided, otherwise use internal state
   const currentLanguage = controlledLanguage !== undefined ? controlledLanguage : internalLanguage;
   
@@ -440,6 +449,42 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
           </nav>
 
           <div className="pw-header-right">
+            {/* Notification bell — visible when user is logged in */}
+            {user && (
+              <button
+                type="button"
+                className="pw-header-icon-btn"
+                style={{ position: 'relative', touchAction: 'manipulation', cursor: 'pointer', background: 'none', border: 'none', padding: '6px', borderRadius: '50%' }}
+                onClick={() => handleNavigate('/notifications')}
+                aria-label="Notifications"
+                data-testid="button-notifications-bell"
+              >
+                <Bell size={22} style={{ color: 'var(--pw-icon-color, #fff)' }} />
+                {unreadNotificationCount > 0 && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      right: 0,
+                      background: '#ef4444',
+                      color: '#fff',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      lineHeight: 1,
+                      minWidth: 16,
+                      height: 16,
+                      borderRadius: 8,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '0 3px',
+                    }}
+                  >
+                    {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                  </span>
+                )}
+              </button>
+            )}
             <button
               type="button"
               className="pw-header-profile-btn"

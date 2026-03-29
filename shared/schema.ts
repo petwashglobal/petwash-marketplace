@@ -232,6 +232,10 @@ export const notificationLogs = pgTable("notification_logs", {
   // Idempotency + provider tracking
   idempotencyKey: varchar("idempotency_key", { length: 255 }),
   providerMessageId: varchar("provider_message_id", { length: 255 }), // Twilio SID, FCM message ID
+  // Rendered in-app content — populated when channel='in_app'
+  title: varchar("title", { length: 500 }),
+  body: text("body"),
+  deepLink: varchar("deep_link", { length: 500 }),
 }, (table) => [
   index("idx_notification_logs_template").on(table.templateKey),
   index("idx_notification_logs_user").on(table.recipientUserId),

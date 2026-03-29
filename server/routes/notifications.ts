@@ -254,6 +254,35 @@ router.post("/webhook/failed", async (req, res) => {
 // ==================== USER-FACING ENDPOINTS ====================
 
 /**
+ * GET /api/notifications/unread-count
+ * Returns the count of unread in-app notifications for the current user
+ */
+router.get("/unread-count", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.uid;
+    const { db } = await import('../db');
+    const { notificationLogs } = await import('@shared/schema');
+    const { eq, and, count } = await import('drizzle-orm');
+
+    const result = await db
+      .select({ count: count() })
+      .from(notificationLogs)
+      .where(
+        and(
+          eq(notificationLogs.recipientUserId, userId),
+          eq(notificationLogs.channel, 'in_app'),
+          eq(notificationLogs.isRead, false),
+        )
+      );
+
+    res.json({ count: result[0]?.count ?? 0 });
+  } catch (error: any) {
+    logger.error("[Notifications] Error fetching unread count:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/notifications
  * Get user's in-app notifications
  */

@@ -143,6 +143,7 @@ export class NotificationService {
       recipientPhone: recipientPhone || null,
       status: 'pending',
       payload: variables,
+      eventType: template.key,
     }).returning({ id: notificationLogs.id });
     
     const logId = logResult[0].id;
@@ -181,13 +182,24 @@ export class NotificationService {
           );
           break;
           
-        case 'in_app':
-          success = await this.createInAppNotification(
-            recipientUserId!,
-            this.renderTemplate(template.inAppTitle || '', variables),
-            this.renderTemplate(template.inAppBody || '', variables)
-          );
+        case 'in_app': {
+          const renderedTitle = this.renderTemplate(template.inAppTitle || '', variables);
+          const renderedBody  = this.renderTemplate(template.inAppBody  || '', variables);
+          const deepLinkUrl   = (variables as any).deepLink
+            || (variables as any).screen
+            || (variables as any).data?.screen
+            || null;
+          // Persist rendered content to the log row immediately
+          await db.update(notificationLogs)
+            .set({ title: renderedTitle, body: renderedBody, deepLink: deepLinkUrl })
+            .where(eq(notificationLogs.id, logId));
+          logger.info('[NotificationService] In-app notification persisted', {
+            userId: recipientUserId,
+            title: renderedTitle,
+          });
+          success = true;
           break;
+        }
       }
       
       // Update log

@@ -462,6 +462,93 @@ export function registerNotificationEventHandlers() {
     }
   }, 5);
 
+  // ==================== BOOKING CREATED EVENTS ====================
+
+  eventBus.subscribe('booking.created', async (event: PlatformEvent) => {
+    logger.info('[NotificationEventHandler] Booking created event received', {
+      bookingId: event.data.bookingId,
+    });
+
+    try {
+      const bookingVars = {
+        booking: {
+          id: event.data.bookingId || '',
+          serviceType: event.data.serviceType || 'שירות',
+          date: event.data.date || '',
+          time: event.data.time || '',
+          providerName: event.data.providerName || 'הספק',
+        },
+        timestamp: new Date().toLocaleString('he-IL'),
+      };
+
+      // Notify customer: booking request submitted
+      if (event.userId) {
+        await NotificationService.sendNotification({
+          templateKey: 'booking_requested',
+          userId: event.userId,
+          channelsOverride: ['push', 'in_app'],
+          variables: {
+            ...bookingVars,
+            deepLink: `/my-bookings`,
+          },
+        });
+      }
+
+      // Notify provider: new booking arrived
+      if (event.data.providerId) {
+        await NotificationService.sendNotification({
+          templateKey: 'provider_new_booking',
+          userId: event.data.providerId,
+          channelsOverride: ['push', 'in_app'],
+          variables: {
+            ...bookingVars,
+            customer: {
+              name: event.data.customerName || 'לקוח',
+            },
+            deepLink: `/provider/bookings`,
+          },
+        });
+      }
+    } catch (error: any) {
+      logger.error('[NotificationEventHandler] Failed to send booking created notifications', {
+        error: error.message,
+      });
+    }
+  }, 5);
+
+  // ==================== PAYOUT EVENTS ====================
+
+  eventBus.subscribe('payout.issued', async (event: PlatformEvent) => {
+    logger.info('[NotificationEventHandler] Payout issued event received', {
+      payoutId: event.data.payoutId,
+      userId: event.userId,
+    });
+
+    try {
+      if (event.userId) {
+        await NotificationService.sendNotification({
+          templateKey: 'payout_issued',
+          userId: event.userId,
+          channelsOverride: ['push', 'in_app'],
+          variables: {
+            payout: {
+              id: event.data.payoutId || '',
+              amount: event.data.amount || 0,
+              expectedDate: event.data.expectedDate || '',
+              bankLast4: event.data.bankLast4 || '',
+            },
+            deepLink: `/provider/earnings`,
+            timestamp: new Date().toLocaleString('he-IL'),
+          },
+        });
+      }
+    } catch (error: any) {
+      logger.error('[NotificationEventHandler] Failed to send payout notification', {
+        error: error.message,
+      });
+    }
+  }, 5);
+
   logger.info('[NotificationEventHandler] All notification event handlers registered');
 }
 

@@ -219,6 +219,7 @@ const ComplianceControlTower = lazy(() => import("@/pages/ComplianceControlTower
 const GeminiWatchdogDashboard = lazy(() => import("@/pages/GeminiWatchdogDashboard"));
 const PerformanceMonitoring = lazy(() => import("@/pages/PerformanceMonitoring"));
 const NotificationPreferences = lazy(() => import("@/pages/NotificationPreferences"));
+const NotificationsPage = lazy(() => import("@/pages/NotificationsPage"));
 const PetWashDayPlanner = lazy(() => import("@/pages/PetWashDayPlanner"));
 const RoleAwareWeatherPlanner = lazy(() => import("@/pages/RoleAwareWeatherPlanner"));
 
@@ -590,6 +591,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/welcome-consent">{() => <WelcomeConsent language={language} onLanguageChange={handleLanguageChange} />}</Route>
         <Route path="/consent-onboarding">{() => <ConsentOnboarding language={language} />}</Route>
         <Route path="/notification-consent">{() => <NotificationConsent language={language} />}</Route>
+        <Route path="/notifications">{() => <RequireAuth><NotificationsPage /></RequireAuth>}</Route>
         
         {/* Firebase Auth Action Handler (password reset, email verification) */}
         <Route path="/auth/action">{() => <AuthAction />}</Route>

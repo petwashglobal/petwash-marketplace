@@ -438,6 +438,45 @@ const defaultTemplates: InsertNotificationTemplate[] = [
     pushBody: 'קיבלנו עדכון לגבי בקשתך ל-PetWash™. בדוק את המייל שלך לפרטים.',
     isActive: true,
   },
+
+  // ==================== BOOKING REQUESTED ====================
+  {
+    key: 'booking_requested',
+    name: 'Booking Requested – Customer Confirmation',
+    description: 'Sent to the customer immediately after they submit a booking request',
+    channels: ['push', 'in_app'],
+    pushTitle: 'Booking request sent ✓',
+    pushBody: 'Your request for {{booking.serviceType}} has been sent to {{booking.providerName}}. You\'ll be notified when they confirm.',
+    inAppTitle: 'Booking request sent',
+    inAppBody: '{{booking.serviceType}} on {{booking.date}} has been sent to {{booking.providerName}}. Awaiting confirmation.',
+    isActive: true,
+  },
+
+  // ==================== PROVIDER NEW BOOKING ====================
+  {
+    key: 'provider_new_booking',
+    name: 'New Booking Request – Provider Notification',
+    description: 'Sent to the provider when a customer submits a new booking request',
+    channels: ['push', 'in_app'],
+    pushTitle: 'New booking request 🐾',
+    pushBody: '{{customer.name}} requested {{booking.serviceType}} on {{booking.date}}. Open the app to confirm.',
+    inAppTitle: 'New booking request',
+    inAppBody: '{{customer.name}} requested {{booking.serviceType}} on {{booking.date}} at {{booking.time}}.',
+    isActive: true,
+  },
+
+  // ==================== PAYOUT ISSUED ====================
+  {
+    key: 'payout_issued',
+    name: 'Payout Issued – Provider Earnings',
+    description: 'Sent to the provider when a payout has been processed',
+    channels: ['push', 'in_app'],
+    pushTitle: 'Payout issued 💰',
+    pushBody: '₪{{payout.amount}} has been transferred to your account. Expected arrival: {{payout.expectedDate}}.',
+    inAppTitle: 'Payout issued',
+    inAppBody: '₪{{payout.amount}} transferred to {{payout.bankLast4 ? "account ending " + payout.bankLast4 : "your account"}}. Expected: {{payout.expectedDate}}.',
+    isActive: true,
+  },
 ];
 
 /**
