@@ -260,6 +260,7 @@ export default function MarketplaceBookingFlow() {
         lockToken,
         petIds: selectedPetId ? [selectedPetId] : [],
         specialInstructions,
+        addons: selectedAddons,
         ...(appliedCredits ? {
           creditBreakdown: {
             egiftCents: appliedCredits.egiftCents,

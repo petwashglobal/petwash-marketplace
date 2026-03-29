@@ -189,7 +189,7 @@ router.post('/:quoteId/checkout', async (req, res) => {
       });
     }
 
-    const { slotId, lockToken, petIds, specialInstructions } = req.body;
+    const { slotId, lockToken, petIds, specialInstructions, addons } = req.body;
 
     // Validate required fields
     if (!slotId || !lockToken) {
@@ -316,7 +316,7 @@ router.post('/:quoteId/checkout', async (req, res) => {
           startTime: new Date(slot.startTime),
           endTime: new Date(slot.endTime),
           petIds: petIds || [],
-          selectedAddons: [],
+          selectedAddons: Array.isArray(addons) ? addons : [],
           specialRequests: specialInstructions || '',
           quoteId
         }, tx);
