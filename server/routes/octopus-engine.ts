@@ -26,8 +26,16 @@ import {
   egiftEvents,
   users,
   k9000WashEvents,
+  baySessions,
+  bayFaults,
+  bayEvents,
+  stationBays,
+  machineCommands,
+  bookingRequests,
 } from "@shared/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { walletTransactions } from "@shared/schema-unified-platform";
+import { pointsTransactions } from "@shared/schema-loyalty";
+import { eq, and, sql, desc, isNull, isNotNull, or } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { egiftFinancialService } from "../services/EgiftFinancialService";
 import escrowService from "../services/EscrowService";
@@ -958,6 +966,422 @@ router.get("/v1/egift/user/:userId/events", async (req: Request, res: Response) 
     return res.json({ success: true, userId, events, total: events.length });
   } catch (err: any) {
     logger.error("[Egift] User events fetch failed", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// =================== OCTOPUS TIMELINES ===================
+
+// --- Station Wash History Timeline ---
+// Returns all sessions at a station (anonymous + user-linked), ordered by date.
+// Source of truth: bay_sessions joined to k9000_wash_events.
+router.get("/v1/timeline/station/:stationId", async (req: Request, res: Response) => {
+  const { stationId } = req.params;
+  const limit = Math.min(parseInt(req.query.limit as string) || 100, 200);
+
+  try {
+    // Fetch sessions for this station, ordered by most recent first
+    const sessions = await db
+      .select({
+        id: baySessions.id,
+        bayId: baySessions.bayId,
+        side: baySessions.side,
+        userId: baySessions.userId,
+        isAnonymous: baySessions.isAnonymous,
+        source: baySessions.source,
+        amountCents: baySessions.amountCents,
+        washProgram: baySessions.washProgram,
+        status: baySessions.status,
+        startedAt: baySessions.startedAt,
+        endedAt: baySessions.endedAt,
+        actualDurationSeconds: baySessions.actualDurationSeconds,
+        washEventId: baySessions.washEventId,
+        // k9000_wash_events join fields
+        product: k9000WashEvents.product,
+        transactionSource: k9000WashEvents.transactionSource,
+        redemptionSource: k9000WashEvents.redemptionSource,
+        loyaltyPointsAwarded: k9000WashEvents.loyaltyPointsAwarded,
+      })
+      .from(baySessions)
+      .leftJoin(k9000WashEvents, eq(k9000WashEvents.id, baySessions.washEventId))
+      .where(eq(baySessions.stationId, stationId))
+      .orderBy(desc(baySessions.startedAt))
+      .limit(limit);
+
+    // Daily summary via raw SQL — group by calendar date
+    const dailyRows = await db.execute(sql`
+      SELECT
+        DATE(started_at) as wash_date,
+        COUNT(*)::int as wash_count,
+        SUM(amount_cents)::int as total_cents
+      FROM bay_sessions
+      WHERE station_id = ${stationId}
+        AND started_at IS NOT NULL
+      GROUP BY DATE(started_at)
+      ORDER BY wash_date DESC
+      LIMIT 30
+    `);
+
+    // Station-level aggregate totals
+    const totalsRow = await db.execute(sql`
+      SELECT
+        COUNT(*)::int as total_washes,
+        COALESCE(SUM(amount_cents), 0)::int as total_cents,
+        ROUND(AVG(actual_duration_seconds))::int as avg_duration_seconds,
+        COUNT(*) FILTER (WHERE DATE(started_at) = CURRENT_DATE)::int as today_washes,
+        COALESCE(SUM(amount_cents) FILTER (WHERE DATE(started_at) = CURRENT_DATE), 0)::int as today_cents
+      FROM bay_sessions
+      WHERE station_id = ${stationId}
+        AND status = 'completed'
+    `);
+
+    const totals = (totalsRow.rows ?? totalsRow)[0] as any ?? {};
+
+    return res.json({
+      stationId,
+      summary: {
+        totalWashes:          totals.total_washes ?? 0,
+        totalRevenueILS:      ((totals.total_cents ?? 0) / 100).toFixed(2),
+        avgSessionMinutes:    totals.avg_duration_seconds ? Math.round(totals.avg_duration_seconds / 60) : 0,
+        todayWashes:          totals.today_washes ?? 0,
+        todayRevenueILS:      ((totals.today_cents ?? 0) / 100).toFixed(2),
+      },
+      dailySummary: (dailyRows.rows ?? dailyRows as any[]).map((r: any) => ({
+        date:       r.wash_date,
+        washCount:  r.wash_count,
+        revenueILS: ((r.total_cents ?? 0) / 100).toFixed(2),
+      })),
+      sessions: sessions.map((s) => ({
+        id:                   s.id,
+        bayId:                s.bayId,
+        side:                 s.side,
+        isAnonymous:          s.isAnonymous,
+        source:               s.source,
+        amountILS:            ((s.amountCents ?? 0) / 100).toFixed(2),
+        washProgram:          s.washProgram,
+        product:              s.product,
+        transactionSource:    s.transactionSource,
+        redemptionSource:     s.redemptionSource,
+        loyaltyPointsAwarded: s.loyaltyPointsAwarded,
+        status:               s.status,
+        startedAt:            s.startedAt,
+        endedAt:              s.endedAt,
+        durationMinutes:      s.actualDurationSeconds ? Math.round(s.actualDurationSeconds / 60) : null,
+      })),
+    });
+  } catch (err: any) {
+    logger.error("[Timeline] Station timeline failed", { stationId, error: err.message });
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// --- Bay Event Feed Timeline ---
+// Merges bay_sessions, bay_events, bay_faults, machine_commands into a chronological feed.
+// No domain_events or platform_events — all data is sourced from native bay tables.
+router.get("/v1/timeline/bay/:bayId", async (req: Request, res: Response) => {
+  const { bayId } = req.params;
+
+  try {
+    const [sessions, events, faults, commands] = await Promise.all([
+      db.select().from(baySessions)
+        .where(eq(baySessions.bayId, bayId))
+        .orderBy(desc(baySessions.startedAt))
+        .limit(50),
+
+      db.select().from(bayEvents)
+        .where(eq(bayEvents.bayId, bayId))
+        .orderBy(desc(bayEvents.occurredAt))
+        .limit(100),
+
+      db.select().from(bayFaults)
+        .where(eq(bayFaults.bayId, bayId))
+        .orderBy(desc(bayFaults.reportedAt))
+        .limit(50),
+
+      db.select().from(machineCommands)
+        .where(eq(machineCommands.bayId, bayId))
+        .orderBy(desc(machineCommands.createdAt))
+        .limit(50),
+    ]);
+
+    // Normalize all sources into a unified event feed
+    const feedItems: Array<{
+      id: string;
+      type: string;
+      timestamp: string;
+      description: string;
+      severity?: string;
+      status?: string;
+      meta: Record<string, any>;
+    }> = [];
+
+    for (const s of sessions) {
+      feedItems.push({
+        id:          `session:${s.id}`,
+        type:        `session_${s.status}`,
+        timestamp:   (s.startedAt ?? s.createdAt).toISOString(),
+        description: `Session ${s.status} — ${s.source} — ${((s.amountCents ?? 0) / 100).toFixed(2)} ILS`,
+        status:      s.status,
+        meta: {
+          side: s.side, source: s.source,
+          washProgram: s.washProgram, amountCents: s.amountCents,
+          startedAt: s.startedAt, endedAt: s.endedAt,
+          actualDurationSeconds: s.actualDurationSeconds,
+          isAnonymous: s.isAnonymous,
+        },
+      });
+    }
+
+    for (const e of events) {
+      feedItems.push({
+        id:          `event:${e.id}`,
+        type:        e.eventType,
+        timestamp:   e.occurredAt.toISOString(),
+        description: `${e.eventType} — source: ${e.source}`,
+        meta: {
+          sessionId: e.sessionId, faultId: e.faultId,
+          userId: e.userId, source: e.source,
+          metadata: e.metadata,
+        },
+      });
+    }
+
+    for (const f of faults) {
+      feedItems.push({
+        id:          `fault:${f.id}`,
+        type:        'fault',
+        timestamp:   f.reportedAt.toISOString(),
+        description: `Fault ${f.faultCode} — ${f.severity}${f.descriptionHe ? ` — ${f.descriptionHe}` : ''}`,
+        severity:    f.severity,
+        status:      f.status,
+        meta: {
+          faultCode: f.faultCode, severity: f.severity,
+          sessionId: f.sessionId, resolvedAt: f.resolvedAt,
+          resolvedBy: f.resolvedBy, resolutionNote: f.resolutionNote,
+        },
+      });
+    }
+
+    for (const c of commands) {
+      feedItems.push({
+        id:          `cmd:${c.id}`,
+        type:        `command_${c.commandType.toLowerCase()}`,
+        timestamp:   c.createdAt.toISOString(),
+        description: `Command ${c.commandType} — ${c.status}`,
+        status:      c.status,
+        meta: {
+          commandId: c.commandId, commandType: c.commandType,
+          sessionId: c.sessionId, retryCount: c.retryCount,
+          sentAt: c.sentAt, acknowledgedAt: c.acknowledgedAt,
+          failedAt: c.failedAt,
+        },
+      });
+    }
+
+    // Sort entire feed by timestamp descending
+    feedItems.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    return res.json({
+      bayId,
+      activeFaults:  faults.filter((f) => f.status === 'open').length,
+      pendingCmds:   commands.filter((c) => c.status === 'pending' || c.status === 'sent').length,
+      totalItems:    feedItems.length,
+      feed:          feedItems,
+    });
+  } catch (err: any) {
+    logger.error("[Timeline] Bay timeline failed", { bayId, error: err.message });
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// --- Provider Earnings Timeline ---
+// Returns all marketplace bookings where this provider is assigned, with payout state.
+router.get("/v1/timeline/provider/:providerId", async (req: Request, res: Response) => {
+  const { providerId } = req.params;
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+
+  try {
+    const bookings = await db
+      .select()
+      .from(bookingRequests)
+      .where(eq(bookingRequests.providerId, providerId))
+      .orderBy(desc(bookingRequests.startDate))
+      .limit(limit);
+
+    const completed  = bookings.filter((b) => b.status === 'completed');
+    const cancelled  = bookings.filter((b) => b.status === 'cancelled' || b.status === 'declined');
+    const pending    = bookings.filter((b) => b.status === 'pending' || b.status === 'confirmed' || b.status === 'in_progress');
+
+    const totalEarnedCents   = completed.reduce((sum, b) => sum + (b.totalCents ?? 0) - (b.serviceFeeCents ?? 0), 0);
+    const pendingPayoutCents = completed
+      .filter((b) => !b.paymentReleasedAt)
+      .reduce((sum, b) => sum + (b.totalCents ?? 0) - (b.serviceFeeCents ?? 0), 0);
+
+    return res.json({
+      providerId,
+      summary: {
+        completedBookings:  completed.length,
+        cancelledBookings:  cancelled.length,
+        pendingBookings:    pending.length,
+        totalEarnedILS:     (totalEarnedCents / 100).toFixed(2),
+        pendingPayoutILS:   (pendingPayoutCents / 100).toFixed(2),
+      },
+      bookings: bookings.map((b) => ({
+        id:              b.requestId,
+        serviceType:     b.serviceType,
+        providerType:    b.providerType,
+        startDate:       b.startDate,
+        endDate:         b.endDate,
+        status:          b.status,
+        grossILS:        ((b.totalCents ?? 0) / 100).toFixed(2),
+        platformFeeILS:  ((b.serviceFeeCents ?? 0) / 100).toFixed(2),
+        netPayoutILS:    (((b.totalCents ?? 0) - (b.serviceFeeCents ?? 0)) / 100).toFixed(2),
+        payoutReleased:  !!b.paymentReleasedAt,
+        payoutReleasedAt: b.paymentReleasedAt,
+        statusHistory:   b.statusHistory,
+      })),
+    });
+  } catch (err: any) {
+    logger.error("[Timeline] Provider timeline failed", { providerId, error: err.message });
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// --- Customer Unified Timeline ---
+// Merges marketplace bookings + user-linked K9000 sessions + wallet + loyalty.
+// RULE: K9000 entries only if bay_sessions.is_anonymous = false (wallet/QR redemptions).
+//       Anonymous Nayax terminal-card washes are excluded — they appear in station timeline only.
+router.get("/v1/timeline/customer/:userId", async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+
+  try {
+    const [marketplaceBookings, k9000Sessions, walletEntries, loyaltyEntries] = await Promise.all([
+      db.select().from(bookingRequests)
+        .where(eq(bookingRequests.ownerId, userId))
+        .orderBy(desc(bookingRequests.startDate))
+        .limit(limit),
+
+      // Only user-linked sessions — is_anonymous = false prevents anonymous Nayax entries
+      db.select({
+        id:                   baySessions.id,
+        side:                 baySessions.side,
+        source:               baySessions.source,
+        amountCents:          baySessions.amountCents,
+        washProgram:          baySessions.washProgram,
+        status:               baySessions.status,
+        startedAt:            baySessions.startedAt,
+        endedAt:              baySessions.endedAt,
+        actualDurationSeconds: baySessions.actualDurationSeconds,
+        stationId:            baySessions.stationId,
+        // wash event context
+        product:              k9000WashEvents.product,
+        loyaltyPointsAwarded: k9000WashEvents.loyaltyPointsAwarded,
+      })
+        .from(baySessions)
+        .leftJoin(k9000WashEvents, eq(k9000WashEvents.id, baySessions.washEventId))
+        .where(
+          and(
+            eq(baySessions.userId, userId),
+            eq(baySessions.isAnonymous, false),
+          )
+        )
+        .orderBy(desc(baySessions.startedAt))
+        .limit(limit),
+
+      db.select().from(walletTransactions)
+        .where(eq(walletTransactions.userId, userId))
+        .orderBy(desc(walletTransactions.createdAt))
+        .limit(limit),
+
+      db.select().from(pointsTransactions)
+        .where(eq(pointsTransactions.userId, userId))
+        .orderBy(desc(pointsTransactions.createdAt))
+        .limit(limit),
+    ]);
+
+    type TimelineItem = {
+      id: string;
+      type: string;
+      timestamp: string;
+      title: string;
+      subtitle: string;
+      status: string;
+      amountILS?: string;
+      pointsDelta?: number;
+      balanceAfter?: string;
+      reference: string;
+      statusHistory?: any;
+    };
+
+    const items: TimelineItem[] = [];
+
+    for (const b of marketplaceBookings) {
+      items.push({
+        id:        `booking:${b.requestId}`,
+        type:      'marketplace_booking',
+        timestamp: (b.startDate ?? b.createdAt).toISOString(),
+        title:     b.serviceType,
+        subtitle:  `${b.status} — ₪${((b.totalCents ?? 0) / 100).toFixed(2)}`,
+        status:    b.status,
+        amountILS: ((b.totalCents ?? 0) / 100).toFixed(2),
+        reference: b.requestId,
+        statusHistory: b.statusHistory,
+      });
+    }
+
+    for (const s of k9000Sessions) {
+      items.push({
+        id:        `k9000:${s.id}`,
+        type:      'k9000_wash',
+        timestamp: (s.startedAt ?? new Date()).toISOString(),
+        title:     s.product ?? s.washProgram ?? 'שטיפת כלב',
+        subtitle:  `K9000 — ${s.source} — ₪${((s.amountCents ?? 0) / 100).toFixed(2)}`,
+        status:    s.status,
+        amountILS: ((s.amountCents ?? 0) / 100).toFixed(2),
+        pointsDelta: s.loyaltyPointsAwarded ?? 0,
+        reference: s.id,
+      });
+    }
+
+    for (const w of walletEntries) {
+      items.push({
+        id:          `wallet:${w.id}`,
+        type:        w.type === 'credit' ? 'wallet_credit' : 'wallet_debit',
+        timestamp:   w.createdAt.toISOString(),
+        title:       w.description,
+        subtitle:    `${w.type === 'credit' ? '+' : '-'}₪${parseFloat(w.amount).toFixed(2)}`,
+        status:      'completed',
+        amountILS:   parseFloat(w.amount).toFixed(2),
+        balanceAfter: parseFloat(w.balanceAfter).toFixed(2),
+        reference:   w.referenceId ?? w.id,
+      });
+    }
+
+    for (const p of loyaltyEntries) {
+      items.push({
+        id:         `loyalty:${p.id}`,
+        type:       p.amount > 0 ? 'loyalty_earned' : 'loyalty_redeemed',
+        timestamp:  p.createdAt.toISOString(),
+        title:      p.description,
+        subtitle:   `${p.amount > 0 ? '+' : ''}${p.amount} נקודות`,
+        status:     'completed',
+        pointsDelta: p.amount,
+        balanceAfter: p.balance.toString(),
+        reference:  p.sourceId ?? String(p.id),
+      });
+    }
+
+    // Sort merged feed by timestamp descending, take the requested limit
+    items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    return res.json({
+      userId,
+      totalCount: items.length,
+      items: items.slice(0, limit),
+    });
+  } catch (err: any) {
+    logger.error("[Timeline] Customer timeline failed", { userId, error: err.message });
     return res.status(500).json({ error: "Internal server error" });
   }
 });
