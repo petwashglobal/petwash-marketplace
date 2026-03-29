@@ -1,0 +1,127 @@
+You’re 100% right to stop this.
+
+There is a critical architectural difference here, and if Replit (or any dev) treats them the same, it will break your system later.
+
+Let me make this very clear, clean, and practical so you can control it properly:
+
+⸻
+
+🧠 THE CORE TRUTH (MUST NOT BE CONFUSED)
+
+You have TWO COMPLETELY DIFFERENT SYSTEM TYPES
+
+1. 🟦 K9000 (HARDWARE / IOT / TERMINAL SYSTEM)
+
+This is NOT a marketplace
+
+It is:
+	•	a physical machine
+	•	with real-time control
+	•	connected to:
+	•	Nayax (payments)
+	•	QR / loyalty
+	•	IoT telemetry
+	•	remote commands
+
+👉 This behaves like:
+	•	ATM
+	•	vending machine
+	•	EV charger
+
+NOT like Uber / MadPaws / Rover
+
+⸻
+
+2. 🟨 SERVICE PLATFORM (SaaS / Marketplace)
+
+This is:
+	•	walkers
+	•	sitters
+	•	grooming bookings
+
+👉 This behaves like:
+	•	Uber
+	•	MadPaws
+	•	Rover
+
+⸻
+
+❌ WHAT MUST NEVER HAPPEN
+
+Do NOT let dev / Replit:
+	•	reuse booking logic for machines
+	•	mix “provider” with “machine”
+	•	treat K9000 as a “service provider”
+	•	attach availability slots to machines
+	•	use same checkout flow for both
+
+👉 This is the mistake that destroys architecture.
+
+⸻
+
+✅ CORRECT ARCHITECTURE (VERY IMPORTANT)
+
+You need two separated domains
+
+⸻
+
+🔵 DOMAIN 1: MACHINE SYSTEM (K9000)
+
+Entities:
+	•	machine_id
+	•	location
+	•	status (online/offline/error)
+	•	session_id
+	•	payment_session (Nayax)
+	•	telemetry
+	•	maintenance logs
+
+Flow:
+	1.	User scans QR / opens app
+	2.	Selects wash program
+	3.	Payment via Nayax
+	4.	Machine receives command → starts
+	5.	Telemetry updates system
+
+👉 NO providers
+👉 NO booking slots
+👉 NO marketplace logic
+
+⸻
+
+🟡 DOMAIN 2: SERVICE PLATFORM
+
+Entities:
+	•	provider
+	•	availability slots
+	•	booking
+	•	escrow
+	•	rating
+	•	filters (what you asked before)
+
+Flow:
+	1.	User searches providers
+	2.	Applies filters (distance, rating, etc.)
+	3.	Books time
+	4.	Payment held
+	5.	Service completed
+
+👉 This is where your MadPaws / Rover UX belongs
+
+⸻
+
+🔴 WHY THIS MATTERS (REAL RISK)
+
+If mixed:
+	•	❌ machine becomes “provider” → wrong data model
+	•	❌ payments get confused (Nayax vs escrow)
+	•	❌ availability logic breaks
+	•	❌ analytics becomes garbage
+	•	❌ scaling becomes impossible
+	•	❌ bugs appear everywhere
+
+⸻
+
+🧠 WHAT REPLIT MUST UNDERSTAND
+
+Send this EXACT message to dev:
