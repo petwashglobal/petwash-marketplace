@@ -76,6 +76,7 @@ const AccountingDashboard = lazy(() => import("@/pages/AccountingDashboard"));
 const UnifiedControlPanel = lazy(() => import("@/pages/UnifiedControlPanel"));
 const MarketplaceBookingFlow = lazy(() => import("@/pages/MarketplaceBookingFlow"));
 const BookingSearchPage = lazy(() => import("@/pages/BookingSearchPage"));
+const ProviderSearchPage = lazy(() => import("@/pages/ProviderSearchPage"));
 const PrivilegeSignup = lazy(() => import("@/pages/PrivilegeSignup"));
 const PrestigeClub = lazy(() => import("@/pages/PrestigeClub"));
 const Loyalty = lazy(() => import("@/pages/Loyalty"));
@@ -1963,6 +1964,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <Suspense fallback={<PageLoader />}>
               <ProviderListings />
+            </Suspense>
+          )}
+        </Route>
+        <Route path="/providers/search">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <ProviderSearchPage />
             </Suspense>
           )}
         </Route>

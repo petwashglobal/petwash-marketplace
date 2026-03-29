@@ -9835,6 +9835,16 @@ self.addEventListener('notificationclick', (event) => {
   const bookingSearchRoutes = (await import('./routes/booking-search')).default;
   app.use('/api/booking-search', optionalFirebaseToken, apiLimiter, bookingSearchRoutes);
 
+  // Marketplace Provider Search — online service domains only (pet_sitting, dog_walking, grooming, transport, daycare)
+  // NOT for K9000. GET /api/providers/search
+  const providerSearchRoutes = (await import('./routes/provider-search')).default;
+  app.use('/api/providers', apiLimiter, providerSearchRoutes);
+
+  // Provider Slot Management — providers create/list/cancel their availability_slots
+  // NOT for K9000. Requires provider identity (Firebase UID → providers row).
+  const providerSlotsRoutes = (await import('./routes/provider-slots')).default;
+  app.use('/api/provider-slots', optionalFirebaseToken, apiLimiter, providerSlotsRoutes);
+
   // Pet Wash™ Booking Requests (complete flow: request → meet & greet → payment → service)
   const bookingRequestsRoutes = (await import('./routes/booking-requests')).default;
   app.use('/api/booking-requests', optionalFirebaseToken, apiLimiter, bookingRequestsRoutes);
