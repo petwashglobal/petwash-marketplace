@@ -65,7 +65,7 @@ export default function StationTimeline() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-background p-4 max-w-4xl mx-auto">
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex items-center gap-2 mb-6 flex-wrap">
         <Link href="/admin/stations">
           <Button variant="ghost" size="sm" className="gap-1">
             <ChevronLeft className="h-4 w-4" />
@@ -73,6 +73,18 @@ export default function StationTimeline() {
           </Button>
         </Link>
         <h1 className="text-xl font-bold flex-1">היסטוריית תחנה — {stationId}</h1>
+        <Link href={`/admin/stations/${stationId}/bays`}>
+          <Button variant="outline" size="sm" className="gap-1 text-xs">
+            <Activity className="h-3.5 w-3.5" />
+            מפת עמדות
+          </Button>
+        </Link>
+        <Link href={`/admin/stations/${stationId}/commands`}>
+          <Button variant="outline" size="sm" className="gap-1 text-xs">
+            <GitBranch className="h-3.5 w-3.5" />
+            פקודות
+          </Button>
+        </Link>
         <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
           <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
         </Button>

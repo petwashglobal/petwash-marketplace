@@ -167,6 +167,9 @@ const MyAccount = lazy(() => import("@/pages/MyAccount"));
 const AdminStations = lazy(() => import("@/pages/AdminStations"));
 const StationTimeline = lazy(() => import("@/pages/StationTimeline"));
 const BayTimeline = lazy(() => import("@/pages/BayTimeline"));
+const AdminBayMap = lazy(() => import("@/pages/AdminBayMap"));
+const AdminCommandLog = lazy(() => import("@/pages/AdminCommandLog"));
+const AdminCompensation = lazy(() => import("@/pages/AdminCompensation"));
 const ProviderTimeline = lazy(() => import("@/pages/ProviderTimeline"));
 const CustomerTimeline = lazy(() => import("@/pages/CustomerTimeline"));
 const AdminUsers = lazy(() => import("@/pages/AdminUsers"));
@@ -2246,6 +2249,33 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <AdminRouteGuard>
               <Suspense fallback={<PageLoader />}>
                 <BayTimeline />
+              </Suspense>
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/stations/:stationId/bays">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <AdminBayMap />
+              </Suspense>
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/stations/:stationId/commands">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <AdminCommandLog />
+              </Suspense>
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/compensation">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <AdminCompensation />
               </Suspense>
             </AdminRouteGuard>
           )}

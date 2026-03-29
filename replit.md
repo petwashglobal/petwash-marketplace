@@ -1947,3 +1947,39 @@ Scanner: Replit Security Scanner (Semgrep + HoundDog). Run: 2026-03-26 14:51.
 - `IsraeliInvoiceGenerator.generateInvoice()`: PetWash as issuer, provider as recipient, commission-only amount, 18/118 back-calc VAT. ✓
 - `TaxDocumentService.issueTaxDocument(COMMISSION_INVOICE)`: separate DB accounting record, correct amounts. ✓
 - Two distinct documents (PDF + DB record) with separate purposes — both correct. ✓
+
+---
+
+## Phase 2 — Octopus Timeline Layer (COMPLETE)
+
+Four timeline endpoints + four frontend screens (admin + provider + customer views):
+
+- `GET /api/octopus/v1/timeline/station/:stationId` — station wash history, daily rollup, session table
+- `GET /api/octopus/v1/timeline/bay/:bayId` — per-bay event feed (session, loyalty, IoT commands, faults)
+- `GET /api/octopus/v1/timeline/provider/:uid` — provider earnings timeline (read-only, no financial edits)
+- `GET /api/octopus/v1/timeline/customer/:userId` — unified customer timeline (all 4 sources)
+
+Frontend screens: `StationTimeline.tsx`, `BayTimeline.tsx`, `ProviderTimeline.tsx`, `CustomerTimeline.tsx`
+
+BayTimeline polished with event types: `bay_session`, `loyalty_credited`, `compensation_required` (orange, links to /admin/compensation), `command_failed`, `command_sent`, `command_acknowledged`, `fault_raised`.
+
+---
+
+## Phase 3 — K9000 Station/Bay Operational Layer (COMPLETE)
+
+Four admin-only endpoints (requireAdmin, Firebase auth):
+
+- `GET /api/octopus/v1/station/:stationId/bay-map` — real-time bay status grid (heartbeat age, shampoo/conditioner levels, telemetry)
+- `GET /api/octopus/v1/station/:stationId/command-log` — IoT command log with retry counts and compensation links
+- `GET /api/octopus/v1/compensation/pending` — pending compensation queue (idempotency-key dedup: `k9000:compensation:{sessionId}`)
+- `POST /api/octopus/v1/compensation/:sessionId` — refund to wallet via `refundToWallet`, sourceType `k9000_compensation`, idempotent
+
+Frontend screens:
+- `AdminBayMap.tsx` — live bay status map at `/admin/stations/:stationId/bays`
+- `AdminCommandLog.tsx` — IoT command log at `/admin/stations/:stationId/commands`
+- `AdminCompensation.tsx` — pending compensation list with 2-step confirm at `/admin/compensation`
+
+Navigation wired:
+- `AdminStations.tsx`: 3 buttons per station card (Timeline, Bay Map, Command Log)
+- `StationTimeline.tsx`: header links to Bay Map + Command Log for same stationId
+- `App.tsx`: 3 new lazy routes with AdminRouteGuard

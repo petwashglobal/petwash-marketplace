@@ -39,6 +39,8 @@ import { eq, and, sql, desc, isNull, isNotNull, or, notInArray } from "drizzle-o
 import { logger } from "../lib/logger";
 import { requireAuth } from "../customAuth";
 import { requireAdmin } from "../adminAuth";
+import * as MachineCommandService from "../services/MachineCommandService";
+import { refundToWallet } from "../services/WalletLedger";
 import { egiftFinancialService } from "../services/EgiftFinancialService";
 import escrowService from "../services/EscrowService";
 import { backupFinancialDocument } from "../services/gcsBackupService";
@@ -1418,6 +1420,229 @@ router.get("/v1/timeline/customer/:userId", requireAuth, async (req: Request, re
   } catch (err: any) {
     logger.error("[Timeline] Customer timeline failed", { userId, error: err.message });
     return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// =================== K9000 OPERATIONAL ADMIN ENDPOINTS ===================
+
+/**
+ * GET /api/octopus/v1/station/:stationId/bay-map
+ * Admin-only live bay readiness map for a station.
+ * Uses Firebase admin auth (not machine auth) — safe for browser UI calls.
+ */
+router.get("/station/:stationId/bay-map", requireAdmin, async (req: Request, res: Response) => {
+  const { stationId } = req.params;
+  try {
+    const bays = await db
+      .select()
+      .from(stationBays)
+      .where(eq(stationBays.stationId, stationId));
+
+    if (bays.length === 0) {
+      return res.status(404).json({ error: "Station not found or has no registered bays.", stationId });
+    }
+
+    const bayMap: Record<string, any> = {};
+    for (const bay of bays) {
+      const displayStatus =
+        bay.status === "busy"        ? "Active wash" :
+        bay.status === "cleanup"     ? "Cleanup in progress" :
+        bay.status === "ready"       ? "Ready" :
+        bay.status === "fault"       ? "Fault" :
+        bay.status === "maintenance" ? "Maintenance" :
+        bay.status === "offline"     ? "Offline" : bay.status;
+
+      bayMap[bay.side] = {
+        bayId:              bay.id,
+        side:               bay.side,
+        label:              bay.bayLabel,
+        labelHe:            bay.bayLabelHe,
+        status:             bay.status,
+        displayStatus,
+        isReady:            bay.status === "ready" && bay.isActive,
+        isActive:           bay.isActive,
+        currentSessionId:   bay.currentSessionId ?? null,
+        lastHeartbeat:      bay.lastHeartbeat,
+        waterTempC:         bay.waterTempC,
+        shampooLevelPct:    bay.shampooLevelPct,
+        conditionerLevelPct: bay.conditionerLevelPct,
+        lastFaultCode:      bay.lastFaultCode ?? null,
+        lastFaultAt:        bay.lastFaultAt ?? null,
+        totalSessions:      bay.totalSessions,
+        lastSessionAt:      bay.lastSessionAt,
+      };
+    }
+
+    const allReady = Object.values(bayMap).every((b: any) => b.isReady);
+    const anyReady = Object.values(bayMap).some((b: any) => b.isReady);
+    const anyFault = Object.values(bayMap).some((b: any) => b.status === "fault");
+
+    return res.json({
+      stationId,
+      bays: bayMap,
+      summary: {
+        allReady, anyReady, anyFault,
+        readySides:   Object.keys(bayMap).filter((s) => bayMap[s].isReady),
+        busySides:    Object.keys(bayMap).filter((s) => bayMap[s].status === "busy"),
+        cleanupSides: Object.keys(bayMap).filter((s) => bayMap[s].status === "cleanup"),
+        faultSides:   Object.keys(bayMap).filter((s) => bayMap[s].status === "fault"),
+      },
+    });
+  } catch (err: any) {
+    logger.error("[BayMap] Failed", { stationId, error: err.message });
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * GET /api/octopus/v1/station/:stationId/command-log
+ * Admin-only command history for a station.
+ */
+router.get("/station/:stationId/command-log", requireAdmin, async (req: Request, res: Response) => {
+  const { stationId } = req.params;
+  const limitRaw = parseInt(String(req.query.limit ?? "50"), 10);
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 && limitRaw <= 200 ? limitRaw : 50;
+  try {
+    const data = await MachineCommandService.getStationCommands(stationId, limit);
+    return res.json({ stationId, ...data });
+  } catch (err: any) {
+    logger.error("[CommandLog] Failed", { stationId, error: err.message });
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * GET /api/octopus/v1/compensation/pending
+ * Admin-only list of K9000 sessions that need wallet compensation.
+ * A session is "pending compensation" when:
+ *   - A machine_command with compensationTriggeredAt IS NOT NULL references it
+ *   - The session source was wallet-funded (not terminal_card/anonymous)
+ *   - No compensation entry already exists in wallet_ledger_entries
+ */
+router.get("/compensation/pending", requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const compensated = await db.execute(sql`
+      SELECT DISTINCT idempotency_key
+      FROM wallet_ledger_entries
+      WHERE idempotency_key LIKE 'k9000:compensation:%'
+    `);
+    const compensatedKeys = new Set((compensated.rows as any[]).map((r) => r.idempotency_key));
+
+    const failedCmds = await db
+      .select()
+      .from(machineCommands)
+      .where(isNotNull(machineCommands.compensationTriggeredAt))
+      .orderBy(desc(machineCommands.compensationTriggeredAt));
+
+    const sessionIds = [...new Set(
+      (failedCmds as any[])
+        .filter((c) => c.sessionId && !compensatedKeys.has(`k9000:compensation:${c.sessionId}`))
+        .map((c) => c.sessionId)
+    )];
+
+    if (sessionIds.length === 0) {
+      return res.json({ pending: [], total: 0 });
+    }
+
+    const sessions = await db
+      .select()
+      .from(baySessions)
+      .where(
+        and(
+          sql`${baySessions.id} = ANY(${sessionIds})`,
+          isNotNull(baySessions.userId),
+        )
+      );
+
+    const walletFundedSources = ["wallet_balance", "gift_credit", "wash_package", "loyalty_benefit", "promo_coupon"];
+    const pending = sessions
+      .filter((s: any) => walletFundedSources.includes(s.source) && !compensatedKeys.has(`k9000:compensation:${s.id}`))
+      .map((s: any) => {
+        const cmd = (failedCmds as any[]).find((c) => c.sessionId === s.id);
+        return {
+          sessionId:             s.id,
+          bayId:                 s.bayId,
+          stationId:             s.stationId,
+          userId:                s.userId,
+          source:                s.source,
+          amountCents:           s.amountCents,
+          amountILS:             (s.amountCents / 100).toFixed(2),
+          sessionStatus:         s.status,
+          startedAt:             s.startedAt,
+          compensationTriggeredAt: cmd?.compensationTriggeredAt,
+          commandId:             cmd?.commandId,
+        };
+      });
+
+    return res.json({ pending, total: pending.length });
+  } catch (err: any) {
+    logger.error("[Compensation] Pending fetch failed", { error: err.message });
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * POST /api/octopus/v1/compensation/:sessionId
+ * Admin-triggered wallet refund for a failed K9000 session.
+ * Idempotent — safe to call multiple times for the same session.
+ */
+router.post("/compensation/:sessionId", requireAdmin, async (req: Request, res: Response) => {
+  const { sessionId } = req.params;
+  const actor = (req as any).firebaseUser?.uid ?? "admin";
+  try {
+    const sessions = await db
+      .select()
+      .from(baySessions)
+      .where(eq(baySessions.id, sessionId));
+
+    if (sessions.length === 0) {
+      return res.status(404).json({ error: "Session not found" });
+    }
+
+    const session = sessions[0] as any;
+
+    if (!session.userId) {
+      return res.status(400).json({ error: "Session is anonymous — no wallet to refund" });
+    }
+
+    const walletFunded = ["wallet_balance", "gift_credit", "wash_package", "loyalty_benefit", "promo_coupon"];
+    if (!walletFunded.includes(session.source)) {
+      return res.status(400).json({ error: `Source '${session.source}' is not wallet-funded — no refund needed` });
+    }
+
+    if (!session.amountCents || session.amountCents <= 0) {
+      return res.status(400).json({ error: "Session has zero amount — nothing to refund" });
+    }
+
+    const idempotencyKey = `k9000:compensation:${sessionId}`;
+
+    const result = await refundToWallet({
+      userId:         session.userId,
+      amountCents:    session.amountCents,
+      divisionCode:   "k9000",
+      sourceType:     "k9000_compensation",
+      sourceId:       sessionId,
+      idempotencyKey,
+      reason:         "K9000 pump failure — automatic compensation",
+      metadata:       { sessionId, bayId: session.bayId, stationId: session.stationId, triggeredBy: actor },
+    });
+
+    logger.info("[Compensation] Refund issued", {
+      sessionId, userId: session.userId, amountCents: session.amountCents,
+      txnId: result.txnId, idempotent: result.idempotent ?? false,
+    });
+
+    return res.json({
+      ok:          true,
+      sessionId,
+      refundCents: session.amountCents,
+      refundILS:   (session.amountCents / 100).toFixed(2),
+      txnId:       result.txnId,
+      idempotent:  result.idempotent ?? false,
+    });
+  } catch (err: any) {
+    logger.error("[Compensation] Refund failed", { sessionId, error: err.message });
+    return res.status(500).json({ error: err.message ?? "Refund failed" });
   }
 });
 

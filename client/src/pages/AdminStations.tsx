@@ -435,6 +435,18 @@ export default function AdminStations() {
                         Station Timeline
                       </Button>
                     </Link>
+                    <Link href={`/admin/stations/${station.id}/bays`}>
+                      <Button variant="outline" className="w-full mt-1" size="sm">
+                        <Activity className="w-4 h-4 mr-2 inline" />
+                        מפת עמדות חיה
+                      </Button>
+                    </Link>
+                    <Link href={`/admin/stations/${station.id}/commands`}>
+                      <Button variant="outline" className="w-full mt-1" size="sm">
+                        <Zap className="w-4 h-4 mr-2 inline" />
+                        יומן פקודות
+                      </Button>
+                    </Link>
                   </div>
                 ))
                 }
