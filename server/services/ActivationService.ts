@@ -22,7 +22,7 @@
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db';
 import { users, verificationTokens } from '../../shared/schema';
-import { loyaltyProfiles } from '../../shared/schema-loyalty';
+import { loyaltyProfiles, pointsTransactions } from '../../shared/schema-loyalty';
 import { walletService } from './WalletService';
 import { eventPublisher } from './EventPublisher';
 import { DomainEventType } from '../../shared/events';
@@ -204,14 +204,16 @@ async function _onFullActivation(userId: string, email?: string): Promise<void> 
       .limit(1);
 
     if (!existing) {
+      const JOIN_BONUS_POINTS = 100;
+
       await db.insert(loyaltyProfiles).values({
         userId,
         tier: 'bronze',
         tierSince: new Date(),
         tierProgress: 0,
         tierThreshold: 1000,
-        points: 0,
-        lifetimePoints: 0,
+        points: JOIN_BONUS_POINTS,
+        lifetimePoints: JOIN_BONUS_POINTS,
         xp: 0,
         level: 1,
         totalWashes: 0,
@@ -222,7 +224,17 @@ async function _onFullActivation(userId: string, email?: string): Promise<void> 
         conciergeAccess: false,
         prioritySupport: false,
       });
-      logger.info('[Activation] Loyalty profile seeded', { userId });
+
+      await db.insert(pointsTransactions).values({
+        userId,
+        type: 'earned',
+        amount: JOIN_BONUS_POINTS,
+        balance: JOIN_BONUS_POINTS,
+        source: 'signup',
+        description: 'Join bonus — welcome to PetWash™ loyalty program',
+      });
+
+      logger.info('[Activation] Loyalty profile seeded with join bonus', { userId, joinBonus: JOIN_BONUS_POINTS });
 
       await eventPublisher.publishEvent(DomainEventType.LOYALTY_JOINED, {
         userId,

@@ -37,6 +37,8 @@ import { requireAdmin } from '../middleware/rbac';
 import { adminAuth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { sendLoyaltyEnrollmentConfirmation, sendClubWelcomeEmail, sendTierUpgradeEmail, sendPurchaseRewardEmail, detectTierUpgrade } from '../email/luxury-email-service';
+import { eventPublisher } from '../services/EventPublisher';
+import { DomainEventType } from '@shared/events';
 import { logLoyaltyEnrollment } from '../services/googleSheetsIntegration';
 import { FinancialDocumentService } from '../services/FinancialDocumentService';
 import {
@@ -435,6 +437,19 @@ router.post('/points/add', requireAdmin, async (req: AuthenticatedRequest, res: 
         .where(eq(loyaltyProfiles.userId, userId));
 
       logger.info('[Loyalty] Tier upgrade detected', { userId, from: tierCheck.previousTier, to: tierCheck.newTier });
+
+      eventPublisher.publishEvent(
+        DomainEventType.LOYALTY_TIER_UPGRADED,
+        {
+          userId,
+          previousTier: tierCheck.previousTier,
+          newTier: tierCheck.newTier,
+          lifetimePoints: newLifetimePoints,
+        },
+        { source: 'loyalty/add-points', aggregateType: 'loyalty', aggregateId: userId, userId },
+      ).catch((e: any) =>
+        logger.error('[Loyalty] LOYALTY_TIER_UPGRADED event publish failed', { error: e?.message, userId }),
+      );
     }
 
     const [transaction] = await db
