@@ -1,0 +1,123 @@
+I read it carefully.
+
+My logic read: this is a good backend build, but I would not call the whole timeline stream finished yet.
+
+What he got right
+
+1. He respected the key K9000 business rule
+
+This is the most important part:
+	•	anonymous Nayax washes stay out of customer timeline
+	•	only user-linked K9000 sessions appear in customer timeline
+
+That is correct.
+
+If he had mixed those, customer history would become unreliable and support would become messy.
+
+2. He used the right primary bay data sources
+
+Very good that he used:
+	•	bay_sessions
+	•	bay_events
+	•	bay_faults
+	•	machine_commands
+
+and did not rely on domain_events as the main bay feed.
+
+That is the safer operational design.
+
+3. He built the timelines in the corrected order
+
+Also good:
+	•	station
+	•	bay
+	•	provider
+	•	customer
+
+That is the right order from an operations point of view.
+
+⸻
+
+What is still risky or incomplete
+
+1. Provider timeline may not be financially correct enough yet
+
+He says provider timeline uses:
+	•	booking_requests
+	•	serviceFeeCents
+	•	paymentReleasedAt
+
+to compute earnings / payout state.
+
+That is useful for a first view, but it may still be too light if the real source of financial truth is elsewhere, like:
+	•	pw_payments
+	•	payout ledger
+	•	escrow / release records
+
+So I would treat provider timeline as:
+	•	good for operational earnings view
+	•	but not yet final finance truth screen
+
+That distinction matters.
+
+2. Customer timeline may duplicate items
+
+He is merging:
+	•	booking requests
+	•	K9000 sessions
+	•	wallet transactions
+	•	loyalty points
+
+That is the right idea, but this kind of merge can easily produce:
+	•	duplicates
+	•	confusing ordering
+	•	same event shown twice in different wording
+
+So before I trust it, I would want proof of:
+	•	one real customer with mixed activity
+	•	no duplicates
+	•	clean sorting
+	•	readable item titles
+
+3. No frontend yet
+
+He clearly says:
+	•	backend only
+	•	no frontend work
+
+So this is not a finished Octopus timeline feature.
+It is a finished timeline API layer.
+
+That is important. Do not let him overstate completion.
+
+4. Auth / permissions were not emphasized enough
+
+He described the endpoints well, but I want clear confirmation that:
+	•	customer can only read own timeline
+	•	provider can only read own timeline
+	•	station / bay timelines are admin or operator only
+
+That is a business-critical control point.
+
+⸻
+
+My business verdict
+
+I would say:
+
+Backend timeline endpoints approved
+but
+timeline stream not fully closed
+
+because what is finished is:
+	•	backend API layer
+
+what is not finished is:
+	•	frontend timeline screens
+	•	auth / ownership proof
+	•	duplicate / readability proof
+	•	provider finance-truth alignment
+
+⸻
+
+What I would send him now

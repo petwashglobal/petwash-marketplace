@@ -165,6 +165,10 @@ const StaffScan = lazy(() => import("@/pages/staff/StaffScan"));
 const K9000Redeem = lazy(() => import("@/pages/K9000Redeem"));
 const MyAccount = lazy(() => import("@/pages/MyAccount"));
 const AdminStations = lazy(() => import("@/pages/AdminStations"));
+const StationTimeline = lazy(() => import("@/pages/StationTimeline"));
+const BayTimeline = lazy(() => import("@/pages/BayTimeline"));
+const ProviderTimeline = lazy(() => import("@/pages/ProviderTimeline"));
+const CustomerTimeline = lazy(() => import("@/pages/CustomerTimeline"));
 const AdminUsers = lazy(() => import("@/pages/AdminUsers"));
 const AdminTeamInvitations = lazy(() => import("@/pages/AdminTeamInvitations"));
 const TeamInbox = lazy(() => import("@/pages/TeamInbox"));
@@ -601,6 +605,16 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <CustomerBookings />
+            </RequireAuth>
+          )}
+        </Route>
+
+        <Route path="/my/timeline">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <CustomerTimeline />
+              </Suspense>
             </RequireAuth>
           )}
         </Route>
@@ -1210,6 +1224,16 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <RoleProtectedRoute minRole="provider">
               <Suspense fallback={<PageLoader />}>
                 <UnifiedProviderDashboard />
+              </Suspense>
+            </RoleProtectedRoute>
+          )}
+        </Route>
+
+        <Route path="/provider/timeline">
+          {() => (
+            <RoleProtectedRoute minRole="provider">
+              <Suspense fallback={<PageLoader />}>
+                <ProviderTimeline />
               </Suspense>
             </RoleProtectedRoute>
           )}
@@ -2205,6 +2229,24 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminStations />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/stations/:stationId/timeline">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <StationTimeline />
+              </Suspense>
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/bays/:bayId/timeline">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <BayTimeline />
+              </Suspense>
             </AdminRouteGuard>
           )}
         </Route>

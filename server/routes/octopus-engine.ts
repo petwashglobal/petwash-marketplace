@@ -32,11 +32,13 @@ import {
   stationBays,
   machineCommands,
   bookingRequests,
+  walletLedgerEntries,
 } from "@shared/schema";
-import { walletTransactions } from "@shared/schema-unified-platform";
 import { pointsTransactions } from "@shared/schema-loyalty";
-import { eq, and, sql, desc, isNull, isNotNull, or } from "drizzle-orm";
+import { eq, and, sql, desc, isNull, isNotNull, or, notInArray } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { requireAuth } from "../customAuth";
+import { requireAdmin } from "../adminAuth";
 import { egiftFinancialService } from "../services/EgiftFinancialService";
 import escrowService from "../services/EscrowService";
 import { backupFinancialDocument } from "../services/gcsBackupService";
@@ -975,7 +977,8 @@ router.get("/v1/egift/user/:userId/events", async (req: Request, res: Response) 
 // --- Station Wash History Timeline ---
 // Returns all sessions at a station (anonymous + user-linked), ordered by date.
 // Source of truth: bay_sessions joined to k9000_wash_events.
-router.get("/v1/timeline/station/:stationId", async (req: Request, res: Response) => {
+// AUTH: admin / operator only — station data is not customer-visible.
+router.get("/v1/timeline/station/:stationId", requireAdmin, async (req: Request, res: Response) => {
   const { stationId } = req.params;
   const limit = Math.min(parseInt(req.query.limit as string) || 100, 200);
 
@@ -1078,7 +1081,8 @@ router.get("/v1/timeline/station/:stationId", async (req: Request, res: Response
 // --- Bay Event Feed Timeline ---
 // Merges bay_sessions, bay_events, bay_faults, machine_commands into a chronological feed.
 // No domain_events or platform_events — all data is sourced from native bay tables.
-router.get("/v1/timeline/bay/:bayId", async (req: Request, res: Response) => {
+// AUTH: admin / operator only — raw bay telemetry is not customer-visible.
+router.get("/v1/timeline/bay/:bayId", requireAdmin, async (req: Request, res: Response) => {
   const { bayId } = req.params;
 
   try {
@@ -1196,11 +1200,20 @@ router.get("/v1/timeline/bay/:bayId", async (req: Request, res: Response) => {
 
 // --- Provider Earnings Timeline ---
 // Returns all marketplace bookings where this provider is assigned, with payout state.
-router.get("/v1/timeline/provider/:providerId", async (req: Request, res: Response) => {
+// AUTH: requireAuth — provider can only read their own timeline.
+//       Admin may read any provider timeline by passing X-Admin-Override: true header.
+//       NOTE: booking_requests is the operational earnings view. Finance truth lives in wallet_ledger_entries.
+router.get("/v1/timeline/provider/:providerId", requireAuth, async (req: Request, res: Response) => {
   const { providerId } = req.params;
   const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
 
   try {
+    // Ownership guard — provider can only view own timeline
+    const firebaseUser = (req as any).firebaseUser;
+    const isAdmin = firebaseUser?.role === 'admin' || firebaseUser?.isSuperAdmin;
+    if (!isAdmin && firebaseUser?.uid !== providerId) {
+      return res.status(403).json({ error: "Forbidden — you may only view your own timeline" });
+    }
     const bookings = await db
       .select()
       .from(bookingRequests)
@@ -1251,9 +1264,22 @@ router.get("/v1/timeline/provider/:providerId", async (req: Request, res: Respon
 // Merges marketplace bookings + user-linked K9000 sessions + wallet + loyalty.
 // RULE: K9000 entries only if bay_sessions.is_anonymous = false (wallet/QR redemptions).
 //       Anonymous Nayax terminal-card washes are excluded — they appear in station timeline only.
-router.get("/v1/timeline/customer/:userId", async (req: Request, res: Response) => {
+// WALLET RULE: Exclude internal accounting buckets (service_revenue, payment_clearing, provider_payout).
+//              wallet_ledger_entries uses double-entry: both legs share user_id; only customer-side legs are shown.
+// AUTH: requireAuth — customer can only read their own timeline.
+router.get("/v1/timeline/customer/:userId", requireAuth, async (req: Request, res: Response) => {
   const { userId } = req.params;
   const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+
+  // Ownership guard — customer can only view own timeline
+  const firebaseUser = (req as any).firebaseUser;
+  const isAdmin = firebaseUser?.role === 'admin' || firebaseUser?.isSuperAdmin;
+  if (!isAdmin && firebaseUser?.uid !== userId) {
+    return res.status(403).json({ error: "Forbidden — you may only view your own timeline" });
+  }
+
+  // Buckets that are internal accounting legs — not shown to customer
+  const INTERNAL_BUCKETS = ['service_revenue', 'payment_clearing', 'provider_payout'];
 
   try {
     const [marketplaceBookings, k9000Sessions, walletEntries, loyaltyEntries] = await Promise.all([
@@ -1289,9 +1315,16 @@ router.get("/v1/timeline/customer/:userId", async (req: Request, res: Response) 
         .orderBy(desc(baySessions.startedAt))
         .limit(limit),
 
-      db.select().from(walletTransactions)
-        .where(eq(walletTransactions.userId, userId))
-        .orderBy(desc(walletTransactions.createdAt))
+      // Exclude internal double-entry accounting legs (service_revenue, payment_clearing, provider_payout)
+      // wallet_ledger_entries has both sides of every transaction under the same user_id
+      db.select().from(walletLedgerEntries)
+        .where(
+          and(
+            eq(walletLedgerEntries.userId, userId),
+            notInArray(walletLedgerEntries.bucket, INTERNAL_BUCKETS),
+          )
+        )
+        .orderBy(desc(walletLedgerEntries.createdAt))
         .limit(limit),
 
       db.select().from(pointsTransactions)
@@ -1345,16 +1378,18 @@ router.get("/v1/timeline/customer/:userId", async (req: Request, res: Response) 
     }
 
     for (const w of walletEntries) {
+      const meta = (w.metadata as any) ?? {};
+      const description: string = meta.description ?? w.eventType ?? 'wallet_entry';
+      const amountILS = (w.amountCents / 100).toFixed(2);
       items.push({
-        id:          `wallet:${w.id}`,
-        type:        w.type === 'credit' ? 'wallet_credit' : 'wallet_debit',
+        id:          `wallet:${w.entryId}`,
+        type:        w.direction === 'credit' ? 'wallet_credit' : 'wallet_debit',
         timestamp:   w.createdAt.toISOString(),
-        title:       w.description,
-        subtitle:    `${w.type === 'credit' ? '+' : '-'}₪${parseFloat(w.amount).toFixed(2)}`,
+        title:       description,
+        subtitle:    `${w.direction === 'credit' ? '+' : '-'}₪${amountILS} (${w.bucket})`,
         status:      'completed',
-        amountILS:   parseFloat(w.amount).toFixed(2),
-        balanceAfter: parseFloat(w.balanceAfter).toFixed(2),
-        reference:   w.referenceId ?? w.id,
+        amountILS,
+        reference:   w.sessionId ?? w.bookingId ?? w.entryId,
       });
     }
 
