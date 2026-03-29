@@ -7665,6 +7665,7 @@ export const bookings = pgTable("bookings", {
   refundAmountCents: integer("refund_amount_cents"),
   disputeOpenedAt: timestamp("dispute_opened_at"),
   disputeResolvedAt: timestamp("dispute_resolved_at"),
+  customerRating: decimal("customer_rating", { precision: 4, scale: 2 }),
   customerReviewId: integer("customer_review_id"),
   providerReviewId: integer("provider_review_id"),
   confirmedAt: timestamp("confirmed_at"),

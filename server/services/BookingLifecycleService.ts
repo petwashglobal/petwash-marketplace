@@ -88,12 +88,13 @@ class BookingLifecycleService {
     try {
       const result = await db.select({
         completedCount: sql<number>`COUNT(*) FILTER (WHERE status = 'completed')`,
+        averageRating: sql<number>`COALESCE(AVG(customer_rating) FILTER (WHERE status = 'completed' AND customer_rating IS NOT NULL), 0)`,
       })
       .from(bookings)
       .where(eq(bookings.userId, customerId));
 
       const completedBookings = Number(result[0]?.completedCount) || 0;
-      const averageRating = 0;
+      const averageRating = Number(result[0]?.averageRating) || 0;
 
       // Determine tier (highest matching)
       let tier = 'none';
@@ -259,7 +260,8 @@ class BookingLifecycleService {
     };
   }
 
-  async createBooking(input: CreateBookingInput): Promise<{ bookingId: string; bookingNumber: string }> {
+  async createBooking(input: CreateBookingInput, tx?: any): Promise<{ bookingId: string; bookingNumber: string }> {
+    const dbOrTx = tx ?? db;
     const bookingId = nanoid(16);
     const bookingNumber = `PW-${Date.now().toString(36).toUpperCase()}-${nanoid(4).toUpperCase()}`;
 
@@ -273,7 +275,7 @@ class BookingLifecycleService {
       input.selectedAddons
     );
 
-    await db.insert(bookings).values({
+    await dbOrTx.insert(bookings).values({
       id: bookingId,
       bookingNumber,
       platformId: input.platformId.toUpperCase() as any,
@@ -293,7 +295,7 @@ class BookingLifecycleService {
     });
 
     for (const petId of input.petIds) {
-      await db.insert(bookingPets).values({
+      await dbOrTx.insert(bookingPets).values({
         bookingId,
         petId,
       });
@@ -301,7 +303,7 @@ class BookingLifecycleService {
 
     if (input.selectedAddons?.length) {
       for (const addon of input.selectedAddons) {
-        await db.insert(bookingItems).values({
+        await dbOrTx.insert(bookingItems).values({
           bookingId,
           itemType: 'addon',
           name: addon,
@@ -312,7 +314,7 @@ class BookingLifecycleService {
       }
     }
 
-    await this.recordStatusChange(bookingId, null, 'inquiry', input.customerId, 'customer', 'Booking created');
+    await this.recordStatusChange(bookingId, null, 'inquiry', input.customerId, 'customer', 'Booking created', dbOrTx);
 
     logger.info('[BookingLifecycle] Booking created', { bookingId, bookingNumber });
 
@@ -431,9 +433,10 @@ class BookingLifecycleService {
     toStatus: string,
     userId: string,
     role: string,
-    reason?: string
+    reason?: string,
+    dbOrTx?: any
   ): Promise<void> {
-    await db.insert(bookingStatusHistory).values({
+    await (dbOrTx ?? db).insert(bookingStatusHistory).values({
       bookingId,
       fromStatus,
       toStatus,

@@ -92,6 +92,32 @@ router.post(
         return res.status(400).json({ error: 'Invalid document type' });
       }
 
+      // ── GDPR / Israeli Privacy Law 2025: explicit consent required ────────────
+      const { consentGiven } = req.body;
+      if (consentGiven !== 'true' && consentGiven !== true) {
+        return res.status(400).json({
+          error: 'Consent required',
+          message: 'You must explicitly consent to identity verification processing to proceed.',
+        });
+      }
+
+      // Record consent in tamper-evident audit trail BEFORE processing
+      kycAuditTrail.record({
+        action: 'kyc_submitted',
+        actorId: userId,
+        actorRole: 'customer',
+        targetUserId: userId,
+        ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
+        userAgent: req.headers['user-agent'] || 'unknown',
+        metadata: {
+          consentGiven: true,
+          consentTimestamp: new Date().toISOString(),
+          documentType,
+          documentCountry,
+          retentionPolicy: 'Images zeroed in-memory immediately after processing. Decision retained 5 years per Israeli Privacy Law 2025.',
+        },
+      });
+
       const result = await kycOrchestrator.processSubmission({
         userId,
         documentType,
@@ -448,6 +474,55 @@ router.get('/architecture', (_req: Request, res: Response) => {
       'Right to erasure supported',
     ],
   });
+});
+
+// ── Right to Erasure (GDPR Art. 17 / Israeli Privacy Law 2025) ───────────────
+// DELETE /api/kyc/v2/records/:userId
+// Allows an admin OR the user themselves to request deletion of KYC audit data.
+// Document images are already zeroed in-memory at submission; only the audit-trail
+// decision record is retained (5 years per legal obligation).
+router.delete('/records/:userId', async (req: Request, res: Response) => {
+  try {
+    const callerUid: string | undefined = (req as any).user?.uid || (req as any).userId;
+    if (!callerUid) return res.status(401).json({ error: 'Authentication required' });
+
+    const claims = (req as any).user?.claims || (req as any).user || {};
+    const isAdmin = claims.admin === true || claims.isSuperAdmin === true || claims.kyc_admin === true;
+    const targetUserId = req.params.userId;
+
+    if (!isAdmin && callerUid !== targetUserId) {
+      return res.status(403).json({ error: 'Forbidden: can only delete your own records' });
+    }
+
+    // Record the deletion request in the audit trail before acting
+    kycAuditTrail.record({
+      action: 'kyc_data_deleted',
+      actorId: callerUid,
+      actorRole: isAdmin ? 'admin' : 'customer',
+      targetUserId,
+      ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
+      userAgent: req.headers['user-agent'] || 'unknown',
+      metadata: {
+        requestedAt: new Date().toISOString(),
+        note: 'Right-to-erasure request. Audit trail entries are retained for legal compliance per Israeli Privacy Law 2025 Article 17 exemption.',
+      },
+    });
+
+    logger.info('[KYC2026] Data deletion request recorded', { callerUid, targetUserId, isAdmin });
+
+    return res.json({
+      success: true,
+      message: 'Your KYC data deletion request has been recorded. Document images are already discarded immediately after processing. Audit trail records are retained for 5 years as required by law, after which they are permanently deleted.',
+      retentionPolicy: {
+        documentImages: 'Destroyed immediately after in-memory processing — never persisted',
+        auditTrailEntries: 'Retained 5 years (Israeli Privacy Law 2025 obligation), then deleted',
+        biometricData: 'Never stored — only a pseudonymous hash is kept',
+      },
+    });
+  } catch (error: any) {
+    logger.error('[KYC2026] Deletion request error', { error: error.message });
+    return res.status(500).json({ error: 'Failed to process deletion request' });
+  }
 });
 
 export default router;

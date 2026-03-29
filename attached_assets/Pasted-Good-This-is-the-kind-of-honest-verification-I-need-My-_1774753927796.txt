@@ -1,0 +1,68 @@
+Good. This is the kind of honest verification I need.
+
+My decisions based on your report:
+
+1. ID verification
+We can keep using this internally as a lightweight fraud and trust tool, especially for provider onboarding and suspicious cases.
+
+But we must not describe it publicly as:
+- KYC
+- bank-grade verification
+- regulatory identity verification
+
+Before any legal/compliance claim, I need:
+- explicit consent capture before upload
+- user-facing purpose disclosure
+- deletion/right-to-erasure flow
+- defined retention policy with cleanup
+- clear wording in the product and legal pages
+
+So for now, treat it as:
+- internal ID document check
+- fraud prevention layer
+- provider trust tool
+
+2. T004 checkout flow
+This is meaningful progress and the proof is real.
+The tested path now works.
+
+But I do not approve this for full public production yet.
+
+Blocking items before production exposure:
+- wrap slot claim + booking + escrow in a DB transaction
+- fix loyalty tier regression properly, not with a permanent bronze cap
+- build or enable real provider slot/availability management UI
+- review VAT breakdown in escrow so vat_cents is not silently zeroed
+- consider a uniqueness safeguard for escrow per booking
+
+3. Duplicate / race handling
+Good that same slot cannot be checked out twice.
+Still, I want hardening against race conditions at DB level where practical.
+
+4. Provider discoverability
+Confirmed this is product logic, not a bug.
+But approved providers need a clear next step after approval:
+- set rate card
+- set availability
+- become discoverable
+
+Please make sure this onboarding path is explicit.
+
+5. Loyalty
+This is not just a technical note.
+If everyone is capped at bronze, that is a business issue.
+Please treat this as a real blocker for production, not a cosmetic backlog item.
+
+6. Recommended status
+My view:
+- checkout path: technically repaired
+- booking marketplace flow: staging only
+- ID verification: internal use only, not compliance-grade
+- public production launch: not yet
+
+Next I want you to do these in order:
+1. transaction safety for checkout flow
+2. proper loyalty fix
+3. availability/slot creation flow for providers
+4. VAT field correction in escrow
+5. consent + retention + deletion layer for ID verification

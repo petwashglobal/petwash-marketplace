@@ -284,48 +284,72 @@ router.post('/:quoteId/checkout', async (req, res) => {
       });
     }
 
-    // Create the booking using the booking lifecycle service
-    const bookingResult = await bookingLifecycleService.createBooking({
-      customerId: userId,
-      providerId: quote.providerId!,
-      providerProfileId: quote.providerId!,
-      platformId: quote.platform as any,
-      serviceType: quote.serviceType || 'standard',
-      startTime: new Date(slot.startTime),
-      endTime: new Date(slot.endTime),
-      petIds: petIds || [],
-      selectedAddons: [],
-      specialRequests: specialInstructions || '',
-      quoteId
-    });
-    
-    // Use the bookingId returned by the service (the actual persisted ID)
-    const bookingId = bookingResult.bookingId;
-    const bookingNumber = bookingResult.bookingNumber;
+    // ── Atomic booking + escrow creation (DB transaction) ────────────────────
+    // Wraps createBooking + slot stamp + escrow INSERT so all three succeed or
+    // all three roll back. If the transaction fails the slot is reverted to
+    // 'available' so the customer can retry with a new lock.
+    let bookingId: string;
+    let bookingNumber: string;
 
-    // Stamp the slot with the confirmed bookingId (status already set to 'booked' atomically above)
-    await db.update(availabilitySlots)
-      .set({ bookingId, lockToken: null, lockExpiresAt: null, lockedByUid: null, updatedAt: new Date() })
-      .where(eq(availabilitySlots.id, slotId));
+    try {
+      const txResult = await db.transaction(async (tx) => {
+        const bookingResult = await bookingLifecycleService.createBooking({
+          customerId: userId,
+          providerId: quote.providerId!,
+          providerProfileId: quote.providerId!,
+          platformId: quote.platform as any,
+          serviceType: quote.serviceType || 'standard',
+          startTime: new Date(slot.startTime),
+          endTime: new Date(slot.endTime),
+          petIds: petIds || [],
+          selectedAddons: [],
+          specialRequests: specialInstructions || '',
+          quoteId
+        }, tx);
 
-    // Create escrow record for 72-hour hold
-    const escrowId = nanoid(16);
-    const releaseEligibleAt = new Date();
-    releaseEligibleAt.setHours(releaseEligibleAt.getHours() + 72); // 72-hour escrow
+        const bid = bookingResult.bookingId;
 
-    await db.insert(escrowHoldings).values({
-      escrowId,
-      bookingId,
-      customerId: userId,
-      providerId: String(quote.providerId || ''),
-      grossAmountCents: quote.totalCents || 0,
-      platformFeeCents: quote.platformFeeCents || 0,
-      vatCents: quote.vatCents || 0,
-      netProviderAmountCents: quote.providerEarningsCents || 0,
-      status: 'pending_payment',
-      releaseEligibleAt,
-      createdAt: new Date()
-    });
+        // Stamp slot with confirmed bookingId
+        await tx.update(availabilitySlots)
+          .set({ bookingId: bid, lockToken: null, lockExpiresAt: null, lockedByUid: null, updatedAt: new Date() })
+          .where(eq(availabilitySlots.id, slotId));
+
+        // Create escrow record (72-hour hold)
+        const escrowId = nanoid(16);
+        const releaseEligibleAt = new Date();
+        releaseEligibleAt.setHours(releaseEligibleAt.getHours() + 72);
+        const platformFeeCents = quote.platformFeeCents || 0;
+        const vatCents = Math.round(platformFeeCents * 0.18);
+
+        await tx.insert(escrowHoldings).values({
+          escrowId,
+          bookingId: bid,
+          customerId: userId,
+          providerId: String(quote.providerId || ''),
+          grossAmountCents: quote.totalCents || 0,
+          platformFeeCents,
+          vatCents,
+          netProviderAmountCents: quote.providerEarningsCents || 0,
+          status: 'pending_payment',
+          releaseEligibleAt,
+          createdAt: new Date()
+        });
+
+        return bookingResult;
+      });
+
+      bookingId = txResult.bookingId;
+      bookingNumber = txResult.bookingNumber;
+    } catch (txErr: any) {
+      // Roll back slot so customer can retry
+      await db.update(availabilitySlots)
+        .set({ status: 'available', lockToken: null, lockExpiresAt: null, lockedByUid: null, updatedAt: new Date() })
+        .where(eq(availabilitySlots.id, slotId));
+      logger.error('[MarketplaceBookings] Booking transaction failed — slot reverted to available', {
+        slotId, userId, error: txErr.message
+      });
+      throw txErr;
+    }
 
     // Generate invoice number: INV-YYYYMMDD-XXXX
     const now = new Date();

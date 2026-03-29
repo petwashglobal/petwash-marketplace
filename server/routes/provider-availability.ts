@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db';
 import {
   providerAvailability,
+  availabilitySlots,
   bookings,
   bookingRequests,
   providers,
@@ -441,6 +442,119 @@ router.get('/:providerId/check', async (req, res) => {
   } catch (error: any) {
     logger.error('[ProviderAvailability] Check error', { error: error.message });
     res.status(500).json({ error: 'Failed to check availability' });
+  }
+});
+
+// ── Provider Slot Management (availability_slots table) ──────────────────────
+// POST /api/provider-availability/slots — create one or more availability slots
+router.post('/slots', async (req, res) => {
+  try {
+    const userId: string | undefined = (req as any).user?.uid || (req as any).userId;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+    // Resolve numeric provider id from firebase uid
+    const [provider] = await db.select({ id: providers.id, status: providers.status })
+      .from(providers)
+      .where(eq(providers.userId, userId));
+
+    if (!provider) return res.status(403).json({ error: 'Provider profile not found' });
+    if (provider.status !== 'active' && provider.status !== 'approved') {
+      return res.status(403).json({ error: 'Provider account is not yet approved' });
+    }
+
+    const { platformId, startTime, endTime, timezone, isRecurring, recurrenceRule, recurrenceEnd, bufferBefore, bufferAfter, notes } = req.body;
+
+    if (!platformId || !startTime || !endTime) {
+      return res.status(400).json({ error: 'platformId, startTime, and endTime are required' });
+    }
+
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ error: 'Invalid startTime or endTime' });
+    }
+    if (end <= start) {
+      return res.status(400).json({ error: 'endTime must be after startTime' });
+    }
+
+    const [slot] = await db.insert(availabilitySlots).values({
+      providerId: provider.id,
+      platformId: String(platformId).toUpperCase(),
+      startTime: start,
+      endTime: end,
+      timezone: timezone || 'Asia/Jerusalem',
+      isRecurring: Boolean(isRecurring),
+      recurrenceRule: recurrenceRule || null,
+      recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : null,
+      bufferBefore: Number(bufferBefore) || 0,
+      bufferAfter: Number(bufferAfter) || 0,
+      notes: notes || null,
+      status: 'available',
+    }).returning();
+
+    logger.info('[ProviderAvailability] Slot created', { slotId: slot.id, providerId: provider.id });
+    return res.status(201).json({ success: true, slot });
+  } catch (error: any) {
+    logger.error('[ProviderAvailability] Slot create error', { error: error.message });
+    return res.status(500).json({ error: 'Failed to create slot' });
+  }
+});
+
+// GET /api/provider-availability/slots — list this provider's slots
+router.get('/slots', async (req, res) => {
+  try {
+    const userId: string | undefined = (req as any).user?.uid || (req as any).userId;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+    const [provider] = await db.select({ id: providers.id })
+      .from(providers)
+      .where(eq(providers.userId, userId));
+
+    if (!provider) return res.status(403).json({ error: 'Provider profile not found' });
+
+    const slots = await db.select()
+      .from(availabilitySlots)
+      .where(eq(availabilitySlots.providerId, provider.id));
+
+    return res.json({ success: true, slots });
+  } catch (error: any) {
+    logger.error('[ProviderAvailability] Slot list error', { error: error.message });
+    return res.status(500).json({ error: 'Failed to list slots' });
+  }
+});
+
+// DELETE /api/provider-availability/slots/:slotId — cancel a slot
+router.delete('/slots/:slotId', async (req, res) => {
+  try {
+    const userId: string | undefined = (req as any).user?.uid || (req as any).userId;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+    const slotId = Number(req.params.slotId);
+    if (isNaN(slotId)) return res.status(400).json({ error: 'Invalid slot id' });
+
+    const [provider] = await db.select({ id: providers.id })
+      .from(providers)
+      .where(eq(providers.userId, userId));
+
+    if (!provider) return res.status(403).json({ error: 'Provider profile not found' });
+
+    const [slot] = await db.select({ id: availabilitySlots.id, status: availabilitySlots.status, providerId: availabilitySlots.providerId })
+      .from(availabilitySlots)
+      .where(eq(availabilitySlots.id, slotId));
+
+    if (!slot) return res.status(404).json({ error: 'Slot not found' });
+    if (slot.providerId !== provider.id) return res.status(403).json({ error: 'Not your slot' });
+    if (slot.status === 'booked') return res.status(409).json({ error: 'Cannot cancel a booked slot' });
+
+    await db.update(availabilitySlots)
+      .set({ status: 'cancelled', updatedAt: new Date() })
+      .where(eq(availabilitySlots.id, slotId));
+
+    logger.info('[ProviderAvailability] Slot cancelled', { slotId, providerId: provider.id });
+    return res.json({ success: true });
+  } catch (error: any) {
+    logger.error('[ProviderAvailability] Slot cancel error', { error: error.message });
+    return res.status(500).json({ error: 'Failed to cancel slot' });
   }
 });
 
