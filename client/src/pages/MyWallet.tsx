@@ -68,6 +68,8 @@ interface ActivityItem {
   referenceId: string | null;
 }
 
+const GOLD = '#C5A55A';
+
 const formatCurrency = (cents: number) =>
   `₪${(cents / 100).toLocaleString('en-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -133,6 +135,11 @@ export default function MyWallet() {
   const { data: activityData, isLoading: activityLoading } = useQuery<{ success: boolean; activities: ActivityItem[]; total: number }>({
     queryKey: ['/api/credit-wallet/activity'],
     enabled: showActivity,
+  });
+
+  const { data: bookingStats } = useQuery<{ count: number }>({
+    queryKey: ['/api/booking-requests/my-completed-count'],
+    enabled: !!user,
   });
 
   const topUpMutation = useMutation({
@@ -233,6 +240,30 @@ export default function MyWallet() {
               </p>
             </CardContent>
           </Card>
+
+          {/* T002: First booking conversion banner — show when funded with 0 completed bookings */}
+          {(wallet?.totalCreditsValueCents ?? 0) > 0 && (bookingStats?.count ?? 1) === 0 && (
+            <div
+              className="rounded-2xl p-4 mb-4 luxury-animate-slide-up flex items-center justify-between gap-3"
+              style={{ background: 'linear-gradient(135deg, #fdf8ee 0%, #fff9ef 100%)', border: `1.5px solid ${GOLD}44` }}
+            >
+              <div className="min-w-0">
+                <p className="font-bold text-sm text-gray-900">
+                  {isHebrew ? '🎉 הארנק מוכן — הזמן שירות ראשון!' : '🎉 Wallet ready — book your first service!'}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {isHebrew ? 'השתמש ביתרה שלך לחוויה ראשונה' : 'Use your balance for a first-time experience'}
+                </p>
+              </div>
+              <button
+                onClick={() => setLocation('/marketplace')}
+                className="flex-shrink-0 text-xs font-bold px-4 py-2 rounded-xl text-white"
+                style={{ background: GOLD }}
+              >
+                {isHebrew ? 'הזמן עכשיו' : 'Book Now'}
+              </button>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3 max-[375px]:gap-2 mb-3 luxury-animate-slide-up">
             {/* Cash Wallet */}
@@ -451,6 +482,17 @@ export default function MyWallet() {
             >
               <Plus className="w-4 h-4" />
               {isHebrew ? 'טעינת ארנק' : 'Top Up Wallet'}
+            </Button>
+
+            {/* T001: Send as Gift CTA */}
+            <Button
+              variant="outline"
+              onClick={() => setLocation('/e-gift')}
+              className="w-full h-12 rounded-xl font-semibold gap-2"
+              style={{ borderColor: GOLD, color: GOLD }}
+            >
+              <Gift className="w-4 h-4" />
+              {isHebrew ? 'שלח כמתנה' : 'Send as Gift'}
             </Button>
 
             <Button

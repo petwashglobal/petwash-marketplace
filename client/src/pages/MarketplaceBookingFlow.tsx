@@ -61,6 +61,26 @@ export default function MarketplaceBookingFlow() {
   const [selectedSlotStart, setSelectedSlotStart] = useState<Date | null>(null);
   const [selectedSlotEnd, setSelectedSlotEnd] = useState<Date | null>(null);
 
+  // T005: Upsell add-ons
+  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+
+  const ADDON_OPTIONS = [
+    { code: 'pickup',    labelHe: 'איסוף',              labelEn: 'Pet Pickup',   priceCents: 3500,  emoji: '🚗' },
+    { code: 'dropoff',   labelHe: 'החזרה',              labelEn: 'Drop-off',     priceCents: 3500,  emoji: '🏠' },
+    { code: 'grooming',  labelHe: 'טיפוח',              labelEn: 'Grooming',     priceCents: 8500,  emoji: '✂️' },
+    { code: 'medication',labelHe: 'מתן תרופות',         labelEn: 'Medication',   priceCents: 2500,  emoji: '💊' },
+  ] as const;
+
+  const addonsTotalCents = ADDON_OPTIONS
+    .filter(a => selectedAddons.includes(a.code))
+    .reduce((sum, a) => sum + a.priceCents, 0);
+
+  const toggleAddon = (code: string) => {
+    setSelectedAddons(prev =>
+      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code],
+    );
+  };
+
   // Credit wallet state
   const [appliedCredits, setAppliedCredits] = useState<{
     redemptionSessionId: string;
@@ -189,7 +209,7 @@ export default function MarketplaceBookingFlow() {
   })();
   
   const platformFeeCents = Math.round(basePriceCents * 0.10); // 10% platform fee
-  const subtotalCents = basePriceCents + platformFeeCents;
+  const subtotalCents = basePriceCents + platformFeeCents + addonsTotalCents;
   const vatCents = Math.round(subtotalCents * 0.18); // 18% VAT (Israeli law updated Jan 2025)
   const totalCents = subtotalCents + vatCents;
 
@@ -210,7 +230,7 @@ export default function MarketplaceBookingFlow() {
         endDate: selectedSlotEnd?.toISOString() || selectedDate?.toISOString(),
         petIds: selectedPetId ? [selectedPetId] : [],
         serviceType: selectedService,
-        addons: [],
+        addons: selectedAddons,
         slotId: selectedSlotId,
         lockToken,
       });
@@ -568,6 +588,52 @@ export default function MarketplaceBookingFlow() {
                       </Button>
                     </div>
                   )}
+
+                  {/* T005: Upsell — Extras */}
+                  <div className="mt-6">
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                      {isHebrew ? 'תוספות (אופציונלי)' : 'Add-ons (Optional)'}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {ADDON_OPTIONS.map(addon => {
+                        const active = selectedAddons.includes(addon.code);
+                        return (
+                          <button
+                            key={addon.code}
+                            type="button"
+                            onClick={() => toggleAddon(addon.code)}
+                            className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
+                              active
+                                ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                                : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
+                            }`}
+                          >
+                            <span className="text-xl">{addon.emoji}</span>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
+                                {isHebrew ? addon.labelHe : addon.labelEn}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                +₪{(addon.priceCents / 100).toFixed(0)}
+                              </p>
+                            </div>
+                            {active && (
+                              <div className="w-5 h-5 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0">
+                                <Check className="w-3 h-3 text-white" />
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {addonsTotalCents > 0 && (
+                      <p className="text-xs text-purple-600 font-medium mt-2">
+                        {isHebrew
+                          ? `תוספות: +₪${(addonsTotalCents / 100).toFixed(0)}`
+                          : `Add-ons total: +₪${(addonsTotalCents / 100).toFixed(0)}`}
+                      </p>
+                    )}
+                  </div>
 
                   <div className="flex gap-4 mt-6">
                     <Button

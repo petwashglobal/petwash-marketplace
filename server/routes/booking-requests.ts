@@ -1195,6 +1195,33 @@ router.post('/:requestId/complete', async (req, res) => {
         .catch((e: any) => logger.warn('[RebookScheduler] weekly_rebook schedule failed', { error: e.message }));
     }
 
+    // ── Non-blocking: T006 Wallet nudge — fire if balance drops below ₪100 ──
+    if (booking.ownerId) {
+      setImmediate(async () => {
+        try {
+          const summary = await walletService.getWalletSummary(booking.ownerId);
+          const totalCents = (summary as any)?.totalCreditsValueCents ?? 0;
+          if (totalCents < 10000) {
+            await db.insert(superAppNotifications).values({
+              userId:     booking.ownerId,
+              type:       'wallet_balance_low',
+              title:      'הארנק שלך מתרוקן!',
+              titleHe:    'הארנק שלך מתרוקן!',
+              body:       'הטעינו כעת לאפשרות ההזמנה הבאה.',
+              bodyHe:     'הטעינו כעת לאפשרות ההזמנה הבאה.',
+              actionUrl:  '/my-wallet',
+              actionType: 'open_wallet',
+              channels:   ['in_app'],
+              isRead:     false,
+              createdAt:  new Date(),
+            } as any);
+          }
+        } catch (nudgeErr: any) {
+          logger.warn('[WalletNudge] post-completion balance check failed', { error: nudgeErr.message });
+        }
+      });
+    }
+
     // ── Non-blocking: Refresh provider trust metrics cache ───────────────────
     setImmediate(async () => {
       try {
@@ -2019,6 +2046,27 @@ router.post('/rebook-triggers/:triggerId/:action', async (req, res) => {
   } catch (err: any) {
     logger.error('[BookingRequests] Rebook tracking error', { error: err.message });
     return res.status(500).json({ error: 'Tracking failed' });
+  }
+});
+
+// ── T002: First booking conversion — completed booking count for current user ──
+router.get('/my-completed-count', async (req, res) => {
+  const userId = req.user?.uid || req.firebaseUser?.uid;
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const result = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(bookingRequests)
+      .where(
+        and(
+          eq(bookingRequests.ownerId, userId),
+          inArray(bookingRequests.status as any, ['completed', 'reviewed']),
+        ),
+      );
+    res.json({ count: result[0]?.count ?? 0 });
+  } catch (err: any) {
+    logger.warn('[BookingRequests] my-completed-count error', { error: err.message });
+    res.json({ count: 0 });
   }
 });
 

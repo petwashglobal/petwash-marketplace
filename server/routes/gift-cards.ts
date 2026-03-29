@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { db } from '../db';
 import { eVouchers, eVoucherRedemptions } from '@shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
+import { auth } from '../lib/firebase-admin';
+import { walletService } from '../services/WalletService';
 import { QRCodeService } from '../qrCode';
 import { EmailService } from '../emailService';
 import { GoogleMessagingService } from '../services/GoogleMessagingService';
@@ -921,6 +923,117 @@ router.post('/:voucherId/wallet-links', async (req, res) => {
   } catch (error: any) {
     logger.error('[E-Gift Wallet] Link generation error', { error: error.message });
     res.status(500).json({ error: 'Failed to generate wallet links' });
+  }
+});
+
+// ── T001: Gift info (public — called by GiftActivate page before auth) ────────
+router.get('/:voucherId/info', async (req, res) => {
+  try {
+    const { voucherId } = req.params;
+    const [voucher] = await db
+      .select({
+        id:            eVouchers.id,
+        codeLast4:     eVouchers.codeLast4,
+        initialAmount: eVouchers.initialAmount,
+        status:        eVouchers.status,
+        expiresAt:     eVouchers.expiresAt,
+        recipientEmail: eVouchers.recipientEmail,
+      })
+      .from(eVouchers)
+      .where(eq(eVouchers.id, voucherId));
+
+    if (!voucher) return res.status(404).json({ error: 'Gift card not found' });
+
+    const expired = voucher.expiresAt && new Date(voucher.expiresAt) < new Date();
+    res.json({
+      id:            voucher.id,
+      codeLast4:     voucher.codeLast4,
+      amountIls:     parseFloat(voucher.initialAmount),
+      status:        voucher.status,
+      expired:       !!expired,
+      recipientEmail: voucher.recipientEmail,
+    });
+  } catch (err: any) {
+    logger.error('[E-Gift] info fetch error', { error: err.message });
+    res.status(500).json({ error: 'Failed to fetch gift info' });
+  }
+});
+
+// ── T001: Activate gift → credit recipient's wallet ────────────────────────
+router.post('/:voucherId/activate-wallet', async (req, res) => {
+  const correlationId = crypto.randomUUID();
+  try {
+    // Require Firebase auth
+    const authHeader = req.headers.authorization ?? '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    const idToken = authHeader.slice(7);
+    const decoded = await auth.verifyIdToken(idToken);
+    const userId = decoded.uid;
+
+    const { voucherId } = req.params;
+
+    // Atomically mark as REDEEMED — returns the updated row or nothing
+    const updateResult = await db
+      .update(eVouchers)
+      .set({
+        status:      'REDEEMED',
+        ownerUid:    userId,
+        activatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(eVouchers.id, voucherId),
+          eq(eVouchers.status, 'ISSUED'),
+          sql`(${eVouchers.expiresAt} IS NULL OR ${eVouchers.expiresAt} > NOW())`,
+        ),
+      )
+      .returning({
+        id:            eVouchers.id,
+        initialAmount: eVouchers.initialAmount,
+      });
+
+    if (updateResult.length === 0) {
+      // Either already redeemed, expired, or not found
+      const [voucher] = await db
+        .select({ status: eVouchers.status })
+        .from(eVouchers)
+        .where(eq(eVouchers.id, voucherId));
+      const reason = !voucher
+        ? 'Gift card not found'
+        : voucher.status === 'REDEEMED'
+        ? 'This gift card has already been activated'
+        : 'Gift card is expired or invalid';
+      return res.status(400).json({ error: reason });
+    }
+
+    const amountIls  = parseFloat(updateResult[0].initialAmount);
+    const amountCents = Math.round(amountIls * 100);
+
+    // Credit the recipient's wallet
+    await walletService.addCredits(
+      userId,
+      'egift',
+      amountCents,
+      'gift_activation',
+      voucherId,
+      `Gift card #${updateResult[0].id} activated`,
+    );
+
+    logger.info('[E-Gift] Gift activated → wallet credited', {
+      correlationId, voucherId, userId, amountIls,
+    });
+
+    res.json({
+      success:    true,
+      amountIls,
+      amountCents,
+      message:    `₪${amountIls.toFixed(2)} credited to your wallet`,
+    });
+  } catch (err: any) {
+    logger.error('[E-Gift] activate-wallet error', { error: err.message, correlationId });
+    res.status(500).json({ error: 'Failed to activate gift card' });
   }
 });
 

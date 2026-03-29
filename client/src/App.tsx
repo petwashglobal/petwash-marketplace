@@ -92,6 +92,7 @@ const LoyaltyRefer = lazy(() => import("@/pages/LoyaltyRefer"));
 const LoyaltyCreditsHistory = lazy(() => import("@/pages/LoyaltyCreditsHistory"));
 const ReferralPage = lazy(() => import("@/pages/ReferralPage"));
 const EGift = lazy(() => import("@/pages/EGift"));
+const GiftActivate = lazy(() => import("@/pages/GiftActivate"));
 const Vouchers = lazy(() => import("@/pages/Vouchers"));
 const Verify = lazy(() => import("@/pages/Verify"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
@@ -712,6 +713,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         
         {/* eGift Cards & Vouchers 2025 */}
+        <Route path="/gift/activate/:voucherId">
+          {() => <GiftActivate />}
+        </Route>
         <Route path="/egift">
           {() => <EGift />}
         </Route>

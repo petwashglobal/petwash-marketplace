@@ -417,6 +417,34 @@ export default function BookingConfirmation() {
             <RebookPanel booking={booking} t={t} navigate={navigate} />
           )}
 
+          {/* ── T007: Post-service next actions ── */}
+          {showRebook && (
+            <div className="mb-4 rounded-2xl p-4" style={{ background: '#fafafa', border: '1px solid #f0f0f0' }}>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+                {isRTL ? 'מה הלאה?' : "What's Next?"}
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { icon: '✂️', labelHe: 'הזמן טיפוח', labelEn: 'Book Grooming', route: '/groomers' },
+                  { icon: '🐾', labelHe: 'כל השירותים', labelEn: 'Browse Services', route: '/marketplace' },
+                  { icon: '💳', labelHe: 'טעינת ארנק', labelEn: 'Top Up Wallet', route: '/my-wallet' },
+                ].map(item => (
+                  <button
+                    key={item.route}
+                    onClick={() => navigate(item.route)}
+                    className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl hover:bg-white active:scale-95 transition-all"
+                    style={{ border: '1px solid #f0f0f0' }}
+                  >
+                    <span className="text-2xl">{item.icon}</span>
+                    <span className="text-xs font-medium text-gray-600 text-center leading-tight">
+                      {isRTL ? item.labelHe : item.labelEn}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* ── Declined / Cancelled alert + find-another ── */}
           {showAlertPanel && (
             <StatusAlertPanel booking={booking} t={t} navigate={navigate} />
