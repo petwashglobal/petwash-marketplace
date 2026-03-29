@@ -537,16 +537,15 @@ class AdminProviderReviewService {
 
           if (platform === 'walk_my_pet') {
             const [walker] = await db.select({ userId: walkerProfiles.userId })
-              .from(walkerProfiles).where(eq(walkerProfiles.walkerId, providerId)).limit(1);
+              .from(walkerProfiles).where(eq(walkerProfiles.userId, providerId)).limit(1);
             if (walker) firebaseUid = walker.userId;
           } else if (platform === 'sitter_suite') {
-            const numId = parseInt(providerId);
             const [sitter] = await db.select({ userId: sitterProfiles.userId })
-              .from(sitterProfiles).where(eq(sitterProfiles.id, numId)).limit(1);
+              .from(sitterProfiles).where(eq(sitterProfiles.userId, providerId)).limit(1);
             if (sitter) firebaseUid = sitter.userId;
           } else if (platform === 'pettrek') {
             const [trainer] = await db.select({ userId: trainers.userId })
-              .from(trainers).where(eq(trainers.id, parseInt(providerId))).limit(1);
+              .from(trainers).where(eq(trainers.userId, providerId)).limit(1);
             if (trainer) firebaseUid = trainer.userId;
           }
 
