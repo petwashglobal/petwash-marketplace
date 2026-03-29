@@ -71,6 +71,10 @@ router.post('/quote', async (req, res) => {
     // Persist the quote to database and generate a quoteId
     const quoteId = `QUOTE-${nanoid(12)}`;
     
+    // quoteRequests schema column names:
+    //   surchargeCents  (single column for all surcharges — weekend + holiday combined)
+    //   discountCents   (single column for all discounts — duration + combo + loyalty combined)
+    //   taxCents        (VAT — NOT vatCents)
     await db.insert(quoteRequests).values({
       quoteId,
       customerId: userId || 'anonymous',
@@ -82,12 +86,14 @@ router.post('/quote', async (req, res) => {
       petCount,
       baseAmountCents: quote.baseAmountCents,
       additionalPetsCents: quote.additionalPetsCents,
-      weekendSurchargeCents: quote.weekendSurchargeCents,
-      durationDiscountCents: quote.durationDiscountCents,
-      comboDiscountCents: quote.comboDiscountCents,
-      loyaltyDiscountCents: quote.loyaltyDiscountCents,
+      addonsCents: quote.addonsCents,
+      // Schema has one combined surcharge column — store weekend surcharge here
+      surchargeCents: quote.weekendSurchargeCents,
+      // Schema has one combined discount column — sum all discount types
+      discountCents: (quote.durationDiscountCents || 0) + (quote.comboDiscountCents || 0) + (quote.loyaltyDiscountCents || 0),
+      subtotalCents: quote.subtotalCents,
       platformFeeCents: quote.platformFeeCents,
-      vatCents: quote.vatCents,
+      taxCents: quote.vatCents,   // T4 fix: schema column is taxCents not vatCents
       totalCents: quote.totalCents,
       providerEarningsCents: quote.providerEarningsCents,
       status: 'pending',

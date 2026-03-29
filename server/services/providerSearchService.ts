@@ -95,6 +95,7 @@ async function resolveSearchLocation(filters: ProviderSearchFilters): Promise<{
 }> {
   // Frontend already sent GPS — use it directly
   if (typeof filters.lat === "number" && typeof filters.lng === "number") {
+    logger.info("[ProviderSearch] locationSource=input", { lat: filters.lat, lng: filters.lng });
     return { lat: filters.lat, lng: filters.lng, source: "input" };
   }
 
@@ -102,9 +103,13 @@ async function resolveSearchLocation(filters: ProviderSearchFilters): Promise<{
   const query = filters.postcode || filters.q;
   if (query) {
     const coords = await geocodeQuery(query);
-    if (coords) return { ...coords, source: "query_geocode" };
+    if (coords) {
+      logger.info("[ProviderSearch] locationSource=query_geocode", { query, lat: coords.lat, lng: coords.lng });
+      return { ...coords, source: "query_geocode" };
+    }
   }
 
+  logger.info("[ProviderSearch] locationSource=none — no GPS, no geocodable query");
   return { source: "none" };
 }
 
