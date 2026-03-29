@@ -260,6 +260,34 @@ router.get('/verify-email-link', async (req: Request, res: Response) => {
 
     logger.info('[Verification] Email verified via link', { email: email.slice(0, 3) + '***' });
 
+    // ── Write email_verified_at + advance activation state machine ──────────
+    // Look up user by email and call markEmailVerified so DB is updated
+    // immediately on link click — no second round-trip required.
+    try {
+      const [dbUser] = await db.select({ id: users.id })
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+
+      if (dbUser) {
+        await markEmailVerified(dbUser.id, { acceptTerms: true });
+        logger.info('[Verification] email_verified_at written via link click', {
+          userId: dbUser.id,
+          email: email.slice(0, 3) + '***',
+        });
+      } else {
+        logger.warn('[Verification] verify-email-link: no user found for email — DB write skipped', {
+          email: email.slice(0, 3) + '***',
+        });
+      }
+    } catch (dbErr: any) {
+      // Non-fatal — in-memory flag still set, poll path remains as fallback
+      logger.error('[Verification] verify-email-link DB write failed (non-fatal)', {
+        email: email.slice(0, 3) + '***',
+        error: dbErr.message,
+      });
+    }
+
     return res.send(renderLinkResultPage(true, isHebrew
       ? 'האימייל אומת בהצלחה! חזרו לאפליקציה להמשך.'
       : 'Email verified successfully! Return to the app to continue.', isHebrew));
