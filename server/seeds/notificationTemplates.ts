@@ -247,6 +247,158 @@ const defaultTemplates: InsertNotificationTemplate[] = [
     inAppBody: 'Your {{booking.serviceType}} booking on {{booking.date}} has been confirmed.',
     isActive: true,
   },
+
+  // 8. BOOKING COMPLETED
+  {
+    key: 'booking_completed',
+    name: 'Booking Completed',
+    description: 'Sent to customer when a service booking is marked as completed',
+    channels: ['email', 'push', 'in_app'],
+    emailSubject: '✅ השירות הושלם — {{booking.serviceType}}',
+    emailBody: `
+      <html>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; direction: rtl;">
+          <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: right;">
+            <h1 style="margin: 0;">✅ השירות הושלם בהצלחה</h1>
+          </div>
+          <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; text-align: right;">
+            <p>שלום {{customer.name}},</p>
+            <p>השירות שלך הושלם בהצלחה!</p>
+            <p><strong>שירות:</strong> {{booking.serviceType}}</p>
+            <p><strong>מטפל:</strong> {{booking.providerName}}</p>
+            <p><strong>סכום:</strong> ₪{{booking.amount}}</p>
+            <p><strong>מספר הזמנה:</strong> {{booking.id}}</p>
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #dee2e6;">
+            <p style="background: #d4edda; border-left: 4px solid #28a745; padding: 12px; margin: 20px 0;">
+              🐾 <strong>נשמח לדעת מה חשבת!</strong> השאר ביקורת ועזור לבעלי חיות אחרים.
+            </p>
+            <p style="margin-top: 20px; text-align: center;">
+              <a href="{{reviewUrl}}"
+                 style="background: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                השאר ביקורת
+              </a>
+            </p>
+            <p style="color: #6c757d; font-size: 12px; margin-top: 20px;">{{timestamp}}</p>
+          </div>
+        </body>
+      </html>
+    `,
+    pushTitle: '✅ השירות הושלם!',
+    pushBody: '{{booking.serviceType}} עם {{booking.providerName}} הסתיים. השאר ביקורת!',
+    inAppTitle: 'השירות הושלם בהצלחה',
+    inAppBody: '{{booking.serviceType}} הושלם. תודה שבחרת ב-PetWash™!',
+    isActive: true,
+  },
+
+  // 9. BOOKING CANCELLED
+  {
+    key: 'booking_cancelled',
+    name: 'Booking Cancelled',
+    description: 'Sent to customer when a booking is cancelled',
+    channels: ['email', 'push', 'in_app'],
+    emailSubject: '❌ ההזמנה בוטלה — {{booking.serviceType}}',
+    emailBody: `
+      <html>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; direction: rtl;">
+          <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: right;">
+            <h1 style="margin: 0;">❌ ההזמנה בוטלה</h1>
+          </div>
+          <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; text-align: right;">
+            <p>שלום {{customer.name}},</p>
+            <p>ההזמנה שלך בוטלה.</p>
+            <p><strong>שירות:</strong> {{booking.serviceType}}</p>
+            <p><strong>תאריך:</strong> {{booking.date}} בשעה {{booking.time}}</p>
+            <p><strong>מספר הזמנה:</strong> {{booking.id}}</p>
+            <p><strong>סיבת ביטול:</strong> {{booking.reason}}</p>
+            <p><strong>בוטל על ידי:</strong> {{booking.cancelledBy}}</p>
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #dee2e6;">
+            <p style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin: 20px 0;">
+              💳 אם שולמה מקדמה, היא תוחזר לארנק שלך תוך 1-3 ימי עסקים.
+            </p>
+            <p style="margin-top: 20px; text-align: center;">
+              <a href="https://petwash.co.il/book"
+                 style="background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                הזמן שוב
+              </a>
+            </p>
+            <p style="color: #6c757d; font-size: 12px; margin-top: 20px;">{{timestamp}}</p>
+          </div>
+        </body>
+      </html>
+    `,
+    pushTitle: '❌ ההזמנה בוטלה',
+    pushBody: '{{booking.serviceType}} בתאריך {{booking.date}} בוטל. ניתן להזמין מחדש.',
+    inAppTitle: 'ההזמנה בוטלה',
+    inAppBody: '{{booking.serviceType}} בוטל. {{booking.reason}}',
+    isActive: true,
+  },
+
+  // 10. PROVIDER APPROVED
+  {
+    key: 'provider_approved',
+    name: 'Provider Application Approved',
+    description: 'Sent to provider when their application is approved',
+    channels: ['email', 'push'],
+    emailSubject: '🎉 הבקשה שלך אושרה — ברוך הבא ל-PetWash™!',
+    emailBody: `
+      <html>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; direction: rtl;">
+          <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: right;">
+            <h1 style="margin: 0;">🎉 ברוך הבא ל-PetWash™!</h1>
+          </div>
+          <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; text-align: right;">
+            <p>שלום {{provider.name}},</p>
+            <p>אנחנו שמחים לבשר לך שהבקשה שלך <strong>אושרה</strong>!</p>
+            <p><strong>שירות:</strong> {{provider.serviceType}}</p>
+            <p>מעתה תוכל לקבל הזמנות ולהתחיל לעבוד עם לקוחות דרך הפלטפורמה.</p>
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #dee2e6;">
+            <p style="margin-top: 20px; text-align: center;">
+              <a href="https://petwash.co.il/provider/dashboard"
+                 style="background: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                עבור לדשבורד שלי
+              </a>
+            </p>
+            <p style="color: #6c757d; font-size: 12px; margin-top: 20px;">{{timestamp}}</p>
+          </div>
+        </body>
+      </html>
+    `,
+    pushTitle: '🎉 הבקשה אושרה!',
+    pushBody: 'ברוך הבא ל-PetWash™! אתה יכול להתחיל לקבל הזמנות.',
+    isActive: true,
+  },
+
+  // 11. PROVIDER REJECTED
+  {
+    key: 'provider_rejected',
+    name: 'Provider Application Rejected',
+    description: 'Sent to provider when their application is rejected',
+    channels: ['email', 'push'],
+    emailSubject: 'עדכון לגבי הבקשה שלך ל-PetWash™',
+    emailBody: `
+      <html>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; direction: rtl;">
+          <div style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: right;">
+            <h1 style="margin: 0;">עדכון על בקשתך</h1>
+          </div>
+          <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; text-align: right;">
+            <p>שלום {{provider.name}},</p>
+            <p>לאחר בחינת הבקשה שלך, לא נוכל לאשר אותה בשלב זה.</p>
+            <p><strong>שירות:</strong> {{provider.serviceType}}</p>
+            <p><strong>סיבה:</strong> {{reason}}</p>
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #dee2e6;">
+            <p style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 12px; margin: 20px 0;">
+              אם יש לך שאלות, אנא פנה לתמיכה שלנו בכתובת support@petwash.co.il
+            </p>
+            <p style="color: #6c757d; font-size: 12px; margin-top: 20px;">{{timestamp}}</p>
+          </div>
+        </body>
+      </html>
+    `,
+    pushTitle: 'עדכון על בקשתך',
+    pushBody: 'קיבלנו עדכון לגבי בקשתך ל-PetWash™. בדוק את המייל שלך לפרטים.',
+    isActive: true,
+  },
 ];
 
 /**

@@ -15,7 +15,7 @@ export function registerNotificationEventHandlers() {
   
   // ==================== INCIDENT EVENTS ====================
   
-  eventBus.subscribe('INCIDENT_REPORTED', async (event: PlatformEvent) => {
+  eventBus.subscribe('incident.reported', async (event: PlatformEvent) => {
     logger.info('[NotificationEventHandler] Incident reported event received', {
       incidentId: event.data.incidentId,
     });
@@ -43,7 +43,7 @@ export function registerNotificationEventHandlers() {
   
   // ==================== INVENTORY EVENTS ====================
   
-  eventBus.subscribe('INVENTORY_LOW', async (event: PlatformEvent) => {
+  eventBus.subscribe('inventory.low', async (event: PlatformEvent) => {
     logger.info('[NotificationEventHandler] Inventory low event received', {
       itemId: event.data.itemId,
     });
@@ -71,7 +71,7 @@ export function registerNotificationEventHandlers() {
   
   // ==================== FINANCE EVENTS ====================
   
-  eventBus.subscribe('SETTLEMENT_GENERATED', async (event: PlatformEvent) => {
+  eventBus.subscribe('settlement.generated', async (event: PlatformEvent) => {
     logger.info('[NotificationEventHandler] Settlement generated event received', {
       settlementId: event.data.settlementId,
     });
@@ -99,7 +99,7 @@ export function registerNotificationEventHandlers() {
   
   // ==================== LOGISTICS EVENTS ====================
   
-  eventBus.subscribe('LOGISTICS_TASK_ASSIGNED', async (event: PlatformEvent) => {
+  eventBus.subscribe('logistics_task.assigned', async (event: PlatformEvent) => {
     logger.info('[NotificationEventHandler] Logistics task assigned event received', {
       taskId: event.data.taskId,
       technicianId: event.data.technicianId,
@@ -134,7 +134,7 @@ export function registerNotificationEventHandlers() {
   
   // ==================== STATION EVENTS ====================
   
-  eventBus.subscribe('STATION_HEARTBEAT_MISSED', async (event: PlatformEvent) => {
+  eventBus.subscribe('station.heartbeat_missed', async (event: PlatformEvent) => {
     logger.info('[NotificationEventHandler] Station heartbeat missed event received', {
       stationId: event.data.stationId,
     });
@@ -231,6 +231,175 @@ export function registerNotificationEventHandlers() {
     }
   }, 5);
   
+  // ==================== BOOKING COMPLETION EVENTS ====================
+
+  eventBus.subscribe('booking.completed', async (event: PlatformEvent) => {
+    logger.info('[NotificationEventHandler] Booking completed event received', {
+      bookingId: event.data.bookingId,
+      userId: event.userId,
+    });
+
+    try {
+      if (event.userId) {
+        await NotificationService.sendNotification({
+          templateKey: 'booking_completed',
+          userId: event.userId,
+          channelsOverride: ['email', 'push', 'in_app'],
+          variables: {
+            booking: {
+              id: event.data.bookingId,
+              serviceType: event.data.serviceType,
+              providerName: event.data.providerName,
+              amount: event.data.amount,
+              currency: 'ILS',
+            },
+            customer: {
+              name: event.data.customerName,
+            },
+            reviewUrl: `https://petwash.co.il/review/${event.data.bookingId}`,
+            timestamp: new Date().toLocaleString('he-IL'),
+          },
+        });
+      }
+    } catch (error: any) {
+      logger.error('[NotificationEventHandler] Failed to send booking completion notification', {
+        error: error.message,
+      });
+    }
+  }, 5);
+
+  eventBus.subscribe('booking.cancelled', async (event: PlatformEvent) => {
+    logger.info('[NotificationEventHandler] Booking cancelled event received', {
+      bookingId: event.data.bookingId,
+      userId: event.userId,
+    });
+
+    try {
+      if (event.userId) {
+        await NotificationService.sendNotification({
+          templateKey: 'booking_cancelled',
+          userId: event.userId,
+          channelsOverride: ['email', 'push', 'in_app'],
+          variables: {
+            booking: {
+              id: event.data.bookingId,
+              serviceType: event.data.serviceType,
+              date: event.data.date,
+              time: event.data.time,
+              cancelledBy: event.data.cancelledBy || 'system',
+              reason: event.data.reason || 'לא צוין',
+            },
+            customer: {
+              name: event.data.customerName,
+            },
+            timestamp: new Date().toLocaleString('he-IL'),
+          },
+        });
+      }
+    } catch (error: any) {
+      logger.error('[NotificationEventHandler] Failed to send booking cancellation notification', {
+        error: error.message,
+      });
+    }
+  }, 5);
+
+  // ==================== LOYALTY EVENTS ====================
+
+  eventBus.subscribe('loyalty.tier_upgraded', async (event: PlatformEvent) => {
+    logger.info('[NotificationEventHandler] Loyalty tier upgraded event received', {
+      userId: event.userId,
+      newTier: event.data.newTier,
+    });
+
+    try {
+      if (event.userId) {
+        await NotificationService.sendNotification({
+          templateKey: 'booking_confirmed',
+          userId: event.userId,
+          channelsOverride: ['push', 'in_app'],
+          variables: {
+            booking: {
+              serviceType: `שדרוג דרגה: ${event.data.newTier}`,
+              date: new Date().toLocaleDateString('he-IL'),
+              time: '',
+              location: '',
+              providerName: 'PetWash™',
+            },
+            customer: {
+              name: event.data.customerName || '',
+            },
+            timestamp: new Date().toLocaleString('he-IL'),
+          },
+        });
+      }
+    } catch (error: any) {
+      logger.error('[NotificationEventHandler] Failed to send loyalty tier upgrade notification', {
+        error: error.message,
+      });
+    }
+  }, 3);
+
+  // ==================== PROVIDER APPROVAL EVENTS ====================
+
+  eventBus.subscribe('provider.approved', async (event: PlatformEvent) => {
+    logger.info('[NotificationEventHandler] Provider approved event received', {
+      providerId: event.data.providerId,
+      userId: event.userId,
+    });
+
+    try {
+      if (event.userId) {
+        await NotificationService.sendNotification({
+          templateKey: 'provider_approved',
+          userId: event.userId,
+          channelsOverride: ['email', 'push'],
+          variables: {
+            provider: {
+              id: event.data.providerId,
+              name: event.data.providerName,
+              serviceType: event.data.serviceType,
+            },
+            timestamp: new Date().toLocaleString('he-IL'),
+          },
+        });
+      }
+    } catch (error: any) {
+      logger.error('[NotificationEventHandler] Failed to send provider approval notification', {
+        error: error.message,
+      });
+    }
+  }, 5);
+
+  eventBus.subscribe('provider.rejected', async (event: PlatformEvent) => {
+    logger.info('[NotificationEventHandler] Provider rejected event received', {
+      providerId: event.data.providerId,
+      userId: event.userId,
+    });
+
+    try {
+      if (event.userId) {
+        await NotificationService.sendNotification({
+          templateKey: 'provider_rejected',
+          userId: event.userId,
+          channelsOverride: ['email', 'push'],
+          variables: {
+            provider: {
+              id: event.data.providerId,
+              name: event.data.providerName,
+              serviceType: event.data.serviceType,
+            },
+            reason: event.data.reason || 'לא צוין',
+            timestamp: new Date().toLocaleString('he-IL'),
+          },
+        });
+      }
+    } catch (error: any) {
+      logger.error('[NotificationEventHandler] Failed to send provider rejection notification', {
+        error: error.message,
+      });
+    }
+  }, 5);
+
   logger.info('[NotificationEventHandler] All notification event handlers registered');
 }
 
