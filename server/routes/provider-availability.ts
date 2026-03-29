@@ -453,13 +453,16 @@ router.post('/slots', async (req, res) => {
     if (!userId) return res.status(401).json({ error: 'Authentication required' });
 
     // Resolve numeric provider id from firebase uid
-    const [provider] = await db.select({ id: providers.id, status: providers.status })
+    const [provider] = await db.select({ id: providers.id, verificationStatus: providers.verificationStatus, isActive: providers.isActive })
       .from(providers)
       .where(eq(providers.userId, userId));
 
     if (!provider) return res.status(403).json({ error: 'Provider profile not found' });
-    if (provider.status !== 'active' && provider.status !== 'approved') {
+    if (provider.verificationStatus !== 'verified') {
       return res.status(403).json({ error: 'Provider account is not yet approved' });
+    }
+    if (!provider.isActive) {
+      return res.status(403).json({ error: 'Provider account is not active' });
     }
 
     const { platformId, startTime, endTime, timezone, isRecurring, recurrenceRule, recurrenceEnd, bufferBefore, bufferAfter, notes } = req.body;
