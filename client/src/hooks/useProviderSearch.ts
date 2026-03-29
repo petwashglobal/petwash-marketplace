@@ -4,7 +4,7 @@
  * Online service domains only. NOT for K9000.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   ProviderSearchFilters,
   ProviderSearchResponse,
@@ -82,7 +82,10 @@ export function useProviderSearch() {
   const [data, setData] = useState<ProviderSearchResponse | null>(null);
   const [error, setError] = useState("");
 
-  async function runSearch(nextFilters?: ProviderSearchFilters) {
+  // Debounce ref for text search
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const runSearch = useCallback(async (nextFilters?: ProviderSearchFilters) => {
     const merged = nextFilters || filters;
     setLoading(true);
     setError("");
@@ -95,11 +98,22 @@ export function useProviderSearch() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [filters]);
+
+  // Debounced text search — fires 300 ms after the user stops typing
+  const runSearchDebounced = useCallback((nextFilters: ProviderSearchFilters) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      runSearch(nextFilters);
+    }, 300);
+  }, [runSearch]);
 
   // Run on mount from URL params
   useEffect(() => {
     runSearch(filters);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, []);
 
   const activeFilterCount = useMemo(() => {
@@ -136,6 +150,7 @@ export function useProviderSearch() {
     data,
     error,
     runSearch,
+    runSearchDebounced,
     activeFilterCount,
     resetFilters,
   };

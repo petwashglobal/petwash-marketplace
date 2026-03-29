@@ -5,7 +5,6 @@
 
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +15,7 @@ import {
   Zap,
   Navigation,
   ChevronRight,
+  CheckCircle2,
 } from "lucide-react";
 import type { ProviderSearchItem } from "@shared/provider-search-types";
 
@@ -44,17 +44,19 @@ export function ProviderSearchCard({ item }: Props) {
     .join("")
     .toUpperCase();
 
+  const locationParts = [item.suburb, item.city].filter(Boolean).join(", ");
+
   return (
-    <Card
-      className="overflow-hidden hover:shadow-xl transition-all cursor-pointer group border border-zinc-100 dark:border-zinc-800"
+    <div
+      className="bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group border border-zinc-100 dark:border-zinc-800"
       onClick={() => setLocation(`/provider/${item.providerSlug}`)}
       data-testid={`provider-card-${item.providerId}`}
     >
-      {/* Desktop: horizontal layout; Mobile: stacked */}
       <div className="flex flex-col sm:flex-row">
-        {/* Image / avatar */}
-        <div className="relative sm:w-56 sm:shrink-0">
-          <div className="h-48 sm:h-full bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center">
+
+        {/* ── Image panel ─────────────────────────────── */}
+        <div className="relative sm:w-52 sm:shrink-0">
+          <div className="h-52 sm:h-full bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center">
             {imageUrl ? (
               <img
                 src={imageUrl}
@@ -62,33 +64,39 @@ export function ProviderSearchCard({ item }: Props) {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-20 h-20 rounded-full bg-black dark:bg-white flex items-center justify-center">
-                <span className="text-2xl font-bold text-white dark:text-black">
+              <div className="w-20 h-20 rounded-full bg-zinc-800 dark:bg-zinc-200 flex items-center justify-center">
+                <span className="text-2xl font-bold text-white dark:text-zinc-800">
                   {initials}
                 </span>
               </div>
             )}
           </div>
 
-          {/* Trust badges overlaid on image */}
-          <div className="absolute top-3 left-3 flex flex-col gap-1">
+          {/* Trust badges overlaid top-left */}
+          <div className="absolute top-3 left-3 flex flex-col gap-1.5">
             {item.verified && (
-              <Badge className="bg-black text-white dark:bg-white dark:text-black text-xs py-0.5">
-                <Shield className="h-3 w-3 mr-1" />
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-900/90 text-white text-xs font-medium">
+                <Shield className="h-3 w-3" />
                 {isHebrew ? "מאומת" : "Verified"}
-              </Badge>
+              </span>
             )}
             {item.instantBook && (
-              <Badge className="bg-emerald-600 text-white text-xs py-0.5">
-                <Zap className="h-3 w-3 mr-1" />
-                {isHebrew ? "מיידי" : "Instant"}
-              </Badge>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-600/90 text-white text-xs font-medium">
+                <Zap className="h-3 w-3" />
+                {isHebrew ? "הזמנה מיידית" : "Instant Book"}
+              </span>
+            )}
+            {item.insured && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-600/90 text-white text-xs font-medium">
+                <CheckCircle2 className="h-3 w-3" />
+                {isHebrew ? "מבוטח" : "Insured"}
+              </span>
             )}
           </div>
 
-          {/* Distance chip */}
+          {/* Distance chip — bottom right */}
           {typeof item.distanceKm === "number" && (
-            <div className="absolute bottom-3 right-3 bg-white/90 dark:bg-black/90 px-2 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1 shadow">
+            <div className="absolute bottom-3 right-3 bg-white/95 dark:bg-zinc-900/95 px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow-sm border border-zinc-100 dark:border-zinc-700">
               <Navigation className="h-3 w-3 text-emerald-600" />
               <span className="text-emerald-700 dark:text-emerald-400">
                 {item.distanceKm < 1
@@ -99,40 +107,56 @@ export function ProviderSearchCard({ item }: Props) {
           )}
         </div>
 
-        {/* Body */}
-        <CardContent className="flex-1 p-4 flex flex-col justify-between">
+        {/* ── Body ────────────────────────────────────── */}
+        <div className="flex-1 p-5 flex flex-col justify-between min-w-0">
           <div>
-            {/* Name + price */}
-            <div className="flex items-start justify-between mb-2 gap-2">
-              <div>
-                <h3 className="font-bold text-lg leading-tight group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
+            {/* Row 1: Name + price */}
+            <div className="flex items-start justify-between gap-3 mb-1">
+              <div className="min-w-0">
+                <h3 className="font-bold text-lg leading-snug truncate group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors">
                   {item.displayName}
                 </h3>
-                <p className="text-sm text-zinc-500 flex items-center gap-1 mt-0.5">
-                  <MapPin className="h-3 w-3 shrink-0" />
-                  {[item.suburb, item.city].filter(Boolean).join(", ")}
-                </p>
+                {locationParts && (
+                  <p className="text-sm text-zinc-500 flex items-center gap-1 mt-0.5">
+                    <MapPin className="h-3 w-3 shrink-0 text-zinc-400" />
+                    <span className="truncate">{locationParts}</span>
+                  </p>
+                )}
               </div>
               <div className="text-right shrink-0">
-                <p className="font-bold text-lg">{item.priceLabel}</p>
+                <p className="font-bold text-xl leading-tight text-zinc-900 dark:text-zinc-100">
+                  {item.priceLabel}
+                </p>
                 {item.currency && (
-                  <p className="text-xs text-zinc-400">{item.currency}</p>
+                  <p className="text-xs text-zinc-400 mt-0.5">{item.currency}</p>
                 )}
               </div>
             </div>
 
-            {/* Rating + response */}
-            <div className="flex items-center gap-4 mb-3 text-sm text-zinc-500">
-              <span className="flex items-center gap-1 font-medium text-zinc-700 dark:text-zinc-300">
-                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                {item.rating.toFixed(1)}
-                <span className="font-normal text-zinc-400">
+            {/* Row 2: Rating + response time */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 mb-3">
+              {/* Star rating — prominent */}
+              <div className="flex items-center gap-1.5">
+                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 shrink-0" />
+                <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                  {item.rating.toFixed(1)}
+                </span>
+                <span className="text-sm text-zinc-400">
                   ({item.reviewsCount})
                 </span>
-              </span>
+              </div>
+              {/* Completed bookings */}
+              {item.completedBookings > 0 && (
+                <span className="text-sm text-zinc-400">
+                  {isHebrew
+                    ? `${item.completedBookings} הזמנות`
+                    : `${item.completedBookings} bookings`}
+                </span>
+              )}
+              {/* Response time */}
               {item.responseTimeMinutes != null && (
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
+                <span className="flex items-center gap-1 text-sm text-zinc-400">
+                  <Clock className="h-3.5 w-3.5 shrink-0" />
                   {isHebrew
                     ? `עונה תוך ~${item.responseTimeMinutes} דק'`
                     : `Responds ~${item.responseTimeMinutes} min`}
@@ -140,59 +164,62 @@ export function ProviderSearchCard({ item }: Props) {
               )}
             </div>
 
-            {/* Bio */}
+            {/* Short bio */}
             {item.shortBio && (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2 mb-3">
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2 mb-3 leading-relaxed">
                 {item.shortBio}
               </p>
             )}
 
             {/* Service chips */}
-            <div className="flex flex-wrap gap-1 mb-3">
+            <div className="flex flex-wrap gap-1.5 mb-3">
               {item.supportedServices.slice(0, 4).map((s) => (
-                <Badge key={s} variant="outline" className="text-xs">
-                  {isHebrew
-                    ? SERVICE_LABELS[s]?.he || s
-                    : SERVICE_LABELS[s]?.en || s}
+                <Badge
+                  key={s}
+                  variant="outline"
+                  className="text-xs px-2 py-0.5 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400"
+                >
+                  {isHebrew ? SERVICE_LABELS[s]?.he || s : SERVICE_LABELS[s]?.en || s}
                 </Badge>
               ))}
             </div>
 
             {/* Availability */}
             {item.nextAvailableText && (
-              <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+              <p className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block" />
                 {isHebrew ? `זמין: ${item.nextAvailableText}` : `Available: ${item.nextAvailableText}`}
               </p>
             )}
           </div>
 
-          {/* CTA */}
+          {/* CTA buttons */}
           <div className="flex gap-2 mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800">
             <Button
               variant="outline"
               size="sm"
-              className="flex-1"
+              className="flex-1 text-sm border-zinc-200 dark:border-zinc-700"
               onClick={(e) => {
                 e.stopPropagation();
                 setLocation(`/provider/${item.providerSlug}`);
               }}
             >
-              {isHebrew ? "פרופיל" : "View profile"}
+              {isHebrew ? "צפה בפרופיל" : "View profile"}
             </Button>
             <Button
               size="sm"
-              className="flex-1 bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+              className="flex-1 bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 text-sm font-semibold"
               onClick={(e) => {
                 e.stopPropagation();
                 setLocation(`/provider/${item.providerSlug}`);
               }}
             >
-              {isHebrew ? "הזמן" : "Book"}
-              <ChevronRight className="h-4 w-4 ml-1" />
+              {isHebrew ? "הזמן עכשיו" : "Book now"}
+              <ChevronRight className="h-4 w-4 ml-1 shrink-0" />
             </Button>
           </div>
-        </CardContent>
+        </div>
       </div>
-    </Card>
+    </div>
   );
 }

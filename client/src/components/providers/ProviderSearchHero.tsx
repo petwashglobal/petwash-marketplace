@@ -23,6 +23,7 @@ interface Props {
   filters: ProviderSearchFilters;
   onChange: (next: ProviderSearchFilters) => void;
   onSearch: () => void;
+  onSearchDebounced?: (next: ProviderSearchFilters) => void;
   loading?: boolean;
 }
 
@@ -35,7 +36,7 @@ const SERVICE_OPTIONS = [
   { value: "transport",   labelEn: "Transport",     labelHe: "הסעות" },
 ];
 
-export function ProviderSearchHero({ filters, onChange, onSearch, loading }: Props) {
+export function ProviderSearchHero({ filters, onChange, onSearch, onSearchDebounced, loading }: Props) {
   const { i18n } = useTranslation();
   const isHebrew = i18n.language === "he";
   const [locating, setLocating] = useState(false);
@@ -45,13 +46,15 @@ export function ProviderSearchHero({ filters, onChange, onSearch, loading }: Pro
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        onChange({
+        const next = {
           ...filters,
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
-          sort: "closest",
+          sort: "closest" as const,
           page: 1,
-        });
+        };
+        onChange(next);
+        onSearch();
         setLocating(false);
       },
       () => setLocating(false),
@@ -60,7 +63,9 @@ export function ProviderSearchHero({ filters, onChange, onSearch, loading }: Pro
   };
 
   const clearGPS = () => {
-    onChange({ ...filters, lat: undefined, lng: undefined, sort: "recommended", page: 1 });
+    const next = { ...filters, lat: undefined, lng: undefined, sort: "recommended" as const, page: 1 };
+    onChange(next);
+    onSearch();
   };
 
   return (
@@ -79,9 +84,12 @@ export function ProviderSearchHero({ filters, onChange, onSearch, loading }: Pro
                 <Input
                   placeholder={isHebrew ? "עיר, אזור, מיקוד..." : "City, suburb, postcode..."}
                   value={filters.q || ""}
-                  onChange={(e) =>
-                    onChange({ ...filters, q: e.target.value, page: 1 })
-                  }
+                  onChange={(e) => {
+                    const next = { ...filters, q: e.target.value, page: 1 };
+                    onChange(next);
+                    // Auto-search with 300 ms debounce while typing
+                    if (onSearchDebounced) onSearchDebounced(next);
+                  }}
                   className="pl-10"
                   data-testid="input-provider-q"
                   onKeyDown={(e) => e.key === "Enter" && onSearch()}
@@ -128,9 +136,11 @@ export function ProviderSearchHero({ filters, onChange, onSearch, loading }: Pro
             </Label>
             <Select
               value={filters.serviceType || ""}
-              onValueChange={(v) =>
-                onChange({ ...filters, serviceType: v as any, page: 1 })
-              }
+              onValueChange={(v) => {
+                const next = { ...filters, serviceType: v as any, page: 1 };
+                onChange(next);
+                onSearch();
+              }}
             >
               <SelectTrigger data-testid="select-service-type">
                 <SelectValue placeholder={isHebrew ? "כל השירותים" : "All services"} />
@@ -174,7 +184,7 @@ export function ProviderSearchHero({ filters, onChange, onSearch, loading }: Pro
             </div>
           </div>
 
-          {/* End date + search */}
+          {/* End date + search button */}
           <div>
             <Label className="text-xs font-medium text-zinc-500 mb-1 block">
               {isHebrew ? "עד תאריך (אופציונלי)" : "Until (optional)"}
@@ -196,7 +206,7 @@ export function ProviderSearchHero({ filters, onChange, onSearch, loading }: Pro
               <Button
                 onClick={onSearch}
                 disabled={loading}
-                className="bg-black hover:bg-zinc-800 text-white dark:bg-white dark:text-black dark:hover:bg-zinc-200 shrink-0"
+                className="bg-zinc-900 hover:bg-zinc-700 text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 shrink-0"
                 data-testid="button-search"
               >
                 <Search className="h-4 w-4" />
@@ -208,6 +218,7 @@ export function ProviderSearchHero({ filters, onChange, onSearch, loading }: Pro
               </Button>
             </div>
           </div>
+
         </div>
       </div>
     </div>
