@@ -520,6 +520,17 @@ router.post('/slots', async (req, res) => {
     logger.info('[ProviderAvailability] Slot created', { slotId: slot.id, providerId: provider.id });
     return res.status(201).json({ success: true, slot });
   } catch (error: any) {
+    // PostgreSQL exclusion_violation (23P01) — concurrent insert hit the DB-level constraint
+    if (error.code === '23P01') {
+      logger.warn('[ProviderAvailability] Exclusion constraint blocked concurrent insert', {
+        providerId: error.detail,
+        code: error.code,
+      });
+      return res.status(409).json({
+        error: 'Time conflict',
+        message: 'You already have a slot that overlaps with the requested time window. Cancel or adjust the existing slot first.',
+      });
+    }
     logger.error('[ProviderAvailability] Slot create error', { error: error.message });
     return res.status(500).json({ error: 'Failed to create slot' });
   }
