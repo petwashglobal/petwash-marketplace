@@ -682,6 +682,157 @@ export const k9000WashEvents = pgTable("k9000_wash_events", {
 export type K9000WashEvent = typeof k9000WashEvents.$inferSelect;
 export type InsertK9000WashEvent = typeof k9000WashEvents.$inferInsert;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// STATION BAYS — per-bay registry for every K9000 Twin station
+//
+// Physical reality:
+//   One K9000 Twin station = two completely independent wash bays (left + right).
+//   Each bay has its OWN:
+//     • Nayax card reader (yellow terminal)
+//     • Nayax DOT QR reader (black round scanner)
+//     • Wash tub / platform
+//     • Session state
+//   The shared central cabinet contains the main control board only.
+//
+// Rules:
+//   - Card payment on left bay → starts left bay ONLY
+//   - QR redemption on right bay → starts right bay ONLY
+//   - Both bays can run simultaneously for two different customers
+//   - No booking, no reservation — real-time readiness only
+// ─────────────────────────────────────────────────────────────────────────────
+export const stationBays = pgTable("station_bays", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  // Station this bay belongs to
+  stationId: varchar("station_id").notNull(),      // FK to kioskMachines.kioskId
+  stationCode: varchar("station_code"),             // human-readable, e.g. K9000-TLV-001
+
+  // Physical side
+  side: varchar("side", { length: 5 }).notNull(),  // "left" | "right"
+  bayLabel: varchar("bay_label", { length: 50 }),  // e.g. "Bay 1 (Left)"
+  bayLabelHe: varchar("bay_label_he", { length: 50 }), // Hebrew label
+
+  // Hardware IDs — each bay has its own readers
+  nayaxTerminalId: varchar("nayax_terminal_id"),   // Nayax card reader terminal ID for THIS bay
+  nayaxQrReaderId: varchar("nayax_qr_reader_id"),  // Nayax DOT QR reader ID for THIS bay
+
+  // Real-time status — NO booking state, only live readiness
+  // ready       = tub is empty, hardware OK, customer can use now
+  // busy        = wash session in progress (currentSessionId is set)
+  // fault       = hardware error, needs attention
+  // maintenance = intentionally taken offline by staff
+  // offline     = no power / no connectivity
+  status: varchar("status", { length: 20 }).notNull().default("ready"),
+
+  // Active session (null when bay is ready)
+  currentSessionId: varchar("current_session_id"), // FK to bay_sessions.id, null when free
+
+  // Telemetry snapshot (last push from IoT controller)
+  lastHeartbeat: timestamp("last_heartbeat"),
+  waterTempC: decimal("water_temp_c", { precision: 5, scale: 2 }),
+  shampooLevelPct: integer("shampoo_level_pct"),    // 0–100
+  conditionerLevelPct: integer("conditioner_level_pct"),
+  lastFaultCode: varchar("last_fault_code"),
+  lastFaultAt: timestamp("last_fault_at"),
+
+  // Stats
+  totalSessions: integer("total_sessions").default(0),
+  totalRevenueCents: integer("total_revenue_cents").default(0),
+  lastSessionAt: timestamp("last_session_at"),
+
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_bay_station").on(table.stationId),
+  index("idx_bay_status").on(table.status),
+  index("idx_bay_side").on(table.side),
+  index("idx_bay_terminal").on(table.nayaxTerminalId),
+  index("idx_bay_qr_reader").on(table.nayaxQrReaderId),
+  // Unique: only one bay per side per station
+  uniqueIndex("uq_station_side").on(table.stationId, table.side),
+]);
+
+export type StationBay = typeof stationBays.$inferSelect;
+export type InsertStationBay = typeof stationBays.$inferInsert;
+export const insertStationBaySchema = createInsertSchema(stationBays).omit({ id: true, createdAt: true, updatedAt: true });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BAY SESSIONS — one row per wash session, scoped to a specific bay
+//
+// Created when a customer activates a wash (card OR wallet QR).
+// Closed when the wash completes or times out.
+// There is NO booking or reservation. Sessions are always live events.
+//
+// Source discrimination (maps to k9000_wash_events.redemption_source):
+//   terminal_card    → direct Nayax card/NFC payment (Flow A)
+//   wash_package     → prepaid wash-package credit (Flow B)
+//   wallet_balance   → cash wallet ILS deduction (Flow B)
+//   gift_credit      → eGift balance (Flow B)
+//   loyalty_benefit  → loyalty-tier free wash (Flow B)
+//   promo_coupon     → promotional/coupon credit (Flow B)
+// ─────────────────────────────────────────────────────────────────────────────
+export const baySessions = pgTable("bay_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  // Location — always tied to a specific bay at a specific station
+  bayId: varchar("bay_id").notNull(),              // FK to station_bays.id
+  stationId: varchar("station_id").notNull(),      // denormalized for fast queries
+  side: varchar("side", { length: 5 }).notNull(), // "left" | "right" — denormalized
+
+  // Customer — null for anonymous terminal-card payments
+  userId: varchar("user_id"),                      // FK to users.id, nullable
+  isAnonymous: boolean("is_anonymous").default(false),
+
+  // Payment source — how this session was initiated
+  // terminal_card | wash_package | wallet_balance | gift_credit | loyalty_benefit | promo_coupon
+  source: varchar("source", { length: 30 }).notNull(),
+
+  // Financial
+  amountCents: integer("amount_cents").default(0), // in agorot (ILS cents)
+  currency: varchar("currency", { length: 3 }).default("ILS"),
+
+  // Nayax references (populated for terminal_card sessions)
+  nayaxTransactionId: varchar("nayax_transaction_id"),
+  nayaxTerminalId: varchar("nayax_terminal_id"),
+
+  // Wash program selected by customer
+  washProgram: varchar("wash_program", { length: 30 }), // basic | standard | premium | deluxe
+
+  // Session lifecycle
+  // pending     = payment/redemption accepted, waiting for IoT start confirmation
+  // active      = wash in progress (IoT confirmed start)
+  // completed   = wash finished normally
+  // timed_out   = no IoT confirmation within timeout window
+  // aborted     = customer / staff cancelled
+  // fault       = hardware fault during wash
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+
+  startedAt: timestamp("started_at").defaultNow(),
+  activatedAt: timestamp("activated_at"),          // when IoT confirmed start
+  endedAt: timestamp("ended_at"),
+  expectedDurationSeconds: integer("expected_duration_seconds"),
+  actualDurationSeconds: integer("actual_duration_seconds"),
+
+  // Cross-references
+  washEventId: varchar("wash_event_id"),           // FK to k9000_wash_events.id
+  correlationId: varchar("correlation_id"),        // tracing across logs
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_baysession_bay").on(table.bayId),
+  index("idx_baysession_station").on(table.stationId),
+  index("idx_baysession_user").on(table.userId),
+  index("idx_baysession_status").on(table.status),
+  index("idx_baysession_source").on(table.source),
+  index("idx_baysession_started").on(table.startedAt),
+]);
+
+export type BaySession = typeof baySessions.$inferSelect;
+export type InsertBaySession = typeof baySessions.$inferInsert;
+export const insertBaySessionSchema = createInsertSchema(baySessions).omit({ id: true, createdAt: true, updatedAt: true });
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type Customer = typeof customers.$inferSelect;

@@ -1,0 +1,559 @@
+Important follow-up: exact K9000 stock model and Octopus admin logic
+
+This message is only about operations, stock, maintenance, and admin visibility for K9000 stations.
+It must work station-by-station, not as one generic machine pool.
+
+We are preparing two separate stations in Kfar Saba, and the system must be built so this can scale to many more stations and cities later.
+
+==================================================
+1. OPERATIONS PRINCIPLE
+==================================================
+
+Each K9000 station is an independent operational unit.
+
+That means each station must have:
+- its own stock levels
+- its own refill history
+- its own maintenance status
+- its own fault history
+- its own revenue and usage reporting
+- its own left/right bay visibility
+
+Octopus must let us manage this station-by-station.
+
+==================================================
+2. REQUIRED INVENTORY MODEL
+==================================================
+
+We need proper backend stock tracking.
+
+Minimum table direction:
+
+station_inventory
+- id
+- stationId
+- itemType
+- itemCode
+- itemName
+- quantityOnHand
+- unit
+- lowThreshold
+- criticalThreshold
+- targetLevel
+- reorderLevel
+- isActive
+- lastUpdatedAt
+- lastUpdatedBy
+
+station_inventory_movements
+- id
+- stationId
+- itemType
+- movementType
+- quantityDelta
+- quantityBefore
+- quantityAfter
+- unit
+- reason
+- referenceType
+- referenceId
+- notes
+- createdAt
+- createdBy
+
+itemType examples:
+- shampoo
+- conditioner
+- disinfectant
+- flea_treatment
+- fragrance
+- cleaning_material
+- spare_hose
+- nozzle
+- filter
+- signage
+- sticker
+- paper
+- maintenance_part
+
+movementType examples:
+- refill
+- manual_adjustment
+- usage_estimate
+- waste
+- replacement
+- maintenance_consumption
+- opening_balance
+- correction
+
+==================================================
+3. STATION-LEVEL STOCK FIRST
+==================================================
+
+Do not overcomplicate at first with per-bay stock unless physically necessary.
+
+Phase 1:
+Track most inventory at station level.
+
+Reason:
+- the two bays share one station structure
+- refill staff usually replenish the station, not abstract bay inventory
+- operations team needs practical visibility first
+
+Later, if needed, we can track selected items per bay.
+
+==================================================
+4. MINIMUM STOCK FIELDS PER ITEM
+==================================================
+
+Every stock item should support:
+
+- quantityOnHand
+- unit
+- lowThreshold
+- criticalThreshold
+- targetLevel
+- reorderLevel
+
+Example:
+shampoo
+- quantityOnHand = 28
+- unit = liters
+- lowThreshold = 10
+- criticalThreshold = 4
+- targetLevel = 30
+- reorderLevel = 8
+
+This allows Octopus to generate real alerts.
+
+==================================================
+5. STOCK HEALTH RULES
+==================================================
+
+We need a clear health model.
+
+Per item:
+- healthy = above lowThreshold
+- low = at or below lowThreshold
+- critical = at or below criticalThreshold
+- empty = 0
+
+Per station:
+- healthy = no critical items and no more than 2 low items
+- warning = one or more low items
+- critical = one or more critical items
+- partial_service = item missing but station can still operate in reduced mode
+- out_of_service = critical core consumable missing
+
+Core consumables likely include:
+- shampoo
+- disinfectant
+- water / pressure related consumables if relevant
+- any must-have sanitation material
+
+==================================================
+6. AUTOMATIC ALERT LOGIC
+==================================================
+
+Add stock_alerts table or equivalent logic:
+
+stock_alerts
+- id
+- stationId
+- itemType
+- severity
+- alertType
+- currentQuantity
+- thresholdValue
+- status
+- createdAt
+- resolvedAt nullable
+- resolvedBy nullable
+
+severity:
+- info
+- warning
+- critical
+
+alertType:
+- low_stock
+- critical_stock
+- out_of_stock
+- abnormal_drop
+- refill_overdue
+
+Examples:
+- shampoo low stock
+- disinfectant critical
+- refill overdue 14 days
+- spare hose out of stock
+
+==================================================
+7. INVENTORY MOVEMENT RULES
+==================================================
+
+Every manual or automated stock change must be logged.
+
+Examples:
+- technician adds 20 liters shampoo
+- system deducts estimated usage after 35 washes
+- admin corrects bad count
+- maintenance consumes spare hose
+- station launched with opening inventory
+
+Never just overwrite quantity without movement history.
+
+==================================================
+8. HOW STOCK SHOULD CHANGE
+==================================================
+
+Phase 1 practical logic:
+Use estimated stock consumption per completed wash session.
+
+Example:
+For each completed wash:
+- shampoo deduct estimated X ml
+- disinfectant deduct estimated Y ml
+- conditioner deduct estimated Z ml if that program was used
+
+This can start as configurable estimation rules, not perfect sensor-driven metering.
+
+Recommended config table:
+station_consumption_rules
+- id
+- stationId nullable
+- programType
+- itemType
+- estimatedConsumption
+- unit
+- isActive
+
+This allows later tuning per station or per program.
+
+==================================================
+9. MAINTENANCE MODEL
+==================================================
+
+Need clear maintenance logging too.
+
+station_maintenance_logs
+- id
+- stationId
+- bayId nullable
+- maintenanceType
+- status
+- priority
+- description
+- openedAt
+- closedAt nullable
+- assignedTo nullable
+- resolutionNotes nullable
+- partsUsed nullable
+- costEstimate nullable
+- createdBy
+- updatedAt
+
+maintenanceType examples:
+- refill
+- cleaning
+- preventive_maintenance
+- hose_replacement
+- nozzle_replacement
+- terminal_check
+- qr_reader_check
+- pump_issue
+- drainage_issue
+- signage_replacement
+
+==================================================
+10. FAULT MODEL
+==================================================
+
+Faults should be distinct from general maintenance.
+
+station_faults
+- id
+- stationId
+- bayId nullable
+- faultCode
+- faultSource
+- severity
+- faultStatus
+- title
+- description
+- detectedAt
+- acknowledgedAt nullable
+- resolvedAt nullable
+- resolvedBy nullable
+
+faultSource examples:
+- telemetry
+- manual_report
+- nayax_terminal
+- qr_reader
+- technician
+- octopus_rule
+
+faultStatus:
+- open
+- acknowledged
+- in_progress
+- resolved
+- ignored
+
+==================================================
+11. OCTOPUS ADMIN - STATION LIST VIEW
+==================================================
+
+Octopus must show a list of all stations with operational visibility.
+
+For each station row show:
+- stationCode
+- stationName
+- city
+- full address
+- map link / coordinates
+- left bay status
+- right bay status
+- online/offline
+- stock health
+- open faults count
+- revenue today
+- washes today
+- last heartbeat
+- last refill date
+- maintenance due yes/no
+
+Example row:
+PWS-KFS-001
+Kfar Saba East
+[full address]
+Left: Ready
+Right: Busy
+Stock: Warning
+Faults: 1
+Revenue today: ₪420
+Washes today: 9
+Last heartbeat: 2 min ago
+
+==================================================
+12. OCTOPUS ADMIN - STATION DETAIL VIEW
+==================================================
+
+Clicking a station should open a detailed station page with tabs.
+
+Recommended tabs:
+
+A. Overview
+- stationCode
+- address
+- map
+- status summary
+- left bay
+- right bay
+- today revenue
+- today washes
+- direct Nayax sales
+- wallet redemptions
+- average session duration
+- open incidents
+
+B. Bays
+For each bay:
+- side
+- status
+- current session
+- last session
+- card reader status
+- QR reader status
+- fault state
+- last manual check
+
+C. Inventory
+- all stock items
+- current quantity
+- health state
+- thresholds
+- last movement
+- refill button
+- adjust stock button
+
+D. Maintenance
+- open tasks
+- closed tasks
+- technician notes
+- maintenance history
+
+E. Faults
+- all open faults
+- source
+- severity
+- time open
+- acknowledge / resolve actions
+
+F. Finance
+- revenue by source
+- direct terminal sales
+- wallet redemptions
+- gift credits
+- loyalty redemptions
+- promo redemptions
+- refunds
+
+G. Audit / Events
+- wash events
+- inventory movements
+- fault events
+- status changes
+- admin actions
+
+==================================================
+13. REQUIRED KPIs FOR OCTOPUS
+==================================================
+
+For each station and for overall system:
+
+- sessions today
+- sessions this week
+- revenue today
+- revenue this week
+- direct terminal sales count
+- wallet redemption count
+- average wash duration
+- fault frequency
+- refill frequency
+- stock health score
+- downtime minutes
+- bay utilization left
+- bay utilization right
+
+==================================================
+14. STATION HEALTH SCORE
+==================================================
+
+Useful for quick operations view.
+
+Recommended station health score inputs:
+- online status
+- left bay readiness
+- right bay readiness
+- critical stock alerts
+- open severe faults
+- heartbeat freshness
+- maintenance overdue
+
+Simple output:
+- healthy
+- warning
+- critical
+
+==================================================
+15. USER / ROLE LOGIC
+==================================================
+
+Octopus admin roles should support:
+
+Operations manager:
+- view all stations
+- adjust stock
+- create refill logs
+- open maintenance tasks
+
+Technician:
+- view assigned stations
+- update maintenance
+- resolve faults
+- record parts used
+
+Finance/admin:
+- view revenue and redemption breakdown
+- refunds visibility
+- audit visibility
+
+Support:
+- see station history
+- see session history
+- see customer redemption history
+
+==================================================
+16. REQUIRED ACTION BUTTONS IN OCTOPUS
+==================================================
+
+On station detail page include actions like:
+- mark refill completed
+- adjust stock
+- create maintenance task
+- acknowledge fault
+- disable bay
+- enable bay
+- mark station maintenance mode
+- export station report
+
+==================================================
+17. STOCK ACTIONS
+==================================================
+
+Need these practical admin actions:
+
+Refill stock:
+- choose item
+- quantity added
+- note
+- save movement log
+
+Adjust stock:
+- choose item
+- set corrected quantity
+- mandatory reason
+- save movement log
+
+Record wastage:
+- choose item
+- quantity removed
+- reason
+- save movement log
+
+==================================================
+18. IMPORTANT BUSINESS RULE
+==================================================
+
+Inventory and maintenance are not just back-office nice-to-have.
+They directly affect:
+- customer experience
+- station uptime
+- fault prevention
+- refill planning
+- municipal / site service quality
+- profitability per station
+
+So this must be built as a proper operational system, not as random notes fields.
+
+==================================================
+19. MINIMUM IMPLEMENTATION ORDER
+==================================================
+
+Please build in this order:
+
+1. stations
+2. station_bays
+3. station_inventory
+4. station_inventory_movements
+5. stock_alerts
+6. station_faults
+7. station_maintenance_logs
+8. Octopus station list view
+9. Octopus station detail page
+10. finance + KPI rollups
+
+==================================================
+20. WHAT I NEED FROM YOU
+==================================================
+
+Please confirm:
+1. exact tables you will create or extend
+2. exact fields for stock and maintenance
+3. how stock levels will be updated initially
+4. what the first Octopus station screen will show
+5. how the two Kfar Saba stations will be entered with unique station codes and addresses
+
+Build this cleanly so we can scale city by city across Israel later.

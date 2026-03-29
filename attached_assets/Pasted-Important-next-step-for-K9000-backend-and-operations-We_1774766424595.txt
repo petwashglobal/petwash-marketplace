@@ -1,0 +1,317 @@
+Important next step for K9000 backend and operations.
+
+We are preparing two new PetWash stations in Kfar Saba, Israel.
+They are in two different parts of the city, so they must be treated as two separate physical stations with separate identity, separate address, separate reporting, and separate operational stock tracking.
+
+This must be built properly in the backend.
+
+==================================================
+1. CREATE TWO SEPARATE STATIONS
+==================================================
+
+We need two station records, not one generic Kfar Saba entry.
+
+Each station must have its own:
+
+- stationId
+- unique stationCode
+- stationName
+- full address
+- city
+- postcode
+- latitude
+- longitude
+- district / zone
+- status
+- opening mode = 24/7
+- installation status
+- live date
+- notes
+
+Example structure:
+
+Station A
+- stationCode: PWS-KFS-001
+- city: Kfar Saba
+- address: [exact address to be inserted]
+- zone: East / North / etc. depending on real location
+
+Station B
+- stationCode: PWS-KFS-002
+- city: Kfar Saba
+- address: [exact address to be inserted]
+- zone: West / South / etc. depending on real location
+
+Do not leave these as placeholders long term.
+The backend must support exact real addresses per station.
+
+==================================================
+2. EACH STATION HAS 2 INDEPENDENT WASH BAYS
+==================================================
+
+Each physical station has:
+
+- left bay
+- right bay
+
+Each bay must be created separately under the station.
+
+Required fields per bay:
+- bayId
+- stationId
+- side = left / right
+- bayCode
+- qrReaderId
+- cardReaderId
+- status
+- currentSessionId nullable
+- isActive
+
+Example:
+
+PWS-KFS-001-L
+PWS-KFS-001-R
+PWS-KFS-002-L
+PWS-KFS-002-R
+
+This is critical because left and right can run independently and simultaneously.
+
+==================================================
+3. EVERY SESSION / PAYMENT / REDEMPTION MUST BE TIED TO:
+==================================================
+
+- stationId
+- stationCode
+- bayId
+- side
+- address snapshot if needed for reporting
+
+Do not log only kioskId generically.
+We need exact station and exact side.
+
+==================================================
+4. LOCATION / DISCOVERY LOGIC
+==================================================
+
+When user searches nearby K9000 stations, the app and backend must return:
+
+- station name
+- station code
+- full address
+- city
+- distance from user
+- current live status of left bay
+- current live status of right bay
+
+Example response:
+- PetWash Kfar Saba Station 001
+- [full address]
+- Left bay: Ready
+- Right bay: Busy
+
+This is much better than just saying "machine available".
+
+==================================================
+5. UNIQUE STATION CODE RULE
+==================================================
+
+Every station in the country must have a permanent unique station code.
+
+Recommended format:
+PWS-[CITYCODE]-[NUMBER]
+
+Examples:
+- PWS-KFS-001
+- PWS-KFS-002
+
+Each bay then extends from that:
+- PWS-KFS-001-L
+- PWS-KFS-001-R
+- PWS-KFS-002-L
+- PWS-KFS-002-R
+
+This code must appear in:
+- backend admin
+- telemetry
+- support tools
+- finance reports
+- maintenance logs
+- fault alerts
+- redemption logs
+- Nayax mapping if needed
+
+==================================================
+6. FULL ADDRESS IS REQUIRED IN BACKEND
+==================================================
+
+For each station store:
+- country = Israel
+- city = Kfar Saba
+- full street address
+- postcode
+- lat/lng
+- municipal notes if needed
+
+This is important for:
+- customer app map
+- support
+- maintenance dispatch
+- municipal / site agreements
+- reporting
+- fraud review
+- nearest-station logic
+
+==================================================
+7. STOCK / CONSUMABLES MUST ALSO EXIST IN BACKEND
+==================================================
+
+Each station must have operational stock tracking.
+
+At minimum track per station:
+- shampoo stock
+- conditioner stock
+- flea/tick or treatment stock if applicable
+- disinfectant stock
+- fragrance stock if applicable
+- cleaning material stock
+- spare hose / nozzle / fittings stock if relevant
+- paper / sticker / signage stock if relevant
+- maintenance spare parts status
+- last refill date
+- next refill threshold
+- stock alert status
+
+This should be station-level first.
+If needed later, some items can also be tracked per bay.
+
+Required backend model direction:
+- station_inventory
+- station_inventory_movements
+- station_maintenance_logs
+- stock_alerts
+
+==================================================
+8. MINIMUM STOCK LOGIC
+==================================================
+
+We need stock thresholds.
+
+Example:
+- shampoo below 20% -> low stock warning
+- disinfectant below 15% -> urgent alert
+- any critical consumable at 0 -> station marked partial service / maintenance alert
+
+Octopus must be able to show:
+- station code
+- address
+- stock health
+- refill needed yes/no
+- last refill time
+- who serviced it
+
+==================================================
+9. ADMIN / OCTOPUS REQUIREMENTS
+==================================================
+
+Octopus dashboard must display for each Kfar Saba station:
+
+- stationCode
+- full address
+- map position
+- left bay status
+- right bay status
+- online/offline
+- last heartbeat
+- stock level summary
+- active faults
+- total sessions today
+- revenue today
+- wallet redemptions today
+- direct Nayax sales today
+
+==================================================
+10. REQUIRED DATABASE / MODEL DIRECTION
+==================================================
+
+Please add or adjust model structure so we have clearly:
+
+stations
+- id
+- stationCode
+- stationName
+- addressLine1
+- addressLine2 nullable
+- city
+- postcode
+- country
+- lat
+- lng
+- zone nullable
+- status
+- is24_7
+- installationStatus
+- launchedAt nullable
+
+station_bays
+- id
+- stationId
+- bayCode
+- side
+- qrReaderId
+- cardReaderId
+- status
+- isActive
+
+station_inventory
+- id
+- stationId
+- itemType
+- quantity
+- unit
+- lowThreshold
+- criticalThreshold
+- lastUpdatedAt
+
+station_inventory_movements
+- id
+- stationId
+- itemType
+- changeType
+- quantityDelta
+- reason
+- createdAt
+- createdBy
+
+k9000_wash_events
+Must include:
+- stationId
+- stationCode
+- bayId
+- side
+- redemptionSource
+- paymentSource
+- createdAt
+
+==================================================
+11. IMPORTANT BUSINESS RULE
+==================================================
+
+Two stations in Kfar Saba are NOT just two map pins.
+They are two independent revenue, operations, stock, support, and maintenance units.
+
+Each one must be fully identifiable and manageable on its own.
+
+==================================================
+12. WHAT I NEED FROM YOU
+==================================================
+
+Please do the following:
+
+1. Add support for station-level records with full address and unique station code
+2. Add bay-level records under each station
+3. Add station inventory / stock backend structure
+4. Update events / sessions / payments / redemptions to include stationId + bayId
+5. Confirm exact tables and endpoints you will change
+6. Prepare the system so I can later enter the two exact Kfar Saba addresses cleanly in admin
+
+This must be built cleanly because more cities and more stations will come later.

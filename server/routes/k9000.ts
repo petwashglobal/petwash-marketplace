@@ -55,17 +55,22 @@ import {
 import { NayaxSparkService } from '../services/NayaxSparkService';
 import { z } from 'zod';
 import { db } from '../db';
-import { nayaxTransactions, auditLedger, stations, walletAccounts, creditTransactions, k9000WashEvents } from '@shared/schema';
-import { eq, and, gt, sql } from 'drizzle-orm';
+import { nayaxTransactions, auditLedger, walletAccounts, creditTransactions, k9000WashEvents, stationBays, baySessions } from '@shared/schema';
+import { eq, and, gt, sql, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
-import { k9000StationBookingEngine } from '../services/booking-engines/k9000/K9000StationBookingEngine';
 import VATCalculatorService from '../services/VATCalculatorService';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
 import { verifySignedRedeemToken, consumeNonce } from '../lib/signedRedeemToken';
 import { redis } from '../services/redis';
-import { authorizeRedemption, K9000RedemptionType } from '../services/K9000RedemptionService';
+import {
+  authorizeRedemption,
+  K9000RedemptionType,
+  findBay,
+  openBaySession,
+  closeBaySession,
+} from '../services/K9000RedemptionService';
 
 const router = express.Router();
 
@@ -77,27 +82,47 @@ router.use(validateK9000MachineIP);
 router.use(validateK9000HmacHeaders);
 
 /**
- * POST /api/k9000/wash/start_cycle
- * Start K9000 wash cycle after payment validation
- * 
- * Based on user's code:
- * app.post('/api/wash/start_cycle_il', async (req, res) => { ... })
- * 
- * Security Layers:
- * 1. IP whitelist (validateK9000MachineIP middleware)
- * 2. Payment verification (Nayax Spark API)
- * 3. Machine secret key (optional, for extra security)
+ * POST /api/k9000/wash/start_cycle — FLOW A: Direct Nayax Terminal Payment
+ *
+ * Called by the K9000 controller immediately after the Nayax card/NFC reader
+ * on ONE specific bay has authorised a payment.
+ *
+ * CRITICAL:  `side` identifies WHICH physical bay this terminal belongs to.
+ *   - Card reader on the LEFT  tub → side: "left"
+ *   - Card reader on the RIGHT tub → side: "right"
+ * Only THAT bay is activated. The other bay is not touched.
+ *
+ * Bay readiness is validated BEFORE payment; the response includes bayId and
+ * sessionId so the K9000 controller can associate the wash with the correct bay.
  */
 router.post('/wash/start_cycle', async (req, res) => {
+  const correlationId = nanoid(10);
   try {
     const {
-      machineId,        // K9000 controller ID (e.g., "K9000-TWIN-UNIT-1-BAY-1")
-      transactionId,    // Nayax transaction ID
-      selectedProgram,  // Wash program: "basic", "premium", "deluxe"
-      bayNumber,        // Which bay (1 or 2 for Twin units)
-      qrCode,           // Optional: QR code for loyalty/voucher
-      customerUid,      // Optional: Customer ID for loyalty tracking
+      machineId,        // Station kioskId (matches kioskMachines.kioskId)
+      transactionId,    // Nayax transaction ID from the terminal
+      selectedProgram,  // Wash program: "basic" | "standard" | "premium" | "deluxe"
+      side,             // REQUIRED: "left" | "right" — which bay's terminal fired
+      bayNumber,        // Legacy: 1=left, 2=right — accepted if side absent
+      qrCode,           // Optional: Nayax loyalty QR scanned at the terminal
+      customerUid,      // Optional: customer ID for loyalty tracking
     } = req.body;
+
+    // Resolve side from either explicit "side" field or legacy bayNumber
+    const resolvedSide: 'left' | 'right' | undefined =
+      side === 'left' || side === 'right'
+        ? side
+        : bayNumber === 1 || bayNumber === '1' ? 'left'
+        : bayNumber === 2 || bayNumber === '2' ? 'right'
+        : undefined;
+
+    if (!resolvedSide) {
+      return res.status(400).json({
+        error: 'שדה חסר: side (left/right) נדרש.',
+        errorEn: 'Missing required field: side ("left" or "right").',
+        correlationId,
+      });
+    }
     
     // Get station info from middleware
     const stationInfo = (req as any).k9000Station;

@@ -296,8 +296,14 @@ router.post('/:quoteId/checkout', async (req, res) => {
     // Wraps createBooking + slot stamp + escrow INSERT so all three succeed or
     // all three roll back. If the transaction fails the slot is reverted to
     // 'available' so the customer can retry with a new lock.
+    //
+    // SCOPING NOTE: releaseEligibleAt is declared HERE (outer scope) so it is
+    // accessible after the try block for the confirmation email.
+    // It is assigned inside the tx callback before the escrow INSERT.
+    // Default value guards against accidental undefined if tx throws mid-way.
     let bookingId: string;
     let bookingNumber: string;
+    let releaseEligibleAt: Date = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72 h default
 
     try {
       const txResult = await db.transaction(async (tx) => {
@@ -322,10 +328,13 @@ router.post('/:quoteId/checkout', async (req, res) => {
           .set({ bookingId: bid, lockToken: null, lockExpiresAt: null, lockedByUid: null, updatedAt: new Date() })
           .where(eq(availabilitySlots.id, slotId));
 
-        // Create escrow record (72-hour hold)
+        // Create escrow record (72-hour hold).
+        // releaseEligibleAt is assigned to the OUTER variable (declared above)
+        // so it survives this callback and is available for the email below.
         const escrowId = nanoid(16);
-        const releaseEligibleAt = new Date();
+        releaseEligibleAt = new Date();
         releaseEligibleAt.setHours(releaseEligibleAt.getHours() + 72);
+
         const platformFeeCents = quote.platformFeeCents || 0;
         // T4: Use the stored taxCents from the quote record (DB column: tax_cents).
         // Do NOT recompute — the quote was already persisted with the canonical VAT value.
