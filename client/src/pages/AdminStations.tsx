@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { logger } from "@/lib/logger";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { getApiUrl } from '@/lib/apiConfig';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -429,6 +429,12 @@ export default function AdminStations() {
                       <Eye className="w-4 h-4 mr-2 inline" />
                       View Full Details
                     </Button>
+                    <Link href={`/admin/stations/${station.id}/timeline`}>
+                      <Button variant="outline" className="w-full mt-2" size="sm">
+                        <Calendar className="w-4 h-4 mr-2 inline" />
+                        Station Timeline
+                      </Button>
+                    </Link>
                   </div>
                 ))
                 }

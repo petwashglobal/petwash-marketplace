@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -342,6 +343,14 @@ export default function ProviderDashboard() {
               </span>
             </div>
             <p className="text-sm text-gray-500 mt-1 font-serif mr-5">{'\u05E0\u05D9\u05D4\u05D5\u05DC \u05D4\u05D4\u05D6\u05DE\u05E0\u05D5\u05EA \u05D5\u05D4\u05E8\u05D5\u05D5\u05D7\u05D9\u05DD \u05E9\u05DC\u05DA'}</p>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <Link href="/provider/timeline">
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                <TrendingUp className="w-3.5 h-3.5" />
+                ציר זמן רווחים
+              </Button>
+            </Link>
           </div>
           {stats && stats.platforms.length > 0 && (
             <div className="flex items-center gap-3 flex-wrap">

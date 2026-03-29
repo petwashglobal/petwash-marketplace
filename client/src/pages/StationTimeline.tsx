@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Activity, TrendingUp, Droplets, ChevronLeft, RefreshCw,
-  Clock, User, ShieldOff, Wifi,
+  Clock, User, ShieldOff, Wifi, GitBranch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -129,10 +129,19 @@ export default function StationTimeline() {
                       {SOURCE_LABELS[s.source] ?? s.source}
                       {s.product && ` — ${s.product}`}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      {s.startedAt ? new Date(s.startedAt).toLocaleString("he-IL") : "—"}
-                      {s.durationMinutes != null && ` · ${s.durationMinutes} דק׳`}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        {s.startedAt ? new Date(s.startedAt).toLocaleString("he-IL") : "—"}
+                        {s.durationMinutes != null && ` · ${s.durationMinutes} דק׳`}
+                      </p>
+                      {s.bayId && (
+                        <Link href={`/admin/bays/${s.bayId}/timeline`}>
+                          <span className="text-xs text-primary underline flex items-center gap-0.5">
+                            <GitBranch className="h-2.5 w-2.5" />{s.bayId}
+                          </span>
+                        </Link>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold">₪{s.amountILS}</span>

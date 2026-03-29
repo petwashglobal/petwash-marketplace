@@ -847,6 +847,12 @@ export default function CustomerBookings() {
               )}
             </div>
             <div className="flex items-center gap-2">
+              <Link href="/my/timeline">
+                <button className="flex items-center gap-1 text-xs font-medium px-3 py-2 rounded-full border border-gray-200 text-gray-600 bg-white">
+                  <Coins size={12} />
+                  {isRTL ? 'ציר זמן' : 'Timeline'}
+                </button>
+              </Link>
               <NotificationBell language={isRTL ? 'he' : 'en'} />
               <button
                 onClick={() => setFilterOpen(true)}
