@@ -19,7 +19,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
 import { getApiUrl } from "@/lib/apiConfig";
 import { auth } from "@/lib/firebase";
 import { signInWithEmailAndPassword, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
@@ -166,36 +165,30 @@ export default function AdminLogin() {
       console.log('[AdminLogin] ✅ Session cookie created:', sessionData);
       
       console.log('[AdminLogin] Step 4: Verifying admin access...');
-      const meRes = await fetch(getApiUrl('/api/auth/me'), { credentials: 'include' });
+      const whoamiRes = await fetch(getApiUrl('/api/session/whoami'), { credentials: 'include' });
       
-      if (!meRes.ok) {
-        const error = await meRes.json();
-        console.error('[AdminLogin] ❌ Admin verification failed:', error);
-        throw new Error(error.error === 'employee-suspended' 
-          ? 'This account is suspended'
-          : 'This account does not have admin access'
-        );
-      }
-      
-      const meData = await meRes.json();
-      console.log('[AdminLogin] ✅ Admin verified:', meData);
-      
-      if (!meData.ok || !meData.user) {
-        throw new Error('Invalid response from server');
-      }
-      
-      if (!meData.user.isActive) {
-        throw new Error('This account is suspended');
-      }
-      
-      const ADMIN_ALLOWED = ['admin', 'ops', 'management', 'super_admin', 'hr', 'staff'];
-      if (!ADMIN_ALLOWED.includes(meData.user.role)) {
+      if (!whoamiRes.ok) {
+        const error = await whoamiRes.json().catch(() => ({}));
+        console.error('[AdminLogin] ❌ Whoami failed:', error);
         throw new Error('This account does not have admin access');
       }
       
+      const whoami = await whoamiRes.json();
+      console.log('[AdminLogin] ✅ Whoami resolved:', whoami);
+      
+      if (!whoami.authenticated) {
+        throw new Error('Session not established — please try again');
+      }
+      
+      const ADMIN_ALLOWED = ['admin', 'ops', 'management', 'super_admin', 'hr', 'staff'];
+      if (!whoami.isSuperAdmin && !ADMIN_ALLOWED.includes(whoami.role)) {
+        throw new Error('This account does not have admin access');
+      }
+      
+      const displayName = whoami.displayName || whoami.email || 'Admin';
       toast({
         title: "Login Successful",
-        description: `Welcome, ${meData.user.firstName}!`,
+        description: `Welcome, ${displayName}!`,
       });
       
       // ONE-CLICK PASSKEY SETUP: Offer to register Face ID/Touch ID after successful login
@@ -485,15 +478,16 @@ export default function AdminLogin() {
                       
                       if (!sessionRes.ok) throw new Error('Session failed');
                       
-                      const meRes = await fetch(getApiUrl('/api/auth/me'), { credentials: 'include' });
-                      const meData = await meRes.json();
+                      const whoamiRes = await fetch(getApiUrl('/api/session/whoami'), { credentials: 'include' });
+                      const whoami = await whoamiRes.json();
                       
                       const ADMIN_ALLOWED = ['admin', 'ops', 'management', 'super_admin', 'hr', 'staff'];
-                      if (!ADMIN_ALLOWED.includes(meData.user?.role)) {
+                      if (!whoami.isSuperAdmin && !ADMIN_ALLOWED.includes(whoami.role)) {
                         throw new Error('Not an admin account');
                       }
                       
-                      toast({ title: "Success", description: `Welcome, ${meData.user.firstName}!` });
+                      const displayName = whoami.displayName || whoami.email || 'Admin';
+                      toast({ title: "Success", description: `Welcome, ${displayName}!` });
                       setLocation("/admin/users");
                     } catch (error: any) {
                       toast({ title: "Error", description: error.message, variant: "destructive" });
