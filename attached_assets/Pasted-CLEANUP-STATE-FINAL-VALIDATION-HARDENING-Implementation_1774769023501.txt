@@ -1,0 +1,185 @@
+CLEANUP STATE - FINAL VALIDATION & HARDENING
+
+Implementation is correct and aligned with real machine behavior.
+
+Now we tighten edge cases and production safety.
+
+==================================================
+1. CLEANUP STATE IS NOT OPTIONAL
+==================================================
+
+Cleanup is a REAL physical state.
+
+During cleanup:
+- user is still physically at the machine
+- dog may still be inside
+- hose still in use
+- bay is NOT available
+
+System must NEVER allow:
+- new payment
+- new redemption
+- parallel session start
+
+You already blocked this in Step 5 → correct.
+
+==================================================
+2. TIMER VS REAL MACHINE SIGNAL (CRITICAL)
+==================================================
+
+You implemented:
+- setTimeout 30s → finalizeCleanup()
+
+This is OK for Phase 1, but must be hardened.
+
+Rules:
+
+A. finalizeCleanup MUST be idempotent → already done ✔
+
+B. If machine sends signal earlier/later:
+- backend must accept external trigger
+- same finalizeCleanup(sessionId) handles both paths
+
+C. If server restarts during cleanup:
+- cleanup must still complete
+
+You MUST add:
+
+On server boot:
+- scan bay_sessions where status = cleanup
+- if cleanupEndsAt <= now → finalize immediately
+- if cleanupEndsAt > now → reschedule timer
+
+Otherwise bays can get stuck forever.
+
+==================================================
+3. BAY LOCK INTEGRITY
+==================================================
+
+During cleanup:
+- stationBays.currentSessionId MUST remain set
+- prevents race condition
+
+Only clear it in finalizeCleanup()
+
+This is critical to avoid:
+→ double start
+→ two users on same bay
+
+==================================================
+4. PAYMENT RACE CONDITION (IMPORTANT)
+==================================================
+
+Scenario:
+
+User A finishes → cleanup starts  
+User B taps card EXACTLY during cleanup  
+
+For Nayax flow:
+- machine might attempt to start
+
+Backend must:
+
+Option A (preferred future):
+- machine firmware blocks during cleanup
+
+Option B (current safe approach):
+- if webhook received while bay.status = cleanup
+→ log event BUT mark as:
+  status = rejected_cleanup_window
+
+Do NOT start session.
+
+==================================================
+5. REPORTING CORRECTNESS
+==================================================
+
+You already did:
+
+actualDurationSeconds = paid only ✔
+
+Now enforce:
+
+- revenue uses actualDurationSeconds only
+- cleanup NEVER counted
+- session.endTime = AFTER cleanup
+
+This ensures:
+- finance correct
+- utilization accurate
+- ops realistic
+
+==================================================
+6. ADMIN VISIBILITY (VERY IMPORTANT)
+==================================================
+
+Your displayStatus is correct.
+
+Now enforce UX clarity:
+
+Statuses must be EXACT:
+
+- Active wash
+- Cleanup in progress
+- Ready
+- Fault
+- Maintenance
+- Offline
+
+Operators must NEVER confuse:
+cleanup ≠ ready
+
+==================================================
+7. FAILURE HANDLING DURING CLEANUP
+==================================================
+
+If fault happens during cleanup:
+
+- session.status → completed (NOT failed)
+- bay.status → fault
+- cleanup still ends
+
+Reason:
+cleanup is non-billable
+we never reopen a finished paid session
+
+==================================================
+8. FUTURE HOOK (DO NOT IMPLEMENT NOW)
+==================================================
+
+Prepare for:
+
+- IoT real signal:
+  CLEANUP_STARTED
+  CLEANUP_ENDED
+
+Your structure already supports this.
+Do not change anything later - just replace timer trigger.
+
+==================================================
+9. FINAL ARCHITECTURE STATUS
+==================================================
+
+Now the system correctly models:
+
+- physical machine lifecycle ✔
+- two independent bays ✔
+- real-time usage ✔
+- payment separation ✔
+- fraud prevention ✔
+- operational reality ✔
+
+This is now PRODUCTION-GRADE logic.
+
+==================================================
+10. FINAL CONFIRMATION REQUIRED
+==================================================
+
+Confirm:
+
+1. server boot recovery for cleanup sessions added
+2. currentSessionId stays locked during cleanup
+3. Nayax race condition handled (even if temporarily logged)
+4. finalizeCleanup idempotency tested
+
+If all 4 are confirmed → cleanup lifecycle is COMPLETE.

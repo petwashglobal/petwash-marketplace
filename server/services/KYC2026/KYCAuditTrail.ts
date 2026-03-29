@@ -16,7 +16,7 @@ import crypto from 'crypto';
 import { logger } from '../../lib/logger';
 import { db } from '../../db';
 import { kycAuditLog } from '@shared/schema';
-import { desc, eq, gte, or, and } from 'drizzle-orm';
+import { desc, eq, gte, or, and, sql } from 'drizzle-orm';
 
 export type KYCAuditAction =
   | 'kyc_submitted'
@@ -259,6 +259,76 @@ export class KYCAuditTrail {
     }
 
     return sanitized;
+  }
+
+  /**
+   * anonymizeUserData — GDPR Art. 17 / Israeli Privacy Law 2025 right-to-erasure.
+   *
+   * Replaces personally-identifiable fields (IP address, user-agent, device
+   * fingerprint, actor/target UID) in `kyc_audit_log` rows for the given userId,
+   * while retaining the decision record (action type, timestamp, hash chain) as
+   * required by law.
+   *
+   * The hash chain will show a break at affected rows; this is intentional and
+   * itself serves as evidence of a legitimate right-to-erasure modification
+   * (distinguishable from malicious tampering by the presence of the
+   * `rightToErasureModifiedAt` metadata field).
+   *
+   * Also evicts matching entries from the in-memory cache so subsequent reads
+   * do not serve stale PII.
+   *
+   * @returns Count of anonymized rows.
+   */
+  async anonymizeUserData(userId: string): Promise<number> {
+    const REDACTED = '[RIGHT_TO_ERASURE]';
+    const modifiedAt = new Date().toISOString();
+
+    try {
+      // Update all DB rows where this user is the actor or subject
+      const updated = await db
+        .update(kycAuditLog)
+        .set({
+          ipAddress: REDACTED,
+          userAgent: REDACTED,
+          deviceFingerprint: REDACTED,
+          // Preserve actorId / targetUserId as a pseudonymous hash so the count
+          // of unique actors remains accurate without exposing the raw UID.
+          // SHA-256 of UID is irreversible without the original UID.
+          actorId: sql`CASE WHEN ${kycAuditLog.actorId} = ${userId}
+            THEN '[ANON:' || encode(sha256(${kycAuditLog.actorId}::bytea), 'hex') || ']'
+            ELSE ${kycAuditLog.actorId} END`,
+          targetUserId: sql`CASE WHEN ${kycAuditLog.targetUserId} = ${userId}
+            THEN '[ANON:' || encode(sha256(${kycAuditLog.targetUserId}::bytea), 'hex') || ']'
+            ELSE ${kycAuditLog.targetUserId} END`,
+          // Merge right-to-erasure marker into existing metadata
+          metadata: sql`COALESCE(${kycAuditLog.metadata}, '{}'::jsonb) || ${JSON.stringify({ rightToErasureModifiedAt: modifiedAt })}::jsonb`,
+        })
+        .where(
+          or(
+            eq(kycAuditLog.actorId, userId),
+            eq(kycAuditLog.targetUserId, userId),
+          )
+        )
+        .returning({ id: kycAuditLog.id });
+
+      const count = updated.length;
+
+      // Evict from in-memory cache to prevent serving stale PII
+      this.recentEntries = this.recentEntries.filter(
+        (e) => e.actorId !== userId && e.targetUserId !== userId
+      );
+
+      logger.info('[KYC2026:AuditTrail] Right-to-erasure anonymization complete', {
+        userId: this.maskIP(userId), // Log masked form only
+        rowsAnonymized: count,
+        modifiedAt,
+      });
+
+      return count;
+    } catch (err: any) {
+      logger.error('[KYC2026:AuditTrail] anonymizeUserData failed', { error: err.message });
+      throw err;
+    }
   }
 
   private maskIP(ip: string): string {

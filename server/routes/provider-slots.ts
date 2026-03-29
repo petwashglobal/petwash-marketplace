@@ -14,6 +14,7 @@ import { and, eq, gte, lt, lte, ne } from 'drizzle-orm';
 import { db } from '../db';
 import { availabilitySlots, providers } from '../../shared/schema';
 import { z } from 'zod';
+import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -222,6 +223,118 @@ router.post('/', async (req, res) => {
   } catch (err: any) {
     logger.error('[ProviderSlots] POST failed', { error: err.message });
     return res.status(500).json({ error: 'Failed to create slots' });
+  }
+});
+
+// ── POST /api/provider-slots/lock ──────────────────────────────────────────
+// Customer locks a slot for 5 minutes before checkout.
+// Returns a lockToken that is required by POST /api/marketplace-bookings/:quoteId/checkout.
+// Idempotent: if the caller already holds an unexpired lock on this slot, the same token is returned.
+
+router.post('/lock', async (req, res) => {
+  try {
+    const uid = req.user?.uid || req.firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Authentication required' });
+
+    const body = z.object({ slotId: z.number().int().positive(), platformId: z.string().min(1) }).safeParse(req.body);
+    if (!body.success) {
+      return res.status(400).json({ error: 'Validation error', details: body.error.flatten() });
+    }
+
+    const { slotId, platformId } = body.data;
+    const LOCK_MS = 5 * 60 * 1000; // 5 minutes
+    const now = new Date();
+    const lockExpiresAt = new Date(now.getTime() + LOCK_MS);
+
+    // Fetch current slot state
+    const [slot] = await db
+      .select()
+      .from(availabilitySlots)
+      .where(eq(availabilitySlots.id, slotId))
+      .limit(1);
+
+    if (!slot) return res.status(404).json({ error: 'Slot not found' });
+    if (slot.platformId !== platformId) {
+      return res.status(400).json({ error: 'Slot does not belong to the specified platform' });
+    }
+    if (slot.status === 'booked') {
+      return res.status(409).json({ error: 'Slot is already booked' });
+    }
+    if (slot.status === 'cancelled') {
+      return res.status(410).json({ error: 'Slot has been cancelled' });
+    }
+
+    // Idempotency: if this user already holds an unexpired lock, return the existing token
+    if (
+      slot.status === 'held' &&
+      slot.lockedByUid === uid &&
+      slot.lockExpiresAt &&
+      new Date(slot.lockExpiresAt) > now
+    ) {
+      return res.json({
+        ok: true,
+        slotId,
+        lockToken: slot.lockToken,
+        lockExpiresAt: slot.lockExpiresAt,
+        message: 'Existing lock returned — proceed to checkout',
+      });
+    }
+
+    // Reject if held by a different user with an unexpired lock
+    if (
+      slot.status === 'held' &&
+      slot.lockedByUid !== uid &&
+      slot.lockExpiresAt &&
+      new Date(slot.lockExpiresAt) > now
+    ) {
+      return res.status(409).json({
+        error: 'Slot is currently held by another customer. Please try again shortly.',
+        lockExpiresAt: slot.lockExpiresAt,
+      });
+    }
+
+    // Atomically claim the lock (safe against concurrent requests)
+    const lockToken = nanoid(32);
+
+    const [claimed] = await db
+      .update(availabilitySlots)
+      .set({
+        status: 'held',
+        lockedByUid: uid,
+        lockedAt: now,
+        lockExpiresAt,
+        lockToken,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(availabilitySlots.id, slotId),
+          eq(availabilitySlots.platformId, platformId),
+          // Only claim if available OR if a previous lock has already expired
+          and(
+            ne(availabilitySlots.status as any, 'booked'),
+            ne(availabilitySlots.status as any, 'cancelled'),
+          )
+        )
+      )
+      .returning({ id: availabilitySlots.id });
+
+    if (!claimed) {
+      return res.status(409).json({ error: 'Slot is no longer available. Please choose another time.' });
+    }
+
+    logger.info('[ProviderSlots] Slot locked', { slotId, uid, lockExpiresAt });
+
+    return res.json({
+      ok: true,
+      slotId,
+      lockToken,
+      lockExpiresAt,
+      message: 'Slot reserved for 5 minutes. Complete checkout before the lock expires.',
+    });
+  } catch (err: any) {
+    logger.error('[ProviderSlots] Lock failed', { error: err.message });
+    return res.status(500).json({ error: 'Failed to lock slot' });
   }
 });
 

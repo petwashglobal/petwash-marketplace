@@ -508,6 +508,175 @@ export async function finalizeCleanup(sessionId: string): Promise<void> {
   logger.info('[K9000Cleanup] ✅ Cleanup finalized — bay released', { sessionId });
 }
 
+/**
+ * registerCleanupRecovery — called ONCE at server boot.
+ *
+ * Problem: if the server restarts while a bay is in "cleanup" status, the
+ * 30-second setTimeout that was scheduled in enterCleanupPhase() is gone.
+ * Without recovery, the bay would remain stuck in "cleanup" forever, blocking
+ * all new sessions on that side until a human manually resets it.
+ *
+ * Solution: on boot, scan bay_sessions WHERE status = 'cleanup':
+ *   - If cleanupEndsAt <= now  → window already elapsed; finalize immediately.
+ *   - If cleanupEndsAt > now   → window still open; reschedule the remaining time.
+ *   - If cleanupEndsAt is null → treat as expired (defensive).
+ *
+ * This is idempotent — finalizeCleanup() guards against double-finalization.
+ */
+export async function registerCleanupRecovery(): Promise<void> {
+  try {
+    const stuckSessions = await db
+      .select({
+        id:             baySessions.id,
+        bayId:          baySessions.bayId,
+        cleanupEndsAt:  baySessions.cleanupEndsAt,
+      })
+      .from(baySessions)
+      .where(eq(baySessions.status, 'cleanup'));
+
+    if (stuckSessions.length === 0) {
+      logger.info('[K9000CleanupRecovery] Boot scan: no sessions in cleanup — nothing to recover');
+      return;
+    }
+
+    logger.warn('[K9000CleanupRecovery] Boot scan: found sessions in cleanup — recovering', {
+      count: stuckSessions.length,
+      sessionIds: stuckSessions.map((s) => s.id),
+    });
+
+    const now = Date.now();
+
+    for (const session of stuckSessions) {
+      const endsAt = session.cleanupEndsAt ? new Date(session.cleanupEndsAt).getTime() : null;
+      const remainingMs = endsAt ? endsAt - now : 0;
+
+      if (remainingMs <= 0) {
+        // Window already elapsed — finalize immediately (async, non-blocking)
+        logger.info('[K9000CleanupRecovery] Cleanup window expired — finalizing immediately', {
+          sessionId: session.id,
+          bayId: session.bayId,
+        });
+        finalizeCleanup(session.id).catch((err: Error) => {
+          logger.error('[K9000CleanupRecovery] Immediate finalize failed', {
+            sessionId: session.id,
+            error: err.message,
+          });
+        });
+      } else {
+        // Window still open — reschedule remaining time
+        logger.info('[K9000CleanupRecovery] Rescheduling cleanup timer', {
+          sessionId: session.id,
+          bayId: session.bayId,
+          remainingMs,
+        });
+        setTimeout(() => {
+          finalizeCleanup(session.id).catch((err: Error) => {
+            logger.error('[K9000CleanupRecovery] Rescheduled finalize failed', {
+              sessionId: session.id,
+              error: err.message,
+            });
+          });
+        }, remainingMs);
+      }
+    }
+  } catch (err: any) {
+    // Non-fatal — log and continue server startup
+    logger.error('[K9000CleanupRecovery] Boot scan failed', { error: err.message });
+  }
+}
+
+/**
+ * handleFaultDuringCleanup — called when the IoT controller reports a hardware
+ * fault on a bay that is currently in "cleanup" status.
+ *
+ * Lifecycle rule (from ops manual): cleanup is non-billable end-of-session time.
+ * A fault during cleanup does NOT re-open a paid session.
+ *
+ *   session → "completed"  (cleanup still counts as finished)
+ *   bay     → "fault"      (hardware needs attention before next session)
+ *
+ * The bay event log records both cleanup_completed and fault_raised so operators
+ * can distinguish: fault happened after paid time, during tub-clean window.
+ */
+export async function handleFaultDuringCleanup(
+  sessionId: string,
+  faultCode: string,
+  faultDescription?: string,
+): Promise<void> {
+  const now = new Date();
+
+  await db.transaction(async (tx) => {
+    const [session] = await tx
+      .select({
+        bayId:     baySessions.bayId,
+        stationId: baySessions.stationId,
+        side:      baySessions.side,
+        status:    baySessions.status,
+      })
+      .from(baySessions)
+      .where(eq(baySessions.id, sessionId))
+      .limit(1);
+
+    if (!session) {
+      logger.warn('[K9000FaultCleanup] Session not found', { sessionId });
+      return;
+    }
+
+    if (session.status !== 'cleanup') {
+      logger.warn('[K9000FaultCleanup] Session not in cleanup — use regular fault handler', {
+        sessionId, status: session.status,
+      });
+      return;
+    }
+
+    // Session ends as completed — the paid wash was fine; fault happened in cleanup
+    await tx
+      .update(baySessions)
+      .set({ status: 'completed', endedAt: now, updatedAt: now })
+      .where(eq(baySessions.id, sessionId));
+
+    // Bay goes to fault — needs operator attention before next session
+    await tx
+      .update(stationBays)
+      .set({
+        status: 'fault',
+        currentSessionId: null,
+        lastFaultCode: faultCode,
+        lastFaultAt: now,
+        updatedAt: now,
+      })
+      .where(eq(stationBays.id, session.bayId));
+
+    // Two events: cleanup_completed + fault_raised
+    await tx.insert(bayEvents).values([
+      {
+        bayId:     session.bayId,
+        stationId: session.stationId,
+        side:      session.side,
+        eventType: 'cleanup_completed',
+        sessionId,
+        source:    'petwash_server',
+        metadata:  JSON.stringify({ completedAt: now.toISOString(), closedByFault: true }),
+        occurredAt: now,
+      },
+      {
+        bayId:     session.bayId,
+        stationId: session.stationId,
+        side:      session.side,
+        eventType: 'fault_raised',
+        sessionId,
+        source:    'iot_controller',
+        metadata:  JSON.stringify({ faultCode, faultDescription, occurredDuringCleanup: true }),
+        occurredAt: now,
+      },
+    ]);
+  });
+
+  logger.warn('[K9000FaultCleanup] Fault during cleanup — session completed, bay faulted', {
+    sessionId, faultCode,
+  });
+}
+
 // ── Balance validation per type ──────────────────────────────────────────────
 
 function validateBalance(

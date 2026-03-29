@@ -668,6 +668,21 @@ if (isProduction) {
       });
     }, 500);
 
+    // Non-blocking: K9000 cleanup recovery.
+    // If the server restarted while a bay was in "cleanup" status, the 30-second
+    // setTimeout that was scheduled in enterCleanupPhase() is gone. This scan
+    // either finalizes expired cleanup sessions immediately or reschedules the
+    // remaining timer, preventing bays from being stuck in "cleanup" after a restart.
+    setImmediate(() => {
+      import('./services/K9000RedemptionService').then(({ registerCleanupRecovery }) => {
+        registerCleanupRecovery().catch((err: Error) =>
+          console.warn('[K9000CleanupRecovery] Startup scan failed', err.message)
+        );
+      }).catch((err: Error) =>
+        console.warn('[K9000CleanupRecovery] Failed to import service', err.message)
+      );
+    });
+
     // 5. Serve static files - CONDITIONAL based on environment
     // DEVELOPMENT: Use Vite dev server with HMR for hot reloading
     // PRODUCTION: Serve pre-built static files from dist/public

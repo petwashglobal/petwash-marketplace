@@ -298,6 +298,67 @@ router.post('/wash/start_cycle', async (req, res) => {
       }
     }
 
+    // === STEP 2.6: BAY READY GUARD ===
+    // If the bay is registered and not in "ready" state, reject immediately.
+    // This covers Nayax card taps that arrive while a bay is busy, in the 30-sec
+    // cleanup window, faulted, or under maintenance.
+    //
+    // Cleanup case: firmware SHOULD prevent new payments, but belt-and-suspenders:
+    // if a card tap arrives during cleanup, log it as nayax_rejected_cleanup_window
+    // so operators can see the collision in the bay event log.
+    if (resolvedBay && (resolvedBay.status !== 'ready' || !resolvedBay.isActive)) {
+      const isCleanup = resolvedBay.status === 'cleanup';
+      const isBusy    = resolvedBay.status === 'busy';
+
+      logger.warn('[K9000 Wash] Bay not ready — rejecting activation', {
+        bayId: resolvedBay.id,
+        side: resolvedSide,
+        bayStatus: resolvedBay.status,
+        isActive: resolvedBay.isActive,
+        rejectCode: isCleanup ? 'rejected_cleanup_window' : 'BAY_NOT_READY',
+        correlationId,
+      });
+
+      // For cleanup-window collisions: write a bay event so the collision is
+      // visible to operators in Octopus (reason: card tapped during grace period)
+      if (isCleanup && stationInfo?.stationId) {
+        db.insert(bayEvents).values({
+          bayId:     resolvedBay.id,
+          stationId: stationInfo.stationId,
+          side:      resolvedSide,
+          eventType: 'nayax_rejected_cleanup_window',
+          sessionId: resolvedBay.currentSessionId ?? null,
+          source:    'petwash_server',
+          metadata:  JSON.stringify({
+            transactionId: transactionId ?? null,
+            rejectedAt:    new Date().toISOString(),
+            reason:        'Nayax card tap received during 30-second cleanup grace window',
+          }),
+          occurredAt: new Date(),
+        }).catch((e: Error) => {
+          logger.warn('[K9000 Wash] Could not log cleanup rejection event', { error: e.message });
+        });
+      }
+
+      return res.status(503).json({
+        error: isCleanup
+          ? 'ניקוי עמדה בתהליך — המתן מספר שניות ונסה שוב.'
+          : isBusy
+            ? 'עמדת השטיפה תפוסה כרגע.'
+            : 'עמדת השטיפה אינה זמינה.',
+        errorEn: isCleanup
+          ? 'Bay cleanup in progress — please wait a few seconds.'
+          : isBusy
+            ? 'Bay is currently in use.'
+            : 'Bay is not available.',
+        status:     isCleanup ? 'rejected_cleanup_window' : 'BAY_NOT_READY',
+        bayStatus:  resolvedBay.status,
+        bayId:      resolvedBay.id,
+        side:       resolvedSide,
+        correlationId,
+      });
+    }
+
     // Simulate successful activation
     logger.info('[K9000 Wash] ✅ Wash cycle activated', {
       washId,

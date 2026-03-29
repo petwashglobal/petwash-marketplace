@@ -494,7 +494,8 @@ router.delete('/records/:userId', async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Forbidden: can only delete your own records' });
     }
 
-    // Record the deletion request in the audit trail before acting
+    // Record the deletion request in the audit trail BEFORE anonymizing so the
+    // deletion event itself appears in the chain (otherwise it would be erased too).
     kycAuditTrail.record({
       action: 'kyc_data_deleted',
       actorId: callerUid,
@@ -504,18 +505,35 @@ router.delete('/records/:userId', async (req: Request, res: Response) => {
       userAgent: req.headers['user-agent'] || 'unknown',
       metadata: {
         requestedAt: new Date().toISOString(),
-        note: 'Right-to-erasure request. Audit trail entries are retained for legal compliance per Israeli Privacy Law 2025 Article 17 exemption.',
+        note: 'Right-to-erasure: PII fields (IP, UA, UID) will be anonymized. Decision records retained per Israeli Privacy Law 2025.',
       },
     });
 
-    logger.info('[KYC2026] Data deletion request recorded', { callerUid, targetUserId, isAdmin });
+    // Perform actual PII minimization in the DB.
+    // IP addresses, user-agents, device fingerprints, and actor/target UIDs are
+    // replaced with pseudonymous tokens. Decision records (action, timestamp,
+    // hash chain) are retained for 5 years per Israeli Privacy Law 2025.
+    let rowsAnonymized = 0;
+    try {
+      rowsAnonymized = await kycAuditTrail.anonymizeUserData(targetUserId);
+    } catch (anonErr: any) {
+      // Non-fatal — log and continue so the caller still gets a response
+      logger.error('[KYC2026] anonymizeUserData failed, deletion request was recorded', {
+        callerUid, targetUserId, error: anonErr.message,
+      });
+    }
+
+    logger.info('[KYC2026] Right-to-erasure complete', { callerUid, targetUserId, isAdmin, rowsAnonymized });
 
     return res.json({
       success: true,
-      message: 'Your KYC data deletion request has been recorded. Document images are already discarded immediately after processing. Audit trail records are retained for 5 years as required by law, after which they are permanently deleted.',
+      rowsAnonymized,
+      message: rowsAnonymized > 0
+        ? `PII anonymized in ${rowsAnonymized} audit record(s). Decision records are retained for legal compliance.`
+        : 'No KYC records found for this user. Document images are discarded immediately after processing.',
       retentionPolicy: {
         documentImages: 'Destroyed immediately after in-memory processing — never persisted',
-        auditTrailEntries: 'Retained 5 years (Israeli Privacy Law 2025 obligation), then deleted',
+        auditTrailEntries: 'PII fields anonymized immediately on request. Decision metadata retained 5 years (Israeli Privacy Law 2025), then deleted',
         biometricData: 'Never stored — only a pseudonymous hash is kept',
       },
     });
