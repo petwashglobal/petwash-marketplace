@@ -14404,3 +14404,63 @@ export const kycEvents = pgTable("kyc_events", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export type KycEvent = typeof kycEvents.$inferSelect;
+
+// ===== K9000 MACHINE COMMAND QUEUE =====
+// Every command sent from the PetWash backend to a K9000 IoT controller must be
+// recorded here. This table is the single source of truth for command lifecycle:
+//   pending → sent → acknowledged → completed
+//                  → failed (max retries exceeded)
+//                  → expired   (timeout, no ACK)
+//
+// Payment success ≠ machine success.  Machine success requires an ACK.
+// If START_PUMP is never ACKed after all retries, compensationTriggeredAt is set
+// and the ops team / refund automation is alerted.
+export const machineCommands = pgTable("machine_commands", {
+  id:          varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  // Stable, human-readable identifier included in every HTTP payload to the machine.
+  // The machine uses commandId for idempotency — it will not re-execute a command
+  // it has already processed even if the same commandId arrives again.
+  commandId:   varchar("command_id", { length: 64 }).unique().notNull(),
+
+  // Station / bay / session context
+  stationId:   varchar("station_id", { length: 64 }).notNull(),
+  bayId:       varchar("bay_id",     { length: 64 }),    // nullable for station-level cmds
+  sessionId:   varchar("session_id", { length: 64 }),    // nullable for probes
+  side:        varchar("side",       { length: 10 }),    // "left" | "right" | null
+
+  // Command details
+  commandType: varchar("command_type", { length: 30 }).notNull(),
+  // START_PUMP | STOP_PUMP | EXTEND_TIME | HEARTBEAT | STATUS_PING
+  payload:     jsonb("payload").notNull().default(sql`'{}'::jsonb`),
+
+  // Lifecycle status
+  status:      varchar("status", { length: 20 }).notNull().default("pending"),
+  // pending | sent | acknowledged | completed | failed | expired
+
+  // Retry tracking
+  retryCount:  integer("retry_count").notNull().default(0),
+  maxRetries:  integer("max_retries").notNull().default(2),
+
+  // Timestamps
+  createdAt:                timestamp("created_at",                  { withTimezone: true }).notNull().defaultNow(),
+  timeoutAt:                timestamp("timeout_at",                  { withTimezone: true }).notNull(),
+  sentAt:                   timestamp("sent_at",                     { withTimezone: true }),
+  acknowledgedAt:           timestamp("acknowledged_at",             { withTimezone: true }),
+  failedAt:                 timestamp("failed_at",                   { withTimezone: true }),
+  compensationTriggeredAt:  timestamp("compensation_triggered_at",   { withTimezone: true }),
+
+  // Network context
+  machineClientIp: varchar("machine_client_ip", { length: 64 }),
+  correlationId:   varchar("correlation_id",    { length: 64 }),
+  source:          varchar("source",            { length: 30 }),
+  // petwash_wallet | nayax | admin | server
+},
+(table) => [
+  index("idx_machine_commands_station_status").on(table.stationId, table.status),
+  index("idx_machine_commands_session").on(table.sessionId),
+  index("idx_machine_commands_timeout").on(table.timeoutAt),
+]);
+
+export type MachineCommand      = typeof machineCommands.$inferSelect;
+export type InsertMachineCommand = typeof machineCommands.$inferInsert;

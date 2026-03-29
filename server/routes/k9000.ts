@@ -55,7 +55,7 @@ import {
 import { NayaxSparkService } from '../services/NayaxSparkService';
 import { z } from 'zod';
 import { db } from '../db';
-import { nayaxTransactions, auditLedger, walletAccounts, creditTransactions, k9000WashEvents, stationBays, baySessions, bayEvents, bayFaults, bayReaders, stations } from '@shared/schema';
+import { nayaxTransactions, auditLedger, walletAccounts, creditTransactions, k9000WashEvents, stationBays, baySessions, bayEvents, bayFaults, bayReaders, stations, machineCommands } from '@shared/schema';
 import { eq, and, gt, sql, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
@@ -71,6 +71,7 @@ import {
   openBaySession,
   closeBaySession,
 } from '../services/K9000RedemptionService';
+import * as MachineCommandService from '../services/MachineCommandService';
 
 const router = express.Router();
 
@@ -567,6 +568,47 @@ router.post('/wash/start_cycle', async (req, res) => {
       }
     }
 
+    // === STEP 4.9: DISPATCH START_PUMP — machine command reliability layer ===
+    // Command is created in machine_commands and fired asynchronously.
+    // Payment is already confirmed. Response goes to kiosk immediately.
+    // If the machine never ACKs within 10 s the timeout scanner retries
+    // (up to maxRetries=2) then marks failed and triggers compensation.
+    //
+    // commandId is stable — the machine deduplicates on it so retries are safe.
+    if (stationInfo?.stationId && resolvedBay) {
+      MachineCommandService.dispatch({
+        commandType:     'START_PUMP',
+        stationId:       stationInfo.stationId,
+        bayId:           resolvedBay.id,
+        sessionId:       baySessionId ?? undefined,
+        side:            resolvedSide,
+        payload: {
+          washId,
+          washType,
+          machineId,
+          transactionId: transactionId ?? null,
+          source:        'nayax',
+          isFreeWash,
+        },
+        machineClientIp: clientIP ?? undefined,
+        correlationId:   washId,
+        source:          'nayax',
+      }).then(({ commandId }) => {
+        logger.info('[K9000 Wash] START_PUMP queued', {
+          commandId,
+          washId,
+          side:      resolvedSide,
+          bayId:     resolvedBay!.id,
+          sessionId: baySessionId,
+        });
+      }).catch((err: Error) => {
+        logger.warn('[K9000 Wash] START_PUMP dispatch failed (non-fatal) — kiosk polls /bays', {
+          error: err.message,
+          washId,
+        });
+      });
+    }
+
     // === STEP 5: SEND SUCCESS RESPONSE ===
     
     res.status(200).json({
@@ -794,51 +836,53 @@ router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
 
     const { washId, bayId, sessionId, side: authorisedSide, remainingBalance, remainingUnit } = authorization;
 
-    // ── Step 9: Send START_PUMP activation signal to K9000 controller ──────
-    // Activation is sent ONLY after authorizeRedemption() succeeds.
-    // Failure here is non-fatal — the debit is already committed.
-    // The kiosk can poll /api/k9000/bays/:stationId as a fallback.
+    // ── Step 9: Dispatch START_PUMP via machine command reliability layer ──
+    // authorizeRedemption() already committed the debit.  We now create a
+    // tracked command record and fire it asynchronously to the controller.
+    //
+    // commandId is stable — machine deduplicates on it, so retries are safe.
+    // If the machine never ACKs within 10 s the timeout scanner retries up to
+    // maxRetries=2 times, then marks failed + logs compensation_required.
     //
     // CRITICAL: `side` and `bayId` MUST be in the payload so the K9000
-    // controller knows which pump to start. Left and right run independently.
+    // controller knows which pump to start.  Left and right run independently.
     const clientIP = stationInfo?.clientIP;
-    if (clientIP) {
-      try {
-        const signal = await fetch(`http://${clientIP}/api/start`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Machine-Id': kioskId },
-          body: JSON.stringify({
-            washId,
-            sessionId,
-            bayId,
-            side: authorisedSide,   // "left" | "right" — which pump to activate
-            command: 'START_PUMP',
-            source: 'petwash_wallet',
-            redemptionType,
-            userId,
-          }),
-          signal: AbortSignal.timeout(3000),
-        });
-        logger.info('[K9000 Redeem] IoT activation signal sent', {
-          kioskId,
-          side: authorisedSide,
-          bayId,
-          sessionId,
-          httpStatus: signal.status,
-          washId,
-          correlationId,
-        });
-      } catch (iotErr: any) {
-        logger.warn('[K9000 Redeem] IoT signal failed (non-fatal) — kiosk should poll /api/k9000/bays/:stationId', {
-          error: iotErr.message,
-          kioskId,
-          side: authorisedSide,
-          correlationId,
-        });
-      }
-    } else {
-      logger.info('[K9000 Redeem] No kiosk IP — dev mode, authorisation logged only', { correlationId });
-    }
+
+    MachineCommandService.dispatch({
+      commandType:     'START_PUMP',
+      stationId:       stationInfo?.stationId ?? kioskId,
+      bayId:           bayId ?? undefined,
+      sessionId:       sessionId ?? undefined,
+      side:            authorisedSide,
+      payload: {
+        washId,
+        sessionId,
+        bayId,
+        side:          authorisedSide,
+        source:        'petwash_wallet',
+        redemptionType,
+        userId,
+        kioskId,
+      },
+      machineClientIp: clientIP ?? undefined,
+      correlationId,
+      source:          'petwash_wallet',
+    }).then(({ commandId }) => {
+      logger.info('[K9000 Redeem] START_PUMP queued', {
+        commandId,
+        washId,
+        side:      authorisedSide,
+        bayId,
+        sessionId,
+        correlationId,
+      });
+    }).catch((cmdErr: Error) => {
+      logger.warn('[K9000 Redeem] START_PUMP dispatch failed (non-fatal) — kiosk polls /bays', {
+        error: cmdErr.message,
+        washId,
+        correlationId,
+      });
+    });
 
     // ── Apple Wallet push update (non-blocking fire-and-forget) ────────────
     // Notifies Apple that the pass changed → device pulls fresh pass data.
@@ -898,6 +942,99 @@ router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
       errorEn: 'Internal server error.',
       correlationId,
     });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * POST /api/k9000/commands/:commandId/ack
+ *
+ * Machine ACK endpoint — called by the K9000 controller after it has
+ * successfully received and begun executing a command (e.g. started the pump).
+ *
+ * Security: same IP allowlist + HMAC layers as all K9000 endpoints.
+ * Auth is enforced by the global router.use() middleware above.
+ *
+ * Idempotent: re-ACKing an already-acknowledged commandId is a no-op (200).
+ */
+router.post('/commands/:commandId/ack', async (req, res) => {
+  const { commandId } = req.params;
+  const correlationId = nanoid(10);
+
+  if (!commandId || typeof commandId !== 'string' || commandId.length > 64) {
+    return res.status(400).json({ error: 'Invalid commandId', correlationId });
+  }
+
+  try {
+    const result = await MachineCommandService.acknowledge(commandId);
+
+    if (!result.ok && result.reason === 'command_not_found') {
+      logger.warn('[K9000 ACK] Unknown commandId', { commandId, correlationId });
+      return res.status(404).json({
+        error:       'Command not found',
+        commandId,
+        correlationId,
+      });
+    }
+
+    logger.info('[K9000 ACK] ACK accepted', {
+      commandId,
+      commandType: result.cmd?.commandType,
+      status:      result.cmd?.status,
+      correlationId,
+    });
+
+    return res.status(200).json({
+      ok:        true,
+      commandId,
+      status:    result.cmd?.status,
+      correlationId,
+    });
+  } catch (err: any) {
+    logger.error('[K9000 ACK] Error processing ACK', {
+      commandId,
+      error: err.message,
+      correlationId,
+    });
+    return res.status(500).json({ error: 'Internal error', correlationId });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/k9000/stations/:stationId/commands
+ *
+ * Octopus / admin visibility — last 50 commands for a station.
+ *
+ * Returns each command's full lifecycle record plus a summary:
+ *   lastCommandType | lastCommandStatus | lastAckTime | timeoutCount | failedCount
+ *
+ * Security: same IP allowlist + HMAC layers as all K9000 endpoints.
+ * Intended for the Octopus ops dashboard and for integration tests.
+ */
+router.get('/stations/:stationId/commands', async (req, res) => {
+  const { stationId } = req.params;
+  const limitRaw = parseInt(String(req.query.limit ?? '50'), 10);
+  const limit    = Number.isFinite(limitRaw) && limitRaw > 0 && limitRaw <= 200 ? limitRaw : 50;
+  const correlationId = nanoid(10);
+
+  try {
+    const data = await MachineCommandService.getStationCommands(stationId, limit);
+
+    return res.status(200).json({
+      stationId,
+      ...data,
+      correlationId,
+    });
+  } catch (err: any) {
+    logger.error('[K9000 Commands] Error fetching command history', {
+      stationId,
+      error: err.message,
+      correlationId,
+    });
+    return res.status(500).json({ error: 'Internal error', correlationId });
   }
 });
 

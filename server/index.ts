@@ -683,6 +683,18 @@ if (isProduction) {
       );
     });
 
+    // Non-blocking: start machine command timeout scanner — checks every 15 s
+    // for commands that have been sent but not ACKed within their deadline.
+    // Retries safe commands up to maxRetries times, then marks failed and
+    // triggers compensation if the command was a START_PUMP after a payment.
+    setImmediate(() => {
+      import('./services/MachineCommandService').then(({ startCommandTimeoutScanner }) => {
+        startCommandTimeoutScanner();
+      }).catch((err: Error) =>
+        console.warn('[MachineCommandScanner] Failed to start', err.message)
+      );
+    });
+
     // 5. Serve static files - CONDITIONAL based on environment
     // DEVELOPMENT: Use Vite dev server with HMR for hot reloading
     // PRODUCTION: Serve pre-built static files from dist/public
