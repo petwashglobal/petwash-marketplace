@@ -71,10 +71,12 @@ router.post('/quote', async (req, res) => {
     // Persist the quote to database and generate a quoteId
     const quoteId = `QUOTE-${nanoid(12)}`;
     
-    // quoteRequests schema column names:
-    //   surchargeCents  (single column for all surcharges — weekend + holiday combined)
-    //   discountCents   (single column for all discounts — duration + combo + loyalty combined)
-    //   taxCents        (VAT — NOT vatCents)
+    // IMPORTANT — quoteRequests DB schema uses three combined monetary columns.
+    // Do NOT split these back into separate named fields; Drizzle will silently
+    // discard any key that does not match the schema column name exactly.
+    //   surchargeCents  = weekend + holiday surcharges combined  (DB: surcharge_cents)
+    //   discountCents   = duration + combo + loyalty discounts summed (DB: discount_cents)
+    //   taxCents        = VAT amount — NOT vatCents             (DB: tax_cents)
     await db.insert(quoteRequests).values({
       quoteId,
       customerId: userId || 'anonymous',
