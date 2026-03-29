@@ -833,6 +833,171 @@ export type BaySession = typeof baySessions.$inferSelect;
 export type InsertBaySession = typeof baySessions.$inferInsert;
 export const insertBaySessionSchema = createInsertSchema(baySessions).omit({ id: true, createdAt: true, updatedAt: true });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// BAY READERS — one row per physical reader attached to a bay
+//
+// Each K9000 bay has exactly two readers:
+//   card_reader  → Nayax yellow card/NFC terminal
+//   qr_reader    → Nayax DOT black QR scanner
+//
+// This table allows a reader to be remapped (e.g. hardware replacement)
+// without touching the stationBays row. Also used for fault attribution:
+// a fault can be pinned to a specific reader, not just "the bay".
+// ─────────────────────────────────────────────────────────────────────────────
+export const bayReaders = pgTable("bay_readers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  bayId:     varchar("bay_id").notNull(),       // FK → station_bays.id
+  stationId: varchar("station_id").notNull(),   // denormalized for fast queries
+  side:      varchar("side", { length: 5 }).notNull(), // "left" | "right"
+
+  // Reader type — one reader per type per bay
+  readerType: varchar("reader_type", { length: 20 }).notNull(), // "card_reader" | "qr_reader"
+
+  // Nayax hardware identifiers
+  nayaxDeviceId:  varchar("nayax_device_id"),   // Nayax device ID / serial
+  nayaxTerminalId: varchar("nayax_terminal_id"),// Nayax terminal ID (card readers)
+
+  // Operational state
+  // online   = reachable and responding
+  // offline  = no heartbeat within threshold
+  // fault    = hardware error reported
+  // replaced = decommissioned, superseded by a new row
+  status: varchar("status", { length: 20 }).notNull().default("online"),
+
+  lastHeartbeat: timestamp("last_heartbeat"),
+  lastFaultCode: varchar("last_fault_code"),
+  lastFaultAt:   timestamp("last_fault_at"),
+
+  isActive:  boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_reader_bay").on(table.bayId),
+  index("idx_reader_station").on(table.stationId),
+  index("idx_reader_type").on(table.readerType),
+  index("idx_reader_nayax_device").on(table.nayaxDeviceId),
+  // Each bay has exactly one reader of each type
+  uniqueIndex("uq_bay_reader_type").on(table.bayId, table.readerType),
+]);
+
+export type BayReader = typeof bayReaders.$inferSelect;
+export type InsertBayReader = typeof bayReaders.$inferInsert;
+export const insertBayReaderSchema = createInsertSchema(bayReaders).omit({ id: true, createdAt: true, updatedAt: true });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BAY FAULTS — hardware fault log, one row per fault event
+//
+// Faults are raised by IoT telemetry (POST /api/k9000/telemetry) or by the
+// Nayax webhook. Each fault is associated with a specific bay and optionally
+// with the specific reader that reported it.
+//
+// A fault blocks the bay (status → "fault") until it is resolved.
+// Resolution can be manual (staff) or automatic (self-heal on next heartbeat).
+// ─────────────────────────────────────────────────────────────────────────────
+export const bayFaults = pgTable("bay_faults", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  bayId:     varchar("bay_id").notNull(),       // FK → station_bays.id
+  stationId: varchar("station_id").notNull(),   // denormalized
+  side:      varchar("side", { length: 5 }).notNull(), // "left" | "right"
+
+  // Fault details
+  faultCode:        varchar("fault_code", { length: 50 }).notNull(), // e.g. "E04_WATER_LOW"
+  severity:         varchar("severity", { length: 10 }).notNull().default("error"), // "warning" | "error" | "critical"
+  description:      text("description"),
+  descriptionHe:    text("description_he"),
+
+  // Reader that raised the fault, if applicable
+  readerId:      varchar("reader_id"),          // FK → bay_readers.id, nullable
+  readerType:    varchar("reader_type", { length: 20 }), // "card_reader" | "qr_reader"
+
+  // Session that was in progress when the fault occurred, if any
+  sessionId:     varchar("session_id"),         // FK → bay_sessions.id, nullable
+
+  // Raw telemetry payload from IoT
+  rawPayload: text("raw_payload"),              // JSON string from IoT controller
+
+  // Resolution
+  // open      = active, bay is blocked
+  // resolved  = manually cleared by staff
+  // auto_healed = resolved automatically by next heartbeat
+  status: varchar("status", { length: 20 }).notNull().default("open"),
+  resolvedAt:   timestamp("resolved_at"),
+  resolvedBy:   varchar("resolved_by"),         // staff userId or "system"
+  resolutionNote: text("resolution_note"),
+
+  reportedAt: timestamp("reported_at").defaultNow(),
+  createdAt:  timestamp("created_at").defaultNow(),
+  updatedAt:  timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_fault_bay").on(table.bayId),
+  index("idx_fault_station").on(table.stationId),
+  index("idx_fault_status").on(table.status),
+  index("idx_fault_severity").on(table.severity),
+  index("idx_fault_reported").on(table.reportedAt),
+]);
+
+export type BayFault = typeof bayFaults.$inferSelect;
+export type InsertBayFault = typeof bayFaults.$inferInsert;
+export const insertBayFaultSchema = createInsertSchema(bayFaults).omit({ id: true, createdAt: true, updatedAt: true });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BAY EVENTS — operational event log, one row per event per bay
+//
+// Immutable append-only log. Used for:
+//   - Session lifecycle events (session_started, session_completed, etc.)
+//   - Reader events (qr_scanned, card_swiped)
+//   - Fault events (fault_raised, fault_resolved)
+//   - Maintenance events (maintenance_start, maintenance_end)
+//   - Telemetry snapshots (heartbeat)
+//
+// These are distinct from bay_sessions (sessions are per-wash lifecycle)
+// and bay_faults (faults are unresolved states). Events are the audit trail.
+// ─────────────────────────────────────────────────────────────────────────────
+export const bayEvents = pgTable("bay_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  bayId:     varchar("bay_id").notNull(),       // FK → station_bays.id
+  stationId: varchar("station_id").notNull(),   // denormalized
+  side:      varchar("side", { length: 5 }).notNull(), // "left" | "right"
+
+  // Event classification
+  eventType: varchar("event_type", { length: 50 }).notNull(),
+  // session_started | session_completed | session_timed_out | session_aborted
+  // qr_scanned | card_swiped | card_declined
+  // fault_raised | fault_resolved | fault_auto_healed
+  // maintenance_start | maintenance_end
+  // heartbeat | telemetry_update
+  // bay_opened | bay_closed (physical door / panel)
+
+  // Related records (nullable — depends on event type)
+  sessionId:     varchar("session_id"),         // FK → bay_sessions.id
+  faultId:       varchar("fault_id"),           // FK → bay_faults.id
+  readerId:      varchar("reader_id"),          // FK → bay_readers.id
+  userId:        varchar("user_id"),            // customer or staff
+
+  // Source of the event
+  // iot_controller | nayax_webhook | petwash_server | staff_panel
+  source: varchar("source", { length: 30 }).notNull().default("petwash_server"),
+
+  // Payload — arbitrary JSON from the event source
+  metadata: text("metadata"),                  // JSON string
+
+  occurredAt: timestamp("occurred_at").defaultNow(),
+  createdAt:  timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_bayevent_bay").on(table.bayId),
+  index("idx_bayevent_station").on(table.stationId),
+  index("idx_bayevent_type").on(table.eventType),
+  index("idx_bayevent_session").on(table.sessionId),
+  index("idx_bayevent_occurred").on(table.occurredAt),
+]);
+
+export type BayEvent = typeof bayEvents.$inferSelect;
+export type InsertBayEvent = typeof bayEvents.$inferInsert;
+export const insertBayEventSchema = createInsertSchema(bayEvents).omit({ id: true, createdAt: true });
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type Customer = typeof customers.$inferSelect;

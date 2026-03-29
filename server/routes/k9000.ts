@@ -55,7 +55,7 @@ import {
 import { NayaxSparkService } from '../services/NayaxSparkService';
 import { z } from 'zod';
 import { db } from '../db';
-import { nayaxTransactions, auditLedger, walletAccounts, creditTransactions, k9000WashEvents, stationBays, baySessions } from '@shared/schema';
+import { nayaxTransactions, auditLedger, walletAccounts, creditTransactions, k9000WashEvents, stationBays, baySessions, bayEvents, bayFaults, bayReaders, stations } from '@shared/schema';
 import { eq, and, gt, sql, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
@@ -273,11 +273,37 @@ router.post('/wash/start_cycle', async (req, res) => {
     //   }),
     // });
     
+    // === STEP 2.5: BAY LOOKUP — find the specific bay record for this side ===
+    // resolvedSide was validated above. If the bay isn't in station_bays yet
+    // (e.g. first install), we proceed but skip openBaySession (non-fatal).
+    let resolvedBay: typeof stationBays.$inferSelect | null = null;
+    if (stationInfo?.stationId) {
+      try {
+        resolvedBay = await findBay(stationInfo.stationId, resolvedSide);
+        if (resolvedBay) {
+          logger.info('[K9000 Wash] Bay located', {
+            bayId: resolvedBay.id,
+            side: resolvedSide,
+            bayStatus: resolvedBay.status,
+            stationId: stationInfo.stationId,
+          });
+        } else {
+          logger.warn('[K9000 Wash] Bay not found in station_bays — session will not be created', {
+            stationId: stationInfo.stationId,
+            side: resolvedSide,
+          });
+        }
+      } catch (bayLookupErr: any) {
+        logger.warn('[K9000 Wash] Bay lookup failed (non-fatal)', { error: bayLookupErr.message });
+      }
+    }
+
     // Simulate successful activation
     logger.info('[K9000 Wash] ✅ Wash cycle activated', {
       washId,
       machineId,
-      bayNumber,
+      side: resolvedSide,
+      bayId: resolvedBay?.id,
       program: washType,
       isFreeWash,
       discountPercent,
@@ -309,7 +335,8 @@ router.post('/wash/start_cycle', async (req, res) => {
       customerUid: customerUid || null,
       metadata: JSON.stringify({
         machineId,
-        bayNumber,
+        side: resolvedSide,      // REQUIRED: which bay's terminal fired
+        bayId: resolvedBay?.id,  // FK to station_bays, null if not yet registered
         washType,
         transactionId,
         qrCode: qrCode ? '***REDACTED***' : null,
@@ -338,6 +365,8 @@ router.post('/wash/start_cycle', async (req, res) => {
         {
           washId,
           stationId: stationInfo?.stationId || machineId,
+          bayId: resolvedBay?.id,
+          side: resolvedSide,
           customerId: customerUid,
           programType: washType,
           amount,
@@ -395,6 +424,9 @@ router.post('/wash/start_cycle', async (req, res) => {
     // === STEP 4.8: LOG TO k9000_wash_events (FLOW A — NAYAX TERMINAL) ===
     // transaction_source = "nayax" and redemption_source = "nayax" for ALL
     // direct terminal payments. The PetWash wallet is never touched in this flow.
+    // baySide is ALWAYS populated — which side's card reader fired.
+    let washEventId: string | null = null;
+    let nayaxAmountCents = 0;
     try {
       const nayaxAmountRow = transactionId
         ? await db
@@ -404,25 +436,64 @@ router.post('/wash/start_cycle', async (req, res) => {
             .limit(1)
         : [];
       const amountILS = nayaxAmountRow.length > 0 ? parseFloat(nayaxAmountRow[0].amount) : 0;
+      nayaxAmountCents = Math.round(amountILS * 100);
 
-      await db.insert(k9000WashEvents).values({
+      const [washEventRow] = await db.insert(k9000WashEvents).values({
         transactionSource: 'nayax',          // FLOW A: direct terminal sale
         redemptionSource: 'nayax',           // reporting: direct_terminal_sale
         stationId: stationInfo?.stationId ?? machineId,
+        baySide: resolvedSide,               // "left" | "right" — critical for per-bay reporting
         nayaxTransactionId: transactionId ?? null,
         nayaxTerminalId: stationInfo?.terminalId ?? null,
         platform: 'k9000',
         product: washType,
-        amountCents: Math.round(amountILS * 100),
+        amountCents: nayaxAmountCents,
         currency: 'ILS',
         loyaltyPointsAwarded: 0,
         loyaltyEventLogged: false,
         status: 'completed',
         idempotencyKey: transactionId ? `nayax:${transactionId}` : `nayax:${washId}`,
+      }).returning({ id: k9000WashEvents.id });
+      washEventId = washEventRow?.id ?? null;
+      logger.info('[K9000 Wash] k9000WashEvents logged (nayax terminal)', {
+        washId,
+        washEventId,
+        baySide: resolvedSide,
       });
-      logger.info('[K9000 Wash] k9000WashEvents logged (nayax terminal)', { washId });
     } catch (washLogErr: any) {
       logger.error('[K9000 Wash] Failed to write k9000WashEvents', { error: washLogErr.message, washId });
+    }
+
+    // === STEP 4.9: OPEN BAY SESSION (FLOW A) ===
+    // Mark the specific bay as busy and create a session record.
+    // Non-fatal if bay is not yet registered in station_bays.
+    let baySessionId: string | null = null;
+    if (resolvedBay) {
+      try {
+        const { sessionId } = await openBaySession({
+          bay: resolvedBay,
+          source: 'terminal_card',
+          userId: customerUid || undefined,
+          nayaxTransactionId: transactionId || undefined,
+          nayaxTerminalId: stationInfo?.terminalId || undefined,
+          washProgram: washType,
+          amountCents: nayaxAmountCents,
+          correlationId: washId,
+          washEventId: washEventId || undefined,
+        });
+        baySessionId = sessionId;
+        logger.info('[K9000 Wash] Bay session opened', {
+          sessionId,
+          bayId: resolvedBay.id,
+          side: resolvedSide,
+        });
+      } catch (sessionErr: any) {
+        logger.warn('[K9000 Wash] Bay session creation failed (non-fatal)', {
+          error: sessionErr.message,
+          bayId: resolvedBay.id,
+          side: resolvedSide,
+        });
+      }
     }
 
     // === STEP 5: SEND SUCCESS RESPONSE ===
@@ -437,7 +508,9 @@ router.post('/wash/start_cycle', async (req, res) => {
         : 'Wash started! Enjoy with your dog!',
       washId,
       machineId,
-      bayNumber,
+      side: resolvedSide,       // "left" | "right" — which bay was activated
+      bayId: resolvedBay?.id ?? null,
+      sessionId: baySessionId,
       program: washType,
       isFreeWash,
       discountPercent,
@@ -536,6 +609,10 @@ router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
     const bodySchema = z.object({
       scannedCode:   z.string().min(10),
       kioskId:       z.string().min(1),
+      // side — REQUIRED. Each Nayax DOT QR reader belongs to exactly one bay.
+      // The kiosk firmware must send "left" or "right" depending on which bay's
+      // QR reader scanned the code. This is how we know which pump to start.
+      side: z.enum(['left', 'right']),
       // redemptionType defaults to 'wash_package' for backward compatibility
       // with existing kiosk firmware that does not yet send this field.
       redemptionType: z.enum([
@@ -558,11 +635,12 @@ router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
       });
     }
 
-    const { scannedCode, kioskId, redemptionType, washType } = parsed.data;
+    const { scannedCode, kioskId, side, redemptionType, washType } = parsed.data;
     const stationInfo = (req as any).k9000Station;
 
     logger.info('[K9000 Redeem] Scan received', {
       kioskId,
+      side,
       redemptionType,
       correlationId,
       codeLen: scannedCode.length,
@@ -622,7 +700,7 @@ router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
         userId,
         redemptionType: redemptionType as K9000RedemptionType,
         kioskId,
-        stationId: stationInfo?.stationId,
+        side,            // which bay's QR reader was scanned — critical for bay lookup
         washType: washType || 'standard',
         correlationId,
       });
@@ -643,12 +721,15 @@ router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
       });
     }
 
-    const { washId, remainingBalance, remainingUnit } = authorization;
+    const { washId, bayId, sessionId, side: authorisedSide, remainingBalance, remainingUnit } = authorization;
 
     // ── Step 9: Send START_PUMP activation signal to K9000 controller ──────
     // Activation is sent ONLY after authorizeRedemption() succeeds.
     // Failure here is non-fatal — the debit is already committed.
-    // The kiosk can poll /api/k9000/status as a fallback.
+    // The kiosk can poll /api/k9000/bays/:stationId as a fallback.
+    //
+    // CRITICAL: `side` and `bayId` MUST be in the payload so the K9000
+    // controller knows which pump to start. Left and right run independently.
     const clientIP = stationInfo?.clientIP;
     if (clientIP) {
       try {
@@ -657,6 +738,9 @@ router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
           headers: { 'Content-Type': 'application/json', 'X-Machine-Id': kioskId },
           body: JSON.stringify({
             washId,
+            sessionId,
+            bayId,
+            side: authorisedSide,   // "left" | "right" — which pump to activate
             command: 'START_PUMP',
             source: 'petwash_wallet',
             redemptionType,
@@ -666,14 +750,18 @@ router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
         });
         logger.info('[K9000 Redeem] IoT activation signal sent', {
           kioskId,
+          side: authorisedSide,
+          bayId,
+          sessionId,
           httpStatus: signal.status,
           washId,
           correlationId,
         });
       } catch (iotErr: any) {
-        logger.warn('[K9000 Redeem] IoT signal failed (non-fatal) — kiosk should poll /status', {
+        logger.warn('[K9000 Redeem] IoT signal failed (non-fatal) — kiosk should poll /api/k9000/bays/:stationId', {
           error: iotErr.message,
           kioskId,
+          side: authorisedSide,
           correlationId,
         });
       }
@@ -702,6 +790,9 @@ router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
     logger.info('[K9000 Redeem] Wash authorised ✅', {
       userId,
       washId,
+      bayId,
+      sessionId,
+      side: authorisedSide,
       redemptionType,
       remainingBalance,
       remainingUnit,
@@ -716,6 +807,9 @@ router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
     return res.status(200).json({
       status: 'success',
       washId,
+      bayId,
+      sessionId,
+      side: authorisedSide,       // "left" | "right" — which bay was activated
       redemptionType,
       remainingBalance,
       remainingUnit,
@@ -733,6 +827,102 @@ router.post('/redeem-wash', validateKioskAllowlist, async (req, res) => {
       errorEn: 'Internal server error.',
       correlationId,
     });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/k9000/:stationId/bays
+ *
+ * Real-time readiness for each bay (left + right) at a station.
+ *
+ * Returns per-bay status independently — a fault or busy state on left does
+ * NOT affect right, and vice versa.  Two customers can use both bays at the
+ * same time.
+ *
+ * Auth: IP allowlist + HMAC headers (same as all K9000 endpoints).
+ * Used by: K9000 kiosk UI, PetWash admin panel, monitoring dashboards.
+ */
+router.get('/:stationId/bays', async (req, res) => {
+  const correlationId = nanoid(10);
+  try {
+    const { stationId } = req.params;
+
+    const bays = await db
+      .select()
+      .from(stationBays)
+      .where(eq(stationBays.stationId, stationId));
+
+    if (bays.length === 0) {
+      return res.status(404).json({
+        error: 'Station not found or has no registered bays.',
+        stationId,
+        correlationId,
+      });
+    }
+
+    // Build per-bay readiness map (always left + right, even if only one exists)
+    const bayMap: Record<string, any> = {};
+    for (const bay of bays) {
+      bayMap[bay.side] = {
+        bayId:    bay.id,
+        side:     bay.side,
+        label:    bay.bayLabel,
+        labelHe:  bay.bayLabelHe,
+        status:   bay.status,          // "ready" | "busy" | "fault" | "maintenance" | "offline"
+        isReady:  bay.status === 'ready' && bay.isActive,
+        isActive: bay.isActive,
+
+        // Current session (populated when busy)
+        currentSessionId: bay.currentSessionId ?? null,
+
+        // Telemetry snapshot
+        lastHeartbeat:      bay.lastHeartbeat,
+        waterTempC:         bay.waterTempC,
+        shampooLevelPct:    bay.shampooLevelPct,
+        conditionerLevelPct: bay.conditionerLevelPct,
+
+        // Fault info (populated when status = "fault")
+        lastFaultCode: bay.lastFaultCode ?? null,
+        lastFaultAt:   bay.lastFaultAt ?? null,
+
+        // Stats
+        totalSessions:    bay.totalSessions,
+        lastSessionAt:    bay.lastSessionAt,
+      };
+    }
+
+    const allReady  = Object.values(bayMap).every((b: any) => b.isReady);
+    const anyReady  = Object.values(bayMap).some((b: any) => b.isReady);
+    const anyFault  = Object.values(bayMap).some((b: any) => b.status === 'fault');
+
+    logger.info('[K9000 Bays] Readiness checked', {
+      stationId,
+      bays: Object.keys(bayMap),
+      anyReady,
+      correlationId,
+    });
+
+    return res.status(200).json({
+      stationId,
+      bays: bayMap,
+      summary: {
+        allReady,
+        anyReady,
+        anyFault,
+        readySides: Object.keys(bayMap).filter((s) => bayMap[s].isReady),
+        busySides:  Object.keys(bayMap).filter((s) => bayMap[s].status === 'busy'),
+        faultSides: Object.keys(bayMap).filter((s) => bayMap[s].status === 'fault'),
+      },
+      correlationId,
+    });
+  } catch (error: any) {
+    logger.error('[K9000 Bays] Failed to fetch bay status', {
+      error: error.message,
+      correlationId,
+    });
+    return res.status(500).json({ error: 'Failed to fetch bay status.', correlationId });
   }
 });
 

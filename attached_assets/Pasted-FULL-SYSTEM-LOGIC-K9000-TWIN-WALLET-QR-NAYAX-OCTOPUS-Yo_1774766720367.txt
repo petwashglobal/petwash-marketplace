@@ -1,0 +1,375 @@
+FULL SYSTEM LOGIC - K9000 TWIN + WALLET + QR + NAYAX + OCTOPUS
+
+You must understand this as a real-world machine system, not just backend code.
+
+==================================================
+0. PHYSICAL MACHINE REALITY (CRITICAL)
+==================================================
+
+We are working with K9000 Twin stations.
+
+Each station has:
+- 2 independent wash platforms (LEFT + RIGHT)
+- each has its own:
+  - wash gun
+  - program selector (shampoo, rinse, flea, dryer etc)
+  - QR scanner (Nayax DOT or similar)
+  - credit card / NFC reader (Nayax terminal)
+- ONE central motherboard/controller in the middle
+
+Important:
+- both sides can run at the same time
+- 2 different users can use left and right independently
+- no booking system
+- walk-in usage only
+- open 24/7
+
+Machine flow (from real spec):
+- user pays
+- selects program (shampoo / rinse / etc)
+- machine runs timed cycle
+- extra time can be added
+- cycle ends with ~30 seconds free cleanup time  [oai_citation:0‡tbtd20 cashless 2.0 Twin.pdf](sediment://file_000000001a2c71fa985ac70d6ae3a0ba)
+
+This is NOT like booking a service. This is a vending / IoT / terminal system.
+
+==================================================
+1. TWO COMPLETELY SEPARATE PAYMENT FLOWS
+==================================================
+
+You MUST NEVER MIX THESE FLOWS.
+
+------------------------------------------
+FLOW A - DIRECT PAYMENT (NAYAX TERMINAL)
+------------------------------------------
+
+User:
+- walks to machine
+- taps credit card / Apple Pay / Google Pay
+- Nayax handles full payment (clearing, סליקה)
+- machine starts immediately
+
+System behavior:
+- we DO NOT validate balance
+- we DO NOT touch wallet
+- we DO NOT block transaction
+- Nayax is source of truth
+
+We ONLY:
+- receive webhook / event
+- log k9000WashEvents:
+  transaction_source = "nayax"
+  redemption_source = "nayax"
+
+------------------------------------------
+FLOW B - WALLET / QR REDEMPTION
+------------------------------------------
+
+User:
+- has wallet in app (ILS or credits)
+- scans QR on machine
+- app sends redeem request
+
+Now WE control everything.
+
+This must go through FULL validation:
+
+1. Auth (user identity)
+2. Wallet ownership
+3. Balance / credits check
+4. Machine exists
+5. Machine is online
+6. Station is not maintenance
+7. Anti-fraud (max 3 per hour)
+8. Prevent double redemption (nonce)
+9. Atomic debit (transaction)
+
+Only AFTER success:
+→ send command to machine (START_PUMP)
+
+Then log:
+- wallet debit
+- credit transaction
+- k9000WashEvents
+- audit ledger
+
+==================================================
+2. FIVE CREDIT TYPES (ALL MUST WORK)
+==================================================
+
+System must support:
+
+- wash_package
+- wallet_balance (ILS)
+- gift_credit
+- loyalty_benefit
+- promo_coupon
+
+Before fix:
+only wash_package worked → WRONG
+
+Now:
+ALL must pass through same engine
+
+==================================================
+3. MACHINE ACTIVATION RULE (VERY IMPORTANT)
+==================================================
+
+Machine must NEVER start before backend approval.
+
+Sequence must be:
+
+QR scan →
+API redeem →
+backend validates →
+backend debits wallet →
+backend logs everything →
+ONLY THEN →
+send command to machine
+
+If validation fails:
+- machine does NOTHING
+
+==================================================
+4. MACHINE CONTROL MODEL
+==================================================
+
+Each station:
+- stationId
+- 2 bays:
+  - LEFT (bayId = L)
+  - RIGHT (bayId = R)
+
+Each bay has:
+- status:
+  - idle
+  - active
+  - out_of_service
+  - maintenance
+
+Machine command example:
+
+START_PUMP
+{
+  stationId,
+  bayId,
+  durationSeconds,
+  programType
+}
+
+Future:
+- STOP
+- EXTEND_TIME
+- STATUS_PING
+
+==================================================
+5. K9000 MACHINE PROGRAM LOGIC (REAL BEHAVIOR)
+==================================================
+
+Programs from machine panel:
+
+- Shampoo
+- Conditioner
+- Flea Control
+- Rinse
+- Blow Dry Low
+- Blow Dry High
+- Disinfect Tub
+
+Each session:
+- user selects program
+- time decreases
+- can switch programs during session
+- time is shared across programs
+
+We don't need full real-time tracking yet,
+but we must log:
+
+k9000WashEvents:
+- stationId
+- bayId
+- startTime
+- endTime
+- duration
+- redemption_source
+- transaction_source
+
+==================================================
+6. STATION MODEL (Kfar Saba REQUIRED)
+==================================================
+
+We are deploying TWO stations.
+
+You must create:
+
+Station 1:
+- stationCode: PWS-KFS-001
+- name: Kfar Saba East
+- city: Kfar Saba
+- fullAddress: [REAL ADDRESS REQUIRED]
+- lat/lng
+- bays: 2
+
+Station 2:
+- stationCode: PWS-KFS-002
+- name: Kfar Saba West
+- city: Kfar Saba
+- fullAddress: [REAL ADDRESS REQUIRED]
+- lat/lng
+- bays: 2
+
+Each station must be:
+- independently manageable
+- independently reported
+- independently stocked
+
+==================================================
+7. INVENTORY (CRITICAL FOR OPERATIONS)
+==================================================
+
+Track per station:
+
+Items:
+- shampoo
+- conditioner
+- disinfectant
+- flea solution
+- spare hose
+- nozzles
+- filters
+
+Each item must have:
+
+- quantityOnHand
+- unit
+- lowThreshold
+- criticalThreshold
+- reorderLevel
+
+System must:
+- track movements
+- trigger alerts
+- show stock health
+
+==================================================
+8. STOCK LOGIC (SIMPLIFIED PHASE 1)
+==================================================
+
+We DO NOT have sensors yet.
+
+So:
+- deduct estimated usage per wash
+
+Example:
+per wash:
+- shampoo -50ml
+- disinfectant -20ml
+
+This must be configurable.
+
+==================================================
+9. FAULT + MAINTENANCE MODEL
+==================================================
+
+You must support:
+
+Faults:
+- QR reader not working
+- Nayax terminal offline
+- pump failure
+- water pressure issue
+
+Maintenance:
+- refill shampoo
+- replace hose
+- clean filters
+- technician visit
+
+These must be:
+- logged
+- visible in Octopus
+- tied to station + bay
+
+==================================================
+10. OCTOPUS ADMIN (THIS IS THE BRAIN)
+==================================================
+
+Must have:
+
+STATION LIST:
+- stationCode
+- address
+- left bay status
+- right bay status
+- stock health
+- faults count
+- revenue today
+- washes today
+
+STATION DETAIL:
+
+Tabs:
+
+1. Overview
+2. Bays
+3. Inventory
+4. Maintenance
+5. Faults
+6. Finance
+7. Audit
+
+==================================================
+11. REPORTING (VERY IMPORTANT)
+==================================================
+
+We must separate revenue by:
+
+redemption_source:
+
+- nayax
+- wash_package
+- wallet_balance
+- gift_credit
+- loyalty_benefit
+- promo_coupon
+
+This is critical for:
+- finance
+- fraud
+- support
+
+==================================================
+12. BUSINESS LOGIC SUMMARY (THIS IS THE CORE)
+==================================================
+
+This system is NOT:
+- booking system
+- marketplace
+- scheduling system
+
+This IS:
+- IoT vending system
+- real-time payment system
+- wallet + terminal hybrid system
+- machine control system
+- operations + inventory platform
+
+==================================================
+13. WHAT YOU MUST CONFIRM
+==================================================
+
+Reply with:
+
+1. final DB tables
+2. station + bay schema
+3. inventory schema
+4. machine command flow
+5. wallet redemption flow
+6. Nayax logging flow
+7. Octopus first screen structure
+
+If anything is unclear → ask BEFORE coding.
+
+Do NOT assume.
+
+Everything must match real machine behavior.
