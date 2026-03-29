@@ -252,6 +252,19 @@ export default function ProviderDashboard() {
     queryFn: () => fetchWithAuth('/api/provider-dashboard/application-status'),
   });
 
+  // Phase 6: daily summary data
+  const { data: upcomingTodayData } = useQuery<{ success: boolean; upcoming: Booking[] }>({
+    queryKey: ['/api/provider-dashboard/v2/upcoming'],
+    enabled: !!user,
+    queryFn: () => fetchWithAuth('/api/provider-dashboard/v2/upcoming'),
+  });
+
+  const { data: bookingCountsData } = useQuery<{ success: boolean; counts: Record<string, number> }>({
+    queryKey: ['/api/provider-dashboard/v2/booking-counts'],
+    enabled: !!user,
+    queryFn: () => fetchWithAuth('/api/provider-dashboard/v2/booking-counts'),
+  });
+
   const toggleAvailability = useMutation({
     mutationFn: async ({ providerId, isAvailable }: { providerId: number; isAvailable: boolean }) => {
       return fetchWithAuth('/api/provider-dashboard/availability', {
@@ -374,6 +387,52 @@ export default function ProviderDashboard() {
             </div>
           )}
         </div>
+
+        {/* Phase 6: Daily Summary Card */}
+        {(() => {
+          const todayUpcoming = upcomingTodayData?.upcoming ?? [];
+          const today = new Date().toDateString();
+          const todayJobs = todayUpcoming.filter(j => j.startTime && new Date(j.startTime).toDateString() === today);
+          const pendingCount = bookingCountsData?.counts?.new_request ?? 0;
+          const todayEarnings = todayJobs.reduce((sum, j) => sum + parseFloat(j.providerPayout || '0'), 0);
+          const hasSummaryData = todayJobs.length > 0 || pendingCount > 0;
+          if (!hasSummaryData) return null;
+          return (
+            <div className="mb-6 bg-gradient-to-r from-teal-600 to-emerald-700 text-white p-4 shadow-md flex items-center justify-between gap-4 flex-wrap" style={{ borderRadius: '2px' }}>
+              <div>
+                <p className="text-xs font-semibold opacity-75 uppercase tracking-widest mb-1">סיכום יומי</p>
+                <div className="flex items-center gap-6 flex-wrap">
+                  {todayJobs.length > 0 && (
+                    <div>
+                      <p className="text-2xl font-bold">{todayJobs.length}</p>
+                      <p className="text-xs opacity-80">עבודות היום</p>
+                    </div>
+                  )}
+                  {pendingCount > 0 && (
+                    <div>
+                      <p className="text-2xl font-bold text-yellow-200">{pendingCount}</p>
+                      <p className="text-xs opacity-80">ממתינות לאישור</p>
+                    </div>
+                  )}
+                  {todayEarnings > 0 && (
+                    <div>
+                      <p className="text-2xl font-bold">{formatCurrency(todayEarnings)}</p>
+                      <p className="text-xs opacity-80">רווח משוער היום</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {pendingCount > 0 && (
+                <Link href="/provider/tasks">
+                  <Button variant="secondary" size="sm" className="bg-white/20 hover:bg-white/30 text-white border-white/30 text-xs">
+                    <Zap className="w-3.5 h-3.5 ml-1" />
+                    טפל עכשיו
+                  </Button>
+                </Link>
+              )}
+            </div>
+          );
+        })()}
 
         {statsLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -566,6 +625,31 @@ export default function ProviderDashboard() {
                                     <div className="text-[10px] text-emerald-600 mt-0.5 flex items-center gap-1">
                                       <CheckCircle2 className="w-2.5 h-2.5" />
                                       {'\u05D4\u05D5\u05E9\u05DC\u05DD:'} {formatDate(job.completedAt)}
+                                    </div>
+                                  )}
+                                  {/* Phase 6: Payout status badge */}
+                                  {job.payoutStatus && (
+                                    <div className="mt-1.5">
+                                      {job.payoutStatus === 'paid_out' && (
+                                        <span className="text-[10px] font-medium px-1.5 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-sm inline-flex items-center gap-1">
+                                          <CircleDot className="w-2.5 h-2.5" /> שולם
+                                        </span>
+                                      )}
+                                      {job.payoutStatus === 'pending' && (
+                                        <span className="text-[10px] font-medium px-1.5 py-0.5 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-sm inline-flex items-center gap-1">
+                                          <Clock className="w-2.5 h-2.5" /> ממתין לתשלום
+                                        </span>
+                                      )}
+                                      {job.payoutStatus === 'released' && (
+                                        <span className="text-[10px] font-medium px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-sm inline-flex items-center gap-1">
+                                          <Shield className="w-2.5 h-2.5" /> שוחרר
+                                        </span>
+                                      )}
+                                      {job.payoutStatus === 'failed' && (
+                                        <span className="text-[10px] font-medium px-1.5 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded-sm inline-flex items-center gap-1">
+                                          <Zap className="w-2.5 h-2.5" /> תשלום נכשל
+                                        </span>
+                                      )}
                                     </div>
                                   )}
                                 </div>

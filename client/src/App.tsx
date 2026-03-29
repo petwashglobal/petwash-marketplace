@@ -74,6 +74,8 @@ const ProviderDetail = lazy(() => import("@/pages/ProviderDetail"));
 const ProviderCompliance = lazy(() => import("@/pages/ProviderCompliance"));
 const BecomeProvider = lazy(() => import("@/pages/BecomeProvider"));
 const ProviderBookingsDashboard = lazy(() => import("@/pages/ProviderBookingsDashboard"));
+const ProviderTaskInbox = lazy(() => import("@/pages/ProviderTaskInbox"));
+const ProviderEarningsPage = lazy(() => import("@/pages/ProviderEarningsPage"));
 const AccountingDashboard = lazy(() => import("@/pages/AccountingDashboard"));
 const UnifiedControlPanel = lazy(() => import("@/pages/UnifiedControlPanel"));
 const MarketplaceBookingFlow = lazy(() => import("@/pages/MarketplaceBookingFlow"));
@@ -2027,6 +2029,24 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <RoleProtectedRoute minRole="provider">
               <Suspense fallback={<PageLoader />}>
                 <ProviderBookingsDashboard />
+              </Suspense>
+            </RoleProtectedRoute>
+          )}
+        </Route>
+        <Route path="/provider/tasks">
+          {() => (
+            <RoleProtectedRoute minRole="provider">
+              <Suspense fallback={<PageLoader />}>
+                <ProviderTaskInbox />
+              </Suspense>
+            </RoleProtectedRoute>
+          )}
+        </Route>
+        <Route path="/provider/earnings">
+          {() => (
+            <RoleProtectedRoute minRole="provider">
+              <Suspense fallback={<PageLoader />}>
+                <ProviderEarningsPage />
               </Suspense>
             </RoleProtectedRoute>
           )}

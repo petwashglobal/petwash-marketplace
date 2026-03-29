@@ -192,6 +192,68 @@ function DashboardTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Phase 6: Station & System Alerts */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Shield className="w-5 h-5 text-blue-600" />
+            <CardTitle className="text-base">Station & System Status</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* Overall health indicator */}
+          {perf && perf.flaggedMessages > 0 ? (
+            <div className="flex items-start gap-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+              <AlertTriangle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-orange-800">
+                  {perf.flaggedMessages} flagged message{perf.flaggedMessages !== 1 ? 's' : ''} detected
+                </p>
+                <p className="text-xs text-orange-600 mt-0.5">
+                  Review your recent communications for potential issues.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+              <p className="text-sm font-medium text-green-800">All systems operational — no active alerts</p>
+            </div>
+          )}
+
+          {/* K9000 station context (if applicable) */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Active Bookings', value: perf?.bookings.active ?? 0, icon: Zap, color: 'text-purple-600' },
+              { label: 'No-shows Today', value: perf?.bookings.noShow ?? 0, icon: AlertTriangle, color: 'text-orange-500' },
+              { label: 'Cancelled', value: perf?.bookings.cancelled ?? 0, icon: XCircle, color: 'text-red-500' },
+            ].map((item) => (
+              <div key={item.label} className="bg-gray-50 rounded-lg p-3 text-center">
+                <item.icon className={`w-4 h-4 ${item.color} mx-auto mb-1`} />
+                <p className="text-lg font-bold text-gray-900">{item.value}</p>
+                <p className="text-[10px] text-gray-500">{item.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Quick link to task inbox */}
+          <div className="flex items-center justify-between pt-1">
+            <p className="text-xs text-gray-500">
+              For booking decisions, visit your Task Inbox
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs gap-1"
+              onClick={() => window.location.href = '/provider/tasks'}
+            >
+              <Bell className="w-3 h-3" />
+              Task Inbox
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

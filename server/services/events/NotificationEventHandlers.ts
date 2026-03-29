@@ -494,7 +494,7 @@ export function registerNotificationEventHandlers() {
         });
       }
 
-      // Notify provider: new booking arrived
+      // Notify provider: new booking arrived → deep link to Task Inbox
       if (event.data.providerId) {
         await NotificationService.sendNotification({
           templateKey: 'provider_new_booking',
@@ -505,7 +505,7 @@ export function registerNotificationEventHandlers() {
             customer: {
               name: event.data.customerName || 'לקוח',
             },
-            deepLink: `/provider/bookings`,
+            deepLink: `/provider/tasks`,
           },
         });
       }
@@ -537,7 +537,7 @@ export function registerNotificationEventHandlers() {
               expectedDate: event.data.expectedDate || '',
               bankLast4: event.data.bankLast4 || '',
             },
-            deepLink: `/provider/earnings`,
+            deepLink: `/provider/earnings`,  // → ProviderEarningsPage
             timestamp: new Date().toLocaleString('he-IL'),
           },
         });
