@@ -319,24 +319,34 @@ router.post('/wash/start_cycle', async (req, res) => {
         correlationId,
       });
 
-      // For cleanup-window collisions: write a bay event so the collision is
-      // visible to operators in Octopus (reason: card tapped during grace period)
-      if (isCleanup && stationInfo?.stationId) {
+      // Write a 'rejected_start' bay event for every blocked-state rejection so
+      // operators see ALL Nayax collisions in the event log — not just cleanup.
+      // This is critical: fault/maintenance/busy rejections must also be visible
+      // in Octopus so the ops team can detect pattern failures (e.g. card taps
+      // on a faulted bay, indicating firmware is not honouring the lockout).
+      if (stationInfo?.stationId) {
+        const rejectReason =
+          isCleanup ? 'Nayax card tap during 30-second cleanup grace window' :
+          isBusy    ? 'Nayax card tap while bay has an active wash session' :
+                      `Nayax card tap while bay is in '${resolvedBay.status}' state`;
+
         db.insert(bayEvents).values({
           bayId:     resolvedBay.id,
           stationId: stationInfo.stationId,
           side:      resolvedSide,
-          eventType: 'nayax_rejected_cleanup_window',
+          eventType: 'rejected_start',
           sessionId: resolvedBay.currentSessionId ?? null,
-          source:    'petwash_server',
+          source:    'nayax',
           metadata:  JSON.stringify({
             transactionId: transactionId ?? null,
             rejectedAt:    new Date().toISOString(),
-            reason:        'Nayax card tap received during 30-second cleanup grace window',
+            bayStatus:     resolvedBay.status,
+            reason:        'bay_not_ready',
+            detail:        rejectReason,
           }),
           occurredAt: new Date(),
         }).catch((e: Error) => {
-          logger.warn('[K9000 Wash] Could not log cleanup rejection event', { error: e.message });
+          logger.warn('[K9000 Wash] Could not log rejected_start bay event', { error: e.message });
         });
       }
 
