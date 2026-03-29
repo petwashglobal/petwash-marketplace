@@ -36,6 +36,8 @@ import {
 import { eq, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { computeDeductionOrder, type DeductionBreakdown } from './WalletEngine';
+import { eventPublisher } from './EventPublisher';
+import { DomainEventType } from '@shared/events';
 
 // ─── Velocity limiter (in-memory, O(1) check) ────────────────────────────────
 // Per-user sliding window. Survives server restarts as a soft limit.
@@ -463,6 +465,21 @@ export async function deductFromWallet(ctx: LedgerDeductCtx): Promise<LedgerDedu
     return { ...txnResult, idempotent: false };
   });
 
+  if (!result.idempotent) {
+    eventPublisher.publishEvent(
+      DomainEventType.WALLET_UPDATED,
+      {
+        walletId: result.walletId,
+        userId: ctx.userId,
+        delta: -ctx.amountCents,
+        balanceAfterCents: result.balanceAfterCents.cashWallet,
+        source: ctx.serviceType || 'deduction',
+      },
+      { source: 'WalletLedger.deductFromWallet' },
+    ).catch((e: any) =>
+      logger.warn('[WalletLedger] WALLET_UPDATED event failed (deduct)', { error: e?.message }),
+    );
+  }
   return result;
 }
 
@@ -485,7 +502,7 @@ export async function topUpWithLedger(params: {
     }
   }
 
-  return await (db as any).transaction(async (tx: typeof db) => {
+  const topUpResult = await (db as any).transaction(async (tx: typeof db) => {
     // Lock wallet row
     await (tx as any).execute(
       sql`SELECT id FROM wallet_accounts WHERE user_id = ${params.userId} FOR UPDATE`
@@ -563,6 +580,22 @@ export async function topUpWithLedger(params: {
 
     return txnResult;
   });
+
+  if (!topUpResult.idempotent) {
+    eventPublisher.publishEvent(
+      DomainEventType.WALLET_UPDATED,
+      {
+        userId: params.userId,
+        delta: params.amountCents,
+        newBalanceCents: topUpResult.newBalanceCents,
+        source: params.sourceType,
+      },
+      { source: 'WalletLedger.topUpWithLedger' },
+    ).catch((e: any) =>
+      logger.warn('[WalletLedger] WALLET_UPDATED event failed (topup)', { error: e?.message }),
+    );
+  }
+  return topUpResult;
 }
 
 // ─── Admin credit with dual-entry + fraud log ─────────────────────────────────

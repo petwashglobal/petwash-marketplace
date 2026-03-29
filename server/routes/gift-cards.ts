@@ -17,6 +17,8 @@ import {
   generateWalletPassToken,
   verifyWalletPassToken,
 } from '../lib/walletPassToken';
+import { eventPublisher } from '../services/EventPublisher';
+import { DomainEventType } from '@shared/events';
 
 // Wallet pass download rate limiter (prevents brute-force token guessing)
 const walletPassLimiter = rateLimit({
@@ -198,7 +200,7 @@ async function sendGiftCardToRecipient(
   // Send via Email
   if (deliveryMethod === 'email' || deliveryMethod === 'both') {
     try {
-      await EmailService.sendEmail(recipientEmail, emailSubject, emailHtml);
+      await EmailService.send({ to: recipientEmail, subject: emailSubject, html: emailHtml });
       logger.info('[E-Gift] Email sent to recipient', { recipientEmail, voucherId: voucher.id });
     } catch (error) {
       logger.error('[E-Gift] Failed to send email to recipient', error, { recipientEmail });
@@ -275,7 +277,7 @@ async function sendPurchaseConfirmationToBuyer(
   });
 
   try {
-    await EmailService.sendEmail(senderEmail, emailSubject, emailHtml);
+    await EmailService.send({ to: senderEmail, subject: emailSubject, html: emailHtml });
     logger.info('[E-Gift] Luxury purchase confirmation sent to buyer', { senderEmail, voucherId, theme: options?.seasonalTheme });
   } catch (error) {
     logger.error('[E-Gift] Failed to send confirmation to buyer', error, { senderEmail });
@@ -494,6 +496,20 @@ router.post('/redeem', paymentLimiter, async (req, res) => {
       amount: voucher.remainingAmount,
       userId,
     });
+
+    eventPublisher.publishEvent(
+      DomainEventType.GIFT_REDEEMED,
+      {
+        voucherId,
+        userId: userId || null,
+        amountCents: voucher.remainingAmount,
+        stationId,
+        redemptionId: redemption.id,
+      },
+      { source: 'gift-cards/redeem', correlationId },
+    ).catch((err: any) =>
+      logger.error('[E-Gift] GIFT_REDEEMED event publish failed', { error: err?.message, voucherId }),
+    );
     
     // Send confirmation email to recipient
     if (voucher.recipientEmail) {
@@ -507,11 +523,11 @@ router.post('/redeem', paymentLimiter, async (req, res) => {
       `;
       
       try {
-        await EmailService.sendEmail(
-          voucher.recipientEmail,
-          '✅ ⁦PetWash™⁩ Gift Card Redeemed',
-          confirmationHtml
-        );
+        await EmailService.send({
+          to: voucher.recipientEmail,
+          subject: '✅ PetWash™ Gift Card Redeemed',
+          html: confirmationHtml,
+        });
       } catch (error) {
         logger.error('[E-Gift] Failed to send redemption confirmation', error);
       }
