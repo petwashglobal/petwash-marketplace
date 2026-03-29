@@ -1,0 +1,111 @@
+I read it carefully.
+
+My honest logic read: this is strong and much clearer now.
+From a business and operations point of view, this is close to acceptable closure for this stream.
+
+What is good
+
+1. Compensation logic is now clearly defined
+
+He answered the most important question correctly:
+	•	compensation is not automatic
+	•	eligibility is detected automatically
+	•	refund execution is admin-approved
+	•	refund is written through the wallet ledger
+	•	duplicate compensation is blocked in 3 layers
+
+That is a solid answer.
+
+And the idempotency design sounds good:
+	•	pending queue excludes already compensated sessions
+	•	pre-check on idempotency key
+	•	second locked check inside transaction
+	•	key inserted at end of transaction
+
+That is the right pattern.
+
+2. Bay map logic sounds operationally correct
+
+He explained:
+	•	source table
+	•	polling interval
+	•	stale heartbeat rule
+	•	left/right independence
+	•	all 5 statuses
+	•	fault banner behavior
+
+That is what I wanted to see.
+Especially important that:
+	•	left and right are truly separate
+	•	cleanup is visible
+	•	fault and maintenance are distinct
+	•	heartbeat staleness is surfaced
+
+3. Command log lifecycle is now meaningful
+
+This is also strong.
+
+He confirmed the command log includes:
+	•	commandId
+	•	commandType
+	•	status
+	•	retryCount/maxRetries
+	•	sentAt
+	•	acknowledgedAt
+	•	timeoutAt
+	•	compensationTriggeredAt
+
+That is exactly the kind of operational detail an admin needs.
+
+4. Navigation is properly wired
+
+This matters more than people think.
+
+He showed real paths from:
+	•	AdminStations
+	•	StationTimeline
+	•	AdminBayMap
+	•	AdminCommandLog
+	•	BayTimeline
+
+So these screens are not hidden dead routes.
+
+⸻
+
+The only thing I would still phrase carefully
+
+Compensation is not “automation”
+
+This is the only wording issue I would keep strict.
+
+Right now the system has:
+	•	automatic detection
+	•	automatic surfacing
+	•	manual execution
+
+So I would call it:
+
+compensation workflow complete
+not
+compensation automation complete
+
+That distinction matters.
+
+Because if later somebody says:
+“it auto-refunds failed machine starts”
+that would not be true.
+
+⸻
+
+My business verdict
+
+I would accept this stream with this wording:
+	•	station and bay operational layer: approved
+	•	compensation workflow: approved as admin-controlled
+	•	compensation automation: not yet implemented
+	•	command log: approved
+	•	bay map: approved
+
+⸻
+
+What I would send him
