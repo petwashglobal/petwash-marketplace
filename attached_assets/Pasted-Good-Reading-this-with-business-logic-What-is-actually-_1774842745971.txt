@@ -1,0 +1,110 @@
+Good. Reading this with business logic:
+
+What is actually good here
+
+Task 24
+
+The auth / role fixes were the right fixes:
+	•	station-assigned bookings now follow station authority
+	•	owner earnings logic was corrected
+	•	auth path is more consistent
+
+That is important because this is accountability logic, not UI.
+
+Task 25
+
+This is also the right work:
+	•	real station capacity
+	•	equipment status
+	•	downtime
+	•	recommendation logic now respects station reality
+
+That means the platform is starting to act like an operations business, not just a marketplace.
+
+⸻
+
+My business verdict
+
+I would treat Task 24 as closed
+
+The important thing is:
+	•	permissions are now clearer
+	•	station authority is enforced
+	•	wrong confirmations are harder
+
+That protects disputes and internal chaos.
+
+I would treat Task 25 as closed
+
+Because:
+	•	capacity now exists in the model
+	•	offline / downtime is real
+	•	routing / recommendation is no longer blind
+
+That is exactly what needed to happen before serious scaling.
+
+⸻
+
+But what should he do next?
+
+Do NOT jump straight to dashboard vanity work
+
+The next correct order is:
+
+1. Task 21 - Revenue & Settlement
+
+This is still the most important missing business layer.
+
+Because now you have:
+	•	station structure
+	•	operator structure
+	•	capacity structure
+
+But you still need:
+👉 money flow per booking
+
+Without that:
+	•	franchise accounting is weak
+	•	owner dashboards are incomplete
+	•	disputes about who earned what will come later
+
+⸻
+
+2. Task 23 - Station Performance Layer
+
+After money logic:
+	•	separate station rating
+	•	separate station trustScore
+	•	do not mix with franchise score
+
+This matters because:
+👉 bad station ≠ bad whole franchise
+
+⸻
+
+3. Task 26 - Station Daily Dashboard
+
+Only after T21 + T23 + T25
+
+Because then the dashboard can show:
+	•	real money
+	•	real quality
+	•	real capacity
+	•	real operational status
+
+Otherwise it becomes just a pretty screen.
+
+⸻
+
+4. Task 22 - Routing / Assignment
+
+Do this after the above, because assignment depends on:
+	•	settlement logic
+	•	station quality
+	•	station capacity
+
+Routing should be the last intelligence layer, not the first.
+
+⸻
+
+What to tell him
