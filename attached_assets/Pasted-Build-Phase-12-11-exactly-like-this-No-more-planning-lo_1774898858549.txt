@@ -1,0 +1,231 @@
+Build Phase 12.11 exactly like this. No more planning loops, no more summaries, no fluff.
+
+PHASE 12.11 - TEAM WORKFLOW & RESOLUTION DISCIPLINE
+
+GOAL
+Turn case handling from personal and inconsistent into team-based, structured, auditable, and repeatable.
+
+T111 - TEAMS MODEL
+Create these tables:
+
+teams
+- id SERIAL PRIMARY KEY
+- name TEXT NOT NULL
+- type TEXT NOT NULL  -- 'support', 'franchise', 'ops'
+- created_at TIMESTAMP DEFAULT NOW()
+
+team_members
+- id SERIAL PRIMARY KEY
+- team_id INTEGER REFERENCES teams(id)
+- user_uid TEXT NOT NULL
+- role TEXT NOT NULL  -- 'agent', 'manager'
+- created_at TIMESTAMP DEFAULT NOW()
+
+BUSINESS LOGIC
+- every user can belong to a team
+- every team must have at least one manager
+- cases can be assigned either to:
+  1. a specific user_uid
+  2. a team_id
+- if a case is assigned to a team, it must either:
+  1. auto-pick the active handler with the lightest load
+  2. remain visible in the team queue until someone owns it
+
+T112 - TEAM ASSIGNMENT
+Extend case_assignments with:
+
+assigned_team_id INTEGER NULL
+
+RULE
+Only one active owner path is valid at a time:
+- assigned_to_uid
+OR
+- assigned_team_id
+
+Never both.
+
+API
+Extend /api/case-actions/assign to support:
+- assign to user
+- assign to team
+
+Also support:
+- reassign from user to team
+- reassign from team to user
+- unassign
+
+Every ownership change must be audited.
+
+T113 - SLA BY CASE TYPE AND ROLE
+Hardcode first version, do not overbuild configuration.
+
+SLA_CONFIG = {
+  dispute: {
+    agent: 48h,
+    manager: 24h
+  },
+  mismatch: {
+    agent: 24h,
+    manager: 12h
+  },
+  refund: {
+    agent: 120h,
+    manager: 48h
+  }
+}
+
+BUSINESS LOGIC
+- SLA depends on:
+  1. case type
+  2. current owner role
+- when a case is assigned or reassigned, SLA must be recalculated
+- if assigned to manager, SLA becomes stricter
+- SLA state must remain persisted, not just computed in UI
+
+T114 - CONTROLLED CLOSURE / APPROVAL LAYER
+Add fields to disputes:
+
+closure_requested BOOLEAN DEFAULT FALSE
+closure_approved BOOLEAN DEFAULT FALSE
+closure_reason_code TEXT
+
+FLOW
+1. Agent clicks Close
+   -> do NOT actually close case
+   -> set closure_requested = true
+   -> require reason code
+
+2. Manager sees case in queue
+   -> can approve closure
+   -> can reject closure
+
+3. Only manager can make final close on controlled cases
+   -> status = 'closed'
+   -> closure_approved = true
+
+BUSINESS RULE
+Agents must not be able to silently close high-impact cases.
+
+T115 - RESOLUTION REASON CODES
+Create table:
+
+resolution_codes
+- code TEXT PRIMARY KEY
+- label TEXT NOT NULL
+- applies_to TEXT   -- 'dispute', 'refund', etc.
+
+Seed initial values:
+- customer_no_show
+- invalid_claim
+- service_completed
+- goodwill_refund
+- duplicate_case
+- operator_error
+- payment_reconciled
+
+RULE
+No case can be closed without a resolution code.
+Free text notes are allowed as extra context, not as the structured resolution.
+
+T116 - REOPEN REASON CODES
+Create table:
+
+reopen_codes
+- code TEXT PRIMARY KEY
+- label TEXT NOT NULL
+
+Seed initial values:
+- customer_disagreed
+- incomplete_resolution
+- refund_missing
+- evidence_updated
+- duplicate_closure
+- operator_reopened
+
+RULE
+If a case is reopened, a reopen reason code is mandatory.
+Audit the reopen event.
+Reset workflow correctly.
+Reassign case owner or team explicitly.
+Reset SLA according to reopened state.
+
+T117 - PERFORMANCE TRACKING
+Build endpoint:
+/api/reports/case-performance
+
+Return simple operational reporting only:
+- cases handled per user
+- cases handled per team
+- average resolution time
+- SLA breach rate
+- reopen rate
+- closure approval rate
+- cases currently owned
+
+GROUP BY
+- user
+- team
+
+Do not build heavy BI. Keep it operational and readable.
+
+T118 - WORKLOAD BALANCING
+Simple version only.
+
+When assigning a case to a team:
+- find active users in that team
+- count each user's active assigned cases
+- assign to the user with the lowest active case count
+
+SQL logic idea:
+ORDER BY active_case_count ASC
+LIMIT 1
+
+FALLBACK
+If no eligible active user exists:
+- keep case assigned to team only
+- leave it visible in team queue
+- do not fake a user owner
+
+T119 - UI CHANGES
+Update Case Queue with:
+- "Assigned to Team" badge
+- "Assign to Team" action
+- "My cases" filter
+- "My team cases" filter
+- "All cases" filter
+- manager approval indicator on closure-requested cases
+- resolution code dropdown on close
+- reopen code dropdown on reopen
+
+Also show:
+- current owner
+- current team
+- whether closure is pending approval
+- whether SLA changed because owner role changed
+
+CRITICAL BUSINESS RULES
+1. No closure without reason code.
+2. Agents cannot bypass approval where required.
+3. SLA changes when ownership changes.
+4. Every assignment, reassignment, closure request, approval, rejection, reopen, and reason code selection must be logged.
+5. Team ownership must never remove accountability.
+6. Reopened cases must never return without a fresh owner or team.
+7. Bulk actions must respect the same approval and audit rules as single actions.
+
+DONE MEANS
+- cases can be assigned to teams
+- SLA adapts to role and case type
+- closures are controlled and approval-based where required
+- resolutions are structured, not free-text chaos
+- reopen reasons are tracked
+- performance is measurable by user and team
+- workload is distributed instead of piling onto one person
+
+FINAL INSTRUCTION
+Build Phase 12.11 exactly as defined above.
+No extra features.
+No abstraction theater.
+No overengineering.
+
+Focus on discipline, consistency, accountability, and measurable resolution.
+Start now.

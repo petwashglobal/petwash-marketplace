@@ -30,10 +30,13 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
   ShieldAlert, TriangleAlert, Clock, CheckCircle2,
   ArrowUpRight, Banknote, AlertCircle, Filter,
   UserPlus, UserMinus, MessageSquare, ChevronDown, ChevronUp,
-  Users, User, Loader2, Send, Siren, RotateCcw,
+  Users, User, Loader2, Send, Siren, RotateCcw, Building2, X, ThumbsUp, ThumbsDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { apiRequest } from '@/lib/queryClient';
@@ -62,11 +65,14 @@ interface BaseCase {
 }
 
 interface DisputeCase extends BaseCase {
-  caseType:    'dispute';
-  reason:      string;
-  description: string | null;
-  status:      string;
-  total:       number;
+  caseType:          'dispute';
+  reason:            string;
+  description:       string | null;
+  status:            string;
+  total:             number;
+  closureRequested:  boolean;
+  closureApproved:   boolean;
+  closureReasonCode: string | null;
 }
 
 interface MismatchCase extends BaseCase {
@@ -120,14 +126,27 @@ interface Summary {
 }
 
 interface Assignment {
-  id:            number;
-  caseType:      string;
-  caseRefId:     string;
-  assignedToUid: string;
-  assignedByUid: string | null;
-  note:          string | null;
-  assignedAt:    string | null;
+  id:              number;
+  caseType:        string;
+  caseRefId:       string;
+  assignedToUid:   string | null;
+  assignedTeamId:  number | null;
+  teamName:        string | null;
+  assignedByUid:   string | null;
+  note:            string | null;
+  assignedAt:      string | null;
 }
+
+interface MyTeam {
+  id:          number;
+  name:        string;
+  type:        string;
+  myRole:      string;
+  memberCount: number;
+}
+
+interface ResolutionCode { code: string; label: string; appliesTo: string | null; }
+interface ReopenCode     { code: string; label: string; }
 
 interface CaseNote {
   id:         number;
@@ -535,14 +554,22 @@ function CaseTypeBadge({ type }: { type: string }) {
 
 function ReopenButton({ bookingId, onDone }: { bookingId: string; onDone: () => void }) {
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [note, setNote]  = useState('');
+  const [open, setOpen]       = useState(false);
+  const [reopenCode, setCode] = useState('');
+  const [note, setNote]       = useState('');
+
+  const codesQ = useQuery<{ codes: ReopenCode[] }>({
+    queryKey: ['/api/case-actions/reopen-codes'],
+    staleTime: 300_000,
+    enabled: open,
+  });
 
   const mut = useMutation({
-    mutationFn: () => apiRequest('POST', '/api/case-actions/reopen', { bookingId, note: note || undefined }),
+    mutationFn: () => apiRequest('POST', '/api/case-actions/reopen', {
+      bookingId, reopenCode, note: note || undefined,
+    }),
     onSuccess: () => {
-      setOpen(false);
-      setNote('');
+      setOpen(false); setCode(''); setNote('');
       qc.invalidateQueries({ queryKey: ['/api/case-queue/escalated'] });
       qc.invalidateQueries({ queryKey: ['/api/case-queue/disputes'] });
       qc.invalidateQueries({ queryKey: ['/api/case-queue/summary'] });
@@ -563,19 +590,156 @@ function ReopenButton({ bookingId, onDone }: { bookingId: string; onDone: () => 
   }
 
   return (
-    <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+    <div className="flex items-center gap-1.5 flex-wrap" onClick={e => e.stopPropagation()}>
+      <Select value={reopenCode} onValueChange={setCode}>
+        <SelectTrigger className="h-7 text-xs w-44">
+          <SelectValue placeholder="Reason for reopen *" />
+        </SelectTrigger>
+        <SelectContent>
+          {(codesQ.data?.codes ?? []).map(c => (
+            <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <input
-        autoFocus
-        className="border rounded px-2 py-0.5 text-xs w-32 dark:bg-gray-800"
-        placeholder="Reason (optional)"
+        className="border rounded px-2 py-0.5 text-xs w-28 dark:bg-gray-800"
+        placeholder="Note (optional)"
         value={note}
         onChange={e => setNote(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') mut.mutate(); if (e.key === 'Escape') setOpen(false); }}
+        onKeyDown={e => { if (e.key === 'Escape') setOpen(false); }}
       />
-      <Button size="sm" className="h-6 text-xs px-2" disabled={mut.isPending} onClick={() => mut.mutate()}>
+      <Button
+        size="sm" className="h-6 text-xs px-2"
+        disabled={mut.isPending || !reopenCode}
+        onClick={() => mut.mutate()}
+      >
         {mut.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Confirm'}
       </Button>
-      <button className="text-gray-400 text-xs hover:text-gray-600" onClick={() => setOpen(false)}>✕</button>
+      <button className="text-gray-400 text-xs hover:text-gray-600" onClick={() => setOpen(false)}>
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+// ─── Closure Request Button ───────────────────────────────────────────────────
+
+function ClosureRequestButton({ bookingId, onDone }: { bookingId: string; onDone: () => void }) {
+  const qc = useQueryClient();
+  const [open, setOpen]         = useState(false);
+  const [reasonCode, setCode]   = useState('');
+  const [note, setNote]         = useState('');
+
+  const codesQ = useQuery<{ codes: ResolutionCode[] }>({
+    queryKey: ['/api/case-actions/resolution-codes'],
+    staleTime: 300_000,
+    enabled: open,
+  });
+
+  const mut = useMutation({
+    mutationFn: () => apiRequest('POST', '/api/case-actions/closure-request', {
+      bookingId, closureReasonCode: reasonCode, note: note || undefined,
+    }),
+    onSuccess: () => {
+      setOpen(false); setCode(''); setNote('');
+      qc.invalidateQueries({ queryKey: ['/api/case-queue/disputes'] });
+      qc.invalidateQueries({ queryKey: ['/api/case-queue/summary'] });
+      onDone();
+    },
+  });
+
+  if (!open) {
+    return (
+      <Button
+        size="sm" variant="ghost"
+        className="h-6 text-xs gap-1 px-2 text-gray-500 hover:text-green-700 hover:bg-green-50"
+        onClick={e => { e.stopPropagation(); setOpen(true); }}
+      >
+        Request Close
+      </Button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap" onClick={e => e.stopPropagation()}>
+      <Select value={reasonCode} onValueChange={setCode}>
+        <SelectTrigger className="h-7 text-xs w-44">
+          <SelectValue placeholder="Resolution code *" />
+        </SelectTrigger>
+        <SelectContent>
+          {(codesQ.data?.codes ?? [])
+            .filter(c => !c.appliesTo || c.appliesTo === 'dispute')
+            .map(c => (
+              <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>
+            ))}
+        </SelectContent>
+      </Select>
+      <input
+        className="border rounded px-2 py-0.5 text-xs w-28 dark:bg-gray-800"
+        placeholder="Note (optional)"
+        value={note}
+        onChange={e => setNote(e.target.value)}
+      />
+      <Button
+        size="sm" className="h-6 text-xs px-2 bg-green-600 hover:bg-green-700"
+        disabled={mut.isPending || !reasonCode}
+        onClick={() => mut.mutate()}
+      >
+        {mut.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Submit'}
+      </Button>
+      <button className="text-gray-400 text-xs hover:text-gray-600" onClick={() => setOpen(false)}>
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+// ─── Closure Approval Controls ────────────────────────────────────────────────
+
+function ClosureApprovalControls({ bookingId, onDone }: { bookingId: string; onDone: () => void }) {
+  const qc = useQueryClient();
+
+  const approveMut = useMutation({
+    mutationFn: () => apiRequest('POST', '/api/case-actions/closure-approve', { bookingId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/case-queue/disputes'] });
+      qc.invalidateQueries({ queryKey: ['/api/case-queue/summary'] });
+      onDone();
+    },
+  });
+  const rejectMut = useMutation({
+    mutationFn: () => apiRequest('POST', '/api/case-actions/closure-reject', { bookingId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/case-queue/disputes'] });
+      onDone();
+    },
+  });
+
+  const isPending = approveMut.isPending || rejectMut.isPending;
+
+  return (
+    <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+      <Badge className="border-0 bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 text-xs px-1.5 py-0.5">
+        Pending approval
+      </Badge>
+      <Button
+        size="sm" variant="ghost"
+        className="h-6 text-xs gap-1 px-2 text-green-700 hover:bg-green-50"
+        disabled={isPending}
+        onClick={e => { e.stopPropagation(); approveMut.mutate(); }}
+      >
+        {approveMut.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <ThumbsUp className="h-3 w-3" />}
+        Approve
+      </Button>
+      <Button
+        size="sm" variant="ghost"
+        className="h-6 text-xs gap-1 px-2 text-red-600 hover:bg-red-50"
+        disabled={isPending}
+        onClick={e => { e.stopPropagation(); rejectMut.mutate(); }}
+      >
+        {rejectMut.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <ThumbsDown className="h-3 w-3" />}
+        Reject
+      </Button>
     </div>
   );
 }
@@ -716,7 +880,8 @@ function EscalatedTab({ cases, isLoading, currentUid }: {
 export default function CaseQueue() {
   const qc = useQueryClient();
   const [activeTab,    setActiveTab]    = useState('disputes');
-  const [filterMine,   setFilterMine]   = useState(false);
+  const [caseFilter,   setCaseFilter]   = useState<'all' | 'mine' | 'my_team'>('all');
+  const filterMine = caseFilter === 'mine';
   const [selected,     setSelected]     = useState<Set<string>>(new Set());
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [currentUid,   setCurrentUid]   = useState<string | null>(null);
@@ -761,6 +926,19 @@ export default function CaseQueue() {
     queryKey: ['/api/case-actions/assignments'],
     staleTime: 30_000,
   });
+  const myTeamsQ = useQuery<{ teams: MyTeam[] }>({
+    queryKey: ['/api/teams/mine'],
+    enabled: !!currentUid,
+    staleTime: 60_000,
+  });
+  const resolutionCodesQ = useQuery<{ codes: ResolutionCode[] }>({
+    queryKey: ['/api/case-actions/resolution-codes'],
+    staleTime: 300_000,
+  });
+  const reopenCodesQ = useQuery<{ codes: ReopenCode[] }>({
+    queryKey: ['/api/case-actions/reopen-codes'],
+    staleTime: 300_000,
+  });
 
   const summary = summaryQ.data;
 
@@ -777,10 +955,19 @@ export default function CaseQueue() {
   // ── Filter helpers ─────────────────────────────────────────────────────────
 
   function filterCases<T extends BaseCase>(cases: T[]): T[] {
-    if (!filterMine || !currentUid) return cases;
+    if (caseFilter === 'all' || !currentUid) return cases;
+    if (caseFilter === 'mine') {
+      return cases.filter(c => {
+        const a = assignMap.get(`${c.caseType}-${c.caseRefId}`);
+        return a?.assignedToUid === currentUid;
+      });
+    }
+    // my_team: cases assigned to any of my teams
+    const myTeamIds = new Set((myTeamsQ.data?.teams ?? []).map(t => t.id));
+    if (myTeamIds.size === 0) return cases;
     return cases.filter(c => {
       const a = assignMap.get(`${c.caseType}-${c.caseRefId}`);
-      return a?.assignedToUid === currentUid;
+      return a?.assignedTeamId != null && myTeamIds.has(a.assignedTeamId);
     });
   }
 
@@ -832,22 +1019,27 @@ export default function CaseQueue() {
 
   const filteredDisputes  = useMemo(() =>
     filterCases(sortCases(disputesQ.data?.cases  ?? [])),
-    [disputesQ.data, filterMine, currentUid, assignMap]
+    [disputesQ.data, caseFilter, currentUid, assignMap, myTeamsQ.data]
   );
   const filteredMismatches = useMemo(() =>
     filterCases(sortCases(mismatchQ.data?.cases ?? [])),
-    [mismatchQ.data, filterMine, currentUid, assignMap]
+    [mismatchQ.data, caseFilter, currentUid, assignMap, myTeamsQ.data]
   );
   const filteredRefunds = useMemo(() =>
     filterCases(sortCases(refundsQ.data?.cases ?? [])),
-    [refundsQ.data, filterMine, currentUid, assignMap]
+    [refundsQ.data, caseFilter, currentUid, assignMap, myTeamsQ.data]
   );
 
   // ── Row helper ─────────────────────────────────────────────────────────────
 
   function renderRowExtras(c: BaseCase) {
-    const assignee = assignMap.get(`${c.caseType}-${c.caseRefId}`);
+    const assignee  = assignMap.get(`${c.caseType}-${c.caseRefId}`);
     const isExpanded = expandedNotes.has(c.caseId);
+    const dispute   = c.caseType === 'dispute' ? (c as DisputeCase) : null;
+    const refresh   = () => {
+      qc.invalidateQueries({ queryKey: ['/api/case-queue/disputes'] });
+      qc.invalidateQueries({ queryKey: ['/api/case-queue/summary'] });
+    };
 
     return (
       <>
@@ -856,7 +1048,7 @@ export default function CaseQueue() {
           className="border-0"
         >
           <TableCell colSpan={100} className="py-1 px-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <RowAssignControls
                 caseType={c.caseType}
                 caseRefId={c.caseId}
@@ -881,6 +1073,13 @@ export default function CaseQueue() {
                   ? <ChevronUp className="h-3 w-3" />
                   : <ChevronDown className="h-3 w-3" />}
               </Button>
+              {/* Closure controls — disputes only */}
+              {dispute && !dispute.closureRequested && dispute.status !== 'closed' && (
+                <ClosureRequestButton bookingId={dispute.caseId} onDone={refresh} />
+              )}
+              {dispute?.closureRequested && !dispute.closureApproved && (
+                <ClosureApprovalControls bookingId={dispute.caseId} onDone={refresh} />
+              )}
             </div>
           </TableCell>
         </TableRow>
@@ -905,8 +1104,16 @@ export default function CaseQueue() {
     const assignee = assignMap.get(`${c.caseType}-${c.caseRefId}`);
     if (!assignee) return <TableCell className="py-3"><span className="text-xs text-gray-400">—</span></TableCell>;
     return (
-      <TableCell className="py-3">
-        <AssignedBadge uid={assignee.assignedToUid} isMe={assignee.assignedToUid === currentUid} />
+      <TableCell className="py-3 space-y-0.5">
+        {assignee.assignedTeamId != null && (
+          <Badge className="border-0 text-xs flex items-center gap-1 bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 max-w-[110px]">
+            <Building2 className="h-2.5 w-2.5 flex-shrink-0" />
+            <span className="truncate">{assignee.teamName ?? `Team ${assignee.assignedTeamId}`}</span>
+          </Badge>
+        )}
+        {assignee.assignedToUid && (
+          <AssignedBadge uid={assignee.assignedToUid} isMe={assignee.assignedToUid === currentUid} />
+        )}
       </TableCell>
     );
   }
@@ -929,30 +1136,30 @@ export default function CaseQueue() {
             </p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            {/* My Cases / All Cases toggle */}
+            {/* All / My cases / My team toggle */}
             <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-900">
-              <button
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors',
-                  !filterMine
-                    ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                )}
-                onClick={() => setFilterMine(false)}
-              >
-                <Users className="h-3.5 w-3.5" />All cases
-              </button>
-              <button
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors',
-                  filterMine
-                    ? 'bg-blue-600 text-white font-medium'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                )}
-                onClick={() => setFilterMine(true)}
-              >
-                <User className="h-3.5 w-3.5" />My cases
-              </button>
+              {([
+                { value: 'all',     label: 'All cases',   icon: <Users className="h-3.5 w-3.5" /> },
+                { value: 'mine',    label: 'My cases',    icon: <User className="h-3.5 w-3.5" /> },
+                { value: 'my_team', label: 'My team',     icon: <Building2 className="h-3.5 w-3.5" /> },
+              ] as const).map(opt => (
+                <button
+                  key={opt.value}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors',
+                    caseFilter === opt.value
+                      ? opt.value === 'all'
+                        ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium'
+                        : opt.value === 'mine'
+                          ? 'bg-blue-600 text-white font-medium'
+                          : 'bg-purple-600 text-white font-medium'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  )}
+                  onClick={() => setCaseFilter(opt.value)}
+                >
+                  {opt.icon}{opt.label}
+                </button>
+              ))}
             </div>
 
             {summary && summary.totalBreached > 0 && (
@@ -1038,8 +1245,10 @@ export default function CaseQueue() {
                      filteredDisputes.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={11}>
-                          {filterMine
-                            ? <div className="text-center py-12 text-gray-400 text-sm">No cases assigned to you</div>
+                          {caseFilter !== 'all'
+                            ? <div className="text-center py-12 text-gray-400 text-sm">
+                                {caseFilter === 'mine' ? 'No cases assigned to you' : 'No cases assigned to your team'}
+                              </div>
                             : <EmptyQueue label="dispute" />}
                         </TableCell>
                       </TableRow>
@@ -1078,7 +1287,7 @@ export default function CaseQueue() {
                           <SlaCell ageHours={c.ageHours} slaBudgetHours={c.slaBudgetHours} slaStatus={c.slaStatus} />
                         </TableCell>
                         <AssignedCell c={c} />
-                        <TableCell className="py-3">
+                        <TableCell className="py-3 space-y-0.5">
                           <Badge className={cn(
                             'border-0 text-xs capitalize',
                             c.status === 'open'         ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' :
@@ -1087,6 +1296,11 @@ export default function CaseQueue() {
                           )}>
                             {c.status.replace(/_/g, ' ')}
                           </Badge>
+                          {c.closureRequested && !c.closureApproved && (
+                            <Badge className="border-0 bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 text-xs block w-fit">
+                              ⏳ Closure pending
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="py-3">
                           <Link
@@ -1135,8 +1349,10 @@ export default function CaseQueue() {
                      filteredMismatches.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={10}>
-                          {filterMine
-                            ? <div className="text-center py-12 text-gray-400 text-sm">No cases assigned to you</div>
+                          {caseFilter !== 'all'
+                            ? <div className="text-center py-12 text-gray-400 text-sm">
+                                {caseFilter === 'mine' ? 'No cases assigned to you' : 'No cases assigned to your team'}
+                              </div>
                             : <EmptyQueue label="mismatch" />}
                         </TableCell>
                       </TableRow>
@@ -1224,8 +1440,10 @@ export default function CaseQueue() {
                      filteredRefunds.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={12}>
-                          {filterMine
-                            ? <div className="text-center py-12 text-gray-400 text-sm">No cases assigned to you</div>
+                          {caseFilter !== 'all'
+                            ? <div className="text-center py-12 text-gray-400 text-sm">
+                                {caseFilter === 'mine' ? 'No cases assigned to you' : 'No cases assigned to your team'}
+                              </div>
                             : <EmptyQueue label="refund" />}
                         </TableCell>
                       </TableRow>

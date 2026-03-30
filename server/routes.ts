@@ -9372,6 +9372,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/paw-finder', apiLimiter, pawFinderRoutes.default);
 
   // Phase 12.9 — Case Queue Action Orchestration (assign, notes, bulk)
+  // Phase 12.11 — Team Workflow & Resolution Discipline (team assign, closure flow, codes)
   const caseActionsRoutes = await import('./routes/case-actions');
   app.use('/api/case-actions', apiLimiter, caseActionsRoutes.default);
 
@@ -9379,6 +9380,14 @@ self.addEventListener('notificationclick', (event) => {
   // Own auth middleware (requireCaseViewer): same scoping as booking-trace.
   const caseQueueRoutes = await import('./routes/case-queue');
   app.use('/api/case-queue', apiLimiter, caseQueueRoutes.default);
+
+  // Phase 12.11 — Team Management (teams, members)
+  const teamsRoutes = await import('./routes/teams');
+  app.use('/api/teams', apiLimiter, teamsRoutes.default);
+
+  // Phase 12.11 — Case Performance Reporting
+  const caseReportsRoutes = await import('./routes/case-reports');
+  app.use('/api/reports', apiLimiter, caseReportsRoutes.default);
 
   // Phase 12.7 — Booking Trace & Dispute Resolution Layer
   // Own auth middleware (requireTraceViewer): franchise_owner, station_operator, admin.

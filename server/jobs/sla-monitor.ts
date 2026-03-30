@@ -36,6 +36,35 @@ const SLA = {
   AT_RISK_PCT:          0.80,
 };
 
+// T113 — Role-based SLA budgets (manager = stricter)
+const SLA_BY_ROLE: Record<string, Record<'agent' | 'manager', number>> = {
+  dispute:  { agent: 48,  manager: 24 },
+  mismatch: { agent: 24,  manager: 12 },
+  refund:   { agent: 120, manager: 48 },
+};
+
+async function getOwnerRole(caseType: string, caseRefId: string): Promise<'agent' | 'manager'> {
+  try {
+    const r = await db.execute(sql.raw(`
+      SELECT tm.role
+      FROM case_assignments ca
+      JOIN team_members tm ON tm.user_uid = ca.assigned_to_uid
+      WHERE ca.case_type   = '${safe(caseType)}'
+        AND ca.case_ref_id = '${safe(caseRefId)}'
+        AND ca.is_active   = true
+      LIMIT 1
+    `));
+    const role = (r.rows[0] as any)?.role;
+    return role === 'manager' ? 'manager' : 'agent';
+  } catch { return 'agent'; }
+}
+
+function roleBudget(caseType: string, baseBudget: number, role: 'agent' | 'manager'): number {
+  const cfg = SLA_BY_ROLE[caseType];
+  if (!cfg) return baseBudget;
+  return cfg[role];
+}
+
 // ─── Notification hook ────────────────────────────────────────────────────────
 // Phase 12.11: replace console/logger with real push/email/in-app delivery.
 
@@ -172,7 +201,11 @@ async function processCases(cases: CaseRecord[]): Promise<{ newBreaches: number;
   let newBreaches = 0, escalated = 0;
 
   for (const c of cases) {
-    const { caseType, caseRefId, ageHours, slaBudgetHours } = c;
+    const { caseType, caseRefId, ageHours } = c;
+
+    // T113: adjust budget for current owner's role (manager = stricter)
+    const ownerRole     = await getOwnerRole(caseType, caseRefId);
+    const slaBudgetHours = roleBudget(caseType, c.slaBudgetHours, ownerRole);
 
     const slaStatus: 'within_sla' | 'at_risk' | 'breached' =
       ageHours >= slaBudgetHours                  ? 'breached'   :
