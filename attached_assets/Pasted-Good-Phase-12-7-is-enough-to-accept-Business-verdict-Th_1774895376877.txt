@@ -1,0 +1,105 @@
+Good. Phase 12.7 is enough to accept.
+
+Business verdict:
+This closes the most important gap after settlement drill-down.
+
+Before this:
+- owner could see the money row
+- owner could see dispute status
+- owner could see mismatch
+
+But still could not answer:
+"What happened in this booking, who changed what, and where did the money go?"
+
+Now they can.
+
+Why this matters:
+1. Booking trace becomes the explanation layer
+The settlement row is the financial truth.
+The booking trace is the operational and dispute explanation around that truth.
+
+2. Disputes are now actionable, not decorative
+A red badge is not enough.
+Now there is:
+- dispute context
+- status
+- notes
+- resolution actions
+- audit trail
+
+That is real control.
+
+3. Refund visibility is now financially defensible
+If money moved, the owner can now see:
+- whether it was reversed
+- whether wallet credit happened
+- what amount moved
+- what reference is attached
+
+That is critical.
+
+4. Permissions are finally serious
+This matters a lot.
+A station manager should not see another network's disputes.
+A franchise owner should not see company-owned trace rows.
+HQ/admin can see all.
+That boundary is business-critical and legally safer.
+
+5. The executive summary was the right move
+Not every owner wants to read 30 rows first.
+The summary card row gives immediate answers:
+- amount
+- booking status
+- dispute state
+- refund state
+- mismatch
+- next action owner
+
+That is good operational design.
+
+So yes:
+Phase 12.7 can be accepted.
+
+Important wording:
+I would describe this as:
+- a booking trace and dispute resolution layer
+- built on top of the settlement truth
+
+I would NOT yet describe it as:
+- full case management
+- full legal dispute workflow
+- enterprise claims system
+
+That keeps the claim honest.
+
+What is now true:
+- settlement row can be traced back to booking
+- dispute can be understood and acted on
+- refund path is visible
+- actions are audited
+- access is controlled by network boundary
+
+That is enough to close this phase.
+
+Smart next step:
+The natural next move is not more trace detail.
+It is owner workflow on top of the trace.
+
+Meaning:
+Phase 12.8 should likely be:
+Case Queue / Exception Management Layer
+
+Where owners see:
+- all open disputes
+- all mismatches
+- all unresolved refunds
+- cases waiting for action
+- aging / SLA timers
+- who currently owns each issue
+
+Reason:
+12.6 showed the money
+12.7 explained the row
+12.8 should manage the exception workload
+
+Phase 12.7 is approved and can be closed.
