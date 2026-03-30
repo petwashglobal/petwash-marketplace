@@ -103,7 +103,7 @@ router.post("/create", requireAuth, async (req, res) => {
 
     interface StationCandidate {
       id: number; name: string; latitude: string | null; longitude: string | null;
-      upcoming: number; ranking_score: number; daily_capacity: number; today_count: number;
+      upcoming: number; trust_score: number; daily_capacity: number; today_count: number;
     }
 
     let resolvedStationId: number | null = null;
@@ -157,8 +157,10 @@ router.post("/create", requireAuth, async (req, res) => {
       resolvedStationName = station.name;
     } else {
       // Auto-assign: composite score matching recommendation route
-      // Weights: distance 40% + availability 35% + rankingScore 25% (fixed)
-      // T25: WHERE excludes offline stations and those at today's daily_capacity.
+      // T22 refined weights: distance 40% + availability 35% + trust_score 25%
+      //   trust_score (0-100) replaces static ranking_score — driven by real
+      //   station quality: completion rate, dispute count, customer ratings.
+      // Hard filters (T22): active downtime + planned downtime window exclusions.
       const useGeo =
         booking.customerLat != null &&
         booking.customerLng != null &&
@@ -169,7 +171,7 @@ router.post("/create", requireAuth, async (req, res) => {
         SELECT s.id, s.name,
                l.latitude, l.longitude,
                COALESCE(bc.upcoming, 0)::int                AS upcoming,
-               COALESCE(s.ranking_score, 50)::int           AS ranking_score,
+               COALESCE(s.trust_score, 50)::int             AS trust_score,
                COALESCE(s.daily_capacity, 20)::int          AS daily_capacity,
                COALESCE(tc.today_count, 0)::int             AS today_count
         FROM stations s
@@ -193,6 +195,19 @@ router.post("/create", requireAuth, async (req, res) => {
           AND COALESCE(s.equipment_status, 'operational') != 'offline'
           AND COALESCE(s.daily_capacity, 20) > 0
           AND COALESCE(tc.today_count, 0) < COALESCE(s.daily_capacity, 20)
+          -- Hard filter: exclude stations with an open (unresolved) downtime record
+          AND NOT EXISTS (
+            SELECT 1 FROM station_downtime sd
+            WHERE sd.station_id = s.id
+              AND sd.start_at <= ${serviceDate}::timestamptz
+              AND sd.resolved_at IS NULL
+          )
+          -- Hard filter: exclude stations inside their planned downtime window
+          AND (
+            s.next_downtime_start IS NULL
+            OR s.next_downtime_start > ${serviceDate}::timestamptz
+            OR (s.next_downtime_end IS NOT NULL AND s.next_downtime_end <= NOW())
+          )
       `);
 
       const candidates = candidateRows.rows as StationCandidate[];
@@ -213,12 +228,13 @@ router.post("/create", requireAuth, async (req, res) => {
           const distScore = (useGeo && c.latitude != null)
             ? 1 - Math.max(0, Math.min(1, distKm / (maxDist || 1)))
             : 0.5;
-          // T25: availability score uses per-station daily_capacity as the busy threshold
+          // availability score uses per-station daily_capacity as the busy threshold
           const busyThreshold = Number(c.daily_capacity) || 20;
           const availScore = 1 - Math.min(Number(c.upcoming) / busyThreshold, 1);
-          const rankScore = Number(c.ranking_score) / 100;
+          // T22: trust_score (dynamic quality composite) replaces static ranking_score
+          const trustScore = Number(c.trust_score) / 100;
 
-          const composite = distScore * 0.40 + availScore * 0.35 + rankScore * 0.25;
+          const composite = distScore * 0.40 + availScore * 0.35 + trustScore * 0.25;
 
           return { ...c, composite };
         });

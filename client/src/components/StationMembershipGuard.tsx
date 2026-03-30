@@ -15,7 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 import { ShieldAlert } from 'lucide-react';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/lib/languageStore';
 
 type MyStationsResponse = { stations: Array<{ id: number }> };
 

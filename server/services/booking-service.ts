@@ -10,12 +10,13 @@ import {
   providers,
   pets,
   stations,
+  stationDowntime,
   type InsertBooking,
   type SelectBooking,
   type InsertAvailabilitySlot,
   type SelectAvailabilitySlot
 } from '@shared/schema';
-import { eq, and, or, gte, lte, between, sql, inArray } from 'drizzle-orm';
+import { eq, and, or, gte, lte, between, sql, inArray, isNull } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { unifiedBookingFacade, type BookingPlatform } from './booking-facade';
 import type { AvailabilityCheckParams, PricingParams, PricingBreakdown } from './booking-engines/base/BaseLuxuryBookingEngine';
@@ -170,6 +171,23 @@ export class BookingService {
 
     if (station.status !== 'operational') {
       throw new Error(`Station is ${station.status}`);
+    }
+
+    // T22: Reject manual assignment to a station with active (unresolved) downtime
+    const [activeDowntime] = await db
+      .select({ id: stationDowntime.id, reason: stationDowntime.reason })
+      .from(stationDowntime)
+      .where(
+        and(
+          eq(stationDowntime.stationId, stationId),
+          lte(stationDowntime.startAt, new Date()),
+          isNull(stationDowntime.resolvedAt)
+        )
+      )
+      .limit(1);
+
+    if (activeDowntime) {
+      throw new Error(`Station is currently in downtime: ${activeDowntime.reason}`);
     }
 
     // Verify K9000 platform alignment
