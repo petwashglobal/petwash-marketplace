@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Star, CheckCircle, AlertCircle, ArrowRight } from "lucide-react";
+import { Star, CheckCircle, AlertCircle, ArrowRight, Calendar, AlertTriangle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 function StarRating({
@@ -63,10 +64,12 @@ export default function MarketplaceReviewPage() {
   const [reviewText, setReviewText] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  const { data: bookingData, isLoading } = useQuery<any>({
+  const { data: bookingData, isLoading: bookingLoading } = useQuery<any>({
     queryKey: [`/api/marketplace-bookings/${bookingId}`],
     enabled: !!bookingId && !!user,
   });
+
+  const booking = bookingData?.booking ?? bookingData;
 
   const { data: existingReview } = useQuery<any>({
     queryKey: ["/api/marketplace-reviews/my-reviews"],
@@ -77,13 +80,14 @@ export default function MarketplaceReviewPage() {
 
   const reviewMutation = useMutation({
     mutationFn: async () => {
-      const token = await user?.getIdToken();
       const res = await apiRequest("POST", "/api/marketplace-reviews", {
         bookingId,
         overallRating: rating,
         reviewText: reviewText.trim() || null,
       });
-      return res.json();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save review");
+      return data;
     },
     onSuccess: () => {
       setSubmitted(true);
@@ -102,6 +106,16 @@ export default function MarketplaceReviewPage() {
       });
     },
   });
+
+  // Detect whether the booking is in a reviewable state
+  const isReviewable =
+    !booking || ["completed", "reviewed"].includes(booking.status);
+  const bookingDate = booking?.startTime
+    ? new Date(booking.startTime).toLocaleDateString(
+        isHebrew ? "he-IL" : "en-IL",
+        { day: "numeric", month: "long" }
+      )
+    : null;
 
   const handleSubmit = () => {
     if (rating === 0) {
@@ -129,6 +143,49 @@ export default function MarketplaceReviewPage() {
     );
   }
 
+  // Booking loaded but service not yet completed → show informational screen
+  if (!bookingLoading && booking && !isReviewable) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full text-center">
+          <CardContent className="pt-8 pb-8">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar className="w-9 h-9 text-blue-600" />
+            </div>
+            <h2 className="text-xl font-bold mb-2">
+              {isHebrew ? "השירות עדיין לא הושלם" : "Service Not Yet Completed"}
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-2">
+              {isHebrew
+                ? "תוכל לכתוב ביקורת לאחר השלמת השירות"
+                : "You can leave a review after the service is completed"}
+            </p>
+            {bookingDate && (
+              <p className="text-sm text-blue-700 dark:text-blue-300 font-medium mb-6">
+                {isHebrew ? `השירות מתוכנן ל-${bookingDate}` : `Service scheduled for ${bookingDate}`}
+              </p>
+            )}
+            <div className="flex gap-3 justify-center flex-wrap">
+              <Button
+                variant="outline"
+                onClick={() => navigate("/bookings")}
+              >
+                {isHebrew ? "לכל ההזמנות" : "My Bookings"}
+              </Button>
+              <Button
+                className="bg-orange-500 hover:bg-orange-600 text-white"
+                onClick={() => navigate(`/report-problem/${bookingId}`)}
+              >
+                <AlertTriangle className="w-4 h-4 mr-2" />
+                {isHebrew ? "דווח על בעיה" : "Report a Problem"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (submitted || existingReview) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
@@ -145,18 +202,35 @@ export default function MarketplaceReviewPage() {
                 ? "הביקורת שלך עוזרת לאחרים לבחור נכון"
                 : "Your review helps others make the right choice"}
             </p>
-            {existingReview && (
+            {(existingReview || submitted) && (
               <div className="flex justify-center gap-1 mb-4">
                 {[1, 2, 3, 4, 5].map((s) => (
                   <Star
                     key={s}
                     className={`w-6 h-6 ${
-                      s <= (existingReview.overallRating || rating)
+                      s <= (existingReview?.overallRating ?? rating)
                         ? "fill-yellow-400 text-yellow-400"
                         : "text-gray-200"
                     }`}
                   />
                 ))}
+              </div>
+            )}
+            {/* Low-rating prompt to report a problem */}
+            {(existingReview?.overallRating ?? rating) <= 2 && (existingReview || submitted) && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4 text-sm text-orange-700 dark:bg-orange-900/20 dark:border-orange-700 dark:text-orange-300">
+                <p className="font-medium mb-2">
+                  {isHebrew ? "חוויה רעה? נעזור לפתור את זה." : "Bad experience? We can help."}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-orange-400 text-orange-700 hover:bg-orange-100"
+                  onClick={() => navigate(`/report-problem/${bookingId}`)}
+                >
+                  <AlertTriangle className="w-3.5 h-3.5 mr-1" />
+                  {isHebrew ? "דווח על בעיה" : "Report a Problem"}
+                </Button>
               </div>
             )}
             <Button
