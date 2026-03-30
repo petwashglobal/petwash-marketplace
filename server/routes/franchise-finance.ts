@@ -449,4 +449,164 @@ router.get('/:franchiseId/stations/financials', requireFranchiseOwner, async (re
   }
 });
 
+// ─── T29: Payout Calendar & Settlement Status ──────────────────────────────────
+
+/**
+ * GET /api/franchise/:franchiseId/payouts
+ *
+ * Groups station_settlements into ISO-week payout cycles (Monday→Sunday,
+ * Israel TZ) and returns the cash-flow timeline for the franchise owner.
+ *
+ * Answers: "What money is payable, what is still pending, and when does it move?"
+ *
+ * Query params:
+ *   limit   integer 1-52 (default 12) — how many recent weeks to return
+ *
+ * Response shape:
+ * {
+ *   franchiseId: number,
+ *   currency: "ILS",
+ *   cycles: PayoutCycle[],
+ * }
+ *
+ * PayoutCycle:
+ * {
+ *   cycleId:              string,   // ISO week e.g. "2026-W13"
+ *   weekStart:            string,   // ISO date — Monday
+ *   weekEnd:              string,   // ISO date — Sunday
+ *   expectedPayoutDate:   string,   // weekEnd + 7 days (pending/in_progress) | last settled_at (completed)
+ *   status:               "pending" | "in_progress" | "completed",
+ *   grossRevenue:         number,   // pending + settled (ILS)
+ *   platformFees:         number,
+ *   franchiseShare:       number,
+ *   stationPayouts:       number,
+ *   settlementCount:      number,   // total non-disputed rows
+ *   settledCount:         number,
+ *   pendingCount:         number,
+ *   disputedCount:        number,   // informational
+ *   disputedAmount:       number,   // informational
+ *   hasReconciliationMismatch: boolean,   // true if cents don't add up in any row
+ * }
+ */
+router.get('/:franchiseId/payouts', requireFranchiseOwner, async (req: Request, res: Response) => {
+  try {
+    const franchiseId = (req as any).franchiseIdInt as number;
+    const rawLimit = parseInt(req.query.limit as string ?? '12', 10);
+    const cycleLimit = isNaN(rawLimit) || rawLimit < 1 ? 12 : Math.min(rawLimit, 52);
+
+    const rows = await db.execute(sql`
+      SELECT
+        -- ISO week identifier (e.g. "2026-W13")
+        TO_CHAR(
+          date_trunc('week', created_at AT TIME ZONE ${IL_TZ}),
+          'IYYY-"W"IW'
+        )                                                            AS cycle_id,
+
+        -- Week boundaries (Monday = start of ISO week)
+        (date_trunc('week', created_at AT TIME ZONE ${IL_TZ}))::date AS week_start,
+        (date_trunc('week', created_at AT TIME ZONE ${IL_TZ})
+          + INTERVAL '6 days')::date                                 AS week_end,
+
+        -- Money (pending + settled only; disputed excluded from totals)
+        COALESCE(SUM(total_amount_cents)
+          FILTER (WHERE status != 'disputed'), 0)::bigint            AS gross_cents,
+
+        COALESCE(SUM(platform_amount_cents)
+          FILTER (WHERE status != 'disputed'), 0)::bigint            AS platform_cents,
+
+        COALESCE(SUM(franchise_amount_cents)
+          FILTER (WHERE status != 'disputed'), 0)::bigint            AS franchise_cents,
+
+        COALESCE(SUM(station_amount_cents)
+          FILTER (WHERE status != 'disputed'), 0)::bigint            AS station_cents,
+
+        -- Status counts
+        COUNT(*) FILTER (WHERE status = 'pending')::int              AS pending_count,
+        COUNT(*) FILTER (WHERE status = 'settled')::int              AS settled_count,
+        COUNT(*) FILTER (WHERE status != 'disputed')::int            AS settlement_count,
+
+        -- Disputed (informational)
+        COUNT(*) FILTER (WHERE status = 'disputed')::int             AS disputed_count,
+        COALESCE(SUM(total_amount_cents)
+          FILTER (WHERE status = 'disputed'), 0)::bigint             AS disputed_cents,
+
+        -- Latest settled_at for completed cycles (used as payout confirmation date)
+        MAX(settled_at)                                              AS last_settled_at,
+
+        -- Reconciliation mismatch: platform + franchise + station must equal total
+        -- Tolerance: 1 cent to absorb integer rounding
+        BOOL_OR(
+          ABS(total_amount_cents
+              - platform_amount_cents
+              - franchise_amount_cents
+              - station_amount_cents) > 1
+        )                                                            AS has_mismatch
+
+      FROM station_settlements
+      WHERE franchise_owner_id = ${franchiseId}
+        AND created_at >= NOW() - (${cycleLimit} || ' weeks')::interval
+      GROUP BY cycle_id, week_start, week_end
+      ORDER BY week_start DESC
+      LIMIT ${cycleLimit}
+    `);
+
+    const cycles = (rows.rows as any[]).map((r) => {
+      const pendingCount  = toInt(r.pending_count);
+      const settledCount  = toInt(r.settled_count);
+
+      // Derive cycle status
+      let status: 'pending' | 'in_progress' | 'completed';
+      if (pendingCount > 0 && settledCount === 0) {
+        status = 'pending';
+      } else if (pendingCount > 0 && settledCount > 0) {
+        status = 'in_progress';
+      } else {
+        status = 'completed';
+      }
+
+      // Expected payout date:
+      //   completed → when the last settlement was marked settled
+      //   pending / in_progress → end of cycle + 7 days
+      const weekEnd = r.week_end as string;
+      const weekEndDate = new Date(weekEnd);
+      const defaultPayoutDate = new Date(weekEndDate);
+      defaultPayoutDate.setDate(defaultPayoutDate.getDate() + 7);
+
+      let expectedPayoutDate: string;
+      if (status === 'completed' && r.last_settled_at) {
+        expectedPayoutDate = new Date(r.last_settled_at).toISOString().slice(0, 10);
+      } else {
+        expectedPayoutDate = defaultPayoutDate.toISOString().slice(0, 10);
+      }
+
+      return {
+        cycleId:            r.cycle_id as string,
+        weekStart:          r.week_start as string,
+        weekEnd,
+        expectedPayoutDate,
+        status,
+        grossRevenue:       toILS(r.gross_cents),
+        platformFees:       toILS(r.platform_cents),
+        franchiseShare:     toILS(r.franchise_cents),
+        stationPayouts:     toILS(r.station_cents),
+        settlementCount:    toInt(r.settlement_count),
+        settledCount,
+        pendingCount,
+        disputedCount:      toInt(r.disputed_count),
+        disputedAmount:     toILS(r.disputed_cents),
+        hasReconciliationMismatch: Boolean(r.has_mismatch),
+      };
+    });
+
+    res.json({
+      franchiseId,
+      currency: 'ILS',
+      cycles,
+    });
+  } catch (err: any) {
+    logger.error('[FranchiseFinance] payouts error', { error: err.message });
+    res.status(500).json({ error: 'payouts_failed' });
+  }
+});
+
 export default router;
