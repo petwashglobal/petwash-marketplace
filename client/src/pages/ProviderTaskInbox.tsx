@@ -473,14 +473,21 @@ export default function ProviderTaskInbox() {
           </div>
         </section>
 
-        {/* Link to full bookings */}
-        <div className="text-center pb-4">
+        {/* Links */}
+        <div className="text-center pb-4 space-y-2">
           <button
             type="button"
-            className="text-sm text-blue-500 hover:underline"
+            className="text-sm text-blue-500 hover:underline block w-full"
             onClick={() => navigate("/provider/dashboard")}
           >
             View all bookings in full dashboard →
+          </button>
+          <button
+            type="button"
+            className="text-sm text-purple-500 hover:underline block w-full"
+            onClick={() => navigate("/provider/feedback")}
+          >
+            ⭐ Customer Feedback & Ratings →
           </button>
         </div>
       </div>

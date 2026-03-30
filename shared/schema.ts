@@ -14498,3 +14498,50 @@ export const machineCommands = pgTable("machine_commands", {
 
 export type MachineCommand      = typeof machineCommands.$inferSelect;
 export type InsertMachineCommand = typeof machineCommands.$inferInsert;
+
+// ===== PHASE 8: TRUST & QUALITY LAYER =====
+
+// Marketplace booking reviews (customer → provider, post-completion)
+export const marketplaceReviews = pgTable("marketplace_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bookingId: varchar("booking_id").notNull().references(() => bookings.id, { onDelete: 'cascade' }),
+  customerId: varchar("customer_id").notNull(),
+  providerId: varchar("provider_id").notNull(),
+  overallRating: integer("overall_rating").notNull(),
+  reviewText: text("review_text"),
+  isVisible: boolean("is_visible").default(true),
+  isFlagged: boolean("is_flagged").default(false),
+  flagReason: varchar("flag_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  bookingIdx: index("idx_mkt_reviews_booking").on(table.bookingId),
+  providerIdx: index("idx_mkt_reviews_provider").on(table.providerId),
+  customerIdx: index("idx_mkt_reviews_customer").on(table.customerId),
+}));
+
+export const insertMarketplaceReviewSchema = createInsertSchema(marketplaceReviews).omit({ id: true, createdAt: true });
+export type InsertMarketplaceReview = z.infer<typeof insertMarketplaceReviewSchema>;
+export type MarketplaceReview = typeof marketplaceReviews.$inferSelect;
+
+// Booking disputes (customer reports a problem with a completed/in-progress booking)
+export const bookingDisputes = pgTable("booking_disputes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bookingId: varchar("booking_id").notNull(),
+  bookingType: varchar("booking_type").default("marketplace").notNull(),
+  customerId: varchar("customer_id").notNull(),
+  reason: varchar("reason", { length: 100 }).notNull(),
+  description: text("description"),
+  status: varchar("status").default("open").notNull(),
+  adminNotes: text("admin_notes"),
+  resolvedBy: varchar("resolved_by"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  bookingIdx: index("idx_disputes_booking").on(table.bookingId),
+  customerIdx: index("idx_disputes_customer").on(table.customerId),
+  statusIdx: index("idx_disputes_status").on(table.status),
+}));
+
+export const insertBookingDisputeSchema = createInsertSchema(bookingDisputes).omit({ id: true, createdAt: true });
+export type InsertBookingDispute = z.infer<typeof insertBookingDisputeSchema>;
+export type BookingDispute = typeof bookingDisputes.$inferSelect;

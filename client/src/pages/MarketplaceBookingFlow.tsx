@@ -281,12 +281,12 @@ export default function MarketplaceBookingFlow() {
         // Redirect to Nayax payment page
         window.location.href = data.paymentUrl;
       } else if (data.bookingId) {
-        // Booking created successfully (for free quotes or demo mode)
+        // Booking created successfully — go to review prompt
         toast({
           title: isHebrew ? 'ההזמנה נוצרה!' : 'Booking Created!',
           description: isHebrew ? 'ההזמנה שלך אושרה' : 'Your booking has been confirmed',
         });
-        navigate(`/bookings/${data.bookingId}`);
+        navigate(`/marketplace/review/${data.bookingId}`);
       }
     },
     onError: (error: any) => {
@@ -407,9 +407,16 @@ export default function MarketplaceBookingFlow() {
             <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-amber-600 bg-clip-text text-transparent mb-2">
               {isHebrew ? 'הזמן שירות' : 'Book Service'}
             </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              {isHebrew ? `הזמנה עם ${provider.firstName} ${provider.lastName}` : `Booking with ${provider.firstName} ${provider.lastName}`}
-            </p>
+            <div className="flex items-center gap-3 flex-wrap">
+              <p className="text-gray-600 dark:text-gray-400">
+                {isHebrew ? `הזמנה עם ${provider.firstName} ${provider.lastName}` : `Booking with ${provider.firstName} ${provider.lastName}`}
+              </p>
+              {provider.rating != null && Number(provider.rating) > 0 && (
+                <span className="inline-flex items-center gap-1 bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200 rounded-full px-2.5 py-0.5 text-sm font-medium">
+                  ⭐ {Number(provider.rating).toFixed(1)}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Progress Steps - Luxury Gradient Circles */}
@@ -726,6 +733,28 @@ export default function MarketplaceBookingFlow() {
                         </div>
                       </div>
                     )}
+                  </div>
+
+                  {/* T006 — Service Guarantee Badges */}
+                  <div className="grid grid-cols-3 gap-3 mb-6">
+                    <div className="flex flex-col items-center gap-1 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-3 text-center">
+                      <span className="text-2xl">🛡️</span>
+                      <span className="text-xs font-semibold text-green-800 dark:text-green-300">
+                        {isHebrew ? 'ערבות שביעות רצון' : 'Satisfaction Guarantee'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-center">
+                      <span className="text-2xl">✅</span>
+                      <span className="text-xs font-semibold text-blue-800 dark:text-blue-300">
+                        {isHebrew ? 'ספקים מאומתים' : 'Verified Providers'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-3 text-center">
+                      <span className="text-2xl">🔒</span>
+                      <span className="text-xs font-semibold text-purple-800 dark:text-purple-300">
+                        {isHebrew ? 'תשלום מאובטח' : 'Secure Payment'}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Pricing Breakdown */}

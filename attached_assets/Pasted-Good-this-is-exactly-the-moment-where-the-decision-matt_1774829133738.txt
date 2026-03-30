@@ -1,0 +1,183 @@
+Good - this is exactly the moment where the decision matters.
+
+Clear recommendation
+
+👉 Phase 8 = Trust / Quality Layer
+
+Not optional. Not later. Now.
+
+Why this is the correct move (business logic)
+
+You just built:
+	•	conversion
+	•	upsell
+	•	rebooking
+	•	gifting
+
+That means:
+👉 more volume is coming
+
+If quality is not controlled:
+	•	bad experiences increase
+	•	refunds increase
+	•	trust drops
+	•	repeat rate collapses
+	•	everything you built in Phase 7 weakens
+
+So the real constraint now is:
+👉 trust, not growth mechanics
+
+⸻
+
+The real principle
+
+“God is in the little details” applies perfectly here.
+
+Trust is not one feature.
+It’s:
+	•	how reviews are written
+	•	how fast disputes are handled
+	•	how scores are calculated
+	•	how signals are shown in UI
+
+Small details = big impact.
+
+⸻
+
+Phase 8 — Trust & Quality (Exact Execution Order)
+
+T001 - Review Flow (post booking)
+
+Trigger:
+	•	after booking.completed
+
+Show:
+	•	rating (1–5)
+	•	optional text review
+
+Rules:
+	•	only customers who completed can review
+	•	one review per booking
+
+👉 Store:
+	•	rating
+	•	comment
+	•	bookingId
+	•	providerId
+
+⸻
+
+T002 - Provider Rating Display
+
+Show everywhere:
+	•	provider cards
+	•	booking screens
+	•	favorites
+
+Display:
+	•	⭐ 4.7 (124 reviews)
+
+👉 This directly impacts conversion
+
+⸻
+
+T003 - Quality Score (internal logic)
+
+Build composite score:
+	•	rating average
+	•	completion rate
+	•	cancel rate
+	•	response speed (optional later)
+
+👉 Output:
+	•	score 0–100
+
+Use it to:
+	•	sort providers
+	•	highlight “Top providers”
+
+⸻
+
+T004 - Bad Experience Detection
+
+Auto-flag if:
+	•	rating ≤ 2
+	•	repeated cancellations
+	•	no-shows
+
+👉 Creates:
+	•	internal flag
+	•	visible to admin
+	•	used later for enforcement
+
+⸻
+
+T005 - Dispute Flow (simple, not heavy)
+
+User can:
+👉 “Report a problem” on booking
+
+Flow:
+	•	select reason
+	•	optional text
+	•	submit
+
+Admin:
+	•	sees list
+	•	resolves manually (no automation yet)
+
+👉 Goal: don’t ignore bad experiences
+
+⸻
+
+T006 - Service Guarantee (UI trust layer)
+
+Simple but powerful:
+
+Show:
+	•	“Money back if service failed”
+	•	“Verified providers”
+	•	“Support available”
+
+No backend complexity needed.
+
+👉 This increases conversion immediately
+
+⸻
+
+T007 - Provider Feedback Loop
+
+Provider sees:
+	•	their rating
+	•	recent reviews
+	•	simple stats
+
+👉 This changes behavior
+
+⸻
+
+What NOT to build
+
+Do NOT:
+	•	build complex moderation systems
+	•	build AI scoring
+	•	overcomplicate disputes
+	•	create long review forms
+
+Keep it:
+👉 simple, fast, visible
+
+⸻
+
+Definition of Done
+
+Phase 8 is complete when:
+	•	every completed booking can be reviewed
+	•	every provider has a visible rating
+	•	bad experiences are not ignored
+	•	users feel:
+👉 “I can trust this platform”
+
+⸻
+
+What to send him

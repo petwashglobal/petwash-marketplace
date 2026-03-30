@@ -783,4 +783,70 @@ router.get('/marketplace-bookings', async (req: Request, res: Response) => {
   }
 });
 
+// ─── GET /provider-dashboard/v2/feedback ────────────────────────────────────
+// Provider: fetch reviews left on their marketplace bookings
+router.get('/feedback', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    const token = authHeader.split('Bearer ')[1];
+    const user = await auth.verifyIdToken(token, true);
+
+    const { rows } = await pool.query(
+      `SELECT
+         mr.id,
+         mr.booking_id,
+         mr.overall_rating,
+         mr.review_text,
+         mr.is_flagged,
+         mr.created_at,
+         b.platform_id,
+         b.status AS booking_status,
+         b.start_time
+       FROM marketplace_reviews mr
+       JOIN bookings b ON b.id = mr.booking_id
+       WHERE mr.provider_id = $1 AND mr.is_visible = TRUE
+       ORDER BY mr.created_at DESC
+       LIMIT 50`,
+      [user.uid]
+    );
+
+    const statsRow = await pool.query(
+      `SELECT
+         ROUND(AVG(overall_rating)::numeric, 1) AS avg_rating,
+         COUNT(*) AS review_count,
+         COUNT(*) FILTER (WHERE is_flagged = TRUE) AS flagged_count
+       FROM marketplace_reviews
+       WHERE provider_id = $1 AND is_visible = TRUE`,
+      [user.uid]
+    );
+
+    const s = statsRow.rows[0];
+    res.json({
+      success: true,
+      stats: {
+        avgRating: s?.avg_rating ? parseFloat(s.avg_rating) : null,
+        reviewCount: parseInt(s?.review_count || '0', 10),
+        flaggedCount: parseInt(s?.flagged_count || '0', 10),
+      },
+      reviews: rows.map((r: any) => ({
+        id: r.id,
+        bookingId: r.booking_id,
+        rating: r.overall_rating,
+        text: r.review_text,
+        isFlagged: r.is_flagged,
+        platformId: r.platform_id,
+        bookingStatus: r.booking_status,
+        startTime: r.start_time,
+        createdAt: r.created_at,
+      })),
+    });
+  } catch (error) {
+    logger.error('[ProviderDashboardV2] /feedback error', error);
+    res.status(500).json({ error: 'Failed to load feedback' });
+  }
+});
+
 export default router;
