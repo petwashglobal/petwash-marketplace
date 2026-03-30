@@ -1,12 +1,15 @@
 /**
  * server/lib/policy-engine.ts
  * Phase 12.13 — Governance & Automation Layer
+ * Phase 12.14 — Trust, Explainability & Safety
  *
  * Pure policy evaluation engine. Loads active governance_policies from the DB,
  * evaluates conditions against a CaseContext, and returns the actions to execute.
  *
- * Action executor (runActions) writes the side-effects: notes, escalations,
- * re-assignments, auto-approvals, and execution log entries.
+ * Phase 12.14 additions:
+ *   - explainConditions()   — per-condition breakdown (key → expected → actual → pass/fail)
+ *   - EvaluatedPolicy now includes whyMatched: ConditionResult[]
+ *   - runActions writes why_matched JSONB to policy_executions
  *
  * Trigger events:
  *   'closure_requested'  — fired from case-actions.ts /closure-request
@@ -41,11 +44,24 @@ export interface PolicyAction {
   [key: string]: unknown;
 }
 
+/**
+ * Per-condition explainability record.
+ * Describes a single condition check outcome.
+ */
+export interface ConditionResult {
+  key:      string;          // condition key, e.g. 'amount_gte'
+  expected: unknown;         // configured threshold/value
+  actual:   unknown;         // value from the case context
+  passed:   boolean;         // did this condition pass?
+  note?:    string;          // human-readable description
+}
+
 export interface EvaluatedPolicy {
-  policyId:   number;
-  policyType: string;
-  name:       string;
-  actions:    PolicyAction[];
+  policyId:    number;
+  policyType:  string;
+  name:        string;
+  actions:     PolicyAction[];
+  whyMatched:  ConditionResult[];   // Phase 12.14 — per-condition breakdown
 }
 
 export interface EngineResult {
@@ -55,76 +71,138 @@ export interface EngineResult {
   message?:     string;
 }
 
-// ─── Condition Evaluator ──────────────────────────────────────────────────────
+// ─── Explainability Engine ────────────────────────────────────────────────────
 
-function matchesConditions(conditions: Record<string, unknown>, ctx: CaseContext): boolean {
+/**
+ * Phase 12.14: Evaluate conditions with full per-condition breakdown.
+ * Returns { matched: boolean, results: ConditionResult[] }
+ *
+ * Unknown/unrecognised condition keys are flagged as skipped (passed: true, note: 'unknown key').
+ */
+export function explainConditions(
+  conditions: Record<string, unknown>,
+  ctx: CaseContext,
+): { matched: boolean; results: ConditionResult[] } {
+  const results: ConditionResult[] = [];
+  let allPassed = true;
+
   for (const [key, value] of Object.entries(conditions)) {
+    let passed = true;
+    let actual: unknown = undefined;
+    let note: string | undefined;
+
     switch (key) {
 
       case 'closure_codes': {
-        if (!ctx.closureCode) return false;
-        if (!Array.isArray(value)) return false;
-        if (!(value as string[]).includes(ctx.closureCode)) return false;
-        break;
-      }
-
-      case 'sla_status': {
-        if (ctx.slaStatus !== value) return false;
-        break;
-      }
-
-      case 'amount_gte': {
-        const cents = ctx.amountCents ?? 0;
-        const thresholdCents = Number(value) * 100;   // value is in ILS, stored in agorot
-        if (cents < thresholdCents) return false;
-        break;
-      }
-
-      case 'amount_lt': {
-        const cents = ctx.amountCents ?? 0;
-        const thresholdCents = Number(value) * 100;
-        if (cents >= thresholdCents) return false;
-        break;
-      }
-
-      case 'amount_lte': {
-        const cents = ctx.amountCents ?? 0;
-        const thresholdCents = Number(value) * 100;
-        if (cents > thresholdCents) return false;
-        break;
-      }
-
-      case 'handler_role': {
-        if (!ctx.handlerRole) return false;
-        if (Array.isArray(value)) {
-          if (!(value as string[]).includes(ctx.handlerRole)) return false;
+        actual = ctx.closureCode ?? null;
+        if (!ctx.closureCode) {
+          passed = false;
+          note = 'No closure code present on case';
+        } else if (!Array.isArray(value)) {
+          passed = false;
+          note = 'closure_codes must be an array';
+        } else if (!(value as string[]).includes(ctx.closureCode)) {
+          passed = false;
+          note = `"${ctx.closureCode}" not in allowed list [${(value as string[]).join(', ')}]`;
         } else {
-          if (ctx.handlerRole !== value) return false;
+          note = `"${ctx.closureCode}" is in allowed list`;
         }
         break;
       }
 
+      case 'sla_status': {
+        actual = ctx.slaStatus ?? null;
+        passed = ctx.slaStatus === value;
+        note = passed
+          ? `SLA status matches "${value}"`
+          : `SLA status is "${ctx.slaStatus ?? 'unknown'}", expected "${value}"`;
+        break;
+      }
+
+      case 'amount_gte': {
+        const thresholdILS = Number(value);
+        const thresholdCents = thresholdILS * 100;
+        actual = ctx.amountCents != null ? ctx.amountCents / 100 : null;   // display in ILS
+        passed = (ctx.amountCents ?? 0) >= thresholdCents;
+        note = passed
+          ? `Amount ${actual} ILS ≥ ${thresholdILS} ILS`
+          : `Amount ${actual ?? 0} ILS < ${thresholdILS} ILS`;
+        break;
+      }
+
+      case 'amount_lt': {
+        const thresholdILS = Number(value);
+        const thresholdCents = thresholdILS * 100;
+        actual = ctx.amountCents != null ? ctx.amountCents / 100 : null;
+        passed = (ctx.amountCents ?? 0) < thresholdCents;
+        note = passed
+          ? `Amount ${actual ?? 0} ILS < ${thresholdILS} ILS`
+          : `Amount ${actual} ILS ≥ ${thresholdILS} ILS`;
+        break;
+      }
+
+      case 'amount_lte': {
+        const thresholdILS = Number(value);
+        const thresholdCents = thresholdILS * 100;
+        actual = ctx.amountCents != null ? ctx.amountCents / 100 : null;
+        passed = (ctx.amountCents ?? 0) <= thresholdCents;
+        note = passed
+          ? `Amount ${actual ?? 0} ILS ≤ ${thresholdILS} ILS`
+          : `Amount ${actual} ILS > ${thresholdILS} ILS`;
+        break;
+      }
+
+      case 'handler_role': {
+        actual = ctx.handlerRole ?? null;
+        const allowed = Array.isArray(value) ? value as string[] : [String(value)];
+        passed = Boolean(ctx.handlerRole) && allowed.includes(ctx.handlerRole!);
+        note = passed
+          ? `Handler role "${ctx.handlerRole}" is in [${allowed.join(', ')}]`
+          : `Handler role "${ctx.handlerRole ?? 'none'}" not in [${allowed.join(', ')}]`;
+        break;
+      }
+
       case 'reopen_count_gte': {
-        if ((ctx.reopenCount ?? 0) < Number(value)) return false;
+        actual = ctx.reopenCount ?? 0;
+        passed = (ctx.reopenCount ?? 0) >= Number(value);
+        note = passed
+          ? `Reopen count ${actual} ≥ ${value}`
+          : `Reopen count ${actual} < ${value}`;
         break;
       }
 
       case 'station_id': {
-        if (ctx.stationId !== value) return false;
+        actual = ctx.stationId ?? null;
+        passed = ctx.stationId === String(value);
+        note = passed
+          ? `Station matches "${value}"`
+          : `Station is "${ctx.stationId ?? 'none'}", expected "${value}"`;
         break;
       }
 
       case 'franchise_id': {
-        if (ctx.franchiseId !== value) return false;
+        actual = ctx.franchiseId ?? null;
+        passed = ctx.franchiseId === String(value);
+        note = passed
+          ? `Franchise matches "${value}"`
+          : `Franchise is "${ctx.franchiseId ?? 'none'}", expected "${value}"`;
         break;
       }
 
-      // Unknown condition keys are ignored (forward compat)
-      default:
+      default: {
+        // Unknown key — forward-compat: treat as pass but flag it
+        actual = undefined;
+        passed = true;
+        note = `Unknown condition key "${key}" — skipped (forward-compat)`;
         break;
+      }
     }
+
+    results.push({ key, expected: value, actual, passed, note });
+    if (!passed) allPassed = false;
   }
-  return true;
+
+  return { matched: allPassed, results };
 }
 
 // ─── Policy Loader ────────────────────────────────────────────────────────────
@@ -141,25 +219,25 @@ interface RawPolicy {
   scope_id:    string | null;
 }
 
-async function loadActivePolicies(
+export async function loadActivePolicies(
   policyType: string | null,
   ctx: CaseContext,
+  onlyActive = true,
 ): Promise<RawPolicy[]> {
-  const typeFilter = policyType
-    ? `AND policy_type = '${policyType}'`
-    : '';
+  const typeFilter   = policyType ? `AND policy_type = '${policyType}'` : '';
+  const activeFilter = onlyActive ? 'AND is_active = true' : '';
 
   const r = await db.execute(sql.raw(`
     SELECT id, policy_type, name, case_types, conditions, actions, priority, scope_type, scope_id
     FROM governance_policies
-    WHERE is_active = true
+    WHERE 1=1
+      ${activeFilter}
       ${typeFilter}
     ORDER BY priority ASC, id ASC
   `));
 
   return (r.rows as any[])
     .filter(row => {
-      // Case type filter: empty array means applies to all
       const types: string[] = row.case_types ?? [];
       if (types.length > 0 && !types.includes(ctx.caseType)) return false;
       return true;
@@ -185,6 +263,8 @@ async function loadActivePolicies(
  *
  * For approval_threshold: first-match-wins.
  * For escalation_rule / playbook: all-matching-execute.
+ *
+ * Phase 12.14: Each matched policy now includes whyMatched (ConditionResult[]).
  */
 export async function evaluatePolicies(
   triggerEvent: string,
@@ -196,12 +276,14 @@ export async function evaluatePolicies(
     const matched: EvaluatedPolicy[] = [];
 
     for (const policy of policies) {
-      if (!matchesConditions(policy.conditions, ctx)) continue;
+      const { matched: didMatch, results } = explainConditions(policy.conditions, ctx);
+      if (!didMatch) continue;
       matched.push({
         policyId:   policy.id,
         policyType: policy.policy_type,
         name:       policy.name,
         actions:    policy.actions,
+        whyMatched: results,
       });
     }
 
@@ -226,26 +308,27 @@ export async function evaluatePolicies(
           }
         }
       }
-      if (autoApproved) break; // first auto-approve wins
+      if (autoApproved) break;
     }
 
     return { matched, autoApproved, requireLevel, message };
   } catch (err: any) {
     logger.error('[PolicyEngine] evaluatePolicies error', { error: err.message, triggerEvent, ctx });
-    // Fail open — governance failures must not block case operations
     return { matched: [], autoApproved: false, requireLevel: 0 };
   }
 }
 
-// ─── Action Executor ──────────────────────────────────────────────────────────
+// ─── Safe SQL Helper ─────────────────────────────────────────────────────────
 
 function safe(s: string): string {
   return String(s ?? '').replace(/'/g, "''").replace(/\\/g, '\\\\').slice(0, 500);
 }
 
+// ─── Action Executor ──────────────────────────────────────────────────────────
+
 /**
  * Execute actions from matched policies against a real case.
- * Side-effects: adds notes, logs escalation events, writes execution log.
+ * Side-effects: adds notes, logs escalation events, writes execution log with why_matched.
  * Returns a list of what was actually done.
  */
 export async function runActions(
@@ -259,7 +342,6 @@ export async function runActions(
     const actionsTaken: string[] = [];
 
     for (const action of policy.actions) {
-
       try {
         switch (action.type) {
 
@@ -280,7 +362,6 @@ export async function runActions(
           case 'escalate': {
             const toRole = String(action.to_role ?? 'franchise_owner');
             const msg    = safe(String(action.message ?? 'Auto-escalated by governance policy'));
-
             await db.execute(sql.raw(`
               INSERT INTO case_escalation_log (case_type, case_ref_id, event_type, note)
               VALUES (
@@ -295,13 +376,11 @@ export async function runActions(
 
           case 'require_approval':
           case 'auto_approve': {
-            // These are resolved at the engine level — no direct side-effect needed here
             actionsTaken.push(action.type);
             break;
           }
 
           case 'route_to_role': {
-            // Record intent; actual re-assignment logic in calling route
             actionsTaken.push(`route_to_role:${String(action.role ?? 'agent')}`);
             break;
           }
@@ -323,17 +402,19 @@ export async function runActions(
       }
     }
 
-    // Log execution record
+    // Log execution record — Phase 12.14: include why_matched
     if (actionsTaken.length > 0) {
       try {
+        const whyJson = safe(JSON.stringify(policy.whyMatched ?? []));
         await db.execute(sql.raw(`
           INSERT INTO policy_executions
-            (policy_id, case_type, case_ref_id, trigger_event, actions_taken)
+            (policy_id, case_type, case_ref_id, trigger_event, actions_taken, why_matched)
           VALUES (
             ${policy.policyId},
             '${safe(ctx.caseType)}', '${safe(ctx.caseRefId)}',
             '${safe(triggerEvent)}',
-            '${safe(JSON.stringify(actionsTaken))}'
+            '${safe(JSON.stringify(actionsTaken))}',
+            '${whyJson}'::jsonb
           )
         `));
       } catch (_) { /* non-critical */ }

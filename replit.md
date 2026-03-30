@@ -2275,3 +2275,18 @@ The platform now enforces rules automatically — stored as data, evaluated at r
 - **`client/src/pages/GovernancePolicies.tsx`**: Full management UI at `/governance` — policy list, create/edit form, test evaluator (no side effects), execution log. Route protected by `franchise_owner` role.
 
 **Business rationale:** 12.12 gives managers a dashboard. 12.13 means the system enforces policy so managers don't have to watch the dashboard constantly. Governance is the transition from management-by-presence to management-by-exception.
+
+---
+
+## Phase 12.14 — Trust, Explainability & Safety (CLOSED)
+
+**What was delivered:**
+Every governance decision is now visible, auditable, and safe — conditions are traced per-execution, all policy writes are versioned and rollback-able, dangerous rules are blocked at write time.
+
+**Closure record (2026-03-30):**
+- **DB**: `policy_versions` table (id, policy_id, version_number, snapshot JSONB, change_type, change_note, changed_by, changed_at); `why_matched` JSONB column on `policy_executions`; indexes on both; version 1 seeded for all 6 existing policies
+- **`server/lib/policy-engine.ts`**: `explainConditions(conditions, ctx)` → `{ matched, results: ConditionResult[] }` — per-condition breakdown (key / expected / actual / passed / note); `EvaluatedPolicy` now includes `whyMatched: ConditionResult[]`; `runActions` writes `why_matched` JSONB to `policy_executions` on each execution; `loadActivePolicies` exported
+- **`server/routes/governance.ts`**: 5 new/enhanced endpoints — `POST /simulate` (dry-run with full per-condition breakdown, no side-effects), `GET /trace/:caseType/:caseRefId` (full decision chain per case with why_matched), `GET /policies/:id/versions` (version history), `POST /policies/:id/rollback/:versionId` (restore + new snapshot written), `POST /validate` (dangerous-rule check without saving). `snapshotPolicy()` called on every CREATE / UPDATE / DELETE / ACTIVATE. `deepValidatePolicy()` blocks: auto_approve+no conditions, amount_gte:0+auto_approve, conflicting auto_approve+require_approval, require_approval without level
+- **`client/src/pages/GovernancePolicies.tsx`**: 5 tabs — Policies (unchanged), Simulate (dry-run with matched/unmatched breakdown + per-condition pass/fail rows), Trace (timeline with step counter and why_matched expansion), Versions (dropdown by policy, version table with rollback button + confirmation dialog), Execution Log (expandable why_matched per row)
+
+**Business rationale:** Governance is only trustworthy when every decision can be explained, every change can be undone, and dangerous rules are blocked before they reach production. Phase 12.14 makes the policy engine auditable enough for franchise owners and regulators to rely on it.
