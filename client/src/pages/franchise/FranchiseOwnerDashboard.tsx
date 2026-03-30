@@ -199,6 +199,7 @@ export default function FranchiseOwnerDashboard() {
           stations={stationsData?.stations ?? []}
           ownerType="franchise"
           isLoading={stationsLoading}
+          buildDrilldownUrl={(sid) => `/franchise/${franchiseId}/stations/${sid}/settlements`}
         />
 
         {/* ── Settlement cycles + Audit feed (side by side on large screens) */}

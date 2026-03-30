@@ -183,6 +183,7 @@ export default function CompanyHQDashboard() {
           stations={stationsData?.stations ?? []}
           ownerType="company"
           isLoading={stationsLoading}
+          buildDrilldownUrl={(sid) => `/company/stations/${sid}/settlements`}
         />
 
         {/* ── Internal settlement cycles + audit feed ─────────────────────── */}

@@ -14,6 +14,7 @@
  */
 
 import { useState } from 'react';
+import { Link } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -41,6 +42,7 @@ import {
   ReceiptText,
   XCircle,
   CalendarCheck,
+  TriangleAlert,
 } from 'lucide-react';
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
@@ -110,6 +112,30 @@ export interface AuditEvent {
   detailStatus:  string | null;
   detailContext: string | null;
   detailReason:  string | null;
+}
+
+export interface SettlementRow {
+  id:                      number;
+  bookingId:               string;
+  status:                  string;
+  settledAt:               string | null;
+  createdAt:               string;
+  totalAmount:             number;
+  platformFeePct:          number;
+  platformAmount:          number;
+  stationRevenuePct:       number;
+  stationAmount:           number;
+  franchiseOverridePct:    number | null;
+  franchiseShare:          number;
+  hasReconciliationMismatch: boolean;
+}
+
+export interface SettlementLedgerSummary {
+  total:         number;
+  settled:       number;
+  pending:       number;
+  disputed:      number;
+  mismatchCount: number;
 }
 
 // ─── Currency helper ──────────────────────────────────────────────────────────
@@ -283,9 +309,10 @@ type SortKey = keyof Pick<StationFinancial,
 >;
 
 interface StationFinancialsTableProps {
-  stations:   StationFinancial[];
-  ownerType:  OwnerType;
-  isLoading?: boolean;
+  stations:           StationFinancial[];
+  ownerType:          OwnerType;
+  isLoading?:         boolean;
+  buildDrilldownUrl?: (stationId: number) => string;
 }
 
 function SortIcon({ col, active, dir }: { col: string; active: boolean; dir: 'asc' | 'desc' }) {
@@ -295,7 +322,7 @@ function SortIcon({ col, active, dir }: { col: string; active: boolean; dir: 'as
     : <ChevronUp   className="h-3 w-3 ml-1 inline text-gray-900 dark:text-gray-100" />;
 }
 
-export function StationFinancialsTable({ stations, ownerType, isLoading }: StationFinancialsTableProps) {
+export function StationFinancialsTable({ stations, ownerType, isLoading, buildDrilldownUrl }: StationFinancialsTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('grossRevenue');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
@@ -386,7 +413,16 @@ export function StationFinancialsTable({ stations, ownerType, isLoading }: Stati
                           : <Building2 className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
                         }
                         <div>
-                          <p className="font-medium leading-tight">{st.stationName}</p>
+                          {buildDrilldownUrl ? (
+                            <Link
+                              href={buildDrilldownUrl(st.stationId)}
+                              className="font-medium leading-tight text-blue-600 hover:underline dark:text-blue-400"
+                            >
+                              {st.stationName}
+                            </Link>
+                          ) : (
+                            <p className="font-medium leading-tight">{st.stationName}</p>
+                          )}
                           <p className="text-xs text-gray-400">{st.stationCode}</p>
                         </div>
                       </div>
@@ -649,6 +685,161 @@ export function AuditEventFeed({ events, isLoading }: AuditEventFeedProps) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ─── 6. SettlementLedger ──────────────────────────────────────────────────────
+
+interface SettlementLedgerProps {
+  rows:      SettlementRow[];
+  summary:   SettlementLedgerSummary;
+  ownerType: OwnerType;
+  isLoading?: boolean;
+}
+
+function statusBadge(status: string) {
+  if (status === 'settled') {
+    return (
+      <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 border-0 text-xs font-normal">
+        <CheckCircle2 className="h-3 w-3 mr-1" />
+        Settled
+      </Badge>
+    );
+  }
+  if (status === 'disputed') {
+    return (
+      <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-0 text-xs font-normal">
+        <XCircle className="h-3 w-3 mr-1" />
+        Disputed
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border-0 text-xs font-normal">
+      <Clock className="h-3 w-3 mr-1" />
+      Pending
+    </Badge>
+  );
+}
+
+export function SettlementLedger({ rows, summary, ownerType, isLoading }: SettlementLedgerProps) {
+  const isCompany = ownerType === 'company';
+
+  if (isLoading) {
+    return (
+      <Card className="border-0 shadow-sm">
+        <CardContent className="pt-6">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 mb-2" />
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Summary bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {[
+          { label: 'Total',    value: summary.total,    color: 'text-gray-700 dark:text-gray-300' },
+          { label: 'Settled',  value: summary.settled,  color: 'text-emerald-700 dark:text-emerald-400' },
+          { label: 'Pending',  value: summary.pending,  color: 'text-yellow-700 dark:text-yellow-400' },
+          { label: 'Disputed', value: summary.disputed, color: 'text-red-700 dark:text-red-400' },
+          { label: 'Mismatches', value: summary.mismatchCount, color: 'text-orange-700 dark:text-orange-400' },
+        ].map(({ label, value, color }) => (
+          <Card key={label} className="border-0 shadow-sm">
+            <CardContent className="p-3 text-center">
+              <p className={cn('text-xl font-bold', color)}>{value}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{label}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Ledger table */}
+      {rows.length === 0 ? (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="py-12 text-center text-sm text-gray-500">
+            No settlements in this period
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-0 shadow-sm overflow-hidden">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50 dark:bg-gray-800">
+                    <TableHead className="text-xs">Booking</TableHead>
+                    <TableHead className="text-xs">Date</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs text-right">Total</TableHead>
+                    <TableHead className="text-xs text-right">Platform</TableHead>
+                    {!isCompany && <TableHead className="text-xs text-right">Franchise</TableHead>}
+                    <TableHead className="text-xs text-right">Station</TableHead>
+                    <TableHead className="text-xs text-center">Check</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((row) => {
+                    const isDisputed  = row.status === 'disputed';
+                    const hasMismatch = row.hasReconciliationMismatch;
+                    return (
+                      <TableRow
+                        key={row.id}
+                        className={cn(
+                          'text-sm',
+                          isDisputed  && 'bg-red-50/60 dark:bg-red-950/30',
+                          hasMismatch && !isDisputed && 'bg-orange-50/60 dark:bg-orange-950/30',
+                        )}
+                      >
+                        <TableCell className="py-2.5 font-mono text-xs text-gray-600 dark:text-gray-400">
+                          {row.bookingId}
+                        </TableCell>
+                        <TableCell className="py-2.5 whitespace-nowrap text-xs text-gray-600 dark:text-gray-400">
+                          {new Date(row.createdAt).toLocaleDateString('he-IL')}
+                        </TableCell>
+                        <TableCell className="py-2.5">
+                          {statusBadge(row.status)}
+                        </TableCell>
+                        <TableCell className="py-2.5 text-right font-medium">
+                          {fmt(row.totalAmount)}
+                        </TableCell>
+                        <TableCell className="py-2.5 text-right text-gray-600 dark:text-gray-400">
+                          <span>{fmt(row.platformAmount)}</span>
+                          <span className="text-xs text-gray-400 ml-1">({row.platformFeePct}%)</span>
+                        </TableCell>
+                        {!isCompany && (
+                          <TableCell className="py-2.5 text-right text-gray-600 dark:text-gray-400">
+                            <span>{fmt(row.franchiseShare)}</span>
+                            {row.franchiseOverridePct != null && (
+                              <span className="text-xs text-gray-400 ml-1">({row.franchiseOverridePct}%)</span>
+                            )}
+                          </TableCell>
+                        )}
+                        <TableCell className="py-2.5 text-right">
+                          {fmt(row.stationAmount)}
+                        </TableCell>
+                        <TableCell className="py-2.5 text-center">
+                          {hasMismatch ? (
+                            <span title="Split totals do not add up to gross — reconciliation required">
+                              <TriangleAlert className="h-4 w-4 text-orange-500 mx-auto" />
+                            </span>
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4 text-emerald-500 mx-auto" />
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

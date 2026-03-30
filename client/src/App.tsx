@@ -163,6 +163,8 @@ const FranchiseSupport = lazy(() => import("@/pages/franchise/FranchiseSupport")
 const FranchiseMarketing = lazy(() => import("@/pages/franchise/FranchiseMarketing"));
 const FranchiseOwnerDashboard = lazy(() => import("@/pages/franchise/FranchiseOwnerDashboard"));
 const CompanyHQDashboard = lazy(() => import("@/pages/CompanyHQDashboard"));
+const FranchiseStationSettlements = lazy(() => import("@/pages/franchise/FranchiseStationSettlements"));
+const CompanyStationSettlements = lazy(() => import("@/pages/CompanyStationSettlements"));
 const AdminInbox = lazy(() => import("@/pages/AdminInbox"));
 const WalletDownload = lazy(() => import("@/pages/WalletDownload"));
 const MyWallet = lazy(() => import("@/pages/MyWallet"));
@@ -1828,10 +1830,24 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </RoleProtectedRoute>
           )}
         </Route>
+        <Route path="/franchise/:franchiseId/stations/:stationId/settlements">
+          {() => (
+            <RoleProtectedRoute minRole="franchise_owner">
+              <FranchiseStationSettlements />
+            </RoleProtectedRoute>
+          )}
+        </Route>
         <Route path="/company/dashboard">
           {() => (
             <RoleProtectedRoute minRole="management">
               <CompanyHQDashboard />
+            </RoleProtectedRoute>
+          )}
+        </Route>
+        <Route path="/company/stations/:stationId/settlements">
+          {() => (
+            <RoleProtectedRoute minRole="management">
+              <CompanyStationSettlements />
             </RoleProtectedRoute>
           )}
         </Route>

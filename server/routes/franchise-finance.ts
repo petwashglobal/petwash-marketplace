@@ -846,4 +846,115 @@ router.get('/:franchiseId/audit-feed', requireFranchiseOwner, async (req: Reques
   }
 });
 
+// ─── T31: Station Settlement Drill-down ───────────────────────────────────────
+
+/**
+ * GET /api/franchise/:franchiseId/stations/:stationId/settlements
+ *
+ * Returns individual station_settlements rows for one station owned by this
+ * franchise. Each row includes a per-row reconciliation mismatch flag
+ * (total_amount_cents ≠ platform + station + franchise).
+ *
+ * Query params:
+ *   period  today | mtd | last30 (default: last30)
+ *   limit   max rows, 1–200 (default: 100)
+ */
+router.get('/:franchiseId/stations/:stationId/settlements', requireFranchiseOwner, async (req: Request, res: Response) => {
+  try {
+    const franchiseId = (req as any).franchiseIdInt as number;
+    const stationId   = parseInt(req.params.stationId, 10);
+    if (!stationId || isNaN(stationId)) {
+      return res.status(400).json({ error: 'invalid_station_id' });
+    }
+
+    const rawPeriod = (req.query.period as string | undefined) ?? 'last30';
+    const period    = ['today', 'mtd', 'last30'].includes(rawPeriod) ? rawPeriod : 'last30';
+    const limit     = Math.min(parseInt((req.query.limit as string) ?? '100', 10) || 100, 200);
+
+    const timeFilter =
+      period === 'today'
+        ? sql`(ss.created_at AT TIME ZONE ${IL_TZ})::date = (NOW() AT TIME ZONE ${IL_TZ})::date`
+        : period === 'mtd'
+        ? sql`date_trunc('month', ss.created_at AT TIME ZONE ${IL_TZ}) = date_trunc('month', NOW() AT TIME ZONE ${IL_TZ})`
+        : sql`ss.created_at >= NOW() - INTERVAL '30 days'`;
+
+    // Validate station belongs to this franchise (FK or settlement-based discovery)
+    const stationCheck = await db.execute(sql`
+      SELECT st.id, st.name, COALESCE(st.station_code, '') AS station_code
+      FROM stations st
+      WHERE st.id = ${stationId}
+        AND (
+          st.franchise_id = ${franchiseId}
+          OR EXISTS (
+            SELECT 1 FROM station_settlements sx
+            WHERE sx.station_id = st.id
+              AND sx.franchise_owner_id = ${franchiseId}
+          )
+        )
+    `);
+    if (stationCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'station_not_in_franchise' });
+    }
+    const st = stationCheck.rows[0] as any;
+
+    // Individual settlement rows
+    const rows = await db.execute(sql`
+      SELECT
+        ss.id,
+        ss.booking_id,
+        ss.status,
+        ss.settled_at,
+        ss.created_at,
+        ss.total_amount_cents,
+        ss.platform_fee_pct::float         AS platform_fee_pct,
+        ss.platform_amount_cents,
+        ss.station_revenue_pct::float      AS station_revenue_pct,
+        ss.station_amount_cents,
+        ss.franchise_override_pct::float   AS franchise_override_pct,
+        ss.franchise_amount_cents
+      FROM station_settlements ss
+      WHERE ss.station_id       = ${stationId}
+        AND ss.franchise_owner_id = ${franchiseId}
+        AND ${timeFilter}
+      ORDER BY ss.created_at DESC
+      LIMIT ${limit}
+    `);
+
+    const settlements = (rows.rows as any[]).map((r) => {
+      const total     = toInt(r.total_amount_cents);
+      const platform  = toInt(r.platform_amount_cents);
+      const station   = toInt(r.station_amount_cents);
+      const franchise = toInt(r.franchise_amount_cents);
+      return {
+        id:                  toInt(r.id),
+        bookingId:           r.booking_id     as string,
+        status:              r.status         as string,
+        settledAt:           r.settled_at     ? (r.settled_at as Date).toISOString()  : null,
+        createdAt:           (r.created_at    as Date).toISOString(),
+        totalAmount:         toILS(r.total_amount_cents),
+        platformFeePct:      Number(r.platform_fee_pct   ?? 0),
+        platformAmount:      toILS(r.platform_amount_cents),
+        stationRevenuePct:   Number(r.station_revenue_pct ?? 0),
+        stationAmount:       toILS(r.station_amount_cents),
+        franchiseOverridePct: r.franchise_override_pct != null ? Number(r.franchise_override_pct) : null,
+        franchiseShare:      toILS(r.franchise_amount_cents),
+        hasReconciliationMismatch: total !== (platform + station + franchise),
+      };
+    });
+
+    const summary = {
+      total:         settlements.length,
+      settled:       settlements.filter(s => s.status === 'settled').length,
+      pending:       settlements.filter(s => s.status === 'pending').length,
+      disputed:      settlements.filter(s => s.status === 'disputed').length,
+      mismatchCount: settlements.filter(s => s.hasReconciliationMismatch).length,
+    };
+
+    res.json({ franchiseId, stationId, stationName: st.name, stationCode: st.station_code, period, currency: 'ILS', settlements, summary });
+  } catch (err: any) {
+    logger.error('[FranchiseFinance] station settlements error', { error: err.message });
+    res.status(500).json({ error: 'station_settlements_failed' });
+  }
+});
+
 export default router;
