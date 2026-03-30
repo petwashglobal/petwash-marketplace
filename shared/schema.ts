@@ -7758,7 +7758,7 @@ export const franchiseOwners = pgTable("franchise_owners", {
   contractStart: timestamp("contract_start"),
   contractEnd: timestamp("contract_end"),
   platformFeeOverridePct: decimal("platform_fee_override_pct", { precision: 5, scale: 2 }),
-  status: varchar("status").notNull().default("active"), // active | suspended | terminated
+  status: varchar("status").notNull().default("active"), // CHECK: active | suspended | terminated
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   ownerUserIdx: index("franchise_owner_user_idx").on(table.ownerUserId),
@@ -7807,7 +7807,7 @@ export const stationOperators = pgTable("station_operators", {
   id: serial("id").primaryKey(),
   stationId: integer("station_id").notNull().references(() => stations.id),
   userId: varchar("user_id").notNull().references(() => users.id),
-  role: varchar("role").notNull().default("worker"), // owner | manager | worker
+  role: varchar("role").notNull().default("worker"), // CHECK: owner | manager | worker
   isActive: boolean("is_active").notNull().default(true),
   assignedAt: timestamp("assigned_at").defaultNow(),
 }, (table) => ({
