@@ -2004,3 +2004,39 @@ Critical bug fixed (commit 53d2fb41):
 Earnings accuracy proof (live DB):
 - All completed bookings show uniform 15% platform fee: `net = subtotal − fee` (e.g. ₪100 gross → ₪15 fee → ₪85 net)
 - Earnings endpoint reads `subtotal_cents`, `service_fee_cents`, `provider_payout_cents` from `booking_requests` directly
+
+---
+
+## Phase 8 — Trust & Quality Layer (March 2026) — COMPLETE
+
+Approved and closed. All seven tasks delivered.
+
+### Review Integrity (T001)
+- `server/routes/marketplace-reviews.ts` — POST `/api/marketplace-reviews`
+- Four server-side guards: (1) reviewer must own the booking, (2) provider cannot self-review, (3) only `completed` or `reviewed` bookings are eligible, (4) one review per booking enforced (409 on duplicate)
+- `MarketplaceReviewPage.tsx` at `/marketplace/review/:bookingId`
+- Frontend guard screen: if booking is not yet completed → shows "Service Not Yet Completed" with scheduled date and Report a Problem link
+- Low-rating success screen (≤2★): shows "Bad experience? We can help." prompt with Report a Problem button
+
+### Provider Rating Display (T002)
+- ⭐ `ratingAvg` chip added to provider cards in step 1 of `MarketplaceBookingFlow.tsx`
+
+### Composite Quality Score + Repeated-Issue Detection (T003 + T004)
+- `computeProviderQualityScore()` in `marketplace-reviews.ts`
+- Formula: `avgRating×16 + completionBonus(0–20) − flagPenalty(0–20) − disputePenalty(0–20)` → 0–100
+- Persisted to `providerProfiles.trustScore` after every review submission
+- Repeated-issue detection: 3+ flagged reviews in 30 days OR 2+ open disputes in 60 days → score capped at 40, `atRisk` flag returned
+- Note: `completionBonus` depends on `providerProfiles.completion_rate_pct` freshness; null defaults to 0 (conservative, not inflated)
+
+### Dispute Flow (T005)
+- `booking_disputes` table created via raw SQL
+- `server/routes/disputes.ts` — POST `/api/disputes`, GET `/api/disputes/admin`
+- `ReportProblemPage.tsx` at `/report-problem/:bookingId`
+
+### Service Guarantee Badges (T006)
+- 3 trust badges added to checkout/summary step in `MarketplaceBookingFlow.tsx`
+
+### Provider Feedback Dashboard (T007)
+- GET `/api/provider-dashboard/v2/feedback`
+- `ProviderFeedbackDashboard.tsx` at `/provider/feedback`
+- Linked from `ProviderTaskInbox`
