@@ -407,6 +407,9 @@ const ProviderFeedbackDashboard = lazy(() => import("@/pages/ProviderFeedbackDas
 const MarketplaceIntelligenceDashboard = lazy(() => import("@/pages/MarketplaceIntelligenceDashboard"));
 const ProviderRankingPanel = lazy(() => import("@/pages/ProviderRankingPanel"));
 
+// Phase 10 — Franchise & Station Scaling
+const StationDashboard = lazy(() => import("@/pages/StationDashboard"));
+
 // Loading fallback component
 const PageLoader = () => (
   <div data-build-version="BUILD_2026_01_25_1769349430610" className="min-h-[100dvh] bg-white flex items-center justify-center">
@@ -1786,6 +1789,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
+        {/* Phase 10 — Station operator daily dashboard */}
+        <Route path="/station/:stationId/dashboard">
+          {() => (
+            <RequireAuth>
+              <StationDashboard />
+            </RequireAuth>
+          )}
+        </Route>
+
         {/* Franchise routes - Protected (franchise_owner+ only) */}
         <Route path="/franchise/dashboard">
           {() => (

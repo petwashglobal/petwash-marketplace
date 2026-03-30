@@ -18,6 +18,7 @@ import stationRecommendRoutes from "./routes/station-recommend";
 import stationPerformanceRoutes from "./routes/station-performance";
 import stationOperatorsRoutes from "./routes/station-operators";
 import stationCapacityRoutes from "./routes/station-capacity";
+import stationDashboardRoutes from "./routes/station-dashboard";
 import enterpriseRoutes from "./routes/enterprise";
 import loyaltyRoutes from "./routes/loyalty";
 import socialOAuthRoutes from "./routes/social-oauth";
@@ -9458,6 +9459,11 @@ self.addEventListener('notificationclick', (event) => {
   // GET  /api/stations/:stationId/capacity  — public; live booking count vs daily capacity
   // POST /api/stations/:stationId/downtime  — manager/owner only; log a downtime event
   app.use('/api', apiLimiter, stationCapacityRoutes);
+
+  // Station Dashboard — T26: operator daily dashboard
+  // GET  /api/stations/:stationId/dashboard — worker+ only; aggregated daily view
+  // GET  /api/station-operators/my-stations — authenticated; list caller's stations
+  app.use('/api', apiLimiter, stationDashboardRoutes);
   
   // Enterprise Management routes (2026 Global Franchise System)
   app.use('/api/enterprise', adminLimiter, requireAdminMfa, enterpriseRoutes);
