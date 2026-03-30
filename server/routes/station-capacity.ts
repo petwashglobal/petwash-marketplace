@@ -18,9 +18,9 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { db } from '../db';
-import { stations, stationDowntime, insertStationDowntimeSchema } from '@shared/schema';
-import { eq, and, isNull, lte, gte, sql } from 'drizzle-orm';
-import { requireStationRole, resolveStationRole } from '../middleware/stationAuth';
+import { stations, stationDowntime } from '@shared/schema';
+import { eq, sql } from 'drizzle-orm';
+import { requireStationRole } from '../middleware/stationAuth';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -33,14 +33,14 @@ const router = Router();
  */
 async function liveBookingCountToday(stationId: number): Promise<number> {
   try {
-    const [row] = await db.execute(sql`
+    const result = await db.execute(sql`
       SELECT COUNT(*)::int AS cnt
       FROM bookings
       WHERE station_id = ${stationId}
         AND date_trunc('day', start_time) = date_trunc('day', NOW())
         AND status NOT IN ('cancelled', 'rejected', 'expired')
     `);
-    return Number((row as any).cnt ?? 0);
+    return Number((result.rows[0] as any)?.cnt ?? 0);
   } catch {
     return 0;
   }
@@ -53,24 +53,30 @@ async function liveBookingCountToday(stationId: number): Promise<number> {
  */
 async function getActiveDowntime(stationId: number) {
   try {
-    const now = new Date();
-    const rows = await db
-      .select()
-      .from(stationDowntime)
-      .where(
-        and(
-          eq(stationDowntime.stationId, stationId),
-          lte(stationDowntime.startAt, now),
-          isNull(stationDowntime.resolvedAt)
-        )
-      )
-      .limit(1);
-
-    // Secondary filter: end_at IS NULL OR end_at > now
-    const active = rows.find(
-      (r) => r.endAt == null || new Date(r.endAt) > now
-    );
-    return active ?? null;
+    // All predicates live in SQL so LIMIT 1 is applied on the correct filtered set.
+    // Conditions: start_at <= NOW() AND (end_at IS NULL OR end_at > NOW()) AND resolved_at IS NULL
+    const result = await db.execute(sql`
+      SELECT id, station_id, reason, start_at, end_at, reported_by, resolved_at, created_at
+      FROM station_downtime
+      WHERE station_id = ${stationId}
+        AND start_at <= NOW()
+        AND (end_at IS NULL OR end_at > NOW())
+        AND resolved_at IS NULL
+      ORDER BY start_at DESC
+      LIMIT 1
+    `);
+    const row = result.rows[0] as any ?? null;
+    if (!row) return null;
+    return {
+      id: row.id,
+      stationId: row.station_id,
+      reason: row.reason,
+      startAt: row.start_at,
+      endAt: row.end_at,
+      reportedBy: row.reported_by,
+      resolvedAt: row.resolved_at,
+      createdAt: row.created_at,
+    };
   } catch {
     return null;
   }

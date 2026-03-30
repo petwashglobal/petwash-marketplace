@@ -85,9 +85,9 @@ router.post("/create", requireAuth, async (req, res) => {
       });
     }
 
-    // ── Phase 10 T22: Station assignment ──────────────────────────────────────
-    // Helpers shared with station-recommend route
-    const STATION_BUSY_THRESHOLD = 20;
+    // ── Phase 10 T22/T25: Station assignment with per-station capacity guard ───
+    // T25: daily_capacity replaces hard-coded threshold.  Capacity is enforced
+    // against today's date (not a rolling 7-day window) matching the T25 model.
 
     function haversineKmBooking(lat1: number, lng1: number, lat2: number, lng2: number): number {
       const R = 6371;
@@ -103,16 +103,22 @@ router.post("/create", requireAuth, async (req, res) => {
 
     interface StationCandidate {
       id: number; name: string; latitude: string | null; longitude: string | null;
-      upcoming: number; ranking_score: number;
+      upcoming: number; ranking_score: number; daily_capacity: number; today_count: number;
     }
 
     let resolvedStationId: number | null = null;
     let resolvedStationName: string | null = null;
 
     if (booking.stationId != null) {
-      // Customer-specified station: validate active + capacity
+      // Customer-specified station: validate active + T25 daily capacity
       const [station] = await pgDb
-        .select({ id: stations.id, name: stations.name, isActive: stations.isActive })
+        .select({
+          id: stations.id,
+          name: stations.name,
+          isActive: stations.isActive,
+          dailyCapacity: stations.dailyCapacity,
+          equipmentStatus: stations.equipmentStatus,
+        })
         .from(stations)
         .where(eq(stations.id, booking.stationId))
         .limit(1);
@@ -123,21 +129,25 @@ router.post("/create", requireAuth, async (req, res) => {
       if (!station.isActive) {
         return res.status(400).json({ error: 'Station is not active', code: 'STATION_INACTIVE' });
       }
+      if (station.equipmentStatus === 'offline') {
+        return res.status(409).json({ error: 'Station is currently offline', code: 'STATION_OFFLINE' });
+      }
 
-      // Capacity guard: count upcoming bookings for this station
+      // T25 capacity guard: count today's (calendar day) bookings vs daily_capacity
       const capRows = await pgDb.execute(drizzleSql`
-        SELECT COUNT(*)::int AS upcoming FROM bookings
+        SELECT COUNT(*)::int AS today_count FROM bookings
         WHERE station_id = ${booking.stationId}
-          AND start_time >= NOW()
-          AND start_time < NOW() + INTERVAL '7 days'
-          AND status IN ('accepted','confirmed','started','pending')
+          AND date_trunc('day', start_time) = date_trunc('day', NOW())
+          AND status NOT IN ('cancelled','rejected','expired')
       `);
-      const upcoming = Number((capRows.rows[0] as { upcoming: number }).upcoming ?? 0);
-      if (upcoming >= STATION_BUSY_THRESHOLD) {
+      const todayCount = Number((capRows.rows[0] as any)?.today_count ?? 0);
+      const dailyCap = station.dailyCapacity ?? 20;
+      if (todayCount >= dailyCap) {
         return res.status(409).json({
-          error: 'Station is fully booked for this period',
+          error: 'Station has reached its daily booking capacity',
           code: 'STATION_AT_CAPACITY',
-          upcomingBookings: upcoming,
+          usedToday: todayCount,
+          dailyCapacity: dailyCap,
         });
       }
 
@@ -146,7 +156,7 @@ router.post("/create", requireAuth, async (req, res) => {
     } else {
       // Auto-assign: composite score matching recommendation route
       // Weights: distance 40% + availability 35% + rankingScore 25% (fixed)
-      // When no geo: distance component is neutral (0.5), so effective pull is same weighting
+      // T25: WHERE excludes offline stations and those at today's daily_capacity.
       const useGeo =
         booking.customerLat != null &&
         booking.customerLng != null &&
@@ -156,8 +166,10 @@ router.post("/create", requireAuth, async (req, res) => {
       const candidateRows = await pgDb.execute(drizzleSql`
         SELECT s.id, s.name,
                l.latitude, l.longitude,
-               COALESCE(bc.upcoming, 0)::int        AS upcoming,
-               COALESCE(s.ranking_score, 50)::int   AS ranking_score
+               COALESCE(bc.upcoming, 0)::int                AS upcoming,
+               COALESCE(s.ranking_score, 50)::int           AS ranking_score,
+               COALESCE(s.daily_capacity, 20)::int          AS daily_capacity,
+               COALESCE(tc.today_count, 0)::int             AS today_count
         FROM stations s
         INNER JOIN locations l ON l.id = s.location_id
         LEFT JOIN (
@@ -168,8 +180,16 @@ router.post("/create", requireAuth, async (req, res) => {
             AND status IN ('accepted','confirmed','started','pending')
           GROUP BY station_id
         ) bc ON bc.station_id = s.id
+        LEFT JOIN (
+          SELECT station_id, COUNT(*)::int AS today_count
+          FROM bookings
+          WHERE date_trunc('day', start_time) = date_trunc('day', NOW())
+            AND status NOT IN ('cancelled','rejected','expired')
+          GROUP BY station_id
+        ) tc ON tc.station_id = s.id
         WHERE s.is_active = true
-          AND COALESCE(bc.upcoming, 0) < ${STATION_BUSY_THRESHOLD}
+          AND COALESCE(s.equipment_status, 'operational') != 'offline'
+          AND COALESCE(tc.today_count, 0) < COALESCE(s.daily_capacity, 20)
       `);
 
       const candidates = candidateRows.rows as StationCandidate[];
@@ -187,14 +207,14 @@ router.post("/create", requireAuth, async (req, res) => {
 
         const scored = candidates.map((c, i) => {
           const distKm = distances[i];
-          // Neutral distance score (0.5) when geo is unavailable — matches recommendation API behaviour
           const distScore = (useGeo && c.latitude != null)
             ? 1 - Math.max(0, Math.min(1, distKm / (maxDist || 1)))
             : 0.5;
-          const availScore = 1 - Math.min(Number(c.upcoming) / STATION_BUSY_THRESHOLD, 1);
+          // T25: availability score uses per-station daily_capacity as the busy threshold
+          const busyThreshold = Number(c.daily_capacity) || 20;
+          const availScore = 1 - Math.min(Number(c.upcoming) / busyThreshold, 1);
           const rankScore = Number(c.ranking_score) / 100;
 
-          // Weights identical to recommendation route: distance 40% + availability 35% + ranking 25%
           const composite = distScore * 0.40 + availScore * 0.35 + rankScore * 0.25;
 
           return { ...c, composite };
@@ -244,6 +264,26 @@ router.post("/create", requireAuth, async (req, res) => {
     };
 
     await bookingRef.set(bookingData);
+
+    // Phase 10 T25: Increment current_day_bookings on the assigned station when the
+    // service date falls on today (Israel timezone).  Fire-and-forget; the live
+    // count from liveBookingCountToday() remains the authoritative source.
+    if (resolvedStationId != null) {
+      const serviceDateStr = serviceDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+      const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+      if (serviceDateStr === todayStr) {
+        void pgDb.execute(drizzleSql`
+          UPDATE stations
+          SET current_day_bookings = current_day_bookings + 1,
+              updated_at = NOW()
+          WHERE id = ${resolvedStationId}
+        `).catch((err: any) => {
+          logger.warn('[Bookings] currentDayBookings increment failed (non-fatal)', {
+            stationId: resolvedStationId, error: err?.message,
+          });
+        });
+      }
+    }
 
     if (booking.platform === "sitter-suite") {
       await EscrowService.createEscrowPayment(
