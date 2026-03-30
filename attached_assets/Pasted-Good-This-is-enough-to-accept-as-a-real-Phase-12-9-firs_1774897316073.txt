@@ -1,0 +1,148 @@
+Good. This is enough to accept as a real Phase 12.9 first pass.
+
+Business verdict
+
+You finally moved from:
+	•	seeing cases
+
+to:
+	•	working cases
+
+That is the right shift.
+
+Before this, the queue could show pain.
+Now it can actually move pain toward resolution.
+
+That is a real operating layer.
+
+⸻
+
+Why this is strong
+
+1. Ownership is now real
+
+This is the most important part.
+
+A queue without ownership is just a complaint list.
+
+Now each case can have:
+	•	an assigned owner
+	•	reassignment
+	•	unassignment
+	•	visible accountability
+
+That means no more “someone should handle this”.
+Now it becomes:
+👉 this person owns this issue
+
+That is serious operations logic.
+
+⸻
+
+2. Internal notes were necessary
+
+Also correct.
+
+Customer-facing comments and internal notes must never be mixed.
+
+Internal notes are where teams record:
+	•	what was checked
+	•	what was decided
+	•	what is blocked
+	•	what still needs follow-up
+
+Without this, people repeat the same work.
+
+So yes:
+👉 internal-only note storage is the right design
+
+⸻
+
+3. “My cases” vs “All cases” is not cosmetic
+
+This matters operationally.
+
+Managers need “all”.
+Workers need “mine”.
+Owners need both.
+
+That one toggle is the difference between:
+	•	overview
+and
+	•	execution
+
+So this was the right feature to add now, not later.
+
+⸻
+
+4. Bulk actions were the correct next move
+
+Very important.
+
+When volume rises, one-case-at-a-time dies.
+
+Bulk actions are what let the system survive:
+	•	spikes
+	•	operational backlog
+	•	staffing gaps
+	•	repeated low-risk cleanup
+
+As long as bulk actions stay controlled, this is exactly right.
+
+⸻
+
+5. Partial unique index on active assignment = good logic
+
+This is one of the best decisions here.
+
+It means:
+	•	one active owner at a time
+	•	history preserved
+	•	reassignment is traceable
+	•	no fake duplicates
+
+That is the right business rule.
+
+⸻
+
+What this phase now is
+
+I would describe it as:
+
+“case ownership and queue execution layer”
+
+I would not describe it yet as:
+	•	full case workflow engine
+	•	full service desk platform
+	•	enterprise incident system
+
+That keeps the claim honest.
+
+⸻
+
+The one thing to watch carefully
+
+Controlled transitions
+
+This part matters a lot.
+
+You said:
+	•	mark_under_review
+	•	close_cases
+for disputes only
+
+That is good.
+
+Keep that strict.
+
+Do not let people freely mutate case states across all case types, because then:
+	•	audit meaning collapses
+	•	SLA becomes unreliable
+	•	exception queue becomes messy fast
+
+So from a business logic view:
+👉 keep transitions narrow and intentional
+
+⸻
+
+What I would tell him
