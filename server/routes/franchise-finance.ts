@@ -609,4 +609,241 @@ router.get('/:franchiseId/payouts', requireFranchiseOwner, async (req: Request, 
   }
 });
 
+// ─── T30: Network Audit Feed ────────────────────────────────────────────────
+
+/**
+ * GET /api/franchise/:franchiseId/audit-feed
+ *
+ * Unified exception and control event stream for all stations in the franchise.
+ * Answers: "What is going wrong across the network, where, and why?"
+ *
+ * Five event types surfaced:
+ *   dispute_opened     — a booking was disputed by a customer or provider
+ *   refund_approved    — a refund was approved or auto-approved for a booking
+ *   downtime_started   — a station went offline (unresolved = HIGH severity)
+ *   booking_cancelled  — a booking was cancelled at a franchise station
+ *   settlement_disputed — a settlement row was marked disputed
+ *
+ * Severity:
+ *   high   — open dispute, active downtime, disputed settlement, refund > 200 ILS
+ *   medium — approved refund ≤ 200 ILS, resolved dispute, cancellation
+ *   low    — resolved downtime
+ *
+ * Query params:
+ *   since     ISO 8601 date or datetime (default: 30 days ago)
+ *   limit     integer 1-200 (default 50)
+ *   types     comma-separated event type filter (optional)
+ *   severity  high|medium|low filter (optional)
+ *
+ * Event shape:
+ * {
+ *   eventType:    string,
+ *   severity:     "high"|"medium"|"low",
+ *   occurredAt:   ISO timestamp,
+ *   stationId:    number,
+ *   stationName:  string,
+ *   stationCode:  string,
+ *   refId:        string,   // case ref / booking number / settlement id / downtime id
+ *   amountILS:    number,   // 0 when not monetary
+ *   detailStatus: string|null,
+ *   detailContext:string|null,
+ *   detailReason: string|null,
+ * }
+ */
+router.get('/:franchiseId/audit-feed', requireFranchiseOwner, async (req: Request, res: Response) => {
+  try {
+    const franchiseId = (req as any).franchiseIdInt as number;
+
+    // Parse & validate `since`
+    const rawSince = req.query.since as string | undefined;
+    let sinceDate: Date;
+    if (rawSince) {
+      sinceDate = new Date(rawSince);
+      if (isNaN(sinceDate.getTime())) {
+        return res.status(400).json({ error: 'invalid_since_param' });
+      }
+    } else {
+      sinceDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    }
+    const sinceIso = sinceDate.toISOString();
+
+    // Parse & validate `limit`
+    const rawLimit = parseInt(req.query.limit as string ?? '50', 10);
+    const feedLimit = isNaN(rawLimit) || rawLimit < 1 ? 50 : Math.min(rawLimit, 200);
+
+    // Optional filters
+    const typesParam = (req.query.types as string | undefined)?.split(',').map(t => t.trim()).filter(Boolean) ?? [];
+    const severityFilter = req.query.severity as string | undefined;
+
+    // ── Main query — UNION ALL across five event sources ─────────────────────
+    const rows = await db.execute(sql`
+      WITH franchise_stations AS (
+        -- Stations explicitly linked to this franchise OR discovered via settlements
+        SELECT st.id, st.name, st.station_code
+        FROM stations st
+        WHERE st.is_active = true
+          AND (
+            st.franchise_id = ${franchiseId}
+            OR EXISTS (
+              SELECT 1 FROM station_settlements sx
+              WHERE sx.station_id = st.id
+                AND sx.franchise_owner_id = ${franchiseId}
+            )
+          )
+      ),
+
+      raw_events AS (
+
+        -- 1. Disputes opened
+        SELECT
+          'dispute_opened'::text                                              AS event_type,
+          CASE
+            WHEN dc.status IN ('open','escalated','investigating') THEN 'high'
+            ELSE 'medium'
+          END                                                                 AS severity,
+          dc.opened_at                                                        AS occurred_at,
+          b.station_id,
+          dc.case_ref                                                         AS ref_id,
+          dc.amount_disputed_cents::bigint                                    AS amount_cents,
+          dc.status                                                           AS detail_status,
+          dc.complainant_type                                                 AS detail_context,
+          NULL::text                                                          AS detail_reason
+        FROM dispute_cases dc
+        JOIN bookings b     ON b.id = dc.booking_id
+        JOIN franchise_stations fs ON fs.id = b.station_id
+        WHERE dc.opened_at >= ${sinceIso}::timestamptz
+
+        UNION ALL
+
+        -- 2. Refunds approved or auto-approved
+        SELECT
+          'refund_approved'::text                                             AS event_type,
+          CASE
+            WHEN ra.amount_cents > 20000 THEN 'high'
+            ELSE 'medium'
+          END                                                                 AS severity,
+          ra.created_at                                                       AS occurred_at,
+          b.station_id,
+          ra.refund_request_id                                                AS ref_id,
+          ra.amount_cents::bigint,
+          ra.status                                                           AS detail_status,
+          ra.booking_type                                                     AS detail_context,
+          ra.reason                                                           AS detail_reason
+        FROM refund_approvals ra
+        JOIN bookings b     ON b.id = ra.booking_id
+        JOIN franchise_stations fs ON fs.id = b.station_id
+        WHERE ra.status IN ('approved','auto_approved')
+          AND ra.created_at >= ${sinceIso}::timestamptz
+
+        UNION ALL
+
+        -- 3. Station downtime started
+        SELECT
+          'downtime_started'::text                                            AS event_type,
+          CASE WHEN sd.resolved_at IS NULL THEN 'high' ELSE 'low' END        AS severity,
+          sd.start_at                                                         AS occurred_at,
+          sd.station_id,
+          sd.id::text                                                         AS ref_id,
+          0::bigint                                                           AS amount_cents,
+          CASE WHEN sd.resolved_at IS NULL THEN 'active' ELSE 'resolved' END AS detail_status,
+          NULL::text                                                          AS detail_context,
+          sd.reason                                                           AS detail_reason
+        FROM station_downtime sd
+        JOIN franchise_stations fs ON fs.id = sd.station_id
+        WHERE sd.start_at >= ${sinceIso}::timestamptz
+
+        UNION ALL
+
+        -- 4. Booking cancellations
+        SELECT
+          'booking_cancelled'::text                                           AS event_type,
+          'medium'::text                                                      AS severity,
+          b.cancelled_at                                                      AS occurred_at,
+          b.station_id,
+          b.booking_number                                                    AS ref_id,
+          COALESCE(ROUND(b.total::numeric * 100), 0)::bigint                 AS amount_cents,
+          b.cancelled_by                                                      AS detail_status,
+          b.cancellation_reason                                               AS detail_context,
+          NULL::text                                                          AS detail_reason
+        FROM bookings b
+        JOIN franchise_stations fs ON fs.id = b.station_id
+        WHERE b.cancelled_at IS NOT NULL
+          AND b.cancelled_at >= ${sinceIso}::timestamptz
+
+        UNION ALL
+
+        -- 5. Disputed settlements (distinct from dispute_cases — settlement-level flag)
+        SELECT
+          'settlement_disputed'::text                                         AS event_type,
+          'high'::text                                                        AS severity,
+          ss.created_at                                                       AS occurred_at,
+          ss.station_id,
+          ss.id::text                                                         AS ref_id,
+          ss.total_amount_cents::bigint                                       AS amount_cents,
+          ss.status                                                           AS detail_status,
+          NULL::text                                                          AS detail_context,
+          NULL::text                                                          AS detail_reason
+        FROM station_settlements ss
+        JOIN franchise_stations fs ON fs.id = ss.station_id
+        WHERE ss.status = 'disputed'
+          AND ss.franchise_owner_id = ${franchiseId}
+          AND ss.created_at >= ${sinceIso}::timestamptz
+      )
+
+      SELECT
+        re.event_type,
+        re.severity,
+        re.occurred_at,
+        re.station_id,
+        fs.name                   AS station_name,
+        fs.station_code,
+        re.ref_id,
+        re.amount_cents,
+        re.detail_status,
+        re.detail_context,
+        re.detail_reason
+      FROM raw_events re
+      JOIN franchise_stations fs ON fs.id = re.station_id
+      ORDER BY re.occurred_at DESC
+      LIMIT ${feedLimit * 4}
+    `);
+
+    // Apply optional in-memory filters (type & severity) after SQL to keep
+    // the SQL simple and the CTE reusable. Over-fetch by 4× then slice to limit.
+    let events = (rows.rows as any[]).map((r) => ({
+      eventType:     r.event_type    as string,
+      severity:      r.severity      as string,
+      occurredAt:    r.occurred_at   as string,
+      stationId:     toInt(r.station_id),
+      stationName:   r.station_name  as string,
+      stationCode:   r.station_code  as string,
+      refId:         r.ref_id        as string,
+      amountILS:     toILS(r.amount_cents),
+      detailStatus:  r.detail_status  ?? null,
+      detailContext: r.detail_context ?? null,
+      detailReason:  r.detail_reason  ?? null,
+    }));
+
+    if (typesParam.length > 0) {
+      events = events.filter(e => typesParam.includes(e.eventType));
+    }
+    if (severityFilter && ['high','medium','low'].includes(severityFilter)) {
+      events = events.filter(e => e.severity === severityFilter);
+    }
+
+    events = events.slice(0, feedLimit);
+
+    res.json({
+      franchiseId,
+      since:       sinceDate.toISOString(),
+      currency:    'ILS',
+      totalEvents: events.length,
+      events,
+    });
+  } catch (err: any) {
+    logger.error('[FranchiseFinance] audit-feed error', { error: err.message });
+    res.status(500).json({ error: 'audit_feed_failed' });
+  }
+});
+
 export default router;
