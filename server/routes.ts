@@ -13,6 +13,7 @@ import { EmailService } from "./emailService";
 import { GoogleMessagingService } from "./services/GoogleMessagingService";
 import kycRoutes from "./routes/kyc";
 import stationsRoutes from "./routes/stations";
+import stationSettlementsRoutes from "./routes/station-settlements";
 import enterpriseRoutes from "./routes/enterprise";
 import loyaltyRoutes from "./routes/loyalty";
 import socialOAuthRoutes from "./routes/social-oauth";
@@ -9428,6 +9429,10 @@ self.addEventListener('notificationclick', (event) => {
   
   // Stations Management routes
   app.use('/api/admin/stations', adminLimiter, requireAdminMfa, stationsRoutes);
+
+  // Station Settlements (Phase 10 — T21): per-booking revenue & settlement
+  // Auth: admin (x-admin-secret) OR franchise owner of that station.
+  app.use('/api/stations', apiLimiter, stationSettlementsRoutes);
   
   // Enterprise Management routes (2026 Global Franchise System)
   app.use('/api/enterprise', adminLimiter, requireAdminMfa, enterpriseRoutes);

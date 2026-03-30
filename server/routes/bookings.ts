@@ -10,6 +10,7 @@ import { petWashOrchestrator } from "../services/PetWashOperationsOrchestrator";
 import { logger } from "../lib/logger";
 import { BookingLockService } from "../services/BookingLockService";
 import { isSuperAdmin } from "../middleware/rbac";
+import { computeAndPersistSettlement } from "../services/SettlementEngine";
 
 const router = express.Router();
 
@@ -390,6 +391,13 @@ router.post("/:bookingId/complete", requireAuth, async (req, res) => {
       actorRole: 'user',
       metadata: { platform: booking?.platform ?? 'unknown', completedAt: new Date().toISOString() },
     }).catch(() => {});
+
+    // Settlement engine — fire-and-forget, non-blocking, idempotent.
+    // Source of truth: PostgreSQL bookings table (Drizzle).
+    // If the booking has no stationId in PostgreSQL, this is a silent no-op.
+    void computeAndPersistSettlement(bookingId).catch((err) => {
+      logger.error('[Bookings] Settlement engine error (non-fatal)', { bookingId, error: err?.message });
+    });
 
     res.json({ success: true });
   } catch (error: any) {
