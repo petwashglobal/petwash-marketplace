@@ -15,6 +15,7 @@ import kycRoutes from "./routes/kyc";
 import stationsRoutes from "./routes/stations";
 import stationSettlementsRoutes from "./routes/station-settlements";
 import stationRecommendRoutes from "./routes/station-recommend";
+import stationPerformanceRoutes from "./routes/station-performance";
 import enterpriseRoutes from "./routes/enterprise";
 import loyaltyRoutes from "./routes/loyalty";
 import socialOAuthRoutes from "./routes/social-oauth";
@@ -9439,6 +9440,11 @@ self.addEventListener('notificationclick', (event) => {
   // Station Recommendation (Phase 10 — T22): GET /api/stations/recommend
   // Public endpoint — no auth required (returns composite scored top-3 active stations).
   app.use('/api/stations/recommend', apiLimiter, stationRecommendRoutes);
+
+  // Station Performance — T23: public profile + admin recompute
+  // GET  /api/stations/:stationId/profile        — public marketplace display
+  // POST /api/stations/:stationId/recompute      — x-admin-secret auth (same pattern as settlements)
+  app.use('/api/stations', apiLimiter, stationPerformanceRoutes);
   
   // Enterprise Management routes (2026 Global Franchise System)
   app.use('/api/enterprise', adminLimiter, requireAdminMfa, enterpriseRoutes);

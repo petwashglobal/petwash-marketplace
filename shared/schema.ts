@@ -7865,6 +7865,24 @@ export const insertGroomingFeedbackSchema = createInsertSchema(groomingFeedback)
 export type InsertGroomingFeedback = z.infer<typeof insertGroomingFeedbackSchema>;
 export type GroomingFeedback = typeof groomingFeedback.$inferSelect;
 
+// ===== STATION PROFILES — Phase 10 T23 =====
+// One row per station; updated by computeStationScore() via POST /api/admin/stations/:id/recompute.
+// Scores are independent of the franchise owner score (no aggregation up the ownership tree).
+export const stationProfiles = pgTable("station_profiles", {
+  stationId: integer("station_id").primaryKey().references(() => stations.id),
+  trustScore: integer("trust_score").notNull().default(50),       // 0-100 composite quality
+  rankingScore: integer("ranking_score").notNull().default(50),   // 0-100 final display rank
+  ratingAvg: decimal("rating_avg", { precision: 3, scale: 2 }).notNull().default("0"),
+  ratingCount: integer("rating_count").notNull().default(0),
+  disputeCount: integer("dispute_count").notNull().default(0),    // open disputes at last computation
+  completionRate: decimal("completion_rate", { precision: 5, scale: 4 }).notNull().default("1"),
+  lastComputedAt: timestamp("last_computed_at").defaultNow().notNull(),
+});
+
+export const insertStationProfileSchema = createInsertSchema(stationProfiles).omit({ lastComputedAt: true });
+export type InsertStationProfile = z.infer<typeof insertStationProfileSchema>;
+export type StationProfile = typeof stationProfiles.$inferSelect;
+
 // ===== INVENTORY MANAGEMENT =====
 
 // Supplies master catalog
