@@ -2152,4 +2152,89 @@ All six tasks delivered and verified (clean boot, `[RankingBackfill] Complete` a
 - Each row has "View →" link to `/booking-trace/:bookingId`
 - SLA legend at page bottom
 - All three queues lazy-loaded — only fires when tab is active
-</EOF
+
+## Phase 12.9 — Case Action Orchestration Layer
+
+**Backend — `server/routes/case-actions.ts`** (mounted at `/api/case-actions`):
+- `POST /assign` — assign/reassign case to user or team; deactivates previous assignment; workload-balances within team via `pickTeamMember()`; full audit trail in `case_assignments`
+- `POST /unassign` — marks active assignment inactive
+- `POST /note` — internal case note (case_type, case_ref_id, author_uid, author_role, note_text)
+- `GET /notes/:caseType/:caseRefId` — fetch all notes for a case
+- `POST /bulk` — bulk close/assign/escalate across selected caseIds
+- `GET /assignments` — all active assignments (dispute/mismatch/refund) for the queue UI
+- `touchLastAction()` — updates `last_action_at` on every mutation
+
+**Frontend — `CaseQueue.tsx` additions (Phase 12.9)**:
+- `RowAssignControls` — self-assign / assign-to input / unassign per row
+- `AssignedBadge` — displays assignee UID with "Me" accent when it's the current user
+- `NotesPanel` — expandable notes drawer per row, add note form with Send button
+- Filter toggle: All cases / My cases
+- Bulk selection with checkbox per row; bulk action bar appears when rows selected
+- SLA monitor job (`server/jobs/sla-monitor.ts`) — runs every 15 min, writes `sla_snapshots`, auto-escalates breached cases
+
+## Phase 12.10 — Escalated Cases Layer
+
+**Frontend — `CaseQueue.tsx` additions (Phase 12.10)**:
+- `EscalatedCase` interface and `EscalatedTab` component
+- 5th tab: Escalated (Siren icon, red badge) — polls `/api/case-queue/escalated`
+- `ReopenButton` — reopens a closed dispute (originally free-text note, upgraded in 12.11 to require reopen code)
+- `touchLastAction` wired into note handler on backend
+
+## Phase 12.11 — Team Workflow & Resolution Discipline Layer
+
+**Status: COMPLETE — validated end-to-end**
+
+**DB Migrations (T111):**
+- `teams` table: `id`, `name`, `type` (support|franchise|ops), `created_at`
+- `team_members` table: `id`, `team_id` (FK → teams ON DELETE CASCADE), `user_uid`, `role` (agent|manager), `created_at`; unique index `(user_uid, team_id)`
+- `case_assignments.assigned_team_id` — integer FK → `teams`
+- `booking_disputes.closure_requested` (bool, default false), `closure_approved` (bool, default false), `closure_reason_code` (text)
+- `resolution_codes` — 7 codes seeded: customer_no_show, duplicate_case, goodwill_refund, invalid_claim, operator_error, payment_reconciled, service_completed
+- `reopen_codes` — 6 codes seeded: customer_disagreed, duplicate_closure, evidence_updated, incomplete_resolution, operator_reopened, refund_missing
+
+**Backend — `server/routes/case-actions.ts` (T112/T114/T115/T116):**
+- `pickTeamMember(teamId)` — workload balancing: picks team member with fewest active `case_assignments` (T118)
+- `POST /assign` — now accepts `assignToTeamId`; stores `assigned_team_id` with FK; auto-picks member via `pickTeamMember`; returns `teamName` via JOIN
+- `POST /closure-request` — requires `bookingId` + `closureReasonCode` (validated against DB); sets `closure_requested=true`; audits note; does NOT close case (T114/T115)
+- `POST /closure-approve` — manager+ only (station_operator → 403); sets `status='closed'`, `closure_approved=true`; audits note (T114)
+- `POST /closure-reject` — manager+ only; clears `closure_requested`; case stays active (T114)
+- `POST /reopen` — now requires `reopenCode` (validated against `reopen_codes` table); clears all closure fields; embeds code in audit (T116)
+- `GET /resolution-codes` — list all 7 resolution codes
+- `GET /reopen-codes` — list all 6 reopen codes
+
+**Backend — `server/routes/teams.ts`** (mounted at `/api/teams`) (T_teams):
+- `GET /` — list all teams with member counts
+- `POST /` — create team (name, type)
+- `GET /mine` — teams the caller belongs to with their role
+- `GET /:id/members` — list members of a team
+- `POST /:id/members` — add member (user_uid, role)
+- `DELETE /:id/members/:uid` — remove member
+
+**Backend — `server/routes/case-reports.ts`** (mounted at `/api/reports`) (T117):
+- `GET /case-performance` — per-handler stats (total_handled, currently_owned, resolved_count, avg_resolution_hours) + per-team stats; admin or franchise_owner auth required
+
+**Backend — `server/jobs/sla-monitor.ts` (T113):**
+- `SLA_BY_ROLE`: dispute agent=48h/manager=24h; mismatch agent=24h/manager=12h; refund agent=120h/manager=48h
+- `getOwnerRole(caseType, caseRefId)` — queries active assignment to get owner's team role
+- `roleBudget()` — applies tighter budget when owner is a manager; SLA pressure scales with responsibility
+
+**Frontend — `CaseQueue.tsx` (T119):**
+- 3-way filter: All cases (dark) / My cases (blue) / My team (purple)
+- `filterCases()` handles all 3 modes; 'my_team' cross-references `/api/teams/mine`
+- `AssignedCell` — stacks purple team badge above user badge when team is assigned
+- `ReopenButton` — requires reopen code dropdown selection before Confirm enables
+- `ClosureRequestButton` (new) — resolution code dropdown + optional note; posts to `/closure-request`
+- `ClosureApprovalControls` (new) — Approve/Reject for managers; shown when `closureRequested=true`
+- Disputes status cell — amber ⏳ Closure pending badge shown when `closureRequested && !closureApproved`
+
+## Phase 12.12 — Manager Control & Operational Reporting (PLANNED)
+
+**Scope:**
+- Manager dashboard (pending closure approvals queue, team SLA breach view)
+- Handler workload heatmap
+- Reopen trend reporting
+- Resolution-code analytics (which codes are most used, by team/handler)
+- Station / franchise exception performance comparisons
+- Team SLA compliance rate over time
+
+**Business rationale:** 12.11 created discipline. 12.12 makes that discipline managerially steerable.
