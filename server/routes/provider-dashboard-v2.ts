@@ -701,4 +701,86 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/provider-dashboard/v2/marketplace-bookings ───────────────────────
+// Returns bookings from the marketplace (bookings table) with their addon items.
+// Used by ProviderTaskInbox to show addon chips per booking.
+router.get('/marketplace-bookings', async (req: Request, res: Response) => {
+  try {
+    const user = await getAuthenticatedUser(req, res);
+    if (!user) return;
+
+    const { limit = '20', offset = '0' } = req.query;
+
+    const result = await pool.query(
+      `SELECT
+         b.id,
+         b.booking_number,
+         b.service_type,
+         b.start_time,
+         b.end_time,
+         b.subtotal,
+         b.platform_fee,
+         b.provider_payout,
+         b.total,
+         b.currency,
+         b.status,
+         b.payout_status,
+         b.created_at,
+         COALESCE(
+           json_agg(
+             json_build_object(
+               'name', bi.name,
+               'unitPrice', bi.unit_price,
+               'totalPrice', bi.total_price
+             )
+           ) FILTER (WHERE bi.id IS NOT NULL),
+           '[]'
+         ) AS addon_items
+       FROM bookings b
+       LEFT JOIN booking_items bi
+         ON bi.booking_id = b.id AND bi.item_type = 'addon'
+       WHERE b.provider_id = $1
+       GROUP BY b.id
+       ORDER BY b.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [user.uid, parseInt(limit as string) || 20, parseInt(offset as string) || 0],
+    );
+
+    const ADDON_LABELS: Record<string, { en: string; he: string }> = {
+      pickup:   { en: 'Pet Pickup',  he: 'איסוף' },
+      dropoff:  { en: 'Drop-off',    he: 'החזרה' },
+      grooming: { en: 'Grooming',    he: 'טיפוח' },
+    };
+
+    const rows = result.rows.map((r) => ({
+      id:             r.id,
+      bookingNumber:  r.booking_number,
+      serviceType:    r.service_type,
+      startTime:      r.start_time,
+      endTime:        r.end_time,
+      subtotal:       r.subtotal,
+      platformFee:    r.platform_fee,
+      providerPayout: r.provider_payout,
+      total:          r.total,
+      currency:       r.currency ?? 'ILS',
+      status:         r.status,
+      payoutStatus:   r.payout_status ?? 'pending',
+      createdAt:      r.created_at,
+      addons: (r.addon_items as any[]).map((ai) => ({
+        code:       ai.name,
+        labelEn:    ADDON_LABELS[ai.name]?.en ?? ai.name,
+        labelHe:    ADDON_LABELS[ai.name]?.he ?? ai.name,
+        unitPrice:  ai.unitPrice ?? ai.unit_price ?? '0.00',
+      })),
+    }));
+
+    logger.info('[ProviderDashboardV2] GET /marketplace-bookings', { uid: user.uid, count: rows.length });
+
+    res.json({ success: true, bookings: rows, _source: 'bookings' });
+  } catch (error) {
+    logger.error('[ProviderDashboardV2] /marketplace-bookings error', error);
+    res.status(500).json({ error: 'Failed to load marketplace bookings' });
+  }
+});
+
 export default router;

@@ -21,6 +21,12 @@ import { GoogleSheetsService } from './googleSheetsIntegration';
 const VAT_RATE = 0.18;
 const ESCROW_HOURS = 72;
 
+const PLATFORM_ADDON_PRICING: Record<string, number> = {
+  pickup:   3500,
+  dropoff:  3500,
+  grooming: 8500,
+};
+
 // Loyalty tier thresholds and discounts (aligned with schema-loyalty.ts canonical source)
 const LOYALTY_TIERS = {
   bronze: { minBookings: 0, minRating: 0, discountPercent: 5 },
@@ -303,13 +309,15 @@ class BookingLifecycleService {
 
     if (input.selectedAddons?.length) {
       for (const addon of input.selectedAddons) {
+        const unitPriceCents = PLATFORM_ADDON_PRICING[addon] ?? 0;
+        const unitPrice = (unitPriceCents / 100).toFixed(2);
         await dbOrTx.insert(bookingItems).values({
           bookingId,
           itemType: 'addon',
           name: addon,
           quantity: 1,
-          unitPrice: '0',
-          totalPrice: '0',
+          unitPrice,
+          totalPrice: unitPrice,
         });
       }
     }

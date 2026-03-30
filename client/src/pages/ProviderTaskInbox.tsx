@@ -45,6 +45,23 @@ interface TaskBooking {
   createdAt: string;
 }
 
+interface MarketplaceBooking {
+  id: string;
+  bookingNumber: string;
+  serviceType: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  subtotal: string | null;
+  platformFee: string | null;
+  providerPayout: string | null;
+  total: string | null;
+  currency: string;
+  status: string;
+  payoutStatus: string;
+  createdAt: string;
+  addons: { code: string; labelEn: string; labelHe: string; unitPrice: string }[];
+}
+
 const PAYOUT_BADGE: Record<string, { label: string; className: string }> = {
   pending:   { label: "Payout Pending",  className: "bg-yellow-100 text-yellow-800 border-yellow-200" },
   released:  { label: "Payout Released", className: "bg-blue-100 text-blue-800 border-blue-200" },
@@ -135,6 +152,15 @@ export default function ProviderTaskInbox() {
     queryFn: () => fetchWithAuth("/api/provider-dashboard/v2/upcoming"),
   });
 
+  // Marketplace bookings (bookings table — includes addon items)
+  const { data: mktData, isLoading: mktLoading } = useQuery<{
+    bookings: MarketplaceBooking[];
+  }>({
+    queryKey: ["/api/provider-dashboard/v2/marketplace-bookings"],
+    enabled: !!user,
+    queryFn: () => fetchWithAuth("/api/provider-dashboard/v2/marketplace-bookings?limit=10"),
+  });
+
   const bookingActionMutation = useMutation({
     mutationFn: async ({ bookingId, action }: { bookingId: string; action: string }) => {
       return fetchWithAuth(`/api/provider-dashboard/v2/bookings/${bookingId}/${action}`, {
@@ -174,6 +200,7 @@ export default function ProviderTaskInbox() {
 
   const pending = pendingData?.bookings ?? [];
   const upcoming = upcomingData?.upcoming ?? [];
+  const mktBookings = mktData?.bookings ?? [];
   const totalPending = pending.length;
 
   const isLoading = pendingLoading || upcomingLoading;
@@ -368,6 +395,79 @@ export default function ProviderTaskInbox() {
                     <PayoutBadge status={b.payoutStatus} />
                   </div>
                 </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* SECTION 3: Marketplace Bookings with Add-ons */}
+        <section>
+          <div className="flex items-center gap-2 mb-3">
+            <Package className="w-4 h-4 text-purple-500" />
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+              Marketplace Bookings
+            </h2>
+            {mktBookings.length > 0 && (
+              <span className="ml-auto bg-purple-100 text-purple-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                {mktBookings.length}
+              </span>
+            )}
+          </div>
+
+          {mktLoading && (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <Skeleton key={i} className="h-24 rounded-xl" />
+              ))}
+            </div>
+          )}
+
+          {!mktLoading && mktBookings.length === 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-5 text-center border border-gray-100 dark:border-gray-700">
+              <Package className="w-8 h-8 text-purple-200 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">No marketplace bookings yet</p>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {mktBookings.map((b) => (
+              <div
+                key={b.id}
+                className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border-l-4 border-purple-400"
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                      {b.serviceType || "Marketplace Service"}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">#{b.bookingNumber}</p>
+                    <p className="text-xs text-purple-600 mt-1 font-medium">
+                      {formatDate(b.startTime)}
+                    </p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="font-bold text-gray-900 dark:text-white">
+                      {formatILS(b.providerPayout)}
+                    </p>
+                    <PayoutBadge status={b.payoutStatus} />
+                  </div>
+                </div>
+
+                {b.addons.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {b.addons.map((addon) => (
+                      <span
+                        key={addon.code}
+                        className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700"
+                      >
+                        {addon.labelEn}
+                        <span className="text-purple-400">
+                          +₪{parseFloat(addon.unitPrice).toFixed(0)}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
