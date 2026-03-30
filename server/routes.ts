@@ -9371,6 +9371,10 @@ self.addEventListener('notificationclick', (event) => {
   const pawFinderRoutes = await import('./routes/paw-finder');
   app.use('/api/paw-finder', apiLimiter, pawFinderRoutes.default);
 
+  // Phase 12.9 — Case Queue Action Orchestration (assign, notes, bulk)
+  const caseActionsRoutes = await import('./routes/case-actions');
+  app.use('/api/case-actions', apiLimiter, caseActionsRoutes.default);
+
   // Phase 12.8 — Case Queue / Exception Management Layer
   // Own auth middleware (requireCaseViewer): same scoping as booking-trace.
   const caseQueueRoutes = await import('./routes/case-queue');
