@@ -191,6 +191,7 @@ router.post("/create", requireAuth, async (req, res) => {
         ) tc ON tc.station_id = s.id
         WHERE s.is_active = true
           AND COALESCE(s.equipment_status, 'operational') != 'offline'
+          AND COALESCE(s.daily_capacity, 20) > 0
           AND COALESCE(tc.today_count, 0) < COALESCE(s.daily_capacity, 20)
       `);
 

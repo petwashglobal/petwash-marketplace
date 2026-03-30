@@ -29,7 +29,10 @@ const router = Router();
 
 /**
  * Computes the live booking count for `stationId` on today's calendar date
- * (midnight-to-midnight in UTC). Returns 0 on error.
+ * (midnight-to-midnight in Israel timezone, Asia/Jerusalem).
+ * This is the authoritative count — current_day_bookings on the stations row
+ * is a cached/optimistic counter that may lag by one booking in edge cases.
+ * Returns 0 on error (non-fatal degraded mode).
  */
 async function liveBookingCountToday(stationId: number): Promise<number> {
   try {
@@ -37,7 +40,8 @@ async function liveBookingCountToday(stationId: number): Promise<number> {
       SELECT COUNT(*)::int AS cnt
       FROM bookings
       WHERE station_id = ${stationId}
-        AND date_trunc('day', start_time) = date_trunc('day', NOW())
+        AND (start_time AT TIME ZONE 'Asia/Jerusalem')::date
+            = (NOW() AT TIME ZONE 'Asia/Jerusalem')::date
         AND status NOT IN ('cancelled', 'rejected', 'expired')
     `);
     return Number((result.rows[0] as any)?.cnt ?? 0);

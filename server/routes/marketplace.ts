@@ -206,11 +206,13 @@ router.post('/search', async (req, res) => {
           SELECT
             id,
             COALESCE(daily_capacity, 20)  AS daily_capacity,
+            -- Live count for today (Israel timezone, authoritative vs cached current_day_bookings)
             (
               SELECT COUNT(*)::int
               FROM bookings b
               WHERE b.station_id = s.id
-                AND date_trunc('day', b.start_time) = date_trunc('day', NOW())
+                AND (b.start_time AT TIME ZONE 'Asia/Jerusalem')::date
+                    = (NOW() AT TIME ZONE 'Asia/Jerusalem')::date
                 AND b.status NOT IN ('cancelled','rejected','expired')
             ) AS used_today
           FROM stations s

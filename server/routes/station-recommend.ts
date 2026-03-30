@@ -88,9 +88,11 @@ async function fetchActiveStations(serviceType: string | null): Promise<{ rows: 
       GROUP BY station_id
     ) bc ON bc.station_id = s.id
     LEFT JOIN (
+      -- Live count for today (Israel timezone, authoritative vs cached current_day_bookings)
       SELECT station_id, COUNT(*)::int AS today_count
       FROM bookings
-      WHERE date_trunc('day', start_time) = date_trunc('day', NOW())
+      WHERE (start_time AT TIME ZONE 'Asia/Jerusalem')::date
+            = (NOW() AT TIME ZONE 'Asia/Jerusalem')::date
         AND status NOT IN ('cancelled','rejected','expired')
       GROUP BY station_id
     ) tc ON tc.station_id = s.id
