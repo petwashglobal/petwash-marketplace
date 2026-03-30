@@ -1,0 +1,190 @@
+Good. This is exactly the right moment to move to Phase 10 - and I’m going to frame it correctly so you don’t build the wrong thing.
+
+⸻
+
+Phase 9 — CLOSED (final business confirmation)
+
+You now have:
+	•	controlled demand (ranking engine)
+	•	trust + enforcement (Phase 8)
+	•	visibility + audit (Phase 9)
+
+👉 This means:
+you can safely scale supply
+
+Without this, scaling would just multiply problems.
+
+⸻
+
+Phase 10 — Franchise / Station Scaling (real objective)
+
+This phase is NOT about UI.
+
+👉 It is about:
+turning your system into a repeatable business unit
+
+⸻
+
+The real question of Phase 10
+
+Not “how do we add stations”
+
+But:
+👉 how does money, responsibility, and control flow between:
+	•	platform
+	•	franchise owner
+	•	station
+	•	worker
+
+⸻
+
+Correct execution order (business-first)
+
+T1001 — Entity model (DO THIS FIRST)
+
+Define clearly:
+
+Structure:
+	•	Franchise Owner (can own multiple stations)
+	•	Station (physical location / unit)
+	•	Operator (person working at station)
+
+Rule:
+
+👉 A station is NOT just a provider
+It is a business unit
+
+⸻
+
+T1002 — Revenue & settlement logic
+
+This is the most important part.
+
+For every booking:
+	•	customer pays platform
+	•	platform splits:
+	•	platform fee
+	•	station revenue
+	•	optional franchise override
+
+You must define:
+	•	% per service
+	•	payout timing
+	•	wallet vs real payout
+
+👉 If this is wrong → everything breaks later
+
+⸻
+
+T1003 — Station assignment logic
+
+Two models:
+
+Model A — Customer chooses station
+
+Simple, transparent
+
+Model B — System assigns
+
+Based on:
+	•	distance
+	•	availability
+	•	rankingScore
+
+👉 Recommendation:
+Start with A + soft recommendations
+
+⸻
+
+T1004 — Station performance layer
+
+Each station must have:
+	•	its own rating
+	•	its own trustScore
+	•	its own history
+
+Important:
+
+👉 DO NOT mix:
+	•	franchise score
+	•	station score
+
+Keep them separate.
+
+⸻
+
+T1005 — Operator hierarchy
+
+You need roles:
+	•	Franchise Owner
+	•	Station Manager
+	•	Worker
+
+Permissions:
+	•	who accepts jobs
+	•	who sees earnings
+	•	who handles disputes
+
+👉 This avoids chaos later
+
+⸻
+
+T1006 — Inventory / operational layer
+
+Stations are physical.
+
+You must track:
+	•	capacity (how many washes per day)
+	•	equipment status
+	•	downtime
+
+👉 This connects to availability logic from Phase 9
+
+⸻
+
+T1007 — Station dashboard
+
+For daily operations:
+	•	today’s jobs
+	•	pending
+	•	earnings
+	•	issues
+
+👉 This is what actually runs the business day-to-day
+
+⸻
+
+Critical business rules (do NOT skip)
+
+1. Money must always be traceable
+
+Every ₪:
+	•	where it came from
+	•	where it goes
+
+⸻
+
+2. Responsibility must be clear
+
+If something goes wrong:
+	•	is it the station?
+	•	the worker?
+	•	the platform?
+
+⸻
+
+3. Quality must stay local
+
+Bad station:
+👉 should NOT damage the whole network
+
+⸻
+
+4. Scaling must not break trust
+
+Phase 8 + 9 protect this
+Phase 10 must respect it
+
+⸻
+
+What to tell him
