@@ -2121,3 +2121,35 @@ All six tasks delivered and verified (clean boot, `[RankingBackfill] Complete` a
 **SettlementLedger (T32)**: `bookingId` cells are now `Link` to `/booking-trace/:bookingId`
 
 **App.tsx**: Lazy import + `<Route path="/booking-trace/:bookingId">` with `RoleProtectedRoute minRole="franchise_owner"`
+
+## Phase 12.8 — Case Queue / Exception Management Layer
+
+**Backend — `server/routes/case-queue.ts`** (mounted at `/api/case-queue`):
+- `GET /summary` — counts per queue (disputes/mismatches/refunds) + total SLA-breached, runs 3 count queries in parallel
+- `GET /disputes` — open/under_review disputes: severity, ageHours, slaStatus (48h open / 72h under_review), currentOwner
+- `GET /mismatches` — settlement rows where total ≠ platform+station+franchise: mismatchILS, sorted by mismatch desc
+- `GET /refunds` — bookings with refund_status in (pending, processing): SLA 120h (5 days)
+- `requireCaseViewer` middleware: same scoping pattern as booking-trace (admin / franchise_owner / station_operator)
+- `stationScope()` builds dynamic WHERE fragment scoped to franchise_ids or station_ids
+
+**SLA thresholds (business rules):**
+- Disputes: open=48h, under_review=72h; at_risk=80% of budget
+- Mismatches: 24h; at_risk=83%
+- Refunds: 120h; at_risk=80%
+
+**Severity:**
+- critical = SLA breached
+- high = SLA at_risk OR amount ≥ ₪500
+- medium = SLA on_track, active case
+
+**Frontend — `client/src/pages/CaseQueue.tsx`** (route `/case-queue`):
+- 4 summary cards: open disputes / mismatches / pending refunds / total active (each shows breached count in red)
+- Global SLA-breached badge at top right when any breach exists
+- Three tabs: Disputes | Mismatches | Refunds (count badges on tabs, red when breached)
+- Per-tab table: severity badge (color + icon), booking #, station, amount, age label, SLA progress bar + remaining time, owner badge
+- Rows sorted: critical → high → medium → low, then oldest first
+- Critical/high rows get red/orange background tint
+- Each row has "View →" link to `/booking-trace/:bookingId`
+- SLA legend at page bottom
+- All three queues lazy-loaded — only fires when tab is active
+</EOF

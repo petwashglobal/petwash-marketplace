@@ -9371,6 +9371,11 @@ self.addEventListener('notificationclick', (event) => {
   const pawFinderRoutes = await import('./routes/paw-finder');
   app.use('/api/paw-finder', apiLimiter, pawFinderRoutes.default);
 
+  // Phase 12.8 — Case Queue / Exception Management Layer
+  // Own auth middleware (requireCaseViewer): same scoping as booking-trace.
+  const caseQueueRoutes = await import('./routes/case-queue');
+  app.use('/api/case-queue', apiLimiter, caseQueueRoutes.default);
+
   // Phase 12.7 — Booking Trace & Dispute Resolution Layer
   // Own auth middleware (requireTraceViewer): franchise_owner, station_operator, admin.
   // Must be before the franchise router.
