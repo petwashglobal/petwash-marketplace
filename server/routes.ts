@@ -9441,9 +9441,8 @@ self.addEventListener('notificationclick', (event) => {
   // Public endpoint — no auth required (returns composite scored top-3 active stations).
   app.use('/api/stations/recommend', apiLimiter, stationRecommendRoutes);
 
-  // Station Performance — T23: public profile + admin recompute
-  // GET  /api/stations/:stationId/profile        — public marketplace display
-  // POST /api/stations/:stationId/recompute      — x-admin-secret auth (same pattern as settlements)
+  // Station Performance — T23: public profile endpoint (GET only; POST recompute lives in stationsRoutes under /api/admin/stations)
+  // GET /api/stations/:stationId/profile — public marketplace display, no auth required
   app.use('/api/stations', apiLimiter, stationPerformanceRoutes);
   
   // Enterprise Management routes (2026 Global Franchise System)

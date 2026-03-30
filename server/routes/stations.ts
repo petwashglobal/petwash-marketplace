@@ -16,6 +16,7 @@ import {
   type StationEvent,
 } from '@shared/firestore-schema';
 import { nanoid } from 'nanoid';
+import { computeStationScore } from './station-performance';
 
 const router = Router();
 
@@ -1112,6 +1113,34 @@ router.post('/:id/inventory/set', requireAdmin, async (req: Request, res: Respon
     logger.error('[Stations] Error setting inventory', error);
     res.status(500).json({ error: 'Failed to set inventory' });
   }
+});
+
+// ─── Station Performance — Phase 10, T23 ──────────────────────────────────────
+
+/**
+ * POST /api/admin/stations/:stationId/recompute
+ * Recomputes trust + ranking scores for a single station.
+ * Auth: requireAdmin (Firebase Bearer token + admin role).
+ */
+router.post('/:stationId/recompute', requireAdmin, async (req: Request, res: Response) => {
+  const stationId = parseInt(req.params.stationId, 10);
+  if (isNaN(stationId) || stationId < 1) {
+    return res.status(400).json({ error: 'stationId must be a positive integer' });
+  }
+
+  const result = await computeStationScore(stationId);
+  if (!result) {
+    return res.status(404).json({ error: 'Station not found or compute failed' });
+  }
+
+  logger.info('[StationPerf] Admin recompute via stationsRoutes', {
+    stationId,
+    trustScore: result.trustScore,
+    rankingScore: result.rankingScore,
+    tier: result.tier,
+  });
+
+  return res.json({ ok: true, ...result });
 });
 
 export default router;

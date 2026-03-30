@@ -228,42 +228,9 @@ export async function computeStationScore(stationId: number): Promise<StationSco
   }
 }
 
-// ─── Admin auth helper ────────────────────────────────────────────────────────
-
-function requireAdminSecret(req: any, res: any): boolean {
-  const adminSecret = process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRET;
-  const provided = req.headers['x-admin-secret'];
-  if (!adminSecret || provided !== adminSecret) {
-    res.status(403).json({ error: 'Admin access required' });
-    return false;
-  }
-  return true;
-}
-
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 const router = Router();
-
-/**
- * POST /api/admin/stations/:stationId/recompute
- * Admin: recomputes trust + ranking scores for a single station.
- * Persists to station_profiles and syncs denormalized columns on stations.
- */
-router.post('/:stationId/recompute', async (req, res) => {
-  if (!requireAdminSecret(req, res)) return;
-
-  const stationId = parseInt(req.params.stationId, 10);
-  if (isNaN(stationId)) {
-    return res.status(400).json({ error: 'stationId must be a positive integer' });
-  }
-
-  const result = await computeStationScore(stationId);
-  if (!result) {
-    return res.status(404).json({ error: 'Station not found or computation failed' });
-  }
-
-  return res.json({ ok: true, ...result });
-});
 
 /**
  * GET /api/stations/:stationId/profile
