@@ -28,6 +28,9 @@ interface BookingRequest {
   metadata?: any;
   // Phase 10 — T22: optional station assignment
   stationId?: number;
+  // Optional customer location for distance-aware auto-assignment
+  customerLat?: number;
+  customerLng?: number;
 }
 
 router.post("/create", requireAuth, async (req, res) => {
@@ -82,12 +85,31 @@ router.post("/create", requireAuth, async (req, res) => {
     }
 
     // ── Phase 10 T22: Station assignment ──────────────────────────────────────
-    // If stationId is provided, validate the station is active.
-    // If not provided, auto-assign the station with the most availability.
+    // Helpers shared with station-recommend route
+    const STATION_BUSY_THRESHOLD = 20;
+
+    function haversineKmBooking(lat1: number, lng1: number, lat2: number, lng2: number): number {
+      const R = 6371;
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLng = ((lng2 - lng1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos((lat1 * Math.PI) / 180) *
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    interface StationCandidate {
+      id: number; name: string; latitude: string | null; longitude: string | null;
+      upcoming: number; ranking_score: number;
+    }
+
     let resolvedStationId: number | null = null;
     let resolvedStationName: string | null = null;
 
     if (booking.stationId != null) {
+      // Customer-specified station: validate active + capacity
       const [station] = await pgDb
         .select({ id: stations.id, name: stations.name, isActive: stations.isActive })
         .from(stations)
@@ -100,20 +122,43 @@ router.post("/create", requireAuth, async (req, res) => {
       if (!station.isActive) {
         return res.status(400).json({ error: 'Station is not active', code: 'STATION_INACTIVE' });
       }
+
+      // Capacity guard: count upcoming bookings for this station
+      const capRows = await pgDb.execute(drizzleSql`
+        SELECT COUNT(*)::int AS upcoming FROM bookings
+        WHERE station_id = ${booking.stationId}
+          AND start_time >= NOW()
+          AND start_time < NOW() + INTERVAL '7 days'
+          AND status IN ('accepted','confirmed','started','pending')
+      `);
+      const upcoming = Number((capRows.rows[0] as { upcoming: number }).upcoming ?? 0);
+      if (upcoming >= STATION_BUSY_THRESHOLD) {
+        return res.status(409).json({
+          error: 'Station is fully booked for this period',
+          code: 'STATION_AT_CAPACITY',
+          upcomingBookings: upcoming,
+        });
+      }
+
       resolvedStationId = station.id;
       resolvedStationName = station.name;
     } else {
-      // Auto-assign: composite score (availability 60% + rankingScore 40%)
-      // lat/lng are not present in the booking request, so geo component is omitted.
-      // BUSY_THRESHOLD mirrors the recommendation route (20 bookings / 7 days).
-      const BUSY_THRESHOLD = 20;
-      const autoRows = await pgDb.execute(drizzleSql`
+      // Auto-assign: composite score matching recommendation route
+      // Weights: distance 40% (when customerLat/Lng provided), availability 35%, rankingScore 25%
+      // When no geo: distance weight redistributed → availability 60% + rankingScore 40%
+      const useGeo =
+        booking.customerLat != null &&
+        booking.customerLng != null &&
+        !isNaN(Number(booking.customerLat)) &&
+        !isNaN(Number(booking.customerLng));
+
+      const candidateRows = await pgDb.execute(drizzleSql`
         SELECT s.id, s.name,
-               COALESCE(bc.upcoming, 0)::int                            AS upcoming,
-               COALESCE(s.ranking_score, 50)::int                       AS ranking_score,
-               (1.0 - LEAST(COALESCE(bc.upcoming, 0)::float / ${BUSY_THRESHOLD}, 1.0)) * 0.60
-                 + (COALESCE(s.ranking_score, 50)::float / 100.0) * 0.40 AS composite
+               l.latitude, l.longitude,
+               COALESCE(bc.upcoming, 0)::int        AS upcoming,
+               COALESCE(s.ranking_score, 50)::int   AS ranking_score
         FROM stations s
+        INNER JOIN locations l ON l.id = s.location_id
         LEFT JOIN (
           SELECT station_id, COUNT(*)::int AS upcoming
           FROM bookings
@@ -123,12 +168,38 @@ router.post("/create", requireAuth, async (req, res) => {
           GROUP BY station_id
         ) bc ON bc.station_id = s.id
         WHERE s.is_active = true
-        ORDER BY composite DESC
-        LIMIT 1
+          AND COALESCE(bc.upcoming, 0) < ${STATION_BUSY_THRESHOLD}
       `);
-      interface AutoAssignRow { id: number; name: string; upcoming: number; ranking_score: number; composite: number; }
-      const best = autoRows.rows[0] as AutoAssignRow | undefined;
-      if (best) {
+
+      const candidates = candidateRows.rows as StationCandidate[];
+
+      if (candidates.length > 0) {
+        const distances = candidates.map((c) => {
+          if (!useGeo || c.latitude == null || c.longitude == null) return 0;
+          return haversineKmBooking(
+            Number(booking.customerLat), Number(booking.customerLng),
+            Number(c.latitude), Number(c.longitude)
+          );
+        });
+        const positiveDistances = distances.filter((d) => d > 0);
+        const maxDist = positiveDistances.length > 0 ? Math.max(...positiveDistances) : 1;
+
+        const scored = candidates.map((c, i) => {
+          const distKm = distances[i];
+          const distScore = (useGeo && c.latitude != null) ? 1 - Math.max(0, Math.min(1, (distKm - 0) / (maxDist - 0 || 1))) : 0;
+          const availScore = 1 - Math.min(Number(c.upcoming) / STATION_BUSY_THRESHOLD, 1);
+          const rankScore = Number(c.ranking_score) / 100;
+
+          // With geo: 40%/35%/25%; without geo: redistribute distance weight → 60%/40%
+          const composite = useGeo
+            ? distScore * 0.40 + availScore * 0.35 + rankScore * 0.25
+            : availScore * 0.60 + rankScore * 0.40;
+
+          return { ...c, composite };
+        });
+
+        scored.sort((a, b) => b.composite - a.composite);
+        const best = scored[0];
         resolvedStationId = Number(best.id);
         resolvedStationName = best.name;
       }
