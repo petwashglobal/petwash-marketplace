@@ -36,6 +36,15 @@ function isAdminSecret(req: Request): boolean {
 }
 
 async function resolveUid(req: Request): Promise<string | null> {
+  // 1. Session-cookie flow: requireAuth sets req.user (bookings routes, most protected routes)
+  const sessionUid = (req as any).user?.uid;
+  if (sessionUid) return sessionUid;
+
+  // 2. Firebase middleware flow: optFirebase / optionalFirebaseToken sets req.firebaseUser
+  const fbUid = (req as any).firebaseUser?.uid;
+  if (fbUid) return fbUid;
+
+  // 3. Raw Bearer token (station-operator-only routes that skip requireAuth)
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) return null;
   try {

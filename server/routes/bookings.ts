@@ -418,23 +418,32 @@ router.post("/:bookingId/confirm", requireAuth, async (req, res) => {
     }
     const booking = bookingDoc.data()!;
 
-    // SECURITY: Only the assigned provider, the booking owner, or an admin can confirm
-    const isBookingProvider = booking.providerId === userId;
-    const isBookingOwner = booking.userId === userId || booking.customerId === userId;
     // firebaseUser.claims.role is not a custom claim we set — always use isSuperAdmin()
     const isSuperAdminUser = isSuperAdmin(((req as any).firebaseUser?.email || '').toLowerCase());
-
-    // Phase 10 — T24: station operator gate — manager/owner of the assigned station may also confirm
-    let isStationConfirmer = false;
     const bookingStationId = booking.stationId ? Number(booking.stationId) : null;
-    if (bookingStationId && !isBookingProvider && !isBookingOwner && !isSuperAdminUser) {
-      const role = await resolveStationRole(req, bookingStationId);
-      isStationConfirmer = role === 'manager' || role === 'owner';
-    }
 
-    if (!isBookingProvider && !isBookingOwner && !isSuperAdminUser && !isStationConfirmer) {
-      logger.warn('[Bookings] Unauthorized confirm attempt', { userId, bookingId, providerId: booking.providerId, customerId: booking.userId, bookingStationId });
-      return res.status(403).json({ error: "Forbidden — you are not the assigned provider, booking owner, or a station manager for this booking" });
+    if (bookingStationId) {
+      // Phase 10 — T24: station-assigned booking — ONLY station manager/owner (or super-admin) may confirm.
+      // The assigned provider and booking customer are intentionally excluded from this path
+      // to enforce clear station accountability: staff acknowledge bookings, not the recipient.
+      if (!isSuperAdminUser) {
+        const role = await resolveStationRole(req, bookingStationId);
+        const hasStationAccess = role === 'manager' || role === 'owner';
+        if (!hasStationAccess) {
+          logger.warn('[Bookings] Station booking confirm denied', { userId, bookingId, bookingStationId, resolvedRole: role });
+          return res.status(403).json({
+            error: 'Forbidden — confirming station-assigned bookings requires manager or owner role on the station',
+          });
+        }
+      }
+    } else {
+      // Non-station booking: assigned provider, booking customer, or super-admin may confirm
+      const isBookingProvider = booking.providerId === userId;
+      const isBookingOwner = booking.userId === userId || booking.customerId === userId;
+      if (!isBookingProvider && !isBookingOwner && !isSuperAdminUser) {
+        logger.warn('[Bookings] Unauthorized confirm attempt', { userId, bookingId, providerId: booking.providerId, customerId: booking.userId });
+        return res.status(403).json({ error: 'Forbidden — you are not the assigned provider or booking owner' });
+      }
     }
 
     // SECURITY: Only confirm bookings in pending/awaiting_confirmation state

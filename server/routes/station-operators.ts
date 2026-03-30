@@ -80,6 +80,20 @@ router.get('/my-stations', async (req, res) => {
         )
       );
 
+    // Owners: pre-compute cross-station totals once (all stations they own as active operator)
+    // This is scoped globally to the owner's entire portfolio, not per-station row.
+    let ownerCrossStationCents = 0;
+    const ownerStationIds = operatorRows
+      .filter(r => r.role === 'owner')
+      .map(r => r.stationId);
+    if (ownerStationIds.length > 0) {
+      const [ownerTotal] = await db
+        .select({ total: sql<number>`coalesce(sum(station_amount_cents), 0)::int` })
+        .from(stationSettlements)
+        .where(inArray(stationSettlements.stationId, ownerStationIds));
+      ownerCrossStationCents = Number(ownerTotal?.total ?? 0);
+    }
+
     const result = await Promise.all(
       operatorRows.map(async (row) => {
         const role = row.role as 'owner' | 'manager' | 'worker';
@@ -96,17 +110,15 @@ router.get('/my-stations', async (req, res) => {
           `);
           earningsTotalCents = Math.round(Number((w as any).total ?? 0) * 100);
         } else if (role === 'manager') {
+          // Managers: station-level settlement totals for their single station
           const [m] = await db
             .select({ total: sql<number>`coalesce(sum(station_amount_cents), 0)::int` })
             .from(stationSettlements)
             .where(eq(stationSettlements.stationId, row.stationId));
           earningsTotalCents = Number(m?.total ?? 0);
         } else if (role === 'owner') {
-          const [o] = await db
-            .select({ total: sql<number>`coalesce(sum(station_amount_cents), 0)::int` })
-            .from(stationSettlements)
-            .where(eq(stationSettlements.stationId, row.stationId));
-          earningsTotalCents = Number(o?.total ?? 0);
+          // Owners: cross-station total across ALL stations they own (pre-computed above)
+          earningsTotalCents = ownerCrossStationCents;
         }
 
         return {
