@@ -16,6 +16,7 @@ import stationsRoutes from "./routes/stations";
 import stationSettlementsRoutes from "./routes/station-settlements";
 import stationRecommendRoutes from "./routes/station-recommend";
 import stationPerformanceRoutes from "./routes/station-performance";
+import stationOperatorsRoutes from "./routes/station-operators";
 import enterpriseRoutes from "./routes/enterprise";
 import loyaltyRoutes from "./routes/loyalty";
 import socialOAuthRoutes from "./routes/social-oauth";
@@ -9444,6 +9445,13 @@ self.addEventListener('notificationclick', (event) => {
   // Station Performance — T23: public profile endpoint (GET only; POST recompute lives in stationsRoutes under /api/admin/stations)
   // GET /api/stations/:stationId/profile — public marketplace display, no auth required
   app.use('/api/stations', apiLimiter, stationPerformanceRoutes);
+
+  // Station Operators — T24: role-based operator management
+  // GET    /api/my-stations                           — authenticated user; lists their stations with role-scoped earnings
+  // GET    /api/stations/:stationId/operators         — manager or owner only
+  // POST   /api/stations/:stationId/operators         — owner only; assign operator
+  // DELETE /api/stations/:stationId/operators/:userId — owner only; remove operator
+  app.use('/api', apiLimiter, stationOperatorsRoutes);
   
   // Enterprise Management routes (2026 Global Franchise System)
   app.use('/api/enterprise', adminLimiter, requireAdminMfa, enterpriseRoutes);

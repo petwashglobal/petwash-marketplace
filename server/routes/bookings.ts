@@ -14,6 +14,7 @@ import { isSuperAdmin } from "../middleware/rbac";
 import { computeAndPersistSettlement } from "../services/SettlementEngine";
 import { stations } from "@shared/schema";
 import { eq, and, sql as drizzleSql } from "drizzle-orm";
+import { resolveStationRole } from "../middleware/stationAuth";
 
 const router = express.Router();
 
@@ -423,9 +424,17 @@ router.post("/:bookingId/confirm", requireAuth, async (req, res) => {
     // firebaseUser.claims.role is not a custom claim we set — always use isSuperAdmin()
     const isSuperAdminUser = isSuperAdmin(((req as any).firebaseUser?.email || '').toLowerCase());
 
-    if (!isBookingProvider && !isBookingOwner && !isSuperAdminUser) {
-      logger.warn('[Bookings] Unauthorized confirm attempt', { userId, bookingId, providerId: booking.providerId, customerId: booking.userId });
-      return res.status(403).json({ error: "Forbidden — you are not the assigned provider or booking owner" });
+    // Phase 10 — T24: station operator gate — manager/owner of the assigned station may also confirm
+    let isStationConfirmer = false;
+    const bookingStationId = booking.stationId ? Number(booking.stationId) : null;
+    if (bookingStationId && !isBookingProvider && !isBookingOwner && !isSuperAdminUser) {
+      const role = await resolveStationRole(req, bookingStationId);
+      isStationConfirmer = role === 'manager' || role === 'owner';
+    }
+
+    if (!isBookingProvider && !isBookingOwner && !isSuperAdminUser && !isStationConfirmer) {
+      logger.warn('[Bookings] Unauthorized confirm attempt', { userId, bookingId, providerId: booking.providerId, customerId: booking.userId, bookingStationId });
+      return res.status(403).json({ error: "Forbidden — you are not the assigned provider, booking owner, or a station manager for this booking" });
     }
 
     // SECURITY: Only confirm bookings in pending/awaiting_confirmation state
