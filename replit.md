@@ -2227,14 +2227,50 @@ All six tasks delivered and verified (clean boot, `[RankingBackfill] Complete` a
 - `ClosureApprovalControls` (new) — Approve/Reject for managers; shown when `closureRequested=true`
 - Disputes status cell — amber ⏳ Closure pending badge shown when `closureRequested && !closureApproved`
 
-## Phase 12.12 — Manager Control & Operational Reporting (PLANNED)
+## Phase 12.12 — Manager Control & Operational Reporting (CLOSED)
+
+**What is now true (business terms):**
+- Managers have a real approval queue — closure requests are no longer self-approved
+- SLA breaches are visible by handler, team, and station — failures have a face and a location
+- Workload is visible before teams break — reassignment decisions can be made proactively
+- Resolution codes are management data, not just compliance fields — patterns surface automatically
+- Reopen behaviour is measurable — weak closures are identifiable by handler and reason
+- Performance comparison across stations, franchises, and teams exists in one control surface
+
+This moves the platform from **operating cases** to **managing the operation itself**.
+
+**Backend — `server/routes/manager.ts` (`/api/manager`):**
+- `GET /approvals` — pending closure approval queue with age tracking (T121)
+- `GET /sla-breaches` — breach view grouped by handler / team / station (T122)
+- `GET /workload` — active case distribution per handler and team, breach counts (T123)
+- `GET /resolution-analytics` — code breakdown overall + by team / station / franchise (T124)
+- `GET /reopen-stats` — reopen rate per handler + per reopen_code (T125)
+- `GET /performance-comparison` — avg resolution time, breach rate, reopen rate by entity (T126)
+
+**DB change:** `booking_disputes.closure_requested_at TIMESTAMPTZ` added — stamps when each closure was requested, enabling accurate pending-age reporting.
+
+**Frontend — `client/src/pages/ManagerDashboard.tsx` (route `/manager`):**
+- 6-tab dashboard: Approvals · SLA Breaches · Workload · Resolution Codes · Reopen Stats · Performance
+- Approvals: one-click Approve/Reject with pending count badge
+- Workload: colour-coded bars (green <5 / amber 5–9 / red ≥10 active cases)
+- Resolution: alert highlighting on `goodwill_refund` and `operator_error` codes
+- All tabs: empty-state messaging; no mocked data
+
+**Wording discipline:** Manager Control & Operational Reporting Layer — not a command center.
+
+---
+
+## Phase 12.13 — Governance & Automation Layer (PLANNED)
+
+**What this phase does:**
+The platform can now see and control the operation. Phase 12.13 makes it governed — rules enforced by the system, not by human memory.
 
 **Scope:**
-- Manager dashboard (pending closure approvals queue, team SLA breach view)
-- Handler workload heatmap
-- Reopen trend reporting
-- Resolution-code analytics (which codes are most used, by team/handler)
-- Station / franchise exception performance comparisons
-- Team SLA compliance rate over time
+- Approval thresholds by amount / risk class — low-risk closures auto-approve; high-risk require manager sign-off
+- Auto-routing rules by case class — case type + value + station tier determines initial assignee automatically
+- Mandatory second-level approval for sensitive closures — refund cases above threshold, repeat offenders, VIP customers
+- Automated exception playbooks — SLA breach triggers a defined escalation path, not a notification
+- Manager escalation rules by breach severity — at-risk cases get a warning; breached cases get forced reassignment or escalation
+- Policy enforcement objects — rules stored in DB, editable by franchise_owner, audited on change
 
-**Business rationale:** 12.11 created discipline. 12.12 makes that discipline managerially steerable.
+**Business rationale:** 12.12 gives managers a dashboard. 12.13 means the system enforces policy so managers don't have to watch the dashboard constantly. Governance is the transition from management-by-presence to management-by-exception.
