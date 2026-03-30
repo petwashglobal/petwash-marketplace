@@ -186,14 +186,15 @@ router.post("/create", requireAuth, async (req, res) => {
 
         const scored = candidates.map((c, i) => {
           const distKm = distances[i];
-          const distScore = (useGeo && c.latitude != null) ? 1 - Math.max(0, Math.min(1, (distKm - 0) / (maxDist - 0 || 1))) : 0;
+          // Neutral distance score (0.5) when geo is unavailable — matches recommendation API behaviour
+          const distScore = (useGeo && c.latitude != null)
+            ? 1 - Math.max(0, Math.min(1, distKm / (maxDist || 1)))
+            : 0.5;
           const availScore = 1 - Math.min(Number(c.upcoming) / STATION_BUSY_THRESHOLD, 1);
           const rankScore = Number(c.ranking_score) / 100;
 
-          // With geo: 40%/35%/25%; without geo: redistribute distance weight → 60%/40%
-          const composite = useGeo
-            ? distScore * 0.40 + availScore * 0.35 + rankScore * 0.25
-            : availScore * 0.60 + rankScore * 0.40;
+          // Weights identical to recommendation route: distance 40% + availability 35% + ranking 25%
+          const composite = distScore * 0.40 + availScore * 0.35 + rankScore * 0.25;
 
           return { ...c, composite };
         });
