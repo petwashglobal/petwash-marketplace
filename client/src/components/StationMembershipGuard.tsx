@@ -30,12 +30,12 @@ export default function StationMembershipGuard({ children }: Props) {
 
   const stationId = parseInt(params.stationId ?? '0', 10);
 
-  const { data, isLoading } = useQuery<MyStationsResponse>({
+  const { data, isLoading, isError } = useQuery<MyStationsResponse>({
     queryKey: ['/api/station-operators/my-stations'],
     staleTime: 2 * 60 * 1000,
   });
 
-  if (isLoading || !data) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4" dir={isHebrew ? 'rtl' : 'ltr'}>
         <div className="max-w-3xl mx-auto space-y-4">
@@ -49,9 +49,9 @@ export default function StationMembershipGuard({ children }: Props) {
     );
   }
 
-  const hasAccess = isFinite(stationId) && data.stations.some((s) => s.id === stationId);
+  const hasAccess = !isError && !!data && isFinite(stationId) && data.stations.some((s) => s.id === stationId);
 
-  if (!hasAccess) {
+  if (isError || !data || !hasAccess) {
     return (
       <div
         className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4"
