@@ -133,20 +133,22 @@ router.post("/create", requireAuth, async (req, res) => {
         return res.status(409).json({ error: 'Station is currently offline', code: 'STATION_OFFLINE' });
       }
 
-      // T25 capacity guard: count today's (calendar day) bookings vs daily_capacity
+      // T25 capacity guard: count bookings on the requested service day vs daily_capacity.
+      // Uses the booking's serviceDate — NOT NOW() — so future dates are checked correctly.
       const capRows = await pgDb.execute(drizzleSql`
-        SELECT COUNT(*)::int AS today_count FROM bookings
+        SELECT COUNT(*)::int AS day_count FROM bookings
         WHERE station_id = ${booking.stationId}
-          AND date_trunc('day', start_time) = date_trunc('day', NOW())
+          AND date_trunc('day', start_time) = date_trunc('day', ${serviceDate}::timestamptz)
           AND status NOT IN ('cancelled','rejected','expired')
       `);
-      const todayCount = Number((capRows.rows[0] as any)?.today_count ?? 0);
+      const dayCount = Number((capRows.rows[0] as any)?.day_count ?? 0);
       const dailyCap = station.dailyCapacity ?? 20;
-      if (todayCount >= dailyCap) {
+      if (dayCount >= dailyCap) {
         return res.status(409).json({
-          error: 'Station has reached its daily booking capacity',
+          error: 'Station has reached its daily booking capacity for the requested date',
           code: 'STATION_AT_CAPACITY',
-          usedToday: todayCount,
+          requestedDate: serviceDate.toISOString().slice(0, 10),
+          usedOnDate: dayCount,
           dailyCapacity: dailyCap,
         });
       }
@@ -183,7 +185,7 @@ router.post("/create", requireAuth, async (req, res) => {
         LEFT JOIN (
           SELECT station_id, COUNT(*)::int AS today_count
           FROM bookings
-          WHERE date_trunc('day', start_time) = date_trunc('day', NOW())
+          WHERE date_trunc('day', start_time) = date_trunc('day', ${serviceDate}::timestamptz)
             AND status NOT IN ('cancelled','rejected','expired')
           GROUP BY station_id
         ) tc ON tc.station_id = s.id
