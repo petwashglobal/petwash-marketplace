@@ -103,10 +103,16 @@ router.post("/create", requireAuth, async (req, res) => {
       resolvedStationId = station.id;
       resolvedStationName = station.name;
     } else {
-      // Auto-assign: pick the active station with the fewest upcoming bookings
+      // Auto-assign: composite score (availability 60% + rankingScore 40%)
+      // lat/lng are not present in the booking request, so geo component is omitted.
+      // BUSY_THRESHOLD mirrors the recommendation route (20 bookings / 7 days).
+      const BUSY_THRESHOLD = 20;
       const autoRows = await pgDb.execute(drizzleSql`
         SELECT s.id, s.name,
-               COALESCE(bc.upcoming, 0) AS upcoming
+               COALESCE(bc.upcoming, 0)::int                            AS upcoming,
+               COALESCE(s.ranking_score, 50)::int                       AS ranking_score,
+               (1.0 - LEAST(COALESCE(bc.upcoming, 0)::float / ${BUSY_THRESHOLD}, 1.0)) * 0.60
+                 + (COALESCE(s.ranking_score, 50)::float / 100.0) * 0.40 AS composite
         FROM stations s
         LEFT JOIN (
           SELECT station_id, COUNT(*)::int AS upcoming
@@ -117,13 +123,14 @@ router.post("/create", requireAuth, async (req, res) => {
           GROUP BY station_id
         ) bc ON bc.station_id = s.id
         WHERE s.is_active = true
-        ORDER BY upcoming ASC
+        ORDER BY composite DESC
         LIMIT 1
       `);
-      const best = autoRows.rows[0] as any;
+      interface AutoAssignRow { id: number; name: string; upcoming: number; ranking_score: number; composite: number; }
+      const best = autoRows.rows[0] as AutoAssignRow | undefined;
       if (best) {
         resolvedStationId = Number(best.id);
-        resolvedStationName = best.name as string;
+        resolvedStationName = best.name;
       }
     }
 

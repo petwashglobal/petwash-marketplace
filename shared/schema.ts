@@ -7794,6 +7794,10 @@ export const stations = pgTable("stations", {
   averageUsageMinutes: integer("average_usage_minutes"),
   lastMaintenanceDate: date("last_maintenance_date"),
   nextMaintenanceDate: date("next_maintenance_date"),
+  // ── Phase 10 T23: performance / ranking (null = not yet computed) ──────────
+  trustScore: integer("trust_score"),          // 0-100 composite quality score
+  rankingScore: integer("ranking_score"),       // 0-100 final display rank
+  rankingUpdatedAt: timestamp("ranking_updated_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({

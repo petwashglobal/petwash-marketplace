@@ -106,11 +106,11 @@ export function ProviderCard({ provider, onClick }: ProviderCardProps) {
     }
 
     // Station badge — shown when provider is assigned to a PetWash station
-    if ((provider as any).stationName) {
+    if (provider.stationName) {
       badges.push(
         <Badge key="station" variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-medium text-xs" data-testid="badge-station">
           <Building2 className="w-3 h-3 mr-1" />
-          {(provider as any).stationName}
+          {provider.stationName}
         </Badge>
       );
     }
