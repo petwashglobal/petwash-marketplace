@@ -1,0 +1,258 @@
+/*
+PHASE 11 EXTENSION — HYBRID OWNERSHIP MODEL
+Franchise + Company-Owned Stations (Pet Wash Ltd)
+
+Core Principle:
+We are NOT building only a franchise system.
+We are building a multi-ownership network.
+
+Two ownership types:
+1. Franchise-operated stations
+2. Company-owned stations (Pet Wash Ltd)
+
+This must be explicit in the data model and logic.
+Do NOT fake company as a franchise.
+*/
+
+
+/*
+========================================
+1. DATABASE MODEL CHANGE (REQUIRED)
+========================================
+*/
+
+-- stations table must include:
+
+ALTER TABLE stations
+ADD COLUMN ownership_type TEXT NOT NULL DEFAULT 'franchise', -- 'franchise' | 'company'
+ADD COLUMN franchise_id INTEGER NULL;
+
+-- Example:
+-- Kfar Saba (company-owned)
+-- ownership_type = 'company'
+-- franchise_id = NULL
+
+-- Tel Aviv station (franchise)
+-- ownership_type = 'franchise'
+-- franchise_id = 12
+
+
+/*
+========================================
+2. FINANCIAL LOGIC DIFFERENCE
+========================================
+*/
+
+-- Franchise station:
+-- total_amount = customer payment
+-- platform_amount = platform fee
+-- franchise_amount = franchise share
+-- station_amount = station payout
+
+-- Company-owned station:
+-- franchise_amount MUST BE 0
+-- platform + station = internal accounting (same company)
+
+-- Settlement rule:
+-- DO NOT create fake franchise splits for company-owned stations
+
+
+/*
+========================================
+3. SETTLEMENT ENGINE ADJUSTMENT
+========================================
+*/
+
+if (station.ownership_type === 'company') {
+  franchise_amount_cents = 0;
+
+  // Option A: treat platform as company revenue
+  platform_amount_cents = total_amount_cents * platform_fee_pct;
+
+  station_amount_cents = total_amount_cents - platform_amount_cents;
+
+  // OR Option B (future):
+  // collapse everything into single company revenue bucket
+}
+
+if (station.ownership_type === 'franchise') {
+  // existing logic unchanged
+}
+
+
+/*
+========================================
+4. PHASE 11 ENDPOINT ADAPTATIONS
+========================================
+*/
+
+-- T27: /api/franchise/:franchiseId/finance/summary
+
+-- Add support for company-owned:
+-- If ownership_type = company:
+--   franchiseShare = 0
+--   totals represent internal network performance
+
+-- DO NOT mix company + franchise in same aggregation unless explicitly requested
+
+
+/*
+----------------------------------------
+T28: Station P&L
+----------------------------------------
+*/
+
+-- For company stations:
+-- franchiseShare = 0
+-- stationPayout = internal (still shown)
+-- AOV, bookings, disputes still valid
+
+-- Output stays consistent, but economics differ
+
+
+/*
+----------------------------------------
+T29: Payout Calendar
+----------------------------------------
+*/
+
+-- Franchise:
+-- real payouts (external cash movement)
+
+-- Company:
+-- NO payouts
+-- Instead:
+-- treat as "internal settlement cycles"
+
+-- Option:
+-- status = "internal"
+-- OR hide payouts for company-owned
+
+
+/*
+----------------------------------------
+T30: Audit Feed
+----------------------------------------
+*/
+
+-- SAME for both ownership types
+-- (operational layer)
+
+-- Includes:
+-- disputes
+-- refunds
+-- downtime
+-- cancellations
+-- settlement disputes
+
+-- NO ownership branching needed
+
+
+/*
+========================================
+5. API DESIGN OPTIONS
+========================================
+*/
+
+-- CURRENT:
+-- /api/franchise/:franchiseId/...
+
+-- PROBLEM:
+-- company-owned stations don't fit this model
+
+
+/*
+OPTION A (CLEAN - RECOMMENDED)
+*/
+
+-- Introduce unified owner scope:
+
+/api/network/:ownerId/finance/summary
+/api/network/:ownerId/stations/financials
+/api/network/:ownerId/payouts
+/api/network/:ownerId/audit-feed
+
+-- ownerId can represent:
+-- franchise OR company
+
+
+/*
+OPTION B (FAST IMPLEMENTATION)
+*/
+
+-- Keep existing routes but allow:
+
+/api/franchise/company/...
+
+-- internally resolve to:
+-- all stations WHERE ownership_type = 'company'
+
+
+/*
+========================================
+6. ROUTING ENGINE (TASK 22 IMPACT)
+========================================
+*/
+
+-- Routing must remain unified:
+-- company + franchise stations compete equally
+
+-- DO NOT bias yet
+
+-- Future capability (NOT NOW):
+-- margin-aware routing
+-- company-priority routing
+
+-- For now:
+-- same scoring logic
+
+
+/*
+========================================
+7. CRITICAL RULES (DO NOT BREAK)
+========================================
+*/
+
+-- 1. NEVER fake a franchise for Pet Wash Ltd
+-- 2. NEVER mix bookings with finance (settlements only)
+-- 3. ALWAYS keep financial outputs reconcilable
+-- 4. KEEP operational logic unified
+-- 5. SPLIT financial logic by ownership type
+
+
+/*
+========================================
+8. BUSINESS SUMMARY
+========================================
+*/
+
+-- You are building:
+-- a multi-ownership operating network
+
+-- NOT:
+-- a simple franchise system
+
+-- This enables:
+-- - company-owned expansion
+-- - franchise expansion
+-- - unified routing
+-- - clean financial reporting
+-- - future optimization layers
+
+
+/*
+========================================
+END STATE
+========================================
+*/
+
+-- Franchise owner sees:
+-- - their stations
+-- - their payouts
+-- - their performance
+
+-- Company (Pet Wash Ltd) sees:
+-- - full network performance
+-- - internal revenue
+-- - no fake payouts
+-- - real operational control
