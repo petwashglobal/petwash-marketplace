@@ -3,11 +3,9 @@
  *
  * GET /api/stations/:stationId/settlements
  *   Returns settlement history for a station with running totals.
- *   Authorized for: admin (x-admin-secret header) OR the franchise owner of that station.
- *
- * POST /api/stations/:stationId/settlements/recompute/:bookingId
- *   Admin-only: force-recompute a specific booking's settlement (re-runs engine,
- *   overwrites existing record). Writes an audit entry.
+ *   Authorization:
+ *     - Admin:          x-admin-secret header matches ADMIN_SECRET env var (no bearer required)
+ *     - Franchise owner: valid Firebase bearer token + ownerUserId matches franchiseOwners for that station
  */
 
 import { Router } from 'express';
@@ -20,45 +18,43 @@ import {
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { auth } from '../lib/firebase-admin';
-import { computeAndPersistSettlement } from '../services/SettlementEngine';
 
 const router = Router();
 
 // ─── Auth helpers ─────────────────────────────────────────────────────────────
-
-async function resolveUid(req: any, res: any): Promise<string | null> {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return null;
-  }
-  try {
-    const decoded = await auth.verifyIdToken(token, true);
-    return decoded.uid;
-  } catch {
-    res.status(401).json({ error: 'Invalid token' });
-    return null;
-  }
-}
 
 function isAdminRequest(req: any): boolean {
   const adminSecret = process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRET;
   return !!(adminSecret && req.headers['x-admin-secret'] === adminSecret);
 }
 
+async function resolveUidOrNull(req: any): Promise<string | null> {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) return null;
+  try {
+    const decoded = await auth.verifyIdToken(token, true);
+    return decoded.uid;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Verify that uid is either an admin or the franchise owner of stationId.
- * Returns true and populates req._isFranchiseOwner.
+ * Returns true if request is authorized to view settlements for stationId.
+ * Admin: x-admin-secret header — no bearer token required.
+ * Franchise owner: valid bearer + ownerUserId === franchiseOwners row linked to that station.
  */
-async function authorizeSettlementAccess(
-  req: any,
-  res: any,
-  stationId: number,
-  uid: string
-): Promise<boolean> {
+async function authorize(req: any, res: any, stationId: number): Promise<boolean> {
+  // Admin path — header-secret-only, no bearer required
   if (isAdminRequest(req)) return true;
 
-  // Check if user is a franchise owner linked to this station
+  // Franchise owner path — must have valid Firebase token
+  const uid = await resolveUidOrNull(req);
+  if (!uid) {
+    res.status(401).json({ error: 'Unauthorized — provide Bearer token or admin secret' });
+    return false;
+  }
+
   const [row] = await db
     .select({ foId: franchiseOwners.id })
     .from(franchiseOwners)
@@ -76,7 +72,6 @@ async function authorizeSettlementAccess(
     return false;
   }
 
-  req._franchiseOwnerId = row.foId;
   return true;
 }
 
@@ -84,21 +79,18 @@ async function authorizeSettlementAccess(
 
 /**
  * GET /api/stations/:stationId/settlements
- * Query params: status (pending|settled|disputed), limit (default 50), offset (default 0)
+ * Query params: status (pending|settled|disputed), limit (default 50, max 200), offset (default 0)
  */
 router.get('/:stationId/settlements', async (req, res) => {
-  const uid = await resolveUid(req, res);
-  if (!uid) return;
-
   const stationId = parseInt(req.params.stationId, 10);
   if (!isFinite(stationId)) {
     return res.status(400).json({ error: 'Invalid stationId' });
   }
 
-  if (!(await authorizeSettlementAccess(req, res, stationId, uid))) return;
+  if (!(await authorize(req, res, stationId))) return;
 
   const status = req.query.status as string | undefined;
-  const limit = Math.min(parseInt(String(req.query.limit ?? '50'), 10) || 50, 200);
+  const limit  = Math.min(parseInt(String(req.query.limit  ?? '50'),  10) || 50,  200);
   const offset = parseInt(String(req.query.offset ?? '0'), 10) || 0;
 
   try {
@@ -111,18 +103,18 @@ router.get('/:stationId/settlements', async (req, res) => {
       .select()
       .from(stationSettlements)
       .where(and(...conditions))
-      .orderBy(desc(stationSettlements.computedAt))
+      .orderBy(desc(stationSettlements.createdAt))
       .limit(limit)
       .offset(offset);
 
-    // Running totals
+    // Running totals across all settlements for this station (status-independent)
     const [totals] = await db
       .select({
-        totalGrossCents:    sql<number>`coalesce(sum(gross_amount_cents), 0)::int`,
-        totalPlatformCents: sql<number>`coalesce(sum(platform_fee_cents), 0)::int`,
-        totalFranchiseCents: sql<number>`coalesce(sum(franchise_override_cents), 0)::int`,
-        totalStationNetCents: sql<number>`coalesce(sum(station_net_cents), 0)::int`,
-        totalCount: sql<number>`count(*)::int`,
+        totalAmountCents:    sql<number>`coalesce(sum(total_amount_cents), 0)::int`,
+        platformAmountCents: sql<number>`coalesce(sum(platform_amount_cents), 0)::int`,
+        franchiseAmountCents: sql<number>`coalesce(sum(franchise_amount_cents), 0)::int`,
+        stationAmountCents:  sql<number>`coalesce(sum(station_amount_cents), 0)::int`,
+        totalCount:          sql<number>`count(*)::int`,
       })
       .from(stationSettlements)
       .where(eq(stationSettlements.stationId, stationId));
@@ -130,56 +122,17 @@ router.get('/:stationId/settlements', async (req, res) => {
     res.json({
       settlements: rows,
       totals: {
-        grossAmountCents:       totals?.totalGrossCents ?? 0,
-        platformFeeCents:       totals?.totalPlatformCents ?? 0,
-        franchiseOverrideCents: totals?.totalFranchiseCents ?? 0,
-        stationNetCents:        totals?.totalStationNetCents ?? 0,
-        count:                  totals?.totalCount ?? 0,
+        totalAmountCents:     totals?.totalAmountCents    ?? 0,
+        platformAmountCents:  totals?.platformAmountCents ?? 0,
+        franchiseAmountCents: totals?.franchiseAmountCents ?? 0,
+        stationAmountCents:   totals?.stationAmountCents  ?? 0,
+        count:                totals?.totalCount          ?? 0,
       },
       pagination: { limit, offset },
     });
   } catch (err: any) {
     logger.error('[StationSettlements] GET failed', { stationId, error: err.message });
     res.status(500).json({ error: 'Failed to fetch settlements' });
-  }
-});
-
-/**
- * POST /api/stations/:stationId/settlements/recompute/:bookingId
- * Admin-only: delete and recompute a single booking's settlement.
- */
-router.post('/:stationId/settlements/recompute/:bookingId', async (req, res) => {
-  const uid = await resolveUid(req, res);
-  if (!uid) return;
-
-  if (!isAdminRequest(req)) {
-    return res.status(403).json({ error: 'Admin only' });
-  }
-
-  const stationId = parseInt(req.params.stationId, 10);
-  const { bookingId } = req.params;
-
-  if (!isFinite(stationId) || !bookingId) {
-    return res.status(400).json({ error: 'Invalid stationId or bookingId' });
-  }
-
-  try {
-    // Remove existing record so engine can recompute
-    await db
-      .delete(stationSettlements)
-      .where(eq(stationSettlements.bookingId, bookingId));
-
-    const result = await computeAndPersistSettlement(bookingId);
-
-    if (!result) {
-      return res.status(404).json({ error: 'No eligible PostgreSQL booking found for this bookingId' });
-    }
-
-    logger.info('[StationSettlements] Recomputed by admin', { bookingId, adminUid: uid, newSettlementId: result.id });
-    res.json({ ok: true, settlement: result });
-  } catch (err: any) {
-    logger.error('[StationSettlements] Recompute failed', { bookingId, error: err.message });
-    res.status(500).json({ error: err.message ?? 'Recompute failed' });
   }
 });
 

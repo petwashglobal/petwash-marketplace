@@ -14612,29 +14612,32 @@ export type BookingDispute = typeof bookingDisputes.$inferSelect;
 // Source of truth for all station/franchise money flow.
 // Computed once on booking completion; idempotent by bookingId.
 //
-// Split:
-//   grossAmountCents = platformFeeCents + franchiseOverrideCents + stationNetCents
-//   platformFeePct   = env PLATFORM_FEE_PCT (default 20) unless franchiseOwner.platformFeeOverridePct
-//   franchiseOverrideCents = fixed 10 % of gross (env FRANCHISE_FEE_PCT, default 10)
-//   stationNetCents  = remainder (default 70 % — env STATION_REVENUE_PCT)
+// Split (always sums to totalAmountCents):
+//   platformAmountCents   = round(total × platformFeePct / 100)
+//   franchiseAmountCents  = round(total × franchiseOverridePct / 100)   [0 if no franchise]
+//   stationAmountCents    = totalAmountCents − platformAmountCents − franchiseAmountCents
+//
+// Configurable via env:
+//   PLATFORM_FEE_PCT  (default 20)   — overridable per franchise via franchiseOwner.platformFeeOverridePct
+//   STATION_REVENUE_PCT (default 70) — used for stationRevenuePct column (auditable)
+//   FRANCHISE_FEE_PCT (default 10)   — 0 when no franchise owner linked
 
 export const stationSettlements = pgTable("station_settlements", {
   id: serial("id").primaryKey(),
   bookingId: varchar("booking_id").notNull().unique().references(() => bookings.id),
   stationId: integer("station_id").notNull().references(() => stations.id),
   franchiseOwnerId: integer("franchise_owner_id").references(() => franchiseOwners.id),
-  grossAmountCents: integer("gross_amount_cents").notNull(),
+  totalAmountCents: integer("total_amount_cents").notNull(),
   platformFeePct: decimal("platform_fee_pct", { precision: 5, scale: 2 }).notNull(),
-  platformFeeCents: integer("platform_fee_cents").notNull(),
+  platformAmountCents: integer("platform_amount_cents").notNull(),
+  stationRevenuePct: decimal("station_revenue_pct", { precision: 5, scale: 2 }).notNull(),
+  stationAmountCents: integer("station_amount_cents").notNull(),
   franchiseOverridePct: decimal("franchise_override_pct", { precision: 5, scale: 2 }),
-  franchiseOverrideCents: integer("franchise_override_cents").notNull().default(0),
-  stationNetCents: integer("station_net_cents").notNull(),
+  franchiseAmountCents: integer("franchise_amount_cents").notNull().default(0),
   currency: varchar("currency", { length: 3 }).notNull().default("ILS"),
   status: varchar("status").notNull().default("pending"), // CHECK: pending | settled | disputed
-  computedAt: timestamp("computed_at").defaultNow().notNull(),
   settledAt: timestamp("settled_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
   bookingIdx:   index("idx_station_settlements_booking").on(table.bookingId),
   stationIdx:   index("idx_station_settlements_station").on(table.stationId),
@@ -14644,9 +14647,7 @@ export const stationSettlements = pgTable("station_settlements", {
 
 export const insertStationSettlementSchema = createInsertSchema(stationSettlements).omit({
   id: true,
-  computedAt: true,
   createdAt: true,
-  updatedAt: true,
 });
 export type InsertStationSettlement = z.infer<typeof insertStationSettlementSchema>;
 export type StationSettlement = typeof stationSettlements.$inferSelect;

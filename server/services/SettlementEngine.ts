@@ -1,23 +1,24 @@
 /**
  * SettlementEngine — Phase 10, Task #21
  *
- * Source of truth: PostgreSQL `bookings` table (Drizzle).
- * Firestore is the booking event bus; PostgreSQL owns the money.
+ * SOURCE OF TRUTH: PostgreSQL `bookings` table (Drizzle).
+ * Firestore is the event bus only. PostgreSQL owns all money records.
  *
- * Rules:
- *   gross         = booking.total (in ILS, converted to cents)
- *   platformFee   = gross × platformFeePct / 100
- *                   pct = franchiseOwner.platformFeeOverridePct ?? env.PLATFORM_FEE_PCT ?? 20
- *   franchiseFee  = gross × franchiseFeePct / 100
- *                   pct = env.FRANCHISE_FEE_PCT ?? 10
- *                   0 if no franchiseOwnerId
- *   stationNet    = gross - platformFee - franchiseFee
+ * Split (always sums to totalAmountCents):
+ *   platformAmountCents  = round(total × platformFeePct / 100)
+ *   franchiseAmountCents = round(total × franchiseFeePct / 100)   [0 when no franchise owner]
+ *   stationAmountCents   = totalAmountCents − platformAmountCents − franchiseAmountCents
  *
- * Integrity:  platformFeeCents + franchiseOverrideCents + stationNetCents === grossAmountCents
+ * Env vars (all optional with defaults):
+ *   PLATFORM_FEE_PCT    default 20  — overridable per franchise via franchiseOwner.platformFeeOverridePct
+ *   STATION_REVENUE_PCT default 70  — stored for audit; station gets the remainder after platform+franchise
+ *   FRANCHISE_FEE_PCT   default 10  — 0 if booking's station has no linked franchise owner
+ *
+ * Integrity:  platformAmountCents + stationAmountCents + franchiseAmountCents === totalAmountCents
  *             Enforced before insert; throws on mismatch.
  *
  * Idempotent: one settlement per bookingId (UNIQUE constraint + pre-check).
- *             Re-calling for the same bookingId is a no-op — returns existing record.
+ *             Re-calling for the same bookingId returns existing record without re-inserting.
  */
 
 import { db } from '../db';
@@ -38,6 +39,11 @@ function getPlatformFeePct(): number {
   return isFinite(v) && v > 0 ? v : 20;
 }
 
+function getStationRevenuePct(): number {
+  const v = parseFloat(process.env.STATION_REVENUE_PCT ?? '');
+  return isFinite(v) && v > 0 ? v : 70;
+}
+
 function getFranchiseFeePct(): number {
   const v = parseFloat(process.env.FRANCHISE_FEE_PCT ?? '');
   return isFinite(v) && v >= 0 ? v : 10;
@@ -48,7 +54,7 @@ function getFranchiseFeePct(): number {
 /**
  * Compute and persist a settlement record for the given booking.
  * Returns the (new or existing) settlement row, or null if the booking is
- * not eligible (no stationId, not found in PostgreSQL, non-positive total).
+ * not eligible (no stationId in PostgreSQL, not found, or non-positive total).
  */
 export async function computeAndPersistSettlement(
   bookingId: string
@@ -83,13 +89,13 @@ export async function computeAndPersistSettlement(
       return null;
     }
 
-    const grossILS = parseFloat(booking.total ?? booking.subtotal ?? '0');
-    if (!isFinite(grossILS) || grossILS <= 0) {
+    const totalILS = parseFloat(booking.total ?? booking.subtotal ?? '0');
+    if (!isFinite(totalILS) || totalILS <= 0) {
       logger.warn('[Settlement] Booking has non-positive total — skipping', { bookingId, total: booking.total });
       return null;
     }
 
-    const grossCents = Math.round(grossILS * 100);
+    const totalAmountCents = Math.round(totalILS * 100);
 
     // ── 3. Load station ─────────────────────────────────────────────────────
     const [station] = await db
@@ -116,48 +122,54 @@ export async function computeAndPersistSettlement(
       franchiseOwner = fo ?? null;
     }
 
-    // ── 5. Compute split ────────────────────────────────────────────────────
+    // ── 5. Resolve fee percentages ──────────────────────────────────────────
 
-    // Platform fee — franchise owner may have a custom override rate
+    // Platform fee — franchise owner may carry an explicit override
     const platformFeePct =
       franchiseOwner?.platformFeeOverridePct != null
         ? parseFloat(String(franchiseOwner.platformFeeOverridePct))
         : getPlatformFeePct();
 
+    // Station revenue pct — stored for audit; actual amount = remainder
+    const stationRevenuePct = getStationRevenuePct();
+
     // Franchise fee — only applies when a franchise owner is linked
-    const franchiseFeePctRaw = franchiseOwnerId ? getFranchiseFeePct() : 0;
+    const franchiseFeePct = franchiseOwnerId ? getFranchiseFeePct() : 0;
 
-    const platformFeeCents = Math.round(grossCents * platformFeePct / 100);
-    const franchiseOverrideCents = Math.round(grossCents * franchiseFeePctRaw / 100);
-    const stationNetCents = grossCents - platformFeeCents - franchiseOverrideCents;
+    // ── 6. Compute amounts (integer cents, no float drift) ──────────────────
+    const platformAmountCents  = Math.round(totalAmountCents * platformFeePct / 100);
+    const franchiseAmountCents = Math.round(totalAmountCents * franchiseFeePct / 100);
+    // Station gets the true remainder — this guarantees split integrity
+    const stationAmountCents   = totalAmountCents - platformAmountCents - franchiseAmountCents;
 
-    // ── 6. Integrity check ──────────────────────────────────────────────────
-    const sum = platformFeeCents + franchiseOverrideCents + stationNetCents;
-    if (sum !== grossCents) {
-      const err = `[Settlement] Split integrity FAILED: ${platformFeeCents} + ${franchiseOverrideCents} + ${stationNetCents} = ${sum} ≠ ${grossCents}`;
-      logger.error(err, { bookingId });
-      throw new Error(err);
+    // ── 7. Integrity check ──────────────────────────────────────────────────
+    const splitSum = platformAmountCents + stationAmountCents + franchiseAmountCents;
+    if (splitSum !== totalAmountCents) {
+      const msg = `[Settlement] Split integrity FAILED: ${platformAmountCents} + ${stationAmountCents} + ${franchiseAmountCents} = ${splitSum} ≠ ${totalAmountCents}`;
+      logger.error(msg, { bookingId });
+      throw new Error(msg);
     }
 
-    if (stationNetCents < 0) {
-      const err = `[Settlement] stationNetCents is negative (${stationNetCents}) — fee percentages exceed 100%`;
-      logger.error(err, { bookingId, platformFeePct, franchiseFeePctRaw });
-      throw new Error(err);
+    if (stationAmountCents < 0) {
+      const msg = `[Settlement] stationAmountCents is negative (${stationAmountCents}) — fee percentages exceed 100%`;
+      logger.error(msg, { bookingId, platformFeePct, franchiseFeePct });
+      throw new Error(msg);
     }
 
-    // ── 7. Persist ──────────────────────────────────────────────────────────
+    // ── 8. Persist ──────────────────────────────────────────────────────────
     const [row] = await db
       .insert(stationSettlements)
       .values({
         bookingId,
         stationId: booking.stationId,
         franchiseOwnerId,
-        grossAmountCents: grossCents,
+        totalAmountCents,
         platformFeePct: String(platformFeePct),
-        platformFeeCents,
-        franchiseOverridePct: franchiseOwnerId ? String(franchiseFeePctRaw) : null,
-        franchiseOverrideCents,
-        stationNetCents,
+        platformAmountCents,
+        stationRevenuePct: String(stationRevenuePct),
+        stationAmountCents,
+        franchiseOverridePct: franchiseOwnerId ? String(franchiseFeePct) : null,
+        franchiseAmountCents,
         currency: booking.currency ?? 'ILS',
         status: 'pending',
       })
@@ -166,12 +178,13 @@ export async function computeAndPersistSettlement(
     logger.info('[Settlement] Settlement created', {
       bookingId,
       settlementId: row.id,
-      grossCents,
+      totalAmountCents,
       platformFeePct,
-      platformFeeCents,
-      franchiseFeePctRaw,
-      franchiseOverrideCents,
-      stationNetCents,
+      platformAmountCents,
+      stationRevenuePct,
+      stationAmountCents,
+      franchiseFeePct,
+      franchiseAmountCents,
       currency: row.currency,
     });
 
