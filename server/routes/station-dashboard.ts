@@ -54,6 +54,11 @@ function isAdminSecretReq(req: any): boolean {
  *
  * Returns every station the authenticated user actively operates (any role).
  * Franchise owners additionally get all stations with matching franchise_id.
+ *
+ * NOTE: A narrower endpoint GET /api/my-stations (station-operators.ts) also
+ * exists and returns stations + role-scoped earnings.  This endpoint is the
+ * canonical source for the station selector in the dashboard because it also
+ * resolves franchise ownership and is consistent with the dashboard auth check.
  */
 router.get('/station-operators/my-stations', async (req, res) => {
   try {
@@ -235,6 +240,9 @@ router.get(
         : null;
 
       // ── Today's bookings (Israel TZ) — JOIN users for customer name ────────
+      // Intentionally includes all active statuses (pending, confirmed, started,
+      // completed, accepted) so station workers see the full day's work queue.
+      // Excludes only terminal/void statuses: cancelled, rejected, expired.
       const bookingsResult = await db.execute(sql`
         SELECT b.id, b.booking_number, b.user_id, b.service_type, b.start_time, b.end_time,
                b.status, b.total::numeric AS total_ils,
