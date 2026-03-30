@@ -16,7 +16,7 @@ import {
   type StationEvent,
 } from '@shared/firestore-schema';
 import { nanoid } from 'nanoid';
-import { computeStationScore } from './station-performance';
+import { computeStationScore, isComputeError } from './station-performance';
 
 const router = Router();
 
@@ -1129,8 +1129,12 @@ router.post('/:stationId/recompute', requireAdmin, async (req: Request, res: Res
   }
 
   const result = await computeStationScore(stationId);
-  if (!result) {
-    return res.status(404).json({ error: 'Station not found or compute failed' });
+
+  if (isComputeError(result)) {
+    if (result.type === 'NOT_FOUND') {
+      return res.status(404).json({ error: 'Station not found' });
+    }
+    return res.status(500).json({ error: 'Score computation failed', cause: result.cause });
   }
 
   logger.info('[StationPerf] Admin recompute via stationsRoutes', {

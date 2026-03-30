@@ -23,8 +23,9 @@
  *   prestige ≥ 80 | gold ≥ 60 | silver ≥ 40 | bronze < 40 | at_risk (trustScore ≤ 40)
  *
  * Routes:
- *   POST /api/stations/:stationId/recompute  (x-admin-secret header, same auth pattern as station-settlements)
- *   GET  /api/stations/:stationId/profile    (public)
+ *   POST /api/admin/stations/:stationId/recompute  — admin only (Firebase Bearer + requireAdmin role check),
+ *                                                    defined in server/routes/stations.ts, mounted at /api/admin/stations
+ *   GET  /api/stations/:stationId/profile          — public, no auth required
  */
 
 import { Router } from 'express';
@@ -77,7 +78,14 @@ export function getStationTier(rankingScore: number, trustScore: number): Statio
  * computes trust + ranking scores, and upserts the result into station_profiles.
  * Safe to call on-demand or in a batch job.
  */
-export async function computeStationScore(stationId: number): Promise<StationScoreResult | null> {
+export type ComputeStationScoreError = { type: 'NOT_FOUND' } | { type: 'COMPUTE_ERROR'; cause: string };
+export type ComputeStationScoreResult = StationScoreResult | ComputeStationScoreError;
+
+export function isComputeError(r: ComputeStationScoreResult): r is ComputeStationScoreError {
+  return 'type' in r;
+}
+
+export async function computeStationScore(stationId: number): Promise<ComputeStationScoreResult> {
   try {
     // Verify station exists and is known
     const [station] = await db
@@ -88,7 +96,7 @@ export async function computeStationScore(stationId: number): Promise<StationSco
 
     if (!station) {
       logger.warn('[StationPerf] Station not found', { stationId });
-      return null;
+      return { type: 'NOT_FOUND' };
     }
 
     // ── Aggregate ratings from grooming_feedback ──────────────────────────────
@@ -224,7 +232,7 @@ export async function computeStationScore(stationId: number): Promise<StationSco
       stationId,
       error: err.message,
     });
-    return null;
+    return { type: 'COMPUTE_ERROR', cause: err.message ?? 'unknown' };
   }
 }
 
