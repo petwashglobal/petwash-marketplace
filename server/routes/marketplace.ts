@@ -192,10 +192,59 @@ router.post('/search', async (req, res) => {
         (upcomingRows.rows as any[]).map((r) => [r.provider_id, Number(r.upcoming_count)])
       );
 
+      // Phase 10 T25: Fetch station capacity ratios for station-linked providers.
+      // A provider at a station that is near/at capacity should rank lower for availability.
+      const stationIds = [...new Set(
+        enriched
+          .map((p: any) => p.stationId)
+          .filter((id: any): id is number => typeof id === 'number')
+      )];
+
+      const stationCapacityMap = new Map<number, { used: number; daily: number }>();
+      if (stationIds.length > 0) {
+        const capRows = await db.execute(sql`
+          SELECT
+            id,
+            COALESCE(daily_capacity, 20)  AS daily_capacity,
+            (
+              SELECT COUNT(*)::int
+              FROM bookings b
+              WHERE b.station_id = s.id
+                AND date_trunc('day', b.start_time) = date_trunc('day', NOW())
+                AND b.status NOT IN ('cancelled','rejected','expired')
+            ) AS used_today
+          FROM stations s
+          WHERE id = ANY(${stationIds}::int[])
+        `);
+        for (const row of capRows.rows as any[]) {
+          stationCapacityMap.set(Number(row.id), {
+            used: Number(row.used_today ?? 0),
+            daily: Number(row.daily_capacity ?? 20),
+          });
+        }
+      }
+
       enriched.sort((a: any, b: any) => {
         const aCount = upcomingMap.get(a.userId) ?? 0;
         const bCount = upcomingMap.get(b.userId) ?? 0;
-        return aCount - bCount; // ascending: fewer bookings = more available
+
+        // Blend provider-level upcoming count with station capacity ratio (T25).
+        // Capacity ratio 0-1: 0 = empty station, 1 = full station.
+        // Higher capacity ratio → penalise availability (add virtual bookings).
+        const aCapInfo = a.stationId ? stationCapacityMap.get(a.stationId) : null;
+        const bCapInfo = b.stationId ? stationCapacityMap.get(b.stationId) : null;
+
+        const aCapPenalty = aCapInfo
+          ? Math.round((aCapInfo.used / aCapInfo.daily) * 10)
+          : 0;
+        const bCapPenalty = bCapInfo
+          ? Math.round((bCapInfo.used / bCapInfo.daily) * 10)
+          : 0;
+
+        const aEffective = aCount + aCapPenalty;
+        const bEffective = bCount + bCapPenalty;
+
+        return aEffective - bEffective; // ascending: fewer = more available
       });
     }
 

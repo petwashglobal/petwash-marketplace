@@ -17,6 +17,7 @@ import stationSettlementsRoutes from "./routes/station-settlements";
 import stationRecommendRoutes from "./routes/station-recommend";
 import stationPerformanceRoutes from "./routes/station-performance";
 import stationOperatorsRoutes from "./routes/station-operators";
+import stationCapacityRoutes from "./routes/station-capacity";
 import enterpriseRoutes from "./routes/enterprise";
 import loyaltyRoutes from "./routes/loyalty";
 import socialOAuthRoutes from "./routes/social-oauth";
@@ -9452,6 +9453,11 @@ self.addEventListener('notificationclick', (event) => {
   // POST   /api/stations/:stationId/operators         — owner only; assign operator
   // DELETE /api/stations/:stationId/operators/:userId — owner only; remove operator
   app.use('/api', apiLimiter, stationOperatorsRoutes);
+
+  // Station Capacity — T25: capacity & operational tracking
+  // GET  /api/stations/:stationId/capacity  — public; live booking count vs daily capacity
+  // POST /api/stations/:stationId/downtime  — manager/owner only; log a downtime event
+  app.use('/api', apiLimiter, stationCapacityRoutes);
   
   // Enterprise Management routes (2026 Global Franchise System)
   app.use('/api/enterprise', adminLimiter, requireAdminMfa, enterpriseRoutes);

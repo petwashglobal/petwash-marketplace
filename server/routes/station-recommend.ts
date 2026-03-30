@@ -23,7 +23,9 @@ import { logger } from '../lib/logger';
 
 const router = Router();
 
-const BUSY_THRESHOLD = 20;
+// Phase 10 T25: BUSY_THRESHOLD replaced by per-station daily_capacity.
+// Kept as a fallback default for stations where daily_capacity is NULL.
+const BUSY_THRESHOLD_DEFAULT = 20;
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
@@ -53,6 +55,10 @@ interface StationRow {
   longitude: string | null;
   upcoming: number;
   ranking_score: number;
+  // T25 additions
+  daily_capacity: number;
+  today_count: number;
+  equipment_status: string;
 }
 
 async function fetchActiveStations(serviceType: string | null): Promise<{ rows: StationRow[]; serviceTypeFiltered: boolean }> {
@@ -67,7 +73,10 @@ async function fetchActiveStations(serviceType: string | null): Promise<{ rows: 
       l.latitude,
       l.longitude,
       COALESCE(bc.upcoming, 0)::int          AS upcoming,
-      COALESCE(s.ranking_score, 50)::int     AS ranking_score
+      COALESCE(s.ranking_score, 50)::int     AS ranking_score,
+      COALESCE(s.daily_capacity, 20)::int    AS daily_capacity,
+      COALESCE(tc.today_count, 0)::int       AS today_count,
+      COALESCE(s.equipment_status, 'operational') AS equipment_status
     FROM stations s
     INNER JOIN locations l ON l.id = s.location_id
     LEFT JOIN (
@@ -78,7 +87,15 @@ async function fetchActiveStations(serviceType: string | null): Promise<{ rows: 
         AND status IN ('accepted','confirmed','started','pending')
       GROUP BY station_id
     ) bc ON bc.station_id = s.id
+    LEFT JOIN (
+      SELECT station_id, COUNT(*)::int AS today_count
+      FROM bookings
+      WHERE date_trunc('day', start_time) = date_trunc('day', NOW())
+        AND status NOT IN ('cancelled','rejected','expired')
+      GROUP BY station_id
+    ) tc ON tc.station_id = s.id
     WHERE s.is_active = true
+      AND COALESCE(s.equipment_status, 'operational') != 'offline'
   `;
 
   if (serviceType) {
@@ -126,12 +143,40 @@ router.get('/', async (req, res) => {
     const positiveDistances = distances.filter((d) => d > 0);
     const maxDist = positiveDistances.length > 0 ? Math.max(...positiveDistances) : 1;
 
-    const scored = activeStations.map((s, i) => {
-      const distKm = distances[i];
-      // When no geo or station lacks coordinates: distance component treated as neutral (0.5)
-      const distScore = (useGeo && s.latitude != null) ? 1 - normalize(distKm, 0, maxDist) : 0.5;
+    // Phase 10 T25: exclude stations that have reached their daily capacity
+    const notAtCapacity = activeStations.filter((s) => {
+      const cap = Number(s.daily_capacity) || BUSY_THRESHOLD_DEFAULT;
+      return Number(s.today_count) < cap;
+    });
 
-      const availScore = 1 - Math.min(Number(s.upcoming) / BUSY_THRESHOLD, 1);
+    if (notAtCapacity.length === 0) {
+      // All stations at capacity — still return them so the caller can inform the user
+      logger.warn('[StationRecommend] All stations at capacity', { stationCount: activeStations.length });
+    }
+
+    // Re-compute distances for the filtered set (indices still align)
+    const filteredDistances: number[] = notAtCapacity.map((s) => {
+      if (!useGeo || s.latitude == null || s.longitude == null) return 0;
+      return haversineKm(lat!, lng!, Number(s.latitude), Number(s.longitude));
+    });
+
+    const posFiltered = filteredDistances.filter((d) => d > 0);
+    const maxDistFiltered = posFiltered.length > 0 ? Math.max(...posFiltered) : 1;
+
+    const workSet = notAtCapacity.length > 0 ? notAtCapacity : activeStations;
+    const workDistances = notAtCapacity.length > 0 ? filteredDistances : distances;
+    const workMaxDist = notAtCapacity.length > 0 ? maxDistFiltered : maxDist;
+
+    const scored = workSet.map((s, i) => {
+      const distKm = workDistances[i];
+      // When no geo or station lacks coordinates: distance component treated as neutral (0.5)
+      const distScore = (useGeo && s.latitude != null) ? 1 - normalize(distKm, 0, workMaxDist) : 0.5;
+
+      // T25: use per-station daily_capacity as the real busy threshold
+      const busyThreshold = Number(s.daily_capacity) || BUSY_THRESHOLD_DEFAULT;
+
+      // Availability based on 7-day upcoming count normalised against capacity
+      const availScore = 1 - Math.min(Number(s.upcoming) / busyThreshold, 1);
 
       // rankingScore: 0-100 from stations table (COALESCE 50 = neutral until T23 populates it)
       const rankScore = Number(s.ranking_score) / 100;
@@ -143,6 +188,9 @@ router.get('/', async (req, res) => {
         composite >= 0.6 ? 'gold' :
         composite >= 0.4 ? 'silver' : 'bronze';
 
+      const todayCount = Number(s.today_count);
+      const remaining = Math.max(0, busyThreshold - todayCount);
+
       return {
         id: Number(s.id),
         name: s.name,
@@ -152,7 +200,11 @@ router.get('/', async (req, res) => {
         address: s.address,
         distanceKm: (useGeo && s.latitude != null) ? Math.round(distKm * 10) / 10 : null,
         upcomingBookings: Number(s.upcoming),
-        availableSlots: Math.max(0, BUSY_THRESHOLD - Number(s.upcoming)),
+        dailyCapacity: busyThreshold,
+        usedToday: todayCount,
+        availableSlots: remaining,
+        atCapacity: remaining === 0,
+        equipmentStatus: s.equipment_status ?? 'operational',
         rankingScore: Number(s.ranking_score),
         score: Math.round(composite * 1000) / 1000,
         tier,

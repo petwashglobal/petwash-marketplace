@@ -7798,6 +7798,12 @@ export const stations = pgTable("stations", {
   trustScore: integer("trust_score"),          // 0-100 composite quality score
   rankingScore: integer("ranking_score"),       // 0-100 final display rank
   rankingUpdatedAt: timestamp("ranking_updated_at"),
+  // ── Phase 10 T25: capacity & operational tracking ─────────────────────────
+  dailyCapacity: integer("daily_capacity").default(20),      // max bookings per day; default 20
+  currentDayBookings: integer("current_day_bookings").default(0), // cached counter for today (reset daily)
+  equipmentStatus: varchar("equipment_status").default("operational"), // operational | degraded | offline
+  nextDowntimeStart: timestamp("next_downtime_start"),         // nullable: planned downtime window start
+  nextDowntimeEnd: timestamp("next_downtime_end"),             // nullable: planned downtime window end
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -7824,6 +7830,26 @@ export const stationOperators = pgTable("station_operators", {
 export const insertStationOperatorSchema = createInsertSchema(stationOperators).omit({ id: true, assignedAt: true });
 export type InsertStationOperator = z.infer<typeof insertStationOperatorSchema>;
 export type StationOperator = typeof stationOperators.$inferSelect;
+
+// ===== STATION DOWNTIME TABLE (Phase 10 T25) =====
+export const stationDowntime = pgTable("station_downtime", {
+  id: serial("id").primaryKey(),
+  stationId: integer("station_id").notNull().references(() => stations.id),
+  reason: text("reason").notNull(),
+  startAt: timestamp("start_at").notNull(),
+  endAt: timestamp("end_at"),                          // null = open-ended / still active
+  reportedBy: varchar("reported_by").references(() => users.id), // uid of reporter
+  resolvedAt: timestamp("resolved_at"),               // null = not yet resolved
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  stationIdx: index("station_downtime_station_idx").on(table.stationId),
+  startAtIdx: index("station_downtime_start_idx").on(table.startAt),
+  resolvedIdx: index("station_downtime_resolved_idx").on(table.resolvedAt),
+}));
+
+export const insertStationDowntimeSchema = createInsertSchema(stationDowntime).omit({ id: true, createdAt: true });
+export type InsertStationDowntime = z.infer<typeof insertStationDowntimeSchema>;
+export type StationDowntime = typeof stationDowntime.$inferSelect;
 
 // ===== GROOMING FEEDBACK & RATINGS =====
 
