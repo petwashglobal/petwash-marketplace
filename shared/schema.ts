@@ -7750,12 +7750,31 @@ export const locations = pgTable("locations", {
   geoIdx: index("location_geo_idx").on(table.latitude, table.longitude),
 }));
 
+// ===== FRANCHISE OWNERS TABLE =====
+export const franchiseOwners = pgTable("franchise_owners", {
+  id: serial("id").primaryKey(),
+  ownerUserId: varchar("owner_user_id").notNull().references(() => users.id),
+  businessName: varchar("business_name").notNull(),
+  contractStart: timestamp("contract_start"),
+  contractEnd: timestamp("contract_end"),
+  platformFeeOverridePct: decimal("platform_fee_override_pct", { precision: 5, scale: 2 }),
+  status: varchar("status").notNull().default("active"), // active | suspended | terminated
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  ownerUserIdx: index("franchise_owner_user_idx").on(table.ownerUserId),
+  statusIdx: index("franchise_owner_status_idx").on(table.status),
+}));
+
+export const insertFranchiseOwnerSchema = createInsertSchema(franchiseOwners).omit({ id: true, createdAt: true });
+export type InsertFranchiseOwner = z.infer<typeof insertFranchiseOwnerSchema>;
+export type FranchiseOwner = typeof franchiseOwners.$inferSelect;
+
 // ===== STATIONS TABLE =====
 export const stations = pgTable("stations", {
   id: serial("id").primaryKey(),
   stationCode: varchar("station_code").notNull().unique(),
   locationId: integer("location_id").references(() => locations.id).notNull(),
-  franchiseId: integer("franchise_id"),
+  franchiseId: integer("franchise_id").references(() => franchiseOwners.id),
   name: varchar("name").notNull(),
   nameHe: varchar("name_he"),
   description: text("description"),
@@ -7780,7 +7799,27 @@ export const stations = pgTable("stations", {
 }, (table) => ({
   statusIdx: index("station_status_idx").on(table.status),
   locationIdx: index("station_location_idx").on(table.locationId),
+  franchiseIdx: index("station_franchise_idx").on(table.franchiseId),
 }));
+
+// ===== STATION OPERATORS TABLE =====
+export const stationOperators = pgTable("station_operators", {
+  id: serial("id").primaryKey(),
+  stationId: integer("station_id").notNull().references(() => stations.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  role: varchar("role").notNull().default("worker"), // owner | manager | worker
+  isActive: boolean("is_active").notNull().default(true),
+  assignedAt: timestamp("assigned_at").defaultNow(),
+}, (table) => ({
+  stationUserUnique: uniqueIndex("station_operator_unique").on(table.stationId, table.userId),
+  stationIdx: index("station_operator_station_idx").on(table.stationId),
+  userIdx: index("station_operator_user_idx").on(table.userId),
+  roleIdx: index("station_operator_role_idx").on(table.role),
+}));
+
+export const insertStationOperatorSchema = createInsertSchema(stationOperators).omit({ id: true, assignedAt: true });
+export type InsertStationOperator = z.infer<typeof insertStationOperatorSchema>;
+export type StationOperator = typeof stationOperators.$inferSelect;
 
 // ===== GROOMING FEEDBACK & RATINGS =====
 
