@@ -14,6 +14,7 @@
  */
 
 import { Router } from 'express';
+import { z } from 'zod';
 import { db } from '../db';
 import {
   stationOperators,
@@ -22,10 +23,16 @@ import {
   insertStationOperatorSchema,
 } from '@shared/schema';
 import { eq, and, sql, inArray } from 'drizzle-orm';
+
 import { auth } from '../lib/firebase-admin';
 import { isSuperAdmin } from '../middleware/rbac';
 import { requireStationRole, resolveStationRole } from '../middleware/stationAuth';
 import { logger } from '../lib/logger';
+
+// Explicit role allowlist — matches canonical values in station_operators.role varchar column
+// and the ROLE_RANK hierarchy in stationAuth.ts.
+const STATION_ROLE_VALUES = ['owner', 'manager', 'worker'] as const;
+const stationRoleSchema = z.enum(STATION_ROLE_VALUES);
 
 const router = Router();
 
@@ -185,10 +192,20 @@ router.post('/stations/:stationId/operators', requireStationRole('owner'), async
   const stationId = parseInt(req.params.stationId, 10);
   const callerUid = (req as any).stationOperatorUid as string;
 
+  // Explicit role allowlist check — reject any value outside the canonical enum
+  // before passing to drizzle-zod (varchar schema allows any string at the DB layer).
+  const roleValidation = stationRoleSchema.safeParse(req.body.role ?? 'worker');
+  if (!roleValidation.success) {
+    return res.status(400).json({
+      error: 'INVALID_ROLE',
+      message: `Role must be one of: ${STATION_ROLE_VALUES.join(', ')}`,
+    });
+  }
+
   const parsed = insertStationOperatorSchema.safeParse({
     stationId,
     userId: req.body.userId,
-    role: req.body.role ?? 'worker',
+    role: roleValidation.data,
     isActive: true,
   });
 
