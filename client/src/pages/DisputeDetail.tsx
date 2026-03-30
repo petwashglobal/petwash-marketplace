@@ -126,7 +126,7 @@ export default function DisputeDetail() {
               variant="ghost"
               size="sm"
               className="mt-4"
-              onClick={() => navigate(-1 as any)}
+              onClick={() => window.history.back()}
             >
               <BackIcon className="w-4 h-4 me-1" />
               {isHebrew ? 'חזרה' : 'Go back'}

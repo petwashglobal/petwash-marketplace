@@ -15,6 +15,7 @@ import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { AuthProvider, useFirebaseAuth } from "@/auth/AuthProvider";
 import { SimpleAuthProvider } from "@/hooks/useSimpleAuth";
 import RequireAuth from "@/auth/RequireAuth";
+import StationMembershipGuard from "@/components/StationMembershipGuard";
 import RoleProtectedRoute from "@/auth/RoleProtectedRoute";
 import { PlatformComingSoon } from "@/components/PlatformComingSoon";
 import { Car } from "lucide-react";
@@ -1794,7 +1795,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/station/:stationId/dashboard">
           {() => (
             <RequireAuth>
-              <StationDashboard />
+              <StationMembershipGuard>
+                <StationDashboard />
+              </StationMembershipGuard>
             </RequireAuth>
           )}
         </Route>
