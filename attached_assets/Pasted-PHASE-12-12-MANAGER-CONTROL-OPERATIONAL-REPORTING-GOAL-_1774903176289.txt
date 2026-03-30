@@ -1,0 +1,153 @@
+PHASE 12.12 - MANAGER CONTROL & OPERATIONAL REPORTING
+
+GOAL
+Give managers real control over the system built in 12.9–12.11.
+This layer is visibility + decision making. Not execution.
+
+-----------------------------------
+T121 - MANAGER APPROVAL QUEUE
+-----------------------------------
+
+BACKEND
+GET /api/manager/approvals
+
+SQL:
+SELECT 
+  d.booking_id,
+  s.name as station_name,
+  ca.assigned_to_uid,
+  ca.assigned_team_id,
+  d.closure_reason_code,
+  d.updated_at as requested_at,
+  EXTRACT(EPOCH FROM (NOW() - d.updated_at))/3600 as age_hours
+FROM booking_disputes d
+LEFT JOIN bookings b ON b.id = d.booking_id
+LEFT JOIN stations s ON s.id = b.station_id
+LEFT JOIN case_assignments ca 
+  ON ca.case_type='dispute' 
+  AND ca.case_ref_id=d.booking_id 
+  AND ca.is_active=true
+WHERE d.closure_requested = true
+ORDER BY age_hours DESC;
+
+UI
+Route: /manager/approvals
+
+Table:
+- Booking
+- Station
+- Assigned (uid)
+- Team
+- Resolution code
+- Age
+- Actions: Approve / Reject
+
+RULE
+Only managers access.
+This is their daily queue.
+
+-----------------------------------
+T122 - SLA BREACH CONTROL VIEW
+-----------------------------------
+
+BACKEND
+GET /api/manager/sla-breaches
+
+RETURN grouped:
+- by user
+- by team
+- by station
+
+FIELDS:
+- total_cases
+- breached_cases
+- breach_rate
+- avg_age_hours
+
+PURPOSE
+Expose where SLA is breaking.
+
+-----------------------------------
+T123 - WORKLOAD HEATMAP
+-----------------------------------
+
+BACKEND
+GET /api/manager/workload
+
+RETURN
+
+Per user:
+- active_cases
+- avg_age_hours
+- breached_count
+
+Per team:
+- same metrics
+
+UI
+Grid table:
+
+Columns:
+- name (uid or team)
+- active
+- avg age
+- breached
+
+COLOR LOGIC
+- green (healthy)
+- yellow (warning)
+- red (overloaded)
+
+RULE
+Used for reassignment decisions.
+
+-----------------------------------
+T124 - RESOLUTION CODE ANALYTICS
+-----------------------------------
+
+BACKEND
+GET /api/manager/resolution-analytics
+
+RETURN:
+- resolution_code
+- count
+- percentage
+
+GROUP BY:
+- team
+- station
+- franchise
+
+PURPOSE
+Reveal root problems:
+- too many goodwill_refund → service issue
+- too many operator_error → training issue
+
+-----------------------------------
+T125 - REOPEN TRACKING
+-----------------------------------
+
+BACKEND
+GET /api/manager/reopen-stats
+
+RETURN:
+- reopen_rate per user
+- reopen_rate per resolution_code
+
+FORMULA:
+reopen_rate = reopened_cases / closed_cases
+
+PURPOSE
+Detect fake closures and bad resolution quality.
+
+-----------------------------------
+T126 - PERFORMANCE COMPARISON
+-----------------------------------
+
+BACKEND
+GET /api/manager/performance-comparison
+
+GROUP BY:
+- station
+- franchise
+- team

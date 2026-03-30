@@ -438,8 +438,9 @@ router.post('/closure-request', requireAuth, async (req: Request, res: Response)
 
     await db.execute(sql.raw(`
       UPDATE booking_disputes
-      SET closure_requested = true,
-          closure_reason_code = '${safe(closureReasonCode)}'
+      SET closure_requested     = true,
+          closure_reason_code   = '${safe(closureReasonCode)}',
+          closure_requested_at  = NOW()
       WHERE id::text = '${disputeId}'
     `));
 

@@ -9389,6 +9389,10 @@ self.addEventListener('notificationclick', (event) => {
   const caseReportsRoutes = await import('./routes/case-reports');
   app.use('/api/reports', apiLimiter, caseReportsRoutes.default);
 
+  // Phase 12.12 — Manager Control & Operational Reporting
+  const managerRoutes = await import('./routes/manager');
+  app.use('/api/manager', apiLimiter, managerRoutes.default);
+
   // Phase 12.7 — Booking Trace & Dispute Resolution Layer
   // Own auth middleware (requireTraceViewer): franchise_owner, station_operator, admin.
   // Must be before the franchise router.
