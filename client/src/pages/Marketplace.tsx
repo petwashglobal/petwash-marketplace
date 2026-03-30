@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -42,14 +43,32 @@ import {
   Scissors,
   MapPin,
   Star,
+  TrendingUp,
+  Shield,
+  Crown,
+  Award,
+  Zap,
 } from 'lucide-react';
 import type { MarketplaceSearchFilters, MarketplacePlatformId } from '@shared/schema';
+
+type TierFilter = 'prestige' | 'gold' | 'silver' | 'bronze' | undefined;
+
+const TIER_CONFIG = {
+  prestige: { label: 'Prestige', icon: Crown, color: 'bg-purple-100 text-purple-700 border-purple-300' },
+  gold: { label: 'Gold', icon: Award, color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
+  silver: { label: 'Silver', icon: Shield, color: 'bg-gray-100 text-gray-600 border-gray-300' },
+  bronze: { label: 'Bronze', icon: Zap, color: 'bg-orange-100 text-orange-700 border-orange-300' },
+  at_risk: { label: 'At Risk', icon: Zap, color: 'bg-red-100 text-red-700 border-red-300' },
+  new: { label: 'New', icon: TrendingUp, color: 'bg-blue-100 text-blue-700 border-blue-300' },
+} as const;
 
 export default function Marketplace() {
   const [selectedPlatform, setSelectedPlatform] = useState<MarketplacePlatformId>('walk_my_pet');
   const [showFilters, setShowFilters] = useState(false);
+  const [activeTierFilter, setActiveTierFilter] = useState<TierFilter>(undefined);
   const [filters, setFilters] = useState<MarketplaceSearchFilters>({
     platform: 'walk_my_pet',
+    sortBy: 'recommended',
     limit: 20,
     offset: 0,
   });
@@ -59,9 +78,22 @@ export default function Marketplace() {
     setFilters(prev => ({
       ...prev,
       platform: selectedPlatform,
-      offset: 0, // Reset pagination
+      offset: 0,
     }));
   }, [selectedPlatform]);
+
+  // Apply tier filter
+  useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      tierFilter: activeTierFilter as any,
+      offset: 0,
+    }));
+  }, [activeTierFilter]);
+
+  const handleTierClick = (tier: TierFilter) => {
+    setActiveTierFilter(prev => (prev === tier ? undefined : tier));
+  };
 
   const { data, isLoading, error } = useMarketplaceSearch(filters);
 
@@ -154,6 +186,27 @@ export default function Marketplace() {
                 </h3>
               </div>
               <div className="p-6 space-y-6">
+                {/* Sort By */}
+                <div>
+                  <Label className="mb-2 block">
+                    <TrendingUp className="w-4 h-4 inline mr-1" />
+                    Sort By
+                  </Label>
+                  <Select
+                    value={filters.sortBy ?? 'recommended'}
+                    onValueChange={(v) => updateFilter('sortBy', v as any)}
+                  >
+                    <SelectTrigger data-testid="select-sort">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="recommended">Recommended</SelectItem>
+                      <SelectItem value="rating">Highest Rated</SelectItem>
+                      <SelectItem value="availability">Soonest Available</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* City Filter */}
                 <div>
                   <Label htmlFor="city" className="mb-2 block">
@@ -257,8 +310,8 @@ export default function Marketplace() {
           {/* Results */}
           <div className="lg:col-span-3">
             {/* Results Header */}
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex-1">
                 {isLoading ? (
                   'Searching...'
                 ) : data?.total ? (
@@ -267,6 +320,44 @@ export default function Marketplace() {
                   'No providers found'
                 )}
               </h2>
+              {/* Active sort indicator */}
+              {filters.sortBy === 'recommended' && (
+                <span className="text-xs text-purple-600 dark:text-purple-400 font-medium flex items-center gap-1">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  Ranked by quality
+                </span>
+              )}
+            </div>
+
+            {/* Tier Filter Chips */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {(['prestige', 'gold', 'silver', 'bronze'] as const).map((tier) => {
+                const cfg = TIER_CONFIG[tier];
+                const Icon = cfg.icon;
+                const active = activeTierFilter === tier;
+                return (
+                  <button
+                    key={tier}
+                    onClick={() => handleTierClick(tier as TierFilter)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                      active
+                        ? cfg.color + ' ring-2 ring-offset-1 ring-current'
+                        : 'border-gray-200 text-gray-500 hover:border-gray-400 dark:border-gray-700 dark:text-gray-400'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {cfg.label}
+                  </button>
+                );
+              })}
+              {activeTierFilter && (
+                <button
+                  onClick={() => handleTierClick(undefined)}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500"
+                >
+                  Clear filter
+                </button>
+              )}
             </div>
 
             {/* Loading State */}
@@ -314,9 +405,24 @@ export default function Marketplace() {
                     </p>
                   </div>
                 ) : (
-                  data.providers.map((provider) => (
-                    <ProviderCard key={provider.id} provider={provider} />
-                  ))
+                  data.providers.map((provider: any) => {
+                    const tierKey = provider.tier as keyof typeof TIER_CONFIG | undefined;
+                    const tierCfg = tierKey && TIER_CONFIG[tierKey];
+                    const TierIcon = tierCfg ? tierCfg.icon : null;
+                    return (
+                      <div key={provider.id} className="relative">
+                        {tierCfg && TierIcon && tierKey !== 'new' && (
+                          <div className="absolute -top-2 right-3 z-10">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${tierCfg.color}`}>
+                              <TierIcon className="w-3 h-3" />
+                              {tierCfg.label}
+                            </span>
+                          </div>
+                        )}
+                        <ProviderCard provider={provider} />
+                      </div>
+                    );
+                  })
                 )}
               </div>
             )}

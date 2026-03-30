@@ -2040,3 +2040,33 @@ Approved and closed. All seven tasks delivered.
 - GET `/api/provider-dashboard/v2/feedback`
 - `ProviderFeedbackDashboard.tsx` at `/provider/feedback`
 - Linked from `ProviderTaskInbox`
+
+## Phase 9 — Marketplace Intelligence Layer (March 2026) — COMPLETE
+
+All six tasks delivered and verified (clean boot, `[RankingBackfill] Complete` at startup).
+
+### Ranking Engine (T901)
+- `server/routes/marketplace-ranking.ts` — `computeAndPersistRankingScore()` + `getProviderTier()`
+- Formula: `trustComponent(0–45) + ratingComponent×confidence(0–40) + newProviderBoost(+10) + availabilityBoost(0–15) − atRiskPenalty(50) + adminBoost(+15)`
+- Tiers: prestige ≥ 80, gold ≥ 60, silver ≥ 40, bronze < 40, at_risk (trustScore ≤ 40), new (< 3 reviews)
+- Admin routes: POST `/api/marketplace/rankings/recompute`, GET `/api/marketplace/rankings/providers`, PATCH `/api/marketplace/rankings/:userId`
+- Wired into `marketplace-reviews.ts` — ranking recomputed after every review
+
+### Schema Extension (T902)
+- `marketplaceSearchFiltersSchema` extended: `sortBy` (`recommended` | `rating`) + `tierFilter` (`prestige` | `gold` | `silver` | `bronze`)
+
+### Ranking in Marketplace Search (T903)
+- `server/routes/marketplace.ts` batch-fetches `providerProfiles`, attaches `rankingScore` + `tier`
+- Sorts by `rankingScore` when `sortBy = 'recommended'`; applies `tierFilter` when set
+
+### Marketplace Browse UI (T904)
+- `client/src/pages/Marketplace.tsx` — sort selector (Recommended / Highest Rated), tier filter chips, tier badges on provider cards with TIER_CONFIG color map
+
+### Operator Intelligence Dashboard (T905)
+- `client/src/pages/MarketplaceIntelligenceDashboard.tsx` at `/admin/marketplace-intelligence`
+- Table: name, tier badge, rankingScore, trustScore, ratingAvg, revenueILS
+- At-risk row highlighting; per-row actions: Boost 7d, Suppress, Reset
+
+### Route Registration (T906)
+- `server/routes.ts`: `marketplaceRankingRoutes` imported + mounted at `/api/marketplace/rankings`
+- `client/src/App.tsx`: `/admin/marketplace-intelligence` registered under `AdminRouteGuard`

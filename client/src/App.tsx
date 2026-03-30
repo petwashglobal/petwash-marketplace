@@ -403,6 +403,9 @@ const MarketplaceReviewPage = lazy(() => import("@/pages/MarketplaceReviewPage")
 const ReportProblemPage = lazy(() => import("@/pages/ReportProblemPage"));
 const ProviderFeedbackDashboard = lazy(() => import("@/pages/ProviderFeedbackDashboard"));
 
+// Phase 9 — Marketplace Intelligence
+const MarketplaceIntelligenceDashboard = lazy(() => import("@/pages/MarketplaceIntelligenceDashboard"));
+
 // Loading fallback component
 const PageLoader = () => (
   <div data-build-version="BUILD_2026_01_25_1769349430610" className="min-h-[100dvh] bg-white flex items-center justify-center">
@@ -2058,6 +2061,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
                 <ProviderFeedbackDashboard />
               </Suspense>
             </RoleProtectedRoute>
+          )}
+        </Route>
+        <Route path="/admin/marketplace-intelligence">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <MarketplaceIntelligenceDashboard />
+              </Suspense>
+            </AdminRouteGuard>
           )}
         </Route>
         <Route path="/marketplace/review/:bookingId">

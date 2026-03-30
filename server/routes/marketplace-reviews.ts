@@ -29,6 +29,7 @@ import { marketplaceReviews, bookings } from '@shared/schema';
 import { eq, and, desc, sql, count } from 'drizzle-orm';
 import { auth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
+import { computeAndPersistRankingScore } from './marketplace-ranking';
 
 const router = Router();
 
@@ -260,6 +261,13 @@ router.post('/', async (req: Request, res: Response) => {
       // ── Quality score + repeated-issue detection (T003/T004) ─────────────────
       const { qualityScore, repeatedIssueDetected, atRisk } =
         await computeProviderQualityScore(providerId);
+
+      // ── Phase 9: Recompute ranking score after every review ───────────────────
+      computeAndPersistRankingScore(providerId).catch((err: any) =>
+        logger.warn('[MarketplaceReviews] Ranking recompute failed (non-blocking)', {
+          providerId, error: err.message,
+        })
+      );
 
       logger.info('[MarketplaceReviews] Review submitted', {
         reviewId: review.id, bookingId, providerId, rating, isFlagged,

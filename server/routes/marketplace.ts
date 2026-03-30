@@ -14,6 +14,7 @@ import {
   sitterProfiles,
   trainers,
   drivers,
+  providerProfiles,
   marketplaceSearchFiltersSchema,
   type MarketplaceProvider,
   type WalkerProvider,
@@ -21,8 +22,9 @@ import {
   type MarketplaceSearchResponse,
   type MarketplacePlatformId,
 } from '@shared/schema';
-import { eq, and, gte, lte, sql, desc, or, ilike } from 'drizzle-orm';
+import { eq, and, gte, lte, sql, desc, or, ilike, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { getProviderTier } from './marketplace-ranking';
 
 const router = Router();
 
@@ -45,6 +47,9 @@ router.post('/search', async (req, res) => {
 
     let providers: MarketplaceProvider[] = [];
     let total = 0;
+
+    const sortBy = filters.sortBy ?? 'recommended';
+    const tierFilter = filters.tierFilter;
 
     // Route to platform-specific search
     switch (filters.platform) {
@@ -78,17 +83,76 @@ router.post('/search', async (req, res) => {
         return res.status(400).json({ error: 'Invalid platform' });
     }
 
+    // ── Phase 9: Attach ranking data, sort, and tier-filter ──────────────────
+
+    // Batch-fetch providerProfiles to get rankingScore for each provider
+    const userIds = providers
+      .map((p: any) => p.userId)
+      .filter(Boolean) as string[];
+
+    let rankingMap = new Map<string, { rankingScore: number | null; trustScore: number | null; ratingCount: number | null }>();
+
+    if (userIds.length > 0) {
+      const profileRows = await db
+        .select({
+          userId: providerProfiles.userId,
+          rankingScore: providerProfiles.rankingScore,
+          trustScore: providerProfiles.trustScore,
+          ratingCount: providerProfiles.ratingCount,
+        })
+        .from(providerProfiles)
+        .where(inArray(providerProfiles.userId, userIds));
+
+      for (const row of profileRows) {
+        rankingMap.set(row.userId, {
+          rankingScore: row.rankingScore,
+          trustScore: row.trustScore,
+          ratingCount: row.ratingCount,
+        });
+      }
+    }
+
+    // Enrich providers with ranking data
+    let enriched = providers.map((p: any) => {
+      const rd = rankingMap.get(p.userId) ?? { rankingScore: null, trustScore: null, ratingCount: null };
+      const tier = getProviderTier(rd.rankingScore, rd.trustScore, rd.ratingCount ?? p.totalBookings ?? null);
+      return { ...p, rankingScore: rd.rankingScore, tier };
+    });
+
+    // Tier filter
+    if (tierFilter) {
+      enriched = enriched.filter((p: any) => p.tier === tierFilter);
+    }
+
+    // Sort
+    if (sortBy === 'recommended') {
+      enriched.sort((a: any, b: any) => {
+        const aScore = a.rankingScore ?? 50;
+        const bScore = b.rankingScore ?? 50;
+        return bScore - aScore;
+      });
+    } else if (sortBy === 'rating') {
+      enriched.sort((a: any, b: any) => {
+        const aR = parseFloat(a.rating ?? '0') || 0;
+        const bR = parseFloat(b.rating ?? '0') || 0;
+        return bR - aR;
+      });
+    }
+    // 'availability' sort: leave in DB order (platform-specific ordering by schedule)
+
     const response: MarketplaceSearchResponse = {
-      providers,
-      total,
+      providers: enriched,
+      total: tierFilter ? enriched.length : total,
       platform: filters.platform,
       filters,
     };
 
     logger.info('[Marketplace] Search completed', {
       platform: filters.platform,
-      resultsCount: providers.length,
+      resultsCount: enriched.length,
       total,
+      sortBy,
+      tierFilter,
     });
 
     res.json(response);

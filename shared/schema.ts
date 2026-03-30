@@ -8580,6 +8580,10 @@ export const marketplaceSearchFiltersSchema = z.object({
   vehicleType: z.string().optional(), // Driver-specific
   mobileService: z.boolean().optional(), // Groomer-specific
   
+  // Phase 9 — Intelligence layer
+  sortBy: z.enum(['recommended', 'rating', 'availability']).default('recommended').optional(),
+  tierFilter: z.enum(['prestige', 'gold', 'silver', 'bronze', 'at_risk', 'new']).optional(),
+  
   // Pagination
   limit: z.number().min(1).max(100).default(20).optional(),
   offset: z.number().min(0).default(0).optional(),

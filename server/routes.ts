@@ -202,6 +202,7 @@ import { verifyCaptchaToken } from "./lib/verifyCaptcha";
 import { verifyTurnstileToken } from "./lib/verifyTurnstile";
 import reviewsRoutes from "./routes/reviews";
 import marketplaceReviewsRoutes from "./routes/marketplace-reviews";
+import marketplaceRankingRoutes from "./routes/marketplace-ranking";
 import disputesRoutes from "./routes/disputes";
 import groomingFeedbackRoutes from "./routes/grooming-feedback";
 import securityStatusRoutes from "./routes/security-status";
@@ -9936,6 +9937,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/pricing', apiLimiter, pricingRoutes);
   app.use('/api/reviews', apiLimiter, reviewsRoutes);
   app.use('/api/marketplace-reviews', apiLimiter, marketplaceReviewsRoutes);
+  app.use('/api/marketplace/rankings', apiLimiter, marketplaceRankingRoutes);
   app.use('/api/disputes', apiLimiter, disputesRoutes);
   app.use('/api/grooming-feedback', apiLimiter, groomingFeedbackRoutes);
   app.use('/api/analytics', adminLimiter, analyticsRoutes);
