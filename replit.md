@@ -2100,3 +2100,24 @@ All six tasks delivered and verified (clean boot, `[RankingBackfill] Complete` a
   - `ClipboardList` button per row toggles expandable audit log panel inline
   - Audit log panel shows last 20 actions: action type (color-coded), admin UID (truncated), optional note, date
   - Trust score column colored red when ≤ 40; disputes always shown (not conditional)
+
+## Phase 12.7 — Booking Trace & Dispute Resolution Layer
+
+**Backend — `server/routes/booking-trace.ts`** (mounted at `/api/booking-trace`):
+- `GET /:bookingId` — Full trace in one response: booking core, station, customer, status history, settlement split, dispute, refund (payment reversal + wallet credits), audit trail, T37 executive summary
+- `POST /:bookingId/dispute/action` — Dispute resolution (mark_under_review / approve_resolution / reject_claim / close_case); every state change writes immutable audit_events row
+- `requireTraceViewer` middleware: x-admin-secret / decoded.admin → all; franchise_owner → their stations; station_operator → their station; others → 403
+- Registered before network-finance and franchise-finance in `routes.ts`
+
+**Frontend — `client/src/pages/BookingTrace.tsx`** (route `/booking-trace/:bookingId`):
+- T37: Executive summary row (6 cards: amount, booking status, settlement status, dispute status, mismatch flag, next-action-owner)
+- Booking core details grid + station + customer sections
+- Settlement split breakdown with mismatch ring highlight
+- T33: Dispute detail panel with status badge, description, admin notes, resolved-by/at
+- T34: Inline resolution action buttons (available actions computed from dispute.status + canTakeDisputeAction); optional note textarea; click-twice-to-confirm pattern
+- T35: Refund section — payment reversal details + wallet credits table
+- Status timeline + audit trail
+
+**SettlementLedger (T32)**: `bookingId` cells are now `Link` to `/booking-trace/:bookingId`
+
+**App.tsx**: Lazy import + `<Route path="/booking-trace/:bookingId">` with `RoleProtectedRoute minRole="franchise_owner"`

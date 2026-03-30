@@ -9371,6 +9371,12 @@ self.addEventListener('notificationclick', (event) => {
   const pawFinderRoutes = await import('./routes/paw-finder');
   app.use('/api/paw-finder', apiLimiter, pawFinderRoutes.default);
 
+  // Phase 12.7 — Booking Trace & Dispute Resolution Layer
+  // Own auth middleware (requireTraceViewer): franchise_owner, station_operator, admin.
+  // Must be before the franchise router.
+  const bookingTraceRoutes = await import('./routes/booking-trace');
+  app.use('/api/booking-trace', apiLimiter, bookingTraceRoutes.default);
+
   // Phase 11 Extension — Hybrid Ownership Model: unified network finance routes
   // Mounted at /api/network — handles both company-owned and franchise stations.
   // ownerId = 'company' → Pet Wash Ltd stations; ownerId = integer → franchise.

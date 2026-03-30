@@ -795,8 +795,13 @@ export function SettlementLedger({ rows, summary, ownerType, isLoading }: Settle
                           hasMismatch && !isDisputed && 'bg-orange-50/60 dark:bg-orange-950/30',
                         )}
                       >
-                        <TableCell className="py-2.5 font-mono text-xs text-gray-600 dark:text-gray-400">
-                          {row.bookingId}
+                        <TableCell className="py-2.5 font-mono text-xs">
+                          <Link
+                            href={`/booking-trace/${row.bookingId}`}
+                            className="text-blue-600 hover:underline dark:text-blue-400"
+                          >
+                            {row.bookingId}
+                          </Link>
                         </TableCell>
                         <TableCell className="py-2.5 whitespace-nowrap text-xs text-gray-600 dark:text-gray-400">
                           {new Date(row.createdAt).toLocaleDateString('he-IL')}

@@ -1,0 +1,117 @@
+Good. Phase 12.6 is enough to accept.
+
+Now move straight to Phase 12.7 - Booking Trace & Dispute Resolution Layer.
+
+Reason:
+Right now the owner can see the settlement row, disputed status, and mismatch warning.
+But they still cannot answer the real business question:
+
+"What happened in this booking, who touched it, and why is the money disputed?"
+
+That is the next gap.
+
+Phase 12.7 must close that gap properly.
+
+Execution order:
+
+T31 - Booking Trace API
+Build one endpoint that returns the full trace for a booking:
+- booking core details
+- station
+- provider / operator
+- customer
+- timestamps
+- booking status history
+- settlement row
+- dispute row if one exists
+- refund row if one exists
+- audit actions if one exists
+
+Goal:
+one booking = one full operational + financial trace
+
+T32 - Settlement to Booking navigation
+From the settlement drill-down ledger, clicking a bookingId must open the trace page directly.
+No copied IDs, no manual searching.
+
+T33 - Dispute detail view
+Create a proper dispute detail page:
+- case reference
+- current status
+- reason
+- notes
+- disputed amount
+- linked booking
+- linked station
+- timeline of actions
+
+Goal:
+disputes stop being just red badges and become actionable cases
+
+T34 - Resolution actions
+Add controlled actions:
+- mark under review
+- approve resolution
+- reject claim
+- close case
+- optional refund status note
+
+Every action must write to an audit trail with:
+- actor
+- action
+- timestamp
+- optional note
+
+No silent state changes
+
+T35 - Refund linkage
+If a dispute caused a refund or credit, show that directly in the booking trace:
+- refund amount
+- refund date
+- refund method
+- wallet / manual / other
+- reference id if available
+
+Goal:
+owner sees money movement from one place
+
+T36 - Operator / owner visibility rules
+Permissions must be strict:
+- station manager sees only cases for their station
+- franchise owner sees only their stations
+- company owner / HQ sees company-owned stations
+- admin sees all
+
+No cross-network leakage
+
+T37 - UI summary panel
+At the top of the trace page show a simple executive summary:
+- booking amount
+- settlement status
+- dispute status
+- refund status
+- mismatch yes/no
+- who currently owns the next action
+
+This matters because not every owner wants to read every row first
+
+Critical business rules:
+1. Settlement remains the money truth
+2. Booking trace is the explanation layer
+3. Dispute actions must always be auditable
+4. Refund visibility must be explicit
+5. No hidden transitions and no silent overrides
+
+What "done" means:
+- owner clicks station financial row
+- opens settlement drill-down
+- clicks booking
+- sees full trace
+- if disputed, can see why
+- if refunded, can see where money went
+- if resolved, can see who resolved it and when
+
+That is when the financial layer becomes truly defensible.
+
+Build it in that exact order.
+No fluff.
