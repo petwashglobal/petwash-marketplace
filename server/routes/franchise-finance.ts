@@ -308,4 +308,145 @@ router.get('/:franchiseId/finance/summary', requireFranchiseOwner, async (req: R
   }
 });
 
+// ─── T28: Station P&L Breakdown ───────────────────────────────────────────────
+
+/**
+ * GET /api/franchise/:franchiseId/stations/financials
+ *
+ * Returns per-station unit economics for the franchise, sourced exclusively
+ * from station_settlements. Includes ALL stations in the franchise network —
+ * even those with zero activity in the period — so weak stations are visible.
+ *
+ * Query params:
+ *   period  today | mtd | last30 (default: last30)
+ *
+ * Response shape:
+ * {
+ *   franchiseId: number,
+ *   period: string,
+ *   currency: "ILS",
+ *   stations: StationPL[],
+ * }
+ *
+ * StationPL:
+ * {
+ *   stationId:      number,
+ *   stationName:    string,
+ *   stationCode:    string,
+ *   grossRevenue:   number,   // pending + settled
+ *   platformFees:   number,
+ *   franchiseShare: number,
+ *   stationPayouts: number,
+ *   bookingCount:   number,   // non-disputed settlements
+ *   settledCount:   number,
+ *   pendingCount:   number,
+ *   avgOrderValue:  number,   // grossRevenue / bookingCount (0 if none)
+ *   disputedCount:  number,   // informational
+ *   disputedAmount: number,   // informational
+ * }
+ */
+router.get('/:franchiseId/stations/financials', requireFranchiseOwner, async (req: Request, res: Response) => {
+  try {
+    const franchiseId = (req as any).franchiseIdInt as number;
+    const rawPeriod = (req.query.period as string | undefined) ?? 'last30';
+    const period = ['today', 'mtd', 'last30'].includes(rawPeriod) ? rawPeriod : 'last30';
+
+    // Build the time-window condition for the settlement JOIN.
+    // Using template literal injection via sql`` is safe — period is allowlisted above.
+    const timeFilter =
+      period === 'today'
+        ? sql`(ss.created_at AT TIME ZONE ${IL_TZ})::date = (NOW() AT TIME ZONE ${IL_TZ})::date`
+        : period === 'mtd'
+        ? sql`date_trunc('month', ss.created_at AT TIME ZONE ${IL_TZ}) = date_trunc('month', NOW() AT TIME ZONE ${IL_TZ})`
+        : sql`ss.created_at >= NOW() - INTERVAL '30 days'`;
+
+    // LEFT JOIN so stations with zero activity in the period still appear.
+    // Stations are scoped to the franchise via stations.franchise_id.
+    const rows = await db.execute(sql`
+      SELECT
+        st.id                                                          AS station_id,
+        st.name                                                        AS station_name,
+        COALESCE(st.station_code, '')                                  AS station_code,
+
+        -- Money (exclude disputed from revenue totals)
+        COALESCE(SUM(ss.total_amount_cents)
+          FILTER (WHERE ss.status != 'disputed'), 0)::bigint           AS gross_cents,
+
+        COALESCE(SUM(ss.platform_amount_cents)
+          FILTER (WHERE ss.status != 'disputed'), 0)::bigint           AS platform_cents,
+
+        COALESCE(SUM(ss.franchise_amount_cents)
+          FILTER (WHERE ss.status != 'disputed'), 0)::bigint           AS franchise_cents,
+
+        COALESCE(SUM(ss.station_amount_cents)
+          FILTER (WHERE ss.status != 'disputed'), 0)::bigint           AS station_cents,
+
+        -- Counts
+        COUNT(ss.id)
+          FILTER (WHERE ss.status != 'disputed')::int                  AS booking_count,
+
+        COUNT(ss.id)
+          FILTER (WHERE ss.status = 'settled')::int                    AS settled_count,
+
+        COUNT(ss.id)
+          FILTER (WHERE ss.status = 'pending')::int                    AS pending_count,
+
+        -- Disputed (informational)
+        COUNT(ss.id)
+          FILTER (WHERE ss.status = 'disputed')::int                   AS disputed_count,
+
+        COALESCE(SUM(ss.total_amount_cents)
+          FILTER (WHERE ss.status = 'disputed'), 0)::bigint            AS disputed_cents
+
+      FROM stations st
+      LEFT JOIN station_settlements ss
+        ON ss.station_id = st.id
+       AND ss.franchise_owner_id = ${franchiseId}
+       AND ${timeFilter}
+      WHERE st.is_active = true
+        -- Include stations explicitly linked to this franchise OR discovered via settlements
+        AND (
+          st.franchise_id = ${franchiseId}
+          OR EXISTS (
+            SELECT 1 FROM station_settlements sx
+            WHERE sx.station_id = st.id
+              AND sx.franchise_owner_id = ${franchiseId}
+          )
+        )
+      GROUP BY st.id, st.name, st.station_code
+      ORDER BY gross_cents DESC, st.name ASC
+    `);
+
+    const stations = (rows.rows as any[]).map((r) => {
+      const grossRevenue = toILS(r.gross_cents);
+      const bookingCount = toInt(r.booking_count);
+      return {
+        stationId:      Number(r.station_id),
+        stationName:    r.station_name as string,
+        stationCode:    r.station_code as string,
+        grossRevenue,
+        platformFees:   toILS(r.platform_cents),
+        franchiseShare: toILS(r.franchise_cents),
+        stationPayouts: toILS(r.station_cents),
+        bookingCount,
+        settledCount:   toInt(r.settled_count),
+        pendingCount:   toInt(r.pending_count),
+        avgOrderValue:  bookingCount > 0 ? Math.round((grossRevenue / bookingCount) * 100) / 100 : 0,
+        disputedCount:  toInt(r.disputed_count),
+        disputedAmount: toILS(r.disputed_cents),
+      };
+    });
+
+    res.json({
+      franchiseId,
+      period,
+      currency: 'ILS',
+      stations,
+    });
+  } catch (err: any) {
+    logger.error('[FranchiseFinance] stations/financials error', { error: err.message });
+    res.status(500).json({ error: 'stations_financials_failed' });
+  }
+});
+
 export default router;
