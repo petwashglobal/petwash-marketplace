@@ -137,8 +137,32 @@ router.post('/search', async (req, res) => {
         const bR = parseFloat(b.rating ?? '0') || 0;
         return bR - aR;
       });
+    } else if (sortBy === 'availability' && userIds.length > 0) {
+      // Real availability sort: query upcoming bookings per provider in next 7 days
+      // Providers with fewer upcoming bookings are more available → sort ascending
+      const now = new Date();
+      const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      const upcomingRows = await db.execute(sql`
+        SELECT provider_id, count(*)::int AS upcoming_count
+        FROM bookings
+        WHERE provider_id = ANY(${userIds}::text[])
+          AND start_time >= ${now}
+          AND start_time < ${sevenDaysLater}
+          AND status IN ('accepted','confirmed','started')
+        GROUP BY provider_id
+      `);
+
+      const upcomingMap = new Map<string, number>(
+        (upcomingRows.rows as any[]).map((r) => [r.provider_id, Number(r.upcoming_count)])
+      );
+
+      enriched.sort((a: any, b: any) => {
+        const aCount = upcomingMap.get(a.userId) ?? 0;
+        const bCount = upcomingMap.get(b.userId) ?? 0;
+        return aCount - bCount; // ascending: fewer bookings = more available
+      });
     }
-    // 'availability' sort: leave in DB order (platform-specific ordering by schedule)
 
     const response: MarketplaceSearchResponse = {
       providers: enriched,

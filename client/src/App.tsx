@@ -405,6 +405,7 @@ const ProviderFeedbackDashboard = lazy(() => import("@/pages/ProviderFeedbackDas
 
 // Phase 9 — Marketplace Intelligence
 const MarketplaceIntelligenceDashboard = lazy(() => import("@/pages/MarketplaceIntelligenceDashboard"));
+const ProviderRankingPanel = lazy(() => import("@/pages/ProviderRankingPanel"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -2070,6 +2071,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
                 <MarketplaceIntelligenceDashboard />
               </Suspense>
             </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/provider/ranking">
+          {() => (
+            <RoleProtectedRoute minRole="provider">
+              <Suspense fallback={<PageLoader />}>
+                <ProviderRankingPanel />
+              </Suspense>
+            </RoleProtectedRoute>
           )}
         </Route>
         <Route path="/marketplace/review/:bookingId">

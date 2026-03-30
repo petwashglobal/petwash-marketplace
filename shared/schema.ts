@@ -12071,6 +12071,7 @@ export const providerProfiles = pgTable("provider_profiles", {
   rankingOverride: integer("ranking_override"),                    // admin-set override (null = use computed)
   rankingBoostUntil: timestamp("ranking_boosted_until"),          // temporary admin boost expiry
   rankingUpdatedAt: timestamp("ranking_updated_at"),              // last recomputed
+  rankingFlaggedAt: timestamp("ranking_flagged_at"),             // set when operator flags provider for review (null = not flagged)
   // ── Home setup (set by provider, null = not answered yet) ──
   hasFencedYard: boolean("has_fenced_yard"),
   hasNoPetsAtHome: boolean("has_no_pets_at_home"),
@@ -14548,4 +14549,21 @@ export const bookingDisputes = pgTable("booking_disputes", {
 
 export const insertBookingDisputeSchema = createInsertSchema(bookingDisputes).omit({ id: true, createdAt: true });
 export type InsertBookingDispute = z.infer<typeof insertBookingDisputeSchema>;
+
+// ─── Provider Ranking Audit Log ───────────────────────────────────────────────
+// Records every operator override action for accountability and dispute resolution.
+
+export const providerRankingAudit = pgTable("provider_ranking_audit", {
+  id: serial("id").primaryKey(),
+  providerUserId: text("provider_user_id").notNull(),
+  adminUid: text("admin_uid").notNull(),
+  action: text("action").notNull(),       // 'boost' | 'suppress' | 'reset' | 'flag' | 'unflag'
+  note: text("note"),                     // optional operator note
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  providerIdx: index("idx_ranking_audit_provider").on(table.providerUserId),
+  createdIdx: index("idx_ranking_audit_created").on(table.createdAt),
+}));
+
+export type ProviderRankingAuditRow = typeof providerRankingAudit.$inferSelect;
 export type BookingDispute = typeof bookingDisputes.$inferSelect;

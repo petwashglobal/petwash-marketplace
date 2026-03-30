@@ -2070,3 +2070,33 @@ All six tasks delivered and verified (clean boot, `[RankingBackfill] Complete` a
 ### Route Registration (T906)
 - `server/routes.ts`: `marketplaceRankingRoutes` imported + mounted at `/api/marketplace/rankings`
 - `client/src/App.tsx`: `/admin/marketplace-intelligence` registered under `AdminRouteGuard`
+
+### Phase 9 Gap Closures (T907–T911)
+
+**T907 — DB Schema**
+- `providerProfiles.rankingFlaggedAt` (timestamp, nullable) added — tracks when operator flags provider for review
+- `provider_ranking_audit` table created — every operator override action is logged with adminUid, action, optional note, timestamp
+
+**T908 — Ranking Engine: flag/unflag + audit + provider transparency**
+- PATCH /:userId now accepts `flag` | `unflag` in addition to boost/suppress/reset
+- Every action (all 5) writes to `provider_ranking_audit` via `writeAuditLog()` helper
+- `GET /api/marketplace/rankings/audit/:userId` — admin: fetch full audit log per provider
+- `GET /api/marketplace/rankings/my-ranking` — provider-authenticated: returns tier, score, full breakdown, per-factor explanation (trust, rating, availability, disputes), open dispute count, recent actions
+
+**T909 — Real "Soonest Available" sort**
+- `server/routes/marketplace.ts`: when `sortBy === 'availability'`, queries upcoming booking counts from the `bookings` table per provider for the next 7 days, sorts ascending (fewer bookings = more available)
+- No longer a fake no-op — actual data-driven availability sort
+
+**T910 — Provider Transparency Panel**
+- `client/src/pages/ProviderRankingPanel.tsx` at `/provider/ranking`
+- Shows: tier badge with color bar, computed score with progress bar, score breakdown table (each component + value), per-factor explanation cards (trust / rating / availability / disputes), tier ladder with "You are here", recent operator actions (provider-visible, admin UID hidden)
+- Auth: provider Firebase token via `RoleProtectedRoute`
+
+**T911 — Dashboard: flag + audit log**
+- `MarketplaceIntelligenceDashboard.tsx` updated:
+  - New `rankingFlaggedAt` field in ProviderRow type
+  - Flag/Unflag button with orange state for flagged providers
+  - Flagged providers show orange card border + "Under Review" badge
+  - `ClipboardList` button per row toggles expandable audit log panel inline
+  - Audit log panel shows last 20 actions: action type (color-coded), admin UID (truncated), optional note, date
+  - Trust score column colored red when ≤ 40; disputes always shown (not conditional)

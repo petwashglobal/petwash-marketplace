@@ -32,6 +32,10 @@ import {
   ChevronDown,
   RotateCcw,
   Search,
+  Flag,
+  FlagOff,
+  ClipboardList,
+  X,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -51,6 +55,7 @@ type ProviderRow = {
   rankingScore: number | null;
   rankingOverride: number | null;
   rankingBoostUntil: string | null;
+  rankingFlaggedAt: string | null;
   trustScore: number | null;
   ratingAvg: string | null;
   ratingCount: number | null;
@@ -58,6 +63,15 @@ type ProviderRow = {
   disputeCount: number;
   revenueILS: number;
   rankingUpdatedAt: string | null;
+};
+
+type AuditEntry = {
+  id: number;
+  providerUserId: string;
+  adminUid: string;
+  action: string;
+  note: string | null;
+  createdAt: string;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -69,6 +83,7 @@ export default function MarketplaceIntelligenceDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [expandedAudit, setExpandedAudit] = useState<string | null>(null);
   const [adminSecret] = useState(
     () => localStorage.getItem('petwash_admin_secret') || ''
   );
@@ -84,17 +99,26 @@ export default function MarketplaceIntelligenceDashboard() {
     enabled: !!user,
   });
 
+  // ── Audit log for expanded provider ────────────────────────────────────────
+
+  const { data: auditData, isLoading: auditLoading } = useQuery<{ entries: AuditEntry[]; total: number }>({
+    queryKey: ['/api/marketplace/rankings/audit', expandedAudit],
+    enabled: !!expandedAudit && !!user,
+  });
+
   // ── Override mutation ───────────────────────────────────────────────────────
 
   const overrideMutation = useMutation({
     mutationFn: async ({
       userId,
       action,
+      note,
     }: {
       userId: string;
-      action: 'boost' | 'suppress' | 'reset';
+      action: 'boost' | 'suppress' | 'reset' | 'flag' | 'unflag';
+      note?: string;
     }) => {
-      const res = await apiRequest('PATCH', `/api/marketplace/rankings/${userId}`, { action });
+      const res = await apiRequest('PATCH', `/api/marketplace/rankings/${userId}`, { action, note });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || 'Override failed');
       return body;
@@ -107,6 +131,9 @@ export default function MarketplaceIntelligenceDashboard() {
           : `Action "${vars.action}" applied`,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/marketplace/rankings/providers'] });
+      if (expandedAudit === vars.userId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/marketplace/rankings/audit', vars.userId] });
+      }
     },
     onError: (err: any) => {
       toast({
@@ -254,12 +281,16 @@ export default function MarketplaceIntelligenceDashboard() {
               const boostLabel = boostedUntilLabel(provider.rankingBoostUntil);
               const isAtRisk = provider.tier === 'at_risk';
               const isSuppressed = provider.rankingOverride !== null && provider.rankingOverride <= 10;
+              const isFlagged = !!provider.rankingFlaggedAt;
+              const isAuditOpen = expandedAudit === provider.userId;
 
               return (
                 <Card
                   key={provider.userId}
                   className={`transition-colors ${
-                    isAtRisk ? 'border-red-200 bg-red-50 dark:bg-red-950/20' : ''
+                    isAtRisk ? 'border-red-200 bg-red-50 dark:bg-red-950/20'
+                    : isFlagged ? 'border-orange-200 bg-orange-50 dark:bg-orange-950/20'
+                    : ''
                   }`}
                 >
                   <CardContent className="py-4 px-5">
@@ -275,22 +306,24 @@ export default function MarketplaceIntelligenceDashboard() {
                           </div>
                           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                             {/* Tier badge */}
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${tierCfg.color}`}
-                            >
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${tierCfg.color}`}>
                               <TierIcon className="w-3 h-3" />
                               {tierCfg.label}
                             </span>
-                            {/* Override indicators */}
+                            {/* Status indicators */}
+                            {isFlagged && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-300">
+                                <Flag className="w-3 h-3" />
+                                {isHebrew ? 'בבדיקה' : 'Under Review'}
+                              </span>
+                            )}
                             {boostLabel && (
                               <span className="text-xs text-blue-600 font-medium">
-                                ↑ Boosted until {boostLabel}
+                                ↑ {isHebrew ? `מוגבר עד ${boostLabel}` : `Boosted until ${boostLabel}`}
                               </span>
                             )}
                             {isSuppressed && (
-                              <span className="text-xs text-gray-500 font-medium">
-                                ↓ Suppressed
-                              </span>
+                              <span className="text-xs text-gray-500 font-medium">↓ {isHebrew ? 'דכוי' : 'Suppressed'}</span>
                             )}
                           </div>
                         </div>
@@ -302,17 +335,13 @@ export default function MarketplaceIntelligenceDashboard() {
                           <div className={`text-lg font-bold ${scoreColor(provider.rankingScore)}`}>
                             {provider.rankingScore ?? '—'}
                           </div>
-                          <div className="text-xs text-gray-400">
-                            {isHebrew ? 'דירוג' : 'Rank'}
-                          </div>
+                          <div className="text-xs text-gray-400">{isHebrew ? 'דירוג' : 'Rank'}</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                          <div className={`text-sm font-semibold ${(provider.trustScore ?? 100) <= 40 ? 'text-red-600' : 'text-gray-700 dark:text-gray-300'}`}>
                             {provider.trustScore ?? '—'}
                           </div>
-                          <div className="text-xs text-gray-400">
-                            {isHebrew ? 'אמון' : 'Trust'}
-                          </div>
+                          <div className="text-xs text-gray-400">{isHebrew ? 'אמון' : 'Trust'}</div>
                         </div>
                         <div className="text-center">
                           <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -322,37 +351,26 @@ export default function MarketplaceIntelligenceDashboard() {
                             {provider.ratingCount ?? 0} {isHebrew ? 'ביקורות' : 'reviews'}
                           </div>
                         </div>
-                        {provider.disputeCount > 0 && (
-                          <div className="text-center">
-                            <div className="text-sm font-bold text-red-600">
-                              {provider.disputeCount}
-                            </div>
-                            <div className="text-xs text-gray-400">
-                              {isHebrew ? 'מחלוקות' : 'disputes'}
-                            </div>
+                        <div className="text-center">
+                          <div className={`text-sm font-bold ${provider.disputeCount > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                            {provider.disputeCount}
                           </div>
-                        )}
+                          <div className="text-xs text-gray-400">{isHebrew ? 'מחלוקות' : 'disputes'}</div>
+                        </div>
                         <div className="text-center hidden md:block">
-                          <div className="text-sm font-semibold text-green-700">
-                            {formatRevenue(provider.revenueILS)}
-                          </div>
-                          <div className="text-xs text-gray-400">
-                            {isHebrew ? 'הכנסות' : 'revenue'}
-                          </div>
+                          <div className="text-sm font-semibold text-green-700">{formatRevenue(provider.revenueILS)}</div>
+                          <div className="text-xs text-gray-400">{isHebrew ? 'הכנסות' : 'revenue'}</div>
                         </div>
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                         {/* Boost */}
                         <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-blue-600 border-blue-200 hover:bg-blue-50 h-8 px-3 text-xs"
+                          size="sm" variant="outline"
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50 h-8 px-2.5 text-xs"
                           disabled={overrideMutation.isPending}
-                          onClick={() =>
-                            overrideMutation.mutate({ userId: provider.userId, action: 'boost' })
-                          }
+                          onClick={() => overrideMutation.mutate({ userId: provider.userId, action: 'boost' })}
                           title={isHebrew ? 'הגבר 7 ימים' : 'Boost 7 days'}
                         >
                           <ChevronUp className="w-3.5 h-3.5 mr-1" />
@@ -361,36 +379,104 @@ export default function MarketplaceIntelligenceDashboard() {
 
                         {/* Suppress */}
                         <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-orange-600 border-orange-200 hover:bg-orange-50 h-8 px-3 text-xs"
+                          size="sm" variant="outline"
+                          className="text-orange-600 border-orange-200 hover:bg-orange-50 h-8 px-2.5 text-xs"
                           disabled={overrideMutation.isPending}
-                          onClick={() =>
-                            overrideMutation.mutate({ userId: provider.userId, action: 'suppress' })
-                          }
+                          onClick={() => overrideMutation.mutate({ userId: provider.userId, action: 'suppress' })}
                           title={isHebrew ? 'דכא' : 'Suppress'}
                         >
                           <ChevronDown className="w-3.5 h-3.5 mr-1" />
                           {isHebrew ? 'דכא' : 'Suppress'}
                         </Button>
 
+                        {/* Flag / Unflag */}
+                        <Button
+                          size="sm" variant="outline"
+                          className={`h-8 px-2.5 text-xs ${isFlagged ? 'text-orange-600 border-orange-300 bg-orange-50 hover:bg-orange-100' : 'text-gray-500 border-gray-200 hover:bg-gray-50'}`}
+                          disabled={overrideMutation.isPending}
+                          onClick={() => overrideMutation.mutate({ userId: provider.userId, action: isFlagged ? 'unflag' : 'flag' })}
+                          title={isFlagged ? (isHebrew ? 'הסר דגל' : 'Unflag') : (isHebrew ? 'סמן לבדיקה' : 'Flag for review')}
+                        >
+                          {isFlagged ? <FlagOff className="w-3.5 h-3.5" /> : <Flag className="w-3.5 h-3.5" />}
+                        </Button>
+
                         {/* Reset */}
-                        {(provider.rankingOverride !== null || provider.rankingBoostUntil) && (
+                        {(provider.rankingOverride !== null || provider.rankingBoostUntil || provider.rankingFlaggedAt) && (
                           <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 px-2 text-gray-500 hover:text-gray-700 text-xs"
+                            size="sm" variant="ghost"
+                            className="h-8 px-2 text-gray-400 hover:text-gray-700 text-xs"
                             disabled={overrideMutation.isPending}
-                            onClick={() =>
-                              overrideMutation.mutate({ userId: provider.userId, action: 'reset' })
-                            }
-                            title={isHebrew ? 'אפס' : 'Reset'}
+                            onClick={() => overrideMutation.mutate({ userId: provider.userId, action: 'reset' })}
+                            title={isHebrew ? 'אפס הכל' : 'Reset all'}
                           >
                             <RotateCcw className="w-3.5 h-3.5" />
                           </Button>
                         )}
+
+                        {/* Audit log toggle */}
+                        <Button
+                          size="sm" variant="ghost"
+                          className={`h-8 px-2 text-xs ${isAuditOpen ? 'text-purple-600' : 'text-gray-400 hover:text-gray-600'}`}
+                          onClick={() => setExpandedAudit(isAuditOpen ? null : provider.userId)}
+                          title={isHebrew ? 'יומן ביקורת' : 'Audit log'}
+                        >
+                          <ClipboardList className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
                     </div>
+
+                    {/* ── Audit log panel ──────────────────────────────── */}
+                    {isAuditOpen && (
+                      <div className="mt-4 pt-4 border-t border-gray-100">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            {isHebrew ? 'יומן פעולות מנהל' : 'Admin Audit Log'}
+                          </span>
+                          <button
+                            onClick={() => setExpandedAudit(null)}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        {auditLoading ? (
+                          <div className="space-y-2">
+                            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-8 w-full rounded" />)}
+                          </div>
+                        ) : !auditData?.entries?.length ? (
+                          <p className="text-xs text-gray-400 text-center py-3">
+                            {isHebrew ? 'אין פעולות רשומות' : 'No audit entries yet'}
+                          </p>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {auditData.entries.map((entry) => (
+                              <div key={entry.id} className="flex items-start gap-3 text-xs bg-gray-50 rounded-lg px-3 py-2">
+                                <span className={`font-semibold capitalize shrink-0 ${
+                                  entry.action === 'boost' ? 'text-blue-600'
+                                  : entry.action === 'suppress' ? 'text-orange-600'
+                                  : entry.action === 'flag' ? 'text-orange-500'
+                                  : entry.action === 'unflag' ? 'text-green-600'
+                                  : 'text-gray-500'
+                                }`}>
+                                  {entry.action}
+                                </span>
+                                <span className="text-gray-500 flex-1 truncate" title={entry.adminUid}>
+                                  {isHebrew ? 'מנהל' : 'Admin'}: {entry.adminUid.slice(0, 8)}…
+                                </span>
+                                {entry.note && (
+                                  <span className="text-gray-600 italic">"{entry.note}"</span>
+                                )}
+                                <span className="text-gray-400 shrink-0">
+                                  {new Date(entry.createdAt).toLocaleDateString(isHebrew ? 'he-IL' : 'en-IL', {
+                                    day: 'numeric', month: 'short',
+                                  })}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
