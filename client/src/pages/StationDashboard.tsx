@@ -19,7 +19,7 @@
  */
 
 import { useState } from 'react';
-import { useParams, useLocation } from 'wouter';
+import { useParams, useLocation, Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -63,6 +63,7 @@ type Booking = {
   id: string;
   bookingNumber: string;
   customerId: string;
+  customerName: string | null;
   serviceType: string | null;
   startTime: string;
   endTime: string;
@@ -220,6 +221,12 @@ export default function StationDashboard() {
   const myStations = myStationsData?.stations ?? [];
   const showStationSelector = myStations.length > 1;
 
+  // ── Client-side station membership guard ────────────────────────────────────
+  // Once my-stations has loaded, verify the selected station is accessible.
+  const myStationsLoaded = myStationsData !== undefined;
+  const isStationAccessible =
+    !myStationsLoaded || myStations.some((s) => s.id === selectedStationId);
+
   // ── Dashboard data ───────────────────────────────────────────────────────────
   const {
     data,
@@ -229,7 +236,7 @@ export default function StationDashboard() {
     isFetching,
   } = useQuery<DashboardData>({
     queryKey: [`/api/stations/${selectedStationId}/dashboard`],
-    enabled: selectedStationId > 0,
+    enabled: selectedStationId > 0 && isStationAccessible,
     refetchInterval: 60_000, // auto-refresh every 60 s
   });
 
@@ -252,6 +259,27 @@ export default function StationDashboard() {
           <Skeleton className="h-8 rounded-lg" />
           <Skeleton className="h-48 rounded-xl" />
         </div>
+      </div>
+    );
+  }
+
+  // Client-side membership guard: station not in user's list
+  if (myStationsLoaded && !isStationAccessible) {
+    return (
+      <div
+        className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4"
+        dir={isHebrew ? 'rtl' : 'ltr'}
+      >
+        <Card className="max-w-sm w-full">
+          <CardContent className="pt-10 pb-10 text-center">
+            <ShieldAlert className="w-10 h-10 text-red-400 mx-auto mb-3" />
+            <p className="text-gray-600 dark:text-gray-300 font-medium">
+              {isHebrew
+                ? 'אין לך הרשאה לצפות בעמדה זו.'
+                : 'You do not have access to this station.'}
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -503,7 +531,12 @@ export default function StationDashboard() {
                           : 'Wash service'}
                       </p>
                       <p className="text-xs text-gray-400 truncate">
-                        #{b.bookingNumber}
+                        {b.customerName
+                          ? b.customerName
+                          : `#${b.bookingNumber}`}
+                        {b.customerName && (
+                          <span className="ms-1 opacity-60">#{b.bookingNumber}</span>
+                        )}
                       </p>
                     </div>
 
@@ -579,9 +612,10 @@ export default function StationDashboard() {
             <CardContent className="px-4 pb-4">
               <div className="space-y-2">
                 {openDisputes.map((d) => (
-                  <div
+                  <Link
                     key={d.id}
-                    className="flex items-center gap-3 bg-white dark:bg-gray-900 rounded-lg px-3 py-2"
+                    href={`/disputes/${d.id}`}
+                    className="flex items-center gap-3 bg-white dark:bg-gray-900 rounded-lg px-3 py-2 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
@@ -596,11 +630,11 @@ export default function StationDashboard() {
                     </div>
                     <Badge
                       variant="outline"
-                      className="text-xs border-red-300 text-red-600 bg-red-50"
+                      className="text-xs border-red-300 text-red-600 bg-red-50 shrink-0"
                     >
                       {d.status}
                     </Badge>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </CardContent>

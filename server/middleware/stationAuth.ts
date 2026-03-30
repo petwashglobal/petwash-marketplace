@@ -17,7 +17,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { db } from '../db';
 import { stationOperators } from '@shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { auth } from '../lib/firebase-admin';
 import { isSuperAdmin } from './rbac';
 import { logger } from '../lib/logger';
@@ -96,6 +96,20 @@ export function requireStationRole(minRole: StationRole) {
         .limit(1);
 
       if (!row) {
+        // Fallback: check if the user is a franchise owner of this station
+        const franchiseCheck = await db.execute(sql`
+          SELECT fo.id FROM franchise_owners fo
+          JOIN stations s ON s.franchise_id = fo.id
+          WHERE s.id = ${stationId}
+            AND fo.owner_user_id = ${uid}
+            AND fo.status = 'active'
+          LIMIT 1
+        `);
+        if (franchiseCheck.rows[0]) {
+          (req as any).stationOperatorRole = 'owner';
+          (req as any).stationOperatorUid = uid;
+          return next();
+        }
         logger.warn('[StationAuth] No active operator row', { uid, stationId, minRole });
         return res.status(403).json({ error: 'FORBIDDEN', message: 'You are not an operator of this station' });
       }
@@ -151,7 +165,18 @@ export async function resolveStationRole(
       )
       .limit(1);
 
-    return (row?.role as StationRole) ?? null;
+    if (row) return (row.role as StationRole);
+
+    // Fallback: franchise owner
+    const fc = await db.execute(sql`
+      SELECT fo.id FROM franchise_owners fo
+      JOIN stations s ON s.franchise_id = fo.id
+      WHERE s.id = ${stationId}
+        AND fo.owner_user_id = ${uid}
+        AND fo.status = 'active'
+      LIMIT 1
+    `);
+    return fc.rows[0] ? 'owner' : null;
   } catch {
     return null;
   }

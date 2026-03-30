@@ -409,6 +409,7 @@ const ProviderRankingPanel = lazy(() => import("@/pages/ProviderRankingPanel"));
 
 // Phase 10 — Franchise & Station Scaling
 const StationDashboard = lazy(() => import("@/pages/StationDashboard"));
+const DisputeDetail = lazy(() => import("@/pages/DisputeDetail"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -1794,6 +1795,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <StationDashboard />
+            </RequireAuth>
+          )}
+        </Route>
+
+        {/* Phase 10 — Dispute detail (linked from station dashboard) */}
+        <Route path="/disputes/:disputeId">
+          {() => (
+            <RequireAuth>
+              <DisputeDetail />
             </RequireAuth>
           )}
         </Route>

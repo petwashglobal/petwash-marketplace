@@ -17,7 +17,7 @@ import { Router } from 'express';
 import { db } from '../db';
 import { stations, stationOperators, franchiseOwners } from '@shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
-import { requireStationRole } from '../middleware/stationAuth';
+import { requireStationRole, resolveStationRole } from '../middleware/stationAuth';
 import { auth } from '../lib/firebase-admin';
 import { isSuperAdmin } from '../middleware/rbac';
 import { logger } from '../lib/logger';
@@ -234,21 +234,24 @@ router.get(
           }
         : null;
 
-      // ── Today's bookings (Israel TZ) ────────────────────────────────────────
+      // ── Today's bookings (Israel TZ) — JOIN users for customer name ────────
       const bookingsResult = await db.execute(sql`
-        SELECT id, booking_number, user_id, service_type, start_time, end_time,
-               status, total::numeric AS total_ils
-        FROM bookings
-        WHERE station_id = ${stationId}
-          AND (start_time AT TIME ZONE ${IL_TZ})::date
+        SELECT b.id, b.booking_number, b.user_id, b.service_type, b.start_time, b.end_time,
+               b.status, b.total::numeric AS total_ils,
+               u.first_name, u.last_name
+        FROM bookings b
+        LEFT JOIN users u ON u.id = b.user_id
+        WHERE b.station_id = ${stationId}
+          AND (b.start_time AT TIME ZONE ${IL_TZ})::date
               = (NOW() AT TIME ZONE ${IL_TZ})::date
-          AND status NOT IN ('cancelled', 'rejected', 'expired')
-        ORDER BY start_time ASC
+          AND b.status NOT IN ('cancelled', 'rejected', 'expired')
+        ORDER BY b.start_time ASC
       `);
       const todayBookings = (bookingsResult.rows as any[]).map((b) => ({
         id: b.id,
         bookingNumber: b.booking_number,
         customerId: b.user_id,
+        customerName: [b.first_name, b.last_name].filter(Boolean).join(' ') || null,
         serviceType: b.service_type,
         startTime: b.start_time,
         endTime: b.end_time,
@@ -357,5 +360,73 @@ router.get(
     }
   }
 );
+
+/**
+ * GET /api/disputes/:disputeId
+ *
+ * Returns full details for a single dispute.
+ * Accessible to:
+ *   - Admin secret / super-admin
+ *   - Station operator (any role) for the station linked to the dispute's booking
+ */
+router.get('/disputes/:disputeId', async (req, res) => {
+  const disputeId = parseInt(req.params.disputeId, 10);
+  if (!isFinite(disputeId)) {
+    return res.status(400).json({ error: 'Invalid disputeId' });
+  }
+
+  try {
+    const disputeResult = await db.execute(sql`
+      SELECT dc.id, dc.case_ref, dc.booking_id, dc.amount_disputed_cents,
+             dc.status, dc.opened_at, dc.resolved_at, dc.notes,
+             b.station_id, b.booking_number, b.service_type,
+             b.start_time, b.total::numeric AS booking_total_ils,
+             b.status AS booking_status,
+             u.first_name, u.last_name
+      FROM dispute_cases dc
+      JOIN bookings b ON b.id = dc.booking_id
+      LEFT JOIN users u ON u.id = b.user_id
+      WHERE dc.id = ${disputeId}
+      LIMIT 1
+    `);
+
+    const d = disputeResult.rows[0] as any;
+    if (!d) {
+      return res.status(404).json({ error: 'Dispute not found' });
+    }
+
+    // Access check: admin bypass, or must be a station operator for this station
+    if (!isAdminSecretReq(req)) {
+      const uid = await resolveUidFromRequest(req);
+      if (!uid) return res.status(401).json({ error: 'AUTH_REQUIRED' });
+
+      const role = await resolveStationRole(req as any, Number(d.station_id));
+      if (!role) {
+        return res.status(403).json({ error: 'FORBIDDEN', message: 'Not an operator of this station' });
+      }
+    }
+
+    return res.json({
+      id: d.id,
+      caseRef: d.case_ref,
+      bookingId: d.booking_id,
+      bookingNumber: d.booking_number,
+      serviceType: d.service_type,
+      bookingStartTime: d.start_time,
+      bookingTotalILS: Number(d.booking_total_ils ?? 0),
+      bookingStatus: d.booking_status,
+      stationId: Number(d.station_id),
+      amountDisputedCents: d.amount_disputed_cents,
+      status: d.status,
+      openedAt: d.opened_at,
+      resolvedAt: d.resolved_at ?? null,
+      notes: d.notes ?? [],
+      customerName: [d.first_name, d.last_name].filter(Boolean).join(' ') || null,
+    });
+  } catch (err: any) {
+    logger.error('[StationDashboard] GET dispute failed', { disputeId, error: err.message });
+    return res.status(500).json({ error: 'Failed to fetch dispute' });
+  }
+});
 
 export default router;
