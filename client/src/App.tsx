@@ -161,6 +161,8 @@ const FranchiseInbox = lazy(() => import("@/pages/franchise/FranchiseInbox"));
 const FranchiseReports = lazy(() => import("@/pages/franchise/FranchiseReports"));
 const FranchiseSupport = lazy(() => import("@/pages/franchise/FranchiseSupport"));
 const FranchiseMarketing = lazy(() => import("@/pages/franchise/FranchiseMarketing"));
+const FranchiseOwnerDashboard = lazy(() => import("@/pages/franchise/FranchiseOwnerDashboard"));
+const CompanyHQDashboard = lazy(() => import("@/pages/CompanyHQDashboard"));
 const AdminInbox = lazy(() => import("@/pages/AdminInbox"));
 const WalletDownload = lazy(() => import("@/pages/WalletDownload"));
 const MyWallet = lazy(() => import("@/pages/MyWallet"));
@@ -1816,6 +1818,20 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RoleProtectedRoute minRole="franchise_owner">
               <FranchiseManagementDashboard />
+            </RoleProtectedRoute>
+          )}
+        </Route>
+        <Route path="/franchise/:franchiseId/dashboard">
+          {() => (
+            <RoleProtectedRoute minRole="franchise_owner">
+              <FranchiseOwnerDashboard />
+            </RoleProtectedRoute>
+          )}
+        </Route>
+        <Route path="/company/dashboard">
+          {() => (
+            <RoleProtectedRoute minRole="management">
+              <CompanyHQDashboard />
             </RoleProtectedRoute>
           )}
         </Route>

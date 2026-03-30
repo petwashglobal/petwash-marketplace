@@ -1,0 +1,57 @@
+Good. This is the right execution order.
+
+Business logic is correct:
+- backend already exists, so this phase should be UI and control surface only
+- settlement data stays the single financial truth
+- franchise owners and company HQ must see the same underlying reality, only through different ownership lenses
+- no fake aggregates, no duplicate finance logic, no shortcut calculations from bookings
+
+I approve this structure with a few important rules locked in:
+
+1. Step 1 must stay purely shared and stateless
+Do not bury business logic inside components.
+All five components should only render what they receive.
+That keeps franchise and company views aligned and prevents drift later.
+
+2. Step 2 and Step 3 must use the same component system
+Do not build two dashboard systems.
+Same components, same layout spine, only role-specific labels and visibility differences.
+
+3. Company view must never pretend to be a franchise view
+For company-owned stations:
+- Franchise Share must clearly show N/A or 0
+- payout cycles must clearly say Internal Settlement
+- no wording that suggests money is owed to an outside franchise operator
+
+4. Station table must default to revenue sort, but weak stations must still be visible
+Do not over-optimize for top performers only.
+Owners need to see weak stations clearly so they can act.
+
+5. Audit feed should show only high severity first on dashboard
+That is the right business decision.
+Owner dashboard should prioritize action, not noise.
+
+6. Reconciliation mismatch is critical
+The red warning must be obvious, not subtle.
+That is not a cosmetic badge. It is a finance control signal.
+
+7. No exports yet is the correct decision
+First let owners see and trust the numbers.
+Export comes after the UI is validated.
+
+So yes, approve and proceed exactly in this order:
+
+Step 1 - Shared finance components
+Step 2 - Franchise owner dashboard
+Step 3 - Company / HQ dashboard
+Step 4 - Navigation integration
+Step 5 - Reconciliation alert inside payout list
+
+That sequence is logical because:
+- Step 1 creates one reusable truth layer
+- Step 2 proves the owner-facing model
+- Step 3 extends it cleanly to HQ
+- Step 4 makes it reachable
+- Step 5 strengthens control without changing architecture
+
+Start with Step 1.
