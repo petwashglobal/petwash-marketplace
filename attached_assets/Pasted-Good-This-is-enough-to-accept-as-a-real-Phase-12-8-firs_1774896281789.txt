@@ -1,0 +1,102 @@
+Good. This is enough to accept as a real Phase 12.8 first pass.
+
+Business verdict
+
+You did the right thing by not building this as a generic inbox.
+
+You built it as an exception queue, which is exactly what operations and finance need.
+
+That matters because once volume grows, nobody cares about “all events”.
+They care about:
+	•	what is broken
+	•	what is aging
+	•	what breaches SLA
+	•	who owns the next action
+	•	what money or trust risk exists right now
+
+That is the correct business logic.
+
+Why I would approve it
+
+1. The queue is built around business exceptions, not noise
+
+You separated:
+	•	disputes
+	•	settlement mismatches
+	•	unresolved refunds
+
+That is the right split because each one has:
+	•	different urgency
+	•	different owner
+	•	different resolution workflow
+	•	different financial impact
+
+2. SLA logic makes it operational
+
+This is the important part.
+
+Without age and SLA, the queue is just a list.
+With SLA, it becomes a control tool.
+
+That is what owners actually need.
+
+3. Severity + owner + direct booking trace link is correct
+
+This is strong.
+
+A queue row must answer three questions immediately:
+	•	how bad is this
+	•	who owns it
+	•	where do I go next
+
+You covered all three.
+
+4. Network boundaries are preserved
+
+Also very important.
+
+If a franchise owner can see another network’s disputes or refunds, that becomes a trust and legal problem.
+So keeping the same scope model as 12.7 is the right move.
+
+⸻
+
+What this phase is now
+
+I would describe it as:
+
+“an exception management queue for disputes, mismatches, and refunds, with SLA visibility and ownership.”
+
+I would not describe it yet as:
+	•	full workflow orchestration
+	•	enterprise case management
+	•	full finance operations platform
+
+That keeps the claim honest.
+
+⸻
+
+One thing still matters a lot
+
+You said:
+
+The queue is accessible at /case-queue
+
+That is good, but from a business standpoint access path matters.
+
+If users need to remember a URL, the feature is not operationally finished.
+
+So before calling this fully polished, the next small closure step should be:
+
+Add visible entry points
+
+From:
+	•	franchise dashboard
+	•	company finance dashboard
+	•	station dashboard
+	•	booking trace page when dispute exists
+
+Because exception queues should be one click away from where pain is felt.
+
+⸻
+
+What I would tell him

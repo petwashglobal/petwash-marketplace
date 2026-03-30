@@ -417,7 +417,15 @@ export default function BookingTrace() {
                   <ShieldAlert className="h-4 w-4 text-red-500" />
                   Dispute
                 </CardTitle>
-                {disputeBadge(dispute.status)}
+                <div className="flex items-center gap-2">
+                  {disputeBadge(dispute.status)}
+                  <Link
+                    href="/case-queue"
+                    className="text-xs text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
+                  >
+                    Exception Queue →
+                  </Link>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="px-4 pb-4 space-y-3">

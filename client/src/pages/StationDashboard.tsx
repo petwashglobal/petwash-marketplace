@@ -607,6 +607,12 @@ export default function StationDashboard() {
               <CardTitle className="text-sm font-semibold flex items-center gap-2 text-red-700 dark:text-red-300">
                 <ShieldAlert className="w-4 h-4" />
                 {isHebrew ? 'תלונות פתוחות' : 'Open Disputes'}
+                <Link
+                  href="/case-queue"
+                  className="ml-auto inline-flex items-center gap-1 text-xs font-normal text-red-500 hover:text-red-700 dark:hover:text-red-300 underline underline-offset-2"
+                >
+                  {isHebrew ? 'תור חריגים' : 'Exception Queue →'}
+                </Link>
               </CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4">

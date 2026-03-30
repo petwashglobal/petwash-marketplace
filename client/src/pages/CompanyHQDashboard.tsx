@@ -14,8 +14,9 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'wouter';
 import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
-import { AlertTriangle, Calendar, Activity, Building2 } from 'lucide-react';
+import { AlertTriangle, Calendar, Activity, Building2, Filter } from 'lucide-react';
 import {
   PeriodSelector,
   FinanceSummaryPanel,
@@ -167,6 +168,13 @@ export default function CompanyHQDashboard() {
                 {mismatchCount} split mismatch{mismatchCount > 1 ? 'es' : ''} — review payouts
               </span>
             )}
+            <Link
+              href="/case-queue"
+              className="inline-flex items-center gap-1.5 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:border-orange-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
+            >
+              <Filter className="h-3.5 w-3.5" />
+              Exception Queue
+            </Link>
             <PeriodSelector value={period} onChange={setPeriod} />
           </div>
         </div>
