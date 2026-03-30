@@ -33,7 +33,7 @@ import {
   ShieldAlert, TriangleAlert, Clock, CheckCircle2,
   ArrowUpRight, Banknote, AlertCircle, Filter,
   UserPlus, UserMinus, MessageSquare, ChevronDown, ChevronUp,
-  Users, User, Loader2, Send,
+  Users, User, Loader2, Send, Siren, RotateCcw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { apiRequest } from '@/lib/queryClient';
@@ -86,6 +86,30 @@ interface RefundCase extends BaseCase {
 }
 
 interface QueueResponse<T extends BaseCase> { cases: T[]; total: number; }
+
+interface EscalatedCase {
+  caseType:         string;
+  caseId:           string;
+  bookingId:        string;
+  bookingNumber:    string;
+  stationId:        number | null;
+  stationName:      string;
+  stationCode:      string;
+  label:            string;
+  status:           string;
+  amount:           number;
+  currency:         string;
+  ageHours:         number;
+  slaBudgetHours:   number;
+  overdueHours:     number;
+  breachDetectedAt: string | null;
+  escalatedAt:      string | null;
+  escalatedToUid:   string | null;
+  assignedToUid:    string | null;
+  openedAt:         string | null;
+  severity:         'critical';
+  slaStatus:        'breached';
+}
 
 interface Summary {
   disputes:         { total: number; breached: number; atRiskOrBreached: number };
@@ -498,6 +522,195 @@ function RowAssignControls({ caseType, caseRefId, assignedToUid, currentUid, onM
   );
 }
 
+// ─── Escalated Tab ────────────────────────────────────────────────────────────
+
+function CaseTypeBadge({ type }: { type: string }) {
+  const styles = {
+    dispute:  'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
+    mismatch: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
+    refund:   'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300',
+  }[type] ?? 'bg-gray-100 text-gray-600';
+  return <Badge className={cn('border-0 text-xs capitalize', styles)}>{type}</Badge>;
+}
+
+function ReopenButton({ bookingId, onDone }: { bookingId: string; onDone: () => void }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [note, setNote]  = useState('');
+
+  const mut = useMutation({
+    mutationFn: () => apiRequest('POST', '/api/case-actions/reopen', { bookingId, note: note || undefined }),
+    onSuccess: () => {
+      setOpen(false);
+      setNote('');
+      qc.invalidateQueries({ queryKey: ['/api/case-queue/escalated'] });
+      qc.invalidateQueries({ queryKey: ['/api/case-queue/disputes'] });
+      qc.invalidateQueries({ queryKey: ['/api/case-queue/summary'] });
+      onDone();
+    },
+  });
+
+  if (!open) {
+    return (
+      <Button
+        size="sm" variant="ghost"
+        className="h-6 text-xs gap-1 px-2 text-indigo-600 hover:bg-indigo-50"
+        onClick={e => { e.stopPropagation(); setOpen(true); }}
+      >
+        <RotateCcw className="h-3 w-3" />Reopen
+      </Button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+      <input
+        autoFocus
+        className="border rounded px-2 py-0.5 text-xs w-32 dark:bg-gray-800"
+        placeholder="Reason (optional)"
+        value={note}
+        onChange={e => setNote(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') mut.mutate(); if (e.key === 'Escape') setOpen(false); }}
+      />
+      <Button size="sm" className="h-6 text-xs px-2" disabled={mut.isPending} onClick={() => mut.mutate()}>
+        {mut.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Confirm'}
+      </Button>
+      <button className="text-gray-400 text-xs hover:text-gray-600" onClick={() => setOpen(false)}>✕</button>
+    </div>
+  );
+}
+
+function EscalatedTab({ cases, isLoading, currentUid }: {
+  cases: EscalatedCase[]; isLoading: boolean; currentUid: string | null;
+}) {
+  const qc = useQueryClient();
+
+  if (isLoading) {
+    return (
+      <Card className="border-0 shadow-sm">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-red-50/50 dark:bg-red-950/20">
+                {['Type','Booking','Station','Age','Overdue','Escalated to','Assigned to','Actions'].map(h => (
+                  <TableHead key={h} className="text-xs">{h}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody><SkeletonRows cols={8} /></TableBody>
+          </Table>
+        </div>
+      </Card>
+    );
+  }
+
+  if (!cases.length) {
+    return (
+      <Card className="border-0 shadow-sm">
+        <div className="text-center py-16 text-gray-400">
+          <CheckCircle2 className="h-8 w-8 mx-auto mb-3 text-emerald-400" />
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">No escalated cases</p>
+          <p className="text-xs mt-1">All cases are within their SLA window.</p>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="border-0 shadow-sm">
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-red-50/50 dark:bg-red-950/20">
+              <TableHead className="text-xs">Type</TableHead>
+              <TableHead className="text-xs">Booking</TableHead>
+              <TableHead className="text-xs">Station</TableHead>
+              <TableHead className="text-xs">Detail</TableHead>
+              <TableHead className="text-xs text-right">Amount</TableHead>
+              <TableHead className="text-xs">Age</TableHead>
+              <TableHead className="text-xs text-red-600 font-semibold">Overdue</TableHead>
+              <TableHead className="text-xs">Escalated to</TableHead>
+              <TableHead className="text-xs">Assigned to</TableHead>
+              <TableHead className="text-xs" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {cases.map(c => {
+              const ILS = new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', minimumFractionDigits: 2 });
+              return (
+                <TableRow key={c.caseId} className="bg-red-50/30 dark:bg-red-950/10 border-l-2 border-red-400">
+                  <TableCell className="py-3"><CaseTypeBadge type={c.caseType} /></TableCell>
+                  <TableCell className="py-3 font-mono text-xs text-gray-600 dark:text-gray-400">
+                    {c.bookingNumber}
+                  </TableCell>
+                  <TableCell className="py-3 text-sm">
+                    {c.stationName || '—'}
+                    {c.stationCode && <span className="text-xs text-gray-400 ml-1">({c.stationCode})</span>}
+                  </TableCell>
+                  <TableCell className="py-3 text-sm text-gray-600 max-w-[140px] truncate capitalize">
+                    {c.label.replace(/_/g, ' ')}
+                  </TableCell>
+                  <TableCell className="py-3 text-sm text-right tabular-nums font-medium">
+                    {c.amount > 0 ? ILS.format(c.amount) : '—'}
+                  </TableCell>
+                  <TableCell className="py-3 text-sm text-gray-500 whitespace-nowrap">
+                    {c.ageHours < 24 ? `${Math.round(c.ageHours)}h` : `${Math.round(c.ageHours / 24)}d`}
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <span className="text-red-600 font-semibold text-sm whitespace-nowrap">
+                      +{c.overdueHours < 24 ? `${Math.round(c.overdueHours)}h` : `${(c.overdueHours / 24).toFixed(1)}d`}
+                    </span>
+                  </TableCell>
+                  <TableCell className="py-3">
+                    {c.escalatedToUid ? (
+                      <Badge className={cn(
+                        'border-0 text-xs font-mono',
+                        c.escalatedToUid === currentUid
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
+                          : 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
+                      )}>
+                        {c.escalatedToUid === currentUid ? 'Me' : c.escalatedToUid === 'platform_admin' ? 'Admin' : c.escalatedToUid.slice(0, 8) + '…'}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="py-3">
+                    {c.assignedToUid ? (
+                      <Badge className="border-0 text-xs font-mono bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                        {c.assignedToUid === currentUid ? 'Me' : c.assignedToUid.slice(0, 8) + '…'}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <div className="flex items-center gap-1.5">
+                      <Link
+                        href={`/booking-trace/${c.bookingId}`}
+                        className="inline-flex items-center gap-0.5 text-blue-600 hover:text-blue-800 dark:text-blue-400 text-xs"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        View <ArrowUpRight className="h-3 w-3" />
+                      </Link>
+                      {c.caseType === 'dispute' && (
+                        <ReopenButton
+                          bookingId={c.bookingId}
+                          onDone={() => qc.invalidateQueries({ queryKey: ['/api/case-queue/escalated'] })}
+                        />
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </Card>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CaseQueue() {
@@ -538,6 +751,11 @@ export default function CaseQueue() {
   const refundsQ  = useQuery<QueueResponse<RefundCase>>({
     queryKey: ['/api/case-queue/refunds'],
     enabled:  activeTab === 'refunds',
+  });
+  const escalatedQ = useQuery<{ cases: EscalatedCase[]; total: number }>({
+    queryKey: ['/api/case-queue/escalated'],
+    enabled:  activeTab === 'escalated',
+    refetchInterval: 60_000,  // auto-refresh every minute when on this tab
   });
   const assignmentsQ = useQuery<{ assignments: Assignment[] }>({
     queryKey: ['/api/case-actions/assignments'],
@@ -779,6 +997,15 @@ export default function CaseQueue() {
                 </TabsTrigger>
               );
             })}
+            <TabsTrigger value="escalated" className="text-sm gap-1">
+              <Siren className="h-3.5 w-3.5" />
+              Escalated
+              {(summary?.totalBreached ?? 0) > 0 && (
+                <span className="ml-0.5 text-xs rounded-full px-1.5 py-0.5 font-medium bg-red-100 text-red-700">
+                  {summary!.totalBreached}
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           {/* ── Disputes ─────────────────────────────────────────────────── */}
@@ -1064,6 +1291,11 @@ export default function CaseQueue() {
                 </Table>
               </div>
             </Card>
+          </TabsContent>
+
+          {/* ── Escalated ────────────────────────────────────────────────── */}
+          <TabsContent value="escalated" className="mt-3">
+            <EscalatedTab cases={escalatedQ.data?.cases ?? []} isLoading={escalatedQ.isLoading} currentUid={currentUid} />
           </TabsContent>
         </Tabs>
       </div>

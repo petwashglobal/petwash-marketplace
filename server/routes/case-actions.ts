@@ -220,6 +220,7 @@ router.post('/assign', requireAuth, async (req: Request, res: Response) => {
     const noteText  = note ? String(note).slice(0, 500) : null;
 
     await doAssign(caseType, caseRefId, String(assignToUid), callerUid, noteText, null);
+    await touchLastAction(caseType, caseRefId);
 
     res.json({ success: true, caseType, caseRefId, assignedTo: assignToUid, assignedBy: callerUid });
   } catch (err: any) {
@@ -280,6 +281,7 @@ router.post('/note', requireAuth, async (req: Request, res: Response) => {
     `));
 
     const row = result.rows[0] as any;
+    await touchLastAction(String(caseType), String(caseRefId));
     res.json({
       success:    true,
       noteId:     toNum(row.id),
@@ -321,6 +323,142 @@ router.get('/notes/:caseType/:caseRefId', requireAuth, async (req: Request, res:
   } catch (err: any) {
     logger.error('[CaseActions] notes error', { error: err.message });
     res.status(500).json({ error: 'notes_error' });
+  }
+});
+
+// ─── lastActionAt helper ─────────────────────────────────────────────────────
+// Upsert case_sla_states.last_action_at whenever any action touches a case.
+// This resets the "dead ownership" clock used by the SLA monitor.
+
+async function touchLastAction(caseType: string, caseRefId: string): Promise<void> {
+  try {
+    await db.execute(sql.raw(`
+      INSERT INTO case_sla_states (case_type, case_ref_id, last_action_at)
+      VALUES ('${String(caseType).replace(/'/g, "''")}', '${String(caseRefId).replace(/'/g, "''")}', NOW())
+      ON CONFLICT (case_type, case_ref_id) DO UPDATE SET last_action_at = NOW()
+    `));
+  } catch { /* non-fatal */ }
+}
+
+// ─── POST /reopen ─────────────────────────────────────────────────────────────
+
+/**
+ * Reopen a closed/resolved dispute.
+ *
+ * POST /api/case-actions/reopen
+ * body: { bookingId: string, note?: string }
+ *
+ * Effects:
+ *  - Sets booking_disputes.status = 'open' (reopen = back to open queue)
+ *  - Resets SLA state: within_sla, breach_detected_at = NULL, escalated_at = NULL
+ *  - Assigns to franchise owner (or previous owner if still active)
+ *  - Logs 'reopened' in case_escalation_log + case_notes
+ */
+router.post('/reopen', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const ctx = (req as any).callerCtx as CallerContext;
+    const { bookingId, note } = req.body ?? {};
+
+    if (!bookingId) {
+      return res.status(400).json({ error: 'bookingId required' });
+    }
+
+    // Find the dispute for this booking
+    const disputeR = await db.execute(sql`
+      SELECT id, status FROM booking_disputes WHERE booking_id = ${bookingId}
+      ORDER BY created_at DESC LIMIT 1
+    `);
+    if (!disputeR.rows.length) {
+      return res.status(404).json({ error: 'no_dispute_found' });
+    }
+    const dispute = disputeR.rows[0] as any;
+    const disputeId = String(dispute.id);
+    const prevStatus = String(dispute.status);
+
+    if (['open', 'under_review'].includes(prevStatus)) {
+      return res.status(400).json({ error: 'dispute_already_active', status: prevStatus });
+    }
+
+    // Reopen: set back to open
+    await db.execute(sql.raw(`
+      UPDATE booking_disputes SET status = 'open', resolved_at = NULL, resolved_by = NULL
+      WHERE id::text = '${disputeId}'
+    `));
+
+    // Reset SLA state
+    await db.execute(sql.raw(`
+      INSERT INTO case_sla_states (case_type, case_ref_id, sla_status, breach_detected_at, escalated_at, escalated_to_uid, last_action_at)
+      VALUES ('dispute', '${disputeId}', 'within_sla', NULL, NULL, NULL, NOW())
+      ON CONFLICT (case_type, case_ref_id) DO UPDATE SET
+        sla_status         = 'within_sla',
+        breach_detected_at = NULL,
+        escalated_at       = NULL,
+        escalated_to_uid   = NULL,
+        last_action_at     = NOW(),
+        checked_at         = NOW()
+    `));
+
+    // Find franchise owner to assign
+    const foR = await db.execute(sql.raw(`
+      SELECT fo.owner_user_id
+      FROM franchise_owners fo
+      JOIN stations st ON st.franchise_id = fo.id
+      JOIN bookings b ON b.station_id = st.id
+      WHERE b.id = '${String(bookingId).replace(/'/g, "''")}'
+        AND fo.status = 'active'
+      LIMIT 1
+    `));
+    const assignTo = (foR.rows[0] as any)?.owner_user_id ?? null;
+
+    if (assignTo) {
+      // Deactivate current assignment
+      await db.execute(sql.raw(`
+        UPDATE case_assignments SET is_active = false
+        WHERE case_type = 'dispute' AND case_ref_id = '${disputeId}' AND is_active = true
+      `));
+      // Assign to franchise owner
+      await db.execute(sql.raw(`
+        INSERT INTO case_assignments (case_type, case_ref_id, assigned_to_uid, assigned_by_uid, note, is_active)
+        VALUES ('dispute', '${disputeId}', '${String(assignTo).replace(/'/g, "''")}',
+          ${ctx.uid ? `'${String(ctx.uid).replace(/'/g, "''")}'` : 'NULL'},
+          'Reassigned on reopen', true)
+      `));
+    }
+
+    // Escalation log
+    const noteText = note ? String(note).slice(0, 1000) : null;
+    await db.execute(sql.raw(`
+      INSERT INTO case_escalation_log (case_type, case_ref_id, event_type, from_uid, to_uid, note)
+      VALUES (
+        'dispute', '${disputeId}', 'reopened',
+        ${ctx.uid ? `'${String(ctx.uid).replace(/'/g, "''")}'` : 'NULL'},
+        ${assignTo ? `'${String(assignTo).replace(/'/g, "''")}'` : 'NULL'},
+        ${noteText ? `'${noteText.replace(/'/g, "''")}'` : "'Dispute reopened'"}
+      )
+    `));
+
+    // Internal note
+    if (noteText) {
+      await db.execute(sql.raw(`
+        INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
+        VALUES ('dispute', '${disputeId}',
+          '${String(ctx.uid ?? 'system').replace(/'/g, "''")}',
+          '${String(ctx.role).replace(/'/g, "''")}',
+          'REOPENED: ${noteText.replace(/'/g, "''")}')
+      `));
+    }
+
+    res.json({
+      success:    true,
+      disputeId,
+      bookingId,
+      prevStatus,
+      newStatus:  'open',
+      assignedTo: assignTo,
+    });
+  } catch (err: any) {
+    logger.error('[CaseActions] reopen error', { error: err.message });
+    res.status(500).json({ error: 'reopen_error' });
   }
 });
 

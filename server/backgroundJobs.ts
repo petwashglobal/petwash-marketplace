@@ -60,6 +60,22 @@ export class BackgroundJobProcessor {
     // Start auto-void cron for expired payment authorizations (every 5 minutes)
     startAutoVoidCron();
 
+    // Phase 12.10 — SLA breach detection + auto-escalation (every 5 minutes)
+    import('./jobs/sla-monitor').then(({ runSlaMonitor }) => {
+      cron.schedule('*/5 * * * *', async () => {
+        if (await this.acquireLock('slaMonitor')) {
+          try {
+            await runSlaMonitor();
+          } finally {
+            this.releaseLock('slaMonitor');
+          }
+        }
+      });
+      logger.info('[SLAMonitor] Scheduled — runs every 5 minutes');
+      // Run once immediately on startup to populate case_sla_states
+      runSlaMonitor().catch(e => logger.error('[SLAMonitor] Initial run failed', { error: e.message }));
+    }).catch(e => logger.error('[SLAMonitor] Import failed', { error: e.message }));
+
     // Process appointment reminders every minute
     cron.schedule('* * * * *', async () => {
       if (await this.acquireLock('appointmentReminders')) {

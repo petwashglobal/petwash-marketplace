@@ -428,4 +428,153 @@ router.get('/summary', requireCaseViewer, async (req: Request, res: Response) =>
   }
 });
 
+// ─── GET /api/case-queue/escalated ───────────────────────────────────────────
+// Phase 12.10 — Shows all breached cases from case_sla_states, sorted most overdue first.
+// Unified across all three case types.
+
+router.get('/escalated', requireCaseViewer, async (req: Request, res: Response) => {
+  try {
+    const ctx   = (req as any).callerCtx as CallerContext;
+    const scope = stationScope(ctx);
+
+    // ── Escalated disputes ────────────────────────────────────────────────
+    const dRows = await db.execute(sql.raw(`
+      SELECT
+        'dispute'                                                       AS case_type,
+        bd.id::text                                                     AS case_ref_id,
+        b.id                                                            AS booking_id,
+        b.booking_number,
+        b.total::float                                                  AS amount,
+        b.currency,
+        st.id                                                           AS station_id,
+        st.name                                                         AS station_name,
+        COALESCE(st.station_code, '')                                   AS station_code,
+        bd.reason                                                       AS label,
+        bd.status,
+        css.age_hours,
+        css.sla_budget_hours,
+        css.breach_detected_at,
+        css.escalated_at,
+        css.escalated_to_uid,
+        (css.age_hours - css.sla_budget_hours)                         AS overdue_hours,
+        ca.assigned_to_uid,
+        bd.created_at                                                   AS opened_at
+      FROM booking_disputes bd
+      JOIN bookings b ON b.id = bd.booking_id
+      LEFT JOIN stations st ON st.id = b.station_id
+      JOIN case_sla_states css
+        ON css.case_type = 'dispute' AND css.case_ref_id = bd.id::text
+      LEFT JOIN case_assignments ca
+        ON ca.case_type = 'dispute' AND ca.case_ref_id = bd.id::text AND ca.is_active = true
+      WHERE css.sla_status = 'breached'
+        AND bd.status NOT IN ('resolved', 'rejected', 'closed')
+        ${scope}
+      LIMIT 500
+    `));
+
+    // ── Escalated mismatches ──────────────────────────────────────────────
+    const mRows = await db.execute(sql.raw(`
+      SELECT
+        'mismatch'                                                      AS case_type,
+        'mismatch-' || ss.id::text                                     AS case_ref_id,
+        b.id                                                            AS booking_id,
+        b.booking_number,
+        ABS(ss.total_amount_cents - (ss.platform_amount_cents + ss.station_amount_cents + COALESCE(ss.franchise_amount_cents,0)))::float / 100 AS amount,
+        b.currency,
+        st.id                                                           AS station_id,
+        st.name                                                         AS station_name,
+        COALESCE(st.station_code, '')                                   AS station_code,
+        'Settlement mismatch'                                           AS label,
+        ss.status,
+        css.age_hours,
+        css.sla_budget_hours,
+        css.breach_detected_at,
+        css.escalated_at,
+        css.escalated_to_uid,
+        (css.age_hours - css.sla_budget_hours)                         AS overdue_hours,
+        ca.assigned_to_uid,
+        ss.created_at                                                   AS opened_at
+      FROM station_settlements ss
+      JOIN bookings b ON b.id = ss.booking_id
+      LEFT JOIN stations st ON st.id = ss.station_id
+      JOIN case_sla_states css
+        ON css.case_type = 'mismatch' AND css.case_ref_id = 'mismatch-' || ss.id::text
+      LEFT JOIN case_assignments ca
+        ON ca.case_type = 'mismatch' AND ca.case_ref_id = 'mismatch-' || ss.id::text AND ca.is_active = true
+      WHERE css.sla_status = 'breached'
+        ${scope}
+      LIMIT 500
+    `));
+
+    // ── Escalated refunds ─────────────────────────────────────────────────
+    const rRows = await db.execute(sql.raw(`
+      SELECT
+        'refund'                                                        AS case_type,
+        'refund-' || b.id::text                                        AS case_ref_id,
+        b.id                                                            AS booking_id,
+        b.booking_number,
+        b.refund_amount::float                                          AS amount,
+        b.currency,
+        st.id                                                           AS station_id,
+        st.name                                                         AS station_name,
+        COALESCE(st.station_code, '')                                   AS station_code,
+        COALESCE(b.refund_reason, 'Refund request')                    AS label,
+        b.refund_status                                                 AS status,
+        css.age_hours,
+        css.sla_budget_hours,
+        css.breach_detected_at,
+        css.escalated_at,
+        css.escalated_to_uid,
+        (css.age_hours - css.sla_budget_hours)                         AS overdue_hours,
+        ca.assigned_to_uid,
+        b.refund_requested_at                                           AS opened_at
+      FROM bookings b
+      LEFT JOIN stations st ON st.id = b.station_id
+      JOIN case_sla_states css
+        ON css.case_type = 'refund' AND css.case_ref_id = 'refund-' || b.id::text
+      LEFT JOIN case_assignments ca
+        ON ca.case_type = 'refund' AND ca.case_ref_id = 'refund-' || b.id::text AND ca.is_active = true
+      WHERE css.sla_status = 'breached'
+        AND b.refund_status IN ('pending', 'processing')
+        ${scope}
+      LIMIT 500
+    `));
+
+    const mapRow = (r: any) => ({
+      caseType:         toStr(r.case_type),
+      caseId:           toStr(r.case_ref_id),
+      bookingId:        toStr(r.booking_id),
+      bookingNumber:    toStr(r.booking_number),
+      stationId:        r.station_id ? toNum(r.station_id) : null,
+      stationName:      toStr(r.station_name),
+      stationCode:      toStr(r.station_code),
+      label:            toStr(r.label),
+      status:           toStr(r.status),
+      amount:           toNum(r.amount),
+      currency:         toStr(r.currency) || 'ILS',
+      ageHours:         Math.round(toNum(r.age_hours) * 10) / 10,
+      slaBudgetHours:   toNum(r.sla_budget_hours),
+      overdueHours:     Math.max(0, Math.round(toNum(r.overdue_hours) * 10) / 10),
+      breachDetectedAt: toDate(r.breach_detected_at),
+      escalatedAt:      toDate(r.escalated_at),
+      escalatedToUid:   r.escalated_to_uid ? toStr(r.escalated_to_uid) : null,
+      assignedToUid:    r.assigned_to_uid ? toStr(r.assigned_to_uid) : null,
+      openedAt:         toDate(r.opened_at),
+      severity:         'critical' as const,
+      slaStatus:        'breached' as const,
+    });
+
+    const allCases = [
+      ...(dRows.rows as any[]).map(mapRow),
+      ...(mRows.rows as any[]).map(mapRow),
+      ...(rRows.rows as any[]).map(mapRow),
+    ].sort((a, b) => b.overdueHours - a.overdueHours);  // most overdue first
+
+    res.json({ cases: allCases, total: allCases.length });
+  } catch (err: any) {
+    logger.error('[CaseQueue] escalated error', { error: err.message });
+    res.status(500).json({ error: 'escalated_error' });
+  }
+});
+
 export default router;
