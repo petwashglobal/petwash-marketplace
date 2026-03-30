@@ -1,19 +1,27 @@
 /**
  * server/routes/network-finance.ts
- * Phase 11 Extension — Hybrid Ownership Model
+ * Phase 11.5 — Hybrid Ownership Model (Clean Path, two-segment routes)
  *
- * Unified financial and control routes that work for both ownership types:
- *   /api/network/company/...       → Pet Wash Ltd company-owned stations
- *   /api/network/:franchiseId/...  → specific franchise (integer ID)
+ * Route shape:
+ *   /api/network/:ownerType/:ownerId/finance/summary
+ *   /api/network/:ownerType/:ownerId/stations/financials
+ *   /api/network/:ownerType/:ownerId/payouts
+ *   /api/network/:ownerType/:ownerId/audit-feed
  *
- * All money is sourced exclusively from station_settlements.
- * Financial logic branches on ownership_type:
- *   'company'   → franchise_amount is always 0 (internal accounting)
- *   'franchise' → standard three-way split
+ * ownerType = 'franchise' | 'company'
+ * ownerId   = integer franchise PK (for franchise) | any string, e.g. 'main' (for company)
+ *
+ * Examples:
+ *   GET /api/network/franchise/12/finance/summary
+ *   GET /api/network/company/main/stations/financials
+ *
+ * Financial logic branches on ownership_type (DB-enforced CHECK constraint):
+ *   'company'   → franchise_amount is always 0 (internal accounting only)
+ *   'franchise' → standard three-way split: platform + franchise + station
  *
  * Auth:
- *   ownerId = 'company' → x-admin-secret only (company-internal view)
- *   ownerId = integer   → x-admin-secret OR verified franchise owner token
+ *   ownerType = 'company'   → x-admin-secret OR Firebase admin claim
+ *   ownerType = 'franchise' → x-admin-secret OR verified franchise owner token
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
@@ -30,21 +38,31 @@ const ADMIN_SECRET = process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRE
 // ─── Auth + scope middleware ───────────────────────────────────────────────────
 
 /**
- * Parses :ownerId from the URL and attaches scope to the request:
+ * Reads :ownerType and :ownerId from the URL and attaches scope to the request:
  *   (req as any).ownerType:  'company' | 'franchise'
- *   (req as any).ownerIdInt: number | null   (null for company)
+ *   (req as any).ownerIdInt: number | null  (franchise ID for franchise; null for company)
+ *
+ * Valid URL shapes:
+ *   /api/network/franchise/12/...    → ownerType=franchise, ownerIdInt=12
+ *   /api/network/company/main/...    → ownerType=company,   ownerIdInt=null
  *
  * Auth rules:
- *   company   → admin secret or Firebase admin claim
- *   franchise → admin secret OR verified franchise owner in franchise_owners table
+ *   company   → x-admin-secret OR Firebase admin claim
+ *   franchise → x-admin-secret OR verified franchise owner in franchise_owners table
  */
 async function requireNetworkOwner(req: Request, res: Response, next: NextFunction) {
   try {
-    const rawOwner = req.params.ownerId;
-    const isCompany = rawOwner === 'company';
+    const ownerType = req.params.ownerType;
+
+    // Validate ownerType — DB has a CHECK constraint for the same values
+    if (ownerType !== 'franchise' && ownerType !== 'company') {
+      return res.status(400).json({ error: 'invalid_owner_type', valid: ['franchise', 'company'] });
+    }
+
+    const isCompany = ownerType === 'company';
 
     if (!isCompany) {
-      const parsed = parseInt(rawOwner, 10);
+      const parsed = parseInt(req.params.ownerId, 10);
       if (isNaN(parsed) || parsed <= 0) {
         return res.status(400).json({ error: 'invalid_owner_id' });
       }
@@ -52,7 +70,7 @@ async function requireNetworkOwner(req: Request, res: Response, next: NextFuncti
     } else {
       (req as any).ownerIdInt = null;
     }
-    (req as any).ownerType = isCompany ? 'company' : 'franchise';
+    (req as any).ownerType = ownerType;
 
     // Admin bypass via header secret (works for both company and franchise)
     const adminHeader = req.headers['x-admin-secret'];
@@ -150,7 +168,7 @@ function stationScopeCTE(req: Request) {
  *
  * ownershipType included in response so the caller can render appropriately.
  */
-router.get('/:ownerId/finance/summary', requireNetworkOwner, async (req: Request, res: Response) => {
+router.get('/:ownerType/:ownerId/finance/summary', requireNetworkOwner, async (req: Request, res: Response) => {
   try {
     const ownerType = (req as any).ownerType as string;
     const ownerIdInt = (req as any).ownerIdInt as number | null;
@@ -329,7 +347,7 @@ router.get('/:ownerId/finance/summary', requireNetworkOwner, async (req: Request
  *
  * Per-station P&L. For company stations: franchiseShare is always 0.
  */
-router.get('/:ownerId/stations/financials', requireNetworkOwner, async (req: Request, res: Response) => {
+router.get('/:ownerType/:ownerId/stations/financials', requireNetworkOwner, async (req: Request, res: Response) => {
   try {
     const ownerType = (req as any).ownerType as string;
     const ownerIdInt = (req as any).ownerIdInt as number | null;
@@ -417,7 +435,7 @@ router.get('/:ownerId/stations/financials', requireNetworkOwner, async (req: Req
  * Franchise: real external payouts — cycle status = pending|in_progress|completed
  * Company:   internal settlement cycles — cycle status = "internal" (no real payouts)
  */
-router.get('/:ownerId/payouts', requireNetworkOwner, async (req: Request, res: Response) => {
+router.get('/:ownerType/:ownerId/payouts', requireNetworkOwner, async (req: Request, res: Response) => {
   try {
     const ownerType = (req as any).ownerType as string;
     const ownerIdInt = (req as any).ownerIdInt as number | null;
@@ -543,7 +561,7 @@ router.get('/:ownerId/payouts', requireNetworkOwner, async (req: Request, res: R
  *
  * Query params: since, limit, types, severity (same as T30)
  */
-router.get('/:ownerId/audit-feed', requireNetworkOwner, async (req: Request, res: Response) => {
+router.get('/:ownerType/:ownerId/audit-feed', requireNetworkOwner, async (req: Request, res: Response) => {
   try {
     const ownerType = (req as any).ownerType as string;
     const ownerIdInt = (req as any).ownerIdInt as number | null;
