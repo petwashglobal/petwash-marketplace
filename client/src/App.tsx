@@ -168,6 +168,7 @@ const CompanyStationSettlements = lazy(() => import("@/pages/CompanyStationSettl
 const BookingTrace = lazy(() => import("@/pages/BookingTrace"));
 const CaseQueue = lazy(() => import("@/pages/CaseQueue"));
 const ManagerDashboard = lazy(() => import("@/pages/ManagerDashboard"));
+const GovernancePolicies = lazy(() => import("@/pages/GovernancePolicies"));
 const AdminInbox = lazy(() => import("@/pages/AdminInbox"));
 const WalletDownload = lazy(() => import("@/pages/WalletDownload"));
 const MyWallet = lazy(() => import("@/pages/MyWallet"));
@@ -1873,6 +1874,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <RoleProtectedRoute minRole="franchise_owner">
               <Suspense fallback={<PageLoader />}>
                 <ManagerDashboard />
+              </Suspense>
+            </RoleProtectedRoute>
+          )}
+        </Route>
+        <Route path="/governance">
+          {() => (
+            <RoleProtectedRoute minRole="franchise_owner">
+              <Suspense fallback={<PageLoader />}>
+                <GovernancePolicies />
               </Suspense>
             </RoleProtectedRoute>
           )}

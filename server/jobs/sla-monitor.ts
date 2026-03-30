@@ -25,6 +25,7 @@
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { applyGovernance } from '../lib/policy-engine';
 
 // ─── SLA constants ────────────────────────────────────────────────────────────
 
@@ -244,6 +245,15 @@ async function processCases(cases: CaseRecord[]): Promise<{ newBreaches: number;
         checked_at = NOW()
     `));
 
+    // First at-risk transition: run governance warning playbooks
+    if (slaStatus === 'at_risk' && prevStatus === 'within_sla') {
+      try {
+        await applyGovernance('sla_at_risk', { caseType, caseRefId, slaStatus: 'at_risk' }, 'escalation_rule');
+      } catch (govErr: any) {
+        logger.warn('[SlaMonitor] governance at_risk hook error', { caseRefId, error: govErr.message });
+      }
+    }
+
     // First breach: log + escalate
     if (slaStatus === 'breached' && prevStatus !== 'breached') {
       newBreaches++;
@@ -267,6 +277,13 @@ async function processCases(cases: CaseRecord[]): Promise<{ newBreaches: number;
           await doEscalate(caseType, caseRefId, currentAssignee, escalateTo, slaBudgetHours, ageHours);
           escalated++;
         }
+      }
+
+      // Phase 12.13: Run governance escalation playbooks for the breach
+      try {
+        await applyGovernance('sla_breached', { caseType, caseRefId, slaStatus: 'breached' }, 'escalation_rule');
+      } catch (govErr: any) {
+        logger.warn('[SlaMonitor] governance breach hook error', { caseRefId, error: govErr.message });
       }
     }
   }

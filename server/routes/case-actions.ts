@@ -32,6 +32,7 @@ import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { auth } from '../lib/firebase-admin';
+import { applyGovernance } from '../lib/policy-engine';
 
 const router = Router();
 const ADMIN_SEC = process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRET;
@@ -456,7 +457,56 @@ router.post('/closure-request', requireAuth, async (req: Request, res: Response)
 
     await touchLastAction('dispute', disputeId);
 
-    res.json({ success: true, disputeId, bookingId, closureReasonCode });
+    // ── Phase 12.13: Governance evaluation ──────────────────────────────────
+    const govCtx = {
+      caseType:    'dispute',
+      caseRefId:   disputeId,
+      closureCode: closureReasonCode,
+      actorUid:    ctx.uid ?? 'system',
+      handlerRole: ctx.role,
+    };
+
+    const govResult = await applyGovernance('closure_requested', govCtx, 'approval_threshold');
+
+    if (govResult.autoApproved) {
+      // Policy auto-approves — close immediately without manager queue
+      await db.execute(sql.raw(`
+        UPDATE booking_disputes
+        SET status           = 'closed',
+            closure_approved = true,
+            resolved_at      = NOW(),
+            resolved_by      = 'system_governance'
+        WHERE id::text = '${safe(disputeId)}'
+      `));
+      await db.execute(sql.raw(`
+        INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
+        VALUES ('dispute', '${safe(disputeId)}', 'system', 'system',
+          '${safe(`AUTO-APPROVED: ${govResult.message ?? 'Governance policy auto-close'}`)}')
+      `));
+      logger.info('[CaseActions] closure auto-approved by governance', { disputeId, policy: govResult.matched[0]?.name });
+      return res.json({ success: true, disputeId, bookingId, closureReasonCode, autoApproved: true, newStatus: 'closed' });
+    }
+
+    if (govResult.requireLevel === 2) {
+      // Requires franchise-owner sign-off — flag the dispute
+      await db.execute(sql.raw(`
+        UPDATE booking_disputes
+        SET second_approval_required = true
+        WHERE id::text = '${safe(disputeId)}'
+      `));
+      await db.execute(sql.raw(`
+        INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
+        VALUES ('dispute', '${safe(disputeId)}', 'system', 'system',
+          '${safe(`LEVEL-2 REQUIRED: ${govResult.message ?? 'Franchise owner must approve this closure'}`)}')
+      `));
+      logger.info('[CaseActions] closure flagged for level-2 approval', { disputeId, policy: govResult.matched[0]?.name });
+    }
+
+    res.json({
+      success: true, disputeId, bookingId, closureReasonCode,
+      requiresLevel2: govResult.requireLevel === 2,
+      pendingApproval: true,
+    });
   } catch (err: any) {
     logger.error('[CaseActions] closure-request error', { error: err.message });
     res.status(500).json({ error: 'closure_request_error' });
@@ -493,6 +543,24 @@ router.post('/closure-approve', requireAuth, async (req: Request, res: Response)
     }
     if (dispute.closure_approved) {
       return res.status(400).json({ error: 'already_approved' });
+    }
+
+    // ── Phase 12.13: Level-2 approval guard ─────────────────────────────────
+    if (dispute.second_approval_required && !dispute.second_approval_by) {
+      const isOwnerOrAdmin = ['franchise_owner'].includes(ctx.role) || (req as any).isAdmin;
+      if (!isOwnerOrAdmin) {
+        return res.status(403).json({
+          error:   'second_approval_required',
+          message: 'This closure requires franchise owner sign-off (level-2 approval). Manager approval is insufficient.',
+        });
+      }
+      // Record the level-2 approval
+      await db.execute(sql.raw(`
+        UPDATE booking_disputes
+        SET second_approval_by = '${safe(ctx.uid ?? 'admin')}',
+            second_approved_at = NOW()
+        WHERE id::text = '${disputeId}'
+      `));
     }
 
     await db.execute(sql.raw(`

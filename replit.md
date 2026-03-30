@@ -2260,17 +2260,18 @@ This moves the platform from **operating cases** to **managing the operation its
 
 ---
 
-## Phase 12.13 — Governance & Automation Layer (PLANNED)
+## Phase 12.13 — Governance & Automation Layer (CLOSED)
 
-**What this phase does:**
-The platform can now see and control the operation. Phase 12.13 makes it governed — rules enforced by the system, not by human memory.
+**What was delivered:**
+The platform now enforces rules automatically — stored as data, evaluated at runtime, audited on every execution.
 
-**Scope:**
-- Approval thresholds by amount / risk class — low-risk closures auto-approve; high-risk require manager sign-off
-- Auto-routing rules by case class — case type + value + station tier determines initial assignee automatically
-- Mandatory second-level approval for sensitive closures — refund cases above threshold, repeat offenders, VIP customers
-- Automated exception playbooks — SLA breach triggers a defined escalation path, not a notification
-- Manager escalation rules by breach severity — at-risk cases get a warning; breached cases get forced reassignment or escalation
-- Policy enforcement objects — rules stored in DB, editable by franchise_owner, audited on change
+**Closure record (2026-03-30):**
+- **DB**: `governance_policies`, `policy_audit_log`, `policy_executions` tables created; `booking_disputes` extended with `second_approval_required`, `second_approval_by`, `second_approved_at`, `governance_policy_id`
+- **6 default policies seeded**: auto-approve standard closures (p10), level-2 for high-value refunds (p20), manager review for goodwill/operator_error (p30), route refunds to senior (p10), escalate on SLA breach (p10), warn at-risk (p20)
+- **`server/lib/policy-engine.ts`**: `evaluatePolicies()`, `runActions()`, `applyGovernance()` — fail-open design (governance errors never block case operations). Conditions: `closure_codes`, `sla_status`, `amount_gte/lt/lte`, `handler_role`, `reopen_count_gte`, `station_id`, `franchise_id`
+- **`server/routes/governance.ts`**: 8 endpoints — GET/POST/PUT/DELETE policies, activate, executions log, evaluate/test. Registered at `/api/governance`
+- **`server/routes/case-actions.ts`**: `closure-request` now calls `applyGovernance('closure_requested')` → auto-closes if `autoApproved`, flags `second_approval_required` if `requireLevel === 2`; `closure-approve` enforces level-2 guard (franchise_owner only for level-2 disputes)
+- **`server/jobs/sla-monitor.ts`**: `applyGovernance('sla_at_risk')` on first at-risk transition; `applyGovernance('sla_breached')` on first breach detection
+- **`client/src/pages/GovernancePolicies.tsx`**: Full management UI at `/governance` — policy list, create/edit form, test evaluator (no side effects), execution log. Route protected by `franchise_owner` role.
 
 **Business rationale:** 12.12 gives managers a dashboard. 12.13 means the system enforces policy so managers don't have to watch the dashboard constantly. Governance is the transition from management-by-presence to management-by-exception.
