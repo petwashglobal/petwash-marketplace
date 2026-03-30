@@ -52,6 +52,7 @@ import manualAdjustmentRoutes from "./routes/finance/manual-adjustment";
 import payoutReconciliationRoutes from "./routes/finance/payout-reconciliation";
 import { startDailyReconciliationJob, runReconciliationNow } from "./services/DailyReconciliationJob";
 import { startAsyncJobWorker } from "./services/AsyncJobWorker";
+import { startSettlementReconciliationJob } from "./services/SettlementReconciliationJob";
 import { allFinanceGuards } from "./middleware/financeGuards";
 import legalStampsRoutes from "./routes/legal-stamps";
 import userActivityRoutes from "./routes/user-activity";
@@ -14308,6 +14309,11 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // Handles: ARCHIVE_TAX_DOCUMENT_TO_DRIVE, EXPORT_RECONCILIATION_TO_SHEETS,
   //          CREATE_CALENDAR_EVENT, SEND_GMAIL_FALLBACK (never blocks payments)
   startAsyncJobWorker();
+
+  // ── Settlement reconciliation job (Phase 10 — T21) ───────────────────────
+  // Backfills any station bookings that are completed but missing a settlement
+  // record (e.g. due to transient DB errors in the fire-and-forget hook).
+  startSettlementReconciliationJob();
 
   // Admin: run reconciliation on-demand
   app.post('/api/admin/finance/reconciliation/run-now', adminLimiter, async (req: any, res: any) => {
