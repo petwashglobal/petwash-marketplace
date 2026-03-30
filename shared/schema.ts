@@ -7794,6 +7794,11 @@ export const stations = pgTable("stations", {
   averageUsageMinutes: integer("average_usage_minutes"),
   lastMaintenanceDate: date("last_maintenance_date"),
   nextMaintenanceDate: date("next_maintenance_date"),
+  // ── Phase 11 Extension: Hybrid Ownership Model ───────────────────────────
+  ownershipType: varchar("ownership_type", { length: 20 }).notNull().default("franchise"),
+  // 'franchise' = operated by an external franchise owner (franchise_id must be set)
+  // 'company'   = owned directly by Pet Wash Ltd (franchise_id must be NULL;
+  //               settlement franchise_amount is always 0)
   // ── Phase 10 T23: performance / ranking (null = not yet computed) ──────────
   trustScore: integer("trust_score"),          // 0-100 composite quality score
   rankingScore: integer("ranking_score"),       // 0-100 final display rank

@@ -123,22 +123,36 @@ export async function computeAndPersistSettlement(
     }
 
     // ── 5. Resolve fee percentages ──────────────────────────────────────────
+    //
+    // Ownership type drives the split logic:
+    //
+    //  'franchise' — standard three-way split:
+    //    platform + franchise + station = total
+    //    franchise owner receives franchiseFeePct (or override) of total
+    //
+    //  'company' — internal two-way split (Pet Wash Ltd owns the station):
+    //    franchise_amount is ALWAYS 0 — no external party receives a cut
+    //    platform + station = total  (both accrue to the same legal entity)
+    //    This prevents fake franchise splits contaminating the books.
+    //
+    const isCompanyOwned = station.ownershipType === 'company';
 
     // Platform fee — franchise owner may carry an explicit override
     const platformFeePct =
-      franchiseOwner?.platformFeeOverridePct != null
+      (!isCompanyOwned && franchiseOwner?.platformFeeOverridePct != null)
         ? parseFloat(String(franchiseOwner.platformFeeOverridePct))
         : getPlatformFeePct();
 
     // Station revenue pct — stored for audit; actual amount = remainder
     const stationRevenuePct = getStationRevenuePct();
 
-    // Franchise fee — only applies when a franchise owner is linked
-    const franchiseFeePct = franchiseOwnerId ? getFranchiseFeePct() : 0;
+    // Franchise fee — 0 for company-owned stations (explicit, not by accident)
+    const franchiseFeePct = (!isCompanyOwned && franchiseOwnerId) ? getFranchiseFeePct() : 0;
 
     // ── 6. Compute amounts (integer cents, no float drift) ──────────────────
-    const platformAmountCents  = Math.round(totalAmountCents * platformFeePct / 100);
-    const franchiseAmountCents = Math.round(totalAmountCents * franchiseFeePct / 100);
+    const platformAmountCents = Math.round(totalAmountCents * platformFeePct / 100);
+    // Company-owned: franchise share is 0 — enforced here, not inferred from NULL
+    const franchiseAmountCents = isCompanyOwned ? 0 : Math.round(totalAmountCents * franchiseFeePct / 100);
     // Station gets the true remainder — this guarantees split integrity
     const stationAmountCents   = totalAmountCents - platformAmountCents - franchiseAmountCents;
 
@@ -178,6 +192,7 @@ export async function computeAndPersistSettlement(
     logger.info('[Settlement] Settlement created', {
       bookingId,
       settlementId: row.id,
+      ownershipType: station.ownershipType,
       totalAmountCents,
       platformFeePct,
       platformAmountCents,

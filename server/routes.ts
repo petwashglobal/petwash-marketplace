@@ -9371,6 +9371,12 @@ self.addEventListener('notificationclick', (event) => {
   const pawFinderRoutes = await import('./routes/paw-finder');
   app.use('/api/paw-finder', apiLimiter, pawFinderRoutes.default);
 
+  // Phase 11 Extension — Hybrid Ownership Model: unified network finance routes
+  // Mounted at /api/network — handles both company-owned and franchise stations.
+  // ownerId = 'company' → Pet Wash Ltd stations; ownerId = integer → franchise.
+  const networkFinanceRoutes = await import('./routes/network-finance');
+  app.use('/api/network', apiLimiter, networkFinanceRoutes.default);
+
   // Phase 11 — T27: Franchise Financial Aggregation Engine (settlement-anchored)
   // Registered BEFORE the existing franchise router so its own auth middleware
   // runs first (supports both Bearer token and x-admin-secret bypass).
