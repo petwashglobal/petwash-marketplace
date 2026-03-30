@@ -8,7 +8,7 @@
  * Platform-aware: Conditionally renders platform-specific badges
  */
 
-import { Star, MapPin, Shield, Camera, Clock, Check, Heart } from 'lucide-react';
+import { Star, MapPin, Shield, Camera, Clock, Check, Heart, Building2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -103,6 +103,16 @@ export function ProviderCard({ provider, onClick }: ProviderCardProps) {
           </Badge>
         );
       }
+    }
+
+    // Station badge — shown when provider is assigned to a PetWash station
+    if ((provider as any).stationName) {
+      badges.push(
+        <Badge key="station" variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-medium text-xs" data-testid="badge-station">
+          <Building2 className="w-3 h-3 mr-1" />
+          {(provider as any).stationName}
+        </Badge>
+      );
     }
 
     return badges;

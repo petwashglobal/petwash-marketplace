@@ -14,6 +14,7 @@ import { GoogleMessagingService } from "./services/GoogleMessagingService";
 import kycRoutes from "./routes/kyc";
 import stationsRoutes from "./routes/stations";
 import stationSettlementsRoutes from "./routes/station-settlements";
+import stationRecommendRoutes from "./routes/station-recommend";
 import enterpriseRoutes from "./routes/enterprise";
 import loyaltyRoutes from "./routes/loyalty";
 import socialOAuthRoutes from "./routes/social-oauth";
@@ -9434,6 +9435,10 @@ self.addEventListener('notificationclick', (event) => {
   // Station Settlements (Phase 10 — T21): per-booking revenue & settlement
   // Auth: admin (x-admin-secret) OR franchise owner of that station.
   app.use('/api/stations', apiLimiter, stationSettlementsRoutes);
+
+  // Station Recommendation (Phase 10 — T22): GET /api/stations/recommend
+  // Public endpoint — no auth required (returns composite scored top-3 active stations).
+  app.use('/api/stations/recommend', apiLimiter, stationRecommendRoutes);
   
   // Enterprise Management routes (2026 Global Franchise System)
   app.use('/api/enterprise', adminLimiter, requireAdminMfa, enterpriseRoutes);

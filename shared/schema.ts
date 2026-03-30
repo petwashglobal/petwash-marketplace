@@ -8521,6 +8521,9 @@ interface BaseMarketplaceProvider {
   isVerified: boolean | null;
   priceDisplay: string; // Formatted price for UI
   createdAt: Date | null;
+  // Phase 10 — T22: station assignment
+  stationId?: number | null;
+  stationName?: string | null;
 }
 
 /**

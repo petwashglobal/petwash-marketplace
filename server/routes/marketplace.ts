@@ -15,6 +15,8 @@ import {
   trainers,
   drivers,
   providerProfiles,
+  stationOperators,
+  stations,
   marketplaceSearchFiltersSchema,
   type MarketplaceProvider,
   type WalkerProvider,
@@ -112,11 +114,44 @@ router.post('/search', async (req, res) => {
       }
     }
 
+    // ── Phase 10 T22: Enrich providers with station assignment ───────────────
+    // Look up stationOperators for each provider userId to find their station.
+    let stationMap = new Map<string, { stationId: number; stationName: string }>();
+    if (userIds.length > 0) {
+      const operatorRows = await db
+        .select({
+          userId: stationOperators.userId,
+          stationId: stationOperators.stationId,
+          stationName: stations.name,
+        })
+        .from(stationOperators)
+        .innerJoin(stations, eq(stationOperators.stationId, stations.id))
+        .where(
+          and(
+            inArray(stationOperators.userId, userIds),
+            stationOperators.isActive
+          )
+        );
+      for (const row of operatorRows) {
+        // Use the first active station assignment per user
+        if (!stationMap.has(row.userId)) {
+          stationMap.set(row.userId, { stationId: row.stationId, stationName: row.stationName });
+        }
+      }
+    }
+
     // Enrich providers with ranking data
     let enriched = providers.map((p: any) => {
       const rd = rankingMap.get(p.userId) ?? { rankingScore: null, trustScore: null, ratingCount: null };
       const tier = getProviderTier(rd.rankingScore, rd.trustScore, rd.ratingCount ?? p.totalBookings ?? null);
-      return { ...p, rankingScore: rd.rankingScore, tier };
+      const stationInfo = stationMap.get(p.userId) ?? null;
+      return {
+        ...p,
+        rankingScore: rd.rankingScore,
+        tier,
+        stationId: stationInfo?.stationId ?? null,
+        stationName: stationInfo?.stationName ?? null,
+      };
     });
 
     // Tier filter

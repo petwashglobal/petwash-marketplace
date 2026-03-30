@@ -1,5 +1,6 @@
 import express from "express";
 import { db } from "../lib/firebase-admin";
+import { db as pgDb } from "../db";
 import { requireAuth } from "../customAuth";
 import VATCalculatorService from "../services/VATCalculatorService";
 import EscrowService from "../services/EscrowService";
@@ -11,6 +12,8 @@ import { logger } from "../lib/logger";
 import { BookingLockService } from "../services/BookingLockService";
 import { isSuperAdmin } from "../middleware/rbac";
 import { computeAndPersistSettlement } from "../services/SettlementEngine";
+import { stations } from "@shared/schema";
+import { eq, and, sql as drizzleSql } from "drizzle-orm";
 
 const router = express.Router();
 
@@ -23,6 +26,8 @@ interface BookingRequest {
   petIds: string[];
   baseAmount: number;
   metadata?: any;
+  // Phase 10 — T22: optional station assignment
+  stationId?: number;
 }
 
 router.post("/create", requireAuth, async (req, res) => {
@@ -76,6 +81,52 @@ router.post("/create", requireAuth, async (req, res) => {
       });
     }
 
+    // ── Phase 10 T22: Station assignment ──────────────────────────────────────
+    // If stationId is provided, validate the station is active.
+    // If not provided, auto-assign the station with the most availability.
+    let resolvedStationId: number | null = null;
+    let resolvedStationName: string | null = null;
+
+    if (booking.stationId != null) {
+      const [station] = await pgDb
+        .select({ id: stations.id, name: stations.name, isActive: stations.isActive })
+        .from(stations)
+        .where(eq(stations.id, booking.stationId))
+        .limit(1);
+
+      if (!station) {
+        return res.status(400).json({ error: 'Station not found', code: 'STATION_NOT_FOUND' });
+      }
+      if (!station.isActive) {
+        return res.status(400).json({ error: 'Station is not active', code: 'STATION_INACTIVE' });
+      }
+      resolvedStationId = station.id;
+      resolvedStationName = station.name;
+    } else {
+      // Auto-assign: pick the active station with the fewest upcoming bookings
+      const autoRows = await pgDb.execute(drizzleSql`
+        SELECT s.id, s.name,
+               COALESCE(bc.upcoming, 0) AS upcoming
+        FROM stations s
+        LEFT JOIN (
+          SELECT station_id, COUNT(*)::int AS upcoming
+          FROM bookings
+          WHERE start_time >= NOW()
+            AND start_time < NOW() + INTERVAL '7 days'
+            AND status IN ('accepted','confirmed','started','pending')
+          GROUP BY station_id
+        ) bc ON bc.station_id = s.id
+        WHERE s.is_active = true
+        ORDER BY upcoming ASC
+        LIMIT 1
+      `);
+      const best = autoRows.rows[0] as any;
+      if (best) {
+        resolvedStationId = Number(best.id);
+        resolvedStationName = best.name as string;
+      }
+    }
+
     const grossCollectedILS = VATCalculatorService.grossFromProviderShare(booking.baseAmount);
     const vatCalc = VATCalculatorService.calculateMarketplaceVAT(grossCollectedILS);
 
@@ -107,6 +158,8 @@ router.post("/create", requireAuth, async (req, res) => {
       currency: "ILS",
       status: "confirmed", // Mark as confirmed after payment
       createdAt: new Date(),
+      // Phase 10 — T22: station assignment
+      ...(resolvedStationId != null ? { stationId: resolvedStationId, stationName: resolvedStationName } : {}),
       ...(booking.metadata !== undefined ? { metadata: booking.metadata } : {}),
     };
 
