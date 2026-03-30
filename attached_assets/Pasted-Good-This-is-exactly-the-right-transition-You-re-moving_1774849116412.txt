@@ -1,0 +1,211 @@
+Good. This is exactly the right transition.
+
+You’re moving from “system works” → “business is controllable”
+
+⸻
+
+Phase 11 - Execution Order (clean and strict)
+
+The key principle:
+
+👉 Money first → then visibility → then control → then comparison
+
+Do NOT mix these. If you do, you’ll build messy dashboards with unreliable numbers.
+
+⸻
+
+✅ Step 1 - Canonical Financial Layer (foundation)
+
+Task 27 - Franchise Financial Aggregation Engine
+
+Before any UI.
+
+You need one trusted source of truth for money at the franchise level.
+
+Build:
+	•	GET /api/franchise/:franchiseId/finance/summary
+
+Returns:
+	•	total revenue (gross)
+	•	platform fees
+	•	franchise share
+	•	station payouts
+	•	net margin (if applicable)
+
+Time scopes:
+	•	today
+	•	MTD
+	•	last 30 days
+
+Source:
+	•	station_settlements ONLY
+(not bookings, not estimates)
+
+👉 This is critical:
+Everything in Phase 11 must anchor to settlements, not bookings.
+
+⸻
+
+✅ Step 2 - Station P&L Layer
+
+Task 28 - Station Financial Breakdown (P&L style)
+
+Now you go one level deeper.
+
+Build:
+	•	GET /api/franchise/:franchiseId/stations/financials
+
+Per station:
+	•	revenue generated
+	•	station earnings
+	•	platform cut
+	•	franchise cut
+	•	booking count
+	•	avg order value
+	•	dispute impact (optional but powerful)
+
+This is your unit economics layer.
+
+👉 This is where weak stations become visible.
+
+⸻
+
+✅ Step 3 - Payout & Reconciliation View
+
+Task 29 - Payout Calendar & Settlement Status
+
+Now show cash flow timing, not just totals.
+
+Build:
+	•	GET /api/franchise/:franchiseId/payouts
+
+Returns:
+	•	settlements grouped by payout cycle
+	•	status:
+	•	pending
+	•	approved
+	•	paid
+	•	expected payout date
+	•	total per cycle
+
+Optional (but strong):
+	•	reconciliation mismatch flag (if any)
+
+👉 This answers:
+“Who do I owe money to, and when?”
+
+⸻
+
+✅ Step 4 - Override & Risk Audit Layer
+
+Task 30 - Network Audit Feed
+
+Now control behavior.
+
+Build:
+	•	GET /api/franchise/:franchiseId/audit-feed
+
+Include:
+	•	manual station overrides
+	•	bookings bypassing recommendation
+	•	dispute openings
+	•	refunds / anomalies
+	•	downtime spikes
+
+Each item:
+	•	type
+	•	stationId
+	•	timestamp
+	•	severity
+
+👉 This is your fraud / misuse / operational discipline layer
+
+⸻
+
+✅ Step 5 - Regional / Comparative Intelligence
+
+Task 31 - Station Benchmarking
+
+Now you enable decision-making.
+
+Build:
+	•	GET /api/franchise/:franchiseId/benchmark
+
+Per station:
+	•	revenue rank
+	•	utilization rate
+	•	trust score
+	•	dispute rate
+	•	cancellation rate
+
+Also include:
+	•	percentile ranking
+	•	flags (top performer / underperformer)
+
+👉 This creates:
+	•	pressure
+	•	competition
+	•	clarity
+
+⸻
+
+UI Order (do NOT build all at once)
+
+Follow this order:
+	1.	Finance Summary (Task 27)
+	2.	Station P&L table (Task 28)
+	3.	Payout calendar (Task 29)
+	4.	Audit feed (Task 30)
+	5.	Benchmark dashboard (Task 31)
+
+⸻
+
+Critical rules (don’t break these)
+
+1. Never mix bookings with money
+
+Only settlements define money.
+
+⸻
+
+2. Everything must reconcile
+
+Totals must match across:
+	•	franchise summary
+	•	station breakdown
+	•	payouts
+
+If they don’t → you lose trust instantly.
+
+⸻
+
+3. No derived hacks
+
+If something is unclear:
+	•	expose raw
+	•	don’t guess
+
+⸻
+
+What this phase unlocks
+
+After Phase 11, the franchise owner can finally:
+	•	see where money comes from
+	•	see which stations are profitable
+	•	know what needs to be paid
+	•	detect bad behavior
+	•	compare performance across network
+
+👉 That’s when this becomes a real business system.
+
+⸻
+
+If you want next step
+
+I can start Task 27 immediately with:
+	•	exact SQL
+	•	response schema
+	•	edge cases (refunds, partial settlements, missing data)
+
+Just say:
+👉 “Start Task 27”

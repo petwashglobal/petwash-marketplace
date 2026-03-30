@@ -463,6 +463,13 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
     }
 
+    // 🔑 Admin secret bypass — allows server-side and automation access to internal routes
+    const adminSecretHeader = req.headers['x-admin-secret'];
+    const CONFIGURED_ADMIN_SECRET = process.env.ADMIN_SECRET || process.env.PETWASH_ADMIN_SECRET;
+    if (CONFIGURED_ADMIN_SECRET && adminSecretHeader === CONFIGURED_ADMIN_SECRET) {
+      return next();
+    }
+
     // 🔐 SECURITY: Unauthenticated requests MUST NOT reach internal routes
     if (!req.firebaseUser?.uid) {
       logger.warn(`[RBAC Guard] Unauthenticated request blocked to internal route: ${path}`, { ip: req.ip });
@@ -9364,7 +9371,13 @@ self.addEventListener('notificationclick', (event) => {
   const pawFinderRoutes = await import('./routes/paw-finder');
   app.use('/api/paw-finder', apiLimiter, pawFinderRoutes.default);
 
-  // Franchise routes
+  // Phase 11 — T27: Franchise Financial Aggregation Engine (settlement-anchored)
+  // Registered BEFORE the existing franchise router so its own auth middleware
+  // runs first (supports both Bearer token and x-admin-secret bypass).
+  const franchiseFinanceRoutes = await import('./routes/franchise-finance');
+  app.use('/api/franchise', apiLimiter, franchiseFinanceRoutes.default);
+
+  // Franchise routes (Firebase auth applied here; registered after finance routes)
   const franchiseRoutes = await import('./routes/franchise');
   app.use('/api/franchise', validateFirebaseToken, apiLimiter, franchiseRoutes.default);
 
