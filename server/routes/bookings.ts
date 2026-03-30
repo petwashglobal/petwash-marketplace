@@ -144,8 +144,8 @@ router.post("/create", requireAuth, async (req, res) => {
       resolvedStationName = station.name;
     } else {
       // Auto-assign: composite score matching recommendation route
-      // Weights: distance 40% (when customerLat/Lng provided), availability 35%, rankingScore 25%
-      // When no geo: distance weight redistributed → availability 60% + rankingScore 40%
+      // Weights: distance 40% + availability 35% + rankingScore 25% (fixed)
+      // When no geo: distance component is neutral (0.5), so effective pull is same weighting
       const useGeo =
         booking.customerLat != null &&
         booking.customerLng != null &&
