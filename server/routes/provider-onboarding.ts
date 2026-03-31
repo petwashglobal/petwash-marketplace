@@ -392,11 +392,7 @@ router.post('/apply', upload.fields([
       await selfieUpload.save(selfieFile.buffer, {
         metadata: { contentType: selfieFile.mimetype },
       });
-      const [url] = await selfieUpload.getSignedUrl({
-        action: 'read',
-        expires: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year
-      });
-      selfieUrl = selfieFileName; // Store path, not signed URL
+      selfieUrl = selfieFileName; // Store path only — signed URLs generated on demand
     }
 
     // Upload government ID
@@ -456,67 +452,14 @@ router.post('/apply', upload.fields([
       drivingRecordUrl = dlFileName;
     }
 
-    // Perform biometric verification if both photos provided
-    let biometricStatus = 'pending';
-    let biometricMatchScore = 0;
-    let biometricFailureReason = '';
-
-    if (selfieUrl && governmentIdUrl) {
-      try {
-        // Get signed URLs for verification
-        const selfieFileRef = bucket.file(selfieUrl);
-        const idFileRef = bucket.file(governmentIdUrl);
-        
-        const [selfieSignedUrl] = await selfieFileRef.getSignedUrl({
-          action: 'read',
-          expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-        });
-        
-        const [idSignedUrl] = await idFileRef.getSignedUrl({
-          action: 'read',
-          expires: Date.now() + 15 * 60 * 1000,
-        });
-
-        biometricVerification.auditBiometricConsent(authenticatedUser.uid, true);
-        const verificationResult = await biometricVerification.verifyIdentity(
-          selfieSignedUrl,
-          idSignedUrl
-        );
-
-        if (verificationResult.isMatch) {
-          biometricStatus = 'verified';
-          biometricMatchScore = verificationResult.matchScore;
-        } else {
-          biometricStatus = 'failed';
-          biometricMatchScore = verificationResult.matchScore;
-          biometricFailureReason = verificationResult.reason || 'Face match failed';
-        }
-      } catch (verifyError: any) {
-        logger.error('[Provider Onboarding] Biometric verification error', verifyError);
-        biometricStatus = 'pending';
-        biometricFailureReason = 'Verification pending manual review';
-      }
-    }
-
-    // Generate application ID
+    // Generate application ID — DB write happens first, biometric runs async after response
     const year = new Date().getFullYear();
     const randomNum = randomInt(0, 1000000).toString().padStart(6, '0');
     const applicationId = `APP-${year}-${randomNum}`;
 
-    // AUTO-APPROVAL: If biometric verification passed and required documents uploaded,
-    // automatically approve the provider without manual admin review
-    const autoApproved = biometricStatus === 'verified' && selfieUrl && governmentIdUrl;
-    const applicationStatus = autoApproved ? 'approved' : 'pending';
-    
-    // Generate provider ID for auto-approved applications
-    let providerId = null;
-    if (autoApproved) {
-      const providerPrefix = providerType.toUpperCase().substring(0, 6);
-      const randomId = randomBytes(5).toString('hex').toUpperCase();
-      providerId = `${providerPrefix}-${randomId}`;
-    }
-
-    // Create application - DB write FIRST (must succeed before any async side effects)
+    // All applications start as 'pending' with biometric in 'pending' state.
+    // Biometric face-match runs asynchronously after the response is sent so that
+    // network/Vision-API latency never blocks or times out the submission request.
     const [application] = await db.insert(providerApplications).values({
       applicationId,
       userId: authenticatedUser.uid,
@@ -530,10 +473,10 @@ router.post('/apply', upload.fields([
       country: country || 'IL',
       selfiePhotoUrl: selfieUrl,
       governmentIdUrl,
-      biometricMatchScore: biometricMatchScore.toString(),
-      biometricStatus,
-      biometricFailureReason: biometricFailureReason || null,
-      biometricVerifiedAt: biometricStatus === 'verified' ? new Date() : null,
+      biometricMatchScore: '0',
+      biometricStatus: 'pending',
+      biometricFailureReason: null,
+      biometricVerifiedAt: null,
       residentialHistory: residentialHistory.length > 0 ? JSON.stringify(residentialHistory) : null,
       criminalCheckConsent: backgroundCheckConsent,
       criminalCheckConsentDate: backgroundCheckConsent ? new Date() : null,
@@ -548,14 +491,7 @@ router.post('/apply', upload.fields([
       insuranceExpiresAt: insuranceExpiry ? new Date(insuranceExpiry) : null,
       businessLicenseUrl: businessLicenseUrl || null,
       internalNotes: Object.keys(declarations).length > 0 ? JSON.stringify({ declarations, idNumber: idNumber || null, providerTypes: (() => { try { return rawProviderTypes ? (typeof rawProviderTypes === 'string' ? JSON.parse(rawProviderTypes) : rawProviderTypes) : [providerType]; } catch { return [providerType]; } })() }) : null,
-      status: applicationStatus,
-      ...(autoApproved ? {
-        reviewedAt: new Date(),
-        reviewedBy: 'system-auto-approval',
-        approvedAsProviderId: providerId,
-        backgroundCheckStatus: 'passed',
-        backgroundCheckDate: new Date(),
-      } : {}),
+      status: 'pending',
     }).returning();
 
     // Increment invite code usage only if a valid code was used
@@ -569,47 +505,37 @@ router.post('/apply', upload.fields([
         .where(eq(providerInviteCodes.inviteCode, inviteCode));
     }
 
-    // Bridge: create providerApprovalQueue entry so the admin review panel can see this application.
-    // Map frontend providerType values to platform IDs used by AdminProviderReviewService.
-    if (!autoApproved) {
-      const platformMap: Record<string, string> = {
-        walker: 'walk_my_pet',
-        sitter: 'sitter_suite',
-        driver: 'pettrek',
-        trainer: 'academy',
-        station_operator: 'k9000',
-      };
-      const queuePlatform = platformMap[providerType] || providerType;
-
-      try {
-        const existing = await db.select({ id: providerApprovalQueue.id })
-          .from(providerApprovalQueue)
-          .where(and(
-            eq(providerApprovalQueue.providerId, authenticatedUser.uid),
-            eq(providerApprovalQueue.platform, queuePlatform)
-          ))
-          .limit(1);
-
-        if (!existing.length) {
-          await db.insert(providerApprovalQueue).values({
-            providerId: authenticatedUser.uid,
-            platform: queuePlatform,
-            status: 'pending',
-            priority: 'normal',
-          });
-          logger.info('[Provider Onboarding] Created providerApprovalQueue entry', { uid: authenticatedUser.uid, platform: queuePlatform });
-        }
-      } catch (queueErr: any) {
-        logger.warn('[Provider Onboarding] Could not create queue entry (non-fatal)', { error: queueErr?.message });
+    // Create providerApprovalQueue entry so the admin review panel can see this application.
+    const platformMap: Record<string, string> = {
+      walker: 'walk_my_pet',
+      sitter: 'sitter_suite',
+      driver: 'pettrek',
+      trainer: 'academy',
+      station_operator: 'k9000',
+    };
+    const queuePlatform = platformMap[providerType] || providerType;
+    try {
+      const existing = await db.select({ id: providerApprovalQueue.id })
+        .from(providerApprovalQueue)
+        .where(and(
+          eq(providerApprovalQueue.providerId, authenticatedUser.uid),
+          eq(providerApprovalQueue.platform, queuePlatform)
+        ))
+        .limit(1);
+      if (!existing.length) {
+        await db.insert(providerApprovalQueue).values({
+          providerId: authenticatedUser.uid,
+          platform: queuePlatform,
+          status: 'pending',
+          priority: 'normal',
+        });
+        logger.info('[Provider Onboarding] Created providerApprovalQueue entry', { uid: authenticatedUser.uid, platform: queuePlatform });
       }
+    } catch (queueErr: any) {
+      logger.warn('[Provider Onboarding] Could not create queue entry (non-fatal)', { error: queueErr?.message });
     }
 
-    logger.info(`[Provider Onboarding] Application ${autoApproved ? 'AUTO-APPROVED' : 'submitted'}: ${applicationId} by ${authenticatedUser.uid}`, {
-      traceId,
-      biometricStatus,
-      autoApproved,
-      providerId
-    });
+    logger.info(`[Provider Onboarding] Application submitted (biometric pending): ${applicationId} by ${authenticatedUser.uid}`, { traceId });
 
     GoogleSheetsService.logProviderApplication({
       applicationId,
@@ -622,9 +548,9 @@ router.post('/apply', upload.fields([
       country: country || 'IL',
       selfiePhotoUrl: selfieUrl || '',
       governmentIdUrl: governmentIdUrl || '',
-      biometricStatus,
-      biometricScore: biometricMatchScore.toString(),
-      applicationStatus: autoApproved ? 'Auto-Approved' : 'Pending Review',
+      biometricStatus: 'pending',
+      biometricScore: '0',
+      applicationStatus: 'Pending Review',
     }).catch(err => logger.error('[Provider Onboarding] Google Sheets logging failed - DB record saved', err));
 
     if (authenticatedUser.email) {
@@ -636,7 +562,7 @@ router.post('/apply', upload.fields([
         providerType,
         applicationId: applicationId.toString(),
         serviceTypes: (() => { try { return rawProviderTypes ? (typeof rawProviderTypes === 'string' ? JSON.parse(rawProviderTypes) : rawProviderTypes) : [providerType]; } catch { return [providerType]; } })(),
-        autoApproved: autoApproved || false,
+        autoApproved: false,
       });
       sendLuxuryEmail({
         to: authenticatedUser.email,
@@ -645,17 +571,66 @@ router.post('/apply', upload.fields([
       }).catch(err => logger.error('[Provider Onboarding] Welcome email failed', err));
     }
 
+    // Send response immediately — biometric check runs in background
     res.json({
       success: true,
       applicationId: application.applicationId,
-      biometricStatus: application.biometricStatus,
-      biometricMatchScore: parseFloat(application.biometricMatchScore || '0'),
-      status: applicationStatus,
-      providerId: providerId || undefined,
-      message: autoApproved 
-        ? 'Congratulations! Your application has been automatically approved. Welcome to ⁦Pet Wash™⁩!'
-        : 'Application submitted. Your documents are being reviewed - we will get back to you shortly.'
+      biometricStatus: 'pending',
+      biometricMatchScore: 0,
+      status: 'pending',
+      message: 'Application submitted. Your documents are being reviewed - we will get back to you within 24 hours.',
     });
+
+    // ── Async biometric check (fire-and-forget, never blocks the user) ─────────
+    // Runs AFTER the response is sent. Updates the DB record and can auto-approve
+    // if the face match passes the threshold.
+    if (selfieUrl && governmentIdUrl) {
+      setImmediate(async () => {
+        try {
+          biometricVerification.auditBiometricConsent(authenticatedUser.uid, true);
+          const selfieFileRef = bucket.file(selfieUrl);
+          const idFileRef = bucket.file(governmentIdUrl);
+          const [selfieSignedUrl] = await selfieFileRef.getSignedUrl({ action: 'read', expires: Date.now() + 15 * 60 * 1000 });
+          const [idSignedUrl] = await idFileRef.getSignedUrl({ action: 'read', expires: Date.now() + 15 * 60 * 1000 });
+          const verificationResult = await biometricVerification.verifyIdentity(selfieSignedUrl, idSignedUrl);
+
+          const matchStatus = verificationResult.isMatch ? 'verified' : 'failed';
+          const matchScore = verificationResult.matchScore;
+          const failureReason = verificationResult.isMatch ? null : (verificationResult.reason || 'Face match failed');
+
+          const updatePayload: Record<string, any> = {
+            biometricStatus: matchStatus,
+            biometricMatchScore: matchScore.toString(),
+            biometricFailureReason: failureReason,
+            biometricVerifiedAt: verificationResult.isMatch ? new Date() : null,
+          };
+
+          if (verificationResult.isMatch) {
+            // Auto-approve: biometric passed, documents uploaded
+            const providerPrefix = providerType.toUpperCase().substring(0, 6);
+            const randomId = randomBytes(5).toString('hex').toUpperCase();
+            const newProviderId = `${providerPrefix}-${randomId}`;
+            updatePayload.status = 'approved';
+            updatePayload.reviewedAt = new Date();
+            updatePayload.reviewedBy = 'system-auto-approval';
+            updatePayload.approvedAsProviderId = newProviderId;
+            updatePayload.backgroundCheckStatus = 'passed';
+            updatePayload.backgroundCheckDate = new Date();
+            logger.info('[Provider Onboarding] Async biometric PASSED — auto-approving', { applicationId, uid: authenticatedUser.uid, matchScore });
+          } else {
+            logger.info('[Provider Onboarding] Async biometric FAILED — staying pending', { applicationId, uid: authenticatedUser.uid, matchScore, failureReason });
+          }
+
+          await db.update(providerApplications)
+            .set(updatePayload)
+            .where(eq(providerApplications.applicationId, applicationId));
+
+          logger.info('[Provider Onboarding] Async biometric update complete', { applicationId, matchStatus, matchScore });
+        } catch (asyncBioErr: any) {
+          logger.warn('[Provider Onboarding] Async biometric check failed (application stays pending for admin review)', { applicationId, error: asyncBioErr?.message });
+        }
+      });
+    }
   } catch (error: any) {
     logger.error('[Provider Onboarding] Application submission error', {
       traceId: req.body?.traceId,

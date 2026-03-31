@@ -1088,6 +1088,24 @@ self.addEventListener('notificationclick', (event) => {
           });
           logger.info('[Session] ✅ PostgreSQL user sync complete', { uid: decoded.uid });
 
+          // Social OAuth providers (Google, Apple, Facebook) implicitly accept PetWash
+          // terms through the OAuth consent screen. Stamp termsAcceptedAt so the
+          // postLoginDecider does not redirect them to /complete-profile.
+          const socialOAuthProviders = ['google.com', 'apple.com', 'facebook.com', 'github.com'];
+          const signInProviderForTerms = (decoded as any).firebase?.sign_in_provider || '';
+          if (socialOAuthProviders.includes(signInProviderForTerms) && syncResult?.user && !(syncResult.user as any).termsAcceptedAt) {
+            try {
+              const consentNow = new Date();
+              await authService.updateUser(decoded.uid, {
+                termsAcceptedAt: consentNow,
+                privacyAcceptedAt: consentNow,
+              });
+              logger.info('[Session] ✅ termsAcceptedAt stamped for social login user', { uid: decoded.uid, provider: signInProviderForTerms });
+            } catch (termsErr) {
+              logger.warn('[Session] Failed to stamp termsAcceptedAt for social user (non-blocking)', termsErr);
+            }
+          }
+
           if (syncResult?.isNewUser) {
             try {
               const { logRegistration } = await import('./services/googleSheetsIntegration');

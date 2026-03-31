@@ -1,0 +1,423 @@
+FULL PRODUCT + IDENTITY + ONBOARDING + BOOKING ARCHITECTURE (PETWASH)
+
+This is not a code discussion.
+This is the real business and user logic that must exist for the system to work properly.
+
+-------------------------------------
+CORE PRINCIPLE
+-------------------------------------
+
+Any user must be able to:
+
+1. Enter using ANY valid method
+2. Become ONE clean account
+3. Land correctly inside the system
+4. Make a booking without confusion
+5. Become a provider without being blocked
+
+Right now this is NOT consistently happening.
+
+-------------------------------------
+PART 1 - IDENTITY SYSTEM (CRITICAL)
+-------------------------------------
+
+The system must behave as ONE identity engine, not multiple separate login paths.
+
+ENTRY METHODS (TARGET):
+- Google
+- Apple
+- Phone (OTP)
+- Email / Password
+- Facebook (later)
+- TikTok (later)
+- Instagram (later)
+
+RULE:
+All methods must feed into ONE user account.
+
+-------------------------------------
+CORRECT LOGIN / SIGNUP LOGIC
+-------------------------------------
+
+When user chooses ANY method:
+
+1. Authenticate with provider (Google, Apple, etc.)
+2. Check if account already exists
+3. IF exists:
+   → sign in
+4. IF not:
+   → create account
+5. Ask ONLY missing fields:
+   - name (if missing)
+   - phone (if missing)
+   - consent (if missing)
+6. Land user inside app
+
+NO duplication
+NO confusion
+NO multiple identities
+
+-------------------------------------
+CURRENT PROBLEM
+-------------------------------------
+
+- Identity is partially unified, not complete
+- Some methods work, others are partial or not wired
+- Account linking is NOT properly implemented
+- Same user can cause conflicts across login methods
+- Errors like "user exists" are not handled properly
+
+-------------------------------------
+REQUIRED FIX
+-------------------------------------
+
+Implement full account linking logic:
+- If same email / phone exists → LINK accounts
+- Do NOT fail silently
+- Do NOT create duplicates
+
+-------------------------------------
+PART 2 - AUTH METHODS STATUS (REALITY)
+-------------------------------------
+
+Email / Password:
+- Works best
+- Most complete path
+
+Google:
+- Works
+- Linking missing
+
+Apple:
+- Partial
+- Not fully tested
+
+Phone OTP:
+- Partial
+- Missing completion flow
+
+Magic Link:
+- Partial
+
+Facebook:
+- Not fully live
+
+TikTok:
+- Not wired
+
+Instagram:
+- Not wired
+
+-------------------------------------
+PRIORITY ORDER (MANDATORY)
+-------------------------------------
+
+Phase 1 (must be perfect):
+- Google
+- Apple
+- Phone
+- Email
+
+Phase 2:
+- Facebook
+
+Phase 3:
+- TikTok + Instagram (optional)
+
+-------------------------------------
+PART 3 - BOOKING LOGIC (CRITICAL)
+-------------------------------------
+
+A user must be able to:
+
+ENTER → BOOK → PAY
+
+Without hidden blockers.
+
+-------------------------------------
+CURRENT PROBLEMS
+-------------------------------------
+
+Booking can fail due to:
+- incomplete profile
+- missing name
+- missing consent
+- missing pet
+- loyalty requirement
+- session issues
+
+These are hidden from the user.
+
+-------------------------------------
+CORRECT BOOKING MODEL
+-------------------------------------
+
+ONLY 3 STATES:
+
+1. Guest booking
+2. Member booking
+3. Provider (separate)
+
+-------------------------------------
+RULES
+-------------------------------------
+
+After login:
+- User must be able to book immediately
+OR
+- System must clearly say what is missing
+
+Example:
+"Please add a pet to continue"
+
+NOT:
+Silent failure
+NOT:
+403 errors
+
+-------------------------------------
+PART 4 - SIGNUP FLOW (CORRECT)
+-------------------------------------
+
+SCREEN 1:
+- User fills details
+- Accepts terms ONCE
+
+ACTION:
+Press "Create Account"
+
+SYSTEM:
+- reCAPTCHA runs silently
+- account created
+
+SCREEN 2:
+"Welcome to PetWash"
+
+Options:
+- Enable notifications (optional)
+- Skip
+
+RESULT:
+→ dashboard
+
+-------------------------------------
+REMOVE:
+-------------------------------------
+
+- duplicate consent screen
+- extra hidden steps
+- multiple onboarding pages
+
+RULE:
+1 action = 1 result
+
+-------------------------------------
+PART 5 - LOGIN FLOW (CORRECT)
+-------------------------------------
+
+SCREEN:
+- email/password
+- social login buttons
+
+BACKGROUND:
+- reCAPTCHA loads silently
+
+ACTION:
+User presses "Sign In"
+
+SYSTEM:
+- token attached
+- login processed instantly
+
+RESULT:
+→ dashboard
+
+NO:
+- delays
+- hidden redirects
+- extra steps
+
+-------------------------------------
+PART 6 - PROVIDER ONBOARDING (CRITICAL FAILURE AREA)
+-------------------------------------
+
+CURRENT PROBLEM:
+Users fail at final stage repeatedly.
+
+STRONG LIKELY CAUSE:
+- ID upload
+- selfie
+- biometric match
+- file format (HEIC)
+- upload timeout
+- validation rules
+
+-------------------------------------
+CURRENT ISSUE:
+-------------------------------------
+
+System tries to do TOO MUCH at submission:
+
+- upload files
+- validate files
+- run biometric
+- check identity
+- finalize approval
+
+This creates failure at the worst moment.
+
+-------------------------------------
+CORRECT PROVIDER FLOW
+-------------------------------------
+
+STEP 1:
+Basic details + phone verify
+
+STEP 2:
+Role selection
+
+STEP 3:
+Documents upload (selfie + ID)
+
+STEP 4:
+Declarations
+
+STEP 5:
+Submit application
+
+-------------------------------------
+NEW LOGIC (IMPORTANT)
+-------------------------------------
+
+ON SUBMIT:
+- Accept application
+- Store files
+- DO NOT block on biometric
+
+SET STATUS:
+→ Pending Review
+
+-------------------------------------
+AFTER SUBMIT (ASYNC)
+-------------------------------------
+
+System runs:
+- biometric match
+- ID validation
+- admin checks
+
+-------------------------------------
+USER SEES:
+-------------------------------------
+
+"Application received"
+
+- Status: Under review
+- Time: up to 24 hours
+- You will receive SMS/email
+
+-------------------------------------
+REMOVE:
+-------------------------------------
+
+- hard blocking at final step
+- generic error messages
+- silent failures
+
+-------------------------------------
+PART 7 - RECAPTCHA (SECURITY LOGIC)
+-------------------------------------
+
+PURPOSE:
+Protect backend from bots
+
+NOT:
+Interrupt user
+
+-------------------------------------
+CORRECT PLACEMENT:
+-------------------------------------
+
+Page load:
+- loads silently
+
+User typing:
+- nothing
+
+User clicks submit:
+- runs instantly
+
+Backend:
+- verifies
+
+-------------------------------------
+RULE:
+-------------------------------------
+
+User should NEVER feel reCAPTCHA
+
+-------------------------------------
+PART 8 - REAL ROOT PROBLEMS
+-------------------------------------
+
+1. Identity system incomplete
+2. Account linking missing
+3. Multiple login paths not unified
+4. Booking depends on hidden conditions
+5. Provider onboarding blocked by technical validation
+6. Too many synchronous checks
+7. UX not aligned with system logic
+
+-------------------------------------
+PART 9 - WHAT MUST BE DONE NOW
+-------------------------------------
+
+PRIORITY 1:
+Fix identity system:
+- unify all login methods
+- implement account linking
+- ensure same user = one account
+
+PRIORITY 2:
+Make booking frictionless:
+- remove hidden blockers
+- show clear requirements
+
+PRIORITY 3:
+Fix provider onboarding:
+- move biometric to async
+- allow submission first
+- improve feedback
+
+PRIORITY 4:
+Stabilize core auth methods:
+- Google
+- Apple
+- Phone
+- Email
+
+PRIORITY 5:
+ONLY AFTER:
+Add Facebook, TikTok, Instagram
+
+-------------------------------------
+FINAL TRUTH
+-------------------------------------
+
+This is not a coding issue.
+
+This is:
+
+- identity architecture
+- user journey design
+- business logic flow
+
+Right now:
+System is built in parts
+
+Goal:
+System must behave as ONE clean experience
+
+-------------------------------------
+END
+-------------------------------------

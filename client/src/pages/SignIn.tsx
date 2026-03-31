@@ -2043,40 +2043,26 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               )}
             </Button>
 
-            <Button
-              onClick={() => handleExternalOAuth('tiktok')}
-              disabled={!!socialLoading}
-              variant="outline"
-              className="w-full h-13 text-sm font-medium border border-neutral-200 bg-white hover:bg-gray-50 text-neutral-900 rounded-none tracking-wider uppercase transition-all"
-              data-testid="button-tiktok-signin"
-            >
-              {socialLoading === 'tiktok' as any ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <SiTiktok className="w-4 h-4 me-3" />
-                  <span>{language === 'he' ? 'המשך עם TikTok' : 'Continue with TikTok'}</span>
-                </>
-              )}
-            </Button>
-
-            <Button
-              onClick={() => handleExternalOAuth('instagram')}
-              disabled={!!socialLoading}
-              variant="outline"
-              className="w-full h-13 text-sm font-medium border border-neutral-200 text-white rounded-none tracking-wider uppercase transition-all"
-              style={{ background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)' }}
-              data-testid="button-instagram-signin"
-            >
-              {socialLoading === 'instagram' as any ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <SiInstagram className="w-4 h-4 me-3" />
-                  <span>{language === 'he' ? 'המשך עם Instagram' : 'Continue with Instagram'}</span>
-                </>
-              )}
-            </Button>
+            <div className="flex gap-2">
+              <button
+                disabled
+                className="flex-1 h-12 flex items-center justify-center gap-2 text-xs font-medium border border-neutral-200 bg-neutral-50 text-neutral-400 rounded-none tracking-wider uppercase cursor-not-allowed"
+                data-testid="button-tiktok-coming-soon"
+              >
+                <SiTiktok className="w-3.5 h-3.5" />
+                <span>TikTok</span>
+                <span className="text-[9px] bg-neutral-200 text-neutral-500 px-1 py-0.5 rounded">{language === 'he' ? 'בקרוב' : 'Soon'}</span>
+              </button>
+              <button
+                disabled
+                className="flex-1 h-12 flex items-center justify-center gap-2 text-xs font-medium border border-neutral-200 bg-neutral-50 text-neutral-400 rounded-none tracking-wider uppercase cursor-not-allowed"
+                data-testid="button-instagram-coming-soon"
+              >
+                <SiInstagram className="w-3.5 h-3.5" />
+                <span>Instagram</span>
+                <span className="text-[9px] bg-neutral-200 text-neutral-500 px-1 py-0.5 rounded">{language === 'he' ? 'בקרוב' : 'Soon'}</span>
+              </button>
+            </div>
 
             {passkeyAvailable && (
               <Button
