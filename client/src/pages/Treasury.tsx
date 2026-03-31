@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Link } from 'wouter';
 import {
   Wallet, CheckCircle2, XCircle, AlertTriangle, RefreshCw,
   ArrowRight, Building2, FileSearch, TrendingUp, Clock, Link2,
@@ -353,7 +354,13 @@ export default function Treasury() {
             </div>
             <p className="text-muted-foreground text-sm">Cash reconciliation — every payout traced from approval to bank confirmation</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <Link href="/treasury/forecast">
+              <Button variant="outline" size="sm">
+                <TrendingUp className="w-3.5 h-3.5 mr-1.5" />
+                Forecast
+              </Button>
+            </Link>
             <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
               Import Bank Feed
             </Button>

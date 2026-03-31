@@ -2,6 +2,15 @@ import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { reconcileBatch, runReconciliationSweep } from '../lib/reconciliation';
+import {
+  forecastSnapshot,
+  reserveAgeing,
+  liquidityPressure,
+  payoutCalendarForecast,
+  riskComparison,
+  treasuryWarnings,
+  forecastVsActual,
+} from '../lib/treasury-forecast';
 
 const router = Router();
 
@@ -486,6 +495,80 @@ router.get('/trace/:settlementId', async (req: Request, res: Response) => {
       bankTransaction: bankTx,
       traceComplete: !!(settlement && batchItem && recon && bankTx),
     });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Phase 12.18 — Forecasting, Liquidity & Reserve Planning
+// ---------------------------------------------------------------------------
+
+// T181 — GET /api/treasury/forecast-snapshot
+router.get('/forecast-snapshot', async (req: Request, res: Response) => {
+  try {
+    const result = await forecastSnapshot();
+    return res.json({ windows: result });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// T182 — GET /api/treasury/reserve-ageing
+router.get('/reserve-ageing', async (req: Request, res: Response) => {
+  try {
+    const result = await reserveAgeing();
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// T183 — GET /api/treasury/liquidity-pressure
+router.get('/liquidity-pressure', async (req: Request, res: Response) => {
+  try {
+    const result = await liquidityPressure();
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// T184 — GET /api/treasury/payout-calendar-forecast
+router.get('/payout-calendar-forecast', async (req: Request, res: Response) => {
+  try {
+    const result = await payoutCalendarForecast();
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// T185 — GET /api/treasury/risk-comparison
+router.get('/risk-comparison', async (req: Request, res: Response) => {
+  try {
+    const result = await riskComparison();
+    return res.json({ entities: result });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// T186 — GET /api/treasury/warnings
+router.get('/warnings', async (req: Request, res: Response) => {
+  try {
+    const result = await treasuryWarnings();
+    return res.json({ warnings: result });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// T187 — GET /api/treasury/forecast-vs-actual
+router.get('/forecast-vs-actual', async (req: Request, res: Response) => {
+  try {
+    const result = await forecastVsActual();
+    return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }

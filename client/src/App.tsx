@@ -332,6 +332,8 @@ const NetworkOversight = lazy(() => import("@/pages/NetworkOversight"));
 const FinancialApprovals = lazy(() => import("@/pages/FinancialApprovals"));
 // Phase 12.17 — Cash Reconciliation & Treasury Discipline
 const Treasury = lazy(() => import("@/pages/Treasury"));
+// Phase 12.18 — Forecasting, Liquidity & Reserve Planning
+const TreasuryForecast = lazy(() => import("@/pages/TreasuryForecast"));
 const Meetings = lazy(() => import("@/pages/Meetings"));
 const PlatformLegalFramework = lazy(() => import("@/pages/PlatformLegalFramework"));
 const ProviderOnboarding = lazy(() => import("@/pages/ProviderOnboarding"));
@@ -2361,6 +2363,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <ExecutiveSuiteGuard>
               <Suspense fallback={<PageLoader />}>
                 <Treasury />
+              </Suspense>
+            </ExecutiveSuiteGuard>
+          )}
+        </Route>
+
+        {/* Phase 12.18 — Forecasting, Liquidity & Reserve Planning */}
+        <Route path="/treasury/forecast">
+          {() => (
+            <ExecutiveSuiteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <TreasuryForecast />
               </Suspense>
             </ExecutiveSuiteGuard>
           )}
