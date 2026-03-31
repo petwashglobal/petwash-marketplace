@@ -9419,8 +9419,13 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/expansion', apiLimiter, expansionRoutes.default);
 
   // Phase 12.21 — Intervention & Decision Tracking
+  // Phase 12.22 — Outcome Measurement (outcomes/summary endpoint inside this router)
   const interventionRoutes = await import('./routes/interventions');
   app.use('/api/expansion/interventions', apiLimiter, interventionRoutes.default);
+
+  // Phase 12.23 — Learning, Policy Refinement & Capital Feedback
+  const policyRoutes = await import('./routes/policy');
+  app.use('/api/expansion/policy', apiLimiter, policyRoutes.default);
 
   // Phase 12.7 — Booking Trace & Dispute Resolution Layer
   // Own auth middleware (requireTraceViewer): franchise_owner, station_operator, admin.

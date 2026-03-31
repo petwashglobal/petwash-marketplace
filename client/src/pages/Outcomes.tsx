@@ -434,6 +434,7 @@ export default function Outcomes() {
                 ['/treasury', 'Settlements & payouts'],
                 ['/finance/profitability', 'Unit economics'],
                 ['/finance/board-pack', 'Board pack signals'],
+                ['/finance/policy', 'Policy refinement'],
               ].map(([href, lbl]) => (
                 <Link key={href} href={href}>
                   <span className="flex items-center gap-1 hover:text-foreground cursor-pointer hover:underline underline-offset-2">

@@ -342,6 +342,8 @@ const BoardPack = lazy(() => import("@/pages/BoardPack"));
 const Interventions = lazy(() => import("@/pages/Interventions"));
 // Phase 12.22 — Outcome Measurement & Intervention Effectiveness
 const Outcomes = lazy(() => import("@/pages/Outcomes"));
+// Phase 12.23 — Learning, Policy Refinement & Capital Feedback
+const PolicyFeedback = lazy(() => import("@/pages/PolicyFeedback"));
 const Meetings = lazy(() => import("@/pages/Meetings"));
 const PlatformLegalFramework = lazy(() => import("@/pages/PlatformLegalFramework"));
 const ProviderOnboarding = lazy(() => import("@/pages/ProviderOnboarding"));
@@ -2421,6 +2423,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <ExecutiveSuiteGuard>
               <Suspense fallback={<PageLoader />}>
                 <Outcomes />
+              </Suspense>
+            </ExecutiveSuiteGuard>
+          )}
+        </Route>
+        <Route path="/finance/policy">
+          {() => (
+            <ExecutiveSuiteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <PolicyFeedback />
               </Suspense>
             </ExecutiveSuiteGuard>
           )}
