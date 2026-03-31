@@ -9,7 +9,7 @@ import { systemRoles, userRoleAssignments } from '@shared/schema-enterprise';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { auth, storage } from '../lib/firebase-admin';
 import { biometricVerification } from '../services/BiometricVerificationService';
-import { passportOCRService } from '../services/PassportOCRService';
+import { kycMemoryProcessor } from '../services/KYC2026';
 import { logger } from '../lib/logger';
 import { isSuperAdmin } from '../middleware/rbac';
 import { GoogleSheetsService } from '../services/googleSheetsIntegration';
@@ -582,116 +582,115 @@ router.post('/apply', upload.fields([
       message: 'Application submitted. Your documents are being reviewed - we will get back to you within 24 hours.',
     });
 
-    // ── Async Vision confidence checks (fire-and-forget) ─────────────────────
+    // ── KYC2026 async verification (fire-and-forget) ──────────────────────────
     // Runs AFTER the response is sent. Never blocks the user.
     //
-    // Google Vision is used as a CONFIDENCE ENGINE — not as final identity proof.
-    // It checks: face presence, image quality, document OCR.
-    // A composite confidence score drives one of three outcomes:
-    //   ≥ 70 pts → approved   (both faces found + quality/OCR pass)
-    //   35–69    → manual_review (partial signal, admin decides)
-    //   < 35     → rejected   (no usable signal — bad images or no face)
+    // Uses KYCMemoryProcessor (KYC2026 engine) which runs entirely on Google Vision:
+    //   - 30-landmark normalized geometric face match (scale-invariant)
+    //   - 6-check heuristic liveness (pose, blur, size, expression, confidence)
+    //   - Document OCR with field redaction
+    //   - Photo quality assessment
     //
-    // Scoring breakdown (max 100):
-    //   selfie has 1 face       → 35 pts
-    //   ID doc has 1 face       → 35 pts
-    //   selfie passes quality   → 15 pts  (not blurry, not dark)
-    //   document OCR succeeds   → 15 pts  (MRZ found and parsed)
+    // Decision logic:
+    //   faceScore >= 78 AND livenessPass = true  → approved
+    //   faceScore 55–77 (inconclusive)           → pending_review
+    //   faceScore < 55 OR livenessPass = false   → rejected
     //
     // PUBLIC USERS (loyalty/customer) never reach this block.
     // Only providers submit /apply with selfieUrl + governmentIdUrl.
     if (selfieUrl && governmentIdUrl) {
       setImmediate(async () => {
         try {
+          // Consent audit (GDPR Art.9 / Israeli Privacy Law 2025 §14)
           biometricVerification.auditBiometricConsent(authenticatedUser.uid, true);
+
+          // ── 1. Download buffers from GCS (KYC2026 processes in-memory) ────
           const selfieFileRef = bucket.file(selfieUrl);
           const idFileRef = bucket.file(governmentIdUrl);
+          const [[selfieBuffer], [idBuffer]] = await Promise.all([
+            selfieFileRef.download(),
+            idFileRef.download(),
+          ]);
 
-          const signedUrlOpts = { action: 'read' as const, expires: Date.now() + 15 * 60 * 1000 };
-          const [selfieSignedUrl] = await selfieFileRef.getSignedUrl(signedUrlOpts);
-          const [idSignedUrl] = await idFileRef.getSignedUrl(signedUrlOpts);
+          // ── 2. Run KYC2026 full pipeline ──────────────────────────────────
+          // Calls: performFaceMatch (30-landmark normalized ratios)
+          //        performLivenessCheck (6-signal heuristic)
+          //        performOCR (document text + field extraction)
+          //        assessPhotoQuality (blur, exposure)
+          // Buffers are wiped by KYCMemoryProcessor after processing.
+          const kycResult = await kycMemoryProcessor.processDocument({
+            selfieBuffer,
+            idFrontBuffer: idBuffer,
+            mimeType: 'image/jpeg',
+          });
 
-          // ── 1. Face presence check (Vision faceDetection) ─────────────────
-          const faceResult = await biometricVerification.verifyIdentity(selfieSignedUrl, idSignedUrl);
-          const selfieHasFace = !!(faceResult.faceDetection?.selfieHasFace);
-          const idHasFace = !!(faceResult.faceDetection?.idHasFace);
+          const faceScore       = kycResult.faceMatchScore;
+          const faceVerdict     = kycResult.faceMatchVerdict;
+          const livenessPass    = kycResult.livenessResult.passed;
+          const livenessScore   = kycResult.livenessResult.confidence;
+          const livenessChecks  = kycResult.livenessResult.checks;
+          const livenessReasons = kycResult.livenessResult.failureReasons;
+          const ocrFields       = kycResult.ocrFields;
+          const ocrConfidence   = kycResult.ocrConfidence;
+          const photoQuality    = kycResult.photoQuality;
 
-          // ── 2. Selfie image quality check (Vision face attributes) ─────────
-          const qualityResult = await biometricVerification.validatePhotoQuality(selfieSignedUrl);
-          const qualityPass = qualityResult.isValid;
-
-          // ── 3. Document OCR — extract fields from ID image ─────────────────
-          let ocrResult: Record<string, any> = { attempted: false };
-          let ocrSuccess = false;
-          try {
-            const [idImageBuffer] = await idFileRef.download();
-            const ocrResponse = await passportOCRService.extractPassportData(idImageBuffer);
-            if (ocrResponse.success && ocrResponse.data) {
-              ocrSuccess = true;
-              ocrResult = {
-                attempted: true,
-                success: true,
-                documentType: ocrResponse.data.documentType,
-                surname: ocrResponse.data.surname,
-                givenNames: ocrResponse.data.givenNames,
-                dateOfBirth: ocrResponse.data.dateOfBirth,
-                expiryDate: ocrResponse.data.expiryDate,
-                documentNumber: ocrResponse.data.passportNumber,
-                nationality: ocrResponse.data.nationality,
-                countryCode: ocrResponse.data.countryCode,
-              };
-              logger.info('[Provider Onboarding] Vision OCR succeeded', { applicationId, documentType: ocrResult.documentType });
-            } else {
-              ocrResult = { attempted: true, success: false, error: ocrResponse.error || 'No MRZ found' };
-              logger.info('[Provider Onboarding] Vision OCR: no MRZ — driver licence or non-standard ID', { applicationId });
-            }
-          } catch (ocrErr: any) {
-            ocrResult = { attempted: true, success: false, error: ocrErr?.message };
-            logger.warn('[Provider Onboarding] Vision OCR failed (non-blocking)', { applicationId, error: ocrErr?.message });
-          }
-
-          // ── 4. Confidence score calculation ────────────────────────────────
-          let confidenceScore = 0;
-          if (selfieHasFace) confidenceScore += 35;
-          if (idHasFace)     confidenceScore += 35;
-          if (qualityPass)   confidenceScore += 15;
-          if (ocrSuccess)    confidenceScore += 15;
-
-          // ── 5. Outcome decision ────────────────────────────────────────────
-          // Vision = confidence engine. High confidence auto-approves.
-          // Medium goes to manual review. Low is rejected.
+          // ── 3. Decision logic ─────────────────────────────────────────────
           let outcomeStatus: string;
-          let outcomeReason: string;
+          let decisionReason: string;
 
-          if (confidenceScore >= 70) {
+          if (faceScore >= 78 && livenessPass) {
             outcomeStatus = 'approved';
-            outcomeReason = `Vision confidence ${confidenceScore}/100 — faces found, quality passed`;
-          } else if (confidenceScore >= 35) {
+            decisionReason = `KYC2026: face match ${faceScore.toFixed(1)}/100 (match), liveness passed (${livenessScore.toFixed(0)}%)`;
+          } else if (faceScore >= 55) {
             outcomeStatus = 'pending_review';
-            outcomeReason = `Vision confidence ${confidenceScore}/100 — partial signal, manual review required`;
+            decisionReason = `KYC2026: face match ${faceScore.toFixed(1)}/100 (inconclusive) — manual review required${!livenessPass ? `; liveness failed: ${livenessReasons.join(', ')}` : ''}`;
           } else {
             outcomeStatus = 'rejected';
-            outcomeReason = `Vision confidence ${confidenceScore}/100 — insufficient signal (no faces or unusable images)`;
+            decisionReason = `KYC2026: face match ${faceScore.toFixed(1)}/100 (mismatch/error)${!livenessPass ? `; liveness failed: ${livenessReasons.join(', ')}` : ''}`;
           }
 
+          // ── 4. Build DB update payload ────────────────────────────────────
           const updatePayload: Record<string, any> = {
             status: outcomeStatus,
-            biometricStatus: selfieHasFace && idHasFace ? 'faces_detected' : 'faces_missing',
-            biometricMatchScore: confidenceScore.toString(),
-            biometricFailureReason: outcomeStatus !== 'approved' ? outcomeReason : null,
+            biometricStatus: faceVerdict === 'match' ? 'faces_matched' : faceVerdict === 'inconclusive' ? 'faces_inconclusive' : 'faces_mismatch',
+            biometricMatchScore: faceScore.toString(),
+            biometricFailureReason: outcomeStatus !== 'approved' ? decisionReason : null,
             biometricVerifiedAt: new Date(),
             backgroundCheckNotes: JSON.stringify({
-              visionConfidence: {
-                score: confidenceScore,
-                selfieHasFace,
-                idHasFace,
-                qualityPass,
-                ocrSuccess,
-                outcome: outcomeStatus,
-                reason: outcomeReason,
-                note: 'Google Vision = confidence signal only. Not full KYC. Liveness not included.',
+              engine: 'KYC2026',
+              faceMatch: {
+                score: faceScore,
+                verdict: faceVerdict,
+                method: '30-landmark normalized geometric ratio comparison (Google Vision)',
               },
-              ocr: ocrResult,
+              liveness: {
+                passed: livenessPass,
+                confidence: livenessScore,
+                checks: livenessChecks,
+                failureReasons: livenessReasons,
+                method: '6-signal heuristic (pose, blur, size, expression, confidence — Google Vision)',
+                note: 'NOT ISO 30107-3 certified. Heuristic only.',
+              },
+              ocr: {
+                confidence: ocrConfidence,
+                nameDetected: ocrFields.nameDetected,
+                nameHash: ocrFields.nameHash,
+                idNumberDetected: ocrFields.idNumberDetected,
+                idNumberLastFour: ocrFields.idNumberLastFour,
+                birthDateDetected: ocrFields.birthDateDetected,
+                expiryDateDetected: ocrFields.expiryDateDetected,
+                documentTypeInferred: ocrFields.documentTypeInferred,
+                issuingCountryDetected: ocrFields.issuingCountryDetected,
+              },
+              photoQuality: {
+                selfieQuality: photoQuality.selfieQuality,
+                idQuality: photoQuality.idQuality,
+                issues: photoQuality.issues,
+              },
+              decision: {
+                status: outcomeStatus,
+                reason: decisionReason,
+              },
               processedAt: new Date().toISOString(),
             }),
           };
@@ -702,7 +701,7 @@ router.post('/apply', upload.fields([
             const randomId = randomBytes(5).toString('hex').toUpperCase();
             updatePayload.approvedAsProviderId = `${providerPrefix}-${randomId}`;
             updatePayload.reviewedAt = new Date();
-            updatePayload.reviewedBy = 'system-vision-confidence';
+            updatePayload.reviewedBy = 'system-kyc2026';
             updatePayload.backgroundCheckStatus = 'passed';
             updatePayload.backgroundCheckDate = new Date();
           }
@@ -711,17 +710,17 @@ router.post('/apply', upload.fields([
             .set(updatePayload)
             .where(eq(providerApplications.applicationId, applicationId));
 
-          logger.info(`[Provider Onboarding] Vision outcome: ${outcomeStatus}`, {
+          logger.info(`[KYC2026] Provider verification complete: ${outcomeStatus}`, {
             applicationId,
             uid: authenticatedUser.uid,
-            confidenceScore,
-            selfieHasFace,
-            idHasFace,
-            qualityPass,
-            ocrSuccess,
+            faceScore,
+            faceVerdict,
+            livenessPass,
+            livenessScore,
+            ocrConfidence,
           });
         } catch (asyncErr: any) {
-          logger.warn('[Provider Onboarding] Vision confidence check failed — application stays pending for admin review', {
+          logger.warn('[KYC2026] Verification failed — application stays pending for admin review', {
             applicationId,
             error: asyncErr?.message,
           });
