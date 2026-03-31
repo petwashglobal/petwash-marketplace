@@ -396,12 +396,10 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       if (isPasskeySupported()) {
         setShowPasskeyPrompt(true);
       } else {
-        setTimeout(() => {
-          logger.debug("Navigating to consent onboarding");
-          window.scrollTo(0, 0);
-          const consentDone = localStorage.getItem('petwash_consent_onboarding_complete');
-          navigate(consentDone ? "/dashboard" : "/consent-onboarding");
-        }, 1800);
+        logger.debug("Navigating to consent onboarding");
+        window.scrollTo(0, 0);
+        const consentDone = localStorage.getItem('petwash_consent_onboarding_complete');
+        navigate(consentDone ? "/dashboard" : "/consent-onboarding");
       }
 
     } catch (error: any) {
