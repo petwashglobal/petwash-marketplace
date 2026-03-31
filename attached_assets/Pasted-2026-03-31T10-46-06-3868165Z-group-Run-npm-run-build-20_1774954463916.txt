@@ -1,0 +1,56 @@
+2026-03-31T10:46:06.3868165Z ##[group]Run npm run build
+2026-03-31T10:46:06.3868495Z [36;1mnpm run build[0m
+2026-03-31T10:46:06.3895159Z shell: /usr/bin/bash -e {0}
+2026-03-31T10:46:06.3895417Z env:
+2026-03-31T10:46:06.3895621Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-03-31T10:46:06.3895907Z   NODE_ENV: production
+2026-03-31T10:46:06.3896119Z ##[endgroup]
+2026-03-31T10:46:06.4965922Z 
+2026-03-31T10:46:06.4966586Z > rest-express@1.0.0 prebuild
+2026-03-31T10:46:06.4967083Z > npm run preflight
+2026-03-31T10:46:06.4967255Z 
+2026-03-31T10:46:06.6066569Z 
+2026-03-31T10:46:06.6068004Z > rest-express@1.0.0 preflight
+2026-03-31T10:46:06.6071028Z > tsx scripts/petwash-preflight.ts
+2026-03-31T10:46:06.6071411Z 
+2026-03-31T10:46:06.8526432Z 🛡️  PETWASH™ PREFLIGHT GUARDIAN v2 - CONTENT SCANNER
+2026-03-31T10:46:06.8527105Z 
+2026-03-31T10:46:06.8527436Z ================================
+2026-03-31T10:46:06.8527677Z 
+2026-03-31T10:46:06.8528767Z 🔍 Scanning for forbidden file names...
+2026-03-31T10:46:06.8529076Z 
+2026-03-31T10:46:06.8605121Z 📖 Scanning file CONTENTS for forbidden identifiers (comprehensive)...
+2026-03-31T10:46:06.8605720Z 
+2026-03-31T10:46:07.0519456Z 🎨 Verifying CSS files (HARD FAIL)...
+2026-03-31T10:46:07.0520081Z 
+2026-03-31T10:46:07.0573348Z 📐 Checking for parallel layout systems...
+2026-03-31T10:46:07.0573767Z 
+2026-03-31T10:46:07.0596270Z 
+2026-03-31T10:46:07.0596725Z ================================
+2026-03-31T10:46:07.0597049Z 
+2026-03-31T10:46:07.0597510Z 📊 PREFLIGHT REPORT:
+2026-03-31T10:46:07.0598098Z 
+2026-03-31T10:46:07.0598762Z ✅ PREFLIGHT PASSED - All guards green
+2026-03-31T10:46:07.0599116Z 
+2026-03-31T10:46:07.0599580Z 🎯 Luxury UI integrity: 100%
+2026-03-31T10:46:07.0600222Z 🚀 Ready for build/deploy
+2026-03-31T10:46:07.0600556Z 
+2026-03-31T10:46:07.0784387Z 
+2026-03-31T10:46:07.0785906Z > rest-express@1.0.0 build
+2026-03-31T10:46:07.0786944Z > vite build
+2026-03-31T10:46:07.0788784Z 
+2026-03-31T10:46:07.2663970Z [36mvite v5.4.21 [32mbuilding for production...[36m[39m
+2026-03-31T10:46:07.3395072Z transforming...
+2026-03-31T10:46:16.2511451Z 
+2026-03-31T10:46:16.2512911Z /assets/noise.png referenced in /assets/noise.png didn't resolve at build time, it will remain unchanged to be resolved at runtime
+2026-03-31T10:46:19.1337022Z [32m✓[39m 4021 modules transformed.
+2026-03-31T10:46:19.1451695Z [31mx[39m Build failed in 11.86s
+2026-03-31T10:46:19.1452349Z [31merror during build:
+2026-03-31T10:46:19.1454554Z [31m[vite:load-fallback] Could not load /home/runner/work/petwash-marketplace/petwash-marketplace/client/src/contexts/LanguageContext (imported by client/src/pages/ProviderFeedbackDashboard.tsx): ENOENT: no such file or directory, open '/home/runner/work/petwash-marketplace/petwash-marketplace/client/src/contexts/LanguageContext'[31m
+2026-03-31T10:46:19.1456250Z     at async open (node:internal/fs/promises:634:25)
+2026-03-31T10:46:19.1456933Z     at async Object.readFile (node:internal/fs/promises:1236:14)
+2026-03-31T10:46:19.1458380Z     at async Object.load (file:///home/runner/work/petwash-marketplace/petwash-marketplace/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:65357:25)
+2026-03-31T10:46:19.1460713Z     at async PluginDriver.hookFirstAndGetPlugin (file:///home/runner/work/petwash-marketplace/petwash-marketplace/node_modules/rollup/dist/es/shared/node-entry.js:22453:28)
+2026-03-31T10:46:19.1479385Z     at async file:///home/runner/work/petwash-marketplace/petwash-marketplace/node_modules/rollup/dist/es/shared/node-entry.js:21445:33
+2026-03-31T10:46:19.1482724Z     at async Queue.work (file:///home/runner/work/petwash-marketplace/petwash-marketplace/node_modules/rollup/dist/es/shared/node-entry.js:22681:32)[39m
+2026-03-31T10:46:19.2792923Z ##[error]Process completed with exit code 1.

@@ -1,0 +1,82 @@
+2026-03-31T10:46:34.8160205Z ##[group]Run npm run build
+2026-03-31T10:46:34.8160576Z [36;1mnpm run build[0m
+2026-03-31T10:46:34.8176755Z shell: /usr/bin/bash -e ***0***
+2026-03-31T10:46:34.8177104Z env:
+2026-03-31T10:46:34.8177378Z   PROJECT_ID: ***
+2026-03-31T10:46:34.8177912Z   REGION: me-west1
+2026-03-31T10:46:34.8178208Z   SERVICE_NAME: petwash-api
+2026-03-31T10:46:34.8178521Z   REPO_NAME: petwash-api
+2026-03-31T10:46:34.8178944Z   IMAGE: me-west1-docker.pkg.dev/***/petwash-api/backend
+2026-03-31T10:46:34.8179355Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-03-31T10:46:34.8180014Z   CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE: /home/runner/work/petwash-marketplace/petwash-marketplace/gha-creds-c567fd3e43bef25c.json
+2026-03-31T10:46:34.8180946Z   GOOGLE_APPLICATION_CREDENTIALS: /home/runner/work/petwash-marketplace/petwash-marketplace/gha-creds-c567fd3e43bef25c.json
+2026-03-31T10:46:34.8181792Z   GOOGLE_GHA_CREDS_PATH: /home/runner/work/petwash-marketplace/petwash-marketplace/gha-creds-c567fd3e43bef25c.json
+2026-03-31T10:46:34.8182451Z   CLOUDSDK_CORE_PROJECT: ***
+2026-03-31T10:46:34.8182779Z   CLOUDSDK_PROJECT: ***
+2026-03-31T10:46:34.8183079Z   GCLOUD_PROJECT: ***
+2026-03-31T10:46:34.8183376Z   GCP_PROJECT: ***
+2026-03-31T10:46:34.8183677Z   GOOGLE_CLOUD_PROJECT: ***
+2026-03-31T10:46:34.8184227Z   CLOUDSDK_METRICS_ENVIRONMENT: github-actions-setup-gcloud
+2026-03-31T10:46:34.8184665Z   CLOUDSDK_METRICS_ENVIRONMENT_VERSION: 2.2.1
+2026-03-31T10:46:34.8185018Z   NODE_ENV: production
+2026-03-31T10:46:34.8185418Z   VITE_FIREBASE_API_KEY: ***
+2026-03-31T10:46:34.8185801Z   VITE_FIREBASE_AUTH_DOMAIN: ***
+2026-03-31T10:46:34.8186136Z   VITE_FIREBASE_PROJECT_ID: ***
+2026-03-31T10:46:34.8186548Z   VITE_FIREBASE_STORAGE_BUCKET:  ***
+2026-03-31T10:46:34.8186911Z   VITE_FIREBASE_MESSAGING_SENDER_ID: ***
+2026-03-31T10:46:34.8187326Z   VITE_FIREBASE_APP_ID: ***
+2026-03-31T10:46:34.8187886Z   VITE_FIREBASE_MEASUREMENT_ID: ***
+2026-03-31T10:46:34.8188226Z   VITE_FIREBASE_VAPID_KEY: 
+2026-03-31T10:46:34.8201409Z   VITE_RECAPTCHA_SITE_KEY: ***
+2026-03-31T10:46:34.8201888Z   VITE_GOOGLE_CLIENT_ID: 
+2026-03-31T10:46:34.8202235Z   VITE_WEBAUTHN_RP_ID: ***
+2026-03-31T10:46:34.8202542Z ##[endgroup]
+2026-03-31T10:46:34.9051559Z 
+2026-03-31T10:46:34.9052334Z > rest-express@1.0.0 prebuild
+2026-03-31T10:46:34.9052804Z > npm run preflight
+2026-03-31T10:46:34.9052993Z 
+2026-03-31T10:46:34.9904280Z 
+2026-03-31T10:46:34.9905045Z > rest-express@1.0.0 preflight
+2026-03-31T10:46:34.9905529Z > tsx scripts/petwash-preflight.ts
+2026-03-31T10:46:34.9905760Z 
+2026-03-31T10:46:35.2323503Z 🛡️  PETWASH™ PREFLIGHT GUARDIAN v2 - CONTENT SCANNER
+2026-03-31T10:46:35.2324097Z 
+2026-03-31T10:46:35.2324427Z ================================
+2026-03-31T10:46:35.2324690Z 
+2026-03-31T10:46:35.2325204Z 🔍 Scanning for forbidden file names...
+2026-03-31T10:46:35.2325610Z 
+2026-03-31T10:46:35.2388004Z 📖 Scanning file CONTENTS for forbidden identifiers (comprehensive)...
+2026-03-31T10:46:35.2388420Z 
+2026-03-31T10:46:35.4114544Z 🎨 Verifying CSS files (HARD FAIL)...
+2026-03-31T10:46:35.4116052Z 
+2026-03-31T10:46:35.4166748Z 📐 Checking for parallel layout systems...
+2026-03-31T10:46:35.4167412Z 
+2026-03-31T10:46:35.4181953Z 
+2026-03-31T10:46:35.4182364Z ================================
+2026-03-31T10:46:35.4182652Z 
+2026-03-31T10:46:35.4183031Z 📊 PREFLIGHT REPORT:
+2026-03-31T10:46:35.4183321Z 
+2026-03-31T10:46:35.4184059Z ✅ PREFLIGHT PASSED - All guards green
+2026-03-31T10:46:35.4184432Z 
+2026-03-31T10:46:35.4186169Z 🎯 Luxury UI integrity: 100%
+2026-03-31T10:46:35.4186716Z 🚀 Ready for build/deploy
+2026-03-31T10:46:35.4186910Z 
+2026-03-31T10:46:35.4323249Z 
+2026-03-31T10:46:35.4324107Z > rest-express@1.0.0 build
+2026-03-31T10:46:35.4324527Z > vite build
+2026-03-31T10:46:35.4324714Z 
+2026-03-31T10:46:35.6125860Z [36mvite v5.4.21 [32mbuilding for production...[36m[39m
+2026-03-31T10:46:35.6821171Z transforming...
+2026-03-31T10:46:42.5666709Z 
+2026-03-31T10:46:42.5668033Z /assets/noise.png referenced in /assets/noise.png didn't resolve at build time, it will remain unchanged to be resolved at runtime
+2026-03-31T10:46:46.3060215Z [32m✓[39m 4797 modules transformed.
+2026-03-31T10:46:46.3115284Z [31mx[39m Build failed in 10.68s
+2026-03-31T10:46:46.3115836Z [31merror during build:
+2026-03-31T10:46:46.3117846Z [31m[vite:load-fallback] Could not load /home/runner/work/petwash-marketplace/petwash-marketplace/client/src/contexts/LanguageContext (imported by client/src/pages/MarketplaceReviewPage.tsx): ENOENT: no such file or directory, open '/home/runner/work/petwash-marketplace/petwash-marketplace/client/src/contexts/LanguageContext'[31m
+2026-03-31T10:46:46.3119955Z     at async open (node:internal/fs/promises:636:25)
+2026-03-31T10:46:46.3120626Z     at async Object.readFile (node:internal/fs/promises:1235:14)
+2026-03-31T10:46:46.3121809Z     at async Object.load (file:///home/runner/work/petwash-marketplace/petwash-marketplace/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:65357:25)
+2026-03-31T10:46:46.3123536Z     at async PluginDriver.hookFirstAndGetPlugin (file:///home/runner/work/petwash-marketplace/petwash-marketplace/node_modules/rollup/dist/es/shared/node-entry.js:22453:28)
+2026-03-31T10:46:46.3125246Z     at async file:///home/runner/work/petwash-marketplace/petwash-marketplace/node_modules/rollup/dist/es/shared/node-entry.js:21445:33
+2026-03-31T10:46:46.3127859Z     at async Queue.work (file:///home/runner/work/petwash-marketplace/petwash-marketplace/node_modules/rollup/dist/es/shared/node-entry.js:22681:32)[39m
+2026-03-31T10:46:46.3922424Z ##[error]Process completed with exit code 1.
