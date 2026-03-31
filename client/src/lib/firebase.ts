@@ -107,15 +107,14 @@ if (typeof window !== "undefined" && APP_CHECK_SITE_KEY) {
       provider: new ReCaptchaV3Provider(APP_CHECK_SITE_KEY),
       isTokenAutoRefreshEnabled: true,
     });
-    logger.info('✅ App Check initialized with reCAPTCHA v3');
   } catch (error) {
-    logger.error('🚨 App Check init FAILED — requests may be rejected by Firebase', error);
+    console.error('[App Check] Initialization failed:', error);
   }
 } else if (typeof window !== "undefined") {
   if (import.meta.env.PROD) {
-    logger.error('[App Check] Missing VITE_RECAPTCHA_SITE_KEY in production. App Check not initialized.');
+    console.error('[App Check] Missing VITE_RECAPTCHA_SITE_KEY in production. App Check NOT initialized.');
   } else {
-    logger.warn('[App Check] Missing VITE_RECAPTCHA_SITE_KEY. Skipping App Check initialization in development.');
+    console.warn('[App Check] Missing VITE_RECAPTCHA_SITE_KEY. Skipping App Check in development.');
   }
 }
 
