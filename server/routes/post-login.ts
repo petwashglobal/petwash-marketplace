@@ -221,6 +221,39 @@ export async function postLoginDecider(req: Request, res: Response) {
       }
     }
 
+    // Social OAuth users (Google, Apple, Facebook) never write acceptedTerms to
+    // Firestore because they bypass the signup form. If termsAcceptedAt is still
+    // missing after the Firestore sync above, check Firebase Auth provider data
+    // and stamp it here — synchronously, before the routing decision runs.
+    if (!(user as any).termsAcceptedAt) {
+      try {
+        const fbAdminModule = await import('../lib/firebase-admin');
+        const fbAuth = fbAdminModule.auth;
+        if (fbAuth) {
+          const firebaseUser = await fbAuth.getUser(userId);
+          const socialProviders = ['google.com', 'apple.com', 'facebook.com', 'github.com'];
+          const isSocial = firebaseUser.providerData?.some(
+            (p) => socialProviders.includes(p.providerId)
+          );
+          if (isSocial) {
+            const consentNow = new Date();
+            await storage.updateUser(userId, {
+              termsAcceptedAt: consentNow,
+              privacyAcceptedAt: consentNow,
+            });
+            (user as any).termsAcceptedAt = consentNow;
+            (user as any).privacyAcceptedAt = consentNow;
+            logger.info('[PostLogin] ✅ termsAcceptedAt stamped for social user (synchronous)', {
+              userId,
+              providers: firebaseUser.providerData?.map((p) => p.providerId),
+            });
+          }
+        }
+      } catch (socialTermsErr) {
+        logger.warn('[PostLogin] Failed to stamp social terms (non-blocking)', { userId, error: String(socialTermsErr) });
+      }
+    }
+
     if ((user as any).blocked) {
       return res.json({
         nextUrl: '/blocked',
