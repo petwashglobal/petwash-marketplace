@@ -14663,6 +14663,37 @@ export const providerRankingAudit = pgTable("provider_ranking_audit", {
 export type ProviderRankingAuditRow = typeof providerRankingAudit.$inferSelect;
 export type BookingDispute = typeof bookingDisputes.$inferSelect;
 
+// ─── Intervention Cases ────────────────────────────────────────────────────────
+// Phase 12.21 — Intervention & Decision Tracking
+// Created when board flags fire or leadership manually opens a case.
+// Tracks what was decided (by whom, when) and whether it was resolved.
+// Source of signals: Phase 12.20 board pack (expansion engine).
+
+export const interventionCases = pgTable("intervention_cases", {
+  id:            serial("id").primaryKey(),
+  entityType:    varchar("entity_type", { length: 20 }).notNull(),       // 'station' | 'network' | 'franchise'
+  entityId:      text("entity_id").notNull(),                            // station_id as text or owner key
+  entityName:    text("entity_name").notNull(),
+  triggerSignal: varchar("trigger_signal", { length: 50 }),              // board pack signal at creation time
+  triggerFlag:   varchar("trigger_flag", { length: 50 }),                // board flag type (null if manual)
+  decision:      varchar("decision", { length: 50 }),                    // approve_expansion / freeze_capex / restructure / review_franchise / monitor / no_action
+  status:        varchar("status", { length: 20 }).notNull().default("open"), // open | in_progress | resolved | escalated
+  notes:         text("notes"),
+  createdBy:     text("created_by").notNull().default("system"),
+  createdAt:     timestamp("created_at").defaultNow().notNull(),
+  resolvedAt:    timestamp("resolved_at"),
+  updatedAt:     timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  statusIdx: index("idx_intervention_status").on(table.status),
+  entityIdx: index("idx_intervention_entity").on(table.entityType, table.entityId),
+}));
+
+export const insertInterventionCaseSchema = createInsertSchema(interventionCases).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export type InsertInterventionCase = z.infer<typeof insertInterventionCaseSchema>;
+export type InterventionCase = typeof interventionCases.$inferSelect;
+
 // ─── Station Settlements ───────────────────────────────────────────────────────
 // One record per completed booking that has a stationId.
 // Source of truth for all station/franchise money flow.

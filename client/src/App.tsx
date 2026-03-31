@@ -338,6 +338,8 @@ const TreasuryForecast = lazy(() => import("@/pages/TreasuryForecast"));
 const FinanceProfitability = lazy(() => import("@/pages/FinanceProfitability"));
 // Phase 12.20 — Expansion Decision & Board Pack
 const BoardPack = lazy(() => import("@/pages/BoardPack"));
+// Phase 12.21 — Intervention & Decision Tracking
+const Interventions = lazy(() => import("@/pages/Interventions"));
 const Meetings = lazy(() => import("@/pages/Meetings"));
 const PlatformLegalFramework = lazy(() => import("@/pages/PlatformLegalFramework"));
 const ProviderOnboarding = lazy(() => import("@/pages/ProviderOnboarding"));
@@ -2398,6 +2400,16 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <ExecutiveSuiteGuard>
               <Suspense fallback={<PageLoader />}>
                 <BoardPack />
+              </Suspense>
+            </ExecutiveSuiteGuard>
+          )}
+        </Route>
+
+        <Route path="/finance/interventions">
+          {() => (
+            <ExecutiveSuiteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <Interventions />
               </Suspense>
             </ExecutiveSuiteGuard>
           )}
