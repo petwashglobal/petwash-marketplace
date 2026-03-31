@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signInWithCustomToken, getAdditionalUserInfo, getRedirectResult } from "firebase/auth";
+import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, OAuthProvider, linkWithCredential, signInWithPopup, signInWithRedirect, signInWithCustomToken, getAdditionalUserInfo, getRedirectResult } from "firebase/auth";
+import type { OAuthCredential } from "firebase/auth";
 import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider, getDeviceInfo } from "@/lib/iosAuthHandler";
 import { auth } from "../lib/firebase";
 import { getApiUrl } from "@/lib/apiConfig";
@@ -109,6 +110,10 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   const [verificationCode, setVerificationCode] = useState("");
   const [confirmationResult, setConfirmationResult] = useState<{ phone: string } | null>(null);
   const [phoneLoading, setPhoneLoading] = useState(false);
+  // Account linking: stores credential from a social provider that collided with an existing account.
+  // After the user signs in with their existing method, linkWithCredential() is called to merge them.
+  const [pendingOAuthCredential, setPendingOAuthCredential] = useState<OAuthCredential | null>(null);
+  const [pendingLinkProvider, setPendingLinkProvider] = useState<SocialProvider | null>(null);
   const [magicLinkEmailNeeded, setMagicLinkEmailNeeded] = useState(false);
   const [magicLinkEmailInput, setMagicLinkEmailInput] = useState("");
   const [magicLinkHref, setMagicLinkHref] = useState("");
@@ -1018,42 +1023,52 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         return;
       }
 
-      // Account collision: an email/password (or phone) account already exists for
-      // this email. Firebase blocks duplicate sign-in to prevent account merges.
-      // Recovery: switch to email mode, pre-fill the email so the user can sign in
-      // with their existing method in one tap.
+      // Account collision: an account with this email already exists under a different sign-in method.
+      // REAL FIX: extract the OAuth credential from the error, store it as pendingOAuthCredential,
+      // pre-fill the user's email, and ask them to sign in with their existing method.
+      // After they successfully sign in, linkWithCredential() merges both methods into ONE account.
       if (error.code === 'auth/account-exists-with-different-credential') {
         const collidingEmail: string = error.customData?.email || error.email || '';
+
+        // Extract the OAuth credential so we can link it after the user signs in
+        let extractedCred: OAuthCredential | null = null;
+        try {
+          if (provider === 'google') {
+            extractedCred = GoogleAuthProvider.credentialFromError(error);
+          } else {
+            extractedCred = OAuthProvider.credentialFromError(error);
+          }
+        } catch (credErr) {
+          logger.warn('[AccountLink] Could not extract credential from error', credErr);
+        }
+
+        if (extractedCred) {
+          setPendingOAuthCredential(extractedCred);
+          setPendingLinkProvider(provider);
+        }
         if (collidingEmail) {
           setFormData(prev => ({ ...prev, email: collidingEmail }));
         }
         setPhoneMode(false);
         setMagicLinkMode(false);
-        const accountExistsMsg: Record<string, string> = {
+
+        const providerLabel = provider === 'google' ? 'Google' : provider === 'apple' ? 'Apple' : 'Facebook';
+        const linkMsg: Record<string, string> = {
           en: collidingEmail
-            ? `An account already exists for ${collidingEmail}. Please sign in with your email and password below.`
-            : 'An account already exists with this email. Please sign in with your email and password.',
+            ? `You already have a PetWash account for ${collidingEmail}. Sign in with your password below — we'll automatically connect your ${providerLabel} account so you can use both.`
+            : `You already have a PetWash account with this email. Sign in with your password to connect your ${providerLabel} account.`,
           he: collidingEmail
-            ? `קיים כבר חשבון עבור ${collidingEmail}. אנא התחברו עם האימייל והסיסמה למטה.`
-            : 'קיים כבר חשבון עם האימייל הזה. אנא התחברו עם האימייל והסיסמה.',
+            ? `כבר יש לך חשבון PetWash עבור ${collidingEmail}. התחברו עם הסיסמה למטה — נחבר אוטומטית את חשבון ${providerLabel} שלכם כדי שתוכלו להשתמש בשניהם.`
+            : `כבר יש לך חשבון PetWash עם האימייל הזה. התחברו עם הסיסמה כדי לחבר את חשבון ${providerLabel}.`,
           ar: collidingEmail
-            ? `يوجد حساب مسبق لـ ${collidingEmail}. يرجى تسجيل الدخول بالبريد الإلكتروني وكلمة المرور أدناه.`
-            : 'يوجد حساب مسبق بهذا البريد الإلكتروني. يرجى استخدام البريد وكلمة المرور.',
-          es: collidingEmail
-            ? `Ya existe una cuenta para ${collidingEmail}. Inicia sesión con tu correo y contraseña abajo.`
-            : 'Ya existe una cuenta con este correo. Inicia sesión con correo y contraseña.',
-          fr: collidingEmail
-            ? `Un compte existe déjà pour ${collidingEmail}. Connectez-vous avec votre email et mot de passe ci-dessous.`
-            : 'Un compte existe déjà avec cet email. Connectez-vous avec email et mot de passe.',
-          ru: collidingEmail
-            ? `Аккаунт для ${collidingEmail} уже существует. Войдите с помощью email и пароля ниже.`
-            : 'Аккаунт с этим email уже существует. Войдите с помощью email и пароля.',
+            ? `لديك حساب PetWash لـ ${collidingEmail}. سجّل الدخول بكلمة المرور أدناه وسنربط حسابك على ${providerLabel} تلقائياً.`
+            : `لديك حساب PetWash بهذا البريد. سجّل الدخول بكلمة المرور لربط حساب ${providerLabel}.`,
         };
+
         toast({
-          variant: 'destructive',
-          title: language === 'he' ? 'שיטת התחברות שונה' : language === 'ar' ? 'طريقة دخول مختلفة' : 'Different sign-in method',
-          description: accountExistsMsg[language] || accountExistsMsg.en,
-          duration: 8000,
+          title: language === 'he' ? 'חבר את החשבונות' : language === 'ar' ? 'ربط الحسابات' : `Connect your ${providerLabel} account`,
+          description: linkMsg[language] || linkMsg.en,
+          duration: 10000,
         });
         trackEvent({ action: `${provider}_account_collision`, category: 'authentication', label: collidingEmail ? 'email_known' : 'email_unknown', language });
         setSocialLoading(null);
@@ -1459,6 +1474,29 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           return;
         }
         throw new Error('Failed to create session');
+      }
+
+      // ── Account linking: if a social OAuth credential is pending, link it now ──
+      // This makes Google/Apple/Facebook sign-in work for users who originally
+      // signed up with email/password — one account, multiple login methods.
+      if (pendingOAuthCredential) {
+        try {
+          await linkWithCredential(userCredential.user, pendingOAuthCredential);
+          const linkedProviderLabel = pendingLinkProvider === 'google' ? 'Google' : pendingLinkProvider === 'apple' ? 'Apple' : 'Facebook';
+          toast({
+            title: language === 'he' ? `חשבון ${linkedProviderLabel} חובר בהצלחה` : `${linkedProviderLabel} connected`,
+            description: language === 'he'
+              ? `מעכשיו תוכלו להתחבר עם ${linkedProviderLabel} או עם הסיסמה שלכם.`
+              : `You can now sign in with either ${linkedProviderLabel} or your password.`,
+          });
+          logger.info(`[AccountLink] Successfully linked ${pendingLinkProvider} to ${userCredential.user.uid}`);
+          trackEvent({ action: `account_linked_${pendingLinkProvider}`, category: 'authentication', label: 'link_success', language });
+        } catch (linkErr: any) {
+          // Linking can fail if the credential was already linked — this is harmless
+          logger.warn('[AccountLink] linkWithCredential failed (may already be linked):', linkErr?.code);
+        }
+        setPendingOAuthCredential(null);
+        setPendingLinkProvider(null);
       }
 
       if (rememberDevice && userCredential.user.uid && userCredential.user.email) {
@@ -2261,6 +2299,34 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 <ArrowLeft className="w-3.5 h-3.5 mr-2" />
                 {language === 'he' ? 'חזור להתחברות רגילה' : 'Back to regular sign in'}
               </Button>
+            </motion.div>
+          )}
+
+          {/* Account linking banner — shown when a social OAuth credential is waiting to be linked */}
+          {pendingOAuthCredential && pendingLinkProvider && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-none border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 leading-snug"
+              dir={language === 'he' || language === 'ar' ? 'rtl' : 'ltr'}
+            >
+              <p className="font-semibold mb-0.5">
+                {language === 'he'
+                  ? `חיבור חשבון ${pendingLinkProvider === 'google' ? 'Google' : pendingLinkProvider === 'apple' ? 'Apple' : 'Facebook'}`
+                  : `Connect your ${pendingLinkProvider === 'google' ? 'Google' : pendingLinkProvider === 'apple' ? 'Apple' : 'Facebook'} account`}
+              </p>
+              <p>
+                {language === 'he'
+                  ? 'הזינו את הסיסמה שלכם למטה. לאחר מכן שתי שיטות ההתחברות יעבדו על אותו החשבון.'
+                  : 'Enter your password below. Both sign-in methods will then work on the same account.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => { setPendingOAuthCredential(null); setPendingLinkProvider(null); }}
+                className="mt-1 text-xs text-amber-700 underline"
+              >
+                {language === 'he' ? 'בטל' : 'Cancel'}
+              </button>
             </motion.div>
           )}
 

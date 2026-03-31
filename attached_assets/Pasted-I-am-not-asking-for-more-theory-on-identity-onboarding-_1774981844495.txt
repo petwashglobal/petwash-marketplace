@@ -1,0 +1,83 @@
+I am not asking for more theory on identity/onboarding now.
+
+The highest-impact fixes were already identified and these are the ones that must be implemented first because they unblock real users and remove avoidable failures.
+
+1. Provider onboarding must not block on biometric checks
+Current problem:
+provider submission waits on Cloud Vision / biometric logic before DB insert, which creates delays and timeouts.
+
+Required fix:
+- save the provider application first
+- return success immediately with status = pending
+- run biometric face match asynchronously after response
+- update the record later
+- if face match passes, auto-approve in background
+- if it fails, keep it in review
+
+Business reason:
+submission should never fail because a third-party verification service is slow.
+
+2. Remove dead signed URL call in provider upload flow
+Current problem:
+after selfie upload, code calls getSignedUrl() even though the result is not used.
+If IAM signing is not configured correctly, this throws and causes a 500.
+
+Required fix:
+- remove the dead getSignedUrl() call
+- store the GCS path only
+- signed URL should only be generated when someone actually needs to view the file
+
+Business reason:
+no provider should lose an application because of a useless file-view step.
+
+3. Social login users must not be bounced into incomplete profile flow just because consent timestamps are missing
+Current problem:
+Google / Apple / Facebook users bypass the regular signup form, so termsAcceptedAt / privacyAcceptedAt are missing, and post-login routing wrongly sends them to /complete-profile.
+
+Required fix:
+- when a social session is established, if termsAcceptedAt / privacyAcceptedAt are missing, stamp them automatically
+- OAuth consent is sufficient for that stage
+- keep role/onboarding routing separate from consent stamping
+
+Business reason:
+social login should feel simpler than email, not more broken.
+
+4. TikTok and Instagram sign-in must not appear live if backend is not live
+Current problem:
+buttons exist but backend returns service unavailable, which looks broken.
+
+Required fix:
+- replace active TikTok / Instagram login buttons with disabled “Soon / בקרוב” state
+- do not expose dead entry points in production UI
+
+Business reason:
+broken buttons reduce trust immediately.
+
+5. Google sign-in must handle existing-account collision clearly
+Required fix:
+- handle account-exists-with-different-credential
+- show user clear next step instead of generic failure
+- support linking flow properly
+
+6. Apple sign-in must be surfaced cleanly if enabled
+Required fix:
+- if backend/provider is configured, expose the Apple login button clearly
+- if not configured, hide it fully
+- do not leave half-enabled state
+
+7. Phone / OTP onboarding must finish profile completion cleanly
+Required fix:
+- after OTP verification, user must be forced to complete missing required fields
+- no half-created user should look “fully onboarded”
+
+8. Provider biometric must happen after submit, not before
+This is repeated because it is the biggest operational fix.
+
+I want exact response on these points:
+- DONE / PARTIAL / MISSING
+- exact file names
+- exact routes touched
+- exact flow after fix
+- proof from logs or screenshots
+
+No more broad explanation. Just implementation status.
