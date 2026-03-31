@@ -111,11 +111,11 @@ if (typeof window !== "undefined" && APP_CHECK_SITE_KEY) {
   } catch (error) {
     logger.error('🚨 App Check init FAILED — requests may be rejected by Firebase', error);
   }
-} else if (!APP_CHECK_SITE_KEY) {
+} else if (typeof window !== "undefined") {
   if (import.meta.env.PROD) {
-    logger.error('🚨 CRITICAL: VITE_RECAPTCHA_SITE_KEY is not set in production. App Check is DISABLED. Set this variable before go-live.');
+    logger.error('[App Check] Missing VITE_RECAPTCHA_SITE_KEY in production. App Check not initialized.');
   } else {
-    logger.warn('⚠️ App Check disabled in dev (VITE_RECAPTCHA_SITE_KEY not set)');
+    logger.warn('[App Check] Missing VITE_RECAPTCHA_SITE_KEY. Skipping App Check initialization in development.');
   }
 }
 
