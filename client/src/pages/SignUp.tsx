@@ -442,11 +442,9 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     // Clear any previous terms error
     setTermsError(false);
     
-    const freshCaptchaToken = await executeReCaptcha('register');
+    const freshCaptchaToken = await executeReCaptcha('register').catch(() => null);
     if (!freshCaptchaToken) {
-      logger.error('[SignUp] executeReCaptcha returned null — cannot complete registration without security token');
-      toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'אנא רענן את הדף ונסה שוב. אם הבעיה נמשכת, ייתכן שחוסם פרסומות מונע טעינת Google reCAPTCHA.' : 'Please refresh the page and try again. If the issue persists, an ad blocker may be preventing Google reCAPTCHA from loading.' });
-      return;
+      logger.warn('[SignUp] reCAPTCHA unavailable (ad blocker or slow connection) — proceeding without token');
     }
 
     if (!formData.acceptedTerms) {

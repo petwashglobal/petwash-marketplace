@@ -151,7 +151,6 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
   };
 
   const navigatePostLogin = async (fallback = '/home') => {
-    const notifShown = localStorage.getItem('petwash_notification_consent_shown');
     try {
       const intent = localStorage.getItem('signup_intent') || undefined;
       const res = await fetch(getApiUrl('/api/auth/post-login'), {
@@ -161,16 +160,13 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         body: intent ? JSON.stringify({ intent }) : undefined,
       });
       const data = await res.json();
-      let path = data.nextUrl || data.redirectTo || fallback;
+      const path = data.nextUrl || data.redirectTo || fallback;
       localStorage.removeItem('signup_intent');
-      if (!notifShown && (path === '/home' || path === '/dashboard')) {
-        path = '/notification-consent';
-      }
       window.scrollTo(0, 0);
       navigate(path);
     } catch {
       window.scrollTo(0, 0);
-      navigate(notifShown ? fallback : '/notification-consent');
+      navigate(fallback);
     }
   };
   
@@ -352,7 +348,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             description: t('signin.redirecting', language),
           });
 
-          setTimeout(() => navigatePostLogin(), 1000);
+          navigatePostLogin();
         } catch (error: any) {
           logger.error("Magic link verification error:", error);
           toast({
@@ -397,7 +393,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       const { trackLogin } = await import('@/lib/analytics');
       trackLogin('magic_link', userCredential.user.uid);
       toast({ title: t('signin.successTitle', language), description: t('signin.redirecting', language) });
-      setTimeout(() => navigatePostLogin(), 1000);
+      navigatePostLogin();
     } catch (error: any) {
       logger.error("Magic link inline email verification error:", error);
       toast({
@@ -544,11 +540,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
         storeLastAuthMethod('social');
         toast({ title: t('signin.successTitle', language), description: t('signin.redirecting', language) });
-        setTimeout(() => {
-          const redirect = new URLSearchParams(window.location.search).get('redirect') || '';
-          if (redirect) { window.scrollTo(0, 0); navigate(redirect); }
-          else { navigatePostLogin(); }
-        }, 800);
+        const redirect = new URLSearchParams(window.location.search).get('redirect') || '';
+        if (redirect) { window.scrollTo(0, 0); navigate(redirect); }
+        else { navigatePostLogin(); }
       } catch (err: any) {
         if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') return;
         logger.error('[Auth] Redirect result error:', err);
@@ -1011,10 +1005,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
         description: t('signin.redirecting', language),
       });
 
-      setTimeout(() => {
-        if (customRedirect) { window.scrollTo(0, 0); navigate(customRedirect); }
-        else { navigatePostLogin(); }
-      }, 1000);
+      if (customRedirect) { window.scrollTo(0, 0); navigate(customRedirect); }
+      else { navigatePostLogin(); }
     } catch (error: any) {
       logger.error('[Auth Trace] Failed', { traceId, error: error?.code || error?.message });
       logger.error("Social login error:", error);
@@ -1404,10 +1396,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       setVerificationCode('');
       setConfirmationResult(null);
 
-      setTimeout(() => {
-        window.scrollTo(0, 0);
-        navigatePostLogin();
-      }, 1200);
+      window.scrollTo(0, 0);
+      navigatePostLogin();
     } catch (error: any) {
       logger.error('[PhoneAuth] Verification failed:', error);
 
@@ -1434,12 +1424,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     try {
       setLoading(true);
 
-      const captchaToken = await executeReCaptcha('login');
+      const captchaToken = await executeReCaptcha('login').catch(() => null);
       if (!captchaToken) {
-        logger.error('[SignIn] executeReCaptcha returned null — cannot sign in without security token');
-        toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'אנא רענן את הדף ונסה שוב. אם הבעיה נמשכת, ייתכן שחוסם פרסומות מונע טעינת Google reCAPTCHA.' : 'Please refresh the page and try again. If the issue persists, an ad blocker may be preventing Google reCAPTCHA from loading.' });
-        setLoading(false);
-        return;
+        logger.warn('[SignIn] reCAPTCHA unavailable (ad blocker or slow connection) — proceeding without token');
       }
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
       
@@ -1492,11 +1479,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       setPasswordFailureCount(0);
       
-      setTimeout(() => {
-        window.scrollTo(0, 0);
-        // Force a small delay to ensure cookie is set before navigation
-        navigatePostLogin();
-      }, 1200);
+      window.scrollTo(0, 0);
+      navigatePostLogin();
     } catch (error: any) {
       logger.error("Email/password sign-in error:", error);
       
@@ -1580,7 +1564,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       if (storedUid) trackLogin('email', storedUid);
       toast({ title: t('signin.successTitle', language), description: t('signin.redirecting', language) });
       setPasswordFailureCount(0);
-      setTimeout(() => { window.scrollTo(0, 0); navigatePostLogin(); }, 1200);
+      window.scrollTo(0, 0);
+      navigatePostLogin();
     } catch (err: any) {
       logger.error('[SignIn] Turnstile session retry failed', { error: err.message });
       toast({ variant: 'destructive', title: language === 'he' ? 'שגיאה בהתחברות' : 'Sign in error', description: language === 'he' ? 'נסה שוב.' : 'Please try again.' });
