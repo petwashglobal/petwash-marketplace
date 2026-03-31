@@ -61,6 +61,16 @@ export function Footer({ language }: FooterProps) {
                 </Link>
               </div>
               <div>
+                <Link href="/legal/cookies" className="text-gray-600 hover:text-black transition-colors cursor-pointer">
+                  {t('footer.cookiePolicy', language)}
+                </Link>
+              </div>
+              <div>
+                <Link href="/legal/disclaimer" className="text-gray-600 hover:text-black transition-colors cursor-pointer">
+                  {t('footer.disclaimer', language)}
+                </Link>
+              </div>
+              <div>
                 <Link href="/admin/login-v2" className="text-black hover:text-gray-600 transition-colors cursor-pointer text-sm font-semibold">
                   Admin Portal
                 </Link>
@@ -220,7 +230,7 @@ export function Footer({ language }: FooterProps) {
               </p>
             </div>
             <div className="text-center md:text-right text-sm text-gray-600">
-              <p className="font-semibold text-gray-900">&copy; 2025 <span className="brand-petwash">⁦Pet Wash™⁩</span> Ltd</p>
+              <p className="font-semibold text-gray-900">&copy; 2026 <span className="brand-petwash">⁦Pet Wash™⁩</span> Ltd</p>
               <p className="text-xs mt-1">{t('footer.allRightsReserved', language)}</p>
               <p className="flex items-center justify-center md:justify-end gap-1 mt-2">
                 <span className="inline-block w-2 h-2 bg-green-500 rounded-full"></span>

@@ -1410,7 +1410,9 @@ export const translations: TranslationStrings = {
   'footer.madeWithLove': { en: 'Made with love ❤️ for the pets of the world & their owners.', he: 'נעשה באהבה ❤️ לחיות המחמד של העולם ולבעליהן.', ar: 'صُنع بحب ❤️ للحيوانات الأليفة في العالم وأصحابها.', ru: 'Сделано с любовью ❤️ для домашних животных мира и их владельцев.', fr: 'Fait avec amour ❤️ pour les animaux de compagnie du monde et leurs propriétaires.', es: 'Hecho con amor ❤️ para las mascotas del mundo y sus dueños.' },
   'footer.quickEasy247': { en: 'Quick, Easy, 24/7', he: 'מהיר, קל, 24/7', ar: 'سريع، سهل، 24/7', ru: 'Быстро, просто, 24/7', fr: 'Rapide, facile, 24/7', es: 'Rápido, fácil, 24/7' },
   'footer.allRightsReserved': { en: 'All Rights Reserved', he: 'כל הזכויות שמורות', ar: 'جميع الحقوق محفوظة', ru: 'Все права защищены', fr: 'Tous droits réservés', es: 'Todos los derechos reservados' },
-  'footer.passkeyEnabled': { en: 'Passkey Enabled', he: 'Passkey זמין', ar: 'Passkey متاح', ru: 'Passkey доступен', fr: 'Passkey activé', es: 'Passkey habilitado' },
+  'footer.passkeyEnabled': { en: 'Passkey Enabled', he: 'Passkey זמין', ar: 'Passkey متاח', ru: 'Passkey доступен', fr: 'Passkey activé', es: 'Passkey habilitado' },
+  'footer.cookiePolicy': { en: 'Cookie Policy', he: 'מדיניות עוגיות', ar: 'سياسة ملفات تعريف الارتباط', ru: 'Политика файлов cookie', fr: 'Politique de cookies', es: 'Política de cookies' },
+  'footer.disclaimer': { en: 'Disclaimer', he: 'כתב ויתור', ar: 'إخلاء المسؤولية', ru: 'Отказ от ответственности', fr: 'Avertissement', es: 'Aviso legal' },
   // Apple Style Registration
   'registration.title': { en: 'Join ⁦Pet Wash™⁩ Club', he: 'הצטרפו למועדון ⁦Pet Wash™⁩', ar: 'انضم إلى نادي ⁦Pet Wash™⁩', ru: 'Присоединяйтесь к ⁦Pet Wash™⁩ Club', fr: 'Rejoignez le Club ⁦Pet Wash™⁩', es: 'Únete al Club ⁦Pet Wash™⁩' },
   'registration.close': { en: 'Close', he: 'סגור', ar: 'إغلاق', ru: 'Закрыть', fr: 'Fermer', es: 'Cerrar' },
