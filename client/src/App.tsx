@@ -330,6 +330,8 @@ const ExecutiveSuiteGuard = lazy(() => import("@/components/ExecutiveSuiteGuard"
 const NetworkOversight = lazy(() => import("@/pages/NetworkOversight"));
 // Phase 12.16 — Financial Governance & Approval Controls
 const FinancialApprovals = lazy(() => import("@/pages/FinancialApprovals"));
+// Phase 12.17 — Cash Reconciliation & Treasury Discipline
+const Treasury = lazy(() => import("@/pages/Treasury"));
 const Meetings = lazy(() => import("@/pages/Meetings"));
 const PlatformLegalFramework = lazy(() => import("@/pages/PlatformLegalFramework"));
 const ProviderOnboarding = lazy(() => import("@/pages/ProviderOnboarding"));
@@ -2348,6 +2350,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <ExecutiveSuiteGuard>
               <Suspense fallback={<PageLoader />}>
                 <FinancialApprovals />
+              </Suspense>
+            </ExecutiveSuiteGuard>
+          )}
+        </Route>
+
+        {/* Phase 12.17 — Cash Reconciliation & Treasury Discipline */}
+        <Route path="/treasury">
+          {() => (
+            <ExecutiveSuiteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <Treasury />
               </Suspense>
             </ExecutiveSuiteGuard>
           )}

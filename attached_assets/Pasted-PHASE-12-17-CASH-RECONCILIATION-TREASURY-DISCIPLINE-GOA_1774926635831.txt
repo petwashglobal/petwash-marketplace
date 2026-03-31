@@ -1,0 +1,245 @@
+PHASE 12.17 - CASH RECONCILIATION & TREASURY DISCIPLINE
+
+GOAL
+Ensure that every approved financial action results in a real, verified money movement.
+This phase connects internal approvals to actual cash execution and bank reconciliation.
+
+No assumptions. No silent failures. No invisible money gaps.
+
+--------------------------------------------------
+T171 - PAYOUT BATCHES (EXECUTION UNIT)
+--------------------------------------------------
+
+CREATE TABLE payout_batches (
+  id SERIAL PRIMARY KEY,
+  batch_ref TEXT UNIQUE NOT NULL,
+  owner_scope TEXT NOT NULL,              -- 'company', 'franchise', 'station'
+  owner_id TEXT NULL,
+  total_amount_cents INTEGER NOT NULL,
+  currency TEXT DEFAULT 'ILS',
+  status TEXT NOT NULL,                   -- 'pending', 'approved', 'submitted', 'paid', 'failed', 'reconciled'
+  created_at TIMESTAMP DEFAULT NOW(),
+  approved_at TIMESTAMP NULL,
+  submitted_at TIMESTAMP NULL,
+  paid_at TIMESTAMP NULL,
+  failed_at TIMESTAMP NULL,
+  reconciled_at TIMESTAMP NULL
+);
+
+CREATE TABLE payout_batch_items (
+  id SERIAL PRIMARY KEY,
+  batch_id INTEGER REFERENCES payout_batches(id) ON DELETE CASCADE,
+  settlement_id INTEGER NOT NULL,
+  amount_cents INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',  -- 'pending', 'submitted', 'paid', 'failed'
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+RULE
+Money is never sent individually. Everything moves through batches.
+
+--------------------------------------------------
+T172 - BANK TRANSACTION IMPORT
+--------------------------------------------------
+
+CREATE TABLE bank_transactions (
+  id SERIAL PRIMARY KEY,
+  bank_ref TEXT UNIQUE,
+  amount_cents INTEGER NOT NULL,
+  currency TEXT DEFAULT 'ILS',
+  direction TEXT NOT NULL,                 -- 'outgoing', 'incoming'
+  reference TEXT NULL,                    -- payout batch ref or external note
+  raw_description TEXT NULL,
+  value_date DATE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+BUILD
+- endpoint: POST /api/treasury/import-bank-transactions
+- accepts CSV / JSON
+- deduplicates by bank_ref
+
+RULE
+The bank is the source of truth for executed money.
+
+--------------------------------------------------
+T173 - RECONCILIATION ENGINE
+--------------------------------------------------
+
+CREATE TABLE reconciliation_results (
+  id SERIAL PRIMARY KEY,
+  batch_id INTEGER REFERENCES payout_batches(id),
+  bank_transaction_id INTEGER REFERENCES bank_transactions(id),
+  status TEXT NOT NULL,                   -- 'matched', 'partial', 'unmatched'
+  amount_expected INTEGER,
+  amount_actual INTEGER,
+  difference_cents INTEGER,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+BUILD
+server/lib/reconciliation.ts
+
+LOGIC
+For each payout batch:
+- find bank transaction where:
+  reference ~ batch_ref OR
+  amount matches within tolerance
+
+MATCH TYPES
+- exact match → matched
+- small delta → partial
+- no match → unmatched
+
+OUTPUT
+{
+  status,
+  expected,
+  actual,
+  difference
+}
+
+--------------------------------------------------
+T174 - FAILED PAYOUT HANDLING
+--------------------------------------------------
+
+CREATE TABLE payout_failures (
+  id SERIAL PRIMARY KEY,
+  batch_id INTEGER REFERENCES payout_batches(id),
+  reason TEXT,
+  retry_count INTEGER DEFAULT 0,
+  last_retry_at TIMESTAMP NULL,
+  resolved BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+FLOW
+If:
+- bank transaction missing after threshold OR
+- explicit failure detected
+
+THEN:
+- mark batch as failed
+- insert into payout_failures
+- block re-release until resolved
+
+--------------------------------------------------
+T175 - TREASURY STATUS ENGINE
+--------------------------------------------------
+
+For every payout batch, compute:
+
+- expected_amount
+- submitted_amount
+- paid_amount
+- reconciled_amount
+- failed_amount
+
+Expose:
+GET /api/treasury/status
+
+RETURN
+- totals
+- per batch breakdown
+- reconciliation health %
+
+--------------------------------------------------
+T176 - RECONCILIATION DASHBOARD
+--------------------------------------------------
+
+ROUTE
+/treasury
+
+SECTIONS
+
+1. Batch Overview
+- list of payout batches
+- status badges (pending, submitted, paid, failed, reconciled)
+
+2. Reconciliation Status
+- matched / partial / unmatched counts
+- % reconciled
+
+3. Bank Feed
+- imported transactions
+- linked vs unlinked
+
+4. Failures
+- retry queue
+- reasons
+- retry action
+
+5. Drilldown
+- click batch → show:
+  - settlements
+  - bank match
+  - reconciliation result
+
+--------------------------------------------------
+T177 - AUTOMATED RECON JOB
+--------------------------------------------------
+
+SCHEDULE
+- every 15 minutes
+
+PROCESS
+- fetch unreconciled batches
+- run reconciliation engine
+- update status
+- create reconciliation_results rows
+
+RULE
+System continuously verifies money without manual trigger.
+
+--------------------------------------------------
+T178 - FINANCIAL INTEGRITY RULES
+--------------------------------------------------
+
+1. A payout batch cannot become "reconciled" unless matched
+2. A batch marked "paid" must have a bank transaction
+3. A failed batch cannot be re-released without explicit retry
+4. Differences must be visible (no silent rounding)
+5. Partial matches must be flagged, not accepted silently
+
+--------------------------------------------------
+T179 - END-TO-END TRACE
+--------------------------------------------------
+
+For any settlement:
+
+You must be able to trace:
+
+settlement
+→ payout batch
+→ approval log
+→ bank transaction
+→ reconciliation result
+
+BUILD
+GET /api/treasury/trace/:settlementId
+
+RETURN
+full chain
+
+--------------------------------------------------
+DONE MEANS
+--------------------------------------------------
+
+- payout batches exist and are used
+- bank transactions are imported and stored
+- reconciliation runs automatically
+- failures are tracked and visible
+- treasury dashboard shows real state
+- every payout can be traced to bank movement
+- no money leaves without verification
+
+--------------------------------------------------
+RESULT
+--------------------------------------------------
+
+12.16 = who can approve money
+12.17 = prove money actually moved correctly
+
+This closes the final gap:
+from approval
+to real-world financial truth
