@@ -1,0 +1,253 @@
+Hi, I need a deep technical review and fixes on several critical areas. Please answer each section clearly and confirm what is DONE vs NOT DONE.
+
+---
+
+## 1. Provider ↔ Service Searcher Matching Logic
+
+Current concern:  
+Matching between service providers and registered users (with address/location) is not accurate or reliable.
+
+Please confirm:
+
+- How is matching currently implemented?
+  - Geo distance (lat/lng)?
+  - Radius-based filtering?
+  - Availability + service type filtering?
+- Is matching deterministic or heuristic?
+
+Required fixes:
+- Accurate location-based matching (Google Maps or similar)
+- Real-time availability filtering
+- Ranking logic (distance + rating + performance)
+- No mismatches between provider and requester
+
+---
+
+## 2. Language Detection by IP / Locale
+
+Requirement:
+
+- Auto-detect user language based on IP/location:
+  - Israel → Hebrew
+  - USA/UK/AU/CA → English
+  - France → French
+  - Spain → Spanish
+
+Questions:
+- Are we using IP-based detection or browser locale?
+- Is language stored per user after login?
+
+Required:
+- Fallback hierarchy:
+  1. User preference (if logged in)
+  2. Browser language
+  3. IP geolocation
+- Persist language in user profile
+
+---
+
+## 3. Multi-Role User System (Critical)
+
+We need completely separate dashboards:
+
+User types:
+- Customer (Pet Wash member / loyalty user)
+- Provider (service operator)
+- Admin
+
+Example:
+Uber Eats vs Uber Driver → same account system, different dashboards
+
+Required:
+- Role-based routing after login
+- Each role has:
+  - separate UI
+  - separate permissions
+  - separate API access
+- No cross-role leakage
+
+Please confirm:
+- Current role model?
+- Is RBAC implemented?
+
+---
+
+## 4. Wallet System (Very Critical)
+
+Requirement:
+
+- Secure wallet per user
+- Must behave like a ledger (not simple balance)
+
+Must include:
+- Transactions table (credits, debits)
+- No direct balance editing
+- Idempotent transactions
+- Audit trail (who, when, why)
+
+Flows to support:
+- Stripe payment → wallet credit
+- E-gift → wallet credit
+- Machine usage → wallet debit (via Nayax API)
+
+Questions:
+- Is wallet ledger-based or balance-based?
+- How do we prevent double spending?
+
+---
+
+## 5. Payment Architecture (Nayax + Stripe / Shift4)
+
+We want:
+
+- Nayax → kiosk / machine only
+- Stripe or Shift4 → online / SaaS / wallet
+
+Important:
+- Our DB is source of truth
+- PSPs are external processors only
+
+Required:
+- Unified ledger across both systems
+- Daily reconciliation system
+- Settlement tracking
+
+Please confirm:
+- How transactions are stored internally
+- How reconciliation is handled
+
+---
+
+## 6. E-Gift Logic
+
+Need full explanation:
+
+When e-gift is activated:
+- What happens in DB?
+- Is it:
+  - wallet credit?
+  - prepaid package?
+  - token?
+
+When user redeems:
+- How is validation done?
+- How is double usage prevented?
+
+---
+
+## 7. High Load / Concurrency
+
+We expect:
+- Many users
+- Providers + admins + customers active simultaneously
+
+Required:
+- Unique user identity (no collisions)
+- No duplicate accounts
+- No race conditions (wallet, payments)
+
+Questions:
+- Are transactions atomic?
+- Is DB using proper constraints (unique, indexes)?
+
+---
+
+## 8. Identity & Duplicate Prevention
+
+We must prevent:
+- Same person creating multiple accounts incorrectly
+
+Required:
+- Unique constraints:
+  - email
+  - phone
+- Optional:
+  - DOB + address checks
+- Fraud detection logic
+
+---
+
+## 9. Signup & Authentication Issues
+
+Current problems:
+- Mobile signup not reliable
+- Email verification unclear
+- Social login (Instagram / Facebook / TikTok) not working
+
+Please confirm:
+- Which auth provider is used?
+- What is broken exactly?
+
+Required:
+- Stable email + SMS verification
+- Social login fully functional
+- Error handling + logging
+
+---
+
+## 10. Documents & Financial Uploads
+
+Need:
+- Upload system for:
+  - documents
+  - financial files
+  - appointments
+
+Questions:
+- Where are files stored?
+- Is access secured per user?
+
+---
+
+## 11. Legal Requirements (Israel 2026)
+
+Must confirm implementation of:
+
+- Privacy Policy
+- Accessibility (AA standard)
+- Terms & Conditions
+- Data protection (access control + encryption)
+- Clear links in all pages
+
+---
+
+## 12. Performance & Scale
+
+Requirement:
+- High-speed system
+- Low latency
+- Works under heavy load
+
+Questions:
+- Backend architecture?
+- Any caching?
+- Rate limiting?
+
+---
+
+## 13. Financial System Integrity (Critical)
+
+We must avoid:
+
+- Double truth problem (Stripe vs Nayax vs DB)
+- Settlement mismatch
+
+Required:
+- Single source of truth = OUR DB
+- Daily reconciliation engine
+- Proper tax tagging (VAT / GST)
+
+---
+
+## FINAL
+
+Please respond with:
+
+1. What is already implemented
+2. What is partially implemented
+3. What is missing
+4. What needs redesign
+
+Be very precise. No general answers.
+
+---
