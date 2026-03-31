@@ -9410,6 +9410,10 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/treasury', apiLimiter, treasuryRoutes.default);
   treasuryRoutes.startReconciliationScheduler();
 
+  // Phase 12.19 — Profitability, Unit Economics & Capital Allocation
+  const financeRoutes = await import('./routes/finance');
+  app.use('/api/finance', apiLimiter, financeRoutes.default);
+
   // Phase 12.7 — Booking Trace & Dispute Resolution Layer
   // Own auth middleware (requireTraceViewer): franchise_owner, station_operator, admin.
   // Must be before the franchise router.
