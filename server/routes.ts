@@ -9414,6 +9414,10 @@ self.addEventListener('notificationclick', (event) => {
   const financeRoutes = await import('./routes/finance');
   app.use('/api/finance', apiLimiter, financeRoutes.default);
 
+  // Phase 12.20 — Expansion Decision & Board Pack
+  const expansionRoutes = await import('./routes/expansion');
+  app.use('/api/expansion', apiLimiter, expansionRoutes.default);
+
   // Phase 12.7 — Booking Trace & Dispute Resolution Layer
   // Own auth middleware (requireTraceViewer): franchise_owner, station_operator, admin.
   // Must be before the franchise router.
