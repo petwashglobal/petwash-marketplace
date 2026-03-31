@@ -7,7 +7,7 @@ import {
 } from "firebase/auth";
 import { initializeFirestore, CACHE_SIZE_UNLIMITED } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
-import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import { setLogLevel } from "firebase/app";
 import { logger } from './logger';
 import type { AppCheck } from 'firebase/app-check';
@@ -95,27 +95,27 @@ const firebaseConfig = getFirebaseConfig();
 // Initialize Firebase app as singleton (prevent duplicate initialization)
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// App Check: uses VITE_FIREBASE_APPCHECK_SITE_KEY (reCAPTCHA Enterprise site key)
+// App Check: uses VITE_RECAPTCHA_SITE_KEY (reCAPTCHA v3 site key)
 // FAIL-CLOSED: In production, if the key is missing the app logs a critical error.
 // App Check tokens are sent with every Firebase request once initialized.
-const APP_CHECK_SITE_KEY = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY;
+const APP_CHECK_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 let appCheckInstance: AppCheck | null = null;
 
 if (APP_CHECK_SITE_KEY) {
   try {
     appCheckInstance = initializeAppCheck(app, {
-      provider: new ReCaptchaEnterpriseProvider(APP_CHECK_SITE_KEY),
-      isTokenAutoRefreshEnabled: true
+      provider: new ReCaptchaV3Provider(APP_CHECK_SITE_KEY),
+      isTokenAutoRefreshEnabled: true,
     });
-    logger.info('✅ App Check initialized with reCAPTCHA Enterprise');
+    logger.info('✅ App Check initialized with reCAPTCHA v3');
   } catch (error) {
     logger.error('🚨 App Check init FAILED — requests may be rejected by Firebase', error);
   }
 } else {
   if (import.meta.env.PROD) {
-    logger.error('🚨 CRITICAL: VITE_FIREBASE_APPCHECK_SITE_KEY is not set in production. App Check is DISABLED. Set this variable before go-live.');
+    logger.error('🚨 CRITICAL: VITE_RECAPTCHA_SITE_KEY is not set in production. App Check is DISABLED. Set this variable before go-live.');
   } else {
-    logger.warn('⚠️ App Check disabled in dev (VITE_FIREBASE_APPCHECK_SITE_KEY not set)');
+    logger.warn('⚠️ App Check disabled in dev (VITE_RECAPTCHA_SITE_KEY not set)');
   }
 }
 
@@ -170,7 +170,7 @@ if (typeof window !== 'undefined') {
   
   (window as any).__PW_FIREBASE_CONFIG__ = {
     recaptchaSiteKey: import.meta.env.VITE_RECAPTCHA_SITE_KEY ? '✅ present' : '❌ missing',
-    appCheckSiteKey: import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY ? '✅ present' : 'ℹ️ not-used (fail-open)',
+    appCheckSiteKey: import.meta.env.VITE_RECAPTCHA_SITE_KEY ? '✅ present (v3)' : '❌ missing',
     appCheckEnabled: !!appCheckInstance,
     authDomain: firebaseConfig.authDomain,
     projectId: actualProjectId,
