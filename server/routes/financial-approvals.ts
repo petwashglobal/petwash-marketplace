@@ -541,12 +541,12 @@ router.get('/reserve-summary', async (req: Request, res: Response) => {
   try {
     const result = await db.execute(sql`
       SELECT
-        SUM(CASE WHEN held_in_reserve = false AND status = 'settled' AND payout_hold_reason IS NULL THEN station_amount_cents ELSE 0 END) AS gross_payable_cents,
-        SUM(CASE WHEN held_in_reserve = true THEN station_amount_cents ELSE 0 END)                                                       AS held_in_reserve_cents,
-        SUM(CASE WHEN payout_hold_reason IS NOT NULL AND held_in_reserve = false THEN station_amount_cents ELSE 0 END)                   AS blocked_by_hold_cents,
-        SUM(CASE WHEN status = 'settled' AND payout_release_approved_at IS NOT NULL THEN station_amount_cents ELSE 0 END)                AS released_cents,
-        COUNT(*) FILTER (WHERE held_in_reserve = true)                                                                                   AS reserve_count,
-        COUNT(*) FILTER (WHERE payout_hold_reason IS NOT NULL)                                                                           AS hold_count
+        COALESCE(SUM(CASE WHEN held_in_reserve = false AND status = 'settled' AND payout_hold_reason IS NULL THEN station_amount_cents ELSE 0 END), 0) AS gross_payable_cents,
+        COALESCE(SUM(CASE WHEN held_in_reserve = true THEN station_amount_cents ELSE 0 END), 0)                                                        AS held_in_reserve_cents,
+        COALESCE(SUM(CASE WHEN payout_hold_reason IS NOT NULL AND held_in_reserve = false THEN station_amount_cents ELSE 0 END), 0)                    AS blocked_by_hold_cents,
+        COALESCE(SUM(CASE WHEN status = 'settled' AND payout_release_approved_at IS NOT NULL THEN station_amount_cents ELSE 0 END), 0)                 AS released_cents,
+        COUNT(*) FILTER (WHERE held_in_reserve = true)                                                                                                  AS reserve_count,
+        COUNT(*) FILTER (WHERE payout_hold_reason IS NOT NULL)                                                                                          AS hold_count
       FROM station_settlements
     `);
     return res.json(result.rows[0] ?? {});
@@ -562,17 +562,45 @@ router.get('/reserve-summary', async (req: Request, res: Response) => {
 // GET /api/financial-approvals/log
 router.get('/log', async (req: Request, res: Response) => {
   try {
-    const { case_type, status, limit = '50', offset = '0' } = req.query as Record<string, string>;
+    const caseType = (req.query.case_type as string) || null;
+    const statusFilter = (req.query.status as string) || null;
+    const limitN = Math.min(parseInt((req.query.limit as string) || '50', 10), 200);
+    const offsetN = parseInt((req.query.offset as string) || '0', 10);
 
-    const result = await db.execute(sql`
-      SELECT fal.*, fam.required_role, fam.second_approval_role
-      FROM financial_approval_log fal
-      LEFT JOIN financial_approval_matrix fam ON fam.id = fal.approval_rule_id
-      WHERE (${case_type ?? null} IS NULL OR fal.case_type = ${case_type ?? ''})
-        AND (${status ?? null} IS NULL OR fal.status = ${status ?? ''})
-      ORDER BY fal.created_at DESC
-      LIMIT ${parseInt(limit, 10)} OFFSET ${parseInt(offset, 10)}
-    `);
+    // Build filters only for values that are actually set — avoids null-param binding issues
+    let result;
+    if (caseType && statusFilter) {
+      result = await db.execute(sql`
+        SELECT fal.*, fam.required_role, fam.second_approval_role
+        FROM financial_approval_log fal
+        LEFT JOIN financial_approval_matrix fam ON fam.id = fal.approval_rule_id
+        WHERE fal.case_type = ${caseType} AND fal.status = ${statusFilter}
+        ORDER BY fal.created_at DESC LIMIT ${limitN} OFFSET ${offsetN}
+      `);
+    } else if (caseType) {
+      result = await db.execute(sql`
+        SELECT fal.*, fam.required_role, fam.second_approval_role
+        FROM financial_approval_log fal
+        LEFT JOIN financial_approval_matrix fam ON fam.id = fal.approval_rule_id
+        WHERE fal.case_type = ${caseType}
+        ORDER BY fal.created_at DESC LIMIT ${limitN} OFFSET ${offsetN}
+      `);
+    } else if (statusFilter) {
+      result = await db.execute(sql`
+        SELECT fal.*, fam.required_role, fam.second_approval_role
+        FROM financial_approval_log fal
+        LEFT JOIN financial_approval_matrix fam ON fam.id = fal.approval_rule_id
+        WHERE fal.status = ${statusFilter}
+        ORDER BY fal.created_at DESC LIMIT ${limitN} OFFSET ${offsetN}
+      `);
+    } else {
+      result = await db.execute(sql`
+        SELECT fal.*, fam.required_role, fam.second_approval_role
+        FROM financial_approval_log fal
+        LEFT JOIN financial_approval_matrix fam ON fam.id = fal.approval_rule_id
+        ORDER BY fal.created_at DESC LIMIT ${limitN} OFFSET ${offsetN}
+      `);
+    }
     return res.json({ log: result.rows });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
