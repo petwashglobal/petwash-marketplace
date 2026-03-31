@@ -134,6 +134,9 @@ router.post('/complete-registration', async (req: Request, res: Response) => {
       traceId,
     });
   } catch (error: any) {
+    if (error?.code === '23505' || error?.constraint === 'users_phone_unique') {
+      return res.status(409).json({ success: false, message: 'Phone number already in use' });
+    }
     logger.error('[CompleteRegistration] Error', { error: error.message, traceId });
     return res.status(500).json({ success: false, message: 'Registration failed' });
   }

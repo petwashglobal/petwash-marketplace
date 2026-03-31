@@ -216,6 +216,9 @@ router.patch('/settings/profile', async (req, res) => {
       identityChangeLogged: changedFields.length > 0,
     });
   } catch (error: any) {
+    if (error?.code === '23505' || error?.constraint === 'users_phone_unique') {
+      return res.status(409).json({ error: 'Phone number already in use' });
+    }
     logger.error('[ProfileSettings] PATCH error:', error);
     res.status(500).json({ error: 'Failed to update profile' });
   }

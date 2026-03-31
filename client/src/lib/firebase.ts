@@ -95,9 +95,9 @@ const firebaseConfig = getFirebaseConfig();
 // Initialize Firebase app as singleton (prevent duplicate initialization)
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// CRITICAL FIX: App Check is OPTIONAL and uses separate key
-// If VITE_FIREBASE_APPCHECK_SITE_KEY is not provided, App Check is disabled (fail-open)
-// This prevents login hangs when App Check key is misconfigured
+// App Check: uses VITE_FIREBASE_APPCHECK_SITE_KEY (reCAPTCHA Enterprise site key)
+// FAIL-CLOSED: In production, if the key is missing the app logs a critical error.
+// App Check tokens are sent with every Firebase request once initialized.
 const APP_CHECK_SITE_KEY = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY;
 let appCheckInstance: AppCheck | null = null;
 
@@ -107,12 +107,16 @@ if (APP_CHECK_SITE_KEY) {
       provider: new ReCaptchaEnterpriseProvider(APP_CHECK_SITE_KEY),
       isTokenAutoRefreshEnabled: true
     });
-    logger.debug('✅ App Check initialized with reCAPTCHA Enterprise');
+    logger.info('✅ App Check initialized with reCAPTCHA Enterprise');
   } catch (error) {
-    logger.warn('⚠️ App Check init failed (fail-open mode)', error);
+    logger.error('🚨 App Check init FAILED — requests may be rejected by Firebase', error);
   }
 } else {
-  logger.info('ℹ️ App Check disabled (VITE_FIREBASE_APPCHECK_SITE_KEY not set) - fail-open mode');
+  if (import.meta.env.PROD) {
+    logger.error('🚨 CRITICAL: VITE_FIREBASE_APPCHECK_SITE_KEY is not set in production. App Check is DISABLED. Set this variable before go-live.');
+  } else {
+    logger.warn('⚠️ App Check disabled in dev (VITE_FIREBASE_APPCHECK_SITE_KEY not set)');
+  }
 }
 
 // Initialize Auth with iOS/Safari-safe persistence

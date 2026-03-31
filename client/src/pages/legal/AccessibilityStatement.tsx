@@ -112,8 +112,12 @@ export default function AccessibilityStatementPage() {
             <ul>
               <li>Israeli Equal Rights for People with Disabilities Law 1998</li>
               <li>Web Accessibility Regulations 2013 (Israel)</li>
-              <li>WCAG 2.1 Level AA international standards</li>
+              <li><strong>Israeli Standard 5568 (ת״י 5568)</strong> — the Israeli accessibility standard adopted by the Israeli Standards Institution (SII), requiring Level AA conformance for public-facing digital services. Our digital platform is developed and audited against ת״י 5568 AA requirements.</li>
+              <li>WCAG 2.1 Level AA international standards (the normative basis for ת״י 5568)</li>
             </ul>
+            <p>
+              Israeli regulations require that public-facing websites conform to ת״י 5568 at Level AA. This statement serves as our formal accessibility declaration under those requirements. Our target conformance level is <strong>ת״י 5568 AA / WCAG 2.1 AA</strong>.
+            </p>
           </div>
         </Card>
       </div>

@@ -49,22 +49,65 @@ export async function getDefaultLanguageByLocation(): Promise<Language> {
         // Check different response formats from different services
         const countryCode = data.country_code || data.countryCode || data.country;
         
-        // Israeli IP addresses ALWAYS get Hebrew (Israel-specific default)
+        // Country → Language mapping
+        // Priority: saved user preference overrides IP detection for all non-IL countries
+        const COUNTRY_LANGUAGE_MAP: Record<string, Language> = {
+          // Israel: always Hebrew regardless of user preference
+          'IL': 'he',
+          'Israel': 'he',
+          // France and French overseas territories
+          'FR': 'fr',
+          'BE': 'fr',
+          'CH': 'fr',
+          'LU': 'fr',
+          // Spanish-speaking countries
+          'ES': 'es',
+          'MX': 'es',
+          'AR': 'es',
+          'CO': 'es',
+          'CL': 'es',
+          'PE': 'es',
+          // Russia and CIS
+          'RU': 'ru',
+          'BY': 'ru',
+          'KZ': 'ru',
+          'UA': 'ru',
+          // Arabic-speaking countries
+          'AE': 'ar',
+          'SA': 'ar',
+          'EG': 'ar',
+          'JO': 'ar',
+          'LB': 'ar',
+          'IQ': 'ar',
+          'KW': 'ar',
+          'QA': 'ar',
+          'BH': 'ar',
+          'OM': 'ar',
+        };
+
+        const mappedLanguage = COUNTRY_LANGUAGE_MAP[countryCode];
+
+        // Israeli IP: always override to Hebrew, save preference
         if (countryCode === 'IL' || countryCode === 'Israel') {
           logger.info('🇮🇱 Israeli IP detected - defaulting to Hebrew');
-          logger.debug('Country code detected', { countryCode });
-          logger.debug('IP address', { ip: data.ip });
           localStorage.setItem('language', 'he');
           return 'he';
         }
-        
-        // For non-Israeli IPs, check if user has a saved preference
+
+        // For non-Israeli IPs: user saved preference takes priority over IP mapping
         const savedLanguage = localStorage.getItem('language') as Language;
         if (savedLanguage && validLanguages.includes(savedLanguage)) {
           logger.debug('🌍 International IP - using saved preference', { countryCode, savedLanguage });
           return savedLanguage;
         }
-        
+
+        // Apply country→language mapping if available
+        if (mappedLanguage) {
+          logger.info(`🌍 IP detected country ${countryCode} → language ${mappedLanguage}`);
+          localStorage.setItem('language', mappedLanguage);
+          return mappedLanguage;
+        }
+
         // All other countries default to English (GLOBAL DEFAULT)
         logger.info('🌍 International IP detected - defaulting to English (global default)', { countryCode });
         return 'en';

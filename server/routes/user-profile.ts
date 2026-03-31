@@ -237,6 +237,9 @@ router.patch('/profile', async (req, res) => {
     logger.info('[UserProfile] Profile updated for user:', uid);
     res.json({ success: true, message: 'Profile updated' });
   } catch (error: any) {
+    if (error?.code === '23505' || error?.constraint === 'users_phone_unique') {
+      return res.status(409).json({ error: 'Phone number already in use' });
+    }
     logger.error('[UserProfile] PATCH error:', error);
     res.status(500).json({ error: 'Failed to update profile' });
   }

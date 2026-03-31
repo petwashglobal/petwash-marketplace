@@ -74,12 +74,13 @@ router.post('/batches', async (req: Request, res: Response) => {
     }
 
     // Sum up the settlements
+    // ids are guaranteed integers (mapped + filtered), safe for sql.raw IN list
     const ids = settlement_ids.map(Number).filter(Boolean);
-    const settlements = await db.execute(sql`
+    const settlements = await db.execute(sql.raw(`
       SELECT id, station_amount_cents, held_in_reserve, payout_hold_reason
       FROM station_settlements
-      WHERE id = ANY(${ids}::int[])
-    `);
+      WHERE id IN (${ids.join(',')})
+    `));
 
     const blocked = (settlements.rows as any[]).filter(s => s.held_in_reserve || s.payout_hold_reason);
     if (blocked.length) {
@@ -92,11 +93,13 @@ router.post('/batches', async (req: Request, res: Response) => {
     const total = (settlements.rows as any[]).reduce((sum, s) => sum + (s.station_amount_cents ?? 0), 0);
     const batchRef = `BATCH-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
 
+    const user = (req as any).firebaseUser;
+    const createdByUid = user?.uid ?? user?.email ?? 'admin';
     const batchRaw = await db.execute(sql`
       INSERT INTO payout_batches
         (batch_id, owner_scope, owner_id, total_net_cents, currency, status, notes, created_by_uid, total_providers)
       VALUES
-        (${batchRef}, ${owner_scope}, ${owner_id}, ${total}, 'ILS', 'pending', ${notes}, NULL, ${ids.length})
+        (${batchRef}, ${owner_scope}, ${owner_id ?? null}, ${total}, 'ILS', 'pending', ${notes ?? ''}, ${createdByUid}, ${ids.length})
       RETURNING *
     `);
     const batch = batchRaw.rows[0] as any;

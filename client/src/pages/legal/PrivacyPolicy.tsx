@@ -406,7 +406,14 @@ export default function PrivacyPolicy() {
               </div>
               <div className="luxury-glass-panel p-6 space-y-3">
                 <p className="luxury-text-body font-semibold">Pet Wash Ltd</p>
-                <p className="luxury-text-body">{isHebrew ? 'נציג הגנת מידע (DPO)' : 'Data Protection Officer (DPO)'}</p>
+                <p className="luxury-text-body">
+                  {isHebrew ? 'ממונה הגנת מידע (DPO) — מנהל/ת ציות ופרטיות' : 'Data Protection Officer (DPO) — Head of Compliance & Privacy'}
+                </p>
+                <p className="luxury-text-body luxury-text-small text-gray-500">
+                  {isHebrew
+                    ? 'בהתאם לתיקון 13 לחוק הגנת הפרטיות (אוגוסט 2025), מינינו ממונה הגנת מידע פנימי האחראי על ציות, ניהול פניות נושאי מידע, ודיווח לרשות הגנת הפרטיות.'
+                    : 'Pursuant to Amendment 13 to the Israeli Privacy Protection Law (in force August 2025), Pet Wash has designated an internal Data Protection Officer responsible for compliance, data subject requests, and reporting to the Privacy Protection Authority (PPA).'}
+                </p>
                 <p className="luxury-text-body">
                   {isHebrew ? 'דוא"ל:' : 'Email:'} <a href="mailto:privacy@petwash.co.il" className="luxury-text-gradient hover:underline font-semibold">privacy@petwash.co.il</a>
                 </p>

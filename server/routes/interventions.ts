@@ -68,6 +68,33 @@ router.post('/', async (req: Request, res: Response) => {
       snapshot = buildEconomicSnapshot(String(entityId), currentMap);
     }
 
+    // Allow caller to supply snapshot fields explicitly (required for non-station entities)
+    const bodySnapshot: any = {};
+    if (req.body.snapshot_margin_pct !== undefined)   bodySnapshot.snapshotMarginPct   = req.body.snapshot_margin_pct;
+    if (req.body.snapshot_friction_pct !== undefined) bodySnapshot.snapshotFrictionPct = req.body.snapshot_friction_pct;
+    if (req.body.snapshot_reserve_risk !== undefined) bodySnapshot.snapshotReserveRisk = req.body.snapshot_reserve_risk;
+    if (req.body.snapshot_failure_rate !== undefined) bodySnapshot.snapshotFailureRate = req.body.snapshot_failure_rate;
+
+    const finalSnapshot = { ...snapshot, ...bodySnapshot };
+
+    // ENFORCE: All 4 snapshot fields must be present before a case can be created.
+    // This guarantees every case has a baseline for outcome measurement.
+    const missingFields: string[] = [];
+    if (finalSnapshot.snapshotMarginPct   === undefined || finalSnapshot.snapshotMarginPct   === null) missingFields.push('snapshot_margin_pct');
+    if (finalSnapshot.snapshotFrictionPct === undefined || finalSnapshot.snapshotFrictionPct === null) missingFields.push('snapshot_friction_pct');
+    if (finalSnapshot.snapshotReserveRisk === undefined || finalSnapshot.snapshotReserveRisk === null) missingFields.push('snapshot_reserve_risk');
+    if (finalSnapshot.snapshotFailureRate === undefined || finalSnapshot.snapshotFailureRate === null) missingFields.push('snapshot_failure_rate');
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        error: 'Intervention case blocked: economic snapshot is incomplete',
+        missing: missingFields,
+        hint: entityType === 'station'
+          ? 'Station snapshot could not be built — ensure the station exists in the economics map. Alternatively, supply snapshot fields explicitly in the request body.'
+          : 'Non-station entities must supply all snapshot fields in the request body: snapshot_margin_pct, snapshot_friction_pct, snapshot_reserve_risk, snapshot_failure_rate',
+      });
+    }
+
     const [newCase] = await db.insert(interventionCases).values({
       entityType, entityId: String(entityId), entityName,
       triggerSignal: triggerSignal ?? null,
@@ -76,7 +103,7 @@ router.post('/', async (req: Request, res: Response) => {
       status: 'open',
       notes: notes ?? null,
       createdBy,
-      ...snapshot,
+      ...finalSnapshot,
     }).returning();
 
     return res.status(201).json({ case: newCase });
@@ -161,6 +188,15 @@ router.post('/auto-generate', async (req: Request, res: Response) => {
         ? buildEconomicSnapshot(String(flag.entityId), currentMap)
         : {};
 
+      // Enforce: only push cases with complete economic snapshots
+      const snapshotComplete =
+        snapshot.snapshotMarginPct   !== undefined && snapshot.snapshotMarginPct   !== null &&
+        snapshot.snapshotFrictionPct !== undefined && snapshot.snapshotFrictionPct !== null &&
+        snapshot.snapshotReserveRisk !== undefined && snapshot.snapshotReserveRisk !== null &&
+        snapshot.snapshotFailureRate !== undefined && snapshot.snapshotFailureRate !== null;
+
+      if (!snapshotComplete) continue;
+
       toCreate.push({
         entityType: flag.entityType,
         entityId: String(flag.entityId),
@@ -179,9 +215,11 @@ router.post('/auto-generate', async (req: Request, res: Response) => {
       created = await db.insert(interventionCases).values(toCreate).returning();
     }
 
+    const skippedIncompleteSnapshot = pack.boardFlags.length - existingKeys.size - toCreate.length;
     return res.json({
       generated: created.length,
-      skippedDuplicates: pack.boardFlags.length - toCreate.length,
+      skippedDuplicates: pack.boardFlags.length - toCreate.length - Math.max(0, skippedIncompleteSnapshot),
+      skippedIncompleteSnapshot: Math.max(0, skippedIncompleteSnapshot),
       cases: created,
     });
   } catch (err: any) {
