@@ -229,8 +229,15 @@ export default function K9000BookingFlow() {
                 חיות לשטיפה
               </div>
               {pets.length === 0 ? (
-                <div className="luxury-text-body text-center py-4">
-                  אין חיות מחמד. הוסף/י חיה לפרופיל שלך.
+                <div className="text-center py-4 space-y-3">
+                  <p className="luxury-text-body">אין חיות מחמד ברשומה.</p>
+                  <button
+                    type="button"
+                    onClick={() => setLocation('/pets')}
+                    className="rounded-full px-5 py-3 min-h-[44px] text-sm font-medium luxury-btn-primary shadow-md transition-all"
+                  >
+                    + הוסף חיית מחמד
+                  </button>
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-3">

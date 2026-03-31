@@ -1,0 +1,224 @@
+Yes - the real goal is not which method wins.
+The goal is:
+
+Any valid sign-in method should get the user in cleanly, fast, and without confusion.
+
+That means your product should treat these as doors into the same account system:
+	•	Gmail
+	•	Apple
+	•	Mobile / OTP
+	•	Email / password
+	•	Facebook
+	•	TikTok
+	•	Instagram
+
+If they register with any of them, the outcome should be:
+	1.	identity accepted
+	2.	account created or linked
+	3.	user lands in the right place
+	4.	booking works
+	5.	loyalty works
+	6.	provider path works if they choose it
+
+Right now, from what you’re describing, the issue is not just one broken button.
+It sounds like the whole identity and onboarding architecture is not unified properly.
+
+What the logic should be
+
+1. One identity system, many entry methods
+
+All login methods should feed into one customer record.
+
+Example:
+	•	same email from Gmail and Apple = same person
+	•	same phone from OTP and signup = same person
+	•	if conflict exists, system should offer link account, not fail silently
+
+So the question is not:
+“Does Google login exist?”
+
+The real question is:
+“After Google login, does the user become a clean PetWash account with booking rights, loyalty rights, and correct routing?”
+
+That is what matters.
+
+How it should work
+
+Customer auth flow - correct model
+
+Entry options on one screen
+
+User sees:
+	•	Continue with Google
+	•	Continue with Apple
+	•	Continue with Phone
+	•	Continue with Email
+	•	More options: Facebook / TikTok / Instagram
+
+When user chooses one
+
+System should do:
+	1.	authenticate with provider
+	2.	check if account already exists
+	3.	if yes → sign in
+	4.	if no → create account
+	5.	ask only missing fields
+	6.	land user in app
+
+Missing fields only
+
+If Google gives:
+	•	email
+	•	name
+
+Then do not ask again.
+
+Only ask what is missing, such as:
+	•	mobile
+	•	country
+	•	consent
+	•	birthday if truly required
+
+That is how premium apps work.
+
+Your current likely problem
+
+You likely have multiple partial auth paths instead of one unified account engine.
+
+That creates:
+	•	duplicate users
+	•	hidden routing bugs
+	•	different outcomes depending on method
+	•	booking failures after login
+	•	provider flow conflicts later
+
+Booking issue - likely architecture problem
+
+You said booking is also “not good perfect somewhere”.
+
+That usually means one of these:
+
+Booking blockers caused by auth/profile state
+
+After sign in, booking may fail because:
+	•	profile incomplete
+	•	phone not verified
+	•	address missing
+	•	pet profile missing
+	•	session not fully established
+	•	loyalty or wallet not attached yet
+	•	guest/member path conflict
+
+So booking must be designed with a clean rule:
+
+Booking should support 3 states only
+	•	Guest booking
+	•	Member booking
+	•	Provider/admin excluded
+
+And each should have a clear minimal data path.
+
+If booking is trying to figure out too many states at once, it feels broken.
+
+Provider stage 5 failure
+
+What you’re saying is very important.
+
+If “Become Provider” always fails around the final stage, there is probably a hard blocker near submission, not just random bad luck.
+
+Most likely causes:
+
+1. ID scan / document verification is the blocker
+
+Yes, this is a very possible hidden issue.
+
+If you require:
+	•	selfie
+	•	ID photo
+	•	scan match
+	•	OCR
+	•	file validation
+	•	upload to storage
+	•	server biometric check
+
+Then any one of these can break stage 5.
+
+Common hidden failures:
+	•	file too large
+	•	bad mobile camera format
+	•	HEIC vs JPG issue on iPhone
+	•	upload timeout
+	•	MIME type rejected
+	•	ID parser rejects image
+	•	face match threshold too strict
+	•	mandatory field missing after upload
+	•	background job not returning in time
+
+2. Conflict between auth identity and provider identity
+
+Another very likely issue:
+	•	user logged in with Google
+	•	provider form expects verified phone
+	•	provider form expects legal full name matching ID
+	•	system sees mismatch and blocks submission
+
+3. Final validation rules too strict
+
+Sometimes stage 5 fails because:
+	•	one checkbox not mapped
+	•	one hidden required field missing
+	•	backend requires something frontend didn’t send
+	•	provider type requires extra document but UI didn’t make it obvious
+
+Best product logic for provider onboarding
+
+Do not make the final stage do everything.
+
+Better structure:
+
+Stage 1
+
+Basic account + phone verify
+
+Stage 2
+
+Role selection
+
+Stage 3
+
+Documents upload
+
+Stage 4
+
+Declarations
+
+Stage 5
+
+Review and submit
+
+Then after submit:
+	•	show “Application received”
+	•	move biometric / deep checks to review pipeline if needed
+
+Meaning:
+Do not make final submit depend on too many real-time checks if that causes failure.
+
+You can still protect quality by:
+	•	accepting submission first
+	•	then marking status as Under Review
+	•	then approving after scan / admin check
+
+That is often smarter than blocking the user at the finish line.
+
+What I think is happening
+
+My best read from what you wrote:
+	•	auth methods are not unified
+	•	booking depends on profile state in messy ways
+	•	provider onboarding has a hidden blocker near final verification
+	•	ID scan is a strong suspect
+	•	developer is describing code pieces, not end-to-end journeys
+
+What to send him
+
+Use this:

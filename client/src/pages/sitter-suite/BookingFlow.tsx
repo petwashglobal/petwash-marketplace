@@ -411,9 +411,16 @@ export default function SitterBookingFlow() {
                 <span className="font-semibold text-slate-800 text-sm">בחירת חיות מחמד</span>
               </div>
               {pets.length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-4">
-                  אין חיות מחמד ברשומה. יש להוסיף חיה לפרופיל.
-                </p>
+                <div className="text-center py-4 space-y-3">
+                  <p className="text-sm text-slate-500">אין חיות מחמד ברשומה.</p>
+                  <button
+                    type="button"
+                    onClick={() => setLocation('/pets')}
+                    className="rounded-full px-5 py-3 min-h-[44px] text-sm font-medium bg-emerald-500 text-white shadow-md transition-all"
+                  >
+                    + הוסף חיית מחמד
+                  </button>
+                </div>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {pets.map((pet: any) => {

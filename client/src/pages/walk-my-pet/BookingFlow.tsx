@@ -376,8 +376,15 @@ export default function WalkBookingFlow() {
                 כלבים להליכה
               </div>
               {pets.length === 0 ? (
-                <div className="luxury-text-body text-center py-4">
-                  אין כלבים. הוסף/י כלב לפרופיל שלך.
+                <div className="text-center py-4 space-y-3">
+                  <p className="luxury-text-body">אין כלבים ברשומה.</p>
+                  <button
+                    type="button"
+                    onClick={() => setLocation('/pets')}
+                    className="rounded-full px-5 py-3 min-h-[44px] text-sm font-medium bg-blue-500 text-white shadow-md transition-all"
+                  >
+                    + הוסף כלב
+                  </button>
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-2">

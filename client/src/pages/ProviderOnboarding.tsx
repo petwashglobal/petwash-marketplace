@@ -504,24 +504,52 @@ export default function ProviderOnboarding() {
                 </div>
               )}
 
-              <div className="luxury-glass-panel p-6">
-                <h3 className="luxury-heading-sm mb-3">
-                  {isHebrew ? 'מה הלאה?' : 'What\'s Next?'}
+              <div className="luxury-glass-panel p-6 space-y-3">
+                <h3 className="luxury-heading-sm mb-1">
+                  {isHebrew ? 'מה קורה עכשיו?' : 'What happens next?'}
                 </h3>
-                <ul className="space-y-2 text-gray-700 dark:text-gray-300">
-                  <li className="flex items-start gap-2">
-                    <Clock className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <span>{isHebrew ? 'הזהות שלך אומתה והבקשה שלך מעובדת' : 'Your identity has been verified and your application is being processed'}</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Users className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <span>{isHebrew ? 'תקבל מייל אישור בקרוב' : 'You\'ll receive a confirmation email shortly'}</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <DollarSign className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <span>{isHebrew ? 'לאחר האישור תוכל להתחיל להרוויח מיד' : 'Once approved, you can start earning immediately'}</span>
-                  </li>
-                </ul>
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50 border border-green-100">
+                  <Clock className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-green-900">
+                      {isHebrew ? 'זמן בדיקה: עד 24 שעות עסקיות' : 'Review time: up to 24 business hours'}
+                    </p>
+                    <p className="text-xs text-green-700">
+                      {isHebrew ? 'בדרך כלל מהר יותר' : 'Usually faster'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 border border-blue-100">
+                  <Users className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-blue-900">
+                    {isHebrew
+                      ? 'תקבל הודעת אימייל ו-SMS ברגע שהבקשה תאושר'
+                      : 'You will receive an email and SMS the moment your application is approved'}
+                  </p>
+                </div>
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 border border-amber-100">
+                  <DollarSign className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-amber-900">
+                    {isHebrew
+                      ? 'לאחר האישור תוכל להתחיל לקבל הזמנות ולהרוויח מיד'
+                      : 'Once approved, you can start accepting bookings and earning immediately'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-center space-y-1 pt-2">
+                <p className="text-sm font-medium text-gray-700">
+                  {isHebrew ? 'יש שאלות?' : 'Have questions?'}
+                </p>
+                <a
+                  href="mailto:support@petwash.co.il"
+                  className="text-sm text-blue-600 underline underline-offset-2"
+                >
+                  support@petwash.co.il
+                </a>
+                <p className="text-xs text-gray-500">
+                  {isHebrew ? 'נענה תוך שעה בשעות פעילות' : 'We reply within 1 hour during business hours'}
+                </p>
               </div>
 
               <Link href="/">

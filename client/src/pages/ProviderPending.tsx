@@ -230,51 +230,89 @@ export default function ProviderPending() {
         {/* Status Card */}
         <Card className="bg-white">
           <CardHeader className="text-center pb-2">
-            <div className="mx-auto mb-4 flex items-center justify-center gap-3">
-              <div className={`w-14 h-14 rounded-full flex items-center justify-center ${
-                allDocsUploaded ? "bg-green-50" : "bg-amber-50"
+            <div className="mx-auto mb-4 flex items-center justify-center">
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                isDocumentsPending && !allDocsUploaded ? "bg-amber-50" : "bg-green-50"
               }`}>
-                {allDocsUploaded
-                  ? <CheckCircle className="w-7 h-7 text-green-500" />
-                  : <Clock className="w-7 h-7 text-amber-500" />
+                {isDocumentsPending && !allDocsUploaded
+                  ? <AlertCircle className="w-8 h-8 text-amber-500" />
+                  : <CheckCircle className="w-8 h-8 text-green-500" />
                 }
               </div>
             </div>
-            <CardTitle className="text-lg">
+            <CardTitle className="text-xl">
               {isDocumentsPending && !allDocsUploaded
-                ? (he ? "נדרשים מסמכים" : "Documents Required")
-                : allDocsUploaded
-                  ? (he ? "הבקשה שלך בבדיקה" : "Application Under Review")
-                  : (he ? "הבקשה שלך בבדיקה" : "Application Under Review")
+                ? (he ? "נדרשים מסמכים נוספים" : "Documents Required")
+                : (he ? "הבקשה התקבלה ✓" : "Application Received ✓")
               }
             </CardTitle>
             {appData.membershipNumber && (
               <p className="text-xs text-muted-foreground mt-1">
-                {he ? "מספר חבר:" : "Member #:"} <span className="font-mono font-medium">{appData.membershipNumber}</span>
+                {he ? "מספר בקשה:" : "Application #:"} <span className="font-mono font-medium">{appData.membershipNumber}</span>
               </p>
             )}
           </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-muted-foreground text-sm text-center leading-relaxed">
-              {isDocumentsPending && !allDocsUploaded
-                ? (he
-                    ? "יש להעלות את המסמכים הנדרשים להשלמת תהליך הרשמה."
-                    : "Please upload the required documents to complete your registration.")
-                : (he
-                    ? "הבקשה שלך להצטרף כספק שירות נמצאת בבדיקה. נעדכן אותך בקרוב."
-                    : "Your application is currently under review. We'll notify you once it's approved.")}
-            </p>
+          <CardContent className="space-y-4">
+            {isDocumentsPending && !allDocsUploaded ? (
+              <p className="text-muted-foreground text-sm text-center leading-relaxed">
+                {he
+                  ? "יש להעלות את המסמכים הנדרשים להשלמת תהליך הרשמה."
+                  : "Please upload the required documents below to complete your registration."}
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg border border-green-100">
+                  <Clock className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-green-900">
+                      {he ? "זמן בדיקה משוער: עד 24 שעות עסקיות" : "Estimated review time: up to 24 business hours"}
+                    </p>
+                    <p className="text-xs text-green-700 mt-0.5">
+                      {he ? "בדרך כלל מהר יותר" : "Usually faster"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-blue-900">
+                    {he
+                      ? "תקבל הודעת אימייל ו-SMS ברגע שהבקשה תאושר"
+                      : "You will receive an email and SMS the moment your application is approved"}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Progress steps */}
-            <div className="flex items-center gap-1 justify-center py-2">
-              {["documents_pending", "documents_under_review", "background_check_pending", "approved"].map((stage, i) => (
-                <div key={stage} className="flex items-center gap-1">
-                  <div className={`w-3 h-3 rounded-full ${
-                    stageIndex >= STAGE_ORDER.indexOf(stage) ? "bg-amber-500" : "bg-gray-200"
-                  }`} />
-                  {i < 3 && <div className={`w-6 h-0.5 ${stageIndex > STAGE_ORDER.indexOf(stage) ? "bg-amber-500" : "bg-gray-200"}`} />}
-                </div>
-              ))}
+            <div className="py-1">
+              <div className="flex items-center justify-between mb-2">
+                {["documents_pending", "documents_under_review", "background_check_pending", "approved"].map((stage, i) => {
+                  const active = stageIndex >= STAGE_ORDER.indexOf(stage);
+                  const labels = {
+                    he: ["מסמכים", "בדיקה", "רקע", "אושר"],
+                    en: ["Docs", "Review", "Background", "Approved"],
+                  };
+                  return (
+                    <div key={stage} className="flex flex-col items-center gap-1 flex-1">
+                      <div className={`w-3 h-3 rounded-full ${active ? "bg-amber-500" : "bg-gray-200"}`} />
+                      <span className={`text-xs ${active ? "text-amber-700 font-medium" : "text-gray-400"}`}>
+                        {he ? labels.he[i] : labels.en[i]}
+                      </span>
+                      {i < 3 && (
+                        <div className="absolute" style={{ display: "none" }} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-1 justify-center">
+                {["documents_pending", "documents_under_review", "background_check_pending", "approved"].map((stage, i) => (
+                  <div key={stage} className="flex items-center gap-1">
+                    <div className={`w-3 h-3 rounded-full ${stageIndex >= STAGE_ORDER.indexOf(stage) ? "bg-amber-500" : "bg-gray-200"}`} />
+                    {i < 3 && <div className={`w-8 h-0.5 ${stageIndex > STAGE_ORDER.indexOf(stage) ? "bg-amber-500" : "bg-gray-200"}`} />}
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="flex gap-2">
@@ -288,6 +326,22 @@ export default function ProviderPending() {
               <Button variant="ghost" className="flex-1 text-sm text-muted-foreground" onClick={() => setLocation("/")}>
                 {he ? "דף הבית" : "Home"}
               </Button>
+            </div>
+
+            {/* Support contact — prominent */}
+            <div className="border-t pt-3 text-center space-y-1">
+              <p className="text-sm font-medium text-gray-700">
+                {he ? "יש שאלות?" : "Have questions?"}
+              </p>
+              <a
+                href="mailto:support@petwash.co.il"
+                className="text-sm text-amber-600 font-medium underline underline-offset-2"
+              >
+                support@petwash.co.il
+              </a>
+              <p className="text-xs text-muted-foreground">
+                {he ? "נענה תוך שעה בשעות פעילות" : "We reply within 1 hour during business hours"}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -398,12 +452,6 @@ export default function ProviderPending() {
           </Card>
         )}
 
-        {/* Help text */}
-        <p className="text-center text-xs text-muted-foreground px-4">
-          {he
-            ? "יש שאלות? צור קשר עם תמיכה בכתובת support@petwash.co.il"
-            : "Questions? Contact us at support@petwash.co.il"}
-        </p>
       </div>
     </div>
   );

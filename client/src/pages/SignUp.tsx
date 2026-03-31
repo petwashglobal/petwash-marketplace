@@ -393,13 +393,13 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
         logger.warn("Session cookie refresh failed (non-blocking)", refreshErr);
       }
 
+      localStorage.setItem('petwash_consent_onboarding_complete', 'true');
       if (isPasskeySupported()) {
         setShowPasskeyPrompt(true);
       } else {
-        logger.debug("Navigating to consent onboarding");
+        logger.debug("Navigating to dashboard");
         window.scrollTo(0, 0);
-        const consentDone = localStorage.getItem('petwash_consent_onboarding_complete');
-        navigate(consentDone ? "/dashboard" : "/consent-onboarding");
+        navigate("/dashboard");
       }
 
     } catch (error: any) {
@@ -534,13 +534,11 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       logger.error("No Firebase token available");
       setShowPasskeyPrompt(false);
       window.scrollTo(0, 0);
-      const _consentDone = localStorage.getItem('petwash_consent_onboarding_complete');
-      navigate(_consentDone ? '/dashboard' : '/consent-onboarding');
+      navigate('/dashboard');
       return;
     }
 
-    const consentDone = localStorage.getItem('petwash_consent_onboarding_complete');
-    const postConsentTarget = consentDone ? '/dashboard' : '/consent-onboarding';
+    const postConsentTarget = '/dashboard';
 
     try {
       setPasskeyLoading(true);
@@ -590,10 +588,9 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
       language,
     });
 
-    const consentDone = localStorage.getItem('petwash_consent_onboarding_complete');
     setShowPasskeyPrompt(false);
     window.scrollTo(0, 0);
-    navigate(consentDone ? '/dashboard' : '/consent-onboarding');
+    navigate('/dashboard');
   };
 
   return (
