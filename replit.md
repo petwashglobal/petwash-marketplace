@@ -2290,3 +2290,17 @@ Every governance decision is now visible, auditable, and safe — conditions are
 - **`client/src/pages/GovernancePolicies.tsx`**: 5 tabs — Policies (unchanged), Simulate (dry-run with matched/unmatched breakdown + per-condition pass/fail rows), Trace (timeline with step counter and why_matched expansion), Versions (dropdown by policy, version table with rollback button + confirmation dialog), Execution Log (expandable why_matched per row)
 
 **Business rationale:** Governance is only trustworthy when every decision can be explained, every change can be undone, and dangerous rules are blocked before they reach production. Phase 12.14 makes the policy engine auditable enough for franchise owners and regulators to rely on it.
+
+---
+
+## Phase 12.15 — Executive Oversight & Network Health (CLOSED)
+
+**What was delivered:**
+Top-level network visibility for leadership: live risk snapshot, automation effectiveness, breach trend chart, and policy before/after impact comparison.
+
+**Closure record (2026-03-31):**
+- **`server/routes/executive.ts`**: 4 endpoints — `GET /api/executive/network-risk` (disputes by status, SLA distribution, 7-day escalations, pending L2, 24h policy fires), `GET /api/executive/automation?days=N` (auto-resolution rate, unique cases handled, per-trigger breakdown, top policies by execution), `GET /api/executive/breach-trends?days=N` (daily breach series by case_type for Recharts chart, trend vs prior period, per-case-type summary), `GET /api/executive/policy-impact/:id` (pivot date from first version, execution and dispute outcomes before/after ±30-day window)
+- **`client/src/pages/NetworkOversight.tsx`**: Full executive dashboard at `/pet-wash-ltd/executive/oversight` — 4 sections: Network Risk (KPI cards with alert colouring + dispute status stacked bar), Automation Effectiveness (rate bars, trigger breakdown, top-policies list with period selector), Breach Trends (Recharts AreaChart stacked by case type + trend cards + by-type summary), Policy Impact (policy selector, pivot info card, before/after compare grids with delta arrows)
+- **Route registered**: `server/routes.ts` → `/api/executive`; `client/src/App.tsx` → `/pet-wash-ltd/executive/oversight` under `ExecutiveSuiteGuard`
+
+**Business rationale:** Operations tracks individual cases. Managers track teams. Executives track the network. Phase 12.15 gives leadership a single place to see whether the system is healthy, whether automation is working, and whether governance policy changes are having their intended effect.

@@ -326,6 +326,8 @@ const AdminOpsMonitor = lazy(() => import("@/pages/admin/AdminOpsMonitor"));
 // Pet Wash Ltd Executive Suite - Centralized C-Suite Management
 const ExecutiveSuiteHome = lazy(() => import("@/pages/ExecutiveSuiteHome"));
 const ExecutiveSuiteGuard = lazy(() => import("@/components/ExecutiveSuiteGuard").then(m => ({ default: m.ExecutiveSuiteGuard })));
+// Phase 12.15 — Executive Oversight & Network Health
+const NetworkOversight = lazy(() => import("@/pages/NetworkOversight"));
 const Meetings = lazy(() => import("@/pages/Meetings"));
 const PlatformLegalFramework = lazy(() => import("@/pages/PlatformLegalFramework"));
 const ProviderOnboarding = lazy(() => import("@/pages/ProviderOnboarding"));
@@ -2322,6 +2324,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <ExecutiveSuiteGuard requiredRoles={['enterprise']}>
               <Suspense fallback={<PageLoader />}>
                 <EnterpriseHQ language={language} onLanguageChange={handleLanguageChange} />
+              </Suspense>
+            </ExecutiveSuiteGuard>
+          )}
+        </Route>
+
+        {/* Phase 12.15 — Executive Oversight & Network Health */}
+        <Route path="/pet-wash-ltd/executive/oversight">
+          {() => (
+            <ExecutiveSuiteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <NetworkOversight />
               </Suspense>
             </ExecutiveSuiteGuard>
           )}

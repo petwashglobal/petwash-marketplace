@@ -9397,6 +9397,10 @@ self.addEventListener('notificationclick', (event) => {
   const governanceRoutes = await import('./routes/governance');
   app.use('/api/governance', apiLimiter, governanceRoutes.default);
 
+  // Phase 12.15 — Executive Oversight & Network Health
+  const executiveRoutes = await import('./routes/executive');
+  app.use('/api/executive', apiLimiter, executiveRoutes.default);
+
   // Phase 12.7 — Booking Trace & Dispute Resolution Layer
   // Own auth middleware (requireTraceViewer): franchise_owner, station_operator, admin.
   // Must be before the franchise router.
