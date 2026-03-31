@@ -2,221 +2,207 @@
  * Phase 12.25 — Autonomous Optimization (Controlled)
  * Routes under /api/expansion/optimizer
  *
- * FLOW: observe → propose → accept/reject → promote → 12.24 control chain
- * The system NEVER activates or deploys policy changes directly.
- * Promote creates a DRAFT in policy_configs — requires human activation in 12.24.
+ * Proposal lifecycle: proposed → accepted → promoted (OR rejected)
+ * Promotion ONLY creates a draft in policy_configs (12.24).
+ * Human must still: activate → rollout → evaluate → rollback.
  */
 
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
-import { generateProposals } from '../lib/optimizer';
+import { generateOptimizationProposals } from '../lib/optimizer';
+import { computePolicyFeedback } from '../lib/learning-policy';
 
 const router = Router();
 
 // ---------------------------------------------------------------------------
-// GET /api/expansion/optimizer/proposals — list all proposals
+// GET /proposals — list all
 // ---------------------------------------------------------------------------
-router.get('/proposals', async (req: Request, res: Response) => {
+router.get('/proposals', async (_req: Request, res: Response) => {
   try {
-    const { status } = req.query as Record<string, string>;
-    const result = status
-      ? await db.execute(sql`SELECT * FROM optimization_proposals WHERE status = ${status} ORDER BY created_at DESC`)
-      : await db.execute(sql`SELECT * FROM optimization_proposals ORDER BY created_at DESC`);
-
-    const counts: Record<string, number> = { proposed: 0, accepted: 0, rejected: 0, promoted: 0, total: 0 };
-    for (const row of result.rows) {
-      const s = row.status as string;
-      counts[s] = (counts[s] ?? 0) + 1;
-      counts.total++;
-    }
-
-    return res.json({ proposals: result.rows, counts });
+    const result = await db.execute(sql`
+      SELECT * FROM optimization_proposals ORDER BY created_at DESC, id DESC
+    `);
+    return res.json({ proposals: result.rows });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'OPTIMIZER_LIST_FAILED', message: err.message });
   }
 });
 
 // ---------------------------------------------------------------------------
-// POST /api/expansion/optimizer/generate — run the optimizer engine
-// Returns proposals (and persists them to the DB)
-// Won't generate duplicates: skips policy_keys already in 'proposed' state
+// POST /proposals/generate — run engine, persist new proposals (idempotent)
+// Skips any proposal whose proposal_key already exists in proposed/accepted state
 // ---------------------------------------------------------------------------
-router.post('/generate', async (req: Request, res: Response) => {
+router.post('/proposals/generate', async (_req: Request, res: Response) => {
   try {
-    // Load active policy configs to check current thresholds
+    const feedback = await computePolicyFeedback();
+
     const configsResult = await db.execute(sql`
-      SELECT policy_key AS "policyKey", config FROM policy_configs WHERE status = 'active'
+      SELECT policy_key AS "policyKey", config
+      FROM policy_configs WHERE status = 'active'
+      ORDER BY policy_key, version DESC
     `);
-    const activeConfigs = configsResult.rows as Array<{ policyKey: string; config: Record<string, unknown> }>;
 
-    // Load already-pending proposal keys to avoid duplicates
-    const pendingResult = await db.execute(sql`
-      SELECT policy_key FROM optimization_proposals WHERE status = 'proposed'
-    `);
-    const pendingKeys = new Set(pendingResult.rows.map(r => r.policy_key as string));
+    const proposals = await generateOptimizationProposals(
+      configsResult.rows as Array<{ policyKey: string; config: Record<string, unknown> }>
+    );
 
-    // Generate proposals from the optimizer engine
-    const proposals = await generateProposals(activeConfigs);
-
-    if (proposals.length === 0) {
-      // Explain why nothing was generated
-      const maturityResult = await db.execute(sql`
-        SELECT COUNT(*) AS total FROM intervention_cases
-      `);
-      const total = Number(maturityResult.rows[0]?.total ?? 0);
-      return res.json({
-        proposals: [],
-        skipped: 0,
-        message: total < 3
-          ? 'Insufficient data: fewer than 3 intervention cases exist. The optimizer requires at least 3 resolved cases with economic baselines.'
-          : 'No improvement opportunities detected with current data. The optimizer found no cases where a policy change is supported by measured outcomes.',
-      });
-    }
-
-    // Persist proposals — skip any policy_key already pending review
-    const inserted = [];
-    const skipped  = [];
+    let inserted = 0;
+    let skippedDuplicates = 0;
+    const persisted: unknown[] = [];
 
     for (const p of proposals) {
-      if (pendingKeys.has(p.policy_key)) {
-        skipped.push(p.policy_key);
+      // Skip if this exact proposal is already pending
+      const exists = await db.execute(sql`
+        SELECT id FROM optimization_proposals
+        WHERE proposal_key = ${p.proposal_key} AND status IN ('proposed','accepted')
+        LIMIT 1
+      `);
+
+      if (exists.rows.length > 0) {
+        skippedDuplicates++;
         continue;
       }
 
-      const r = await db.execute(sql`
+      const ins = await db.execute(sql`
         INSERT INTO optimization_proposals
-          (policy_key, proposal_type, current_config, proposed_config, rationale, confidence, evidence_count)
+          (proposal_key, policy_key, proposal_type, current_config, proposed_config, rationale, confidence, evidence_count, status)
         VALUES (
+          ${p.proposal_key},
           ${p.policy_key},
           ${p.proposal_type},
           ${JSON.stringify(p.current_config)}::jsonb,
           ${JSON.stringify(p.proposed_config)}::jsonb,
           ${JSON.stringify(p.rationale)}::jsonb,
           ${p.confidence},
-          ${p.evidence_count}
+          ${p.evidence_count},
+          'proposed'
         )
+        ON CONFLICT (proposal_key) DO NOTHING
         RETURNING *
       `);
-      inserted.push(r.rows[0]);
+
+      if (ins.rows[0]) {
+        inserted++;
+        persisted.push(ins.rows[0]);
+      }
     }
 
     return res.json({
-      proposals: inserted,
-      skipped: skipped.length,
-      skippedKeys: skipped,
-      message: inserted.length === 0 && skipped.length > 0
-        ? `${skipped.length} proposal(s) already pending review. Resolve them before generating new ones.`
-        : null,
+      generated: inserted,
+      skippedDuplicates,
+      proposals: persisted,
+      measurementReadiness: feedback.dataMaturity.measurementReadiness,
     });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    console.error('[Optimizer] generate failed', err);
+    return res.status(500).json({ error: 'OPTIMIZER_GENERATE_FAILED', message: err.message });
   }
 });
 
 // ---------------------------------------------------------------------------
-// POST /api/expansion/optimizer/proposals/:id/accept
+// POST /proposals/:id/accept — proposed → accepted (with optional review note)
 // ---------------------------------------------------------------------------
 router.post('/proposals/:id/accept', async (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
-
-    const existing = await db.execute(sql`SELECT * FROM optimization_proposals WHERE id = ${id}`);
-    if (!existing.rows.length) return res.status(404).json({ error: 'Proposal not found' });
-
-    const row = existing.rows[0];
-    if (row.status !== 'proposed') {
-      return res.status(400).json({ error: `Cannot accept a proposal with status "${row.status}". Only proposed can be accepted.` });
-    }
+    const id = Number(req.params.id);
+    const reviewNote = String(req.body?.reviewNote || '').trim() || null;
 
     const result = await db.execute(sql`
-      UPDATE optimization_proposals SET status = 'accepted', reviewed_at = NOW()
-      WHERE id = ${id} RETURNING *
+      UPDATE optimization_proposals
+      SET status = 'accepted', reviewed_at = NOW(), review_note = ${reviewNote}
+      WHERE id = ${id}
+      RETURNING *
     `);
+
+    if (!result.rows[0]) return res.status(404).json({ error: 'OPTIMIZER_PROPOSAL_NOT_FOUND' });
     return res.json({ proposal: result.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'OPTIMIZER_ACCEPT_FAILED', message: err.message });
   }
 });
 
 // ---------------------------------------------------------------------------
-// POST /api/expansion/optimizer/proposals/:id/reject
+// POST /proposals/:id/reject — any non-promoted → rejected (with optional note)
 // ---------------------------------------------------------------------------
 router.post('/proposals/:id/reject', async (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
+    const id = Number(req.params.id);
+    const reviewNote = String(req.body?.reviewNote || '').trim() || null;
 
-    const existing = await db.execute(sql`SELECT * FROM optimization_proposals WHERE id = ${id}`);
-    if (!existing.rows.length) return res.status(404).json({ error: 'Proposal not found' });
-
-    const row = existing.rows[0];
-    if (row.status === 'promoted') {
+    const existing = await db.execute(sql`SELECT status FROM optimization_proposals WHERE id = ${id}`);
+    if (!existing.rows[0]) return res.status(404).json({ error: 'OPTIMIZER_PROPOSAL_NOT_FOUND' });
+    if (existing.rows[0].status === 'promoted') {
       return res.status(400).json({ error: 'Cannot reject a promoted proposal.' });
     }
 
     const result = await db.execute(sql`
-      UPDATE optimization_proposals SET status = 'rejected', reviewed_at = NOW()
-      WHERE id = ${id} RETURNING *
+      UPDATE optimization_proposals
+      SET status = 'rejected', reviewed_at = NOW(), review_note = ${reviewNote}
+      WHERE id = ${id}
+      RETURNING *
     `);
+
     return res.json({ proposal: result.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'OPTIMIZER_REJECT_FAILED', message: err.message });
   }
 });
 
 // ---------------------------------------------------------------------------
-// POST /api/expansion/optimizer/proposals/:id/promote
-// CRITICAL CONTROL POINT:
-// Creates a DRAFT in policy_configs (12.24). Does NOT activate it.
-// Human must still: activate draft → create rollout → measure → rollback if needed.
+// POST /proposals/:id/promote-to-draft
+// CRITICAL CONTROL POINT — creates a DRAFT in policy_configs (12.24) only.
+// Does NOT activate. Human must still: activate → rollout → evaluate → rollback.
 // ---------------------------------------------------------------------------
-router.post('/proposals/:id/promote', async (req: Request, res: Response) => {
+router.post('/proposals/:id/promote-to-draft', async (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
+    const id = Number(req.params.id);
 
-    const existing = await db.execute(sql`SELECT * FROM optimization_proposals WHERE id = ${id}`);
-    if (!existing.rows.length) return res.status(404).json({ error: 'Proposal not found' });
+    const proposalResult = await db.execute(sql`
+      SELECT * FROM optimization_proposals WHERE id = ${id} LIMIT 1
+    `);
+    const proposal = proposalResult.rows[0] as any;
 
-    const proposal = existing.rows[0];
+    if (!proposal) return res.status(404).json({ error: 'OPTIMIZER_PROPOSAL_NOT_FOUND' });
+
     if (proposal.status !== 'accepted') {
-      return res.status(400).json({ error: `Proposal must be accepted before promoting. Current status: "${proposal.status}". Accept it first.` });
+      return res.status(400).json({
+        error: 'OPTIMIZER_PROPOSAL_NOT_ACCEPTED',
+        message: `Proposal must be accepted before promotion. Current status: "${proposal.status}".`,
+      });
     }
 
-    // Auto-increment version for this policy_key in policy_configs
-    const vResult = await db.execute(sql`
+    // Auto-increment version within this policy_key
+    const nextVersionResult = await db.execute(sql`
       SELECT COALESCE(MAX(version), 0) + 1 AS next_version
       FROM policy_configs WHERE policy_key = ${proposal.policy_key as string}
     `);
-    const nextVersion = Number(vResult.rows[0].next_version);
+    const version = Number((nextVersionResult.rows[0] as any)?.next_version ?? 1);
 
-    // Create draft (status='draft' — requires human activation in 12.24)
     const draftResult = await db.execute(sql`
-      INSERT INTO policy_configs (policy_key, version, config, status, created_by)
+      INSERT INTO policy_configs (policy_key, version, config, status, created_at, created_by)
       VALUES (
         ${proposal.policy_key as string},
-        ${nextVersion},
-        ${JSON.stringify(proposal.proposed_config)}::jsonb,
+        ${version},
+        ${proposal.proposed_config},
         'draft',
-        'optimizer-12.25'
+        NOW(),
+        'optimizer_promotion'
       )
       RETURNING *
     `);
 
-    // Mark proposal as promoted
     await db.execute(sql`
-      UPDATE optimization_proposals SET status = 'promoted', reviewed_at = NOW()
-      WHERE id = ${id}
+      UPDATE optimization_proposals SET status = 'promoted', reviewed_at = NOW() WHERE id = ${id}
     `);
 
     return res.json({
       draft: draftResult.rows[0],
-      message: `Draft v${nextVersion} created for "${proposal.policy_key}". Go to Policy Control (12.24) to activate it and create a rollout.`,
+      promotedFromProposalId: id,
     });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    console.error('[Optimizer] promote failed', err);
+    return res.status(500).json({ error: 'OPTIMIZER_PROMOTE_FAILED', message: err.message });
   }
 });
 
