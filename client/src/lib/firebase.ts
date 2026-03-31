@@ -101,7 +101,7 @@ export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getA
 const APP_CHECK_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 let appCheckInstance: AppCheck | null = null;
 
-if (APP_CHECK_SITE_KEY) {
+if (typeof window !== "undefined" && APP_CHECK_SITE_KEY) {
   try {
     appCheckInstance = initializeAppCheck(app, {
       provider: new ReCaptchaV3Provider(APP_CHECK_SITE_KEY),
@@ -111,7 +111,7 @@ if (APP_CHECK_SITE_KEY) {
   } catch (error) {
     logger.error('🚨 App Check init FAILED — requests may be rejected by Firebase', error);
   }
-} else {
+} else if (!APP_CHECK_SITE_KEY) {
   if (import.meta.env.PROD) {
     logger.error('🚨 CRITICAL: VITE_RECAPTCHA_SITE_KEY is not set in production. App Check is DISABLED. Set this variable before go-live.');
   } else {
