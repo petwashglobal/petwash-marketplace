@@ -1,23 +1,24 @@
 /**
  * Phase 12.21 — Intervention & Decision Tracking
- * Routes under /api/expansion/interventions
+ * Phase 12.22 — Outcome Measurement & Effectiveness
+ * Routes under /api/expansion/interventions and /api/expansion/outcomes
  *
  * Board flags from 12.20 become accountable cases here.
- * No financial calculations — only lifecycle tracking of leadership decisions.
+ * Phase 12.22 adds before/after measurement: snapshot at creation, current state now.
  */
 
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { interventionCases } from '../../shared/schema';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { computeStationEconomics, aggregateNetworkEconomics, ownershipComparison } from '../lib/unit-economics';
 import { buildExpansionDecisionPack, toStationRow, toNetworkRow, toOwnershipRow } from '../lib/expansion-decision';
+import { computeOutcomeSummary, buildEconomicSnapshot, buildCurrentEconomicsMap } from '../lib/outcome-measurement';
 
 const router = Router();
 
 // ---------------------------------------------------------------------------
 // GET /api/expansion/interventions
-// All intervention cases, newest first
 // ---------------------------------------------------------------------------
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -42,8 +43,7 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /api/expansion/interventions
-// Create a case manually
+// POST /api/expansion/interventions — create case manually
 // ---------------------------------------------------------------------------
 router.post('/', async (req: Request, res: Response) => {
   try {
@@ -61,6 +61,13 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(400).json({ error: `entityType must be one of: ${VALID_ENTITY_TYPES.join(', ')}` });
     }
 
+    // Capture economic snapshot at creation time (station entities only)
+    let snapshot: any = {};
+    if (entityType === 'station') {
+      const currentMap = await buildCurrentEconomicsMap();
+      snapshot = buildEconomicSnapshot(String(entityId), currentMap);
+    }
+
     const [newCase] = await db.insert(interventionCases).values({
       entityType, entityId: String(entityId), entityName,
       triggerSignal: triggerSignal ?? null,
@@ -69,6 +76,7 @@ router.post('/', async (req: Request, res: Response) => {
       status: 'open',
       notes: notes ?? null,
       createdBy,
+      ...snapshot,
     }).returning();
 
     return res.status(201).json({ case: newCase });
@@ -78,8 +86,7 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // ---------------------------------------------------------------------------
-// PATCH /api/expansion/interventions/:id
-// Update status, decision, notes
+// PATCH /api/expansion/interventions/:id — update status / decision / notes
 // ---------------------------------------------------------------------------
 router.patch('/:id', async (req: Request, res: Response) => {
   try {
@@ -115,11 +122,12 @@ router.patch('/:id', async (req: Request, res: Response) => {
 
 // ---------------------------------------------------------------------------
 // POST /api/expansion/interventions/auto-generate
-// Auto-generate open cases from current board flags (idempotent — skips duplicates)
+// Idempotent — converts current board flags to cases, skipping duplicates.
+// Now captures economic snapshot at creation time for Phase 12.22 measurement.
 // ---------------------------------------------------------------------------
 router.post('/auto-generate', async (req: Request, res: Response) => {
   try {
-    // Pull current board state from 12.20 engine
+    // Pull current board state and current economics simultaneously
     const stationEconomics = await computeStationEconomics();
     const networkEconomics = aggregateNetworkEconomics(stationEconomics);
     const ownershipBlocks  = ownershipComparison(stationEconomics);
@@ -130,21 +138,28 @@ router.post('/auto-generate', async (req: Request, res: Response) => {
 
     const pack = buildExpansionDecisionPack({ stationRows, networkRows, ownershipRows });
 
+    // Build current economics map for snapshot capture
+    const currentMap = new Map(stationEconomics.map(s => [String(s.stationId), s]));
+
     // Fetch existing open cases to avoid creating duplicates
     const existingOpen = await db.select().from(interventionCases)
       .where(eq(interventionCases.status, 'open'));
 
     const existingKeys = new Set(existingOpen.map(c => `${c.entityType}:${c.entityId}:${c.triggerFlag}`));
 
-    const toCreate: typeof interventionCases.$inferInsert[] = [];
+    const toCreate: (typeof interventionCases.$inferInsert)[] = [];
     for (const flag of pack.boardFlags) {
       const key = `${flag.entityType}:${String(flag.entityId)}:${flag.flagType}`;
       if (existingKeys.has(key)) continue;
 
-      // Find the matching station's recommendation signal
       const matchingStation = flag.entityType === 'station'
         ? pack.stations.find(s => s.stationId === flag.entityId)
         : null;
+
+      // Capture snapshot for station entities
+      const snapshot = flag.entityType === 'station'
+        ? buildEconomicSnapshot(String(flag.entityId), currentMap)
+        : {};
 
       toCreate.push({
         entityType: flag.entityType,
@@ -155,6 +170,7 @@ router.post('/auto-generate', async (req: Request, res: Response) => {
         status: flag.severity === 'critical' ? 'escalated' : 'open',
         notes: flag.explanation,
         createdBy: 'system:auto-generate',
+        ...snapshot,
       });
     }
 
@@ -163,15 +179,31 @@ router.post('/auto-generate', async (req: Request, res: Response) => {
       created = await db.insert(interventionCases).values(toCreate).returning();
     }
 
-    return res.json({ generated: created.length, skippedDuplicates: pack.boardFlags.length - toCreate.length, cases: created });
+    return res.json({
+      generated: created.length,
+      skippedDuplicates: pack.boardFlags.length - toCreate.length,
+      cases: created,
+    });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
 });
 
 // ---------------------------------------------------------------------------
-// GET /api/expansion/interventions/:id
-// Single case
+// Phase 12.22 — GET /api/expansion/interventions/outcomes/summary
+// Must be registered BEFORE /:id to avoid Express matching "outcomes" as an id
+// ---------------------------------------------------------------------------
+router.get('/outcomes/summary', async (req: Request, res: Response) => {
+  try {
+    const summary = await computeOutcomeSummary();
+    return res.json(summary);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/expansion/interventions/:id — single case
 // ---------------------------------------------------------------------------
 router.get('/:id', async (req: Request, res: Response) => {
   try {

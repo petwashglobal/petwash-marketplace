@@ -490,6 +490,7 @@ export default function Interventions() {
             ['/finance/board-pack', 'Board pack signals'],
             ['/finance/profitability', 'Unit economics'],
             ['/treasury', 'Treasury reconciliation'],
+            ['/finance/outcomes', 'Outcome measurement'],
           ].map(([href, lbl]) => (
             <Link key={href} href={href}>
               <span className="flex items-center gap-1 hover:text-foreground cursor-pointer hover:underline underline-offset-2">

@@ -14683,6 +14683,12 @@ export const interventionCases = pgTable("intervention_cases", {
   createdAt:     timestamp("created_at").defaultNow().notNull(),
   resolvedAt:    timestamp("resolved_at"),
   updatedAt:     timestamp("updated_at").defaultNow().notNull(),
+  // Phase 12.22 — economic snapshot at case creation time (nullable for legacy cases)
+  snapshotMarginPct:   decimal("snapshot_margin_pct",   { precision: 6, scale: 2 }),
+  snapshotFrictionPct: decimal("snapshot_friction_pct", { precision: 6, scale: 2 }),
+  snapshotReserveRisk: varchar("snapshot_reserve_risk", { length: 10 }),
+  snapshotFailureRate: decimal("snapshot_failure_rate", { precision: 6, scale: 2 }),
+  snapshotGrossIls:    decimal("snapshot_gross_ils",    { precision: 12, scale: 2 }),
 }, (table) => ({
   statusIdx: index("idx_intervention_status").on(table.status),
   entityIdx: index("idx_intervention_entity").on(table.entityType, table.entityId),
