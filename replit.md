@@ -2304,3 +2304,45 @@ Top-level network visibility for leadership: live risk snapshot, automation effe
 - **Route registered**: `server/routes.ts` → `/api/executive`; `client/src/App.tsx` → `/pet-wash-ltd/executive/oversight` under `ExecutiveSuiteGuard`
 
 **Business rationale:** Operations tracks individual cases. Managers track teams. Executives track the network. Phase 12.15 gives leadership a single place to see whether the system is healthy, whether automation is working, and whether governance policy changes are having their intended effect.
+
+---
+
+## Phase 12.16 — Financial Governance & Approval Controls (CLOSED)
+
+**What was delivered:**
+Financial authority is now enforced as data, not trust. Every refund, payout release, dispute closure, and manual adjustment must pass a matching approval rule before it executes.
+
+**Closure record (2026-03-31):**
+
+**DB (T161, T166, T164 columns, T165 columns):**
+- `financial_approval_matrix` — rules table (case_type, action_type, owner_scope, owner_id, amount range, required_role, second_approval_role). 10 global seed rules across refund/payout_release/dispute_close/manual_adjustment
+- `financial_approval_log` — permanent audit spine (requested_by, approved_by, second_approved_by, rule_id, status, timestamps)
+- `station_settlements` — 7 new columns: payout_hold_reason, payout_release_requested_at, payout_release_approved_at, payout_release_approved_by, second_release_approval_required, held_in_reserve, reserve_reason
+
+**`server/lib/financial-approvals.ts` (T162, T168):**
+- `getApprovalRule` — owner-specific beats global, narrower amount range beats wider
+- `canUserApproveFinancialAction` — role hierarchy check (agent < manager < franchise_owner < admin < executive)
+- `requiresSecondApproval`, `explainFinancialApproval` — full decision output with reason, matched rule, second approval requirement
+- `checkFinancialAuthority` — single entry point for all authority checks
+- `logFinancialApproval` — write to audit log
+
+**`server/routes/financial-approvals.ts` (T163–T167):**
+- `GET/POST/PATCH/DELETE /api/financial-approvals/matrix` — matrix CRUD
+- `POST /api/financial-approvals/check` — dry-run authority check
+- `GET /api/financial-approvals/queue` — pending refunds + payout batches enriched with required roles
+- `POST /api/financial-approvals/approve` — role check → execute or hold for second approval
+- `POST /api/financial-approvals/second-approve/:logId` — second approval gate
+- `POST /api/financial-approvals/reject` — reject + log
+- `POST /api/financial-approvals/payout-release-gate` — T164 payout hold/release authority gate
+- `POST /api/financial-approvals/reserve` / `release-reserve` — T165 dispute reserve on settlements
+- `GET /api/financial-approvals/reserve-summary` — gross payable / held / blocked / released breakdown
+- `GET /api/financial-approvals/log` — full audit log with filtering
+
+**`client/src/pages/FinancialApprovals.tsx` (T167, T169):**
+- Route `/financial-approvals` under `ExecutiveSuiteGuard`
+- Reserve summary: Gross Payable / Held in Reserve / Blocked / Released KPI cards
+- KPI strip: Pending / Approved Today / Rejected / Executed counts
+- 5 tabs: Pending (queue table with Approve/Reject actions + role chips), Approved Today, Rejected, Executed (full audit log), Rules Matrix (grouped by case_type, amount ranges, role requirements)
+- ActionDialog: shows rule match, amount, required role, second approval warning before confirming
+
+**Business rationale:** 12.13 = governance rules. 12.14 = trust and explainability. 12.15 = executive oversight. 12.16 = FINANCIAL AUTHORITY. This phase closes the gap between seeing financial risk and controlling who is allowed to create it.

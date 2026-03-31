@@ -328,6 +328,8 @@ const ExecutiveSuiteHome = lazy(() => import("@/pages/ExecutiveSuiteHome"));
 const ExecutiveSuiteGuard = lazy(() => import("@/components/ExecutiveSuiteGuard").then(m => ({ default: m.ExecutiveSuiteGuard })));
 // Phase 12.15 — Executive Oversight & Network Health
 const NetworkOversight = lazy(() => import("@/pages/NetworkOversight"));
+// Phase 12.16 — Financial Governance & Approval Controls
+const FinancialApprovals = lazy(() => import("@/pages/FinancialApprovals"));
 const Meetings = lazy(() => import("@/pages/Meetings"));
 const PlatformLegalFramework = lazy(() => import("@/pages/PlatformLegalFramework"));
 const ProviderOnboarding = lazy(() => import("@/pages/ProviderOnboarding"));
@@ -2335,6 +2337,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <ExecutiveSuiteGuard>
               <Suspense fallback={<PageLoader />}>
                 <NetworkOversight />
+              </Suspense>
+            </ExecutiveSuiteGuard>
+          )}
+        </Route>
+
+        {/* Phase 12.16 — Financial Governance & Approval Controls */}
+        <Route path="/financial-approvals">
+          {() => (
+            <ExecutiveSuiteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <FinancialApprovals />
               </Suspense>
             </ExecutiveSuiteGuard>
           )}
