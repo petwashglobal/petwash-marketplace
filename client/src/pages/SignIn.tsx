@@ -24,7 +24,7 @@ import { logger } from "@/lib/logger";
 import { signInWithPasskey, signInWithPasskeyConditional, isPasskeySupported, getBiometricMethodName, isChromeiOS, getBrowserName } from "@/auth/passkey";
 import { useAutoFaceID, storePasskeyEmail, clearPasskeyEmail, storeLastAuthMethod, getConsecutiveFailures } from "@/hooks/useAutoFaceID";
 import { FaceIDLoadingState } from "@/components/FaceIDLoadingState";
-import { executeReCaptcha } from "@/components/ReCaptcha";
+import { executeReCaptcha, preloadReCaptcha } from "@/components/ReCaptcha";
 import { TurnstileWidget, TURNSTILE_CONFIGURED, executeTurnstileInvisible } from "@/components/TurnstileWidget";
 import { trackAuthError } from "@/lib/authErrorTracker";
 import { trustDevice, isDeviceTrusted } from "@/lib/deviceTrust";
@@ -170,6 +170,9 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     }
   };
   
+  // Pre-warm reCAPTCHA on page mount so script is already loaded when user submits
+  useEffect(() => { preloadReCaptcha(); }, []);
+
   useEffect(() => {
     const hadDarkClass = document.documentElement.classList.contains('dark');
     document.documentElement.setAttribute('data-auth-page', 'true');
@@ -1424,9 +1427,12 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     try {
       setLoading(true);
 
-      const captchaToken = await executeReCaptcha('login').catch(() => null);
+      const captchaToken = await executeReCaptcha('login');
       if (!captchaToken) {
-        logger.warn('[SignIn] reCAPTCHA unavailable (ad blocker or slow connection) — proceeding without token');
+        logger.error('[SignIn] executeReCaptcha returned null — cannot sign in without security token');
+        toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'אנא רענן את הדף ונסה שוב. אם הבעיה נמשכת, ייתכן שחוסם פרסומות מונע טעינת Google reCAPTCHA.' : 'Please refresh the page and try again. If the issue persists, an ad blocker may be preventing Google reCAPTCHA from loading.' });
+        setLoading(false);
+        return;
       }
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
       

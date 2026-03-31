@@ -30,7 +30,7 @@ import { registerPasskey, isPasskeySupported, getBiometricMethodName } from "@/a
 import { motion } from "framer-motion";
 import { getApiUrl } from '@/lib/apiConfig';
 import { PhoneInput } from '@/components/PhoneInput';
-import { executeReCaptcha } from '@/components/ReCaptcha';
+import { executeReCaptcha, preloadReCaptcha } from '@/components/ReCaptcha';
 import { TurnstileWidget, TURNSTILE_CONFIGURED } from '@/components/TurnstileWidget';
 
 interface SignUpProps {
@@ -71,6 +71,9 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
   });
   
   logger.debug("SignUp component rendered", { acceptedTerms: formData.acceptedTerms });
+
+  // Pre-warm reCAPTCHA on page mount so script is already loaded when user submits
+  useEffect(() => { preloadReCaptcha(); }, []);
 
   // Auto-redirect logged-in users to dashboard
   useEffect(() => {
@@ -442,9 +445,11 @@ export default function SignUp({ language, onLanguageChange }: SignUpProps) {
     // Clear any previous terms error
     setTermsError(false);
     
-    const freshCaptchaToken = await executeReCaptcha('register').catch(() => null);
+    const freshCaptchaToken = await executeReCaptcha('register');
     if (!freshCaptchaToken) {
-      logger.warn('[SignUp] reCAPTCHA unavailable (ad blocker or slow connection) — proceeding without token');
+      logger.error('[SignUp] executeReCaptcha returned null — cannot complete registration without security token');
+      toast({ variant: 'destructive', title: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed', description: language === 'he' ? 'אנא רענן את הדף ונסה שוב. אם הבעיה נמשכת, ייתכן שחוסם פרסומות מונע טעינת Google reCAPTCHA.' : 'Please refresh the page and try again. If the issue persists, an ad blocker may be preventing Google reCAPTCHA from loading.' });
+      return;
     }
 
     if (!formData.acceptedTerms) {

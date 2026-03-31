@@ -120,6 +120,20 @@ const loadReCaptchaScript = async (): Promise<void> => {
   });
 };
 
+/**
+ * Call this when a page mounts to pre-warm the reCAPTCHA script.
+ * This ensures the Google script is already loaded and ready before
+ * the user presses submit, eliminating the on-submit loading delay.
+ */
+export async function preloadReCaptcha(): Promise<void> {
+  try {
+    await withTimeout(loadReCaptchaScript(), RECAPTCHA_TIMEOUT_MS, 'preload');
+    logger.info('[ReCaptcha] Script pre-warmed on page mount');
+  } catch (err: any) {
+    logger.warn('[ReCaptcha] Preload failed — will retry on submit', { error: err?.message });
+  }
+}
+
 export async function executeReCaptcha(action: string = 'submit'): Promise<string | null> {
   const siteKey = await getResolvedSiteKey();
   if (!siteKey) {
