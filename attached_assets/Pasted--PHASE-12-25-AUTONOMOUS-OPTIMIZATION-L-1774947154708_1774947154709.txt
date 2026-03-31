@@ -1,0 +1,960 @@
+/* =========================================================
+PHASE 12.25 - AUTONOMOUS OPTIMIZATION LAYER
+ONE BIG COPY-PASTE BOX
+SAFE REVIEW VERSION
+BUSINESS LOGIC:
+- No live policy changes directly from optimizer
+- Optimizer may PROPOSE only
+- Human must still review
+- Promotion only creates a 12.24 draft
+- Draft still must go through:
+  draft -> activate -> rollout -> evaluate -> rollback
+- No duplicate finance logic
+- No duplicate outcome logic
+- Reuse 12.22, 12.23, 12.24 only
+- Backend computes, UI renders
+========================================================= */
+
+
+/* =========================================================
+1) RAW SQL MIGRATION
+=========================================================
+
+CREATE TABLE IF NOT EXISTS optimization_proposals (
+  id SERIAL PRIMARY KEY,
+  proposal_key TEXT NOT NULL UNIQUE,
+  policy_key TEXT NOT NULL,
+  proposal_type TEXT NOT NULL, -- relax | tighten | playbook
+  current_config JSONB NOT NULL,
+  proposed_config JSONB NOT NULL,
+  rationale JSONB NOT NULL,
+  confidence TEXT NOT NULL, -- low | medium | high
+  evidence_count INT NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'proposed', -- proposed | accepted | rejected | promoted
+  created_at TIMESTAMP DEFAULT NOW(),
+  reviewed_at TIMESTAMP,
+  review_note TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_optimization_proposals_status
+  ON optimization_proposals(status);
+
+CREATE INDEX IF NOT EXISTS idx_optimization_proposals_policy_key
+  ON optimization_proposals(policy_key);
+
+*/
+
+
+/* =========================================================
+2) shared/schema.ts ADDITIONS
+=========================================================
+
+export const optimizationProposals = pgTable("optimization_proposals", {
+  id: serial("id").primaryKey(),
+  proposalKey: text("proposal_key").notNull().unique(),
+  policyKey: text("policy_key").notNull(),
+  proposalType: text("proposal_type").notNull(),
+  currentConfig: jsonb("current_config").notNull(),
+  proposedConfig: jsonb("proposed_config").notNull(),
+  rationale: jsonb("rationale").notNull(),
+  confidence: text("confidence").notNull(),
+  evidenceCount: integer("evidence_count").notNull().default(0),
+  status: text("status").notNull().default("proposed"),
+  createdAt: timestamp("created_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNote: text("review_note"),
+});
+
+export const insertOptimizationProposalSchema = createInsertSchema(optimizationProposals);
+export type OptimizationProposal = typeof optimizationProposals.$inferSelect;
+export type InsertOptimizationProposal = typeof optimizationProposals.$inferInsert;
+
+*/
+
+
+/* =========================================================
+3) server/lib/optimizer.ts
+========================================================= */
+
+import { computePolicyFeedback } from "./learning-policy";
+
+type ActiveConfig = {
+  policyKey: string;
+  config: any;
+};
+
+function isReady(feedback: any) {
+  return (feedback?.dataMaturity?.resolvedWithBaseline ?? 0) >= 3;
+}
+
+function relax(v: number) {
+  return Math.round(v * 1.15);
+}
+
+function tighten(v: number) {
+  return Math.round(v * 0.85);
+}
+
+function clampMin(v: number, min: number) {
+  return v < min ? min : v;
+}
+
+function stableKey(parts: Array<string | number | null | undefined>) {
+  return parts
+    .filter((x) => x !== null && x !== undefined && String(x).trim() !== "")
+    .map((x) => String(x).trim().replace(/\s+/g, "_").toLowerCase())
+    .join("__");
+}
+
+export async function generateOptimizationProposals(
+  activeConfigs: ActiveConfig[]
+) {
+  const feedback = await computePolicyFeedback();
+
+  // HARD SAFETY GATE
+  if (!isReady(feedback)) {
+    return [];
+  }
+
+  const proposals: any[] = [];
+
+  const approval = activeConfigs.find(
+    (c) => c.policyKey === "approval_threshold"
+  );
+
+  const escalation = activeConfigs.find(
+    (c) => c.policyKey === "intervention_escalation_days"
+  );
+
+  const reserveHold = activeConfigs.find(
+    (c) => c.policyKey === "reserve_hold_days"
+  );
+
+  const expansionScore = activeConfigs.find(
+    (c) => c.policyKey === "expansion_score_threshold"
+  );
+
+  const payoutFailure = activeConfigs.find(
+    (c) => c.policyKey === "payout_failure_limit"
+  );
+
+  const frictionLimit = activeConfigs.find(
+    (c) => c.policyKey === "friction_cost_limit"
+  );
+
+  // RULE 1
+  // Approval delay friction high and outcomes do not justify the current tight threshold
+  if (
+    approval &&
+    (feedback?.frictionFeedback?.approvalDelayIls ?? 0) > 0 &&
+    ((feedback?.frictionFeedback?.frictionResolutionRate ?? 0) > 50)
+  ) {
+    proposals.push({
+      proposal_key: stableKey([
+        "approval_threshold",
+        "relax",
+        "global",
+        approval?.config?.thresholdIls,
+      ]),
+      policy_key: "approval_threshold",
+      proposal_type: "relax",
+      current_config: approval.config,
+      proposed_config: {
+        ...approval.config,
+        thresholdIls: relax(Number(approval.config.thresholdIls ?? 0)),
+      },
+      rationale: {
+        summary: "Approval delays are creating friction without outcome improvement strong enough to justify the current threshold.",
+        findingIds: ["FRICTION_APPROVAL_DELAY"],
+        detail: [
+          `approvalDelayIls=${feedback.frictionFeedback.approvalDelayIls}`,
+          `frictionResolutionRate=${feedback.frictionFeedback.frictionResolutionRate}`,
+        ],
+      },
+      confidence: "medium",
+      evidence_count: feedback.dataMaturity.resolvedWithBaseline,
+    });
+  }
+
+  // RULE 2
+  // Chronic unresolved entities suggest escalation is too slow
+  if (
+    escalation &&
+    Array.isArray(feedback?.chronicEntities) &&
+    feedback.chronicEntities.some((e: any) => e.riskLevel === "high")
+  ) {
+    proposals.push({
+      proposal_key: stableKey([
+        "intervention_escalation_days",
+        "tighten",
+        "global",
+        escalation?.config?.days,
+      ]),
+      policy_key: "intervention_escalation_days",
+      proposal_type: "tighten",
+      current_config: escalation.config,
+      proposed_config: {
+        ...escalation.config,
+        days: clampMin(tighten(Number(escalation.config.days ?? 0)), 1),
+      },
+      rationale: {
+        summary: "Chronic unresolved entities indicate escalation timing is too slow.",
+        findingIds: ["CHRONIC_ENTITY_PRESSURE"],
+        detail: (feedback.chronicEntities || [])
+          .filter((e: any) => e.riskLevel === "high")
+          .map((e: any) => `${e.entityName}: totalCases=${e.totalCases}, openCases=${e.openCases}`),
+      },
+      confidence: "medium",
+      evidence_count: (feedback.chronicEntities || []).filter((e: any) => e.riskLevel === "high").length,
+    });
+  }
+
+  // RULE 3
+  // Active network health warning still open -> tighten expansion gate
+  const networkHealthSignal = Array.isArray(feedback?.signalCalibration)
+    ? feedback.signalCalibration.find((s: any) => s.flagType === "network_health_low")
+    : null;
+
+  if (
+    expansionScore &&
+    networkHealthSignal &&
+    (networkHealthSignal.totalFired ?? 0) >= 2 &&
+    (((networkHealthSignal.successRate ?? 0) < 50) || networkHealthSignal.currentlyActive)
+  ) {
+    proposals.push({
+      proposal_key: stableKey([
+        "expansion_score_threshold",
+        "tighten",
+        "global",
+        expansionScore?.config?.minimumScore,
+      ]),
+      policy_key: "expansion_score_threshold",
+      proposal_type: "tighten",
+      current_config: expansionScore.config,
+      proposed_config: {
+        ...expansionScore.config,
+        minimumScore: relax(Number(expansionScore.config.minimumScore ?? 0)),
+      },
+      rationale: {
+        summary: "Expansion gate should be stricter because weak network health continues to surface.",
+        findingIds: ["SIGNAL_NETWORK_HEALTH_LOW"],
+        detail: [
+          `totalFired=${networkHealthSignal.totalFired}`,
+          `successRate=${networkHealthSignal.successRate}`,
+          `currentlyActive=${networkHealthSignal.currentlyActive}`,
+        ],
+      },
+      confidence: networkHealthSignal.confidence || "medium",
+      evidence_count: networkHealthSignal.totalFired || 0,
+    });
+  }
+
+  // RULE 4
+  // Failed payout friction present -> tighten payout failure tolerance
+  if (
+    payoutFailure &&
+    (feedback?.frictionFeedback?.failedPayoutIls ?? 0) > 0
+  ) {
+    proposals.push({
+      proposal_key: stableKey([
+        "payout_failure_limit",
+        "tighten",
+        "global",
+        payoutFailure?.config?.maxFailureRatePct,
+      ]),
+      policy_key: "payout_failure_limit",
+      proposal_type: "tighten",
+      current_config: payoutFailure.config,
+      proposed_config: {
+        ...payoutFailure.config,
+        maxFailureRatePct: clampMin(
+          tighten(Number(payoutFailure.config.maxFailureRatePct ?? 0)),
+          1
+        ),
+      },
+      rationale: {
+        summary: "Payout failures remain present and current tolerance is too loose.",
+        findingIds: ["TREASURY_FAILURE_PRESSURE"],
+        detail: [
+          `failedPayoutIls=${feedback.frictionFeedback.failedPayoutIls}`,
+        ],
+      },
+      confidence: "medium",
+      evidence_count: feedback.dataMaturity.resolvedWithBaseline,
+    });
+  }
+
+  // RULE 5
+  // Aged reserve pressure -> tighten reserve hold discipline
+  if (
+    reserveHold &&
+    (feedback?.frictionFeedback?.reserveAgedIls ?? 0) > 0 &&
+    Array.isArray(feedback?.chronicEntities) &&
+    feedback.chronicEntities.length > 0
+  ) {
+    proposals.push({
+      proposal_key: stableKey([
+        "reserve_hold_days",
+        "tighten",
+        "global",
+        reserveHold?.config?.days,
+      ]),
+      policy_key: "reserve_hold_days",
+      proposal_type: "tighten",
+      current_config: reserveHold.config,
+      proposed_config: {
+        ...reserveHold.config,
+        days: clampMin(tighten(Number(reserveHold.config.days ?? 0)), 3),
+      },
+      rationale: {
+        summary: "Reserve ageing remains elevated and release discipline should tighten.",
+        findingIds: ["AGED_RESERVE_PRESSURE", "CHRONIC_ENTITY_PRESSURE"],
+        detail: [
+          `reserveAgedIls=${feedback.frictionFeedback.reserveAgedIls}`,
+          `chronicEntities=${feedback.chronicEntities.length}`,
+        ],
+      },
+      confidence: "medium",
+      evidence_count: feedback.chronicEntities.length,
+    });
+  }
+
+  // RULE 6
+  // No measured strong decision -> playbook review only, not hard threshold move
+  const decisionEffectiveness = Array.isArray(feedback?.decisionEffectiveness)
+    ? feedback.decisionEffectiveness
+    : [];
+
+  const bestDecision = decisionEffectiveness.find(
+    (d: any) => (d.successRate ?? 0) >= 70 && (d.resolvedMeasuredCases ?? 0) >= 3
+  );
+
+  if (!bestDecision) {
+    proposals.push({
+      proposal_key: stableKey([
+        "playbook_review",
+        "global",
+        "effectiveness_low",
+      ]),
+      policy_key: frictionLimit?.policyKey || "friction_cost_limit",
+      proposal_type: "playbook",
+      current_config: frictionLimit?.config || {},
+      proposed_config: {
+        ...(frictionLimit?.config || {}),
+        playbookReviewRequired: true,
+      },
+      rationale: {
+        summary: "No measured intervention decision currently shows strong enough effectiveness to standardize confidently.",
+        findingIds: ["DECISION_EFFECTIVENESS_WEAK"],
+        detail: decisionEffectiveness.map(
+          (d: any) =>
+            `${d.decision}: resolvedMeasured=${d.resolvedMeasuredCases}, successRate=${d.successRate}`
+        ),
+      },
+      confidence: "low",
+      evidence_count: decisionEffectiveness.reduce(
+        (sum: number, d: any) => sum + Number(d.resolvedMeasuredCases || 0),
+        0
+      ),
+    });
+  }
+
+  return proposals;
+}
+
+
+/* =========================================================
+4) server/routes/optimizer.ts
+========================================================= */
+
+import { Router } from "express";
+import { db } from "../db";
+import { sql } from "drizzle-orm";
+import { generateOptimizationProposals } from "../lib/optimizer";
+import { computePolicyFeedback } from "../lib/learning-policy";
+
+const router = Router();
+
+/* =========================
+GET /api/optimizer/proposals
+========================= */
+router.get("/proposals", async (_req, res) => {
+  try {
+    const result = await db.execute(sql`
+      SELECT *
+      FROM optimization_proposals
+      ORDER BY created_at DESC, id DESC
+    `);
+
+    return res.json({ proposals: result.rows });
+  } catch (error: any) {
+    console.error("[Optimizer] list proposals failed", error);
+    return res.status(500).json({
+      error: "OPTIMIZER_LIST_FAILED",
+      message: error?.message || "Unknown error",
+    });
+  }
+});
+
+/* =========================
+POST /api/optimizer/proposals/generate
+========================= */
+router.post("/proposals/generate", async (_req, res) => {
+  try {
+    const feedback = await computePolicyFeedback();
+
+    const configs = await db.execute(sql`
+      SELECT
+        policy_key as "policyKey",
+        config
+      FROM policy_configs
+      WHERE status = 'active'
+      ORDER BY policy_key, version DESC
+    `);
+
+    const proposals = await generateOptimizationProposals(configs.rows as any);
+
+    let inserted = 0;
+    let skippedDuplicates = 0;
+    const persisted: any[] = [];
+
+    for (const p of proposals) {
+      const exists = await db.execute(sql`
+        SELECT id
+        FROM optimization_proposals
+        WHERE proposal_key = ${p.proposal_key}
+          AND status IN ('proposed', 'accepted')
+        LIMIT 1
+      `);
+
+      if (exists.rows.length > 0) {
+        skippedDuplicates++;
+        continue;
+      }
+
+      const ins = await db.execute(sql`
+        INSERT INTO optimization_proposals (
+          proposal_key,
+          policy_key,
+          proposal_type,
+          current_config,
+          proposed_config,
+          rationale,
+          confidence,
+          evidence_count,
+          status
+        )
+        VALUES (
+          ${p.proposal_key},
+          ${p.policy_key},
+          ${p.proposal_type},
+          ${JSON.stringify(p.current_config)}::jsonb,
+          ${JSON.stringify(p.proposed_config)}::jsonb,
+          ${JSON.stringify(p.rationale)}::jsonb,
+          ${p.confidence},
+          ${p.evidence_count},
+          'proposed'
+        )
+        RETURNING *
+      `);
+
+      if (ins.rows[0]) {
+        inserted++;
+        persisted.push(ins.rows[0]);
+      }
+    }
+
+    return res.json({
+      generated: inserted,
+      skippedDuplicates,
+      proposals: persisted,
+      measurementReadiness: feedback.dataMaturity.measurementReadiness,
+    });
+  } catch (error: any) {
+    console.error("[Optimizer] generate failed", error);
+    return res.status(500).json({
+      error: "OPTIMIZER_GENERATE_FAILED",
+      message: error?.message || "Unknown error",
+    });
+  }
+});
+
+/* =========================
+POST /api/optimizer/proposals/:id/accept
+========================= */
+router.post("/proposals/:id/accept", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const reviewNote = String(req.body?.reviewNote || "").trim();
+
+    const result = await db.execute(sql`
+      UPDATE optimization_proposals
+      SET
+        status = 'accepted',
+        reviewed_at = NOW(),
+        review_note = ${reviewNote || null}
+      WHERE id = ${id}
+      RETURNING *
+    `);
+
+    if (!result.rows[0]) {
+      return res.status(404).json({ error: "OPTIMIZER_PROPOSAL_NOT_FOUND" });
+    }
+
+    return res.json({ proposal: result.rows[0] });
+  } catch (error: any) {
+    console.error("[Optimizer] accept failed", error);
+    return res.status(500).json({
+      error: "OPTIMIZER_ACCEPT_FAILED",
+      message: error?.message || "Unknown error",
+    });
+  }
+});
+
+/* =========================
+POST /api/optimizer/proposals/:id/reject
+========================= */
+router.post("/proposals/:id/reject", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const reviewNote = String(req.body?.reviewNote || "").trim();
+
+    const result = await db.execute(sql`
+      UPDATE optimization_proposals
+      SET
+        status = 'rejected',
+        reviewed_at = NOW(),
+        review_note = ${reviewNote || null}
+      WHERE id = ${id}
+      RETURNING *
+    `);
+
+    if (!result.rows[0]) {
+      return res.status(404).json({ error: "OPTIMIZER_PROPOSAL_NOT_FOUND" });
+    }
+
+    return res.json({ proposal: result.rows[0] });
+  } catch (error: any) {
+    console.error("[Optimizer] reject failed", error);
+    return res.status(500).json({
+      error: "OPTIMIZER_REJECT_FAILED",
+      message: error?.message || "Unknown error",
+    });
+  }
+});
+
+/* =========================
+POST /api/optimizer/proposals/:id/promote-to-draft
+Creates a 12.24 draft config only
+========================= */
+router.post("/proposals/:id/promote-to-draft", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    const proposalResult = await db.execute(sql`
+      SELECT *
+      FROM optimization_proposals
+      WHERE id = ${id}
+      LIMIT 1
+    `);
+
+    const proposal = proposalResult.rows[0] as any;
+
+    if (!proposal) {
+      return res.status(404).json({ error: "OPTIMIZER_PROPOSAL_NOT_FOUND" });
+    }
+
+    if (proposal.status !== "accepted") {
+      return res.status(400).json({
+        error: "OPTIMIZER_PROPOSAL_NOT_ACCEPTED",
+        message: "Proposal must be accepted before promotion to draft policy config.",
+      });
+    }
+
+    const nextVersion = await db.execute(sql`
+      SELECT COALESCE(MAX(version), 0) + 1 as next_version
+      FROM policy_configs
+      WHERE policy_key = ${proposal.policy_key}
+    `);
+
+    const version = Number((nextVersion.rows[0] as any)?.next_version || 1);
+
+    const inserted = await db.execute(sql`
+      INSERT INTO policy_configs (
+        policy_key,
+        version,
+        config,
+        status,
+        created_at,
+        created_by
+      )
+      VALUES (
+        ${proposal.policy_key},
+        ${version},
+        ${proposal.proposed_config},
+        'draft',
+        NOW(),
+        'optimizer_promotion'
+      )
+      RETURNING *
+    `);
+
+    await db.execute(sql`
+      UPDATE optimization_proposals
+      SET status = 'promoted'
+      WHERE id = ${id}
+    `);
+
+    return res.json({
+      draft: inserted.rows[0],
+      promotedFromProposalId: id,
+    });
+  } catch (error: any) {
+    console.error("[Optimizer] promote failed", error);
+    return res.status(500).json({
+      error: "OPTIMIZER_PROMOTE_FAILED",
+      message: error?.message || "Unknown error",
+    });
+  }
+});
+
+export default router;
+
+
+/* =========================================================
+5) client/src/pages/OptimizerReview.tsx
+========================================================= */
+
+import * as React from "react";
+import { Link } from "wouter";
+
+type Proposal = {
+  id: number;
+  proposal_key: string;
+  policy_key: string;
+  proposal_type: string;
+  current_config: Record<string, any>;
+  proposed_config: Record<string, any>;
+  rationale: {
+    summary?: string;
+    findingIds?: string[];
+    detail?: string[];
+  };
+  confidence: "low" | "medium" | "high";
+  evidence_count: number;
+  status: "proposed" | "accepted" | "rejected" | "promoted";
+  created_at: string;
+  reviewed_at: string | null;
+  review_note: string | null;
+};
+
+function pretty(value: any) {
+  return JSON.stringify(value, null, 2);
+}
+
+function statusClass(status: Proposal["status"]) {
+  switch (status) {
+    case "proposed":
+      return "bg-amber-100 text-amber-800 border-amber-200";
+    case "accepted":
+      return "bg-blue-100 text-blue-800 border-blue-200";
+    case "rejected":
+      return "bg-red-100 text-red-800 border-red-200";
+    case "promoted":
+      return "bg-emerald-100 text-emerald-800 border-emerald-200";
+    default:
+      return "bg-slate-100 text-slate-800 border-slate-200";
+  }
+}
+
+function confidenceClass(confidence: Proposal["confidence"]) {
+  switch (confidence) {
+    case "high":
+      return "bg-emerald-100 text-emerald-800";
+    case "medium":
+      return "bg-amber-100 text-amber-800";
+    default:
+      return "bg-slate-100 text-slate-800";
+  }
+}
+
+export default function OptimizerReview() {
+  const [proposals, setProposals] = React.useState<Proposal[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [busyId, setBusyId] = React.useState<number | null>(null);
+  const [reviewNotes, setReviewNotes] = React.useState<Record<number, string>>({});
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/optimizer/proposals", {
+        credentials: "include",
+      });
+      const json = await res.json();
+      setProposals(json.proposals || []);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  React.useEffect(() => {
+    load();
+  }, []);
+
+  async function generate() {
+    setLoading(true);
+    try {
+      await fetch("/api/optimizer/proposals/generate", {
+        method: "POST",
+        credentials: "include",
+      });
+      await load();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function act(id: number, action: "accept" | "reject" | "promote-to-draft") {
+    setBusyId(id);
+    try {
+      const body =
+        action === "promote-to-draft"
+          ? undefined
+          : JSON.stringify({ reviewNote: reviewNotes[id] || "" });
+
+      await fetch(`/api/optimizer/proposals/${id}/${action}`, {
+        method: "POST",
+        credentials: "include",
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body,
+      });
+
+      await load();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+            Autonomous Optimization Review
+          </h1>
+          <p className="text-slate-600 mt-1 max-w-3xl">
+            System-generated proposals only. Nothing here changes live policy directly.
+            Accepted proposals must still become draft configs under the 12.24 rollout discipline.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={generate}
+            disabled={loading}
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {loading ? "Generating..." : "Generate proposals"}
+          </button>
+
+          <Link
+            href="/finance/policy-rollout"
+            className="rounded-lg border px-4 py-2 text-sm font-medium"
+          >
+            Go to rollout control
+          </Link>
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-white p-4">
+        <div className="font-semibold text-slate-900">Operating discipline</div>
+        <ul className="mt-3 space-y-1 text-sm text-slate-700 list-disc pl-5">
+          <li>Optimizer can propose only.</li>
+          <li>No direct activation of live policy.</li>
+          <li>Accepted proposal must be promoted to a draft config.</li>
+          <li>Draft must still go through activation, rollout, evaluation, and rollback path.</li>
+          <li>Confidence is based on measured outcomes only.</li>
+        </ul>
+      </div>
+
+      <div className="grid gap-4">
+        {proposals.map((p) => (
+          <div key={p.id} className="rounded-xl border bg-white overflow-hidden">
+            <div className="border-b px-4 py-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${statusClass(p.status)}`}>
+                    {p.status.toUpperCase()}
+                  </span>
+                  <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${confidenceClass(p.confidence)}`}>
+                    {p.confidence} confidence
+                  </span>
+                  <span className="text-sm font-semibold text-slate-900">{p.proposal_key}</span>
+                </div>
+                <div className="mt-1 text-sm text-slate-600">
+                  {p.policy_key} · {p.proposal_type}
+                </div>
+              </div>
+              <div className="text-sm text-slate-500">
+                Evidence: {p.evidence_count}
+              </div>
+            </div>
+
+            <div className="p-4 grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-slate-500">Rationale</div>
+                  <div className="mt-1 text-sm text-slate-800 font-medium">
+                    {p.rationale?.summary || "No summary"}
+                  </div>
+
+                  {(p.rationale?.findingIds || []).length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {p.rationale.findingIds!.map((f) => (
+                        <span
+                          key={f}
+                          className="inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700"
+                        >
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {(p.rationale?.detail || []).length > 0 && (
+                    <ul className="mt-2 list-disc pl-5 text-sm text-slate-600 space-y-1">
+                      {p.rationale.detail!.map((d, i) => (
+                        <li key={i}>{d}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-slate-500">Review note</div>
+                  <textarea
+                    value={reviewNotes[p.id] ?? ""}
+                    onChange={(e) =>
+                      setReviewNotes((prev) => ({
+                        ...prev,
+                        [p.id]: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full rounded-lg border p-2 text-sm"
+                    rows={3}
+                    placeholder="Optional review note"
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {p.status === "proposed" && (
+                    <>
+                      <button
+                        disabled={busyId === p.id}
+                        onClick={() => act(p.id, "accept")}
+                        className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                      >
+                        Accept
+                      </button>
+
+                      <button
+                        disabled={busyId === p.id}
+                        onClick={() => act(p.id, "reject")}
+                        className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
+
+                  {p.status === "accepted" && (
+                    <button
+                      disabled={busyId === p.id}
+                      onClick={() => act(p.id, "promote-to-draft")}
+                      className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                    >
+                      Promote to 12.24 draft
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid gap-3">
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-slate-500">Current config</div>
+                  <pre className="mt-1 rounded-lg bg-slate-50 p-3 text-xs overflow-x-auto border">
+                    {pretty(p.current_config)}
+                  </pre>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-slate-500">Proposed config</div>
+                  <pre className="mt-1 rounded-lg bg-slate-50 p-3 text-xs overflow-x-auto border">
+                    {pretty(p.proposed_config)}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {!loading && proposals.length === 0 && (
+          <div className="rounded-xl border bg-white p-8 text-center text-slate-500">
+            No optimizer proposals yet.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+/* =========================================================
+6) server/routes.ts SNIPPET
+========================================================= */
+
+// import optimizerRoutes from "./routes/optimizer";
+
+/*
+app.use("/api/optimizer", optimizerRoutes);
+*/
+
+
+/* =========================================================
+7) App.tsx SNIPPET
+========================================================= */
+
+// import OptimizerReview from "@/pages/OptimizerReview";
+
+/*
+<Route path="/finance/optimizer">
+  <OptimizerReview />
+</Route>
+*/
+
+
+/* =========================================================
+REVIEW NOTES FOR HIM
+=========================================================
+
+WHAT THIS PHASE IS
+- proposal generation only
+- no live policy mutation
+- no duplicate finance logic
+- no duplicate outcome engine
+
+WHAT MUST BE CHECKED CAREFULLY
+1. Proposal generation only uses 12.23 feedback + active 12.24 configs
+2. Accepting proposal does NOT activate anything
+3. Promoting proposal only creates a draft config in 12.24
+4. Draft still must go through:
+   activate -> rollout -> evaluate -> rollback
+5. Confidence and evidence are surfaced honestly
+6. If measurement readiness is weak, proposal volume should stay low and conservative
+
+EXECUTIVE LOGIC
+12.23 says what should change.
+12.24 changes it safely.
+12.25 proposes change automatically, but still forces human-controlled rollout.
+
+That is the correct autonomy boundary.
+========================================================= */
