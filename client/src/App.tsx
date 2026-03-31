@@ -346,6 +346,8 @@ const Outcomes = lazy(() => import("@/pages/Outcomes"));
 const PolicyFeedback = lazy(() => import("@/pages/PolicyFeedback"));
 // Phase 12.24 — Policy Execution Discipline & Controlled Rollout
 const PolicyRollout = lazy(() => import("@/pages/PolicyRollout"));
+// Phase 12.25 — Autonomous Optimization (Controlled)
+const Optimizer = lazy(() => import("@/pages/Optimizer"));
 const Meetings = lazy(() => import("@/pages/Meetings"));
 const PlatformLegalFramework = lazy(() => import("@/pages/PlatformLegalFramework"));
 const ProviderOnboarding = lazy(() => import("@/pages/ProviderOnboarding"));
@@ -2443,6 +2445,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <ExecutiveSuiteGuard>
               <Suspense fallback={<PageLoader />}>
                 <PolicyRollout />
+              </Suspense>
+            </ExecutiveSuiteGuard>
+          )}
+        </Route>
+        <Route path="/finance/optimizer">
+          {() => (
+            <ExecutiveSuiteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <Optimizer />
               </Suspense>
             </ExecutiveSuiteGuard>
           )}

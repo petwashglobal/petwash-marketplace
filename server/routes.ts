@@ -9431,6 +9431,10 @@ self.addEventListener('notificationclick', (event) => {
   const policyRolloutRoutes = await import('./routes/policy-rollout');
   app.use('/api/expansion/policy-rollout', apiLimiter, policyRolloutRoutes.default);
 
+  // Phase 12.25 — Autonomous Optimization (Controlled)
+  const optimizerRoutes = await import('./routes/optimizer');
+  app.use('/api/expansion/optimizer', apiLimiter, optimizerRoutes.default);
+
   // Phase 12.7 — Booking Trace & Dispute Resolution Layer
   // Own auth middleware (requireTraceViewer): franchise_owner, station_operator, admin.
   // Must be before the franchise router.
