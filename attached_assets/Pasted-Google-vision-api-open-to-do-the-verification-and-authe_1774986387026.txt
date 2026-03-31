@@ -1,0 +1,112 @@
+Google vision api open to do the verification and authentication you never wired it properly . כן - בוא נעשה סדר פשוט וברור, בלי לבלבל אותך.
+
+Google Vision יכול להישאר פתוח ולעבוד, אבל לא בתור אישור אוטומטי סופי.
+
+ההיגיון הנכון הוא:
+	•	Loyalty members מהציבור
+	•	שם, DOB, אימייל, מובייל
+	•	אימות SMS + אימייל
+	•	בלי דרכון / רישיון / ת”ז / סלפי / liveness
+	•	Providers בלבד
+	•	מסמך מזהה
+	•	סלפי
+	•	Google Vision ל:
+	•	OCR של המסמך
+	•	זיהוי סוג מסמך
+	•	בדיקת שיש פנים בתמונה
+	•	בדיקת איכות בסיסית של התמונה
+	•	אבל לא אישור אוטומטי סופי על סמך Vision בלבד
+	•	סטטוס צריך להיות: pending_review
+
+הסיבה:
+Google Vision טוב ל:
+	•	לקרוא טקסט
+	•	לזהות מסמך
+	•	לזהות שיש פנים
+	•	לבדוק blur / darkness
+
+Google Vision לא מספיק טוב בשביל:
+	•	liveness אמיתי
+	•	face match אמיתי ברמת KYC
+	•	לאשר “זה אותו בן אדם” בוודאות
+
+אז מה שצריך להגיד ל-Replit זה בדיוק זה: Stop mixing public users and providers.
+
+Use this exact logic:
+
+1. Public loyalty members
+- simple signup only
+- full name
+- DOB
+- email
+- mobile in international format
+- email verification
+- SMS verification
+- no ID document
+- no passport
+- no driver licence
+- no selfie
+- no liveness
+
+2. Providers only
+Use Google Vision in provider onboarding for:
+- document OCR
+- document type detection
+- extracting fields
+- checking a face exists in the document image
+- checking image quality
+
+Do NOT use Google Vision alone as final identity approval.
+
+Provider flow must be:
+- save application first
+- return success immediately
+- run Vision async after submit
+- set status to pending_review
+- manual admin approval decides final outcome
+
+So:
+Google Vision = support tool
+Manual review = final approval
+for providers only.
+
+I need you to confirm:
+- exact files
+- exact routes
+- exact status flow
+- that public users never hit this provider verification path . Read this deep with business logic . מעולה. עכשיו נבנה את זה כמו שצריך – קוד + לוגיקה מלאה, בלי דיבורים.
+
+המטרה שלך ברורה:
+	•	להשתמש ב-Google Vision
+	•	לאשר ספקים אוטומטית
+	•	להשאיר זכאות להנחות (10%) ידני בלבד
+	•	לשמור על flow מהיר, async, ולא חוסם
+
+⚠️ חשוב לפני הקוד:
+Google Vision לא עושה KYC מלא, אבל כן מספיק ל:
+	•	בדיקת שיש פנים
+	•	בדיקת איכות תמונה
+	•	OCR למסמך
+אז אנחנו משתמשים בו כ־confidence engine, לא כ־100% אמת.
+
+⸻
+
+🧠 FLOW סופי (מה שהקוד יעשה)
+
+Provider onboarding
+	1.	משתמש מעלה:
+	•	ID document
+	•	selfie
+	2.	נשמר מיד DB → pending
+	3.	async job:
+	•	Vision OCR
+	•	Vision face detection
+	•	חישוב score
+	4.	החלטה:
+	•	score גבוה → approved
+	•	בינוני → manual_review
+	•	נמוך → rejected
+
+⸻
+
+🧱 1. TABLE (PostgreSQL) 

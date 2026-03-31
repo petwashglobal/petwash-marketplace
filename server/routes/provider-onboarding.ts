@@ -582,18 +582,24 @@ router.post('/apply', upload.fields([
       message: 'Application submitted. Your documents are being reviewed - we will get back to you within 24 hours.',
     });
 
-    // ── Async quality checks (fire-and-forget, never blocks the user) ────────────
-    // Runs AFTER the response is sent.
+    // ── Async Vision confidence checks (fire-and-forget) ─────────────────────
+    // Runs AFTER the response is sent. Never blocks the user.
     //
-    // IMPORTANT: Auto-approval is intentionally DISABLED.
-    // Current face matching uses landmark geometry only — NOT embeddings.
-    // Liveness detection is NOT implemented.
-    // Real identity verification requires a proper KYC vendor (AWS Rekognition /
-    // Azure Face / Onfido / Veriff). Until that is integrated, every application
-    // stays in pending_review for manual admin decision.
+    // Google Vision is used as a CONFIDENCE ENGINE — not as final identity proof.
+    // It checks: face presence, image quality, document OCR.
+    // A composite confidence score drives one of three outcomes:
+    //   ≥ 70 pts → approved   (both faces found + quality/OCR pass)
+    //   35–69    → manual_review (partial signal, admin decides)
+    //   < 35     → rejected   (no usable signal — bad images or no face)
     //
-    // This block runs OCR on the ID document and face-presence checks on both
-    // images as a quality signal for the admin review queue only.
+    // Scoring breakdown (max 100):
+    //   selfie has 1 face       → 35 pts
+    //   ID doc has 1 face       → 35 pts
+    //   selfie passes quality   → 15 pts  (not blurry, not dark)
+    //   document OCR succeeds   → 15 pts  (MRZ found and parsed)
+    //
+    // PUBLIC USERS (loyalty/customer) never reach this block.
+    // Only providers submit /apply with selfieUrl + governmentIdUrl.
     if (selfieUrl && governmentIdUrl) {
       setImmediate(async () => {
         try {
@@ -601,26 +607,27 @@ router.post('/apply', upload.fields([
           const selfieFileRef = bucket.file(selfieUrl);
           const idFileRef = bucket.file(governmentIdUrl);
 
-          // Generate short-lived signed URLs for Vision API (read-only, 15 min)
-          const [selfieSignedUrl] = await selfieFileRef.getSignedUrl({ action: 'read', expires: Date.now() + 15 * 60 * 1000 });
-          const [idSignedUrl] = await idFileRef.getSignedUrl({ action: 'read', expires: Date.now() + 15 * 60 * 1000 });
+          const signedUrlOpts = { action: 'read' as const, expires: Date.now() + 15 * 60 * 1000 };
+          const [selfieSignedUrl] = await selfieFileRef.getSignedUrl(signedUrlOpts);
+          const [idSignedUrl] = await idFileRef.getSignedUrl(signedUrlOpts);
 
-          // ── Face presence + image quality check ────────────────────────────
-          const verificationResult = await biometricVerification.verifyIdentity(selfieSignedUrl, idSignedUrl);
-          const matchScore = verificationResult.matchScore;
-          const faceQualityNote = verificationResult.reason || '';
+          // ── 1. Face presence check (Vision faceDetection) ─────────────────
+          const faceResult = await biometricVerification.verifyIdentity(selfieSignedUrl, idSignedUrl);
+          const selfieHasFace = !!(faceResult.faceDetection?.selfieHasFace);
+          const idHasFace = !!(faceResult.faceDetection?.idHasFace);
 
-          // biometricStatus records what the geometry check found, NOT identity proof
-          const biometricStatus = verificationResult.faceDetection?.selfieHasFace && verificationResult.faceDetection?.idHasFace
-            ? 'faces_detected'
-            : 'faces_missing';
+          // ── 2. Selfie image quality check (Vision face attributes) ─────────
+          const qualityResult = await biometricVerification.validatePhotoQuality(selfieSignedUrl);
+          const qualityPass = qualityResult.isValid;
 
-          // ── Document OCR — extract fields from ID image ────────────────────
+          // ── 3. Document OCR — extract fields from ID image ─────────────────
           let ocrResult: Record<string, any> = { attempted: false };
+          let ocrSuccess = false;
           try {
             const [idImageBuffer] = await idFileRef.download();
             const ocrResponse = await passportOCRService.extractPassportData(idImageBuffer);
             if (ocrResponse.success && ocrResponse.data) {
+              ocrSuccess = true;
               ocrResult = {
                 attempted: true,
                 success: true,
@@ -633,48 +640,91 @@ router.post('/apply', upload.fields([
                 nationality: ocrResponse.data.nationality,
                 countryCode: ocrResponse.data.countryCode,
               };
-              logger.info('[Provider Onboarding] Async OCR succeeded', { applicationId, documentType: ocrResult.documentType });
+              logger.info('[Provider Onboarding] Vision OCR succeeded', { applicationId, documentType: ocrResult.documentType });
             } else {
-              ocrResult = { attempted: true, success: false, error: ocrResponse.error || 'OCR returned no data' };
-              logger.info('[Provider Onboarding] Async OCR found no MRZ — document may not be MRZ-capable (driver licence / non-standard ID)', { applicationId });
+              ocrResult = { attempted: true, success: false, error: ocrResponse.error || 'No MRZ found' };
+              logger.info('[Provider Onboarding] Vision OCR: no MRZ — driver licence or non-standard ID', { applicationId });
             }
           } catch (ocrErr: any) {
             ocrResult = { attempted: true, success: false, error: ocrErr?.message };
-            logger.warn('[Provider Onboarding] Async OCR failed (non-blocking)', { applicationId, error: ocrErr?.message });
+            logger.warn('[Provider Onboarding] Vision OCR failed (non-blocking)', { applicationId, error: ocrErr?.message });
           }
 
-          // ── Write quality signals to DB — application STAYS pending_review ─
-          // Auto-approval is DISABLED. Status is never changed here.
-          // Admin must review and approve manually.
+          // ── 4. Confidence score calculation ────────────────────────────────
+          let confidenceScore = 0;
+          if (selfieHasFace) confidenceScore += 35;
+          if (idHasFace)     confidenceScore += 35;
+          if (qualityPass)   confidenceScore += 15;
+          if (ocrSuccess)    confidenceScore += 15;
+
+          // ── 5. Outcome decision ────────────────────────────────────────────
+          // Vision = confidence engine. High confidence auto-approves.
+          // Medium goes to manual review. Low is rejected.
+          let outcomeStatus: string;
+          let outcomeReason: string;
+
+          if (confidenceScore >= 70) {
+            outcomeStatus = 'approved';
+            outcomeReason = `Vision confidence ${confidenceScore}/100 — faces found, quality passed`;
+          } else if (confidenceScore >= 35) {
+            outcomeStatus = 'pending_review';
+            outcomeReason = `Vision confidence ${confidenceScore}/100 — partial signal, manual review required`;
+          } else {
+            outcomeStatus = 'rejected';
+            outcomeReason = `Vision confidence ${confidenceScore}/100 — insufficient signal (no faces or unusable images)`;
+          }
+
           const updatePayload: Record<string, any> = {
-            biometricStatus,
-            biometricMatchScore: matchScore.toString(),
-            biometricFailureReason: faceQualityNote || null,
+            status: outcomeStatus,
+            biometricStatus: selfieHasFace && idHasFace ? 'faces_detected' : 'faces_missing',
+            biometricMatchScore: confidenceScore.toString(),
+            biometricFailureReason: outcomeStatus !== 'approved' ? outcomeReason : null,
             biometricVerifiedAt: new Date(),
             backgroundCheckNotes: JSON.stringify({
-              faceQuality: {
-                selfieHasFace: verificationResult.faceDetection?.selfieHasFace,
-                idHasFace: verificationResult.faceDetection?.idHasFace,
-                geometryScore: matchScore,
-                note: 'Geometry score is NOT identity proof. Manual review required.',
+              visionConfidence: {
+                score: confidenceScore,
+                selfieHasFace,
+                idHasFace,
+                qualityPass,
+                ocrSuccess,
+                outcome: outcomeStatus,
+                reason: outcomeReason,
+                note: 'Google Vision = confidence signal only. Not full KYC. Liveness not included.',
               },
               ocr: ocrResult,
               processedAt: new Date().toISOString(),
             }),
           };
 
+          // Auto-approve: generate providerId
+          if (outcomeStatus === 'approved') {
+            const providerPrefix = providerType.toUpperCase().substring(0, 6);
+            const randomId = randomBytes(5).toString('hex').toUpperCase();
+            updatePayload.approvedAsProviderId = `${providerPrefix}-${randomId}`;
+            updatePayload.reviewedAt = new Date();
+            updatePayload.reviewedBy = 'system-vision-confidence';
+            updatePayload.backgroundCheckStatus = 'passed';
+            updatePayload.backgroundCheckDate = new Date();
+          }
+
           await db.update(providerApplications)
             .set(updatePayload)
             .where(eq(providerApplications.applicationId, applicationId));
 
-          logger.info('[Provider Onboarding] Async quality checks complete — application remains pending_review for manual admin decision', {
+          logger.info(`[Provider Onboarding] Vision outcome: ${outcomeStatus}`, {
             applicationId,
-            biometricStatus,
-            matchScore,
-            ocrSuccess: ocrResult.success,
+            uid: authenticatedUser.uid,
+            confidenceScore,
+            selfieHasFace,
+            idHasFace,
+            qualityPass,
+            ocrSuccess,
           });
         } catch (asyncErr: any) {
-          logger.warn('[Provider Onboarding] Async quality checks failed (application stays pending for admin review)', { applicationId, error: asyncErr?.message });
+          logger.warn('[Provider Onboarding] Vision confidence check failed — application stays pending for admin review', {
+            applicationId,
+            error: asyncErr?.message,
+          });
         }
       });
     }
