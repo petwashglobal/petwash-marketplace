@@ -9,6 +9,7 @@ import { systemRoles, userRoleAssignments } from '@shared/schema-enterprise';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { auth, storage } from '../lib/firebase-admin';
 import { biometricVerification } from '../services/BiometricVerificationService';
+import { passportOCRService } from '../services/PassportOCRService';
 import { logger } from '../lib/logger';
 import { isSuperAdmin } from '../middleware/rbac';
 import { GoogleSheetsService } from '../services/googleSheetsIntegration';
@@ -581,53 +582,99 @@ router.post('/apply', upload.fields([
       message: 'Application submitted. Your documents are being reviewed - we will get back to you within 24 hours.',
     });
 
-    // ── Async biometric check (fire-and-forget, never blocks the user) ─────────
-    // Runs AFTER the response is sent. Updates the DB record and can auto-approve
-    // if the face match passes the threshold.
+    // ── Async quality checks (fire-and-forget, never blocks the user) ────────────
+    // Runs AFTER the response is sent.
+    //
+    // IMPORTANT: Auto-approval is intentionally DISABLED.
+    // Current face matching uses landmark geometry only — NOT embeddings.
+    // Liveness detection is NOT implemented.
+    // Real identity verification requires a proper KYC vendor (AWS Rekognition /
+    // Azure Face / Onfido / Veriff). Until that is integrated, every application
+    // stays in pending_review for manual admin decision.
+    //
+    // This block runs OCR on the ID document and face-presence checks on both
+    // images as a quality signal for the admin review queue only.
     if (selfieUrl && governmentIdUrl) {
       setImmediate(async () => {
         try {
           biometricVerification.auditBiometricConsent(authenticatedUser.uid, true);
           const selfieFileRef = bucket.file(selfieUrl);
           const idFileRef = bucket.file(governmentIdUrl);
+
+          // Generate short-lived signed URLs for Vision API (read-only, 15 min)
           const [selfieSignedUrl] = await selfieFileRef.getSignedUrl({ action: 'read', expires: Date.now() + 15 * 60 * 1000 });
           const [idSignedUrl] = await idFileRef.getSignedUrl({ action: 'read', expires: Date.now() + 15 * 60 * 1000 });
+
+          // ── Face presence + image quality check ────────────────────────────
           const verificationResult = await biometricVerification.verifyIdentity(selfieSignedUrl, idSignedUrl);
-
-          const matchStatus = verificationResult.isMatch ? 'verified' : 'failed';
           const matchScore = verificationResult.matchScore;
-          const failureReason = verificationResult.isMatch ? null : (verificationResult.reason || 'Face match failed');
+          const faceQualityNote = verificationResult.reason || '';
 
-          const updatePayload: Record<string, any> = {
-            biometricStatus: matchStatus,
-            biometricMatchScore: matchScore.toString(),
-            biometricFailureReason: failureReason,
-            biometricVerifiedAt: verificationResult.isMatch ? new Date() : null,
-          };
+          // biometricStatus records what the geometry check found, NOT identity proof
+          const biometricStatus = verificationResult.faceDetection?.selfieHasFace && verificationResult.faceDetection?.idHasFace
+            ? 'faces_detected'
+            : 'faces_missing';
 
-          if (verificationResult.isMatch) {
-            // Auto-approve: biometric passed, documents uploaded
-            const providerPrefix = providerType.toUpperCase().substring(0, 6);
-            const randomId = randomBytes(5).toString('hex').toUpperCase();
-            const newProviderId = `${providerPrefix}-${randomId}`;
-            updatePayload.status = 'approved';
-            updatePayload.reviewedAt = new Date();
-            updatePayload.reviewedBy = 'system-auto-approval';
-            updatePayload.approvedAsProviderId = newProviderId;
-            updatePayload.backgroundCheckStatus = 'passed';
-            updatePayload.backgroundCheckDate = new Date();
-            logger.info('[Provider Onboarding] Async biometric PASSED — auto-approving', { applicationId, uid: authenticatedUser.uid, matchScore });
-          } else {
-            logger.info('[Provider Onboarding] Async biometric FAILED — staying pending', { applicationId, uid: authenticatedUser.uid, matchScore, failureReason });
+          // ── Document OCR — extract fields from ID image ────────────────────
+          let ocrResult: Record<string, any> = { attempted: false };
+          try {
+            const [idImageBuffer] = await idFileRef.download();
+            const ocrResponse = await passportOCRService.extractPassportData(idImageBuffer);
+            if (ocrResponse.success && ocrResponse.data) {
+              ocrResult = {
+                attempted: true,
+                success: true,
+                documentType: ocrResponse.data.documentType,
+                surname: ocrResponse.data.surname,
+                givenNames: ocrResponse.data.givenNames,
+                dateOfBirth: ocrResponse.data.dateOfBirth,
+                expiryDate: ocrResponse.data.expiryDate,
+                documentNumber: ocrResponse.data.passportNumber,
+                nationality: ocrResponse.data.nationality,
+                countryCode: ocrResponse.data.countryCode,
+              };
+              logger.info('[Provider Onboarding] Async OCR succeeded', { applicationId, documentType: ocrResult.documentType });
+            } else {
+              ocrResult = { attempted: true, success: false, error: ocrResponse.error || 'OCR returned no data' };
+              logger.info('[Provider Onboarding] Async OCR found no MRZ — document may not be MRZ-capable (driver licence / non-standard ID)', { applicationId });
+            }
+          } catch (ocrErr: any) {
+            ocrResult = { attempted: true, success: false, error: ocrErr?.message };
+            logger.warn('[Provider Onboarding] Async OCR failed (non-blocking)', { applicationId, error: ocrErr?.message });
           }
+
+          // ── Write quality signals to DB — application STAYS pending_review ─
+          // Auto-approval is DISABLED. Status is never changed here.
+          // Admin must review and approve manually.
+          const updatePayload: Record<string, any> = {
+            biometricStatus,
+            biometricMatchScore: matchScore.toString(),
+            biometricFailureReason: faceQualityNote || null,
+            biometricVerifiedAt: new Date(),
+            backgroundCheckNotes: JSON.stringify({
+              faceQuality: {
+                selfieHasFace: verificationResult.faceDetection?.selfieHasFace,
+                idHasFace: verificationResult.faceDetection?.idHasFace,
+                geometryScore: matchScore,
+                note: 'Geometry score is NOT identity proof. Manual review required.',
+              },
+              ocr: ocrResult,
+              processedAt: new Date().toISOString(),
+            }),
+          };
 
           await db.update(providerApplications)
             .set(updatePayload)
             .where(eq(providerApplications.applicationId, applicationId));
 
-          logger.info('[Provider Onboarding] Async biometric update complete', { applicationId, matchStatus, matchScore });
-        } catch (asyncBioErr: any) {
-          logger.warn('[Provider Onboarding] Async biometric check failed (application stays pending for admin review)', { applicationId, error: asyncBioErr?.message });
+          logger.info('[Provider Onboarding] Async quality checks complete — application remains pending_review for manual admin decision', {
+            applicationId,
+            biometricStatus,
+            matchScore,
+            ocrSuccess: ocrResult.success,
+          });
+        } catch (asyncErr: any) {
+          logger.warn('[Provider Onboarding] Async quality checks failed (application stays pending for admin review)', { applicationId, error: asyncErr?.message });
         }
       });
     }
