@@ -1,7 +1,7 @@
 import { pool } from "../db";
 
 export type MessageDirection = "outbound" | "inbound" | "internal_note";
-export type MessageChannel = "email" | "sms" | "system" | "internal_note";
+export type MessageChannel = "email" | "sms" | "system" | "internal_note" | "portal";
 export type DeliveryStatus = "queued" | "sent" | "failed" | "delivered" | "opened";
 
 export async function ensureThread(applicationId: number): Promise<number> {

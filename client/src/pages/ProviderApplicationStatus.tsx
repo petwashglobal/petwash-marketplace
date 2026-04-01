@@ -104,6 +104,7 @@ export default function ProviderApplicationStatus() {
   const isRtl = language === 'he';
   const [withdrawConfirm, setWithdrawConfirm] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
+  const [replyBody, setReplyBody] = useState('');
 
   const { data, isLoading, error, refetch } = useQuery<{
     application: ApplicationStatus;
@@ -133,6 +134,30 @@ export default function ProviderApplicationStatus() {
       return res.json();
     },
     enabled: showMessages,
+  });
+
+  const replyMutation = useMutation({
+    mutationFn: async (body: string) => {
+      const token = await getBearerToken();
+      const res = await fetch('/api/provider-onboarding/my/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ body }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Failed' }));
+        throw new Error(err.error || 'Send failed');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setReplyBody('');
+      toast({ title: 'Message sent to support' });
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-onboarding/my/messages'] });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Failed to send message', description: err.message, variant: 'destructive' });
+    },
   });
 
   const withdrawMutation = useMutation({
@@ -386,27 +411,73 @@ export default function ProviderApplicationStatus() {
             >
               <span className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4" />
-                Messages from support
+                Messages
+                {messages.length > 0 && (
+                  <span className="bg-blue-100 text-blue-700 rounded-full text-xs px-1.5 font-normal">
+                    {messages.length}
+                  </span>
+                )}
               </span>
               <ChevronRight className={`h-4 w-4 transition-transform ${showMessages ? 'rotate-90' : ''}`} />
             </button>
           </CardHeader>
           {showMessages && (
-            <CardContent className="pt-3">
+            <CardContent className="pt-3 space-y-4">
+              {/* Thread */}
               {messages.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-2">No messages yet.</p>
               ) : (
-                <div className="space-y-3">
-                  {messages.map(msg => (
-                    <div key={msg.id} className="bg-blue-50 border border-blue-100 rounded p-3 text-sm">
-                      <p className="text-blue-900">{msg.body}</p>
-                      <p className="text-xs text-blue-500 mt-1">
-                        {new Date(msg.created_at).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-                  ))}
+                <div className="space-y-2">
+                  {messages.map(msg => {
+                    const isFromMe = msg.direction === 'inbound';
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`rounded p-3 text-sm ${isFromMe
+                          ? 'bg-green-50 border border-green-100 ml-4'
+                          : 'bg-blue-50 border border-blue-100 mr-4'}`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-xs font-medium ${isFromMe ? 'text-green-700' : 'text-blue-700'}`}>
+                            {isFromMe ? 'You' : 'PetWash Support'}
+                          </span>
+                          <span className={`text-xs ${isFromMe ? 'text-green-500' : 'text-blue-400'}`}>
+                            {new Date(msg.created_at).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <p className={isFromMe ? 'text-green-900' : 'text-blue-900'}>{msg.body}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
+
+              {/* Reply composer */}
+              <Separator />
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Reply to support</p>
+                <Textarea
+                  placeholder="Write a message to our support team…"
+                  value={replyBody}
+                  onChange={e => setReplyBody(e.target.value)}
+                  rows={3}
+                  maxLength={2000}
+                  className="text-sm"
+                />
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">{replyBody.length}/2000</span>
+                  <Button
+                    size="sm"
+                    disabled={!replyBody.trim() || replyMutation.isPending}
+                    onClick={() => replyMutation.mutate(replyBody)}
+                  >
+                    {replyMutation.isPending
+                      ? <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                      : <MessageSquare className="h-3.5 w-3.5 mr-1.5" />}
+                    Send message
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           )}
         </Card>

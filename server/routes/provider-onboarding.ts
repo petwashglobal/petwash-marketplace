@@ -1804,6 +1804,54 @@ router.get('/my/messages', async (req: Request, res: Response) => {
   }
 });
 
+// POST /my/messages — applicant sends a reply to support (inbound, portal channel)
+router.post('/my/messages', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+    const token = authHeader.split(' ')[1];
+    const decodedToken = await auth.verifyIdToken(token, true);
+
+    const appRow = await pool.query(
+      `SELECT id, status FROM provider_applications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      [decodedToken.uid]
+    );
+    if (!appRow.rows.length) return res.status(404).json({ error: 'No application found' });
+
+    const { body } = req.body as { body?: string };
+    if (!body || !body.trim()) return res.status(400).json({ error: 'Message body is required' });
+    if (body.trim().length > 2000) return res.status(400).json({ error: 'Message too long (max 2000 characters)' });
+
+    const appId: number = appRow.rows[0].id;
+    const { logProviderMessage, incrementUnreadCount } = await import('../services/providerMessageLog');
+    const { writeAuditEvent } = await import('../services/providerAudit');
+
+    await logProviderMessage({
+      applicationId: appId,
+      direction: 'inbound',
+      channel: 'portal',
+      body: body.trim(),
+      sentBy: decodedToken.uid,
+      providerVisible: true,
+      deliveryStatus: 'delivered',
+    });
+
+    await incrementUnreadCount(appId);
+
+    await writeAuditEvent({
+      applicationId: appId,
+      eventType: 'applicant_message_sent',
+      actorUserId: decodedToken.uid,
+      actorRole: 'provider',
+      payload: { bodyLength: body.trim().length },
+    });
+
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ──────────────────────────────────────────────────────────────────────────────
 // PUBLIC: POST /resubmit/:token — applicant uploads replacement files
 //

@@ -32,6 +32,10 @@ import {
   SendHorizonal,
   Clock,
   Info,
+  ZoomIn,
+  Download,
+  X,
+  Maximize2,
 } from 'lucide-react';
 
 interface KycApplication {
@@ -148,6 +152,9 @@ export default function ProviderKycReview() {
   // Message composer state
   const [msgBody, setMsgBody] = useState('');
   const [msgVisible, setMsgVisible] = useState<'internal' | 'provider'>('internal');
+
+  // Lightbox state
+  const [lightbox, setLightbox] = useState<{ url: string; label: string } | null>(null);
 
   const { data, isLoading, error, refetch } = useQuery<{ application: KycApplication; kycDetail: KycDetail | null }>({
     queryKey: ['/api/provider-onboarding/admin/applications', applicationId],
@@ -271,6 +278,56 @@ export default function ProviderKycReview() {
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
+
+      {/* ── Lightbox overlay ── */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <div className="relative max-w-4xl w-full" onClick={e => e.stopPropagation()}>
+            {/* Controls bar */}
+            <div className="flex items-center justify-between mb-3 px-1">
+              <span className="text-white font-medium text-sm">{lightbox.label}</span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={lightbox.url}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded transition-colors"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <Download className="h-3.5 w-3.5" /> Download
+                </a>
+                <a
+                  href={lightbox.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded transition-colors"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <Maximize2 className="h-3.5 w-3.5" /> Open tab
+                </a>
+                <button
+                  onClick={() => setLightbox(null)}
+                  className="bg-white/10 hover:bg-white/20 text-white p-1.5 rounded transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            {/* Image */}
+            <img
+              src={lightbox.url}
+              alt={lightbox.label}
+              className="w-full rounded-lg object-contain"
+              style={{ maxHeight: '80vh' }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" onClick={() => navigate('/admin/provider-review')}>
@@ -342,8 +399,15 @@ export default function ProviderKycReview() {
                 </CardHeader>
                 <CardContent>
                   {app.selfieSignedUrl ? (
-                    <img src={app.selfieSignedUrl} alt="Applicant selfie"
-                      className="w-full rounded-lg object-cover border border-slate-200" style={{ maxHeight: 280 }} />
+                    <div className="relative group cursor-pointer" onClick={() => setLightbox({ url: app.selfieSignedUrl!, label: 'Selfie' })}>
+                      <img src={app.selfieSignedUrl} alt="Applicant selfie"
+                        className="w-full rounded-lg object-cover border border-slate-200 transition-opacity group-hover:opacity-90" style={{ maxHeight: 280 }} />
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="bg-black/50 rounded-full p-2">
+                          <ZoomIn className="h-5 w-5 text-white" />
+                        </div>
+                      </div>
+                    </div>
                   ) : (
                     <div className="w-full h-40 bg-slate-100 rounded-lg flex items-center justify-center text-sm text-muted-foreground">
                       <Eye className="h-5 w-5 mr-2" /> Not available
@@ -360,8 +424,15 @@ export default function ProviderKycReview() {
                 </CardHeader>
                 <CardContent>
                   {app.idSignedUrl ? (
-                    <img src={app.idSignedUrl} alt="Government ID"
-                      className="w-full rounded-lg object-cover border border-slate-200" style={{ maxHeight: 280 }} />
+                    <div className="relative group cursor-pointer" onClick={() => setLightbox({ url: app.idSignedUrl!, label: 'Government ID' })}>
+                      <img src={app.idSignedUrl} alt="Government ID"
+                        className="w-full rounded-lg object-cover border border-slate-200 transition-opacity group-hover:opacity-90" style={{ maxHeight: 280 }} />
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="bg-black/50 rounded-full p-2">
+                          <ZoomIn className="h-5 w-5 text-white" />
+                        </div>
+                      </div>
+                    </div>
                   ) : (
                     <div className="w-full h-40 bg-slate-100 rounded-lg flex items-center justify-center text-sm text-muted-foreground">
                       <Eye className="h-5 w-5 mr-2" /> Not available
