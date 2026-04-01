@@ -1,0 +1,109 @@
+We need the provider application workflow to become a complete operational review system, not just backend approval logic.
+
+Core principle:
+Google Forms API may be used only as optional intake / fallback.
+It must NOT be the system of record.
+
+System of record must remain:
+- PostgreSQL for records
+- object storage for files
+- backend for decisions
+- admin dashboard for review
+
+I need these surfaces fully designed and wired:
+
+1. Internal support review dashboard
+- queue view
+- applicant name / email / mobile
+- provider type
+- status
+- face score
+- liveness score
+- OCR confidence
+- flags
+- priority
+- unread communication count
+- assigned reviewer
+- age / SLA
+
+2. Application detail page
+Must show:
+- selfie preview
+- ID / document preview
+- PDF preview if uploaded
+- extracted OCR fields
+- verification scores
+- fraud flags
+- decision flags
+- communication thread
+- internal notes
+- audit trail
+- approve / reject / request resubmission actions
+
+3. Different dashboards by role
+- management dashboard
+- support / operations dashboard
+- provider dashboard
+- public loyalty member dashboard
+These must be separate and permission-safe.
+
+4. Responsive design
+Must work beautifully on:
+- small iPhone
+- Android
+- iPad
+- desktop
+- large management screen
+
+5. File handling
+Need:
+- inline image preview
+- inline PDF preview
+- zoom
+- open original
+- download original
+- version history for resubmissions
+
+6. Communication layer
+Need linked inbox per application:
+- outbound email
+- internal notes
+- message history
+- delivery status
+- unread count
+Applicant contact methods:
+- email
+- mobile
+Email is primary because cheaper.
+
+7. Wallet and loyalty separation
+Loyalty members must only see:
+- their own smart wallet
+- discounts
+- packages
+- credits
+- transactions
+No provider workflow leakage.
+
+8. Management logic
+Management dashboard should show:
+- total applications
+- approval / rejection trends
+- average review time
+- queue aging
+- fraud spikes
+- stuck processing
+- email failures
+- reviewer workload
+
+I need you to return:
+- exact frontend pages
+- exact responsive layout logic
+- exact role separation
+- exact file preview strategy
+- exact inbox / communication model
+- exact admin and management dashboard components
+- exact routes and permissions
+- exact DB fields supporting all of this
+
+Think through every operational scenario, not only happy path.

@@ -1,0 +1,282 @@
+Exactly. The missing piece is not only backend approval logic. It is the operating surface for your company.
+
+You need a system where:
+	•	applications are easy to review
+	•	files are easy to open
+	•	mobile works perfectly
+	•	large desktop works perfectly
+	•	management sees one level
+	•	support sees another
+	•	providers see only their own area
+	•	loyalty members see their own wallet and benefits only
+	•	nothing leaks across roles
+
+And yes, Google Forms API can help, but only as an intake channel if you want it.
+It should not become the main system of truth.
+
+The right business logic
+
+1. System of record
+
+Must stay:
+	•	PostgreSQL = records
+	•	object storage = files
+	•	backend = decisions
+	•	admin dashboard = review and operations
+
+2. Google Forms
+
+Can be used only for one of these:
+	•	optional lead capture
+	•	backup intake form
+	•	emergency fallback intake
+	•	simple marketing / interest forms
+
+But not for the real provider workflow.
+
+Because the real workflow needs:
+	•	statuses
+	•	queue
+	•	review notes
+	•	inbox
+	•	resubmission
+	•	audit trail
+	•	role permissions
+	•	dashboards
+	•	decision history
+
+Google Forms alone is too weak for that.
+
+⸻
+
+What your company actually needs
+
+A. Internal review dashboard
+
+For support / operations staff.
+
+They should see:
+	•	application ID
+	•	applicant name
+	•	provider type
+	•	email
+	•	mobile
+	•	current status
+	•	risk level
+	•	face score
+	•	liveness score
+	•	OCR confidence
+	•	flags
+	•	uploaded files
+	•	unread communication count
+	•	assigned reviewer
+	•	age of application
+	•	due date / SLA
+
+And it must look perfect on:
+	•	iPhone
+	•	Android
+	•	iPad
+	•	desktop
+	•	wide management screens
+
+⸻
+
+B. Application review page
+
+When support clicks an application, the screen should show:
+
+top summary
+	•	name
+	•	email
+	•	mobile
+	•	provider type
+	•	current status
+	•	created at
+	•	updated at
+	•	assigned to
+	•	priority
+
+files block
+	•	selfie preview
+	•	ID preview
+	•	uploaded PDF preview if any
+	•	uploaded images
+	•	download original
+	•	zoom
+	•	open full screen
+
+extracted data block
+	•	document type
+	•	extracted name
+	•	extracted DOB
+	•	extracted expiry
+	•	extracted document last 4
+	•	OCR confidence
+	•	country
+
+verification block
+	•	face score
+	•	liveness score
+	•	fraud flags
+	•	quality flags
+	•	decision flags
+	•	system recommendation
+
+action block
+	•	approve
+	•	reject
+	•	request resubmission
+	•	assign reviewer
+	•	add internal note
+	•	send applicant message
+
+communication block
+	•	inbox thread
+	•	sent emails
+	•	internal notes
+	•	applicant replies
+	•	delivery status
+
+audit block
+	•	every event in order
+	•	who did what
+	•	when
+	•	why
+
+⸻
+
+C. Dashboard separation by role
+
+1. Management dashboard
+
+Management should see:
+	•	total provider applications
+	•	pending review count
+	•	resubmission count
+	•	approval rate
+	•	rejection rate
+	•	average review time
+	•	queue aging
+	•	reviewer workload
+	•	fraud spikes
+	•	email delivery failures
+	•	KYC processing failures
+	•	trends over time
+
+Management dashboard should be more strategic, less operational.
+
+2. Support / operations dashboard
+
+Support should see:
+	•	live queue
+	•	applications assigned to me
+	•	urgent cases
+	•	overdue cases
+	•	unread applicant messages
+	•	resubmission waiting
+	•	approve / reject controls
+
+This is operational.
+
+3. Provider dashboard
+
+Provider should only see:
+	•	application status
+	•	messages
+	•	requests for more documents
+	•	upload replacement files
+	•	approval outcome
+	•	once approved, provider tools only
+
+They must never see internal flags, admin notes, fraud analysis, or management views.
+
+4. Loyalty member dashboard
+
+Public member should only see:
+	•	profile
+	•	membership status
+	•	5% club discount
+	•	10% special discount if approved manually
+	•	smart wallet
+	•	transactions
+	•	packages
+	•	redemptions
+	•	benefits
+
+They must never see provider onboarding logic.
+
+⸻
+
+Smart wallet logic
+
+Since you mentioned loyalty users and digital wallet, this must be clearly separated too.
+
+Loyalty member wallet should show:
+	•	current balance
+	•	e-gift balance
+	•	wash credits
+	•	package balance
+	•	last transactions
+	•	expiry if any
+	•	QR / redemption tools
+	•	discount program
+	•	special approval status if relevant
+
+Management should see wallet analytics.
+Support should see wallet support tools.
+User should see only their own wallet.
+
+⸻
+
+Files and documents must be easy to review
+
+This is very important.
+
+Your internal review page should support:
+	•	jpg / png preview
+	•	pdf preview inline
+	•	image zoom
+	•	open file in new tab
+	•	download original
+	•	file metadata
+	•	upload timestamp
+	•	version history
+
+If a user resubmits, support should be able to compare:
+	•	previous selfie
+	•	latest selfie
+	•	previous document
+	•	latest document
+
+So your team can understand what changed.
+
+⸻
+
+Mobile-first review
+
+You are right to insist on this.
+
+The review UI must not be desktop-only.
+
+On small mobile:
+	•	stacked cards
+	•	sticky action bar
+	•	quick approve/reject/resubmit buttons
+	•	collapsible sections
+	•	image viewer full screen
+	•	communication thread easy to scroll
+
+On large screen:
+	•	2 or 3 column layout
+	•	files on one side
+	•	extracted data and scores in middle
+	•	actions and inbox on the other side
+
+Same logic, different layout.
+
+⸻
+
+What to tell Replit
+
+Send him this exact brief:

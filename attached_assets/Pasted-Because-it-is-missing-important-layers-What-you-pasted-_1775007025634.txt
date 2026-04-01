@@ -1,0 +1,275 @@
+Because it is missing important layers.
+
+What you pasted is strong as a system design skeleton, but it is not yet a full production implementation pack. That is why it feels incomplete.
+
+The main reason is this:
+
+It defines tables, statuses, and some service logic, but it still does not fully define how the real system behaves under pressure, failure, security events, admin mistakes, duplicate actions, retries, and live operations.
+
+Here is what is still missing.
+
+1. Exact authority and permission model
+
+It says admin/support can review, but it does not define:
+	•	which roles can only view
+	•	which roles can approve
+	•	which roles can reject
+	•	which roles can request resubmission
+	•	whether franchise owner can see only their own providers
+	•	whether support can see all or only assigned queue items
+
+Without this, backend and frontend can drift.
+
+2. Row locking and race conditions
+
+This is one of the biggest missing parts.
+
+You need explicit rules for:
+	•	two admins opening same application
+	•	one approves while another rejects
+	•	queue item already completed but stale page still open
+	•	double clicking approve
+	•	email resend at same time as decision change
+
+Need exact DB transaction + FOR UPDATE + idempotency behavior.
+
+3. Real KYC engine contract
+
+You reference KYC2026, but the package does not clearly define:
+	•	exact input shape
+	•	exact output shape
+	•	required fields vs optional
+	•	error codes
+	•	timeout behavior
+	•	fallback behavior if Vision fails
+	•	retry policy
+
+Without that, Replit can wire it loosely and break consistency.
+
+4. Resubmission lifecycle details
+
+You mention resubmission, but the hard rules are missing:
+	•	how many resubmissions allowed
+	•	what happens after too many failed attempts
+	•	when application becomes expired
+	•	whether old files are hidden or still visible
+	•	whether old OCR/score is retained for audit
+	•	whether resubmission resets fraud score or not
+
+This is operationally important.
+
+5. Inbox is not fully defined
+
+You correctly said you want communication inside the application, but the package does not finish the communication model.
+
+Missing:
+	•	inbound email handling
+	•	reply-to address logic
+	•	threading model
+	•	attachment support
+	•	delivery failure retry
+	•	bounce handling
+	•	read/unread logic
+	•	who can write internal notes vs visible notes
+
+Right now it is only outbound logging.
+
+6. Notification policy is not fully defined
+
+Email to support is good, but not enough.
+
+Missing exact rules for:
+	•	when to notify support immediately
+	•	when to send daily digest only
+	•	when to alert urgent
+	•	when to re-notify stale cases
+	•	how many reminders applicant gets
+	•	whether SMS is used after email bounce
+	•	escalation if support ignores queue
+
+Without notification policy, the queue can silently die.
+
+7. Monitoring and alert thresholds are not fully operational
+
+You mention monitoring tables, but not the actual control rules.
+
+Missing:
+	•	processing stuck threshold
+	•	pending_review SLA threshold
+	•	pending_resubmission expiry threshold
+	•	rejection spike threshold
+	•	email failure threshold
+	•	Vision failure threshold
+	•	alert destinations
+	•	on-call / escalation flow
+
+Tables alone are not monitoring.
+
+8. Security model is incomplete
+
+This is a big one.
+
+Missing or underdefined:
+	•	signed URL expiry policy
+	•	document access authorization rules
+	•	file malware scanning
+	•	MIME spoof protection
+	•	file hash / duplicate file detection
+	•	PII field encryption at rest
+	•	audit access to sensitive documents
+	•	admin impersonation protections
+	•	CSRF / replay protection on approve/reject routes
+	•	rate limiting on upload and review actions
+
+A 2026 workflow needs these called out explicitly.
+
+9. Backup and recovery strategy is too general
+
+You mentioned Google Drive / Sheets / Forms ideas, but those should not run the core system.
+
+What is still missing:
+	•	what gets backed up
+	•	backup frequency
+	•	restore test schedule
+	•	point-in-time restore for PostgreSQL
+	•	archive policy for document files
+	•	retention rules for rejected applications
+	•	what goes to Drive as archive only
+	•	what goes to Sheets as reporting only
+
+Right now it is conceptual, not operational.
+
+10. Frontend behavior is still too thin
+
+The package mentions admin pages, but still lacks:
+	•	empty states
+	•	loading states
+	•	optimistic vs locked actions
+	•	stale page warning
+	•	approve confirmation modal
+	•	reject reason required validation
+	•	resubmission reason picker
+	•	communication composer UX
+	•	unread badge behavior
+	•	queue filters and sort order
+	•	pagination
+	•	mobile behavior for support users
+
+That makes it feel incomplete.
+
+11. Applicant experience is not fully designed
+
+This is important.
+
+Missing:
+	•	applicant status page
+	•	what applicant sees in each status
+	•	upload replacement flow UX
+	•	expiry warning
+	•	ability to withdraw application
+	•	ability to contact support from application page
+	•	what happens after approval to role activation
+	•	what happens after rejection to future reapply flow
+
+The system is not only for support. It must also feel coherent to the applicant.
+
+12. Exact route list is incomplete
+
+Some key routes are implied, not fully specified.
+
+Still needed clearly:
+	•	get my application status
+	•	list my application messages
+	•	upload resubmission files
+	•	withdraw application
+	•	resend support email
+	•	assign queue item
+	•	unassign queue item
+	•	list audit events for one application
+	•	admin dashboard badge counts
+	•	admin metrics endpoint
+
+13. No sequence diagrams / scenario logic
+
+This is why it feels abstract.
+
+A strong implementation pack should walk through scenarios like:
+	•	happy path approve
+	•	borderline manual review
+	•	resubmission requested and completed
+	•	Vision timeout
+	•	email delivery failure
+	•	stale admin page tries to approve completed case
+	•	duplicate upload
+	•	applicant withdraws during review
+	•	application expires without response
+
+Without scenario logic, teams miss edge cases.
+
+14. No test matrix
+
+This is a major missing element.
+
+Need:
+	•	unit tests for decision engine
+	•	integration tests for queue creation
+	•	route tests for approve/reject
+	•	email logging test
+	•	stale lock/race tests
+	•	resubmission flow tests
+	•	security tests for unauthorized access
+	•	file validation tests
+
+Without test matrix, it is still a design pack, not a release pack.
+
+15. It is mixing design and code, but not finishing either
+
+This is the core feeling you are reacting to.
+
+It is:
+	•	too detailed to be a simple spec
+	•	not detailed enough to be a complete implementation
+
+That middle state is why it feels unsatisfying.
+
+The honest answer
+
+It feels missing because it still lacks the operating rules that turn architecture into a real business machine.
+
+You already have:
+	•	schema
+	•	statuses
+	•	service direction
+	•	queue idea
+	•	communication idea
+	•	monitoring idea
+
+But you still need:
+	•	exact authority rules
+	•	exact race condition handling
+	•	exact retry / reminder rules
+	•	exact security controls
+	•	exact scenario behavior
+	•	exact UX behavior
+	•	exact testing plan
+
+What it should become next
+
+The next version should be split into 5 hard sections:
+	1.	DB + data contract
+	2.	backend routes + transaction rules
+	3.	decision engine + scenario matrix
+	4.	frontend screens + UX states
+	5.	ops rules: alerts, backup, audit, SLA
+
+That will stop it feeling vague.
+
+My plain judgment
+
+What you have now is:
+	•	good architecture
+	•	not yet complete execution spec
+
+That is why your instinct says something important is still missing.
+
+Paste the next chunk and I’ll turn it into a real final implementation package, not a half-spec.

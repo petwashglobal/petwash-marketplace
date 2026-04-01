@@ -17,6 +17,12 @@ import { GoogleSheetsService } from '../services/googleSheetsIntegration';
 import multer from 'multer';
 import { sendLuxuryEmail } from '../email/luxury-email-service';
 import { generateProviderWelcomeEmail } from '../email/templates/welcome-provider-signup-2026';
+import { writeProviderAudit } from '../services/providerAudit';
+import { emitProviderEvent } from '../services/providerMonitoring';
+import { logProviderMessage } from '../services/providerMessageLog';
+import { upsertReviewQueue, completeQueueItem, logSystemMessage, queuePriorityFromDecision as _queuePriority } from '../services/providerQueue';
+import { decideProviderKyc } from '../services/providerDecisionEngine';
+import { pool } from '../db';
 
 const router = Router();
 
@@ -698,6 +704,17 @@ router.post('/apply', upload.fields([
             forceReviewFlags.push(...fraudFlags);
           }
 
+          // ── 3.6. Resubmission escalation ───────────────────────────────────
+          // If pending_review but the root cause is fixable image quality, prefer
+          // pending_resubmission so the applicant can re-upload without a hard reject.
+          const qualityIssues = forceReviewFlags.filter(f =>
+            ['id_document_poor_quality', 'selfie_poor_quality', 'ocr_expiry_missing', 'ocr_document_number_missing'].includes(f)
+          );
+          if (outcomeStatus === 'pending_review' && qualityIssues.length >= 2 && faceScore >= 55) {
+            outcomeStatus = 'pending_resubmission';
+            decisionReason = `Image quality insufficient for automated decision: ${qualityIssues.join(', ')}`;
+          }
+
           // ── 4. Build DB update payload ────────────────────────────────────
           const updatePayload: Record<string, any> = {
             status: outcomeStatus,
@@ -775,6 +792,75 @@ router.post('/apply', upload.fields([
             .set(updatePayload)
             .where(eq(providerApplications.applicationId, applicationId));
 
+          // Update new schema columns not yet in Drizzle definition (raw SQL)
+          pool.query(
+            `UPDATE provider_applications
+                SET fraud_flags = $1::jsonb,
+                    sub_status = $2
+              WHERE application_id = $3`,
+            [
+              JSON.stringify(fraudFlags),
+              decisionReason.length > 200 ? decisionReason.slice(0, 200) : decisionReason,
+              applicationId,
+            ]
+          ).catch(() => {});
+
+          // ── 5. Audit + Queue + Monitoring (non-blocking, fire-and-forget) ─
+          const dbAppRow = await pool.query(
+            `SELECT id FROM provider_applications WHERE application_id = $1`,
+            [applicationId]
+          );
+          const dbAppId: number | null = dbAppRow.rows[0]?.id ?? null;
+
+          if (dbAppId) {
+            // Write audit entry for the KYC decision
+            writeProviderAudit({
+              applicationId: dbAppId,
+              eventType: `kyc_decision_${outcomeStatus}`,
+              actorUserId: 'system-kyc2026',
+              actorRole: 'system',
+              payload: {
+                faceScore,
+                livenessScore,
+                livenessPass,
+                ocrConfidence,
+                fraudRiskLevel,
+                flags: forceReviewFlags,
+                reason: decisionReason,
+              },
+            }).catch(() => {});
+
+            // Emit monitoring event
+            emitProviderEvent({
+              applicationId: dbAppId,
+              eventName: `provider_kyc_${outcomeStatus}`,
+              severity: outcomeStatus === 'rejected' ? 'warning' : outcomeStatus === 'pending_review' || outcomeStatus === 'pending_resubmission' ? 'info' : 'info',
+              payload: { faceScore, livenessPass, fraudRiskLevel, flags: forceReviewFlags },
+            }).catch(() => {});
+
+            // Push into review queue if human review is required
+            if (outcomeStatus === 'pending_review' || outcomeStatus === 'pending_resubmission') {
+              const queuePriority = fraudRiskLevel === 'high' ? 'urgent' : fraudRiskLevel === 'medium' ? 'high' : forceReviewFlags.length > 3 ? 'high' : 'normal';
+              upsertReviewQueue({
+                applicationId: dbAppId,
+                priority: queuePriority as any,
+                reviewReasons: forceReviewFlags,
+                dueHours: outcomeStatus === 'pending_resubmission' ? 120 : 48,
+              }).catch(() => {});
+
+              // Log system message in the communication thread
+              logSystemMessage({
+                applicationId: dbAppId,
+                body: outcomeStatus === 'pending_resubmission'
+                  ? `KYC2026 automated decision: documents need re-upload. Reasons: ${forceReviewFlags.join(', ')}`
+                  : `KYC2026 automated decision: pending manual review. Flags: ${forceReviewFlags.join(', ')}`,
+                providerVisible: false,
+              }).catch(() => {});
+            } else if (outcomeStatus === 'approved') {
+              completeQueueItem(dbAppId).catch(() => {});
+            }
+          }
+
           logger.info(`[KYC2026] Provider verification complete: ${outcomeStatus}`, {
             applicationId,
             uid: authenticatedUser.uid,
@@ -832,6 +918,32 @@ router.post('/apply', upload.fields([
                   `,
                 });
                 logger.info(`[KYC2026] Support email sent for pending_review`, { applicationId });
+              }
+
+              if (outcomeStatus === 'pending_resubmission' && authenticatedUser.email) {
+                // ── Notify applicant: resubmission needed ───────────────────
+                await sgMail.send({
+                  to: authenticatedUser.email,
+                  from: { email: 'noreply@petwash.co.il', name: 'PetWash' },
+                  subject: `Additional documents needed — Application ${applicationId}`,
+                  html: `
+                    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #e5e7eb;border-radius:8px">
+                      <h2 style="color:#d97706">We need better documents</h2>
+                      <p>Hi ${firstName},</p>
+                      <p>We were unable to process your provider application automatically because the uploaded images could not be read clearly.</p>
+                      <p><strong>Issues detected:</strong> ${qualityIssues.join(', ')}</p>
+                      <p>Please log back in to your provider dashboard and upload clearer photos of your ID document and selfie. Make sure:</p>
+                      <ul>
+                        <li>Lighting is good — no shadows or glare</li>
+                        <li>Your full face is clearly visible in the selfie</li>
+                        <li>The ID document is flat and all text is readable</li>
+                      </ul>
+                      <p>Your application ID: <strong style="font-family:monospace">${applicationId}</strong></p>
+                      <p style="color:#6b7280;font-size:13px">Need help? Contact us at <a href="mailto:support@petwash.co.il">support@petwash.co.il</a></p>
+                    </div>
+                  `,
+                });
+                logger.info(`[KYC2026] Resubmission email sent`, { applicationId });
               }
 
               if (outcomeStatus === 'approved' && authenticatedUser.email) {
@@ -1063,7 +1175,7 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
       return res.status(404).json({ error: 'Application not found', errorCode: 'APPLICATION_NOT_FOUND' });
     }
 
-    if (!['pending', 'pending_review'].includes(application.status || '')) {
+    if (!['pending', 'pending_review', 'pending_resubmission'].includes(application.status || '')) {
       return res.status(400).json({ error: 'Application already processed', errorCode: 'APPLICATION_ALREADY_PROCESSED' });
     }
 
@@ -1085,6 +1197,18 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
         backgroundCheckDate: new Date(),
       })
       .where(eq(providerApplications.applicationId, applicationId));
+
+    // Audit + queue completion
+    writeProviderAudit({
+      applicationId: (application as any).id,
+      eventType: 'admin_approved',
+      actorUserId: adminUid || 'admin',
+      actorRole: 'admin',
+      payload: { applicationId, providerId, internalNotes: internalNotes || null },
+    }).catch(() => {});
+    completeQueueItem((application as any).id).catch(() => {});
+    logSystemMessage({ applicationId: (application as any).id, body: `Application approved by admin. Provider ID: ${providerId}`, providerVisible: false }).catch(() => {});
+    emitProviderEvent({ applicationId: (application as any).id, eventName: 'admin_approved', severity: 'info', payload: { adminUid, providerId } }).catch(() => {});
 
     if (application.userId) {
       try {
@@ -1162,7 +1286,7 @@ router.post('/admin/applications/reject', requireAdmin, async (req: Request, res
     }
     const application = rows[0];
 
-    if (!['pending', 'pending_review'].includes(application.status || '')) {
+    if (!['pending', 'pending_review', 'pending_resubmission'].includes(application.status || '')) {
       return res.status(400).json({ error: 'Application already processed', errorCode: 'APPLICATION_ALREADY_PROCESSED' });
     }
 
@@ -1176,6 +1300,24 @@ router.post('/admin/applications/reject', requireAdmin, async (req: Request, res
         internalNotes: internalNotes || null,
       })
       .where(eq(providerApplications.applicationId, applicationId));
+
+    // Store manual_decision_reason in new column (raw SQL, not in Drizzle schema yet)
+    pool.query(
+      `UPDATE provider_applications SET manual_decision_reason = $1 WHERE application_id = $2`,
+      [rejectionReason, applicationId]
+    ).catch(() => {});
+
+    // Audit + queue completion
+    writeProviderAudit({
+      applicationId: (application as any).id,
+      eventType: 'admin_rejected',
+      actorUserId: adminUid || 'admin',
+      actorRole: 'admin',
+      payload: { applicationId, rejectionReason, internalNotes: internalNotes || null },
+    }).catch(() => {});
+    completeQueueItem((application as any).id).catch(() => {});
+    logSystemMessage({ applicationId: (application as any).id, body: `Application rejected. Reason: ${rejectionReason}`, providerVisible: false }).catch(() => {});
+    emitProviderEvent({ applicationId: (application as any).id, eventName: 'admin_rejected', severity: 'warning', payload: { adminUid, rejectionReason } }).catch(() => {});
 
     // Email applicant
     if (isSendGridConfigured() && application.email) {
@@ -1208,6 +1350,284 @@ router.post('/admin/applications/reject', requireAdmin, async (req: Request, res
   } catch (error: any) {
     logger.error('[Provider Onboarding] Reject application error', { error: error.message });
     res.status(500).json({ error: error.message, errorCode: 'REJECTION_FAILED' });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// QUEUE MANAGEMENT ROUTES
+// ──────────────────────────────────────────────────────────────────────────────
+
+// GET /admin/applications/queue — full queue with filters + pagination
+router.get('/admin/applications/queue', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { status = 'all', priority, assignedTo, limit = '50', offset = '0' } = req.query as Record<string, string>;
+    const { items, total } = await (await import('../services/providerQueue')).getQueueList({
+      status,
+      priority,
+      assignedTo,
+      limit: Math.min(parseInt(limit), 200),
+      offset: parseInt(offset),
+    });
+    const { open, urgent } = await (await import('../services/providerQueue')).getQueueBadgeCount();
+    res.json({ items, total, badge: { open, urgent } });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /admin/applications/:numericId/assign
+router.post('/admin/applications/:numericId/assign', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const applicationId = parseInt(req.params.numericId);
+    const { assignedTo } = req.body;
+    const { adminUid } = req.body;
+    if (!assignedTo) return res.status(400).json({ error: 'assignedTo required' });
+    await (await import('../services/providerQueue')).assignQueueItem({ applicationId, assignedTo });
+    writeProviderAudit({ applicationId, eventType: 'queue_assigned', actorUserId: adminUid, actorRole: 'admin', payload: { assignedTo } }).catch(() => {});
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /admin/applications/:numericId/resubmit-request — admin requests better files
+router.post('/admin/applications/:numericId/resubmit-request', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const applicationId = parseInt(req.params.numericId);
+    const { reasons, adminUid, adminEmail } = req.body;
+    if (!reasons || !Array.isArray(reasons) || reasons.length === 0) {
+      return res.status(400).json({ error: 'reasons array required' });
+    }
+
+    // Fetch application for email
+    const appRow = await pool.query(
+      `SELECT application_id, email, first_name, last_name, status, resubmission_count
+         FROM provider_applications WHERE id = $1`,
+      [applicationId]
+    );
+    if (!appRow.rows.length) return res.status(404).json({ error: 'Application not found' });
+    const app = appRow.rows[0];
+
+    if (!['pending_review', 'pending_resubmission'].includes(app.status)) {
+      return res.status(400).json({ error: `Cannot request resubmission from status: ${app.status}` });
+    }
+
+    if (app.resubmission_count >= 3) {
+      return res.status(400).json({ error: 'Maximum resubmission attempts reached (3). Reject the application instead.' });
+    }
+
+    // Generate secure token (URL-safe 32 bytes)
+    const { randomBytes } = await import('crypto');
+    const token = randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + 5 * 24 * 3600 * 1000); // 5 days
+
+    await pool.query(
+      `INSERT INTO provider_application_resubmissions
+         (application_id, requested_by, request_reasons, secure_token, expires_at)
+       VALUES ($1, $2, $3::jsonb, $4, $5)`,
+      [applicationId, adminUid || 'admin', JSON.stringify(reasons), token, expiresAt.toISOString()]
+    );
+
+    // Update application status + counter
+    await pool.query(
+      `UPDATE provider_applications
+          SET status = 'pending_resubmission',
+              resubmission_count = resubmission_count + 1,
+              last_requested_resubmission_at = NOW(),
+              sub_status = $1
+        WHERE id = $2`,
+      [`Resubmission requested: ${reasons.join(', ')}`, applicationId]
+    );
+
+    // Log audit + monitoring
+    writeProviderAudit({ applicationId, eventType: 'resubmission_requested', actorUserId: adminUid, actorRole: 'admin', payload: { reasons, token: token.slice(0, 8) + '...' } }).catch(() => {});
+    emitProviderEvent({ applicationId, eventName: 'resubmission_requested', severity: 'info', payload: { reasons } }).catch(() => {});
+
+    // Log message in thread
+    logProviderMessage({
+      applicationId,
+      direction: 'internal_note',
+      channel: 'internal_note',
+      body: `Admin requested resubmission. Reasons: ${reasons.join(', ')}`,
+      sentBy: adminEmail || adminUid || 'admin',
+      providerVisible: false,
+    }).catch(() => {});
+
+    // Email applicant
+    const appUrl = process.env.APP_URL || 'https://app.petwash.co.il';
+    const uploadUrl = `${appUrl}/provider-application/resubmit?token=${token}`;
+    if (isSendGridConfigured() && app.email) {
+      sgMail.send({
+        to: app.email,
+        from: { email: 'noreply@petwash.co.il', name: 'PetWash' },
+        subject: `We need updated documents — Application ${app.application_id}`,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #e5e7eb;border-radius:8px">
+            <h2 style="color:#d97706">Updated documents needed</h2>
+            <p>Hi ${app.first_name},</p>
+            <p>Our team has reviewed your provider application and needs you to re-upload clearer files.</p>
+            <p><strong>Reasons:</strong></p>
+            <ul>${reasons.map((r: string) => `<li>${r}</li>`).join('')}</ul>
+            <p>Please upload your updated documents using the link below. This link expires in 5 days.</p>
+            <div style="margin:24px 0">
+              <a href="${uploadUrl}" style="background:#0f172a;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Upload Updated Documents →</a>
+            </div>
+            <p style="color:#6b7280;font-size:13px">Application ID: ${app.application_id} &bull; Questions? <a href="mailto:support@petwash.co.il">support@petwash.co.il</a></p>
+          </div>
+        `,
+      }).catch(() => {});
+    }
+
+    res.json({ success: true, expiresAt: expiresAt.toISOString() });
+  } catch (err: any) {
+    logger.error('[ProviderOnboarding] Resubmit request error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /admin/applications/:numericId/audit — full audit trail for one application
+router.get('/admin/applications/:numericId/audit', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const applicationId = parseInt(req.params.numericId);
+    const { getAuditTrail } = await import('../services/providerAudit');
+    const events = await getAuditTrail(applicationId);
+    res.json({ events });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /admin/applications/:numericId/messages — full thread (admin view, all messages)
+router.get('/admin/applications/:numericId/messages', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const applicationId = parseInt(req.params.numericId);
+    const { getThreadMessages, clearUnreadCount } = await import('../services/providerMessageLog');
+    const messages = await getThreadMessages(applicationId, true);
+    clearUnreadCount(applicationId).catch(() => {});
+    res.json({ messages });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /admin/applications/:numericId/message — send message or internal note
+router.post('/admin/applications/:numericId/message', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const applicationId = parseInt(req.params.numericId);
+    const { body, direction = 'internal_note', channel = 'internal_note', providerVisible = false, adminUid, adminEmail } = req.body;
+    if (!body?.trim()) return res.status(400).json({ error: 'body required' });
+
+    // Fetch applicant email if sending outbound visible message
+    let toAddress: string | null = null;
+    if (direction === 'outbound' && providerVisible) {
+      const appRow = await pool.query(`SELECT email FROM provider_applications WHERE id = $1`, [applicationId]);
+      toAddress = appRow.rows[0]?.email || null;
+    }
+
+    await logProviderMessage({
+      applicationId,
+      direction: direction as any,
+      channel: channel as any,
+      body,
+      fromAddress: adminEmail || 'support@petwash.co.il',
+      toAddress,
+      sentBy: adminEmail || adminUid || 'admin',
+      deliveryStatus: 'sent',
+      providerVisible: !!providerVisible,
+    });
+
+    // Emit outbound email if visible to provider
+    if (direction === 'outbound' && providerVisible && toAddress && isSendGridConfigured()) {
+      sgMail.send({
+        to: toAddress,
+        from: { email: 'noreply@petwash.co.il', name: 'PetWash Support' },
+        subject: 'Update on your provider application',
+        html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px"><p>${body}</p><p style="color:#9ca3af;font-size:12px">PetWash Provider Onboarding Team</p></div>`,
+      }).catch(() => {});
+    }
+
+    writeProviderAudit({ applicationId, eventType: 'message_sent', actorUserId: adminUid, actorRole: 'admin', payload: { direction, channel, providerVisible } }).catch(() => {});
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// APPLICANT-FACING ROUTES
+// ──────────────────────────────────────────────────────────────────────────────
+
+// GET /my/status — applicant checks their own application status
+router.get('/my/status', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+    const token = authHeader.split(' ')[1];
+    const decodedToken = await auth.verifyIdToken(token, true);
+
+    const appRow = await pool.query(
+      `SELECT id, application_id, status, sub_status, provider_type, first_name, last_name,
+              biometric_status, biometric_match_score, biometric_verified_at,
+              kyc_document_type, kyc_fraud_risk_level, kyc_decision_flags,
+              resubmission_count, last_requested_resubmission_at, last_resubmitted_at,
+              submitted_at, reviewed_at, reviewed_by, rejection_reason, approved_as_provider_id,
+              created_at, updated_at
+         FROM provider_applications
+        WHERE user_id = $1
+        ORDER BY created_at DESC
+        LIMIT 1`,
+      [decodedToken.uid]
+    );
+
+    if (!appRow.rows.length) return res.status(404).json({ error: 'No application found' });
+    const app = appRow.rows[0];
+
+    // Get pending resubmission token if any
+    let resubmissionToken: string | null = null;
+    if (app.status === 'pending_resubmission') {
+      const tokenRow = await pool.query(
+        `SELECT secure_token, expires_at, request_reasons
+           FROM provider_application_resubmissions
+          WHERE application_id = $1 AND fulfilled_at IS NULL AND expires_at > NOW()
+          ORDER BY created_at DESC LIMIT 1`,
+        [app.id]
+      );
+      if (tokenRow.rows.length) {
+        resubmissionToken = tokenRow.rows[0].secure_token;
+      }
+    }
+
+    const appUrl = process.env.APP_URL || 'https://app.petwash.co.il';
+    res.json({
+      application: {
+        ...app,
+        kycDecisionFlags: (() => { try { return JSON.parse(app.kyc_decision_flags || '[]'); } catch { return []; } })(),
+      },
+      resubmissionToken,
+      resubmitUrl: resubmissionToken ? `${appUrl}/provider-application/resubmit?token=${resubmissionToken}` : null,
+    });
+  } catch (err: any) {
+    logger.error('[ProviderOnboarding] My status error', { error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /my/messages — applicant reads their communication thread (provider-visible only)
+router.get('/my/messages', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+    const token = authHeader.split(' ')[1];
+    const decodedToken = await auth.verifyIdToken(token, true);
+
+    const appRow = await pool.query(`SELECT id FROM provider_applications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`, [decodedToken.uid]);
+    if (!appRow.rows.length) return res.status(404).json({ error: 'No application found' });
+
+    const { getThreadMessages } = await import('../services/providerMessageLog');
+    const messages = await getThreadMessages(appRow.rows[0].id, false);
+    res.json({ messages });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 

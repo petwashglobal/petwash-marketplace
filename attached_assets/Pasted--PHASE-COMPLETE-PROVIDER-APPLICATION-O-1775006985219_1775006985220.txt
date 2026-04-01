@@ -1,0 +1,749 @@
+/* =========================================================
+PHASE - COMPLETE PROVIDER APPLICATION OPERATING WORKFLOW
+BACKEND + FRONTEND + SECURITY + COMMUNICATION + MONITORING
+REVIEW PACKAGE FOR REPLIT
+2026 SMART LOGIC - FULL SYSTEM DESIGN
+
+IMPORTANT PRINCIPLES
+1. Google Vision / KYC2026 = analysis only
+2. Backend = authority
+3. Public loyalty members DO NOT use this flow
+4. Providers use this flow
+5. Special discount approvals stay separate
+6. Google Forms / Sheets / Drive are NOT system-of-record
+   - Forms: NO for core workflow
+   - Sheets: YES only for reporting/export
+   - Drive: YES only for backup/archive copies
+7. Main source of truth must remain:
+   - PostgreSQL for records
+   - object storage for files
+   - backend audit trail for decisions
+
+WHAT THIS PACKAGE COVERS
+- DB schema
+- status machine
+- backend routes
+- queue + inbox + audit
+- applicant communications
+- admin review UI
+- resubmission
+- security
+- monitoring
+- backup/export strategy
+- exact smart logic
+
+THIS IS A REVIEW-READY IMPLEMENTATION PACKAGE.
+It is intentionally explicit so Replit cannot hand-wave edge cases.
+========================================================= */
+
+
+/* =========================================================
+SECTION 1 - STATUS MACHINE
+=========================================================
+
+APPLICATION STATUS LIFECYCLE
+
+submitted
+-> saved instantly after user submits form
+
+processing
+-> async KYC and document analysis running
+
+pending_review
+-> human review needed
+
+pending_resubmission
+-> user must upload clearer / corrected files
+
+approved
+-> provider account activated
+
+rejected
+-> permanently declined
+
+expired
+-> applicant did not respond in time
+
+withdrawn
+-> applicant cancelled application
+
+IMPORTANT RULES
+- submit must NEVER block on external API calls
+- processing must always end in:
+  approved / pending_review / pending_resubmission / rejected
+- pending_resubmission keeps same application_id
+- every transition writes audit
+========================================================= */
+
+
+/* =========================================================
+SECTION 2 - POSTGRESQL SCHEMA
+========================================================= */
+
+-- MAIN APPLICATION TABLE
+CREATE TABLE IF NOT EXISTS provider_applications (
+  id SERIAL PRIMARY KEY,
+  user_id TEXT,
+  provider_type TEXT NOT NULL,
+  applicant_name TEXT NOT NULL,
+  applicant_email TEXT NOT NULL,
+  applicant_mobile TEXT NOT NULL,
+
+  status TEXT NOT NULL DEFAULT 'submitted',
+  sub_status TEXT,
+
+  document_file_path TEXT,
+  selfie_file_path TEXT,
+
+  reviewed_by TEXT,
+  reviewed_at TIMESTAMP,
+  manual_decision_reason TEXT,
+  approved_as_provider_id TEXT,
+
+  biometric_match_score DECIMAL(5,2),
+  kyc_document_type VARCHAR(50),
+  kyc_id_last_four VARCHAR(4),
+  kyc_ocr_confidence DECIMAL(5,2),
+  kyc_liveness_score DECIMAL(5,2),
+  kyc_decision_flags JSONB,
+  background_check_notes JSONB,
+  biometric_failure_reason TEXT,
+  biometric_verified_at TIMESTAMP,
+  biometric_status VARCHAR(50),
+
+  extracted_name TEXT,
+  extracted_dob TEXT,
+  extracted_document_number_last4 TEXT,
+  extracted_expiry TEXT,
+  extracted_country TEXT,
+
+  fraud_flags JSONB,
+  fraud_risk_level TEXT,
+
+  communication_thread_id BIGINT,
+  resubmission_count INT NOT NULL DEFAULT 0,
+  last_requested_resubmission_at TIMESTAMP,
+  last_resubmitted_at TIMESTAMP,
+
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_provider_applications_status
+  ON provider_applications(status);
+
+CREATE INDEX IF NOT EXISTS idx_provider_applications_email
+  ON provider_applications(applicant_email);
+
+CREATE INDEX IF NOT EXISTS idx_provider_applications_mobile
+  ON provider_applications(applicant_mobile);
+
+CREATE INDEX IF NOT EXISTS idx_provider_applications_provider_type
+  ON provider_applications(provider_type);
+
+
+-- FILE VERSIONS
+CREATE TABLE IF NOT EXISTS provider_application_files (
+  id SERIAL PRIMARY KEY,
+  application_id INT NOT NULL REFERENCES provider_applications(id) ON DELETE CASCADE,
+  version_no INT NOT NULL,
+  file_role TEXT NOT NULL, -- selfie | document
+  file_path TEXT NOT NULL,
+  mime_type TEXT,
+  size_bytes BIGINT,
+  uploaded_by TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_provider_application_files_unique
+  ON provider_application_files(application_id, version_no, file_role);
+
+
+-- REVIEW QUEUE
+CREATE TABLE IF NOT EXISTS provider_review_queue (
+  id SERIAL PRIMARY KEY,
+  application_id INT NOT NULL UNIQUE REFERENCES provider_applications(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'open', -- open | assigned | completed | cancelled
+  priority TEXT NOT NULL DEFAULT 'normal', -- low | normal | high | urgent
+  assigned_to TEXT,
+  assigned_at TIMESTAMP,
+  due_at TIMESTAMP,
+  review_reasons JSONB,
+  unread_count INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW(),
+  completed_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_provider_review_queue_status
+  ON provider_review_queue(status);
+
+CREATE INDEX IF NOT EXISTS idx_provider_review_queue_priority
+  ON provider_review_queue(priority);
+
+CREATE INDEX IF NOT EXISTS idx_provider_review_queue_due
+  ON provider_review_queue(due_at);
+
+
+-- INBOX / COMMUNICATION THREADS
+CREATE TABLE IF NOT EXISTS provider_application_threads (
+  id BIGSERIAL PRIMARY KEY,
+  application_id INT NOT NULL UNIQUE REFERENCES provider_applications(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS provider_application_messages (
+  id BIGSERIAL PRIMARY KEY,
+  thread_id BIGINT NOT NULL REFERENCES provider_application_threads(id) ON DELETE CASCADE,
+  application_id INT NOT NULL REFERENCES provider_applications(id) ON DELETE CASCADE,
+  direction TEXT NOT NULL, -- outbound | inbound | internal_note
+  channel TEXT NOT NULL, -- email | sms | system | internal_note
+  subject TEXT,
+  body TEXT NOT NULL,
+  from_address TEXT,
+  to_address TEXT,
+  sent_by TEXT,
+  delivery_status TEXT, -- queued | sent | failed | delivered | opened
+  provider_visible BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_provider_application_messages_thread
+  ON provider_application_messages(thread_id, created_at DESC);
+
+
+-- RESUBMISSION REQUESTS
+CREATE TABLE IF NOT EXISTS provider_application_resubmissions (
+  id SERIAL PRIMARY KEY,
+  application_id INT NOT NULL REFERENCES provider_applications(id) ON DELETE CASCADE,
+  requested_by TEXT,
+  request_reasons JSONB NOT NULL,
+  secure_token TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMP NOT NULL,
+  fulfilled_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_provider_application_resubmissions_app
+  ON provider_application_resubmissions(application_id);
+
+
+-- AUDIT
+CREATE TABLE IF NOT EXISTS provider_review_audit (
+  id BIGSERIAL PRIMARY KEY,
+  application_id INT NOT NULL REFERENCES provider_applications(id) ON DELETE CASCADE,
+  event_type TEXT NOT NULL,
+  actor_user_id TEXT,
+  actor_role TEXT,
+  payload JSONB,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_provider_review_audit_app
+  ON provider_review_audit(application_id, created_at DESC);
+
+
+-- MONITORING EVENTS
+CREATE TABLE IF NOT EXISTS provider_workflow_events (
+  id BIGSERIAL PRIMARY KEY,
+  application_id INT,
+  event_name TEXT NOT NULL,
+  severity TEXT NOT NULL DEFAULT 'info', -- info | warning | critical
+  payload JSONB,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_provider_workflow_events_name
+  ON provider_workflow_events(event_name, created_at DESC);
+
+
+/* =========================================================
+SECTION 3 - TYPES
+========================================================= */
+
+export type ProviderApplicationStatus =
+  | "submitted"
+  | "processing"
+  | "pending_review"
+  | "pending_resubmission"
+  | "approved"
+  | "rejected"
+  | "expired"
+  | "withdrawn";
+
+export type QueuePriority = "low" | "normal" | "high" | "urgent";
+
+export type MessageDirection = "outbound" | "inbound" | "internal_note";
+
+export type MessageChannel = "email" | "sms" | "system" | "internal_note";
+
+export interface ReviewReasonPayload {
+  flags: string[];
+  faceScore?: number | null;
+  livenessScore?: number | null;
+  ocrConfidence?: number | null;
+  documentType?: string | null;
+  fraudRiskLevel?: string | null;
+  summary: string;
+}
+
+export interface KycDecisionResult {
+  status: "approved" | "pending_review" | "pending_resubmission" | "rejected";
+  reason: string;
+  faceScore: number;
+  livenessScore: number;
+  ocrConfidence: number;
+  documentType: string | null;
+  idLastFour: string | null;
+  flags: string[];
+  fraudFlags: string[];
+  fraudRiskLevel: "low" | "medium" | "high";
+  backgroundCheckNotes: Record<string, any>;
+}
+
+export interface QueueItemDTO {
+  applicationId: number;
+  applicantName: string;
+  applicantEmail: string;
+  applicantMobile: string;
+  providerType: string;
+  status: ProviderApplicationStatus;
+  priority: QueuePriority;
+  faceScore: number | null;
+  livenessScore: number | null;
+  ocrConfidence: number | null;
+  flags: string[];
+  fraudRiskLevel: string | null;
+  unreadCount: number;
+  createdAt: string;
+}
+
+/* =========================================================
+SECTION 4 - EMAIL / COMMUNICATION SERVICE
+========================================================= */
+
+// server/services/providerWorkflowMail.ts
+
+type SendEmailParams = {
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
+};
+
+async function sendEmail(params: SendEmailParams): Promise<void> {
+  // Replace with real provider
+  console.log("[EMAIL] sending", params.subject, "to", params.to);
+}
+
+export async function sendApplicantSubmittedEmail(input: {
+  to: string;
+  name: string;
+  applicationId: number;
+}) {
+  await sendEmail({
+    to: input.to,
+    subject: `Provider application received - #${input.applicationId}`,
+    html: `
+      <h2>Application received</h2>
+      <p>Hello ${input.name},</p>
+      <p>Your provider application was received successfully.</p>
+      <p>Application ID: <b>${input.applicationId}</b></p>
+      <p>We are now processing your documents.</p>
+    `,
+  });
+}
+
+export async function sendPendingReviewEmailToSupport(input: {
+  applicationId: number;
+  applicantName: string;
+  applicantEmail: string;
+  applicantMobile: string;
+  providerType: string;
+  reviewReasons: string[];
+  faceScore: number | null;
+  livenessScore: number | null;
+  ocrConfidence: number | null;
+  adminReviewUrl: string;
+}) {
+  await sendEmail({
+    to: "support@petwash.co.il",
+    subject: `Provider pending review - ${input.applicantName} - #${input.applicationId}`,
+    html: `
+      <h2>Provider application pending review</h2>
+      <p><b>ID:</b> ${input.applicationId}</p>
+      <p><b>Name:</b> ${input.applicantName}</p>
+      <p><b>Email:</b> ${input.applicantEmail}</p>
+      <p><b>Mobile:</b> ${input.applicantMobile}</p>
+      <p><b>Provider type:</b> ${input.providerType}</p>
+      <p><b>Reasons:</b> ${input.reviewReasons.join(", ") || "none"}</p>
+      <p><b>Face score:</b> ${input.faceScore ?? "n/a"}</p>
+      <p><b>Liveness score:</b> ${input.livenessScore ?? "n/a"}</p>
+      <p><b>OCR confidence:</b> ${input.ocrConfidence ?? "n/a"}</p>
+      <p><a href="${input.adminReviewUrl}">Open review page</a></p>
+    `,
+  });
+}
+
+export async function sendApplicantPendingReviewEmail(input: {
+  to: string;
+  name: string;
+  applicationId: number;
+}) {
+  await sendEmail({
+    to: input.to,
+    subject: `Application under review - #${input.applicationId}`,
+    html: `
+      <p>Hello ${input.name},</p>
+      <p>Your provider application is under review.</p>
+      <p>Application ID: <b>${input.applicationId}</b></p>
+      <p>We will update you once review is completed.</p>
+    `,
+  });
+}
+
+export async function sendApplicantResubmissionRequestEmail(input: {
+  to: string;
+  name: string;
+  applicationId: number;
+  reasons: string[];
+  uploadUrl: string;
+}) {
+  await sendEmail({
+    to: input.to,
+    subject: `Additional documents needed - #${input.applicationId}`,
+    html: `
+      <h2>We need better files</h2>
+      <p>Hello ${input.name},</p>
+      <p>Your application needs updated files before we can continue.</p>
+      <p><b>Reasons:</b> ${input.reasons.join(", ")}</p>
+      <p><a href="${input.uploadUrl}">Upload replacement files</a></p>
+    `,
+  });
+}
+
+export async function sendApplicantApprovedEmail(input: {
+  to: string;
+  name: string;
+}) {
+  await sendEmail({
+    to: input.to,
+    subject: `Approved - provider account active`,
+    html: `
+      <h2>Approved</h2>
+      <p>Hello ${input.name},</p>
+      <p>Your provider application has been approved.</p>
+      <p>Your provider account is now active.</p>
+    `,
+  });
+}
+
+export async function sendApplicantRejectedEmail(input: {
+  to: string;
+  name: string;
+  reason?: string | null;
+}) {
+  await sendEmail({
+    to: input.to,
+    subject: `Provider application not approved`,
+    html: `
+      <h2>Application update</h2>
+      <p>Hello ${input.name},</p>
+      <p>Your provider application was not approved.</p>
+      ${input.reason ? `<p><b>Reason:</b> ${input.reason}</p>` : ""}
+    `,
+  });
+}
+
+/* =========================================================
+SECTION 5 - MESSAGE LOGGING
+========================================================= */
+
+// server/services/providerMessageLog.ts
+
+import { PoolClient } from "pg";
+
+export async function logProviderMessage(
+  client: PoolClient,
+  input: {
+    threadId: number;
+    applicationId: number;
+    direction: MessageDirection;
+    channel: MessageChannel;
+    subject?: string | null;
+    body: string;
+    fromAddress?: string | null;
+    toAddress?: string | null;
+    sentBy?: string | null;
+    deliveryStatus?: string | null;
+    providerVisible?: boolean;
+  }
+) {
+  await client.query(
+    `
+      INSERT INTO provider_application_messages (
+        thread_id,
+        application_id,
+        direction,
+        channel,
+        subject,
+        body,
+        from_address,
+        to_address,
+        sent_by,
+        delivery_status,
+        provider_visible
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+    `,
+    [
+      input.threadId,
+      input.applicationId,
+      input.direction,
+      input.channel,
+      input.subject ?? null,
+      input.body,
+      input.fromAddress ?? null,
+      input.toAddress ?? null,
+      input.sentBy ?? null,
+      input.deliveryStatus ?? null,
+      input.providerVisible ?? true,
+    ]
+  );
+}
+
+/* =========================================================
+SECTION 6 - AUDIT
+========================================================= */
+
+// server/services/providerAudit.ts
+
+import { PoolClient } from "pg";
+
+export async function writeProviderAudit(
+  client: PoolClient,
+  input: {
+    applicationId: number;
+    eventType: string;
+    actorUserId?: string | null;
+    actorRole?: string | null;
+    payload?: Record<string, any> | null;
+  }
+) {
+  await client.query(
+    `
+      INSERT INTO provider_review_audit (
+        application_id,
+        event_type,
+        actor_user_id,
+        actor_role,
+        payload
+      )
+      VALUES ($1,$2,$3,$4,$5)
+    `,
+    [
+      input.applicationId,
+      input.eventType,
+      input.actorUserId ?? null,
+      input.actorRole ?? null,
+      input.payload ? JSON.stringify(input.payload) : null,
+    ]
+  );
+}
+
+/* =========================================================
+SECTION 7 - MONITORING EVENTS
+========================================================= */
+
+// server/services/providerMonitoring.ts
+
+import { PoolClient } from "pg";
+
+export async function emitProviderEvent(
+  client: PoolClient,
+  input: {
+    applicationId?: number | null;
+    eventName: string;
+    severity?: "info" | "warning" | "critical";
+    payload?: Record<string, any> | null;
+  }
+) {
+  await client.query(
+    `
+      INSERT INTO provider_workflow_events (
+        application_id,
+        event_name,
+        severity,
+        payload
+      )
+      VALUES ($1,$2,$3,$4)
+    `,
+    [
+      input.applicationId ?? null,
+      input.eventName,
+      input.severity ?? "info",
+      input.payload ? JSON.stringify(input.payload) : null,
+    ]
+  );
+}
+
+/* =========================================================
+SECTION 8 - DECISION ENGINE
+========================================================= */
+
+// server/services/providerDecisionEngine.ts
+
+function normalizeDocumentType(raw?: string | null): string | null {
+  if (!raw) return null;
+  const v = raw.toLowerCase().trim();
+  if (v.includes("passport")) return "passport";
+  if (v.includes("id")) return "national_id";
+  if (v.includes("license") || v.includes("licence")) return "drivers_license";
+  return null;
+}
+
+function highRiskFraud(fraudFlags: string[]) {
+  return fraudFlags.some((f) =>
+    [
+      "duplicate_document_number",
+      "reused_selfie_hash",
+      "multi_ip_velocity_high",
+      "device_fingerprint_cluster",
+    ].includes(f)
+  );
+}
+
+function mediumRiskFraud(fraudFlags: string[]) {
+  return fraudFlags.length > 0;
+}
+
+export function decideProviderKyc(input: {
+  faceMatchScore: number;
+  livenessPass: boolean;
+  livenessScore: number;
+  ocrConfidence: number;
+  documentType?: string | null;
+  extractedName?: string | null;
+  extractedDob?: string | null;
+  extractedExpiry?: string | null;
+  extractedDocumentNumber?: string | null;
+  selfieQuality?: "good" | "poor" | string | null;
+  idQuality?: "good" | "poor" | string | null;
+  submittedName?: string | null;
+  submittedDob?: string | null;
+  fraudFlags?: string[];
+  rawBackground?: Record<string, any>;
+}): KycDecisionResult {
+  const flags: string[] = [];
+  const fraudFlags = input.fraudFlags || [];
+  const documentType = normalizeDocumentType(input.documentType);
+
+  if (!input.extractedName?.trim()) flags.push("ocr_name_missing");
+  if (!input.extractedDob?.trim()) flags.push("ocr_dob_missing");
+  if (!input.extractedExpiry?.trim()) flags.push("ocr_expiry_missing");
+  if (!input.extractedDocumentNumber?.trim()) flags.push("ocr_document_number_missing");
+  if (!documentType) flags.push("document_type_unknown");
+  if ((input.ocrConfidence ?? 0) < 50) flags.push("ocr_confidence_low");
+  if ((input.idQuality ?? "good") !== "good") flags.push("id_document_poor_quality");
+  if ((input.selfieQuality ?? "good") !== "good") flags.push("selfie_poor_quality");
+
+  if (
+    input.submittedName?.trim() &&
+    input.extractedName?.trim() &&
+    input.submittedName.trim().toLowerCase() !== input.extractedName.trim().toLowerCase()
+  ) {
+    flags.push("name_mismatch");
+  }
+
+  if (
+    input.submittedDob?.trim() &&
+    input.extractedDob?.trim() &&
+    input.submittedDob.trim() !== input.extractedDob.trim()
+  ) {
+    flags.push("dob_mismatch");
+  }
+
+  let fraudRiskLevel: "low" | "medium" | "high" = "low";
+  if (highRiskFraud(fraudFlags)) fraudRiskLevel = "high";
+  else if (mediumRiskFraud(fraudFlags)) fraudRiskLevel = "medium";
+
+  let status: KycDecisionResult["status"] = "pending_review";
+  let reason = "KYC review required";
+
+  // hard reject
+  if (input.faceMatchScore < 55 || !input.livenessPass) {
+    status = "rejected";
+    reason = `Face score ${input.faceMatchScore.toFixed(1)} or liveness failed`;
+  }
+  // resubmission instead of rejection for quality problems
+  else if (
+    flags.includes("id_document_poor_quality") ||
+    flags.includes("selfie_poor_quality") ||
+    flags.includes("ocr_expiry_missing") ||
+    flags.includes("ocr_document_number_missing")
+  ) {
+    status = "pending_resubmission";
+    reason = `Better files required: ${flags.join(", ")}`;
+  }
+  // fraud always review or reject
+  else if (fraudRiskLevel === "high") {
+    status = "rejected";
+    reason = `High fraud risk: ${fraudFlags.join(", ")}`;
+  } else if (fraudRiskLevel === "medium") {
+    status = "pending_review";
+    reason = `Medium fraud risk: ${fraudFlags.join(", ")}`;
+  }
+  // strong pass
+  else if (input.faceMatchScore >= 85 && input.livenessPass && flags.length === 0) {
+    status = "approved";
+    reason = `Strong pass: face ${input.faceMatchScore.toFixed(1)}, liveness passed, OCR complete`;
+  }
+  // review band
+  else if (input.faceMatchScore >= 65) {
+    status = "pending_review";
+    reason = flags.length
+      ? `Borderline or flagged: ${flags.join(", ")}`
+      : `Borderline score: ${input.faceMatchScore.toFixed(1)}`;
+  }
+  // default reject
+  else {
+    status = "rejected";
+    reason = `Insufficient confidence`;
+  }
+
+  return {
+    status,
+    reason,
+    faceScore: input.faceMatchScore,
+    livenessScore: input.livenessScore,
+    ocrConfidence: input.ocrConfidence,
+    documentType,
+    idLastFour: input.extractedDocumentNumber
+      ? input.extractedDocumentNumber.slice(-4)
+      : null,
+    flags,
+    fraudFlags,
+    fraudRiskLevel,
+    backgroundCheckNotes: {
+      ...(input.rawBackground || {}),
+      decision: {
+        status,
+        reason,
+        fraudRiskLevel,
+      },
+    },
+  };
+}
+
+/* =========================================================
+SECTION 9 - QUEUE SERVICE
+========================================================= */
+
+// server/services/providerQueue.ts
+
+import { PoolClient } from "pg";
+import {
+  sendPendingReviewEmailToSupport,
+  sendApplicantPendingReviewEmail,
+} from "./providerWorkflowMail";
+import { writeProviderAudit

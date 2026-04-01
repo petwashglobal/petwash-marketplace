@@ -321,6 +321,7 @@ const AuditTrail = lazy(() => import("@/pages/AuditTrail"));
 const FraudDashboard = lazy(() => import("@/pages/admin/FraudDashboard"));
 const ProviderReview = lazy(() => import("@/pages/admin/ProviderReview"));
 const ProviderKycReview = lazy(() => import("@/pages/admin/ProviderKycReview"));
+const ProviderApplicationStatus = lazy(() => import("@/pages/ProviderApplicationStatus"));
 const AdminLoyaltyRules = lazy(() => import("@/pages/admin/AdminLoyaltyRules"));
 const AdminOpsMonitor = lazy(() => import("@/pages/admin/AdminOpsMonitor"));
 
@@ -1805,6 +1806,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
               <ProviderKycReview />
             </AdminRouteGuard>
           )}
+        </Route>
+
+        {/* Applicant: check own application status */}
+        <Route path="/provider-application/status">
+          {() => <ProviderApplicationStatus />}
         </Route>
         <Route path="/admin/compliance-control-tower">{() => <Redirect to="/pet-wash-ltd/executive/compliance" />}</Route>
 
