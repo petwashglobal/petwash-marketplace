@@ -38,9 +38,9 @@ import { generateCommissionInvoiceNumber } from '../lib/invoiceSequence';
 const ISRAELI_VAT_RATE = 0.18;
 const PLATFORM_COMMISSION_RATE = 0.15; // Flat 15% on all platforms
 const DEFAULT_WITHHOLDING_TAX_RATE = 0.20;
-const COMPANY_NAME = 'Pet Wash Ltd';
-const COMPANY_NAME_HE = 'פט ווש בע"מ';
-const COMPANY_TAX_ID = '516788400';
+const COMPANY_NAME = 'PET WASH LTD';
+const COMPANY_NAME_HE = 'פט וואש בע"מ';
+const COMPANY_TAX_ID = '517145033';
 const COMPANY_ADDRESS = 'ישראל';
 const FROM_EMAIL = 'noreply@petwash.co.il';
 const FROM_NAME = '⁦Pet Wash™⁩';

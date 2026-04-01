@@ -223,7 +223,7 @@ ${bookingRow}
   <tr><td style="padding:8px;color:#555;">תאריך ושעת תשלום</td><td style="padding:8px;">${paidAtStr}</td></tr>
 </table>
 <p style="margin-top:16px;"><a href="https://petwash.co.il/provider/earnings" style="background:#000;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">צפה/י בדוח הרווחים המלא</a></p>
-<p style="margin-top:16px;font-size:11px;color:#888;">PetWash Ltd. | ח.פ. ​| support@petwash.co.il | petwash.co.il</p>
+<p style="margin-top:16px;font-size:11px;color:#888;">פט וואש בע&quot;מ / PET WASH LTD | ח.פ. 517145033 | support@petwash.co.il | petwash.co.il</p>
 </body></html>`;
 
             const idempotencyKey = `payout_issued:${payoutId}:${providerUserId}`;
