@@ -536,6 +536,48 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
         } catch (logErr) {
           logger.warn('[PhoneAuth] Registration logging failed (non-blocking)', logErr);
         }
+
+        // ── Wallet auto-create (new phone users) ──────────────────────────
+        // Phone-auth flow did not previously create a PostgreSQL wallet.
+        // Without this the user has no wallet row and any wallet query crashes.
+        try {
+          const walletId = `WALLET-${user.uid.slice(0, 20)}`;
+          await pool.query(
+            `INSERT INTO wallet_accounts
+               (wallet_id, user_id, cash_wallet_balance_cents, updated_at)
+             VALUES ($1, $2, 0, NOW())
+             ON CONFLICT (wallet_id) DO NOTHING`,
+            [walletId, user.uid],
+          );
+          logger.info(`[PhoneAuth] Wallet auto-created uid=${user.uid}`);
+        } catch (walletErr: any) {
+          logger.warn('[PhoneAuth] Wallet auto-creation failed (non-blocking)', { error: walletErr.message });
+        }
+
+        // ── Loyalty profile auto-enroll (new phone users) ─────────────────
+        // Same welcome-points grant as the Google signup path.
+        try {
+          await pool.query(
+            `INSERT INTO loyalty_profiles
+               (user_id, tier, tier_since, tier_progress, tier_threshold,
+                points, lifetime_points, xp, level,
+                total_washes, current_streak, longest_streak,
+                average_wash_interval, is_vip, concierge_access, priority_support,
+                preferred_stations, preferred_times, personalized_offers,
+                created_at, updated_at)
+             VALUES ($1, 'bronze', NOW(), 0, 1000,
+                     100, 100, 0, 1,
+                     0, 0, 0,
+                     21, false, false, false,
+                     '[]', '[]', '[]',
+                     NOW(), NOW())
+             ON CONFLICT (user_id) DO NOTHING`,
+            [user.uid],
+          );
+          logger.info(`[PhoneAuth] Loyalty profile auto-enrolled uid=${user.uid}`);
+        } catch (loyaltyErr: any) {
+          logger.warn('[PhoneAuth] Loyalty auto-enroll failed (non-blocking)', { error: loyaltyErr.message });
+        }
       } else {
         throw error;
       }

@@ -22,16 +22,33 @@ declare global {
 }
 
 // Dev-only test auth bypass. Disabled entirely in production.
-// Activated by sending headers: X-Dev-Test-Uid + X-Dev-Test-Secret matching DEV_TEST_SECRET env var.
+// Two sub-modes:
+//   A) x-dev-test-uid + x-dev-test-secret (matching DEV_TEST_SECRET env var)
+//   B) x-test-user-bypass: playwright-test  (same header as requireAuth guard — allows
+//      unified test infrastructure across all middleware layers without weakening production)
 function extractDevTestUser(req: Request): { uid: string; email?: string; email_verified?: boolean; claims?: Record<string, any> } | null {
   if (process.env.NODE_ENV === 'production') return null;
+
+  // Mode A — explicit secret handshake
   const testUid = req.headers['x-dev-test-uid'] as string | undefined;
   const testSecret = req.headers['x-dev-test-secret'] as string | undefined;
   const expectedSecret = process.env.DEV_TEST_SECRET;
-  if (!testUid || !testSecret || !expectedSecret) return null;
-  if (testSecret !== expectedSecret) return null;
-  const role = (req.headers['x-dev-test-role'] as string) || 'customer';
-  return { uid: testUid, email: `${testUid}@test.local`, email_verified: true, claims: { role } };
+  if (testUid && testSecret && expectedSecret && testSecret === expectedSecret) {
+    const role = (req.headers['x-dev-test-role'] as string) || 'customer';
+    return { uid: testUid, email: `${testUid}@test.local`, email_verified: true, claims: { role } };
+  }
+
+  // Mode B — playwright-test bypass (mirrors the requireAuth guard bypass in customAuth.ts)
+  // This allows test suites to use a single set of headers across all middleware layers.
+  const bypassHeader = req.headers['x-test-user-bypass'] as string | undefined;
+  if (bypassHeader === 'playwright-test') {
+    const uid = (req.headers['x-test-user-id'] as string) || 'playwright-test-user';
+    const role = (req.headers['x-test-role'] as string) || 'customer';
+    logger.debug('[firebase-auth] DEV: playwright-test bypass accepted', { uid, role });
+    return { uid, email: `${uid}@test.local`, email_verified: true, claims: { role } };
+  }
+
+  return null;
 }
 
 async function extractFirebaseUser(req: Request): Promise<{ uid: string; email?: string; email_verified?: boolean; claims?: Record<string, any> } | null> {

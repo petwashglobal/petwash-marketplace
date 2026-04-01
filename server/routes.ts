@@ -436,22 +436,37 @@ export async function registerRoutes(app: Express): Promise<void> {
       return next();
     }
 
-    // ✅ K9000 IoT hardware bypass — kiosks authenticate via machine secret in body, not Firebase
-    // The validateK9000MachineIP + validateMachineSecretKey middleware inside the router
-    // handles full verification; we simply let the request through the RBAC layer here.
-    if (path.startsWith('/api/k9000') && req.body) {
+    // ✅ K9000 IoT hardware bypass — kiosks authenticate via either:
+    //   A) HMAC signed headers (X-K9000-ID + X-K9000-TS + X-K9000-SIGN) — production path
+    //   B) body.machineSecret — DEV fallback
+    // The validateK9000MachineIP + validateK9000HmacHeaders middleware inside the router
+    // handles full cryptographic verification; we simply pass the request through the RBAC layer.
+    if (path.startsWith('/api/k9000')) {
       const MACHINE_SECRET_KEY = process.env.MACHINE_SECRET_KEY;
+
+      // Production: HMAC signed headers present → delegate full verification to k9000Security
+      const k9000Id   = req.headers['x-k9000-id'] as string | undefined;
+      const k9000Ts   = req.headers['x-k9000-ts'] as string | undefined;
+      const k9000Sign = req.headers['x-k9000-sign'] as string | undefined;
+      if (k9000Id && k9000Ts && k9000Sign) {
+        logger.info('[RBAC Guard] K9000 HMAC headers present — passing to k9000Security for verification', { ip: req.ip, path, k9000Id });
+        return next();
+      }
+
+      // Dev fallback: body.machineSecret matches MACHINE_SECRET_KEY
       const provided = req.body?.machineSecret || req.body?.token;
       if (MACHINE_SECRET_KEY && provided === MACHINE_SECRET_KEY) {
         logger.info('[RBAC Guard] K9000 machine secret bypass granted', { ip: req.ip, path });
         return next();
       }
-      // No valid machine secret — if also no Firebase user, block (prevents unauthenticated access)
-      // unless MACHINE_SECRET_KEY is unconfigured (dev mode — k9000Security will also skip validation)
+
+      // No valid machine auth — if MACHINE_SECRET_KEY is unconfigured (dev mode) let k9000Security decide
       if (!MACHINE_SECRET_KEY) {
         logger.warn('[RBAC Guard] K9000 route: MACHINE_SECRET_KEY unconfigured — passing to k9000Security middleware (dev mode)');
         return next();
       }
+      // MACHINE_SECRET_KEY is configured but no valid auth provided — block here rather than leaking
+      // to the internal handler with no identity.
     }
 
     // 🔧 DEV-ONLY bypass — never active in production (hard-guarded)

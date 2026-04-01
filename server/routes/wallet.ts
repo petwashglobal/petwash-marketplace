@@ -1229,8 +1229,15 @@ router.post('/nayax/redeem-loyalty', async (req, res) => {
     const { qrData, terminalId, stationId } = req.body;
 
     // Validate terminal authentication
+    // Fail-closed: if NAYAX_TERMINAL_SECRET is not configured, ALL requests are rejected.
+    // This prevents silent auth bypass when the env var is missing (undefined !== undefined = false).
+    const NAYAX_TERMINAL_SECRET = process.env.NAYAX_TERMINAL_SECRET;
+    if (!NAYAX_TERMINAL_SECRET) {
+      logger.error('[Nayax] NAYAX_TERMINAL_SECRET not configured — all loyalty redemptions blocked');
+      return res.status(503).json({ error: 'Terminal service not configured' });
+    }
     const terminalSecret = req.headers['x-terminal-secret'];
-    if (terminalSecret !== process.env.NAYAX_TERMINAL_SECRET) {
+    if (!terminalSecret || terminalSecret !== NAYAX_TERMINAL_SECRET) {
       return res.status(401).json({ error: 'Invalid terminal authentication' });
     }
 
@@ -1253,6 +1260,46 @@ router.post('/nayax/redeem-loyalty', async (req, res) => {
       });
     }
 
+    // ── QR Timestamp Expiry Check ────────────────────────────────────────────
+    // Loyalty QR codes are valid for 5 minutes (300 s). Reject stale codes to
+    // prevent screenshot / screenshare replay attacks at the terminal.
+    const QR_EXPIRY_SECONDS = 300;
+    if (!loyaltyData.timestamp) {
+      return res.status(400).json({
+        error: 'Invalid QR code',
+        message: 'QR code has no timestamp — please regenerate'
+      });
+    }
+    const qrIssuedAt = typeof loyaltyData.timestamp === 'number'
+      ? loyaltyData.timestamp                          // Unix ms
+      : Date.parse(loyaltyData.timestamp);             // ISO string
+    if (isNaN(qrIssuedAt)) {
+      return res.status(400).json({ error: 'Invalid QR timestamp format' });
+    }
+    const qrAgeSeconds = (Date.now() - qrIssuedAt) / 1000;
+    if (qrAgeSeconds > QR_EXPIRY_SECONDS) {
+      logger.warn('[Nayax] Expired loyalty QR rejected', {
+        userId: loyaltyData.userId, terminalId, ageSeconds: Math.round(qrAgeSeconds),
+      });
+      return res.status(410).json({
+        error: 'QR code expired',
+        message: `QR code expired ${Math.round(qrAgeSeconds - QR_EXPIRY_SECONDS)}s ago — please refresh`
+      });
+    }
+
+    // ── Idempotency / Replay Protection ─────────────────────────────────────
+    // Build a deterministic key from userId + QR issue-timestamp + terminalId.
+    // The same key cannot redeem twice — handles network retries and double-scans.
+    const idemKey = `loyalty:${loyaltyData.userId}:${qrIssuedAt}:${terminalId}`;
+    const existingDoc = await db.collection('loyalty_redemptions').doc(idemKey).get();
+    if (existingDoc.exists) {
+      logger.warn('[Nayax] Duplicate loyalty QR scan blocked', { idemKey, terminalId });
+      return res.status(409).json({
+        error: 'Already redeemed',
+        message: 'This QR code has already been scanned at this terminal'
+      });
+    }
+
     // Verify user exists and get latest loyalty data
     const userDoc = await db.collection('users').doc(loyaltyData.userId).get();
     
@@ -1268,8 +1315,11 @@ router.post('/nayax/redeem-loyalty', async (req, res) => {
     const currentPoints = userData?.loyaltyPoints || 0;
     const currentDiscount = userData?.loyaltyDiscountPercent || 0;
 
-    // Log the redemption attempt
-    await db.collection('loyalty_redemptions').add({
+    // Write redemption with deterministic doc ID = idempotency key.
+    // Using .doc(idemKey).set() instead of .add() so the earlier
+    // existingDoc.exists check is the authoritative guard — a second write
+    // of the same key will be a no-op (Firestore set is idempotent by doc ID).
+    await db.collection('loyalty_redemptions').doc(idemKey).set({
       userId: loyaltyData.userId,
       userEmail: loyaltyData.userEmail,
       terminalId,
@@ -1279,6 +1329,7 @@ router.post('/nayax/redeem-loyalty', async (req, res) => {
       points: currentPoints,
       timestamp: new Date(),
       qrTimestamp: loyaltyData.timestamp,
+      qrAgeSeconds: Math.round(qrAgeSeconds),
       success: true
     });
 
@@ -1317,9 +1368,12 @@ router.post('/nayax/redeem-loyalty', async (req, res) => {
 router.get('/nayax/verify-loyalty/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+    const NAYAX_TERMINAL_SECRET = process.env.NAYAX_TERMINAL_SECRET;
+    if (!NAYAX_TERMINAL_SECRET) {
+      return res.status(503).json({ error: 'Terminal service not configured' });
+    }
     const terminalSecret = req.headers['x-terminal-secret'];
-
-    if (terminalSecret !== process.env.NAYAX_TERMINAL_SECRET) {
+    if (!terminalSecret || terminalSecret !== NAYAX_TERMINAL_SECRET) {
       return res.status(401).json({ error: 'Invalid terminal authentication' });
     }
 
