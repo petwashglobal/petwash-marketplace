@@ -1,0 +1,278 @@
+:::writing{variant=“standard” id=“77124”}
+/*
+
+PETWASH - UNIFIED WALLET + LEDGER + BOOKING CONTROL SYSTEM
+2026 FULL ARCHITECTURE (BACKEND + LOGIC + RULES)
+
+PURPOSE
+	•	Single financial engine across ALL PetWash platforms
+	•	Covers:
+	•	Kiosk washes
+	•	Pet sitters / walkers bookings
+	•	SaaS providers
+	•	Loyalty users
+	•	E-gift system
+	•	Enforces strict rule:
+NO ACTION WITHOUT GUARANTEED FUNDS
+
+CORE PRINCIPLE
+	•	Wallet is NOT just a balance
+	•	Wallet = financial state machine
+	•	Ledger = single source of truth
+	•	Backend = authority
+	•	Payment providers = funding only (not logic)
+
+CRITICAL RULES
+	1.	No booking without full funds available
+	2.	No usage of pending (unconfirmed) payments
+	3.	All money must be traceable via ledger
+	4.	No double spending (DB locking required)
+	5.	Every action must be idempotent
+	6.	Kiosk, app, SaaS all use SAME wallet
+
+=========================================================
+SECTION 1 - WALLET STRUCTURE
+
+Wallet must track 3 balances:
+	•	available_balance → usable immediately
+	•	reserved_balance → locked for bookings
+	•	pending_balance → payment initiated but not confirmed
+
+TABLE
+*/
+
+CREATE TABLE wallets (
+user_id TEXT PRIMARY KEY,
+available_balance DECIMAL(10,2) NOT NULL DEFAULT 0,
+reserved_balance DECIMAL(10,2) NOT NULL DEFAULT 0,
+pending_balance DECIMAL(10,2) NOT NULL DEFAULT 0,
+currency TEXT DEFAULT ‘ILS’,
+updated_at TIMESTAMP DEFAULT NOW()
+);
+
+/*
+
+SECTION 2 - LEDGER (SINGLE SOURCE OF TRUTH)
+
+Every financial action MUST be logged.
+
+TYPES:
+	•	credit (top-up, refund)
+	•	debit (usage)
+	•	reserve (booking hold)
+	•	release (cancel booking)
+	•	refund
+
+STATUS:
+	•	pending
+	•	confirmed
+	•	failed
+*/
+
+CREATE TABLE wallet_transactions (
+id SERIAL PRIMARY KEY,
+user_id TEXT NOT NULL,
+type TEXT NOT NULL,
+amount DECIMAL(10,2) NOT NULL,
+reference_type TEXT,
+reference_id TEXT,
+status TEXT NOT NULL DEFAULT ‘pending’,
+idempotency_key TEXT,
+created_at TIMESTAMP DEFAULT NOW()
+);
+
+/*
+
+SECTION 3 - HARD VALIDATION RULE
+
+Before ANY action:
+
+IF available_balance < required_amount
+→ REJECT ACTION
+
+NO partial payments
+NO “almost enough”
+NO pending funds usage
+*/
+
+function canProceed(available: number, cost: number): boolean {
+return available >= cost;
+}
+
+/*
+
+SECTION 4 - BOOKING FLOW (SITTER / WALKER / SERVICES)
+
+Example: booking cost = ₪700
+
+STEP 1 - VALIDATE
+IF available < 700 → reject
+
+STEP 2 - RESERVE FUNDS
+available -= 700
+reserved += 700
+
+STEP 3 - CREATE BOOKING
+
+STEP 4 - COMPLETE
+reserved -= 700
+
+STEP 5 - CANCEL
+reserved -= 700
+available += 700
+*/
+
+async function reserveFunds(client, userId, amount) {
+await client.query(“SELECT * FROM wallets WHERE user_id = $1 FOR UPDATE”, [userId]);
+
+const wallet = await client.query(“SELECT * FROM wallets WHERE user_id = $1”, [userId]);
+
+if (wallet.rows[0].available_balance < amount) {
+throw new Error(“INSUFFICIENT_FUNDS”);
+}
+
+await client.query(UPDATE wallets SET available_balance = available_balance - $1, reserved_balance = reserved_balance + $1 WHERE user_id = $2, [amount, userId]);
+
+await client.query(INSERT INTO wallet_transactions (user_id, type, amount, status) VALUES ($1, 'reserve', $2, 'confirmed'), [userId, amount]);
+}
+
+/*
+
+SECTION 5 - PAYMENT PROVIDERS (NAYAX / SHIFT4)
+
+RULE:
+External payment ≠ confirmed money
+
+FLOW:
+	1.	User pays → create transaction (pending)
+	2.	DO NOT update wallet yet
+	3.	Wait for webhook
+	4.	On success → confirm + add to wallet
+*/
+
+async function handlePaymentWebhook(userId, amount) {
+await db.query(UPDATE wallet_transactions SET status = 'confirmed' WHERE user_id = $1 AND status = 'pending', [userId]);
+
+await db.query(UPDATE wallets SET available_balance = available_balance + $1 WHERE user_id = $2, [amount, userId]);
+}
+
+/*
+
+SECTION 6 - FRAUD & SAFETY
+	1.	Row locking → prevents double spending
+	2.	Idempotency → prevents duplicate actions
+	3.	Timeout → release reserved funds if stuck
+*/
+
+async function releaseExpiredReservations() {
+// pseudo job
+// find bookings not completed in X time
+// release funds back to available
+}
+
+/*
+
+SECTION 7 - KIOSK INTEGRATION
+
+Kiosk MUST use same wallet.
+
+FLOW:
+	•	scan QR / identify user
+	•	check balance
+	•	deduct instantly
+
+NO offline balances
+NO separate wallet
+*/
+
+async function kioskCharge(userId, price) {
+await reserveFunds(db, userId, price);
+
+await db.query(UPDATE wallets SET reserved_balance = reserved_balance - $1 WHERE user_id = $2, [price, userId]);
+
+await db.query(INSERT INTO wallet_transactions (user_id, type, amount, status) VALUES ($1, 'debit', $2, 'confirmed'), [userId, price]);
+}
+
+/*
+
+SECTION 8 - CROSS PLATFORM USAGE
+
+Same wallet used for:
+	•	PetWash (kiosk washes)
+	•	Sitters (weekly bookings)
+	•	Walkers (hourly)
+	•	Providers (future payouts)
+	•	Loyalty rewards
+	•	E-gift credits
+
+NO duplication
+NO separate balances
+*/
+
+/*
+
+SECTION 9 - E-GIFT INTEGRATION
+
+Gift → becomes wallet credit OR service
+
+FLOW:
+	•	purchase gift
+	•	generate secure code
+	•	redeem → credit wallet
+	•	log transaction
+*/
+
+CREATE TABLE gift_cards (
+id SERIAL PRIMARY KEY,
+code TEXT UNIQUE NOT NULL,
+type TEXT,
+value DECIMAL(10,2),
+remaining_balance DECIMAL(10,2),
+status TEXT,
+recipient_email TEXT,
+created_at TIMESTAMP DEFAULT NOW()
+);
+
+/*
+
+SECTION 10 - LEGAL (ISRAEL)
+	•	PetWash Ltd / פט וואש בע״מ must appear
+	•	Top-up → receipt (קבלה)
+	•	Service → invoice (חשבונית מס) if required
+	•	Full ledger traceability required
+	•	No hidden balances
+
+Emails must include:
+	•	company identity
+	•	support contact
+	•	terms + privacy
+*/
+
+/*
+
+SECTION 11 - UX DISPLAY
+
+User sees:
+
+Available: ₪300
+Reserved: ₪700
+Total: ₪1000
+
+Clear and transparent
+*/
+
+/*
+
+SECTION 12 - NON-NEGOTIABLE RULES
+	1.	Backend is authority
+	2.	Ledger is truth
+	3.	Wallet is state machine
+	4.	Payments only via confirmed webhooks
+	5.	No booking without full funds
+	6.	No race conditions (locking required)
+
+=========================================================
+END OF SYSTEM
+
+*/
+:::
