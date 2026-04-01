@@ -24,6 +24,7 @@ import {
 } from '@shared/schema-weather-planner';
 import { optionalFirebaseToken } from '../middleware/firebase-auth';
 import { optionalEmployeeProfile } from '../middleware/roleAuth';
+import { pool } from '../db';
 
 const router: Router = express.Router();
 
@@ -511,11 +512,43 @@ router.get('/planner', optionalFirebaseToken, optionalEmployeeProfile, async (re
       // Fetch REAL 7-day forecast for client's location
       const weatherData = await fetch7DayForecast(userLocation, language);
       
-      // TODO: Fetch user's upcoming appointments from database
+      // Fetch upcoming appointments from DB for this user
+      let upcomingAppointments: Array<{ type: string; title: string; date: string; location?: string }> = [];
+      const uid = req.firebaseUser?.uid;
+      if (uid) {
+        try {
+          const apptResult = await pool.query(`
+            SELECT 'sitter' AS type,
+                   'Sitter Booking' AS title,
+                   start_date::text AS date,
+                   NULL AS location
+            FROM sitter_bookings
+            WHERE owner_id = $1 AND start_date >= NOW() AND status NOT IN ('cancelled','completed')
+            UNION ALL
+            SELECT 'walk' AS type,
+                   'Dog Walk' AS title,
+                   scheduled_date::text AS date,
+                   pickup_address AS location
+            FROM walk_bookings
+            WHERE owner_id = $1 AND scheduled_date >= CURRENT_DATE AND status NOT IN ('cancelled','completed')
+            ORDER BY date ASC
+            LIMIT 5
+          `, [uid]);
+          upcomingAppointments = apptResult.rows.map((r: any) => ({
+            type: r.type,
+            title: r.title,
+            date: r.date,
+            location: r.location ?? undefined,
+          }));
+        } catch (apptErr: any) {
+          logger.warn('[Weather] Could not fetch upcoming appointments', { error: apptErr.message });
+        }
+      }
+
       const clientView: ClientWeatherView = {
         success: true,
-        userId: req.firebaseUser?.uid || 'unknown',
-        upcomingAppointments: [], // TODO: Fetch from bookings table
+        userId: uid || 'unknown',
+        upcomingAppointments,
         personalRecommendations: [
           getUIText('clientRecommendation1', language),
           getUIText('clientRecommendation2', language),

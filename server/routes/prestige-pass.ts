@@ -13939,9 +13939,10 @@ router.get('/admin/wallet/anomaly-clusters', async (_req: Request, res: Response
 
 router.post('/admin/wallet/anomaly-clusters/recompute', async (_req: Request, res: Response) => {
   try {
+    const maxSignals = Math.max(...BUILTIN_CLUSTERS.map(x => x.signals.length), 1);
     for (const c of BUILTIN_CLUSTERS) {
-      // Assign deterministic confidence based on signal count (advisory)
-      const confidence = parseFloat((50 + Math.random() * 45).toFixed(2));
+      // Deterministic confidence: 50% baseline + up to 45% scaled by signal count
+      const confidence = parseFloat(Math.min(95, 50 + (c.signals.length / maxSignals) * 45).toFixed(2));
       await db.execute(sql.raw(`
         INSERT INTO anomaly_clusters (cluster_key, root_cause_label, signal_codes, confidence_score, last_seen_at)
         VALUES ('${c.key}', '${c.label}', '${JSON.stringify(c.signals)}'::jsonb, ${confidence}, NOW())

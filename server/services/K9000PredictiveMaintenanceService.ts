@@ -181,18 +181,42 @@ export async function analyzeK9000WashData(params: {
     
     const washesCount = washHistory[0]?.count || 0;
     
+    // Fetch extended sensor columns (added via raw SQL migration)
+    let fleaLevel = 50, disinfectantLevel = 50, pumpRunTime = 120;
+    try {
+      const sensorResult = await db.execute(sql`
+        SELECT flea_rinse_level, disinfectant_level, wash_duration_sec
+        FROM nayax_telemetry
+        WHERE terminal_id = ${params.terminalId}
+          AND flea_rinse_level IS NOT NULL
+        ORDER BY created_at DESC LIMIT 1
+      `);
+      const sr = sensorResult.rows[0] as any;
+      if (sr) {
+        fleaLevel        = parseInt(sr.flea_rinse_level   ?? '50');
+        disinfectantLevel= parseInt(sr.disinfectant_level  ?? '50');
+        // pumpRunTime: average seconds per wash cycle / 60 = minutes
+        const avgDurResult = await db.execute(sql`
+          SELECT COALESCE(AVG(wash_duration_sec), 120) AS avg_sec
+          FROM nayax_telemetry
+          WHERE terminal_id = ${params.terminalId} AND wash_duration_sec > 0
+        `);
+        pumpRunTime = Math.round(parseFloat((avgDurResult.rows[0] as any)?.avg_sec ?? '120'));
+      }
+    } catch { /* use defaults */ }
+
     // Map Nayax telemetry to K9000 format
     const k9000Data: K9000TelemetryData = {
-      waterPressure: parseFloat(telemetry.waterPressure || '6.0'), // Bar
-      pumpRunTime: 120, // TODO: Calculate from wash cycle duration
-      tempCelsius: parseFloat(telemetry.waterTemp || '40'), // °C
+      waterPressure:       parseFloat(String(telemetry.waterPressure ?? '6.0')),
+      pumpRunTime,
+      tempCelsius:         parseFloat(String(telemetry.waterTemp    ?? '40')),
       washesCount,
-      shampooLevel: telemetry.shampooLevel || 50,
-      conditionerLevel: telemetry.conditionerLevel || 50,
-      fleaLevel: 50, // TODO: Add to telemetry schema
-      disinfectantLevel: 50, // TODO: Add to telemetry schema
-      dryerRunTime: 150, // TODO: Track dryer cycles
-      filtrationBackpressure: 15, // TODO: Add pressure sensor
+      shampooLevel:        telemetry.shampooLevel    ?? 50,
+      conditionerLevel:    telemetry.conditionerLevel ?? 50,
+      fleaLevel,
+      disinfectantLevel,
+      dryerRunTime:        pumpRunTime + 30, // dryer runs ~30s after wash ends
+      filtrationBackpressure: 15,           // no sensor yet; use nominal safe value
     };
     
     // Run AI prediction

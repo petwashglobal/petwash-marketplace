@@ -139,14 +139,29 @@ router.get('/dashboard/stations', async (req, res) => {
           }
         }
         
-        // Parse supply levels from telemetry
+        // Parse supply levels from telemetry — including new sensor columns
+        let fleaRinse = 100, disinfectant = 100, saltKg = 25;
+        if (telemetry[0]?.terminalId) {
+          const sensorRow = await db.execute(sql`
+            SELECT flea_rinse_level, disinfectant_level, salt_level_kg
+            FROM nayax_telemetry
+            WHERE terminal_id = ${telemetry[0].terminalId}
+            ORDER BY created_at DESC LIMIT 1
+          `);
+          const s = sensorRow.rows[0] as any;
+          if (s) {
+            fleaRinse    = parseInt(s.flea_rinse_level   ?? '100');
+            disinfectant = parseInt(s.disinfectant_level  ?? '100');
+            saltKg       = parseFloat(s.salt_level_kg     ?? '25');
+          }
+        }
         const supplyLevels: SupplyLevels = {
-          shampoo: parseInt(telemetry[0]?.shampooLevel || '100'),
-          conditioner: parseInt(telemetry[0]?.conditionerLevel || '100'),
-          fleaRinse: 100, // TODO: Add sensor data
-          disinfectant: 100, // TODO: Add sensor data
-          salt: 25, // TODO: Add sensor data (kg)
-          filterStatus: 'clean'
+          shampoo:      parseInt((telemetry[0]?.shampooLevel    ?? 100) as unknown as string),
+          conditioner:  parseInt((telemetry[0]?.conditionerLevel ?? 100) as unknown as string),
+          fleaRinse,
+          disinfectant,
+          salt:         saltKg,
+          filterStatus: 'clean',
         };
         
         // Check for low supplies
@@ -418,41 +433,62 @@ router.get('/dashboard/salt-report', async (req, res) => {
           .orderBy(desc(nayaxTelemetry.createdAt))
           .limit(1);
         
+        // Fetch sensor columns (added via raw SQL migration)
+        let sensorRow: any = null;
+        if (telemetry[0]?.terminalId) {
+          const sr = await db.execute(sql`
+            SELECT flea_rinse_level, disinfectant_level, salt_level_kg
+            FROM nayax_telemetry
+            WHERE terminal_id = ${telemetry[0].terminalId}
+            ORDER BY created_at DESC LIMIT 1
+          `);
+          sensorRow = sr.rows[0] ?? null;
+        }
+
         const supplyData = {
           stationId: station.stationId,
           location: station.location,
           timestamp: telemetry[0]?.createdAt || new Date(),
           supplies: {
             shampoo: {
-              level: parseInt(telemetry[0]?.shampooLevel || '100'),
+              level: parseInt(String(telemetry[0]?.shampooLevel ?? 100)),
               unit: '%',
-              status: parseInt(telemetry[0]?.shampooLevel || '100') < 20 ? 'low' : 'ok',
-              estimatedDaysLeft: Math.floor((parseInt(telemetry[0]?.shampooLevel || '100') / 10) * 7)
+              status: parseInt(String(telemetry[0]?.shampooLevel ?? 100)) < 20 ? 'low' : 'ok',
+              estimatedDaysLeft: Math.floor((parseInt(String(telemetry[0]?.shampooLevel ?? 100)) / 10) * 7)
             },
             conditioner: {
-              level: parseInt(telemetry[0]?.conditionerLevel || '100'),
+              level: parseInt(String(telemetry[0]?.conditionerLevel ?? 100)),
               unit: '%',
-              status: parseInt(telemetry[0]?.conditionerLevel || '100') < 20 ? 'low' : 'ok',
-              estimatedDaysLeft: Math.floor((parseInt(telemetry[0]?.conditionerLevel || '100') / 10) * 7)
+              status: parseInt(String(telemetry[0]?.conditionerLevel ?? 100)) < 20 ? 'low' : 'ok',
+              estimatedDaysLeft: Math.floor((parseInt(String(telemetry[0]?.conditionerLevel ?? 100)) / 10) * 7)
             },
-            salt: {
-              level: 25, // TODO: Connect to actual sensor
-              unit: 'kg',
-              status: 25 < 5 ? 'critical' : 'ok',
-              estimatedDaysLeft: Math.floor((25 / 2) * 7) // ~2kg per week
-            },
-            fleaRinse: {
-              level: 100,
-              unit: '%',
-              status: 'ok',
-              estimatedDaysLeft: 30
-            },
-            disinfectant: {
-              level: 100,
-              unit: '%',
-              status: 'ok',
-              estimatedDaysLeft: 30
-            }
+            salt: (() => {
+              const lvl = parseFloat(sensorRow?.salt_level_kg ?? '25');
+              return {
+                level: lvl,
+                unit: 'kg',
+                status: lvl < 5 ? 'critical' : lvl < 10 ? 'low' : 'ok',
+                estimatedDaysLeft: Math.floor((lvl / 2) * 7),
+              };
+            })(),
+            fleaRinse: (() => {
+              const lvl = parseInt(sensorRow?.flea_rinse_level ?? '100');
+              return {
+                level: lvl,
+                unit: '%',
+                status: lvl < 15 ? 'critical' : lvl < 30 ? 'low' : 'ok',
+                estimatedDaysLeft: Math.floor((lvl / 100) * 30),
+              };
+            })(),
+            disinfectant: (() => {
+              const lvl = parseInt(sensorRow?.disinfectant_level ?? '100');
+              return {
+                level: lvl,
+                unit: '%',
+                status: lvl < 15 ? 'critical' : lvl < 30 ? 'low' : 'ok',
+                estimatedDaysLeft: Math.floor((lvl / 100) * 30),
+              };
+            })()
           },
           filterStatus: {
             status: 'clean',

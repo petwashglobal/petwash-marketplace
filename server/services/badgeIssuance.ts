@@ -1,8 +1,9 @@
 import { db } from '../db';
-import { contractorBadges, providerApplications, contractorEarnings } from '@shared/schema';
+import { contractorBadges, providerApplications, contractorEarnings, contractorProfiles } from '@shared/schema';
 import { eq, and, count, sum } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
+import { dispatchNotifications } from './PetWashNotificationEngine';
 
 /**
  * Digital Badge Issuance System (2026 Spec)
@@ -114,8 +115,44 @@ export async function issueBadge(params: IssueBadgeParams) {
       badgeName,
     });
 
-    // TODO: Send push notification to contractor
-    // TODO: Send email congratulation
+    // Send push notification + email congratulation
+    try {
+      // Look up the contractor's email for the notification
+      const profileRow = await db
+        .select({ email: contractorProfiles.email, userId: contractorProfiles.userId })
+        .from(contractorProfiles)
+        .where(eq(contractorProfiles.id, contractorId))
+        .limit(1);
+      const contractorEmail = profileRow[0]?.email || '';
+      const contractorUserId = profileRow[0]?.userId || contractorId;
+
+      await dispatchNotifications({
+        userId: contractorUserId,
+        eventType: 'badge_awarded',
+        templateKey: `badge_awarded_${badgeCategory}`,
+        channels: ['push', 'email'],
+        push: {
+          userId: contractorUserId,
+          title: `🏅 Badge Awarded: ${badgeName}`,
+          body: `Congratulations! You've earned the "${badgeName}" badge. Keep up the excellent work!`,
+          data: { type: 'badge_awarded', badgeId, badgeCategory },
+        },
+        ...(contractorEmail && {
+          email: {
+            to: contractorEmail,
+            subject: `🏅 New Badge: ${badgeName} — PetWash™`,
+            html: `<p>שלום,</p>
+<p>ברכות! קיבלת את התג <strong>"${badgeName}"</strong>.</p>
+<p>המשך לעשות עבודה מצוינת! 🐾</p>
+<p>— צוות PetWash™</p>`,
+            text: `שלום, ברכות! קיבלת את התג "${badgeName}". המשך לעשות עבודה מצוינת! — צוות PetWash™`,
+          },
+        }),
+        idempotencyKey: `badge_awarded:${badgeId}:${contractorUserId}`,
+      });
+    } catch (notifErr: any) {
+      logger.warn('[BadgeIssuance] Notification failed (non-blocking)', { error: notifErr.message });
+    }
 
     return badge;
   } catch (error) {

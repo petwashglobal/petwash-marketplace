@@ -104,9 +104,13 @@ router.post('/broadcast/users', validateFirebaseToken, requireAdmin, async (req,
         const petOwnerUids = new Set(petsSnapshot.docs.map(doc => doc.ref.parent.parent?.id).filter(Boolean));
         userIds = Array.from(petOwnerUids) as string[];
       } else if (segmentType === 'active') {
-        // Get users with recent activity (last 30 days)
-        // TODO: Implement activity tracking
-        userIds = [];
+        // Get users with activity in the last 30 days (via lastLoginAt)
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const activeUsers = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(gte(users.lastLoginAt, thirtyDaysAgo));
+        userIds = activeUsers.map(u => u.id);
       } else {
         // All users
         const snapshot = await query.get();

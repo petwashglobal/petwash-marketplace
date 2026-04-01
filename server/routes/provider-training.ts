@@ -277,7 +277,7 @@ router.get('/certificate/:certificateId', async (req, res) => {
 
 /**
  * GET /api/provider-training/certificate/:certificateId/pdf
- * Download certificate as PDF
+ * Download certificate as PDF using PDFKit
  */
 router.get('/certificate/:certificateId/pdf', async (req, res) => {
   try {
@@ -289,19 +289,77 @@ router.get('/certificate/:certificateId/pdf', async (req, res) => {
       return res.status(404).json({ error: 'התעודה לא נמצאה' });
     }
 
-    // TODO: Generate actual PDF using PDFKit
-    // For now, return placeholder
-    res.json({
-      message: 'PDF generation will be implemented with PDFKit',
-      certificateId,
-      providerName: verification.certificate.providerName,
-      platform: verification.certificate.platform,
-      issuedAt: verification.certificate.issuedAt,
-      expiresAt: verification.certificate.expiresAt,
-    });
+    const cert = verification.certificate;
+    const PDFDocument = (await import('pdfkit')).default;
+    const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 60 });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="certificate-${certificateId}.pdf"`);
+    doc.pipe(res);
+
+    // ── Background ──────────────────────────────────────────────────────────
+    doc.rect(0, 0, doc.page.width, doc.page.height).fill('#f8f5ff');
+    doc.rect(20, 20, doc.page.width - 40, doc.page.height - 40)
+       .stroke('#7c3aed').lineWidth(3);
+
+    // ── Header ──────────────────────────────────────────────────────────────
+    doc.fillColor('#7c3aed')
+       .fontSize(32).font('Helvetica-Bold')
+       .text('PetWash™', 0, 50, { align: 'center' });
+
+    doc.fillColor('#4b5563')
+       .fontSize(16).font('Helvetica')
+       .text('תעודת הכשרה מקצועית — Professional Training Certificate', 0, 95, { align: 'center' });
+
+    // ── Divider ─────────────────────────────────────────────────────────────
+    doc.moveTo(80, 130).lineTo(doc.page.width - 80, 130).stroke('#c4b5fd').lineWidth(1);
+
+    // ── Body ────────────────────────────────────────────────────────────────
+    const cy = 155;
+    doc.fillColor('#111827')
+       .fontSize(14).font('Helvetica')
+       .text('This is to certify that', 0, cy, { align: 'center' });
+
+    doc.fillColor('#7c3aed')
+       .fontSize(28).font('Helvetica-Bold')
+       .text(cert.providerName, 0, cy + 25, { align: 'center' });
+
+    doc.fillColor('#111827')
+       .fontSize(14).font('Helvetica')
+       .text(`has successfully completed the`, 0, cy + 65, { align: 'center' });
+
+    doc.fillColor('#1d4ed8')
+       .fontSize(20).font('Helvetica-Bold')
+       .text(`${cert.platform.toUpperCase()} Provider Training Program`, 0, cy + 90, { align: 'center' });
+
+    // ── Dates ────────────────────────────────────────────────────────────────
+    const issuedStr = new Date(cert.issuedAt).toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' });
+    const expiresStr = cert.expiresAt
+      ? new Date(cert.expiresAt).toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' })
+      : 'ללא תאריך תפוגה';
+
+    doc.fillColor('#374151')
+       .fontSize(11).font('Helvetica')
+       .text(`תאריך הנפקה: ${issuedStr}    |    תוקף עד: ${expiresStr}`, 0, cy + 130, { align: 'center' });
+
+    // ── Certificate ID ───────────────────────────────────────────────────────
+    doc.fillColor('#9ca3af')
+       .fontSize(9).font('Helvetica')
+       .text(`Certificate ID: ${certificateId}`, 0, cy + 155, { align: 'center' });
+
+    // ── Footer ──────────────────────────────────────────────────────────────
+    doc.moveTo(80, doc.page.height - 70).lineTo(doc.page.width - 80, doc.page.height - 70)
+       .stroke('#c4b5fd').lineWidth(1);
+
+    doc.fillColor('#6b7280')
+       .fontSize(9).font('Helvetica')
+       .text('פט וואש בע"מ  ·  ח.פ. 517145033  ·  PET WASH LTD  ·  www.petwash.co.il',
+             0, doc.page.height - 55, { align: 'center' });
+
+    doc.end();
   } catch (error) {
     logger.error('[Provider Training] Error generating PDF', error);
-    res.status(500).json({ error: 'שגיאה ביצירת הקובץ' });
+    if (!res.headersSent) res.status(500).json({ error: 'שגיאה ביצירת הקובץ' });
   }
 });
 

@@ -30,35 +30,9 @@ interface AvailabilitySlot {
   timezone: string;
 }
 
-function generateDemoSlots(date: Date, providerId: number, platform: string): AvailabilitySlot[] {
-  const slots: AvailabilitySlot[] = [];
-  const baseDate = new Date(date);
-  baseDate.setHours(9, 0, 0, 0);
-  
-  const slotHours = [9, 10, 11, 12, 14, 15, 16, 17, 18];
-  slotHours.forEach((hour, index) => {
-    const start = new Date(baseDate);
-    start.setHours(hour);
-    const end = new Date(start);
-    end.setHours(hour + 1);
-    
-    slots.push({
-      id: 100000 + index,
-      providerId,
-      platform,
-      start: start.toISOString(),
-      end: end.toISOString(),
-      status: Math.random() > 0.2 ? 'AVAILABLE' : 'BOOKED',
-      timezone: 'Asia/Jerusalem',
-    });
-  });
-  return slots;
-}
-
 export function BookingCalendar({ platform, providerId, onSlotSelected, bookingMode }: BookingCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
-  const [useDemoData, setUseDemoData] = useState(false);
   const { toast } = useToast();
 
   const fromDate = selectedDate || new Date();
@@ -78,14 +52,12 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
       if (!res.ok) throw new Error('Failed to fetch availability');
       return res.json();
     },
-    enabled: !!selectedDate && !useDemoData,
+    enabled: !!selectedDate,
     retry: 1,
     retryDelay: 1000,
   });
 
-  const effectiveSlots = useDemoData && selectedDate 
-    ? generateDemoSlots(selectedDate, providerId, platform)
-    : data?.slots || [];
+  const effectiveSlots = data?.slots || [];
 
   // Reset selection when date changes
   useEffect(() => {
@@ -111,7 +83,7 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
 
     onSlotSelected({
       slotId: slot.id,
-      lockToken: `client_hold_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      lockToken: `client_hold_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 9)}`,
       expiresAt,
       startTime,
       endTime,
@@ -158,45 +130,25 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
             </div>
           )}
 
-          {error && !useDemoData && (
+          {error && (
             <Card className="border-amber-200 bg-white dark:bg-amber-900/20">
               <CardContent className="p-4">
                 <p className="text-sm text-amber-800 dark:text-amber-200 mb-2">
-                  ⏳ Loading availability... This provider may not have slots configured yet.
+                  Could not load availability for this provider. Please try again.
                 </p>
-                <div className="flex gap-2 flex-wrap">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => refetch()}
-                    className="text-amber-700 border-amber-300"
-                  >
-                    Retry
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setUseDemoData(true)}
-                    className="text-emerald-700 border-emerald-300"
-                  >
-                    Show Sample Times
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          
-          {useDemoData && (
-            <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20 mb-4">
-              <CardContent className="p-3">
-                <p className="text-xs text-blue-700 dark:text-blue-200">
-                  📋 Showing sample availability. Actual times will be confirmed after booking.
-                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => refetch()}
+                  className="text-amber-700 border-amber-300"
+                >
+                  Retry
+                </Button>
               </CardContent>
             </Card>
           )}
 
-          {!isLoading && !error && !useDemoData && slotsForSelectedDate.length === 0 && (
+          {!isLoading && !error && slotsForSelectedDate.length === 0 && (
             <Card className="border-yellow-200 bg-white dark:bg-yellow-900/20">
               <CardContent className="p-4">
                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
@@ -206,7 +158,7 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
             </Card>
           )}
 
-          {!isLoading && (useDemoData || (!error && slotsForSelectedDate.length > 0)) && slotsForSelectedDate.length > 0 && (
+          {!isLoading && !error && slotsForSelectedDate.length > 0 && (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
               {slotsForSelectedDate.map((slot) => {
                 const startTime = new Date(slot.start);

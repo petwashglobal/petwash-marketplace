@@ -14,6 +14,7 @@ import {
   providerAvailability,
   walkBookings,
   sitterBookings,
+  providerTaxCompliance,
 } from "@shared/schema";
 import { eq, and, desc, gte, sql } from "drizzle-orm";
 import jwt from "jsonwebtoken";
@@ -510,8 +511,11 @@ router.post("/contractors/:id/israeli-contractor-check", authMiddleware, async (
       return res.status(404).json({ error: "NOT_FOUND", message: "Contractor not found" });
     }
 
-    // TODO: Load Israeli contractor tax profile from provider_tax_compliance table
-    // For now, create a minimal profile for demonstration
+    // Load real tax compliance record from provider_tax_compliance table
+    const taxRecord = await db.query.providerTaxCompliance.findFirst({
+      where: eq(providerTaxCompliance.providerId, contractorId),
+    });
+
     const israeliProfile: IsraeliContractorProfile = {
       id: contractor.id,
       displayName: contractor.displayName,
@@ -534,14 +538,14 @@ router.post("/contractors/:id/israeli-contractor-check", authMiddleware, async (
       createdAt: contractor.createdAt?.toISOString() || new Date().toISOString(),
       updatedAt: contractor.updatedAt?.toISOString() || new Date().toISOString(),
       taxProfile: {
-        entityType: "OSEK_PATUR", // Default - should load from DB
-        taxId: null, // Should load from DB
-        hasValidTaxCertificate: false,
-        taxCertificateExpiryDate: undefined,
-        nationalInsuranceId: null,
-        hasValidNationalInsurance: false,
-        vatRegistered: false,
-        vatNumber: null,
+        entityType: (taxRecord?.taxIdType?.toUpperCase() as any) || "OSEK_PATUR",
+        taxId: taxRecord?.taxId || null,
+        hasValidTaxCertificate: taxRecord?.verificationStatus === "verified",
+        taxCertificateExpiryDate: taxRecord?.expiresAt?.toISOString(),
+        nationalInsuranceId: taxRecord?.nationalInsuranceNumber || null,
+        hasValidNationalInsurance: taxRecord?.isBituachLeumiActive ?? false,
+        vatRegistered: taxRecord?.isVatRegistered ?? false,
+        vatNumber: taxRecord?.vatNumber || null,
       },
       insuranceInfo: null,
       backgroundCheckInfo: null,

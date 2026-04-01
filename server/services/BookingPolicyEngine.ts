@@ -13,8 +13,8 @@
  * Created: November 10, 2025
  */
 
-import { db } from "../db";
-import { eq, and } from "drizzle-orm";
+import { db, pool } from "../db";
+import { eq, and, sql } from "drizzle-orm";
 import {
   bookingPolicies,
   disputeResolutions,
@@ -22,6 +22,7 @@ import {
   type InsertDisputeResolution,
 } from "@shared/schema-compliance";
 import { nanoid } from "nanoid";
+import { logger } from "../lib/logger";
 
 /**
  * Cancellation result
@@ -173,17 +174,47 @@ export class BookingPolicyEngineService {
     refundAmount: number,
     refundMethod: string = "original_payment"
   ): Promise<{ success: boolean; transactionId?: string; error?: string }> {
-    // TODO: Integrate with Nayax payment gateway for actual refunds
-    // For now, simulate successful refund
-    
     const transactionId = `REFUND-${new Date().getFullYear()}-${nanoid(12)}`;
+    const refundCents = Math.round(refundAmount * 100);
 
-    console.log(`Auto-refund processed: Booking ${bookingId}, Amount ${refundAmount}, Method ${refundMethod}, Transaction ${transactionId}`);
+    logger.info('[BookingPolicyEngine] processAutoRefund', { bookingId, refundAmount, refundMethod, transactionId });
 
-    return {
-      success: true,
-      transactionId,
-    };
+    try {
+      // Find the owner of this booking across service tables
+      const ownerResult = await pool.query(`
+        SELECT owner_id AS user_id FROM sitter_bookings WHERE id = $1
+        UNION ALL
+        SELECT owner_id AS user_id FROM walk_bookings    WHERE id = $1
+        LIMIT 1
+      `, [bookingId]);
+
+      const ownerId: string | null = ownerResult.rows[0]?.user_id ?? null;
+
+      if (ownerId && refundCents > 0) {
+        // Credit the user's cash wallet (atomic upsert)
+        await pool.query(`
+          INSERT INTO wallet_accounts (wallet_id, user_id, cash_wallet_balance_cents)
+          VALUES ($1, $2, $3)
+          ON CONFLICT (wallet_id) DO NOTHING
+        `, [`WALLET-${ownerId.slice(0, 20)}`, ownerId, 0]);
+
+        await pool.query(`
+          UPDATE wallet_accounts
+          SET cash_wallet_balance_cents = cash_wallet_balance_cents + $1,
+              updated_at = NOW()
+          WHERE user_id = $2
+        `, [refundCents, ownerId]);
+
+        logger.info('[BookingPolicyEngine] Wallet credited', { ownerId, refundCents, transactionId });
+      } else if (!ownerId) {
+        logger.warn('[BookingPolicyEngine] Booking owner not found — refund logged only', { bookingId });
+      }
+
+      return { success: true, transactionId };
+    } catch (err: any) {
+      logger.error('[BookingPolicyEngine] Refund error', { bookingId, error: err.message });
+      return { success: false, transactionId, error: err.message };
+    }
   }
 
   /**

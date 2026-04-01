@@ -8,6 +8,7 @@
 import express, { type Router } from 'express';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
+import { nanoid } from 'nanoid';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 
 const router: Router = express.Router();
@@ -46,7 +47,7 @@ const DEALS_STORE = new Map<string, FlashDeal>();
 const CLAIMS_BY_USER = new Map<string, Set<string>>();
 
 function generateDealId(): string {
-  return `DEAL-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+  return `DEAL-${Date.now().toString(36).toUpperCase()}-${nanoid(4).toUpperCase()}`;
 }
 
 function isDealActive(deal: FlashDeal): boolean {

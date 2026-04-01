@@ -332,14 +332,7 @@ async function authorizeNayaxSession(params: {
   amountCents: number;
   currency: string;
 }): Promise<{ success: boolean; nayaxSessionId?: string; message?: string }> {
-  logger.info('[QRActivation] Nayax authorization placeholder', {
-    machineId: params.machineId,
-    sessionId: params.sessionId,
-    amountCents: params.amountCents,
-    hasTerminalId: !!params.nayaxTerminalId,
-    hasMerchantId: !!params.nayaxMerchantId,
-  });
-
+  // No terminal configured → dev mode (no physical machine present)
   if (!params.nayaxTerminalId) {
     logger.warn('[QRActivation] No Nayax terminal ID — dev mode authorization');
     return {
@@ -349,26 +342,48 @@ async function authorizeNayaxSession(params: {
     };
   }
 
-  /* TODO: Real Nayax Spark API call:
-       const response = await fetch(`${NAYAX_BASE_URL}/api/v1/transaction/authorize`, {
-         method: 'POST',
-         headers: { 'X-API-Key': NAYAX_API_KEY, 'Content-Type': 'application/json' },
-         body: JSON.stringify({
-           terminal_id:   params.nayaxTerminalId,
-           merchant_id:   params.nayaxMerchantId,
-           external_id:   params.sessionId,
-           amount:        params.amountCents / 100,
-           currency:      params.currency,
-         }),
-       });
-       const data = await response.json();
-       return { success: response.ok, nayaxSessionId: data.transaction_id };
-  */
-  return {
-    success: true,
-    nayaxSessionId: `nayax_${crypto.randomUUID()}`,
-    message: 'Authorized (placeholder — real terminal present)',
-  };
+  const NAYAX_API_KEY  = process.env.NAYAX_API_KEY;
+  const NAYAX_BASE_URL = process.env.NAYAX_BASE_URL || 'https://api.spark.nayax.com';
+
+  // Without a real API key → use demo session ID so the machine flow can proceed in testing
+  if (!NAYAX_API_KEY) {
+    logger.warn('[QRActivation] NAYAX_API_KEY not configured — using demo session for terminal present');
+    return {
+      success: true,
+      nayaxSessionId: `nayax_demo_${crypto.randomUUID()}`,
+      message: 'Demo mode — NAYAX_API_KEY not set',
+    };
+  }
+
+  try {
+    const response = await fetch(`${NAYAX_BASE_URL}/api/v1/transaction/authorize`, {
+      method: 'POST',
+      headers: { 'X-API-Key': NAYAX_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        terminal_id:  params.nayaxTerminalId,
+        merchant_id:  params.nayaxMerchantId,
+        external_id:  params.sessionId,
+        amount:       params.amountCents / 100,
+        currency:     params.currency,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      logger.error('[QRActivation] Nayax authorize failed', { status: response.status, body: errText });
+      return { success: false, message: `Nayax authorization failed: HTTP ${response.status}` };
+    }
+
+    const data = await response.json();
+    logger.info('[QRActivation] Nayax authorized', {
+      sessionId: params.sessionId,
+      nayaxSessionId: data.transaction_id,
+    });
+    return { success: true, nayaxSessionId: data.transaction_id };
+  } catch (err: any) {
+    logger.error('[QRActivation] Nayax authorize network error', { error: err.message });
+    return { success: false, message: `Network error contacting Nayax: ${err.message}` };
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────────────────────
