@@ -133,6 +133,123 @@ async function requireAdmin(req: Request, res: Response, next: Function) {
   }
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// ROLE MIDDLEWARE — explicit separation of Support vs Management vs Admin
+//
+// Role hierarchy for provider application routes:
+//   requireSupport     → level >= 3 or support:applications
+//                        can: view queue, view applications, send messages,
+//                             request resubmission, assign reviewer
+//                        cannot: approve, reject (those need requireAdmin)
+//   requireAdmin       → level >= 5 or admin:providers / admin:applications
+//                        can: everything Support can, PLUS approve and reject
+//   requireManagement  → level >= 4 or management:view
+//                        can: read-only aggregate analytics ONLY
+//                        cannot: action individual applications at all
+// ──────────────────────────────────────────────────────────────────────────────
+
+async function requireSupport(req: Request, res: Response, next: Function) {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized', errorCode: 'AUTH_REQUIRED' });
+    }
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = await auth.verifyIdToken(token, true);
+    const userEmail = decodedToken.email?.toLowerCase();
+    if (!userEmail) return res.status(401).json({ error: 'Unauthorized — email missing', errorCode: 'MISSING_EMAIL' });
+
+    // Super admins always allowed
+    if (isSuperAdmin(userEmail)) {
+      req.body.adminUid = decodedToken.uid;
+      req.body.adminEmail = userEmail;
+      req.body.adminRole = 'super_admin';
+      return next();
+    }
+
+    // Check DB roles
+    const assignments = await db
+      .select({ assignment: userRoleAssignments, role: systemRoles })
+      .from(userRoleAssignments)
+      .leftJoin(systemRoles, eq(userRoleAssignments.roleId, systemRoles.id))
+      .where(and(eq(userRoleAssignments.userEmail, userEmail), eq(userRoleAssignments.isActive, true)))
+      .limit(1);
+
+    if (assignments.length > 0 && assignments[0].role) {
+      const role = assignments[0].role;
+      const permissions = role.permissions as string[];
+      const hasAccess =
+        role.accessLevel >= 3 ||
+        permissions.includes('*') ||
+        permissions.includes('support:applications') ||
+        permissions.includes('admin:providers') ||
+        permissions.includes('admin:applications');
+
+      if (hasAccess) {
+        req.body.adminUid = decodedToken.uid;
+        req.body.adminEmail = userEmail;
+        req.body.adminRole = role.roleCode;
+        return next();
+      }
+    }
+
+    logger.warn(`[ProviderOnboarding] Support access denied: ${userEmail}`);
+    return res.status(403).json({ error: 'Forbidden — support role required', errorCode: 'SUPPORT_REQUIRED' });
+  } catch (err: any) {
+    return res.status(401).json({ error: 'Unauthorized — invalid token', errorCode: 'INVALID_TOKEN' });
+  }
+}
+
+async function requireManagement(req: Request, res: Response, next: Function) {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized', errorCode: 'AUTH_REQUIRED' });
+    }
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = await auth.verifyIdToken(token, true);
+    const userEmail = decodedToken.email?.toLowerCase();
+    if (!userEmail) return res.status(401).json({ error: 'Unauthorized — email missing', errorCode: 'MISSING_EMAIL' });
+
+    if (isSuperAdmin(userEmail)) {
+      req.body.adminUid = decodedToken.uid;
+      req.body.adminEmail = userEmail;
+      req.body.adminRole = 'super_admin';
+      return next();
+    }
+
+    const assignments = await db
+      .select({ assignment: userRoleAssignments, role: systemRoles })
+      .from(userRoleAssignments)
+      .leftJoin(systemRoles, eq(userRoleAssignments.roleId, systemRoles.id))
+      .where(and(eq(userRoleAssignments.userEmail, userEmail), eq(userRoleAssignments.isActive, true)))
+      .limit(1);
+
+    if (assignments.length > 0 && assignments[0].role) {
+      const role = assignments[0].role;
+      const permissions = role.permissions as string[];
+      const hasAccess =
+        role.accessLevel >= 4 ||
+        permissions.includes('*') ||
+        permissions.includes('management:view') ||
+        permissions.includes('admin:providers') ||
+        permissions.includes('admin:applications');
+
+      if (hasAccess) {
+        req.body.adminUid = decodedToken.uid;
+        req.body.adminEmail = userEmail;
+        req.body.adminRole = role.roleCode;
+        return next();
+      }
+    }
+
+    logger.warn(`[ProviderOnboarding] Management access denied: ${userEmail}`);
+    return res.status(403).json({ error: 'Forbidden — management role required', errorCode: 'MANAGEMENT_REQUIRED' });
+  } catch (err: any) {
+    return res.status(401).json({ error: 'Unauthorized — invalid token', errorCode: 'INVALID_TOKEN' });
+  }
+}
+
 // =================== INVITE CODE MANAGEMENT ===================
 
 // Generate invite code (Admin only)
@@ -1086,7 +1203,7 @@ router.get('/application/status', async (req: Request, res: Response) => {
 // =================== ADMIN: APPLICATION REVIEW ===================
 
 // Get pending applications (Admin only)
-router.get('/admin/applications/pending', requireAdmin, async (req: Request, res: Response) => {
+router.get('/admin/applications/pending', requireSupport, async (req: Request, res: Response) => {
   try {
     const limit = parseInt(req.query.limit as string) || 50;
 
@@ -1105,7 +1222,7 @@ router.get('/admin/applications/pending', requireAdmin, async (req: Request, res
 });
 
 // Get pending_review applications with KYC data — for admin review queue + badge count
-router.get('/admin/applications/pending-review', requireAdmin, async (req: Request, res: Response) => {
+router.get('/admin/applications/pending-review', requireSupport, async (req: Request, res: Response) => {
   try {
     const limit = parseInt(req.query.limit as string) || 100;
 
@@ -1144,7 +1261,7 @@ router.get('/admin/applications/pending-review', requireAdmin, async (req: Reque
 });
 
 // Get single application detail with signed image URLs (Admin only)
-router.get('/admin/applications/:applicationId', requireAdmin, async (req: Request, res: Response) => {
+router.get('/admin/applications/:applicationId', requireSupport, async (req: Request, res: Response) => {
   try {
     const { applicationId } = req.params;
 
@@ -1414,7 +1531,7 @@ router.post('/admin/applications/reject', requireAdmin, async (req: Request, res
 // ──────────────────────────────────────────────────────────────────────────────
 
 // GET /admin/applications/queue — full queue with filters + pagination
-router.get('/admin/applications/queue', requireAdmin, async (req: Request, res: Response) => {
+router.get('/admin/applications/queue', requireSupport, async (req: Request, res: Response) => {
   try {
     const { status = 'all', priority, assignedTo, limit = '50', offset = '0' } = req.query as Record<string, string>;
     const { items, total } = await (await import('../services/providerQueue')).getQueueList({
@@ -1432,7 +1549,7 @@ router.get('/admin/applications/queue', requireAdmin, async (req: Request, res: 
 });
 
 // POST /admin/applications/:numericId/assign
-router.post('/admin/applications/:numericId/assign', requireAdmin, async (req: Request, res: Response) => {
+router.post('/admin/applications/:numericId/assign', requireSupport, async (req: Request, res: Response) => {
   try {
     const applicationId = parseInt(req.params.numericId);
     const { assignedTo } = req.body;
@@ -1447,7 +1564,7 @@ router.post('/admin/applications/:numericId/assign', requireAdmin, async (req: R
 });
 
 // POST /admin/applications/:numericId/resubmit-request — admin requests better files
-router.post('/admin/applications/:numericId/resubmit-request', requireAdmin, async (req: Request, res: Response) => {
+router.post('/admin/applications/:numericId/resubmit-request', requireSupport, async (req: Request, res: Response) => {
   try {
     const applicationId = parseInt(req.params.numericId);
     const { reasons, adminUid, adminEmail } = req.body;
@@ -1542,7 +1659,7 @@ router.post('/admin/applications/:numericId/resubmit-request', requireAdmin, asy
 });
 
 // GET /admin/applications/:numericId/audit — full audit trail for one application
-router.get('/admin/applications/:numericId/audit', requireAdmin, async (req: Request, res: Response) => {
+router.get('/admin/applications/:numericId/audit', requireSupport, async (req: Request, res: Response) => {
   try {
     const applicationId = parseInt(req.params.numericId);
     const { getAuditTrail } = await import('../services/providerAudit');
@@ -1554,7 +1671,7 @@ router.get('/admin/applications/:numericId/audit', requireAdmin, async (req: Req
 });
 
 // GET /admin/applications/:numericId/messages — full thread (admin view, all messages)
-router.get('/admin/applications/:numericId/messages', requireAdmin, async (req: Request, res: Response) => {
+router.get('/admin/applications/:numericId/messages', requireSupport, async (req: Request, res: Response) => {
   try {
     const applicationId = parseInt(req.params.numericId);
     const { getThreadMessages, clearUnreadCount } = await import('../services/providerMessageLog');
@@ -1567,7 +1684,7 @@ router.get('/admin/applications/:numericId/messages', requireAdmin, async (req: 
 });
 
 // POST /admin/applications/:numericId/message — send message or internal note
-router.post('/admin/applications/:numericId/message', requireAdmin, async (req: Request, res: Response) => {
+router.post('/admin/applications/:numericId/message', requireSupport, async (req: Request, res: Response) => {
   try {
     const applicationId = parseInt(req.params.numericId);
     const { body, direction = 'internal_note', channel = 'internal_note', providerVisible = false, adminUid, adminEmail } = req.body;
@@ -1687,4 +1804,334 @@ router.get('/my/messages', async (req: Request, res: Response) => {
   }
 });
 
+// ──────────────────────────────────────────────────────────────────────────────
+// PUBLIC: POST /resubmit/:token — applicant uploads replacement files
+//
+// Auth: the secure token IS the credential (no Bearer required).
+// Concurrency safety: the token row is atomically marked fulfilled_at = NOW()
+// with a conditional UPDATE (WHERE fulfilled_at IS NULL). If rowCount = 0 the
+// token was already used and the request is rejected 409.
+// ──────────────────────────────────────────────────────────────────────────────
+router.post(
+  '/resubmit/:token',
+  upload.fields([
+    { name: 'selfiePhoto', maxCount: 1 },
+    { name: 'governmentId', maxCount: 1 },
+  ]),
+  async (req: Request, res: Response) => {
+    const { token } = req.params;
+    if (!token || token.length < 20) {
+      return res.status(400).json({ error: 'Invalid token', errorCode: 'INVALID_TOKEN' });
+    }
+
+    try {
+      // ── 1. Atomically claim the token — prevents double-use ────────────────
+      // The UPDATE only succeeds if fulfilled_at IS NULL and not yet expired.
+      // Any concurrent request will see rowCount = 0 and get a 409.
+      const claimResult = await pool.query(
+        `UPDATE provider_application_resubmissions
+            SET fulfilled_at = NOW()
+          WHERE secure_token = $1
+            AND fulfilled_at IS NULL
+            AND expires_at > NOW()
+          RETURNING id, application_id, request_reasons`,
+        [token]
+      );
+
+      if ((claimResult.rowCount ?? 0) === 0) {
+        // Either token is expired, already used, or doesn't exist
+        const check = await pool.query(
+          `SELECT fulfilled_at, expires_at FROM provider_application_resubmissions WHERE secure_token = $1`,
+          [token]
+        );
+        if (!check.rows.length) {
+          return res.status(404).json({ error: 'Token not found', errorCode: 'TOKEN_NOT_FOUND' });
+        }
+        if (check.rows[0].fulfilled_at) {
+          return res.status(409).json({ error: 'This upload link has already been used.', errorCode: 'TOKEN_ALREADY_USED' });
+        }
+        return res.status(410).json({ error: 'This upload link has expired. Please contact support@petwash.co.il', errorCode: 'TOKEN_EXPIRED' });
+      }
+
+      const resubRow = claimResult.rows[0];
+      const numericAppId: number = resubRow.application_id;
+      const requestReasons: string[] = (() => {
+        try { return JSON.parse(resubRow.request_reasons) || []; } catch { return []; }
+      })();
+
+      // ── 2. Load application record ─────────────────────────────────────────
+      const appRow = await pool.query(
+        `SELECT id, application_id, user_id, email, first_name, last_name,
+                selfie_photo_url, government_id_url, status, resubmission_count
+           FROM provider_applications
+          WHERE id = $1`,
+        [numericAppId]
+      );
+      if (!appRow.rows.length) {
+        return res.status(404).json({ error: 'Application not found', errorCode: 'APPLICATION_NOT_FOUND' });
+      }
+      const app = appRow.rows[0];
+      const applicationId: string = app.application_id;
+      const userId: string = app.user_id;
+
+      if (!['pending_resubmission'].includes(app.status)) {
+        return res.status(400).json({
+          error: `Application is in status '${app.status}' and cannot accept a resubmission.`,
+          errorCode: 'INVALID_STATE_FOR_RESUBMISSION',
+        });
+      }
+
+      // ── 3. Upload replacement files to Firebase Storage ────────────────────
+      const bucket = storage.bucket();
+      const files = req.files as Record<string, Express.Multer.File[]>;
+      const version = (app.resubmission_count || 0) + 1;
+
+      let newSelfieUrl: string = app.selfie_photo_url || '';
+      let newGovIdUrl: string = app.government_id_url || '';
+      let filesUploaded = 0;
+
+      if (files?.selfiePhoto?.[0]) {
+        const f = files.selfiePhoto[0];
+        const ext = f.mimetype.split('/')[1] || 'jpg';
+        const path = `providers/${userId}/kyc/resubmit_v${version}_selfie_${Date.now()}.${ext}`;
+        await bucket.file(path).save(f.buffer, { metadata: { contentType: f.mimetype } });
+        newSelfieUrl = path;
+        filesUploaded++;
+
+        // Record file version in provider_application_files
+        await pool.query(
+          `INSERT INTO provider_application_files
+             (application_id, file_type, storage_path, mime_type, version, uploaded_at)
+           VALUES ($1, 'selfie', $2, $3, $4, NOW())`,
+          [numericAppId, path, f.mimetype, version]
+        ).catch(() => {});
+      }
+
+      if (files?.governmentId?.[0]) {
+        const f = files.governmentId[0];
+        const ext = f.mimetype.split('/')[1] || 'jpg';
+        const path = `providers/${userId}/kyc/resubmit_v${version}_gov_id_${Date.now()}.${ext}`;
+        await bucket.file(path).save(f.buffer, { metadata: { contentType: f.mimetype } });
+        newGovIdUrl = path;
+        filesUploaded++;
+
+        await pool.query(
+          `INSERT INTO provider_application_files
+             (application_id, file_type, storage_path, mime_type, version, uploaded_at)
+           VALUES ($1, 'government_id', $2, $3, $4, NOW())`,
+          [numericAppId, path, f.mimetype, version]
+        ).catch(() => {});
+      }
+
+      if (filesUploaded === 0) {
+        // Rollback token claim — no files means nothing happened
+        await pool.query(
+          `UPDATE provider_application_resubmissions SET fulfilled_at = NULL WHERE id = $1`,
+          [resubRow.id]
+        );
+        return res.status(400).json({ error: 'At least one file (selfiePhoto or governmentId) is required.', errorCode: 'NO_FILES' });
+      }
+
+      // ── 4. Transition application → processing ────────────────────────────
+      await pool.query(
+        `UPDATE provider_applications
+            SET status = 'processing',
+                selfie_photo_url = $1,
+                government_id_url = $2,
+                last_resubmitted_at = NOW(),
+                sub_status = 'resubmission_uploaded'
+          WHERE id = $3`,
+        [newSelfieUrl, newGovIdUrl, numericAppId]
+      );
+
+      // ── 5. Audit + message ────────────────────────────────────────────────
+      writeProviderAudit({
+        applicationId: numericAppId,
+        eventType: 'resubmission_uploaded',
+        actorUserId: userId,
+        actorRole: 'provider',
+        payload: {
+          applicationId,
+          version,
+          filesUploaded,
+          selfieReplaced: !!files?.selfiePhoto?.[0],
+          govIdReplaced: !!files?.governmentId?.[0],
+          requestReasons,
+        },
+      }).catch(() => {});
+
+      emitProviderEvent({
+        applicationId: numericAppId,
+        eventName: 'resubmission_uploaded',
+        severity: 'info',
+        payload: { applicationId, version, filesUploaded },
+      }).catch(() => {});
+
+      logProviderMessage({
+        applicationId: numericAppId,
+        direction: 'inbound',
+        channel: 'web',
+        body: `Applicant uploaded replacement documents (v${version}). Files: ${[files?.selfiePhoto?.[0] && 'selfie', files?.governmentId?.[0] && 'government_id'].filter(Boolean).join(', ')}.`,
+        sentBy: userId,
+        providerVisible: false,
+      }).catch(() => {});
+
+      // ── 6. Send confirmation email to applicant ───────────────────────────
+      if (isSendGridConfigured() && app.email) {
+        sgMail.send({
+          to: app.email,
+          from: { email: 'noreply@petwash.co.il', name: 'PetWash' },
+          subject: `Documents received — Application ${applicationId}`,
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #e5e7eb;border-radius:8px">
+              <h2 style="color:#0f172a">Documents received ✓</h2>
+              <p>Hi ${app.first_name},</p>
+              <p>We received your updated documents and have begun re-verifying your application. You will hear from us within 24 hours.</p>
+              <p style="color:#6b7280;font-size:13px">Application ID: ${applicationId} &bull; Questions? <a href="mailto:support@petwash.co.il">support@petwash.co.il</a></p>
+            </div>
+          `,
+        }).catch(() => {});
+      }
+
+      // ── 7. Respond before triggering async KYC ────────────────────────────
+      res.json({
+        success: true,
+        applicationId,
+        version,
+        status: 'processing',
+        message: 'Documents received. Re-verification has started.',
+      });
+
+      // ── 8. Re-trigger KYC pipeline async (same pattern as initial submit) ──
+      if (newSelfieUrl && newGovIdUrl) {
+        setImmediate(async () => {
+          try {
+            const selfieFileRef = bucket.file(newSelfieUrl);
+            const idFileRef = bucket.file(newGovIdUrl);
+            const [[selfieBuffer], [idBuffer]] = await Promise.all([
+              selfieFileRef.download(),
+              idFileRef.download(),
+            ]);
+
+            const kycResult = await kycMemoryProcessor.processDocument({
+              selfieBuffer,
+              idFrontBuffer: idBuffer,
+              mimeType: 'image/jpeg',
+            });
+
+            const faceScore     = kycResult.faceMatchScore;
+            const livenessPass  = kycResult.livenessResult.passed;
+            const livenessScore = kycResult.livenessResult.confidence;
+            const livenessReasons = kycResult.livenessResult.failureReasons;
+            const ocrFields     = kycResult.ocrFields;
+            const ocrConfidence = kycResult.ocrConfidence;
+            const photoQuality  = kycResult.photoQuality;
+
+            let outcomeStatus: string;
+            let decisionReason: string;
+            const forceReviewFlags: string[] = [];
+
+            if (faceScore >= 78 && livenessPass) {
+              if (!ocrFields.nameDetected)         forceReviewFlags.push('ocr_name_missing');
+              if (!ocrFields.birthDateDetected)    forceReviewFlags.push('ocr_dob_missing');
+              if (!ocrFields.expiryDateDetected)   forceReviewFlags.push('ocr_expiry_missing');
+              if (!ocrFields.idNumberDetected)     forceReviewFlags.push('ocr_id_number_missing');
+              if (ocrConfidence < 50)              forceReviewFlags.push('ocr_confidence_low');
+              if (photoQuality.idQuality === 'poor')     forceReviewFlags.push('id_document_poor_quality');
+              if (photoQuality.selfieQuality === 'poor') forceReviewFlags.push('selfie_poor_quality');
+
+              if (forceReviewFlags.length > 0) {
+                outcomeStatus = 'pending_review';
+                decisionReason = `Resubmission KYC: face ${faceScore.toFixed(1)}/100 + liveness passed but flagged — ${forceReviewFlags.join(', ')}`;
+              } else {
+                outcomeStatus = 'approved';
+                decisionReason = `Resubmission KYC: face ${faceScore.toFixed(1)}/100, liveness ${livenessScore.toFixed(0)}%, OCR complete`;
+              }
+            } else if (faceScore >= 55) {
+              outcomeStatus = 'pending_review';
+              decisionReason = `Resubmission KYC: face ${faceScore.toFixed(1)}/100 (inconclusive)${!livenessPass ? `; liveness failed: ${livenessReasons.join(', ')}` : ''}`;
+            } else {
+              // Repeated poor quality after resubmission → reject
+              outcomeStatus = 'rejected';
+              decisionReason = `Resubmission KYC: face ${faceScore.toFixed(1)}/100 (mismatch)${!livenessPass ? `; liveness failed: ${livenessReasons.join(', ')}` : ''}`;
+            }
+
+            // Update application with KYC outcome
+            await pool.query(
+              `UPDATE provider_applications
+                  SET status = $1,
+                      biometric_match_score = $2,
+                      biometric_status = $3,
+                      kyc_liveness_score = $4,
+                      kyc_ocr_confidence = $5,
+                      kyc_decision_flags = $6::jsonb,
+                      manual_decision_reason = $7,
+                      updated_at = NOW()
+                WHERE id = $8`,
+              [
+                outcomeStatus,
+                faceScore.toString(),
+                livenessPass ? 'verified' : 'failed',
+                Math.round(livenessScore),
+                Math.round(ocrConfidence),
+                JSON.stringify(forceReviewFlags),
+                decisionReason.slice(0, 400),
+                numericAppId,
+              ]
+            );
+
+            writeProviderAudit({
+              applicationId: numericAppId,
+              eventType: `kyc_resubmission_decision_${outcomeStatus}`,
+              actorUserId: 'system-kyc2026',
+              actorRole: 'system',
+              payload: { faceScore, livenessPass, ocrConfidence, flags: forceReviewFlags, reason: decisionReason, version },
+            }).catch(() => {});
+
+            emitProviderEvent({
+              applicationId: numericAppId,
+              eventName: `resubmission_kyc_${outcomeStatus}`,
+              severity: outcomeStatus === 'rejected' ? 'warning' : 'info',
+              payload: { faceScore, livenessPass, outcomeStatus, version },
+            }).catch(() => {});
+
+            if (outcomeStatus === 'pending_review') {
+              const { upsertReviewQueue, logSystemMessage } = await import('../services/providerQueue');
+              upsertReviewQueue({ applicationId: numericAppId, priority: 'high', reviewReasons: forceReviewFlags, dueHours: 24 }).catch(() => {});
+              logSystemMessage({ applicationId: numericAppId, body: `Resubmission v${version} reviewed — pending manual review. Flags: ${forceReviewFlags.join(', ')}`, providerVisible: false }).catch(() => {});
+            } else if (outcomeStatus === 'approved') {
+              const { completeQueueItem } = await import('../services/providerQueue');
+              completeQueueItem(numericAppId).catch(() => {});
+            }
+
+            logger.info(`[KYC2026] Resubmission KYC complete: ${outcomeStatus}`, { applicationId, version, faceScore, livenessPass });
+          } catch (kycErr: any) {
+            logger.error('[KYC2026] Resubmission KYC exception — rescuing to pending_review', { applicationId, error: kycErr?.message });
+            try {
+              await pool.query(
+                `UPDATE provider_applications
+                    SET status = 'pending_review', sub_status = 'resubmission_kyc_exception'
+                  WHERE id = $1 AND status = 'processing'`,
+                [numericAppId]
+              );
+              await pool.query(
+                `INSERT INTO provider_review_queue
+                   (application_id, status, priority, review_reasons, created_at)
+                 VALUES ($1, 'open', 'urgent', $2::jsonb, NOW())
+                 ON CONFLICT (application_id) DO NOTHING`,
+                [numericAppId, JSON.stringify(['resubmission_kyc_exception'])]
+              );
+              emitProviderEvent({ applicationId: numericAppId, eventName: 'resubmission_kyc_exception', severity: 'critical', payload: { error: kycErr?.message?.slice(0, 400) } }).catch(() => {});
+            } catch { /* last-ditch — already logged */ }
+          }
+        });
+      }
+    } catch (err: any) {
+      logger.error('[ProviderOnboarding] Resubmit token upload error', { error: err.message });
+      res.status(500).json({ error: err.message, errorCode: 'RESUBMIT_FAILED' });
+    }
+  }
+);
+
 export default router;
+
