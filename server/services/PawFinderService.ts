@@ -113,10 +113,10 @@ export async function createAndPublishPost(userId: string, input: CreatePostInpu
     `UPDATE paw_finder_posts
      SET moderation_status = $2, moderation_reason = $3, moderation_confidence = $4,
          status = $5, final_publish_checked_at = NOW(),
-         published_at = CASE WHEN $5 = 'published' THEN NOW() ELSE NULL END,
+         published_at = CASE WHEN $6::text = 'published' THEN NOW() ELSE NULL END,
          updated_at = NOW()
      WHERE id = $1`,
-    [postId, modResult.verdict, modResult.moderationReason, modResult.confidence, finalStatus],
+    [postId, modResult.verdict, modResult.moderationReason, modResult.confidence, finalStatus, finalStatus],
   );
 
   await logEvent(postId, `paw_finder_post_${finalStatus}`, userId,
@@ -137,6 +137,7 @@ export async function resolvePost(userId: string, postId: number) {
   if (!post) throw new Error('POST_NOT_FOUND');
   if (post.user_id !== userId) throw new Error('NOT_POST_OWNER');
   if (post.status === 'resolved') throw new Error('ALREADY_RESOLVED');
+  if (!['published', 'matched', 'pending_review'].includes(post.status)) throw new Error('POST_NOT_RESOLVABLE');
 
   await pool.query(
     `UPDATE paw_finder_posts SET status = 'resolved', resolved_at = NOW(), updated_at = NOW() WHERE id = $1`,

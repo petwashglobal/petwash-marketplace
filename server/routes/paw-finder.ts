@@ -231,9 +231,10 @@ router.post('/my/posts/:id/resolve', requireAuth, async (req, res) => {
     res.json(result);
   } catch (err: any) {
     const status =
-      err.message === 'POST_NOT_FOUND'  ? 404 :
-      err.message === 'NOT_POST_OWNER'  ? 403 :
-      err.message === 'ALREADY_RESOLVED'? 409 : 500;
+      err.message === 'POST_NOT_FOUND'      ? 404 :
+      err.message === 'NOT_POST_OWNER'      ? 403 :
+      err.message === 'ALREADY_RESOLVED'    ? 409 :
+      err.message === 'POST_NOT_RESOLVABLE' ? 422 : 500;
     res.status(status).json({ error: err.message || 'resolve_failed' });
   }
 });
