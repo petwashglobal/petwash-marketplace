@@ -10007,8 +10007,9 @@ self.addEventListener('notificationclick', (event) => {
   const marketplaceBookingsRoutes = (await import('./routes/marketplace-bookings')).default;
   app.use('/api/marketplace-bookings', optionalFirebaseToken, apiLimiter, marketplaceBookingsRoutes);
 
-  // Dynamic Pricing Engine - Pet Wash™ quote calculation with multi-pet surcharges
-  app.use('/api/pricing', apiLimiter, pricingApiRoutes);
+  // Dynamic Pricing Engine - extended calculation endpoints (addons, provider-rates, instant-estimate)
+  // Uses a distinct prefix to avoid shadowing the core /api/pricing router registered below.
+  app.use('/api/pricing-engine', apiLimiter, pricingApiRoutes);
 
   // Provider Intake Queue (Google Forms Integration - Management-Assisted Onboarding)
   // MUST be before /api catch-all to allow public access to /stats and /submit endpoints
@@ -10100,7 +10101,6 @@ self.addEventListener('notificationclick', (event) => {
   
   // HR & Employee Management
   app.use('/api/expenses', adminLimiter, expensesRoutes);
-  app.use('/api/config', apiLimiter, expensesRoutes);
   app.use('/api/contractor', validateFirebaseToken, adminLimiter, contractorRoutes);
   app.use('/api/contracts', adminLimiter, contractsRoutes);
   app.use('/api/signatures', apiLimiter, signaturesRoutes);
@@ -10138,78 +10138,121 @@ self.addEventListener('notificationclick', (event) => {
   // SECURITY FIX: Added requireAdmin middleware (was RBAC bypass vulnerability)
   app.get('/api/admin/platform-status', requireAdmin, adminLimiter, async (req: any, res) => {
     try {
-      // Fetch real-time metrics from all platforms
+      const { pool: dbPool } = await import('./db');
+      const t0 = Date.now();
+
+      const metricsResult = await dbPool.query(`
+        SELECT
+          -- Sitter Suite (booking_requests with sitter service type)
+          (SELECT COUNT(*)::int FROM booking_requests
+           WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')
+             AND service_type IN ('dog_sitting','pet_boarding','sitter')) AS sitter_active,
+          (SELECT COALESCE(SUM(total_cents),0)::numeric/100
+           FROM booking_requests
+           WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')
+             AND service_type IN ('dog_sitting','pet_boarding','sitter')) AS sitter_revenue,
+
+          -- Walk My Pet (walk_bookings)
+          (SELECT COUNT(*)::int FROM walk_bookings
+           WHERE DATE(scheduled_date) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')) AS walk_active,
+          (SELECT COALESCE(SUM(total_cost),0)::numeric
+           FROM walk_bookings
+           WHERE DATE(scheduled_date) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')) AS walk_revenue,
+
+          -- PetWash Hub (station bookings)
+          (SELECT COUNT(*)::int FROM bookings
+           WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')) AS wash_active,
+          (SELECT COALESCE(SUM(total),0)::numeric FROM bookings
+           WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')) AS wash_revenue,
+
+          -- PetTrek (pettrek service_type in booking_requests)
+          (SELECT COUNT(*)::int FROM booking_requests
+           WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')
+             AND service_type = 'pettrek') AS pettrek_active,
+          (SELECT COALESCE(SUM(total_cents),0)::numeric/100
+           FROM booking_requests
+           WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')
+             AND service_type = 'pettrek') AS pettrek_revenue,
+
+          -- Paw Finder: providers who had at least one accepted booking today
+          (SELECT COUNT(DISTINCT provider_id)::int FROM booking_requests
+           WHERE DATE(created_at) = CURRENT_DATE AND status = 'accepted') AS finder_active,
+          (SELECT COALESCE(SUM(total_cents),0)::numeric/100 FROM booking_requests
+           WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')
+             AND service_type = 'paw_finder') AS finder_revenue,
+
+          -- Enterprise: users with management/admin roles active today
+          (SELECT COUNT(*)::int FROM users WHERE role IN ('admin','management','staff')
+             AND last_login_at >= CURRENT_DATE) AS enterprise_active,
+          (SELECT COALESCE(SUM(total),0)::numeric FROM bookings
+           WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')) AS enterprise_revenue
+      `);
+
+      const dbLatencyMs = Date.now() - t0;
+      const m = metricsResult.rows[0] as any;
+      const checked = new Date().toISOString();
+
       const platforms = [
         {
-          platform: "sitter-suite",
-          displayName: "⁦The Sitter Suite™⁩",
-          status: "operational",
+          platform: 'sitter-suite',
+          displayName: '⁦The Sitter Suite™⁩',
+          status: 'operational',
           uptime: 99.98,
-          activeUsers: Math.floor(Math.random() * 300) + 200,
-          todayRevenue: Math.floor(Math.random() * 10000) + 15000,
-          avgResponseTime: Math.floor(Math.random() * 50) + 120,
-          lastChecked: new Date().toISOString(),
+          activeUsers: m.sitter_active ?? 0,
+          todayRevenue: parseFloat(m.sitter_revenue ?? '0'),
+          avgResponseTime: dbLatencyMs,
+          lastChecked: checked,
         },
         {
-          platform: "walk-my-pet",
-          displayName: "⁦Walk My Pet™⁩",
-          status: "operational",
+          platform: 'walk-my-pet',
+          displayName: '⁦Walk My Pet™⁩',
+          status: 'operational',
           uptime: 99.95,
-          activeUsers: Math.floor(Math.random() * 200) + 150,
-          todayRevenue: Math.floor(Math.random() * 8000) + 10000,
-          avgResponseTime: Math.floor(Math.random() * 50) + 130,
-          lastChecked: new Date().toISOString(),
+          activeUsers: m.walk_active ?? 0,
+          todayRevenue: parseFloat(m.walk_revenue ?? '0'),
+          avgResponseTime: dbLatencyMs,
+          lastChecked: checked,
         },
         {
-          platform: "pettrek",
-          displayName: "⁦PetTrek™⁩",
-          status: "operational",
+          platform: 'pettrek',
+          displayName: '⁦PetTrek™⁩',
+          status: 'operational',
           uptime: 99.92,
-          activeUsers: Math.floor(Math.random() * 180) + 120,
-          todayRevenue: Math.floor(Math.random() * 15000) + 20000,
-          avgResponseTime: Math.floor(Math.random() * 50) + 140,
-          lastChecked: new Date().toISOString(),
+          activeUsers: m.pettrek_active ?? 0,
+          todayRevenue: parseFloat(m.pettrek_revenue ?? '0'),
+          avgResponseTime: dbLatencyMs,
+          lastChecked: checked,
         },
         {
-          platform: "pet-wash-hub",
-          displayName: "Pet ⁦Wash Hub™⁩",
-          status: "operational",
+          platform: 'pet-wash-hub',
+          displayName: 'Pet ⁦Wash Hub™⁩',
+          status: 'operational',
           uptime: 99.99,
-          activeUsers: Math.floor(Math.random() * 400) + 400,
-          todayRevenue: Math.floor(Math.random() * 20000) + 40000,
-          avgResponseTime: Math.floor(Math.random() * 30) + 80,
-          lastChecked: new Date().toISOString(),
+          activeUsers: m.wash_active ?? 0,
+          todayRevenue: parseFloat(m.wash_revenue ?? '0'),
+          avgResponseTime: dbLatencyMs,
+          lastChecked: checked,
         },
         {
-          platform: "paw-finder",
-          displayName: "⁦Paw Finder™⁩",
-          status: "operational",
+          platform: 'paw-finder',
+          displayName: '⁦Paw Finder™⁩',
+          status: 'operational',
           uptime: 99.97,
-          activeUsers: Math.floor(Math.random() * 250) + 250,
-          todayRevenue: Math.floor(Math.random() * 5000) + 6000,
-          avgResponseTime: Math.floor(Math.random() * 40) + 120,
-          lastChecked: new Date().toISOString(),
+          activeUsers: m.finder_active ?? 0,
+          todayRevenue: parseFloat(m.finder_revenue ?? '0'),
+          avgResponseTime: dbLatencyMs,
+          lastChecked: checked,
         },
-        // DISABLED: PlushLab - Pet Avatar Creator (frozen for now, keep for future use)
-        // {
-        //   platform: "plush-lab",
-        //   displayName: "⁦The Plush Lab™⁩",
-        //   status: "operational",
-        //   uptime: 99.94,
-        //   activeUsers: Math.floor(Math.random() * 200) + 150,
-        //   todayRevenue: Math.floor(Math.random() * 4000) + 5000,
-        //   avgResponseTime: Math.floor(Math.random() * 60) + 150,
-        //   lastChecked: new Date().toISOString(),
-        // },
+        // DISABLED: PlushLab - Pet Avatar Creator (frozen for future use)
         {
-          platform: "enterprise",
-          displayName: "Enterprise Platform",
-          status: "operational",
+          platform: 'enterprise',
+          displayName: 'Enterprise Platform',
+          status: 'operational',
           uptime: 100.0,
-          activeUsers: Math.floor(Math.random() * 50) + 30,
-          todayRevenue: Math.floor(Math.random() * 50000) + 100000,
-          avgResponseTime: Math.floor(Math.random() * 20) + 70,
-          lastChecked: new Date().toISOString(),
+          activeUsers: m.enterprise_active ?? 0,
+          todayRevenue: parseFloat(m.enterprise_revenue ?? '0'),
+          avgResponseTime: dbLatencyMs,
+          lastChecked: checked,
         },
       ];
 

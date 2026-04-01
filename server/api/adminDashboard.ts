@@ -41,11 +41,11 @@ router.get('/metrics', async (req, res) => {
     // STEP 2: Get K9000 station metrics
     const stationsResult = await db.execute(sql`
       SELECT 
-        COUNT(*) FILTER (WHERE active = true AND status = 'online') as active_count,
-        COUNT(*) FILTER (WHERE active = true) as total_count,
-        COUNT(*) FILTER (WHERE status = 'error') as error_count,
-        SUM(transaction_count) as total_washes
-      FROM k9000_stations
+        COUNT(*) FILTER (WHERE is_active = true AND iot_status = 'online') AS active_count,
+        COUNT(*) FILTER (WHERE is_active = true) AS total_count,
+        COUNT(*) FILTER (WHERE iot_status = 'error') AS error_count,
+        COALESCE(SUM(total_washes), 0) AS total_washes
+      FROM stations
     `);
     
     const stationsData = stationsResult.rows[0] as any;
@@ -238,10 +238,10 @@ router.get('/platform-health', async (req, res) => {
     try {
       const result = await db.execute(sql`
         SELECT 
-          COUNT(*) FILTER (WHERE status = 'online') as online,
-          COUNT(*) as total
-        FROM k9000_stations
-        WHERE active = true
+          COUNT(*) FILTER (WHERE iot_status = 'online') AS online,
+          COUNT(*) AS total
+        FROM stations
+        WHERE is_active = true
       `);
       const data = result.rows[0] as any;
       indicators.stations = data.total > 0 && (data.online / data.total) >= 0.5;

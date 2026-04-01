@@ -92,26 +92,32 @@ async function findBestProvider(service: string, location?: { lat: number; lng: 
 
     if (service === 'k9000') {
       const rows = await pool.query(`
-        SELECT station_id  AS id,
-               location    AS name,
-               4.8         AS rating,
-               0           AS review_count,
-               NULL        AS image
-        FROM k9000_stations
+        SELECT id::text,
+               name,
+               COALESCE(ranking_score, 0)  AS ranking_score,
+               COALESCE(total_washes, 0)   AS total_washes,
+               photo_urls
+        FROM stations
         WHERE is_active = true
-        ORDER BY station_id ASC
+          AND status NOT IN ('offline','maintenance')
+        ORDER BY ranking_score DESC NULLS LAST, total_washes DESC NULLS LAST
         LIMIT 1
       `);
       const r = rows.rows[0];
       if (!r) return null;
+      const rawRanking = parseFloat(r.ranking_score ?? '0');
+      const rating = rawRanking > 0
+        ? Math.min(5, Math.max(1, parseFloat((rawRanking / 20).toFixed(1))))
+        : 4.5;
+      const photos: string[] = Array.isArray(r.photo_urls) ? r.photo_urls : [];
       return {
         id:          r.id,
         name:        `K9000 — ${r.name}`,
-        rating:      4.8,
-        reviewCount: parseInt(r.review_count ?? '0'),
+        rating,
+        reviewCount: parseInt(r.total_washes ?? '0'),
         distance:    '— km',
         etaMinutes:  5,
-        image:       '/brand/petwash-logo-official.png',
+        image:       photos[0] || '/brand/petwash-logo-official.png',
         service:     'K9000 Self-Wash',
         tagline:     'Smart wash station · open now',
       };

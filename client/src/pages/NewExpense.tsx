@@ -47,7 +47,7 @@ export default function NewExpense() {
   } | null>(null);
 
   const { data: taxRates } = useQuery({
-    queryKey: ['/api/config/tax-rates'],
+    queryKey: ['/api/expenses/tax-rates'],
   });
 
   const form = useForm<ExpenseFormValues>({

@@ -25,6 +25,7 @@ import {
 import { optionalFirebaseToken } from '../middleware/firebase-auth';
 import { optionalEmployeeProfile } from '../middleware/roleAuth';
 import { pool } from '../db';
+import { db as firestoreDb } from '../lib/firebase-admin';
 
 const router: Router = express.Router();
 
@@ -564,22 +565,50 @@ router.get('/planner', optionalFirebaseToken, optionalEmployeeProfile, async (re
     
     // EMPLOYEE STATION VIEW (Manager/Support)
     if (userType === 'employee_station') {
-      // Default to Tel Aviv for MVP (TODO: fetch from employee.stations)
-      const stationLocation = (location as string) || 'Tel Aviv';
-      
+      // Resolve station location: prefer explicit query param, then pull from Firestore employee doc
+      let stationLocation = (location as string) || '';
+      let assignedStationId = 'station_default';
+      let assignedStationName = '';
+
+      const uid = req.firebaseUser?.uid;
+      if (!stationLocation && uid) {
+        try {
+          const empDoc = await firestoreDb.collection('employees').doc(uid).get();
+          const stationIds: string[] = empDoc.data()?.stations || [];
+          if (stationIds.length > 0) {
+            // Resolve the first assigned station's city from the DB
+            const stationRow = await pool.query<{ id: string; name: string; city: string | null }>(
+              `SELECT s.id, s.name, l.city
+               FROM stations s
+               LEFT JOIN locations l ON l.id = s.location_id
+               WHERE s.id = $1
+               LIMIT 1`,
+              [stationIds[0]]
+            );
+            if (stationRow.rows.length > 0) {
+              assignedStationId = stationRow.rows[0].id;
+              assignedStationName = stationRow.rows[0].name;
+              stationLocation = stationRow.rows[0].city || '';
+            }
+          }
+        } catch (empErr: any) {
+          logger.warn('[Weather] Could not resolve employee station', { uid, error: empErr.message });
+        }
+      }
+      if (!stationLocation) stationLocation = 'Tel Aviv';
+
       // Fetch REAL weather for assigned station
       const weatherData = await fetch7DayForecast(stationLocation, language);
-      
-      // TODO: Fetch assigned stations from employee profile (req.employee.stations)
+
       const stationView: EmployeeStationView = {
         success: true,
-        employeeId: req.firebaseUser?.uid || 'unknown',
+        employeeId: uid || 'unknown',
         employeeName: req.employee?.fullName || req.firebaseUser?.email || 'Employee',
         role: userRole || 'manager',
         assignedStations: [
           {
-            stationId: 'station_default',
-            stationName: weatherData.location.city,
+            stationId: assignedStationId,
+            stationName: assignedStationName || weatherData.location.city,
             location: weatherData.location,
             forecast: weatherData.forecast,
             bestWashDay: weatherData.bestWashDay,
@@ -592,7 +621,7 @@ router.get('/planner', optionalFirebaseToken, optionalEmployeeProfile, async (re
                 date: day.date,
               })),
           }
-        ],  // REAL weather data for stations
+        ],
         dailySummary: getUIText('dailySummary', language),
         locale,
         language,
@@ -604,9 +633,23 @@ router.get('/planner', optionalFirebaseToken, optionalEmployeeProfile, async (re
     
     // EMPLOYEE EXECUTIVE VIEW (Admin/Ops)
     if (userType === 'employee_executive') {
-      // MVP: Show weather for main franchise locations
-      const mainLocations = ['Tel Aviv', 'Jerusalem', 'Haifa'];  // TODO: Fetch from franchise table
-      
+      // Fetch franchise cities from DB (distinct cities in the locations table linked to stations)
+      let mainLocations: string[] = [];
+      try {
+        const citiesResult = await pool.query<{ city: string }>(
+          `SELECT DISTINCT l.city
+           FROM locations l
+           INNER JOIN stations s ON s.location_id = l.id
+           WHERE l.city IS NOT NULL AND l.city <> '' AND s.is_active = true
+           ORDER BY l.city
+           LIMIT 10`
+        );
+        mainLocations = citiesResult.rows.map(r => r.city);
+      } catch (cityErr: any) {
+        logger.warn('[Weather] Could not fetch franchise cities from DB, using defaults', { error: cityErr.message });
+      }
+      if (mainLocations.length === 0) mainLocations = ['Tel Aviv', 'Jerusalem', 'Haifa'];
+
       // Fetch REAL weather for all locations in parallel
       const locationWeatherData = await Promise.all(
         mainLocations.map(loc => fetch7DayForecast(loc, language))

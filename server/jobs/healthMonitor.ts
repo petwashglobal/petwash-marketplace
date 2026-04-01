@@ -27,43 +27,52 @@ interface StationStatus {
 }
 
 /**
- * Check if a single K9000 station is online and responsive
+ * Check if a station is healthy based on its last IoT heartbeat.
+ * A station is considered online if its last_heartbeat was within the past 10 minutes
+ * and its iot_status is not 'error'.
  */
 async function checkStationHealth(station: any): Promise<StationStatus> {
   const startTime = Date.now();
-  
+
   try {
-    const response = await axios.get(`${station.endpoint}/status`, {
-      timeout: 5000,
-      headers: {
-        'User-Agent': 'PetWash-HealthMonitor/1.0',
-      },
-    });
-    
+    const lastHeartbeat: Date | null = station.last_heartbeat ? new Date(station.last_heartbeat) : null;
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const heartbeatFresh = lastHeartbeat !== null && lastHeartbeat >= tenMinutesAgo;
+    const iotOk = station.iot_status !== 'error';
+    const ok = heartbeatFresh && iotOk;
     const responseTime = Date.now() - startTime;
-    
-    if (response.status === 200) {
+
+    if (!ok) {
+      const reason = !heartbeatFresh
+        ? `No heartbeat since ${lastHeartbeat?.toISOString() ?? 'never'}`
+        : `IoT status: ${station.iot_status}`;
+      logger.warn('[HealthMonitor] Station unhealthy', { stationId: station.id, reason });
       return {
         id: station.id,
-        endpoint: station.endpoint,
+        endpoint: station.endpoint || station.id,
         stationName: station.stationName || `Station ${station.id}`,
         franchiseId: station.franchiseId,
-        ok: true,
-        responseTime,
+        ok: false,
+        lastError: reason,
       };
-    } else {
-      throw new Error(`Unexpected status: ${response.status}`);
     }
-  } catch (error: any) {
-    logger.error('[HealthMonitor] Station check failed', {
-      stationId: station.id,
-      endpoint: station.endpoint,
-      error: error.message,
-    });
-    
+
     return {
       id: station.id,
-      endpoint: station.endpoint,
+      endpoint: station.endpoint || station.id,
+      stationName: station.stationName || `Station ${station.id}`,
+      franchiseId: station.franchiseId,
+      ok: true,
+      responseTime,
+    };
+  } catch (error: any) {
+    logger.error('[HealthMonitor] Station health evaluation failed', {
+      stationId: station.id,
+      error: error.message,
+    });
+    return {
+      id: station.id,
+      endpoint: station.endpoint || station.id,
       stationName: station.stationName || `Station ${station.id}`,
       franchiseId: station.franchiseId,
       ok: false,
@@ -166,17 +175,24 @@ export async function runHealthCheck() {
   try {
     logger.info('[HealthMonitor] Starting health check scan');
     
-    // Fetch all active K9000 stations from database
-    const stations = await db.execute(sql`
-      SELECT id, endpoint, station_name as "stationName", franchise_id as "franchiseId", active
-      FROM k9000_stations 
-      WHERE active = true
+    // Fetch all active stations from database
+    const stationsResult = await db.execute(sql`
+      SELECT id::text,
+             name              AS "stationName",
+             iot_device_id     AS "endpoint",
+             franchise_id::text AS "franchiseId",
+             last_heartbeat,
+             iot_status
+      FROM stations
+      WHERE is_active = true
     `);
     
-    if (!stations.rows || stations.rows.length === 0) {
+    if (!stationsResult.rows || stationsResult.rows.length === 0) {
       logger.warn('[HealthMonitor] No active stations found');
       return;
     }
+
+    const stations = stationsResult;
     
     logger.info('[HealthMonitor] Checking health for stations', {
       count: stations.rows.length,
@@ -213,12 +229,13 @@ export async function runHealthCheck() {
       // Update station status in database
       for (const failed of failedStations) {
         await db.execute(sql`
-          UPDATE k9000_stations 
-          SET 
-            last_error = ${failed.lastError || 'Connection timeout'},
-            last_health_check = NOW(),
-            status = 'error'
-          WHERE id = ${failed.id}
+          UPDATE stations
+          SET
+            iot_status      = 'error',
+            equipment_status = ${failed.lastError || 'Connection timeout'},
+            last_heartbeat  = NOW(),
+            updated_at      = NOW()
+          WHERE id::text = ${failed.id}
         `);
       }
     }
@@ -226,13 +243,13 @@ export async function runHealthCheck() {
     // Update healthy stations
     for (const healthy of healthyStations) {
       await db.execute(sql`
-        UPDATE k9000_stations 
-        SET 
-          last_health_check = NOW(),
-          last_response_time_ms = ${healthy.responseTime},
-          status = 'online',
-          last_error = NULL
-        WHERE id = ${healthy.id}
+        UPDATE stations
+        SET
+          iot_status      = 'online',
+          equipment_status = NULL,
+          last_heartbeat  = NOW(),
+          updated_at      = NOW()
+        WHERE id::text = ${healthy.id}
       `);
     }
     
