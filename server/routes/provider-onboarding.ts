@@ -1207,32 +1207,61 @@ router.get('/admin/applications/pending-review', requireSupport, async (req: Req
   try {
     const limit = parseInt(req.query.limit as string) || 100;
 
-    const applications = await db
-      .select({
-        id: providerApplications.id,
-        applicationId: providerApplications.applicationId,
-        firstName: providerApplications.firstName,
-        lastName: providerApplications.lastName,
-        email: providerApplications.email,
-        phoneNumber: providerApplications.phoneNumber,
-        providerType: providerApplications.providerType,
-        city: providerApplications.city,
-        status: providerApplications.status,
-        biometricMatchScore: providerApplications.biometricMatchScore,
-        biometricFailureReason: providerApplications.biometricFailureReason,
-        kycDocumentType: providerApplications.kycDocumentType,
-        kycIdLastFour: providerApplications.kycIdLastFour,
-        kycOcrConfidence: providerApplications.kycOcrConfidence,
-        kycLivenessScore: providerApplications.kycLivenessScore,
-        kycDecisionFlags: providerApplications.kycDecisionFlags,
-        kycFraudRiskLevel: providerApplications.kycFraudRiskLevel,
-        submittedAt: providerApplications.submittedAt,
-        createdAt: providerApplications.createdAt,
-      })
-      .from(providerApplications)
-      .where(eq(providerApplications.status, 'pending_review'))
-      .orderBy(desc(providerApplications.createdAt))
-      .limit(limit);
+    const { rows } = await pool.query<{
+      id: number; application_id: string; first_name: string; last_name: string;
+      email: string; phone_number: string; provider_type: string; city: string;
+      status: string; biometric_match_score: string | null; biometric_failure_reason: string | null;
+      kyc_document_type: string | null; kyc_id_last_four: string | null;
+      kyc_ocr_confidence: string | null; kyc_liveness_score: string | null;
+      kyc_decision_flags: string | null; kyc_fraud_risk_level: string | null;
+      submitted_at: string | null; created_at: string;
+      queue_priority: string | null; queue_unread: number | null; queue_assigned_to: string | null; queue_status: string | null;
+    }>(
+      `SELECT pa.id, pa.application_id, pa.first_name, pa.last_name, pa.email,
+              pa.phone_number, pa.provider_type, pa.city, pa.status,
+              pa.biometric_match_score, pa.biometric_failure_reason,
+              pa.kyc_document_type, pa.kyc_id_last_four, pa.kyc_ocr_confidence,
+              pa.kyc_liveness_score, pa.kyc_decision_flags, pa.kyc_fraud_risk_level,
+              pa.submitted_at, pa.created_at,
+              q.priority  AS queue_priority,
+              q.unread_count AS queue_unread,
+              q.assigned_to  AS queue_assigned_to,
+              q.status       AS queue_status
+         FROM provider_applications pa
+         LEFT JOIN provider_review_queue q ON q.application_id = pa.id
+        WHERE pa.status = 'pending_review'
+        ORDER BY
+          CASE q.priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 ELSE 4 END ASC,
+          pa.created_at DESC
+        LIMIT $1`,
+      [limit]
+    );
+
+    const applications = rows.map(r => ({
+      id: r.id,
+      applicationId: r.application_id,
+      firstName: r.first_name,
+      lastName: r.last_name,
+      email: r.email,
+      phoneNumber: r.phone_number,
+      providerType: r.provider_type,
+      city: r.city,
+      status: r.status,
+      biometricMatchScore: r.biometric_match_score,
+      biometricFailureReason: r.biometric_failure_reason,
+      kycDocumentType: r.kyc_document_type,
+      kycIdLastFour: r.kyc_id_last_four,
+      kycOcrConfidence: r.kyc_ocr_confidence,
+      kycLivenessScore: r.kyc_liveness_score,
+      kycDecisionFlags: r.kyc_decision_flags,
+      kycFraudRiskLevel: r.kyc_fraud_risk_level,
+      submittedAt: r.submitted_at,
+      createdAt: r.created_at,
+      queuePriority: r.queue_priority ?? 'normal',
+      queueUnreadCount: r.queue_unread ?? 0,
+      queueAssignedTo: r.queue_assigned_to ?? null,
+      queueStatus: r.queue_status ?? null,
+    }));
 
     res.json({ applications, count: applications.length });
   } catch (error: any) {
@@ -1284,8 +1313,28 @@ router.get('/admin/applications/:applicationId', requireSupport, async (req: Req
       try { kycDetail = JSON.parse(app.backgroundCheckNotes); } catch { /* ignore */ }
     }
 
+    // Fetch queue metadata (priority, assigned_to, unread_count) from the review queue
+    let queueMeta: { priority: string; assignedTo: string | null; unreadCount: number; queueStatus: string | null } = {
+      priority: 'normal', assignedTo: null, unreadCount: 0, queueStatus: null,
+    };
+    try {
+      const qRes = await pool.query(
+        `SELECT priority, assigned_to, unread_count, status FROM provider_review_queue WHERE application_id = $1 LIMIT 1`,
+        [app.id]
+      );
+      if (qRes.rows.length > 0) {
+        const q = qRes.rows[0];
+        queueMeta = {
+          priority: q.priority ?? 'normal',
+          assignedTo: q.assigned_to ?? null,
+          unreadCount: q.unread_count ?? 0,
+          queueStatus: q.status ?? null,
+        };
+      }
+    } catch { /* non-fatal */ }
+
     res.json({
-      application: { ...app, selfieSignedUrl, idSignedUrl },
+      application: { ...app, selfieSignedUrl, idSignedUrl, ...queueMeta },
       kycDetail,
     });
   } catch (error: any) {

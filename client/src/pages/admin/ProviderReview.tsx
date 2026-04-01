@@ -363,6 +363,14 @@ export default function ProviderReview() {
                 {kycPendingList.slice(0, 5).map((app: any) => {
                   const flags: string[] = app.kycDecisionFlags ? JSON.parse(app.kycDecisionFlags) : [];
                   const fraudRisk = app.kycFraudRiskLevel;
+                  const priority: string = app.queuePriority ?? 'normal';
+                  const unread: number = app.queueUnreadCount ?? 0;
+                  const priorityColor: Record<string, string> = {
+                    urgent: 'bg-red-600 text-white',
+                    high:   'bg-orange-500 text-white',
+                    normal: 'bg-slate-200 text-slate-700',
+                    low:    'bg-slate-100 text-slate-500',
+                  };
                   return (
                     <Link key={app.applicationId} href={`/admin/providers/review/${app.applicationId}`}>
                       <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-amber-200 rounded-lg px-4 py-3 hover:shadow-sm cursor-pointer transition-shadow">
@@ -376,6 +384,11 @@ export default function ProviderReview() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          {priority !== 'normal' && (
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded uppercase ${priorityColor[priority] ?? ''}`}>
+                              {priority}
+                            </span>
+                          )}
                           {fraudRisk && fraudRisk !== 'low' && (
                             <Badge variant="destructive" className="text-xs uppercase">{fraudRisk}</Badge>
                           )}
@@ -383,6 +396,11 @@ export default function ProviderReview() {
                             <Badge variant="outline" className="text-xs border-amber-400 text-amber-800">
                               {flags.length} {isHebrew ? 'דגלים' : 'flags'}
                             </Badge>
+                          )}
+                          {unread > 0 && (
+                            <span className="bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                              {unread}
+                            </span>
                           )}
                           <span className="text-sm font-semibold text-slate-700">
                             {parseFloat(app.biometricMatchScore || '0').toFixed(0)}/100

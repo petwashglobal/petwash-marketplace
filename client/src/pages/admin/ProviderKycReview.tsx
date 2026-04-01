@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useParams, useLocation } from 'wouter';
+import { getAuth } from 'firebase/auth';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -36,6 +37,7 @@ import {
   Download,
   X,
   Maximize2,
+  UserCheck,
 } from 'lucide-react';
 
 interface KycApplication {
@@ -63,6 +65,10 @@ interface KycApplication {
   reviewedBy: string | null;
   reviewedAt: string | null;
   internalId?: number;
+  priority?: string;
+  assignedTo?: string | null;
+  unreadCount?: number;
+  queueStatus?: string | null;
 }
 
 interface KycDetail {
@@ -238,6 +244,17 @@ export default function ProviderKycReview() {
     onError: (err: any) => toast({ title: 'Send failed', description: err.message, variant: 'destructive' }),
   });
 
+  const assignMutation = useMutation({
+    mutationFn: (assignedTo: string) =>
+      apiRequest('POST', `/api/provider-onboarding/admin/applications/${numericId}/assign`, { assignedTo }).then(r => r.json()),
+    onSuccess: () => {
+      toast({ title: 'Assigned', description: 'Review assigned to you' });
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-onboarding/admin/applications', applicationId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-onboarding/admin/applications/pending-review'] });
+    },
+    onError: (err: any) => toast({ title: 'Assign failed', description: err.message, variant: 'destructive' }),
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -264,6 +281,13 @@ export default function ProviderKycReview() {
   const isPendingResubmission = app.status === 'pending_resubmission';
   const canDecide = !isDecided;
   const canResubmit = ['pending_review', 'pending_resubmission'].includes(app.status);
+  const queuePriority = app.priority ?? 'normal';
+  const PRIORITY_STYLE: Record<string, string> = {
+    urgent: 'bg-red-600 text-white',
+    high:   'bg-orange-500 text-white',
+    normal: 'bg-slate-100 text-slate-600',
+    low:    'bg-slate-100 text-slate-400',
+  };
   const faceScore = parseFloat(app.biometricMatchScore || '0');
   const livenessScore = parseFloat(app.kycLivenessScore || '0');
   const ocrConfidence = parseFloat(app.kycOcrConfidence || '0');
@@ -334,6 +358,35 @@ export default function ProviderKycReview() {
           <ArrowLeft className="h-4 w-4 mr-2" /> Back to queue
         </Button>
         <div className="flex items-center gap-2">
+          {/* Priority badge */}
+          <span className={`text-xs font-bold px-2 py-0.5 rounded uppercase ${PRIORITY_STYLE[queuePriority] ?? PRIORITY_STYLE.normal}`}>
+            {queuePriority}
+          </span>
+
+          {/* Assign-to-me button */}
+          {!app.assignedTo && numericId && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              disabled={assignMutation.isPending}
+              onClick={() => {
+                const currentUser = getAuth().currentUser;
+                const identity = currentUser?.email ?? currentUser?.uid ?? 'admin';
+                assignMutation.mutate(identity);
+              }}
+            >
+              <UserCheck className="h-3.5 w-3.5 mr-1" />
+              Assign to me
+            </Button>
+          )}
+          {app.assignedTo && (
+            <Badge variant="outline" className="text-xs border-slate-300 text-slate-600 gap-1">
+              <UserCheck className="h-3 w-3" />
+              {app.assignedTo}
+            </Badge>
+          )}
+
           {isPendingResubmission && (
             <Badge variant="outline" className="border-orange-400 text-orange-700 bg-orange-50">
               RESUBMISSION PENDING
