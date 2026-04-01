@@ -711,20 +711,17 @@ router.post("/:bookingId/cancel", requireAuth, bookingLimiter, async (req, res) 
       const customerId: string | null = booking.userId ?? booking.customerId ?? null;
       if (customerId) {
         try {
+          // Single atomic UPSERT: create wallet if missing AND credit in one statement.
+          // Eliminates the race between INSERT+UPDATE that could lose a credit on failure.
           await pool.query(
-            `INSERT INTO wallet_accounts (wallet_id, user_id, cash_wallet_balance_cents)
-             VALUES ($1, $2, 0)
-             ON CONFLICT (wallet_id) DO NOTHING`,
-            [`WALLET-${customerId.slice(0, 20)}`, customerId],
+            `INSERT INTO wallet_accounts (wallet_id, user_id, cash_wallet_balance_cents, updated_at)
+             VALUES ($1, $2, $3, NOW())
+             ON CONFLICT (wallet_id) DO UPDATE
+               SET cash_wallet_balance_cents = wallet_accounts.cash_wallet_balance_cents + EXCLUDED.cash_wallet_balance_cents,
+                   updated_at = NOW()`,
+            [`WALLET-${customerId.slice(0, 20)}`, customerId, netRefundCents],
           );
-          await pool.query(
-            `UPDATE wallet_accounts
-             SET cash_wallet_balance_cents = cash_wallet_balance_cents + $1,
-                 updated_at = NOW()
-             WHERE user_id = $2`,
-            [netRefundCents, customerId],
-          );
-          logger.info("[Bookings] Wallet refund credited", { customerId, netRefundCents, bookingId });
+          logger.info("[Bookings] Wallet refund credited (atomic UPSERT)", { customerId, netRefundCents, bookingId });
         } catch (walletErr: any) {
           logger.error("[Bookings] Wallet credit failed", { bookingId, error: walletErr.message });
         }

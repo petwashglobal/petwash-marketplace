@@ -3,6 +3,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { auth, db as firestore } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import jwt from 'jsonwebtoken';
+import { pool } from '../db';
 
 const router = Router();
 
@@ -129,6 +130,20 @@ router.post('/google', async (req: Request, res: Response) => {
         authProvider: 'google-mobile',
       });
       logger.info(`[Mobile Auth] New Pet Wash user registered: ${email} (New tier)`);
+
+      // Auto-create PostgreSQL wallet — idempotent UPSERT so re-registration never duplicates
+      try {
+        const walletId = `WALLET-${uid.slice(0, 20)}`;
+        await pool.query(
+          `INSERT INTO wallet_accounts (wallet_id, user_id, cash_wallet_balance_cents, updated_at)
+           VALUES ($1, $2, 0, NOW())
+           ON CONFLICT (wallet_id) DO NOTHING`,
+          [walletId, uid],
+        );
+        logger.info(`[Mobile Auth] Wallet auto-created for new user ${uid}`);
+      } catch (walletErr: any) {
+        logger.warn('[Mobile Auth] Wallet auto-creation failed (non-blocking)', { error: walletErr.message });
+      }
     } else {
       // Existing user - update last login
       await userRef.update({

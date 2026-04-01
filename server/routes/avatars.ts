@@ -26,13 +26,32 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB max
   },
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    // Explicit allowlist — rejects SVG (XSS vector), TIFF, BMP, ICO, etc.
+    const ALLOWED_MIME = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']);
+    if (ALLOWED_MIME.has(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'));
+      cb(new Error(`File type '${file.mimetype}' is not allowed. Upload JPEG, PNG, WebP or GIF.`));
     }
   },
 });
+
+/**
+ * Wraps a multer upload middleware so that file-type/size rejections return
+ * HTTP 400 instead of falling through to the global 500 error handler.
+ */
+function runUpload(
+  uploadMiddleware: ReturnType<typeof upload.single>,
+): (req: any, res: any, next: any) => void {
+  return (req, res, next) => {
+    uploadMiddleware(req, res, (err: any) => {
+      if (!err) return next();
+      const isMulterError = err.code && err.code.startsWith('LIMIT_');
+      const status = isMulterError ? 413 : 400;
+      return res.status(status).json({ error: 'INVALID_FILE', message: err.message });
+    });
+  };
+}
 
 // ============================================
 // THE PLUSH LAB - PET AVATAR ROUTES
@@ -105,7 +124,7 @@ router.get('/:avatarId', validateFirebaseToken, async (req, res) => {
 });
 
 // GUEST ENDPOINT: Create avatar preview without authentication or persistence
-router.post('/guest', upload.single('photo'), async (req, res) => {
+router.post('/guest', runUpload(upload.single('photo')), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'Photo is required' });
@@ -304,7 +323,7 @@ router.post('/generate-from-preset', async (req, res) => {
 });
 
 // Create new avatar with photo upload (AUTHENTICATED)
-router.post('/', validateFirebaseToken, upload.single('photo'), async (req, res) => {
+router.post('/', validateFirebaseToken, runUpload(upload.single('photo')), async (req, res) => {
   try {
     const uid = req.firebaseUser!.uid;
     

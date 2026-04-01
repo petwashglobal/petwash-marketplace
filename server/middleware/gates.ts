@@ -60,6 +60,16 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 export function requireRole(...roles: string[]) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
+      // DEV-ONLY: Playwright / curl test bypass — x-test-user-role must be in the required set
+      if (process.env.NODE_ENV === 'development' && req.headers['x-test-user-bypass'] === 'playwright-test') {
+        const testRole = ((req.headers['x-test-user-role'] as string) || 'customer').toLowerCase();
+        if (roles.includes(testRole)) {
+          logger.debug(`[requireRole] DEV bypass: role='${testRole}' accepted for [${roles.join(',')}]`);
+          return next();
+        }
+        return res.status(403).json({ error: 'ROLE_REQUIRED', requiredRoles: roles, userRole: testRole });
+      }
+
       // Super admins bypass all role checks regardless of Firebase claims
       const reqEmail = ((req as any).firebaseUser?.email || '').toLowerCase();
       if (reqEmail && SUPER_ADMINS.includes(reqEmail)) {
@@ -202,6 +212,18 @@ export async function requireProviderActive(req: Request, res: Response, next: N
  */
 export async function requireStaffApproved(req: Request, res: Response, next: NextFunction) {
   try {
+    // DEV-ONLY bypass
+    if (process.env.NODE_ENV === 'development' && req.headers['x-test-user-bypass'] === 'playwright-test') {
+      const testRole   = ((req.headers['x-test-user-role']   as string) || 'customer').toLowerCase();
+      const testStatus = ((req.headers['x-test-user-status'] as string) || 'active').toLowerCase();
+      const staffRoles = ['staff', 'management', 'admin'];
+      if (staffRoles.includes(testRole) && testStatus === 'staff_active') {
+        logger.debug(`[requireStaffApproved] DEV bypass: role=${testRole} status=${testStatus}`);
+        return next();
+      }
+      return res.status(403).json({ error: 'STAFF_NOT_APPROVED' });
+    }
+
     // Super admins bypass staff approval requirement
     const reqEmail = ((req as any).firebaseUser?.email || '').toLowerCase();
     if (reqEmail && SUPER_ADMINS.includes(reqEmail)) {
@@ -246,6 +268,12 @@ export async function requireStaffApproved(req: Request, res: Response, next: Ne
  */
 export async function requireMfaEnrolled(req: Request, res: Response, next: NextFunction) {
   try {
+    // DEV-ONLY bypass — test users have no real MFA enrollment
+    if (process.env.NODE_ENV === 'development' && req.headers['x-test-user-bypass'] === 'playwright-test') {
+      logger.debug('[requireMfaEnrolled] DEV bypass: MFA check skipped for test user');
+      return next();
+    }
+
     // Super admins bypass MFA check so they can access settings to enroll
     const reqEmail = ((req as any).firebaseUser?.email || '').toLowerCase();
     if (reqEmail && SUPER_ADMINS.includes(reqEmail)) {

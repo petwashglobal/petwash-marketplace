@@ -463,6 +463,17 @@ export async function registerRoutes(app: Express): Promise<void> {
         (req as any).firebaseUser = { uid: testUid, email_verified: true };
         return next();
       }
+      // playwright-test bypass — mirrors customAuth.ts dev bypass for routes that
+      // don't go through requireAuth (e.g. admin routes with their own auth chain)
+      if (req.headers['x-test-user-bypass'] === 'playwright-test') {
+        const testUserId = (req.headers['x-test-user-id'] as string) || 'test-user-default';
+        const testEmail  = (req.headers['x-test-user-email'] as string) || `${testUserId}@test.petwash.local`;
+        logger.warn('[RBAC Guard] DEV BYPASS — playwright-test', { testUserId, path });
+        (req as any).firebaseUser = { uid: testUserId, email: testEmail, email_verified: true };
+        (req as any).userId = testUserId;
+        (req as any).user   = { uid: testUserId, email: testEmail };
+        return next();
+      }
     }
 
     // 🔑 Admin secret bypass — allows server-side and automation access to internal routes
