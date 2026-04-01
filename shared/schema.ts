@@ -506,15 +506,78 @@ export const coupons = pgTable("coupons", {
   validFrom: timestamp("valid_from").defaultNow(),
   validUntil: timestamp("valid_until"),
   createdAt: timestamp("created_at").defaultNow(),
+  // ── Full coupon engine fields ──────────────────────────────────────────────
+  campaignName: varchar("campaign_name", { length: 120 }),
+  discountType: varchar("discount_type", { length: 30 }).default("fixed"),
+  // fixed | percent | free_service | free_wash | package_credit
+  currency: varchar("currency", { length: 3 }).default("ILS"),
+  minSpendCents: integer("min_spend_cents").default(0),
+  channelSource: varchar("channel_source", { length: 30 }),
+  // sms | push | email | admin | app_banner | qr | referral
+  scopeType: varchar("scope_type", { length: 30 }).default("global"),
+  // global | kiosk | booking | sitter | walker | loyalty | wallet_topup | first_order
+  scopeValue: varchar("scope_value", { length: 120 }),
+  stackable: boolean("stackable").default(false),
+  maxTotalRedemptions: integer("max_total_redemptions"),
+  maxRedemptionsPerUser: integer("max_redemptions_per_user").default(1),
+  totalRedemptions: integer("total_redemptions").default(0),
+  createdByUserId: varchar("created_by_user_id"),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// User coupon usage
+// User coupon usage (legacy — kept for backward compatibility)
 export const userCoupons = pgTable("user_coupons", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").references(() => users.id).notNull(),
   couponId: integer("coupon_id").references(() => coupons.id).notNull(),
   usedAt: timestamp("used_at").defaultNow(),
 });
+
+// Coupon eligibility rules — birthday, tier, first_order, holiday, city, etc.
+export const couponEligibilityRules = pgTable("coupon_eligibility_rules", {
+  id: serial("id").primaryKey(),
+  couponId: integer("coupon_id").references(() => coupons.id, { onDelete: "cascade" }).notNull(),
+  ruleType: varchar("rule_type", { length: 40 }).notNull(),
+  // birthday | loyalty_tier | first_order | holiday | city | country | user_segment
+  ruleValue: varchar("rule_value", { length: 120 }),
+  // e.g. "silver" for loyalty_tier, "IL" for country, "birthday_30d" for birthday
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Coupon redemptions — authoritative ledger entry for every coupon use
+export const couponRedemptions = pgTable("coupon_redemptions", {
+  id: serial("id").primaryKey(),
+  couponId: integer("coupon_id").references(() => coupons.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  orderType: varchar("order_type", { length: 40 }).notNull(),
+  // kiosk_wash | sitter_booking | walker_booking | wallet_topup | loyalty_reward
+  orderId: varchar("order_id", { length: 120 }),
+  amountBeforeCents: integer("amount_before_cents").notNull(),
+  discountAmountCents: integer("discount_amount_cents").notNull(),
+  amountAfterCents: integer("amount_after_cents").notNull(),
+  currency: varchar("currency", { length: 3 }).default("ILS"),
+  redeemedAt: timestamp("redeemed_at").defaultNow(),
+});
+
+// Coupon delivery events — track send → deliver → open → click → redeem
+export const couponDeliveryEvents = pgTable("coupon_delivery_events", {
+  id: serial("id").primaryKey(),
+  couponId: integer("coupon_id").references(() => coupons.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  channel: varchar("channel", { length: 20 }).notNull(), // sms | push | email | in_app
+  messageId: varchar("message_id", { length: 120 }),
+  deliveredAt: timestamp("delivered_at"),
+  openedAt: timestamp("opened_at"),
+  clickedAt: timestamp("clicked_at"),
+  redeemedAt: timestamp("redeemed_at"),
+  sentAt: timestamp("sent_at").defaultNow(),
+});
+
+export type Coupon = typeof coupons.$inferSelect;
+export type InsertCoupon = typeof coupons.$inferInsert;
+export type CouponRedemption = typeof couponRedemptions.$inferSelect;
+export type CouponEligibilityRule = typeof couponEligibilityRules.$inferSelect;
+export type CouponDeliveryEvent = typeof couponDeliveryEvents.$inferSelect;
 
 // Nayax pending transactions table
 export const pendingTransactions = pgTable("pending_transactions", {

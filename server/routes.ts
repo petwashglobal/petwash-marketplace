@@ -29,6 +29,7 @@ import k9000DashboardRoutes from "./routes/k9000Dashboard";
 import { createLedRouter, wireLedAutomation } from "./iot/ledController";
 import { eventBus } from "./services/EventBus";
 import walletRoutes from "./routes/wallet";
+import couponRoutes, { adminCouponRouter } from "./routes/coupons";
 import googleWalletRoutes from "./routes/google-wallet";
 import prestigePassRoutes from "./routes/prestige-pass";
 import passUniversalRoutes from "./routes/pass-universal";
@@ -9314,6 +9315,9 @@ self.addEventListener('notificationclick', (event) => {
   app.use(requireEmailVerifiedForProtectedPaths);
 
   app.use('/api/loyalty', validateFirebaseToken, apiLimiter, requireOnboardingComplete, loyaltyRoutes);
+
+  app.use('/api/coupons', validateFirebaseToken, apiLimiter, couponRoutes);
+  app.use('/api/admin/coupons', validateFirebaseToken, adminLimiter, requireAdmin, adminCouponRouter);
 
   // Admin Google Sheets URL endpoint (protected)
   app.get('/api/admin/sheets-url', validateFirebaseToken, async (req: any, res) => {

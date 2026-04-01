@@ -1,0 +1,91 @@
+We need a proper coupon / discount code engine across all PetWash platforms.
+
+This is not just a text code.
+It is a controlled financial object with eligibility, limits, consent, and ledger impact.
+
+Build it with this logic:
+
+1. Coupon types
+- fixed amount discount
+- percentage discount
+- free wash
+- free package / service credit
+
+2. Validation must be backend-only
+Before booking or wash starts, backend must validate:
+- code exists
+- active
+- not expired
+- user eligible
+- not already used beyond limit
+- order matches scope
+- campaign cap not exceeded
+
+3. Scope
+Coupons must support:
+- kiosk wash
+- wallet top-up campaign
+- sitter booking
+- walker booking
+- loyalty members only
+- first order only
+- birthday only
+- Black Friday / seasonal campaigns
+
+4. Redemption limits
+Need:
+- max total redemptions
+- max per user
+- stackable or not
+- min spend
+- start/end dates
+
+5. Data model
+Need:
+- coupons
+- coupon_eligibility_rules
+- coupon_redemptions
+- coupon_delivery_events
+
+6. Consent rules
+Marketing coupon by SMS:
+- send only to users with SMS marketing consent
+
+Marketing coupon by push:
+- send only to users with push marketing consent
+- and only if device push permission is granted
+
+Marketing coupon by email:
+- send only to users with email marketing consent
+
+Transactional messages are separate and must not be mixed with marketing.
+
+7. Notification preferences
+Need one central preferences table with:
+- marketing_sms_consent_at
+- marketing_email_consent_at
+- marketing_push_consent_at
+- transactional channel flags
+- push device permission state
+
+8. Financial rule
+Discount must be written into the order / wallet / ledger path so final payable amount is authoritative in backend.
+No frontend-only discount logic.
+
+9. Delivery tracking
+Track:
+- sent
+- delivered
+- opened
+- clicked
+- redeemed
+
+10. Use cases
+Support:
+- birthday code
+- Black Friday code
+- Valentine’s / Dog Day code
+- one-time unique code per user
+- reusable campaign code where appropriate
+
+Please design this as a real coupon engine, not a simple promo field.

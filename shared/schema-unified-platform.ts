@@ -61,14 +61,14 @@ export type WalletBalance = typeof walletBalances.$inferSelect;
 export const notificationPreferences = pgTable('notification_preferences', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: text('user_id').notNull().unique(),
-  
-  // Channel preferences
+
+  // Channel preferences (master toggles — legacy)
   whatsapp: boolean('whatsapp').notNull().default(true),
   email: boolean('email').notNull().default(true),
   sms: boolean('sms').notNull().default(true),
   push: boolean('push').notNull().default(true),
   inApp: boolean('in_app').notNull().default(true),
-  
+
   // Platform-specific preferences
   platformPreferences: jsonb('platform_preferences').notNull().default({
     'walk-my-pet': true,
@@ -78,12 +78,30 @@ export const notificationPreferences = pgTable('notification_preferences', {
     'wash-hub': true,
     'plush-lab': true
   }),
-  
-  // Notification types
+
+  // Notification type toggles
   marketing: boolean('marketing').notNull().default(true),
   transactional: boolean('transactional').notNull().default(true),
   alerts: boolean('alerts').notNull().default(true),
-  
+
+  // ── Marketing consent timestamps (Israeli Privacy Protection + GDPR) ────────
+  // Null = consent not yet given. Timestamp = moment explicit consent was recorded.
+  // Marketing messages MUST NOT be sent unless the relevant timestamp is non-null.
+  marketingSmsConsentAt: timestamp('marketing_sms_consent_at'),
+  marketingEmailConsentAt: timestamp('marketing_email_consent_at'),
+  marketingPushConsentAt: timestamp('marketing_push_consent_at'),
+
+  // ── Transactional channel flags ────────────────────────────────────────────
+  // OTP, booking confirmations, wash status — no marketing consent required.
+  transactionalSmsEnabled: boolean('transactional_sms_enabled').notNull().default(true),
+  transactionalEmailEnabled: boolean('transactional_email_enabled').notNull().default(true),
+  transactionalPushEnabled: boolean('transactional_push_enabled').notNull().default(true),
+
+  // ── Device push permission ─────────────────────────────────────────────────
+  // Set by the app when the OS permission result is known.
+  // granted | denied | not_determined | provisional (iOS) | ephemeral (iOS)
+  pushDevicePermissionStatus: text('push_device_permission_status').default('not_determined'),
+
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 }, (table) => ({
   userIdIdx: index('notification_pref_user_id_idx').on(table.userId)
