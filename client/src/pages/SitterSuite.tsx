@@ -82,6 +82,19 @@ export default function SitterSuite() {
 
   const sitters = sittersFromAPI || [];
 
+  interface TopReview {
+    id: number;
+    rating: number;
+    comment: string | null;
+    sitterFirstName: string;
+    sitterLastName: string;
+    sitterCity: string | null;
+  }
+  const { data: topReviewsData } = useQuery<{ reviews: TopReview[] }>({
+    queryKey: ['/api/sitter-suite/top-reviews'],
+  });
+  const topReviews = topReviewsData?.reviews ?? [];
+
   const filteredSitters = sitters?.filter(sitter => {
     const matchesSearch = sitter.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       sitter.city.toLowerCase().includes(searchQuery.toLowerCase());
@@ -941,23 +954,26 @@ export default function SitterSuite() {
             </div>
 
             <div className="luxury-grid-3">
-            {([] as Array<{name: string; city: string; text: string; rating: number; petType: string}>).map((review, i) => (
-                <div key={i} className={`luxury-glass-card luxury-hover-lift luxury-shadow-md p-6 luxury-animate-scale-in luxury-delay-${(i % 3) + 1}`}>
+            {topReviews.length === 0 ? (
+              <p className="col-span-3 text-center luxury-text-body text-muted-foreground">
+                {isHebrew ? 'ביקורות יטענו בקרוב' : 'Reviews will appear here soon'}
+              </p>
+            ) : topReviews.map((review, i) => (
+                <div key={review.id} className={`luxury-glass-card luxury-hover-lift luxury-shadow-md p-6 luxury-animate-scale-in luxury-delay-${(i % 3) + 1}`}>
                   <div className="flex items-center gap-1 mb-3">
                     {[...Array(review.rating)].map((_, j) => (
                       <Star key={j} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                     ))}
                   </div>
-                  <p className="luxury-text-body mb-4 italic">"{review.text}"</p>
+                  <p className="luxury-text-body mb-4 italic">"{review.comment}"</p>
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center text-white font-bold luxury-shadow-md">
-                      {review.name.charAt(0)}
+                      {review.sitterFirstName.charAt(0)}
                     </div>
                     <div className="flex-1">
-                      <div className="luxury-heading-sm">{review.name}</div>
-                      <div className="luxury-text-small">{review.city}</div>
-                      {review.petType && (
-                        <div className="luxury-text-small mt-1">{review.petType}</div>
+                      <div className="luxury-heading-sm">{review.sitterFirstName} {review.sitterLastName.charAt(0)}.</div>
+                      {review.sitterCity && (
+                        <div className="luxury-text-small">{review.sitterCity}</div>
                       )}
                     </div>
                   </div>

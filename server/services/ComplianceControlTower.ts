@@ -562,8 +562,56 @@ export class ComplianceControlTowerService {
       .set({ lastReminderSent: new Date(), updatedAt: new Date() })
       .where(eq(table.id, entityId));
 
-    // TODO: Integrate with notification system (email, SMS, push)
-    console.log(`Expiry reminder sent for ${entityType} ${entityId}: ${daysUntilExpiry} days remaining`);
+    // Send real expiry reminder via email
+    (async () => {
+      try {
+        const { createMailService } = await import('../lib/sendgrid');
+        const mail = createMailService();
+
+        let toEmail: string;
+        let toName: string;
+        let docLabel: string;
+
+        if (entityType === 'provider_license') {
+          const rec = entity[0] as any;
+          toEmail = rec?.providerEmail;
+          toName  = rec?.providerName ?? 'ספק';
+          docLabel = rec?.licenseType ?? 'רישיון';
+        } else {
+          // authority_document — company-level; notify the compliance officer
+          toEmail  = 'compliance@petwash.co.il';
+          toName   = 'Compliance Team';
+          const rec = entity[0] as any;
+          docLabel = rec?.title ?? rec?.documentType ?? 'מסמך';
+        }
+
+        if (!toEmail) return;
+
+        const subject = `PetWash™ — תזכורת תפוגה: ${docLabel} (${daysUntilExpiry} ימים)`;
+        const body =
+          `שלום ${toName},\n\n` +
+          `תזכורת: ${docLabel} יפוג בעוד ${daysUntilExpiry} יום.\n` +
+          `אנא חדש/י את המסמך בהקדם כדי להמשיך לפעול.\n\n` +
+          `לפרטים: https://petwash.co.il/provider/compliance\n\n` +
+          `PetWash™ Compliance Team`;
+
+        await mail.send({
+          to: toEmail,
+          from: 'compliance@petwash.co.il',
+          subject,
+          text: body,
+          html: `<p>${body.replace(/\n/g, '<br>')}</p>`,
+        });
+        logger.info('[ComplianceControlTower] ✅ Expiry reminder email sent', {
+          entityType,
+          entityId,
+          daysUntilExpiry,
+          to: toEmail,
+        });
+      } catch (notifErr) {
+        logger.warn('[ComplianceControlTower] Expiry reminder notification failed (non-blocking)', notifErr);
+      }
+    })();
   }
 
   /**

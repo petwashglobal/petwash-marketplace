@@ -282,16 +282,45 @@ export class ProviderIntakeService {
       })
       .where(eq(providerIntakeQueue.intakeId, intakeId));
     
-    // TODO: Send invite email/SMS/WhatsApp with link
-    // The invite code will be used when they visit the onboarding page
-    
     logger.info('[ProviderIntake] Approved and invited applicant:', {
       intakeId,
       inviteCode,
       email: intake.email,
       sendVia
     });
-    
+
+    // Fire-and-forget: send invite SMS + email with onboarding link
+    (async () => {
+      try {
+        const { TwilioSMSService } = await import('./TwilioSMSService');
+        const smsService = new TwilioSMSService();
+        const message =
+          `PetWash™ - בקשתך אושרה! ✅\n` +
+          `שלום ${intake.firstName},\n` +
+          `קוד ההצטרפות שלך: ${inviteCode}\n` +
+          `להשלמת ההרשמה: https://petwash.co.il/provider/onboarding?code=${inviteCode}\n` +
+          `הקוד בתוקף ל-30 יום.`;
+        if (intake.phoneNumber) {
+          await smsService.sendSMS(intake.phoneNumber, message);
+          logger.info('[ProviderIntake] ✅ Invite SMS sent', { intakeId, phone: '***' });
+        }
+        if (intake.email) {
+          const { createMailService } = await import('../lib/sendgrid');
+          const mail = createMailService();
+          await mail.send({
+            to: intake.email,
+            from: 'no-reply@petwash.co.il',
+            subject: 'PetWash™ — בקשת הצטרפות אושרה',
+            text: message,
+            html: `<p>${message.replace(/\n/g, '<br>')}</p>`,
+          });
+          logger.info('[ProviderIntake] ✅ Invite email sent', { intakeId, email: intake.email });
+        }
+      } catch (notifErr) {
+        logger.warn('[ProviderIntake] Invite notification failed (non-blocking)', notifErr);
+      }
+    })();
+
     return { inviteCode, success: true };
   }
   
@@ -299,6 +328,12 @@ export class ProviderIntakeService {
    * Reject an applicant with reason
    */
   async rejectApplicant(intakeId: string, adminId: string, reason: string): Promise<void> {
+    const [intake] = await db
+      .select()
+      .from(providerIntakeQueue)
+      .where(eq(providerIntakeQueue.intakeId, intakeId))
+      .limit(1);
+
     await db
       .update(providerIntakeQueue)
       .set({
@@ -311,8 +346,39 @@ export class ProviderIntakeService {
       .where(eq(providerIntakeQueue.intakeId, intakeId));
     
     logger.info('[ProviderIntake] Rejected applicant:', { intakeId, reason });
-    
-    // TODO: Send rejection email if desired
+
+    // Fire-and-forget: send rejection SMS + email
+    if (intake) {
+      (async () => {
+        try {
+          const { TwilioSMSService } = await import('./TwilioSMSService');
+          const smsService = new TwilioSMSService();
+          const message =
+            `PetWash™ - בקשתך לא אושרה\n` +
+            `שלום ${intake.firstName},\n` +
+            `לצערנו לא ניתן לאשר את בקשתך בשלב זה.\n` +
+            `לפרטים ולערעור: support@petwash.co.il`;
+          if (intake.phoneNumber) {
+            await smsService.sendSMS(intake.phoneNumber, message);
+            logger.info('[ProviderIntake] ✅ Rejection SMS sent', { intakeId, phone: '***' });
+          }
+          if (intake.email) {
+            const { createMailService } = await import('../lib/sendgrid');
+            const mail = createMailService();
+            await mail.send({
+              to: intake.email,
+              from: 'no-reply@petwash.co.il',
+              subject: 'PetWash™ — עדכון בנוגע לבקשתך',
+              text: message,
+              html: `<p>${message.replace(/\n/g, '<br>')}</p>`,
+            });
+            logger.info('[ProviderIntake] ✅ Rejection email sent', { intakeId, email: intake.email });
+          }
+        } catch (notifErr) {
+          logger.warn('[ProviderIntake] Rejection notification failed (non-blocking)', notifErr);
+        }
+      })();
+    }
   }
   
   /**

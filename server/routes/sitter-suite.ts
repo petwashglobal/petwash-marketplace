@@ -1280,6 +1280,37 @@ router.post('/search/nearby', async (req, res) => {
 });
 
 /**
+ * GET /api/sitter-suite/top-reviews - Aggregate top reviews across all sitters
+ * Used by the platform listing page testimonials section.
+ */
+router.get('/top-reviews', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt((req.query.limit as string) ?? '6', 10), 12);
+
+    const rows = await db
+      .select({
+        id: sitterReviews.id,
+        rating: sitterReviews.rating,
+        comment: sitterReviews.comment,
+        createdAt: sitterReviews.createdAt,
+        sitterFirstName: sitterProfiles.firstName,
+        sitterLastName: sitterProfiles.lastName,
+        sitterCity: sitterProfiles.city,
+      })
+      .from(sitterReviews)
+      .innerJoin(sitterProfiles, eq(sitterReviews.sitterId, sitterProfiles.id))
+      .where(sql`${sitterReviews.rating} >= 4 AND ${sitterReviews.comment} IS NOT NULL AND LENGTH(${sitterReviews.comment}) > 10`)
+      .orderBy(desc(sitterReviews.rating), desc(sitterReviews.createdAt))
+      .limit(limit);
+
+    res.json({ reviews: rows });
+  } catch (error) {
+    logger.error('[Sitter Suite] Error fetching top reviews', error);
+    res.status(500).json({ reviews: [] });
+  }
+});
+
+/**
  * GET /api/sitter-suite/sitters/:id/reviews - Get Uber-style reviews for sitter
  */
 router.get('/sitters/:id/reviews', async (req, res) => {

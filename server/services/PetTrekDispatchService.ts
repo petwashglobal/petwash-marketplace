@@ -286,18 +286,46 @@ export class PetTrekDispatchService {
   }
 
   /**
-   * Send push notifications to drivers
-   * TODO: Integrate with FCM or your notification service
+   * Send SMS notifications to dispatched drivers using Twilio.
+   * Fetches each driver's phone number from pettrek_providers by id.
    */
   private async sendPushNotifications(
     drivers: NearbyDriver[],
     tripId: number
   ): Promise<void> {
-    // TODO: Implement push notification sending
-    logger.info('[PetTrek Dispatch] Push notifications sent', {
-      tripId,
-      driverCount: drivers.length,
-    });
+    if (!drivers.length) return;
+
+    try {
+      const driverIds = drivers.map((d) => d.id);
+      const providerRows = await db
+        .select({
+          id: pettrekProviders.id,
+          phoneNumber: pettrekProviders.phoneNumber,
+          firstName: pettrekProviders.firstName,
+        })
+        .from(pettrekProviders)
+        .where(sql`${pettrekProviders.id} = ANY(${driverIds})`);
+
+      const { twilioSMSService } = await import('./TwilioSMSService');
+
+      await Promise.allSettled(
+        providerRows.map(async (provider) => {
+          if (!provider.phoneNumber) return;
+          const message =
+            `PetWash™ PetTrek™ - עבודה חדשה! 🚗\n` +
+            `נסיעה #${tripId} ממתינה לאישורך.\n` +
+            `היה/י הראשון/ת לאשר — פתח/י את האפליקציה.`;
+          await twilioSMSService.sendSMS(provider.phoneNumber, message);
+          logger.info('[PetTrek Dispatch] ✅ Driver SMS sent', {
+            tripId,
+            driverId: provider.id,
+            phone: '***',
+          });
+        })
+      );
+    } catch (notifErr) {
+      logger.warn('[PetTrek Dispatch] Driver SMS dispatch failed (non-blocking)', notifErr);
+    }
   }
 
   /**

@@ -21,7 +21,7 @@ import { NayaxSitterMarketplaceService } from "./NayaxSitterMarketplaceService";
 import { NayaxWalkMarketplaceService } from "./NayaxWalkMarketplaceService";
 import { K9000TransactionService, type K9000TransactionRequest } from "./K9000TransactionService";
 import { db } from "../db";
-import { paymentIntents, bookings, superAppPayouts } from "@shared/schema";
+import { paymentIntents, bookings, superAppPayouts, users } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { nanoid } from "nanoid";
@@ -508,8 +508,38 @@ export class PaymentGatewayService {
         });
       }
 
-      // STEP 3: Send confirmation notifications
-      // TODO: Implement notification service integration
+      // STEP 3: Send confirmation SMS to customer (fire-and-forget)
+      (async () => {
+        try {
+          const [customer] = await db
+            .select({ phone: users.phone, phoneE164: users.phoneE164 })
+            .from(users)
+            .where(eq(users.firebaseUid, booking.userId))
+            .limit(1);
+
+          const customerPhone = customer?.phoneE164 ?? customer?.phone;
+          if (!customerPhone) return;
+
+          const { buildBookingConfirmedSms, dispatchNotifications } = await import('./PetWashNotificationEngine');
+          const smsBody = buildBookingConfirmedSms({
+            bookingRef: booking.bookingNumber,
+            serviceName: booking.serviceType ?? 'Pet Wash',
+            dateStr: new Date(booking.startTime).toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' }),
+            totalAmount: parseFloat(booking.total).toFixed(0),
+          });
+
+          await dispatchNotifications({
+            userId: booking.userId,
+            eventType: 'booking_confirmed',
+            channels: ['sms'],
+            idempotencyKey: `booking-confirmed-${booking.id}`,
+            sms: { to: customerPhone, body: smsBody },
+          });
+          logger.info('[PaymentGateway] ✅ Booking confirmation SMS sent', { bookingId: booking.id });
+        } catch (notifErr) {
+          logger.warn('[PaymentGateway] Booking confirmation SMS failed (non-blocking)', notifErr);
+        }
+      })();
 
     } catch (error) {
       logger.error('[PaymentGateway] Post-payment actions error', error);
